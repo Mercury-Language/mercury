@@ -687,25 +687,28 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             WarnCannotSucceed, !IO),
         (
             WarnCannotSucceed = yes,
-            InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
             mode_info_get_in_dupl_for_switch(!.ModeInfo, InDupForSwitch),
             (
-                (
-                    InitMayHaveSubtype = yes
-                    % Suppress the warning, since the unification may succeed
-                    % in another mode in which the initial inst of X,
-                    % or of another head variable that is unified with it,
-                    % is not so constrained.
-                ;
-                    InDupForSwitch = yes
-                    % Suppress the warning, since the unification may succeed
-                    % in another copy of this duplicated switch arm.
-                )
-            ->
-                true
+                InDupForSwitch = yes
+                %
+                % Suppress the warning, since the unification may succeed
+                % in another copy of this duplicated switch arm.
+                %
             ;
-                Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
-                mode_info_warning(Warning, !ModeInfo)
+                InDupForSwitch = no,
+                mode_info_get_predid(!.ModeInfo, PredId),
+                mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                pred_info_get_origin(PredInfo, Origin),
+                should_report_mode_warning_for_pred_origin(Origin,
+                    ReportWarning),
+                (
+                    ReportWarning = yes,
+                    Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
+                    mode_info_warning(Warning, !ModeInfo)
+                ;
+                    ReportWarning = no
+                )
             )
         ;
             WarnCannotSucceed = no
@@ -985,19 +988,18 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
             WarnCannotSucceed),
         (
             WarnCannotSucceed = yes,
-            InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+            mode_get_insts(ModuleInfo0, ModeOfX, InstOfX, _),
+            mode_get_insts(ModuleInfo0, ModeOfY, InstOfY, _),
+            mode_info_get_predid(!.ModeInfo, PredId),
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_origin(PredInfo, Origin),
+            should_report_mode_warning_for_pred_origin(Origin, ReportWarning),
             (
-                InitMayHaveSubtype = yes
-                % Suppress the warning, since the unification may succeed
-                % in another mode in which the initial inst of X or Y,
-                % or of another head variable that is unified with one of them,
-                % is not so constrained.
-            ;
-                InitMayHaveSubtype = no,
-                mode_get_insts(ModuleInfo0, ModeOfX, InstOfX, _),
-                mode_get_insts(ModuleInfo0, ModeOfY, InstOfY, _),
+                ReportWarning = yes,
                 Warning = cannot_succeed_var_var(X, Y, InstOfX, InstOfY),
                 mode_info_warning(Warning, !ModeInfo)
+            ;
+                ReportWarning = no
             )
         ;
             WarnCannotSucceed = no

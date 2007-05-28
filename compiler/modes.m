@@ -135,6 +135,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -161,19 +162,13 @@
 :- pred check_pred_modes(how_to_check_goal::in, may_change_called_proc::in,
     module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
-    % Mode-check or unique-mode-check the code for single predicate.
-    %
-:- pred modecheck_pred_mode(pred_id::in, pred_info::in, how_to_check_goal::in,
-    may_change_called_proc::in, module_info::in, module_info::out,
-    int::out, io::di, io::uo) is det.
-
     % Mode-check the code for the given predicate in a given mode.
     % Returns the number of errs found and a bool `Changed'
     % which is true iff another pass of fixpoint analysis may be needed.
     %
 :- pred modecheck_proc(proc_id::in, pred_id::in,
-    module_info::in, module_info::out, int::out, bool::out,
-    io::di, io::uo) is det.
+    module_info::in, module_info::out, list(error_spec)::out,
+    bool::out, io::di, io::uo) is det.
 
     % Mode-check or unique-mode-check the code for the given predicate
     % in a given mode.
@@ -182,13 +177,7 @@
     %
 :- pred modecheck_proc_general(proc_id::in, pred_id::in, how_to_check_goal::in,
     may_change_called_proc::in, module_info::in, module_info::out,
-    int::out, bool::out, io::di, io::uo) is det.
-
-    % Mode-check the code for the given predicate in the given mode.
-    %
-:- pred modecheck_proc_info(proc_id::in, pred_id::in,
-    module_info::in, module_info::out, proc_info::in, proc_info::out,
-    int::out, io::di, io::uo) is det.
+    list(error_spec)::out, bool::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -519,7 +508,8 @@ report_max_iterations_exceeded(ModuleInfo, !IO) :-
         words("(The current limit is"), int_fixed(MaxIterations),
         words("iterations.)"), nl],
     Msg = error_msg(no, no, 0, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [Msg]),
     % XXX _NumErrors
     write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
@@ -660,13 +650,6 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Mode-check the code for single predicate.
-    %
-modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, NumErrors, !IO) :-
-    modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, no, _, NumErrors, !IO).
-
 :- pred modecheck_pred_mode_2(pred_id::in, pred_info::in,
     how_to_check_goal::in, may_change_called_proc::in,
     module_info::in, module_info::out, bool::in, bool::out, int::out,
@@ -697,52 +680,62 @@ modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
     % inferred as invalid.
     ProcIds = pred_info_procids(PredInfo0),
     modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, 0, NumErrors, !IO).
+        !ModuleInfo, !Changed, init_error_spec_accumulator, ErrorSpecs, !IO),
+    %
+    % Report errors and warnings.
+    %
+    module_info_get_globals(!.ModuleInfo, Globals),
+    ErrorSpecsList = error_spec_accumulator_to_list(ErrorSpecs),
+    write_error_specs(ErrorSpecsList, Globals, 0, _NumWarnings, 0, NumErrors,
+        !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
     % Iterate over the list of modes for a predicate.
     %
 :- pred modecheck_procs(list(proc_id)::in, pred_id::in, how_to_check_goal::in,
     may_change_called_proc::in, module_info::in, module_info::out,
-    bool::in, bool::out, int::in, int::out, io::di, io::uo) is det.
+    bool::in, bool::out,
+    error_spec_accumulator::in, error_spec_accumulator::out,
+    io::di, io::uo) is det.
 
-modecheck_procs([], _PredId, _, _, !ModuleInfo, !Changed, !Errs, !IO).
+modecheck_procs([], _PredId, _, _, !ModuleInfo, !Changed, !ErrorSpecs, !IO).
 modecheck_procs([ProcId | ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, !Errs, !IO) :-
+        !ModuleInfo, !Changed, !ErrorSpecs, !IO) :-
     % Mode-check that mode of the predicate.
     maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, NumErrors, !IO),
-    !:Errs = !.Errs + NumErrors,
+        !ModuleInfo, !Changed, ProcSpecs, !IO),
+    accumulate_error_specs_for_proc(ProcSpecs, !ErrorSpecs),
     % Recursively process the remaining modes.
     modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, !Errs, !IO).
+        !ModuleInfo, !Changed, !ErrorSpecs, !IO).
 
 %-----------------------------------------------------------------------------%
 
     % Mode-check the code for predicate in a given mode.
     %
-modecheck_proc(ProcId, PredId, !ModuleInfo, NumErrors, Changed, !IO) :-
+modecheck_proc(ProcId, PredId, !ModuleInfo, Errors, Changed, !IO)
+        :-
     modecheck_proc_general(ProcId, PredId, check_modes, may_change_called_proc,
-        !ModuleInfo, NumErrors, Changed, !IO).
+        !ModuleInfo, Errors, Changed, !IO).
 
 modecheck_proc_general(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, NumErrors, Changed, !IO) :-
+        !ModuleInfo, Errors, Changed, !IO) :-
     maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, no, Changed, NumErrors, !IO).
+        !ModuleInfo, no, Changed, Errors, !IO).
 
 :- pred maybe_modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
     may_change_called_proc::in, module_info::in, module_info::out,
-    bool::in, bool::out, int::out, io::di, io::uo) is det.
+    bool::in, bool::out, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, NumErrors, !IO) :-
+        !ModuleInfo, !Changed, Errors, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo0, ProcInfo0),
     ( proc_info_get_can_process(ProcInfo0, no) ->
-        NumErrors = 0
+        Errors = []
     ;
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-            !ModuleInfo, ProcInfo0, ProcInfo, !Changed, NumErrors, !IO),
-
+            !ModuleInfo, ProcInfo0, ProcInfo, !Changed, Errors, !IO),
         module_info_preds(!.ModuleInfo, Preds1),
         map.lookup(Preds1, PredId, PredInfo1),
         pred_info_get_procedures(PredInfo1, Procs1),
@@ -752,18 +745,13 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         module_info_set_preds(Preds, !ModuleInfo)
     ).
 
-modecheck_proc_info(ProcId, PredId, !ModuleInfo, !ProcInfo, NumErrors, !IO) :-
-    WhatToCheck = check_modes,
-    do_modecheck_proc(ProcId, PredId, WhatToCheck, may_change_called_proc,
-        !ModuleInfo, !ProcInfo, no, _Changed, NumErrors, !IO).
-
 :- pred do_modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
     may_change_called_proc::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, bool::in, bool::out, int::out,
-    io::di, io::uo) is det.
+    proc_info::in, proc_info::out, bool::in, bool::out, 
+    list(error_spec)::out, io::di, io::uo) is det.
 
 do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !ProcInfo, !Changed, NumErrors, !IO) :-
+        !ModuleInfo, !ProcInfo, !Changed, ErrorAndWarningSpecs, !IO) :-
     % Extract the useful fields in the proc_info.
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes0),
@@ -920,22 +908,34 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
                 ArgFinalInsts, Body1, Body, !ModeInfo)
         ),
 
+        mode_info_get_errors(!.ModeInfo, ModeErrors),
         (
             InferModes = yes,
             % For inferred predicates, we don't report the error(s) here;
             % instead we just save them in the proc_info, thus marking that
-            % procedure as invalid. Uncommenting the next call is sometimes
-            % handy for debugging:
-            % report_mode_errors(!ModeInfo),
-            mode_info_get_errors(!.ModeInfo, ModeErrors),
+            % procedure as invalid.
             !:ProcInfo = !.ProcInfo ^ mode_errors := ModeErrors,
-            NumErrors = 0
+            ErrorAndWarningSpecs = []
         ;
             InferModes = no,
-            % Report any errors we found.
-            report_mode_errors(!ModeInfo, !IO),
-            mode_info_get_num_errors(!.ModeInfo, NumErrors),
-            report_mode_warnings(!ModeInfo, !IO)
+            AllErrorSpecs = list.map(mode_error_info_to_spec(!.ModeInfo),
+                ModeErrors),
+            %
+            % We only return the first error, because there could be a
+            % large number of mode errors and usually only one is needed to
+            % diagnose the problem.
+            %
+            (
+                AllErrorSpecs = [ErrorSpec | _],
+                ErrorSpecs = [ErrorSpec]
+            ;
+                AllErrorSpecs = [],
+                ErrorSpecs = []
+            ),
+            mode_info_get_warnings(!.ModeInfo, ModeWarnings),
+            WarningSpecs = list.map(mode_warning_info_to_spec(!.ModeInfo),
+                ModeWarnings),
+            list.append(ErrorSpecs, WarningSpecs, ErrorAndWarningSpecs)
         ),
         % Save away the results.
         inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
@@ -3397,7 +3397,8 @@ report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
         words("is not currently implemented."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [Msg]),
     module_info_get_globals(!.ModuleInfo, Globals),
     write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
@@ -3420,7 +3421,8 @@ report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
         words("in them no longer being unique."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [Msg]),
     module_info_get_globals(!.ModuleInfo, Globals),
     write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
@@ -3432,7 +3434,8 @@ report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_context(ProcInfo, Context),
     Pieces = [words("Error: main/2 must have mode `(di, uo)'."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [Msg]),
     module_info_get_globals(!.ModuleInfo, Globals),
     write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).

@@ -92,6 +92,7 @@
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 
 :- import_module bag.
@@ -111,12 +112,10 @@ unique_modes_check_module(!ModuleInfo, !IO) :-
 
 unique_modes_check_proc(ProcId, PredId, !ModuleInfo, Changed, !IO) :-
     modecheck_proc_general(ProcId, PredId, check_unique_modes,
-        may_change_called_proc, !ModuleInfo, NumErrors, Changed, !IO),
-    ( NumErrors \= 0 ->
-        io.set_exit_status(1, !IO)
-    ;
-        true
-    ).
+        may_change_called_proc, !ModuleInfo, ErrorSpecs, Changed, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 unique_modes_check_goal(Goal0, Goal, !ModeInfo, !IO) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),

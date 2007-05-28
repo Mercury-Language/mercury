@@ -109,7 +109,7 @@
     ;       phase_parse_tree_to_hlds
     ;       phase_expand_types
     ;       phase_type_check
-    ;       phase_mode_check
+    ;       phase_mode_check(mode_report_control)
     ;       phase_purity_check
     ;       phase_detism_check
     ;       phase_simplify(mode_report_control)
@@ -209,6 +209,23 @@
 :- pred sort_error_specs(list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
+
+%-----------------------------------------------------------------------------%
+% The error_spec_accumulator type can be used to accumulate errors for
+% multiple modes of a predicate.  accumulate_error_specs_for_proc will
+% eliminate warnings that should only be reported if they occur in every mode,
+% but don't occur in every mode.
+%
+
+:- type error_spec_accumulator.
+
+:- func init_error_spec_accumulator = error_spec_accumulator.
+
+:- pred accumulate_error_specs_for_proc(list(error_spec)::in,
+    error_spec_accumulator::in, error_spec_accumulator::out) is det.
+
+:- func error_spec_accumulator_to_list(error_spec_accumulator) =
+    list(error_spec).
 
 %-----------------------------------------------------------------------------%
 
@@ -421,7 +438,9 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -595,6 +614,51 @@ project_msg_context(Msg) = MaybeContext :-
         Msg = error_msg(no, _, _, __),
         MaybeContext = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- type error_spec_accumulator == maybe(pair(set(error_spec))).
+
+init_error_spec_accumulator = no.
+
+accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
+    list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
+            ModeReportControl = get_maybe_mode_report_control(Phase),
+            ModeReportControl = yes(report_only_if_in_all_modes)
+        ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
+    ProcAnyModeSpecSet = set.from_list(ProcAnyModeSpecs),
+    ProcAllModeSpecSet = set.from_list(ProcAllModeSpecs),
+    (
+        !.MaybeSpecs = yes(AnyModeSpecSet0 - AllModeSpecSet0),
+        set.union(AnyModeSpecSet0, ProcAnyModeSpecSet, AnyModeSpecSet),
+        set.intersect(AllModeSpecSet0, ProcAllModeSpecSet, AllModeSpecSet),
+        !:MaybeSpecs = yes(AnyModeSpecSet - AllModeSpecSet)
+    ;
+        !.MaybeSpecs = no,
+        !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
+    ).
+
+error_spec_accumulator_to_list(no) = [].
+error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
+    set.to_sorted_list(set.union(AnyModeSpecSet, AllModeSpecSet)).
+
+:- func get_maybe_mode_report_control(error_phase) =
+    maybe(mode_report_control).
+
+get_maybe_mode_report_control(phase_read_files) = no.
+get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
+get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
+get_maybe_mode_report_control(phase_expand_types) = no.
+get_maybe_mode_report_control(phase_type_check) = no.
+get_maybe_mode_report_control(phase_mode_check(Control)) = yes(Control).
+get_maybe_mode_report_control(phase_purity_check) = no.
+get_maybe_mode_report_control(phase_detism_check) = no.
+get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
+get_maybe_mode_report_control(phase_dead_code) = no.
+get_maybe_mode_report_control(phase_termination_analysis) = no.
+get_maybe_mode_report_control(phase_accumulator_intro) = no.
+get_maybe_mode_report_control(phase_interface_gen) = no.
+get_maybe_mode_report_control(phase_code_gen) = no.
 
 %-----------------------------------------------------------------------------%
 

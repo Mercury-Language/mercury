@@ -292,14 +292,17 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
     mode_info_init(ModuleInfo1, PredId, ProcId, Context, LiveVars, InstMap0,
         check_unique_modes, MayChangeCalledProc, ModeInfo0),
 
-    unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo1, !IO),
+    unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo, !IO),
     globals.io_lookup_bool_option(debug_pd, Debug, !IO),
     (
         Debug = yes,
-        report_mode_errors(ModeInfo1, ModeInfo, !IO)
+        mode_info_get_errors(ModeInfo, ModeErrors),
+        ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), ModeErrors),
+        module_info_get_globals(ModuleInfo, Globals),
+        write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO)
     ;
-        Debug = no,
-        ModeInfo = ModeInfo1
+        Debug = no
     ),
     mode_info_get_errors(ModeInfo, Errors),
 

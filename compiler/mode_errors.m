@@ -188,22 +188,9 @@
 
 %-----------------------------------------------------------------------------%
 
-    % If there were any errors recorded in the mode_info,
-    % report them to the user now.
-    %
-:- pred report_mode_errors(mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
-
-    % If there were any warnings recorded in the mode_info,
-    % report them to the user now.
-    %
-:- pred report_mode_warnings(mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
-
     % Initialize the mode_context.
     %
 :- pred mode_context_init(mode_context::out) is det.
-
 
     % Report an error for a predicate with no mode declarations
     % unless mode inference is enabled and the predicate is local.
@@ -228,6 +215,13 @@
     module_info::in, io::di, io::uo) is det.
 
 :- func mode_decl_to_string(proc_id, pred_info) = string.
+
+:- func mode_error_info_to_spec(mode_info, mode_error_info) = error_spec.
+
+:- func mode_warning_info_to_spec(mode_info, mode_warning_info) = error_spec.
+
+:- pred should_report_mode_warning_for_pred_origin(pred_origin::in,
+    bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -256,56 +250,19 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
-report_mode_errors(!ModeInfo, !IO) :-
-    mode_info_get_errors(!.ModeInfo, Errors),
-    (
-        Errors = [FirstError | _],
-        % XXX Document exactly why we only report the first.
-        FirstError = mode_error_info(_, ModeError, Context, ModeContext),
+mode_error_info_to_spec(ModeInfo0, ModeErrorInfo) = Spec :-
+    some [!ModeInfo] (
+        !:ModeInfo = ModeInfo0,
+        ModeErrorInfo = mode_error_info(_, ModeError, Context, ModeContext),
         mode_info_set_context(Context, !ModeInfo),
         mode_info_set_mode_context(ModeContext, !ModeInfo),
-        report_mode_error(ModeError, !ModeInfo, !IO)
-    ;
-        Errors = []
+        Spec = mode_error_to_spec(!.ModeInfo, ModeError)
     ).
 
-report_mode_warnings(!ModeInfo, !IO) :-
-    mode_info_get_warnings(!.ModeInfo, Warnings),
-    list.foldl2(report_mode_warning, Warnings, !ModeInfo, !IO).
+:- func mode_error_to_spec(mode_info, mode_error) = error_spec.
 
-    % Print an error message describing a mode error.
-    %
-:- pred report_mode_error(mode_error::in,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
-
-report_mode_error(ModeError, !ModeInfo, !IO) :-
-    Spec = mode_error_to_spec(ModeError, !.ModeInfo),
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    module_info_get_globals(ModuleInfo0, Globals),
-    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, ModuleInfo0, ModuleInfo),
-    mode_info_set_module_info(ModuleInfo, !ModeInfo).
-
-    % Print a warning message.
-    %
-:- pred report_mode_warning(mode_warning_info::in,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
-
-report_mode_warning(Warning, !ModeInfo, !IO) :-
-    Spec = mode_warning_to_spec(!.ModeInfo, Warning),
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    module_info_get_globals(ModuleInfo0, Globals),
-    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, ModuleInfo0, ModuleInfo),
-    mode_info_set_module_info(ModuleInfo, !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- func mode_error_to_spec(mode_error, mode_info) = error_spec.
-
-mode_error_to_spec(ModeError, ModeInfo) = Spec :-
+mode_error_to_spec(ModeInfo, ModeError) = Spec :-
     (
         ModeError = mode_error_disj(MergeContext, ErrorList),
         Spec = mode_error_disj_to_spec(ModeInfo, MergeContext, ErrorList)
@@ -381,9 +338,7 @@ mode_error_to_spec(ModeError, ModeInfo) = Spec :-
         Spec = purity_error_lambda_should_be_impure_to_spec(ModeInfo, Vars)
     ).
 
-:- func mode_warning_to_spec(mode_info, mode_warning_info) = error_spec.
-
-mode_warning_to_spec(!.ModeInfo, Warning) = Spec :-
+mode_warning_info_to_spec(!.ModeInfo, Warning) = Spec :-
     Warning = mode_warning_info(ModeWarning, Context, ModeContext),
     mode_info_set_context(Context, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
@@ -479,7 +434,8 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
             simple_msg(ImpureGoalContext, [always(Pieces2)])
         ]
     ),
-    Spec = error_spec(severity_error, phase_mode_check, Msgs1 ++ Msgs2).
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        Msgs1 ++ Msgs2).
 
 :- pred is_error_important(delayed_goal::in) is semidet.
 
@@ -520,7 +476,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     Error = mode_error_info(_, ModeError, ErrorContext, ModeContext),
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
-    SubSpec = mode_error_to_spec(ModeError, !.ModeInfo),
+    SubSpec = mode_error_to_spec(!.ModeInfo, ModeError),
     SubSpec = error_spec(_, _, SubMsgs),
     Msgs = [Msg1, Msg2] ++ SubMsgs.
 
@@ -543,7 +499,7 @@ mode_error_disj_to_spec(ModeInfo, MergeContext, ErrorList) = Spec :-
         words(merge_context_to_string(MergeContext)), suffix("."), nl],
     MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), ErrorList),
     list.condense(MergePieceLists, MergePieces),
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ MainPieces ++ MergePieces)])]).
 
@@ -558,7 +514,7 @@ mode_error_par_conj_to_spec(ModeInfo, ErrorList) = Spec :-
         words("parallel conjunctions to fail.)"), nl],
     MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), ErrorList),
     list.condense(MergePieceLists, MergePieces),
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ Pieces ++ MergePieces)])]).
 
@@ -642,7 +598,7 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
             [words("A nonlocal variable of a parallel conjunction"),
             words("may be bound in at most one conjunct."), nl]
     ),
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
 
@@ -662,7 +618,7 @@ mode_error_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst) = Spec :-
         suffix(","), nl,
         words("expected instantiatedness for non-local variables"),
         words("of lambda goals is `ground'."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
@@ -704,7 +660,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         mode_info_set_procid(CalleeProcId, !ModeInfo),
         mode_info_set_context(CalleeContext, !ModeInfo),
         mode_info_set_mode_context(CalleeModeContext, !ModeInfo),
-        CalleeModeErrorSpec = mode_error_to_spec(CalleeModeError, !.ModeInfo),
+        CalleeModeErrorSpec = mode_error_to_spec(!.ModeInfo, CalleeModeError),
         CalleeModeErrorSpec = error_spec(_, _, LaterMsgs0),
         (
             LaterMsgs0 = [],
@@ -722,7 +678,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             ),
             LaterMsgs = [LaterHead | LaterTail]
         ),
-        Spec = error_spec(severity_error, phase_mode_check,
+        Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
             [InitMsg | LaterMsgs])
     ;
         CalleeModeErrors = [],
@@ -749,7 +705,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
         inst_list_to_sep_lines(ModeInfo, Insts) ++
         [words("which does not match any of the modes for"),
         words(CallIdStr), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_error_higher_order_pred_var_to_spec(mode_info, pred_or_func,
@@ -775,7 +731,7 @@ mode_error_higher_order_pred_var_to_spec(ModeInfo, PredOrFunc, Var, VarInst,
         words(add_quotes(inst_to_string(ModeInfo, VarInst))),
         suffix(","), nl,
         words(Expecting), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_error_poly_unify_to_spec(mode_info, prog_var, mer_inst)
@@ -796,7 +752,7 @@ mode_error_poly_unify_to_spec(ModeInfo, Var, VarInst) = Spec :-
         words("be ground (or have inst `any'). Unifications of"),
         words("polymorphically-typed variables with partially"),
         words("instantiated modes are not allowed.")],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
 
@@ -810,7 +766,7 @@ mode_error_var_is_live_to_spec(ModeInfo, Var) = Spec :-
         words("would clobber its argument, but variable"),
         words(add_quotes(mercury_var_to_string(VarSet, no, Var))),
         words("is still live."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_error_var_has_inst_to_spec(mode_info, prog_var,
@@ -826,7 +782,7 @@ mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
         words(add_quotes(inst_to_string(ModeInfo, VarInst))), suffix(","), nl,
         words("expected instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_error_implied_mode_to_spec(mode_info, prog_var,
@@ -848,7 +804,7 @@ mode_error_implied_mode_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
         words(add_quotes(inst_to_string(ModeInfo, Inst))),
         suffix("."), nl],
     Severity = severity_conditional(errorcheck_only, no, severity_error, no),
-    Spec = error_spec(Severity, phase_mode_check,
+    Spec = error_spec(Severity, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [option_is_set(errorcheck_only, no,
                 [always(Preamble ++ Pieces)])])]).
@@ -859,7 +815,7 @@ mode_error_no_mode_decl_to_spec(ModeInfo) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     Pieces = [words("no mode declaration for called predicate."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_error_unify_pred_to_spec(mode_info, prog_var,
@@ -904,7 +860,7 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         words("writing an explicit universal quantification, e.g."),
         fixed("`all [X] call(P, X) <=> call(Q, X)',"),
         words("instead of"), fixed("`P = Q'.")],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
 
@@ -930,7 +886,7 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
         words(add_quotes(mercury_var_to_string(VarSet, no, Y))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
@@ -951,7 +907,7 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
         words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix(","), nl,
         words("lambda expression has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
@@ -991,7 +947,7 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
             words(add_quotes(mercury_cons_id_to_string(ConsId,
                 does_not_need_brackets))), suffix("."), nl]
     ),
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces1 ++ Pieces2)])]).
 
 %-----------------------------------------------------------------------------%
@@ -1014,7 +970,8 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
         words(add_quotes(mercury_var_to_string(VarSet, no, Y))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
-    Spec = error_spec(severity_warning, phase_mode_check,
+    Spec = error_spec(severity_warning,
+        phase_mode_check(report_only_if_in_all_modes),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_warning_cannot_succeed_var_functor(mode_info, prog_var, mer_inst,
@@ -1032,7 +989,8 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
         words(add_quotes(mercury_var_to_string(VarSet, no, X))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix("."), nl],
-    Spec = error_spec(severity_warning, phase_mode_check,
+    Spec = error_spec(severity_warning,
+        phase_mode_check(report_only_if_in_all_modes),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
@@ -1110,7 +1068,7 @@ mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
         words("expected final instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))),
         suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
@@ -1142,7 +1100,7 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
             words("has inst any and appears in the body.")
         ]
     ),
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
@@ -1161,8 +1119,18 @@ purity_error_lambda_should_be_impure_to_spec(ModeInfo, Vars) = Spec :-
         words(mercury_vars_to_string(VarSet, no, Vars)),
         suffix("."), nl
     ],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+
+%-----------------------------------------------------------------------------%
+
+should_report_mode_warning_for_pred_origin(origin_special_pred(_), no).
+should_report_mode_warning_for_pred_origin(origin_instance_method(_), no).
+should_report_mode_warning_for_pred_origin(origin_transformed(_, _, _), no).
+should_report_mode_warning_for_pred_origin(origin_created(_), no).
+should_report_mode_warning_for_pred_origin(origin_assertion(_, _), no).
+should_report_mode_warning_for_pred_origin(origin_lambda(_, _, _), yes).
+should_report_mode_warning_for_pred_origin(origin_user(_), yes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1181,7 +1149,8 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
                     PredId) ++ [suffix("."), nl],
             VerbosePieces =
                 [words("(Use `--infer-modes' to enable mode inference.)"), nl],
-            Spec = error_spec(severity_error, phase_mode_check,
+            Spec = error_spec(severity_error,
+                phase_mode_check(report_in_any_mode),
                 [simple_msg(Context,
                     [always(MainPieces), verbose_only(VerbosePieces)])]),
             module_info_get_globals(!.ModuleInfo, Globals),
@@ -1195,7 +1164,7 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
         Pieces = [words("Error: no mode declaration for exported")] ++
             describe_one_pred_name(!.ModuleInfo, should_module_qualify, PredId)
             ++ [suffix("."), nl],
-        Spec = error_spec(severity_error, phase_mode_check,
+        Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
             [simple_msg(Context, [always(Pieces)])]),
         module_info_get_globals(!.ModuleInfo, Globals),
         write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
@@ -1314,7 +1283,8 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         ),
         Pieces = [words(Verb), words(Detail), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_informational, phase_mode_check, [Msg]),
+        Spec = error_spec(severity_informational,
+            phase_mode_check(report_in_any_mode), [Msg]),
         module_info_get_globals(ModuleInfo, Globals),
         write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ).
@@ -1338,7 +1308,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         fixed(add_quotes(mode_decl_to_string(NewProcId, PredInfo))),
         words("are indistinguishable.")],
     OldPieces = [words("Here is the conflicting mode declaration.")],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,
             [always(MainPieces), verbose_only(VerbosePieces)]),
         simple_msg(OldContext, [always(OldPieces)])]).

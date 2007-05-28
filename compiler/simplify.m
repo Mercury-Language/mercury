@@ -310,30 +310,24 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs, !IO) :-
     ;
         Simplifications = Simplifications0
     ),
-    MaybeSpecs0 = no,
+    ErrorSpecs0 = init_error_spec_accumulator,
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        MaybeSpecs0, MaybeSpecs, !IO),
+        ErrorSpecs0, ErrorSpecs, !IO),
     module_info_get_globals(!.ModuleInfo, Globals),
-    (
-        MaybeSpecs = yes(AnyModeSpecSet - AllModeSpecSet),
-        set.union(AnyModeSpecSet, AllModeSpecSet, SpecSet),
-        set.to_sorted_list(SpecSet, NewSpecs),
-        !:Specs = NewSpecs ++ !.Specs
-    ;
-        MaybeSpecs = no
-    ),
+    SpecsList = error_spec_accumulator_to_list(ErrorSpecs),
+    !:Specs = SpecsList ++ !.Specs,
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO).
 
 :- pred simplify_procs(simplifications::in, pred_id::in,
     list(proc_id)::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
-    maybe(pair(set(error_spec)))::in, maybe(pair(set(error_spec)))::out,
+    error_spec_accumulator::in, error_spec_accumulator::out,
     io::di, io::uo) is det.
 
-simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !MaybeSpecs, !IO).
+simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !ErrorSpecs, !IO).
 simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
-        !PredInfo, !MaybeSpecs, !IO) :-
+        !PredInfo, !ErrorSpecs, !IO) :-
     pred_info_get_procedures(!.PredInfo, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
@@ -359,23 +353,9 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
     ),
     map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
-
-    list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
-            Phase = phase_simplify(report_only_if_in_all_modes)
-        ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
-    set.sorted_list_to_set(ProcAnyModeSpecs, ProcAnyModeSpecSet),
-    set.sorted_list_to_set(ProcAllModeSpecs, ProcAllModeSpecSet),
-    (
-        !.MaybeSpecs = yes(AnyModeSpecSet0 - AllModeSpecSet0),
-        set.union(AnyModeSpecSet0, ProcAnyModeSpecSet, AnyModeSpecSet),
-        set.intersect(AllModeSpecSet0, ProcAllModeSpecSet, AllModeSpecSet),
-        !:MaybeSpecs = yes(AllModeSpecSet - AnyModeSpecSet)
-    ;
-        !.MaybeSpecs = no,
-        !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
-    ),
+    accumulate_error_specs_for_proc(ProcSpecs, !ErrorSpecs),
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        !MaybeSpecs, !IO).
+        !ErrorSpecs, !IO).
 
 simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo, !IO)  :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),

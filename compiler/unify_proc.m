@@ -162,6 +162,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -474,9 +475,12 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     module_info_set_preds(Preds1, !ModuleInfo),
 
     % Modecheck the procedure.
-    modecheck_proc(ProcId, PredId, !ModuleInfo, NumErrors, !:Changed, !IO),
-    ( NumErrors \= 0 ->
-        io.set_exit_status(1, !IO),
+    modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, !:Changed, !IO),
+
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo),
+    ( NumErrors > 0 ->
         module_info_remove_predid(PredId, !ModuleInfo)
     ;
         (

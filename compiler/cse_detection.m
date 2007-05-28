@@ -52,6 +52,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type_subst.
@@ -126,9 +127,13 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
         ;
             VeryVerbose = no
         ),
-        modecheck_proc(ProcId, PredId, !ModuleInfo, Errs, _Changed, !IO),
+        modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, _Changed, !IO),
         maybe_report_stats(Statistics, !IO),
-        ( Errs > 0 ->
+        module_info_get_globals(!.ModuleInfo, Globals),
+        write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors,
+            !IO),
+        module_info_incr_num_errors(NumErrors, !ModuleInfo),
+        ( NumErrors > 0 ->
             unexpected(this_file, "mode check fails when repeated")
         ;
             true
