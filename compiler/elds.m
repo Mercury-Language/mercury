@@ -22,12 +22,14 @@
 :- module erl_backend.elds.
 :- interface.
 
+:- import_module backend_libs.rtti.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
+:- import_module bool.
 :- import_module char.
 :- import_module list.
 :- import_module maybe.
@@ -49,7 +51,10 @@
                 elds_funcs          :: list(elds_defn),
 
                 % Definitions of foreign exported functions.
-                elds_fe_funcs       :: list(elds_foreign_export_defn)
+                elds_fe_funcs       :: list(elds_foreign_export_defn),
+
+                % Definitions of functions which return RTTI data.
+                elds_rtti_funcs     :: list(elds_rtti_defn)
             ).
 
     % Function definition.
@@ -68,6 +73,31 @@
                 fe_defn_name    :: string,
                 fe_defn_varset  :: prog_varset,
                 fe_defn_clause  :: elds_clause
+            ).
+
+    % Function which returns RTTI data when called.
+    %
+:- type elds_rtti_defn
+    --->    elds_rtti_defn(
+                rtti_defn_id        :: elds_rtti_id, 
+                rtti_defn_exported  :: bool,
+                rtti_defn_varset    :: prog_varset,
+                rtti_defn_clause    :: elds_clause
+            ).
+
+    % The types of RTTI which we can generate ELDS functions for.
+    %
+:- type elds_rtti_id
+    --->    elds_rtti_type_ctor_id(
+                module_name,
+                string,
+                arity
+            )
+    ;       elds_rtti_base_typeclass_id(
+                tc_name,        % identifies the type class
+                module_name,    % module containing instance decl.
+                string          % encodes the names and arities of the
+                                % types in the instance declaration
             ).
 
 :- type elds_clause
@@ -97,21 +127,19 @@
     ;       elds_unop(elds_unop, elds_expr)
     ;       elds_binop(elds_binop, elds_expr, elds_expr)
 
-            % A normal call.
+            % A normal call to a procedure, a higher order call, or a call to a
+            % builtin.
+            %
             % proc(Expr, ...)
-            %
-    ;       elds_call(pred_proc_id, list(elds_expr))
-
-            % A higher order call.
             % Proc(Expr, ...)
-            %
-    ;       elds_call_ho(elds_expr, list(elds_expr))
-
-            % A call to a Erlang builtin.
             % builtin(Expr, ...)
             %
-    ;       elds_call_builtin(string, list(elds_expr))
-            
+    ;       elds_call(elds_call_target, list(elds_expr))
+
+            % A call to a function returning RTTI information.
+            %
+    ;       elds_rtti_ref(elds_rtti_id)
+
             % fun(Args, ...) -> Expr end
             % (We only use single clause functions.)
             %
@@ -175,6 +203,11 @@
 % XXX we should use insts (or some other method) to restrict expressions in
 % tuples to be terms, if the tuple is going to be used in a pattern.
 
+:- type elds_call_target
+    --->    elds_call_plain(pred_proc_id)
+    ;       elds_call_ho(elds_expr)
+    ;       elds_call_builtin(string).
+
 :- type elds_case
     --->    elds_case(elds_term, elds_expr).
 
@@ -230,6 +263,11 @@
     % distinguishing atom as the first element of the tuple.
     %
 :- func elds_commit_marker = elds_expr.
+
+:- func elds_call_builtin(string, list(elds_expr)) = elds_expr.
+:- func elds_call_element(prog_var, int) = elds_expr.
+
+:- func var_eq_false(prog_var) = elds_expr.
 
 :- func term_from_var(prog_var) = elds_term.
 :- func terms_from_vars(prog_vars) = list(elds_term).
@@ -289,6 +327,15 @@ elds_empty_tuple = elds_tuple([]).
 
 elds_commit_marker = elds_term(elds_atom_raw("MERCURY_COMMIT")).
 
+elds_call_builtin(FunName, Exprs) =
+    elds_call(elds_call_builtin(FunName), Exprs).
+
+% Arguments are flipped from the Erlang for currying.
+elds_call_element(Var, Index) = elds_call_builtin("element",
+    [elds_term(elds_int(Index)), expr_from_var(Var)]).
+
+var_eq_false(Var) = elds_eq(expr_from_var(Var), elds_term(elds_false)).
+
 term_from_var(Var) = elds_var(Var).
 terms_from_vars(Vars) = list.map(term_from_var, Vars).
 
@@ -308,21 +355,21 @@ expr_to_term(Expr) = Term :-
     ).
 
 join_exprs(ExprA, ExprB) = Expr :-
-    (
-        ExprA = elds_block(ExprsA),
-        ExprB = elds_block(ExprsB)
-    ->
-        Expr = elds_block(ExprsA ++ ExprsB)
+    ( ExprA = elds_block(As0) ->
+        As = As0
     ;
-        ExprB = elds_block(ExprsB)
-    ->
-        Expr = elds_block([ExprA | ExprsB])
+        As = [ExprA]
+    ),
+    ( ExprB = elds_block(Bs0) ->
+        Bs = Bs0
     ;
-        ExprA = elds_block(ExprsA)
-    ->
-        Expr = elds_block(ExprsA ++ [ExprB])
+        Bs = [ExprB]
+    ),
+    AsBs = As ++ Bs,
+    ( AsBs = [SingleExpr] ->
+        Expr = SingleExpr
     ;
-        Expr = elds_block([ExprA, ExprB])
+        Expr = elds_block(AsBs)
     ).
 
 maybe_join_exprs(ExprA, yes(ExprB)) = join_exprs(ExprA, ExprB).

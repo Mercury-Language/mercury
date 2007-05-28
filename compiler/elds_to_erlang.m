@@ -68,11 +68,11 @@
 %-----------------------------------------------------------------------------%
 
 output_elds(ModuleInfo, ELDS, !IO) :-
-    ELDS = elds(ModuleName, _, _, _),
     %
     % The Erlang interactive shell doesn't like "." in filenames so we use "__"
     % instead.
     %
+    ModuleName = erlang_module_name(ELDS ^ elds_name),
     module_name_to_file_name_sep(ModuleName, "__", ".erl", yes,
         SourceFileName, !IO),
     output_to_file(SourceFileName, output_erl_file(ModuleInfo, ELDS,
@@ -82,7 +82,8 @@ output_elds(ModuleInfo, ELDS, !IO) :-
     io::di, io::uo) is det.
 
 output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
-    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns),
+    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
+        RttiDefns),
 
     % Output intro.
     library.version(Version),
@@ -102,9 +103,11 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     io.write_string(").\n", !IO),
 
     io.write_string("-export([", !IO),
-    list.foldl2(output_export_ann(ModuleInfo), ProcDefns, no, NeedComma, !IO),
-    list.foldl2(output_foreign_export_ann, ForeignExportDefns, NeedComma, _,
-        !IO),
+    list.foldl2(output_export_ann(ModuleInfo), ProcDefns, no, NeedComma0, !IO),
+    list.foldl2(output_foreign_export_ann, ForeignExportDefns,
+        NeedComma0, NeedComma1, !IO),
+    list.foldl2(output_rtti_export_ann(ModuleInfo), RttiDefns,
+        NeedComma1, _NeedComma, !IO),
     io.write_string("]).\n", !IO),
 
     % Useful for debugging.
@@ -116,7 +119,8 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     % Output function definitions.
     list.foldl(output_defn(ModuleInfo), ProcDefns, !IO),
     list.foldl(output_foreign_export_defn(ModuleInfo), ForeignExportDefns,
-        !IO).
+        !IO),
+    list.foldl(output_rtti_defn(ModuleInfo), RttiDefns, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -152,6 +156,23 @@ output_foreign_export_ann(ForeignExportDefn, NeedComma, yes, !IO) :-
     io.write_char('/', !IO),
     io.write_int(elds_clause_arity(Clause), !IO).
 
+:- pred output_rtti_export_ann(module_info::in, elds_rtti_defn::in,
+    bool::in, bool::out, io::di, io::uo) is det.
+
+output_rtti_export_ann(ModuleInfo, ForeignExportDefn, !NeedComma, !IO) :-
+    ForeignExportDefn = elds_rtti_defn(RttiId, IsExported, _VarSet, _Clause),
+    (
+        IsExported = yes,
+        maybe_write_comma(!.NeedComma, !IO),
+        nl_indent_line(1, !IO),
+        output_rtti_id(ModuleInfo, RttiId, !IO),
+        io.write_char('/', !IO),
+        io.write_int(0, !IO),
+        !:NeedComma = yes
+    ;
+        IsExported = no
+    ).
+
 :- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
 
 output_foreign_body_code(foreign_body_code(_Lang, Code, _Context), !IO) :-
@@ -173,6 +194,15 @@ output_foreign_export_defn(ModuleInfo, ForeignExportDefn, !IO) :-
     ForeignExportDefn = elds_foreign_export_defn(Name, VarSet, Clause),
     io.nl(!IO),
     output_atom(Name, !IO),
+    output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO).
+
+:- pred output_rtti_defn(module_info::in, elds_rtti_defn::in, io::di, io::uo)
+    is det.
+
+output_rtti_defn(ModuleInfo, RttiDefn, !IO) :-
+    RttiDefn = elds_rtti_defn(RttiId, _IsExported, VarSet, Clause),
+    io.nl(!IO),
+    output_rtti_id(ModuleInfo, RttiId, !IO),
     output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO).
 
 :- pred output_toplevel_clause(module_info::in, prog_varset::in,
@@ -237,7 +267,10 @@ output_block_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
 
 output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
     (
-        Expr = elds_block(Exprs),
+        Expr = elds_block([]),
+        unexpected(this_file, "output_expr: empty elds_block")
+    ;
+        Expr = elds_block(Exprs @ [_ | _]),
         io.write_string("(begin", !IO),
         nl_indent_line(Indent + 1, !IO),
         output_exprs_with_nl(ModuleInfo, VarSet, Indent + 1, Exprs, !IO),
@@ -261,14 +294,15 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         output_elds_binop(Binop, !IO),
         output_expr(ModuleInfo, VarSet, Indent, ExprB, !IO)
     ;
+        Expr = elds_call(CallTarget, Args),
         (
-            Expr = elds_call(PredProcId, Args),
+            CallTarget = elds_call_plain(PredProcId),
             output_pred_proc_id(ModuleInfo, PredProcId, !IO)
         ;
-            Expr = elds_call_ho(Closure, Args),
+            CallTarget = elds_call_ho(Closure),
             output_expr(ModuleInfo, VarSet, Indent, Closure, !IO)
         ;
-            Expr = elds_call_builtin(FunName, Args),
+            CallTarget = elds_call_builtin(FunName),
             output_atom(FunName, !IO)
         ),
         io.write_string("(", !IO),
@@ -316,6 +350,18 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         io.write_string("throw(", !IO),
         output_expr(ModuleInfo, VarSet, Indent, ExprA, !IO),
         io.write_string(")", !IO)
+    ;
+        Expr = elds_rtti_ref(RttiId),
+        (
+            RttiId = elds_rtti_type_ctor_id(_, _, _),
+            % XXX we don't yet generate functions for type ctors so don't
+            % make calls to them
+            output_atom(string(RttiId), !IO)
+        ;
+            RttiId = elds_rtti_base_typeclass_id(_, _, _),
+            output_rtti_id(ModuleInfo, RttiId, !IO),
+            io.write_string("()", !IO)
+        )
     ;
         Expr = elds_foreign_code(Code),
         nl(!IO),
@@ -446,6 +492,8 @@ output_var(VarSet, Var, !IO) :-
 output_var_string(String, !IO) :-
     % XXX this assumes all Mercury variable names are a subset of Erlang
     % variable names
+    % However, the compiler can produce some illegal variable names
+    % which we should mangle e.g. TypeClassInfo_for_+_8
     io.write_string(String, !IO),
     space(!IO).
 
@@ -462,6 +510,37 @@ output_pred_proc_id(ModuleInfo, PredProcId, !IO) :-
         MaybeExtModule = no
     ),
     output_atom(Name, !IO).
+
+:- pred output_rtti_id(module_info::in, elds_rtti_id::in, io::di, io::uo)
+    is det.
+
+output_rtti_id(ModuleInfo, RttiId, !IO) :-
+    module_info_get_name(ModuleInfo, CurModuleName),
+    (
+        RttiId = elds_rtti_type_ctor_id(ModuleName, String, Arity),
+        % The only things with an empty module name should be the builtins.
+        ( ModuleName = unqualified("") ->
+            InstanceModule = mercury_public_builtin_module
+        ;
+            InstanceModule = ModuleName
+        ),
+        Atom = "TypeCtorInfo_" ++ String ++ "_" ++ string.from_int(Arity)
+    ;
+        RttiId = elds_rtti_base_typeclass_id(TCName, InstanceModule,
+            InstanceStr),
+        TCName = tc_name(ClassModuleName, ClassName, ClassArity),
+        QClassName = qualified(ClassModuleName, ClassName),
+        QClassNameStr = sym_name_to_string_sep(QClassName, "__"),
+        Atom = string.append_list(["BaseTypeclassInfo_", QClassNameStr,
+            "__arity", string.from_int(ClassArity), "__", InstanceStr])
+    ),
+    (if CurModuleName \= InstanceModule then
+        output_atom(erlang_module_name_to_str(InstanceModule), !IO),
+        io.write_char(':', !IO)
+    else
+        true
+    ),
+    output_atom(Atom, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -492,7 +571,10 @@ erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
 
 erlang_nonspecial_proc_name(ThisModule, PredModule, PredName, PredOrFunc,
         PredArity, ProcId, PredIsImported, MaybeExtModule, ProcNameStr) :-
-    ( ThisModule \= PredModule ->
+    (
+        % XXX not completely sure this is right
+        PredIsImported = yes
+    ->
         MaybeExtModule = yes(erlang_module_name_to_str(PredModule))
     ;
         MaybeExtModule = no
@@ -574,17 +656,21 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
 
 :- func erlang_module_name_to_str(module_name) = string.
 
-erlang_module_name_to_str(ModuleName) = Str :-
+erlang_module_name_to_str(ModuleName) =
+    sym_name_to_string_sep(erlang_module_name(ModuleName), "__").
+
+:- func erlang_module_name(module_name) = module_name.
+
+erlang_module_name(ModuleName) =
     % To avoid namespace collisions between Mercury standard modules and
     % Erlang standard modules, we pretend the Mercury standard modules are
     % in a "mercury" supermodule.
     %
     (if mercury_std_library_module_name(ModuleName) then
-        Mod = add_outermost_qualifier("mercury", ModuleName)
+        add_outermost_qualifier("mercury", ModuleName)
     else
-        Mod = ModuleName
-    ),
-    Str = sym_name_to_string_sep(Mod, "__").
+        ModuleName
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -606,20 +692,33 @@ output_atom(String, !IO) :-
 
 :- pred requires_atom_quoting(string::in) is semidet.
 
+requires_atom_quoting("after").
 requires_atom_quoting("and").
 requires_atom_quoting("andalso").
 requires_atom_quoting("band").
+requires_atom_quoting("begin").
 requires_atom_quoting("bnot").
 requires_atom_quoting("bor").
 requires_atom_quoting("bsl").
 requires_atom_quoting("bsr").
 requires_atom_quoting("bxor").
+requires_atom_quoting("case").
+requires_atom_quoting("catch").
+requires_atom_quoting("cond").
 requires_atom_quoting("div").
+requires_atom_quoting("end").
+requires_atom_quoting("fun").
+requires_atom_quoting("if").
+requires_atom_quoting("let").
 requires_atom_quoting("not").
+requires_atom_quoting("of").
 requires_atom_quoting("or").
 requires_atom_quoting("orelse").
 requires_atom_quoting("query").
+requires_atom_quoting("receive").
 requires_atom_quoting("rem").
+requires_atom_quoting("try").
+requires_atom_quoting("when").
 requires_atom_quoting("xor").
 
 %-----------------------------------------------------------------------------%

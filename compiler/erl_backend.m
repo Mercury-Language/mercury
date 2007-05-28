@@ -28,6 +28,7 @@
    :- include_module erl_call_gen.
    :- include_module erl_unify_gen.
 :- include_module erl_code_util.
+:- include_module erl_rtti.
 
 :- include_module elds_to_erlang.
 

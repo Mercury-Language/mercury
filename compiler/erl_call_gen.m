@@ -48,6 +48,16 @@
 :- inst higher_order
     --->    higher_order(ground, ground, ground, ground).
 
+    % Generate ELDS code for a class method call.
+    %
+:- pred erl_gen_class_method_call(generic_call::in(class_method),
+    prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
+    maybe(elds_expr)::in, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+:- inst class_method
+    --->    class_method(ground, ground, ground, ground).
+
     % Generate ELDS code for a call to a builtin procedure.
     %
 :- pred erl_gen_builtin(pred_id::in, proc_id::in, prog_vars::in,
@@ -68,6 +78,17 @@
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % erl_make_call(CodeModel, CallTarget, InputVars, OutputVars,
+    %   MaybeSuccessExpr, Statement)
+    %
+    % Low-level procedure to create an expression that makes a call.
+    %
+:- pred erl_make_call(code_model::in, elds_call_target::in,
+    prog_vars::in, prog_vars::in, maybe(elds_expr)::in,
+    elds_expr::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -77,6 +98,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 
+:- import_module int.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -93,27 +115,41 @@ erl_gen_call(PredId, ProcId, ArgVars, _ActualArgTypes,
     pred_info_get_arg_types(PredInfo, CalleeTypes),
     proc_info_get_argmodes(ProcInfo, ArgModes),
 
-    erl_gen_arg_list(ModuleInfo, ArgVars, CalleeTypes, ArgModes,
-        InputVars, OutputVars),
-    PPId = proc(PredId, ProcId),
-    NormalCallExpr = elds_call(PPId, exprs_from_vars(InputVars)),
+    erl_gen_arg_list(ModuleInfo, opt_dummy_args,
+        ArgVars, CalleeTypes, ArgModes, InputVars, OutputVars),
+
+    CallTarget = elds_call_plain(proc(PredId, ProcId)),
+    erl_make_call(CodeModel, CallTarget, InputVars, OutputVars,
+        MaybeSuccessExpr, DoCall),
+    materialise_dummies_before_expr(!.Info, InputVars, DoCall, Statement).
+
+%-----------------------------------------------------------------------------%
+
+erl_make_call(CodeModel, CallTarget, InputVars, OutputVars, MaybeSuccessExpr,
+        Statement) :-
+    InputExprs = exprs_from_vars(InputVars),
     (
         CodeModel = model_det,
-        make_det_call(NormalCallExpr, OutputVars, MaybeSuccessExpr, Statement)
+        make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
+            Statement)
     ;
         CodeModel = model_semi,
         SuccessExpr = det_expr(MaybeSuccessExpr),
-        make_semidet_call(NormalCallExpr, OutputVars, SuccessExpr, Statement)
+        make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr,
+            Statement)
     ;
         CodeModel = model_non,
         SuccessExpr = det_expr(MaybeSuccessExpr),
-        make_nondet_call(PPId, InputVars, OutputVars, SuccessExpr, Statement)
+        make_nondet_call(CallTarget, InputExprs, OutputVars, SuccessExpr,
+            Statement)
     ).
 
-:- pred make_det_call(elds_expr::in, prog_vars::in, maybe(elds_expr)::in,
-    elds_expr::out) is det.
+:- pred make_det_call(elds_call_target::in, list(elds_expr)::in, prog_vars::in,
+    maybe(elds_expr)::in, elds_expr::out) is det.
 
-make_det_call(Expr, OutputVars, MaybeSuccessExpr, Statement) :-
+make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
+        Statement) :-
+    CallExpr = elds_call(CallTarget, InputExprs),
     (
         OutputVars = [],
         (if 
@@ -122,9 +158,9 @@ make_det_call(Expr, OutputVars, MaybeSuccessExpr, Statement) :-
             )
         then
             % Preserve tail calls.
-            Statement = Expr
+            Statement = CallExpr
         else
-            Statement = maybe_join_exprs(Expr, MaybeSuccessExpr)
+            Statement = maybe_join_exprs(CallExpr, MaybeSuccessExpr)
         )
     ;
         OutputVars = [_ | _],
@@ -133,17 +169,18 @@ make_det_call(Expr, OutputVars, MaybeSuccessExpr, Statement) :-
             MaybeSuccessExpr = yes(UnpackTerm)
         then
             % Preserve tail calls.
-            Statement = Expr
+            Statement = CallExpr
         else
-            AssignCall = elds_eq(UnpackTerm, Expr),
+            AssignCall = elds_eq(UnpackTerm, CallExpr),
             Statement = maybe_join_exprs(AssignCall, MaybeSuccessExpr)
         )
     ).
 
-:- pred make_semidet_call(elds_expr::in, prog_vars::in, elds_expr::in,
-    elds_expr::out) is det.
+:- pred make_semidet_call(elds_call_target::in, list(elds_expr)::in,
+    prog_vars::in, elds_expr::in, elds_expr::out) is det.
 
-make_semidet_call(CallExpr, OutputVars, SuccessExpr, Statement) :-
+make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr, Statement) :-
+    CallExpr = elds_call(CallTarget, InputExprs),
     UnpackTerm = elds_tuple(exprs_from_vars(OutputVars)),
     (if
         SuccessExpr = elds_term(UnpackTerm)
@@ -161,18 +198,20 @@ make_semidet_call(CallExpr, OutputVars, SuccessExpr, Statement) :-
         FalseCase = elds_case(elds_anon_var, elds_term(elds_fail))
     ).
 
-:- pred make_nondet_call(pred_proc_id::in, prog_vars::in, prog_vars::in,
-    elds_expr::in, elds_expr::out) is det.
+:- pred make_nondet_call(elds_call_target::in, list(elds_expr)::in,
+    prog_vars::in, elds_expr::in, elds_expr::out) is det.
 
-make_nondet_call(PredProcId, InputVars, OutputVars, SuccessCont0, Statement) :-
+make_nondet_call(CallTarget, InputExprs, OutputVars, SuccessCont0,
+        Statement) :-
     %
-    % Proc(InputVars, ...,
+    % Proc(InputExprs, ...,
     %   fun(OutputVars, ...) ->
     %       SuccessCont0
     %   end)
     %
     (if
-        SuccessCont0 = elds_call_ho(SuccessCont1, exprs_from_vars(OutputVars))
+        SuccessCont0 = elds_call(elds_call_ho(SuccessCont1),
+            exprs_from_vars(OutputVars))
     then
         % Avoid an unnecessary closure.
         SuccessCont = SuccessCont1
@@ -180,8 +219,32 @@ make_nondet_call(PredProcId, InputVars, OutputVars, SuccessCont0, Statement) :-
         SuccessCont = elds_fun(elds_clause(terms_from_vars(OutputVars),
             SuccessCont0))
     ),
-    Statement = elds_call(PredProcId,
-        exprs_from_vars(InputVars) ++ [SuccessCont]).
+    Statement = elds_call(CallTarget, InputExprs ++ [SuccessCont]).
+
+%-----------------------------------------------------------------------------%
+
+    % materialise_dummies_before_expr(Info, Vars, Expr0, Expr)
+    %
+    % Materialise any variables in Vars which are of dummy types (hence proably
+    % don't exist) before evaluating Expr0.  We arbitrarily assign dummy
+    % variables to `false', hence variables in Vars must either not exist or
+    % already be bound to `false'.
+    %
+:- pred materialise_dummies_before_expr(erl_gen_info::in, prog_vars::in,
+    elds_expr::in, elds_expr::out) is det.
+
+materialise_dummies_before_expr(Info, Vars, Expr0, Expr) :-
+    list.filter_map(assign_false_if_dummy(Info), Vars, AssignDummyVars),
+    Expr = join_exprs(elds_block(AssignDummyVars), Expr0).
+
+:- pred assign_false_if_dummy(erl_gen_info::in, prog_var::in, elds_expr::out)
+    is semidet.
+
+assign_false_if_dummy(Info, Var, AssignFalse) :-
+    erl_gen_info_get_module_info(Info, ModuleInfo),
+    erl_variable_type(Info, Var, VarType),
+    is_dummy_argument_type(ModuleInfo, VarType),
+    AssignFalse = var_eq_false(Var).
 
 %-----------------------------------------------------------------------------%
 %
@@ -192,36 +255,81 @@ erl_gen_higher_order_call(GenericCall, ArgVars, Modes, Detism,
         _Context, MaybeSuccessExpr, Statement, !Info) :-
     GenericCall = higher_order(ClosureVar, _, _, _),
 
+    % Separate input and output arguments for the call.
+    % We do not optimise away dummy and unused arguments when calling higher
+    % order procedures.  The underlying first-order procedure may have the
+    % arguments optimised away, but the closure created around it retains dummy
+    % arguments.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     erl_variable_types(!.Info, ArgVars, ArgTypes),
-    erl_gen_arg_list(ModuleInfo, ArgVars, ArgTypes, Modes,
+    erl_gen_arg_list(ModuleInfo, no_opt_dummy_args, ArgVars, ArgTypes, Modes,
         InputVars, OutputVars),
 
-    ClosureVarExpr = expr_from_var(ClosureVar),
-    InputVarsExprs = exprs_from_vars(InputVars),
-    NormalCallExpr = elds_call_ho(ClosureVarExpr, InputVarsExprs),
-
     determinism_to_code_model(Detism, CallCodeModel),
-    (
-        CallCodeModel = model_det,
-        make_det_call(NormalCallExpr, OutputVars, MaybeSuccessExpr, Statement)
-    ;
-        CallCodeModel = model_semi,
-        SuccessExpr = det_expr(MaybeSuccessExpr),
-        make_semidet_call(NormalCallExpr, OutputVars, SuccessExpr, Statement)
-    ;
-        CallCodeModel = model_non,
-        %
-        % Proc(InputVars, ..., 
-        %   fun(OutputVars, ...) ->
-        %       SuccessCont0
-        %   end)
-        %
-        SuccessCont = elds_fun(elds_clause(terms_from_vars(OutputVars),
-            det_expr(MaybeSuccessExpr))),
-        Statement = elds_call_ho(ClosureVarExpr,
-            InputVarsExprs ++ [SuccessCont])
-    ).
+    CallTarget = elds_call_ho(expr_from_var(ClosureVar)),
+    erl_make_call(CallCodeModel, CallTarget, InputVars, OutputVars,
+        MaybeSuccessExpr, DoCall),
+
+    % The callee function is responsible for materialising dummy output
+    % variables.
+    materialise_dummies_before_expr(!.Info, InputVars, DoCall, Statement).
+
+%-----------------------------------------------------------------------------%
+
+erl_gen_class_method_call(GenericCall, ArgVars, Modes, Detism,
+        _Context, MaybeSuccessExpr, Statement, !Info) :-
+    GenericCall = class_method(TCIVar, MethodNum, _ClassId, _CallId),
+
+    % A class method looks like this:
+    %
+    %   class_method(TypeClassInfo, Inputs, ..., [SuccessCont]) ->
+    %       BaseTypeClassInfo = element(<n>, TypeClassInfo),
+    %       MethodWrapper = element(<m>, BaseTypeClassInfo),
+    %       MethodWrapper(TypeClassInfo, Inputs, ..., [SuccessCont]).
+    %
+    % MethodWrapper is NOT the used-defined method implementation itself, but a
+    % wrapper around it.  We have to be careful as the wrappers accept and
+    % return dummy values, but the actual method implementations optimise those
+    % away, as well as unneeded typeinfo and typeclass info arguments, etc.
+
+    erl_gen_info_new_named_var("BaseTypeClassInfo", BaseTCIVar, !Info),
+    erl_gen_info_new_named_var("MethodWrapper", MethodWrapperVar, !Info),
+    BaseTCIVarExpr = expr_from_var(BaseTCIVar),
+    MethodWrapperVarExpr = expr_from_var(MethodWrapperVar),
+
+    % Separate input and output arguments for the call to the wrapper.
+    erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    erl_variable_types(!.Info, ArgVars, ArgTypes),
+    erl_gen_arg_list(ModuleInfo, no_opt_dummy_args, ArgVars, ArgTypes, Modes,
+        CallInputVars, CallOutputVars),
+
+    % Extract the base_typeclass_info from the typeclass_info.
+    % Erlang's `element' builtin counts from 1.
+    BaseTypeclassInfoFieldId = 1,
+    ExtractBaseTypeclassInfo = elds_eq(BaseTCIVarExpr,
+        elds_call_element(TCIVar, BaseTypeclassInfoFieldId)),
+
+    % Extract the method from the base_typeclass_info.
+    MethodFieldNum = 1 + MethodNum + erl_base_typeclass_info_method_offset,
+    ExtractMethodWrapper = elds_eq(MethodWrapperVarExpr,
+        elds_call_element(BaseTCIVar, MethodFieldNum)),
+
+    % Call the method wrapper, putting the typeclass info in front
+    % of the argument list.
+    determinism_to_code_model(Detism, CallCodeModel),
+    CallTarget = elds_call_ho(MethodWrapperVarExpr),
+    erl_make_call(CallCodeModel, CallTarget, [TCIVar | CallInputVars],
+        CallOutputVars, MaybeSuccessExpr, DoCall),
+
+    ExtractAndCall = join_exprs(ExtractBaseTypeclassInfo,
+        join_exprs(ExtractMethodWrapper, DoCall)),
+
+    % The callee function is responsible for materialising dummy output
+    % variables.
+    materialise_dummies_before_expr(!.Info, CallInputVars, ExtractAndCall,
+        Statement).
+
+%-----------------------------------------------------------------------------%
 
 erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
     erl_variable_types(!.Info, ArgVars, ArgTypes),
@@ -266,8 +374,8 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         CodeModel = model_det,
         (
             SimpleCode = assign(Lval, SimpleExpr),
-            % XXX We need to avoid generating assignments to dummy variables
-            % introduced for types such as io.state.
+            % XXX do we need to avoid generating assignments to dummy variables
+            % introduced for types such as io.state here?
             Rval = erl_gen_simple_expr(SimpleExpr),
             Assign = elds.elds_eq(elds.expr_from_var(Lval), Rval),
             Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
@@ -439,8 +547,8 @@ erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
         % Separate the foreign call arguments into inputs and outputs.
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         list.map2(foreign_arg_type_mode, ForeignArgs, ArgTypes, ArgModes),
-        erl_gen_arg_list(ModuleInfo, ForeignArgs, ArgTypes, ArgModes,
-            InputForeignArgs, OutputForeignArgs),
+        erl_gen_arg_list(ModuleInfo, opt_dummy_args, ForeignArgs, ArgTypes,
+            ArgModes, InputForeignArgs, OutputForeignArgs),
 
         % Get the variables involved in the call and their fixed names.
         InputVars = list.map(foreign_arg_var, InputForeignArgs),
@@ -482,15 +590,8 @@ erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
             InnerFunStatement)),
 
         % Call the inner function with the input variables.
-        CallInner = elds_call_ho(InnerFun, exprs_from_vars(InputVars)),
-        (
-            CodeModel = model_det,
-            make_det_call(CallInner, OutputVars, MaybeSuccessExpr, Statement)
-        ;
-            CodeModel = model_semi,
-            SuccessExpr = det_expr(MaybeSuccessExpr),
-            make_semidet_call(CallInner, OutputVars, SuccessExpr, Statement)
-        )
+        erl_make_call(CodeModel, elds_call_ho(InnerFun), InputVars, OutputVars,
+            MaybeSuccessExpr, Statement)
     ;
         PragmaImpl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
         sorry(this_file, "erl_gen_goal_expr: fc_impl_model_non")

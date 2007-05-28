@@ -1497,7 +1497,7 @@ Thus we have a pass which transforms the HLDS to handle trailing:
      the RTTI data structures defined in rtti.m and pseudo_type_info.m
      (those four modules are in the backend_libs.m package, since they
      are shared with the LLDS back-end)
-     and then mlds_to_rtti.m converts these to MLDS.
+     and then rtti_to_mlds.m converts these to MLDS.
 </ul>
 
 <h4> 5b. MLDS transformations </h4>
@@ -1609,6 +1609,8 @@ intermediate representation.
 		</ul>
 	  The module erl_code_util.m provides utility routines for
 	  ELDS code generation.
+<li> erl_rtti.m converts RTTI data structures defined in rtti.m into
+     ELDS functions which return the same information when called.
 </ul>
 
 <h4> 6d. ELDS output </h4>
@@ -1775,6 +1777,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2007-05-15 02:38:22 $ by $Author: wangp $@cs.mu.oz.au. <br>
+Last update was $Date: 2007-05-28 03:13:53 $ by $Author: wangp $@cs.mu.oz.au. <br>
 </body>
 </html>

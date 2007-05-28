@@ -80,11 +80,26 @@
 % Various utility routines used for ELDS code generation
 %
 
-    % Separate procedure call arguments into inputs and output variables.
-    % Dummy types are ignored.
+:- type opt_dummy_args
+    --->    opt_dummy_args
+    ;       no_opt_dummy_args.
+
+    % erl_gen_arg_list(ModuleInfo, OptDummyArgs, Vars, VarTypes, VarModes,
+    %   InputVars, OutputVars)
     %
-:- pred erl_gen_arg_list(module_info::in, list(T)::in,
-    list(mer_type)::in, list(mer_mode)::in,
+    % Separate procedure call arguments into inputs and output variables.
+    % If OptDummyArgs is `opt_dummy_args' then variables which are of dummy
+    % types or have argument mode `top_unused' will be ignored, i.e. not appear
+    % in either InputVars or OutputVars.
+    %
+:- pred erl_gen_arg_list(module_info::in, opt_dummy_args::in,
+    list(T)::in, list(mer_type)::in, list(mer_mode)::in,
+    list(T)::out, list(T)::out) is det.
+
+    % As above but takes arg_modes instead of mer_modes.
+    %
+:- pred erl_gen_arg_list_arg_modes(module_info::in, opt_dummy_args::in,
+    list(T)::in, list(mer_type)::in, list(arg_mode)::in,
     list(T)::out, list(T)::out) is det.
 
     % Return the set of variables non-local to a goal which are bound
@@ -130,6 +145,9 @@
 :- func erl_expr_size(elds_expr) = int.
 
 %-----------------------------------------------------------------------------%
+
+:- func erl_base_typeclass_info_method_offset = int.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -177,8 +195,8 @@ erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
     pred_info_get_arg_types(PredInfo, HeadTypes),
-    erl_gen_arg_list(ModuleInfo, HeadVars, HeadTypes, HeadModes,
-        InputVars, OutputVars),
+    erl_gen_arg_list(ModuleInfo, opt_dummy_args,
+        HeadVars, HeadTypes, HeadModes, InputVars, OutputVars),
     Info = erl_gen_info(
         ModuleInfo,
         PredId,
@@ -237,23 +255,30 @@ erl_variable_type(Info, Var, Type) :-
     % XXX arg_info.partition_* does a similar thing but returns sets instead
     % of lists
     %
-erl_gen_arg_list(ModuleInfo, VarNames, ArgTypes, Modes, Inputs, Outputs) :-
+erl_gen_arg_list(ModuleInfo, OptDummyArgs, VarNames, ArgTypes, Modes,
+        Inputs, Outputs) :-
+    modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
+    erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
+        VarNames, ArgTypes, ArgModes, Inputs, Outputs).
+
+erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
+        VarNames, ArgTypes, ArgModes, Inputs, Outputs) :-
     (
         VarNames = [],
         ArgTypes = [],
-        Modes = []
+        ArgModes = []
     ->
         Inputs = [],
         Outputs = []
     ;
         VarNames = [VarName | VarNames1],
         ArgTypes = [ArgType | ArgTypes1],
-        Modes = [Mode | Modes1]
+        ArgModes = [ArgMode | ArgModes1]
     ->
-        erl_gen_arg_list(ModuleInfo, VarNames1, ArgTypes1,
-            Modes1, Inputs1, Outputs1),
-        mode_to_arg_mode(ModuleInfo, Mode, ArgType, ArgMode),
+        erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
+            VarNames1, ArgTypes1, ArgModes1, Inputs1, Outputs1),
         (
+            OptDummyArgs = opt_dummy_args,
             ( is_dummy_argument_type(ModuleInfo, ArgType)
             ; ArgMode = top_unused
             )
@@ -274,7 +299,7 @@ erl_gen_arg_list(ModuleInfo, VarNames, ArgTypes, Modes, Inputs, Outputs) :-
             Outputs = [VarName | Outputs1]
         )
     ;
-        unexpected(this_file, "erl_gen_arg_list: length mismatch")
+        unexpected(this_file, "erl_gen_arg_list_arg_modes: length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -294,13 +319,10 @@ erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
         Statement = Statement0
     else
         % We arbitrarily assign all the variables to the atom `false'.
-        Assigments = list.map(assign_false, set.to_sorted_list(NotBound)),
-        Statement = join_exprs(elds_block(Assigments), Statement0)
+        NotBoundList = set.to_sorted_list(NotBound),
+        Assignments = list.map(var_eq_false, NotBoundList),
+        Statement = join_exprs(elds_block(Assignments), Statement0)
     ).
-
-:- func assign_false(prog_var) = elds_expr.
-
-assign_false(Var) = elds_eq(expr_from_var(Var), elds_term(elds_false)).
 
 %-----------------------------------------------------------------------------%
 
@@ -338,18 +360,10 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         erl_rename_vars_in_expr(Subn, ExprB0, ExprB),
         Expr = elds_binop(Op, ExprA, ExprB)
     ;
-        Expr0 = elds_call(PredProcId, Exprs0),
-        erl_rename_vars_in_exprs(Subn, Exprs0, Exprs),
-        Expr = elds_call(PredProcId, Exprs)
-    ;
-        Expr0 = elds_call_ho(ExprA0, ExprsB0),
-        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        Expr0 = elds_call(CallTarget0, ExprsB0),
+        erl_rename_vars_in_call_target(Subn, CallTarget0, CallTarget),
         erl_rename_vars_in_exprs(Subn, ExprsB0, ExprsB),
-        Expr = elds_call_ho(ExprA, ExprsB)
-    ;
-        Expr0 = elds_call_builtin(Atom, ExprsA0),
-        erl_rename_vars_in_exprs(Subn, ExprsA0, ExprsA),
-        Expr = elds_call_builtin(Atom, ExprsA)
+        Expr = elds_call(CallTarget, ExprsB)
     ;
         Expr0 = elds_fun(Clause0),
         erl_rename_vars_in_clause(Subn, Clause0, Clause),
@@ -370,7 +384,9 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
         Expr = elds_throw(ExprA)
     ;
-        Expr0 = elds_foreign_code(_),
+        ( Expr0 = elds_rtti_ref(_)
+        ; Expr0 = elds_foreign_code(_)
+        ),
         Expr = Expr0
     ).
 
@@ -403,6 +419,21 @@ erl_rename_vars_in_term(Subn, Term0, Term) :-
         Term0 = elds_var(Var0),
         Var = (if map.search(Subn, Var0, Var1) then Var1 else Var0),
         Term = elds_var(Var)
+    ).
+
+:- pred erl_rename_vars_in_call_target(prog_var_renaming::in,
+    elds_call_target::in, elds_call_target::out) is det.
+
+erl_rename_vars_in_call_target(Subn, Target0, Target) :-
+    (
+        ( Target0 = elds_call_plain(_)
+        ; Target0 = elds_call_builtin(_)
+        ),
+        Target = Target0
+    ;
+        Target0 = elds_call_ho(Expr0),
+        erl_rename_vars_in_expr(Subn, Expr0, Expr),
+        Target = elds_call_ho(Expr)
     ).
 
 :- pred erl_rename_vars_in_clause(prog_var_renaming::in,
@@ -462,14 +493,8 @@ erl_expr_size(Expr) = Size :-
         Expr = elds_binop(_Op, ExprA, ExprB),
         Size = erl_expr_size(ExprA) + erl_expr_size(ExprB)
     ;
-        Expr = elds_call(_PredProcId, Exprs),
-        Size = 1 + erl_exprs_size(Exprs)
-    ;
-        Expr = elds_call_ho(ExprA, ExprsB),
-        Size = 1 + erl_expr_size(ExprA) + erl_exprs_size(ExprsB)
-    ;
-        Expr = elds_call_builtin(_Atom, ExprsA),
-        Size = 1 + erl_exprs_size(ExprsA)
+        Expr = elds_call(CallTarget, Exprs),
+        Size = erl_call_target_size(CallTarget) + erl_exprs_size(Exprs)
     ;
         Expr = elds_fun(elds_clause(Terms, ExprA)),
         Size = 1 + erl_terms_size(Terms) + erl_expr_size(ExprA)
@@ -485,6 +510,9 @@ erl_expr_size(Expr) = Size :-
     ;
         Expr = elds_throw(ExprA),
         Size = 1 + erl_expr_size(ExprA)
+    ;
+        Expr = elds_rtti_ref(_),
+        Size = 1
     ;
         Expr = elds_foreign_code(_),
         % Arbitrary number.
@@ -515,6 +543,12 @@ erl_term_size(Term) = Size :-
         Size = 1 + erl_exprs_size(Exprs)
     ).
 
+:- func erl_call_target_size(elds_call_target) = int.
+
+erl_call_target_size(elds_call_plain(_)) = 1.
+erl_call_target_size(elds_call_builtin(_)) = 1.
+erl_call_target_size(elds_call_ho(Expr)) = erl_expr_size(Expr).
+
 :- func erl_cases_size(list(elds_case)) = int.
 
 erl_cases_size(Cases) = 1 + sum(list.map(erl_case_size, Cases)).
@@ -528,6 +562,26 @@ erl_case_size(Case) = Size :-
 :- func sum(list(int)) = int.
 
 sum(Xs) = list.foldl(int.plus, Xs, 0).
+
+%-----------------------------------------------------------------------------%
+
+    % This function returns the offset to add to the method number
+    % for a type class method to get its field number within the
+    % base_typeclass_info.
+    %   field 0 is num_extra
+    %   field 1 is num_constraints
+    %   field 2 is num_superclasses
+    %   field 3 is class_arity
+    %   field 4 is num_methods
+    %   field 5 is the 1st method
+    %   field 6 is the 2nd method
+    %   etc.
+    %   (See the base_typeclass_info type in rtti.m or the
+    %   description in notes/type_class_transformation.html for
+    %   more information about the layout of base_typeclass_infos.)
+    % Hence the offset is 4.
+    %
+erl_base_typeclass_info_method_offset = 4.
 
 %-----------------------------------------------------------------------------%
 

@@ -311,7 +311,8 @@
     %   InstMapDelta, Var)
     %
     % Succeed if Var is a variable bound between InstMap and
-    % InstMap+InstMapDelta.
+    % InstMap+InstMapDelta.  Fails if either InstMap or InstMapDelta are
+    % unreachable.
     %
 :- pred var_is_bound_in_instmap_delta(module_info::in, instmap::in,
     instmap_delta::in, prog_var::in) is semidet.
@@ -1228,6 +1229,8 @@ var_is_any_in_instmap(ModuleInfo, InstMap, Var) :-
     inst_is_any(ModuleInfo, Inst).
 
 var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
+    instmap.is_reachable(InstMap),
+    instmap_delta_is_reachable(InstMapDelta),
     instmap.lookup_var(InstMap, Var, OldVarInst),
     inst_is_free(ModuleInfo, OldVarInst),
     instmap_delta_search_var(InstMapDelta, Var, VarInst),

@@ -149,6 +149,7 @@
 :- import_module erl_backend.elds.
 :- import_module erl_backend.elds_to_erlang.
 :- import_module erl_backend.erl_code_gen.
+:- import_module erl_backend.erl_rtti.
 
     % miscellaneous compiler modules
 :- import_module check_hlds.goal_path.
@@ -1698,7 +1699,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             FactTableBaseFiles = []
         ;
             Target = target_erlang,
-            erlang_backend(!HLDS, ELDS, !DumpInfo, !IO),
+            erlang_backend(!.HLDS, ELDS, !DumpInfo, !IO),
             elds_to_erlang(!.HLDS, ELDS, !IO),
             FactTableBaseFiles = []
         ),
@@ -5190,11 +5191,27 @@ dump_mlds(DumpFile, MLDS, !IO) :-
 % Erlang backend
 %
 
-:- pred erlang_backend(module_info::in, module_info::out, elds::out,
+:- pred erlang_backend(module_info::in, elds::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-erlang_backend(!HLDS, ELDS, !DumpInfo, !IO) :-
-    erl_code_gen(!.HLDS, ELDS, !IO).
+erlang_backend(HLDS, ELDS, !DumpInfo, !IO) :-
+    erl_code_gen(HLDS, ELDS0, !IO),
+
+    % Generate the representations for various data structures
+    % used for type classes.
+    type_ctor_info.generate_rtti(HLDS, TypeCtorRttiData),
+    generate_base_typeclass_info_rtti(HLDS, OldTypeClassInfoRttiData),
+    globals.io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
+    generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
+        NewTypeClassInfoRttiData),
+    list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
+        TypeClassInfoRttiData),
+    RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
+
+    ELDS0 = elds(ModuleName, ForeignBodies, Defns, FEDefns, RttiDefns0),
+    rtti_data_list_to_elds(HLDS, RttiDatas, RttiDefns),
+    ELDS = elds(ModuleName, ForeignBodies, Defns, FEDefns,
+        RttiDefns0 ++ RttiDefns).
 
 :- pred elds_to_erlang(module_info::in, elds::in, io::di, io::uo) is det.
 

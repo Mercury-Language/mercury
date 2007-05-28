@@ -81,7 +81,10 @@ erl_code_gen(ModuleInfo, ELDS, !IO) :-
     erl_gen_preds(ModuleInfo, ProcDefns, !IO),
     filter_erlang_foreigns(ModuleInfo, ForeignBodies, PragmaExports, !IO),
     erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns),
-    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns).
+    % RTTI function definitions are added later by rtti_data_list_to_elds.
+    RttiDefns = [],
+    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
+        RttiDefns).
 
 :- pred filter_erlang_foreigns(module_info::in, list(foreign_body_code)::out,
     list(pragma_exported_proc)::out, io::di, io::uo) is det.
@@ -237,6 +240,7 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcClause) :-
     elds_clause::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
+    Goal = hlds_goal(_, GoalInfo),
     erl_gen_info_get_input_vars(!.Info, InputVars),
     erl_gen_info_get_output_vars(!.Info, OutputVars),
     OutputVarsExprs = exprs_from_vars(OutputVars),
@@ -244,11 +248,18 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
+        InputVarsTerms = terms_from_vars(InputVars),
         %
         % On success, the procedure returns a tuple of its output variables.
-        %
-        InputVarsTerms = terms_from_vars(InputVars),
-        SuccessExpr = elds_term(elds_tuple(OutputVarsExprs))
+        % 
+        goal_info_get_determinism(GoalInfo, Detism),
+        ( Detism = detism_erroneous ->
+            % This procedure can't succeed.
+            MaybeSuccessExpr = no
+        ;
+            SuccessExpr = elds_term(elds_tuple(OutputVarsExprs)),
+            MaybeSuccessExpr = yes(SuccessExpr)
+        )
     ;
         CodeModel = model_non,
         %
@@ -258,9 +269,11 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
         %
         erl_gen_info_new_named_var("SucceedHeadVar", SucceedVar, !Info),
         InputVarsTerms = terms_from_vars(InputVars ++ [SucceedVar]),
-        SuccessExpr = elds_call_ho(expr_from_var(SucceedVar), OutputVarsExprs)
+        SuccessExpr = elds_call(elds_call_ho(expr_from_var(SucceedVar)),
+            OutputVarsExprs),
+        MaybeSuccessExpr = yes(SuccessExpr)
     ),
-    erl_gen_goal(CodeModel, InstMap0, Goal, yes(SuccessExpr), Statement,
+    erl_gen_goal(CodeModel, InstMap0, Goal, MaybeSuccessExpr, Statement,
         !Info),
     ProcClause = elds_clause(InputVarsTerms, Statement).
 
@@ -431,12 +444,6 @@ erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, InstMap, Context,
         ScopeReason = promise_solutions(_, _),
         sorry(this_file, "promise_solutions scope in erlang code generator")
     ;
-        ScopeReason = promise_purity(_, _),
-        sorry(this_file, "promise_purity scope in erlang code generator")
-    ;
-        ScopeReason = barrier(_),
-        sorry(this_file, "barrier scope in erlang code generator")
-    ;
         ScopeReason = trace_goal(_, _, _, _, _),
         sorry(this_file, "trace_goal scope in erlang code generator")
     ;
@@ -444,7 +451,10 @@ erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, InstMap, Context,
         erl_gen_commit(Goal, CodeModel, InstMap, Context,
             MaybeSuccessExpr, Statement, !Info)
     ;
-        ScopeReason = from_ground_term(_),
+        ( ScopeReason = promise_purity(_, _)
+        ; ScopeReason = barrier(_)
+        ; ScopeReason = from_ground_term(_)
+        ),
         Goal = hlds_goal(GoalExpr, _),
         erl_gen_goal_expr(GoalExpr, CodeModel, InstMap, Context,
             MaybeSuccessExpr, Statement, !Info)
@@ -483,7 +493,8 @@ erl_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism),
             Context, MaybeSuccessExpr, Statement, !Info)
     ;
         GenericCall = class_method(_, _, _, _),
-        sorry(this_file, "class methods calls in erlang backend")
+        erl_gen_class_method_call(GenericCall, Vars, Modes, Detism,
+            Context, MaybeSuccessExpr, Statement, !Info)
     ;
         GenericCall = event_call(_),
         sorry(this_file, "event_calls in erlang backend")
@@ -588,7 +599,8 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap, _Context,
         ClosureFun = elds_fun(elds_clause(ClosureArgsTerms, SuccessExpr0)),
 
         % ``SuccessClosure(ClosureArgs, ...)''
-        CallClosure = elds_call_ho(ClosureVarExpr, ClosureArgsExprs),
+        CallClosure = elds_call(elds_call_ho(ClosureVarExpr),
+            ClosureArgsExprs),
 
         MaybeMakeClosure = yes(MakeClosure),
         MaybeSuccessExpr = yes(CallClosure)
@@ -881,8 +893,8 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
     goal_info_get_determinism(FirstGoalInfo, FirstDeterminism),
     ( determinism_components(FirstDeterminism, _, at_most_zero) ->
         % the `Rest' code is unreachable
-        erl_gen_goal(CodeModel, InstMap0, First, MaybeSuccessExpr,
-            Statement, !Info)
+        % There is no success expression in this case.
+        erl_gen_goal(CodeModel, InstMap0, First, no, Statement, !Info)
     ;
         determinism_to_code_model(FirstDeterminism, FirstCodeModel),
         update_instmap(First, InstMap0, InstMap1),
@@ -951,7 +963,7 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             erl_gen_info_new_named_var("SucceedConj", SucceedVar, !Info),
             SucceedVarExpr = expr_from_var(SucceedVar),
             MakeSucceed = elds_eq(SucceedVarExpr, SucceedFunc),
-            CallSucceed = elds_call_ho(SucceedVarExpr, 
+            CallSucceed = elds_call(elds_call_ho(SucceedVarExpr), 
                 exprs_from_vars(NonLocals)),
 
             % Generate the code for First, such that it calls the success
@@ -1112,7 +1124,7 @@ erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
         % ``Name(Vars, ...) -> PredProcId(Vars, ...)''
         varset.new_vars(varset.init, Arity, Vars, VarSet),
         Clause = elds_clause(terms_from_vars(Vars),
-            elds_call(PredProcId, exprs_from_vars(Vars))),
+            elds_call(elds_call_plain(PredProcId), exprs_from_vars(Vars))),
         ForeignExportDefn = elds_foreign_export_defn(Name, VarSet, Clause)
     ;
         unexpected(this_file,
