@@ -303,6 +303,7 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     gather_c_file_labels(Modules, Labels),
     order_layout_datas(LayoutDatas0, LayoutDatas),
 
+    output_static_linkage_define(!IO),
     list.foldl2(output_scalar_common_data_decl, ScalarCommonDatas,
         !DeclSet, !IO),
     list.foldl2(output_vector_common_data_decl, VectorCommonDatas,
@@ -1137,6 +1138,24 @@ output_table_stats(ModuleName, DataName, NumInputs, !DeclSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred output_static_linkage_define(io::di, io::uo) is det.
+
+output_static_linkage_define(!IO) :-
+
+        %   
+        % The MS Visual C compiler treats the following declarations as
+        % definitions, for which it cannot determine the size and hence
+        % aborts
+        %   static const struct s_name typename[];
+        % However if we mark the linkage as extern, it treats it as a
+        % declaration.
+        %   
+    io.write_string("#ifdef _MSC_VER\n", !IO),
+    io.write_string("#define MR_STATIC_LINKAGE extern\n", !IO),
+    io.write_string("#else\n", !IO),
+    io.write_string("#define MR_STATIC_LINKAGE static\n", !IO),
+    io.write_string("#endif\n", !IO).
+
 :- pred output_common_type_defn(type_num::in, common_cell_type::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
@@ -1168,7 +1187,7 @@ output_scalar_common_data_decl(ScalarCommonDataArray, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_common_type_defn(TypeNum, CellType, !DeclSet, !IO),
     VarDeclId = decl_scalar_common_array(TypeNum),
-    io.write_string("static const struct ", !IO),
+    io.write_string("MR_STATIC_LINKAGE const struct ", !IO),
     output_common_cell_type_name(TypeNum, !IO),
     io.write_string(" ", !IO),
     output_common_scalar_cell_array_name(TypeNum, !IO),
@@ -1185,7 +1204,7 @@ output_vector_common_data_decl(VectorCommonDataArray, !DeclSet, !IO) :-
     output_common_type_defn(TypeNum, CellType, !DeclSet, !IO),
     VarDeclId = decl_data_addr(data_addr(ModuleName,
         vector_common_ref(TypeNum, CellNum))),
-    io.write_string("static const struct ", !IO),
+    io.write_string("MR_STATIC_LINKAGE const struct ", !IO),
     output_common_cell_type_name(TypeNum, !IO),
     io.write_string(" ", !IO),
     output_common_vector_cell_array_name(TypeNum, CellNum, !IO),

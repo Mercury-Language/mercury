@@ -1212,6 +1212,8 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		(MR_ProcStatic *) proc_static				\
 	}
 
+#define MR_NO_EXTERN_DECL
+
 #define MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
 		pf, module, name, arity, mode)				\
 	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
@@ -1219,7 +1221,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		&MR_proc_static_user_name(module, name, arity, mode))
 #define MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
 		pf, module, name, arity, mode)				\
-	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(/* extern */, detism, slots, \
+	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,\
 		succip_locn, pf, module, name, arity, mode,		\
 		&MR_proc_static_user_name(module, name, arity, mode))
 
@@ -1230,7 +1232,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		&MR_proc_static_uci_name(module, name, type, arity, mode))
 #define MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
 		module, name, type, arity, mode)			\
-	MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(/* extern */, detism, slots,\
+	MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,\
 		succip_locn, module, name, type, arity, mode,		\
 		&MR_proc_static_uci_name(module, name, type, arity, mode))
 
@@ -1240,7 +1242,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		succip_locn, pf, module, name, arity, mode, NULL)
 #define MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,	\
 		pf, module, name, arity, mode)				\
-	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(/* extern */, detism, slots,\
+	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,\
 		succip_locn, pf, module, name, arity, mode, NULL)
 
 #define MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(mod, n, a)                       \
