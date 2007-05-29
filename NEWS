@@ -186,6 +186,10 @@ Changes to the extras distribution:
 * The extras distribution now includes a binding to the Allegro and
   AllegroGL game programming libraries.
 
+Changes to the Mercury debugger:
+
+* A `track' mdb command has been added.
+
 DETAILED LISTING
 ================
 
@@ -628,6 +632,12 @@ Changes to the extras distribution:
   optimal set of compiler flags for a given program.  The search
   algorithm used is a genetic algorithm, which can run in parallel over
   multiple hosts (by default, 1).
+
+Changes to the Mercury debugger:
+
+* A `track' mdb command has been added.  This command invokes the declarative
+  debugger and executes it's `track' command, before returning to the mdb
+  prompt.
 
 
 For news about earlier versions, see the HISTORY file.

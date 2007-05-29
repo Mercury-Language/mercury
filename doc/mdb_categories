@@ -21,7 +21,7 @@ forward    - Commands that move execution forward.
 end
 document_category 300 backward
 backward   - Commands that move execution backward.
-             The only such command is `retry'.
+             The backward commands are `retry' and `track'.
 
 end
 document_category 400 browsing

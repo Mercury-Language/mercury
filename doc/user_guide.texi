@@ -2848,6 +2848,26 @@ if a previous option suppressed it.
 @end table
 
 @sp 1
+@table @code
+@item track @var{num} [@var{termpath}]
+@kindex track (mdb command)
+Goto the EXIT event of the procedure in which the subterm in argument
+@var{num} at term path @var{termpath} was bound,
+and display information about where the term was bound.
+@sp 1
+Note that this command just invokes a script that is equivalent to running
+the following sequence of commands:
+@example
+	dd
+	browse @var{num}
+	cd @var{termpath}
+	track
+	info
+	pd
+@end example
+@end table
+
+@sp 1
 @node Browsing commands
 @subsection Browsing commands
 

@@ -1,0 +1,6 @@
+dd
+browse $1
+cd $2
+track
+info
+pd
