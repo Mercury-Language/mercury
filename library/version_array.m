@@ -484,7 +484,7 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 
         VA1->rest.array->elements[I] = X;
     } else {
-        if (I >= ML_va_size(VA0)) {
+        if (I < 0 || I >= ML_va_size(VA0)) {
             return MR_FALSE;
         }
 

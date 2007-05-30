@@ -14,14 +14,14 @@
 
 
 
-:- pred main(io :: di, io :: uo) is det.
+:- pred main(io :: di, io :: uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module int, list, string, version_array.
+:- import_module exception, int, list, string, univ, version_array.
 
 %-----------------------------------------------------------------------------%
 
@@ -66,7 +66,47 @@ main(!IO) :-
     A7 = copy(A5),
     io.write_list(to_list(A7), ", ", io.write_int, !IO),
     io.format(" (size %d)\n", [i(size(A7))], !IO),
-    true.
+
+    test_exception(
+        ((pred) is semidet :-
+            _ = A7 ^ elem(-1)
+        ), !IO),
+    test_exception(
+        ((pred) is semidet :-
+            _ : version_array(int) = A7 ^ elem(-1) := 2
+        ), !IO),
+    _ = A7 ^ elem(1) := 1,
+    test_exception(
+        ((pred) is semidet :-
+            _ = A7 ^ elem(-1) := 2
+        ), !IO),
+    test_exception(
+        ((pred) is semidet :-
+            _ = A7 ^ elem(-1)
+        ), !IO),
+    test_exception(
+        ((pred) is semidet :-
+            _ = A7 ^ elem(4)
+        ), !IO),
+    true. 
+
+:- pred test_exception((pred)::in((pred) is semidet),
+    io::di, io::uo) is cc_multi.
+
+test_exception(Pred, !IO) :-
+    try((pred({}::out) is semidet :- Pred), Result),
+    (
+        Result = succeeded(_),
+        io.write_string("Error: test succeeded, expected exception\n", !IO)
+    ;
+        Result = failed,
+        io.write_string("Error: test failed, expected exception\n", !IO)
+    ;    
+        Result = exception(Exception),
+        io.write_string("Found exception as expected: ", !IO),
+        io.write(univ_value(Exception), !IO),
+        io.nl(!IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
