@@ -39,6 +39,7 @@ alias open source ZZZ/mdb_open
 alias p print
 alias r retry
 alias s step
+alias track source ZZZ/mdb_track
 alias v vars
 alias x save
 printlevel some
