@@ -290,7 +290,10 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
         ->
             true
         ;
-            status_defined_in_this_module(ImportStatus) = yes
+            % Since we cannot see the definition we consider procedures
+            % defined using `:- external' to be imported.
+            status_defined_in_this_module(ImportStatus) = yes,
+            ImportStatus \= status_external(_)
         ->
             % XXX At the moment if a procedure has a pragma terminates
             % declaration its argument size information is set to true.

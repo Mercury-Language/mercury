@@ -586,7 +586,7 @@ is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
 
 check_preds([], !ModuleInfo, !IO).
 check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
-    write_pred_progress_message("% Checking ", PredId, !.ModuleInfo, !IO),
+    write_pred_progress_message("% Checking termination of ", PredId, !.ModuleInfo, !IO),
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, !IO),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -604,8 +604,11 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     ->
         ProcTable2 = ProcTable1
     ;
-        status_defined_in_this_module(ImportStatus) = yes
+        status_defined_in_this_module(ImportStatus) = yes,
+        ImportStatus \= status_external(_)
     ->
+        % Since we cannot see the definition we consider procedures
+        % defined using `:- external' to be imported.
         ( check_marker(Markers, marker_terminates) ->
             change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
                 ProcTable0, ProcTable2)
