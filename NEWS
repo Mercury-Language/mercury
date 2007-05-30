@@ -92,25 +92,24 @@ Changes to the Mercury standard library:
   for use as a general container for binary data.  See runtime/mercury_types.h
   for the new definition of the bitmap type for interoperability with C code.
 
-* Bitmaps now have fields `bit', `bits' and `byte' for getting and
+  Bitmaps now have fields `bit', `bits' and `byte' for getting and
   setting a single bit, a group of bits (up to machine word size),
   and an aligned eight bit byte respectively.
 
   bitmap.get/2 has been deprecated; use bitmap.bit/2 instead.
 
-* Version bitmaps now have a field `bit' for getting and setting a single bit.
+  There is a new type bitmap.slice/0 to represent segments of bitmaps.
 
-  version_bitmap.get/2 has been deprecated; use version_bitmap.bit/2 instead.
-
-* There are new functions in the bitmap module to move data around in bulk:
+  There are new functions to move data around in bulk:
 	copy_bits/5
 	copy_bits_in_bitmap/4
 	copy_bytes/5
 	copy_bytes_in_bitmap/4
 
-* The io module now contains predicates io.read_bitmap/{4,5,6,7} and
-  io.write_bitmap{3,4,5,6}.  io.write_bytes/{3,4} are now marked as
-  obsolete.
+  Other added functions include:
+  	shrink_without_copying/2
+	append_list/1
+	to_byte_string/1
 
 * The operations in bitmap.m and version_bitmap.m which treat bitmaps
   as sets have been modified to throw an exception when the input
@@ -118,9 +117,24 @@ Changes to the Mercury standard library:
   computed the wrong answer when the input bitmaps were of different sizes.
 
 * bitmap.difference/2 and version_bitmap.difference/2 now compute difference,
-  not xor.
+  not xor.  bitmap.xor/2 and version_bitmap.xor/2 have been added.
 
-* bitmap.xor/2 and version_bitmap.xor/2 have been added.
+* Version bitmaps now have a field `bit' for getting and setting a single bit.
+
+  version_bitmap.get/2 has been deprecated; use version_bitmap.bit/2 instead.
+
+* The io module now contains predicates io.read_bitmap/{4,5,6,7},
+  io.write_bitmap{3,4,5,6} and io.read_file_as_bitmap/{3,4}.
+  io.write_bytes/{3,4} are now marked as obsolete.  Note that the
+  interface of io.read_bitmap/* has changed since the first release
+  of the day implementation.
+
+* There are new modules bit_buffer, bit_buffer.write and bit_buffer.read
+  which give a bit-oriented interface to byte-oriented streams.
+
+* There is a new typeclass stream.bulk_reader/5.  Instances of
+  stream.bulk_reader/5 support reading of multiple items at once
+  into a container such as an array or a bitmap.
 
 * Comparison of version_arrays is now the same as for arrays.
 

@@ -15,6 +15,7 @@ ORDINARY_PROGS=	\
 	bag_various \
 	bidirectional \
 	bitmap_test \
+	bit_buffer_test \
 	boyer \
 	brace \
 	builtin_inst_rename \

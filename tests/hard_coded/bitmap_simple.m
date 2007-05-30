@@ -303,10 +303,14 @@ resize(BM, NewSize, InitializerBit) =
 
 %-----------------------------------------------------------------------------%
 
-in_range(BM, I) :- 0 =< I, I < num_bits(BM).
+% Use the underlying version_array's bounds checking.
+%
+%in_range(BM, I) :- 0 =< I, I < num_bits(BM).
+in_range(_, _) :- true.
 
-byte_in_range(BM, I) :-
-    in_range(BM, I * bits_per_int + bits_per_int - 1).
+%byte_in_range(BM, I) :-
+%    in_range(BM, I * bits_per_int + bits_per_int - 1).
+byte_in_range(_, _).
 
 %-----------------------------------------------------------------------------%
 

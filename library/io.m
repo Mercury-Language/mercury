@@ -769,41 +769,59 @@
 :- pred io.read_byte(io.binary_input_stream::in, io.result(int)::out,
     io::di, io::uo) is det.
 
-    % XXX The bitmap returned is actually unique.
-:- inst read_bitmap == io.maybe_partial_res(bound({bitmap, ground})).
-
     % Fill a bitmap from the current binary input stream.
     % Returns the number of bytes read.
+    % On end-of-file, the number of bytes read will be less than the size
+    % of the bitmap, and the result will be `ok'.
     %
-:- pred io.read_bitmap(bitmap::bitmap_di,
-    io.maybe_partial_res({bitmap, int})::out(read_bitmap),
-    io::di, io::uo) is det.
+:- pred io.read_bitmap(bitmap::bitmap_di, bitmap::bitmap_uo,
+    int::out, io.res::out, io::di, io::uo) is det.
 
     % Fill a bitmap from the specified binary input stream.
     % Returns the number of bytes read.
+    % On end-of-file, the number of bytes read will be less than the size
+    % of the bitmap, and the result will be `ok'.
     %
 :- pred io.read_bitmap(io.binary_input_stream::in,
-    bitmap::bitmap_di, io.maybe_partial_res({bitmap, int})::out(read_bitmap),
+    bitmap::bitmap_di, bitmap::bitmap_uo, int::out, io.res::out,
     io::di, io::uo) is det.
 
-    % io.read_bitmap(Bitmap, StartByte, NumBytes, ok({Bitmap, BytesRead}), !IO)
+    % io.read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO)
+    %
     % Read NumBytes bytes into a bitmap starting at StartByte
     % from the current binary input stream.
     % Returns the number of bytes read.
+    % On end-of-file, the number of bytes read will be less than NumBytes,
+    % and the result will be `ok'.
     %
-:- pred io.read_bitmap(bitmap::bitmap_di, int::in, int::in,
-    io.maybe_partial_res({bitmap, int})::out(read_bitmap),
-    io::di, io::uo) is det.
+:- pred io.read_bitmap(byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out,
+    io.res::out, io::di, io::uo) is det.
 
-    % io.read_bitmap(Stream, Bitmap, StartByte, NumBytes,
-    %       ok({Bitmap, BytesRead}), !IO)
+    % io.read_bitmap(Stream, !Bitmap, StartByte, NumBytes,
+    %       BytesRead, Result, !IO)
+    %
     % Read NumBytes bytes into a bitmap starting at StartByte
     % from the specified binary input stream.
     % Returns the number of bytes read.
+    % On end-of-file, the number of bytes read will be less than NumBytes,
+    % and the result will be `ok'.
     %
-:- pred io.read_bitmap(io.binary_input_stream::in, bitmap::bitmap_di,
-    int::in, int::in, io.maybe_partial_res({bitmap, int})::out(read_bitmap),
+:- pred io.read_bitmap(io.binary_input_stream::in,
+    byte_index::in, num_bytes::in, bitmap::bitmap_di, bitmap::bitmap_uo,
+    num_bytes::out, io.res::out, io::di, io::uo) is det.
+
+    % Reads all the bytes from the current binary input stream
+    % until eof or error into a bitmap.
+    %
+:- pred io.read_binary_file_as_bitmap(io.res(bitmap)::out,
     io::di, io::uo) is det.
+
+    % Reads all the bytes from the given binary input stream into a bitmap
+    % until eof or error.
+    %
+:- pred io.read_binary_file_as_bitmap(io.binary_input_stream::in,
+    io.res(bitmap)::out, io::di, io::uo) is det.
 
     % Reads all the bytes from the current binary input stream
     % until eof or error.
@@ -1471,12 +1489,15 @@
 
 :- instance stream.stream(io.binary_output_stream, io).
 :- instance stream.output(io.binary_output_stream, io).
-:- instance stream.writer(io.binary_output_stream, int, io).
+:- instance stream.writer(io.binary_output_stream, byte, io).
+:- instance stream.writer(io.binary_output_stream, bitmap.slice, io).
 :- instance stream.seekable(io.binary_output_stream, io).
 
 :- instance stream.stream(io.binary_input_stream,  io).
 :- instance stream.input(io.binary_input_stream, io).
 :- instance stream.reader(io.binary_input_stream, int, io, io.error).
+:- instance stream.bulk_reader(io.binary_input_stream, int,
+        bitmap, io, io.error).
 :- instance stream.putback(io.binary_input_stream, int, io, io.error).
 :- instance stream.seekable(io.binary_input_stream, io).
 
@@ -1866,41 +1887,50 @@ io.read_byte(binary_input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
-io.read_bitmap(Bitmap, Result, !IO) :-
+io.read_bitmap(!Bitmap, BytesRead, Result, !IO) :-
     io.binary_input_stream(Stream, !IO),
-    io.read_bitmap(Stream, Bitmap, Result, !IO).
+    io.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
 
-io.read_bitmap(Bitmap, StartByte, NumBytes, Result, !IO) :-
+io.read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
     io.binary_input_stream(Stream, !IO),
-    io.read_bitmap(Stream, Bitmap, StartByte, NumBytes, Result, !IO).
+    io.read_bitmap(Stream, StartByte, NumBytes, !Bitmap,
+        BytesRead, Result, !IO).
 
-io.read_bitmap(Stream, Bitmap, Result, !IO) :-
-    ( NumBytes = Bitmap ^ num_bytes ->
-        io.read_bitmap(Stream, Bitmap, 0, NumBytes, Result, !IO)
+io.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
+    ( NumBytes = !.Bitmap ^ num_bytes ->
+        io.read_bitmap(Stream, 0, NumBytes, !Bitmap, BytesRead, Result, !IO)
     ;
         error("io.read_bitmap: bitmap contains partial final byte")
     ).
 
-io.read_bitmap(binary_input_stream(Stream), Bitmap0, Start, NumBytes,
-        Result, !IO) :-
+io.read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
+        BytesRead, Result, !IO) :-
     (
-        byte_in_range(Bitmap0, Start),
-        byte_in_range(Bitmap0, Start + NumBytes - 1)
+        NumBytes > 0,
+        byte_in_range(!.Bitmap, Start),
+        byte_in_range(!.Bitmap, Start + NumBytes - 1)
     ->
         io.do_read_bitmap(Stream, Start, NumBytes,
-            Bitmap0, Bitmap, 0, BytesRead, !IO),
+            !Bitmap, 0, BytesRead, !IO),
         io.ferror(Stream, ErrInt, ErrMsg, !IO),
         ( ErrInt = 0 ->
-            Result = ok({Bitmap, BytesRead})
+            Result = ok
         ;
-            Result = error({Bitmap, BytesRead}, io_error(ErrMsg))
+            Result = error(io_error(ErrMsg))
         ) 
     ;
-        error("io.read_bitmap: bitmap index out of range")
+        NumBytes = 0,
+        byte_in_range(!.Bitmap, Start)
+    ->
+        Result = ok,
+        BytesRead = 0
+    ;
+        bitmap.throw_bounds_error(!.Bitmap, "io.read_bitmap",
+                Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
-:- pred io.do_read_bitmap(io.stream::in, int::in, int::in,
-    bitmap::bitmap_di, bitmap::bitmap_uo, int::in, int::out,
+:- pred io.do_read_bitmap(io.stream::in, byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::in, num_bytes::out,
     io::di, io::uo) is det.
 :- pragma promise_pure(io.do_read_bitmap/9).
 
@@ -1933,6 +1963,75 @@ io.do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
     BytesRead = BytesRead0 +
                     MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
 ").
+
+io.read_binary_file_as_bitmap(Result, !IO) :-
+    io.binary_input_stream(Stream, !IO),
+    io.read_binary_file_as_bitmap(Stream, Result, !IO).
+
+io.read_binary_file_as_bitmap(Stream, Result, !IO) :-
+    % Check if the stream is a regular file; if so, allocate a buffer
+    % according to the size of the file. Otherwise, just use a default buffer
+    % size of 4k minus a bit (to give malloc some room).
+    io.binary_input_stream_file_size(Stream, FileSize, !IO),
+    ( FileSize >= 0 ->
+        some [!BM] (
+            !:BM = bitmap.new(FileSize * bits_per_byte),
+            io.read_bitmap(Stream, 0, FileSize,
+                !BM, BytesRead, ReadResult, !IO),
+            (
+                ReadResult = ok,
+                ( BytesRead = FileSize ->
+                    Result = ok(!.BM)
+                ;
+                    Result = error(io_error(
+                        "io.read_binary_file_as_bitmap: incorrect file size"))
+                )
+            ;
+                ReadResult = error(Msg),
+                Result = error(Msg)
+            )
+        )
+    ;
+        BufferSize = 4000,
+        io.read_binary_file_as_bitmap_2(Stream, BufferSize,
+            Res, [], RevBitmaps, !IO),
+        (
+            Res = ok,
+            Result = ok(bitmap.append_list(reverse(RevBitmaps)))
+        ;
+            Res = error(Msg),
+            Result = error(Msg)
+        )
+    ).
+
+:- pred io.read_binary_file_as_bitmap_2(io.binary_input_stream::in,
+    num_bytes::in, io.res::out, list(bitmap)::in, list(bitmap)::out,
+    io::di, io::uo) is det.
+
+io.read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
+    some [!BM] (
+        !:BM = bitmap.new(BufferSize * bits_per_byte),
+        io.read_bitmap(0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
+        (
+            ReadRes = ok,
+            ( NumBytesRead < BufferSize ->
+                !:BM = bitmap.shrink_without_copying(!.BM,
+                        NumBytesRead * bits_per_byte),
+                !:BMs = [!.BM | !.BMs],
+                Res = ok
+            ;
+                !:BMs = [!.BM | !.BMs],
+                
+                % Double the buffer size each time.
+                %
+                io.read_binary_file_as_bitmap_2(Stream, BufferSize * 2,
+                    Res, !BMs, !IO)
+            )
+        ;
+            ReadRes = error(Err),
+            Res = error(Err)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -2546,6 +2645,12 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
     io::di, io::uo) is det.
 
 io.input_stream_file_size(input_stream(Stream), Size, !IO) :-
+    io.stream_file_size(Stream, Size, !IO).
+
+:- pred io.binary_input_stream_file_size(io.binary_input_stream::in, int::out,
+    io::di, io::uo) is det.
+
+io.binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     io.stream_file_size(Stream, Size, !IO).
 
 :- pred io.output_stream_file_size(io.output_stream::in, int::out,
@@ -7013,7 +7118,8 @@ io.write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
     ->
         io.do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
     ;
-        error("io.write_bitmap: out of range")
+        bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
+                Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
 :- pred io.do_write_bitmap(io.stream, bitmap, int, int, io, io).
@@ -9201,6 +9307,17 @@ io.result_to_stream_result(error(Error)) = error(Error).
     )
 ]. 
 
+:- instance stream.bulk_reader(io.binary_input_stream, int,
+        bitmap, io, io.error)
+    where
+[
+    ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
+        io.read_bitmap(Stream, Index, Int, !Store, NumRead,
+            Result0, !State),
+        Result = io.res_to_stream_res(Result0)
+    )
+].
+
 :- instance stream.putback(io.binary_input_stream, int, io, io.error)
     where
 [
@@ -9222,23 +9339,47 @@ stream_whence_to_io_whence(set) = set.
 stream_whence_to_io_whence(cur) = cur.
 stream_whence_to_io_whence(end) = end.
 
+:- func io.res_to_stream_res(io.res) = stream.res(io.error).
+
+io.res_to_stream_res(ok) = ok.
+io.res_to_stream_res(error(E)) = error(E).
+
 %-----------------------------------------------------------------------------%
 %
 % Binary output streams
 %
 
-:- instance stream.stream(io.binary_output_stream, io) where [
+:- instance stream.stream(io.binary_output_stream, io)
+    where
+[
     pred(name/4) is io.binary_output_stream_name
 ].
 
-:- instance stream.output(io.binary_output_stream, io) where [
+:- instance stream.output(io.binary_output_stream, io)
+    where
+[
     pred(flush/3) is io.flush_binary_output
 ].
 
-:- instance stream.writer(io.binary_output_stream, int, io)
+:- instance stream.writer(io.binary_output_stream, byte, io)
     where
 [
     pred(put/4) is io.write_byte
+].
+
+:- instance stream.writer(io.binary_output_stream, bitmap, io)
+    where
+[
+    pred(put/4) is io.write_bitmap
+].
+
+:- instance stream.writer(io.binary_output_stream, bitmap.slice, io)
+    where
+[
+    ( put(Stream, Slice, !IO) :-
+        io.write_bitmap(Stream, Slice ^ slice_bitmap,
+            Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
+    )
 ].
 
 :- instance stream.seekable(io.binary_output_stream, io)

@@ -26,6 +26,7 @@
 :- interface.
 
 :- import_module bool.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -76,6 +77,10 @@
 :- func new(num_bits, bool) = bitmap.
 :- mode new(in, in) = bitmap_uo is det.
 
+    % Same as new(N, no).
+:- func new(num_bits) = bitmap.
+:- mode new(in) = bitmap_uo is det.
+
     % Create a new copy of a bitmap.
     %
 :- func copy(bitmap) = bitmap.
@@ -90,6 +95,11 @@
     %
 :- func resize(bitmap, num_bits, bool) = bitmap.
 :- mode resize(bitmap_di, in, in) = bitmap_uo is det.
+
+    % Shrink a bitmap without copying it into a smaller memory allocation.
+    %
+:- func shrink_without_copying(bitmap, num_bits) = bitmap.
+:- mode shrink_without_copying(bitmap_di, in) = bitmap_uo is det.
 
     % Is the given bit number in range.
     %
@@ -199,6 +209,33 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Slice = bitmap.slice(BM, StartIndex, NumBits)
+    %
+    % A bitmap slice represents the sub-range of a bitmap of NumBits bits
+    % starting at bit index StartIndex.  Throws an exception if the slice
+    % is not within the bounds of the bitmap.
+    %
+:- type bitmap.slice.
+:- func bitmap.slice(bitmap, bit_index, num_bits) = bitmap.slice.
+
+    % As above, but use byte indices.
+    %
+:- func bitmap.byte_slice(bitmap, byte_index, num_bytes) = bitmap.slice.
+
+    % Access functions for slices.
+    % 
+:- func slice ^ slice_bitmap = bitmap.
+:- func slice ^ slice_start_bit_index = bit_index.
+:- func slice ^ slice_num_bits = num_bits.
+
+    % As above, but return byte indices, throwing an exception if
+    % the slice doesn't start and end on a byte boundary.
+    %
+:- func slice ^ slice_start_byte_index = byte_index.
+:- func slice ^ slice_num_bytes = num_bytes.
+
+%-----------------------------------------------------------------------------%
+
     % Flip the given bit.
     %
 :- func flip(bitmap, bit_index) = bitmap.
@@ -232,6 +269,12 @@
 :- func xor(bitmap, bitmap) = bitmap.
 %:- mode xor(bitmap_ui, bitmap_di) = bitmap_uo is det.
 :- mode xor(in, bitmap_di) = bitmap_uo is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Condense a list of bitmaps into a single bitmap.
+:- func append_list(list(bitmap)) = bitmap.
+:- mode append_list(in) = bitmap_uo is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -373,6 +416,13 @@
 :- implementation.
 :- interface.
 
+    % Used by io.m.
+
+    % throw_bounds_error(BM, PredName, Index, NumBits)
+    %
+:- pred throw_bounds_error(bitmap::in, string::in, bit_index::in, num_bits::in)
+    is erroneous.
+
     % Replaced by BM ^ bits(I).
 
     % get(BM, I) returns `yes' if is_set(BM, I) and `no' otherwise.
@@ -397,10 +447,11 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
-:- import_module list.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
+
+new(N) = new(N, no).
 
 new(N, B) = BM :-
     ( if N < 0 then
@@ -436,6 +487,16 @@ resize(!.BM, NewSize, InitializerBit) = !:BM :-
             true
         ),
         !:BM = clear_filler_bits(!.BM)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+shrink_without_copying(!.BM, NewSize) = !:BM :-
+    ( if 0 =< NewSize, NewSize =< !.BM ^ num_bits then
+        !:BM = !.BM ^ num_bits := NewSize     
+      else 
+        throw_bounds_error(!.BM,
+            "bitmap.shrink_without_copying", NewSize) = _ : int
     ).
 
 %-----------------------------------------------------------------------------%
@@ -498,7 +559,7 @@ byte_in_range(BM, I) :-
 BM ^ bit(I) =
     ( if in_range(BM, I)
       then BM ^ unsafe_bit(I)
-      else throw_bitmap_error("bitmap.bit: out of range")
+      else throw_bounds_error(BM, "bitmap.bit", I)
     ).
 
 BM ^ unsafe_bit(I) =
@@ -507,7 +568,7 @@ BM ^ unsafe_bit(I) =
 (BM ^ bit(I) := B) =
     ( if in_range(BM, I)
       then BM ^ unsafe_bit(I) := B
-      else throw_bitmap_error("bitmap.'bit :=': out of range")
+      else throw_bounds_error(BM, "bitmap.'bit :='", I)
     ).
 
 (BM ^ unsafe_bit(I) := yes) = unsafe_set(BM, I).
@@ -523,8 +584,15 @@ BM ^ bits(FirstBit, NumBits) =
         NumBits =< int.bits_per_int
       then
         BM ^ unsafe_bits(FirstBit, NumBits)
+      else if
+        ( NumBits < 0
+        ; NumBits > int.bits_per_int
+        )
+      then
+        throw_bitmap_error(
+    "bitmap.bits: number of bits must be between 0 and `int.bits_per_int'.")
       else
-        throw_bitmap_error("bitmap.bits: out of range")
+        throw_bounds_error(BM, "bitmap.bits", FirstBit)
     ).
 
 BM ^ unsafe_bits(FirstBit, NumBits) = Bits :-
@@ -574,13 +642,26 @@ extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
 (BM ^ bits(FirstBit, NumBits) := Bits) =
     ( if
         FirstBit >= 0,
-        in_range(BM, FirstBit + NumBits - 1),
-        NumBits >= 0,
-        NumBits =< int.bits_per_int
+        (
+            NumBits >= 0,
+            NumBits =< int.bits_per_int,
+            in_range(BM, FirstBit + NumBits - 1)
+        ;
+            NumBits = 0,
+            in_range(BM, FirstBit)
+        )
       then
         BM ^ unsafe_bits(FirstBit, NumBits) := Bits
+      else if
+        ( NumBits < 0
+        ; NumBits > int.bits_per_int
+        )
+      then
+        throw_bitmap_error(
+                "bitmap.'bits :=': number of bits must be between " ++
+                "0 and `int.bits_per_int'.")
       else
-        throw_bitmap_error("bitmap.'bits :=': out of range")
+        throw_bounds_error(BM, "bitmap.'bits :='", FirstBit)
     ).
 
 (BM0 ^ unsafe_bits(FirstBit, NumBits) := Bits) = BM :-
@@ -622,22 +703,68 @@ set_bits_in_byte_index(ByteIndex, LastBitIndex,
 
 %-----------------------------------------------------------------------------%
 
+:- type bitmap.slice
+    ---> bitmap.slice_ctor(
+            slice_bitmap_field :: bitmap,
+            slice_start_bit_index_field :: bit_index,
+            slice_num_bits_field :: num_bits
+    ).
+
+slice(BM, StartBit, NumBits) = Slice :-
+    ( if
+        NumBits >= 0,
+        StartBit >= 0,
+        ( in_range(BM, StartBit + NumBits - 1)
+        ; NumBits = 0, in_range(BM, StartBit)
+        )
+      then
+        Slice = bitmap.slice_ctor(BM, StartBit, NumBits)
+      else
+        throw_bounds_error(BM, "bitmap.slice", StartBit, NumBits)
+    ).
+
+Slice ^ slice_bitmap = Slice ^ slice_bitmap_field.
+Slice ^ slice_start_bit_index  = Slice ^ slice_start_bit_index_field.
+Slice ^ slice_num_bits = Slice ^ slice_num_bits_field.
+
+byte_slice(BM, StartByte, NumBytes) =
+    slice(BM, StartByte * bits_per_byte, NumBytes * bits_per_byte).
+
+Slice ^ slice_start_byte_index =
+        quotient_bits_per_byte_with_rem_zero("bitmap.slice_start_byte_index",
+            Slice ^ slice_start_bit_index).
+Slice ^ slice_num_bytes =
+        quotient_bits_per_byte_with_rem_zero("bitmap.slice_num_bytes",
+            Slice ^ slice_num_bits).
+
+:- func quotient_bits_per_byte_with_rem_zero(string, int) = int is det.
+
+quotient_bits_per_byte_with_rem_zero(Pred, Int) =
+            Int `unchecked_quotient` bits_per_byte :-
+    ( Int `unchecked_rem` bits_per_byte = 0 ->
+        true
+    ;
+        throw_bitmap_error(Pred ++ ": not a byte slice.")
+    ).
+
+%-----------------------------------------------------------------------------%
+
 set(BM, I) = 
     ( if in_range(BM, I)
       then unsafe_set(BM, I)
-      else throw_bitmap_error("bitmap.set: out of range")
+      else throw_bounds_error(BM, "bitmap.set", I)
     ).
 
 clear(BM, I) =
     ( if in_range(BM, I)
       then unsafe_clear(BM, I)
-      else throw_bitmap_error("bitmap.clear: out of range")
+      else throw_bounds_error(BM, "bitmap.clear", I)
     ).
 
 flip(BM, I) =
     ( if in_range(BM, I)
       then unsafe_flip(BM, I)
-      else throw_bitmap_error("bitmap.flip: out of range")
+      else throw_bounds_error(BM, "bitmap.flip", I)
     ).
 
 set(I, BM, set(BM, I)).
@@ -671,13 +798,13 @@ unsafe_flip(I, BM, unsafe_flip(BM, I)).
 is_set(BM, I) :-
     ( if in_range(BM, I)
       then unsafe_is_set(BM, I)
-      else throw_bitmap_error("bitmap.is_set: out of range") = _ : int
+      else throw_bounds_error(BM, "bitmap.is_set", I) = _ : int
     ).
 
 is_clear(BM, I) :-
     ( if in_range(BM, I)
       then unsafe_is_clear(BM, I)
-      else throw_bitmap_error("bitmap.is_clear: out of range") = _ : int
+      else throw_bounds_error(BM, "bitmap.is_clear", I) = _ : int
     ).
 
 %-----------------------------------------------------------------------------%
@@ -782,6 +909,20 @@ zip2(I, Fn, BMa, BMb) =
 
 %-----------------------------------------------------------------------------%
 
+append_list(BMs) = !:BM :-
+    BMSize = list.foldl((func(BM, Size) = Size + BM ^ num_bits), BMs, 0),
+    !:BM = new(BMSize),
+    list.foldl2(copy_bitmap_into_place, BMs, 0, _, !BM).
+
+:- pred copy_bitmap_into_place(bitmap::in, int::in, int::out,
+    bitmap::bitmap_di, bitmap::bitmap_uo) is det.
+
+copy_bitmap_into_place(ThisBM, !Index, !BM) :-
+    !:BM = unsafe_copy_bits(0, ThisBM, 0, !.BM, !.Index, ThisBM ^ num_bits),
+    !:Index = !.Index + ThisBM ^ num_bits.
+
+%-----------------------------------------------------------------------------%
+
 copy_bits(SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
     copy_bits(0, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits).
 
@@ -797,14 +938,35 @@ copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
     ( if
         NumBits >= 0,
         SrcStartBit >= 0,
-        in_range(SrcBM, SrcStartBit + NumBits - 1),
         DestStartBit >= 0,
-        in_range(DestBM, DestStartBit + NumBits - 1)
+        ( in_range(SrcBM, SrcStartBit + NumBits - 1)
+        ; NumBits = 0, in_range(SrcBM, SrcStartBit)
+        ),
+        ( in_range(DestBM, DestStartBit + NumBits - 1)
+        ; NumBits = 0, in_range(DestBM, DestStartBit)
+        )
       then
         unsafe_copy_bits(SameBM, SrcBM, SrcStartBit,
             DestBM, DestStartBit, NumBits)
       else
-        throw_bitmap_error("bitmap.copy_bits_in_bitmap: out of range")
+        ( if
+            ( NumBits < 0
+            ; SrcStartBit < 0
+            ; \+ in_range(SrcBM, SrcStartBit + NumBits - 1)
+            )
+          then
+            throw_bounds_error(SrcBM, "copy_bits (source)",
+                SrcStartBit, NumBits)
+          else if
+            ( DestStartBit < 0
+            ; \+ in_range(DestBM, DestStartBit + NumBits - 1)
+            )
+          then
+            throw_bounds_error(DestBM, "copy_bits (destination)",
+                DestStartBit, NumBits)
+          else  
+            throw_bitmap_error("bitmap.copy_bits: failed to diagnose error")
+        )
     ).
 
 :- func unsafe_copy_bits(int, bitmap, bit_index,
@@ -1476,7 +1638,8 @@ det_num_bytes(BM) = Bytes :-
     ( if Bytes0 = num_bytes(BM) then
         Bytes = Bytes0
       else
-        throw_bitmap_error("det_num_bytes: bitmap has a partial final byte")
+        throw_bitmap_error(
+            "bitmap.det_num_bytes: bitmap has a partial final byte")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1540,7 +1703,7 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
 BM ^ byte(N) = 
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
       then BM ^ unsafe_byte(N)
-      else throw_bitmap_error("bitmap.byte: out of range")
+      else throw_bounds_error(BM, "bitmap.byte", N)
     ).
 
 _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
@@ -1573,7 +1736,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
 (BM ^ byte(N) := Byte) =
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
       then BM ^ unsafe_byte(N) := Byte
-      else throw_bitmap_error("bitmap.'byte :=': out of range")
+      else throw_bounds_error(BM, "bitmap.'byte :='", N)
     ).
 
 :- pragma promise_pure('unsafe_byte :='/3).
@@ -1701,8 +1864,7 @@ bit_index_in_byte(I) = I `unchecked_rem` bits_per_byte.
 %-----------------------------------------------------------------------------%
 
     % Construct the bitmask for a given bit in a byte.  Bits are numbered
-    % from most significant to least significant (starting at zero) so that
-    % comparison works properly.
+    % from most significant to least significant (starting at zero).
     %
     % E.g. assuming bits_per_byte = 8 and I = 3 then
     % bitmask(I) = 2'00010000
@@ -1758,6 +1920,44 @@ set_bits_in_byte(Byte0, FirstBit, NumBits, Bits) = Byte :-
             \/ (BitsToSet `unchecked_left_shift` Shift).
 
 %-----------------------------------------------------------------------------%
+
+    % throw_bounds_error(BM, PredName, Index)
+    %
+:- func throw_bounds_error(bitmap, string, bit_index) = _ is erroneous.
+
+throw_bounds_error(BM, Pred, Index) =
+        throw_bitmap_error(
+            string.append_list([
+                Pred, ": index ",
+                string.int_to_string(Index),
+                " is out of bounds [0 - ",
+                string.int_to_string(BM ^ num_bits),
+                ")."])).
+
+    % throw_bounds_error(BM, PredName, Index, NumBits)
+    %
+:- func throw_bounds_error(bitmap, string, bit_index, num_bits) = _
+    is erroneous.
+
+throw_bounds_error(BM, Pred, Index, NumBits) = _ :-
+    throw_bounds_error(BM, Pred, Index, NumBits).
+
+throw_bounds_error(BM, Pred, Index, NumBits) :-
+    ( NumBits < 0 ->
+        Msg = string.append_list([
+                    Pred, ": negative number of bits: ",
+                    string.int_to_string(NumBits), "."])
+    ;
+        Msg = string.append_list([
+                    Pred, ": ",
+                    string.int_to_string(NumBits),
+                    " bits starting at bit ",
+                    string.int_to_string(Index),
+                    " is out of bounds [0, ",
+                    string.int_to_string(BM ^ num_bits),
+                    ")."])
+    ),
+    throw_bitmap_error(Msg).
 
 :- func throw_bitmap_error(string) = _ is erroneous.
 

@@ -1,0 +1,234 @@
+Test reading and writing full bytes.
+Testing with buffer size 8.
+Testing writes: [bits(10101010, 8), bits(11001100, 8), check_buffer_status(ok), bits(1000110, 8), bits(0, 0), bits(10111001, 8), bits(10101010, 8), bits(11001100, 8), check_buffer_status(ok), bits(1000110, 8), bits(0, 0), bits(10111001, 8), bits(10101010, 8), bits(11001100, 8), check_buffer_status(ok), bits(1000110, 8), bits(0, 0), bits(10111001, 8), bits(10101010, 8), bits(11001100, 8), check_buffer_status(ok), bits(1000110, 8), bits(0, 0), bits(10111001, 8), check_buffer_status(eof), pad_to_byte]
+Expected result: 10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test reading and writing partial bytes.
+Testing with buffer size 8.
+Testing writes: [bits(10101010, 7), bits(1, 1), bits(11001100, 6), bits(1000110, 7), bits(10111001, 4), bits(10101010, 7), bits(1, 1), bits(11001100, 6), bits(1000110, 7), bits(10111001, 4), bits(10101010, 7), bits(1, 1), bits(11001100, 6), bits(1000110, 7), bits(10111001, 4), bits(10101010, 7), bits(1, 1), bits(11001100, 6), bits(1000110, 7), bits(10111001, 4), bits(10101010, 7), bits(1, 1), bits(11001100, 6), bits(1000110, 7), bits(10111001, 4), bits(10101010, 7), bits(1, 1), bits(11001100, 6), bits(1000110, 7), bits(10111001, 4), pad_to_byte]
+Expected result: 01010101.00110010.00110100.10101010.10011001.00011010.01010101.01001100.10001101.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.10100100
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test flushes when the stream is at a byte boundary and when it is not.
+Testing with buffer size 8.
+Testing writes: [flush, bits(10101010, 7), bits(0, 1), flush, bits(11001100, 6), bits(1000110, 7), flush, bits(10111001, 4), flush, bits(10101010, 7), bits(0, 1), flush, bits(11001100, 6), bits(1000110, 7), flush, bits(10111001, 4), flush, bits(10101010, 7), bits(0, 1), flush, bits(11001100, 6), bits(1000110, 7), flush, bits(10111001, 4), flush, bits(10101010, 7), bits(0, 1), flush, bits(11001100, 6), bits(1000110, 7), flush, bits(10111001, 4), flush, bits(10101010, 7), bits(0, 1), flush, bits(11001100, 6), bits(1000110, 7), flush, bits(10111001, 4), flush, bits(10101010, 7), bits(0, 1), flush, bits(11001100, 6), bits(1000110, 7), flush, bits(10111001, 4), pad_to_byte]
+Expected result: 01010100.00110010.00110100.10101010.00011001.00011010.01010101.00001100.10001101.00101010.10000110.01000110.10010101.01000011.00100011.01001010.10100001.10010001.10100100
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test simple reading and writing of bitmaps.
+Testing with buffer size 8.
+Testing writes: [bitmap(10101010.11001100.01000110, 0, 24), pad_to_byte]
+Expected result: 10101010.11001100.01000110
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test a simple offset bitmap read.
+Testing with buffer size 8.
+Testing writes: [bitmap(10101010.11001100.01000110, 8, 16), pad_to_byte]
+Expected result: 11001100.01000110
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test zero size requests.
+Testing with buffer size 8.
+Testing writes: [bits(11001100, 0), bits(10101010, 4), bits(11001100, 0), bitmap(10101010.11001100.01000110, 0, 0), pad_to_byte]
+Expected result: 10100000
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test pad_to_byte
+Testing with buffer size 8.
+Testing writes: [pad_to_byte, bits(10101010, 3), pad_to_byte, pad_to_byte, bits(11001100, 8), pad_to_byte, bits(11001100, 2), pad_to_byte]
+Expected result: 01000000.11001100.00000000
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test a bitmap that spans multiple buffer flushes.
+Testing with buffer size 8.
+Testing writes: [bitmap(10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.01010101.00110010.00110100.10101010.10011001.00011010.01010101.01001100.10001101.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.101001, 0, 278), pad_to_byte]
+Expected result: 10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.01010101.00110010.00110100.10101010.10011001.00011010.01010101.01001100.10001101.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.10100100
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test a bitmap starting at a position that isn't on a byte boundary.
+Testing with buffer size 8.
+Testing writes: [bits(10101010, 3), bitmap(10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.01010101.00110010.00110100.10101010.10011001.00011010.01010101.01001100.10001101.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.101001, 0, 278), pad_to_byte]
+Expected result: 01010101.01011001.10001000.11010111.00110101.01011001.10001000.11010111.00110101.01011001.10001000.11010111.00110101.01011001.10001000.11010111.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.10100101.01010100.11001000.11010010.10101010.01100100.01101001.01010101.00110010.00110100.10000000
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+Test offsets passed to put_bitmap.
+Testing with buffer size 8.
+Testing writes: [bits(10101010, 3), bitmap(10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.01010101.00110010.00110100.10101010.10011001.00011010.01010101.01001100.10001101.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.101001, 3, 275), pad_to_byte]
+Expected result: 01001010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.10101010.11001100.01000110.10111001.01010101.00110010.00110100.10101010.10011001.00011010.01010101.01001100.10001101.00101010.10100110.01000110.10010101.01010011.00100011.01001010.10101001.10010001.10100100
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+Testing reads:
+bitmap read tests completed.
+I/O read tests completed.
+
+========== Read Error Tests ==========
+Test unexpected end-of-file.
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Using error requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons("bitmap: error in request 26" - bits(170, 0, 8))
+I/O reads failed as expected:
+univ_cons("I/O: error in request 26" - bits(170, 0, 8))
+
+Test read sequence of bitmaps one byte too long.
+Testing sequence that should cause an error:
+Using setup requests:
+[bitmap("<128:AACC46B9AACC46B9AACC46B9AACC46B9>", 0, 128), pad_to_byte]
+Using error requests:
+[bitmap("<136:AACC46B9AACC46B9AACC46B9AACC46B955>", 0, 136), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons("bitmap: error in request 1" - bitmap("<136:AACC46B9AACC46B9AACC46B9AACC46B955>", "<136:AACC46B9AACC46B9AACC46B9AACC46B900>", 136, 128))
+I/O reads failed as expected:
+univ_cons("I/O: error in request 1" - bitmap("<136:AACC46B9AACC46B9AACC46B9AACC46B955>", "<136:AACC46B9AACC46B9AACC46B9AACC46B900>", 136, 128))
+
+Test read sequence of bitmaps one byte too long.
+Testing sequence that should cause an error:
+Using setup requests:
+[bitmap("<128:AACC46B9AACC46B9AACC46B9AACC46B9>", 0, 128), pad_to_byte]
+Using error requests:
+[bitmap("<136:AACC46B9AACC46B9AACC46B9AACC46B955>", 0, 136), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons("bitmap: error in request 1" - bitmap("<136:AACC46B9AACC46B9AACC46B9AACC46B955>", "<136:AACC46B9AACC46B9AACC46B9AACC46B900>", 136, 128))
+I/O reads failed as expected:
+univ_cons("I/O: error in request 1" - bitmap("<136:AACC46B9AACC46B9AACC46B9AACC46B955>", "<136:AACC46B9AACC46B9AACC46B9AACC46B900>", 136, 128))
+
+Test non-zero padding bits.
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Using error requests:
+[bits(170, 2), pad_to_byte, pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons("bitmap: error in request 2" - bits(0, 42, 6))
+I/O reads failed as expected:
+univ_cons("I/O: error in request 2" - bits(0, 42, 6))
+
+========== Bitmap error tests ==========
+Test eof when skipping padding in bitmap
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(0, 7)]
+Using error requests:
+[bits(0, 1), pad_to_byte]
+bitmap reads failed as expected:
+univ_cons("bitmap: error in request 2" - bits(0, 0, 7))
+
+========== Argument Error Tests ==========
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Using error requests:
+[bits(0, -1), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons(software_error("bit_buffer.read.get_bits: negative number of bits"))
+I/O reads failed as expected:
+univ_cons(software_error("bit_buffer.read.get_bits: negative number of bits"))
+
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Using error requests:
+[bits(0, 100), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons(software_error("bit_buffer.read.get_bits: invalid number of bits"))
+I/O reads failed as expected:
+univ_cons(software_error("bit_buffer.read.get_bits: invalid number of bits"))
+
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Using error requests:
+[bitmap("<24:AACC46>", 0, -1), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons(bitmap_error("bit_buffer.read.get_bitmap: negative number of bits: -1."))
+I/O reads failed as expected:
+univ_cons(bitmap_error("bit_buffer.read.get_bitmap: negative number of bits: -1."))
+
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof), pad_to_byte]
+Using error requests:
+[bitmap("<24:AACC46>", 0, 10000), pad_to_byte]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+bitmap reads failed as expected:
+univ_cons(bitmap_error("bit_buffer.read.get_bitmap: 10000 bits starting at bit 0 is out of bounds [0, 24)."))
+I/O reads failed as expected:
+univ_cons(bitmap_error("bit_buffer.read.get_bitmap: 10000 bits starting at bit 0 is out of bounds [0, 24)."))
+
+========== Stream Error Tests ==========
+Testing sequence that should cause an error:
+Using setup requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof)]
+Using error requests:
+[bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), bits(170, 8), bits(204, 8), check_buffer_status(ok), bits(70, 8), bits(0, 0), bits(185, 8), check_buffer_status(eof)]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+stream read error reads failed as expected:
+univ_cons(bang)
+
+Test error when refilling buffer
+Testing sequence that should cause an error:
+Using setup requests:
+[bitmap("<72:AACC46B9AACC46B9AA>", 0, 72)]
+Using error requests:
+[bits(-1429453127, 32), bits(-1429453127, 32), check_buffer_status(ok), bits(170, 8)]
+Collected bitmap compares OK.
+I/O bitmap compares OK.
+stream read error reads failed as expected:
+univ_cons(bang)
+

@@ -52,6 +52,9 @@
 :- import_module bintree.
 :- import_module bintree_set.
 :- import_module bitmap.
+:- import_module bit_buffer.
+:- import_module bit_buffer.read.
+:- import_module bit_buffer.write.
 :- import_module bool.
 :- import_module bt_array.
 :- import_module builtin.
@@ -107,7 +110,9 @@
 :- import_module std_util.
 :- import_module store.
 :- import_module stream.
+:- import_module stream.string_writer.
 :- import_module string.
+:- import_module string.builder.
 :- import_module svarray.
 :- import_module svbag.
 :- import_module svbimap.
@@ -191,6 +196,9 @@ mercury_std_library_module("bimap").
 mercury_std_library_module("bintree").
 mercury_std_library_module("bintree_set").
 mercury_std_library_module("bitmap").
+mercury_std_library_module("bit_buffer").
+mercury_std_library_module("bit_buffer.read").
+mercury_std_library_module("bit_buffer.write").
 mercury_std_library_module("bool").
 mercury_std_library_module("bt_array").
 mercury_std_library_module("builtin").

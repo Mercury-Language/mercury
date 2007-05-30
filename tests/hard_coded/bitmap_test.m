@@ -37,7 +37,7 @@ main(!IO) :-
         )
     ).
 
-:- pred run_test({}::out, io::di, io::uo) is det.
+:- pred run_test({}::out, io::di, io::uo) is cc_multi.
 
 run_test({}, !IO) :-
     some [!BM] (
@@ -58,6 +58,9 @@ run_test({}, !IO) :-
         write_binary_string(!.BM ^ bits(0, 4), !IO),
         nl(!IO),
         !:BM = !.BM ^ bits(0, 2) := \ (!.BM ^ bits(0, 2)),
+        io.write_string(to_byte_string(!.BM), !IO),
+        nl(!IO),
+        !:BM = !.BM ^ bits(0, 0) := !.BM ^ bits(4, 0),
         io.write_string(to_byte_string(!.BM), !IO),
         nl(!IO)
     ),
@@ -152,6 +155,10 @@ run_test({}, !IO) :-
 
     io.write_string("Test copy to end of bitmap.\n", !IO),
     test_copy(0, 1, 166, !IO),
+
+    io.write_string("Test zero bit copies.\n", !IO),
+    test_copy(0, 1, 0, !IO),
+    test_copy(0, 167, 0, !IO),
     
     test_set_op("union", union, !IO), 
     test_set_op("intersect", intersect, !IO),
@@ -162,7 +169,78 @@ run_test({}, !IO) :-
     test_binary_op("test_unify", bitmap_tester.test_unify, !IO),
 
     test_text_io(!IO),
-    test_binary_io(!IO).
+    test_binary_io(!IO),
+    
+    some [!BM] (
+        !:BM = bitmap.new(64, yes),
+        !:BM = !.BM ^ bits(32, 16) := 0b1011011100100101,
+        test_exception(
+            ((pred) is semidet :-
+                _ = !.BM ^ bit(-1)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = !.BM ^ bit(64)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = !.BM ^ bit(73)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy_bits_in_bitmap(copy(!.BM), -1, 1, 32)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy_bits_in_bitmap(copy(!.BM), 33, 32, 32)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy_bits_in_bitmap(copy(!.BM), 32, 33, 32)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy(!.BM) ^ bits(-1, 32)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy(!.BM) ^ bits(33, 32)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy(!.BM) ^ bits(0, 65)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy(!.BM) ^ bits(0, -1)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy(!.BM) ^ bits(65, 0)
+            ), !IO),
+        test_exception(
+            ((pred) is semidet :-
+                _ = copy(!.BM) ^ bits(-1, 0)
+            ), !IO)
+    ).
+
+:- pred test_exception((pred)::in((pred) is semidet),
+    io::di, io::uo) is cc_multi.
+
+test_exception(Pred, !IO) :-
+    try((pred({}::out) is semidet :- Pred), Result),
+    (
+        Result = succeeded(_),
+        io.write_string("Error: test succeeded, expected exception\n", !IO)
+    ;
+        Result = failed,
+        io.write_string("Error: test failed, expected exception\n", !IO)
+    ;    
+        Result = exception(Exception),
+        io.write_string("Found exception as expected: ", !IO),
+        io.write(univ_value(Exception), !IO),
+        io.nl(!IO)
+    ).
 
     % Do the copy tests to a few different bitmaps, to make sure
     % correct results aren't a fluke of the original contents, and
@@ -298,25 +376,34 @@ test_binary_io(!IO) :-
         (
             OpenInputRes = ok(IStream),
             InputBMa0 = bitmap.new(64, no),
-            io.read_bitmap(IStream, InputBMa0, ReadResA, !IO),
-            ( ReadResA = ok({BMa, 8}) ->
+            io.read_bitmap(IStream, InputBMa0, InputBMa,
+                BytesReadA, ReadResA, !IO),
+            (
+                ReadResA = ok,
+                BytesReadA = 8,
+                InputBMa = BMa
+            ->
                 io.write_string("First read succeeded\n", !IO) 
             ;
-                io.write_string("First read failed\n", !IO),
-                io.close_binary_input(IStream, !IO),
-                throw(ReadResA)
+                io.write_string("First read failed\n", !IO)
             ),
             InputBMb0 = bitmap.new(32, no),
-            io.read_bitmap(IStream, InputBMb0, ReadResB, !IO),
+            io.read_bitmap(IStream, InputBMb0, InputBMb1,
+                BytesReadB, ReadResB, !IO),
+
+            % Check that we're at eof.
+            io.read_bitmap(IStream, InputBMb1, InputBMb,
+                BytesReadB2, ReadResB2, !IO),
             (
-                ReadResB = ok({InputBMb, 3}),
+                ReadResB = ok,
+                BytesReadB = 3,
+                ReadResB2 = ok,
+                BytesReadB2 = 0,
                 BMb ^ bits(16, 24) = InputBMb ^ bits(0, 24)
             ->
                 io.write_string("Second read succeeded\n", !IO) 
             ;
-                io.write_string("Second read failed\n", !IO),
-                io.close_binary_input(IStream, !IO),
-                throw(ReadResB)
+                io.write_string("Second read failed\n", !IO)
             ),
             io.close_binary_input(IStream, !IO),
             io.remove_file(FileName, _, !IO)

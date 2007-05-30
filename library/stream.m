@@ -8,6 +8,7 @@
 %
 % File: stream.m.
 % Authors: juliensf, maclarty.
+% Stability: low
 %
 % This module provides a family of typeclasses for defining streams
 % in Mercury.  It also provides some generic predicates that operate
@@ -45,6 +46,10 @@
 
 :- type stream.res(Error)
     --->    ok
+    ;       error(Error).
+
+:- type stream.res(T, Error)
+    --->    ok(T)
     ;       error(Error).
 
     % stream.maybe_partial_res is used when it is possible to return
@@ -103,11 +108,67 @@
         (Stream, Unit -> Error)) where
 [
     % Get the next unit from the given stream.
-    % The get operation should block until the next unit is available.
+    %
+    % The get operation should block until the next unit is available,
+    % or the end of the stream or an error is detected.
+    %
+    % If a call to get/4 returns `eof', all further calls to get/4 or
+    % bulk_get/9 for that stream return `eof'.  If a call to get/4
+    % returns `error(...)', all further calls to get/4 or bulk_get/4 for
+    % that stream return an error, although not necessarily the same one.
+    % 
+    % XXX We should provide an interface to allow the user to reset the
+    % error status to try again if an error is transient.
     %
     pred get(Stream::in, stream.result(Unit, Error)::out,
         State::di, State::uo) is det
 ].
+
+    % A bulk_reader stream is a subclass of specific input stream that can
+    % be used to read multiple items of data of a specific type from that
+    % input stream into a specified container.  For example, binary input
+    % streams may be able to efficiently read bytes into a bitmap.
+    % A single input stream can support multiple bulk_reader subclasses.
+    % 
+:- typeclass stream.bulk_reader(Stream, Index, Store, State, Error)
+    <= (stream.input(Stream, State), stream.error(Error),
+        (Stream, Index, Store -> Error)) where
+[
+    % bulk_get(Stream, Index, NumItems, !Store, NumItemsRead, Result, !State).
+    %
+    % Read at most NumItems items into the given Store starting at the
+    % given index, returning the number of items read.
+    %
+    % If the read succeeds, Result is `ok' and NumItemsRead equals NumItems.
+    %
+    % On end-of-stream, bulk_get/9 puts as many items as it can into !Store.
+    % NumItemsRead is less than NumItems, and Result is `ok'.
+    %
+    % If an error is detected, bulk_get/9 puts as many items as it can into
+    % !Store.  NumItemsRead is less than NumItems, and Result is `error(Err)'.
+    %
+    % Blocks until NumItems items are available or the end of the stream
+    % is reached or an error is detected.
+    %
+    % Throws an exception if Index given is out of range or NumItems units
+    % starting at Index will not fit in !Store.
+    %
+    % If a call to bulk_get/4 returns less than NumItems items, all further
+    % calls to get/4 or bulk_get/4 for that stream return no items.  If a
+    % call to bulk_get/9 returns `error(...)', all further calls to get/4
+    % or bulk_get/9 for that stream return an error, although not necessarily
+    % the same one.
+    %
+    pred bulk_get(Stream::in, Index::in, int::in,
+        Store::bulk_get_di, Store::bulk_get_uo,
+        int::out, stream.res(Error)::out, State::di, State::uo) is det
+].
+
+    % XXX These should be di and uo, but with the current state of the mode
+    % system an unsafe_promise_unique call would be required at each call
+    % to bulk_get.
+:- mode bulk_get_di == in.
+:- mode bulk_get_uo == out.
 
 %-----------------------------------------------------------------------------%
 %
@@ -136,7 +197,8 @@
     <= stream.output(Stream, State) where
 [
     % Write the next unit to the given stream.
-    % The put operation should block until the unit is completely written.
+    % Blocks if the whole unit can't be written to the stream at the time
+    % of the call (for example because a buffer is full).
     %
     pred put(Stream::in, Unit::in, State::di, State::uo) is det
 ].
