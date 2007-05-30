@@ -8535,6 +8535,14 @@ to install each file in a Mercury library.
 The default command is @samp{cp}.
 
 @sp 1
+@item --install-command-dir-option @var{option}
+@findex --install-command-dir-command
+Specify the flag to pass to the install command to install
+a directory. The given command will be invoked as
+@code{@var{command} @var{option} @var{source} @var{target}}
+to install each directory. The default option is @samp{-r}.
+
+@sp 1
 @item --libgrade @var{grade}
 @findex --libgrade
 Add @var{grade} to the list of compilation grades in

@@ -63,8 +63,14 @@
     --->    elds_defn(
                 defn_proc_id    :: pred_proc_id,
                 defn_varset     :: prog_varset,
-                defn_clause     :: elds_clause
+                defn_body       :: elds_body
             ).
+
+:- type elds_body
+    --->    body_defined_here(elds_clause)
+            % The body is to be defined by the user in some other way,
+            % e.g. foreign code.
+    ;       body_external(arity).
 
     % Foreign exported function definition.
     %
@@ -308,6 +314,8 @@
     %
 :- func det_expr(maybe(elds_expr)) = elds_expr.
 
+:- func elds_body_arity(elds_body) = arity.
+
 :- func elds_clause_arity(elds_clause) = arity.
 
 %-----------------------------------------------------------------------------%
@@ -381,6 +389,9 @@ expr_or_void(no) = elds_term(elds_atom_raw("void")).
 det_expr(yes(Expr)) = Expr.
 det_expr(no) = _ :-
     unexpected(this_file, "det_expr: no expression").
+
+elds_body_arity(body_defined_here(Clause)) = elds_clause_arity(Clause).
+elds_body_arity(body_external(Arity)) = Arity.
 
 elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
 

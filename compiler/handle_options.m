@@ -2380,13 +2380,7 @@ grade_component_table("java", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         highlevel_data          - bool(yes)],
         yes([string("java")]), yes).
-grade_component_table("erlang", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_code          - bool(no),
-        highlevel_data          - bool(no)],
+grade_component_table("erlang", comp_gcc_ext, [],
         yes([string("erlang")]), yes).
 
     % Parallelism/multithreading components.

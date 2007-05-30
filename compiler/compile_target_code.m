@@ -80,10 +80,10 @@
 :- pred compile_csharp_file(io.output_stream::in, module_imports::in,
     file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
 
-    % compile_erlang_file(ErrorStream, ErlangFile, BeamFile, Succeeded)
+    % compile_erlang_file(ErrorStream, ErlangFile, Succeeded)
     %
-:- pred compile_erlang_file(io.output_stream::in,
-    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
+:- pred compile_erlang_file(io.output_stream::in, file_name::in,
+    bool::out, io::di, io::uo) is det.
 
     % make_init_file(ErrorStream, MainModuleName, ModuleNames, Succeeded):
     %
@@ -102,7 +102,8 @@
     --->    executable
     ;       static_library
     ;       shared_library
-    ;       java_archive.
+    ;       java_archive
+    ;       erlang_archive.
 
     % link(TargetType, MainModuleName, ObjectFileNames, Succeeded)
     %
@@ -905,8 +906,42 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-compile_erlang_file(_ErrorStream, _ErlangFile, _BeamFile, _Succeeded, !IO) :-
-    sorry(this_file, "compile_erlang_file").
+compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    maybe_write_string(Verbose, "% Compiling `", !IO),
+    maybe_write_string(Verbose, ErlangFile, !IO),
+    maybe_write_string(Verbose, "':\n", !IO),
+    globals.io_lookup_string_option(erlang_compiler, ErlangCompiler, !IO),
+    globals.io_lookup_accumulating_option(erlang_flags, ErlangFlagsList, !IO),
+    ERLANGFLAGS = string.join_list(" ", ErlangFlagsList),
+
+    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
+    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+    globals.io_lookup_string_option(fullarch, FullArch, !IO),
+    globals.io_get_globals(Globals, !IO),
+    (
+        UseSubdirs = yes,
+        (
+            UseGradeSubdirs = yes,
+            grade_directory_component(Globals, Grade),
+            DirName = "Mercury"/Grade/FullArch/"Mercury"/"beams"
+        ;
+            UseGradeSubdirs = no,
+            DirName = "Mercury"/"beams"
+        ),
+        % Create the destination directory.
+        dir.make_directory(DirName, _, !IO),
+        % Set destination directory for .beam files.
+        DestDir = "-o " ++ DirName ++ " "
+    ;
+        UseSubdirs = no,
+        DestDir = ""
+    ),
+
+    string.append_list([ErlangCompiler, " ", DestDir, ERLANGFLAGS, " ",
+        ErlangFile], Command),
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+        Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1247,229 +1282,34 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
 link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_get_target(Target, !IO),
 
     maybe_write_string(Verbose, "% Linking...\n", !IO),
     link_output_filename(LinkTargetType, ModuleName, _Ext, OutputFileName, !IO),
-    ( LinkTargetType = static_library ->
+    (
+        LinkTargetType = static_library,
         create_archive(ErrorStream, OutputFileName, yes, ObjectsList,
             LinkSucceeded, !IO)
-    ; LinkTargetType = java_archive ->
+    ;
+        LinkTargetType = java_archive,
         create_java_archive(ErrorStream, ModuleName, OutputFileName,
             ObjectsList, LinkSucceeded, !IO)
     ;
-        (
-            LinkTargetType = shared_library,
-            CommandOpt = link_shared_lib_command,
-            RpathFlagOpt = shlib_linker_rpath_flag,
-            RpathSepOpt = shlib_linker_rpath_separator,
-            LDFlagsOpt = ld_libflags,
-            ThreadFlagsOpt = shlib_linker_thread_flags,
-            DebugFlagsOpt = shlib_linker_debug_flags,
-            TraceFlagsOpt = shlib_linker_trace_flags,
-            globals.io_lookup_bool_option(allow_undefined, AllowUndef, !IO),
-            (
-                AllowUndef = yes,
-                globals.io_lookup_string_option(
-                    linker_allow_undefined_flag, UndefOpt, !IO)
-            ;
-                AllowUndef = no,
-                globals.io_lookup_string_option(
-                    linker_error_undefined_flag, UndefOpt, !IO)
-            )
+        LinkTargetType = erlang_archive,
+        create_erlang_archive(ErrorStream, ModuleName, OutputFileName,
+            ObjectsList, LinkSucceeded, !IO)
+    ;
+        LinkTargetType = executable,
+        ( Target = target_erlang ->
+            create_erlang_shell_script(ModuleName, LinkSucceeded, !IO)
         ;
-            LinkTargetType = executable,
-            CommandOpt = link_executable_command,
-            RpathFlagOpt = linker_rpath_flag,
-            RpathSepOpt = linker_rpath_separator,
-            LDFlagsOpt = ld_flags,
-            ThreadFlagsOpt = linker_thread_flags,
-            DebugFlagsOpt = linker_debug_flags,
-            TraceFlagsOpt = linker_trace_flags,
-            UndefOpt = ""
-        ;
-            LinkTargetType = static_library,
-            unexpected(this_file, "compile_target_code.link")
-        ;
-            LinkTargetType = java_archive,
-            unexpected(this_file, "compile_target_code.link")
-        ),
-
-        % Should the executable be stripped?
-        globals.io_lookup_bool_option(strip, Strip, !IO),
-        (
-            LinkTargetType = executable,
-            Strip = yes
-        ->
-            globals.io_lookup_string_option(linker_strip_flag, StripOpt, !IO)
-        ;
-            StripOpt = ""
-        ),
-
-        globals.io_lookup_bool_option(target_debug, TargetDebug, !IO),
-        (
-            TargetDebug = yes,
-            globals.io_lookup_string_option(DebugFlagsOpt, DebugOpts, !IO)
-        ;
-            TargetDebug = no,
-            DebugOpts = ""
-        ),
-
-        % Should the executable be statically linked?
-        globals.io_lookup_string_option(linkage, Linkage, !IO),
-        (
-            LinkTargetType = executable,
-            Linkage = "static"
-        ->
-            globals.io_lookup_string_option(linker_static_flags, StaticOpts,
-                !IO)
-        ;
-            StaticOpts = ""
-        ),
-
-        % Are the thread libraries needed?
-        use_thread_libs(UseThreadLibs, !IO),
-        (
-            UseThreadLibs = yes,
-            globals.io_lookup_string_option(ThreadFlagsOpt, ThreadOpts, !IO)
-        ;
-            UseThreadLibs = no,
-            ThreadOpts = ""
-        ),
-
-        % Find the Mercury standard libraries.
-        globals.io_lookup_maybe_string_option(
-            mercury_standard_library_directory, MaybeStdLibDir, !IO),
-        (
-            MaybeStdLibDir = yes(StdLibDir),
-            get_mercury_std_libs(LinkTargetType, StdLibDir, MercuryStdLibs,
-                !IO)
-        ;
-            MaybeStdLibDir = no,
-            MercuryStdLibs = ""
-        ),
-
-        % Find which system libraries are needed.
-        get_system_libs(LinkTargetType, SystemLibs, !IO),
-
-        join_quoted_string_list(ObjectsList, "", "", " ", Objects),
-        globals.io_lookup_accumulating_option(LDFlagsOpt, LDFlagsList, !IO),
-        join_string_list(LDFlagsList, "", "", " ", LDFlags),
-        globals.io_lookup_accumulating_option(link_library_directories,
-            LinkLibraryDirectoriesList, !IO),
-        globals.io_lookup_string_option(linker_path_flag, LinkerPathFlag,
-            !IO),
-        join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
-            " ", LinkLibraryDirectories),
-
-        % Set up the runtime library path.
-        globals.io_lookup_bool_option(shlib_linker_use_install_name,
-            UseInstallName, !IO),
-        shared_libraries_supported(SharedLibsSupported, !IO),
-        (
-            UseInstallName = no,
-            SharedLibsSupported = yes,
-            ( Linkage = "shared"
-            ; LinkTargetType = shared_library
-            )
-        ->
-            globals.io_lookup_accumulating_option(
-                runtime_link_library_directories, RpathDirs, !IO),
-            ( 
-                RpathDirs = [],
-                RpathOpts = ""
-            ;
-                RpathDirs = [_|_],
-                globals.io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
-                globals.io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
-                RpathOpts0 = string.join_list(RpathSep, RpathDirs),
-                RpathOpts = RpathFlag ++ RpathOpts0
-            )
-        ;
-            RpathOpts = ""
-        ),
-                
-        % Set up the install name for shared libraries.
-        (
-            UseInstallName = yes,
-            LinkTargetType = shared_library
-        ->  
-            % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
-            %       get_install_name_option will prefix it with the correct
-            %       directory which is the one where the library is going to
-            %       be installed, *not* where it is going to be built. 
-            %        
-            BaseFileName = sym_name_to_string(ModuleName),
-            globals.io_lookup_string_option(shared_library_extension,
-                SharedLibExt, !IO),
-            ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
-            get_install_name_option(ShLibFileName, InstallNameOpt, !IO)
-        ;
-            InstallNameOpt = ""
-        ),
-
-        globals.io_get_trace_level(TraceLevel, !IO),
-        ( given_trace_level_is_none(TraceLevel) = yes ->
-            TraceOpts = ""
-        ;
-            globals.io_lookup_string_option(TraceFlagsOpt, TraceOpts, !IO)
-        ),
-
-        % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a',
-        % depending on whether we are linking with static or shared
-        % Mercury libraries.
-
-        globals.io_lookup_accumulating_option(
-            mercury_library_directories, MercuryLibDirs0, !IO),
-        globals.io_get_globals(Globals, !IO),
-        grade_directory_component(Globals, GradeDir),
-        MercuryLibDirs = list.map(
-            (func(LibDir) = LibDir/"lib"/GradeDir),
-            MercuryLibDirs0),
-        globals.io_lookup_accumulating_option(link_libraries,
-            LinkLibrariesList0, !IO),
-        list.map_foldl2(process_link_library(MercuryLibDirs),
-            LinkLibrariesList0, LinkLibrariesList, yes,
-            LibrariesSucceeded, !IO),
-
-        globals.io_lookup_string_option(linker_opt_separator,
-            LinkOptSep, !IO),
-        (
-            LibrariesSucceeded = yes,
-            join_quoted_string_list(LinkLibrariesList, "", "", " ",
-                LinkLibraries),
-
-            % Note that LDFlags may contain `-l' options so it should come
-            % after Objects.
-            globals.io_lookup_string_option(CommandOpt, Command, !IO),
-            string.append_list(
-                [Command, " ",
-                StaticOpts, " ", StripOpt, " ", UndefOpt, " ",
-                ThreadOpts, " ", TraceOpts, " ",
-                " -o ", OutputFileName, " ", Objects, " ",
-                LinkOptSep, " ", LinkLibraryDirectories, " ",
-                RpathOpts, " ", InstallNameOpt, " ", DebugOpts,
-                " ", LDFlags, " ", LinkLibraries, " ",
-                MercuryStdLibs, " ", SystemLibs],
-                LinkCmd),
-
-            globals.io_lookup_bool_option(demangle, Demangle, !IO),
-            (
-                Demangle = yes,
-                globals.io_lookup_string_option(demangle_command,
-                    DemangleCmd, !IO),
-                MaybeDemangleCmd = yes(DemangleCmd)
-            ;
-                Demangle = no,
-                MaybeDemangleCmd = no
-            ),
-
-            invoke_system_command_maybe_filter_output(ErrorStream,
-                cmd_verbose_commands, LinkCmd, MaybeDemangleCmd, LinkSucceeded,
-                !IO)
-        ;
-            LibrariesSucceeded = no,
-            LinkSucceeded = no
+            link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
+                OutputFileName, ObjectsList, LinkSucceeded, !IO)
         )
+    ;
+        LinkTargetType = shared_library,
+        link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
+            OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ),
     maybe_report_stats(Stats, !IO),
     (
@@ -1500,9 +1340,229 @@ link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
         Ext = ".jar",
         module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
     ;
+        LinkTargetType = erlang_archive,
+        Ext = ".beams",
+        module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
+            OutputFileName, !IO)
+    ;
         LinkTargetType = executable,
         globals.io_lookup_string_option(executable_file_extension, Ext, !IO),
         module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
+    ).
+
+:- pred link_exe_or_shared_lib(io.output_stream::in,
+    linked_target_type::in(bound(executable ; shared_library)),
+    module_name::in, file_name::in, list(string)::in, bool::out,
+    io::di, io::uo) is det.
+
+link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
+        OutputFileName, ObjectsList, LinkSucceeded, !IO) :-
+    (
+        LinkTargetType = shared_library,
+        CommandOpt = link_shared_lib_command,
+        RpathFlagOpt = shlib_linker_rpath_flag,
+        RpathSepOpt = shlib_linker_rpath_separator,
+        LDFlagsOpt = ld_libflags,
+        ThreadFlagsOpt = shlib_linker_thread_flags,
+        DebugFlagsOpt = shlib_linker_debug_flags,
+        TraceFlagsOpt = shlib_linker_trace_flags,
+        globals.io_lookup_bool_option(allow_undefined, AllowUndef, !IO),
+        (
+            AllowUndef = yes,
+            globals.io_lookup_string_option(
+                linker_allow_undefined_flag, UndefOpt, !IO)
+        ;
+            AllowUndef = no,
+            globals.io_lookup_string_option(
+                linker_error_undefined_flag, UndefOpt, !IO)
+        )
+    ;
+        LinkTargetType = executable,
+        CommandOpt = link_executable_command,
+        RpathFlagOpt = linker_rpath_flag,
+        RpathSepOpt = linker_rpath_separator,
+        LDFlagsOpt = ld_flags,
+        ThreadFlagsOpt = linker_thread_flags,
+        DebugFlagsOpt = linker_debug_flags,
+        TraceFlagsOpt = linker_trace_flags,
+        UndefOpt = ""
+    ),
+
+    % Should the executable be stripped?
+    globals.io_lookup_bool_option(strip, Strip, !IO),
+    (
+        LinkTargetType = executable,
+        Strip = yes
+    ->
+        globals.io_lookup_string_option(linker_strip_flag, StripOpt, !IO)
+    ;
+        StripOpt = ""
+    ),
+
+    globals.io_lookup_bool_option(target_debug, TargetDebug, !IO),
+    (
+        TargetDebug = yes,
+        globals.io_lookup_string_option(DebugFlagsOpt, DebugOpts, !IO)
+    ;
+        TargetDebug = no,
+        DebugOpts = ""
+    ),
+
+    % Should the executable be statically linked?
+    globals.io_lookup_string_option(linkage, Linkage, !IO),
+    (
+        LinkTargetType = executable,
+        Linkage = "static"
+    ->
+        globals.io_lookup_string_option(linker_static_flags, StaticOpts,
+            !IO)
+    ;
+        StaticOpts = ""
+    ),
+
+    % Are the thread libraries needed?
+    use_thread_libs(UseThreadLibs, !IO),
+    (
+        UseThreadLibs = yes,
+        globals.io_lookup_string_option(ThreadFlagsOpt, ThreadOpts, !IO)
+    ;
+        UseThreadLibs = no,
+        ThreadOpts = ""
+    ),
+
+    % Find the Mercury standard libraries.
+    globals.io_lookup_maybe_string_option(
+        mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    (
+        MaybeStdLibDir = yes(StdLibDir),
+        get_mercury_std_libs(LinkTargetType, StdLibDir, MercuryStdLibs,
+            !IO)
+    ;
+        MaybeStdLibDir = no,
+        MercuryStdLibs = ""
+    ),
+
+    % Find which system libraries are needed.
+    get_system_libs(LinkTargetType, SystemLibs, !IO),
+
+    join_quoted_string_list(ObjectsList, "", "", " ", Objects),
+    globals.io_lookup_accumulating_option(LDFlagsOpt, LDFlagsList, !IO),
+    join_string_list(LDFlagsList, "", "", " ", LDFlags),
+    globals.io_lookup_accumulating_option(link_library_directories,
+        LinkLibraryDirectoriesList, !IO),
+    globals.io_lookup_string_option(linker_path_flag, LinkerPathFlag,
+        !IO),
+    join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
+        " ", LinkLibraryDirectories),
+
+    % Set up the runtime library path.
+    globals.io_lookup_bool_option(shlib_linker_use_install_name,
+        UseInstallName, !IO),
+    shared_libraries_supported(SharedLibsSupported, !IO),
+    (
+        UseInstallName = no,
+        SharedLibsSupported = yes,
+        ( Linkage = "shared"
+        ; LinkTargetType = shared_library
+        )
+    ->
+        globals.io_lookup_accumulating_option(
+            runtime_link_library_directories, RpathDirs, !IO),
+        ( 
+            RpathDirs = [],
+            RpathOpts = ""
+        ;
+            RpathDirs = [_|_],
+            globals.io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
+            globals.io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
+            RpathOpts0 = string.join_list(RpathSep, RpathDirs),
+            RpathOpts = RpathFlag ++ RpathOpts0
+        )
+    ;
+        RpathOpts = ""
+    ),
+            
+    % Set up the install name for shared libraries.
+    (
+        UseInstallName = yes,
+        LinkTargetType = shared_library
+    ->  
+        % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
+        %       get_install_name_option will prefix it with the correct
+        %       directory which is the one where the library is going to
+        %       be installed, *not* where it is going to be built. 
+        %        
+        BaseFileName = sym_name_to_string(ModuleName),
+        globals.io_lookup_string_option(shared_library_extension,
+            SharedLibExt, !IO),
+        ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
+        get_install_name_option(ShLibFileName, InstallNameOpt, !IO)
+    ;
+        InstallNameOpt = ""
+    ),
+
+    globals.io_get_trace_level(TraceLevel, !IO),
+    ( given_trace_level_is_none(TraceLevel) = yes ->
+        TraceOpts = ""
+    ;
+        globals.io_lookup_string_option(TraceFlagsOpt, TraceOpts, !IO)
+    ),
+
+    % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a',
+    % depending on whether we are linking with static or shared
+    % Mercury libraries.
+
+    globals.io_lookup_accumulating_option(
+        mercury_library_directories, MercuryLibDirs0, !IO),
+    globals.io_get_globals(Globals, !IO),
+    grade_directory_component(Globals, GradeDir),
+    MercuryLibDirs = list.map(
+        (func(LibDir) = LibDir/"lib"/GradeDir),
+        MercuryLibDirs0),
+    globals.io_lookup_accumulating_option(link_libraries,
+        LinkLibrariesList0, !IO),
+    list.map_foldl2(process_link_library(MercuryLibDirs),
+        LinkLibrariesList0, LinkLibrariesList, yes,
+        LibrariesSucceeded, !IO),
+
+    globals.io_lookup_string_option(linker_opt_separator,
+        LinkOptSep, !IO),
+    (
+        LibrariesSucceeded = yes,
+        join_quoted_string_list(LinkLibrariesList, "", "", " ",
+            LinkLibraries),
+
+        % Note that LDFlags may contain `-l' options so it should come
+        % after Objects.
+        globals.io_lookup_string_option(CommandOpt, Command, !IO),
+        string.append_list(
+            [Command, " ",
+            StaticOpts, " ", StripOpt, " ", UndefOpt, " ",
+            ThreadOpts, " ", TraceOpts, " ",
+            " -o ", OutputFileName, " ", Objects, " ",
+            LinkOptSep, " ", LinkLibraryDirectories, " ",
+            RpathOpts, " ", InstallNameOpt, " ", DebugOpts,
+            " ", LDFlags, " ", LinkLibraries, " ",
+            MercuryStdLibs, " ", SystemLibs],
+            LinkCmd),
+
+        globals.io_lookup_bool_option(demangle, Demangle, !IO),
+        (
+            Demangle = yes,
+            globals.io_lookup_string_option(demangle_command,
+                DemangleCmd, !IO),
+            MaybeDemangleCmd = yes(DemangleCmd)
+        ;
+            Demangle = no,
+            MaybeDemangleCmd = no
+        ),
+
+        invoke_system_command_maybe_filter_output(ErrorStream,
+            cmd_verbose_commands, LinkCmd, MaybeDemangleCmd, LinkSucceeded,
+            !IO)
+    ;
+        LibrariesSucceeded = no,
+        LinkSucceeded = no
     ).
 
     % Find the standard Mercury libraries, and the system
@@ -1513,7 +1573,19 @@ link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
 
 get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
     globals.io_get_gc_method(GCMethod, !IO),
-    globals.io_lookup_string_option(library_extension, LibExt, !IO),
+    (
+        ( TargetType = executable
+        ; TargetType = static_library
+        ; TargetType = shared_library
+        ),
+        globals.io_lookup_string_option(library_extension, LibExt, !IO)
+    ;
+        TargetType = java_archive,
+        unexpected(this_file, "get_mercury_std_libs: java_archive")
+    ;
+        TargetType = erlang_archive,
+        unexpected(this_file, "get_mercury_std_libs: erlang_archive")
+    ),
     globals.io_get_globals(Globals, !IO),
     grade_directory_component(Globals, GradeDir),
 
@@ -1617,23 +1689,28 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
 
 make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
     (
-        TargetType = executable,
-        LinkLibFlag = linker_link_lib_flag,
-        LinkLibSuffix = linker_link_lib_suffix
-    ;
-        TargetType = shared_library,
-        LinkLibFlag = shlib_linker_link_lib_flag,
-        LinkLibSuffix = shlib_linker_link_lib_suffix
+        (
+            TargetType = executable,
+            LinkLibFlag = linker_link_lib_flag,
+            LinkLibSuffix = linker_link_lib_suffix
+        ;
+            TargetType = shared_library,
+            LinkLibFlag = shlib_linker_link_lib_flag,
+            LinkLibSuffix = shlib_linker_link_lib_suffix
+        ),
+        globals.io_lookup_string_option(LinkLibFlag, LinkLibOpt, !IO),
+        globals.io_lookup_string_option(LinkLibSuffix, Suffix, !IO),
+        LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
         TargetType = java_archive,
         unexpected(this_file, "make_link_lib: java_archive")
     ;
+        TargetType = erlang_archive,
+        unexpected(this_file, "make_link_lib: erlang_archive")
+    ;
         TargetType = static_library,
         unexpected(this_file, "make_link_lib: static_library")
-    ),
-    globals.io_lookup_string_option(LinkLibFlag, LinkLibOpt, !IO),
-    globals.io_lookup_string_option(LinkLibSuffix, Suffix, !IO),
-    LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix).
+    ).
 
 :- pred get_system_libs(linked_target_type::in, string::out, io::di, io::uo)
     is det.
@@ -1677,6 +1754,9 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
         TargetType = java_archive,
         unexpected(this_file, "get_std_libs: java archive")
     ;
+        TargetType = erlang_archive,
+        unexpected(this_file, "get_std_libs: erlang archive")
+    ;
         TargetType = executable,
         globals.io_lookup_string_option(math_lib, OtherSystemLibs, !IO)
     ),
@@ -1708,6 +1788,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
             ; LinkTargetType = java_archive
+            ; LinkTargetType = erlang_archive
             ),
             module_name_to_lib_file_name("lib", ModuleName, Ext, no,
                 UserDirFileName, !IO)
@@ -1724,7 +1805,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             SameTimestamp = no,
             io.set_output_stream(ErrorStream, OutputStream, !IO),
             % Remove the target of the symlink/copy in case it already exists.
-            io.remove_file(UserDirFileName, _, !IO),
+            io.remove_file_recursively(UserDirFileName, _, !IO),
             make_symlink_or_copy_file(OutputFileName, UserDirFileName,
                 Succeeded, !IO),
             io.set_output_stream(OutputStream, _, !IO),
@@ -1858,6 +1939,56 @@ create_java_archive(ErrorStream, ModuleName, JarFileName, ObjectList,
     invoke_system_command(ErrorStream, cmd_verbose_commands, Cmd, Succeeded,
         !IO).
 
+%-----------------------------------------------------------------------------%
+
+    % Create an "Erlang archive", which is simply a directory containing
+    % `.beam' files.
+    %
+:- pred create_erlang_archive(io.output_stream::in, module_name::in,
+    file_name::in, list(file_name)::in, bool::out, io::di, io::uo) is det.
+
+create_erlang_archive(ErrorStream, _ModuleName, ErlangArchiveFileName,
+        ObjectList, Succeeded, !IO) :-
+    % Delete anything in the way first.
+    io.remove_file_recursively(ErlangArchiveFileName, _, !IO),
+    dir.make_directory(ErlangArchiveFileName, Res, !IO),
+    (
+        Res = ok,
+        copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName,
+            ObjectList, Succeeded, !IO)
+    ;
+        Res = error(Error),
+        io.write_string(ErrorStream, "Error creating `", !IO),
+        io.write_string(ErrorStream, ErlangArchiveFileName, !IO),
+        io.write_string(ErrorStream, "': ", !IO),
+        io.write_string(ErrorStream, io.error_message(Error), !IO),
+        io.nl(ErrorStream, !IO),
+        Succeeded = no
+    ).
+
+:- pred copy_erlang_archive_files(io.output_stream::in, file_name::in,
+    list(file_name)::in, bool::out, io::di, io::uo) is det.
+
+copy_erlang_archive_files(_ErrorStream, _ErlangArchiveFileName, [], yes, !IO).
+copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName, [Obj | Objs],
+        Succeeded, !IO) :-
+    copy_file(Obj, ErlangArchiveFileName, Res, !IO),
+    (
+        Res = ok,
+        copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName, Objs,
+            Succeeded, !IO)
+    ;
+        Res = error(Error),
+        io.write_string(ErrorStream, "Error copying `", !IO),
+        io.write_string(ErrorStream, Obj, !IO),
+        io.write_string(ErrorStream, "': ", !IO),
+        io.write_string(ErrorStream, io.error_message(Error), !IO),
+        io.nl(ErrorStream, !IO),
+        Succeeded = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
 get_object_code_type(FileType, ObjectCodeType, !IO) :-
     globals.io_lookup_string_option(pic_object_file_extension, PicObjExt, !IO),
     globals.io_lookup_string_option(link_with_pic_object_file_extension,
@@ -1875,14 +2006,14 @@ get_object_code_type(FileType, ObjectCodeType, !IO) :-
     ;
         PIC = no,
         (
-            FileType = static_library,
+            ( FileType = static_library
+            ; FileType = java_archive
+            ; FileType = erlang_archive
+            ),
             ObjectCodeType = non_pic
         ;
             FileType = shared_library,
             ObjectCodeType = ( if PicObjExt = ObjExt then non_pic else pic )
-        ;
-            FileType = java_archive,
-            ObjectCodeType = non_pic
         ;
             FileType = executable,
             ( MercuryLinkage = "shared" ->

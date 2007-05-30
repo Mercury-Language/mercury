@@ -473,9 +473,11 @@ build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
 build_object_code(_ModuleName, target_x86_64, _, _ErrorStream, _Imports,
         _Succeeded, _, _) :-
     sorry(this_file, "NYI mmc --make and target x86_64").
-build_object_code(_ModuleName, target_erlang, _, _ErrorStream, _Imports,
-        _Succeeded, _, _) :-
-    sorry(this_file, "NYI mmc --make and target erlang").
+build_object_code(ModuleName, target_erlang, _, ErrorStream, _Imports,
+        Succeeded, !IO) :-
+    module_name_to_file_name(ModuleName, ".erl", yes, ErlangFile, !IO),
+    compile_target_code.compile_erlang_file(ErrorStream, ErlangFile,
+        Succeeded, !IO).
 
 :- pred compile_foreign_code_file(io.output_stream::in, pic::in,
     module_imports::in, foreign_code_file::in, bool::out,
@@ -504,8 +506,8 @@ compile_foreign_code_file(ErrorStream, _, Imports,
     compile_target_code.compile_csharp_file(ErrorStream, Imports,
         CSharpFile, DLLFile, Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, _Imports,
-        foreign_code_file(lang_erlang, ErlFile, BeamFile), Succeeded, !IO) :-
-    compile_target_code.compile_erlang_file(ErrorStream, ErlFile, BeamFile,
+        foreign_code_file(lang_erlang, ErlFile, _BeamFile), Succeeded, !IO) :-
+    compile_target_code.compile_erlang_file(ErrorStream, ErlFile,
         Succeeded, !IO).
 
 :- func forkable_module_compilation_task_type(module_compilation_task_type)
@@ -724,6 +726,10 @@ compilation_task(_, module_target_il_asm) =
         target_code_to_object_code(non_pic) - [].
 compilation_task(_, module_target_java_code) =
     process_module(task_compile_to_target_code) - ["--java-only"].
+compilation_task(_, module_target_erlang_code) =
+    process_module(task_compile_to_target_code) - ["--erlang-only"].
+compilation_task(_, module_target_erlang_beam_code) =
+        target_code_to_object_code(non_pic) - [].
 compilation_task(_, module_target_asm_code(PIC)) =
     process_module(task_compile_to_target_code) -
         ( PIC = pic -> ["--pic"] ; [] ).
@@ -842,14 +848,12 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         ;
             ( CompilationTarget = target_il
             ; CompilationTarget = target_java
+            ; CompilationTarget = target_erlang
             ),
             HeaderTargets0 = []
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "NYI mmc --make and target x86_64")
-        ;
-            CompilationTarget = target_erlang,
-            sorry(this_file, "NYI mmc --make and target erlang")
         ),
 
         (

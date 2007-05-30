@@ -81,13 +81,6 @@
 :- pred module_name_to_file_name(module_name::in, string::in, bool::in,
     file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_file_name_sep(Module, Sep, Extension, Mkdir, FileName):
-    %
-    % As above but module qualifiers are separated by Sep instead of ".".
-    %
-:- pred module_name_to_file_name_sep(module_name::in, string::in, string::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
-
     % module_name_to_search_file_name(Module, Extension, FileName):
     %
     % As above, but for a file which might be in an installed library,
@@ -786,6 +779,28 @@
     %
 :- pred get_env_classpath(string::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%
+% Erlang utilities
+%
+
+    % To avoid namespace collisions between Mercury standard modules and
+    % Erlang standard modules, we pretend the Mercury standard modules are in
+    % a "mercury" supermodule.  This function returns ModuleName with the
+    % extra qualifier if it is a standard library module.  Otherwise it
+    % returns it unchanged.
+    %
+:- func erlang_module_name(module_name) = module_name.
+
+    % Create a shell script with the same name as the given module to invoke
+    % the Erlang runtime system and execute the main/2 predicate in that
+    % module.
+    %
+:- pred create_erlang_shell_script(module_name::in, bool::out, io::di, io::uo)
+    is det.
+
+%-----------------------------------------------------------------------------%
+
     % get_install_name_option(FileName, Option, !IO):
     %
     % Get the option string for setting the install-name of the shared library
@@ -844,25 +859,34 @@ mercury_std_library_module_name(qualified(Module, Name)) :-
     mercury_std_library_module(ModuleNameStr).
 
 module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name_sep(ModuleName, ".", Ext, yes, no, FileName, !IO).
+    module_name_to_file_name_2(ModuleName, Ext, yes, no, FileName, !IO).
 
 module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO) :-
-    module_name_to_file_name_sep(ModuleName, ".", Ext, no, MkDir, FileName,
+    module_name_to_file_name_2(ModuleName, Ext, no, MkDir, FileName,
         !IO).
 
-module_name_to_file_name_sep(ModuleName, Sep, Ext, MkDir, FileName, !IO) :-
-    module_name_to_file_name_sep(ModuleName, Sep, Ext, no, MkDir, FileName,
-        !IO).
-
-:- pred module_name_to_file_name_sep(module_name::in, string::in, string::in,
+:- pred module_name_to_file_name_2(module_name::in, string::in,
     bool::in, bool::in, file_name::out, io::di, io::uo) is det.
 
-module_name_to_file_name_sep(ModuleName, Sep, Ext, Search, MkDir, FileName,
-        !IO) :-
+module_name_to_file_name_2(ModuleName0, Ext, Search, MkDir, FileName, !IO) :-
     ( Ext = ".m" ->
         % Look up the module in the module->file mapping.
-        source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
+        source_file_map.lookup_module_source_file(ModuleName0, FileName, !IO)
     ;
+        (
+            ( Ext = ".erl" 
+            ; Ext = ".beam"
+            )
+        ->
+            % Erlang uses `.' as a package separator and expects a module
+            % `a.b.c' to be in a file `a/b/c.erl'.  Rather than that, we use
+            % a flat namespace with `__' as module separators.
+            Sep = "__",
+            ModuleName = erlang_module_name(ModuleName0)
+        ;
+            Sep = ".",
+            ModuleName = ModuleName0
+        ),
         string.append(sym_name_to_string_sep(ModuleName, Sep), Ext, BaseName),
         choose_file_name(ModuleName, BaseName, Ext, Search, MkDir, FileName,
             !IO)
@@ -941,6 +965,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ; Ext = ".dylib"
             ; Ext = ".$(EXT_FOR_SHARED_LIB)"
             ; Ext = ".jar"
+            ; Ext = ".beams"
             ; Ext = ".init"
                     % mercury_update_interface
                     % requires the `.init.tmp' files to
@@ -981,6 +1006,8 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ; Ext = ".ils"
             ; Ext = ".javas"
             ; Ext = ".classes"
+            ; Ext = ".erls"
+            ; Ext = ".beams"
             ; Ext = ".opts"
             ; Ext = ".trans_opts"
             )
@@ -1075,7 +1102,7 @@ maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
     globals.io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
     (
         UseSymLinks = yes,
-        io.remove_file(LinkName, _, !IO),
+        io.remove_file_recursively(LinkName, _, !IO),
         io.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
         Result = ( if LinkResult = ok then yes else no )
     ;
@@ -1249,6 +1276,10 @@ file_is_arch_or_grade_dependent_2(".il_date").
 file_is_arch_or_grade_dependent_2(".java").
 file_is_arch_or_grade_dependent_2(".java_date").
 file_is_arch_or_grade_dependent_2(".class").
+file_is_arch_or_grade_dependent_2(".erl").
+file_is_arch_or_grade_dependent_2(".erl_date").
+file_is_arch_or_grade_dependent_2(".beam").
+file_is_arch_or_grade_dependent_2(".beams").
 file_is_arch_or_grade_dependent_2(".dir").
 file_is_arch_or_grade_dependent_2(".dll").
 file_is_arch_or_grade_dependent_2(".$A").
@@ -8132,6 +8163,148 @@ get_env_classpath(Classpath, !IO) :-
             MaybeJCP = no,
             Classpath = ""
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Erlang utilities
+%
+
+erlang_module_name(ModuleName) =
+    (if mercury_std_library_module_name(ModuleName) then
+        add_outermost_qualifier("mercury", ModuleName)
+    else
+        ModuleName
+    ).
+
+create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
+    module_name_to_file_name(MainModuleName, ScriptFileName),
+    globals.io_get_globals(Globals, !IO),
+    grade_directory_component(Globals, GradeDir),
+
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    maybe_write_string(Verbose, "% Generating shell script `" ++
+        ScriptFileName ++ "'...\n", !IO),
+
+    globals.io_lookup_string_option(erlang_object_file_extension, BeamExt,
+        !IO),
+    module_name_to_file_name(MainModuleName, BeamExt, no, BeamFileName, !IO),
+    BeamDirName = dir.dirname(BeamFileName),
+    module_name_to_file_name(MainModuleName, BeamBaseNameNoExt),
+
+    % Add `-pa <dir>' option to find the standard library.
+    % (-pa adds the directory to the beginning of the list of paths to search
+    % for .beam files)
+    globals.io_lookup_maybe_string_option(
+        mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    (
+        MaybeStdLibDir = yes(StdLibDir),
+        StdLibBeamsPath = StdLibDir/"lib"/GradeDir/"libmer_std.beams",
+        SearchStdLib = pa_option(yes, StdLibBeamsPath)
+    ;
+        MaybeStdLibDir = no,
+        SearchStdLib = ""
+    ),
+
+    % Add `-pa <dir>' options to find any other libraries specified by the user.
+    globals.io_lookup_accumulating_option(
+        mercury_library_directories, MercuryLibDirs0, !IO),
+    MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
+        MercuryLibDirs0),
+    globals.io_lookup_accumulating_option(link_libraries,
+        LinkLibrariesList0, !IO),
+    list.map_foldl2(find_erlang_library_path(MercuryLibDirs),
+        LinkLibrariesList0, LinkLibrariesList, yes, LibrariesSucceeded,
+        !IO),
+    (
+        LibrariesSucceeded = yes,
+        % Remove symlink in the way, if any.
+        io.remove_file(ScriptFileName, _, !IO),
+        io.open_output(ScriptFileName, OpenResult, !IO),
+        (
+            OpenResult = ok(ShellScript),
+
+            globals.io_lookup_string_option(erlang_interpreter, Erlang, !IO),
+            SearchLibs = string.append_list(list.map(pa_option(yes),
+                list.sort_and_remove_dups(LinkLibrariesList))),
+
+            % XXX main_2_p_0 is not necessarily in the main module itself and
+            % could be in a submodule.  We don't handle that yet.
+            SearchProg = pa_option(no, """$DIR""/" ++ quote_arg(BeamDirName)),
+
+            % Write the shell script.
+            io.write_strings(ShellScript, [
+                "#!/bin/sh\n",
+                "# Generated by the Mercury compiler.\n",
+                "DIR=`dirname ""$0""`\n",
+                "exec ", Erlang, " -noshell \\\n",
+                SearchStdLib, SearchLibs, SearchProg,
+                " -s ", BeamBaseNameNoExt, " main_2_p_0",
+                " -s init stop -- ""$@""\n"
+            ], !IO),
+            io.close_output(ShellScript, !IO),
+
+            % Set executable bit.
+            io.call_system("chmod a+x " ++ ScriptFileName, ChmodResult, !IO),
+            (
+                ChmodResult = ok(Status),
+                ( Status = 0 ->
+                    Succeeded = yes,
+                    maybe_write_string(Verbose, "% done.\n", !IO)
+                ;
+                    unexpected(this_file, "chmod exit status != 0"),
+                    Succeeded = no
+                )
+            ;
+                ChmodResult = error(Message),
+                unexpected(this_file, io.error_message(Message)),
+                Succeeded = no
+            )
+        ;
+            OpenResult = error(Message),
+            unexpected(this_file, io.error_message(Message)),
+            Succeeded = no
+        )
+    ;
+        LibrariesSucceeded = no,
+        Succeeded = no
+    ).
+
+:- pred find_erlang_library_path(list(dir_name)::in, string::in, string::out,
+    bool::in, bool::out, io::di, io::uo) is det.
+
+find_erlang_library_path(MercuryLibDirs, LibName, LibPath, !Succeeded, !IO) :-
+    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+    file_name_to_module_name(LibName, LibModuleName),
+    globals.io_set_option(use_grade_subdirs, bool(no), !IO),
+    module_name_to_lib_file_name("lib", LibModuleName, ".beams", no,
+        LibFileName, !IO),
+    globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
+
+    io.input_stream(InputStream, !IO),
+    search_for_file_returning_dir(MercuryLibDirs, LibFileName,
+        SearchResult, !IO),
+    (
+        SearchResult = ok(DirName),
+        LibPath = DirName/LibFileName,
+        io.set_input_stream(InputStream, LibInputStream, !IO),
+        io.close_input(LibInputStream, !IO)
+    ;
+        SearchResult = error(Error),
+        LibPath = "",
+        write_error_pieces_maybe_with_context(no, 0, [words(Error)], !IO),
+        !:Succeeded = no
+    ).
+
+:- func pa_option(bool, dir_name) = string.
+
+pa_option(Quote, Dir0) = " -pa " ++ Dir ++ " \\\n" :-
+    (
+        Quote = yes,
+        Dir = quote_arg(Dir0)
+    ;
+        Quote = no,
+        Dir = Dir0
     ).
 
 %-----------------------------------------------------------------------------%

@@ -170,6 +170,9 @@ Changes to the Mercury standard library:
   This means stream.get/4 can be used to efficiently read lines
   and files as string.
 
+* We have added a predicate io.remove_file_recursively/4
+  which can remove non-empty directories.
+
 Changes to the Mercury compiler:
 
 * In parallel grades we now support thread-local trailing.

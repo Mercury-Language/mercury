@@ -177,6 +177,8 @@
     ;       module_target_il_code
     ;       module_target_il_asm
     ;       module_target_java_code
+    ;       module_target_erlang_code
+    ;       module_target_erlang_beam_code
     ;       module_target_asm_code(pic)
     ;       module_target_object_code(pic)
     ;       module_target_foreign_il_asm(foreign_language)
@@ -397,6 +399,12 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
     ->
         ModuleNameStr = ModuleNameStr0,
         TargetType = linked_target(executable)
+    ;
+        Suffix = ".beams",
+        string.append("lib", ModuleNameStr1, ModuleNameStr0)
+    ->
+        ModuleNameStr = ModuleNameStr1,
+        TargetType = linked_target(erlang_archive)
     ;
         string.append(Suffix1, "s", Suffix),
         yes(Suffix1) = target_extension(Globals, ModuleTargetType),

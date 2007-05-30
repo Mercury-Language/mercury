@@ -374,11 +374,18 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         CodeModel = model_det,
         (
             SimpleCode = assign(Lval, SimpleExpr),
-            % XXX do we need to avoid generating assignments to dummy variables
-            % introduced for types such as io.state here?
-            Rval = erl_gen_simple_expr(SimpleExpr),
-            Assign = elds.elds_eq(elds.expr_from_var(Lval), Rval),
-            Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
+            (
+                % We need to avoid generating assignments to dummy variables
+                % introduced for types such as io.state.
+                erl_variable_type(!.Info, Lval, LvalType),
+                is_dummy_argument_type(ModuleInfo, LvalType)
+            ->
+                Statement = expr_or_void(MaybeSuccessExpr)
+            ;
+                Rval = erl_gen_simple_expr(SimpleExpr),
+                Assign = elds.elds_eq(elds.expr_from_var(Lval), Rval),
+                Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
+            )
         ;
             SimpleCode = ref_assign(_AddrLval, _ValueLval),
             unexpected(this_file, "ref_assign not supported in Erlang backend")

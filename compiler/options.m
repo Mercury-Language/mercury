@@ -694,8 +694,10 @@
 
     % Erlang
     ;       erlang_compiler
+    ;       erlang_interpreter
     ;       erlang_flags
     ;       quoted_erlang_flag
+    ;       erlang_object_file_extension
 
     % Link options
     ;       output_file_name
@@ -785,6 +787,7 @@
     ;       mercury_configuration_directory
     ;       mercury_configuration_directory_special
     ;       install_command
+    ;       install_command_dir_option
     ;       libgrades
     ;       lib_linkages
     ;       flags_file
@@ -1448,8 +1451,10 @@ option_defaults_2(target_code_compilation_option, [
 
     % Erlang
     erlang_compiler                     -   string("erlc"),
+    erlang_interpreter                  -   string("erl"),
     erlang_flags                        -   accumulating([]),
-    quoted_erlang_flag                  -   string_special
+    quoted_erlang_flag                  -   string_special,
+    erlang_object_file_extension        -   string(".beam")
 ]).
 option_defaults_2(link_option, [
     % Link Options
@@ -1552,6 +1557,7 @@ option_defaults_2(build_system_option, [
     mercury_configuration_directory_special - string_special,
     mercury_configuration_directory     -   maybe_string(no),
     install_command                     -   string("cp"),
+    install_command_dir_option          -   string("-r"),
     libgrades                           -   accumulating([]),
     lib_linkages                        -   accumulating([]),
     flags_file                          -   file_special,
@@ -2254,6 +2260,7 @@ long_option("csharp-flag",          quoted_csharp_flag).
 long_option("erlang-compiler",      erlang_compiler).
 long_option("erlang-flags",         erlang_flags).
 long_option("erlang-flag",          quoted_erlang_flag).
+long_option("erlang-object-file-extension", erlang_object_file_extension).
 
 % link options
 long_option("output-file",          output_file_name).
@@ -2347,6 +2354,7 @@ long_option("mercury-config-dir",
                 mercury_configuration_directory_special).
 long_option("install-prefix",       install_prefix).
 long_option("install-command",      install_command).
+long_option("install-command-dir-option", install_command_dir_option).
 long_option("use-symlinks",         use_symlinks).
 long_option("library-grade",        libgrades).
 long_option("libgrade",             libgrades).
@@ -4784,6 +4792,11 @@ options_help_build_system -->
         "\tMercury libraries. The given command will be invoked as",
         "\t`<command> <source> <target>' to install each file",
         "\tin a Mercury library. The default command is `cp'.",
+        "--install-command-dir-option <option>",
+        "\tSpecify the flag to pass to the install command to install",
+        "\ta directory. The given command will be invoked as",
+        "\t`<command> <option> <source> <target>'",
+        "\tto install each directory. The default option is `-r'.",
         "--libgrade <grade>",
         "\tAdd <grade> to the list of compilation grades in",
         "\twhich a library to be installed should be built.",

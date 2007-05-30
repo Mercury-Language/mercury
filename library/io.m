@@ -1315,6 +1315,18 @@
     %
 :- pred io.remove_file(string::in, io.res::out, io::di, io::uo) is det.
 
+    % io.remove_file_recursively(FileName, Result, !IO) attempts to remove
+    % the file `FileName', binding Result to ok/0 if it succeeds, or error/1
+    % if it fails. If `FileName' names a file that is currently open, the
+    % behaviour is implementation-dependent.
+    %
+    % Unlike `io.remove_file', this predicate will attempt to remove non-empty
+    % directories (recursively). If it fails, some of the directory elements
+    % may already have been removed.
+    %
+:- pred remove_file_recursively(string::in, io.res::out, io::di, io::uo)
+    is det.
+
     % io.rename_file(OldFileName, NewFileName, Result, !IO).
     %
     % Attempts to rename the file `OldFileName' as `NewFileName', binding
@@ -3666,8 +3678,9 @@ io.resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     }
 }").
 
-io.buffer_to_string(buffer(Array), Len, from_char_list_semidet(List)) :-
-    array.fetch_items(Array, min(Array), min(Array) + Len - 1, List).
+io.buffer_to_string(buffer(Array), Len, String) :-
+    array.fetch_items(Array, min(Array), min(Array) + Len - 1, List),
+    string.semidet_from_char_list(List, String).
 
 :- pred io.read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,
     int::in, int::out, int::in, io::di, io::uo) is det.
@@ -8941,6 +8954,49 @@ io.remove_file(FileName, Result, !IO) :-
         RetStr = e.getMessage();
     }
 ").
+
+remove_file_recursively(FileName, Res, !IO) :-
+    FollowSymLinks = no,
+    io.file_type(FollowSymLinks, FileName, ResFileType, !IO),
+    (
+        ResFileType = ok(FileType),
+        ( FileType = directory ->
+            dir.foldl2(remove_directory_entry, FileName, ok, Res0, !IO),
+            (
+                Res0 = ok(MaybeError),
+                (
+                    MaybeError = ok,
+                    io.remove_file(FileName, Res, !IO)
+                ;
+                    MaybeError = error(Error),
+                    Res = error(Error)
+                )
+            ;
+                Res0 = error(_, Error),
+                Res = error(Error)
+            )
+        ;
+            io.remove_file(FileName, Res, !IO)
+        )
+    ;
+        ResFileType = error(Error),
+        Res = error(Error)
+    ).
+
+:- pred remove_directory_entry(string::in, string::in, file_type::in,
+    bool::out, io.res::in, io.res::out, io::di, io::uo) is det.
+
+remove_directory_entry(DirName, FileName, _FileType, Continue, _, Res, !IO) :-
+    remove_file_recursively(DirName / FileName, Res0, !IO),
+    (
+        Res0 = ok,
+        Res = ok,
+        Continue = yes
+    ;
+        Res0 = error(_),
+        Res = Res0,
+        Continue = no
+    ).
 
 io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
     io.rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),

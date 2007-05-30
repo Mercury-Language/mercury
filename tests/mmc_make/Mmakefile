@@ -42,14 +42,16 @@ rebuild.runtest:
 build_object.runtest: build_object.o
 
 .PHONY: install_libs
-install_libs: TESTS_FLAGS start_runtests_local
+install_libs: start_runtests_local
+	$(MMAKE) TESTS_FLAGS
 	( cd lib; \
 	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
 			libcomplex_numbers.install ) \
 	|| touch complex_test.failed
 
 .PHONY: install_libs_linkage_test2
-install_libs_linkage_test2: TESTS_FLAGS start_runtests_local
+install_libs_linkage_test2: start_runtests_local
+	$(MMAKE) TESTS_FLAGS
 	( cd lib; \
 	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
 			liblinkage_test2.install --lib-linkage static ) \

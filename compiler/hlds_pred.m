@@ -854,7 +854,8 @@ next_mode_id(Procs, ModeId) :-
     proc_id_to_int(ModeId, ModeInt).
 
 status_is_exported(status_imported(_)) =             no.
-status_is_exported(status_external(_)) =             no.
+status_is_exported(status_external(Status)) =
+    status_is_exported(Status).
 status_is_exported(status_abstract_imported) =       no.
 status_is_exported(status_pseudo_imported) =         no.
 status_is_exported(status_opt_imported) =            no.
@@ -878,7 +879,8 @@ status_is_exported_to_non_submodules(Status) =
 status_is_imported(Status) = bool.not(status_defined_in_this_module(Status)).
 
 status_defined_in_this_module(status_imported(_)) =             no.
-status_defined_in_this_module(status_external(_)) =             no.
+status_defined_in_this_module(status_external(Status)) =
+    status_defined_in_this_module(Status).
 status_defined_in_this_module(status_abstract_imported) =       no.
 status_defined_in_this_module(status_pseudo_imported) =         no.
 status_defined_in_this_module(status_opt_imported) =            no.

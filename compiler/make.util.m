@@ -965,7 +965,7 @@ make_remove_file(VerboseOption, ModuleName, Ext, !Info, !IO) :-
 
 make_remove_file(VerboseOption, FileName, !Info, !IO) :-
     verbose_msg(VerboseOption, report_remove_file(FileName), !IO),
-    io.remove_file(FileName, _, !IO),
+    io.remove_file_recursively(FileName, _, !IO),
     !:Info = !.Info ^ file_timestamps :=
         map.delete(!.Info ^ file_timestamps, FileName).
 
@@ -1004,6 +1004,8 @@ target_extension(_, module_target_il_code) = yes(".il").
     % XXX ".exe" if the module contains main.
 target_extension(_, module_target_il_asm) = yes(".dll").
 target_extension(_, module_target_java_code) = yes(".java").
+target_extension(_, module_target_erlang_code) = yes(".erl").
+target_extension(_, module_target_erlang_beam_code) = yes(".beam").
 target_extension(_, module_target_asm_code(non_pic)) = yes(".s").
 target_extension(_, module_target_asm_code(link_with_pic)) = yes(".s").
 target_extension(_, module_target_asm_code(pic)) = yes(".pic_s").
@@ -1027,6 +1029,9 @@ linked_target_file_name(ModuleName, shared_library, FileName, !IO) :-
     module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName, !IO).
 linked_target_file_name(ModuleName, java_archive, FileName, !IO) :-
     module_name_to_file_name(ModuleName, ".jar", no, FileName, !IO).
+linked_target_file_name(ModuleName, erlang_archive, FileName, !IO) :-
+    module_name_to_lib_file_name("lib", ModuleName, ".beams", no, FileName,
+        !IO).
 
 :- pred module_target_to_file_name(module_name::in, module_target_type::in,
     bool::in, file_name::out, io::di, io::uo) is det.
@@ -1114,6 +1119,7 @@ timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
             module_target_asm_code(non_pic) ; module_target_c_code)).
 timestamp_extension(_, module_target_il_code) = ".il_date".
 timestamp_extension(_, module_target_java_code) = ".java_date".
+timestamp_extension(_, module_target_erlang_code) = ".erl_date".
 timestamp_extension(_, module_target_asm_code(non_pic)) = ".s_date".
 timestamp_extension(_, module_target_asm_code(pic)) = ".pic_s_date".
 
@@ -1137,6 +1143,8 @@ search_for_file_type(module_target_c_code) = no.
 search_for_file_type(module_target_il_code) = no.
 search_for_file_type(module_target_il_asm) = no.
 search_for_file_type(module_target_java_code) = no.
+search_for_file_type(module_target_erlang_code) = no.
+search_for_file_type(module_target_erlang_beam_code) = no.
 search_for_file_type(module_target_asm_code(_)) = no.
 search_for_file_type(module_target_object_code(_)) = no.
 search_for_file_type(module_target_foreign_object(_, _)) = no.
@@ -1169,6 +1177,8 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_il_code
         ; Target = module_target_il_asm
         ; Target = module_target_java_code
+        ; Target = module_target_erlang_code
+        ; Target = module_target_erlang_beam_code
         ; Target = module_target_asm_code(_)
         ; Target = module_target_object_code(_)
         ; Target = module_target_foreign_object(_, _)

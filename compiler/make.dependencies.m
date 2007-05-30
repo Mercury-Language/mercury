@@ -200,6 +200,12 @@ target_dependencies(_, module_target_il_asm) =
     ]).
 target_dependencies(Globals, module_target_java_code) =
         compiled_code_dependencies(Globals).
+target_dependencies(Globals, module_target_erlang_code) =
+        compiled_code_dependencies(Globals).
+target_dependencies(_, module_target_erlang_beam_code) =
+    combine_deps_list([
+        module_target_erlang_code `of` self
+    ]).
 target_dependencies(Globals, module_target_asm_code(_)) =
         compiled_code_dependencies(Globals).
 target_dependencies(Globals, module_target_object_code(PIC)) = Deps :-

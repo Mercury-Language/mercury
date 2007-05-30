@@ -63,6 +63,7 @@ make_linked_target(LinkedTargetFile, Succeeded, !Info, !IO) :-
     ;
         ( FileType = executable
         ; FileType = java_archive
+        ; FileType = erlang_archive
         ; FileType = static_library
         ),
         ExtraOptions = []
@@ -97,8 +98,7 @@ make_linked_target(LinkedTargetFile, Succeeded, !Info, !IO) :-
         (
             Succeeded0 = yes,
             build_with_module_options(MainModuleName, ExtraOptions,
-                make_linked_target_2(
-                    linked_target_file(MainModuleName, FileType)),
+                make_linked_target_2(LinkedTargetFile),
                 Succeeded, !Info, !IO)
         ;
             Succeeded0 = no,
@@ -147,7 +147,8 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
             sorry(this_file, "mmc --make and target x86_64")
         ;
             CompilationTarget = target_erlang,
-            sorry(this_file, "mmc --make and target erlang")
+            IntermediateTargetType = module_target_erlang_code,
+            ObjectTargetType = module_target_erlang_beam_code
         ),
 
         AllModulesList = set.to_sorted_list(AllModules),
@@ -460,7 +461,24 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             (func(foreign_code_file(_, _, ObjFile)) = ObjFile),
             list.condense(ExtraForeignFiles)),
 
-        maybe_pic_object_file_extension(PIC, ObjExtToUse, !IO),
+        (
+            ( CompilationTarget = target_c
+            ; CompilationTarget = target_asm
+            ; CompilationTarget = target_x86_64
+            ),
+            maybe_pic_object_file_extension(PIC, ObjExtToUse, !IO)
+        ;
+            CompilationTarget = target_il,
+            ObjExtToUse = ".dll"
+        ;
+            CompilationTarget = target_java,
+            globals.io_lookup_string_option(java_object_file_extension,
+                ObjExtToUse, !IO)
+        ;
+            CompilationTarget = target_erlang,
+            globals.io_lookup_string_option(erlang_object_file_extension,
+                ObjExtToUse, !IO)
+        ),
         list.map_foldl(
             (pred(ObjModule::in, ObjToLink::out, !.IO::di, !:IO::uo) is det :-
                 module_name_to_file_name(ObjModule,
@@ -473,6 +491,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         (
             ( CompilationTarget = target_c
             ; CompilationTarget = target_asm
+            ; CompilationTarget = target_erlang
             ),
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
@@ -483,9 +502,6 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "mmc --make and target x86_64")
-        ;
-            CompilationTarget = target_erlang,
-            sorry(this_file, "mmc --make and target erlang")
         ;
             CompilationTarget = target_il,
             Succeeded = yes
@@ -607,37 +623,7 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
         make_all_interface_files(AllModules, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = yes,
-            make_linked_target(
-                linked_target_file(MainModuleName, static_library),
-                StaticSucceeded, !Info, !IO),
-            shared_libraries_supported(SharedLibsSupported, !IO),
-            (
-                StaticSucceeded = yes,
-                (
-                    SharedLibsSupported = yes,
-                    make_linked_target(
-                        linked_target_file(MainModuleName, shared_library),
-                        SharedLibsSucceeded, !Info, !IO)
-                ;
-                    SharedLibsSupported = no,
-                    SharedLibsSucceeded = yes
-                ),
-                % We can only build the .init file if we have succesfully
-                % built the .c files.
-                (
-                    SharedLibsSucceeded = yes,
-                    % Errors while making the .init file should be very rare.
-                    io.output_stream(ErrorStream, !IO),
-                    make_init_file(ErrorStream, MainModuleName,
-                        AllModules, Succeeded, !IO)
-                ;
-                    SharedLibsSucceeded = no,
-                    Succeeded = no 
-                )
-            ;
-                StaticSucceeded = no,
-                Succeeded = no
-            )
+            build_library(MainModuleName, AllModules, Succeeded, !Info, !IO)
         ;
             IntSucceeded = no,
             Succeeded = no
@@ -864,6 +850,84 @@ reset_analysis_registry_dependency_status(ModuleName, Info,
 
 %-----------------------------------------------------------------------------%
 
+:- pred build_library(module_name::in, list(module_name)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
+    globals.io_get_target(Target, !IO),
+    (
+        ( Target = target_c
+        ; Target = target_asm
+        ),
+        build_c_library(MainModuleName, AllModules, Succeeded, !Info, !IO)
+    ;
+        Target = target_il,
+        sorry(this_file, "build_library: target IL not supported yet")
+    ;
+        Target = target_java,
+        build_java_library(MainModuleName, Succeeded, !Info, !IO)
+    ;
+        Target = target_x86_64,
+        sorry(this_file, "build_library: target x86_64 not supported yet")
+    ;
+        Target = target_erlang,
+        build_erlang_library(MainModuleName, Succeeded, !Info, !IO)
+    ).
+
+:- pred build_c_library(module_name::in, list(module_name)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_c_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
+    make_linked_target(
+        linked_target_file(MainModuleName, static_library),
+        StaticSucceeded, !Info, !IO),
+    shared_libraries_supported(SharedLibsSupported, !IO),
+    (
+        StaticSucceeded = yes,
+        (
+            SharedLibsSupported = yes,
+            make_linked_target(
+                linked_target_file(MainModuleName, shared_library),
+                SharedLibsSucceeded, !Info, !IO)
+        ;
+            SharedLibsSupported = no,
+            SharedLibsSucceeded = yes
+        ),
+        % We can only build the .init file if we have succesfully
+        % built the .c files.
+        (
+            SharedLibsSucceeded = yes,
+            % Errors while making the .init file should be very rare.
+            io.output_stream(ErrorStream, !IO),
+            make_init_file(ErrorStream, MainModuleName,
+                AllModules, Succeeded, !IO)
+        ;
+            SharedLibsSucceeded = no,
+            Succeeded = no 
+        )
+    ;
+        StaticSucceeded = no,
+        Succeeded = no
+    ).
+
+:- pred build_java_library(module_name::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_java_library(MainModuleName, Succeeded, !Info, !IO) :-
+    make_linked_target(
+        linked_target_file(MainModuleName, java_archive),
+        Succeeded, !Info, !IO).
+
+:- pred build_erlang_library(module_name::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_erlang_library(MainModuleName, Succeeded, !Info, !IO) :-
+    make_linked_target(
+        linked_target_file(MainModuleName, erlang_archive),
+        Succeeded, !Info, !IO).
+
+%-----------------------------------------------------------------------------%
+
 :- pred install_library(module_name::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -1059,8 +1123,8 @@ install_library_grade_2(LinkSucceeded0, ModuleName, AllModules,
         Succeeded = no
     ).
 
-    % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for the current
-    % grade.
+    % Install the `.a', `.so', `.jar', `.beams', `.opt' and `.mih' files for
+    % the current grade.
     %
     % NOTE: changes here may require changes to
     %       modules.get_install_name_option/4.
@@ -1079,12 +1143,21 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
         linked_target_file_name(ModuleName, shared_library, SharedLibFileName,
             !IO),
         linked_target_file_name(ModuleName, java_archive, JarFileName, !IO),
+        linked_target_file_name(ModuleName, erlang_archive,
+            ErlangArchiveFileName, !IO),
 
         globals.io_lookup_string_option(install_prefix, Prefix, !IO),
 
         ( GradeDir = "java" ->
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"java",
-            install_file(JarFileName, GradeLibDir, LibsSucceeded, !IO)
+            install_file(JarFileName, GradeLibDir, LibsSucceeded, !IO),
+            InitSucceeded = yes
+        ; GradeDir = "erlang" ->
+            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"erlang",
+            % Our "Erlang archives" are actually directories.
+            install_directory(ErlangArchiveFileName, GradeLibDir,
+                LibsSucceeded, !IO),
+            InitSucceeded = yes
         ;
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             maybe_install_library_file("static", LibFileName, GradeLibDir,
@@ -1095,16 +1168,15 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
                 maybe_install_library_file("shared", SharedLibFileName,
                     GradeLibDir, SharedLibSuccess, !IO),
                 LibsSucceeded = LibSuccess `and` SharedLibSuccess
-            )
+            ),
+            install_grade_init(GradeDir, ModuleName, InitSucceeded, !IO)
         ),
-
-        install_grade_init(GradeDir, ModuleName, InitSucceded, !IO),
 
         list.map_foldl2(
             install_grade_ints_and_headers(LinkSucceeded, GradeDir),
             AllModules, IntsHeadersSucceeded, !Info, !IO),
-        Succeeded =
-            bool.and_list([LibsSucceeded, InitSucceded | IntsHeadersSucceeded])
+        Succeeded = bool.and_list(
+            [LibsSucceeded, InitSucceeded | IntsHeadersSucceeded])
     ;
         DirResult = no,
         Succeeded = no
@@ -1254,6 +1326,26 @@ install_file(FileName, InstallDir, Succeeded, !IO) :-
     globals.io_lookup_string_option(install_command, InstallCommand, !IO),
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCommand, FileName, InstallDir])),
+    io.output_stream(OutputStream, !IO),
+    invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO).
+
+:- pred install_directory(dir_name::in, dir_name::in, bool::out,
+    io::di, io::uo) is det.
+
+install_directory(SourceDirName, InstallDir, Succeeded, !IO) :-
+    verbose_msg(
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Installing directory ", !IO),
+            io.write_string(SourceDirName, !IO),
+            io.write_string(" in ", !IO),
+            io.write_string(InstallDir, !IO),
+            io.nl(!IO)
+        ), !IO),
+    globals.io_lookup_string_option(install_command, InstallCommand, !IO),
+    globals.io_lookup_string_option(install_command_dir_option,
+        InstallCommandDirOption, !IO),
+    Command = string.join_list("   ", list.map(quote_arg,
+        [InstallCommand, InstallCommandDirOption, SourceDirName, InstallDir])),
     io.output_stream(OutputStream, !IO),
     invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO).
 
@@ -1417,6 +1509,8 @@ make_main_module_realclean(ModuleName, !Info, !IO) :-
     linked_target_file_name(ModuleName, shared_library, SharedLibFileName,
         !IO),
     linked_target_file_name(ModuleName, java_archive, JarFileName, !IO),
+    linked_target_file_name(ModuleName, erlang_archive,
+        ErlangArchiveFileName, !IO),
 
     % Remove the symlinks created for `--use-grade-subdirs'.
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
@@ -1427,12 +1521,19 @@ make_main_module_realclean(ModuleName, !Info, !IO) :-
     linked_target_file_name(ModuleName, shared_library,
         ThisDirSharedLibFileName, !IO),
     linked_target_file_name(ModuleName, java_archive, ThisDirJarFileName, !IO),
+    linked_target_file_name(ModuleName, erlang_archive,
+        ThisDirErlangArchiveFileName, !IO),
+    % XXX this symlink should not be necessary anymore for `mmc --make'
+    module_name_to_file_name(ModuleName, ".init", no,
+        ThisDirInitFileName, !IO),
     globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
     list.foldl2(make_remove_file(very_verbose),
         [ExeFileName, LibFileName, SharedLibFileName, JarFileName,
+        ErlangArchiveFileName,
         ThisDirExeFileName, ThisDirLibFileName,
-        ThisDirSharedLibFileName, ThisDirJarFileName],
+        ThisDirSharedLibFileName, ThisDirJarFileName,
+        ThisDirErlangArchiveFileName, ThisDirInitFileName],
         !Info, !IO),
     make_remove_file(very_verbose, ModuleName, ".init", !Info, !IO),
     remove_init_files(very_verbose, ModuleName, !Info, !IO).
@@ -1465,7 +1566,8 @@ make_module_clean(ModuleName, !Info, !IO) :-
     list.foldl2(make_remove_target_file(very_verbose, ModuleName),
         [module_target_errors, module_target_c_code,
         module_target_c_header(header_mih), module_target_il_code,
-        module_target_java_code], !Info, !IO),
+        module_target_java_code, module_target_erlang_code,
+        module_target_erlang_beam_code], !Info, !IO),
 
     list.foldl2(make_remove_file(very_verbose, ModuleName),
         [".used", ".prof"], !Info, !IO),

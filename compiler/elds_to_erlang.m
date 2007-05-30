@@ -68,12 +68,7 @@
 %-----------------------------------------------------------------------------%
 
 output_elds(ModuleInfo, ELDS, !IO) :-
-    %
-    % The Erlang interactive shell doesn't like "." in filenames so we use "__"
-    % instead.
-    %
-    ModuleName = erlang_module_name(ELDS ^ elds_name),
-    module_name_to_file_name_sep(ModuleName, "__", ".erl", yes,
+    module_name_to_file_name(ELDS ^ elds_name, ".erl", yes,
         SourceFileName, !IO),
     output_to_file(SourceFileName, output_erl_file(ModuleInfo, ELDS,
         SourceFileName), !IO).
@@ -128,7 +123,7 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     bool::in, bool::out, io::di, io::uo) is det.
 
 output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
-    Defn = elds_defn(PredProcId, _, Clause),
+    Defn = elds_defn(PredProcId, _, Body),
     PredProcId = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
@@ -139,7 +134,7 @@ output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
         nl_indent_line(1, !IO),
         output_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_char('/', !IO),
-        io.write_int(elds_clause_arity(Clause), !IO),
+        io.write_int(elds_body_arity(Body), !IO),
         !:NeedComma = yes
     ;
         IsExported = no
@@ -182,10 +177,15 @@ output_foreign_body_code(foreign_body_code(_Lang, Code, _Context), !IO) :-
 %-----------------------------------------------------------------------------%
 
 output_defn(ModuleInfo, Defn, !IO) :-
-    Defn = elds_defn(PredProcId, VarSet, Clause),
-    io.nl(!IO),
-    output_pred_proc_id(ModuleInfo, PredProcId, !IO),
-    output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO).
+    Defn = elds_defn(PredProcId, VarSet, Body),
+    (
+        Body = body_defined_here(Clause),
+        io.nl(!IO),
+        output_pred_proc_id(ModuleInfo, PredProcId, !IO),
+        output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO)
+    ;
+        Body = body_external(_Arity)
+    ).
 
 :- pred output_foreign_export_defn(module_info::in,
     elds_foreign_export_defn::in, io::di, io::uo) is det.
@@ -553,8 +553,18 @@ erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
     RttiProcName = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
         PredName, PredArity, _ArgTypes, _PredId, _ProcId,
         _HeadVarsWithNames, _ArgModes, _Detism,
-        PredIsImported, _PredIsPseudoImported,
+        PredIsImported0, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
+
+    % XXX I think pred_info_is_imported is wrong for status_external
+    % procedures
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    ( ImportStatus = status_external(_) ->
+        PredIsImported = no
+    ;
+        PredIsImported = PredIsImported0
+    ),
 
     ( Origin = origin_special_pred(SpecialPred) ->
         erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred,
@@ -658,19 +668,6 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
 
 erlang_module_name_to_str(ModuleName) =
     sym_name_to_string_sep(erlang_module_name(ModuleName), "__").
-
-:- func erlang_module_name(module_name) = module_name.
-
-erlang_module_name(ModuleName) =
-    % To avoid namespace collisions between Mercury standard modules and
-    % Erlang standard modules, we pretend the Mercury standard modules are
-    % in a "mercury" supermodule.
-    %
-    (if mercury_std_library_module_name(ModuleName) then
-        add_outermost_qualifier("mercury", ModuleName)
-    else
-        ModuleName
-    ).
 
 %-----------------------------------------------------------------------------%
 
