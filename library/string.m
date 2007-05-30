@@ -1273,6 +1273,14 @@ string.to_char_list(Str::uo, CharList::in) :-
     }
 }").
 
+:- pragma foreign_proc("Erlang",
+    string.to_char_list_2(Str::in, CharList::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    CharList = Str
+").
+
 string.to_char_list_2(Str, CharList) :-
     string.to_char_list_3(Str, 0, CharList).
 
@@ -1356,7 +1364,7 @@ string.semidet_from_char_list(CharList::in, Str::uo) :-
         Str = ""
     ;
         CharList = [C | Cs],
-        \+ char_to_int(C, 0),
+        \+ char.to_int(C, 0),
         string.semidet_from_char_list(Cs, Str0),
         string.first_char(Str, C, Str0)
     ).
@@ -1551,6 +1559,14 @@ string.append_list(Lists, string.append_list(Lists)).
 
     Str[len] = '\\0';
 }").
+
+:- pragma foreign_proc("Erlang",
+    string.append_list(Strs::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Str = lists:concat(Strs)
+").
 
     % We implement string.join_list in C as this minimises the amount of
     % garbage created.
@@ -2157,6 +2173,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     succeeded = false;
+").
+:- pragma foreign_proc("Erlang", using_sprintf,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = false
 ").
 
     % Construct a format string suitable to passing to sprintf.
@@ -3231,6 +3252,13 @@ max_precision = min_precision + 2.
     FloatString = java.lang.Double.toString(FloatVal);
 ").
 
+:- pragma foreign_proc("Erlang",
+    string.lowlevel_float_to_string(FloatVal::in, FloatString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    [FloatString] = io_lib:format(""~.12f"", [FloatVal])
+").
+
 string.det_to_float(FloatString) =
     ( string.to_float(FloatString, FloatVal) ->
       FloatVal
@@ -3327,6 +3355,23 @@ string.det_to_float(FloatString) =
     }
 ").
 
+:- pragma foreign_proc("Erlang",
+    string.to_float(FloatString::in, FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    % string:to_float fails on integers, so tack on a trailing '.0' string.
+    case string:to_float(FloatString ++ "".0"") of
+        {FloatVal, []} ->
+            SUCCESS_INDICATOR = true;
+        {FloatVal, "".0""} ->
+            SUCCESS_INDICATOR = true;
+        _ ->
+            SUCCESS_INDICATOR = false,
+            FloatVal = -1.0
+    end
+").
+
     % Trim redundant trailing zeroes from the fractional part of the
     % string representation of a float.
     %
@@ -3373,6 +3418,12 @@ count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
+").
+:- pragma foreign_proc("Erlang",
+    string.contains_char(Str::in, Ch::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (string:chr(Str, Ch) =/= 0)
 ").
 string.contains_char(String, Char) :-
     string.contains_char(String, Char, 0, string.length(String)).
@@ -3454,6 +3505,13 @@ string.index_check(Index, Length) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ch = Str.charAt(Index);
+").
+:- pragma foreign_proc("Erlang",
+    string.unsafe_index(Str::in, Index::in, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % `lists:nth' counts from 1.
+    Ch = lists:nth(Index + 1, Str)
 ").
 string.unsafe_index(Str, Index, Char) :-
     ( string.first_char(Str, First, Rest) ->
@@ -3610,6 +3668,13 @@ string.unsafe_set_char(Char, Index, !Str) :-
 "
     Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
 ").
+:- pragma foreign_proc("Erlang",
+    string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Left, [_ | Right]} = lists:split(Index, Str0),
+    Str = Left ++ [Ch | Right]
+").
 
 % :- pragma foreign_proc("C",
 %   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
@@ -3656,6 +3721,12 @@ string.unsafe_set_char(Char, Index, !Str) :-
 "
     Length = Str.length();
 ").
+:- pragma foreign_proc("Erlang",
+    string.length(Str::in, Length::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Length = string:len(Str)
+").
 
 :- pragma foreign_proc("C",
     string.length(Str::ui, Length::uo),
@@ -3672,8 +3743,15 @@ string.unsafe_set_char(Char, Index, !Str) :-
 ").
 :- pragma foreign_proc("Java",
     string.length(Str::ui, Length::uo),
-        [will_not_call_mercury, promise_pure, thread_safe], "
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
     Length = Str.length();
+").
+:- pragma foreign_proc("Erlang",
+    string.length(Str::ui, Length::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Length = string:len(Str)
 ").
 
 string.length(Str0, Len) :-
@@ -3723,6 +3801,13 @@ string.append(S1::out, S2::out, S3::in) :-
 "{
     SUCCESS_INDICATOR = S3.Equals(System.String.Concat(S1, S2));
 }").
+
+:- pragma foreign_proc("Erlang",
+    string.append_iii(S1::in, S2::in, S3::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = string:equal(S1 ++ S2, S3)
+").
 
 string.append_iii(X, Y, Z) :-
     string.mercury_append(X, Y, Z).
@@ -3788,6 +3873,13 @@ string.append_ioi(X, Y, Z) :-
     S3 = System.String.Concat(S1, S2);
 }").
 
+:- pragma foreign_proc("Erlang",
+    string.append_iio(S1::in, S2::in, S3::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S3 = S1 ++ S2
+").
+
 string.append_iio(X, Y, Z) :-
     string.mercury_append(X, Y, Z).
 
@@ -3832,6 +3924,13 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 "
     S1 = S3.Substring(0, S1Len);
     S2 = S3.Substring(S1Len);
+").
+
+:- pragma foreign_proc("Erlang",
+    string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {S1, S2} = lists:split(S1Len, S3)
 ").
 
 string.append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
@@ -3912,6 +4011,12 @@ strchars(I, End, Str) =
 "
     SubString = Str.substring(Start, Start + Count);
 ").
+:- pragma foreign_proc("Erlang",
+    string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SubString = string:sub_string(Str, 1 + Start, Start + Count)
+").
 
 :- pragma foreign_proc("C",
     string.split(Str::in, Count::in, Left::uo, Right::uo),
@@ -3960,6 +4065,22 @@ strchars(I, End, Str) =
         Right = Str.Substring(Count);
     }
 }").
+
+:- pragma foreign_proc("Erlang",
+    string.split(Str::in, Count::in, Left::uo, Right::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if
+        Count =< 0 ->
+            Left = """",
+            Right = Str;
+        Count > length(Str) ->
+            Left = Str,
+            Right = """";
+        true ->
+            {Left, Right} = lists:split(Count, Str)
+    end
+").
 
 string.split(Str, Count, Left, Right) :-
     ( Count =< 0 ->
@@ -4013,6 +4134,21 @@ string.split(Str, Count, Left, Right) :-
         Str.charAt(0) == First &&
         Str.endsWith(Rest));
 ").
+:- pragma foreign_proc("Erlang",
+    string.first_char(Str::in, First::in, Rest::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case Str of
+        [First0 | Rest0] ->
+            SUCCESS_INDICATOR = true,
+            First = First0,
+            Rest = Rest0;
+        _ ->
+            SUCCESS_INDICATOR = false,
+            First = 0,
+            Rest = []
+    end
+").
 
 :- pragma foreign_proc("C",
     string.first_char(Str::in, First::uo, Rest::in),
@@ -4046,6 +4182,18 @@ string.split(Str, Count, Left, Right) :-
         // XXX to avoid uninitialized var warning
         First = (char) 0;
     }
+").
+:- pragma foreign_proc("Erlang",
+    string.first_char(Str::in, First::uo, Rest::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case Str of
+        [First | Rest] ->
+            SUCCESS_INDICATOR = true;
+        _ ->
+            SUCCESS_INDICATOR = false,
+            First = 0
+    end
 ").
 
 :- pragma foreign_proc("C",
@@ -4093,6 +4241,18 @@ string.split(Str, Count, Left, Right) :-
         Rest = null;
     }
 }").
+:- pragma foreign_proc("Erlang",
+    string.first_char(Str::in, First::in, Rest::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case Str of
+        [First | Rest] ->
+            SUCCESS_INDICATOR = true;
+        _ ->
+            SUCCESS_INDICATOR = false,
+            Rest = []
+    end
+").
 
 :- pragma foreign_proc("C",
     string.first_char(Str::in, First::uo, Rest::uo),
@@ -4139,6 +4299,21 @@ string.split(Str, Count, Left, Right) :-
         succeeded = true;
     }
 }").
+:- pragma foreign_proc("Erlang",
+    string.first_char(Str::in, First::uo, Rest::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case Str of
+        [First0 | Rest0] ->
+            SUCCESS_INDICATOR = true,
+            First = First0,
+            Rest = Rest0;
+        _ ->
+            SUCCESS_INDICATOR = false,
+            First = 0,
+            Rest = []
+    end
+").
 
 :- pragma foreign_proc("C",
     string.first_char(Str::uo, First::in, Rest::in),
@@ -4165,6 +4340,12 @@ string.split(Str, Count, Left, Right) :-
     java.lang.String FirstStr = java.lang.String.valueOf(First);
     Str = FirstStr.concat(Rest);
 }").
+:- pragma foreign_proc("Erlang",
+    string.first_char(Str::uo, First::in, Rest::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = [First | Rest]
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

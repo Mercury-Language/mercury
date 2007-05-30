@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -300,7 +300,7 @@ is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 compiler_generated_rtti_for_builtins(ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    ( Target = target_il ; Target = target_java ).
+    ( Target = target_il ; Target = target_java ; Target = target_erlang ).
 
 %-----------------------------------------------------------------------------%
 

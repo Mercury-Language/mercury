@@ -289,6 +289,13 @@ X / Y = Z :-
 	succeeded = true;
 ").
 
+:- pragma foreign_proc("Erlang",
+	float_domain_checks,
+	[thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = true
+").
+
 %---------------------------------------------------------------------------%
 %
 % Conversion functions
@@ -319,6 +326,13 @@ X / Y = Z :-
 	FloatVal = (double) IntVal;
 ").
 
+:- pragma foreign_proc("Erlang",
+	float(IntVal::in) = (FloatVal::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	FloatVal = IntVal
+").
+
 :- pragma foreign_proc("C",
 	float.ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe,
@@ -344,6 +358,18 @@ X / Y = Z :-
 	} else {
 		Ceil = (int) java.lang.Math.ceil(X);
 	}
+").
+:- pragma foreign_proc("Erlang",
+	float.ceiling_to_int(X :: in) = (Ceil :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    T = erlang:trunc(X),
+    case (X - T) > 0 of
+        true  ->
+            Ceil = T + 1;
+        false ->
+            Ceil = T
+    end
 ").
 
 :- pragma foreign_proc("C",
@@ -372,6 +398,18 @@ X / Y = Z :-
 		Floor = (int) java.lang.Math.floor(X);
 	}
 ").
+:- pragma foreign_proc("Erlang",
+	float.floor_to_int(X :: in) = (Floor :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    T = erlang:trunc(X),
+    case (X - T) < 0 of
+        true ->
+            Floor = T - 1;
+        false ->
+            Floor = T
+    end
+").
 
 :- pragma foreign_proc("C",
 	float.round_to_int(X :: in) = (Round :: out),
@@ -399,6 +437,14 @@ X / Y = Z :-
 		Round = (int) java.lang.Math.round(X);
 	}
 ").
+:- pragma foreign_proc("Erlang",
+	float.round_to_int(X :: in) = (Round :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX erlang:round returns the closest integer to x, rounding to even when
+    % x is halfway between two integers.
+    Round = erlang:round(X)
+").
 
 :- pragma foreign_proc("C",
 	float.truncate_to_int(X :: in) = (Trunc :: out),
@@ -425,6 +471,12 @@ X / Y = Z :-
 	} else {
 		Trunc = (int) X;
 	}
+").
+:- pragma foreign_proc("Erlang",
+	float.truncate_to_int(X :: in) = (Trunc :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    Trunc = erlang:trunc(X)
 ").
 
 %---------------------------------------------------------------------------%
@@ -537,6 +589,12 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
 		H = Code;
 	}
 ").
+:- pragma foreign_proc("Erlang",
+	float.hash(F::in) = (H::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    H = erlang:phash2(F)
+").
 
 %---------------------------------------------------------------------------%
 
@@ -566,6 +624,14 @@ is_nan_or_inf(Float) :-
 "
 	succeeded = java.lang.Double.isNaN(Flt);
 ").
+:- pragma foreign_proc("Erlang",
+	is_nan(_Flt::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX NYI
+    SUCCESS_INDICATOR = false
+").
+
 
 :- pragma foreign_proc("C",
 	is_inf(Flt::in),
@@ -587,6 +653,13 @@ is_nan_or_inf(Float) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	succeeded = java.lang.Double.isInfinite(Flt);
+").
+:- pragma foreign_proc("Erlang",
+	is_inf(_Flt::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX NYI
+    SUCCESS_INDICATOR = false
 ").
 
 %---------------------------------------------------------------------------%
@@ -645,6 +718,13 @@ is_nan_or_inf(Float) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = java.lang.Double.MAX_VALUE;
+").
+:- pragma foreign_proc("Erlang",
+	float.max = (Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX NYI
+    Max = 100000000.0
 ").
 
 :- pragma foreign_proc("C",

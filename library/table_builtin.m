@@ -1508,7 +1508,8 @@ table_mmos_return_answer(_, _) :-
     impure private_builtin.imp.
 
 table_mmos_completion(_) :-
-    impure private_builtin.imp.
+    impure private_builtin.imp,
+    fail.
 
     % Required only to avoid warnings; never executed.
     %

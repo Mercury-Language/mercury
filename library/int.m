@@ -459,6 +459,12 @@ X rem Y = Rem :-
 "
     succeeded = true;
 ").
+:- pragma foreign_proc("Erlang",
+    int_domain_checks,
+    [thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = true
+").
 
 :- pragma inline(floor_to_multiple_of_bits_per_int/1).
 
@@ -713,6 +719,30 @@ is(X, X).
 "
     // Java ints are 32 bits.
     Bits = 32;
+").
+
+:- pragma foreign_proc("Erlang",
+    int.max_int(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX Erlang ints are actually arbitrary precision.
+    Max = (1 bsl 31) - 1
+").
+
+:- pragma foreign_proc("Erlang",
+    int.min_int(Min::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX Erlang ints are actually arbitrary precision.
+    Min = -(1 bsl 31)
+").
+
+:- pragma foreign_proc("Erlang",
+    int.bits_per_int(Bits::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX Erlang ints are actually arbitrary precision.
+    Bits = 32
 ").
 
 int.quot_bits_per_int(Int::in) = (Result::out) :-

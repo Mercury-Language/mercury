@@ -352,16 +352,8 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         io.write_string(")", !IO)
     ;
         Expr = elds_rtti_ref(RttiId),
-        (
-            RttiId = elds_rtti_type_ctor_id(_, _, _),
-            % XXX we don't yet generate functions for type ctors so don't
-            % make calls to them
-            output_atom(string(RttiId), !IO)
-        ;
-            RttiId = elds_rtti_base_typeclass_id(_, _, _),
-            output_rtti_id(ModuleInfo, RttiId, !IO),
-            io.write_string("()", !IO)
-        )
+        output_rtti_id(ModuleInfo, RttiId, !IO),
+        io.write_string("()", !IO)
     ;
         Expr = elds_foreign_code(Code),
         nl(!IO),
@@ -517,14 +509,20 @@ output_pred_proc_id(ModuleInfo, PredProcId, !IO) :-
 output_rtti_id(ModuleInfo, RttiId, !IO) :-
     module_info_get_name(ModuleInfo, CurModuleName),
     (
-        RttiId = elds_rtti_type_ctor_id(ModuleName, String, Arity),
+        (
+            RttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
+            Prefix = "TypeCtorInfo_" 
+        ;
+            RttiId = elds_rtti_type_info_id(ModuleName, TypeName, Arity),
+            Prefix = "TypeInfo_" 
+        ),
         % The only things with an empty module name should be the builtins.
         ( ModuleName = unqualified("") ->
             InstanceModule = mercury_public_builtin_module
         ;
             InstanceModule = ModuleName
         ),
-        Atom = "TypeCtorInfo_" ++ String ++ "_" ++ string.from_int(Arity)
+        Atom = Prefix ++ TypeName ++ "_" ++ string.from_int(Arity)
     ;
         RttiId = elds_rtti_base_typeclass_id(TCName, InstanceModule,
             InstanceStr),

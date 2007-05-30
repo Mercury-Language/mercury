@@ -169,5 +169,35 @@ new_mutvar(X, Ref) :-
 ").
 
 %-----------------------------------------------------------------------------%
+%
+% Erlang implementation
+% XXX ets are not garbage collected
+% but shareable between processes
+%
+
+:- pragma foreign_type("Erlang", mutvar(T), "").
+
+:- pragma foreign_proc("Erlang",
+    new_mutvar0(Ref::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref = ets:new(mutvar, [set, public])
+").
+
+:- pragma foreign_proc("Erlang",
+    get_mutvar(Ref::in, X::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    [{value, X}] = ets:lookup(Ref, value)
+").
+
+:- pragma foreign_proc("Erlang",
+    set_mutvar(Ref::in, X::in),
+    [will_not_call_mercury, thread_safe],
+"
+    ets:insert(Ref, {value, X})
+").
+
+%-----------------------------------------------------------------------------%
 :- end_module mutvar.
 %-----------------------------------------------------------------------------%

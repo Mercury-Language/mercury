@@ -235,6 +235,9 @@
 :- pragma foreign_type("Java", time_t_rep, "java.util.Date")
     where comparison is compare_time_t_reps.
 
+:- pragma foreign_type("Erlang", time_t_rep, "")
+    where comparison is compare_time_t_reps.
+
 :- pred compare_time_t_reps(comparison_result::uo,
     time_t_rep::in, time_t_rep::in) is det.
 
@@ -451,6 +454,12 @@ time.time(Result, !IO) :-
 "
     Ret = new java.util.Date();
 ").
+:- pragma foreign_proc("Erlang",
+    time.c_time(Ret::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    Ret = time()
+").
 
 :- pred time.time_t_is_invalid(time_t_rep::in) is semidet.
 
@@ -501,6 +510,12 @@ time.difftime(time_t(T1), time_t(T0)) = Diff :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Diff = (double) (T1.getTime() - T0.getTime()) / 1000;
+").
+:- pragma foreign_proc("Erlang",
+    time.c_difftime(T1::in, T0::in, Diff::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Diff = float(calendar:time_to_seconds(T1) - calendar:time_to_seconds(T0))
 ").
 
 %-----------------------------------------------------------------------------%

@@ -505,6 +505,18 @@ get_one_solution(CCPred) = OutVal :-
 "
     Y = X;
 ").
+:- pragma foreign_proc("Erlang",
+    cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
+    [will_not_call_mercury, thread_safe],
+"
+    Y = X
+").
+:- pragma foreign_proc("Erlang",
+    cc_cast(X :: (pred(out) is cc_nondet)) = (Y :: out(pred(out) is semidet)),
+    [will_not_call_mercury, thread_safe],
+"
+    Y = X
+").
 
 :- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X, !IO) :-
@@ -539,6 +551,13 @@ get_one_solution_io(Pred, X, !IO) :-
     [will_not_call_mercury, thread_safe],
 "
     Y = X;
+").
+:- pragma foreign_proc("Erlang",
+    cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
+        (Y :: out(pred(out, di, uo) is det)),
+    [will_not_call_mercury, thread_safe],
+"
+    Y = X
 ").
 
 %-----------------------------------------------------------------------------%
@@ -783,6 +802,55 @@ deep_copy(java.lang.Object original) {
 }
 ").
 
+:- pragma foreign_code("Erlang", "
+
+    '__Compare____c_pointer_0'(_, _) ->
+        throw(""called compare/3 for type `c_pointer'"").
+
+    '__Unify____c_pointer_0'(_, _) ->
+        throw(""called unify for type `c_pointer'"").
+
+    % XXX TypeInfo ignored
+    compare_3_p_0(TypeInfo, X, Y) ->
+        mercury__rtti_implementation:generic_compare_3_p_0(TypeInfo, X, Y).
+
+    compare_3_p_1(TypeInfo, X, Y) ->
+        compare_3_p_0(TypeInfo, X, Y).
+
+    compare_3_p_2(TypeInfo, X, Y) ->
+        compare_3_p_0(TypeInfo, X, Y).
+
+    compare_3_p_3(TypeInfo, X, Y) ->
+        compare_3_p_0(TypeInfo, X, Y).
+
+    % XXX what is this supposed to do?
+    compare_representation_3_p_0(TypeInfo, X, Y) ->
+        compare_3_p_0(TypeInfo, X, Y).
+
+    unify_2_p_0(TypeInfo, X, Y) ->
+        mercury__rtti_implementation:generic_unify_2_p_0(TypeInfo, X, Y).
+
+    '__Unify____tuple_0'(X, Y) ->
+        mercury__require:error_1_p_0(""call to unify for tuple/0"").
+
+    '__Compare____tuple_0'(X, Y) ->
+        mercury__require:error_1_p_0(""call to compare for tuple/0"").
+
+    '__Unify____void_0'(X, Y) ->
+        mercury__require:error_1_p_0(""call to unify for void/0"").
+
+    '__Compare____void_0'(X, Y) ->
+        mercury__require:error_1_p_0(""call to compare for void/0"").
+
+    '__Unify____func_0'(X, Y) ->
+        mercury__require:error_1_p_0(""call to unify for func/0"").
+
+    '__Compare____func_0'(X, Y) ->
+        mercury__require:error_1_p_0(""call to compare for func/0"").
+
+").
+
+
 %-----------------------------------------------------------------------------%
 
 % unsafe_promise_unique is a compiler builtin.
@@ -835,6 +903,20 @@ deep_copy(java.lang.Object original) {
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
     Y = deep_copy(X);
+").
+
+:- pragma foreign_proc("Erlang",
+    copy(X::ui, Y::uo),
+    [may_call_mercury, thread_safe, promise_pure, terminates],
+"
+    Y = X
+").
+
+:- pragma foreign_proc("Erlang",
+    copy(X::in, Y::uo),
+    [may_call_mercury, thread_safe, promise_pure, terminates],
+"
+    Y = X
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1044,6 +1126,19 @@ namespace mercury.builtin {
     SUCCESS_INDICATOR = false;
 ").
 
+:- pragma foreign_proc("Erlang",
+    semidet_succeed,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = true
+").
+:- pragma foreign_proc("Erlang",
+    semidet_fail,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = false
+").
+
 % We can't just use "true" and "fail" here, because that provokes warnings
 % from determinism analysis, and the library is compiled with --halt-at-warn.
 % So instead we use 0+0 = (or \=) 0.
@@ -1108,6 +1203,19 @@ semidet_false :- semidet_fail.
     Y = X;
 ").
 
+:- pragma foreign_proc("Erlang",
+    cc_multi_equal(X::in, Y::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X
+").
+:- pragma foreign_proc("Erlang",
+    cc_multi_equal(X::di, Y::uo),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X
+").
+
 :- pragma promise_pure(cc_multi_equal/2).
 
 cc_multi_equal(X, X).
@@ -1141,6 +1249,13 @@ semipure_true :-
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     Y = X;
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_cast_any_to_ground(X::ia) = (Y::out),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+    Y = X
 ").
 
 %-----------------------------------------------------------------------------%

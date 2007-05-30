@@ -89,6 +89,7 @@ public class ML_Semaphore {
 :- pragma foreign_type("C",  semaphore, "ML_Semaphore *").
 :- pragma foreign_type("IL", semaphore,
         "class [semaphore__csharp_code]ML_Semaphore").
+:- pragma foreign_type("Erlang", semaphore, "").
 
 :- pragma foreign_decl("C", "
 #ifdef MR_CONSERVATIVE_GC

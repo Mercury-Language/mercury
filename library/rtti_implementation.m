@@ -436,6 +436,13 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     TypeInfo = TypeInfo_for_T;
 ").
 
+:- pragma foreign_proc("Erlang",
+    get_type_info(_T::unused) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = TypeInfo_for_T
+").
+
 get_type_info(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -769,6 +776,100 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 "
     mercury.runtime.GenericCall.result_call_9(Pred, A, B, C, D, E, ref Res,
         X, Y);
+").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+    % We override the above definitions in the .NET backend.
+
+:- pragma foreign_proc("Erlang",
+    semidet_call_3(Pred::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = case Pred(X, Y) of {} -> true; fail -> false end
+").
+:- pragma foreign_proc("Erlang",
+    semidet_call_4(Pred::in, A::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = case Pred(A, X, Y) of {} -> true; fail -> false end
+").
+:- pragma foreign_proc("Erlang",
+    semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = case Pred(A, B, X, Y) of {} -> true; fail -> false end
+").
+:- pragma foreign_proc("Erlang",
+    semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR =
+        case Pred(A, B, C, X, Y) of
+            {} -> true;
+            fail -> false
+        end
+").
+:- pragma foreign_proc("Erlang",
+    semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR =
+        case Pred(A, B, C, D, X, Y) of
+            {} -> true;
+            fail -> false
+        end
+").
+:- pragma foreign_proc("Erlang",
+    semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in,
+        X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR =
+        case Pred(A, B, C, D, E, X, Y) of
+            {} -> true;
+            fail -> false
+        end
+").
+
+:- pragma foreign_proc("Erlang",
+    result_call_4(Pred::in, Res::out, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Res} = Pred(X, Y)
+").
+
+:- pragma foreign_proc("Erlang",
+    result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Res} = Pred(A, X, Y)
+").
+:- pragma foreign_proc("Erlang",
+    result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Res} = Pred(A, B, X, Y)
+").
+:- pragma foreign_proc("Erlang",
+    result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Res} = Pred(A, B, C, X, Y)
+").
+:- pragma foreign_proc("Erlang",
+    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Res} = Pred(A, B, C, D, X, Y)
+").
+:- pragma foreign_proc("Erlang",
+    result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
+        X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Res} = Pred(A, B, C, D, E, X, Y)
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1622,6 +1723,22 @@ pseudotypeinfo_max_var = 1024.
 
 :- func get_type_ctor_info(type_info) = type_ctor_info is det.
 
+:- pragma foreign_code("Erlang", "
+        % field numbers for type_ctor_infos
+    type_ctor_arity() -> 1.
+    type_ctor_version() -> 2.
+    type_ctor_num_ptags() -> 3.
+    type_ctor_rep() -> 4.
+    type_ctor_unify_pred() -> 5.
+    type_ctor_compare_pred() -> 6.
+    type_ctor_module_name() -> 7.
+    type_ctor_name() -> 8.
+    type_functors() -> 9.
+    type_layout() -> 10.
+    type_ctor_num_functors() -> 11.
+    type_ctor_flags() -> 12.
+").
+
 :- pragma foreign_code("C#", "
 
     // The field numbers of the contents of type_infos.
@@ -1711,6 +1828,13 @@ pseudotypeinfo_max_var = 1024.
 "
     TypeCtorInfo = (MR_Word) MR_TYPEINFO_GET_TYPE_CTOR_INFO(
         (MR_TypeInfo) TypeInfo);
+").
+
+:- pragma foreign_proc("Erlang",
+    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorInfo = element(1, TypeInfo)
 ").
 
 get_type_ctor_info(_) = _ :-
@@ -2013,6 +2137,13 @@ type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :-
     TypeInfoAtIndex = (object[]) TypeInfo[X];
 ").
 
+:- pragma foreign_proc("Erlang",
+    type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+    [will_not_call_mercury, promise_pure],
+"
+    TypeInfoAtIndex = element(X + 1, TypeInfo)
+").
+
 :- pred update_type_info_index(int::in, type_info::in, type_info::di,
     type_info::uo) is det.
 
@@ -2070,6 +2201,12 @@ det_unimplemented(S) :-
     MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
     Arity = tci->MR_type_ctor_arity;
 ").
+:- pragma foreign_proc("Erlang",
+    type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Arity = element(type_ctor_arity(), TypeCtorInfo)
+").
 type_ctor_arity(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -2097,6 +2234,14 @@ type_ctor_arity(_) = _ :-
 
     tci = (MR_TypeCtorInfo) TypeCtorInfo;
     UnifyPred = (MR_Integer) tci->MR_type_ctor_unify_pred;
+").
+:- pragma foreign_proc("Erlang",
+    type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX This should be something else.
+    TypeInfo_for_P = 0,
+    UnifyPred = element(type_ctor_unify_pred(), TypeCtorInfo)
 ").
 type_ctor_unify_pred(_) = "dummy value" :-
     % This version is only used for back-ends for which there is no
@@ -2157,6 +2302,61 @@ type_ctor_compare_pred(_) = "dummy value" :-
     MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
     TypeCtorRep = MR_type_ctor_rep(tci);
 ").
+:- pragma foreign_proc("Erlang",
+    type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorRep = 
+        case element(type_ctor_rep(), TypeCtorInfo) of
+            'MR_TYPECTOR_REP_ENUM' -> {tcr_enum};
+            'MR_TYPECTOR_REP_ENUM_USEREQ' -> {tcr_enum_usereq};
+            'MR_TYPECTOR_REP_DU' -> {tcr_du};
+            'MR_TYPECTOR_REP_DU_USEREQ' -> {tcr_du_usereq};
+            'MR_TYPECTOR_REP_NOTAG' -> {tcr_notag};
+            'MR_TYPECTOR_REP_NOTAG_USEREQ' -> {tcr_notag_usereq};
+            'MR_TYPECTOR_REP_EQUIV' -> {tcr_equiv};
+            'MR_TYPECTOR_REP_FUNC' -> {tcr_func};
+            'MR_TYPECTOR_REP_INT' -> {tcr_int};
+            'MR_TYPECTOR_REP_CHAR' -> {tcr_char};
+            'MR_TYPECTOR_REP_FLOAT' -> {tcr_float};
+            'MR_TYPECTOR_REP_STRING' -> {tcr_string};
+            'MR_TYPECTOR_REP_PRED' -> {tcr_pred};
+            'MR_TYPECTOR_REP_SUBGOAL' -> {tcr_subgoal};
+            'MR_TYPECTOR_REP_VOID' -> {tcr_void};
+            'MR_TYPECTOR_REP_C_POINTER' -> {tcr_c_pointer};
+            'MR_TYPECTOR_REP_TYPEINFO' -> {tcr_typeinfo};
+            'MR_TYPECTOR_REP_TYPECLASSINFO' -> {tcr_typeclassinfo};
+            'MR_TYPECTOR_REP_ARRAY' -> {tcr_array};
+            'MR_TYPECTOR_REP_SUCCIP' -> {tcr_succip};
+            'MR_TYPECTOR_REP_HP' -> {tcr_hp};
+            'MR_TYPECTOR_REP_CURFR' -> {tcr_curfr};
+            'MR_TYPECTOR_REP_MAXFR' -> {tcr_maxfr};
+            'MR_TYPECTOR_REP_REDOFR' -> {tcr_redofr};
+            'MR_TYPECTOR_REP_REDOIP' -> {tcr_redoip};
+            'MR_TYPECTOR_REP_TRAIL_PTR' -> {tcr_trail_ptr};
+            'MR_TYPECTOR_REP_TICKET' -> {tcr_ticket};
+            'MR_TYPECTOR_REP_NOTAG_GROUND' -> {tcr_notag_ground};
+            'MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ' -> {tcr_notag_ground_usereq};
+            'MR_TYPECTOR_REP_EQUIV_GROUND' -> {tcr_equiv_ground};
+            'MR_TYPECTOR_REP_TUPLE' -> {tcr_tuple};
+            'MR_TYPECTOR_REP_RESERVED_ADDR' -> {tcr_reserved_addr};
+            'MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ' -> {tcr_reserved_addr_usereq};
+            'MR_TYPECTOR_REP_TYPECTORINFO' -> {tcr_type_ctor_info};
+            'MR_TYPECTOR_REP_BASETYPECLASSINFO' -> {tcr_base_typeclass_info};
+            'MR_TYPECTOR_REP_TYPEDESC' -> {tcr_type_desc};
+            'MR_TYPECTOR_REP_TYPECTORDESC' -> {tcr_type_ctor_desc};
+            'MR_TYPECTOR_REP_FOREIGN' -> {tcr_foreign};
+            'MR_TYPECTOR_REP_REFERENCE' -> {tcr_reference};
+            'MR_TYPECTOR_REP_STABLE_C_POINTER' -> {tcr_stable_c_pointer};
+            'MR_TYPECTOR_REP_STABLE_FOREIGN' -> {tcr_stable_foreign};
+            'MR_TYPECTOR_REP_PSEUDOTYPEDESC' -> {tcr_pseudo_type_desc};
+            'MR_TYPECTOR_REP_DUMMY' -> {tcr_dummy};
+            'MR_TYPECTOR_REP_BITMAP' -> {tcr_bitmap};
+            _ -> {tcr_unknown}
+        end
+").
+
+
 type_ctor_rep(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -2302,6 +2502,12 @@ type_ctor_num_functors(_) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     VarOut = VarIn;
+").
+:- pragma foreign_proc("Erlang",
+    unsafe_cast(VarIn::in) = (VarOut::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    VarOut = VarIn
 ").
 
 unsafe_cast(_) = _ :-

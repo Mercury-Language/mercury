@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2006 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,6 +294,12 @@ store.new(S) :-
 "
     // TypeInfo_for_S
 ").
+:- pragma foreign_proc("Erlang",
+    store.do_init(_S0::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    TypeInfo_for_S = 'XXX'
+").
 
 % Note -- the syntax for the operations on stores
 % might be nicer if we used some new operators, e.g.
@@ -358,6 +364,36 @@ store.new(S) :-
     [will_not_call_mercury, promise_pure],
 "
     Mutvar.object = Val;
+").
+
+% XXX ets are not garbage collected
+% but shareable between processes
+
+:- pragma foreign_type("Erlang", generic_mutvar(T, S), "").
+
+:- pragma foreign_proc("Erlang",
+    new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Mutvar = ets:new(mutvar, [set, public]),
+    ets:insert(Mutvar, {value, Val}),
+    S = S0
+").
+
+:- pragma foreign_proc("Erlang",
+    get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    [{value, Val}] = ets:lookup(Mutvar, value),
+    S = S0
+").
+
+:- pragma foreign_proc("Erlang",
+    set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    ets:insert(Mutvar, {value, Val}),
+    S = S0
 ").
 
 copy_mutvar(Mutvar, Copy, !S) :-
@@ -489,6 +525,15 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
     Ref = new mercury.store.Ref(Val);
 ").
 
+:- pragma foreign_proc("Erlang",
+    new_ref(Val::di, Ref::out, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Ref = ets:new(mutvar, [set, public]),
+    ets:insert(Ref, {value, Val}),
+    S = S0
+").
+
 copy_ref_value(Ref, Val) -->
     % XXX Need to deep-copy non-atomic types.
     unsafe_ref_value(Ref, Val).
@@ -502,7 +547,7 @@ copy_ref_value(Ref, Val) -->
 
 :- pragma foreign_proc("C",
     unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
-[will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     Val = * (MR_Word *) Ref;
     S = S0;
@@ -513,6 +558,14 @@ copy_ref_value(Ref, Val) -->
     [will_not_call_mercury, promise_pure],
 "
     Val = Ref.getValue();
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    [{value, Val}] = ets:lookup(Ref, value),
+    S = S0
 ").
 
 ref_functor(Ref, Functor, Arity, !Store) :-

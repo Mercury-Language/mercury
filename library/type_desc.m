@@ -425,6 +425,13 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
         (mercury.runtime.TypeInfo_Struct) TypeInfo_for_T);
 ").
 
+:- pragma foreign_proc("Erlang",
+    type_of(_Value::unused) = (TypeInfo::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    TypeInfo = TypeInfo_for_T
+").
+
 :- pragma foreign_proc("C",
     has_type(_Arg::unused, TypeInfo::in),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -444,6 +451,13 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     TypeInfo_for_T = ((mercury.type_desc.Type_desc_0) TypeInfo).struct;
+").
+
+:- pragma foreign_proc("Erlang",
+    has_type(_Arg::unused, TypeInfo::in),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    TypeInfo_for_T = TypeInfo
 ").
 
 
@@ -847,6 +861,47 @@ get_type_info_for_type_info = TypeDesc :-
             (""compare/3 for type_ctor_desc type implemented"");
     }
 
+").
+
+:- pragma foreign_code("Erlang", "
+    '__Unify____type_desc_0'(X, Y) ->
+        case X =:= Y of
+            true -> {};
+            false -> fail
+        end.
+
+    '__Unify____type_ctor_desc_0'(X, Y) ->
+        case X =:= Y of
+            true -> {};
+            false -> fail
+        end.
+
+    '__Unify____pseudo_type_desc_0'(X, Y) ->
+        case X =:= Y of
+            true -> {};
+            false -> fail
+        end.
+
+    '__Compare____type_desc_0'(X, Y) ->
+        if
+            X =:= Y -> {{'='}};
+            X  <  Y -> {{'<'}};
+            true    -> {{'>'}}
+        end.
+
+    '__Compare____type_ctor_desc_0'(X, Y) ->
+        if
+            X =:= Y -> {{'='}};
+            X  <  Y -> {{'<'}};
+            true    -> {{'>'}}
+        end.
+
+    '__Compare____pseudo_type_desc_0'(X, Y) ->
+        if
+            X =:= Y -> {{'='}};
+            X  <  Y -> {{'<'}};
+            true    -> {{'>'}}
+        end.
 ").
 
 %-----------------------------------------------------------------------------%

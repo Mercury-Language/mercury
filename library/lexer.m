@@ -1217,6 +1217,14 @@ unicode_encoding_int_to_encoding(1, utf16).
     EncodingInt = 1;
 ").
 
+:- pragma foreign_proc("Erlang",
+    backend_unicode_encoding_int = (EncodingInt::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    EncodingInt = 0
+").
+
 :- pred get_hex_escape(char::in, list(char)::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 

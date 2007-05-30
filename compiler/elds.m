@@ -99,12 +99,18 @@
                 string,
                 arity
             )
+    ;       elds_rtti_type_info_id(
+                module_name,
+                string,
+                arity
+            )
     ;       elds_rtti_base_typeclass_id(
                 tc_name,        % identifies the type class
                 module_name,    % module containing instance decl.
                 string          % encodes the names and arities of the
                                 % types in the instance declaration
-            ).
+            )
+    .
 
 :- type elds_clause
     --->    elds_clause(

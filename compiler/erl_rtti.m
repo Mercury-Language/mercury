@@ -41,12 +41,14 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module svvarset.
+:- import_module univ.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -83,15 +85,19 @@ rtti_data_to_elds(ModuleInfo, RttiData, [RttiDefn]) :-
         elds_clause([], elds_term(BaseTypeClassInfoData))).
 
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_type_info(_TypeInfo).
+    RttiData = rtti_data_type_info(_TypeInfo),
+    unexpected(this_file, "rtti_data_to_elds: rtti_data_type_info").
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_pseudo_type_info(_PseudoTypeInfo).
+    RttiData = rtti_data_pseudo_type_info(_PseudoTypeInfo),
+    unexpected(this_file, "rtti_data_to_elds: rtti_data_pseudo_type_info").
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
     RttiData = rtti_data_type_class_decl(_TCDecl).
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_type_class_instance(_Instance).
-rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_type_ctor_info(_TypeCtorData).
+    RttiData = rtti_data_type_class_instance(_Instance),
+    unexpected(this_file, "rtti_data_to_elds: rtti_data_type_class_instance").
+rtti_data_to_elds(ModuleInfo, RttiData, RttiDefns) :-
+    RttiData = rtti_data_type_ctor_info(TypeCtorData),
+    type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns).
 
 %-----------------------------------------------------------------------------%
 
@@ -193,6 +199,140 @@ extract_extra_arg(TCIVar, Index, Var, ExtractStatement, !VarSet) :-
     % Erlang's `element' builtin counts from 1.
     ExtractStatement = elds_eq(expr_from_var(Var),
         elds_call_element(TCIVar, 1 + Index)).
+
+%-----------------------------------------------------------------------------%
+
+    % XXX This code is dead, but I've left it in until I am sure
+    % that we don't need it.
+:- pred rtti_type_info_to_elds(module_info::in, rtti_type_info::in,
+    list(elds_rtti_defn)::out) is det.
+
+rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
+    RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity),
+    TypeCtorRttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
+
+    ELDSTypeInfo = elds_tuple([elds_rtti_ref(TypeCtorRttiId)]),
+
+    
+    RttiId = elds_rtti_type_info_id(ModuleName, TypeName, Arity),
+    IsExported = yes,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], elds_term(ELDSTypeInfo))),
+
+    RttiDefns = [RttiDefn].
+rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = plain_type_info(_, _),
+    RttiDefns = [].
+rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = var_arity_type_info(_, _),
+    RttiDefns = [].
+
+%-----------------------------------------------------------------------------%
+
+    % See MR_TypeCtorInfo_Struct in runtime/mercury_type_info.h
+    %
+:- pred type_ctor_data_to_elds(module_info::in, type_ctor_data::in,
+    list(elds_rtti_defn)::out) is det.
+
+type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
+    TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, Arity,
+        UnifyUniv, CompareUniv, Flags, Details),
+    NumPtags = type_ctor_details_num_ptags(Details),
+    type_ctor_rep_to_string(TypeCtorData, TypeCtorRep),
+    NumFunctors = type_ctor_details_num_functors(Details),
+
+    some [!VarSet] (
+        varset.init(!:VarSet),
+        gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyExpr, !VarSet),
+        gen_init_special_pred(ModuleInfo, CompareUniv, CompareExpr, !VarSet),
+        VarSet = !.VarSet
+    ),
+
+    ELDSTypeCtorData = elds_tuple([
+        elds_term(elds_int(Arity)),
+        elds_term(elds_int(Version)),
+        elds_term(elds_int(NumPtags)),
+        elds_term(elds_atom_raw(TypeCtorRep)),
+        UnifyExpr,
+        CompareExpr,
+        elds_term(elds_string(sym_name_to_string(ModuleName))),
+        elds_term(elds_string(TypeName)),
+        elds_term(elds_atom_raw("XXX TypeFunctors")),
+        elds_term(elds_atom_raw("XXX TypeLayout")),
+        elds_term(elds_int(NumFunctors)),
+        elds_term(elds_int(encode_type_ctor_flags(Flags))),
+        elds_term(elds_atom_raw("XXX FunctorNumberMap"))
+        ]),
+    RttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
+    IsExported = yes,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, VarSet,
+        elds_clause([], elds_term(ELDSTypeCtorData))),
+    RttiDefns = [RttiDefn].
+
+:- pred gen_init_special_pred(module_info::in,
+    univ::in, elds_expr::out, prog_varset::in, prog_varset::out) is det.
+
+gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Expr, !VarSet) :-
+    ( univ_to_type(RttiProcIdUniv, RttiProcId) ->
+        erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, Expr, !VarSet)
+    ;
+        unexpected(this_file,
+            "gen_init_special_pred: cannot extract univ value")
+    ).
+    
+:- pred erl_gen_special_pred_wrapper(module_info::in, rtti_proc_label::in,
+    elds_expr::out, prog_varset::in, prog_varset::out) is det.
+
+erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
+    PredId = RttiProcId ^ pred_id,
+    ProcId = RttiProcId ^ proc_id,
+    ArgTypes = RttiProcId ^ proc_arg_types,
+    ArgModes = RttiProcId ^ proc_arg_modes,
+    Detism = RttiProcId ^ proc_interface_detism,
+
+    % Create the variable list.
+    svvarset.new_vars(list.length(ArgTypes), Ws, !VarSet),
+
+    % Figure out the input and output variables for the call to the actual
+    % special pred implementation.
+    erl_gen_arg_list_arg_modes(ModuleInfo, opt_dummy_args,
+        Ws, ArgTypes, ArgModes, CallInputArgs, CallOutputArgs),
+
+    % Figure out the input variables and output variables for this wrapper
+    % function.
+    erl_gen_arg_list_arg_modes(ModuleInfo, no_opt_dummy_args,
+        Ws, ArgTypes, ArgModes,
+        WrapperInputVars, WrapperOutputVars),
+
+    determinism_to_code_model(Detism, CodeModel),
+    WrapperOutputVarsExprs = exprs_from_vars(WrapperOutputVars),
+    (
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+        % On success we return a tuple of the output arguments of the call.
+        SuccessExpr0 = elds_term(elds_tuple(WrapperOutputVarsExprs))
+    ;
+        CodeModel = model_non,
+        unexpected(this_file,
+            "erl_gen_special_pred_wrapper: model_non code_model")
+    ),
+
+    % Any variables which are outputs of the wrapper function but not of the
+    % method need to be materialised by the wrapper.
+    DummyOutputVars = list.delete_elems(WrapperOutputVars, CallOutputArgs),
+    MaterialiseDummyOutputVars = list.map(var_eq_false, DummyOutputVars),
+    SuccessExpr = join_exprs(elds_block(MaterialiseDummyOutputVars),
+        SuccessExpr0),
+
+    % Make the call to the underlying method implementation.
+    CallTarget = elds_call_plain(proc(PredId, ProcId)),
+    erl_make_call(CodeModel, CallTarget, CallInputArgs,
+        CallOutputArgs, yes(SuccessExpr), DoCall),
+
+    WrapperFun = elds_fun(elds_clause(terms_from_vars(WrapperInputVars),
+        DoCall)).
 
 %-----------------------------------------------------------------------------%
 

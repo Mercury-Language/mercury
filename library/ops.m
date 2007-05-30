@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
         % Check whether a string is the name of an infix operator,
         % and if it is, return its precedence and associativity.
         %
-    pred ops.lookup_infix_op(Table::in, string::in, ops.priority::out,
+    pred lookup_infix_op(Table::in, string::in, ops.priority::out,
         ops.assoc::out, ops.assoc::out) is semidet,
 
         % Check whether a string is the name of a prefix operator,

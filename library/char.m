@@ -557,6 +557,36 @@ char.det_from_int(Int) = Char :-
     succeeded = ((int) Character == Int);
 ").
 
+:- pragma foreign_proc("Erlang",
+    char.to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Int = Character
+").
+
+:- pragma foreign_proc("Erlang",
+    char.to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Character =:= Int)
+").
+
+:- pragma foreign_proc("Erlang",
+    char.to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case
+        Int >= 0 andalso Int < 256
+    of
+        true ->
+            SUCCESS_INDICATOR = true,
+            Character = Int;
+        false ->
+            SUCCESS_INDICATOR = false,
+            Character = -1
+    end
+").
+
     % We used unsigned character codes, so the minimum character code
     % is always zero.
 char.min_char_value(0).
@@ -586,6 +616,13 @@ char.min_char_value(0).
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = (int) java.lang.Character.MAX_VALUE;
+").
+:- pragma foreign_proc("Erlang",
+    char.max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX actually Erlang doesn't have chars so there should be no maximum
+    Max = 255
 ").
 
 %-----------------------------------------------------------------------------%

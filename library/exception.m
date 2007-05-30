@@ -418,6 +418,10 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
     use(_T::in),
     [will_not_call_mercury, thread_safe],
     ";").
+:- pragma foreign_proc("Erlang",
+    use(_T::in),
+    [will_not_call_mercury, thread_safe],
+    "void").
 
 %-----------------------------------------------------------------------------%
 
@@ -645,6 +649,8 @@ very_unsafe_perform_io(Goal, Result) :-
     [will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("Java", make_io_state(_IO::uo),
     [will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc("Erlang", make_io_state(_IO::uo),
+    [will_not_call_mercury, thread_safe], "void").
 
 :- impure pred consume_io_state(io::di) is det.
 :- pragma foreign_proc("C",
@@ -656,6 +662,9 @@ very_unsafe_perform_io(Goal, Result) :-
 :- pragma foreign_proc("Java",
     consume_io_state(_IO::di),
     [will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc("Erlang",
+    consume_io_state(_IO::di),
+    [will_not_call_mercury, thread_safe], "void").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
 
@@ -1380,6 +1389,80 @@ namespace mercury {
     ")
 ).
 */
+
+:- pragma foreign_proc("Erlang",
+    throw_impl(T::in),
+    [will_not_call_mercury, promise_pure],
+"
+    throw({'ML_exception', T})
+").
+
+:- pragma foreign_proc("Erlang",
+    catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
+    [will_not_call_mercury, promise_pure],
+"
+    T = try
+        Pred()
+    catch
+        throw: {'ML_exception', Excp} ->
+            Handler(Excp)
+    end
+").
+
+:- pragma foreign_proc("Erlang",
+    catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
+    [will_not_call_mercury, promise_pure],
+"
+    case
+        try
+            Pred()
+        catch
+            throw: {'ML_exception', Excp} ->
+                Handler(Excp)
+        end
+    of
+        {T} ->
+            SUCCESS_INDICATOR = true;
+        _ ->
+            SUCCESS_INDICATOR = false,
+            T = null
+    end
+").
+
+:- pragma foreign_code("Erlang", "
+
+    % XXX not sure about any of this
+
+    builtin_catch_3_p_2(TypeInfo, WrappedGoal, Handler) ->
+        try
+            WrappedGoal()
+        catch
+            throw: {'ML_exception', Excp} ->
+                Handler(Excp)
+        end.
+
+    builtin_catch_3_p_4(_TypeInfo_for_T, Pred, Handler, Succeed) ->
+        try
+            Pred()
+        of
+            T ->
+                Succeed(T)
+        catch
+            throw: {'ML_exception', Excp} ->
+                Handler(Excp, Succeed)
+        end.
+
+    builtin_catch_3_p_5(_TypeInfo_for_T, Pred, Handler, Succeed) ->
+        try
+            Pred()
+        of
+            T ->
+                Succeed(T)
+        catch
+            throw: {'ML_exception', Excp} ->
+                Handler(Excp, Succeed)
+        end.
+").
 
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
