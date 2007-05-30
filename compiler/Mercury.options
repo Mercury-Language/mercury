@@ -48,9 +48,7 @@ MCFLAGS-transform_hlds.smm_fixpoint_table = --no-warn-nothing-exported
 
 # Bug workarounds
 
-# This is the same bug as tests/valid/ho_and_type_spec_bug.
-# The bug has been fixed, but the fix needs to be installed everywhere
-# before these are removed.
+# This is the same bug as tests/valid/ho_and_type_spec_bug2.
 MCFLAGS-mode_robdd.tfeirn = -O3
 MCFLAGS-mode_robdd.implications = -O0
 
