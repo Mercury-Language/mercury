@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -641,11 +641,11 @@ parse_trace_params(Context, Term, MaybeComponentsTerms) :-
     ;
         (
             Term = term.functor(_, _, _),
-            Msg = "invalid trace goal paramater",
+            Msg = "invalid trace goal parameter",
             MaybeComponentsTerms = error1([Msg - Term])
         ;
             Term = term.variable(_, _),
-            Msg = "expected trace goal paramater, found variable",
+            Msg = "expected trace goal parameter, found variable",
             ErrorTerm = term.functor(term.atom(""), [], Context),
             MaybeComponentsTerms = error1([Msg - ErrorTerm])
         )
@@ -778,16 +778,16 @@ parse_trace_component(ErrorTerm, Term, MaybeComponentTerm) :-
                     MaybeComponentTerm = error1([Msg - Term])
                 )
             ;
-                Msg = "invalid trace goal paramater",
+                Msg = "invalid trace goal parameter",
                 MaybeComponentTerm = error1([Msg - Term])
             )
         ;
-            Msg = "invalid trace goal paramater",
+            Msg = "invalid trace goal parameter",
             MaybeComponentTerm = error1([Msg - Term])
         )
     ;
         Term = term.variable(_, _),
-        Msg = "expected trace goal paramater, found variable",
+        Msg = "expected trace goal parameter, found variable",
         MaybeComponentTerm = error1([Msg - ErrorTerm])
     ).
 
@@ -853,12 +853,12 @@ parse_trace_compiletime(ErrorTerm, Term, MaybeCompiletime) :-
                         Compiletime = trace_flag(FlagName),
                         MaybeCompiletime = ok1(Compiletime)
                     ;
-                        Msg = "compile_time paramater `flag'" ++
+                        Msg = "compile_time parameter `flag'" ++
                             "takes a string as argument",
                         MaybeCompiletime = error1([Msg - Term])
                     )
                 ;
-                    Msg = "compile_time paramater `flag'" ++
+                    Msg = "compile_time parameter `flag'" ++
                         "takes just one argument",
                     MaybeCompiletime = error1([Msg - Term])
                 )
@@ -871,12 +871,12 @@ parse_trace_compiletime(ErrorTerm, Term, MaybeCompiletime) :-
                         Compiletime = trace_grade(trace_grade_debug),
                         MaybeCompiletime = ok1(Compiletime)
                     ;
-                        Msg = "compile_time paramater `grade' " ++
+                        Msg = "compile_time parameter `grade' " ++
                             "takes just `debug' as argument (for now)",
                         MaybeCompiletime = error1([Msg - Term])
                     )
                 ;
-                    Msg = "compile_time paramater `grade'" ++
+                    Msg = "compile_time parameter `grade'" ++
                         "takes just one argument",
                     MaybeCompiletime = error1([Msg - Term])
                 )
@@ -895,26 +895,26 @@ parse_trace_compiletime(ErrorTerm, Term, MaybeCompiletime) :-
                         Compiletime = trace_trace_level(Level),
                         MaybeCompiletime = ok1(Compiletime)
                     ;
-                        Msg = "compile_time paramater `tracelevel' " ++
+                        Msg = "compile_time parameter `tracelevel' " ++
                             "takes just `shallow' or `deep' as argument",
                         MaybeCompiletime = error1([Msg - Term])
                     )
                 ;
-                    Msg = "compile_time paramater `tracelevel'" ++
+                    Msg = "compile_time parameter `tracelevel'" ++
                         "takes just one argument",
                     MaybeCompiletime = error1([Msg - Term])
                 )
             ;
-                Msg = "invalid compile_time paramater",
+                Msg = "invalid compile_time parameter",
                 MaybeCompiletime = error1([Msg - Term])
             )
         ;
-            Msg = "invalid compile_time paramater",
+            Msg = "invalid compile_time parameter",
             MaybeCompiletime = error1([Msg - Term])
         )
     ;
         Term = term.variable(_, _),
-        Msg = "expected compile_time paramater, found variable",
+        Msg = "expected compile_time parameter, found variable",
         MaybeCompiletime = error1([Msg - ErrorTerm])
     ).
 
@@ -941,32 +941,32 @@ parse_trace_runtime(ErrorTerm, Term, MaybeRuntime) :-
                             Runtime = trace_envvar(EnvVarName),
                             MaybeRuntime = ok1(Runtime)
                         ;
-                            Msg = "run_time paramater `env'" ++
+                            Msg = "run_time parameter `env'" ++
                                 "takes an identifier as argument",
                             MaybeRuntime = error1([Msg - SubTerm])
                         )
                     ;
-                        Msg = "run_time paramater `env'" ++
+                        Msg = "run_time parameter `env'" ++
                             "takes an identifier as argument",
                         MaybeRuntime = error1([Msg - Term])
                     )
                 ;
-                    Msg = "run_time paramater `env' takes just one argument",
+                    Msg = "run_time parameter `env' takes just one argument",
                     MaybeRuntime = error1([Msg - Term])
                 )
             ;
                 Term = term.functor(_, _, _),
-                Msg = "invalid run_time paramater; expected env(\"ENVVAR\")",
+                Msg = "invalid run_time parameter; expected env(\"ENVVAR\")",
                 MaybeRuntime = error1([Msg - Term])
             )
         ;
             Term = term.functor(_, _, _),
-            Msg = "invalid run_time paramater; expected env(\"ENVVAR\")",
+            Msg = "invalid run_time parameter; expected env(\"ENVVAR\")",
             MaybeRuntime = error1([Msg - Term])
         )
     ;
         Term = term.variable(_, _),
-        Msg = "expected run_time paramater, found variable",
+        Msg = "expected run_time parameter, found variable",
         MaybeRuntime = error1([Msg - ErrorTerm])
     ).
 

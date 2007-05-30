@@ -9321,7 +9321,7 @@ The format of trace goals is @code{trace @var{Params} @var{Goal}}.
 @var{Params} must be a valid list of one or more trace parameters.
 The following example shows all four of the available kinds of parameters:
 @samp{compile_time}, @samp{run_time}, @samp{io} and @samp{state}.
-(It practice, it is far more typical to have just one parameter, @samp{io}.)
+(In practice, it is far more typical to have just one parameter, @samp{io}.)
 
 @example
 :- mutable(logging_level, int, 0, ground, []).

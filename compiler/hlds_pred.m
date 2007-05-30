@@ -1766,7 +1766,7 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % module to depend on the ll_backend package.
                 generator_rval          :: string,
 
-                % What should we pass as the value of the debug paramater
+                % What should we pass as the value of the debug parameter
                 % in the call to MR_tbl_mmos_return_answer?
                 return_debug            :: string
             ).

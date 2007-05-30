@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1072,11 +1072,11 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
     ;
         MDBCommandFormat = no,
         ParamDesc =
-            "Print paramaters:\n" ++
+            "Print parameters:\n" ++
             caller_params_to_desc(PrintParams) ++
-            "Browse paramaters:\n" ++
+            "Browse parameters:\n" ++
             caller_params_to_desc(BrowseParams) ++
-            "Print all paramaters:\n" ++
+            "Print all parameters:\n" ++
             caller_params_to_desc(PrintAllParams),
         NumIOActionDesc =
             "Maximum number of I/O actions printed: " ++
