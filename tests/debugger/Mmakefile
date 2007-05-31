@@ -543,7 +543,7 @@ type_desc_test.out: type_desc_test type_desc_test.inp
 		> type_desc_test.out 2>&1
 
 uci.out: uci uci.inp
-	$(MDB) ./uci < uci.inp > uci.out 2>&1
+	$(MDB_STD) ./uci < uci.inp > uci.out 2>&1
 
 uci_index.out: uci_index uci_index.inp
 	$(MDB_STD) ./uci_index < uci_index.inp > uci_index.out 2>&1
