@@ -456,7 +456,7 @@ math.e = 2.7182818284590452353602874713526625.
     math.round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Rounded = round(Num)
+    Rounded = float(round(Num))
 ").
 math.round(Num) = math.floor(Num + 0.5).
 

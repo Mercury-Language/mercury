@@ -165,7 +165,7 @@ new_buffer(BM, Pos, Size, UseStream, Stream, State) =
     ).
 
 :- func new_buffer_2(bitmap, num_bits, bit_index, bool,
-    Stream, State, stream.result(Error)) = bit_buffer(Stream, State, Error).
+    Stream, State, stream.res(Error)) = bit_buffer(Stream, State, Error).
 
 new_buffer_2(BM, Pos, Size, UseStream, Stream, State, ReadStatus) =
     bit_buffer(BM, Pos, Size, UseStream, Stream, State, [], ReadStatus).
