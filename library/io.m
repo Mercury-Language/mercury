@@ -2774,7 +2774,7 @@ io.file_modification_time(File, Result, !IO) :-
 "{
     try {
         System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
-        Time = mercury.time.mercury_code.construct_time_t_2(t);
+        Time = mercury.time.mercury_code.ML_construct_time_t(t);
         Msg = """";
         Status = 1;
 
@@ -6676,7 +6676,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.read_char_code(File::in, CharCode::out, _IO0::di, _IO::uo),
+    io.read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     MR_MercuryFileStruct mf = File;
@@ -6684,7 +6684,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.read_byte_val(File::in, ByteVal::out, _IO0::di, _IO::uo),
+    io.read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     MR_MercuryFileStruct mf = File;
@@ -6697,7 +6697,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.putback_char(File::in, Character::in, _IO0::di, _IO::uo),
+    io.putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "{
     MR_MercuryFileStruct mf = File;
@@ -6705,7 +6705,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 }").
 
 :- pragma foreign_proc("C#",
-    io.putback_byte(File::in, Byte::in, _IO0::di, _IO::uo),
+    io.putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "{
     MR_MercuryFileStruct mf = File;
@@ -7279,14 +7279,14 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_string(Stream::in, Message::in, _IO0::di, _IO::uo),
+    io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     mercury_print_string(Stream, Message);
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_char(Stream::in, Character::in, _IO0::di, _IO::uo),
+    io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     MR_MercuryFileStruct stream = Stream;
@@ -7313,21 +7313,21 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_int(Stream::in, Val::in, _IO0::di, _IO::uo),
+    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     mercury_print_string(Stream, Val.ToString());
 }").
 
 :- pragma foreign_proc("C#",
-    io.write_byte(Stream::in, Byte::in, _IO0::di, _IO::uo),
+    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     Stream.stream.WriteByte(System.Convert.ToByte(Byte));
 }").
 
 :- pragma foreign_proc("C#",
-    io.write_bytes(Stream::in, Message::in, _IO0::di, _IO::uo),
+    io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     mercury_print_binary_string(Stream, Message);
@@ -7341,7 +7341,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 }").
 
 :- pragma foreign_proc("C#",
-    io.flush_binary_output(Stream::in, _IO0::di, _IO::uo),
+    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     Stream.stream.Flush();
@@ -7785,63 +7785,63 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdin_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdin;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdout_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdout;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stderr_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stderr;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdin_binary_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdin_binary;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdout_binary_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdout_binary;
 ").
 
 :- pragma foreign_proc("C#",
-    io.input_stream(Stream::out, _IO0::di, _IO::uo),
+    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_text_input;
 ").
 
 :- pragma foreign_proc("C#",
-    io.output_stream(Stream::out, _IO0::di, _IO::uo),
+    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_text_output;
 ").
 
 :- pragma foreign_proc("C#",
-    io.binary_input_stream(Stream::out, _IO0::di, _IO::uo),
+    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_binary_input;
 ").
 
 :- pragma foreign_proc("C#",
-    io.binary_output_stream(Stream::out, _IO0::di, _IO::uo),
+    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_binary_output;
@@ -7855,7 +7855,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_line_number(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = Stream.line_number;
@@ -7869,7 +7869,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_line_number(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     Stream.line_number = LineNum;
@@ -7883,7 +7883,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_output_line_number(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     LineNum = Stream.line_number;
@@ -7897,14 +7897,14 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_output_line_number(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     Stream.line_number = LineNum;
 }").
 
 :- pragma foreign_proc("C#",
-    io.set_input_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = mercury_current_text_input;
@@ -7912,7 +7912,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_output_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = mercury_current_text_output;
@@ -7920,7 +7920,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_binary_input_stream(NewStream::in, OutStream::out,
+    io.set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -7929,7 +7929,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_binary_output_stream(NewStream::in, OutStream::out,
+    io.set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
