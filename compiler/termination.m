@@ -604,8 +604,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     ->
         ProcTable2 = ProcTable1
     ;
-        status_defined_in_this_module(ImportStatus) = yes,
-        ImportStatus \= status_external(_)
+        status_defined_in_this_module(ImportStatus) = yes
     ->
         % Since we cannot see the definition we consider procedures
         % defined using `:- external' to be imported.

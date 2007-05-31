@@ -215,6 +215,14 @@
                 % foreign_code' clauses). It can be through the use of another
                 % language, or it could be through some other method we haven't
                 % thought of yet.
+                %
+                % From the point of view of code generation, an external
+                % procedure usually acts like an imported procedure, as its
+                % definition is not visible. But in some cases, e.g. writing
+                % out declarations for procedures defined in a module, it may
+                % need to be treated like an exported procedure (depending on
+                % its inner import_status).
+                %
     ;       status_imported(import_locn)
                 % Defined in the interface of some other module.
     ;       status_opt_imported
@@ -250,10 +258,14 @@
     % -- that is, if it could be used by any other module, or by sub-modules
     % of this module.
     %
+    % NOTE: this returns `no' for :- external procedures.
+    %
 :- func status_is_exported(import_status) = bool.
 
     % Returns yes if the status indicates that the item was exported
     % to importing modules (not just to sub-modules).
+    %
+    % NOTE: this returns `no' for :- external procedures.
     %
 :- func status_is_exported_to_non_submodules(import_status) = bool.
 
@@ -261,10 +273,14 @@
     % -- that is, if it was defined in some other module, or in a sub-module
     % of this module. This is the opposite of status_defined_in_this_module.
     %
+    % NOTE: this returns `yes' for :- external procedures.
+    %
 :- func status_is_imported(import_status) = bool.
 
     % Returns yes if the status indicates that the item was defined in this
     % module. This is the opposite of status_is_imported.
+    %
+    % NOTE: this returns `no' for :- external procedures.
     %
 :- func status_defined_in_this_module(import_status) = bool.
 
@@ -854,8 +870,7 @@ next_mode_id(Procs, ModeId) :-
     proc_id_to_int(ModeId, ModeInt).
 
 status_is_exported(status_imported(_)) =             no.
-status_is_exported(status_external(Status)) =
-    status_is_exported(Status).
+status_is_exported(status_external(_)) =             no.
 status_is_exported(status_abstract_imported) =       no.
 status_is_exported(status_pseudo_imported) =         no.
 status_is_exported(status_opt_imported) =            no.
@@ -879,8 +894,7 @@ status_is_exported_to_non_submodules(Status) =
 status_is_imported(Status) = bool.not(status_defined_in_this_module(Status)).
 
 status_defined_in_this_module(status_imported(_)) =             no.
-status_defined_in_this_module(status_external(Status)) =
-    status_defined_in_this_module(Status).
+status_defined_in_this_module(status_external(_)) =             no.
 status_defined_in_this_module(status_abstract_imported) =       no.
 status_defined_in_this_module(status_pseudo_imported) =         no.
 status_defined_in_this_module(status_opt_imported) =            no.

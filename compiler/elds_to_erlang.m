@@ -127,7 +127,12 @@ output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
     PredProcId = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
-    IsExported = status_is_exported(ImportStatus),
+    ( ImportStatus = status_external(ExternalImportStatus) ->
+        % status_is_exported returns `no' for :- external procedures.
+        IsExported = status_is_exported(ExternalImportStatus)
+    ;
+        IsExported = status_is_exported(ImportStatus)
+    ),
     (
         IsExported = yes,
         maybe_write_comma(!.NeedComma, !IO),
@@ -554,11 +559,10 @@ erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
         PredIsImported0, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
 
-    % XXX I think pred_info_is_imported is wrong for status_external
-    % procedures
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
     ( ImportStatus = status_external(_) ->
+        % pred_info_is_imported returns `yes' for :- external predicates.
         PredIsImported = no
     ;
         PredIsImported = PredIsImported0
