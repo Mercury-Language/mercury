@@ -8178,7 +8178,9 @@ erlang_module_name(ModuleName) =
     ).
 
 create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
-    module_name_to_file_name(MainModuleName, ScriptFileName),
+    Extension = "",
+    module_name_to_file_name(MainModuleName, Extension, no, ScriptFileName,
+        !IO),
     globals.io_get_globals(Globals, !IO),
     grade_directory_component(Globals, GradeDir),
 
