@@ -820,6 +820,26 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
             !SInfo, !Specs),
         finish_call(!VarSet, !SInfo)
     ;
+        % check for a state var record assignment:
+        % !Var ^ field := Value
+        Name = unqualified(":="),
+        Args1 = [LHS0, RHS0],
+        LHS0 = functor(atom("^"), [StateVar0, Remainder], FieldListContext),
+        StateVar0 = functor(atom("!"), Args @ [variable(_, _)],
+                StateVarContext)
+    ->
+        prepare_for_call(!SInfo),
+        % !Var ^ field := Value is defined as !:Var = !.Var ^ field := Value.
+        LHS = functor(atom("!:"), Args, StateVarContext),
+        StateVar = functor(atom("!."), Args, StateVarContext),
+        FieldList = functor(atom("^"), [StateVar, Remainder],
+                FieldListContext),
+        RHS = functor(atom(":="), [FieldList, RHS0], Context),
+        transform_goal_2(unify_expr(LHS, RHS, Purity),
+            Context, Subst, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
+            !SInfo, !Specs),
+        finish_call(!VarSet, !SInfo)
+    ;
         % check for a DCG field access goal:
         % get: Field =^ field
         % set: ^ field := Field

@@ -1018,6 +1018,17 @@ transform((some @var{Vars} @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
 some @var{Vars} transform(@var{Goal}, @var{X}, @var{ThisX}, @var{NextX})
 @end example
 
+@item !@var{X} ^ @var{field_list} := @var{Term}
+A field update.
+Replaces a field in the argument. 
+@var{Term} must be a valid data-term.
+@var{field_list} must be a valid field list.
+@xref{Record syntax}.
+@example
+transform((!@var{X} ^ @var{field_list} := @var{Term}), @var{X}, @var{ThisX}, @var{NextX}) =
+NextX = ThisX ^ field_list := Term
+@end example
+
 @item @var{Call_or_Unification}
 If @samp{!:@var{X}} does not appear in @var{Call_or_Unification} then
 @example
