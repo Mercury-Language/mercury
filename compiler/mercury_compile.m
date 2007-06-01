@@ -5195,8 +5195,23 @@ dump_mlds(DumpFile, MLDS, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 erlang_backend(HLDS, ELDS, !DumpInfo, !IO) :-
-    erl_code_gen(HLDS, ELDS0, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
+    maybe_write_string(Verbose, "% Converting HLDS to ELDS...\n", !IO),
+    erl_code_gen(HLDS, ELDS0, !IO),
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    maybe_report_stats(Stats, !IO),
+
+    maybe_write_string(Verbose, "% Generating RTTI data...\n", !IO),
+    elds_gen_rtti_data(HLDS, ELDS0, ELDS, !IO),
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
+
+:- pred elds_gen_rtti_data(module_info::in, elds::in, elds::out,
+    io::di, io::uo) is det.
+
+elds_gen_rtti_data(HLDS, ELDS0, ELDS, !IO) :-
     % Generate the representations for various data structures
     % used for type classes.
     type_ctor_info.generate_rtti(HLDS, TypeCtorRttiData),
@@ -5210,7 +5225,6 @@ erlang_backend(HLDS, ELDS, !DumpInfo, !IO) :-
     ErlangRttiDatas = list.map(erlang_rtti_data(HLDS), RttiDatas),
 
     ELDS0 = elds(ModuleName, ForeignBodies, Defns, FEDefns, RttiDefns0),
-    
     rtti_data_list_to_elds(HLDS, ErlangRttiDatas, RttiDefns),
     ELDS = elds(ModuleName, ForeignBodies, Defns, FEDefns,
         RttiDefns0 ++ RttiDefns).
