@@ -19,6 +19,10 @@
 :- module erlang_rtti_implementation.
 :- interface.
 
+:- import_module deconstruct.
+:- import_module list.
+:- import_module univ.
+
     %
     % Check if two values are equal.
     % Note this is not structural equality because a type
@@ -28,6 +32,12 @@
 
 :- pred generic_compare(comparison_result::out, T::in, T::in) is det.
 
+:- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
+:- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
+:- mode deconstruct(in, in(canonicalize), out, out, out) is det.
+:- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
+:- mode deconstruct(in, in, out, out, out) is cc_multi.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -36,6 +46,7 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module term_io.
 
     %
     % A type_info can be represented in one of three ways
@@ -251,6 +262,144 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
             Result = SubResult
         )
     ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
+    TypeInfo = Term ^ type_info,
+    TypeCtorInfo = TypeInfo ^ type_ctor_info,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        Functor, Arity, Arguments).
+
+:- pred deconstruct_2(T, type_info, type_ctor_info, erlang_type_ctor_rep,
+    noncanon_handling, string, int, list(univ)).
+:- mode deconstruct_2(in, in, in, in, in(do_not_allow), out, out, out) is det.
+:- mode deconstruct_2(in, in, in, in, in(canonicalize), out, out, out) is det.
+:- mode deconstruct_2(in, in, in, in,
+    in(include_details_cc), out, out, out) is cc_multi.
+:- mode deconstruct_2(in, in, in, in, in, out, out, out) is cc_multi.
+
+deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        Functor, Arity, Arguments) :-
+    (
+        TypeCtorRep = etcr_du,
+        Functor = "XXX", Arity = 0, Arguments = []
+    ;
+        TypeCtorRep = etcr_list,
+        Functor = "XXX", Arity = 0, Arguments = []
+    ;
+        TypeCtorRep = etcr_eqv,
+        Functor = "XXX", Arity = 0, Arguments = []
+    ;
+        TypeCtorRep = etcr_tuple,
+        Arity = TypeInfo ^ var_arity_type_info_arity,
+        Functor = "{}",
+        Arguments = list.map(get_tuple_arg(TypeInfo, Term), 1 .. Arity)
+    ;
+        TypeCtorRep = etcr_int,
+        det_dynamic_cast(Term, Int),
+        Functor = string.int_to_string(Int),
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = etcr_float,
+        det_dynamic_cast(Term, Float),
+        Functor = float_to_string(Float),
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = etcr_char,
+        det_dynamic_cast(Term, Char),
+        Functor = term_io.quoted_char(Char),
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = etcr_string,
+        det_dynamic_cast(Term, String),
+        Functor = term_io.quoted_string(String),
+        Arity = 0,
+        Arguments = []
+    ;
+            % There is no way to create values of type `void', so this
+            % should never happen.
+        TypeCtorRep = etcr_void,
+        error(this_file ++ " deconstruct: cannot deconstruct void types")
+    ;
+        TypeCtorRep = etcr_stable_c_pointer,
+        det_dynamic_cast(Term, CPtr),
+        Functor = "stable_" ++ string.c_pointer_to_string(CPtr),
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = etcr_c_pointer,
+        det_dynamic_cast(Term, CPtr),
+        Functor = string.c_pointer_to_string(CPtr),
+        Arity = 0,
+        Arguments = []
+    ;
+        ( TypeCtorRep = etcr_pred
+        ; TypeCtorRep = etcr_func
+        ; TypeCtorRep = etcr_ref
+        ; TypeCtorRep = etcr_type_desc
+        ; TypeCtorRep = etcr_pseudo_type_desc
+        ; TypeCtorRep = etcr_type_ctor_desc
+        ; TypeCtorRep = etcr_type_info
+        ; TypeCtorRep = etcr_type_ctor_info
+        ; TypeCtorRep = etcr_typeclass_info
+        ; TypeCtorRep = etcr_base_typeclass_info
+        ),
+        (
+            NonCanon = do_not_allow,
+            error("do_not_allow")
+        ;
+            NonCanon = canonicalize,
+            Functor = "<<" ++ string(TypeCtorRep) ++ ">>",
+            Arity = 0,
+            Arguments = []
+        ;
+                % XXX just to get the determinsm declarations correct
+            NonCanon = include_details_cc,
+            ( semidet_succeed ->
+                Functor = "<<" ++ string(TypeCtorRep) ++ ">>",
+                Arity = 0,
+                Arguments = []
+            ;
+                deconstruct_2(Term, TypeInfo, TypeCtorInfo, etcr_foreign, NonCanon,
+                        Functor, Arity, Arguments)
+            )
+        )
+    ;
+        TypeCtorRep = etcr_foreign,
+        Functor = "<<foreign>>",
+        Arity = 0,
+        Arguments = []
+    ;
+
+            % These types shouldn't be needed they are
+            % introduced for library predicates which
+            % don't apply on this backend.
+        ( TypeCtorRep = etcr_hp
+        ; TypeCtorRep = etcr_subgoal
+        ; TypeCtorRep = etcr_ticket
+        ),
+        error(this_file ++ " deconstruct_2: should never occur: " ++
+            string(TypeCtorRep))
+    ).
+
+    %
+    % get_tuple_arg(TypeInfo, Tuple, N)
+    %
+    % Get the N'th argument as a univ from the tuple
+    % described by the type_info.
+    %
+:- func get_tuple_arg(type_info, U, int) = univ.
+
+get_tuple_arg(TypeInfo, Term, Loc) = Univ :-
+    ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
+    SubTerm = get_subterm(ArgTypeInfo, Term, Loc, 0),
+    Univ = univ(SubTerm).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -630,6 +779,20 @@ det_unimplemented(S) :-
 "
     {Res} = Pred(A, B, C, D, E, X, Y)
 ").
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_dynamic_cast(T::in, U::out) is det.
+
+det_dynamic_cast(Term, Actual) :-
+    type_to_univ(Term, Univ),
+    det_univ_to_type(Univ, Actual).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "erlang_rtti_implementation.m".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

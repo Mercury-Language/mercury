@@ -104,6 +104,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module term_io.
 :- import_module type_desc.
 
     % It is convenient to represent the type_ctor_rep as a Mercury
@@ -925,6 +926,7 @@ iterate_foldl(Start, Max, Pred, !Acc) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% :- pragma foreign_proc("Erlang", 
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
@@ -1051,9 +1053,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
-
-        % XXX should escape characters correctly
-        Functor = "'" ++ char_to_string(Char) ++ "'",
+        Functor = term_io.quoted_char(Char),
         Arity = 0,
         Arguments = []
     ;
@@ -1065,9 +1065,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_string,
         det_dynamic_cast(Term, String),
-
-        % XXX should escape characters in the string correctly
-        Functor = "\"" ++ String ++ "\"",
+        Functor = term_io.quoted_string(String),
         Arity = 0,
         Arguments = []
     ;
