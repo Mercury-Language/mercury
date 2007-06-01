@@ -25,6 +25,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -102,6 +103,21 @@
     list(T)::in, list(mer_type)::in, list(arg_mode)::in,
     list(T)::out, list(T)::out) is det.
 
+    % erl_fix_success_expr(InstMap, Goal, MaybeExpr0, MaybeExpr, !Info)
+    %
+    % Success expressions may contain assignments.  Assignments to local
+    % variables may be incorrect or raise warnings from the Erlang compiler if
+    % a success expression is duplicated.  Hence we rename away local variables
+    % when duplicating a success expression.
+    %
+    % This predicate renames any local variables appearing in the success
+    % expression (if any) to fresh variables, where local variables are those
+    % which are not bound in InstMap and not bound within Goal.
+    %
+:- pred erl_fix_success_expr(instmap::in, hlds_goal::in,
+    maybe(elds_expr)::in, maybe(elds_expr)::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
     % Return the set of variables non-local to a goal which are bound
     % by that goal.
     %
@@ -138,6 +154,20 @@
 :- pred erl_rename_vars_in_expr(prog_var_renaming::in,
     elds_expr::in, elds_expr::out) is det.
 
+    % erl_rename_vars_in_expr_except(KeepVars, Expr0, Expr, !Info):
+    %
+    % Rename all variables in Expr0 to fresh variables, except for the
+    % variables in the set KeepVars.
+    %
+:- pred erl_rename_vars_in_expr_except(set(prog_var)::in,
+    elds_expr::in, elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
+
+    % erl_expr_vars(Expr, Vars)
+    %
+    % Vars is the set of variables appearing in Expr.
+    %
+:- pred erl_expr_vars(elds_expr::in, set(prog_var)::out) is det.
+
     % Return a rough indication of the "size" of an expression, where each
     % simple constant has a value of 1.  This is used to decide if an
     % expression is too big to duplicate.
@@ -152,13 +182,16 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
+:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -304,6 +337,21 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
 
 %-----------------------------------------------------------------------------%
 
+erl_fix_success_expr(InstMap0, Goal, MaybeExpr0, MaybeExpr, !Info) :-
+    (
+        MaybeExpr0 = yes(Expr0),
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        update_instmap(Goal, InstMap0, InstMap),
+        instmap_bound_vars(InstMap, ModuleInfo, BoundVars),
+        erl_rename_vars_in_expr_except(BoundVars, Expr0, Expr, !Info),
+        MaybeExpr = yes(Expr)
+    ;
+        MaybeExpr0 = no,
+        MaybeExpr = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
 erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
     Goal = hlds_goal(_, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -327,8 +375,20 @@ erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
 %-----------------------------------------------------------------------------%
 
 erl_create_renaming(Vars, Subst, !Info) :-
-    erl_gen_info_new_vars(list.length(Vars), NewVars, !Info),
-    map.from_corresponding_lists(Vars, NewVars, Subst).
+    erl_gen_info_get_varset(!.Info, VarSet0),
+    list.foldl2(erl_create_renaming_2, Vars, VarSet0, VarSet, map.init, Subst),
+    erl_gen_info_set_varset(VarSet, !Info).
+
+:- pred erl_create_renaming_2(prog_var::in, prog_varset::in, prog_varset::out,
+    prog_var_renaming::in, prog_var_renaming::out) is det.
+
+erl_create_renaming_2(OldVar, VarSet0, VarSet, !Subst) :-
+    ( varset.search_name(VarSet0, OldVar, Name) ->
+        varset.new_named_var(VarSet0, Name, NewVar, VarSet)
+    ;
+        varset.new_var(VarSet0, NewVar, VarSet)
+    ),
+    map.det_insert(!.Subst, OldVar, NewVar, !:Subst).
 
 :- pred erl_rename_vars_in_exprs(prog_var_renaming::in,
     list(elds_expr)::in, list(elds_expr)::out) is det.
@@ -469,6 +529,143 @@ erl_rename_vars_in_catch(Subn, Catch0, Catch) :-
     erl_rename_vars_in_term(Subn, PatternB0, PatternB),
     erl_rename_vars_in_expr(Subn, Expr0, Expr),
     Catch = elds_catch(PatternA, PatternB, Expr).
+
+%-----------------------------------------------------------------------------%
+
+erl_rename_vars_in_expr_except(ExceptVars, Expr0, Expr, !Info) :-
+    erl_expr_vars(Expr0, Vars0),
+    Vars = set.difference(Vars0, ExceptVars),
+    erl_create_renaming(set.to_sorted_list(Vars), Subn, !Info),
+    erl_rename_vars_in_expr(Subn, Expr0, Expr).
+
+%-----------------------------------------------------------------------------%
+
+erl_expr_vars(Expr, Set) :-
+    erl_vars_in_expr(Expr, set.init, Set).
+
+:- pred erl_vars_in_exprs(list(elds_expr)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_exprs(Exprs, !Set) :-
+    list.foldl(erl_vars_in_expr, Exprs, !Set).
+
+:- pred erl_vars_in_expr(elds_expr::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_expr(Expr, !Set) :-
+    (
+        Expr = elds_block(Exprs),
+        erl_vars_in_exprs(Exprs, !Set)
+    ;
+        Expr = elds_term(Term),
+        erl_vars_in_term(Term, !Set)
+    ;
+        Expr = elds_eq(ExprA, ExprB),
+        erl_vars_in_expr(ExprA, !Set),
+        erl_vars_in_expr(ExprB, !Set)
+    ;
+        Expr = elds_unop(_Op, ExprA),
+        erl_vars_in_expr(ExprA, !Set)
+    ;
+        Expr = elds_binop(_Op, ExprA, ExprB),
+        erl_vars_in_expr(ExprA, !Set),
+        erl_vars_in_expr(ExprB, !Set)
+    ;
+        Expr = elds_call(CallTarget, ExprsB),
+        erl_vars_in_call_target(CallTarget, !Set),
+        erl_vars_in_exprs(ExprsB, !Set)
+    ;
+        Expr = elds_fun(Clause),
+        erl_vars_in_clause(Clause, !Set)
+    ;
+        Expr = elds_case_expr(ExprA, Cases),
+        erl_vars_in_expr(ExprA, !Set),
+        erl_vars_in_cases(Cases, !Set)
+    ;
+        Expr = elds_try(ExprA, Cases, Catch),
+        erl_vars_in_expr(ExprA, !Set),
+        erl_vars_in_cases(Cases, !Set),
+        erl_vars_in_catch(Catch, !Set)
+    ;
+        Expr = elds_throw(ExprA),
+        erl_vars_in_expr(ExprA, !Set)
+    ;
+        ( Expr = elds_rtti_ref(_)
+        ; Expr = elds_foreign_code(_)
+        )
+    ).
+
+:- pred erl_vars_in_terms(list(elds_term)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_terms(Terms, !Set) :-
+    list.foldl(erl_vars_in_term, Terms, !Set).
+
+:- pred erl_vars_in_term(elds_term::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_term(Term, !Set) :-
+    (
+        ( Term = elds_int(_)
+        ; Term = elds_float(_)
+        ; Term = elds_string(_)
+        ; Term = elds_char(_)
+        ; Term = elds_atom_raw(_)
+        ; Term = elds_atom(_)
+        ; Term = elds_anon_var
+        ; Term = elds_fixed_name_var(_)
+        )
+    ;
+        Term = elds_tuple(Exprs),
+        erl_vars_in_exprs(Exprs, !Set)
+    ;
+        Term = elds_var(Var),
+        svset.insert(Var, !Set)
+    ).
+
+:- pred erl_vars_in_call_target(elds_call_target::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_call_target(Target, !Set) :-
+    (
+        ( Target = elds_call_plain(_)
+        ; Target = elds_call_builtin(_)
+        )
+    ;
+        Target = elds_call_ho(Expr),
+        erl_vars_in_expr(Expr, !Set)
+    ).
+
+:- pred erl_vars_in_clause(elds_clause::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_clause(Clause, !Set) :-
+    Clause = elds_clause(Pattern, Expr),
+    erl_vars_in_terms(Pattern, !Set),
+    erl_vars_in_expr(Expr, !Set).
+
+:- pred erl_vars_in_cases(list(elds_case)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_cases(Cases, !Set) :-
+    list.foldl(erl_vars_in_case, Cases, !Set).
+
+:- pred erl_vars_in_case(elds_case::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_case(Case, !Set) :-
+    Case = elds_case(Pattern, Expr),
+    erl_vars_in_term(Pattern, !Set),
+    erl_vars_in_expr(Expr, !Set).
+
+:- pred erl_vars_in_catch(elds_catch::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+erl_vars_in_catch(Catch, !Set) :-
+    Catch = elds_catch(PatternA, PatternB, Expr),
+    erl_vars_in_term(PatternA, !Set),
+    erl_vars_in_term(PatternB, !Set),
+    erl_vars_in_expr(Expr, !Set).
 
 %-----------------------------------------------------------------------------%
 

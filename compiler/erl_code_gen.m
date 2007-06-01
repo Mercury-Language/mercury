@@ -257,7 +257,8 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
         %
         % On success, the procedure returns a tuple of its output variables.
         % 
-        SuccessExpr = elds_term(elds_tuple(OutputVarsExprs))
+        SuccessExpr = elds_term(elds_tuple(OutputVarsExprs)),
+        InstMap = InstMap0
     ;
         CodeModel = model_non,
         %
@@ -266,12 +267,12 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
         % an extra argument to the current procedure.
         %
         erl_gen_info_new_named_var("SucceedHeadVar", SucceedVar, !Info),
+        ground_var_in_instmap(SucceedVar, InstMap0, InstMap),
         InputVarsTerms = terms_from_vars(InputVars ++ [SucceedVar]),
         SuccessExpr = elds_call(elds_call_ho(expr_from_var(SucceedVar)),
             OutputVarsExprs)
     ),
-    erl_gen_goal(CodeModel, InstMap0, Goal, yes(SuccessExpr), Statement,
-        !Info),
+    erl_gen_goal(CodeModel, InstMap, Goal, yes(SuccessExpr), Statement, !Info),
     ProcClause = elds_clause(InputVarsTerms, Statement).
 
 %-----------------------------------------------------------------------------%
@@ -493,11 +494,11 @@ erl_gen_goal_expr(negation(Goal), CodeModel, _Detism, InstMap, Context,
     erl_gen_negation(Goal, CodeModel, InstMap, Context, MaybeSuccessExpr,
         Statement, !Info).
 
-erl_gen_goal_expr(conj(_ConjType, Goals), CodeModel, _Detism, InstMap, Context,
+erl_gen_goal_expr(conj(_ConjType, Goals), CodeModel, Detism, InstMap, Context,
         MaybeSuccessExpr, Statement, !Info) :-
     % XXX Currently we treat parallel conjunction the same as
     % sequential conjunction -- parallelism is not yet implemented.
-    erl_gen_conj(Goals, CodeModel, InstMap, Context, MaybeSuccessExpr,
+    erl_gen_conj(Goals, CodeModel, Detism, InstMap, Context, MaybeSuccessExpr,
         Statement, !Info).
 
 erl_gen_goal_expr(disj(Goals), CodeModel, _Detism, InstMap, Context,
@@ -568,19 +569,13 @@ erl_gen_goal_expr(shorthand(_), _, _, _, _, _, _, !Info) :-
 
 :- func duplicate_expr_limit = int.
 
-    % XXX duplicating expressions into branches of disjunctions and switches
-    % is currently disabled.  The problem is that the duplicated expression
-    % may bind local variables.  These would need to be renamed apart when
-    % the expression is duplicated.
-    %
-duplicate_expr_limit = 0.
-%duplicate_expr_limit = 10.  % XXX arbitrary
+duplicate_expr_limit = 10.  % XXX arbitrary
 
 :- pred erl_gen_switch(prog_var::in, can_fail::in, list(hlds_goal.case)::in,
     code_model::in, instmap::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap, _Context,
+erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
         MaybeSuccessExpr0, Statement, !Info) :-
     %
     % If the success expression is not too big, then we generate code for
@@ -613,13 +608,14 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap, _Context,
     % Get the union of all nonlocal variables bound in all cases.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     CasesGoals = list.map((func(case(_, Goal)) = Goal), CasesList),
-    union_bound_nonlocals_in_goals(ModuleInfo, InstMap, CasesGoals,
+    union_bound_nonlocals_in_goals(ModuleInfo, InstMap0, CasesGoals,
         NonLocalsBoundInCases),
 
     % Create a closure for the success expression if it is too large to
     % duplicate into the disjuncts.
     maybe_create_closure_for_success_expr(NonLocalsBoundInCases,
-        MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr, !Info),
+        MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr,
+        InstMap0, InstMap, !Info),
 
     % Generate code for each case.
     list.map_foldl(erl_gen_case(CodeModel, InstMap, NonLocalsBoundInCases,
@@ -636,13 +632,7 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap, _Context,
 
     % Create the overall switch statement,.
     CaseExpr = elds_case_expr(expr_from_var(Var), ErlCases),
-    (
-        MaybeMakeClosure = yes(MakeClosure1),
-        Statement = join_exprs(MakeClosure1, CaseExpr)
-    ;
-        MaybeMakeClosure = no,
-        Statement = CaseExpr
-    ).
+    Statement = maybe_join_exprs1(MaybeMakeClosure, CaseExpr).
 
 :- pred erl_gen_case(code_model::in, instmap::in, set(prog_var)::in,
     maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out, 
@@ -661,7 +651,9 @@ erl_gen_case(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
     ;
         unexpected(this_file, "erl_gen_case: cannot pattern match on object")
     ),
-    erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr, Statement0,
+    erl_fix_success_expr(InstMap, Goal, MaybeSuccessExpr,
+        MaybeSuccessExprForCase, !Info),
+    erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExprForCase, Statement0,
         !Info),
     %
     % To prevent warnings from the Erlang compiler we must make sure all cases
@@ -684,17 +676,23 @@ union_bound_nonlocals_in_goals(ModuleInfo, InstMap, Goals, NonLocalsUnion) :-
     list.map(IsBound, Goals, NonLocalsLists),
     NonLocalsUnion = set.union_list(NonLocalsLists).
 
+    % If a success expression is too large to duplicate but is required after
+    % two or more goals Gs, we generate a closure C containing the success
+    % expression which takes the nonlocal variables bound by Gs as arguments.
+    % Then we generate the code for Gs such that they call C on success.
+    %
 :- pred maybe_create_closure_for_success_expr(set(prog_var)::in,
     maybe(elds_expr)::in, maybe(elds_expr)::out, maybe(elds_expr)::out,
-    erl_gen_info::in, erl_gen_info::out) is det.
+    instmap::in, instmap::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 maybe_create_closure_for_success_expr(NonLocals, MaybeSuccessExpr0,
-        MaybeMakeClosure, MaybeSuccessExpr, !Info) :-
+        MaybeMakeClosure, MaybeSuccessExpr, InstMap0, InstMap, !Info) :-
     (if
         MaybeSuccessExpr0 = yes(SuccessExpr0),
         erl_expr_size(SuccessExpr0) > duplicate_expr_limit
     then
         erl_gen_info_new_named_var("SuccessClosure", ClosureVar, !Info),
+        ground_var_in_instmap(ClosureVar, InstMap0, InstMap),
         ClosureVarExpr = expr_from_var(ClosureVar),
         ClosureArgs0 = set.to_sorted_list(NonLocals),
 
@@ -717,6 +715,7 @@ maybe_create_closure_for_success_expr(NonLocals, MaybeSuccessExpr0,
         MaybeMakeClosure = yes(MakeClosure),
         MaybeSuccessExpr = yes(CallClosure)
     else
+        InstMap = InstMap0,
         MaybeMakeClosure = no,
         MaybeSuccessExpr = MaybeSuccessExpr0
     ).
@@ -725,6 +724,17 @@ maybe_create_closure_for_success_expr(NonLocals, MaybeSuccessExpr0,
 
 non_dummy_var(ModuleInfo, Var, Type) = Var :-
     not is_dummy_argument_type(ModuleInfo, Type).
+
+:- pred ground_var_in_instmap(prog_var::in, instmap::in, instmap::out) is det.
+
+ground_var_in_instmap(Var, !InstMap) :-
+    % Sometimes we introduce variables which aren't in the HLDS, but which need
+    % to be in an instmap so that they don't get renamed away (when we
+    % duplicate success expressions, we rename away all variables which were
+    % not bound before the place where the success expression will be
+    % inserted).  For our purposes it doesn't matter what insts these variables
+    % have, other than not being free, so we just use `ground'.
+    instmap.set(Var, ground(shared, none), !InstMap).
 
 %-----------------------------------------------------------------------------%
 %
@@ -736,7 +746,7 @@ non_dummy_var(ModuleInfo, Var, Type) = Var :-
     prog_context::in, maybe(elds_expr)::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
+erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         Statement, !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     goal_info_get_code_model(CondGoalInfo, CondCodeModel),
@@ -755,7 +765,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
             Statement = CondStatement
         ;
             update_instmap(Cond, InstMap0, CondInstMap),
-            erl_gen_goal(CodeModel, CondInstMap, Then, MaybeSuccessExpr,
+            erl_gen_goal(CodeModel, CondInstMap, Then, MaybeSuccessExpr0,
                 ThenStatement, !Info),
             Statement = join_exprs(CondStatement, ThenStatement)
         )
@@ -779,38 +789,49 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
         CondCodeModel = model_semi,
 
         % Find the non-local variables bound in the condition.
+        % The instmap before Then should really be
+        % InstMap0 + instmap_delta(Cond) but this is okay.
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Cond, CondVarsSet),
-        CondVars = set.to_sorted_list(CondVarsSet),
+        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Cond, CondVars),
+        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Then, ThenVars),
+        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Else, ElseVars),
+        CondVarsList = set.to_sorted_list(CondVars),
 
         % Generate the condition goal, making it evaluate to a tuple of the
         % non-local variables that it binds on success.
-        CondVarsTerm = elds_tuple(exprs_from_vars(CondVars)),
+        CondVarsTerm = elds_tuple(exprs_from_vars(CondVarsList)),
         erl_gen_goal(model_semi, InstMap0, Cond,
             yes(elds_term(CondVarsTerm)), CondStatement0, !Info),
 
         % Rename the variables in the generated condition expression.
-        erl_create_renaming(CondVars, Subn, !Info),
+        erl_create_renaming(CondVarsList, Subn, !Info),
         erl_rename_vars_in_expr(Subn, CondStatement0, CondStatement),
 
+        % Create a closure for the success expression if it is too large to
+        % duplicate into the branches.
+        % (InstMap1 = InstMap0 + optionally a variable bound to a closure)
+        BoundNonLocals = set.union_list([CondVars, ThenVars, ElseVars]),
+        maybe_create_closure_for_success_expr(BoundNonLocals,
+            MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr,
+            InstMap0, InstMap1, !Info),
+
         % Generate the Then and Else branches.
-        update_instmap(Cond, InstMap0, InstMap1),
-        erl_gen_goal(CodeModel, InstMap1, Then, MaybeSuccessExpr,
+        update_instmap(Cond, InstMap1, InstMap2),
+        erl_gen_goal(CodeModel, InstMap2, Then, MaybeSuccessExpr,
             ThenStatement0, !Info),
-        erl_gen_goal(CodeModel, InstMap0, Else, MaybeSuccessExpr,
+        erl_gen_goal(CodeModel, InstMap1, Else, MaybeSuccessExpr,
             ElseStatement0, !Info),
 
         % Make sure both branches bind the same sets of variables.
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap1, Then, ThenVars),
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Else, ElseVars),
         erl_bind_unbound_vars(ModuleInfo, ElseVars, Then, InstMap1,
             ThenStatement0, ThenStatement),
         erl_bind_unbound_vars(ModuleInfo, ThenVars, Else, InstMap0,
             ElseStatement0, ElseStatement),
 
-        Statement = elds_case_expr(CondStatement, [TrueCase, FalseCase]),
+        IfStatement = elds_case_expr(CondStatement, [TrueCase, FalseCase]),
         TrueCase  = elds_case(CondVarsTerm, ThenStatement),
-        FalseCase = elds_case(elds_anon_var, ElseStatement)
+        FalseCase = elds_case(elds_anon_var, ElseStatement),
+        Statement = maybe_join_exprs1(MaybeMakeClosure, IfStatement)
     ;
         CondCodeModel = model_non,
         %
@@ -833,21 +854,27 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
         %
 
         erl_gen_info_new_named_var("Ref", Ref, !Info),
+        ground_var_in_instmap(Ref, InstMap0, InstMap1),
+
         RefExpr = expr_from_var(Ref),
         MakeRef = elds_eq(RefExpr, elds_call_builtin("make_ref", [])),
         PutRef = elds_call_builtin("put", [RefExpr, elds_term(elds_true)]),
         GetRef = elds_call_builtin("get", [RefExpr]),
         EraseRef = elds_call_builtin("erase", [RefExpr]),
 
-        update_instmap(Cond, InstMap0, InstMap1),
-        erl_gen_goal(CodeModel, InstMap1, Then, MaybeSuccessExpr,
+        % Due to the way we generate code for model_non conjunctions, the
+        % success expression at this point should not be too large to
+        % duplicate.
+
+        update_instmap(Cond, InstMap1, InstMap2),
+        erl_gen_goal(CodeModel, InstMap2, Then, MaybeSuccessExpr0,
             ThenStatement, !Info),
         PutAndThen = join_exprs(PutRef, ThenStatement),
 
-        erl_gen_goal(CondCodeModel, InstMap0, Cond, yes(PutAndThen),
+        erl_gen_goal(CondCodeModel, InstMap1, Cond, yes(PutAndThen),
             CondThen, !Info),
 
-        erl_gen_goal(CodeModel, InstMap0, Else, MaybeSuccessExpr,
+        erl_gen_goal(CodeModel, InstMap1, Else, MaybeSuccessExpr0,
             ElseStatement, !Info),
 
         CaseElse = elds_case_expr(GetRef, [TrueCase, OtherCase]),
@@ -930,11 +957,34 @@ erl_gen_negation(Cond, CodeModel, InstMap, _Context, MaybeSuccessExpr,
 % Code for conjunctions
 %
 
-:- pred erl_gen_conj(hlds_goals::in, code_model::in, instmap::in,
+:- pred erl_gen_conj(hlds_goals::in, code_model::in, determinism::in,
+    instmap::in, prog_context::in, maybe(elds_expr)::in, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_gen_conj(Goals, CodeModel, Detism, InstMap, Context, MaybeSuccessExpr,
+        Statement, !Info) :-
+    erl_gen_conj_2(Goals, CodeModel, InstMap, Context, MaybeSuccessExpr,
+        Statement0, !Info),
+    ( Detism = detism_erroneous ->
+        % This conjunction may be part of a conditional statement, in which
+        % this branch binds some variables Vars before throwing an exception.
+        % Another, non-erroneous, branch might not bind those Vars, leaving
+        % them to be bound after the conditional statement.  We rename away the
+        % variables bound in this branch so that the Erlang compiler won't
+        % complain about variables not being bound in all branches of a
+        % conditional statement.
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        instmap_bound_vars(InstMap, ModuleInfo, BoundVars),
+        erl_rename_vars_in_expr_except(BoundVars, Statement0, Statement, !Info)
+    ;
+        Statement = Statement0
+    ).
+
+:- pred erl_gen_conj_2(hlds_goals::in, code_model::in, instmap::in,
     prog_context::in, maybe(elds_expr)::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_conj([], CodeModel, _InstMap0, _Context, MaybeSuccessExpr,
+erl_gen_conj_2([], CodeModel, _InstMap0, _Context, MaybeSuccessExpr,
         Statement, !Info) :-
     (
         CodeModel = model_det,
@@ -945,11 +995,11 @@ erl_gen_conj([], CodeModel, _InstMap0, _Context, MaybeSuccessExpr,
         ),
         Statement = det_expr(MaybeSuccessExpr)
     ).
-erl_gen_conj([SingleGoal], CodeModel, InstMap0, _Context, MaybeSuccessExpr,
+erl_gen_conj_2([SingleGoal], CodeModel, InstMap0, _Context, MaybeSuccessExpr,
         Statement, !Info) :-
     erl_gen_goal(CodeModel, InstMap0, SingleGoal, MaybeSuccessExpr,
         Statement, !Info).
-erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
+erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Rest = [_ | _],
     First = hlds_goal(_, FirstGoalInfo),
@@ -972,8 +1022,8 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             %
             erl_gen_goal(model_det, InstMap0, First, no,
                 FirstStatement, !Info),
-            erl_gen_conj(Rest, CodeModel, InstMap1, Context, MaybeSuccessExpr,
-                RestStatement, !Info),
+            erl_gen_conj_2(Rest, CodeModel, InstMap1, Context,
+                MaybeSuccessExpr, RestStatement, !Info),
             Statement = join_exprs(FirstStatement, RestStatement)
         ;
             FirstCodeModel = model_semi,
@@ -988,8 +1038,8 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             %               fail
             %       end
             %
-            erl_gen_conj(Rest, CodeModel, InstMap1, Context, MaybeSuccessExpr,
-                RestStatement, !Info),
+            erl_gen_conj_2(Rest, CodeModel, InstMap1, Context,
+                MaybeSuccessExpr, RestStatement, !Info),
             erl_gen_goal(model_semi, InstMap0, First, yes(RestStatement),
                 Statement, !Info)
         ;
@@ -1005,8 +1055,8 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             % 
 
             % Generate the code for Rest.
-            erl_gen_conj(Rest, CodeModel, InstMap1, Context, MaybeSuccessExpr,
-                RestStatement, !Info),
+            erl_gen_conj_2(Rest, CodeModel, InstMap1, Context,
+                MaybeSuccessExpr, RestStatement, !Info),
 
             % Find the variables bound by First.
             erl_gen_info_get_module_info(!.Info, ModuleInfo), 
@@ -1024,6 +1074,8 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             % MakeSucceed == "SucceedConj = fun(...) -> ... end "
             % CallSucceed == "SucceedConj(...)"
             erl_gen_info_new_named_var("SucceedConj", SucceedVar, !Info),
+            ground_var_in_instmap(SucceedVar, InstMap0, InstMap),
+
             SucceedVarExpr = expr_from_var(SucceedVar),
             MakeSucceed = elds_eq(SucceedVarExpr, SucceedFunc),
             CallSucceed = elds_call(elds_call_ho(SucceedVarExpr), 
@@ -1031,7 +1083,7 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
 
             % Generate the code for First, such that it calls the success
             % continuation on success.
-            erl_gen_goal(model_non, InstMap0, First, yes(CallSucceed),
+            erl_gen_goal(model_non, InstMap, First, yes(CallSucceed),
                 FirstStatement, !Info),
 
             Statement = join_exprs(MakeSucceed, FirstStatement)
@@ -1066,29 +1118,24 @@ erl_gen_disj([SingleGoal], CodeModel, InstMap, _Context, MaybeSuccessExpr,
     erl_gen_goal(CodeModel, InstMap, SingleGoal, MaybeSuccessExpr,
         Statement, !Info).
 
-erl_gen_disj([First | Rest], CodeModel, InstMap, Context, MaybeSuccessExpr0,
+erl_gen_disj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr0,
         Statement, !Info) :-
     Rest = [_ | _],
 
     % Get the union of all nonlocal variables bound in all disjuncts.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    union_bound_nonlocals_in_goals(ModuleInfo, InstMap, [First | Rest],
+    union_bound_nonlocals_in_goals(ModuleInfo, InstMap0, [First | Rest],
         NonLocalsBoundInGoals),
 
     % Create a closure for the success expression if it is too large to
     % duplicate into the disjuncts.
     maybe_create_closure_for_success_expr(NonLocalsBoundInGoals,
-        MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr, !Info),
+        MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr,
+        InstMap0, InstMap, !Info),
 
     erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         MaybeSuccessExpr, DisjStatement, !Info),
-    (
-        MaybeMakeClosure = no,
-        Statement = DisjStatement
-    ;
-        MaybeMakeClosure = yes(MakeClosure1),
-        Statement = join_exprs(MakeClosure1, DisjStatement)
-    ).
+    Statement = maybe_join_exprs1(MaybeMakeClosure, DisjStatement).
 
 :- pred erl_gen_disjunct(hlds_goals::in, code_model::in, instmap::in,
     prog_context::in, maybe(elds_expr)::in, elds_expr::out,
@@ -1140,7 +1187,9 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         goal_info_get_determinism(FirstGoalInfo, FirstDeterminism),
         (
             FirstCodeModel = model_det,
-            erl_gen_goal(model_det, InstMap, First, MaybeSuccessExpr,
+            erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,
+                MaybeSuccessExprForFirst, !Info),
+            erl_gen_goal(model_det, InstMap, First, MaybeSuccessExprForFirst,
                 Statement, !Info)
         ;
             FirstCodeModel = model_semi,
@@ -1150,8 +1199,10 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
             % model_semi first goal.  It doesn't matter what the value is,
             % otherwise MaybeSuccessExpr wouldn't have been `no'.
             %
-            SuccessExpr = expr_or_void(MaybeSuccessExpr),
-            erl_gen_goal(model_semi, InstMap, First, yes(SuccessExpr),
+            erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,
+                MaybeSuccessExprForFirst, !Info),
+            SuccessExprFirst = expr_or_void(MaybeSuccessExprForFirst),
+            erl_gen_goal(model_semi, InstMap, First, yes(SuccessExprFirst),
                 FirstStatement0, !Info),
             erl_gen_disjunct(Rest, CodeModel, InstMap, Context,
                 MaybeSuccessExpr, RestStatement, !Info),
@@ -1202,7 +1253,9 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         % Generate the first disjunct, renaming apart variables bound by it.
         % Otherwise the second and later disjuncts would try to bind the same
         % variables to different values.
-        erl_gen_goal(model_non, InstMap, First, MaybeSuccessExpr,
+        erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,
+            MaybeSuccessExprForFirst, !Info),
+        erl_gen_goal(model_non, InstMap, First, MaybeSuccessExprForFirst,
             FirstStatement0, !Info),
 
         erl_gen_info_get_module_info(!.Info, ModuleInfo),

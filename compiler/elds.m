@@ -305,6 +305,13 @@
     %
 :- func maybe_join_exprs(elds_expr, maybe(elds_expr)) = elds_expr.
 
+    % maybe_join_exprs1(MaybeExprA, ExprB)
+    %
+    % Join ExprA and ExprB as above if MaybeExprA = `yes(ExprA)',
+    % otherwise return ExprB.
+    %
+:- func maybe_join_exprs1(maybe(elds_expr), elds_expr) = elds_expr.
+
     % expr_or_void(MaybeExpr)
     %
     % Return `E' if MaybeExpr is `yes(E)', otherwise return any constant
@@ -397,6 +404,9 @@ join_exprs(ExprA, ExprB) = Expr :-
 
 maybe_join_exprs(ExprA, yes(ExprB)) = join_exprs(ExprA, ExprB).
 maybe_join_exprs(Expr, no) = Expr.
+
+maybe_join_exprs1(yes(ExprA), ExprB) = join_exprs(ExprA, ExprB).
+maybe_join_exprs1(no, Expr) = Expr.
 
 expr_or_void(yes(Expr)) = Expr.
 expr_or_void(no) = elds_term(elds_atom_raw("void")).

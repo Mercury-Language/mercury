@@ -104,6 +104,12 @@
 :- pred instmap_delta_changed_vars(instmap_delta::in, set(prog_var)::out)
     is det.
 
+    % Return the set of variables which has an instantiatedness for which
+    % inst_is_bound succeeds.
+    %
+:- pred instmap_bound_vars(instmap::in, module_info::in, set(prog_var)::out)
+    is det.
+
     % instmap_changed_vars(IMA, IMB, MI, CV)
     %
     % Given an earlier instmap, IMA, and a later instmap, IMB,
@@ -417,6 +423,21 @@ vars(Instmap, Vars) :-
 vars_list(unreachable, []).
 vars_list(reachable(InstMapping), VarsList) :-
     map.keys(InstMapping, VarsList).
+
+instmap_bound_vars(unreachable, _ModuleInfo, set.init).
+instmap_bound_vars(reachable(InstMapping), ModuleInfo, BoundVars) :-
+    map.foldl(instmap_bound_vars_2(ModuleInfo), InstMapping,
+        set.init, BoundVars).
+
+:- pred instmap_bound_vars_2(module_info::in, prog_var::in, mer_inst::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+instmap_bound_vars_2(ModuleInfo, Var, Inst, BoundVars0, BoundVars) :-
+    ( inst_is_bound(ModuleInfo, Inst) ->
+        set.insert(BoundVars0, Var, BoundVars)
+    ;
+        BoundVars = BoundVars0
+    ).
 
 instmap_delta_changed_vars(unreachable, EmptySet) :-
     set.init(EmptySet).
