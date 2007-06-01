@@ -729,19 +729,83 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
     list(elds_rtti_defn)::out) is det.
 
 erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
-        %
-        % XXX Currently we only handle equivalence types,
-        % as this causes type_info's and pseudo_type_info's
-        % to be generated.
-        %
-    ( Details = erlang_eqv(MaybePseudoTypeInfo) ->
+    (
+        Details = erlang_du(Functors),
+        list.map_foldl(erlang_du_functor(ModuleInfo),
+            Functors, ELDSFunctors, [], Defns),
+        Term = elds_term(elds_tuple(ELDSFunctors))
+    ;
+        Details = erlang_eqv(MaybePseudoTypeInfo),
         maybe_pseudo_type_info_to_elds(ModuleInfo, MaybePseudoTypeInfo,
             RttiId, Defns),
         Term = elds_rtti_ref(RttiId)
     ;
+            % The types don't require any extra information
+        ( Details = erlang_list(_)
+        ; Details = erlang_builtin(_)
+        ; Details = erlang_impl_artifact(_)
+        ; Details = erlang_foreign
+        ),
         Term = elds_term(elds_tuple([])),
         Defns = []
     ).
+
+
+:- pred erlang_du_functor(module_info::in, erlang_du_functor::in,
+    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
+
+erlang_du_functor(ModuleInfo, Functor, elds_term(Term), !Defns) :-
+    Functor = erlang_du_functor(Name, Arity, Ord, Rep, ArgInfos, MaybeExist),
+
+    list.map_foldl(du_arg_info(ModuleInfo), ArgInfos, ELDSArgInfos, !Defns),
+    (
+        MaybeExist = yes(_),
+            % XXX
+        ELDSExist = elds_term(elds_tuple([]))
+    ;
+        MaybeExist = no,
+        ELDSExist = elds_term(elds_tuple([]))
+    ),
+
+    Term = elds_tuple([
+        elds_term(elds_string(Name)),
+        elds_term(elds_int(Arity)),
+        elds_term(elds_int(Ord)),
+        elds_term(elds_atom_raw(Rep)),
+        elds_term(elds_tuple(ELDSArgInfos)),
+        ELDSExist
+        ]).
+
+:- pred du_arg_info(module_info::in, du_arg_info::in,
+    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
+
+du_arg_info(ModuleInfo, du_arg_info(MaybeName, TI), elds_term(Term), !Defns) :-
+    (
+        MaybeName = yes(Name),
+        NameTerm = elds_string(Name)
+    ;
+        MaybeName = no,
+        NameTerm = elds_tuple([])
+    ),
+    maybe_pseudo_type_info_or_self_to_elds(ModuleInfo, TI, RttiId, Defns),
+    !:Defns = list.sort_and_remove_dups(Defns ++ !.Defns),
+    
+    Term = elds_tuple([
+        elds_term(NameTerm),
+        elds_rtti_ref(RttiId)
+        ]).
+
+:- pred maybe_pseudo_type_info_or_self_to_elds(module_info::in,
+    rtti_maybe_pseudo_type_info_or_self::in,
+    elds_rtti_id::out, list(elds_rtti_defn)::out) is det.
+
+maybe_pseudo_type_info_or_self_to_elds(MI, plain(TI), RttiId, Defns) :-
+    maybe_pseudo_type_info_to_elds(MI, plain(TI), RttiId, Defns).
+maybe_pseudo_type_info_or_self_to_elds(MI, pseudo(PTI), RttiId, Defns) :-
+    maybe_pseudo_type_info_to_elds(MI, pseudo(PTI), RttiId, Defns).
+maybe_pseudo_type_info_or_self_to_elds(_MI, self, _RttiId, _Defns) :-
+    unexpected(this_file,
+            "maybe_pseudo_type_info_or_self_to_elds: self not handled yet.").
 
 :- pred maybe_pseudo_type_info_to_elds(module_info::in,
     rtti_maybe_pseudo_type_info::in,
