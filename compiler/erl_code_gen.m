@@ -810,7 +810,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         % Create a closure for the success expression if it is too large to
         % duplicate into the branches.
         % (InstMap1 = InstMap0 + optionally a variable bound to a closure)
-        BoundNonLocals = set.union_list([CondVars, ThenVars, ElseVars]),
+        BoundNonLocals = set.union(ThenVars, ElseVars),
         maybe_create_closure_for_success_expr(BoundNonLocals,
             MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr,
             InstMap0, InstMap1, !Info),
