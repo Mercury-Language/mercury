@@ -531,7 +531,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
 
             % TypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
-        Atom = type_info_to_string(TypeInfo)
+        Atom = "ti_" ++ type_info_to_string(TypeInfo)
     ;
         RttiId = elds_rtti_pseudo_type_info_id(PseudoTypeInfo),
         ( PseudoTypeInfo = type_var(_) ->
@@ -542,7 +542,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
             
             % PseudoTypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
-        Atom = Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo)
+        Atom = "pti_" ++ Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo)
     ;
         RttiId = elds_rtti_base_typeclass_id(TCName, InstanceModule,
             InstanceStr),
