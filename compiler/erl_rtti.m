@@ -230,7 +230,11 @@ erlang_impl_ctor(impl_ctor_trail_ptr) = _ :-
 
 rtti_data_list_to_elds(ModuleInfo, RttiDatas, RttiDefns) :-
     list.map(rtti_data_to_elds(ModuleInfo), RttiDatas, RttiDefns0),
-    RttiDefns = list.condense(RttiDefns0).
+
+        % XXX See mlds_defn_is_potentially_duplicated for how this can
+        % be made more efficient.
+        %
+    RttiDefns = list.sort_and_remove_dups(list.condense(RttiDefns0)).
 
 :- pred rtti_data_to_elds(module_info::in, erlang_rtti_data::in,
     list(elds_rtti_defn)::out) is det.
@@ -259,12 +263,12 @@ rtti_data_to_elds(ModuleInfo, RttiData, [RttiDefn]) :-
     RttiDefn = elds_rtti_defn(RttiId, IsExported, VarSet,
         elds_clause([], elds_term(BaseTypeClassInfoData))).
 
-rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = erlang_rtti_data_type_info(_TypeInfo),
-    unexpected(this_file, "rtti_data_to_elds: rtti_data_type_info").
-rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = erlang_rtti_data_pseudo_type_info(_PseudoTypeInfo),
-    unexpected(this_file, "rtti_data_to_elds: rtti_data_pseudo_type_info").
+rtti_data_to_elds(ModuleInfo, RttiData, RttiDefns) :-
+    RttiData = erlang_rtti_data_type_info(TypeInfo),
+    rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns).
+rtti_data_to_elds(ModuleInfo, RttiData, RttiDefns) :-
+    RttiData = erlang_rtti_data_pseudo_type_info(PseudoTypeInfo),
+    rtti_pseudo_type_info_to_elds(ModuleInfo, PseudoTypeInfo, RttiDefns).
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
     RttiData = erlang_rtti_data_type_class_decl(_TCDecl).
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
@@ -376,35 +380,178 @@ extract_extra_arg(TCIVar, Index, Var, ExtractStatement, !VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-    % XXX This code is dead, but I've left it in until I am sure
-    % that we don't need it.
+    %
+    % Generate a representation of a type_info.
+    % The generated type_info will always be local to the module.
+    %
 :- pred rtti_type_info_to_elds(module_info::in, rtti_type_info::in,
     list(elds_rtti_defn)::out) is det.
 
 rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
     TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
-    RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity),
-    TypeCtorRttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
 
-    ELDSTypeInfo = elds_tuple([elds_rtti_ref(TypeCtorRttiId)]),
-
+    TypeCtorRttiId = elds_rtti_type_ctor_id(RttiTypeCtor),
+    ELDSTypeInfo = elds_rtti_ref(TypeCtorRttiId),
     
-    RttiId = elds_rtti_type_info_id(ModuleName, TypeName, Arity),
-    IsExported = yes,
+    RttiId = elds_rtti_type_info_id(TypeInfo),
+    IsExported = no,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], ELDSTypeInfo)),
+
+    RttiDefns = [RttiDefn].
+
+rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = plain_type_info(TypeCtor, ArgTypeInfos),
+
+    rtti_type_info_to_elds_2(ModuleInfo,
+            ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns),
+
+    ELDSTypeInfo = elds_tuple(
+        [elds_rtti_ref(elds_rtti_type_ctor_id(TypeCtor)) | ELDSArgTypeInfos]),
+
+    RttiId = elds_rtti_type_info_id(TypeInfo),
+    IsExported = no,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], elds_term(ELDSTypeInfo))),
+
+    RttiDefns = [RttiDefn | ArgRttiDefns ].
+
+rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = var_arity_type_info(VarCtorId, ArgTypeInfos),
+    TypeCtor = var_arity_id_to_rtti_type_ctor(VarCtorId),
+
+    rtti_type_info_to_elds_2(ModuleInfo,
+            ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns),
+
+    ELDSTypeInfo = elds_tuple([
+        elds_rtti_ref(elds_rtti_type_ctor_id(TypeCtor)),
+        elds_term(elds_int(list.length(ArgTypeInfos))) |
+        ELDSArgTypeInfos]),
+
+    RttiId = elds_rtti_type_info_id(TypeInfo),
+    IsExported = no,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], elds_term(ELDSTypeInfo))),
+
+    RttiDefns = [RttiDefn | ArgRttiDefns ].
+
+:- pred rtti_type_info_to_elds_2(module_info::in,
+    list(rtti_type_info)::in,
+    list(elds_expr)::out, list(elds_rtti_defn)::out) is det.
+
+rtti_type_info_to_elds_2(ModuleInfo,
+        ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns) :-
+    list.map(rtti_type_info_to_elds(ModuleInfo), ArgTypeInfos, ArgRttiDefns0),
+    ArgRttiDefns = list.sort_and_remove_dups(list.condense(ArgRttiDefns0)),
+
+    ELDSArgTypeInfos = list.map(
+        func(TI) = elds_rtti_ref(elds_rtti_type_info_id(TI)), ArgTypeInfos).
+
+
+%-----------------------------------------------------------------------------%
+
+    %
+    % Generate a representation of a pseudo_type_info.
+    % The generated pseudo_type_info will always be local to the module.
+    %
+:- pred rtti_pseudo_type_info_to_elds(module_info::in,
+    rtti_pseudo_type_info::in, list(elds_rtti_defn)::out) is det.
+
+rtti_pseudo_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
+
+    TypeCtorRttiId = elds_rtti_type_ctor_id(RttiTypeCtor),
+    ELDSTypeInfo = elds_rtti_ref(TypeCtorRttiId),
+    
+    RttiId = elds_rtti_pseudo_type_info_id(TypeInfo),
+    IsExported = no,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], ELDSTypeInfo)),
+
+    RttiDefns = [RttiDefn].
+
+rtti_pseudo_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = plain_pseudo_type_info(TypeCtor, ArgTypeInfos),
+
+    rtti_pseudo_type_info_to_elds_2(ModuleInfo,
+        ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns),
+
+    ELDSTypeInfo = elds_tuple(
+        [elds_rtti_ref(elds_rtti_type_ctor_id(TypeCtor)) | ELDSArgTypeInfos]),
+
+    RttiId = elds_rtti_pseudo_type_info_id(TypeInfo),
+    IsExported = no,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], elds_term(ELDSTypeInfo))),
+
+    RttiDefns = [RttiDefn | ArgRttiDefns ].
+
+rtti_pseudo_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = var_arity_pseudo_type_info(VarCtorId, ArgTypeInfos),
+    TypeCtor = var_arity_id_to_rtti_type_ctor(VarCtorId),
+
+    rtti_pseudo_type_info_to_elds_2(ModuleInfo,
+        ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns),
+
+    ELDSTypeInfo = elds_tuple([
+        elds_rtti_ref(elds_rtti_type_ctor_id(TypeCtor)),
+        elds_term(elds_int(list.length(ArgTypeInfos))) |
+        ELDSArgTypeInfos]),
+
+    RttiId = elds_rtti_pseudo_type_info_id(TypeInfo),
+    IsExported = no,
+    RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
+        elds_clause([], elds_term(ELDSTypeInfo))),
+
+    RttiDefns = [RttiDefn | ArgRttiDefns ].
+
+rtti_pseudo_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
+    TypeInfo = type_var(I),
+
+    ELDSTypeInfo = elds_int(I),
+
+    RttiId = elds_rtti_pseudo_type_info_id(TypeInfo),
+    IsExported = no,
     RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
         elds_clause([], elds_term(ELDSTypeInfo))),
 
     RttiDefns = [RttiDefn].
-rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
-    TypeInfo = plain_type_info(_, _),
-    RttiDefns = [].
-rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
-    TypeInfo = var_arity_type_info(_, _),
-    RttiDefns = [].
+
+:- pred rtti_pseudo_type_info_to_elds_2(module_info::in,
+    list(rtti_maybe_pseudo_type_info)::in,
+    list(elds_expr)::out, list(elds_rtti_defn)::out) is det.
+
+rtti_pseudo_type_info_to_elds_2(ModuleInfo,
+        ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns) :-
+    list.map(rtti_maybe_pseudo_type_info_to_elds(ModuleInfo),
+            ArgTypeInfos, ArgRttiDefns0),
+    ArgRttiDefns = list.sort_and_remove_dups(list.condense(ArgRttiDefns0)),
+
+    ELDSArgTypeInfos = list.map(
+        (func(MPTI) = elds_rtti_ref(Id) :-
+            (
+                MPTI = pseudo(PTI),
+                Id = elds_rtti_pseudo_type_info_id(PTI)
+            ;
+                MPTI = plain(TI),
+                Id = elds_rtti_type_info_id(TI)
+            )
+        ), ArgTypeInfos).
+
+
+:- pred rtti_maybe_pseudo_type_info_to_elds(module_info::in,
+    rtti_maybe_pseudo_type_info::in, list(elds_rtti_defn)::out) is det.
+
+rtti_maybe_pseudo_type_info_to_elds(ModuleInfo, plain(TypeInfo), Defns) :-
+    rtti_type_info_to_elds(ModuleInfo, TypeInfo, Defns).
+rtti_maybe_pseudo_type_info_to_elds(ModuleInfo, pseudo(TypeInfo), Defns) :-
+    rtti_pseudo_type_info_to_elds(ModuleInfo, TypeInfo, Defns).
 
 %-----------------------------------------------------------------------------%
 
-    % See MR_TypeCtorInfo_Struct in runtime/mercury_type_info.h
+    %
+    % This predicate defines the representation of type_ctor_info
+    % for the erlang backend.
     %
 :- pred type_ctor_data_to_elds(module_info::in, erlang_type_ctor_data::in,
     list(elds_rtti_defn)::out) is det.
@@ -421,6 +568,8 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         VarSet = !.VarSet
     ),
 
+    erlang_type_ctor_details(ModuleInfo, Details, ELDSDetails, RttiDefns0),
+
     ELDSTypeCtorData = elds_tuple([
         elds_term(elds_int(Arity)),
         elds_term(elds_int(Version)),
@@ -428,13 +577,15 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         CompareExpr,
         elds_term(elds_string(sym_name_to_string(ModuleName))),
         elds_term(elds_string(TypeName)),
-        erlang_type_ctor_rep(Details)
+        erlang_type_ctor_rep(Details),
+        ELDSDetails
         ]),
-    RttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
+    TypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity),
+    RttiId = elds_rtti_type_ctor_id(TypeCtor),
     IsExported = yes,
     RttiDefn = elds_rtti_defn(RttiId, IsExported, VarSet,
         elds_clause([], elds_term(ELDSTypeCtorData))),
-    RttiDefns = [RttiDefn].
+    RttiDefns = [RttiDefn | RttiDefns0].
 
 :- func erlang_type_ctor_rep(erlang_type_ctor_details) = elds_expr.
 
@@ -472,14 +623,6 @@ erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pseudo_type_desc)) =
     elds_term(make_enum_alternative("pseudo_type_desc")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_ctor_desc)) = 
     elds_term(make_enum_alternative("type_ctor_desc")).
-
-erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_hp)) =
-    elds_term(make_enum_alternative("hp")).
-erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_subgoal)) =
-    elds_term(make_enum_alternative("subgoal")).
-erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_ticket)) =
-    elds_term(make_enum_alternative("ticket")).
-
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_info)) =
     elds_term(make_enum_alternative("type_info")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_ctor_info)) =
@@ -492,6 +635,16 @@ erlang_type_ctor_rep(
 erlang_type_ctor_rep(erlang_foreign) =
     elds_term(make_enum_alternative("foreign")).
 
+    %
+    % These three types should never actually be used in
+    % an Erlang program.
+    %
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_hp)) =
+    elds_term(make_enum_alternative("hp")).
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_subgoal)) =
+    elds_term(make_enum_alternative("subgoal")).
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_ticket)) =
+    elds_term(make_enum_alternative("ticket")).
 
 :- pred gen_init_special_pred(module_info::in, maybe(rtti_proc_label)::in,
     elds_expr::out, prog_varset::in, prog_varset::out) is det.
@@ -559,6 +712,49 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
     WrapperFun = elds_fun(elds_clause(terms_from_vars(WrapperInputVars),
         DoCall)).
 
+
+    %
+    % erlang_type_ctor_details(ModuleInfo, Details, Expr, Defns)
+    %
+    % will return the expr, Expr, which evaluates to an erlang term
+    % which describes the type in more detail, plus the extra
+    % definitions, Defns, needed to help define that term.
+    %
+    % Note two calls to this predicate may generate duplicate
+    % definitions, so the user is responsible for getting rid
+    % of duplicate definitions.
+    %
+:- pred erlang_type_ctor_details(module_info::in,
+    erlang_type_ctor_details::in, elds_expr::out, 
+    list(elds_rtti_defn)::out) is det.
+
+erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
+        %
+        % XXX Currently we only handle equivalence types,
+        % as this causes type_info's and pseudo_type_info's
+        % to be generated.
+        %
+    ( Details = erlang_eqv(MaybePseudoTypeInfo) ->
+        maybe_pseudo_type_info_to_elds(ModuleInfo, MaybePseudoTypeInfo,
+            RttiId, Defns),
+        Term = elds_rtti_ref(RttiId)
+    ;
+        Term = elds_term(elds_tuple([])),
+        Defns = []
+    ).
+
+:- pred maybe_pseudo_type_info_to_elds(module_info::in,
+    rtti_maybe_pseudo_type_info::in,
+    elds_rtti_id::out, list(elds_rtti_defn)::out) is det.
+
+maybe_pseudo_type_info_to_elds(ModuleInfo, plain(TypeInfo), RttiId, Defns) :-
+    RttiId = elds_rtti_type_info_id(TypeInfo),
+    rtti_type_info_to_elds(ModuleInfo, TypeInfo, Defns).
+maybe_pseudo_type_info_to_elds(ModuleInfo, pseudo(PTypeInfo), RttiId, Defns) :-
+    RttiId = elds_rtti_pseudo_type_info_id(PTypeInfo),
+    rtti_pseudo_type_info_to_elds(ModuleInfo, PTypeInfo, Defns).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

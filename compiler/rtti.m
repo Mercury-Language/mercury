@@ -727,6 +727,14 @@
     %
 :- pred type_ctor_rep_to_string(type_ctor_data::in, string::out) is det.
 
+    % Return a name which identifies the rtti_type_info
+    %
+:- func type_info_to_string(rtti_type_info) = string.
+
+    % Return a name which identifies the pseudo_type_info
+    %
+:- func pseudo_type_info_to_string(rtti_pseudo_type_info) = string.
+
     % Return the rtti_data containing the given type_info.
     %
 :- func type_info_to_rtti_data(rtti_type_info) = rtti_data.
@@ -1442,8 +1450,6 @@ mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func type_info_to_string(rtti_type_info) = string.
-
 type_info_to_string(TypeInfo) = Str :-
     (
         TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
@@ -1461,8 +1467,6 @@ type_info_to_string(TypeInfo) = Str :-
         IdStr = var_arity_ctor_id_to_string(VarArityId),
         Str = "__vti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
     ).
-
-:- func pseudo_type_info_to_string(rtti_pseudo_type_info) = string.
 
 pseudo_type_info_to_string(PseudoTypeInfo) = Str :-
     (

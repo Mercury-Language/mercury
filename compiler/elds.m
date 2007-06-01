@@ -95,14 +95,13 @@
     %
 :- type elds_rtti_id
     --->    elds_rtti_type_ctor_id(
-                module_name,
-                string,
-                arity
+                rtti_type_ctor
             )
     ;       elds_rtti_type_info_id(
-                module_name,
-                string,
-                arity
+                rtti_type_info
+            )
+    ;       elds_rtti_pseudo_type_info_id(
+                rtti_pseudo_type_info
             )
     ;       elds_rtti_base_typeclass_id(
                 tc_name,        % identifies the type class

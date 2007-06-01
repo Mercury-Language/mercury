@@ -514,20 +514,35 @@ output_pred_proc_id(ModuleInfo, PredProcId, !IO) :-
 output_rtti_id(ModuleInfo, RttiId, !IO) :-
     module_info_get_name(ModuleInfo, CurModuleName),
     (
-        (
-            RttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
-            Prefix = "TypeCtorInfo_" 
-        ;
-            RttiId = elds_rtti_type_info_id(ModuleName, TypeName, Arity),
-            Prefix = "TypeInfo_" 
-        ),
+        RttiId = elds_rtti_type_ctor_id(RttiTypeCtor),
+        RttiTypeCtor = rtti_type_ctor(ModuleName, _, _),
+
         % The only things with an empty module name should be the builtins.
         ( ModuleName = unqualified("") ->
             InstanceModule = mercury_public_builtin_module
         ;
             InstanceModule = ModuleName
         ),
-        Atom = Prefix ++ TypeName ++ "_" ++ string.from_int(Arity)
+
+        CRttiId = rtti.ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        rtti.id_to_c_identifier(CRttiId, Atom)
+    ;
+        RttiId = elds_rtti_type_info_id(TypeInfo),
+
+            % TypeInfos are always local to the current module.
+        InstanceModule = CurModuleName,
+        Atom = type_info_to_string(TypeInfo)
+    ;
+        RttiId = elds_rtti_pseudo_type_info_id(PseudoTypeInfo),
+        ( PseudoTypeInfo = type_var(_) ->
+            Prefix = "type_var_"
+        ;
+            Prefix = ""
+        ),
+            
+            % PseudoTypeInfos are always local to the current module.
+        InstanceModule = CurModuleName,
+        Atom = Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo)
     ;
         RttiId = elds_rtti_base_typeclass_id(TCName, InstanceModule,
             InstanceStr),
