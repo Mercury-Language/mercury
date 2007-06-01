@@ -531,7 +531,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
 
             % TypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
-        Atom0 = "ti_" ++ type_info_to_string(TypeInfo)
+        Atom0 = "ti_" ++ type_info_to_string(TypeInfo),
             
             % Erlang atoms have a maximum length, so shorten names
         Atom = string.replace_all(Atom0, "type_ctor_info", "tci")
