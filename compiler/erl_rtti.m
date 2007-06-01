@@ -590,61 +590,61 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
 :- func erlang_type_ctor_rep(erlang_type_ctor_details) = elds_expr.
 
 erlang_type_ctor_rep(erlang_du(_)) =
-    elds_term(make_enum_alternative("du")).
+    elds_term(make_enum_alternative("etcr_du")).
 erlang_type_ctor_rep(erlang_list(_)) =
-    elds_term(make_enum_alternative("list")).
+    elds_term(make_enum_alternative("etcr_list")).
 erlang_type_ctor_rep(erlang_eqv(_)) =
-    elds_term(make_enum_alternative("eqv")).
+    elds_term(make_enum_alternative("etcr_eqv")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int)) =
-    elds_term(make_enum_alternative("int")).
+    elds_term(make_enum_alternative("etcr_int")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_float)) =
-    elds_term(make_enum_alternative("float")).
+    elds_term(make_enum_alternative("etcr_float")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_char)) =
-    elds_term(make_enum_alternative("char")).
+    elds_term(make_enum_alternative("etcr_char")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_string)) =
-    elds_term(make_enum_alternative("string")).
+    elds_term(make_enum_alternative("etcr_string")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_void)) =
-    elds_term(make_enum_alternative("void")).
+    elds_term(make_enum_alternative("etcr_void")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_c_pointer(is_stable))) =
-    elds_term(make_enum_alternative("stable_c_pointer")).
+    elds_term(make_enum_alternative("etcr_stable_c_pointer")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_c_pointer(is_not_stable))) =
-    elds_term(make_enum_alternative("c_pointer")).
+    elds_term(make_enum_alternative("etcr_c_pointer")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pred_ctor)) = 
-    elds_term(make_enum_alternative("pred")).
+    elds_term(make_enum_alternative("etcr_pred")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_func_ctor)) = 
-    elds_term(make_enum_alternative("func")).
+    elds_term(make_enum_alternative("etcr_func")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_tuple)) = 
-    elds_term(make_enum_alternative("tuple")).
+    elds_term(make_enum_alternative("etcr_tuple")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_ref)) = 
-    elds_term(make_enum_alternative("ref")).
+    elds_term(make_enum_alternative("etcr_ref")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_desc)) = 
-    elds_term(make_enum_alternative("type_desc")).
+    elds_term(make_enum_alternative("etcr_type_desc")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pseudo_type_desc)) = 
-    elds_term(make_enum_alternative("pseudo_type_desc")).
+    elds_term(make_enum_alternative("etcr_pseudo_type_desc")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_ctor_desc)) = 
-    elds_term(make_enum_alternative("type_ctor_desc")).
+    elds_term(make_enum_alternative("etcr_type_ctor_desc")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_info)) =
-    elds_term(make_enum_alternative("type_info")).
+    elds_term(make_enum_alternative("etcr_type_info")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_ctor_info)) =
-    elds_term(make_enum_alternative("type_ctor_info")).
+    elds_term(make_enum_alternative("etcr_type_ctor_info")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_typeclass_info)) =
-    elds_term(make_enum_alternative("typeclass_info")).
+    elds_term(make_enum_alternative("etcr_typeclass_info")).
 erlang_type_ctor_rep(
     erlang_impl_artifact(erlang_impl_ctor_base_typeclass_info)) =
-    elds_term(make_enum_alternative("base_typeclass_info")).
+    elds_term(make_enum_alternative("etcr_base_typeclass_info")).
 erlang_type_ctor_rep(erlang_foreign) =
-    elds_term(make_enum_alternative("foreign")).
+    elds_term(make_enum_alternative("etcr_foreign")).
 
     %
     % These three types should never actually be used in
     % an Erlang program.
     %
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_hp)) =
-    elds_term(make_enum_alternative("hp")).
+    elds_term(make_enum_alternative("etcr_hp")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_subgoal)) =
-    elds_term(make_enum_alternative("subgoal")).
+    elds_term(make_enum_alternative("etcr_subgoal")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_ticket)) =
-    elds_term(make_enum_alternative("ticket")).
+    elds_term(make_enum_alternative("etcr_ticket")).
 
 :- pred gen_init_special_pred(module_info::in, maybe(rtti_proc_label)::in,
     elds_expr::out, prog_varset::in, prog_varset::out) is det.

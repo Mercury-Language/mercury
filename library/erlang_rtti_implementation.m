@@ -62,35 +62,35 @@
     % given by the function erl_rtti.erlang_type_ctor_rep/1
     %
 :- type erlang_type_ctor_rep
-    --->    du
-    ;       list
-    ;       eqv
-    ;       int
-    ;       float
-    ;       char
-    ;       string
-    ;       void
-    ;       stable_c_pointer
-    ;       c_pointer
-    ;       (pred)
-    ;       (func)
-    ;       tuple
-    ;       ref
-    ;       type_desc
-    ;       pseudo_type_desc
-    ;       type_ctor_desc
-    ;       type_info
-    ;       type_ctor_info
-    ;       typeclass_info
-    ;       base_typeclass_info
-    ;       foreign
+    --->    etcr_du
+    ;       etcr_list
+    ;       etcr_eqv
+    ;       etcr_int
+    ;       etcr_float
+    ;       etcr_char
+    ;       etcr_string
+    ;       etcr_void
+    ;       etcr_stable_c_pointer
+    ;       etcr_c_pointer
+    ;       etcr_pred
+    ;       etcr_func
+    ;       etcr_tuple
+    ;       etcr_ref
+    ;       etcr_type_desc
+    ;       etcr_pseudo_type_desc
+    ;       etcr_type_ctor_desc
+    ;       etcr_type_info
+    ;       etcr_type_ctor_info
+    ;       etcr_typeclass_info
+    ;       etcr_base_typeclass_info
+    ;       etcr_foreign
 
             % These types shouldn't be needed they are
             % introduced for library predicates which
             % don't apply on this backend.
-    ;       hp
-    ;       subgoal
-    ;       ticket
+    ;       etcr_hp
+    ;       etcr_subgoal
+    ;       etcr_ticket
     .
 
 %-----------------------------------------------------------------------------%
@@ -101,11 +101,11 @@ generic_unify(X, Y) :-
     TypeCtorInfo = TypeInfo ^ type_ctor_info,
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     (
-        TypeCtorRep = tuple
+        TypeCtorRep = etcr_tuple
     ->
         unify_tuple(TypeInfo, X, Y)
     ;
-        ( TypeCtorRep = (pred) ; TypeCtorRep = (func) )
+        ( TypeCtorRep = etcr_pred ; TypeCtorRep = etcr_func )
     ->
         error("unify/2: higher order unification not possible")
     ;
@@ -178,11 +178,11 @@ generic_compare(Res, X, Y) :-
     TypeCtorInfo = TypeInfo ^ type_ctor_info,
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     (
-        TypeCtorRep = tuple
+        TypeCtorRep = etcr_tuple
     ->
         compare_tuple(TypeInfo, Res, X, Y)
     ;
-        ( TypeCtorRep = (pred) ; TypeCtorRep = (func) )
+        ( TypeCtorRep = etcr_pred ; TypeCtorRep = etcr_func )
     ->
         error("compare/3: higher order comparison not possible")
     ;
