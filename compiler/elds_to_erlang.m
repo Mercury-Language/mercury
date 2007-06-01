@@ -531,18 +531,24 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
 
             % TypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
-        Atom = "ti_" ++ type_info_to_string(TypeInfo)
+        Atom0 = "ti_" ++ type_info_to_string(TypeInfo)
+            
+            % Erlang atoms have a maximum length, so shorten names
+        Atom = string.replace_all(Atom0, "type_ctor_info", "tci")
     ;
         RttiId = elds_rtti_pseudo_type_info_id(PseudoTypeInfo),
         ( PseudoTypeInfo = type_var(_) ->
             Prefix = "type_var_"
         ;
-            Prefix = ""
+            Prefix = "pti_"
         ),
             
             % PseudoTypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
-        Atom = "pti_" ++ Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo)
+        Atom0 = Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo),
+
+            % Erlang atoms have a maximum length, so shorten names
+        Atom = string.replace_all(Atom0, "type_ctor_info", "tci")
     ;
         RttiId = elds_rtti_base_typeclass_id(TCName, InstanceModule,
             InstanceStr),
