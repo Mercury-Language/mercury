@@ -758,14 +758,7 @@ erlang_du_functor(ModuleInfo, Functor, elds_term(Term), !Defns) :-
     Functor = erlang_du_functor(Name, Arity, Ord, Rep, ArgInfos, MaybeExist),
 
     list.map_foldl(du_arg_info(ModuleInfo), ArgInfos, ELDSArgInfos, !Defns),
-    (
-        MaybeExist = yes(_),
-            % XXX
-        ELDSExist = elds_term(elds_tuple([]))
-    ;
-        MaybeExist = no,
-        ELDSExist = elds_term(elds_tuple([]))
-    ),
+    ELDSExist = convert_to_elds_term(MaybeExist),
 
     Term = elds_tuple([
         elds_term(elds_string(Name)),
@@ -773,7 +766,7 @@ erlang_du_functor(ModuleInfo, Functor, elds_term(Term), !Defns) :-
         elds_term(elds_int(Ord)),
         elds_term(elds_atom_raw(Rep)),
         elds_term(elds_tuple(ELDSArgInfos)),
-        ELDSExist
+        elds_term(ELDSExist)
         ]).
 
 :- pred du_arg_info(module_info::in, du_arg_info::in,
@@ -817,6 +810,59 @@ maybe_pseudo_type_info_to_elds(ModuleInfo, plain(TypeInfo), RttiId, Defns) :-
 maybe_pseudo_type_info_to_elds(ModuleInfo, pseudo(PTypeInfo), RttiId, Defns) :-
     RttiId = elds_rtti_pseudo_type_info_id(PTypeInfo),
     rtti_pseudo_type_info_to_elds(ModuleInfo, PTypeInfo, Defns).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- import_module deconstruct.
+:- import_module exception.
+
+    %
+    % convert_to_elds_term(Term) = ELDSTerm
+    %
+    % takes a Mercury type which doesn't contain any existential types
+    % and generate an elds_term which represents how that term would
+    % be represented in Erlang.
+    %
+    % Note this predicate will throw an exception if the type contains
+    % a noncanonical type: see do_not_allow documentation
+    % in library/deconstruct.m
+    %
+    % It also doesn't generate the correct ELDS term for types which
+    % contain existentially quantified functors.
+    %
+:- func convert_to_elds_term(T) = elds_term.
+
+convert_to_elds_term(Term) = ELDS :-
+    ( dynamic_cast(Term, Int) ->
+        ELDS = elds_int(Int)
+    ; dynamic_cast(Term, Char) ->
+        ELDS = elds_char(Char)
+    ; dynamic_cast(Term, String) ->
+        ELDS = elds_string(String)
+    ; dynamic_cast(Term, Float) ->
+        ELDS = elds_float(Float)
+    ;
+        functor(Term, do_not_allow, Functor, Arity),
+        SubETerms = list.map(convert_arg_to_elds_term(Term), 0 .. (Arity - 1)),
+        Exprs = list.map(func(T) = elds_term(T), SubETerms),
+
+        ( Functor = "{}" ->
+            ELDS = elds_tuple(Exprs)
+        ;
+            FunctorTerm = elds_term(elds_atom(unqualified(Functor))),
+            ELDS = elds_tuple([FunctorTerm | Exprs])
+        )
+    ).
+
+:- func convert_arg_to_elds_term(T, int) = elds_term.
+
+convert_arg_to_elds_term(Term, Index) = ELDS :-
+    ( arg(Term, do_not_allow, Index, Arg) ->
+        ELDS = convert_to_elds_term(Arg)
+    ;
+        unexpected(this_file, "convert_arg_to_elds_term/2")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

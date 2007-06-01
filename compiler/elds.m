@@ -420,7 +420,7 @@ elds_body_arity(body_external(Arity)) = Arity.
 
 elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
 
-make_enum_alternative(F) = elds_tuple([elds_term(elds_atom_raw(F))]).
+make_enum_alternative(F) = elds_tuple([elds_term(elds_atom(unqualified(F)))]).
 
 %-----------------------------------------------------------------------------%
 
