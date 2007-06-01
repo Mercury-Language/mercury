@@ -324,6 +324,16 @@
 
 :- func elds_clause_arity(elds_clause) = arity.
 
+    %
+    % make_enum_alternative(F)
+    %
+    % returns the erlang representation of the functor, F, provided
+    % F is part of an enum type.
+    % An enum type is a du type where none of the functors have arguments.
+    % eg :- type t ---> f ; g ; h.
+    %
+:- func make_enum_alternative(string) = elds_term.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -400,6 +410,8 @@ elds_body_arity(body_defined_here(Clause)) = elds_clause_arity(Clause).
 elds_body_arity(body_external(Arity)) = Arity.
 
 elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
+
+make_enum_alternative(F) = elds_tuple([elds_term(elds_atom_raw(F))]).
 
 %-----------------------------------------------------------------------------%
 

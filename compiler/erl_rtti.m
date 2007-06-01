@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 % 
 % File: erl_rtti.m.
-% Main author: wangp.
+% Main author: wangp, petdr
 % 
 % This module converts from the back-end-independent RTTI data structures into
 % ELDS function definitions.
@@ -19,6 +19,7 @@
 :- module erl_backend.erl_rtti.
 :- interface.
 
+:- import_module backend_libs.erlang_rtti.
 :- import_module backend_libs.rtti.
 :- import_module erl_backend.elds.
 :- import_module hlds.hlds_module.
@@ -27,8 +28,18 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred rtti_data_list_to_elds(module_info::in, list(rtti_data)::in,
-    list(elds_rtti_defn)::out) is det.
+    %
+    % erlang_rtti_data(MI, RD)
+    %
+    % converts from rtti_data to erlang_rtti_data.
+    %
+:- func erlang_rtti_data(module_info, rtti_data) = erlang_rtti_data.
+
+    %
+    % Generate a representation of all the erlang RTTI
+    %
+:- pred rtti_data_list_to_elds(module_info::in,
+    list(erlang_rtti_data)::in, list(elds_rtti_defn)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -47,21 +58,185 @@
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
+:- import_module string.
 :- import_module svvarset.
 :- import_module univ.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+erlang_rtti_data(_, rtti_data_type_ctor_info(TypeCtorData)) = RttiData :-
+    TypeCtorData = type_ctor_data(Version, ModuleName, TypeName,
+        Arity, UnifyPred, ComparePred, _Flags, Details),
+    ErlangUnify = maybe_get_special_predicate(UnifyPred),
+    ErlangCompare = maybe_get_special_predicate(ComparePred),
+    ErlangDetails = erlang_type_ctor_details(ModuleName,
+        TypeName, Arity, Details),
+    ErlangTypeCtorData = erlang_type_ctor_data(Version, ModuleName, TypeName,
+        Arity, ErlangUnify, ErlangCompare, ErlangDetails),
+    RttiData = erlang_rtti_data_type_ctor_info(ErlangTypeCtorData).
+erlang_rtti_data(_, rtti_data_type_info(TypeInfo)) =
+    erlang_rtti_data_type_info(TypeInfo).
+erlang_rtti_data(_, rtti_data_pseudo_type_info(PseudoTypeInfo)) =
+    erlang_rtti_data_pseudo_type_info(PseudoTypeInfo).
+erlang_rtti_data(_, rtti_data_base_typeclass_info(Name, Module, Enc, TCI)) =
+    erlang_rtti_data_base_typeclass_info(Name, Module, Enc, TCI).
+erlang_rtti_data(_, rtti_data_type_class_decl(TCDecl)) =
+    erlang_rtti_data_type_class_decl(TCDecl).
+erlang_rtti_data(_, rtti_data_type_class_instance(TCInstance)) =
+    erlang_rtti_data_type_class_instance(TCInstance).
+    
+:- func maybe_get_special_predicate(univ) = maybe(rtti_proc_label).
+
+maybe_get_special_predicate(Univ) =
+    ( univ_to_type(Univ, ProcLabel) ->
+        yes(ProcLabel)
+    ;
+        no
+    ).
+
+    %
+    % Given the type_ctor_details return the erlang version of those
+    % details.
+    % This means conflating enum and no_tags into erlang_du,
+    % aborting on reserved types, and specially handling the list type.
+    %
+:- func erlang_type_ctor_details(module_name, string,
+    int, type_ctor_details) = erlang_type_ctor_details.
+
+erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
+    (
+        ModuleName = unqualified("list"),
+        TypeName = "list",
+        Arity = 1
+    ->
+        ( list_argument_type(Details, Type) ->
+            D = erlang_list(Type)
+        ;
+            unexpected(this_file, "erlang_type_ctor_details: " ++
+                "unable to determine type of list argument")
+        )
+    ;
+        D = erlang_type_ctor_details_2(Details)
+    ).
+
+    %
+    % Given a type_ctor_detail which represents a list,
+    % determine the type of the argument to the list.
+    %
+:- pred list_argument_type(type_ctor_details::in,
+    rtti_maybe_pseudo_type_info::out) is semidet.
+
+list_argument_type(Details, Type) :-
+    Functors = Details ^ du_functors,
+    list_argument_type_2(Functors, Type).
+    
+:- pred list_argument_type_2(list(du_functor)::in,
+    rtti_maybe_pseudo_type_info::out) is semidet.
+
+list_argument_type_2([Functor | Functors], Type) :-
+    ( Functor ^ du_name = "[|]" ->
+        Functor ^ du_arg_infos = [du_arg_info(_, Type0), _],
+        convert_to_rtti_maybe_pseudo_type_info(Type0, Type)
+    ;
+        list_argument_type_2(Functors, Type)
+    ).
+        
+:- pred convert_to_rtti_maybe_pseudo_type_info(
+    rtti_maybe_pseudo_type_info_or_self::in,
+    rtti_maybe_pseudo_type_info::out) is semidet.
+
+convert_to_rtti_maybe_pseudo_type_info(plain(P), plain(P)).
+convert_to_rtti_maybe_pseudo_type_info(pseudo(P), pseudo(P)).
+
+:- func erlang_type_ctor_details_2(type_ctor_details) =
+    erlang_type_ctor_details.
+
+erlang_type_ctor_details_2(enum(_, Functors, _, _, _IsDummy, _)) =
+        % XXX Handle IsDummy
+    erlang_du(list.map(convert_enum_functor, Functors)).
+erlang_type_ctor_details_2(du(_, Functors, _, _, _)) =
+    erlang_du(list.map(convert_du_functor, Functors)).
+erlang_type_ctor_details_2(reserved(_, _, _, _, _, _)) =
+        % Reserved types are not supported on the Erlang backend.
+    unexpected(this_file, "erlang_type_ctor_details: reserved").
+erlang_type_ctor_details_2(notag(_, NoTagFunctor)) = Details :-
+    NoTagFunctor = notag_functor(Name, TypeInfo, ArgName),
+    ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
+    ArgInfos = [du_arg_info(ArgName, ArgTypeInfo)],
+    DUFunctor = erlang_du_functor(Name, 0, 1, Name, ArgInfos, no),
+    Details = erlang_du([DUFunctor]).
+erlang_type_ctor_details_2(eqv(Type)) = erlang_eqv(Type).
+erlang_type_ctor_details_2(builtin(Builtin)) = erlang_builtin(Builtin).
+erlang_type_ctor_details_2(impl_artifact(Impl)) = erlang_impl_artifact(EImpl) :-
+    EImpl = erlang_impl_ctor(Impl).
+erlang_type_ctor_details_2(foreign(_)) = erlang_foreign.
+    
+    %
+    % Convert an enum_functor into the equivalent erlang_du_functor
+    %
+:- func convert_enum_functor(enum_functor) = erlang_du_functor.
+
+convert_enum_functor(enum_functor(Name, _)) =
+    erlang_du_functor(Name, 0, 1, Name, [], no).
+
+    %
+    % Convert a du_functor into the equivalent erlang_du_functor
+    %
+:- func convert_du_functor(du_functor) = erlang_du_functor.
+
+convert_du_functor(du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist)) =
+    erlang_du_functor(Name, Arity, Ordinal + 1, Name, ArgInfos, Exist).
+
+:- func convert_to_rtti_maybe_pseudo_type_info_or_self(
+    rtti_maybe_pseudo_type_info) = rtti_maybe_pseudo_type_info_or_self.
+
+convert_to_rtti_maybe_pseudo_type_info_or_self(pseudo(P)) = pseudo(P).
+convert_to_rtti_maybe_pseudo_type_info_or_self(plain(P)) = plain(P).
+
+    %
+    % Restrict the implementation artifacts to only those
+    % allowed on the erlang backend.
+    %
+:- func erlang_impl_ctor(impl_ctor) = erlang_impl_ctor.
+
+erlang_impl_ctor(impl_ctor_hp) = erlang_impl_ctor_hp.
+erlang_impl_ctor(impl_ctor_subgoal) = erlang_impl_ctor_subgoal.
+erlang_impl_ctor(impl_ctor_ticket) = erlang_impl_ctor_ticket.
+erlang_impl_ctor(impl_ctor_type_info) = erlang_impl_ctor_type_info.
+erlang_impl_ctor(impl_ctor_type_ctor_info) = erlang_impl_ctor_type_ctor_info.
+erlang_impl_ctor(impl_ctor_typeclass_info) = erlang_impl_ctor_typeclass_info.
+erlang_impl_ctor(impl_ctor_base_typeclass_info) =
+    erlang_impl_ctor_base_typeclass_info.
+
+    % The following implementation artificats are never used
+    % on the erlang backend.
+erlang_impl_ctor(impl_ctor_succip) = _ :-
+    unexpected(this_file, "erlang_impl_ctor: impl_ctor_succip").
+erlang_impl_ctor(impl_ctor_maxfr) = _ :-
+    unexpected(this_file, "erlang_impl_ctor: impl_ctor_maxfr").
+erlang_impl_ctor(impl_ctor_curfr) = _ :-
+    unexpected(this_file, "erlang_impl_ctor: impl_ctor_curfr").
+erlang_impl_ctor(impl_ctor_redofr) = _ :-
+    unexpected(this_file, "erlang_impl_ctor: impl_ctor_redofr").
+erlang_impl_ctor(impl_ctor_redoip) = _ :-
+    unexpected(this_file, "erlang_impl_ctor: impl_ctor_redoip").
+erlang_impl_ctor(impl_ctor_trail_ptr) = _ :-
+    unexpected(this_file, "erlang_impl_ctor: impl_ctor_trail_ptr").
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 rtti_data_list_to_elds(ModuleInfo, RttiDatas, RttiDefns) :-
     list.map(rtti_data_to_elds(ModuleInfo), RttiDatas, RttiDefns0),
     RttiDefns = list.condense(RttiDefns0).
 
-:- pred rtti_data_to_elds(module_info::in, rtti_data::in,
+:- pred rtti_data_to_elds(module_info::in, erlang_rtti_data::in,
     list(elds_rtti_defn)::out) is det.
 
 rtti_data_to_elds(ModuleInfo, RttiData, [RttiDefn]) :-
-    RttiData = rtti_data_base_typeclass_info(TCName, InstanceModule,
+    RttiData = erlang_rtti_data_base_typeclass_info(TCName, InstanceModule,
         InstanceStr, BaseTypeClassInfo),
     BaseTypeClassInfo = base_typeclass_info(N1, N2, N3, N4, N5, Methods),
     NumExtra = BaseTypeClassInfo ^ num_extra,
@@ -85,18 +260,17 @@ rtti_data_to_elds(ModuleInfo, RttiData, [RttiDefn]) :-
         elds_clause([], elds_term(BaseTypeClassInfoData))).
 
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_type_info(_TypeInfo),
+    RttiData = erlang_rtti_data_type_info(_TypeInfo),
     unexpected(this_file, "rtti_data_to_elds: rtti_data_type_info").
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_pseudo_type_info(_PseudoTypeInfo),
+    RttiData = erlang_rtti_data_pseudo_type_info(_PseudoTypeInfo),
     unexpected(this_file, "rtti_data_to_elds: rtti_data_pseudo_type_info").
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_type_class_decl(_TCDecl).
+    RttiData = erlang_rtti_data_type_class_decl(_TCDecl).
 rtti_data_to_elds(_ModuleInfo, RttiData, []) :-
-    RttiData = rtti_data_type_class_instance(_Instance),
-    unexpected(this_file, "rtti_data_to_elds: rtti_data_type_class_instance").
+    RttiData = erlang_rtti_data_type_class_instance(_Instance).
 rtti_data_to_elds(ModuleInfo, RttiData, RttiDefns) :-
-    RttiData = rtti_data_type_ctor_info(TypeCtorData),
+    RttiData = erlang_rtti_data_type_ctor_info(TypeCtorData),
     type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns).
 
 %-----------------------------------------------------------------------------%
@@ -232,37 +406,29 @@ rtti_type_info_to_elds(_ModuleInfo, TypeInfo, RttiDefns) :-
 
     % See MR_TypeCtorInfo_Struct in runtime/mercury_type_info.h
     %
-:- pred type_ctor_data_to_elds(module_info::in, type_ctor_data::in,
+:- pred type_ctor_data_to_elds(module_info::in, erlang_type_ctor_data::in,
     list(elds_rtti_defn)::out) is det.
 
 type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
-    TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, Arity,
-        UnifyUniv, CompareUniv, Flags, Details),
-    NumPtags = type_ctor_details_num_ptags(Details),
-    type_ctor_rep_to_string(TypeCtorData, TypeCtorRep),
-    NumFunctors = type_ctor_details_num_functors(Details),
+    TypeCtorData = erlang_type_ctor_data(Version, ModuleName, TypeName, Arity,
+        UnifyProcLabel, CompareProcLabel, Details),
 
     some [!VarSet] (
         varset.init(!:VarSet),
-        gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyExpr, !VarSet),
-        gen_init_special_pred(ModuleInfo, CompareUniv, CompareExpr, !VarSet),
+        gen_init_special_pred(ModuleInfo, UnifyProcLabel, UnifyExpr, !VarSet),
+        gen_init_special_pred(ModuleInfo,
+            CompareProcLabel, CompareExpr, !VarSet),
         VarSet = !.VarSet
     ),
 
     ELDSTypeCtorData = elds_tuple([
         elds_term(elds_int(Arity)),
         elds_term(elds_int(Version)),
-        elds_term(elds_int(NumPtags)),
-        elds_term(elds_atom_raw(TypeCtorRep)),
         UnifyExpr,
         CompareExpr,
         elds_term(elds_string(sym_name_to_string(ModuleName))),
         elds_term(elds_string(TypeName)),
-        elds_term(elds_atom_raw("XXX TypeFunctors")),
-        elds_term(elds_atom_raw("XXX TypeLayout")),
-        elds_term(elds_int(NumFunctors)),
-        elds_term(elds_int(encode_type_ctor_flags(Flags))),
-        elds_term(elds_atom_raw("XXX FunctorNumberMap"))
+        erlang_type_ctor_rep(Details)
         ]),
     RttiId = elds_rtti_type_ctor_id(ModuleName, TypeName, Arity),
     IsExported = yes,
@@ -270,15 +436,74 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         elds_clause([], elds_term(ELDSTypeCtorData))),
     RttiDefns = [RttiDefn].
 
-:- pred gen_init_special_pred(module_info::in,
-    univ::in, elds_expr::out, prog_varset::in, prog_varset::out) is det.
+:- func erlang_type_ctor_rep(erlang_type_ctor_details) = elds_expr.
 
-gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Expr, !VarSet) :-
-    ( univ_to_type(RttiProcIdUniv, RttiProcId) ->
+erlang_type_ctor_rep(erlang_du(_)) =
+    elds_term(make_enum_alternative("du")).
+erlang_type_ctor_rep(erlang_list(_)) =
+    elds_term(make_enum_alternative("list")).
+erlang_type_ctor_rep(erlang_eqv(_)) =
+    elds_term(make_enum_alternative("eqv")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int)) =
+    elds_term(make_enum_alternative("int")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_float)) =
+    elds_term(make_enum_alternative("float")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_char)) =
+    elds_term(make_enum_alternative("char")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_string)) =
+    elds_term(make_enum_alternative("string")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_void)) =
+    elds_term(make_enum_alternative("void")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_c_pointer(is_stable))) =
+    elds_term(make_enum_alternative("stable_c_pointer")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_c_pointer(is_not_stable))) =
+    elds_term(make_enum_alternative("c_pointer")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pred_ctor)) = 
+    elds_term(make_enum_alternative("pred")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_func_ctor)) = 
+    elds_term(make_enum_alternative("func")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_tuple)) = 
+    elds_term(make_enum_alternative("tuple")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_ref)) = 
+    elds_term(make_enum_alternative("ref")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_desc)) = 
+    elds_term(make_enum_alternative("type_desc")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pseudo_type_desc)) = 
+    elds_term(make_enum_alternative("pseudo_type_desc")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_ctor_desc)) = 
+    elds_term(make_enum_alternative("type_ctor_desc")).
+
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_hp)) =
+    elds_term(make_enum_alternative("hp")).
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_subgoal)) =
+    elds_term(make_enum_alternative("subgoal")).
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_ticket)) =
+    elds_term(make_enum_alternative("ticket")).
+
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_info)) =
+    elds_term(make_enum_alternative("type_info")).
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_ctor_info)) =
+    elds_term(make_enum_alternative("type_ctor_info")).
+erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_typeclass_info)) =
+    elds_term(make_enum_alternative("typeclass_info")).
+erlang_type_ctor_rep(
+    erlang_impl_artifact(erlang_impl_ctor_base_typeclass_info)) =
+    elds_term(make_enum_alternative("base_typeclass_info")).
+erlang_type_ctor_rep(erlang_foreign) =
+    elds_term(make_enum_alternative("foreign")).
+
+
+:- pred gen_init_special_pred(module_info::in, maybe(rtti_proc_label)::in,
+    elds_expr::out, prog_varset::in, prog_varset::out) is det.
+
+gen_init_special_pred(ModuleInfo, MaybeRttiProcId, Expr, !VarSet) :-
+    (
+        MaybeRttiProcId = yes(RttiProcId),
         erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, Expr, !VarSet)
     ;
+        MaybeRttiProcId = no,
         unexpected(this_file,
-            "gen_init_special_pred: cannot extract univ value")
+            "gen_init_special_pred: no special pred")
     ).
     
 :- pred erl_gen_special_pred_wrapper(module_info::in, rtti_proc_label::in,

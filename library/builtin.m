@@ -593,6 +593,7 @@ X @>= Y :- not compare((<), X, Y).
 :- pred call_rtti_generic_compare(comparison_result::out, T::in, T::in) is det.
 
 :- implementation.
+:- use_module erlang_rtti_implementation.
 :- use_module rtti_implementation.
 
 call_rtti_generic_unify(X, Y) :-
@@ -810,9 +811,9 @@ deep_copy(java.lang.Object original) {
     '__Unify____c_pointer_0'(_, _) ->
         throw(""called unify for type `c_pointer'"").
 
-    % XXX TypeInfo ignored
     compare_3_p_0(TypeInfo, X, Y) ->
-        mercury__rtti_implementation:generic_compare_3_p_0(TypeInfo, X, Y).
+        mercury__erlang_rtti_implementation:generic_compare_3_p_0(
+            TypeInfo, X, Y).
 
     compare_3_p_1(TypeInfo, X, Y) ->
         compare_3_p_0(TypeInfo, X, Y).
@@ -828,7 +829,8 @@ deep_copy(java.lang.Object original) {
         compare_3_p_0(TypeInfo, X, Y).
 
     unify_2_p_0(TypeInfo, X, Y) ->
-        mercury__rtti_implementation:generic_unify_2_p_0(TypeInfo, X, Y).
+        mercury__erlang_rtti_implementation:generic_unify_2_p_0(
+            TypeInfo, X, Y).
 
     '__Unify____tuple_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to unify for tuple/0"").

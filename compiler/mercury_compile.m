@@ -5207,9 +5207,11 @@ erlang_backend(HLDS, ELDS, !DumpInfo, !IO) :-
     list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
         TypeClassInfoRttiData),
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
+    ErlangRttiDatas = list.map(erlang_rtti_data(HLDS), RttiDatas),
 
     ELDS0 = elds(ModuleName, ForeignBodies, Defns, FEDefns, RttiDefns0),
-    rtti_data_list_to_elds(HLDS, RttiDatas, RttiDefns),
+    
+    rtti_data_list_to_elds(HLDS, ErlangRttiDatas, RttiDefns),
     ELDS = elds(ModuleName, ForeignBodies, Defns, FEDefns,
         RttiDefns0 ++ RttiDefns).
 

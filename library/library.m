@@ -66,6 +66,7 @@
 :- import_module dir.
 :- import_module enum.
 :- import_module eqvclass.
+:- import_module erlang_rtti_implementation.
 :- import_module exception.
 :- import_module float.
 :- import_module gc.
@@ -210,6 +211,7 @@ mercury_std_library_module("deconstruct").
 mercury_std_library_module("dir").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
+mercury_std_library_module("erlang_rtti_implementation").
 mercury_std_library_module("exception").
 mercury_std_library_module("float").
 mercury_std_library_module("gc").

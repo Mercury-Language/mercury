@@ -20,6 +20,7 @@
 :- include_module bytecode_data.
 :- include_module c_util.
 :- include_module compile_target_code.
+:- include_module erlang_rtti.
 :- include_module export.
 :- include_module foreign.
 :- include_module interval.
