@@ -14,8 +14,6 @@ ORDINARY_PROGS=	\
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
-	bitmap_test \
-	bit_buffer_test \
 	boyer \
 	brace \
 	builtin_inst_rename \
@@ -241,7 +239,6 @@ ORDINARY_PROGS=	\
 	unusual_name_mutable \
 	user_compare \
 	user_defined_equality2 \
-	version_array_test \
 	write \
 	write_reg1 \
 	write_reg2 \
@@ -436,6 +433,8 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 	NON_PROFDEEP_PROGS = \
 		allow_stubs \
 		backend_external \
+		bitmap_test \
+		bit_buffer_test \
 		dir_test \
 		final_excp \
 		init_excp \
@@ -446,6 +445,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		test_array2d \
 		test_injection \
 		user_defined_equality \
+		version_array_test \
 		write_binary
 else
 	NON_PROFDEEP_PROGS =
