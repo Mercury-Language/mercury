@@ -88,6 +88,16 @@
     prog_vars::in, prog_vars::in, maybe(elds_expr)::in,
     elds_expr::out) is det.
 
+    % erl_make_call_replace_dummies(Info, CodeModel, CallTarget,
+    %   InputVars, OutputVars, MaybeSuccessExpr, Statement)
+    %
+    % As above, but in the generated call, replace any input variables which
+    % are of dummy types with `false'.
+    %
+:- pred erl_make_call_replace_dummies(erl_gen_info::in, code_model::in,
+    elds_call_target::in, prog_vars::in, prog_vars::in, maybe(elds_expr)::in,
+    elds_expr::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -99,6 +109,7 @@
 :- import_module libs.compiler_util.
 
 :- import_module int.
+:- import_module map.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -119,15 +130,46 @@ erl_gen_call(PredId, ProcId, ArgVars, _ActualArgTypes,
         ArgVars, CalleeTypes, ArgModes, InputVars, OutputVars),
 
     CallTarget = elds_call_plain(proc(PredId, ProcId)),
-    erl_make_call(CodeModel, CallTarget, InputVars, OutputVars,
-        MaybeSuccessExpr, DoCall),
-    materialise_dummies_before_expr(!.Info, InputVars, DoCall, Statement).
+    erl_make_call_replace_dummies(!.Info, CodeModel, CallTarget,
+        InputVars, OutputVars, MaybeSuccessExpr, Statement).
 
 %-----------------------------------------------------------------------------%
 
-erl_make_call(CodeModel, CallTarget, InputVars, OutputVars, MaybeSuccessExpr,
-        Statement) :-
+erl_make_call(CodeModel, CallTarget, InputVars, OutputVars,
+        MaybeSuccessExpr, Statement) :-
     InputExprs = exprs_from_vars(InputVars),
+    erl_make_call_2(CodeModel, CallTarget, InputExprs, OutputVars,
+        MaybeSuccessExpr, Statement).
+
+erl_make_call_replace_dummies(Info, CodeModel, CallTarget,
+        InputVars, OutputVars, MaybeSuccessExpr, Statement) :-
+    erl_gen_info_get_module_info(Info, ModuleInfo),
+    erl_gen_info_get_var_types(Info, VarTypes),
+    InputExprs = list.map(var_to_expr_or_false(ModuleInfo, VarTypes),
+        InputVars),
+    erl_make_call_2(CodeModel, CallTarget, InputExprs, OutputVars,
+        MaybeSuccessExpr, Statement).
+
+:- func var_to_expr_or_false(module_info, vartypes, prog_var) = elds_expr.
+
+var_to_expr_or_false(ModuleInfo, VarTypes, Var) = Expr :-
+    (if
+        % The variable may not be in VarTypes if it did not exist in the
+        % HLDS, i.e. we invented the variable.  Those should be kept.
+        map.search(VarTypes, Var, Type),
+        is_dummy_argument_type(ModuleInfo, Type)
+    then
+        Expr = elds_term(elds_false)
+    else
+        Expr = expr_from_var(Var)
+    ).
+
+:- pred erl_make_call_2(code_model::in, elds_call_target::in,
+    list(elds_expr)::in, prog_vars::in, maybe(elds_expr)::in,
+    elds_expr::out) is det.
+
+erl_make_call_2(CodeModel, CallTarget, InputExprs, OutputVars,
+        MaybeSuccessExpr, Statement) :-
     (
         CodeModel = model_det,
         make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
@@ -267,8 +309,8 @@ erl_gen_higher_order_call(GenericCall, ArgVars, Modes, Detism,
 
     determinism_to_code_model(Detism, CallCodeModel),
     CallTarget = elds_call_ho(expr_from_var(ClosureVar)),
-    erl_make_call(CallCodeModel, CallTarget, InputVars, OutputVars,
-        MaybeSuccessExpr, DoCall),
+    erl_make_call_replace_dummies(!.Info, CallCodeModel, CallTarget, InputVars,
+        OutputVars, MaybeSuccessExpr, DoCall),
 
     % The callee function is responsible for materialising dummy output
     % variables.
@@ -318,16 +360,11 @@ erl_gen_class_method_call(GenericCall, ArgVars, Modes, Detism,
     % of the argument list.
     determinism_to_code_model(Detism, CallCodeModel),
     CallTarget = elds_call_ho(MethodWrapperVarExpr),
-    erl_make_call(CallCodeModel, CallTarget, [TCIVar | CallInputVars],
-        CallOutputVars, MaybeSuccessExpr, DoCall),
+    erl_make_call_replace_dummies(!.Info, CallCodeModel, CallTarget,
+        [TCIVar | CallInputVars], CallOutputVars, MaybeSuccessExpr, DoCall),
 
-    ExtractAndCall = join_exprs(ExtractBaseTypeclassInfo,
-        join_exprs(ExtractMethodWrapper, DoCall)),
-
-    % The callee function is responsible for materialising dummy output
-    % variables.
-    materialise_dummies_before_expr(!.Info, CallInputVars, ExtractAndCall,
-        Statement).
+    Statement = join_exprs(ExtractBaseTypeclassInfo,
+        join_exprs(ExtractMethodWrapper, DoCall)).
 
 %-----------------------------------------------------------------------------%
 

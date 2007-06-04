@@ -660,8 +660,7 @@ erl_gen_case(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
     % bind the same set of variables.  This might not be true if the Mercury
     % compiler knows that a case calls a procedure which throws an exception.
     %
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    erl_bind_unbound_vars(ModuleInfo, MustBindNonLocals, Goal, InstMap,
+    erl_bind_unbound_vars(!.Info, MustBindNonLocals, Goal, InstMap,
         Statement0, Statement),
     ELDSCase = elds_case(Pattern, Statement).
 
@@ -823,9 +822,9 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
             ElseStatement0, !Info),
 
         % Make sure both branches bind the same sets of variables.
-        erl_bind_unbound_vars(ModuleInfo, ElseVars, Then, InstMap1,
+        erl_bind_unbound_vars(!.Info, ElseVars, Then, InstMap1,
             ThenStatement0, ThenStatement),
-        erl_bind_unbound_vars(ModuleInfo, ThenVars, Else, InstMap0,
+        erl_bind_unbound_vars(!.Info, ThenVars, Else, InstMap0,
             ElseStatement0, ElseStatement),
 
         IfStatement = elds_case_expr(CondStatement, [TrueCase, FalseCase]),

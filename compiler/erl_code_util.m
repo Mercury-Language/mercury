@@ -124,8 +124,7 @@
 :- pred erl_bound_nonlocals_in_goal(module_info::in, instmap::in,
     hlds_goal::in, set(prog_var)::out) is det.
 
-    % erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
-    %   !Statement)
+    % erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap, !Statement)
     %
     % For any variables in VarsToBind which are not bound in Goal, add
     % assignment expressions to !Statement.  This is necessary to ensure that
@@ -135,7 +134,9 @@
     % variables do not matter since this is only done to appease the
     % Erlang compiler.
     %
-:- pred erl_bind_unbound_vars(module_info::in, set(prog_var)::in,
+    % Variables of dummy types are not bound.
+    %
+:- pred erl_bind_unbound_vars(erl_gen_info::in, set(prog_var)::in,
     hlds_goal::in, instmap::in, elds_expr::in, elds_expr::out) is det.
 
     % erl_create_renaming(Vars, Subst, !Info):
@@ -359,10 +360,13 @@ erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
     IsBound = var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta),
     BoundNonLocals = set.filter(IsBound, NonLocals).
 
-erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
+erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
         Statement0, Statement) :-
+    erl_gen_info_get_module_info(Info, ModuleInfo),
+    erl_gen_info_get_var_types(Info, VarTypes),
     erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, Bound),
-    NotBound = set.difference(VarsToBind, Bound),
+    NotBound0 = set.difference(VarsToBind, Bound),
+    NotBound = set.filter(non_dummy_var(ModuleInfo, VarTypes), NotBound0),
     (if set.empty(NotBound) then
         Statement = Statement0
     else
@@ -371,6 +375,12 @@ erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
         Assignments = list.map(var_eq_false, NotBoundList),
         Statement = join_exprs(elds_block(Assignments), Statement0)
     ).
+
+:- pred non_dummy_var(module_info::in, vartypes::in, prog_var::in) is semidet.
+
+non_dummy_var(ModuleInfo, VarTypes, Var) :-
+    map.lookup(VarTypes, Var, Type),
+    not is_dummy_argument_type(ModuleInfo, Type).
 
 %-----------------------------------------------------------------------------%
 

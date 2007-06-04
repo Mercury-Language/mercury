@@ -6744,16 +6744,21 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     File.ungetc(Byte);
 ").
 
-/*
 :- pragma foreign_proc("Erlang",
     io.read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    % XXX this seems pretty horrible
-    [CharCode] = io:get_chars('', 1)
+    {'ML_stream', _Id, IoDevice} = Stream,
+    case file:read(IoDevice, 1) of
+        {ok, [C]} ->
+            CharCode = C;
+        eof ->
+            CharCode = -1;
+        {error, _Reason} ->
+            CharCode = -2
+    end
 ").
-*/
 
 %-----------------------------------------------------------------------------%
 %
