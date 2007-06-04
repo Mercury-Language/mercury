@@ -77,9 +77,7 @@
             )
                 
                 % Mercury lists are represented as erlang lists
-    ;       erlang_list(
-                elist               :: rtti_maybe_pseudo_type_info
-            )
+    ;       erlang_list
 
     ;       erlang_eqv(
                                     % XXX why is it a pseudo type info

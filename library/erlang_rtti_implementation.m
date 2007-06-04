@@ -349,7 +349,16 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             get_du_functor_arg(TypeInfo, FunctorRep, Term), 1 .. Arity)
     ;
         TypeCtorRep = etcr_list,
-        Functor = "XXX", Arity = 0, Arguments = []
+        ArgTypeInfo = TypeInfo ^ type_info_index(1),
+        ( is_non_empty_list(TypeInfo, ArgTypeInfo, Term, H, T) ->
+            Functor = "[|]",
+            Arity = 2,
+            Arguments = [univ(H), univ(T)]
+        ;
+            Functor = "[]",
+            Arity = 0,
+            Arguments = []
+        )
     ;
         TypeCtorRep = etcr_eqv,
         Functor = "XXX", Arity = 0, Arguments = []
@@ -485,12 +494,39 @@ matches_du_functor(Term, Functor) :-
 :- pred check_functor(T::in, erlang_atom::in, int::out) is semidet.
 :- pragma foreign_proc("Erlang", check_functor(Term::in, Atom::in, Size::out),
         [will_not_call_mercury, promise_pure, thread_safe], "
+    % io:format(""check_functor(~p, ~p)~n"", [Term, Atom]),
     Functor = element(1, Term),
     Size = size(Term),
+    % io:format(""check_functor(~p, ~p, ~p)~n"", [Term, Atom, Size]),
     SUCCESS_INDICATOR = Functor =:= Atom
 ").
 check_functor(_, _, 0) :-
     semidet_unimplemented("check_functor/3").
+
+
+:- some [H, T] pred is_non_empty_list(type_info::in, type_info::in,
+    L::in, H::out, T::out) is semidet.
+
+:- pragma foreign_proc("Erlang",
+        is_non_empty_list(ListTI::in, ElemTI::in, L::in, H::out, T::out),
+        [promise_pure, will_not_call_mercury, thread_safe], "
+    % TypeInfo_for_L
+    TypeInfo_for_H = ElemTI,
+    TypeInfo_for_T = ListTI,
+    case L of
+        [] ->
+            SUCCESS_INDICATOR = false,
+            H = void,
+            T = void;
+        [Head | Tail] ->
+            SUCCESS_INDICATOR = true,
+            H = Head,
+            T = Tail
+    end
+").
+
+is_non_empty_list(_, _, _, "dummy value", "dummy value") :-
+    semidet_unimplemented("is_non_empty_list/5").
     
     %
     % Calculate the number of type_info and type_class_infos which 

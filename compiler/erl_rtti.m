@@ -111,44 +111,10 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
         TypeName = "list",
         Arity = 1
     ->
-        ( list_argument_type(Details, Type) ->
-            D = erlang_list(Type)
-        ;
-            unexpected(this_file, "erlang_type_ctor_details: " ++
-                "unable to determine type of list argument")
-        )
+        D = erlang_list
     ;
         D = erlang_type_ctor_details_2(Details)
     ).
-
-    %
-    % Given a type_ctor_detail which represents a list,
-    % determine the type of the argument to the list.
-    %
-:- pred list_argument_type(type_ctor_details::in,
-    rtti_maybe_pseudo_type_info::out) is semidet.
-
-list_argument_type(Details, Type) :-
-    Functors = Details ^ du_functors,
-    list_argument_type_2(Functors, Type).
-    
-:- pred list_argument_type_2(list(du_functor)::in,
-    rtti_maybe_pseudo_type_info::out) is semidet.
-
-list_argument_type_2([Functor | Functors], Type) :-
-    ( Functor ^ du_name = "[|]" ->
-        Functor ^ du_arg_infos = [du_arg_info(_, Type0), _],
-        convert_to_rtti_maybe_pseudo_type_info(Type0, Type)
-    ;
-        list_argument_type_2(Functors, Type)
-    ).
-        
-:- pred convert_to_rtti_maybe_pseudo_type_info(
-    rtti_maybe_pseudo_type_info_or_self::in,
-    rtti_maybe_pseudo_type_info::out) is semidet.
-
-convert_to_rtti_maybe_pseudo_type_info(plain(P), plain(P)).
-convert_to_rtti_maybe_pseudo_type_info(pseudo(P), pseudo(P)).
 
 :- func erlang_type_ctor_details_2(type_ctor_details) =
     erlang_type_ctor_details.
@@ -581,7 +547,7 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
 
 erlang_type_ctor_rep(erlang_du(_)) =
     elds_term(make_enum_alternative("etcr_du")).
-erlang_type_ctor_rep(erlang_list(_)) =
+erlang_type_ctor_rep(erlang_list) =
     elds_term(make_enum_alternative("etcr_list")).
 erlang_type_ctor_rep(erlang_eqv(_)) =
     elds_term(make_enum_alternative("etcr_eqv")).
@@ -729,7 +695,7 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
         Term = elds_rtti_ref(RttiId)
     ;
             % The types don't require any extra information
-        ( Details = erlang_list(_)
+        ( Details = erlang_list
         ; Details = erlang_builtin(_)
         ; Details = erlang_impl_artifact(_)
         ; Details = erlang_foreign
