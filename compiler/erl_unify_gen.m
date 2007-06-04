@@ -12,6 +12,23 @@
 % This module is part of the Erlang code generator.
 % It handles Erlang code generation for unifications.
 % 
+% TODO
+%   type t
+%       --->    f(int, string)
+%       ;       some [T] f(T).
+%
+%   will generate for the first alternative
+%       {f, Int, String}
+%   and for the second alternative
+%       {f, TypeInfo_for_t, T}
+%
+%   which means that the RTTI routines will not be able to distinguish
+%   between the two alternatives.
+%   The suggested fix is to place the arity on all functors for types
+%   for which at least one functor is existentially quantified.
+%   Once this fix is done, update the comment on
+%   erlang_rtti_implementation.matches_du_functor
+%
 %-----------------------------------------------------------------------------%
 
 :- module erl_backend.erl_unify_gen.

@@ -18,6 +18,9 @@
 % In the context of the MLDS backend erlang_rtti.m is the equivalent of
 % rtti.m, while erl_rtti.m is the equivalent to rtti_to_mlds.m
 %
+% These types have to be kept in sync with the corresponding types in
+% library/erlang_rtti_implementation.m
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.erlang_rtti.
@@ -102,17 +105,19 @@
                 edu_name            :: string,
                 edu_orig_arity      :: int,
                     
-                    % Size of the tuple needed to represent the
-                    % functor.
+                    % The declaration order of the functor.
                 edu_ordinal         :: int,
 
                     % erlang atom which represents the functor
                     % currently encoded version of name
                     % in the future maybe name_arity
-                edu_rep             :: string,
+                edu_rep             :: erlang_atom_raw,
                 edu_arg_infos       :: list(du_arg_info),
                 edu_exist_info      :: maybe(exist_info)
             ).
+
+:- type erlang_atom_raw
+    ---> erlang_atom_raw(string).
 
     % The list of type constructors that are used behind the scenes by
     % the Mercury implementation.
