@@ -170,7 +170,7 @@ next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
     Rows            = CLXM ^ transition_map ^ rows,
     AcceptingStates = CLXM ^ transition_map ^ accepting_states,
     find_next_state(char__to_int(Char), Rows ^ elem(CurrentState), NextState),
-    IsAccepting     = bitmap__get(AcceptingStates, NextState).
+    IsAccepting = AcceptingStates ^ bit(NextState).
 
 %-----------------------------------------------------------------------------%
 
