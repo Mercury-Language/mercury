@@ -23,6 +23,11 @@
 :- import_module list.
 :- import_module univ.
 
+:- type type_info.
+:- type type_ctor_info.
+
+:- func get_type_info(T::unused) = (type_info::out) is det.
+
     %
     % Check if two values are equal.
     % Note this is not structural equality because a type
@@ -31,6 +36,15 @@
 :- pred generic_unify(T::in, T::in) is semidet.
 
 :- pred generic_compare(comparison_result::out, T::in, T::in) is det.
+
+:- pred compare_type_infos(comparison_result::out,
+    type_info::in, type_info::in) is det.
+
+:- pred type_ctor_and_args(type_info::in, type_ctor_info::out,
+    list(type_info)::out) is det.
+
+:- pred type_ctor_name_and_arity(type_ctor_info::in,
+    string::out, string::out, int::out) is det.
 
 :- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
@@ -57,7 +71,6 @@
     % a type with variable arity of size N
     %   { TypeCtorInfo, N, TypeCtorInfo0, ..., TypeCtorInfoN }
     %   
-:- type type_info.
 :- pragma foreign_type("Erlang", type_info, "").
 :- type type_info ---> type_info.
 
@@ -65,7 +78,6 @@
     % For the representation of a type_ctor_info
     % see erlang_rtti:type_ctor_data_to_elds
     %
-:- type type_ctor_info.
 :- pragma foreign_type("Erlang", type_ctor_info, "").
 :- type type_ctor_info ---> type_ctor_info.
 
@@ -103,6 +115,11 @@
     ;       etcr_subgoal
     ;       etcr_ticket
     .
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+get_type_info(T) = T ^ type_info.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -262,6 +279,45 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
             Result = SubResult
         )
     ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+compare_type_infos(Res, _, _) :-
+    Res = (=),
+    det_unimplemented("compare_type_infos/3").
+    
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+type_ctor_and_args(TypeInfo0, TypeCtorInfo, Args) :-
+    TypeInfo = collapse_equivalences(TypeInfo0),
+    TypeCtorInfo = TypeInfo ^ type_ctor_info,
+    ( type_ctor_is_variable_arity(TypeCtorInfo) ->
+        Arity = TypeInfo ^ var_arity_type_info_arity,
+        Args = list.map(
+            func(L) = TypeInfo ^ var_arity_type_info_index(L), 1 .. Arity)
+    ;
+        Arity = TypeCtorInfo ^ type_ctor_arity,
+        Args = list.map(func(L) = TypeInfo ^ type_info_index(L), 1 .. Arity)
+    ).
+    
+:- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
+
+type_ctor_is_variable_arity(TypeCtorInfo) :-
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    ( TypeCtorRep = etcr_tuple
+    ; TypeCtorRep = etcr_pred
+    ; TypeCtorRep = etcr_func
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
+    ModuleName = TypeCtorInfo ^ type_ctor_module_name,
+    Name = TypeCtorInfo ^ type_ctor_type_name,
+    Arity = TypeCtorInfo ^ type_ctor_arity.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -535,6 +591,21 @@ get_tuple_arg(TypeInfo, Term, Loc) = Univ :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- func collapse_equivalences(type_info) = type_info.
+
+collapse_equivalences(TypeInfo0) = TypeInfo :-
+    TypeCtorInfo0 = TypeInfo0 ^ type_ctor_info,
+    TypeCtorRep = TypeCtorInfo0 ^ type_ctor_rep,
+    ( TypeCtorRep = etcr_eqv ->
+        TypeInfo = TypeInfo0,
+        det_unimplemented("collapse_equivalences/1")
+    ;
+        TypeInfo = TypeInfo0
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- pragma foreign_code("Erlang", "
         % Location of element in a type_info
     ti_type_ctor_info() -> 1.
@@ -686,6 +757,30 @@ type_ctor_unify_pred(_) = "dummy value" :-
 
 type_ctor_compare_pred(_) = "dummy value" :-
     det_unimplemented("type_ctor_compare_pred").
+
+:- func type_ctor_module_name(type_ctor_info) = string.
+
+:- pragma foreign_proc("Erlang",
+    type_ctor_module_name(TypeCtorInfo::in) = (ModuleName::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ModuleName = element(tci_module_name(), TypeCtorInfo)
+").
+
+type_ctor_module_name(_) = "dummy value" :-
+    det_unimplemented("type_ctor_module_name").
+
+:- func type_ctor_type_name(type_ctor_info) = string.
+
+:- pragma foreign_proc("Erlang",
+    type_ctor_type_name(TypeCtorInfo::in) = (TypeName::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeName = element(tci_type_name(), TypeCtorInfo)
+").
+
+type_ctor_type_name(_) = "dummy value" :-
+    det_unimplemented("type_ctor_type_name").
 
 :- func type_ctor_arity(type_ctor_info) = int.
 

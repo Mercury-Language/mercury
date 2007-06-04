@@ -641,6 +641,14 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
     }
 ").
 
+:- pragma foreign_proc("Erlang",
+    type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
+    [may_call_mercury, thread_safe, promise_pure, terminates],
+"
+    {TypeCtorDesc, ArgTypes} =
+        mercury__erlang_rtti_implementation:type_ctor_and_args_3_p_0(TypeDesc)
+").
+
 type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
     rtti_implementation.type_ctor_and_args(
         rtti_implementation.unsafe_cast(TypeDesc),
@@ -779,6 +787,16 @@ pseudo_type_ctor_and_args(_, _, _) :-
     TypeCtorModuleName = (java.lang.String) result[0];
     TypeCtorName = (java.lang.String) result[1];
     TypeCtorArity = ((java.lang.Integer) result[2]).intValue();
+").
+
+:- pragma foreign_proc("Erlang",
+    type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
+        TypeCtorName::out, TypeCtorArity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    {TypeCtorModuleName, TypeCtorName, TypeCtorArity} =
+        mercury__erlang_rtti_implementation:
+            type_ctor_name_and_arity_4_p_0(TypeCtorDesc)
 ").
 
 type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,

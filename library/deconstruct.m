@@ -276,6 +276,10 @@
 :- import_module require.
 :- import_module type_desc.
 
+% For use by the Erlang backends.
+%
+:- use_module erlang_rtti_implementation.
+
 % For use by the Java and IL backends.
 %
 :- use_module rtti_implementation.
@@ -526,13 +530,13 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 }").
 
 functor_dna(Term::in, Functor::out, Arity::out) :-
-    rtti_implementation.deconstruct(Term,
+    local_deconstruct(Term,
         do_not_allow, Functor, Arity, _Arguments).
 functor_can(Term::in, Functor::out, Arity::out) :-
-    rtti_implementation.deconstruct(Term,
+    local_deconstruct(Term,
         canonicalize, Functor, Arity, _Arguments).
 functor_idcc(Term::in, Functor::out, Arity::out) :-
-    rtti_implementation.deconstruct(Term,
+    local_deconstruct(Term,
         include_details_cc, Functor, Arity, _Arguments).
 
 %-----------------------------------------------------------------------------%
@@ -764,16 +768,16 @@ functor_number_cc(_Term::in, _FunctorNumber::out, _Arity::out) :-
 % just constructing one univ for the argument selected.
 
 univ_arg_dna(Term::in, Index::in, Arg::out) :-
-    rtti_implementation.deconstruct(Term, do_not_allow,
+    local_deconstruct(Term, do_not_allow,
         _Functor, _Arity, Arguments),
     list.index0(Arguments, Index, Arg).
 univ_arg_can(Term::in, Index::in, Arg::out) :-
-    rtti_implementation.deconstruct(Term, canonicalize,
+    local_deconstruct(Term, canonicalize,
         _Functor, _Arity, Arguments),
     list.index0(Arguments, Index, Arg).
 univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
         Success::out) :-
-    rtti_implementation.deconstruct(Term, include_details_cc,
+    local_deconstruct(Term, include_details_cc,
         _Functor, _Arity, Arguments),
     ( list.index0(Arguments, Index, Arg) ->
         Argument = Arg,
@@ -972,15 +976,15 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 deconstruct_dna(Term::in, Functor::out, FunctorNumber::out,
         Arity::out, Arguments::out) :-
     FunctorNumber = -1,
-    rtti_implementation.deconstruct(Term, do_not_allow,
+    local_deconstruct(Term, do_not_allow,
         Functor, Arity, Arguments).
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation.deconstruct(Term, canonicalize,
+    local_deconstruct(Term, canonicalize,
         Functor, Arity, Arguments).
 deconstruct_idcc(Term::in, Functor::out, FunctorNumber::out,
         Arity::out, Arguments::out) :-
     FunctorNumber = -1,
-    rtti_implementation.deconstruct(Term, include_details_cc,
+    local_deconstruct(Term, include_details_cc,
         Functor, Arity, Arguments).
 
     % XXX The Mercury implementations of all of these limited_* procedures
@@ -988,18 +992,45 @@ deconstruct_idcc(Term::in, Functor::out, FunctorNumber::out,
     % when Arity > MaxArity.
 limited_deconstruct_dna(Term::in, MaxArity::in,
         Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation.deconstruct(Term, do_not_allow,
+    local_deconstruct(Term, do_not_allow,
         Functor, Arity, Arguments),
     Arity =< MaxArity.
 limited_deconstruct_can(Term::in, MaxArity::in,
         Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation.deconstruct(Term, canonicalize,
+    local_deconstruct(Term, canonicalize,
         Functor, Arity, Arguments),
     Arity =< MaxArity.
 limited_deconstruct_idcc(Term::in, _MaxArity::in,
         Functor::out, Arity::out, Arguments::out) :-
     % For this one, the caller checks Arity =< MaxArity.
-    rtti_implementation.deconstruct(Term, include_details_cc,
+    local_deconstruct(Term, include_details_cc,
         Functor, Arity, Arguments).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred is_erlang_backend is semidet.
+
+:- pragma foreign_proc("Erlang", is_erlang_backend,
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    SUCCESS_INDICATOR = true
+").
+
+is_erlang_backend :-
+    semidet_fail.
+
+:- pred local_deconstruct(T, noncanon_handling, string, int, list(univ)).
+:- mode local_deconstruct(in, in(do_not_allow), out, out, out) is det.
+:- mode local_deconstruct(in, in(canonicalize), out, out, out) is det.
+:- mode local_deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
+:- mode local_deconstruct(in, in, out, out, out) is cc_multi.
+
+local_deconstruct(T, H, F, A, As) :-
+    ( is_erlang_backend ->
+        erlang_rtti_implementation.deconstruct(T, H, F, A, As)
+    ;
+        rtti_implementation.deconstruct(T, H, F, A, As)
+    ).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
