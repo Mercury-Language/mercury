@@ -4137,21 +4137,21 @@ or you must write a forwarding predicate or function.
 For example, instead of
 
 @example
-list.filter([1,2,3], \=(2), List)
+list.filter(\=(2), [1, 2, 3], List)
 @end example
 
 @noindent
 you must write either
 
 @example
-list.filter([1,2,3], (pred(X::in) is semidet :- X \= 2), List)
+list.filter((pred(X::in) is semidet :- X \= 2), [1, 2, 3], List)
 @end example
 
 @noindent
 or
 
 @example
-list.filter([1,2,3], not_equal(2), List)
+list.filter(not_equal(2), [1, 2, 3], List)
 @end example
 
 @noindent

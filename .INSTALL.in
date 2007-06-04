@@ -88,8 +88,8 @@
 #	   To use the emacs debugger interface ("M-x mdb"), you also need to
 #	   add the following lines to the `.emacs' file in your home directory:
 #
-#	   	(setq load-path (cons (expand-file-name
-#		  "/usr/local/mercury-@VERSION@/lib/mercury/elisp") load-path))
+#	   	(add-to-list 'load-path
+#		  "/usr/local/mercury-@VERSION@/lib/mercury/elisp")
 #		(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
 #
 # Step 5.  Run `make clean'.

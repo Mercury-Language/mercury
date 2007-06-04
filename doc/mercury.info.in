@@ -12,11 +12,11 @@ Mercury Documentation, version <VERSION>
 
 * Menu:
 
-* Language Reference Manual: (mercury_ref)
-* User's Guide: (mercury_user_guide)
-* Library Reference Manual: (mercury_library)
-* Prolog to Mercury Transition Guide: (mercury_trans_guide)
-* Frequently Asked Questions: (mercury_faq)
+* Language Reference Manual: (mercury_ref).
+* User's Guide: (mercury_user_guide).
+* Library Reference Manual: (mercury_library).
+* Prolog to Mercury Transition Guide: (mercury_trans_guide).
+* Frequently Asked Questions: (mercury_faq).
 
 See also the Mercury WWW home page <http://www.mercury.csse.unimelb.edu.au>.
 

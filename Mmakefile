@@ -495,8 +495,8 @@ install: install_main install_grades
 	fi
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
-	@echo "	(setq load-path (cons (expand-file-name "
-	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))"
+	@echo "	(add-to-list 'load-path "
+	@echo "		\"$(INSTALL_ELISP_DIR)\")"
 	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_main
