@@ -57,7 +57,7 @@ main_2(CalcInfo0, !IO) :-
         Res = term(VarSet, Term),
         (
             Term = term.functor(term.atom("="),
-                [term.variable(Var), ExprTerm0], _)
+                [term.variable(Var, _Context), ExprTerm0], _)
         ->
             ExprTerm = ExprTerm0,
             varset.lookup_name(VarSet, Var, VarName),
@@ -129,7 +129,7 @@ report_eval_error(unexpected_const(Const), !IO) :-
 
 :- func eval_expr(calc_info, varset, term) = int.
 
-eval_expr(CalcInfo, VarSet, term.variable(Var)) = Res :-
+eval_expr(CalcInfo, VarSet, term.variable(Var, _Context)) = Res :-
     varset.lookup_name(VarSet, Var, VarName),
     ( map.search(CalcInfo, VarName, Res0) ->
         Res = Res0
@@ -178,17 +178,30 @@ eval_binop("//", Num1, Num2) = Num1 // Num2.
 
 :- type calculator_op_table ---> calculator_op_table.
 
+:- pred calculator2.ops_table(string::in, op_info::out, list(op_info)::out)
+    is semidet.
+  
+calculator2.ops_table("//", op_info(infix(y, x), 400), []).
+calculator2.ops_table("*",  op_info(infix(y, x), 400), []).
+calculator2.ops_table("+",  op_info(infix(y, x), 500),
+    [op_info(prefix(x), 500)]).
+calculator2.ops_table("-",  op_info(infix(y, x), 500),
+    [op_info(prefix(x), 200)]).
+calculator2.ops_table("=", op_info(infix(x, x), 700), []).
+
 :- instance ops.op_table(calculator_op_table) where [
-    ops.lookup_infix_op(_, "//", 400, y, x),
-    ops.lookup_infix_op(_, "*", 400, y, x),
-    ops.lookup_infix_op(_, "+", 500, y, x),
-    ops.lookup_infix_op(_, "-", 500, y, x),
-    ops.lookup_infix_op(_, "=", 700, x, x),
+    
+    ( ops.lookup_infix_op(_, Op, Priority, LeftAssoc, RightAssoc) :-
+        calculator2.ops_table(Op, Info, _),
+        Info = op_info(infix(LeftAssoc, RightAssoc), Priority)
+    ),
 
     ops.lookup_operator_term(_, _, _, _) :- fail,
 
-    ops.lookup_prefix_op(_, "-", 200, x),
-    ops.lookup_prefix_op(_, "+", 500, x),
+    ( ops.lookup_prefix_op(_, Op, Priority, LeftAssoc) :-
+        calculator2.ops_table(Op, _, OtherInfo),
+        OtherInfo = [op_info(prefix(LeftAssoc), Priority)]
+    ),
 
     ops.lookup_postfix_op(_, _, _, _) :- fail,
     ops.lookup_binary_prefix_op(_, _, _, _, _) :- fail,
@@ -198,6 +211,9 @@ eval_binop("//", Num1, Num2) = Num1 // Num2.
     ops.lookup_op(Table, Op) :-
         ops.lookup_binary_prefix_op(Table, Op, _, _, _),
     ops.lookup_op(Table, Op) :- ops.lookup_postfix_op(Table, Op, _, _),
+    
+    ops.lookup_op_infos(_, Op, OpInfo, OtherInfos) :-
+        calculator2.ops_table(Op, OpInfo, OtherInfos),
 
     ops.max_priority(_) = 700,
     ops.arg_priority(Table) = ops.max_priority(Table) + 1
