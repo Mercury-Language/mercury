@@ -5059,8 +5059,10 @@ io.init_state(!IO) :-
 
     % For use by the Mercury runtime.
     %
-:- pragma foreign_export("C", io.finalize_state(di, uo), "ML_io_finalize_state").
-:- pragma foreign_export("IL", io.finalize_state(di, uo), "ML_io_finalize_state").
+:- pragma foreign_export("C", io.finalize_state(di, uo),
+    "ML_io_finalize_state").
+:- pragma foreign_export("IL", io.finalize_state(di, uo),
+    "ML_io_finalize_state").
 :- pragma foreign_export("Erlang", io.finalize_state(di, uo),
     "ML_io_finalize_state").
 
