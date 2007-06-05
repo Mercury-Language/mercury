@@ -75,6 +75,10 @@
                 % The function symbols are listed in declaration order.
                 edu_functors        :: list(erlang_du_functor)
             )
+
+    ;       erlang_dummy(
+                edummy_name         :: string
+            )
                 
                 % Mercury lists are represented as erlang lists
     ;       erlang_list

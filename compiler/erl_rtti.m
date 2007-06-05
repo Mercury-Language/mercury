@@ -119,9 +119,16 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
 :- func erlang_type_ctor_details_2(type_ctor_details) =
     erlang_type_ctor_details.
 
-erlang_type_ctor_details_2(enum(_, Functors, _, _, _IsDummy, _)) =
-        % XXX Handle IsDummy
-    erlang_du(list.map(convert_enum_functor, Functors)).
+erlang_type_ctor_details_2(enum(_, Functors, _, _, IsDummy, _)) =
+    ( IsDummy = yes ->
+        ( Functors = [F] ->
+            erlang_dummy(F ^ enum_name)
+        ;
+            unexpected(this_file, "dummy type with more than one functor")
+        )
+    ;
+        erlang_du(list.map(convert_enum_functor, Functors))
+    ).
 erlang_type_ctor_details_2(du(_, Functors, _, _, _)) =
     erlang_du(list.map(convert_du_functor, Functors)).
 erlang_type_ctor_details_2(reserved(_, _, _, _, _, _)) =
@@ -557,6 +564,8 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
 
 erlang_type_ctor_rep(erlang_du(_)) =
     elds_term(make_enum_alternative("etcr_du")).
+erlang_type_ctor_rep(erlang_dummy(_)) =
+    elds_term(make_enum_alternative("etcr_dummy")).
 erlang_type_ctor_rep(erlang_list) =
     elds_term(make_enum_alternative("etcr_list")).
 erlang_type_ctor_rep(erlang_eqv(_)) =
@@ -698,6 +707,9 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
     (
         Details = erlang_du(Functors),
         rtti_to_elds_expr(ModuleInfo, Functors, Term, [], Defns)
+    ;
+        Details = erlang_dummy(DummyFunctorName),
+        rtti_to_elds_expr(ModuleInfo, DummyFunctorName, Term, [], Defns)
     ;
         Details = erlang_eqv(MaybePseudoTypeInfo),
         rtti_to_elds_expr(ModuleInfo, MaybePseudoTypeInfo, Term, [], Defns)

@@ -86,6 +86,7 @@
     %
 :- type erlang_type_ctor_rep
     --->    etcr_du
+    ;       etcr_dummy
     ;       etcr_list
     ;       etcr_eqv
     ;       etcr_int
@@ -349,6 +350,11 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = list.map(
             get_du_functor_arg(TypeInfo, FunctorRep, Term), 1 .. Arity)
     ;
+        TypeCtorRep = etcr_dummy,
+        Functor = TypeCtorInfo ^ type_ctor_dummy_functor_name,
+        Arity = 0,
+        Arguments = []
+    ;
         TypeCtorRep = etcr_list,
         ArgTypeInfo = TypeInfo ^ type_info_index(1),
         ( is_non_empty_list(TypeInfo, ArgTypeInfo, Term, H, T) ->
@@ -494,9 +500,10 @@ matches_du_functor(Term, Functor) :-
 :- pred check_functor(T::in, erlang_atom::in, int::out) is semidet.
 :- pragma foreign_proc("Erlang", check_functor(Term::in, Atom::in, Size::out),
         [will_not_call_mercury, promise_pure, thread_safe], "
+    %io:format(""check_functor(~p, ~p)~n"", [Term, Atom]),
     Functor = element(1, Term),
     Size = size(Term),
-    % io:format(""check_functor(~p, ~p, ~p)~n"", [Term, Atom, Size]),
+    %io:format(""check_functor(~p, ~p, ~p)~n"", [Term, Atom, Size]),
     SUCCESS_INDICATOR = Functor =:= Atom
 ").
 check_functor(_, _, 0) :-
@@ -802,6 +809,18 @@ type_ctor_arity(_) = 0 :-
 
 type_ctor_functors(_) = [] :-
     det_unimplemented("type_ctor_functors").
+
+:- func type_ctor_dummy_functor_name(type_ctor_info) = string.
+
+:- pragma foreign_proc("Erlang",
+    type_ctor_dummy_functor_name(TypeCtorInfo::in) = (Functor::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Functor = element(tci_details(), TypeCtorInfo)
+").
+
+type_ctor_dummy_functor_name(_) = "dummy value" :-
+    det_unimplemented("type_ctor_dummy_functor_name").
 
 :- func type_ctor_eqv_type(type_ctor_info) = maybe_pseudo_type_info.
 
