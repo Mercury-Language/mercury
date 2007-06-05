@@ -392,11 +392,16 @@ rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
         % evaluate to the type_info, if the type_info is needed.
         %
     ELDSFun = elds_fun(elds_clause([], ELDSTypeInfo)),
+
+    ELDSTuple = elds_term(elds_tuple([
+        elds_term(elds_atom_raw("plain")),
+        ELDSFun
+        ])),
     
     RttiId = elds_rtti_type_info_id(TypeInfo),
     IsExported = no,
     RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
-        elds_clause([], ELDSFun)),
+        elds_clause([], ELDSTuple)),
 
     RttiDefns = [RttiDefn | ArgRttiDefns].
 
@@ -466,10 +471,15 @@ rtti_pseudo_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
         %
     ELDSFun = elds_fun(elds_clause([], ELDSTypeInfo)),
 
+    ELDSTuple = elds_term(elds_tuple([
+        elds_term(elds_atom_raw("pseudo")),
+        ELDSFun
+        ])),
+
     RttiId = elds_rtti_pseudo_type_info_id(TypeInfo),
     IsExported = no,
     RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
-        elds_clause([], ELDSFun)),
+        elds_clause([], ELDSTuple)),
 
     RttiDefns = [RttiDefn | ArgRttiDefns].
 
@@ -690,9 +700,7 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
         rtti_to_elds_expr(ModuleInfo, Functors, Term, [], Defns)
     ;
         Details = erlang_eqv(MaybePseudoTypeInfo),
-        maybe_pseudo_type_info_to_elds(ModuleInfo, MaybePseudoTypeInfo,
-            RttiId, Defns),
-        Term = elds_rtti_ref(RttiId)
+        rtti_to_elds_expr(ModuleInfo, MaybePseudoTypeInfo, Term, [], Defns)
     ;
             % The types don't require any extra information
         ( Details = erlang_list

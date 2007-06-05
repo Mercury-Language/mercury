@@ -69,7 +69,7 @@
     % a type with arity > 0
     %   { TypeCtorInfo, TypeInfo0, ..., TypeInfoN }
     % a type with variable arity of size N
-    %   { TypeCtorInfo, N, TypeCtorInfo0, ..., TypeCtorInfoN }
+    %   { TypeCtorInfo, N, TypeInfo0, ..., TypeInfoN }
     %   
 :- pragma foreign_type("Erlang", type_info, "").
 :- type type_info ---> type_info.
@@ -311,6 +311,7 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
     ; TypeCtorRep = etcr_func
     ).
 
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -361,7 +362,11 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         )
     ;
         TypeCtorRep = etcr_eqv,
-        Functor = "XXX", Arity = 0, Arguments = []
+        EqvTypeInfo = collapse_equivalences(TypeInfo),
+        EqvTypeCtorInfo = EqvTypeInfo ^ type_ctor_info,
+        EqvTypeCtorRep = EqvTypeCtorInfo ^ type_ctor_rep,
+        deconstruct_2(Term, EqvTypeInfo, EqvTypeCtorInfo, EqvTypeCtorRep,
+            NonCanon, Functor, Arity, Arguments)
     ;
         TypeCtorRep = etcr_tuple,
         Arity = TypeInfo ^ var_arity_type_info_arity,
@@ -429,16 +434,11 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Arity = 0,
             Arguments = []
         ;
-                % XXX just to get the determinsm declarations correct
+                % XXX this needs to be fixed
             NonCanon = include_details_cc,
-            ( semidet_succeed ->
-                Functor = "<<" ++ string(TypeCtorRep) ++ ">>",
-                Arity = 0,
-                Arguments = []
-            ;
-                deconstruct_2(Term, TypeInfo, TypeCtorInfo,
-                    etcr_foreign, NonCanon, Functor, Arity, Arguments)
-            )
+            Functor = "<<" ++ string(TypeCtorRep) ++ ">>",
+            Arity = 0,
+            Arguments = []
         )
     ;
         TypeCtorRep = etcr_foreign,
@@ -494,7 +494,6 @@ matches_du_functor(Term, Functor) :-
 :- pred check_functor(T::in, erlang_atom::in, int::out) is semidet.
 :- pragma foreign_proc("Erlang", check_functor(Term::in, Atom::in, Size::out),
         [will_not_call_mercury, promise_pure, thread_safe], "
-    % io:format(""check_functor(~p, ~p)~n"", [Term, Atom]),
     Functor = element(1, Term),
     Size = size(Term),
     % io:format(""check_functor(~p, ~p, ~p)~n"", [Term, Atom, Size]),
@@ -560,56 +559,12 @@ extra_args(Functor) = ExtraArgs :-
 get_du_functor_arg(TypeInfo, Functor, Term, Loc) = Univ :-
     ArgInfo = list.index1_det(Functor ^ edu_arg_infos, Loc),
         
-    EvalTypeInfo = eval_type_info(ArgInfo ^ du_arg_type),
-    (
-        EvalTypeInfo = type_info(ArgTypeInfo)
-    ;
-        EvalTypeInfo = universal_type_info(N),
-        ArgTypeInfo = TypeInfo ^ type_info_index(N)
-    ;
-        EvalTypeInfo = existential_type_info(N),
-        MaybeExist = Functor ^ edu_exist_info,
-        (
-            MaybeExist = yes(ExistInfo),
-            ExistLocn = list.index1_det(ExistInfo ^ exist_typeinfo_locns, N),
-            (
-                ExistLocn = plain_typeinfo(X),
-
-                    % plain_typeinfo index's start at 0, so we need to
-                    % add two to get to the first index.
-                ArgTypeInfo = unsafe_cast(get_subterm(TypeInfo, Term, X, 2))
-            ;
-                ExistLocn = typeinfo_in_tci(A, B),
-
-                    % A starts at index 0 and measures from the start
-                    % of the list of plain type_infos
-                    %
-                    % B starts at index 1 and measures from the start
-                    % of the type_class_info
-                    %
-                    % Hence the addition of two extra arguments to find the
-                    % type_class_info and then the addition of one extra
-                    % arg to find the type_info in the type_class_info.
-                    %
-                    % Note it's safe to pass a bogus type_info to
-                    % get_subterm because we never use the returned
-                    % type_info.
-                    %
-                Bogus = TypeInfo,
-                TypeClassInfo = get_subterm(Bogus, Term, A, 2),
-                ArgTypeInfo = unsafe_cast(
-                    get_subterm(Bogus, TypeClassInfo, B, 1))
-            )
-        ;
-            MaybeExist = no,
-            error(this_file ++ " get_du_functor_arg: no exist info")
-        )
-        
-    ),
+    MaybePTI = ArgInfo ^ du_arg_type,
+    Info = yes({TypeInfo, yes({Functor, Term})}),
+    ArgTypeInfo = type_info(Info, MaybePTI),
 
     SubTerm = get_subterm(ArgTypeInfo, Term, Loc, extra_args(Functor) + 1),
     Univ = univ(SubTerm).
-
 
     %
     % get_tuple_arg(TypeInfo, Tuple, N)
@@ -633,8 +588,11 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
     TypeCtorInfo0 = TypeInfo0 ^ type_ctor_info,
     TypeCtorRep = TypeCtorInfo0 ^ type_ctor_rep,
     ( TypeCtorRep = etcr_eqv ->
-        TypeInfo = TypeInfo0,
-        det_unimplemented("collapse_equivalences/1")
+        PtiInfo = no : pti_info(int),
+        TiInfo = yes({TypeInfo0, PtiInfo}),
+        EqvType = TypeCtorInfo0 ^ type_ctor_eqv_type,
+        TypeInfo1 = type_info(TiInfo, EqvType),
+        TypeInfo = collapse_equivalences(TypeInfo1)
     ;
         TypeInfo = TypeInfo0
     ).
@@ -655,7 +613,7 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
     tci_module_name() -> 5.
     tci_type_name() -> 6.
     tci_type_ctor_rep() -> 7.
-    tci_functors() -> 8.
+    tci_details() -> 8.
 ").
 
 %-----------------------------------------------------------------------------%
@@ -758,7 +716,10 @@ unsafe_type_info_index(_, _) = type_info :-
     type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeCtorRep = element(tci_type_ctor_rep(), TypeCtorInfo)
+    % io:format(""type_ctor_rep(~p)~n"", [TypeCtorInfo]),
+    TypeCtorRep = element(tci_type_ctor_rep(), TypeCtorInfo),
+    % io:format(""type_ctor_rep(~p) = ~p~n"", [TypeCtorInfo, TypeCtorRep]),
+    void
 ").
 
 type_ctor_rep(_) = _ :-
@@ -833,14 +794,26 @@ type_ctor_arity(_) = 0 :-
 :- func type_ctor_functors(type_ctor_info) = list(erlang_du_functor).
 
 :- pragma foreign_proc("Erlang",
-    type_ctor_functors(TypeCtorInfo::in) = (Arity::out),
+    type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = element(tci_functors(), TypeCtorInfo)
+    Functors = element(tci_details(), TypeCtorInfo)
 ").
 
 type_ctor_functors(_) = [] :-
     det_unimplemented("type_ctor_functors").
+
+:- func type_ctor_eqv_type(type_ctor_info) = maybe_pseudo_type_info.
+
+:- pragma foreign_proc("Erlang",
+    type_ctor_eqv_type(TypeCtorInfo::in) = (EqvType::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    EqvType = element(tci_details(), TypeCtorInfo)
+").
+
+type_ctor_eqv_type(_) = plain(type_info_thunk) :-
+    det_unimplemented("type_ctor_eqv_type").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1092,7 +1065,7 @@ det_dynamic_cast(Term, Actual) :-
 :- type du_arg_info
     --->    du_arg_info(
                 du_arg_name         :: maybe(string),
-                du_arg_type         :: type_info_thunk
+                du_arg_type         :: maybe_pseudo_type_info
             ).
 
 :- type exist_info
@@ -1142,23 +1115,237 @@ det_dynamic_cast(Term, Actual) :-
     --->    pseudo(pseudo_type_info_thunk)
     ;       plain(type_info_thunk).
 
-% XXX
+        
+%-----------------------------------------------------------------------------%
+
+:- type ti_info(T) == maybe({type_info, pti_info(T)}).
+:- type pti_info(T) == maybe({erlang_du_functor, T}).
+
+    %
+    % Given a plain or pseudo type_info, return the concrete type_info
+    % which represents the type.
+    %
+:- func type_info(ti_info(T), maybe_pseudo_type_info) = type_info.
+
+type_info(Info, MaybePTI) = TypeInfo :-
+    (
+        MaybePTI = pseudo(PseudoThunk),
+        (
+            Info = yes({ParentTypeInfo, MaybeFunctorAndTerm}),
+            TypeInfo = eval_pseudo_type_info(
+                ParentTypeInfo, MaybeFunctorAndTerm, PseudoThunk)
+        ;
+            Info = no,
+            error("type_info/2: missing parent type_info")
+        )
+    ;
+        MaybePTI = plain(PlainThunk),
+        TypeInfo = eval_type_info_thunk(Info, PlainThunk)
+    ).
+
+:- func eval_pseudo_type_info(type_info,
+    pti_info(T), pseudo_type_info_thunk) = type_info.
+
+eval_pseudo_type_info(ParentTypeInfo, MaybeFunctorAndTerm, Thunk) = TypeInfo :-
+    EvalResult = eval_pseudo_type_info_thunk(Thunk),
+    (
+        EvalResult = universal_type_info(N),
+        TypeInfo = ParentTypeInfo ^ type_info_index(N)
+    ;
+        EvalResult = existential_type_info(N),
+        (
+            MaybeFunctorAndTerm = yes({Functor, Term}),
+            TypeInfo = exist_type_info(ParentTypeInfo, Functor, Term, N)
+        ;
+            MaybeFunctorAndTerm = no,
+            error("eval_pseudo_type_info requires a functor rep")
+        )
+    ;
+        EvalResult = pseudo_type_info(PseudoTypeInfo),
+        Info = yes({ParentTypeInfo, MaybeFunctorAndTerm}),
+        TypeInfo = eval_type_info(Info, unsafe_cast(PseudoTypeInfo))
+    ).
+
+:- func exist_type_info(type_info, erlang_du_functor, T, int) = type_info.
+
+exist_type_info(TypeInfo, Functor, Term, N) = ArgTypeInfo :-
+    MaybeExist = Functor ^ edu_exist_info,
+    (
+        MaybeExist = yes(ExistInfo),
+        ExistLocn = list.index1_det(ExistInfo ^ exist_typeinfo_locns, N),
+        (
+            ExistLocn = plain_typeinfo(X),
+
+                % plain_typeinfo index's start at 0, so we need to
+                % add two to get to the first index.
+            ArgTypeInfo = unsafe_cast(get_subterm(TypeInfo, Term, X, 2))
+        ;
+            ExistLocn = typeinfo_in_tci(A, B),
+
+                % A starts at index 0 and measures from the start
+                % of the list of plain type_infos
+                %
+                % B starts at index 1 and measures from the start
+                % of the type_class_info
+                %
+                % Hence the addition of two extra arguments to find the
+                % type_class_info and then the addition of one extra
+                % arg to find the type_info in the type_class_info.
+                %
+                % Note it's safe to pass a bogus type_info to
+                % get_subterm because we never use the returned
+                % type_info.
+                %
+            Bogus = TypeInfo,
+            TypeClassInfo = get_subterm(Bogus, Term, A, 2),
+            ArgTypeInfo = unsafe_cast(
+                get_subterm(Bogus, TypeClassInfo, B, 1))
+        )
+    ;
+        MaybeExist = no,
+        error(this_file ++ " exist_type_info: no exist info")
+    ).
+
+:- func eval_type_info_thunk(ti_info(T), type_info_thunk) = type_info.
+
+eval_type_info_thunk(I, Thunk) = TypeInfo :-
+    TI = eval_type_info_thunk_2(Thunk),
+    TypeInfo = eval_type_info(I, TI).
+
+:- func eval_type_info(ti_info(T), type_info) = type_info.
+
+eval_type_info(I, TI) = TypeInfo :-
+    TypeCtorInfo = TI ^ type_ctor_info,
+    ( type_ctor_is_variable_arity(TypeCtorInfo) ->
+        Arity = TI ^ var_arity_type_info_arity,
+        ArgTypeInfos = list.map(var_arity_arg_type_info(I, TI), 1 .. Arity),
+        TypeInfo = create_var_arity_type_info(TypeCtorInfo, Arity, ArgTypeInfos)
+    ; TypeCtorInfo ^ type_ctor_arity = 0 ->
+        TypeInfo = TI
+    ;
+        Arity = TypeCtorInfo ^ type_ctor_arity,
+        ArgTypeInfos = list.map(arg_type_info(I, TI), 1 .. Arity),
+        TypeInfo = create_type_info(TypeCtorInfo, ArgTypeInfos)
+    ).
+
+
+:- func var_arity_arg_type_info(ti_info(T), TypeInfo, int) = type_info.
+
+var_arity_arg_type_info(Info, TypeInfo, Index) = ArgTypeInfo :-
+    MaybePTI = TypeInfo ^ var_arity_pseudo_type_info_index(Index),
+    ArgTypeInfo = type_info(Info, MaybePTI).
+
+:- func arg_type_info(ti_info(T), TypeInfo, int) = type_info.
+
+arg_type_info(Info, TypeInfo, Index) = ArgTypeInfo :-
+    MaybePTI = TypeInfo ^ pseudo_type_info_index(Index),
+    ArgTypeInfo = type_info(Info, MaybePTI).
+
+%-----------------------------------------------------------------------------%
+
+:- func create_type_info(type_ctor_info, list(type_info)) = type_info.
+
+:- pragma foreign_proc("Erlang",
+        create_type_info(TypeCtorInfo::in, Args::in) = (TypeInfo::out),
+        [promise_pure, will_not_call_mercury, thread_safe], "
+    TypeInfo =
+        case Args of
+            [] ->
+                TypeCtorInfo;
+            [_|_] ->
+                list_to_tuple([TypeCtorInfo | Args])
+        end
+").
+
+create_type_info(_, _) = type_info :-
+    det_unimplemented("create_type_info/2").
+    
+
+:- func create_var_arity_type_info(type_ctor_info,
+    int, list(type_info)) = type_info.
+
+:- pragma foreign_proc("Erlang",
+        create_var_arity_type_info(TypeCtorInfo::in,
+            Arity::in, Args::in) = (TypeInfo::out),
+        [promise_pure, will_not_call_mercury, thread_safe], "
+    TypeInfo = list_to_tuple([TypeCtorInfo, Arity | Args])
+").
+
+create_var_arity_type_info(_, _, _) = type_info :-
+    det_unimplemented("create_var_arity_type_info/3").
+    
+%-----------------------------------------------------------------------------%
+
+    %
+    % A pseudo_type_info can be represented in one of three ways
+    % For a type with arity 0
+    %   TypeCtorInfo
+    % a type with arity > 0
+    %   { TypeCtorInfo, PseudoTypeInfo0, ..., PseudoTypeInfoN }
+    % a type with variable arity of size N
+    %   { TypeCtorInfo, N, PseudoTypeInfo0, ..., PseudoTypeInfoN }
+    %   
+:- type pseudo_type_info.
+:- pragma foreign_type("Erlang", pseudo_type_info, "").
+:- type pseudo_type_info ---> pseudo_type_info.
+
+    %
+    % TI ^ pseudo_type_info_index(I)
+    %
+    % returns the I'th maybe_pseudo_type_info from the given type_info
+    % or pseudo_type_info
+    % NOTE indexes start at one.
+    % 
+:- func pseudo_type_info_index(int, T) = maybe_pseudo_type_info.
+
+pseudo_type_info_index(I, TI) = TI ^ unsafe_pseudo_type_info_index(I + 1).
+
+    %
+    % TI ^ var_arity_pseudo_type_info_index(I)
+    %
+    % NOTE indexes start at one.
+    % 
+:- func var_arity_pseudo_type_info_index(int, T) = maybe_pseudo_type_info.
+
+var_arity_pseudo_type_info_index(I, TI) = 
+    TI ^ unsafe_pseudo_type_info_index(I + 2).
+
+    %
+    % Use pseudo_type_info_index or var_arity_pseudo_type_info_index, never
+    % this predicate directly.
+    %
+:- func unsafe_pseudo_type_info_index(int, T) = maybe_pseudo_type_info.
+
+:- pragma foreign_proc("Erlang",
+    unsafe_pseudo_type_info_index(Index::in, TypeInfo::in) = (Maybe::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Maybe = element(Index, TypeInfo),
+    %io:format(""unsafe_pseudo_type_info_index(~p, ~p) = ~p~n"",
+    %    [Index, TypeInfo, Maybe]),
+    void
+").
+
+unsafe_pseudo_type_info_index(_, _) = pseudo(pseudo_type_info_thunk) :-
+    det_unimplemented("unsafe_pseudo_type_info_index").
+
+%-----------------------------------------------------------------------------%
+
 :- type pseudo_type_info_thunk.
 :- pragma foreign_type("Erlang", pseudo_type_info_thunk, "").
 :- type pseudo_type_info_thunk ---> pseudo_type_info_thunk.
 
-:- type type_info_thunk.
-:- pragma foreign_type("Erlang", type_info_thunk, "").
-:- type type_info_thunk ---> type_info_thunk.
-
-:- type evaluated_type_info_thunk
+:- type evaluated_pseudo_type_info_thunk
     --->    universal_type_info(int)
     ;       existential_type_info(int)
-    ;       type_info(type_info)
+    ;       pseudo_type_info(pseudo_type_info)
     .
 
-:- func eval_type_info(type_info_thunk) = evaluated_type_info_thunk.
-:- pragma foreign_proc("Erlang", eval_type_info(Thunk::in) = (TypeInfo::out),
+:- func eval_pseudo_type_info_thunk(pseudo_type_info_thunk) =
+    evaluated_pseudo_type_info_thunk.
+
+:- pragma foreign_proc("Erlang",
+        eval_pseudo_type_info_thunk(Thunk::in) = (TypeInfo::out),
         [will_not_call_mercury, thread_safe, promise_pure], "
     MaybeTypeInfo = Thunk(),
     TypeInfo =
@@ -1168,13 +1355,29 @@ det_dynamic_cast(Term, Actual) :-
             is_integer(MaybeTypeInfo) ->
                 { existential_type_info, MaybeTypeInfo - 512 };
             true ->
-                { type_info, MaybeTypeInfo }
+                { pseudo_type_info, MaybeTypeInfo }
         end,
-    % io:format(""eval_type_info: ~p~n"", [TypeInfo]),
+    % io:format(""eval_pseudo_type_info: ~p~n"", [TypeInfo]),
     void
 ").
-eval_type_info(X) = erlang_rtti_implementation.unsafe_cast(X) :-
-    det_unimplemented("eval_type_info/1").
+eval_pseudo_type_info_thunk(X) = erlang_rtti_implementation.unsafe_cast(X) :-
+    det_unimplemented("eval_pseudo_type_info/1").
+
+%-----------------------------------------------------------------------------%
+
+:- type type_info_thunk.
+:- pragma foreign_type("Erlang", type_info_thunk, "").
+:- type type_info_thunk ---> type_info_thunk.
+
+:- func eval_type_info_thunk_2(type_info_thunk) = type_info.
+:- pragma foreign_proc("Erlang", eval_type_info_thunk_2(Thunk::in) = (TypeInfo::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    TypeInfo = Thunk(),
+    % io:format(""eval_type_info_thunk_2(~p) = ~p~n"", [Thunk, TypeInfo]),
+    void
+").
+eval_type_info_thunk_2(X) = erlang_rtti_implementation.unsafe_cast(X) :-
+    det_unimplemented("eval_type_info_thunk_2/1").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
