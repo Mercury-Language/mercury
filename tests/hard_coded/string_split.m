@@ -10,6 +10,14 @@
 
 main(!IO) :-
   io__write_list(
+    split_at_separator(char__is_upper, ""),
+    ":", io__write_string, !IO),
+  io__nl(!IO),
+  io__write_list(
+    split_at_separator(char__is_upper, "!"),
+    ":", io__write_string, !IO),
+  io__nl(!IO),
+  io__write_list(
     split_at_separator(char__is_upper, "helloXworldXhowXareYyou!"),
     ":", io__write_string, !IO),
   io__nl(!IO),

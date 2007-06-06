@@ -4475,30 +4475,34 @@ string.words(String) = string.words_separator(char.is_whitespace, String).
 
 %------------------------------------------------------------------------------%
 
-string.split_at_separator(DelimPred, InStr) = OutStrs :-
-    Count = string.length(InStr),
-    split_at_separator2(DelimPred, InStr, Count, Count, [], OutStrs).
+string.split_at_separator(DelimP, String) = Substrings :-
+    Len = string.length(String),
+    split_at_separator_2(DelimP, String, Len - 1, Len, [], Substrings).
 
-:- pred split_at_separator2(pred(char)::in(pred(in) is semidet), string::in,
+:- pred split_at_separator_2(pred(char)::in(pred(in) is semidet), string::in,
     int::in, int::in, list(string)::in, list(string)::out) is det.
-split_at_separator2(DelimPred, Str, I, ThisSegEnd, ITail, OTail) :-
-    % Walk Str backwards extending accumulated list of chunks as chars
-    % matching DelimPred are found.
-    ( I < 0 -> % We're at the beginning.
-        ( ThisSegEnd<0 ->
-            OTail = ["" | ITail]
-        ;
-            ThisSeg = string.unsafe_substring(Str, 0, ThisSegEnd+1),
-            OTail = [ThisSeg | ITail]
-        )
+
+split_at_separator_2(DelimP, Str, I, SegEnd, Acc0, Acc) :-
+    % Walk Str backwards extending the accumulated list of chunks as chars
+    % matching DelimP are found.
+    %
+    % Invariant: -1 =< I < length(Str)
+    % SegEnd is one past the last index of the current segment.
+    %
+    ( I < 0 ->
+        % We've reached the beginning of the string.
+        Seg = string.unsafe_substring(Str, 0, SegEnd),
+        Acc = [Seg | Acc0]
     ;
         C = string.unsafe_index(Str, I),
-        ( DelimPred(C) -> % Chop here.
-            ThisSeg = string.unsafe_substring(Str, I+1, ThisSegEnd-I),
-            TTail = [ ThisSeg | ITail ],
-            split_at_separator2(DelimPred, Str, I-1, I-1, TTail, OTail)
-        ; % Extend current segment.
-            split_at_separator2(DelimPred, Str, I-1, ThisSegEnd, ITail, OTail)
+        ( DelimP(C) ->
+            % Chop here.
+            SegStart = I + 1,
+            Seg = string.unsafe_substring(Str, SegStart, SegEnd - SegStart),
+            split_at_separator_2(DelimP, Str, I - 1, I, [Seg | Acc0], Acc)
+        ;
+            % Extend current segment.
+            split_at_separator_2(DelimP, Str, I - 1, SegEnd, Acc0, Acc)
         )
     ).
 
