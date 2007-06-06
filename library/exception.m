@@ -1401,7 +1401,7 @@ namespace mercury {
     catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    T = try
+    {T} = try
         Pred()
     catch
         throw: {'ML_exception', Excp} ->
@@ -1431,8 +1431,6 @@ namespace mercury {
 
 :- pragma foreign_code("Erlang", "
 
-    % XXX not sure about any of this
-
     builtin_catch_3_p_2(TypeInfo, WrappedGoal, Handler) ->
         try
             WrappedGoal()
@@ -1443,24 +1441,20 @@ namespace mercury {
 
     builtin_catch_3_p_4(_TypeInfo_for_T, Pred, Handler, Succeed) ->
         try
-            Pred()
-        of
-            T ->
-                Succeed(T)
+            Pred(Succeed)
         catch
             throw: {'ML_exception', Excp} ->
-                Handler(Excp, Succeed)
+                {Result} = Handler(Excp),
+                Succeed(Result)
         end.
 
     builtin_catch_3_p_5(_TypeInfo_for_T, Pred, Handler, Succeed) ->
         try
-            Pred()
-        of
-            T ->
-                Succeed(T)
+            Pred(Succeed)
         catch
             throw: {'ML_exception', Excp} ->
-                Handler(Excp, Succeed)
+                {Result} = Handler(Excp),
+                Succeed(Result)
         end.
 ").
 
@@ -2580,6 +2574,8 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp)
 :- pragma foreign_export("C", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 :- pragma foreign_export("IL", report_uncaught_exception(in, di, uo),
+    "ML_report_uncaught_exception").
+:- pragma foreign_export("Erlang", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 
 :- pred report_uncaught_exception(univ::in, io::di, io::uo) is cc_multi.

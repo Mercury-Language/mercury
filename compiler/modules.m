@@ -8203,13 +8203,12 @@ create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
         MaybeStdLibDir = yes(StdLibDir),
         StdLibBeamsPath = StdLibDir/"lib"/GradeDir/"libmer_std.beams",
         SearchStdLib = pa_option(yes, StdLibBeamsPath),
-        InitStdLib = " -s mercury__io ML_io_init_state \\\n",
-        FinalizeStdLib = " -s mercury__io ML_io_finalize_state \\\n"
+        % Added by elds_to_erlang.m
+        MainFunc = "mercury__main_wrapper"
     ;
         MaybeStdLibDir = no,
         SearchStdLib = "",
-        InitStdLib = "",
-        FinalizeStdLib = ""
+        MainFunc = "main_2_p_0"
     ),
 
     % Add `-pa <dir>' options to find any other libraries specified by the user.
@@ -8245,9 +8244,7 @@ create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
                 "DIR=`dirname ""$0""`\n",
                 "exec ", Erlang, " -noshell \\\n",
                 SearchStdLib, SearchLibs, SearchProg,
-                InitStdLib,
-                " -s ", BeamBaseNameNoExt, " main_2_p_0",
-                FinalizeStdLib,
+                " -s ", BeamBaseNameNoExt, " ", MainFunc,
                 " -s init stop -- ""$@""\n"
             ], !IO),
             io.close_output(ShellScript, !IO),

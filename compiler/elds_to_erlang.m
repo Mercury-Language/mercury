@@ -45,6 +45,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
@@ -79,6 +80,7 @@ output_elds(ModuleInfo, ELDS, !IO) :-
 output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
         RttiDefns),
+    AddMainWrapper = should_add_main_wrapper(ModuleInfo),
 
     % Output intro.
     library.version(Version),
@@ -102,11 +104,28 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     list.foldl2(output_foreign_export_ann, ForeignExportDefns,
         NeedComma0, NeedComma1, !IO),
     list.foldl2(output_rtti_export_ann(ModuleInfo), RttiDefns,
-        NeedComma1, _NeedComma, !IO),
+        NeedComma1, NeedComma, !IO),
+    (
+        AddMainWrapper = yes,
+        maybe_write_comma(NeedComma, !IO),
+        nl_indent_line(1, !IO),
+        output_atom("mercury__main_wrapper", !IO),
+        io.write_string("/0", !IO)
+    ;
+        AddMainWrapper = no
+    ),
     io.write_string("]).\n", !IO),
 
     % Useful for debugging.
     io.write_string("% -compile(export_all).\n", !IO),
+
+    % Output the main wrapper, if any.
+    (
+        AddMainWrapper = yes,
+        io.write_string(main_wrapper_code, !IO)
+    ;
+        AddMainWrapper = no
+    ),
 
     % Output foreign code written in Erlang.
     list.foldl(output_foreign_body_code, ForeignBodies, !IO),
@@ -172,6 +191,70 @@ output_rtti_export_ann(ModuleInfo, ForeignExportDefn, !NeedComma, !IO) :-
     ;
         IsExported = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func should_add_main_wrapper(module_info) = bool.
+
+should_add_main_wrapper(ModuleInfo) = AddMainWrapper :-
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    (
+        predicate_table_search_pred_name_arity(PredTable, "main", 2, PredIds),
+        list.member(PredId, PredIds),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_import_status(PredInfo, ImportStatus),
+        status_is_exported_to_non_submodules(ImportStatus) = yes
+    ->
+        AddMainWrapper = yes
+    ;
+        AddMainWrapper = no
+    ).
+
+:- func main_wrapper_code = string.
+
+main_wrapper_code = "
+
+    % This function is called in place of main_2_p_0 by the shell script that
+    % we generate for this program, if linking against the standard library.
+    % Otherwise main_2_p_0 will be called.
+
+    mercury__main_wrapper() ->
+        mercury__io:'ML_io_init_state'(),
+        try
+            main_2_p_0()
+        catch
+            {'ML_exception', Excp} ->
+                StackTrace = erlang:get_stacktrace(),
+                mercury__exception:'ML_report_uncaught_exception'(Excp),
+                io:put_chars(""Stack dump follows:\\n""),
+                mercury__dump_stacktrace(StackTrace),
+                mercury__io:'ML_io_finalize_state'(),
+                % init:stop is preferred to calling halt but there seems
+                % to be no way to choose the exit code otherwise.
+                halt(1)
+        end,
+        mercury__io:'ML_io_finalize_state'().
+
+    mercury__dump_stacktrace([]) -> void;
+    mercury__dump_stacktrace([St | Sts]) ->
+        {Module, Function, ArityOrArgs} = St,
+        io:format(""\\t~s:~s"", [Module, Function]),
+        if
+            is_integer(ArityOrArgs) ->
+                io:format(""/~B~n"", [ArityOrArgs]);
+            true ->
+                io:format(""~p~n"", ArityOrArgs)
+        end,
+        % Don't show stack frames below main.
+        case St of
+            {?MODULE, mercury__main_wrapper, _} ->
+                void;
+            _ ->
+                mercury__dump_stacktrace(Sts)
+        end.
+".
+
+%-----------------------------------------------------------------------------%
 
 :- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
 
