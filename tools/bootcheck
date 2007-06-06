@@ -75,9 +75,10 @@ Options:
         Copy the runtime directory instead of linking it.
         This is necessary if one wants to bootcheck a grade
         that is not compatible with the standard one.
-    -p, --copy-profilers
-        Copy the profiler directories instead of linking them.
-        This is sometimes necessary for bootstrapping changes.
+    -p-, --no-copy-profilers
+        Link the profiler directories instead of copying them.
+    --no-copy-slice
+        Link the slice directory instead of copying it.
     -b-, --no-bootcheck
         Do not run the bootstrap check; execute the test suite and/or
         the extras only. This option requires a previous bootstrap
@@ -185,8 +186,8 @@ test_grade=
 test_params=false
 copy_runtime=false
 copy_boehm_gc=false
-copy_slice=false
-copy_profilers=false
+copy_slice=true
+copy_profilers=true
 mmake_stage_2=true
 keep_stage_2=false
 keep_stage_3=false
@@ -313,11 +314,11 @@ while test $# -gt 0; do
     -g|--copy-boehm-gc)
         copy_boehm_gc=true ;;
 
-    -p|--copy-profilers)
-        copy_profilers=true ;;
+    -p-|-no-copy-profilers)
+        copy_profilers=false ;;
 
-    --copy-slice)
-        copy_slice=true ;;
+    --no-copy-slice)
+        copy_slice=false ;;
 
     --check-namespace)
         check_namespace=true ;;
