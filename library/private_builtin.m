@@ -699,14 +699,14 @@ special__Compare____base_typeclass_info_1_0(
         (Object[]) TypeClassInfo0, Index);
 ").
 
-% XXX untested
-
 :- pragma foreign_proc("Erlang",
     type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
         TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = element(Index, TypeClassInfo)
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeInfo = element(Index + 1, TypeClassInfo)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -714,7 +714,9 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = element(Index, TypeClassInfo)
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeInfo = element(Index + 1, TypeClassInfo)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -722,7 +724,9 @@ special__Compare____base_typeclass_info_1_0(
         TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = element(Index, TypeClassInfo0)
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeClassInfo = element(Index + 1, TypeClassInfo0)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -730,7 +734,9 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = element(Index, TypeClassInfo0)
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeClassInfo = element(Index + 1, TypeClassInfo0)
 ").
 
 %-----------------------------------------------------------------------------%
