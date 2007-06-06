@@ -362,7 +362,7 @@ generate_method_code(Lang, _ModuleName, Defn, !IO) :-
             sorry(this_file, "multiple return values")
         ),
 
-        predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Id),
+        predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum, Id),
         (
             Lang = lang_csharp,
             io.write_string("public static ", !IO)

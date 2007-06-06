@@ -87,8 +87,8 @@
 %-----------------------------------------------------------------------------%
 
     % The following predicates are exported so that we can get type
-    % conversions and name mangling consistent between the managed
-    % C++ output (currently in mlds_to_ilasm.m) and IL output (in
+    % conversions and name mangling consistent between the C# and managed
+    % C++ output (currently in mlds_to_managed.m) and IL output (in
     % this file).
     %
     % XXX we should reduce the dependencies here to a bare minimum.
@@ -96,9 +96,10 @@
 :- func params_to_il_signature(il_data_rep, mlds_module_name,
     mlds_func_params) = signature.
 
-    % Generate an IL identifier for a pred label.
+    % Generate an identifier for a pred label, to be used in one of the
+    % managed languages.
     %
-:- pred predlabel_to_id(mlds_pred_label::in, proc_id::in,
+:- pred predlabel_to_managed_id(mlds_pred_label::in, proc_id::in,
     maybe(mlds_func_sequence_num)::in, ilds.id::out) is det.
 
     % Generate an IL identifier for a MLDS var.
@@ -160,6 +161,7 @@
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -223,6 +225,8 @@
                 % method-wide attributes (static)
                 arguments           :: arguments_map,   % The arguments
                 method_name         :: member_name,     % current method name
+                managed_method_name :: member_name,
+                                    % current managed method name
                 signature           :: signature        % current return type
             ).
 
@@ -938,7 +942,7 @@ decl_flags_to_fieldattrs(Flags)
 entity_name_to_ilds_id(entity_export(Name)) = Name.
 entity_name_to_ilds_id(entity_function(PredLabel, ProcId, MaybeSeqNum, _))
         = Name :-
-    predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Name).
+    predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, Name).
 entity_name_to_ilds_id(entity_type(Name, Arity))
     = string.format("%s_%d", [s(Name), i(Arity)]).
 entity_name_to_ilds_id(entity_data(DataName))
@@ -1047,6 +1051,14 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         ClassMember, !Info) :-
     Entity = mlds_function(_MaybePredProcId, Params, MaybeStatement,
         Attributes, EnvVarNames),
+    ( Name = entity_function(PredLabel0, ProcId0, MaybeSeqNum0, _PredId) ->
+        PredLabel = PredLabel0,
+        ProcId = ProcId0,
+        MaybeSeqNum = MaybeSeqNum0
+    ;
+        unexpected(this_file, "IL procedure is not a function")
+    ),
+
     expect(set.empty(EnvVarNames), this_file,
         "generate_method: EnvVarNames"),
 
@@ -1069,19 +1081,25 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     (
         IsCons = yes(ParentClass),
         MemberName = ctor,
+        ManagedMemberName = ctor,
         CtorInstrs = [load_this,
             call(methoddef(call_conv(yes, default), void,
             class_member_name(ParentClass, ctor), []))]
     ;
         IsCons = no,
-        MemberName = id(entity_name_to_ilds_id(Name)),
+        predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, MemberName0),
+        predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum,
+                ManagedMemberName0),
+        MemberName = id(MemberName0),
+        ManagedMemberName = id(ManagedMemberName0),
         CtorInstrs = []
     ),
 
     Attrs = decl_flags_to_methattrs(Flags),
 
     % Initialize the IL info with this method info.
-    il_info_new_method(ILArgs, ILSignature, MemberName, !Info),
+    il_info_new_method(ILArgs, ILSignature, MemberName, ManagedMemberName,
+            !Info),
 
     % Start a new block, which we will use to wrap up the entire method.
     il_info_get_next_block_id(BlockId, !Info),
@@ -1121,7 +1139,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             comment_node("external -- call handwritten version"),
             node(LoadInstrs),
             instr_node(call(get_static_methodref(ClassName,
-                MemberName, ILRetType, TypeParams)))
+                ManagedMemberName, ILRetType, TypeParams)))
             ]),
         MaybeRet = instr_node(ret)
     ),
@@ -1142,7 +1160,6 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     % in an exception handler and call the initialization instructions
     % in the cctor of this module.
     (
-        Name = entity_function(PredLabel, _ProcId, MaybeSeqNum, _PredId),
         PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
             model_det, no),
         MaybeSeqNum = no
@@ -1947,7 +1964,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
             ReturnLvals = [_, _ | _],
             sorry(this_file, "multiple return values")
         ),
-        MethodName = !.Info ^ method_name,
+        MethodName = !.Info ^ managed_method_name,
         assoc_list.keys(Params, TypeParams),
         list.map_foldl((pred(_::in, Instr::out,
             Num::in, Num + 1::out) is det :-
@@ -3236,6 +3253,26 @@ get_ilds_type_class_name(ILType) = ClassName :-
 %
 % Name mangling.
 
+:- type il_mangle_name --->
+    mangle_for_il
+        % Names that are to be used only in IL are able to include spaces,
+        % punctuation and other special characters, because they are in quotes.
+    ; mangle_for_managed.
+        % Names that are to be used in other managed languages (typically
+        % because they define foreign procedures in that language) must be
+        % mangled in the same way as for C.
+
+    % Create a mangled predicate identifier, suitable for use in IL.
+    %
+:- pred predlabel_to_il_id(mlds_pred_label::in, proc_id::in,
+    maybe(mlds_func_sequence_num)::in, ilds.id::out) is det.
+
+predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, Id) :-
+    predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, mangle_for_il, Id).
+
+predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum, Id) :-
+    predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, mangle_for_managed, Id).
+
     % XXX We may need to do different name mangling for CLS compliance
     % than we would otherwise need.
     %
@@ -3294,8 +3331,12 @@ get_ilds_type_class_name(ILType) = ClassName :-
     % XXX I think that it may be possible to have conflicts with
     % user names in the case where there is a <modulename>. - fjh
     %
+:- pred predlabel_to_id(mlds_pred_label::in, proc_id::in,
+    maybe(mlds_func_sequence_num)::in, il_mangle_name::in,
+    ilds.id::out) is det.
+
 predlabel_to_id(mlds_user_pred_label(PredOrFunc, MaybeModuleName, Name, Arity,
-        CodeModel, _NonOutputFunc), ProcId, MaybeSeqNum, Id) :-
+        CodeModel, _NonOutputFunc), ProcId, MaybeSeqNum, MangleType, Id) :-
     (
         MaybeModuleName = yes(ModuleName),
         mlds_to_il.sym_name_to_string(ModuleName, MStr),
@@ -3328,15 +3369,14 @@ predlabel_to_id(mlds_user_pred_label(PredOrFunc, MaybeModuleName, Name, Arity,
         MaybeSeqNum = no,
         MaybeSeqNumStr = ""
     ),
+    MangledName = mangle_pred_name(Name, MangleType),
     string.format("%s%s_%d%s%s%s", [
-        s(MaybeModuleStr), s(Name),
+        s(MaybeModuleStr), s(MangledName),
         i(Arity), s(PredOrFuncStr), s(MaybeProcIdInt),
-        s(MaybeSeqNumStr)], UnMangledId),
-    Id = UnMangledId.
-    % Id = name_mangle(UnMangledId).
+        s(MaybeSeqNumStr)], Id).
 
 predlabel_to_id(mlds_special_pred_label(PredName, MaybeModuleName, TypeName,
-        Arity), ProcId, MaybeSeqNum, Id) :-
+        Arity), ProcId, MaybeSeqNum, MangleType, Id) :-
     proc_id_to_int(ProcId, ProcIdInt),
     (
         MaybeModuleName = yes(ModuleName),
@@ -3353,11 +3393,20 @@ predlabel_to_id(mlds_special_pred_label(PredName, MaybeModuleName, TypeName,
         MaybeSeqNum = no,
         MaybeSeqNumStr = ""
     ),
+    MangledName = mangle_pred_name(PredName, MangleType),
     string.format("special_%s%s_%s_%d_%d%s",
-        [s(MaybeModuleStr), s(PredName), s(TypeName), i(Arity),
-            i(ProcIdInt), s(MaybeSeqNumStr)], UnMangledId),
-    Id = UnMangledId.
-    % Id = name_mangle(UnMangledId).
+        [s(MaybeModuleStr), s(MangledName), s(TypeName), i(Arity),
+            i(ProcIdInt), s(MaybeSeqNumStr)], Id).
+
+:- func mangle_pred_name(string, il_mangle_name) = string.
+
+mangle_pred_name(PredName, mangle_for_il) = PredName.
+mangle_pred_name(PredName, mangle_for_managed) = MangledName :-
+    ( string.is_all_alnum_or_underscore(PredName) ->
+        MangledName = PredName
+    ;
+        MangledName = convert_to_valid_c_identifier(PredName)
+    ).
 
     % If an mlds_var is not an argument or a local, what is it?
     % We assume the given variable is a static field;
@@ -3466,7 +3515,7 @@ mangle_dataname(mlds_tabling_ref(_, _), _MangledName) :-
 mangle_mlds_proc_label(qual(ModuleName, _, mlds_proc_label(PredLabel, ProcId)),
         MaybeSeqNum, ClassName, PredStr) :-
     ClassName = mlds_module_name_to_class_name(ModuleName),
-    predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
+    predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
 
 :- pred mangle_entity_name(mlds_entity_name::in, string::out) is det.
 
@@ -4353,10 +4402,11 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
         DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR,
         empty, empty, [], no, set.init, set.init,
         map.init, empty, counter.init(1), counter.init(1), no,
-        Args, MethodName, DefaultSignature) :-
+        Args, MethodName, ManagedMethodName, DefaultSignature) :-
     Args = [],
     DefaultSignature = signature(call_conv(no, default), void, []),
-    MethodName = id("").
+    MethodName = id(""),
+    ManagedMethodName = id("").
 
 :- pred il_info_new_class(mlds_class_defn::in, il_info::in, il_info::out)
     is det.
@@ -4377,9 +4427,10 @@ il_info_new_class(ClassDefn, !Info) :-
     % Reset the il_info for processing a new method.
     %
 :- pred il_info_new_method(arguments_map::in, signature::in, member_name::in,
-    il_info::in, il_info::out) is det.
+    member_name::in, il_info::in, il_info::out) is det.
 
-il_info_new_method(ILArgs, ILSignature, MethodName, !Info) :-
+il_info_new_method(ILArgs, ILSignature, MethodName, ManagedMethodName,
+        !Info) :-
     Info0 = !.Info,
     (
         !.Info ^ method_foreign_lang = yes(SomeLang),
@@ -4397,6 +4448,7 @@ il_info_new_method(ILArgs, ILSignature, MethodName, !Info) :-
     !:Info = !.Info ^ method_foreign_lang := no,
     !:Info = !.Info ^ arguments := ILArgs,
     !:Info = !.Info ^ method_name := MethodName,
+    !:Info = !.Info ^ managed_method_name := ManagedMethodName,
     !:Info = !.Info ^ signature := ILSignature.
 
 :- pred il_info_set_arguments(assoc_list(ilds.id, mlds_type)::in,
