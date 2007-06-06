@@ -55,6 +55,7 @@
 :- import_module erl_backend.erl_unify_gen.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
@@ -618,8 +619,11 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
         InstMap0, InstMap, !Info),
 
     % Generate code for each case.
-    list.map_foldl(erl_gen_case(CodeModel, InstMap, NonLocalsBoundInCases,
-        MaybeSuccessExpr), CasesList, ErlCases0, !Info),
+    erl_variable_type(!.Info, Var, VarType),
+    list.map_foldl(
+        erl_gen_case(VarType,
+            CodeModel, InstMap, NonLocalsBoundInCases, MaybeSuccessExpr),
+        CasesList, ErlCases0, !Info),
     (
         CanFail = can_fail,
         % Add `_ -> fail' default case.
@@ -634,18 +638,16 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
     CaseExpr = elds_case_expr(expr_from_var(Var), ErlCases),
     Statement = maybe_join_exprs1(MaybeMakeClosure, CaseExpr).
 
-:- pred erl_gen_case(code_model::in, instmap::in, set(prog_var)::in,
+:- pred erl_gen_case(mer_type::in,
+    code_model::in, instmap::in, set(prog_var)::in,
     maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out, 
     erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_case(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
+erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
         case(ConsId, Goal), ELDSCase, !Info) :-
-    ( ConsId = cons(_, Arity) ->
-        % Create dummy variables to fill the pattern with.
-        erl_gen_info_new_anonymous_vars(Arity, DummyVars, !Info)
-    ;
-        DummyVars = []
-    ),
+    erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    Size = cons_id_size(ModuleInfo, Type, ConsId),
+    erl_gen_info_new_anonymous_vars(Size, DummyVars, !Info),
     ( cons_id_to_term(ConsId, DummyVars, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
@@ -663,6 +665,24 @@ erl_gen_case(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
     erl_bind_unbound_vars(!.Info, MustBindNonLocals, Goal, InstMap,
         Statement0, Statement),
     ELDSCase = elds_case(Pattern, Statement).
+
+    %
+    % cons_id_size(ModuleInfo, Type, ConsId)
+    %
+    % Returns the size - 1 of the tuple which represents the
+    % type, Type, with cons_id, ConsId.
+    %
+:- func cons_id_size(module_info, mer_type, cons_id) = int.
+
+cons_id_size(ModuleInfo, Type, ConsId) = Size :-
+    ( ConsId = cons(_, _) ->
+        get_type_and_cons_defn(ModuleInfo, Type, ConsId, _TypeDefn, ConsDefn),
+        Size = list.length(ConsDefn ^ cons_exist_tvars) +
+            list.length(ConsDefn ^ cons_constraints) +
+            list.length(ConsDefn ^ cons_args)
+    ;
+        Size = 0
+    ).
 
 %-----------------------------------------------------------------------------%
 % This code is shared by disjunctions and switches.
