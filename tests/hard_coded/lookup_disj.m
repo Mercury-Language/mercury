@@ -58,6 +58,14 @@ q(5.5 - "five",   5, g(a)).
     Int = Int0 + 10;
 ").
 
+:- pragma foreign_proc("Erlang",
+    peek_at_solution(Int0::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    io:format(""peek ~B~n"", [Int0]),
+    Int = Int0 + 10
+").
+
 :- pred write_solution(soln::in, io::di, io::uo) is det.
 
 write_solution(Soln, !IO) :-

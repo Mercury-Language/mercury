@@ -79,6 +79,11 @@ bar(X) :- X = 1.
 
 	SUCCESS_INDICATOR = MR_FALSE;
 ").
+:- pragma foreign_proc("Erlang", use(_X::in),
+	[will_not_call_mercury, promise_pure],
+"
+	SUCCESS_INDICATOR = false
+").
 
 main -->
 	( { foo(X), use(X) } ->

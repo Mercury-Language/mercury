@@ -323,7 +323,7 @@ endif
 # Mutables work properly only in C grades.
 # Trace goal with runtime conditions work properly only in C grades.
 # The lookup_disj test case uses C foreign_proc code to print progress reports.
-ifeq "$(filter il% java%,$(GRADE))" ""
+ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS= \
 		factt \
 		factt_sort_test \
@@ -465,7 +465,7 @@ endif
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 
-ifeq "$(filter hl% il% java%,$(GRADE))" ""
+ifeq "$(filter hl% il% java% erlang%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS_2 = \
 			factt_non
@@ -487,11 +487,11 @@ endif
 # The MLDS back-end doesn't support nondet C in trailing grades,
 # or in no-GC grades (except with --no-reclaim-heap-on-failure).
 # We also don't support nondet C in deep profiling grades.
-# These tests are also not supported in IL and Java grades,
+# These tests are also not supported in IL, Java and Erlang grades,
 # since those back-ends don't support the C interface at all.
 # (XXX perhaps we should add analogous tests of the nondet IL, C#, MC++,
 # and [eventually] Java interfaces?)
-ifneq "$(filter il% java%,$(GRADE))" ""
+ifneq "$(filter il% java% erlang%,$(GRADE))" ""
 	NONDET_C_PROGS =
 else
   ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
@@ -532,7 +532,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
   ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	# The `parse' test also links with the debug libraries,
 	# so it only works in LLDS grades.
-	ifeq "$(filter hl% java% il%,$(GRADE))" ""
+	ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
 		STATIC_LINK_PROGS = parse
 	endif
   endif

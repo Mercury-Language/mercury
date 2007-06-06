@@ -1,0 +1,6 @@
+Uncaught Mercury exception:
+Software Error: string.format: format string invalid.
+Stack dump follows:
+	mercury__exception:-throw_impl_1_p_0/1-fun-0-/1
+	mercury__io:format_4_p_0/2
+	string_format_test_2:mercury__main_wrapper/0

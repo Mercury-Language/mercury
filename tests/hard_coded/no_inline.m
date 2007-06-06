@@ -34,3 +34,12 @@ main -->
 ").
 :- pragma foreign_code("C#", "static int counter = 0;").
 :- pragma foreign_proc("C#", bar(Value::out), [], "Value = counter++;").
+:- pragma foreign_proc("Erlang", bar(Value::out), [], "
+    case get(counter) of
+	undefined ->
+	    Value = 0;
+	C ->
+	    Value = C
+    end,
+    put(counter, Value + 1)
+").

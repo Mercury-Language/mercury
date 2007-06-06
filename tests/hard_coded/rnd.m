@@ -249,6 +249,8 @@ set(Vec0, Ind, V, Vec) :-
 ").
 :- pragma foreign_proc("C#", rfloat(I::in) = (F::out),
 		[promise_pure], "F = I;").
+:- pragma foreign_proc("Erlang", rfloat(I::in) = (F::out),
+		[promise_pure], "F = float(I)").
 
 :- func rint(float) = int.
 :- pragma foreign_proc("C",
@@ -259,6 +261,8 @@ set(Vec0, Ind, V, Vec) :-
 ").
 :- pragma foreign_proc("C#", rint(F::in) = (I::out),
 		[promise_pure], "I = (int) F;").
+:- pragma foreign_proc("Erlang", rint(F::in) = (I::out),
+		[promise_pure], "I = trunc(F)").
 
 :- pred for(int, int, pred(int, T, T), T, T).
 :- mode for(in, in, pred(in, in, out) is det, in, out) is det.

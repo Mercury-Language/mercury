@@ -1,0 +1,8 @@
+Uncaught Mercury exception:
+Software Error: string.format: invalid conversion specifier.
+Stack dump follows:
+	mercury__exception:-throw_impl_1_p_0/1-fun-0-/1
+	mercury__string:format_string_to_specifiers_5_p_0/2
+	mercury__string:format_3_p_0/2
+	mercury__io:format_4_p_0/2
+	string_format_test_3:mercury__main_wrapper/0

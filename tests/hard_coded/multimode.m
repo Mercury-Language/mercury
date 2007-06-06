@@ -94,3 +94,10 @@ test2(0::out, 0::out) :-
 ").
 :- pragma foreign_proc("C#", puts(S::in),
 		[promise_pure], "System.Console.WriteLine(S);").
+:- pragma foreign_proc("Erlang",
+	puts(S::in),
+	[will_not_call_mercury],
+"
+	io:put_chars(S),
+	io:nl()
+").

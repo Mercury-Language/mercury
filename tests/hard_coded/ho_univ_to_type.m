@@ -66,5 +66,10 @@ foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
 	Pred2 = Pred1;
 }
 ").
+:- pragma foreign_proc("Erlang",
+	convert_inst(Pred1::in, Pred2::out(mypred)),
+	[will_not_call_mercury, promise_pure], "
+	Pred2 = Pred1
+").
 
 

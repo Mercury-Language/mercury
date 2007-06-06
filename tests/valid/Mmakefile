@@ -306,7 +306,7 @@ else
 	PROGS2=$(PROGS1) $(TRAIL_PROGS)
 endif
 
-ifneq "$(filter java% il%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifneq "$(filter java% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	# We currently don't do any testing in grade java on this directory.
 	ifneq "$(findstring java,$(GRADE))$" ""
 		PROGS3 =
@@ -317,7 +317,7 @@ else
 	PROGS3 = $(PROGS2) $(TABLE_PROGS)
 endif
 
-ifeq "$(filter hl% java% il%,$(GRADE))" ""
+ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
 	PROGS4 = $(PROGS3) $(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
 else
 	PROGS4 = $(PROGS3)
@@ -329,7 +329,7 @@ else
 	PROGS5 = $(PROGS4) $(PAR_CONJ_PROGS)
 endif
 
-ifeq "$(filter java% il%,$(GRADE))" ""
+ifeq "$(filter java% il% erlang%,$(GRADE))" ""
 	OBJ_PROGS = $(PROGS5) $(RESERVE_TAG_PROGS)
 else
 	OBJ_PROGS = $(PROGS5)
@@ -357,8 +357,14 @@ ifeq ($(findstring il,$(GRADE)),il)
 	TARGET_OBJ_EXT=dll
 	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
 else
+ifeq ($(findstring erlang,$(GRADE)),erlang)
+	TARGET_OBJ_EXT=beam
+	# Erlang backend currently requires `mmc --make'.
+	TARGET_OBJ_SUBDIR=
+else
 	TARGET_OBJ_EXT=$(O)
 	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+endif
 endif
 OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)

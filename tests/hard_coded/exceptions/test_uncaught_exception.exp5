@@ -1,0 +1,5 @@
+Uncaught Mercury exception:
+"<exception thrown from main>"
+Stack dump follows:
+	mercury__exception:-throw_impl_1_p_0/1-fun-0-/1
+	test_uncaught_exception:mercury__main_wrapper/0

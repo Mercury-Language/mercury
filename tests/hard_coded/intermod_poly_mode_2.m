@@ -12,3 +12,9 @@
 "
 	R = X;
 ").
+:- pragma foreign_proc("Erlang",
+	new(X::in(I)) = (R::out(I)),
+	[promise_pure, will_not_call_mercury],
+"
+	R = X
+").

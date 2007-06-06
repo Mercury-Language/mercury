@@ -274,14 +274,14 @@ NON_PROFDEEP_MODULES = \
 
 # These tests test things which only work for back-ends which support
 # the C interface.
-ifneq "$(filter java% il%,$(GRADE))" ""
+ifneq "$(filter java% il% erlang%,$(GRADE))" ""
 	C_INTERFACE_PROGS=
 else
 	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
 endif
 
 # The java and il grades compile with num_tag_bits = 0.
-ifneq "$(filter java% il%,$(GRADE))" ""
+ifneq "$(filter java% il% erlang%,$(GRADE))" ""
 	RESERVE_TAG_PROGS =
 else
 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)

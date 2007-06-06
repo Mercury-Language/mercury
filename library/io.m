@@ -7490,12 +7490,38 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
+    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+"
+    {'ML_stream', _Id, IoDevice} = Stream,
+    io:write(IoDevice, Val)
+").
+
+:- pragma foreign_proc("Erlang",
     io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
     {'ML_stream', _Id, IoDevice} = Stream,
     io:put_chars(IoDevice, Message)
+").
+
+:- pragma foreign_proc("Erlang",
+    io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        terminates],
+"
+    {'ML_stream', _Id, IoDevice} = Stream,
+    file:sync(IoDevice)
+").
+
+:- pragma foreign_proc("Erlang",
+    io.flush_binary_output(Stream::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        terminates],
+"
+    {'ML_stream', _Id, IoDevice} = Stream,
+    file:sync(IoDevice)
 ").
 
 io.write_float_2(Stream, Float, !IO) :-

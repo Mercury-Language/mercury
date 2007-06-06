@@ -1,0 +1,5 @@
+Uncaught Mercury exception:
+Software Error: oops
+Stack dump follows:
+	mercury__exception:-throw_impl_1_p_0/1-fun-0-/1
+	no_fully_strict:mercury__main_wrapper/0

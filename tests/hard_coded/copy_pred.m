@@ -29,6 +29,9 @@
 	:- pragma foreign_proc("Java",
 		inst_cast(X::in, Y::out(pred(in, out) is det)),
 		[will_not_call_mercury, thread_safe, promise_pure], "Y = X;").
+	:- pragma foreign_proc("Erlang",
+		inst_cast(X::in, Y::out(pred(in, out) is det)),
+		[will_not_call_mercury, thread_safe, promise_pure], "Y = X").
 
         :- pred foo(int, int, string, string) is det.
         :- mode foo(in, in, in, out) is det.
