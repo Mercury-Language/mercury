@@ -65,6 +65,7 @@
 :- import_module libs.globals.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module int.
@@ -675,10 +676,22 @@ erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
 :- func cons_id_size(module_info, mer_type, cons_id) = int.
 
 cons_id_size(ModuleInfo, Type, ConsId) = Size :-
-    ( ConsId = cons(_, _) ->
-        get_type_and_cons_defn(ModuleInfo, Type, ConsId, _TypeDefn, ConsDefn),
-        Size = list.length(ConsDefn ^ cons_exist_tvars) +
-            list.length(ConsDefn ^ cons_constraints) +
+    (
+        type_to_ctor_and_args(Type, TypeCtor, _),
+        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
+    ->
+
+            %
+            % There will be a cell for each existential type variable
+            % which isn't mentioned in a typeclass constraint and
+            % a cell for each constraint and for each arg.
+            %
+        Constraints = ConsDefn ^ cons_constraints,
+        constraint_list_get_tvars(Constraints, ConstrainedTVars),
+        ExistTVars = ConsDefn ^ cons_exist_tvars,
+        UnconstrainedTVars = list.delete_elems(ExistTVars, ConstrainedTVars),
+
+        Size = list.length(UnconstrainedTVars) + list.length(Constraints) +
             list.length(ConsDefn ^ cons_args)
     ;
         Size = 0
