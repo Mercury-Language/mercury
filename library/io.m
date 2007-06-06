@@ -7056,16 +7056,6 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io:format(IoDevice, ""~B"", [Val])
 ").
 :- pragma foreign_proc("Erlang",
-    io.write_float(Val::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
-"
-    {'ML_stream', _Id, IoDevice} = mercury_current_text_output(),
-    % XXX precision
-    io:format(IoDevice, ""~f"", [Val])
-").
-
-:- pragma foreign_proc("Erlang",
     io.flush_output(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
