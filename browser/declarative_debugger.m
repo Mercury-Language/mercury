@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -617,6 +617,19 @@ set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
     mdb.declarative_analyser.set_fallback_search_mode(wrap(Store), 
         SearchMode, Analyser0, Analyser),
     !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser.
+
+:- pred reset_knowledge_base(
+    diagnoser_state(trace_node_id)::in, 
+    diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.reset_knowledge_base(in, out), 
+    "MR_DD_decl_reset_knowledge_base").
+
+reset_knowledge_base(!Diagnoser) :-
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    reset_oracle_knowledge_base(Oracle0, Oracle),
+    !Diagnoser ^ oracle_state := Oracle.
 
 :- func top_down_search_mode = mdb.declarative_analyser.search_mode.
 

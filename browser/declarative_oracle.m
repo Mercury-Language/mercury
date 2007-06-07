@@ -158,6 +158,11 @@
 :- pred set_oracle_testing_flag(bool::in, oracle_state::in, oracle_state::out)
     is det.
 
+    % Reset the oracle's knowledge base.
+    %
+:- pred reset_oracle_knowledge_base(oracle_state::in, oracle_state::out)
+    is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -705,6 +710,13 @@ set_oracle_testing_flag(Testing, !Oracle) :-
     User0 = !.Oracle ^ user_state,
     set_user_testing_flag(Testing, User0, User),
     !:Oracle = !.Oracle ^ user_state := User.
+
+%-----------------------------------------------------------------------------%
+
+reset_oracle_knowledge_base(!Oracle) :-
+    oracle_kb_init(EmptyKB),
+    !Oracle ^ kb_revised := !.Oracle ^ kb_current,
+    !Oracle ^ kb_current := EmptyKB.
 
 %-----------------------------------------------------------------------------%
 

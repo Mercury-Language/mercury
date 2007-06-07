@@ -1439,6 +1439,16 @@ MR_trace_decl_set_fallback_search_mode(MR_DeclSearchMode search_mode)
 }
 
 void
+MR_trace_decl_reset_knowledge_base()
+{
+    MR_trace_decl_ensure_init();
+    MR_TRACE_CALL_MERCURY(
+        MR_DD_decl_reset_knowledge_base(
+            MR_trace_front_end_state, &MR_trace_front_end_state);
+    );
+}
+
+void
 MR_trace_decl_set_testing_flag(MR_bool testing)
 {
     MR_trace_decl_ensure_init();

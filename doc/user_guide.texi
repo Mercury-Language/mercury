@@ -3977,7 +3977,7 @@ The following commands relate to the declarative debugger.  See
 @ref{Declarative debugging} for details.
 @sp 1
 @table @code
-@item dd [-r] [-n@var{nodes}] [-s@var{search-mode}] [-p@var{passfile}] [-f@var{failfile}]
+@item dd [-r] [-R] [-n@var{nodes}] [-s@var{search-mode}] [-p@var{passfile}] [-f@var{failfile}]
 @c @item dd [--assume-all-io-is-tabled] [-d@var{depth}] [-t]
 @c       [--debug [filename]]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
@@ -4029,6 +4029,13 @@ ignored.  A @samp{dd --resume} command can be issued at any event.
 The @samp{--search-mode} option may be used with the @samp{--resume} option
 to change the search mode of a previously started declarative debugging
 session.
+@sp 1
+Use the @samp{-R} or @samp{--reset-knowledge-base} option to reset the
+declarative debugger's knowledge base.
+The declarative debugger will forget any previous answers that
+have been supplied.
+It will ask previous questions again if it needs to.
+This option does not affect what predicates or modules are trusted.
 @sp 1
 The arguments supplied to the @samp{--pass-trace-counts} (or @samp{-p}) and
 @samp{--fail-trace-counts} (or @samp{-f}) options are either trace count

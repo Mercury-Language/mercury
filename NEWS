@@ -209,6 +209,8 @@ Changes to the Mercury debugger:
 
 * A `track' mdb command has been added.
 
+* The `dd' command now accepts a `--reset-knowledge-base' option.
+
 DETAILED LISTING
 ================
 
@@ -285,6 +287,15 @@ Changes to the Mercury standard library:
   io.seek_binary_input/5, io.seek_binary_output/5,
   io.binary_input_stream_offset/4 and io.binary_output_stream_offset/4.
 
+Changes to the Mercury debugger:
+
+* A `track' mdb command has been added.  This command invokes the declarative
+  debugger and executes it's `track' command, before returning to the mdb
+  prompt.
+
+* The `dd' command now accepts a `--reset-knowledge-base' option. 
+  This option resets the declarative debugger's knowledge base of previous
+  question answers.
 
 NEWS for Mercury 0.13.1
 -----------------------
@@ -651,12 +662,5 @@ Changes to the extras distribution:
   optimal set of compiler flags for a given program.  The search
   algorithm used is a genetic algorithm, which can run in parallel over
   multiple hosts (by default, 1).
-
-Changes to the Mercury debugger:
-
-* A `track' mdb command has been added.  This command invokes the declarative
-  debugger and executes it's `track' command, before returning to the mdb
-  prompt.
-
 
 For news about earlier versions, see the HISTORY file.

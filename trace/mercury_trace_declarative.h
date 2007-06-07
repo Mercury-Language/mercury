@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -83,6 +83,12 @@ typedef MR_Word MR_DeclSearchMode;
 
 extern  void        MR_trace_decl_set_fallback_search_mode(
                         MR_DeclSearchMode search_mode);
+
+/*
+** MR_trace_decl_reset_knowledge_base resets the oracle's knowledge base.
+*/
+
+extern  void        MR_trace_decl_reset_knowledge_base(void);
 
 /*
 ** This function checks to see if the supplied string is a valid

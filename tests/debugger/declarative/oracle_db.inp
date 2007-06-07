@@ -7,5 +7,8 @@ dd -d 3 -n 7
 no
 yes
 yes
+dd -R
+no
+yes
+yes
 continue
-

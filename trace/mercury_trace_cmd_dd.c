@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -40,7 +40,8 @@ static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_bool *search_mode_requires_trace_counts,
                         char **pass_trace_counts_file,
                         char **fail_trace_counts_file,
-                        MR_bool *new_session, MR_bool *testing, MR_bool *debug,
+                        MR_bool *new_session, MR_bool *reset_kb,
+                        MR_bool *testing, MR_bool *debug,
                         char ***words, int *word_count);
 
 /****************************************************************************/
@@ -52,6 +53,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_DeclSearchMode   search_mode;
     MR_bool             search_mode_was_set = MR_FALSE;
     MR_bool             new_session = MR_TRUE;
+    MR_bool             reset_kb = MR_FALSE;
     MR_bool             search_mode_requires_trace_counts = MR_FALSE;
     char                *pass_trace_counts_file;
     char                *fail_trace_counts_file;
@@ -73,7 +75,8 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &search_mode, &search_mode_was_set,
         &search_mode_requires_trace_counts,
         &pass_trace_counts_file, &fail_trace_counts_file, &new_session,
-        &testing, &MR_trace_decl_debug_debugger_mode, &words, &word_count))
+        &reset_kb, &testing, &MR_trace_decl_debug_debugger_mode, &words,
+        &word_count))
     {
         ; /* the usage message has already been printed */
     } else if (word_count <= 2) {
@@ -113,6 +116,10 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         if (search_mode_was_set || new_session) {
             MR_trace_decl_set_fallback_search_mode(search_mode);
+        }
+
+        if (reset_kb) {
+            MR_trace_decl_reset_knowledge_base();
         }
 
         if (MR_trace_start_decl_debug(decl_mode, filename, new_session, cmd,
@@ -251,10 +258,11 @@ MR_trace_cmd_trusted(char **words, int word_count, MR_TraceCmdInfo *cmd,
 /****************************************************************************/
 
 const char *const    MR_trace_dd_cmd_args[] =
-    { "-s", "-a", "-d", "-n", "--search-mode",
-    "--assume-all-io-is-tabled", "--depth", "--nodes",
-    "td", "top_down", "dq" "divide_and_query", "sdq",
-    "suspicion_divide_and_query", NULL };
+    { "-a", "-d", "-n", "-r", "-R", "-s",
+      "--assume-all-io-is-tabled", "--depth", "--nodes",
+      "--reset-knowledge-base", "--resume", "--search-mode",
+      "dq" "divide_and_query", "sdq", "suspicion_divide_and_query",
+      "td", "top_down", NULL };
 
 /****************************************************************************/
 
@@ -263,16 +271,16 @@ static struct MR_option MR_trace_dd_opts[] =
     { "assume-all-io-is-tabled",    MR_no_argument,         NULL,   'a' },
     { "debug",                      MR_no_argument,         NULL,   'z' },
     { "depth",                      MR_required_argument,   NULL,   'd' },
-    { "nodes",                      MR_required_argument,   NULL,   'n' },
-    { "resume",                     MR_no_argument,         NULL,   'r' },
-    { "search-mode",                MR_required_argument,   NULL,   's' },
-    { "pass-trace-counts",          MR_required_argument,   NULL,   'p' },
-    { "pass-trace-count",           MR_required_argument,   NULL,   'p' },
     { "fail-trace-counts",          MR_required_argument,   NULL,   'f' },
     { "fail-trace-count",           MR_required_argument,   NULL,   'f' },
+    { "nodes",                      MR_required_argument,   NULL,   'n' },
+    { "pass-trace-counts",          MR_required_argument,   NULL,   'p' },
+    { "pass-trace-count",           MR_required_argument,   NULL,   'p' },
+    { "reset-knowledge-base",       MR_no_argument,         NULL,   'R' },
     { "resume",                     MR_no_argument,         NULL,   'r' },
+    { "search-mode",                MR_required_argument,   NULL,   's' },
     { "test",                       MR_no_argument,         NULL,   't' },
-    { NULL,                         MR_no_argument,         NULL,   0 }
+    { NULL,                         MR_no_argument,         NULL,   0   }
 };
 
 static MR_bool
@@ -281,13 +289,13 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
     MR_DeclSearchMode *search_mode, MR_bool *search_mode_was_set,
     MR_bool *search_mode_requires_trace_counts,
     char **pass_trace_counts_file, char **fail_trace_counts_file,
-    MR_bool *new_session, MR_bool *testing,  MR_bool *debug,
-    char ***words, int *word_count)
+    MR_bool *new_session, MR_bool *reset_kb, MR_bool *testing,
+    MR_bool *debug, char ***words, int *word_count)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "ad:f:n:p:rs:tz",
+    while ((c = MR_getopt_long(*word_count, *words, "ad:f:n:p:rRs:tz",
         MR_trace_dd_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -320,6 +328,10 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 
             case 'r':
                 *new_session = MR_FALSE;
+                break;
+
+            case 'R':
+                *reset_kb = MR_TRUE;
                 break;
 
             case 's':
