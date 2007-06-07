@@ -57,10 +57,12 @@
 
 :- implementation.
 
+:- import_module array.
 :- import_module int.
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
+:- import_module type_desc.
 
     %
     % A type_info can be represented in one of three ways
@@ -88,6 +90,7 @@
     --->    etcr_du
     ;       etcr_dummy
     ;       etcr_list
+    ;       etcr_array
     ;       etcr_eqv
     ;       etcr_int
     ;       etcr_float
@@ -367,6 +370,25 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Arguments = []
         )
     ;
+        TypeCtorRep = etcr_array,
+
+        % Constrain the T in array(T) to the correct element type.
+        type_ctor_and_args(type_of(Term), _, Args),
+        ( Args = [ElemType] ->
+            has_type(Elem, ElemType),
+            same_array_elem_type(Array, Elem)
+        ;
+            error("An array which doesn't have a type_ctor arg")
+        ),
+
+        det_dynamic_cast(Term, Array),
+
+        Functor = "<<array>>",
+        Arity = array.size(Array),
+        Arguments = array.foldr(
+            (func(Elem, List) = [univ(Elem) | List]),
+            Array, [])
+    ;
         TypeCtorRep = etcr_eqv,
         EqvTypeInfo = collapse_equivalences(TypeInfo),
         EqvTypeCtorInfo = EqvTypeInfo ^ type_ctor_info,
@@ -420,29 +442,39 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
-        ( TypeCtorRep = etcr_pred
-        ; TypeCtorRep = etcr_func
-        ; TypeCtorRep = etcr_ref
-        ; TypeCtorRep = etcr_type_desc
-        ; TypeCtorRep = etcr_pseudo_type_desc
-        ; TypeCtorRep = etcr_type_ctor_desc
-        ; TypeCtorRep = etcr_type_info
-        ; TypeCtorRep = etcr_type_ctor_info
-        ; TypeCtorRep = etcr_typeclass_info
-        ; TypeCtorRep = etcr_base_typeclass_info
+        ( TypeCtorRep = etcr_pred,
+            Name = "<<predicate>>"
+        ; TypeCtorRep = etcr_func,
+            Name = "<<function>>"
+        ; TypeCtorRep = etcr_ref,
+            Name = "<<reference>>"
+        ; TypeCtorRep = etcr_type_desc,
+            Name = "<<typedesc>>"
+        ; TypeCtorRep = etcr_pseudo_type_desc,
+            Name = "<<pseudotypedesc>>"
+        ; TypeCtorRep = etcr_type_ctor_desc,
+            Name = "<<typectordesc>>"
+        ; TypeCtorRep = etcr_type_info,
+            Name = "<<typeinfo>>"
+        ; TypeCtorRep = etcr_type_ctor_info,
+            Name = "<<typectorinfo>>"
+        ; TypeCtorRep = etcr_typeclass_info,
+            Name = "<<typeclassinfo>>"
+        ; TypeCtorRep = etcr_base_typeclass_info,
+            Name = "<<basetypeclassinfo>>"
         ),
         (
             NonCanon = do_not_allow,
-            error("do_not_allow")
+            error("attempt to deconstruct noncanonical term")
         ;
             NonCanon = canonicalize,
-            Functor = "<<" ++ string(TypeCtorRep) ++ ">>",
+            Functor = Name,
             Arity = 0,
             Arguments = []
         ;
                 % XXX this needs to be fixed
             NonCanon = include_details_cc,
-            Functor = "<<" ++ string(TypeCtorRep) ++ ">>",
+            Functor = Name,
             Arity = 0,
             Arguments = []
         )
@@ -585,6 +617,10 @@ get_tuple_arg(TypeInfo, Term, Loc) = Univ :-
     ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
     SubTerm = get_subterm(ArgTypeInfo, Term, Loc, 0),
     Univ = univ(SubTerm).
+
+:- pred same_array_elem_type(array(T)::unused, T::unused) is det.
+
+same_array_elem_type(_, _).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

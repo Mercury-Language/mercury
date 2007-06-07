@@ -113,6 +113,12 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
     ->
         D = erlang_list
     ;
+        ModuleName = unqualified("array"),
+        TypeName = "array",
+        Arity = 1
+    ->
+        D = erlang_array
+    ;
         D = erlang_type_ctor_details_2(Details)
     ).
 
@@ -568,6 +574,8 @@ erlang_type_ctor_rep(erlang_dummy(_)) =
     elds_term(make_enum_alternative("etcr_dummy")).
 erlang_type_ctor_rep(erlang_list) =
     elds_term(make_enum_alternative("etcr_list")).
+erlang_type_ctor_rep(erlang_array) =
+    elds_term(make_enum_alternative("etcr_array")).
 erlang_type_ctor_rep(erlang_eqv(_)) =
     elds_term(make_enum_alternative("etcr_eqv")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int)) =
@@ -716,6 +724,7 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
     ;
             % The types don't require any extra information
         ( Details = erlang_list
+        ; Details = erlang_array
         ; Details = erlang_builtin(_)
         ; Details = erlang_impl_artifact(_)
         ; Details = erlang_foreign

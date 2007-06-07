@@ -522,6 +522,13 @@ array.compare_elements(N, Size, Array1, Array2, Result) :-
     succeeded = false;
 ").
 
+:- pragma foreign_proc("Erlang",
+    bounds_checks,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
@@ -621,6 +628,19 @@ array.init(Size, Item, Array) :-
     Array = null;
 ").
 
+:- pragma foreign_proc("Erlang",
+    array.init_2(Size::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = erlang:make_tuple(Size, Item)
+").
+:- pragma foreign_proc("Erlang",
+    array.make_empty_array(Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = {}
+").
+
 :- pragma foreign_proc("Java",
     array.init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -659,6 +679,14 @@ array.init(Size, Item, Array) :-
     Min = 0;
 ").
 
+:- pragma foreign_proc("Erlang",
+    array.min(Array::in, Min::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % Array not used
+    Min = 0
+").
+
 :- pragma foreign_proc("Java",
     array.min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -683,6 +711,12 @@ array.init(Size, Item, Array) :-
     } else {
         Max = -1;
     }
+").
+:- pragma foreign_proc("Erlang",
+    array.max(Array::in, Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = size(Array) - 1
 ").
 
 :- pragma foreign_proc("Java",
@@ -719,6 +753,13 @@ array.bounds(Array, Min, Max) :-
     } else {
         Max = 0;
     }
+").
+
+:- pragma foreign_proc("Erlang",
+    array.size(Array::in, Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = size(Array)
 ").
 
 :- pragma foreign_proc("Java",
@@ -791,6 +832,13 @@ array.lookup(Array, Index, Item) :-
     Item = Array.GetValue(Index);
 }").
 
+:- pragma foreign_proc("Erlang",
+    array.unsafe_lookup(Array::in, Index::in, Item::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Item = element(Index + 1, Array)
+").
+
 :- pragma foreign_proc("Java",
     array.unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -826,6 +874,13 @@ array.set(Array0, Index, Item, Array) :-
     Array0.SetValue(Item, Index);   /* destructive update! */
     Array = Array0;
 }").
+
+:- pragma foreign_proc("Erlang",
+    array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = setelement(Index, Array0, Item)
+").
 
 :- pragma foreign_proc("Java",
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
@@ -921,6 +976,23 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
             Array.SetValue(Item, i);
         }
     }
+").
+
+:- pragma foreign_proc("Erlang",
+    array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    InitialSize = size(Array0),
+    List = tuple_to_list(Array0),
+    if
+        Size < InitialSize ->
+            Array = list_to_tuple(lists:sublist(List, Size));
+        Size > InitialSize ->
+            Array = list_to_tuple(lists:append(List,
+                lists:duplicate(Size - InitialSize, Item)));
+        true ->
+            Array = Array0
+    end
 ").
 
 :- pragma foreign_proc("Java",
@@ -1020,6 +1092,13 @@ array.shrink(Array0, Size, Array) :-
     System.Array.Copy(Array0, Array, Size);
 ").
 
+:- pragma foreign_proc("Erlang",
+    array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = list_to_tuple(lists:sublist(tuple_to_list(Array0), Size))
+").
+
 :- pragma foreign_proc("Java",
     array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1085,6 +1164,13 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
     Array = System.Array.CreateInstance(Array0.GetType().GetElementType(),
         Array0.Length);
     System.Array.Copy(Array0, Array, Array0.Length);
+").
+
+:- pragma foreign_proc("Erlang",
+    array.copy(Array0::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = Array0
 ").
 
 :- pragma foreign_proc("Java",
