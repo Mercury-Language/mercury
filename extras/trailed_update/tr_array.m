@@ -17,7 +17,10 @@
 
 :- module tr_array.
 :- interface.
-:- import_module array, list, maybe.
+
+:- import_module array.
+:- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 %
@@ -52,34 +55,34 @@
 	%
 :- pred tr_array.min(array(_T), int).
 :- mode tr_array.min(array_mui, out) is det.
-:- mode tr_array.min(in, out) is det.
+%:- mode tr_array.min(in, out) is det.
 
 	% tr_array.max returns the upper bound of the array.
 	%
 :- pred tr_array.max(array(_T), int).
 :- mode tr_array.max(array_mui, out) is det.
-:- mode tr_array.max(in, out) is det.
+%:- mode tr_array.max(in, out) is det.
 
 	% tr_array.size returns the length of the array,
 	% i.e. upper bound - lower bound + 1.
 	% 
 :- pred tr_array.size(array(_T), int).
 :- mode tr_array.size(array_mui, out) is det.
-:- mode tr_array.size(in, out) is det.
+%:- mode tr_array.size(in, out) is det.
 
 	% tr_array.bounds returns the upper and lower bounds of an array.
 	% Note: in this implementation, the lower bound is always zero.
 	% 
 :- pred tr_array.bounds(array(_T), int, int).
 :- mode tr_array.bounds(array_mui, out, out) is det.
-:- mode tr_array.bounds(in, out, out) is det.
+%:- mode tr_array.bounds(in, out, out) is det.
 
 	% tr_array.bounds checks whether an index is in the bounds
 	% of an array.
 	%
 :- pred tr_array.in_bounds(array(_T), int).
 :- mode tr_array.in_bounds(array_mui, in) is semidet.
-:- mode tr_array.in_bounds(in, in) is semidet.
+%:- mode tr_array.in_bounds(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -88,14 +91,14 @@
 	% 
 :- pred tr_array.lookup(array(T), int, T).
 :- mode tr_array.lookup(array_mui, in, out) is det.
-:- mode tr_array.lookup(in, in, out) is det.
+%:- mode tr_array.lookup(in, in, out) is det.
 
 	% tr_array.semidet_lookup returns the Nth element of an array.
 	% It fails if the index is out of bounds.
 	%
 :- pred tr_array.semidet_lookup(array(T), int, T).
 :- mode tr_array.semidet_lookup(array_mui, in, out) is semidet.
-:- mode tr_array.semidet_lookup(in, in, out) is semidet.
+%:- mode tr_array.semidet_lookup(in, in, out) is semidet.
 
 	% tr_array.slow_set sets the nth element of an array,
 	% and returns the resulting array.  The initial array is not
@@ -105,7 +108,7 @@
 	% 
 :- pred tr_array.slow_set(array(T), int, T, array(T)).
 :- mode tr_array.slow_set(array_mui, in, in, array_uo) is det.
-:- mode tr_array.slow_set(in, in, in, array_uo) is det.
+%:- mode tr_array.slow_set(in, in, in, array_uo) is det.
 
 	% tr_array.semidet_slow_set sets the nth element of an array,
 	% and returns the resulting array.  The initial array is not
@@ -115,14 +118,14 @@
 	% 
 :- pred tr_array.semidet_slow_set(array(T), int, T, array(T)).
 :- mode tr_array.semidet_slow_set(array_mui, in, in, array_uo) is semidet.
-:- mode tr_array.semidet_slow_set(in, in, in, array_uo) is semidet.
+%:- mode tr_array.semidet_slow_set(in, in, in, array_uo) is semidet.
 
 	% tr_array.copy(Array0, Array):
 	% Makes a new unique copy of an array.
 	% 
 :- pred tr_array.copy(array(T), array(T)).
 :- mode tr_array.copy(array_mui, array_uo) is det.
-:- mode tr_array.copy(in, array_uo) is det.
+%:- mode tr_array.copy(in, array_uo) is det.
 
 	% tr_array.resize(Array0, Size, Init, Array):
 	% The array is expanded or shrunk to make it fit
@@ -131,7 +134,7 @@
 	% 
 :- pred tr_array.resize(array(T), int, T, array(T)).
 :- mode tr_array.resize(array_mui, in, in, array_uo) is det.
-:- mode tr_array.resize(in, in, in, array_uo) is det.
+%:- mode tr_array.resize(in, in, in, array_uo) is det.
 
 	% tr_array.shrink(Array0, Size, Array):
 	% The array is shrunk to make it fit the new size `Size'.
@@ -139,7 +142,7 @@
 	%
 :- pred tr_array.shrink(array(T), int, array(T)).
 :- mode tr_array.shrink(array_mui, in, array_uo) is det.
-:- mode tr_array.shrink(in, in, array_uo) is det.
+%:- mode tr_array.shrink(in, in, array_uo) is det.
 
 	% tr_array.to_list takes an array and returns a list containing
 	% the elements of the array in the same order that they
@@ -147,7 +150,7 @@
 	%
 :- pred tr_array.to_list(array(T), list(T)).
 :- mode tr_array.to_list(array_mui, out) is det.
-:- mode tr_array.to_list(in, out) is det.
+%:- mode tr_array.to_list(in, out) is det.
 
 	% tr_array.fetch_items takes an array and a lower and upper
 	% index, and places those items in the array between these
@@ -156,7 +159,7 @@
 	% 
 :- pred tr_array.fetch_items(array(T), int, int, list(T)).
 :- mode tr_array.fetch_items(array_mui, in, in, out) is det.
-:- mode tr_array.fetch_items(in, in, in, out) is det.
+%:- mode tr_array.fetch_items(in, in, in, out) is det.
 
 	% tr_array.bsearch takes an array, an element to be found
 	% and a comparison predicate and returns the position of
@@ -169,7 +172,7 @@
 	maybe(int)).
 :- mode tr_array.bsearch(array_mui, in, pred(in, in, out) is det, out)
 	is det.
-:- mode tr_array.bsearch(in, in, pred(in, in, out) is det, out) is det.
+%:- mode tr_array.bsearch(in, in, pred(in, in, out) is det, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -225,13 +228,13 @@ tr_array.semidet_set(Array0, Index, Item, Array) :-
 	Min = 0;
 ").
 
-:- pragma foreign_proc("C",
-	tr_array.min(Array::in, Min::out),
-	[promise_pure, will_not_call_mercury],
-"
-	/* Array not used */
-	Min = 0;
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.min(Array::in, Min::out),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	/* Array not used */
+% 	Min = 0;
+% ").
 
 :- pragma foreign_proc("C",
 	tr_array.max(Array::array_mui, Max::out),
@@ -240,12 +243,12 @@ tr_array.semidet_set(Array0, Index, Item, Array) :-
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
 
-:- pragma foreign_proc("C",
-	tr_array.max(Array::in, Max::out),
-	[promise_pure, will_not_call_mercury],
-"
-	Max = ((MR_ArrayType *)Array)->size - 1;
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.max(Array::in, Max::out),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	Max = ((MR_ArrayType *)Array)->size - 1;
+% ").
 
 tr_array.bounds(Array, Min, Max) :-
 	tr_array.min(Array, Min),
@@ -259,12 +262,12 @@ tr_array.bounds(Array, Min, Max) :-
 "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
-:- pragma foreign_proc("C",
-	tr_array.size(Array::in, Max::out),
-	[promise_pure, will_not_call_mercury],
-"
-	Max = ((MR_ArrayType *)Array)->size;
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.size(Array::in, Max::out),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	Max = ((MR_ArrayType *)Array)->size;
+% ").
 
 %-----------------------------------------------------------------------------%
 
@@ -297,16 +300,16 @@ tr_array.slow_set(Array0, Index, Item, Array) :-
 	Item = array->elements[Index];
 ").
 
-:- pragma foreign_proc("C",
-	tr_array.lookup(Array::in, Index::in, Item::out),
-	[promise_pure, will_not_call_mercury],
-"
-	MR_ArrayType *array = (MR_ArrayType *) Array;
-	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
-		MR_fatal_error(""tr_array.lookup: array index out of bounds"");
-	}
-	Item = array->elements[Index];
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.lookup(Array::in, Index::in, Item::out),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	MR_ArrayType *array = (MR_ArrayType *) Array;
+% 	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
+% 		MR_fatal_error(""tr_array.lookup: array index out of bounds"");
+% 	}
+% 	Item = array->elements[Index];
+% ").
 
 %-----------------------------------------------------------------------------%
 
@@ -353,14 +356,14 @@ ML_tr_resize_array(MR_ArrayType *array, const MR_ArrayType *old_array,
 		Size, Item);
 ").
 
-:- pragma foreign_proc("C",
-	tr_array.resize(Array0::in, Size::in, Item::in, Array::array_uo),
-	[promise_pure, will_not_call_mercury],
-"
-	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	ML_tr_resize_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0,
-		Size, Item);
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.resize(Array0::in, Size::in, Item::in, Array::array_uo),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+% 	ML_tr_resize_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0,
+% 		Size, Item);
+% ").
 
 %-----------------------------------------------------------------------------%
 
@@ -404,14 +407,14 @@ ML_tr_shrink_array(MR_ArrayType *array, const MR_ArrayType *old_array,
 		(const MR_ArrayType *) Array0, Size);
 ").
 
-:- pragma foreign_proc("C",
-	tr_array.shrink(Array0::in, Size::in, Array::array_uo),
-	[promise_pure, will_not_call_mercury],
-"
-	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	ML_tr_shrink_array((MR_ArrayType *) Array,
-		(const MR_ArrayType *) Array0, Size);
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.shrink(Array0::in, Size::in, Array::array_uo),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+% 	ML_tr_shrink_array((MR_ArrayType *) Array,
+% 		(const MR_ArrayType *) Array0, Size);
+% ").
 
 %-----------------------------------------------------------------------------%
 
@@ -448,14 +451,14 @@ ML_tr_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 	ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
 ").
 
-:- pragma foreign_proc("C",
-	tr_array.copy(Array0::in, Array::array_uo),
-	[promise_pure, will_not_call_mercury],
-"
-	MR_incr_hp_msg(Array, ((const MR_ArrayType *)Array0)->size + 1,
-		MR_PROC_LABEL, ""array:array/1"");
-	ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
-").
+% :- pragma foreign_proc("C",
+% 	tr_array.copy(Array0::in, Array::array_uo),
+% 	[promise_pure, will_not_call_mercury],
+% "
+% 	MR_incr_hp_msg(Array, ((const MR_ArrayType *)Array0)->size + 1,
+% 		MR_PROC_LABEL, ""array:array/1"");
+% 	ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
+% ").
 
 %-----------------------------------------------------------------------------%
 
