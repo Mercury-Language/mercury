@@ -66,7 +66,6 @@
 :- import_module dir.
 :- import_module enum.
 :- import_module eqvclass.
-:- import_module erlang_rtti_implementation.
 :- import_module exception.
 :- import_module float.
 :- import_module gc.
@@ -143,6 +142,7 @@
 :- import_module version_types.
 
 % The modules intended for Mercury system implementors.
+:- import_module erlang_rtti_implementation.
 :- import_module mutvar.
 :- import_module par_builtin.
 :- import_module private_builtin.
