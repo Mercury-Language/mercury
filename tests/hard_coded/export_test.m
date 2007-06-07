@@ -35,5 +35,5 @@ foo(X, X+1).
 ").
 :- pragma foreign_proc("Erlang", bar(X::in, Y::out),
 		[may_call_mercury, promise_pure], "
-	{Y} = foo(X)
+	{Y} = foo_2_p_0(X)
 ").
