@@ -2554,6 +2554,13 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     Error = MR_io_exception;
 }").
 
+:- pragma foreign_proc("Erlang",
+    io.get_system_error(Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    Error = get('MR_io_exception')
+").
+
 :- pragma foreign_export("C", make_err_msg(in, in, out, di, uo),
     "ML_make_err_msg").
 :- pragma foreign_export("IL", make_err_msg(in, in, out, di, uo),
@@ -2585,6 +2592,18 @@ io.make_err_msg(Msg0, Msg, !IO) :-
         Msg = Msg0;
     }
 }").
+
+:- pragma foreign_proc("Erlang",
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    case Error of
+        undefined ->
+            Msg = Msg0;
+        Reason ->
+            Msg = Msg0 ++ file:format_error(Reason)
+    end
+").
 
 have_win32 :- semidet_fail.
 
@@ -6041,7 +6060,10 @@ static java.lang.Exception MR_io_exception;
 :- pragma foreign_code("Erlang", "
 
 mercury_standard_io_stream(Id) ->
-    {'ML_stream', Id, standard_io}.
+    % See stdlib io.erl.  We don't use the atom standard_io as it only
+    % works with io: functions and not file: functions.
+    IoDevice = group_leader(),
+    {'ML_stream', Id, IoDevice}.
 
 mercury_current_text_input() ->
     get('ML_io_current_text_input').
@@ -6066,6 +6088,15 @@ set_mercury_current_binary_input(Stream) ->
 
 set_mercury_current_binary_output(Stream) ->
     put('ML_io_current_binary_output', Stream).
+
+% XXX file:sync seems to hang if run on a pid, e.g. standard I/O
+maybe_sync(File) when is_pid(File) ->
+    void;
+maybe_sync(File) ->
+    file:sync(File).
+
+% We also use the key 'MR_io_exception' in the process dictionary.
+
 ").
 
 :- pragma foreign_code("C", "
@@ -6790,7 +6821,8 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
             CharCode = C;
         eof ->
             CharCode = -1;
-        {error, _Reason} ->
+        {error, Reason} ->
+            put('MR_io_exception', Reason),
             CharCode = -2
     end
 ").
@@ -7061,7 +7093,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
         terminates],
 "
     {'ML_stream', _Id, IoDevice} = mercury_current_text_output(),
-    file:sync(IoDevice)
+    maybe_sync(IoDevice)
 ").
 :- pragma foreign_proc("Erlang",
     io.flush_binary_output(_IO0::di, _IO::uo),
@@ -7069,7 +7101,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
         terminates],
 "
     {'ML_stream', _Id, IoDevice} = mercury_current_binary_output(),
-    file:sync(IoDevice)
+    maybe_sync(IoDevice)
 ").
 
 io.write_float(Float, !IO) :-
@@ -7502,7 +7534,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
         terminates],
 "
     {'ML_stream', _Id, IoDevice} = Stream,
-    file:sync(IoDevice)
+    maybe_sync(IoDevice)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -7511,7 +7543,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
         terminates],
 "
     {'ML_stream', _Id, IoDevice} = Stream,
-    file:sync(IoDevice)
+    maybe_sync(IoDevice)
 ").
 
 io.write_float_2(Stream, Float, !IO) :-
@@ -8480,8 +8512,8 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
             StreamId = make_ref(),
             Stream = {'ML_stream', StreamId, IoDevice},
             ResultCode = 0;
-        {error, _Reason} ->
-            % XXX MR_io_exception = e
+        {error, Reason} ->
+            put('MR_io_exception', Reason),
             StreamId = -1,
             Stream = null,
             ResultCode = -1
@@ -8514,8 +8546,8 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
             StreamId = make_ref(),
             Stream = {'ML_stream', StreamId, IoDevice},
             ResultCode = 0;
-        {error, _Reason} ->
-            % XXX MR_io_exception = e
+        {error, Reason} ->
+            put('MR_io_exception', Reason),
             StreamId = -1,
             Stream = null,
             ResultCode = -1
