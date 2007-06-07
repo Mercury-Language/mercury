@@ -78,6 +78,7 @@
 :- mode new(in, in) = bitmap_uo is det.
 
     % Same as new(N, no).
+    %
 :- func new(num_bits) = bitmap.
 :- mode new(in) = bitmap_uo is det.
 
@@ -333,6 +334,7 @@
 
     % Convert a bitmap to a string of `1' and `0' characters, where
     % the bytes are separated by `.'.
+    %
 :- func to_byte_string(bitmap) = string.
 %:- mode to_byte_string(bitmap_ui) = out is det.
 :- mode to_byte_string(in) = out is det.

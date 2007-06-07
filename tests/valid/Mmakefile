@@ -64,6 +64,7 @@ OTHER_PROGS= \
 	common_struct_bug \
 	complicated_unify \
 	compl_unify_bug \
+	constr_inst_syntax \
 	constrained_poly_bound_arg \
 	constrained_poly_insts \
 	constraint_prop_bug \

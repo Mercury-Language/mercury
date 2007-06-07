@@ -2854,7 +2854,7 @@ same constraint on each occurrence.
 For example, in the mode declaration
 @example
 	:- mode append(in(list_skel(I =< ground)), in(list_skel(I =< ground)),
-	        out(list_skel(I =< ground))).
+	        out(list_skel(I =< ground))) is det.
 @end example
 @noindent
 @code{I} is an inst parameter which is constrained to be ground.  
@@ -2864,7 +2864,7 @@ will have inst @samp{list_skel(bound(f))}.
 If the mode of append had been simply
 @example
 	:- mode append(in(list_skel(ground)), in(list_skel(ground)),
-	        out(list_skel(ground))).
+	        out(list_skel(ground))) is det.
 @end example
 @noindent
 then we would only have been able to infer an inst of @samp{list_skel(ground)}
@@ -2879,15 +2879,20 @@ it is possible to list the constraints after the rest of the mode declaration,
 following a @samp{<=}.
 E.g.@: the above example could have been written as
 @example
-	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I)))
-	              <= I =< ground.
+	:- (mode append(in(list_skel(I)), in(list_skel(I)),
+                out(list_skel(I))) is det) <= I =< ground.
 @end example
+
+Note that in the current Mercury implementation this syntax requires
+parentheses around the @samp{mode(@dots{}) is @var{Det}} part of the
+declaration.
 
 Also, if the constraint on an inst parameter is @samp{ground} then it
 is not necessary to give the constraint in the declaration.
 The example can be further shortened to
 @example
-	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I))).
+	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I)))
+                is det.       
 @end example
 
 
