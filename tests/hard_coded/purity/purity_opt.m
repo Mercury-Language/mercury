@@ -47,12 +47,26 @@ test1(X) :-
 
 :- pragma foreign_code("C#", "static int counter = 1;").
 
+:- pragma foreign_code("Erlang", "
+    get_counter() ->
+        case get(counter) of
+            undefined -> 1;
+            X -> X
+        end.
+
+    incr_counter() ->
+        put(counter, get_counter() + 1).
+").
+
+
 :- impure pred incr(int::out) is det.
 
 :- pragma foreign_proc("C", incr(Val::out), [will_not_call_mercury],
                         "counter++; Val = counter;").
 :- pragma foreign_proc("C#", incr(Val::out), [will_not_call_mercury],
                         "counter++; Val = counter;").
+:- pragma foreign_proc("Erlang", incr(Val::out), [will_not_call_mercury],
+                        "incr_counter(), Val = get_counter()").
 
 :- semipure pred get(int::out) is det.
 
@@ -62,4 +76,7 @@ test1(X) :-
 :- pragma foreign_proc("C#", get(Val::out),
                 [will_not_call_mercury, promise_semipure],
                 "Val = counter;").
+:- pragma foreign_proc("Erlang", get(Val::out),
+                [will_not_call_mercury, promise_semipure],
+                "Val = get_counter()").
 

@@ -21,17 +21,28 @@ main(!IO) :-
 :- impure pred set_x(int::in) is det.
 :- pragma foreign_proc("C", set_x(X::in), [will_not_call_mercury], "x=X;" ).
 :- pragma foreign_proc("C#", set_x(X::in), [will_not_call_mercury], "x=X;" ).
+:- pragma foreign_proc("Erlang", set_x(X::in), [], "put(x, X)" ).
 :- pragma no_inline(set_x/1).
 
 :- semipure pred get_x(int::out) is det.
 :- pragma promise_semipure(get_x/1).
 :- pragma foreign_proc("C", get_x(X::out), [will_not_call_mercury], "X=x;").
 :- pragma foreign_proc("C#", get_x(X::out), [will_not_call_mercury], "X=x;").
+:- pragma foreign_proc("Erlang", get_x(X::out), [], "
+    X0 = get(x),
+    case X0 of
+        undefined ->
+            X = 0;
+        _ ->
+            X = X0
+    end
+").
 :- pragma no_inline(get_x/1).
 
 :- impure pred incr_x is det.
 :- pragma foreign_proc("C", incr_x, [will_not_call_mercury], "++x;" ).
 :- pragma foreign_proc("C#", incr_x, [will_not_call_mercury], "++x;" ).
+:- pragma foreign_proc("Erlang", incr_x, [], "put(x, get(x) + 1)" ).
 :- pragma no_inline(incr_x/0).
 
 :- pragma foreign_decl("C", "extern int x;").
