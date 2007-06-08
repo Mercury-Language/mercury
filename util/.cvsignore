@@ -1,4 +1,5 @@
 mkinit
+mkinit_erl
 mdemangle
 info_to_mdb
 pad_backslash

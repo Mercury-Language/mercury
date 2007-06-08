@@ -874,8 +874,8 @@ module_name_to_file_name_2(ModuleName0, Ext, Search, MkDir, FileName, !IO) :-
         source_file_map.lookup_module_source_file(ModuleName0, FileName, !IO)
     ;
         (
-            ( Ext = ".erl" 
-            ; Ext = ".beam"
+            ( string.suffix(Ext, ".erl")
+            ; string.suffix(Ext, ".beam")
             )
         ->
             % Erlang uses `.' as a package separator and expects a module

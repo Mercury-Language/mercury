@@ -79,7 +79,7 @@ output_elds(ModuleInfo, ELDS, !IO) :-
 
 output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
-        RttiDefns),
+        RttiDefns, InitPreds, FinalPreds),
     AddMainWrapper = should_add_main_wrapper(ModuleInfo),
 
     % Output intro.
@@ -104,20 +104,38 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     list.foldl2(output_foreign_export_ann, ForeignExportDefns,
         NeedComma0, NeedComma1, !IO),
     list.foldl2(output_rtti_export_ann(ModuleInfo), RttiDefns,
-        NeedComma1, NeedComma, !IO),
-    (
-        AddMainWrapper = yes,
-        maybe_write_comma(NeedComma, !IO),
-        nl_indent_line(1, !IO),
-        output_atom("mercury__main_wrapper", !IO),
-        io.write_string("/0", !IO)
-    ;
-        AddMainWrapper = no
-    ),
+        NeedComma1, _NeedComma, !IO),
+    output_wrapper_init_fn_export_ann(AddMainWrapper, InitPreds, FinalPreds,
+        !IO),
     io.write_string("]).\n", !IO),
 
     % Useful for debugging.
     io.write_string("% -compile(export_all).\n", !IO),
+
+    % Write directives for mkinit_erl.
+    ErlangModuleNameStr = erlang_module_name_to_str(ModuleName),
+    (
+        InitPreds = []
+    ;
+        InitPreds = [_ | _],
+        io.write_string("% REQUIRED_INIT ", !IO),
+        output_atom(ErlangModuleNameStr, !IO),
+        io.write_string(":mercury__required_init\n", !IO)
+    ),
+    (
+        FinalPreds = []
+    ;
+        FinalPreds = [_ | _],
+        io.write_string("% REQUIRED_FINAL ", !IO),
+        output_atom(ErlangModuleNameStr, !IO),
+        io.write_string(":mercury__required_final\n", !IO)
+    ),
+    % We always write out ENDINIT so that mkinit_erl doesn't scan the whole
+    % file.
+    io.write_string("% ENDINIT\n", !IO),
+
+    % Output foreign code written in Erlang.
+    list.foldl(output_foreign_body_code, ForeignBodies, !IO),
 
     % Output the main wrapper, if any.
     (
@@ -126,9 +144,10 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     ;
         AddMainWrapper = no
     ),
-
-    % Output foreign code written in Erlang.
-    list.foldl(output_foreign_body_code, ForeignBodies, !IO),
+    maybe_output_required_init_or_final(ModuleInfo, "mercury__required_init",
+        InitPreds, !IO),
+    maybe_output_required_init_or_final(ModuleInfo, "mercury__required_final",
+        FinalPreds, !IO),
 
     % Output function definitions.
     list.foldl(output_defn(ModuleInfo), ProcDefns, !IO),
@@ -192,6 +211,38 @@ output_rtti_export_ann(ModuleInfo, ForeignExportDefn, !NeedComma, !IO) :-
         IsExported = no
     ).
 
+:- pred output_wrapper_init_fn_export_ann(bool::in, list(pred_proc_id)::in,
+    list(pred_proc_id)::in, io::di, io::uo) is det.
+
+output_wrapper_init_fn_export_ann(AddMainWrapper, InitPreds, FinalPreds, !IO) :-
+    (
+        AddMainWrapper = yes,
+        comma(!IO),
+        nl_indent_line(1, !IO),
+        output_atom("mercury__main_wrapper", !IO),
+        io.write_string("/0", !IO)
+    ;
+        AddMainWrapper = no
+    ),
+    (
+        InitPreds = []
+    ;
+        InitPreds = [_ | _],
+        comma(!IO),
+        nl_indent_line(1, !IO),
+        output_atom("mercury__required_init", !IO),
+        io.write_string("/0", !IO)
+    ),
+    (
+        FinalPreds = []
+    ;
+        FinalPreds = [_ | _],
+        comma(!IO),
+        nl_indent_line(1, !IO),
+        output_atom("mercury__required_final", !IO),
+        io.write_string("/0", !IO)
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- func should_add_main_wrapper(module_info) = bool.
@@ -220,20 +271,32 @@ main_wrapper_code = "
 
     mercury__main_wrapper() ->
         mercury__io:'ML_io_init_state'(),
+        InitModule = list_to_atom(atom_to_list(?MODULE) ++ ""_init""),
         try
-            main_2_p_0()
+            InitModule:init_modules(),
+            InitModule:init_modules_required(),
+            main_2_p_0(),
+            InitModule:final_modules_required()
         catch
             {'ML_exception', Excp} ->
                 StackTrace = erlang:get_stacktrace(),
                 mercury__exception:'ML_report_uncaught_exception'(Excp),
-                io:put_chars(""Stack dump follows:\\n""),
-                mercury__dump_stacktrace(StackTrace),
+                mercury__maybe_dump_stacktrace(StackTrace),
                 mercury__io:'ML_io_finalize_state'(),
                 % init:stop is preferred to calling halt but there seems
                 % to be no way to choose the exit code otherwise.
                 halt(1)
         end,
         mercury__io:'ML_io_finalize_state'().
+
+    mercury__maybe_dump_stacktrace(StackTrace) ->
+        case os:getenv(""MERCURY_SUPPRESS_STACK_TRACE"") of
+            false ->
+                io:put_chars(""Stack dump follows:\\n""),
+                mercury__dump_stacktrace(StackTrace);
+            _ ->
+                void
+        end.
 
     mercury__dump_stacktrace([]) -> void;
     mercury__dump_stacktrace([St | Sts]) ->
@@ -261,6 +324,32 @@ main_wrapper_code = "
 output_foreign_body_code(foreign_body_code(_Lang, Code, _Context), !IO) :-
     io.write_string(Code, !IO),
     io.nl(!IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_output_required_init_or_final(module_info::in, string::in,
+    list(pred_proc_id)::in, io::di, io::uo) is det.
+
+maybe_output_required_init_or_final(ModuleInfo, Name, PredProcIds, !IO) :-
+    (
+        PredProcIds = []
+    ;
+        PredProcIds = [_ | _],
+        nl_indent_line(1, !IO),
+        io.write_string(Name, !IO),
+        io.write_string("() ->", !IO),
+        list.foldl(output_init_fn_call(ModuleInfo), PredProcIds, !IO),
+        nl_indent_line(1, !IO),
+        io.write_string("void.\n", !IO)
+    ).
+
+:- pred output_init_fn_call(module_info::in, pred_proc_id::in,
+    io::di, io::uo) is det.
+
+output_init_fn_call(ModuleInfo, PredProcId, !IO) :-
+    nl_indent_line(1, !IO),
+    output_pred_proc_id(ModuleInfo, PredProcId, !IO),
+    io.write_string("(),", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -969,11 +1058,16 @@ indent_line(N, !IO) :-
 space(!IO) :-
     io.write_char(' ', !IO).
 
+:- pred comma(io::di, io::uo) is det.
+
+comma(!IO) :-
+    io.write_char(',', !IO).
+
 :- pred maybe_write_comma(bool::in, io::di, io::uo) is det.
 
 maybe_write_comma(no, !IO).
 maybe_write_comma(yes, !IO) :-
-    io.write_char(',', !IO).
+    comma(!IO).
 
 %-----------------------------------------------------------------------------%
 

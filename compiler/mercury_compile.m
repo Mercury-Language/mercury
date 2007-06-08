@@ -5224,10 +5224,11 @@ elds_gen_rtti_data(HLDS, ELDS0, ELDS, !IO) :-
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
     ErlangRttiDatas = list.map(erlang_rtti_data(HLDS), RttiDatas),
 
-    ELDS0 = elds(ModuleName, ForeignBodies, Defns, FEDefns, RttiDefns0),
+    ELDS0 = elds(ModuleName, ForeignBodies, Defns, FEDefns, RttiDefns0,
+        InitPreds, FinalPreds),
     rtti_data_list_to_elds(HLDS, ErlangRttiDatas, RttiDefns),
     ELDS = elds(ModuleName, ForeignBodies, Defns, FEDefns,
-        RttiDefns0 ++ RttiDefns).
+        RttiDefns0 ++ RttiDefns, InitPreds, FinalPreds).
 
 :- pred elds_to_erlang(module_info::in, elds::in, io::di, io::uo) is det.
 

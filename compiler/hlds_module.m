@@ -464,23 +464,23 @@
 :- pred module_info_set_complexity_proc_infos(list(complexity_proc_info)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_new_user_init_pred(sym_name::in, string::out,
+:- pred module_info_new_user_init_pred(sym_name::in, arity::in, string::out,
     module_info::in, module_info::out) is det.
-
-:- pred module_info_user_init_pred_c_name(module_info::in, sym_name::in,
-    string::out) is det.
 
 :- pred module_info_user_init_pred_c_names(module_info::in,
     list(string)::out) is det.
 
-:- pred module_info_new_user_final_pred(sym_name::in, string::out,
-    module_info::in, module_info::out) is det.
+:- pred module_info_user_init_pred_procs(module_info::in,
+    list(pred_proc_id)::out) is det.
 
-:- pred module_info_user_final_pred_c_name(module_info::in, sym_name::in,
-    string::out) is det.
+:- pred module_info_new_user_final_pred(sym_name::in, arity::in, string::out,
+    module_info::in, module_info::out) is det.
 
 :- pred module_info_user_final_pred_c_names(module_info::in,
     list(string)::out) is det.
+
+:- pred module_info_user_final_pred_procs(module_info::in,
+    list(pred_proc_id)::out) is det.
 
 :- pred module_info_get_structure_reuse_map(module_info::in,
     structure_reuse_map::out) is det.
@@ -749,12 +749,14 @@
 
                 % Exported C names for preds appearing in `:- initialise
                 % initpred' directives in this module, in order of appearance.
-                user_init_pred_c_names      :: assoc_list(sym_name, string),
+                user_init_pred_c_names      :: assoc_list(sym_name_and_arity,
+                                                string),
 
-                % Export C names fored pred appearing in `:- finalise
+                % Export C names for preds appearing in `:- finalise
                 % finalpred' directives in this module, in order of
                 % appearance.
-                user_final_pred_c_names     :: assoc_list(sym_name, string),
+                user_final_pred_c_names     :: assoc_list(sym_name_and_arity,
+                                                string),
 
                 % Information about which procedures implement structure reuse.
                 structure_reuse_map         :: structure_reuse_map,
@@ -911,55 +913,60 @@ module_info_get_event_set(MI, MI ^ sub_info ^ event_set).
     % we may wish to revisit this code. The reference manual is therefore
     % deliberately quiet on the subject.
     %
-module_info_new_user_init_pred(SymName, CName, MI0, MI) :-
+module_info_new_user_init_pred(SymName, Arity, CName, MI0, MI) :-
     InitPredCNames0 = MI0 ^ sub_info ^ user_init_pred_c_names,
     UserInitPredNo = list.length(InitPredCNames0),
     module_info_get_name(MI0, ModuleSymName),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_init_pred_%d",
         [s(ModuleName), i(UserInitPredNo)]),
-    InitPredCNames = InitPredCNames0 ++ [SymName - CName],
+    InitPredCNames = InitPredCNames0 ++ [SymName / Arity - CName],
     MI = MI0 ^ sub_info ^ user_init_pred_c_names := InitPredCNames.
-
-module_info_user_init_pred_c_name(MI, SymName, CName) :-
-    InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
-    ( assoc_list.search(InitPredCNames, SymName, CName0) ->
-        CName = CName0
-    ;
-        module_info_get_name(MI, ModuleSymName),
-        ModuleName = sym_name_to_string(ModuleSymName),
-        unexpected(ModuleName,
-            "lookup failure in module_info_user_init_pred_c_name")
-    ).
 
 module_info_user_init_pred_c_names(MI, CNames) :-
     InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
     CNames = assoc_list.values(InitPredCNames).
 
-module_info_new_user_final_pred(SymName, CName, MI0, MI) :-
+module_info_new_user_final_pred(SymName, Arity, CName, MI0, MI) :-
     FinalPredCNames0 = MI0 ^ sub_info ^ user_final_pred_c_names,
     UserFinalPredNo = list.length(FinalPredCNames0),
     module_info_get_name(MI0, ModuleSymName),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_final_pred_%d",
         [s(ModuleName), i(UserFinalPredNo)]),
-    FinalPredCNames = FinalPredCNames0 ++ [SymName - CName],
+    FinalPredCNames = FinalPredCNames0 ++ [SymName / Arity - CName],
     MI = MI0 ^ sub_info ^ user_final_pred_c_names := FinalPredCNames.
-
-module_info_user_final_pred_c_name(MI, SymName, CName) :-
-    FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,
-    ( assoc_list.search(FinalPredCNames, SymName, CName0) ->
-        CName = CName0
-    ;
-        module_info_get_name(MI, ModuleSymName),
-        ModuleName = sym_name_to_string(ModuleSymName),
-        unexpected(ModuleName,
-            "lookup failure in module_info_user_final_pred_c_name")
-    ).
 
 module_info_user_final_pred_c_names(MI, CNames) :-
     FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,
     CNames = assoc_list.values(FinalPredCNames).
+
+module_info_user_init_pred_procs(MI, PredProcIds) :-
+    InitPredSymNames = MI ^ sub_info ^ user_init_pred_c_names,
+    SymNameAndArities = assoc_list.keys(InitPredSymNames),
+    list.map(module_info_user_init_fn_pred_procs_2(MI), SymNameAndArities,
+        PredProcIds).
+
+module_info_user_final_pred_procs(MI, PredProcIds) :-
+    FinalPredSymNames = MI ^ sub_info ^ user_final_pred_c_names,
+    SymNameAndArities = assoc_list.keys(FinalPredSymNames),
+    list.map(module_info_user_init_fn_pred_procs_2(MI), SymNameAndArities,
+        PredProcIds).
+
+:- pred module_info_user_init_fn_pred_procs_2(module_info::in,
+    sym_name_and_arity::in, pred_proc_id::out) is det.
+
+module_info_user_init_fn_pred_procs_2(MI, SymName / Arity, PredProcId) :-
+    module_info_get_predicate_table(MI, PredTable),
+    (
+        predicate_table_search_pred_sym_arity(PredTable,
+            may_be_partially_qualified, SymName, Arity, [PredId])
+    ->
+        pred_table.get_proc_id(MI, PredId, ProcId),
+        PredProcId = proc(PredId, ProcId)
+    ;
+        unexpected(this_file, "module_info_user_init_fn_pred_procs_2")
+    ).
 
 %-----------------------------------------------------------------------------%
 

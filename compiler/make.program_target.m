@@ -363,23 +363,45 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     % libraries linked using dlopen().
     AllModulesList = set.to_sorted_list(AllModules),
     (
-        FileType = executable,
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_asm
-        )
+        FileType = executable
     ->
-        compile_target_code.make_init_obj_file(ErrorStream,
-            MainModuleName, AllModulesList, InitObjectResult, !IO),
         (
-            InitObjectResult = yes(InitObject),
-            % We may need to update the timestamp of the `_init.o' file.
-            !:Info = !.Info ^ file_timestamps :=
-                map.delete(!.Info ^ file_timestamps, InitObject),
-            InitObjects = [InitObject],
-            DepsResult2 = BuildDepsResult
+            ( CompilationTarget = target_c
+            ; CompilationTarget = target_asm
+            ),
+            make_init_obj_file(ErrorStream, MainModuleName,
+                AllModulesList, InitObjectResult, !IO),
+            MaybeInitObjectResult = yes(InitObjectResult)
         ;
-            InitObjectResult = no,
-            DepsResult2 = deps_error,
+            CompilationTarget = target_erlang,
+            make_erlang_program_init_file(ErrorStream, MainModuleName,
+                AllModulesList, InitObjectResult, !IO),
+            MaybeInitObjectResult = yes(InitObjectResult)
+        ;
+            ( CompilationTarget = target_il
+            ; CompilationTarget = target_java
+            ; CompilationTarget = target_x86_64
+            ),
+            MaybeInitObjectResult = no
+        ),
+        (
+            MaybeInitObjectResult = yes(InitObjectResult1),
+            (
+                InitObjectResult1 = yes(InitObject),
+                % We may need to update the timestamp of the `_init.o'
+                % or `_init.beam' file.
+                !:Info = !.Info ^ file_timestamps :=
+                    map.delete(!.Info ^ file_timestamps, InitObject),
+                InitObjects = [InitObject],
+                DepsResult2 = BuildDepsResult
+            ;
+                InitObjectResult1 = no,
+                DepsResult2 = deps_error,
+                InitObjects = []
+            )
+        ;
+            MaybeInitObjectResult = no,
+            DepsResult2 = BuildDepsResult,
             InitObjects = []
         )
     ;
@@ -871,7 +893,7 @@ build_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
         sorry(this_file, "build_library: target x86_64 not supported yet")
     ;
         Target = target_erlang,
-        build_erlang_library(MainModuleName, Succeeded, !Info, !IO)
+        build_erlang_library(MainModuleName, AllModules, Succeeded, !Info, !IO)
     ).
 
 :- pred build_c_library(module_name::in, list(module_name)::in, bool::out,
@@ -899,7 +921,7 @@ build_c_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
             SharedLibsSucceeded = yes,
             % Errors while making the .init file should be very rare.
             io.output_stream(ErrorStream, !IO),
-            make_init_file(ErrorStream, MainModuleName,
+            make_library_init_file(ErrorStream, MainModuleName,
                 AllModules, Succeeded, !IO)
         ;
             SharedLibsSucceeded = no,
@@ -918,13 +940,23 @@ build_java_library(MainModuleName, Succeeded, !Info, !IO) :-
         linked_target_file(MainModuleName, java_archive),
         Succeeded, !Info, !IO).
 
-:- pred build_erlang_library(module_name::in, bool::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred build_erlang_library(module_name::in, list(module_name)::in,
+    bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_erlang_library(MainModuleName, Succeeded, !Info, !IO) :-
+build_erlang_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
     make_linked_target(
         linked_target_file(MainModuleName, erlang_archive),
-        Succeeded, !Info, !IO).
+        Succeeded0, !Info, !IO),
+    (
+        Succeeded0 = yes,
+        % Errors while making the .init file should be very rare.
+        io.output_stream(ErrorStream, !IO),
+        make_erlang_library_init_file(ErrorStream, MainModuleName,
+            AllModules, Succeeded, !IO)
+    ;
+        Succeeded0 = no,
+        Succeeded = no
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1157,7 +1189,7 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
             % Our "Erlang archives" are actually directories.
             install_directory(ErlangArchiveFileName, GradeLibDir,
                 LibsSucceeded, !IO),
-            InitSucceeded = yes
+            install_grade_init(GradeDir, ModuleName, InitSucceeded, !IO)
         ;
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             maybe_install_library_file("static", LibFileName, GradeLibDir,

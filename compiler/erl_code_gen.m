@@ -85,8 +85,10 @@ erl_code_gen(ModuleInfo, ELDS, !IO) :-
     erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns),
     % RTTI function definitions are added later by rtti_data_list_to_elds.
     RttiDefns = [],
+    module_info_user_init_pred_procs(ModuleInfo, InitPredProcs),
+    module_info_user_final_pred_procs(ModuleInfo, FinalPredProcs),
     ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
-        RttiDefns).
+        RttiDefns, InitPredProcs, FinalPredProcs).
 
 :- pred filter_erlang_foreigns(module_info::in, list(foreign_body_code)::out,
     list(pragma_exported_proc)::out, io::di, io::uo) is det.

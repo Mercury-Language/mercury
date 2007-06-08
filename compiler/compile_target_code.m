@@ -85,17 +85,33 @@
 :- pred compile_erlang_file(io.output_stream::in, file_name::in,
     bool::out, io::di, io::uo) is det.
 
-    % make_init_file(ErrorStream, MainModuleName, ModuleNames, Succeeded):
+    % make_library_init_file(ErrorStream, MainModuleName, ModuleNames,
+    %   Succeeded):
     %
     % Make the `.init' file for a library containing the given modules.
     %
-:- pred make_init_file(io.output_stream::in, module_name::in,
+:- pred make_library_init_file(io.output_stream::in, module_name::in,
+    list(module_name)::in, bool::out, io::di, io::uo) is det.
+
+    % make_init_erlang_library(ErrorStream, MainModuleName, ModuleNames,
+    %   Succeeded):
+    %
+    % Make the `.init' file for an Erlang library containing the given
+    % modules.
+    %
+:- pred make_erlang_library_init_file(io.output_stream::in, module_name::in,
     list(module_name)::in, bool::out, io::di, io::uo) is det.
 
     % make_init_obj_file(ErrorStream, MainModuleName, AllModuleNames,
     %   MaybeInitObjFileName)
     %
 :- pred make_init_obj_file(io.output_stream::in, module_name::in,
+    list(module_name)::in, maybe(file_name)::out, io::di, io::uo) is det.
+
+    % make_erlang_program_init_file(ErrorStream, MainModuleName,
+    %   AllModuleNames, MaybeInitObjFileName)
+    %
+:- pred make_erlang_program_init_file(io.output_stream::in, module_name::in,
     list(module_name)::in, maybe(file_name)::out, io::di, io::uo) is det.
 
 :- type linked_target_type
@@ -945,25 +961,35 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
+make_library_init_file(ErrorStream, MainModuleName, AllModules, Succeeded,
+        !IO) :-
+    globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
+    make_library_init_file_2(ErrorStream, MainModuleName, AllModules, ".c",
+        MkInit, Succeeded, !IO).
+
+make_erlang_library_init_file(ErrorStream, MainModuleName, AllModules,
+        Succeeded, !IO) :-
+    globals.io_lookup_string_option(mkinit_erl_command, MkInit, !IO),
+    make_library_init_file_2(ErrorStream, MainModuleName, AllModules, ".erl",
+        MkInit, Succeeded, !IO).
+
+:- pred make_library_init_file_2(io.output_stream::in, module_name::in,
+    list(module_name)::in, string::in, string::in,
+    bool::out, io::di, io::uo) is det.
+
+make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
+        MkInit, Succeeded, !IO) :-
     module_name_to_file_name(MainModuleName, ".init.tmp", yes, TmpInitFileName,
         !IO),
     io.open_output(TmpInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
-        ModuleNameToCFileName =
-            (pred(ThisModule::in, CFileName::out, !.IO::di, !:IO::uo) is det :-
-                module_name_to_file_name(ThisModule, ".c", no, CFileName, !IO)
-        ),
-        list.map_foldl(ModuleNameToCFileName, AllModules, AllCFilesList, !IO),
-        join_quoted_string_list(AllCFilesList, "", "", " ", CFileNames),
+        list.map_foldl(module_name_to_file_name_ext(TargetExt, no),
+            AllModules, AllTargetFilesList, !IO),
+        join_quoted_string_list(AllTargetFilesList, "", "", " ",
+            TargetFileNames),
         
-        globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
-        MkInitCmd = string.append_list(
-            [   MkInit,
-                " -k ",
-                " ", CFileNames
-            ]),
+        MkInitCmd = string.append_list([MkInit, " -k ", TargetFileNames]),
         invoke_system_command(InitFileStream, cmd_verbose, MkInitCmd, MkInitOK,
             !IO),
        
@@ -1032,6 +1058,12 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
         io.nl(ErrorStream, !IO),
         Succeeded = no
     ).
+
+:- pred module_name_to_file_name_ext(string::in, bool::in, module_name::in, 
+    file_name::out, io::di, io::uo) is det.
+
+module_name_to_file_name_ext(Ext, MkDir, ModuleName, FileName, !IO) :-
+    module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1111,6 +1143,8 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
         Succeeded = no
     ).
 
+%-----------------------------------------------------------------------------%
+
 make_init_obj_file(ErrorStream, ModuleName, ModuleNames, Result, !IO) :-
     globals.io_lookup_bool_option(rebuild, MustCompile, !IO),
     make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames,
@@ -1126,6 +1160,91 @@ make_init_obj_file(ErrorStream, ModuleName, ModuleNames, Result, !IO) :-
 
 make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         !IO) :-
+    globals.io_lookup_maybe_string_option(
+        mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    globals.io_get_globals(Globals, !IO),
+    grade_directory_component(Globals, GradeDir),
+    (
+        MaybeStdLibDir = yes(StdLibDir),
+        ToGradeInit = (func(File) = StdLibDir / "modules" / GradeDir / File),
+        StdInitFileNames = [
+            ToGradeInit("mer_rt.init"),
+            ToGradeInit("mer_std.init")
+        ],
+        StdTraceInitFileNames = [
+            ToGradeInit("mer_browser.init"),
+            ToGradeInit("mer_mdbcomp.init")
+        ]
+    ;
+        MaybeStdLibDir = no,
+        StdInitFileNames = [],
+        StdTraceInitFileNames = []
+    ),
+
+    globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
+    make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, ".c",
+        StdInitFileNames, StdTraceInitFileNames, "", MaybeInitTargetFile, !IO),
+
+    get_object_code_type(executable, PIC, !IO),
+    maybe_pic_object_file_extension(PIC, ObjExt, !IO),
+
+    module_name_to_file_name(ModuleName, "_init" ++ ObjExt, yes,
+        InitObjFileName, !IO),
+    CompileCInitFile =
+        (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
+            compile_c_file(ErrorStream, PIC, InitTargetFileName,
+                InitObjFileName, Res, IO0, IO)
+        ),
+    maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile,
+        CompileCInitFile, InitObjFileName, Result, !IO).
+
+make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
+        !IO) :-
+    globals.io_lookup_bool_option(rebuild, MustCompile, !IO),
+
+    globals.io_lookup_maybe_string_option(
+        mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    globals.io_get_globals(Globals, !IO),
+    grade_directory_component(Globals, GradeDir),
+    (
+        MaybeStdLibDir = yes(StdLibDir),
+        StdInitFileNames = [
+            StdLibDir / "modules" / GradeDir / "mer_std.init"
+        ]
+    ;
+        MaybeStdLibDir = no,
+        StdInitFileNames = []
+    ),
+    % Tracing is not supported in Erlang backend.
+    StdTraceInitFileNames = [],
+
+    % We need to pass the module name to mkinit_erl.
+    ErlangModuleName = erlang_module_name(ModuleName),
+    ModuleNameStr = sym_name_to_string_sep(ErlangModuleName, "__") ++ "_init",
+    ModuleNameOption = " -m " ++ quote_arg(ModuleNameStr),
+
+    globals.io_lookup_string_option(mkinit_erl_command, MkInitErl, !IO),
+    make_init_target_file(ErrorStream, MkInitErl, ModuleName, ModuleNames, ".erl",
+        StdInitFileNames, StdTraceInitFileNames, ModuleNameOption,
+        MaybeInitTargetFile, !IO),
+
+    module_name_to_file_name(ModuleName, "_init.beam", yes,
+        InitObjFileName, !IO),
+    CompileErlangInitFile =
+        (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
+            compile_erlang_file(ErrorStream, InitTargetFileName, Res, IO0, IO)
+        ),
+    maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile,
+        CompileErlangInitFile, InitObjFileName, Result, !IO).
+
+:- pred make_init_target_file(io.output_stream::in, string::in,
+    module_name::in, list(module_name)::in, string::in,
+    list(file_name)::in, list(file_name)::in, string::in,
+    maybe(file_name)::out, io::di, io::uo) is det.
+
+make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
+        StdInitFileNames, StdTraceInitFileNames, ModuleNameOption,
+        MaybeInitTargetFile, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_write_string(Verbose, "% Creating initialization file...\n", !IO),
@@ -1133,18 +1252,12 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
     globals.io_get_globals(Globals, !IO),
     compute_grade(Globals, Grade),
 
-    get_object_code_type(executable, PIC, !IO),
-    maybe_pic_object_file_extension(PIC, ObjExt, !IO),
-    InitObj = "_init" ++ ObjExt,
+    module_name_to_file_name(ModuleName, "_init" ++ TargetExt, yes,
+        InitTargetFileName, !IO),
 
-    module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName, !IO),
-    module_name_to_file_name(ModuleName, InitObj, yes, InitObjFileName, !IO),
-
-    list.map_foldl(
-        (pred(ThisModule::in, CFileName::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(ThisModule, ".c", no, CFileName, IO0, IO)
-        ), ModuleNames, CFileNameList, !IO),
-    join_quoted_string_list(CFileNameList, "", "", " ", CFileNames),
+    list.map_foldl(module_name_to_file_name_ext(TargetExt, no),
+        ModuleNames, TargetFileNameList, !IO),
+    join_quoted_string_list(TargetFileNameList, "", "", " ", TargetFileNames),
 
     globals.io_lookup_accumulating_option(init_file_directories,
         InitFileDirsList, !IO),
@@ -1154,26 +1267,8 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         !IO),
     globals.io_lookup_accumulating_option(trace_init_files,
         TraceInitFileNamesList0, !IO),
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdLibDir, !IO),
-    grade_directory_component(Globals, GradeDir),
-    (
-        MaybeStdLibDir = yes(StdLibDir),
-        InitFileNamesList1 = [
-            StdLibDir / "modules" / GradeDir / "mer_rt.init",
-            StdLibDir / "modules" / GradeDir / "mer_std.init" |
-            InitFileNamesList0
-        ],
-        TraceInitFileNamesList = [
-            StdLibDir/"modules"/ GradeDir / "mer_browser.init",
-            StdLibDir/"modules"/ GradeDir / "mer_mdbcomp.init" |
-            TraceInitFileNamesList0
-        ]
-    ;
-        MaybeStdLibDir = no,
-        InitFileNamesList1 = InitFileNamesList0,
-        TraceInitFileNamesList = TraceInitFileNamesList0
-    ),
+    InitFileNamesList1 = StdInitFileNames ++ InitFileNamesList0,
+    TraceInitFileNamesList = StdTraceInitFileNames ++ TraceInitFileNamesList0,
 
     globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
@@ -1204,77 +1299,110 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         ExperimentalComplexityOpt = "-X " ++ ExperimentalComplexity
     ),
 
-    globals.io_lookup_string_option(mkinit_command, Mkinit, !IO),
-    TmpInitCFileName = InitCFileName ++ ".tmp",
+    TmpInitTargetFileName = InitTargetFileName ++ ".tmp",
     MkInitCmd = string.append_list(
-        [   Mkinit,
+        [   MkInit,
             " -g ", Grade,
             " ", TraceOpt,
             " ", ExtraInitsOpt,
             " ", NoMainOpt,
             " ", ExperimentalComplexityOpt,
             " ", RuntimeFlags,
-            " -o ", quote_arg(TmpInitCFileName),
+            " -o ", quote_arg(TmpInitTargetFileName),
             " ", InitFileDirs,
             " ", InitFileNames, 
-            " ", CFileNames
+            " ", TargetFileNames,
+            ModuleNameOption
         ]),
-    invoke_system_command(ErrorStream, cmd_verbose, MkInitCmd, MkInitOK0, !IO),
+    invoke_system_command(ErrorStream, cmd_verbose, MkInitCmd, MkInitOk, !IO),
     maybe_report_stats(Stats, !IO),
     (
-        MkInitOK0 = yes,
-        update_interface_return_succeeded(InitCFileName, MkInitOK1, !IO),
+        MkInitOk = yes,
+        update_interface_return_succeeded(InitTargetFileName, UpdateOk, !IO),
         (
-            MkInitOK1 = yes,
-            (
-                MustCompile = yes,
-                Compile = yes
-            ;
-                MustCompile = no,
-                io.file_modification_time(InitCFileName,
-                    InitCModTimeResult, !IO),
-                io.file_modification_time(InitObjFileName,
-                    InitObjModTimeResult, !IO),
-                (
-                    InitObjModTimeResult = ok(InitObjModTime),
-                    InitCModTimeResult = ok(InitCModTime),
-                    compare(TimeCompare, InitObjModTime, InitCModTime),
-                    ( TimeCompare = (=)
-                    ; TimeCompare = (>)
-                    )
-                ->
-                    Compile = no
-                ;
-                    Compile = yes
-                )
-            ),
-            (
-                Compile = yes,
-                maybe_write_string(Verbose,
-                "% Compiling initialization file...\n", !IO),
-
-                compile_c_file(ErrorStream, PIC, InitCFileName,
-                    InitObjFileName, CompileOK, !IO),
-                maybe_report_stats(Stats, !IO),
-                (
-                    CompileOK = no,
-                    Result = no
-                ;
-                    CompileOK = yes,
-                    Result = yes(InitObjFileName)
-                )
-            ;
-                Compile = no,
-                Result = yes(InitObjFileName)
-            )
+            UpdateOk = yes,
+            MaybeInitTargetFile = yes(InitTargetFileName)
         ;
-            MkInitOK1 = no,
-            Result = no
+            UpdateOk = no,
+            MaybeInitTargetFile = no
         )
     ;
-        MkInitOK0 = no,
+        MkInitOk = no,
+        MaybeInitTargetFile = no
+    ).
+
+:- pred maybe_compile_init_obj_file(maybe(file_name)::in, bool::in,
+    compile_init_file_pred::in(compile_init_file_pred),
+    file_name::in, maybe(file_name)::out, io::di, io::uo) is det.
+
+:- type compile_init_file_pred == pred(file_name, bool, io, io).
+:- inst compile_init_file_pred == (pred(in, out, di, uo) is det).
+
+maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile, Compile,
+        InitObjFileName, Result, !IO) :-
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    (
+        MaybeInitTargetFile = yes(InitTargetFileName),
+        file_as_new_as(InitTargetFileName, InitObjFileName, UpToDate, !IO),
+        (
+            ( MustCompile = yes
+            ; UpToDate = no
+            )
+        ->
+            maybe_write_string(Verbose,
+                "% Compiling initialization file...\n", !IO),
+            Compile(InitTargetFileName, CompileOk, !IO),
+            maybe_report_stats(Stats, !IO),
+            (
+                CompileOk = yes,
+                Result = yes(InitObjFileName)
+            ;
+                CompileOk = no,
+                Result = no
+            )
+        ;
+            Result = yes(InitObjFileName)
+        )
+    ;
+        MaybeInitTargetFile = no,
         Result = no
     ).
+
+:- pred file_as_new_as(file_name::in, file_name::in, bool::out,
+    io::di, io::uo) is det.
+
+file_as_new_as(FileNameA, FileNameB, IsAsNew, !IO) :-
+    compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
+    (
+        ( MaybeCompare = yes(=)
+        ; MaybeCompare = yes(>)
+        ),
+        IsAsNew = yes
+    ;
+        ( MaybeCompare = yes(<)
+        ; MaybeCompare = no
+        ),
+        IsAsNew = no
+    ).
+
+:- pred compare_file_timestamps(file_name::in, file_name::in,
+    maybe(comparison_result)::out, io::di, io::uo) is det.
+
+compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
+    io.file_modification_time(FileNameA, TimeResultA, !IO),
+    io.file_modification_time(FileNameB, TimeResultB, !IO),
+    (
+        TimeResultA = ok(TimeA),
+        TimeResultB = ok(TimeB)
+    ->
+        compare(Compare, TimeA, TimeB),
+        MaybeCompare = yes(Compare)
+    ;
+        MaybeCompare = no
+    ).
+
+%-----------------------------------------------------------------------------%
 
 % WARNING: The code here duplicates the functionality of scripts/ml.in.
 % Any changes there may also require changes here, and vice versa.
@@ -1821,13 +1949,8 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
     is det.
 
 same_timestamp(FileNameA, FileNameB, SameTimestamp, !IO) :-
-    io.file_modification_time(FileNameA, TimestampResultA, !IO),
-    io.file_modification_time(FileNameB, TimestampResultB, !IO),
-    (
-        TimestampResultA = ok(TimestampA),
-        TimestampResultB = ok(TimestampB),
-        time_t_to_timestamp(TimestampA) = time_t_to_timestamp(TimestampB)
-    ->
+    compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
+    ( MaybeCompare = yes(=) ->
         SameTimestamp = yes
     ;
         SameTimestamp = no

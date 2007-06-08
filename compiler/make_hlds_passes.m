@@ -1080,11 +1080,15 @@ add_item_clause(item_instance(_, _, _, _, _, _), !Status, _, !ModuleInfo,
         !QualInfo, !Specs).
 add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
         !ModuleInfo, !QualInfo, !Specs) :-
-    % To handle a `:- initialise initpred.' declaration we need to:
+    % To handle a `:- initialise initpred.' declaration for C backends we need
+    % to:
     % (1) construct a new C function name, CName, to use to export initpred,
     % (2) add the export pragma that does this
     % (3) record the initpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module initialisation.
+    %
+    % For the Erlang backend, we need to have the initpred recorded in the
+    % ModuleInfo. This is implied by the handling for the C backends.
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
@@ -1111,7 +1115,8 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_pure
             ->
-                module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
+                module_info_new_user_init_pred(SymName, Arity, CName,
+                    !ModuleInfo),
                 PragmaExportItem =
                     item_pragma(compiler(initialise_decl),
                         pragma_foreign_export(ExportLang, SymName,
@@ -1130,7 +1135,8 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_impure
             ->
-                module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
+                module_info_new_user_init_pred(SymName, Arity, CName,
+                    !ModuleInfo),
                 PragmaExportedItem =
                     item_pragma(compiler(initialise_decl),
                         pragma_foreign_export(ExportLang, SymName,
@@ -1163,7 +1169,7 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
-add_item_clause(item_initialise(compiler(Details), SymName, _Arity),
+add_item_clause(item_initialise(compiler(Details), SymName, Arity),
         !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     % The compiler introduces initialise declarations that call impure
     % predicates as part of the source-to-source transformation for mutable
@@ -1172,7 +1178,7 @@ add_item_clause(item_initialise(compiler(Details), SymName, _Arity),
 
     (
         Details = mutable_decl,
-        module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
+        module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
         ExportLang = lang_c,    % XXX Implement for other backends.
         PragmaExportItem =
             item_pragma(compiler(mutable_decl),
@@ -1191,11 +1197,15 @@ add_item_clause(item_initialise(compiler(Details), SymName, _Arity),
     ).
 add_item_clause(item_finalise(Origin, SymName, Arity),
         !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    % To handle a `:- finalise finalpred.' declaration we need to:
+    % To handle a `:- finalise finalpred.' declaration for C backends we need
+    % to:
     % (1) construct a new C function name, CName, to use to export finalpred,
     % (2) add `:- pragma foreign_export("C", finalpred(di, uo), CName).',
     % (3) record the finalpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module finalisation.
+    %
+    % For the Erlang backend, we need to have the finalpred recorded in the
+    % ModuleInfo. This is implied by the handling for the C backends.
     
     ( 
         Origin = compiler(_),
@@ -1231,7 +1241,8 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_pure
             ->
-                module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
+                module_info_new_user_final_pred(SymName, Arity, CName,
+                    !ModuleInfo),
                 PragmaExportItem =
                     item_pragma(compiler(finalise_decl),
                         pragma_foreign_export(ExportLang, SymName,
@@ -1250,7 +1261,8 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_impure
             ->
-                module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
+                module_info_new_user_final_pred(SymName, Arity, CName,
+                    !ModuleInfo),
                 PragmaExportItem =
                     item_pragma(compiler(finalise_decl),
                         pragma_foreign_export(ExportLang, SymName,

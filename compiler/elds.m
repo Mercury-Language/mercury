@@ -54,7 +54,11 @@
                 elds_fe_funcs       :: list(elds_foreign_export_defn),
 
                 % Definitions of functions which return RTTI data.
-                elds_rtti_funcs     :: list(elds_rtti_defn)
+                elds_rtti_funcs     :: list(elds_rtti_defn),
+
+                % The init and final preds.
+                elds_init_preds     :: list(pred_proc_id),
+                elds_final_preds    :: list(pred_proc_id)
             ).
 
     % Function definition.

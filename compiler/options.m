@@ -744,6 +744,7 @@
     ;       ranlib_command
     ;       ranlib_flags
     ;       mkinit_command
+    ;       mkinit_erl_command
     ;       demangle_command
     ;       trace_libs
     ;       thread_libs
@@ -1509,6 +1510,7 @@ option_defaults_2(link_option, [
     ranlib_command                      -   string(""),
     ranlib_flags                        -   string(""),
     mkinit_command                      -   string("mkinit"),
+    mkinit_erl_command                  -   string("mkinit_erl"),
     demangle_command                    -   string("mdemangle"),
     trace_libs                          -   string(""),
     thread_libs                         -   string(""),
@@ -2310,6 +2312,7 @@ long_option("link-shared-lib-command",  link_shared_lib_command).
 long_option("ranlib-command",       ranlib_command).
 long_option("ranlib-flags",         ranlib_flags).
 long_option("mkinit-command",       mkinit_command).
+long_option("mkinit-erl-command",   mkinit_erl_command).
 long_option("demangle-command",     demangle_command).
 long_option("trace-libs",           trace_libs).
 long_option("thread-libs",          thread_libs).

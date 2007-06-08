@@ -146,10 +146,19 @@ dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
     module_info_predids(PredIds, !ModuleInfo),
     module_info_preds(!.ModuleInfo, PredTable),
     dead_proc_initialize_preds(PredIds, PredTable, !Queue, !Needed),
+
     module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
     dead_proc_initialize_pragma_exports(PragmaExports, !Queue, !Needed),
+
+    module_info_user_init_pred_procs(!.ModuleInfo, InitProcs),
+    dead_proc_initialize_init_fn_procs(InitProcs, !Queue, !Needed),
+
+    module_info_user_final_pred_procs(!.ModuleInfo, FinalPreds),
+    dead_proc_initialize_init_fn_procs(FinalPreds, !Queue, !Needed),
+
     module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos),
     dead_proc_initialize_base_gen_infos(TypeCtorGenInfos, !Queue, !Needed),
+
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, Instances),
     dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed).
@@ -195,6 +204,20 @@ dead_proc_initialize_pragma_exports([PragmaProc | PragmaProcs],
     svqueue.put(proc(PredId, ProcId), !Queue),
     svmap.set(proc(PredId, ProcId), no, !Needed),
     dead_proc_initialize_pragma_exports(PragmaProcs, !Queue, !Needed).
+
+    % Add module initialisation/finalisation procedures to the queue and map
+    % as they cannot be removed.
+    %
+:- pred dead_proc_initialize_init_fn_procs(list(pred_proc_id)::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
+
+dead_proc_initialize_init_fn_procs([], !Queue, !Needed).
+dead_proc_initialize_init_fn_procs([PPId | PPIds], !Queue, !Needed) :-
+    PPId = proc(PredId, ProcId),
+    svqueue.put(proc(PredId, ProcId), !Queue),
+    svmap.set(proc(PredId, ProcId), no, !Needed),
+    dead_proc_initialize_init_fn_procs(PPIds, !Queue, !Needed).
 
 :- pred dead_proc_initialize_base_gen_infos(list(type_ctor_gen_info)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)

@@ -628,7 +628,7 @@ no_fully_strict.out: no_fully_strict
 # final_excp.out is expected to fail (it calls throw/1).
 #
 final_excp.out: final_excp
-	if MERCURY_SUPPRESS_STACK_STRACE=yes ./final_excp > $@.tmp 2>&1; then \
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./final_excp > $@.tmp 2>&1; then \
 		grep  . $@.tmp; \
 		exit 1; \
 	else \
@@ -648,7 +648,7 @@ init_excp.out: init_excp
 # mutable_excp.out is expected to fail (it calls throw/1).
 #
 mutable_excp.out: mutable_excp
-	if MERCURY_SUPRRESS_STACK_TRACE=yes ./mutable_excp > $@.tmp 2>&1; then \
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./mutable_excp > $@.tmp 2>&1; then \
 		grep  . $@.tmp; \
 		exit 1; \
 	else \

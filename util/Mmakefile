@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002, 2005, 2006 The University of Melbourne.
+# Copyright (C) 1995-2002, 2005, 2006-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -19,7 +19,7 @@ CFLAGS	= -I$(RUNTIME_DIR) -O0
 # we need -I ../runtime for "mercury_std.h", etc.
 # the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
 
-PROGS=mkinit mdemangle info_to_mdb
+PROGS=mkinit mkinit_erl mdemangle info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
 SRC=$(PROGS:%=%.c)
 
@@ -33,6 +33,7 @@ endif
 
 # mkinit.c needs `struct stat'
 MGNUCFLAGS-mkinit = --no-ansi
+MGNUCFLAGS-mkinit_erl = --no-ansi
 
 #-----------------------------------------------------------------------------#
 
@@ -41,6 +42,16 @@ all:	$(PROGS) $(TAGS_FILE_EXISTS)
 .c:
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
+
+mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
+	$(MGNUC) --no-mercury-stdlib-dir \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
+			mkinit.c mkinit_common.c $(GETOPT_SRC)
+
+mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
+	$(MGNUC) --no-mercury-stdlib-dir \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
+			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
 
 tags:
 	ctags $(SRC)
