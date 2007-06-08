@@ -306,7 +306,7 @@ main_wrapper_code = "
             is_integer(ArityOrArgs) ->
                 io:format(""/~B~n"", [ArityOrArgs]);
             true ->
-                io:format(""~p~n"", ArityOrArgs)
+                io:format(""~p~n"", [ArityOrArgs])
         end,
         % Don't show stack frames below main.
         case St of
@@ -335,7 +335,7 @@ maybe_output_required_init_or_final(ModuleInfo, Name, PredProcIds, !IO) :-
         PredProcIds = []
     ;
         PredProcIds = [_ | _],
-        nl_indent_line(1, !IO),
+        nl_indent_line(0, !IO),
         io.write_string(Name, !IO),
         io.write_string("() ->", !IO),
         list.foldl(output_init_fn_call(ModuleInfo), PredProcIds, !IO),
