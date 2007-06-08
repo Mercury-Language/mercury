@@ -629,7 +629,7 @@ set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
 reset_knowledge_base(!Diagnoser) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
     reset_oracle_knowledge_base(Oracle0, Oracle),
-    !Diagnoser ^ oracle_state := Oracle.
+    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
 
 :- func top_down_search_mode = mdb.declarative_analyser.search_mode.
 
