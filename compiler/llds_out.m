@@ -157,7 +157,6 @@
 
 %-----------------------------------------------------------------------------%
 
-%
 % Note that we need to know the linkage not just at the definition,
 % but also at every use, because if the use is prior to the definition,
 % then we need to declare the name first, and the linkage used in that
@@ -166,9 +165,10 @@
 % the definition) which says whether or not a data name is exported
 % is not useful.  Instead, we need to determine whether or not something
 % is exported from its `data_name'.
-%
 
-:- type linkage ---> extern ; static.
+:- type linkage
+    --->    extern
+    ;       static.
 
 %-----------------------------------------------------------------------------%
 
