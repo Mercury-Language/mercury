@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Vim: ft=Mercury ts=4 sw=4
+% vim: ft=mercury ts=4 sw=4
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -16,6 +16,8 @@
 :- module transform_hlds.rbmm.
 :- interface.
 
+:- include_module actual_region_arguments.
+:- include_module condition_renaming.
 :- include_module execution_path.
 :- include_module interproc_region_lifetime.
 :- include_module live_region_analysis.
@@ -25,49 +27,85 @@
 :- include_module points_to_info.
 :- include_module region_instruction.
 :- include_module region_liveness_info.
+:- include_module region_resurrection_renaming.
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
+:- import_module io.
 %-----------------------------------------------------------------------------%
 
-:- pred do_region_analysis(module_info::in, module_info::out) is det.
+:- pred do_region_analysis(module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module transform_hlds.rbmm.actual_region_arguments.
+:- import_module transform_hlds.rbmm.condition_renaming.
 :- import_module transform_hlds.rbmm.execution_path.
 :- import_module transform_hlds.rbmm.interproc_region_lifetime.
 :- import_module transform_hlds.rbmm.live_region_analysis.
 :- import_module transform_hlds.rbmm.live_variable_analysis.
 :- import_module transform_hlds.rbmm.points_to_analysis.
 :- import_module transform_hlds.rbmm.region_instruction.
-
+:- import_module transform_hlds.rbmm.region_resurrection_renaming.
 %-----------------------------------------------------------------------------%
 
-do_region_analysis(!ModuleInfo) :-
+do_region_analysis(!ModuleInfo, !IO) :-
     region_points_to_analysis(RptaInfoTable, !ModuleInfo),
     execution_path_analysis(!.ModuleInfo, ExecPathTable),
     live_variable_analysis(!.ModuleInfo, ExecPathTable, LVBeforeTable, 
         LVAfterTable, VoidVarTable),
     live_region_analysis(!.ModuleInfo, RptaInfoTable, 
-	LVBeforeTable, LVAfterTable, VoidVarTable,
-	LRBeforeTable0, LRAfterTable0, VoidVarRegionTable0, 
-	InputRTable, OutputRTable, BornRTable0, DeadRTable0, LocalRTable0),
+		LVBeforeTable, LVAfterTable, VoidVarTable, LRBeforeTable0,
+		LRAfterTable0, VoidVarRegionTable0, InputRTable, OutputRTable,
+		BornRTable0, DeadRTable0, LocalRTable0),
     compute_interproc_region_lifetime(!.ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable0, LRAfterTable0, InputRTable,
-	OutputRTable, ConstantRTable0, BornRTable0, BornRTable1,
-	DeadRTable0, DeadRTable1),
+		OutputRTable, ConstantRTable0, BornRTable0, BornRTable1,
+		DeadRTable0, DeadRTable1),
     ignore_primitive_regions(!.ModuleInfo, RptaInfoTable, 
         BornRTable1, BornRTable, DeadRTable1, DeadRTable,
-	ConstantRTable0, _ConstantRTable, LocalRTable0, LocalRTable,
-	LRBeforeTable0, LRBeforeTable, LRAfterTable0, LRAfterTable,
-	VoidVarRegionTable0, VoidVarRegionTable),
-    transform(!.ModuleInfo, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
-	DeadRTable, LocalRTable, _AnnotationTable).
+		ConstantRTable0, ConstantRTable, LocalRTable0, LocalRTable,
+		LRBeforeTable0, LRBeforeTable, LRAfterTable0, LRAfterTable,
+		VoidVarRegionTable0, VoidVarRegionTable),
+    introduce_region_instructions(!.ModuleInfo, RptaInfoTable,
+		ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
+		BornRTable, DeadRTable, LocalRTable, _AnnotationTable),
+
+    record_actual_region_arguments(!.ModuleInfo, RptaInfoTable,
+		ConstantRTable, DeadRTable, BornRTable,
+		_ActualRegionArgumentTable),
+
+	% The region analysis treats region variables as if they are
+	% imperative-style updatable variables. They may also have scopes
+	% which are not valid in Mercury. In order for Mercury code to
+	% manipulate regions we need to map these "region variables" on to
+	% Mercury variables. 
+	% The calls below derive the necessary mapping to resolve the problem.
+    compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable, 
+		BornRTable, LocalRTable, CreatedBeforeTable,
+		ResurrectionPathTable),
+    collect_region_resurrection_renaming(CreatedBeforeTable, LocalRTable,
+		RptaInfoTable, ResurrectionPathTable, ResurrectionRenameTable),
+	collect_join_points(ResurrectionRenameTable, ExecPathTable,
+		JoinPointTable),
+    collect_renaming_and_annotation(ResurrectionRenameTable, JoinPointTable,
+		LRBeforeTable, BornRTable, RptaInfoTable, ResurrectionPathTable,
+		ExecPathTable, _RenamingAnnotationTable, _RenamingTable),
+
+	collect_non_local_and_in_cond_regions(!.ModuleInfo, LRBeforeTable,
+		LRAfterTable, LocalRegionsTable, InCondRegionsTable),
+	collect_ite_renamed_regions(LocalRegionsTable, InCondRegionsTable,
+		RenamedRegionsTable),
+	collect_ite_renaming(!.ModuleInfo, RptaInfoTable, RenamedRegionsTable,
+		IteRenamingTable),
+	collect_ite_annotation(RenamedRegionsTable, ExecPathTable, 
+		RptaInfoTable, IteRenamingTable, _IteAnnoTable).
+
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.

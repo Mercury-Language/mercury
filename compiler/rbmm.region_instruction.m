@@ -36,7 +36,7 @@
     % Currently the region instructions are strings, which are attached to
     % either before or after a program point.
     % 
-:- pred transform(module_info::in, rpta_info_table::in,
+:- pred introduce_region_instructions(module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
@@ -64,42 +64,43 @@
 :- import_module term.
 :- import_module varset.
 
-transform(ModuleInfo, RptaInfoTable, ExecPathTable, LRBeforeTable,
-        LRAfterTable, VoidVarRegionTable, BornRTable, DeadRTable,
-        LocalRTable, AnnotationTable) :-
+introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
+        LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
+        DeadRTable, LocalRTable, AnnotationTable) :-
     module_info_predids(PredIds, ModuleInfo, _),
 	map.init(AnnotationTable0),
-	list.foldl(transform_pred(ModuleInfo, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
-        DeadRTable, LocalRTable), PredIds,
+	list.foldl(introduce_region_instructions_pred(ModuleInfo,
+        RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
+        VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable), PredIds,
         AnnotationTable0, AnnotationTable).
 
-:- pred transform_pred(module_info::in, rpta_info_table::in,
-    execution_path_table::in, proc_pp_region_set_table::in,
+:- pred introduce_region_instructions_pred(module_info::in,
+    rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
-    proc_region_set_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, pred_id::in, 
+    proc_pp_region_set_table::in, proc_region_set_table::in,
+    proc_region_set_table::in, proc_region_set_table::in, pred_id::in, 
     annotation_table::in, annotation_table::out) is det.
 
-transform_pred(ModuleInfo, RptaInfoTable, ExecPathTable, LRBeforeTable,
-        LRAfterTable, VoidVarRegionTable, BornRTable, DeadRTable,
-        LocalRTable, PredId, !AnnotationTable) :-
+introduce_region_instructions_pred(ModuleInfo, RptaInfoTable, ExecPathTable,
+        LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
+        DeadRTable, LocalRTable, PredId, !AnnotationTable) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_non_imported_procids(PredInfo) = ProcIds,
-	list.foldl(transform_proc(ModuleInfo, PredId, RptaInfoTable,
-        ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
-        BornRTable, DeadRTable, LocalRTable), ProcIds, !AnnotationTable).
+	list.foldl(introduce_region_instructions_proc(ModuleInfo, PredId,
+        RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
+        VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable),
+        ProcIds, !AnnotationTable).
 
-:- pred transform_proc(module_info::in, pred_id::in, rpta_info_table::in, 
-    execution_path_table::in, proc_pp_region_set_table::in,
+:- pred introduce_region_instructions_proc(module_info::in, pred_id::in,
+    rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
-    proc_region_set_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, proc_id::in, 
+    proc_pp_region_set_table::in, proc_region_set_table::in,
+    proc_region_set_table::in, proc_region_set_table::in, proc_id::in, 
     annotation_table::in, annotation_table::out) is det.
 
-transform_proc(ModuleInfo, PredId, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
-        DeadRTable, LocalRTable, ProcId, !AnnotationTable) :-
+introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
+        ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
+        BornRTable, DeadRTable, LocalRTable, ProcId, !AnnotationTable) :-
 	PPId = proc(PredId, ProcId),
 	( if
 		some_are_special_preds([PPId], ModuleInfo)
@@ -115,7 +116,8 @@ transform_proc(ModuleInfo, PredId, RptaInfoTable, ExecPathTable,
 		map.lookup(LRAfterTable, PPId, ProcLRAfter),
 		map.lookup(VoidVarRegionTable, PPId, ProcVoidVarRegion),
 		map.lookup(ExecPathTable, PPId, ExecPaths), 
-		transform_exec_paths(ExecPaths, RptaInfo, BornR, DeadR, LocalR,
+		introduce_region_instructions_exec_paths(ExecPaths, RptaInfo,
+            BornR, DeadR, LocalR,
             ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
             BornRTable, DeadRTable, ModuleInfo, ProcInfo,
             map.init, AnnotationProc),
@@ -125,34 +127,37 @@ transform_proc(ModuleInfo, PredId, RptaInfoTable, ExecPathTable,
 	% Follow each execution path of a procedure and introduce 
     % region instructions at each program point.
     %
-:- pred transform_exec_paths(list(execution_path)::in, rpta_info::in, 
-    set(rptg_node)::in, set(rptg_node)::in, set(rptg_node)::in, 
+:- pred introduce_region_instructions_exec_paths(list(execution_path)::in,
+    rpta_info::in, set(rptg_node)::in, set(rptg_node)::in, set(rptg_node)::in, 
     pp_region_set_table::in, pp_region_set_table::in, 
     pp_region_set_table::in, proc_region_set_table::in, 
     proc_region_set_table::in, module_info::in, proc_info::in, 
     annotation_proc::in, annotation_proc::out) is det.
 
-transform_exec_paths([], _, _, _, _, _, _, _, _, _, _, _, !AnnotationProc).
-transform_exec_paths([ExecPath|ExecPaths], RptaInfo, BornR, DeadR, 
-        LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
+introduce_region_instructions_exec_paths([], _, _, _, _, _, _, _, _, _, _, _,
+        !AnnotationProc).
+introduce_region_instructions_exec_paths([ExecPath|ExecPaths], RptaInfo,
+        BornR, DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
         BornRTable, DeadRTable, ModuleInfo, ProcInfo, !AnnotationProc) :-
-	transform_exec_path(ExecPath, RptaInfo, BornR, DeadR, LocalR,
-        ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
+	introduce_region_instructions_exec_path(ExecPath, RptaInfo, BornR,
+        DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
         BornRTable, DeadRTable, ModuleInfo, ProcInfo, !AnnotationProc),
-	transform_exec_paths(ExecPaths, RptaInfo, BornR, DeadR, LocalR,
-        ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
+	introduce_region_instructions_exec_paths(ExecPaths, RptaInfo, BornR,
+        DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
         BornRTable, DeadRTable, ModuleInfo, ProcInfo, !AnnotationProc).
 
-:- pred transform_exec_path(execution_path::in, rpta_info::in,
-    set(rptg_node)::in, set(rptg_node)::in, set(rptg_node)::in,
+:- pred introduce_region_instructions_exec_path(execution_path::in,
+    rpta_info::in, set(rptg_node)::in, set(rptg_node)::in, set(rptg_node)::in,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, module_info::in, proc_info::in,
     annotation_proc::in, annotation_proc::out) is det.
-transform_exec_path([], _, _, _, _, _, _, _, _, _, _, _, !AnnotationProc).
-transform_exec_path([ProgPoint - Goal | ProgPoint_Goals], RptaInfo,
-        BornR, DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
-        BornRTable, DeadRTable, ModuleInfo, ProcInfo, !AnnotationProc) :-
+introduce_region_instructions_exec_path([], _, _, _, _, _, _, _, _, _, _, _,
+        !AnnotationProc).
+introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
+        RptaInfo, BornR, DeadR, LocalR, ProcLRBefore, ProcLRAfter,
+        ProcVoidVarRegion, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+        !AnnotationProc) :-
 	map.lookup(ProcLRBefore, ProgPoint, LRBefore),
 	map.lookup(ProcLRAfter, ProgPoint, LRAfter),
 	map.lookup(ProcVoidVarRegion, ProgPoint, VoidVarRegions),
@@ -207,7 +212,8 @@ transform_exec_path([ProgPoint - Goal | ProgPoint_Goals], RptaInfo,
                     "T5", "remove"),
             ToBeRemovedBeforeNextAndAllowed, !AnnotationProc),
 
-        transform_exec_path(ProgPoint_Goals, RptaInfo, BornR, DeadR, LocalR,
+        introduce_region_instructions_exec_path(ProgPoint_Goals, RptaInfo,
+            BornR, DeadR, LocalR,
             ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
             BornRTable, DeadRTable, ModuleInfo, ProcInfo, !AnnotationProc)
     ;
@@ -232,30 +238,31 @@ transform_exec_path([ProgPoint - Goal | ProgPoint_Goals], RptaInfo,
     region_set::in, rpta_info::in, proc_region_set_table::in,
     annotation_proc::in, annotation_proc::out) is det.
 
-transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
+transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, CallerRptaInfo,
         BornRTable, !AnnotationProc) :-
     (
-        Expr = plain_call(PredId_q, ProcId_q, _, _, _, _)
+        Expr = plain_call(CalleePredId, CalleeProcId, _, _, _, _)
     -> 
-        PPId_q = proc(PredId_q, ProcId_q),
-        RptaInfo = rpta_info(Graph, AlphaMapping),
+        CalleePPId = proc(CalleePredId, CalleeProcId),
+        CallerRptaInfo = rpta_info(CallerGraph, AlphaMapping),
         ( if
             % Currently we do not collect BornR for non-defined-in-module 
             % procedure, so if we cannot find one here then q is an
             % imported.
-            map.search(BornRTable, PPId_q, _)
+            map.search(BornRTable, CalleePPId, _)
         then
             map.lookup(AlphaMapping, ProgPoint, AlphaAtProgPoint),
-            map.lookup(BornRTable, PPId_q, BornR_q),
+            map.lookup(BornRTable, CalleePPId, CalleeBornR),
             map.foldl(process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, 
-                BornR_q, Graph), AlphaAtProgPoint, !AnnotationProc)
+                CalleeBornR, CallerGraph), AlphaAtProgPoint, !AnnotationProc)
         else
             % q is from an imported module, therefore we consider  
             % BornR of q empty, so just create whatever regions becoming
             % live provided that they are in BornR or LocalR, i.e., p is
             % allowed to create them.
-            set.fold(record_instruction_before_prog_point(ProgPoint, Graph,
-                "T1", "create"), ToBeCreatedAndAllowed, !AnnotationProc)
+            set.fold(record_instruction_before_prog_point(ProgPoint,
+                CallerGraph, "T1", "create"), ToBeCreatedAndAllowed,
+                !AnnotationProc)
         )
     ;
         (Expr = conj(_, [])
@@ -272,16 +279,16 @@ transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
     region_set::in, rpt_graph::in, rptg_node::in, rptg_node::in,
     annotation_proc::in, annotation_proc::out) is det.
 
-process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, BornR_q, Graph_p,
-        SourceRegion, TargetRegion, !AnnotationProc) :-
+process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, CalleeBornR,
+        CallerGraph, SourceRegion, TargetRegion, !AnnotationProc) :-
 	( if
 		(
 			set.contains(ToBeCreatedAndAllowed, TargetRegion),
-			not set.contains(BornR_q, SourceRegion)
+			not set.contains(CalleeBornR, SourceRegion)
 		)
 	  then
-		record_instruction_before_prog_point(ProgPoint, Graph_p, "T1",
-            "create", TargetRegion, !AnnotationProc)
+		record_instruction_before_prog_point(ProgPoint, CallerGraph,
+            "T1", "create", TargetRegion, !AnnotationProc)
 	  else
 		true
 	).
@@ -343,28 +350,27 @@ transformation_rule_2(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
     region_set::in, rpta_info::in, proc_region_set_table::in,
     annotation_proc::in, annotation_proc::out) is det.
 
-transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
+transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, CallerRptaInfo,
         DeadRTable, !AnnotationProc) :-
     (
-        Expr =  plain_call(PredId_q, ProcId_q, _, _, _, _)
+        Expr =  plain_call(CalleePredId, CalleeProcId, _, _, _, _)
     ->
-        PPId_q = proc(PredId_q, ProcId_q),
+        CalleePPId = proc(CalleePredId, CalleeProcId),
+        CallerRptaInfo = rpta_info(CallerGraph, AlphaMapping),
         ( if
-            map.search(DeadRTable, PPId_q, _)
+            map.search(DeadRTable, CalleePPId, _)
           then
-            RptaInfo = rpta_info(Graph, AlphaMapping),
             map.lookup(AlphaMapping, ProgPoint, AlphaAtProgPoint),
 
-            map.lookup(DeadRTable, PPId_q, DeadR_q),
+            map.lookup(DeadRTable, CalleePPId, CalleeDeadR),
             map.foldl(process_mapping_rule_3(ProgPoint,
-                        ToBeRemovedAndAllowed, DeadR_q, Graph),
+                        ToBeRemovedAndAllowed, CalleeDeadR, CallerGraph),
                 AlphaAtProgPoint, !AnnotationProc)
           else
             % q is from an imported module. So just remove whatever regions
             % become dead provided that p is allowed to remove those regions.
-            RptaInfo = rpta_info(Graph_p, _),
-            set.fold(record_instruction_after_prog_point(ProgPoint, Graph_p,
-                        "T3", "remove"),
+            set.fold(record_instruction_after_prog_point(ProgPoint,
+                        CallerGraph, "T3", "remove"),
                 ToBeRemovedAndAllowed, !AnnotationProc)
         )
     ;
@@ -382,16 +388,16 @@ transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
     region_set::in, rpt_graph::in, rptg_node::in, rptg_node::in,
     annotation_proc::in, annotation_proc::out) is det.
 
-process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed, DeadR_q, Graph_p, 
-        SourceRegion, TargetRegion, !AnnotationProc) :-
+process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed, CalleeDeadR,
+        CallerGraph, SourceRegion, TargetRegion, !AnnotationProc) :-
  	( if
 		(
             set.contains(ToBeRemovedAndAllowed, TargetRegion),
-            not set.contains(DeadR_q, SourceRegion)
+            not set.contains(CalleeDeadR, SourceRegion)
         )
 	  then
-	  	record_instruction_after_prog_point(ProgPoint, Graph_p, "T3",
-            "remove", TargetRegion, !AnnotationProc)
+	  	record_instruction_after_prog_point(ProgPoint, CallerGraph,
+            "T3", "remove", TargetRegion, !AnnotationProc)
 	  else
 		true
 	).

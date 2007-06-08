@@ -134,15 +134,15 @@ execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths) :-
 execution_paths_covered_compound_goal(ProcInfo, CompoundGoal, !ExecPaths) :- 
 	CompoundGoal = hlds_goal(Expr, _),
 	(
-		Expr = conj(_ConjType, [Goal | Goals]),
-        execution_paths_covered_conj(ProcInfo, [Goal | Goals], !ExecPaths)
+		Expr = conj(_ConjType, [Conj | Conjs]),
+        execution_paths_covered_conj(ProcInfo, [Conj | Conjs], !ExecPaths)
 	;
 		Expr = switch(_, _, Cases),
 		execution_paths_covered_cases(ProcInfo, CompoundGoal, Cases, 
             !ExecPaths)
 	;
-		Expr = disj([Goal | Goals]),
-		execution_paths_covered_disj(ProcInfo, [Goal | Goals],
+		Expr = disj([Disj | Disjs]),
+		execution_paths_covered_disj(ProcInfo, [Disj | Disjs],
             !ExecPaths)
 	;
 		Expr = negation(Goal),

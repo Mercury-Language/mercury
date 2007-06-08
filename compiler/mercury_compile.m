@@ -4247,7 +4247,7 @@ maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
         Analysis = yes,
         maybe_write_string(Verbose, "% Analysing regions ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        do_region_analysis(!HLDS),
+        do_region_analysis(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
