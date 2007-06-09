@@ -243,7 +243,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 				Words = string.words_separator(char.is_alpha,
 					"xx yy"),
 				io.write(Words, !IO)
-			).
+			),
+			p(5, f(1), _).
 
 		:- type t    ---> a ; b ; c(int).
 
@@ -311,6 +312,17 @@ if test "$BOOTSTRAP_MC" != ""; then
 				),
 				U = "h or i"
 			).
+
+		% Test the compiler supports the syntax
+		% !F ^ field := X
+
+		:- type f ---> f(field :: int).
+
+		:- pred p(int::in, f::in, f::out) is det.
+		
+		p(X, !F) :-
+			!F ^ field := X.
+			
 EOF
 	if
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
