@@ -321,6 +321,9 @@ INIT mercury_sys_init_thread_modules
 :- pragma foreign_export("C",
     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
     "ML_call_back_to_mercury_cc_multi").
+:- pragma foreign_export("IL",
+    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    "ML_call_back_to_mercury_cc_multi").
 
 call_back_to_mercury(Goal, !IO) :-
     Goal(!IO).
@@ -338,7 +341,7 @@ public class MercuryThread {
 
     public void execute_goal()
     {
-        mercury.thread.mercury_code.call_back_to_mercury_cc_multi(Goal);
+        mercury.thread.mercury_code.ML_call_back_to_mercury_cc_multi(Goal);
     }
 }").
 
