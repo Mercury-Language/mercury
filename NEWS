@@ -211,6 +211,8 @@ Changes to the Mercury debugger:
 
 * The `dd' command now accepts a `--reset-knowledge-base' option.
 
+* You can now put breakpoints on individual events inside procedures.
+
 DETAILED LISTING
 ================
 
@@ -296,6 +298,12 @@ Changes to the Mercury debugger:
 * The `dd' command now accepts a `--reset-knowledge-base' option. 
   This option resets the declarative debugger's knowledge base of previous
   question answers.
+
+* You can now put breakpoints on individual events inside procedures.
+  Commands of the form "break <procedure-specification> <portname>"
+  will cause execution to stop only at the specified port in the specified
+  procedure. If there is more than event of the given port type in the
+  procedure, mdb will prompt the user to select one.
 
 NEWS for Mercury 0.13.1
 -----------------------

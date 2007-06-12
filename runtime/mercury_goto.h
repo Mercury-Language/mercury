@@ -158,6 +158,72 @@
 	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8)),		\
 	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln9)),
 
+#define MR_DECL_LABEL_LAYOUT(label)					\
+	static const MR_LabelLayout MR_LABEL_LAYOUT_NAME(label);
+
+#define MR_DECL_LABEL_LAYOUT1(e, ln1)					\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))
+
+#define MR_DECL_LABEL_LAYOUT2(e, ln1, ln2)				\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))
+
+#define MR_DECL_LABEL_LAYOUT3(e, ln1, ln2, ln3)				\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))
+
+#define MR_DECL_LABEL_LAYOUT4(e, ln1, ln2, ln3, ln4)			\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))
+
+#define MR_DECL_LABEL_LAYOUT5(e, ln1, ln2, ln3, ln4, ln5)		\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5))
+
+#define MR_DECL_LABEL_LAYOUT6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6))
+
+#define MR_DECL_LABEL_LAYOUT7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7))
+
+#define MR_DECL_LABEL_LAYOUT8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8) \
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8))
+
+#define MR_DECL_LABEL_LAYOUT9(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9) \
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln9))
+
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
 ** causes that name to be included in the executable as static readonly data.
@@ -473,17 +539,17 @@
   #endif
 
 #elif defined(__arm__)
-	
+
    /*
    ** The following code for supporting non-local gotos and PIC on ARM
    ** is thanks to Sergey Khorev <iamphet@nm.ru>.
    */
    #if MR_PIC
- 
+
      /*
      ** At each entry point, where we may have been jumped to from
      ** code in a different C file, we need to set up the PIC register.
-     ** We do this by adding _GLOBAL_OFFSET_TABLE_ value to the PC register 
+     ** We do this by adding _GLOBAL_OFFSET_TABLE_ value to the PC register
      ** Current instruction address is (PC - 8) hence -(0b + 8)
      ** (I don't understand the details exactly, this code is
      ** basically copied from the output of `gcc -fpic -S' for a function
@@ -497,13 +563,13 @@
      ** can safely keep GCC uninformed because we just do GCC's work
      ** and the PIC register is saved over call
      ** Loading arbitrary immediate values into ARM registers is not possible
-     ** directly hence the .word directive in the code section and the branch 
+     ** directly hence the .word directive in the code section and the branch
      ** instruction bypassing it.
      ** If you change MR_ARM_PIC_REG, update CFLAGS_FOR_PIC (-mpic-register)
      ** in configure.in.
      */
      #define MR_ARM_PIC_REG "sl"
- 
+
      #define MR_INLINE_ASM_FIXUP_REGS				\
        "	    ldr	" MR_ARM_PIC_REG ", 1f\n"			\
        "0:\n"							\
@@ -512,7 +578,7 @@
        "1:\n"							\
        "	    .word	_GLOBAL_OFFSET_TABLE_-(0b+8)\n"		\
        "2:\n"
- 
+
      /*
      ** For Linux-ELF shared libraries, we need to declare that the type of
      ** labels is #function (i.e. code, not data), otherwise the dynamic
@@ -523,13 +589,13 @@
        #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
  	  "	.type _entry_" MR_STRINGIFY(label) ",#function\n"
      #endif
- 
+
      /*
      ** Save a few clock ticks branching past MR_INLINE_ASM_FIXUP_REGS
      */
      #define MR_ASM_FALLTHROUGH(label) \
        goto MR_skip(label);
- 
+
    #endif
 
 #endif
@@ -703,7 +769,7 @@
   					general-purpose register
   	)
   */
-	
+
   /*
   ** The following macro expands into a dummy assembler statement that
   ** contains no code.  It is used to suppress optimizations in gcc 4
@@ -723,11 +789,11 @@
 		:			No inputs.
 		:"memory"		Tells gcc that this "instruction" might
 					clobber the register contents so it
-					shouldn't cache memory values in 
+					shouldn't cache memory values in
 					registers.
 	)
    */
-  
+
   /*
   ** Since we're jumping into and out of the middle of functions,
   ** we need to make sure that gcc thinks that (1) the function's address
@@ -1210,7 +1276,7 @@
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));
 
-#define	MR_init_label_sl4(e, ln1, ln2, ln3, ln4)				\
+#define	MR_init_label_sl4(e, ln1, ln2, ln3, ln4)			\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
@@ -1223,7 +1289,7 @@
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));
 
-#define	MR_init_label_sl6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
+#define	MR_init_label_sl6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
 	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\

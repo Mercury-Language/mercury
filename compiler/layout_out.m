@@ -269,6 +269,12 @@ output_layout_name(Data, !IO) :-
         output_proc_label_no_prefix(make_proc_label_from_rtti(RttiProcLabel),
             !IO)
     ;
+        Data = proc_layout_label_layouts(RttiProcLabel),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_proc_label_layouts__", !IO),
+        output_proc_label_no_prefix(make_proc_label_from_rtti(RttiProcLabel),
+            !IO)
+    ;
         Data = proc_layout_head_var_nums(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_head_var_nums__", !IO),
@@ -467,6 +473,11 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
         io.write_string("static MR_STATIC_CODE_CONST MR_ExecTrace\n\t", !IO),
         output_layout_name(Name, !IO)
     ;
+        Name = proc_layout_label_layouts(_ProcLabel),
+        io.write_string("static const MR_LabelLayout *", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
         Name = proc_layout_head_var_nums(_ProcLabel),
         io.write_string("static const ", !IO),
         io.write_string("MR_uint_least16_t ", !IO),
@@ -592,6 +603,7 @@ layout_name_would_include_code_addr(user_event_layout(_, _)) = no.
 layout_name_would_include_code_addr(user_event_attr_var_nums(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
+layout_name_would_include_code_addr(proc_layout_label_layouts(_)) = no.
 layout_name_would_include_code_addr(proc_layout_head_var_nums(_)) = no.
 layout_name_would_include_code_addr(proc_layout_var_names(_)) = no.
 layout_name_would_include_code_addr(proc_layout_body_bytecode(_)) = no.
@@ -855,7 +867,7 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
         output_layout_no_proc_id_group(!IO),
         output_proc_layout_data_defn_end(!IO)
     ;
-        MaybeRest = proc_id(MaybeProcStatic, MaybeExecTrace),
+        MaybeRest = proc_id(MaybeProcStatic, MaybeExecTrace, ProcBodyBytes),
         (
             MaybeProcStatic = yes(ProcStatic),
             output_proc_static_data_defn(RttiProcLabel, ProcStatic, !DeclSet,
@@ -878,6 +890,17 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
         ;
             MaybeExecTrace = no
         ),
+        (
+            ProcBodyBytes = []
+        ;
+            ProcBodyBytes = [_ | _],
+            io.write_string("\n", !IO),
+            output_layout_name_storage_type_name(
+                proc_layout_body_bytecode(RttiProcLabel), yes, !IO),
+            io.write_string(" = {\n", !IO),
+            output_bytecodes_driver(ProcBodyBytes, !IO),
+            io.write_string("};\n\n", !IO)
+        ),
 
         output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal,
             !IO),
@@ -894,11 +917,19 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
         ),
         (
             MaybeProcStatic = no,
-            io.write_string("NULL\n", !IO)
+            io.write_string("NULL,\n", !IO)
         ;
             MaybeProcStatic = yes(_),
             io.write_string("&", !IO),
             output_layout_name(proc_static(RttiProcLabel), !IO),
+            io.write_string(",\n", !IO)
+        ),
+        (
+            ProcBodyBytes = [],
+            io.write_string("NULL\n", !IO)
+        ;
+            ProcBodyBytes = [_ | _],
+            output_layout_name(proc_layout_body_bytecode(RttiProcLabel), !IO),
             io.write_string("\n", !IO)
         ),
         output_proc_layout_data_defn_end(!IO)
@@ -914,7 +945,7 @@ maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel) = Kind :-
         MaybeRest = no_proc_id,
         Kind = proc_layout_traversal
     ;
-        MaybeRest = proc_id(_, _),
+        MaybeRest = proc_id(_, _, _),
         Kind = proc_layout_proc_id(proc_label_user_or_uci(ProcLabel))
     ).
 
@@ -1009,13 +1040,17 @@ output_layout_no_proc_id_group(!IO) :-
     io::di, io::uo) is det.
 
 output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
-    ExecTrace = proc_layout_exec_trace(MaybeCallLabelLayout, _ProcBodyBytes,
-        MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
+    ExecTrace = proc_layout_exec_trace(MaybeCallLabelLayout,
+        EventDataAddrs, MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
         _MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
         _MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
         _MaybeCallTableSlot, _EffTraceLevel, _Flags),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     ModuleName = get_defining_module_name(ProcLabel),
+    output_label_layout_addrs_in_vector(EventDataAddrs, "MR_DECL_LABEL_LAYOUT",
+        !IO),
+    EventDataDeclIds = list.map(wrap_decl_data_addr, EventDataAddrs),
+    list.foldl(decl_set_insert, EventDataDeclIds, !DeclSet),
     (
         MaybeCallLabelLayout = yes(CallLabelDetails),
         CallLabelDetails = label_layout_details(CallProcLabel, LabelNum,
@@ -1032,6 +1067,10 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     ;
         MaybeTableInfo = no
     ).
+
+:- func wrap_decl_data_addr(data_addr) = decl_id.
+
+wrap_decl_data_addr(DataAddr) = decl_data_addr(DataAddr).
 
     % The job of this predicate is to minimize stack space consumption in
     % grades that do not allow output_bytecodes to be tail recursive.
@@ -1076,22 +1115,24 @@ output_bytecodes(Bytes, BytesLeft, !.Seq, MaxSeq, !IO) :-
     io::di, io::uo) is det.
 
 output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
-    ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails, ProcBodyBytes,
-        MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
+    ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails,
+        EventDataAddrs, MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
         MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
         MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot, EffTraceLevel, Flags),
+
     (
-        ProcBodyBytes = []
+        EventDataAddrs = []
     ;
-        ProcBodyBytes = [_ | _],
+        EventDataAddrs = [_ | _],
         io.write_string("\n", !IO),
         output_layout_name_storage_type_name(
-            proc_layout_body_bytecode(RttiProcLabel), yes, !IO),
+            proc_layout_label_layouts(RttiProcLabel), yes, !IO),
         io.write_string(" = {\n", !IO),
-        output_bytecodes_driver(ProcBodyBytes, !IO),
-        io.write_string("};\n", !IO)
+        output_label_layout_addrs_in_vector(EventDataAddrs, "MR_LABEL_LAYOUT",
+            !IO),
+        io.write_string("};\n\n", !IO)
     ),
-    io.write_string("\n", !IO),
+
     output_layout_name_storage_type_name(
         proc_layout_exec_trace(RttiProcLabel), yes, !IO),
     io.write_string(" = {\n", !IO),
@@ -1112,14 +1153,17 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     output_layout_name(module_layout(ModuleName), !IO),
     io.write_string(",\n", !IO),
     (
-        ProcBodyBytes = [],
-        io.write_string("NULL", !IO)
+        EventDataAddrs = [],
+        io.write_string("NULL,\n", !IO)
     ;
-        ProcBodyBytes = [_ | _],
-        output_layout_name(proc_layout_body_bytecode(RttiProcLabel), !IO)
+        EventDataAddrs = [_ | _],
+        output_layout_name(proc_layout_label_layouts(RttiProcLabel), !IO),
+        io.write_string(",\n", !IO)
     ),
+    list.length(EventDataAddrs, NumEventDataAddrs),
+    io.write_int(NumEventDataAddrs, !IO),
     io.write_string(",\n", !IO),
-    io.write_string("0,\n{ ", !IO),
+    io.write_string("{ ", !IO),
     (
         MaybeTableInfo = yes(TableInfo),
         io.write_string("(const void *) &", !IO),
@@ -1895,67 +1939,71 @@ output_file_layout_label_layout_vector_defn(ModuleName, FileNum, LabelAddrs,
         io.write_string("NULL\n", !IO)
     ;
         LabelAddrs = [_ | _],
-        list.map(project_label_layout, LabelAddrs, Labels),
-        output_label_layout_addrs_in_vector(Labels, !IO)
+        output_label_layout_addrs_in_vector(LabelAddrs, "MR_LABEL_LAYOUT", !IO)
     ),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
-:- pred project_label_layout(data_addr::in, label::out) is det.
+%-----------------------------------------------------------------------------%
 
-project_label_layout(DataAddr, Label) :-
+:- pred output_label_layout_addrs_in_vector(list(data_addr)::in, string::in,
+    io::di, io::uo) is det.
+
+output_label_layout_addrs_in_vector([], _, !IO).
+output_label_layout_addrs_in_vector([DataAddr | DataAddrs], Macro, !IO) :-
     (
         DataAddr = layout_addr(LayoutName),
-        LayoutName = label_layout(ProcLabel, LabelNum, _)
+        LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info)
     ->
-        Label = internal_label(LabelNum, ProcLabel)
-    ;
-        unexpected(this_file, "project_label_layout: not label layout")
-    ).
-
-:- pred output_label_layout_addrs_in_vector(list(label)::in, io::di, io::uo)
-    is det.
-
-output_label_layout_addrs_in_vector([], !IO).
-output_label_layout_addrs_in_vector([Label | Labels], !IO) :-
-    (
-        Label = internal_label(LabelNum, ProcLabel),
         groupable_labels(ProcLabel, 1, _N, [LabelNum], RevLabelNums,
-            Labels, RemainingLabels)
-    ->
+            DataAddrs, RemainingDataAddrs),
         list.reverse(RevLabelNums, LabelNums),
-        io.write_string("MR_LABEL_LAYOUT", !IO),
+        io.write_string(Macro, !IO),
         io.write_int(list.length(LabelNums), !IO),
         io.write_string("(", !IO),
         output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(",", !IO),
         io.write_list(LabelNums, ",", io.write_int, !IO),
         io.write_string(")\n", !IO),
-        output_label_layout_addrs_in_vector(RemainingLabels, !IO)
+        output_label_layout_addrs_in_vector(RemainingDataAddrs, Macro, !IO)
     ;
-        io.write_string("MR_LABEL_LAYOUT(", !IO),
-        output_label(Label, !IO),
-        io.write_string("),\n", !IO),
-        output_label_layout_addrs_in_vector(Labels, !IO)
+        unexpected(this_file,
+            "output_label_layout_addrs_in_vector: not label layout")
     ).
 
 :- pred groupable_labels(proc_label::in, int::in, int::out,
-    list(int)::in, list(int)::out, list(label)::in, list(label)::out) is det.
+    list(int)::in, list(int)::out, list(data_addr)::in, list(data_addr)::out)
+    is det.
 
-groupable_labels(ProcLabel, !Count, !RevLabelsNums, !Labels) :-
+groupable_labels(GroupProcLabel, !Count, !RevLabelsNums, !DataAddrs) :-
     (
-        % There must be a macro of the form MR_LABEL_LAYOUT<n>
-        % for every <n> up to MaxChunkSize.
-        !.Labels = [Label | !:Labels],
-        MaxChunkSize = 9,
-        !.Count < MaxChunkSize, % leave room for the one we're adding
-        Label = internal_label(LabelNum, ProcLabel)
-    ->
-        !:Count = !.Count + 1,
-        !:RevLabelsNums = [LabelNum | !.RevLabelsNums],
-        groupable_labels(ProcLabel, !Count, !RevLabelsNums, !Labels)
+        !.DataAddrs = []
     ;
-        true
+        !.DataAddrs = [DataAddr | DataAddrsTail],
+        (
+            DataAddr = layout_addr(LayoutName),
+            LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info)
+        ->
+            % There must be a macro of the form MR_LABEL_LAYOUT<n> and
+            % MR_DECL_LABEL_LAYOUT<n> for every <n> up to MaxChunkSize.
+            MaxChunkSize = 9,
+            (
+                % We cannot group together labels from different procedures.
+                ProcLabel = GroupProcLabel,
+                % Leave room for the one we're adding.
+                !.Count < MaxChunkSize
+            ->
+                !:DataAddrs = DataAddrsTail,
+                !:Count = !.Count + 1,
+                !:RevLabelsNums = [LabelNum | !.RevLabelsNums],
+                groupable_labels(GroupProcLabel, !Count, !RevLabelsNums,
+                    !DataAddrs)
+            ;
+                true
+            )
+        ;
+            unexpected(this_file, "groupable_labels: not label layout")
+        )
     ).
 
 %-----------------------------------------------------------------------------%

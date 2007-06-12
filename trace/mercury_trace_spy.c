@@ -1081,11 +1081,12 @@ MR_delete_spy_point(int point_table_slot)
 void
 MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
 {
-    MR_SpyPoint *point;
-    MR_SpyCond  *cond;
+    MR_SpyPoint     *point;
+    MR_SpyCond      *cond;
+    MR_TracePort    port;
 
     point = MR_spy_points[spy_point_num];
-    fprintf(fp, "%2d: %1s %-5s %9s ",
+    fprintf(fp, "%2d: %1s %-5s %-9s ",
         spy_point_num,
         point->MR_spy_exists ?
             (point->MR_spy_enabled ? "+" : "-") :
@@ -1097,8 +1098,19 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
         case MR_SPY_ALL:
         case MR_SPY_INTERFACE:
         case MR_SPY_ENTRY:
+            MR_print_proc_id(fp, point->MR_spy_proc);
+            break;
+
         case MR_SPY_SPECIFIC:
             MR_print_proc_id(fp, point->MR_spy_proc);
+            MR_assert(point->MR_spy_label != NULL);
+            port = point->MR_spy_label->MR_sll_port;
+            if (port < 0) {
+                fprintf(fp, " NONE ");
+            } else {
+                fprintf(fp, " %4s ", MR_simplified_port_names[port]);
+            }
+            fprintf(fp, "%s", MR_label_goal_path(point->MR_spy_label));
             break;
 
         case MR_SPY_LINENO:

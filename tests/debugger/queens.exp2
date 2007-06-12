@@ -368,8 +368,10 @@ mdb> delete *
  0: E stop  interface pred queens.print_list/3-0 (det)
  1: D stop  interface pred queens.qdelete/3-0 (nondet)
  2: E stop  linenumber queens.m:40
-mdb> break main
- 0: + stop  interface pred queens.main/2-0 (cc_multi)
+mdb> break main SWTC
+There is no SWTC port in pred queens.main/2-0 (cc_multi).
+mdb> break main EXIT
+ 0: + stop  specific  pred queens.main/2-0 (cc_multi) EXIT 
 mdb> continue -n
 [1, 3, 5, 2, 4]
      E64:     C1 EXIT queens.m:14
@@ -379,16 +381,21 @@ Retry across I/O operations is not always safe.
 Are you sure you want to do it? yes
       E1:     C1 CALL queens.m:14
                          pred queens.main/2-0 (cc_multi)
-mdb> break nodiag
- 1: + stop  interface pred queens.nodiag/3-0 (semidet)
+mdb> break nodiag SWTC
+Ambiguous port specification. The matches are:
+0: SWTC s1-2;
+1: SWTC s2-2;
+
+Which do you want to put a breakpoint on (0-1 or *)? 1
+ 1: + stop  specific  pred queens.nodiag/3-0 (semidet) SWTC s2-2;
 mdb> continue
-     E40:    C16 CALL queens.m:60 (from queens.m:54)
-                         pred queens.nodiag/3-0 (semidet)
+     E41:    C16 SWTC queens.m:61
+                         pred queens.nodiag/3-0 (semidet) s2-2;
 mdb> print *
        B (arg 1)              	1
        D (arg 2)              	1
        HeadVar__3             	[2, 3, 4, 5]
 mdb> delete 0
- 0: E stop  interface pred queens.main/2-0 (cc_multi)
+ 0: E stop  specific  pred queens.main/2-0 (cc_multi) EXIT 
 mdb> continue -n -S
 [1, 3, 5, 2, 4]

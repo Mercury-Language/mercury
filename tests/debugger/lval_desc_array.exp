@@ -5,7 +5,7 @@ mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
 mdb> break -E 107 -e lval_desc_array__increment
- 0: + stop      entry pred lval_desc_array.increment/2-0 (det)
+ 0: + stop  entry     pred lval_desc_array.increment/2-0 (det)
             (ignore next 107 call events)
 mdb> continue
      217:    110  3 CALL pred lval_desc_array.increment/2-0 (det)

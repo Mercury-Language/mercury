@@ -453,6 +453,8 @@ dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_exec_trace(RttiProcLabel)) =
     "proc_layout_exec_trace(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
+dump_layout_name(proc_layout_label_layouts(RttiProcLabel)) =
+    "proc_layout_label_layouts(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_head_var_nums(RttiProcLabel)) =
     "proc_layout_head_var_nums(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_var_names(RttiProcLabel)) =

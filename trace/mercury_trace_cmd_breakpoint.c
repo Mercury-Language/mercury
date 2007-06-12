@@ -37,6 +37,7 @@ typedef enum {
         MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
 } MR_MultiMatch;
 
+static  MR_bool     MR_matches_port_name(const char *word);
 static  const char  *MR_parse_spy_print(MR_BrowseFormat format, MR_bool warn,
                         char *word, MR_SpyPrint *sp_ptr);
 static  MR_SpyPrintList
@@ -103,13 +104,12 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         return KEEP_INTERACTING;
     }
 
+    MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+
     when = MR_default_breakpoint_scope;
     action = MR_SPY_STOP;
     multi_match = MR_MULTIMATCH_ASK;
-    /*
-    ** The value of ignore_when doesn't matter
-    ** while ignore_count contains zero.
-    */
+    /* The value of ignore_when doesn't matter while ignore_count == 0. */
     ignore_when = MR_SPY_DONT_IGNORE;
     ignore_count = 0;
     print_list = NULL;
@@ -141,8 +141,6 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_trace_usage_cur_cmd();
             return KEEP_INTERACTING;
         }
-
-        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
 
         if (user_event_name != NULL) {
             found_event_set = MR_FALSE;
@@ -215,7 +213,6 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             return KEEP_INTERACTING;
         }
 
-        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
         slot = MR_add_user_event_spy_point(action, ignore_when, ignore_count,
             user_event_set, user_event_name, print_list, &problem);
         MR_maybe_print_spy_point(slot, problem);
@@ -235,8 +232,6 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_trace_usage_cur_cmd();
             return KEEP_INTERACTING;
         }
-
-        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
 
         if (user_event_set != NULL) {
             found_event_set = MR_FALSE;
@@ -268,7 +263,6 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             return KEEP_INTERACTING;
         }
 
-        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
         slot = MR_add_user_event_spy_point(action, ignore_when, ignore_count,
             user_event_set, NULL, print_list, &problem);
         MR_maybe_print_spy_point(slot, problem);
@@ -292,7 +286,6 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             return KEEP_INTERACTING;
         }
 
-        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
         slot = MR_add_proc_spy_point(MR_SPY_SPECIFIC, action, ignore_when,
             ignore_count, layout->MR_sll_entry, layout, print_list, &problem);
         MR_maybe_print_spy_point(slot, problem);
@@ -300,7 +293,6 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_MatchesInfo  matches;
         int             slot;
 
-        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
         matches = MR_search_for_matching_procedures(&proc_spec);
         if (matches.match_proc_next == 0) {
             fflush(MR_mdb_out);
@@ -324,8 +316,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             int     i;
             char    *line2;
 
-            fflush(MR_mdb_out);
-            fprintf(MR_mdb_err,
+            fprintf(MR_mdb_out,
                 "Ambiguous procedure specification. The matches are:\n");
 
             for (i = 0; i < matches.match_proc_next; i++) {
@@ -368,6 +359,151 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_free(line2);
             }
         }
+    } else if (word_count == 3 && MR_parse_proc_spec(words[1], &proc_spec) &&
+        MR_matches_port_name(words[2]) && MR_strdiff(words[2], "EXCP"))
+    {
+        const MR_ProcLayout     *selected_proc;
+        const MR_LabelLayout    *selected_label;
+        MR_MatchesInfo          matches;
+        MR_TracePort            port;
+        const MR_LabelLayout    **matching_labels;
+        int                     matching_port_count;
+        int                     slot;
+        int                     i;
+
+        if (multi_match == MR_MULTIMATCH_ALL) {
+            fprintf(MR_mdb_err, "Warning: "
+                "the -A option is ignored when a port is specified.\n");
+            multi_match = MR_MULTIMATCH_ASK;
+        }
+
+        matches = MR_search_for_matching_procedures(&proc_spec);
+        if (matches.match_proc_next == 0) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err, "mdb: there is no such procedure.\n");
+            return KEEP_INTERACTING;
+        } else if (matches.match_proc_next == 1) {
+            selected_proc = matches.match_procs[0];
+        } else {
+            char    buf[80];
+            char    *line2;
+
+            fprintf(MR_mdb_out,
+                "Ambiguous procedure specification. The matches are:\n");
+
+            for (i = 0; i < matches.match_proc_next; i++) {
+                fprintf(MR_mdb_out, "%d: ", i);
+                MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
+            }
+
+            if (multi_match == MR_MULTIMATCH_ONE) {
+                return KEEP_INTERACTING;
+            }
+
+            sprintf(buf, "\nWhich do you want to put a breakpoint on (0-%d)? ",
+                matches.match_proc_next - 1);
+            line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
+            if (line2 == NULL) {
+                /* This means the user input EOF. */
+                fprintf(MR_mdb_out, "none of them\n");
+                return KEEP_INTERACTING;
+            } else if (MR_trace_is_natural_number(line2, &i)) {
+                if (0 <= i && i < matches.match_proc_next) {
+                    selected_proc = matches.match_procs[i];
+                } else {
+                    fprintf(MR_mdb_out, "no such match\n");
+                    MR_free(line2);
+                    return KEEP_INTERACTING;
+                }
+            } else {
+                fprintf(MR_mdb_out, "none of them\n");
+                MR_free(line2);
+                return KEEP_INTERACTING;
+            }
+        }
+
+        matching_port_count = 0;
+        matching_labels = MR_malloc(sizeof(const MR_LabelLayout *) *
+            selected_proc->MR_sle_num_labels);
+        for (i = 0; i < selected_proc->MR_sle_num_labels; i++) {
+            if (selected_proc->MR_sle_labels[i]->MR_sll_port < 0) {
+                continue;
+            }
+
+            port = (MR_TracePort) selected_proc->MR_sle_labels[i]->MR_sll_port;
+            if (MR_streq(MR_simplified_port_names[port], words[2])) {
+                matching_labels[matching_port_count] =
+                    selected_proc->MR_sle_labels[i];
+                matching_port_count++;
+            }
+        }
+
+        if (matching_port_count == 0) {
+            fprintf(MR_mdb_out, "There is no %s port in ", words[2]);
+            MR_print_proc_id(MR_mdb_out, selected_proc);
+            fprintf(MR_mdb_out, ".\n");
+            MR_free(matching_labels);
+            return KEEP_INTERACTING;
+        } else if (matching_port_count == 1) {
+            selected_label = matching_labels[0];
+        } else {
+            char    buf[80];
+            char    *line2;
+
+            fprintf(MR_mdb_out,
+                "Ambiguous port specification. The matches are:\n");
+
+            for (i = 0; i < matching_port_count; i++) {
+                const MR_LabelLayout    *this_label;
+
+                this_label = matching_labels[i];
+                fprintf(MR_mdb_out, "%d: %4s %s\n",
+                    i,
+                    MR_simplified_port_names[this_label->MR_sll_port],
+                    MR_label_goal_path(this_label));
+            }
+
+            sprintf(buf, "\nWhich do you want to put "
+                "a breakpoint on (0-%d or *)? ",
+                matching_port_count - 1);
+            line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
+            if (line2 == NULL) {
+                /* This means the user input EOF. */
+                fprintf(MR_mdb_out, "none of them\n");
+                MR_free(matching_labels);
+                return KEEP_INTERACTING;
+            } else if (MR_streq(line2, "*")) {
+                for (i = 0; i < matching_port_count; i++) {
+                    slot = MR_add_proc_spy_point(MR_SPY_SPECIFIC, action,
+                        ignore_when, ignore_count, selected_proc,
+                        matching_labels[i], print_list, &problem);
+                    MR_maybe_print_spy_point(slot, problem);
+                }
+
+                MR_free(matching_labels);
+                MR_free(line2);
+                return KEEP_INTERACTING;
+            } else if (MR_trace_is_natural_number(line2, &i)) {
+                if (0 <= i && i < matching_port_count) {
+                    selected_label = matching_labels[i];
+                } else {
+                    fprintf(MR_mdb_out, "no such match\n");
+                    MR_free(matching_labels);
+                    MR_free(line2);
+                    return KEEP_INTERACTING;
+                }
+            } else {
+                fprintf(MR_mdb_out, "none of them\n");
+                MR_free(matching_labels);
+                MR_free(line2);
+                return KEEP_INTERACTING;
+            }
+        }
+
+        slot = MR_add_proc_spy_point(MR_SPY_SPECIFIC, action, ignore_when,
+            ignore_count, selected_proc, selected_label, print_list, &problem);
+        MR_maybe_print_spy_point(slot, problem);
+        MR_free(matching_labels);
     } else if (word_count == 2 &&
         MR_parse_source_locn(words[1], &file, &line))
     {
@@ -853,6 +989,20 @@ MR_trace_cmd_procedures(char **words, int word_count, MR_TraceCmdInfo *cmd,
 }
 
 /****************************************************************************/
+
+static MR_bool
+MR_matches_port_name(const char *word)
+{
+    int i;
+
+    for (i = 0; i < MR_PORT_NUM_PORTS; i++) {
+        if (MR_streq(word, MR_simplified_port_names[i])) {
+            return MR_TRUE;
+        }
+    }
+
+    return MR_FALSE;
+}
 
 static const char *
 MR_parse_spy_print(MR_BrowseFormat format, MR_bool warn, char *word,

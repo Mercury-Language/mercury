@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: stack_layout.m.
 % Main authors: trd, zs.
-% 
+%
 % This module generates label, procedure, module and closure layout structures
 % for code in the current module for the LLDS backend. Layout structures are
 % used by the parts of the runtime system that need to look at the stacks
@@ -24,7 +24,7 @@
 % runtime/mercury_stack_layout.h.
 %
 % TODO: Handle the parent_sp register and parent stack variables.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.stack_layout.
@@ -276,10 +276,9 @@ add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 
 %---------------------------------------------------------------------------%
 
-    % Construct the layouts that concern a single procedure:
-    % the procedure-specific layout and the layouts of the labels
-    % inside that procedure. Also update the module-wide label table
-    % with the labels defined in this procedure.
+    % Construct the layouts that concern a single procedure: the procedure
+    % layout and the layouts of the labels inside that procedure. Also update
+    % the module-wide label table with the labels defined in this procedure.
     %
 :- pred construct_layouts(proc_layout_info::in,
     stack_layout_info::in, stack_layout_info::out) is det.
@@ -331,26 +330,35 @@ construct_layouts(ProcLayoutInfo, !Info) :-
     ->
         list.map_foldl(
             construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap),
-            Internals, InternalLayouts, !Info)
+            Internals, InternalLabelInfos, !Info)
     ;
-        InternalLayouts = []
+        InternalLabelInfos = []
     ),
     get_label_tables(!.Info, LabelTables0),
-    list.foldl(update_label_table, InternalLayouts,
+    list.foldl(update_label_table, InternalLabelInfos,
         LabelTables0, LabelTables),
     set_label_tables(LabelTables, !Info),
-    construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info).
+    construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
+        !Info).
 
 %---------------------------------------------------------------------------%
 
+:- type internal_label_info
+    --->    internal_label_info(
+                containing_proc         :: proc_label,
+                label_num_in_proc       :: int,
+                maybe_has_var_info      :: label_vars,
+                internal_layout_info    :: internal_layout_info
+            ).
+
     % Add the given label layout to the module-wide label tables.
     %
-:- pred update_label_table(
-    {proc_label, int, label_vars, internal_layout_info}::in,
+:- pred update_label_table(internal_label_info::in,
     map(string, label_table)::in, map(string, label_table)::out) is det.
 
-update_label_table({ProcLabel, LabelNum, LabelVars, InternalInfo},
-        !LabelTables) :-
+update_label_table(InternalLabelInfo, !LabelTables) :-
+    InternalLabelInfo = internal_label_info(ProcLabel, LabelNum, LabelVars,
+        InternalInfo),
     InternalInfo = internal_layout_info(Port, _, Return),
     (
         Return = yes(return_layout_info(TargetsContexts, _)),
@@ -361,8 +369,8 @@ update_label_table({ProcLabel, LabelNum, LabelVars, InternalInfo},
         ;
             IsReturn = unknown_callee
         ),
-        update_label_table_2(ProcLabel, LabelNum,
-            LabelVars, Context, IsReturn, !LabelTables)
+        update_label_table_2(ProcLabel, LabelNum, LabelVars, Context,
+            IsReturn, !LabelTables)
     ;
         Port = yes(trace_port_layout_info(Context, _, _, _, _, _)),
         context_is_valid(Context)
@@ -482,10 +490,11 @@ construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
     % Construct a procedure-specific layout.
     %
 :- pred construct_proc_layout(proc_layout_info::in,
-    proc_layout_kind::in, var_num_map::in,
+    list(internal_label_info)::in, proc_layout_kind::in, var_num_map::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
-construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
+construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
+        !Info) :-
     ProcLayoutInfo = proc_layout_info(RttiProcLabel,
         EntryLabel,
         Detism,
@@ -522,15 +531,23 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
             valid_proc_layout(ProcLayoutInfo)
         ->
             construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
-                MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes, Goal,
-                NeedGoalRep, InstMap, TraceSlotInfo,
-                VarSet, VarTypes, MaybeTableInfo,
-                NeedsAllNames, VarNumMap, ExecTrace, !Info),
+                MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes, TraceSlotInfo,
+                VarSet, VarTypes, MaybeTableInfo, NeedsAllNames, VarNumMap,
+                InternalLabelInfos, ExecTrace, !Info),
             MaybeExecTrace = yes(ExecTrace)
         ;
             MaybeExecTrace = no
         ),
-        More = proc_id(MaybeProcStatic, MaybeExecTrace)
+        (
+            NeedGoalRep = no,
+            ProcBytes = []
+        ;
+            NeedGoalRep = yes,
+            ModuleInfo = !.Info ^ module_info,
+            represent_proc_as_bytecodes(HeadVars, Goal, InstMap, VarTypes,
+                VarNumMap, ModuleInfo, !Info, ProcBytes)
+        ),
+        More = proc_id(MaybeProcStatic, MaybeExecTrace, ProcBytes)
     ),
     ProcLayout = proc_layout_data(RttiProcLabel, Traversal, More),
     LayoutName = proc_layout(RttiProcLabel, Kind),
@@ -548,30 +565,27 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 
 :- pred construct_trace_layout(rtti_proc_label::in,
     eval_method::in, trace_level::in, maybe(label)::in, int::in,
-    list(prog_var)::in, list(mer_mode)::in, hlds_goal::in, bool::in,
-    instmap::in, trace_slot_info::in, prog_varset::in, vartypes::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    trace_slot_info::in, prog_varset::in, vartypes::in,
     maybe(proc_table_info)::in, bool::in, var_num_map::in,
-    proc_layout_exec_trace::out,
+    list(internal_label_info)::in, proc_layout_exec_trace::out,
     stack_layout_info::in, stack_layout_info::out) is det.
 
 construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
-        MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes,
-        Goal, NeedGoalRep, InstMap, TraceSlotInfo, _VarSet, VarTypes,
-        MaybeTableInfo, NeedsAllNames, VarNumMap, ExecTrace, !Info) :-
+        MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes, TraceSlotInfo,
+        _VarSet, VarTypes, MaybeTableInfo, NeedsAllNames, VarNumMap,
+        InternalLabelInfos, ExecTrace, !Info) :-
+    collect_event_data_addrs(InternalLabelInfos,
+        [], RevInterfaceEventDataAddrs, [], RevInternalEventDataAddrs),
+    list.reverse(RevInterfaceEventDataAddrs, InterfaceEventDataAddrs),
+    list.reverse(RevInternalEventDataAddrs, InternalEventDataAddrs),
+    EventDataAddrs = InterfaceEventDataAddrs ++ InternalEventDataAddrs,
     construct_var_name_vector(VarNumMap,
         NeedsAllNames, MaxVarNum, VarNameVector, !Info),
     list.map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
-    ModuleInfo = !.Info ^ module_info,
-    (
-        NeedGoalRep = no,
-        ProcBytes = []
-    ;
-        NeedGoalRep = yes,
-        prog_rep.represent_proc(HeadVars, Goal, InstMap, VarTypes, VarNumMap,
-            ModuleInfo, !Info, ProcBytes)
-    ),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
+    ModuleInfo = !.Info ^ module_info,
     (
         MaybeCallLabel = yes(CallLabel),
         % The label associated with an event must have variable info.
@@ -607,11 +621,57 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
     ),
     encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes,
         0, Flags),
-    ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails, ProcBytes,
-        MaybeTableDataAddr, HeadVarNumVector, VarNameVector,
+    ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails,
+        EventDataAddrs, MaybeTableDataAddr, HeadVarNumVector, VarNameVector,
         MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
         MaybeCallTableSlot, EffTraceLevel, Flags).
+
+:- pred collect_event_data_addrs(list(internal_label_info)::in,
+    list(data_addr)::in, list(data_addr)::out,
+    list(data_addr)::in, list(data_addr)::out) is det.
+
+collect_event_data_addrs([], !RevInterfaces, !RevInternals).
+collect_event_data_addrs([Info | Infos], !RevInterfaces, !RevInternals) :-
+    Info = internal_label_info(ProcLabel, LabelNum, LabelVars, InternalInfo),
+    InternalInfo = internal_layout_info(MaybePortInfo, _, _),
+    (
+        MaybePortInfo = no
+    ;
+        MaybePortInfo = yes(PortInfo),
+        Port = PortInfo ^ port_type,
+        (
+            ( Port = port_call
+            ; Port = port_exit
+            ; Port = port_redo
+            ; Port = port_fail
+            ),
+            LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
+            DataAddr = layout_addr(LayoutName),
+            !:RevInterfaces = [DataAddr | !.RevInterfaces]
+        ;
+            ( Port = port_ite_cond
+            ; Port = port_ite_then
+            ; Port = port_ite_else
+            ; Port = port_neg_enter
+            ; Port = port_neg_success
+            ; Port = port_neg_failure
+            ; Port = port_disj_first
+            ; Port = port_disj_later
+            ; Port = port_switch
+            ; Port = port_nondet_foreign_proc_first
+            ; Port = port_nondet_foreign_proc_later
+            ; Port = port_user
+            ),
+            LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
+            DataAddr = layout_addr(LayoutName),
+            !:RevInternals = [DataAddr | !.RevInternals]
+        ;
+            Port = port_exception
+            % This port is attached to call sites, so there is no event here.
+        )
+    ),
+    collect_event_data_addrs(Infos, !RevInterfaces, !RevInternals).
 
 :- pred encode_exec_trace_flags(module_info::in, list(prog_var)::in,
     list(mer_mode)::in, vartypes::in, int::in, int::out) is det.
@@ -787,7 +847,7 @@ add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
     %
 :- pred construct_internal_layout(proc_label::in,
     layout_name::in, var_num_map::in, pair(int, internal_layout_info)::in,
-    {proc_label, int, label_vars, internal_layout_info}::out,
+    internal_label_info::out,
     stack_layout_info::in, stack_layout_info::out) is det.
 
 construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
@@ -940,7 +1000,8 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
     Label = internal_label(LabelNum, ProcLabel),
     add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
-    LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
+    LabelLayout = internal_label_info(ProcLabel, LabelNum, LabelVars,
+        Internal).
 
 :- pred construct_user_data_array(var_num_map::in,
     list(maybe(user_attribute))::in,

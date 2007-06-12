@@ -97,11 +97,13 @@ forward
 continue -n
 continue -n
 delete *
-break main
+break main SWTC
+break main EXIT
 continue -n
 retry
 yes
-break nodiag
+break nodiag SWTC
+1
 continue
 print *
 delete 0

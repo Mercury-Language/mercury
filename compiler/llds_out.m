@@ -663,7 +663,7 @@ output_write_proc_static_list_decls([], !DeclSet, !IO).
 output_write_proc_static_list_decls([Data | Datas], !DeclSet, !IO) :-
     (
         Data = proc_layout_data(_, _, MaybeRest),
-        MaybeRest = proc_id(yes(_), _)
+        MaybeRest = proc_id(yes(_), _, _)
     ->
         output_maybe_layout_data_decl(Data, !DeclSet, !IO)
     ;
@@ -678,7 +678,7 @@ output_write_proc_static_list([], !IO).
 output_write_proc_static_list([Data | Datas], !IO) :-
     (
         Data = proc_layout_data(RttiProcLabel, _, MaybeRest),
-        MaybeRest = proc_id(yes(_), _)
+        MaybeRest = proc_id(yes(_), _, _)
     ->
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         UserOrUCI = proc_label_user_or_uci(ProcLabel),

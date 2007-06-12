@@ -44,7 +44,7 @@
     %
 :- type var_num_map == map(prog_var, pair(int, string)).
 
-:- pred represent_proc(list(prog_var)::in, hlds_goal::in, 
+:- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in, 
     instmap::in, vartypes::in, var_num_map::in, module_info::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
@@ -80,7 +80,7 @@
                 module_info :: module_info
             ).
 
-represent_proc(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
+represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
         ModuleInfo, !StackInfo, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),

@@ -3309,6 +3309,52 @@ By default, the action of the break point is @samp{stop},
 its invocation condition is @samp{interface},
 the ignore count is zero, and the print list is empty.
 @sp 1
+@item break [-OPS] [-E@var{ignore-count}] [-I@var{ignore-count}] [-n] [-p@var{print-spec}]* @var{proc-spec} @var{portname}
+Puts a break point on
+one or more events of the specified type in the specified procedure.
+Port names should be specified as they are printed at events,
+e.g. @samp{CALL}, @samp{EXIT}, @samp{DISJ}, @samp{SWTC}, etc.
+@sp 1
+The option @samp{-O} or @samp{--select-one}
+selects the action to be taken
+if the specification matches more than one procedure.
+If you have specified option @samp{-O} or @samp{--select-one},
+mdb will report an error;
+otherwise, mdb will ask you which of the matched procedures you want to select.
+@sp 1
+If there is only one event of the given type in the specified procedure,
+mdb will put the breakpoint on it;
+otherwise, it will ask you whether you want to put a breakpoint
+on all matched events or just one, and if so, which one.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+The options @samp{-E@var{ignore-count}}
+and @samp{--ignore-entry @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of a call event
+that matches the breakpoint.
+The options @samp{-I@var{ignore-count}}
+and @samp{--ignore-interface @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of interface events
+that match the breakpoint.
+@sp 1
+Each occurrence of the options
+@samp{-p@var{printspec}} and @samp{--print-list @var{printspec}}
+tells the debugger to include the specified entity
+in the breakpoint's print list.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
+By default, the action of the break point is @samp{stop},
+the ignore count is zero, and the print list is empty.
+@sp 1
 @item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] [-n] [-p@var{print-spec}]* here
 Puts a break point on the procedure referred to by the current event,
 with the invocation condition being the event at the current location

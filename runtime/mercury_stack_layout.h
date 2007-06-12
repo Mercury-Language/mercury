@@ -846,10 +846,12 @@ typedef struct MR_StackTraversal_Struct {
 ** containing the procedure. This allows the debugger access to the string table
 ** stored there, as well the table associating source-file contexts with labels.
 **
-** The body_bytes field contains a pointer to an array of bytecodes that
-** represents the body of the procedure. It will be a null pointer if no
-** representation is available. If it is not null pointer, then it should
-** be interpreted by read_proc_rep in browser/declarative_execution.m.
+** The labels field contains a pointer to an array of pointers to label layout
+** structures; the size of the array is given by the num_labels field. The
+** initial part of the array will contain a pointer to the label layout
+** structure of every interface event in the procedure; the later parts will
+** contain a pointer to the label layout structure of every internal event.
+** There is no ordering on the events beyond interface first, internal second.
 **
 ** The used_var_names field points to an array that contains offsets
 ** into the string table, with the offset at index i-1 giving the name of
@@ -950,8 +952,8 @@ typedef	MR_int_least8_t		MR_TraceLevelInt;
 typedef	struct MR_ExecTrace_Struct {
 	const MR_LabelLayout	*MR_exec_call_label;
 	const MR_ModuleLayout	*MR_exec_module_layout;
-	const MR_uint_least8_t	*MR_exec_body_bytes;
-	MR_Word			MR_exec_unused;
+	const MR_LabelLayout	**MR_exec_labels;
+	MR_uint_least32_t	MR_exec_num_labels;
 	MR_TableInfo		MR_exec_table_info;
 	const MR_uint_least16_t	*MR_exec_head_var_nums;
 	const MR_uint_least32_t	*MR_exec_used_var_names;
@@ -1003,6 +1005,13 @@ typedef	struct MR_ExecTrace_Struct {
 **   MR_ProcStatic structure will be generated only if the module is compiled
 **   in a deep profiling grade.
 **
+**   The body_bytes field also belongs to this group. If this is NULL, 
+**   it means that no representation of the procedure body is available.
+**   If non-NULL, it contains a pointer to an array of bytecodes that
+**   represents the body of the procedure. The bytecode array should be
+**   interpreted by read_proc_rep in browser/declarative_execution.m
+**   (it starts with an encoded form of the array's length).
+**
 ** The runtime system considers all proc layout structures to be of type
 ** MR_ProcLayout, but must use the macros defined below to check for the
 ** existence of each substructure before accessing the fields of that
@@ -1015,7 +1024,9 @@ typedef	struct MR_ExecTrace_Struct {
 ** If the options with which a module is compiled do not require execution
 ** tracing, then the MR_ExecTrace substructure will not present, and if the
 ** options do not require procedure identification, then the MR_ProcId
-** substructure will not be present either
+** substructure will not be present either. The body_bytes field cannot be
+** non-NULL unless at least one of exec trace and proc static substructures
+** is present, but it is otherwise independent of those substructures.
 **
 ** The compiler itself generates proc layout structures using the following
 ** three types.
@@ -1033,6 +1044,7 @@ struct MR_ProcLayout_Struct {
 	MR_ProcId				MR_sle_proc_id;
 	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
+	const MR_uint_least8_t			*MR_sle_body_bytes;
 };
 
 typedef	struct MR_ProcLayoutUser_Struct {
@@ -1040,6 +1052,7 @@ typedef	struct MR_ProcLayoutUser_Struct {
 	MR_UserProcId				MR_user_id;
 	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
+	const MR_uint_least8_t			*MR_sle_body_bytes;
 } MR_ProcLayoutUser;
 
 typedef	struct MR_ProcLayoutUCI_Struct {
@@ -1047,6 +1060,7 @@ typedef	struct MR_ProcLayoutUCI_Struct {
 	MR_UCIProcId				MR_uci_id;
 	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
+	const MR_uint_least8_t			*MR_sle_body_bytes;
 } MR_ProcLayoutUCI;
 
 typedef	struct MR_ProcLayout_Traversal_Struct {
@@ -1071,7 +1085,8 @@ typedef	struct MR_ProcLayout_Traversal_Struct {
 
 #define	MR_sle_call_label	MR_sle_exec_trace->MR_exec_call_label
 #define	MR_sle_module_layout	MR_sle_exec_trace->MR_exec_module_layout
-#define	MR_sle_body_bytes       MR_sle_exec_trace->MR_exec_body_bytes
+#define	MR_sle_labels           MR_sle_exec_trace->MR_exec_labels
+#define	MR_sle_num_labels       MR_sle_exec_trace->MR_exec_num_labels
 #define	MR_sle_tabling_pointer	MR_sle_exec_trace->MR_exec_tabling_pointer
 #define	MR_sle_table_info	MR_sle_exec_trace->MR_exec_table_info
 #define	MR_sle_head_var_nums	MR_sle_exec_trace->MR_exec_head_var_nums

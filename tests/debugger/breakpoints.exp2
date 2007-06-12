@@ -32,9 +32,9 @@ mdb> break qperm
 mdb> break safe
  2: + stop  interface pred breakpoints.safe/1-0 (semidet)
 mdb> break -e qperm
- 3: + stop      entry pred breakpoints.qperm/2-0 (nondet)
+ 3: + stop  entry     pred breakpoints.qperm/2-0 (nondet)
 mdb> break -a qperm
- 4: + stop        all pred breakpoints.qperm/2-0 (nondet)
+ 4: + stop  all       pred breakpoints.qperm/2-0 (nondet)
 mdb> break /
 Ambiguous procedure specification. The matches are:
 0: func breakpoints.//2-0 (det)
@@ -71,8 +71,8 @@ mdb> break info
  0: - stop  interface pred breakpoints.data/1-0 (det)
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
  2: + stop  interface pred breakpoints.safe/1-0 (semidet)
- 3: + stop      entry pred breakpoints.qperm/2-0 (nondet)
- 4: + stop        all pred breakpoints.qperm/2-0 (nondet)
+ 3: + stop  entry     pred breakpoints.qperm/2-0 (nondet)
+ 4: + stop  all       pred breakpoints.qperm/2-0 (nondet)
  5: + stop  interface func breakpoints.//2-0 (det)
  6: + stop  interface func breakpoints.//2-0 (det)
  7: + stop  interface func breakpoints.print_list.-/2-0 (det)
@@ -85,8 +85,8 @@ mdb> delete 0
 mdb> break info
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
  2: + stop  interface pred breakpoints.safe/1-0 (semidet)
- 3: + stop      entry pred breakpoints.qperm/2-0 (nondet)
- 4: + stop        all pred breakpoints.qperm/2-0 (nondet)
+ 3: + stop  entry     pred breakpoints.qperm/2-0 (nondet)
+ 4: + stop  all       pred breakpoints.qperm/2-0 (nondet)
  5: + stop  interface func breakpoints.//2-0 (det)
  6: + stop  interface func breakpoints.//2-0 (det)
  7: + stop  interface func breakpoints.print_list.-/2-0 (det)
@@ -95,7 +95,7 @@ mdb> break info
 10: + stop  interface pred breakpoints.print_list.print_list/3-0 (det)
 11: + stop  interface pred breakpoints.print_list.print_list/3-0 (det)
 mdb> disable 3
- 3: - stop      entry pred breakpoints.qperm/2-0 (nondet)
+ 3: - stop  entry     pred breakpoints.qperm/2-0 (nondet)
 mdb> break nodiag
  0: + stop  interface pred breakpoints.nodiag/3-0 (semidet)
 mdb> break_print -v -n -b1 HeadVar__1 HeadVar__2
@@ -153,8 +153,8 @@ mdb> delete *
  0: E stop  interface pred breakpoints.nodiag/3-0 (semidet)
  1: E stop  interface pred breakpoints.qperm/2-0 (nondet)
  2: E stop  interface pred breakpoints.safe/1-0 (semidet)
- 3: D stop      entry pred breakpoints.qperm/2-0 (nondet)
- 4: E stop        all pred breakpoints.qperm/2-0 (nondet)
+ 3: D stop  entry     pred breakpoints.qperm/2-0 (nondet)
+ 4: E stop  all       pred breakpoints.qperm/2-0 (nondet)
  5: E stop  interface func breakpoints.//2-0 (det)
  6: E stop  interface func breakpoints.//2-0 (det)
  7: E stop  interface func breakpoints.print_list.-/2-0 (det)
