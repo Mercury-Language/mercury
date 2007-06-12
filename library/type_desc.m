@@ -90,7 +90,7 @@
 :- some [T] pred has_type(T::unused, type_desc::in) is det.
 
     % type_name(Type) returns the name of the specified type
-    % (e.g. type_name(type_of([2,3])) = "list:list(int)").
+    % (e.g. type_name(type_of([2,3])) = "list.list(int)").
     % Any equivalence types will be fully expanded.
     % Builtin types (those defined in builtin.m) will not have
     % a module qualifier.
