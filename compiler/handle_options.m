@@ -2149,7 +2149,9 @@ long_usage(!IO) :-
                                 % PIC (position independent code)?
     ;       comp_lowlevel       % what to do to target code
     ;       comp_trace          % tracing/debugging options
-    ;       comp_stack_extend.  % automatic stack extension
+    ;       comp_stack_extend   % automatic stack extension
+    ;       comp_regions.       % Whether or not to use region-based memory
+                                % management.
 
 convert_grade_option(GradeString, Options0, Options) :-
     reset_grade_options(Options0, Options1),
@@ -2479,6 +2481,10 @@ grade_component_table("exts", comp_stack_extend,
 grade_component_table("stseg", comp_stack_extend,
     [extend_stacks_when_needed - bool(no), stack_segments - bool(yes)],
     no, yes).
+    
+    % Region-based memory managment components
+grade_component_table("rbmm", comp_regions, [use_regions - bool(yes)],
+    no, yes).  
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 

@@ -200,6 +200,11 @@
     --no-stack-segments)
         stack_segments=false ;;
 
+    --use-regions)
+        use_regions=true;;
+    --no-use-regions)
+        use_regions=false ;; 
+
     -s|--grade)
         shift
         grade="$1";
@@ -237,6 +242,7 @@
         ll_debug=false
         extend_stacks=false
         stack_segments=false
+        use_regions=false
 
         grade_pieces=`echo $grade | tr '.' ' '`
         for grade_piece in $grade_pieces
@@ -489,6 +495,9 @@
                     stack_segments=true
                     ;;
 
+                rbmm)
+                    use_regions=true
+                    ;;
                 *)
                     echo "$0: unknown grade component \`$grade_piece'" 1>&2
                     exit 1

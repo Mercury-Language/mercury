@@ -63,6 +63,7 @@
 ** MR_PIC_REG
 ** MR_HIGHTAGS
 ** MR_TAGBITS
+** MR_USE_REGIONS
 **	See the documentation for
 **		--high-level-code
 **		--high-level-data
@@ -85,6 +86,7 @@
 **		--pic-reg
 **		--tags
 **		--num-tag-bits
+**		--use-regions
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
 ** MR_PIC

@@ -713,6 +713,14 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         SinglePrecFloat = no,
         SinglePrecFloatOpt = ""
     ),
+    globals.io_lookup_bool_option(use_regions, UseRegions, !IO),
+    (
+        UseRegions = yes,
+        UseRegionsOpt = "-DMR_USE_REGIONS "
+    ;
+        UseRegions = no,
+        UseRegionsOpt = ""
+    ),
     globals.io_lookup_bool_option(type_layout, TypeLayoutOption, !IO),
     (
         TypeLayoutOption = no,
@@ -800,6 +808,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         ReserveTagOpt, 
         MinimalModelOpt, 
         SinglePrecFloatOpt,
+        UseRegionsOpt,
         TypeLayoutOpt,
         InlineAllocOpt, " ", 
         AnsiOpt, " ", 

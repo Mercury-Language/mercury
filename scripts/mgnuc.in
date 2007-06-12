@@ -409,6 +409,11 @@ case $stack_segments in
     false)          STACK_SEGMENTS_OPTS="" ;;
 esac
 
+case $use_regions in
+    true)           REGION_OPTS="-DMR_USE_REGIONS" ;;
+    false)          REGION_OPTS="" ;;
+esac
+
 GCC_OPTS="$NEST_OPTS $ASM_OPTS $GOTO_OPTS $REG_OPTS"
 
 # check that special grades are only used with gcc
@@ -609,6 +614,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $SINGLE_PREC_FLOAT_OPTS\
     $SPLIT_OPTS\
     $THREAD_OPTS\
+    $REGION_OPTS\
     $PICREG_OPTS\
     $ARCH_OPTS\
     $ARG_OPTS\

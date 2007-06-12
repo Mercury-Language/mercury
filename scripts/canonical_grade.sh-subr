@@ -170,3 +170,9 @@ case $extend_stacks,$stack_segments in
 			exit 1
 			;;
 esac
+
+case $use_regions in
+	true)		GRADE="$GRADE.rbmm" ;;
+	false)		;;
+esac
+
