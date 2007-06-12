@@ -10,6 +10,18 @@ MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
 
+#----------------------------------------------------------------------------#
+
+# Override some settings from ../Mmake.workspace so that in debugging grades
+# we do not include mer_mdbcomp.init when creating the _init.c files in
+# this directory.  We copy the mdbcomp modules into this directory so if we
+# do include mer_mdbcomp.init we will end up with duplicate entries in the
+# _init.c files.
+
+C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
+
+#----------------------------------------------------------------------------#
+
 -include Mmake.slice.params
 
 # Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
