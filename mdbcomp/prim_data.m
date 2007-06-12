@@ -11,11 +11,10 @@
 %
 % This module contains some types and predicates that are, or are planned to
 % be, shared between the compiler and the debugger.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module mdbcomp.prim_data.
-
 :- interface.
 
 :- import_module list.
@@ -23,6 +22,7 @@
     % This enumeration must be EXACTLY the same as the MR_PredFunc enum
     % in runtime/mercury_stack_layout.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
+    %
 :- type pred_or_func
     --->    pf_predicate
     ;       pf_function.
@@ -34,6 +34,7 @@
     % This enumeration must be EXACTLY the same as the MR_trace_port enum
     % in runtime/mercury_trace_base.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
+    %
 :- type trace_port
     --->    port_call
     ;       port_exit
@@ -53,17 +54,14 @@
     ;       port_nondet_foreign_proc_later
     ;       port_user.
 
-% was in compiler/prog_data.m
-
     % The order that the sym_name function symbols appear in can be significant
     % for module dependency ordering.
+    %
 :- type sym_name
     --->    unqualified(string)
     ;       qualified(sym_name, string).
 
 :- type module_name == sym_name.
-
-% was in compiler/proc_label.m
 
     % A proc_label is a data structure a backend can use to as the basis
     % of the label used as the entry point of a procedure.
@@ -73,6 +71,7 @@
     % When these are different, as for specialised versions of predicates
     % from `.opt' files, the defining module's name may need to be added
     % as a qualifier to the label.
+    %
 :- type proc_label
     --->    ordinary_proc_label(
                 ord_defining_module     :: module_name,
@@ -192,6 +191,12 @@
     %
 :- func mercury_private_builtin_module = sym_name.
 
+    % Returns the name of the module containing builtins for region-based
+    % memory management.  This module is automatically imported iff
+    % RBMM is enabled.
+    %
+:- func mercury_region_builtin_module = sym_name.
+
     % Returns the name of the module containing builtins for tabling;
     % originally these were in "private_builtin", but were then moved into
     % a separate module. This module is automatically imported iff any
@@ -233,6 +238,7 @@
 :- pred non_traced_mercury_builtin_module(sym_name::in) is semidet.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -240,6 +246,8 @@
 :- import_module library.
 :- import_module list.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 string_to_sym_name_sep(String, ModuleSeparator) = Result :-
     % This would be simpler if we had a string.rev_sub_string_search/3 pred.
@@ -297,6 +305,7 @@ get_special_pred_id_arity(Id) = Arity :-
 all_builtin_modules = [
         mercury_public_builtin_module,
         mercury_private_builtin_module,
+        mercury_region_builtin_module,
         mercury_table_builtin_module,
         mercury_profiling_builtin_module,
         mercury_term_size_prof_builtin_module,
@@ -308,6 +317,7 @@ all_builtin_modules = [
 %       qualified(unqualified("std"), "private_builtin"))).
 mercury_public_builtin_module = unqualified("builtin").
 mercury_private_builtin_module = unqualified("private_builtin").
+mercury_region_builtin_module = unqualified("region_builtin").
 mercury_table_builtin_module = unqualified("table_builtin").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
@@ -321,6 +331,7 @@ is_std_lib_module_name(SymName, Name) :-
 any_mercury_builtin_module(Module) :-
     ( Module = mercury_public_builtin_module
     ; Module = mercury_private_builtin_module
+    ; Module = mercury_region_builtin_module
     ; Module = mercury_table_builtin_module
     ; Module = mercury_profiling_builtin_module
     ; Module = mercury_term_size_prof_builtin_module

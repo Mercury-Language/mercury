@@ -142,6 +142,8 @@
 :- import_module version_types.
 
 % The modules intended for Mercury system implementors.
+% NOTE: changes to this list may need to be reflected in mdbcomp/prim_data.m.
+%
 :- import_module erlang_rtti_implementation.
 :- import_module mutvar.
 :- import_module par_builtin.
