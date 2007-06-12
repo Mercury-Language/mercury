@@ -239,6 +239,9 @@
                 nothing_maybe_warning           :: maybe(item_warning)
             ).
 
+:- inst item_mutable
+    --->    item_mutable(ground, ground, ground, ground, ground, ground).
+
 :- type item_warning
     --->    item_warning(
                 maybe(option),  % Option controlling whether the

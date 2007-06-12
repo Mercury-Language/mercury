@@ -16,7 +16,13 @@
 %-----------------------------------------------------------------------------%
 %
 % Mutables are implemented as a source-to-source transformation on the
-% parse tree.  For non-constant mutables the transformation is as follows: 
+% parse tree.  The transformation depends on the compilation target.
+%
+%-----------------------------------------------------------------------------%
+% 
+% C BACKENDS
+%
+% For non-constant mutables the transformation is as follows: 
 %
 %   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
 % 
@@ -70,7 +76,7 @@
 %
 %   :- impure pred unsafe_set_<varname>(<vartype>::in(<varinst>)) is det.
 %   :- pragma foreign_proc("C",
-%       unsafe_set_<varname)(X::in(<varinst>)),
+%       unsafe_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury, thread_safe],
 %   "
 %       mutable_<varname> = X;
@@ -85,7 +91,7 @@
 %   ").   
 %
 %   :- impure lock_<varname> is det.
-%   :- pramga foreign_proc("C",
+%   :- pragma foreign_proc("C",
 %       lock_<varname>,
 %       [will_not_call_mercury, promise_pure],
 %   "   
@@ -95,7 +101,7 @@
 %   ").
 %
 %   :- impure unlock_<varname> is det.
-%   :- pramga foreign_proc("C",
+%   :- pragma foreign_proc("C",
 %       unlock_<varname>,
 %       [will_not_call_mercury, promise_pure],
 %   "   
@@ -155,14 +161,14 @@
 %        MR_get_thread_local_mutable(<type>, X, mutable_<varname>);
 %   ").   
 %
-%   :- pramga foreign_proc("C",
+%   :- pragma foreign_proc("C",
 %       lock_<varname>,
 %       [will_not_call_mercury, promise_pure],
 %   "
 %       /* blank */
 %   ").
 %
-%   :- pramga foreign_proc("C",
+%   :- pragma foreign_proc("C",
 %       unlock_<varname>,
 %       [will_not_call_mercury, promise_pure],
 %   "
@@ -204,6 +210,99 @@
 %
 %   initialise_mutable_<varname> :-
 %       impure secret_initialization_only_set_<varname>(<initval>).
+%
+%-----------------------------------------------------------------------------%
+%
+% ERLANG BACKEND
+%
+% Every Erlang "process" has an associated process dictionary, which we can use
+% to implement mutables.  However, since a process dictionary is local to the
+% process, it would not work (in multi-process/multi-threaded programs) to just
+% have each process work with its own process dictionary.  Therefore, at
+% initialisation time we start up a global server process to hold the mutable
+% values.  Other processes can get and set mutables by communicating messages
+% with this global server.
+%
+% In the transformations below, <varname> is a key derived from the name of the
+% mutable and the module name.  The module name must be included.
+% 
+% For non-constant mutables:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+% 
+% ===>
+%
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%
+%   initialise_mutable_<varname> :-
+%       impure set_<varname>(<initval>).
+%
+%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+%   :- pragma foreign_proc("Erlang",
+%       set_<varname)(X::in(<varinst>)),
+%       [will_not_call_mercury, thread_safe],
+%   "
+%       'ML_erlang_global_server' ! {set_mutable, <varname>, X}
+%   ").
+%
+%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- pragma foreign_proc("Erlang",
+%       get_varname(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury, thread_safe],
+%   "
+%       'ML_erlang_global_server' ! {get_mutable, <varname>, self()}},
+%       receive
+%           {get_mutable_ack, Value} ->
+%               X = value
+%       end
+%   ").
+%
+% For constant mutables:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
+%
+% ===>
+%
+%   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- pragma foreign_proc("Erlang",
+%       get_<varname>(X::out(<varinst>)),
+%       [will_not_call_mercury, promise_pure, thread_safe],
+%   "
+%       'ML_erlang_global_server' ! {get_mutable, <varname>, self()}},
+%       receive
+%           {get_mutable_ack, Value} ->
+%               X = value
+%       end
+%   ").
+% 
+% In order to initialise constant mutables we generate the following:
+%
+%   :- impure pred secret_initialization_only_set_<varname>(
+%       <vartype>::in(<varinst>)) is det.
+% 
+%   :- pragma foreign_proc("Erlang",
+%       secret_initialization_only_set_<varname>(X::in(<varinst>)),
+%       [will_not_call_mercury],
+%   "
+%       'ML_erlang_global_server' ! {set_mutable, <varname>, X}
+%   ").
+%
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%
+%   initialise_mutable_<varname> :-
+%       impure secret_initialization_only_set_<varname>(<initval>).
+%
+% The transformation for thread_local mutables has not been decided (we need a
+% way for spawned processes to inherit all the thread-local mutable values of
+% its parent process, but a child process in Erlang does not automatically
+% inherit its parent process's process dictionary).
+% 
+% Trailed mutabled are not supported because the Erlang backend doesn't
+% support trailing.
 %
 %-----------------------------------------------------------------------------%
 

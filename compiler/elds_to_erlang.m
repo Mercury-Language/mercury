@@ -270,7 +270,7 @@ main_wrapper_code = "
     % Otherwise main_2_p_0 will be called.
 
     mercury__main_wrapper() ->
-        mercury__io:'ML_io_init_state'(),
+        mercury__startup(),
         InitModule = list_to_atom(atom_to_list(?MODULE) ++ ""_init""),
         try
             InitModule:init_modules(),
@@ -282,12 +282,20 @@ main_wrapper_code = "
                 StackTrace = erlang:get_stacktrace(),
                 mercury__exception:'ML_report_uncaught_exception'(Excp),
                 mercury__maybe_dump_stacktrace(StackTrace),
-                mercury__io:'ML_io_finalize_state'(),
+                mercury__shutdown(),
                 % init:stop is preferred to calling halt but there seems
                 % to be no way to choose the exit code otherwise.
                 halt(1)
         end,
-        mercury__io:'ML_io_finalize_state'().
+        mercury__shutdown().
+
+    mercury__startup() ->
+        mercury__erlang_builtin:'ML_start_global_server'(),
+        mercury__io:'ML_io_init_state'().
+
+    mercury__shutdown() ->
+        mercury__io:'ML_io_finalize_state'(),
+        mercury__erlang_builtin:'ML_stop_global_server'().
 
     mercury__maybe_dump_stacktrace(StackTrace) ->
         case os:getenv(""MERCURY_SUPPRESS_STACK_TRACE"") of

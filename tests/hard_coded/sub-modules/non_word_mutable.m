@@ -22,6 +22,7 @@
 
 :- type coord.
 :- pragma foreign_type(c, coord, "coord *").
+:- pragma foreign_type("Erlang", coord, "").
 
 :- pragma foreign_decl(c, "
 typedef struct {
@@ -56,6 +57,28 @@ typedef struct {
 "
     Y = C->y;
 ").
+
+:- pragma foreign_proc("Erlang",
+    new_coord(X::in, Y::in) = (C::out),
+    [will_not_call_mercury, promise_pure],
+"
+    C = {X, Y}
+").
+
+:- pragma foreign_proc("Erlang",
+    x(C::in) = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    {X, _} = C
+").
+
+:- pragma foreign_proc("Erlang",
+    y(C::in) = (Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    {_, Y} = C
+").
+
 
 :- pragma promise_pure(main/2).
 main(!IO) :-

@@ -41,6 +41,7 @@ MCFLAGS-io     += --no-warn-unknown-format-calls
 MCFLAGS-stream += --no-warn-unknown-format-calls
 MCFLAGS-string += --no-warn-unknown-format-calls
 
+MCFLAGS-erlang_builtin += --no-warn-nothing-exported
 MCFLAGS-mer_std += --no-warn-nothing-exported
 
 # Avoid warnings about insts with non-existent function symbols in their

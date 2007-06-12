@@ -839,6 +839,8 @@
             % We explicitly store the name because we need the real
             % name in code_gen.
 
+    % box_policy only makes sense in high-level C grades using low-level data.
+    %
 :- type box_policy
     --->    native_if_possible
     ;       always_boxed.

@@ -4929,6 +4929,7 @@ specified in a @samp{initialise} directive.
 
 Note: @samp{mutable} declarations are currently only supported on
 the C backends.
+@c and Erlang backends
 
 @node Type classes
 @chapter Type classes

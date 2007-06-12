@@ -459,38 +459,71 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
     (
         DefinedThisModule = yes,
         module_info_get_name(!.ModuleInfo, ModuleName),
-        %
-        % Create the initialisation predicate and the mutex initialisation
-        % predicate.  The latter is called by the former.
-        %
+
+        % The predicate declarations we produce depends on the compilation
+        % target, which use different source-to-source transformations for
+        % mutables.
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.get_target(Globals, CompilationTarget),
+        (
+            CompilationTarget = target_c,
+            WantPreInitDecl = yes,
+            WantUnsafeAccessAndLockDecls = yes
+        ;
+            CompilationTarget = target_erlang,
+            WantPreInitDecl = no,
+            WantUnsafeAccessAndLockDecls = no
+        ;
+            ( CompilationTarget = target_il
+            ; CompilationTarget = target_java
+            ; CompilationTarget = target_asm
+            ; CompilationTarget = target_x86_64
+            ),
+            % Not supported yet.
+            WantPreInitDecl = yes,
+            WantUnsafeAccessAndLockDecls = yes
+        ),
+
+        % Create the mutable initialisation predicate.
         InitPredDecl = mutable_init_pred_decl(ModuleName, Name),
         add_item_decl_pass_1(InitPredDecl, Context, !Status, !ModuleInfo, _,
             !Specs),
+
         IsConstant = mutable_var_constant(MutAttrs),
         (
             IsConstant = no,
 
             % Create the pre-initialisation predicate.  This is called
             % by the mutable initialisation predicate.
-            PreInitPredDecl = mutable_pre_init_pred_decl(ModuleName, Name),
-            add_item_decl_pass_1(PreInitPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
+            (
+                WantPreInitDecl = yes,
+                PreInitPredDecl = mutable_pre_init_pred_decl(ModuleName, Name),
+                add_item_decl_pass_1(PreInitPredDecl, Context, !Status,
+                    !ModuleInfo, _, !Specs)
+            ;
+                WantPreInitDecl = no
+            ),
 
             % Create the primitive access and locking predicates.
-            LockPredDecl = lock_pred_decl(ModuleName, Name),
-            add_item_decl_pass_1(LockPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
-            UnlockPredDecl = unlock_pred_decl(ModuleName, Name),
-            add_item_decl_pass_1(UnlockPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
-            UnsafeGetPredDecl = unsafe_get_pred_decl(ModuleName, Name,
-                Type, Inst),
-            add_item_decl_pass_1(UnsafeGetPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
-            UnsafeSetPredDecl = unsafe_set_pred_decl(ModuleName, Name,
-                Type, Inst),
-            add_item_decl_pass_1(UnsafeSetPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
+            (
+                WantUnsafeAccessAndLockDecls = yes,
+                LockPredDecl = lock_pred_decl(ModuleName, Name),
+                add_item_decl_pass_1(LockPredDecl, Context, !Status,
+                    !ModuleInfo, _, !Specs),
+                UnlockPredDecl = unlock_pred_decl(ModuleName, Name),
+                add_item_decl_pass_1(UnlockPredDecl, Context, !Status,
+                    !ModuleInfo, _, !Specs),
+                UnsafeGetPredDecl = unsafe_get_pred_decl(ModuleName, Name,
+                    Type, Inst),
+                add_item_decl_pass_1(UnsafeGetPredDecl, Context, !Status,
+                    !ModuleInfo, _, !Specs),
+                UnsafeSetPredDecl = unsafe_set_pred_decl(ModuleName, Name,
+                    Type, Inst),
+                add_item_decl_pass_1(UnsafeSetPredDecl, Context, !Status,
+                    !ModuleInfo, _, !Specs)
+            ;
+                WantUnsafeAccessAndLockDecls = no
+            ),
 
             % Create the standard, non-pure access predicates. These are
             % always created for non-constant mutables, even if the
@@ -710,9 +743,15 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
         globals.get_target(Globals, CompilationTarget),
 
         % XXX We don't currently support the foreign_name attribute
-        % for languages other than C.
+        % for languages other than C and Erlang.
         ( 
-            CompilationTarget = target_c,
+            (
+                CompilationTarget = target_c,
+                ForeignLanguage = lang_c
+            ;
+                CompilationTarget = target_erlang,
+                ForeignLanguage = lang_erlang
+            ),
             mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
             module_info_get_name(!.ModuleInfo, ModuleName),
             (
@@ -724,7 +763,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
                 % during this pass.
                 ReportErrors = yes,
                 get_global_name_from_foreign_names(!.ModuleInfo, ReportErrors,
-                    Context, ModuleName, Name, ForeignNames,
+                    Context, ModuleName, Name, ForeignLanguage, ForeignNames,
                     _TargetMutableName, !Specs)
             ),
 
@@ -748,7 +787,6 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
             ; CompilationTarget = target_java
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
-            ; CompilationTarget = target_erlang
             ),
             Pieces = [words("Error: foreign_name mutable attribute not yet"),
                 words("implemented for the"),
@@ -805,16 +843,18 @@ add_solver_type_mutable_items_pass_2([Item | Items], Context, !Status,
     % an appropriate variable name.
     %
  :- pred get_global_name_from_foreign_names(module_info::in, bool::in,
-    prog_context::in, module_name::in, string::in, list(foreign_name)::in,
-    string::out, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, module_name::in, string::in, foreign_language::in,
+    list(foreign_name)::in, string::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 get_global_name_from_foreign_names(ModuleInfo, ReportErrors, Context,
-        ModuleName, MercuryMutableName, ForeignNames, TargetMutableName,
-        !Specs) :-
-    solutions(get_matching_foreign_name(ForeignNames, lang_c),
+        ModuleName, MercuryMutableName, ForeignLanguage, ForeignNames,
+        TargetMutableName, !Specs) :-
+    solutions(get_matching_foreign_name(ForeignNames, ForeignLanguage),
         TargetMutableNames),
     (
         TargetMutableNames = [],
+        % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, MercuryMutableName)
     ;
         TargetMutableNames = [foreign_name(_, TargetMutableName)]
@@ -836,6 +876,7 @@ get_global_name_from_foreign_names(ModuleInfo, ReportErrors, Context,
         ;
             ReportErrors = no
         ),
+        % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, MercuryMutableName)
     ).
 
@@ -1225,7 +1266,7 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
             pred_info_get_procedures(PredInfo, ProcTable),
             ProcInfos = map.values(ProcTable),
             % XXX We currently only support finalise declarations for the C
-            % backends.
+            % and Erlang backends.
             ExportLang = lang_c,
             (
                 ArgTypes = [Arg1Type, Arg2Type],
@@ -1305,8 +1346,8 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
         !:Specs = [Spec | !.Specs]
     ).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_mutable(MercuryMutableName, Type, InitTerm, Inst,
-        MutAttrs, MutVarset),
+    Item = item_mutable(MercuryMutableName, Type, _InitTerm, _Inst,
+        MutAttrs, _MutVarset),
 
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.
@@ -1315,57 +1356,48 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     (
         DefinedThisModule = yes,
         module_info_get_name(!.ModuleInfo, ModuleName),
-        IsConstant = mutable_var_constant(MutAttrs),
-        IsThreadLocal = mutable_var_thread_local(MutAttrs),
 
-        % Work out what name to give the global in the target language.
-        decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
-            MercuryMutableName, Context, TargetMutableName, !Specs),
-
-        % Add foreign_decl and foreign_code items that declare/define the
-        % global variable used to implement the mutable.  If the mutable is
-        % not constant then add a mutex to synchronize access to it as well.
-        add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant,
-            IsThreadLocal, Context, !QualInfo, !ModuleInfo, !Specs),
-
-        % Set up the default attributes for the foreign_procs used for the
-        % access predicates.
-        % XXX Handle target languages other than C here.
-        Attrs0 = default_attributes(lang_c),
         module_info_get_globals(!.ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
+        globals.get_target(Globals, CompilationTarget),
         (
-            AlwaysBoxed = yes,
-            BoxPolicy = always_boxed
-        ;
-            AlwaysBoxed = no,
-            BoxPolicy = native_if_possible
-        ),
-        set_box_policy(BoxPolicy, Attrs0, Attrs1),
-        set_may_call_mercury(proc_will_not_call_mercury, Attrs1, Attrs),
+            CompilationTarget = target_c,
 
-        (
-            IsConstant = yes,
-            InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
-                MercuryMutableName),
-            add_constant_mutable_access_preds(TargetMutableName,
-                ModuleName, MercuryMutableName, Attrs, Inst, BoxPolicy,
-                Context, !Status, !QualInfo, !ModuleInfo, !Specs)
+            % Work out what name to give the global in the target language.
+            decide_mutable_target_var_name(!.ModuleInfo, MutAttrs,
+                ModuleName, MercuryMutableName, lang_c, Context,
+                TargetMutableName, !Specs),
+
+            % Add foreign_decl and foreign_code items that declare/define the
+            % global variable used to implement the mutable.  If the mutable is
+            % not constant then add a mutex to synchronize access to it as
+            % well.
+            IsConstant = mutable_var_constant(MutAttrs),
+            IsThreadLocal = mutable_var_thread_local(MutAttrs),
+            add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant,
+                IsThreadLocal, Context, !ModuleInfo, !QualInfo, !Specs),
+
+            % Add all the predicates related to mutables.
+            add_c_mutable_preds(Item, TargetMutableName, 
+                !Status, Context, !ModuleInfo, !QualInfo, !Specs)
         ;
-            IsConstant = no,
-            InitSetPredName = mutable_set_pred_sym_name(ModuleName,
-                MercuryMutableName),
-            TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
-                !.ModuleInfo, Type),
-            add_mutable_primitive_preds(TargetMutableName, ModuleName,
-                MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, TypeName,
-                Context, !Status, !QualInfo, !ModuleInfo, !Specs),
-            add_mutable_user_access_preds(ModuleName, MercuryMutableName,
-                MutAttrs, Context, !Status, !QualInfo, !ModuleInfo, !Specs)
-        ),
-        add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
-            ModuleName, MercuryMutableName, MutVarset, InitSetPredName, InitTerm,
-            Attrs, !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            CompilationTarget = target_erlang,
+
+            % Work out what name to give the global in the target language.
+            decide_mutable_target_var_name(!.ModuleInfo, MutAttrs,
+                ModuleName, MercuryMutableName, lang_erlang, Context,
+                TargetMutableName, !Specs),
+
+            % Add all the predicates related to mutables.
+            add_erlang_mutable_preds(Item, TargetMutableName,
+                !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+        ;
+            ( CompilationTarget = target_il
+            ; CompilationTarget = target_java
+            ; CompilationTarget = target_asm
+            ; CompilationTarget = target_x86_64
+            )
+            % Not supported yet.
+        )
     ;
         DefinedThisModule = no
     ).
@@ -1375,77 +1407,191 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     % otherwise construct one based on the Mercury name for the mutable
     %
 :- pred decide_mutable_target_var_name(module_info::in,
-    mutable_var_attributes::in, module_name::in, string::in, prog_context::in,
-    string::out, list(error_spec)::in, list(error_spec)::out) is det.
+    mutable_var_attributes::in, module_name::in, string::in,
+    foreign_language::in, prog_context::in, string::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, Name, Context,
-        TargetMutableName, !Specs) :-
+decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, Name,
+        ForeignLanguage, Context, TargetMutableName, !Specs) :-
     mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
     (
         MaybeForeignNames = no,
+        % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, Name)
     ;
         MaybeForeignNames = yes(ForeignNames),
         ReportErrors = no, % We've already reported them during pass 2.
         get_global_name_from_foreign_names(ModuleInfo, ReportErrors, Context,
-            ModuleName, Name, ForeignNames, TargetMutableName, !Specs)
+            ModuleName, Name, ForeignLanguage, ForeignNames, TargetMutableName,
+            !Specs)
     ).
-    
+
+%-----------------------------------------------------------------------------%
+%
+% C mutables
+%
+
     % Add the foreign_decl and foreign_code items that declare/define
     % the global variable used to hold the mutable.
     %
-:- pred add_mutable_defn_and_decl(string::in, mer_type::in, bool::in,
-    mutable_thread_local::in, prog_context::in, qual_info::in, qual_info::out,
-    module_info::in, module_info::out,
+:- pred add_c_mutable_defn_and_decl(string::in, mer_type::in, bool::in,
+    mutable_thread_local::in, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
-        Context, !QualInfo, !ModuleInfo, !Specs) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_target(Globals, CompilationTarget),
-
+add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
+        Context, !ModuleInfo, !QualInfo, !Specs) :-
     % We add the foreign code declaration and definition here rather than
     % in pass 2 because the target-language-specific type name depends on
     % whether there are any foreign_type declarations for Type.
+    get_c_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
+        TargetMutableName, IsConstant, IsThreadLocal,
+        ForeignDecl, ForeignDefn),
+    ItemStatus0 = item_status(status_local, may_be_unqualified),
+    add_item_decl_pass_2(ForeignDecl, Context, ItemStatus0, _,
+        !ModuleInfo, !Specs),
+    add_item_decl_pass_2(ForeignDefn, Context, ItemStatus0, _,
+        !ModuleInfo, !Specs).
+
+    % Create the C foreign_decl for the mutable.
+    % The bool argument says whether the mutable is a constant mutable
+    % or not.
+    %
+:- pred get_c_mutable_global_foreign_decl_defn(module_info::in, mer_type::in,
+    string::in, bool::in, mutable_thread_local::in, item::out, item::out)
+    is det.
+
+get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
+        IsConstant, IsThreadLocal, Decl, Defn) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     (
-        CompilationTarget = target_c,
-        get_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
-            TargetMutableName, IsConstant, IsThreadLocal,
-            ForeignDecl, ForeignDefn),
-        ItemStatus0 = item_status(status_local, may_be_unqualified),
-        add_item_decl_pass_2(ForeignDecl, Context, ItemStatus0, _,
-            !ModuleInfo, !Specs),
-        add_item_decl_pass_2(ForeignDefn, Context, ItemStatus0, _,
-            !ModuleInfo, !Specs)
+        IsThreadLocal = mutable_not_thread_local,
+        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
+            ModuleInfo, Type)
     ;
-        % The error message was printed in pass 2.
-        ( CompilationTarget = target_il
-        ; CompilationTarget = target_java
-        ; CompilationTarget = target_asm
-        ; CompilationTarget = target_x86_64
-        ; CompilationTarget = target_erlang
-        ),
-        true
-    ).
+        IsThreadLocal = mutable_thread_local,
+        %
+        % For thread-local mutables, the variable holds an index into an
+        % array.
+        %
+        TypeName = "MR_Unsigned"
+    ),
+    %
+    % Constant mutables do not require mutexes as their values are never
+    % updated.  Thread-local mutables do not require mutexes either.
+    %
+    (
+        ( IsConstant = yes
+        ; IsThreadLocal = mutable_thread_local
+        )
+    ->
+        LockDecl = [],
+        LockDefn = []
+    ;
+        LockDecl = [
+            "#ifdef MR_THREAD_SAFE\n",
+            "    extern MercuryLock ",
+            mutable_mutex_var_name(TargetMutableName), ";\n",
+            "#endif\n"
+        ],
+        LockDefn = [
+            "#ifdef MR_THREAD_SAFE\n",
+            "    MercuryLock ",
+            mutable_mutex_var_name(TargetMutableName), ";\n",
+            "#endif\n"
+        ]
+    ),
+
+    DeclBody = string.append_list([
+        "extern ", TypeName, " ", TargetMutableName, ";\n" | LockDecl]),
+    Decl = item_pragma(compiler(mutable_decl),
+        pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody)),
+    
+    DefnBody = string.append_list([
+        TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
+    Defn = item_pragma(compiler(mutable_decl),
+        pragma_foreign_code(lang_c, DefnBody)).
+
+:- func global_foreign_type_name(bool, foreign_language, module_info,
+    mer_type) = string.
+
+global_foreign_type_name(yes, _, _, _) = "MR_Word".
+global_foreign_type_name(no, Lang, ModuleInfo, Type) =
+    to_type_string(Lang, ModuleInfo, Type).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_c_mutable_preds(item::in(item_mutable), string::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_c_mutable_preds(Item, TargetMutableName,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    Item = item_mutable(MercuryMutableName, Type, InitTerm, Inst,
+        MutAttrs, MutVarset),
+    IsConstant = mutable_var_constant(MutAttrs),
+    IsThreadLocal = mutable_var_thread_local(MutAttrs),
+
+    % Set up the default attributes for the foreign_procs used for the
+    % access predicates.
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
+    (
+        AlwaysBoxed = yes,
+        BoxPolicy = always_boxed
+    ;
+        AlwaysBoxed = no,
+        BoxPolicy = native_if_possible
+    ),
+    Attrs0 = default_attributes(lang_c),
+    set_box_policy(BoxPolicy, Attrs0, Attrs1),
+    set_may_call_mercury(proc_will_not_call_mercury, Attrs1, Attrs),
+
+    (
+        IsConstant = yes,
+        InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
+            MercuryMutableName),
+        add_c_constant_mutable_access_preds(TargetMutableName,
+            ModuleName, MercuryMutableName, Attrs, Inst, BoxPolicy,
+            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        IsConstant = no,
+        InitSetPredName = mutable_set_pred_sym_name(ModuleName,
+            MercuryMutableName),
+        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
+            !.ModuleInfo, Type),
+        add_c_mutable_primitive_preds(TargetMutableName, ModuleName,
+            MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, TypeName, 
+            !Status, Context, !ModuleInfo, !QualInfo, !Specs),
+        add_c_mutable_user_access_preds(ModuleName, MercuryMutableName,
+            MutAttrs, !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+    ),
+    add_c_mutable_initialisation(IsConstant, IsThreadLocal,
+        TargetMutableName, ModuleName, MercuryMutableName, MutVarset,
+        InitSetPredName, InitTerm, Attrs,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs).
 
     % Add the access predicates for constant mutables.
     %
-:- pred add_constant_mutable_access_preds(string::in, module_name::in,
+:- pred add_c_constant_mutable_access_preds(string::in, module_name::in,
     string::in, pragma_foreign_proc_attributes::in, mer_inst::in,
-    box_policy::in, prog_context::in, import_status::in, import_status::out,
-    qual_info::in, qual_info::out, module_info::in, module_info::out,
+    box_policy::in, import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out, 
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
-        Attrs, Inst, BoxPolicy, Context, !Status, !QualInfo, !ModuleInfo,
-        !Specs) :-
+add_c_constant_mutable_access_preds(TargetMutableName,
+        ModuleName, MutableName, Attrs, Inst, BoxPolicy,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     InstVarSet = varset.init,
     set_purity(purity_pure, Attrs, ConstantGetAttrs0),
     set_thread_safe(proc_thread_safe, ConstantGetAttrs0, ConstantGetAttrs),
     ConstantGetForeignProc = pragma_foreign_proc(
         ConstantGetAttrs,
-        mutable_get_pred_sym_name(ModuleName, Name),
+        mutable_get_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
@@ -1461,7 +1607,7 @@ add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
     % only once at initialization time.
 
     ConstantSetForeignProc = pragma_foreign_proc(Attrs,
-        mutable_secret_set_pred_sym_name(ModuleName, Name),
+        mutable_secret_set_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
@@ -1472,20 +1618,20 @@ add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
         ConstantSetForeignProc),
     add_item_clause(ConstantSetClause, !Status, Context, !ModuleInfo,
         !QualInfo, !Specs).
-            
+
     % Add the foreign clauses for the mutable's primitive access and 
     % locking predicates.
     %
-:- pred add_mutable_primitive_preds(string::in, module_name::in, string::in,
+:- pred add_c_mutable_primitive_preds(string::in, module_name::in, string::in,
     mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
-    mer_inst::in, box_policy::in, string::in, prog_context::in,
-    import_status::in, import_status::out, qual_info::in, qual_info::out,
-    module_info::in, module_info::out,
+    mer_inst::in, box_policy::in, string::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
-        MutAttrs, Attrs, Inst, BoxPolicy, TypeName, Context,
-        !Status, !QualInfo, !ModuleInfo, !Specs) :-
+add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
+        MutAttrs, Attrs, Inst, BoxPolicy, TypeName,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     set_thread_safe(proc_thread_safe, Attrs, LockAndUnlockAttrs),
 
@@ -1507,7 +1653,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
         LockForeignProcBody = ""
     ),
     LockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
-        mutable_lock_pred_sym_name(ModuleName, Name),
+        mutable_lock_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [],
         varset.init,    % Prog varset.
@@ -1534,7 +1680,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
         UnlockForeignProcBody = ""
     ),
     UnlockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
-        mutable_unlock_pred_sym_name(ModuleName, Name),
+        mutable_unlock_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [],
         varset.init,    % Prog varset.
@@ -1559,7 +1705,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
             TypeName ++ ", X, " ++ TargetMutableName ++ ");"
     ),
     UnsafeGetForeignProc = pragma_foreign_proc(UnsafeGetAttrs,
-        mutable_unsafe_get_pred_sym_name(ModuleName, Name),
+        mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
@@ -1610,7 +1756,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
             TypeName ++ ", X, " ++ TargetMutableName ++ ");"
     ),
     UnsafeSetForeignProc = pragma_foreign_proc(UnsafeSetAttrs,
-        mutable_unsafe_set_pred_sym_name(ModuleName, Name),
+        mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
@@ -1626,25 +1772,26 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     % If the mutable has the `attach_to_io_state' attribute then add the
     % versions of the access preds that take the I/O state as well.
     %
-:- pred add_mutable_user_access_preds(module_name::in, string::in,
-    mutable_var_attributes::in, prog_context::in,
-    import_status::in, import_status::out, qual_info::in, qual_info::out,
-    module_info::in, module_info::out,
+:- pred add_c_mutable_user_access_preds(module_name::in, string::in,
+    mutable_var_attributes::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
  
-add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
-        !Status, !QualInfo, !ModuleInfo, !Specs) :-
+add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet0),
-    LockPredName   = mutable_lock_pred_sym_name(ModuleName, Name),
-    UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, Name),
-    SetPredName = mutable_set_pred_sym_name(ModuleName, Name),
-    GetPredName = mutable_get_pred_sym_name(ModuleName, Name),
+    LockPredName   = mutable_lock_pred_sym_name(ModuleName, MutableName),
+    UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
+    SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
+    GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
     CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
     CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
     % 
     % Construct the semipure get predicate.
     %
-    UnsafeGetPredName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
+    UnsafeGetPredName = mutable_unsafe_get_pred_sym_name(ModuleName,
+        MutableName),
     UnsafeGetCallArgs = [variable(X, Context)],
     CallUnsafeGet = call_expr(UnsafeGetPredName, UnsafeGetCallArgs,
         purity_semipure) - Context,
@@ -1668,7 +1815,8 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
     %
     % Construct the impure set predicate.
     %
-    UnsafeSetPredName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
+    UnsafeSetPredName = mutable_unsafe_set_pred_sym_name(ModuleName,
+        MutableName),
     UnsafeSetCallArgs = [variable(X, context_init)],
     StdSetCallUnsafeSet = call_expr(UnsafeSetPredName, UnsafeSetCallArgs,
         purity_impure) - Context,
@@ -1736,36 +1884,32 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
 
     % Add the code required to initialise a mutable.
     %
-:- pred add_mutable_initialisation(bool::in, mutable_thread_local::in,
-    string::in, module_name::in, string::in,
-    prog_varset::in, sym_name::in, prog_term::in,
-    pragma_foreign_proc_attributes::in, import_status::in, import_status::out,
-    prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+:- pred add_c_mutable_initialisation(bool::in, mutable_thread_local::in,
+    string::in, module_name::in, string::in, prog_varset::in,
+    sym_name::in, prog_term::in, pragma_foreign_proc_attributes::in,
+    import_status::in, import_status::out, prog_context::in, 
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
-    ModuleName, Name, MutVarset, InitSetPredName, InitTerm, Attrs, !Status,
-    Context, !ModuleInfo, !QualInfo, !Specs) :-
+add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
+        ModuleName, MutableName, MutVarset, InitSetPredName, InitTerm, Attrs,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+    InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
     %
-    % Add the `:- initialise' declaration and clause for the
-    % mutable initialise predicate.
+    % Add the `:- initialise' declaration for the mutable initialisation
+    % predicate.
     %
     add_item_clause(item_initialise(compiler(mutable_decl),
-            mutable_init_pred_sym_name(ModuleName, Name), 0 /* Arity */),
+            InitPredName, 0 /* Arity */),
         !Status, Context, !ModuleInfo, !QualInfo, !Specs),
+    %
+    % Add the clause for the mutable initialisation predicate.
+    %
     (
         IsConstant = yes,
-        %
-        % See the comments for prog_io.parse_mutable_decl for the reason
-        % why we _must_ use MutVarset here.
-        %
-        InitClause = item_clause(compiler(mutable_decl),
-            MutVarset,
-            pf_predicate,
-            mutable_init_pred_sym_name(ModuleName, Name), [],
+        InitClauseExpr =
             call_expr(InitSetPredName, [InitTerm], purity_impure) 
-                - Context)
+                - Context
     ;
         IsConstant = no,
         (
@@ -1785,7 +1929,8 @@ add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
                 " = MR_new_thread_local_mutable_index();\n"
             ])
         ),
-        PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName, Name),
+        PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName,
+            MutableName),
         PreInitForeignProc = pragma_foreign_proc(Attrs,
             PreInitPredName,
             pf_predicate,
@@ -1805,100 +1950,282 @@ add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
             call_expr(InitSetPredName, [InitTerm], purity_impure)
                 - Context,
         InitClauseExpr = conj_expr(CallPreInitExpr, CallSetPredExpr)
-            - Context,
-        %
-        % See the comments for prog_io.parse_mutable_decl for the reason
-        % why we _must_ use MutVarset here.
-        %
-        InitClause = item_clause(compiler(mutable_decl),
-            MutVarset,
-            pf_predicate,
-            mutable_init_pred_sym_name(ModuleName, Name),
-            [],
-            InitClauseExpr
-        )
+            - Context
+    ),
+    %
+    % See the comments for prog_io.parse_mutable_decl for the reason
+    % why we _must_ use MutVarset here.
+    %
+    InitClause = item_clause(compiler(mutable_decl),
+        MutVarset,
+        pf_predicate,
+        InitPredName,
+        [],
+        InitClauseExpr
     ),
     add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
         !Specs).
-    
-    % Create the foreign_decl for the mutable.
-    % The bool argument says whether the mutable is a constant mutable
-    % or not.
-    %
-:- pred get_mutable_global_foreign_decl_defn(module_info::in, mer_type::in,
-    string::in, bool::in, mutable_thread_local::in, item::out, item::out)
-    is det.
 
-get_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Decl, Defn) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
-    globals.get_target(Globals, Backend),
+%-----------------------------------------------------------------------------%
+%
+% Erlang mutables
+%
+
+:- pred add_erlang_mutable_preds(item::in(item_mutable), string::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_erlang_mutable_preds(Item, TargetMutableName,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    Item = item_mutable(MutableName, _Type, InitTerm, Inst,
+        MutAttrs, MutVarset),
+    IsConstant = mutable_var_constant(MutAttrs),
     (
-        Backend = target_c,
-        (
-            IsThreadLocal = mutable_not_thread_local,
-            TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
-                ModuleInfo, Type)
-        ;
-            IsThreadLocal = mutable_thread_local,
-            %
-            % For thread-local mutables, the variable holds an index into an
-            % array.
-            %
-            TypeName = "MR_Unsigned"
-        ),
-        %
-        % Constant mutables do not require mutexes as their values are never
-        % updated.  Thread-local mutables do not require mutexes either.
-        %
-        (
-            ( IsConstant = yes
-            ; IsThreadLocal = mutable_thread_local
-            )
-        ->
-            LockDecl = [],
-            LockDefn = []
-        ;
-            LockDecl = [
-                "#ifdef MR_THREAD_SAFE\n",
-                "    extern MercuryLock ",
-                mutable_mutex_var_name(TargetMutableName), ";\n",
-                "#endif\n"
-            ],
-            LockDefn = [
-                "#ifdef MR_THREAD_SAFE\n",
-                "    MercuryLock ",
-                mutable_mutex_var_name(TargetMutableName), ";\n",
-                "#endif\n"
-            ]
-        ),
-
-        DeclBody = string.append_list([
-            "extern ", TypeName, " ", TargetMutableName, ";\n" | LockDecl]),
-        Decl = item_pragma(compiler(mutable_decl),
-            pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody)),
-        
-        DefnBody = string.append_list([
-            TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
-        Defn = item_pragma(compiler(mutable_decl),
-            pragma_foreign_code(lang_c, DefnBody))
+        IsConstant = yes,
+        InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
+            MutableName),
+        add_erlang_constant_mutable_access_preds(TargetMutableName,
+            ModuleName, MutableName, Inst,
+            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
     ;
-        ( Backend = target_il
-        ; Backend = target_java
-        ; Backend = target_asm
-        ; Backend = target_x86_64
-        ; Backend = target_erlang
-        ),
-        sorry(this_file, "we don't yet support mutables for non-C backends")
-    ).
-    
-:- func global_foreign_type_name(bool, foreign_language, module_info, mer_type)
-    = string.
+        IsConstant = no,
+        InitSetPredName = mutable_set_pred_sym_name(ModuleName,
+            MutableName),
+        add_erlang_mutable_user_access_preds(TargetMutableName,
+            ModuleName, MutableName, MutAttrs, Inst,
+            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+    ),
+    add_erlang_mutable_initialisation(ModuleName, MutableName,
+        MutVarset, InitSetPredName, InitTerm,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs).
 
-global_foreign_type_name(yes, _, _, _) = "MR_Word".
-global_foreign_type_name(no, Lang, ModuleInfo, Type) =
-    to_type_string(Lang, ModuleInfo, Type).
+    % Add the access predicates for constant mutables.
+    %
+:- pred add_erlang_constant_mutable_access_preds(string::in, 
+    module_name::in, string::in, mer_inst::in,
+    import_status::in, import_status::out, prog_context::in, 
+    module_info::in, module_info::out, qual_info::in, qual_info::out, 
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_erlang_constant_mutable_access_preds(TargetMutableName,
+        ModuleName, MutableName, Inst,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    InstVarSet = varset.init,
+    Attrs = default_attributes(lang_erlang),
+    set_purity(purity_pure, Attrs, ConstantGetAttrs0),
+    set_thread_safe(proc_thread_safe, ConstantGetAttrs0, ConstantGetAttrs),
+
+    % Getter.
+    GetCode = erlang_mutable_get_code(TargetMutableName),
+    ConstantGetForeignProc = pragma_foreign_proc(
+        ConstantGetAttrs,
+        mutable_get_pred_sym_name(ModuleName, MutableName),
+        pf_predicate,
+        [pragma_var(X, "X", out_mode(Inst), native_if_possible)],
+        ProgVarSet,
+        InstVarSet,
+        fc_impl_ordinary(GetCode, yes(Context))
+    ),
+    ConstantGetClause = item_pragma(compiler(mutable_decl),
+        ConstantGetForeignProc),
+    add_item_clause(ConstantGetClause, !Status, Context, !ModuleInfo,
+        !QualInfo, !Specs),
+
+    % Secret setter.
+    SetCode = erlang_mutable_set_code(TargetMutableName),
+    ConstantSetForeignProc = pragma_foreign_proc(Attrs,
+        mutable_secret_set_pred_sym_name(ModuleName, MutableName),
+        pf_predicate,
+        [pragma_var(X, "X", in_mode(Inst), native_if_possible)],
+        ProgVarSet,
+        InstVarSet,
+        fc_impl_ordinary(SetCode, yes(Context))
+    ),
+    ConstantSetClause = item_pragma(compiler(mutable_decl),
+        ConstantSetForeignProc),
+    add_item_clause(ConstantSetClause, !Status, Context, !ModuleInfo,
+        !QualInfo, !Specs).
+
+    % Add the access predicates for a non-constant mutable.
+    % If the mutable has the `attach_to_io_state' attribute then add the
+    % versions of the access preds that take the I/O state as well.
+    %
+:- pred add_erlang_mutable_user_access_preds(string::in,
+    module_name::in, string::in, mutable_var_attributes::in, mer_inst::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+ 
+add_erlang_mutable_user_access_preds(TargetMutableName,
+        ModuleName, MutableName, MutAttrs, Inst,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+    IsThreadLocal = mutable_var_thread_local(MutAttrs),
+    Attrs = default_attributes(lang_erlang),
+    varset.new_named_var(varset.init, "X", X, ProgVarSet0),
+
+    % 
+    % Construct the semipure get predicate.
+    %
+    set_purity(purity_semipure, Attrs, GetAttrs0),
+    set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs), 
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        GetCode = erlang_mutable_get_code(TargetMutableName)
+    ;
+        IsThreadLocal = mutable_thread_local,
+        % XXX this will need to change.  `thread_local' mutables are supposed
+        % to be inherited when a child process is spawned, but Erlang process
+        % dictionary values are not automatically inherited.  Hence we will
+        % probably need another level of indirection.
+        GetCode = "X = get({'MR_thread_local_mutable', " ++
+            TargetMutableName ++ "})"
+    ),
+    GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
+    GetForeignProc = pragma_foreign_proc(GetAttrs,
+        GetPredName,
+        pf_predicate,
+        [pragma_var(X, "X", out_mode(Inst), native_if_possible)],
+        ProgVarSet0,
+        varset.init, % Inst varset.
+        fc_impl_ordinary(GetCode, yes(Context))
+    ),
+    GetClause = item_pragma(compiler(mutable_decl), GetForeignProc),
+    add_item_clause(GetClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !Specs),
+
+    %
+    % Construct the impure set predicate.
+    %
+    set_purity(purity_impure, Attrs, SetAttrs0),
+    set_thread_safe(proc_thread_safe, SetAttrs0, SetAttrs), 
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        SetCode = erlang_mutable_set_code(TargetMutableName)
+    ;
+        IsThreadLocal = mutable_thread_local,
+        % XXX this will need to change (see the comment for the getter)
+        SetCode = "put({'MR_thread_local_mutable', " ++
+            TargetMutableName ++ "}, X)"
+    ),
+    SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
+    SetForeignProc = pragma_foreign_proc(SetAttrs,
+        SetPredName,
+        pf_predicate,
+        [pragma_var(X, "X", in_mode(Inst), native_if_possible)],
+        ProgVarSet0,
+        varset.init, % Inst varset.
+        fc_impl_ordinary(SetCode, yes(Context))
+    ),
+    SetClause = item_pragma(compiler(mutable_decl), SetForeignProc),
+    add_item_clause(SetClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !Specs),
+
+    IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
+    (
+        IOStateInterface = yes,
+        varset.new_named_var(ProgVarSet0, "IO", IO, ProgVarSet),
+        Ctxt = context_init,
+
+        % Construct the pure get predicate.
+        % This just calls the semipure get predicate with a promise_pure
+        % around it.
+        CallSemipureGet = call_expr(GetPredName, [variable(X, Context)],
+            purity_semipure) - Context,
+        IOGetBody = promise_purity_expr(dont_make_implicit_promises,
+            purity_pure, CallSemipureGet) - Context,
+    
+        IOGetClause = item_clause(
+            compiler(mutable_decl),
+            ProgVarSet,
+            pf_predicate,
+            GetPredName,
+            [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
+            IOGetBody
+        ),
+    
+        add_item_clause(IOGetClause, !Status, Context, !ModuleInfo, !QualInfo,
+            !Specs),
+
+        % Construct the pure set predicate.
+        %
+        % We just call the impure version and attach a promise_pure
+        % pragma to the predicate.  (The purity pragma was added during
+        % stage 2.)
+        %
+        CallImpureSet = call_expr(SetPredName, [variable(X, Context)],
+            purity_impure) - Context,
+        IOSetClause = item_clause(
+            compiler(mutable_decl),
+            ProgVarSet,
+            pf_predicate,
+            SetPredName,
+            [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
+            CallImpureSet
+        ),
+        
+        add_item_clause(IOSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        IOStateInterface = no
+    ).
+
+:- func erlang_mutable_get_code(string) = string.
+
+erlang_mutable_get_code(TargetMutableName) =
+    string.append_list([
+        "'ML_erlang_global_server' ! {get_mutable, ",
+            TargetMutableName, ", self()},\n",
+        "receive\n",
+        "   {get_mutable_ack, Value} ->\n",
+        "       X = Value\n",
+        "end\n"
+    ]).
+
+:- func erlang_mutable_set_code(string) = string.
+
+erlang_mutable_set_code(TargetMutableName) = 
+    "'ML_erlang_global_server' ! {set_mutable, " ++
+        TargetMutableName ++ ", X}".
+
+    % Add the code required to initialise a mutable.
+    %
+:- pred add_erlang_mutable_initialisation(module_name::in, string::in,
+    prog_varset::in, sym_name::in, prog_term::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_erlang_mutable_initialisation(ModuleName, MutableName,
+        MutVarset, InitSetPredName, InitTerm,
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+    %
+    % Add the `:- initialise' declaration for the mutable initialisation
+    % predicate.
+    %
+    InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
+    add_item_clause(item_initialise(compiler(mutable_decl),
+            InitPredName, 0 /* Arity */),
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs),
+    %
+    % Add the clause for the mutable initialisation predicate.
+    %
+    % See the comments for prog_io.parse_mutable_decl for the reason
+    % why we _must_ use MutVarset here.
+    %
+    InitClause = item_clause(compiler(mutable_decl),
+        MutVarset,
+        pf_predicate,
+        InitPredName,
+        [],
+        call_expr(InitSetPredName, [InitTerm], purity_impure) - Context
+    ),
+    add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !Specs).
+
+%-----------------------------------------------------------------------------%
 
 :- pred add_solver_type_mutable_items_clauses(list(item)::in,
     import_status::in, import_status::out, prog_context::in,
@@ -1912,6 +2239,8 @@ add_solver_type_mutable_items_clauses([Item | Items], !Status, Context,
     add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs),
     add_solver_type_mutable_items_clauses(Items, !Status, Context,
         !ModuleInfo, !QualInfo, !Specs).
+
+%-----------------------------------------------------------------------------%
 
     % If a module_defn updates the import_status, return the new status
     % and whether uses of the following items must be module qualified,
