@@ -879,7 +879,7 @@ array.set(Array0, Index, Item, Array) :-
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Array = setelement(Index, Array0, Item)
+    Array = setelement(Index + 1, Array0, Item)
 ").
 
 :- pragma foreign_proc("Java",
