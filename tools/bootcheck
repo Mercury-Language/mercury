@@ -1784,7 +1784,7 @@ fi
 if test -s $tests_dir/NOMAKE_DIRS
 then
     echo "error exit: some test directories were left out"
-    cat NOMAKE_DIRS
+    cat $tests_dir/NOMAKE_DIRS
     exitstatus=1
 fi
 
