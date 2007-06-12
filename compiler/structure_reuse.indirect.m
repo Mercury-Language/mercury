@@ -292,13 +292,27 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
             !.AnalysisInfo ^ sharing_as)
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),
-        % Record the statically constructed variables:
-        ( Unification = construct(Var, _, _, _,
-                construct_statically(_), _, _) ->
-            !:AnalysisInfo = !.AnalysisInfo ^ static_vars :=
-                set.insert(!.AnalysisInfo ^ static_vars, Var)
+        % Record the statically constructed variables.
+        (
+            Unification = construct(Var, _, _, _, HowToConstruct, _, _),
+            (
+                HowToConstruct = construct_statically(_),
+                !:AnalysisInfo = !.AnalysisInfo ^ static_vars :=
+                    set.insert(!.AnalysisInfo ^ static_vars, Var)
+            ;
+                ( HowToConstruct = construct_dynamically
+                ; HowToConstruct = reuse_cell(_)
+                )
+            )
         ;
-            true
+            ( Unification = deconstruct(_, _, _, _, _, _) 
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
+            )
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(this_file,
+            "complicated unification in indirect structure sharing analysis.")
         ),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
             add_unify_sharing(ModuleInfo, ProcInfo, Unification,

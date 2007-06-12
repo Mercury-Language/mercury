@@ -349,10 +349,13 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         (
             Unification = construct(CellVar, _ConsId, ArgVars, _,
                 HowToConstruct, _, _),
-            ( HowToConstruct = reuse_cell(_) ->
+            (
+                HowToConstruct = reuse_cell(_),
                 unexpected(this_file, "build_interval_info_in_goal: reuse")
             ;
-                true
+                ( HowToConstruct = construct_statically(_)
+                ; HowToConstruct = construct_dynamically
+                )
             ),
             require_in_regs(ArgVars, !IntervalInfo),
             require_access([CellVar | ArgVars], !IntervalInfo)

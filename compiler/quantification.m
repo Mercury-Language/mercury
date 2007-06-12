@@ -510,10 +510,14 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
     get_lambda_outside(!.Info, LambdaOutsideVars),
     TypeInfoVars = get_unify_typeinfos(Unification0),
     ( Unification0 = construct(_, _, _, _, How, _, SubInfo) ->
-        ( How = reuse_cell(cell_to_reuse(ReuseVar0, _, SetArgs)) ->
+        (
+            How = reuse_cell(cell_to_reuse(ReuseVar0, _, SetArgs)),
             MaybeSetArgs = yes(SetArgs),
             MaybeReuseVar = yes(ReuseVar0)
         ;
+            ( How = construct_statically(_)
+            ; How = construct_dynamically
+            ),
             MaybeSetArgs = no,
             MaybeReuseVar = no
         ),
@@ -1118,10 +1122,14 @@ goal_vars_2(NonLocalsToRecompute, unify(LHS, RHS, _, Unification, _),
         !Set, !LambdaSet) :-
     insert(!.Set, LHS, !:Set),
     ( Unification = construct(_, _, _, _, How, _, SubInfo) ->
-        ( How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)) ->
+        (
+            How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)),
             MaybeSetArgs = yes(SetArgs),
             insert(!.Set, ReuseVar, !:Set)
         ;
+            ( How = construct_statically(_)
+            ; How = construct_dynamically
+            ),
             MaybeSetArgs = no
         ),
         (
