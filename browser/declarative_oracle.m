@@ -715,8 +715,8 @@ set_oracle_testing_flag(Testing, !Oracle) :-
 
 reset_oracle_knowledge_base(!Oracle) :-
     oracle_kb_init(EmptyKB),
-    !Oracle ^ kb_revised := !.Oracle ^ kb_current,
-    !Oracle ^ kb_current := EmptyKB.
+    !:Oracle = !.Oracle ^ kb_revised := !.Oracle ^ kb_current,
+    !:Oracle = !.Oracle ^ kb_current := EmptyKB.
 
 %-----------------------------------------------------------------------------%
 
