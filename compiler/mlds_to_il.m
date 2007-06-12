@@ -1051,13 +1051,6 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         ClassMember, !Info) :-
     Entity = mlds_function(_MaybePredProcId, Params, MaybeStatement,
         Attributes, EnvVarNames),
-    ( Name = entity_function(PredLabel0, ProcId0, MaybeSeqNum0, _PredId) ->
-        PredLabel = PredLabel0,
-        ProcId = ProcId0,
-        MaybeSeqNum = MaybeSeqNum0
-    ;
-        unexpected(this_file, "IL procedure is not a function")
-    ),
 
     expect(set.empty(EnvVarNames), this_file,
         "generate_method: EnvVarNames"),
@@ -1087,11 +1080,23 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             class_member_name(ParentClass, ctor), []))]
     ;
         IsCons = no,
-        predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, MemberName0),
-        predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum,
-                ManagedMemberName0),
-        MemberName = id(MemberName0),
-        ManagedMemberName = id(ManagedMemberName0),
+        (
+            Name = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+            predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, MemberName0),
+            predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum,
+                    ManagedMemberName0),
+            MemberName = id(MemberName0),
+            ManagedMemberName = id(ManagedMemberName0)
+        ;
+            Name = entity_export(ExportName),
+            MemberName = id(ExportName),
+            ManagedMemberName = id(ExportName)
+        ;
+            ( Name = entity_type(_, _)
+            ; Name = entity_data(_)
+            ),
+            unexpected(this_file, "IL procedure is not a function")
+        ),
         CtorInstrs = []
     ),
 
@@ -1160,9 +1165,9 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     % in an exception handler and call the initialization instructions
     % in the cctor of this module.
     (
-        PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
-            model_det, no),
-        MaybeSeqNum = no
+        Name = entity_function(MainPredLabel, _ProcId, no, _),
+        MainPredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
+            model_det, no)
     ->
         EntryPoint = [entrypoint],
         !:Info = !.Info ^ has_main := yes,
