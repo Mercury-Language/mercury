@@ -147,6 +147,7 @@
 :- import_module par_builtin.
 :- import_module private_builtin.
 :- import_module profiling_builtin.
+:- import_module region_builtin.
 :- import_module rtti_implementation.
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
@@ -245,6 +246,7 @@ mercury_std_library_module("queue").
 mercury_std_library_module("random").
 mercury_std_library_module("rational").
 mercury_std_library_module("rbtree").
+mercury_std_library_module("region_builtin").
 mercury_std_library_module("relation").
 mercury_std_library_module("require").
 mercury_std_library_module("robdd").
@@ -290,7 +292,6 @@ mercury_std_library_module("tree_bitset").
 mercury_std_library_module("type_desc").
 mercury_std_library_module("unit").
 mercury_std_library_module("univ").
-% mercury_std_library_module("unsafe").
 mercury_std_library_module("varset").
 mercury_std_library_module("version_array").
 mercury_std_library_module("version_array2d").
