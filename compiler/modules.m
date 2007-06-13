@@ -4140,6 +4140,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         map.values(DepsMap, DepsList),
         deps_list_to_deps_rel(DepsList, DepsMap,
             IntDepsRel0, IntDepsRel, ImplDepsRel0, ImplDepsRel),
+        maybe_output_imports_graph(ModuleName, IntDepsRel, ImplDepsRel, !IO),
 
         %
         % Compute the trans-opt deps ordering, by doing an approximate
@@ -4182,9 +4183,6 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         %
         relation.tc(ImplDepsRel, IndirectOptDepsRel),
 
-        % write_relations("Rel", IntDepsRel, TransIntDepsRel,
-        %   ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel),
-
         (
             Mode = output_d_file_only,
             DFilesToWrite = [ModuleDep]
@@ -4213,55 +4211,104 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         true
     ).
 
-%   % Output the various relations into a file which can be
-%   % processed by the dot package to draw the relations.
-%   %
-% :- pred write_relations(string::in, relation(sym_name)::in,
-%   relation(sym_name)::in, relation(sym_name)::in,
-%   relation(sym_name)::in, relation(sym_name)::in, io::di, io::uo) is det.
-%
-% write_relations(FileName, IntDepsRel, TransIntDepsRel,
-%       ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel) -->
-%   io.open_output(FileName, Result),
-%   ( { Result = ok(Stream) } ->
-%       write_relation(Stream, "IntDepsRel", IntDepsRel),
-%       write_relation(Stream, "TransIntDepsRel", TransIntDepsRel),
-%       write_relation(Stream, "ImplDepsRel", ImplDepsRel),
-%       write_relation(Stream, "IndirectDepsRel", IndirectDepsRel),
-%       write_relation(Stream, "IndirectOptDepsRel",
-%           IndirectOptDepsRel)
-%   ;
-%       { error("unable to open file: " ++ FileName) }
-%   ).
-%
-% :- pred write_relation(io.output_stream::in, string::in,
-%   relation(sym_name)::in, io::di, io::uo) is det.
-%
-% write_relation(Stream, Name, Relation) -->
-%   io.write_string(Stream, "digraph " ++ Name ++ " {\n"),
-%   io.write_string(Stream, "label=\"" ++ Name ++ "\";\n"),
-%   io.write_string(Stream, "center=true;\n"),
-%   relation.traverse(Relation, write_node(Stream), write_edge(Stream)),
-%   io.write_string(Stream, "}\n").
-%
-% :- pred write_node(io.output_stream::in, sym_name::in, io::di, io::uo)
-%   is det.
-%
-% write_node(Stream, Node) -->
-%   { sym_name_to_string(Node, "__", NodeStr) },
-%   io.write_string(Stream, NodeStr),
-%   io.write_string(Stream, ";\n").
-%
-% :- pred write_edge(io.output_stream::in, sym_name::in, sym_name::in,
-%   io::di, io::uo) is det.
-%
-% write_edge(Stream, A, B) -->
-%   { sym_name_to_string(A, "__", AStr) },
-%   { sym_name_to_string(B, "__", BStr) },
-%   io.write_string(Stream, AStr),
-%   io.write_string(Stream, " -> "),
-%   io.write_string(Stream, BStr),
-%   io.write_string(Stream, ";\n").
+:- pred maybe_output_imports_graph(module_name::in,
+    relation(sym_name)::in, relation(sym_name)::in,
+    io::di, io::uo) is det.
+
+maybe_output_imports_graph(Module, IntDepsRel, ImplDepsRel, !IO) :-
+    globals.io_lookup_bool_option(imports_graph, ImportsGraph, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    (
+        ImportsGraph = yes,
+        module_name_to_file_name(Module, ".imports_graph", yes, FileName, !IO),
+        maybe_write_string(Verbose, "% Creating imports graph file `", !IO),
+        maybe_write_string(Verbose, FileName, !IO),
+        maybe_write_string(Verbose, "'...", !IO),
+        io.open_output(FileName, ImpResult, !IO),
+        (
+            ImpResult = ok(ImpStream),
+
+            Rel0 = list.foldl(filter_imports_relation,
+                relation.to_assoc_list(IntDepsRel), relation.init),
+            Rel = list.foldl(filter_imports_relation,
+                relation.to_assoc_list(ImplDepsRel), Rel0),
+
+            write_relation(ImpStream, "imports", sym_name_to_node_id, Rel, !IO),
+
+            io.close_output(ImpStream, !IO),
+            maybe_write_string(Verbose, " done.\n", !IO)
+        ;
+            ImpResult = error(IOError),
+            maybe_write_string(Verbose, " failed.\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            io.error_message(IOError, IOErrorMessage),
+            string.append_list(["error opening file `", FileName,
+                "' for output: ", IOErrorMessage], ImpMessage),
+            report_error(ImpMessage, !IO)
+        )
+    ;
+        ImportsGraph = no
+    ).
+
+:- func filter_imports_relation(pair(sym_name, sym_name),
+    relation(sym_name)) = relation(sym_name).
+
+filter_imports_relation(A - B, Relation) =
+    (
+        %
+        % Don't keep the relation if it points to a builtin-module
+        % or if the relationship is between two standard library
+        % modules
+        % XXX it would be better to change this to be only keep those
+        % relations for which the left-hand side is in the current
+        % directory.
+        %
+        (
+            any_mercury_builtin_module(B)
+        ;
+            is_std_lib_module_name(A, _),
+            is_std_lib_module_name(B, _)
+        )
+    ->
+        Relation
+    ;
+        relation.add_values(Relation, A, B)
+    ).
+
+:- type gen_node_name(T) == (func(T) = string).
+
+:- pred write_relation(io.output_stream::in, string::in,
+    gen_node_name(T)::in, relation(T)::in, io::di, io::uo) is det.
+ 
+write_relation(Stream, Name, GenNodeName, Relation, !IO) :-
+    io.write_string(Stream, "digraph " ++ Name ++ " {\n", !IO),
+    io.write_string(Stream, "label=\"" ++ Name ++ "\";\n", !IO),
+    io.write_string(Stream, "center=true;\n", !IO),
+    relation.traverse(Relation, write_node(Stream, GenNodeName),
+        write_edge(Stream, GenNodeName), !IO),
+    io.write_string(Stream, "}\n", !IO).
+ 
+:- pred write_node(io.output_stream::in,
+    gen_node_name(T)::in, T::in, io::di, io::uo) is det.
+ 
+write_node(Stream, GenNodeName, Node, !IO) :-
+        % Names can't contain "." so use "__"
+    io.write_string(Stream, GenNodeName(Node), !IO),
+    io.write_string(Stream, ";\n", !IO).
+
+:- pred write_edge(io.output_stream::in, gen_node_name(T)::in, T::in, T::in,
+    io::di, io::uo) is det.
+ 
+write_edge(Stream, GenNodeName, A, B, !IO) :-
+    io.write_string(Stream, GenNodeName(A), !IO),
+    io.write_string(Stream, " -> ", !IO),
+    io.write_string(Stream, GenNodeName(B), !IO),
+    io.write_string(Stream, ";\n", !IO).
+
+:- func sym_name_to_node_id(sym_name) = string.
+
+sym_name_to_node_id(Name) =
+    "\"" ++ sym_name_to_string(Name) ++ "\"".
 
 :- pred maybe_output_module_order(module_name::in, list(set(module_name))::in,
     io::di, io::uo) is det.

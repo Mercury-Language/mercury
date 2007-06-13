@@ -214,6 +214,7 @@
     ;       auto_comments
     ;       frameopt_comments
     ;       show_dependency_graph
+    ;       imports_graph
     ;       dump_trace_counts
     ;       dump_hlds
     ;       dump_hlds_pred_id
@@ -1007,6 +1008,7 @@ option_defaults_2(aux_output_option, [
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
     show_dependency_graph               -   bool(no),
+    imports_graph                       -   bool(no),
     dump_trace_counts                   -   accumulating([]),
     dump_hlds                           -   accumulating([]),
     dump_hlds_pred_id                   -   accumulating([]),
@@ -1769,6 +1771,7 @@ long_option("line-numbers",         line_numbers).
 long_option("auto-comments",        auto_comments).
 long_option("frameopt-comments",    frameopt_comments).
 long_option("show-dependency-graph",    show_dependency_graph).
+long_option("imports-graph",        imports_graph).
 long_option("dump-trace-counts",    dump_trace_counts).
 long_option("dump-hlds",            dump_hlds).
 long_option("hlds-dump",            dump_hlds).
@@ -3318,6 +3321,11 @@ options_help_aux_output -->
         "\tuse the `--no-llds-optimize' option.)",
         "--show-dependency-graph",
         "\tWrite out the dependency graph to `<module>.dependency_graph'.",
+        "--imports-graph",
+        "\tWrite out the imports graph to `<module>.imports_graph'.",
+        "\tThe imports graph contains the directed graph module A",
+        "\timports module B.",
+        "\tThe resulting file can be processed by the graphviz tools.",
 % This option is for developers only.
 %       "--dump-trace-counts <stage number or name>",
 %       "\tIf the compiler was compiled with debugging enabled and is being",

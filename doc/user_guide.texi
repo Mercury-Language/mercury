@@ -6678,6 +6678,14 @@ or in Mercury (with @samp{--convert-to-mercury}).
 @findex --show-dependency-graph
 Write out the dependency graph to @var{module}.dependency_graph.
 
+@sp 1
+@item --imports-graph
+@findex --imports-graph
+Write out the imports graph to @var{module}.imports_graph.
+The imports graph contains the directed graph module A
+imports module B.
+The resulting file can be processed by the graphviz tools.
+
 @c @sp 1
 @c @item -d @var{stage}
 @c @itemx --dump-trace-counts @var{stage}

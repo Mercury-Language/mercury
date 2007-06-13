@@ -752,7 +752,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % and they don't need to be recreated when compiling to C.
         option_implies(invoked_by_mmc_make,
             generate_mmc_make_module_dependencies, bool(no), !Globals),
-      
+
         % `--transitive-intermodule-optimization' and `--make' are 
         % not compatible with each other.
         %
@@ -1575,6 +1575,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % is only available while generating the dependencies.
         option_implies(generate_module_order, generate_dependencies,
             bool(yes), !Globals),
+
+        % The information needed for generating the imports graph
+        % is only available while generating the dependencies.
+        option_implies(imports_graph,
+            generate_dependencies, bool(yes), !Globals),
 
         % We only generate the source file mapping if the module name
         % doesn't match the file name.
