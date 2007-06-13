@@ -43,12 +43,12 @@ all:	$(PROGS) $(TAGS_FILE_EXISTS)
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
 
-mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
+mkinit: mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
 
-mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
+mkinit_erl: mkinit_erl.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
 			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
