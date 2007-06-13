@@ -80,15 +80,15 @@
     } ML_Semaphore;
 ").
 
-:- pragma foreign_decl("C#", "
+:- pragma foreign_code("C#", "
 public class ML_Semaphore {
     public int count;
-}
+};
 ").
 
 :- pragma foreign_type("C",  semaphore, "ML_Semaphore *").
 :- pragma foreign_type("IL", semaphore,
-        "class [semaphore__csharp_code]ML_Semaphore").
+    "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
 :- pragma foreign_type("Erlang", semaphore, "").
 
 :- pragma foreign_decl("C", "
