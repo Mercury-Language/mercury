@@ -54,10 +54,10 @@
     % returned by this predicate must be useable as part of a pattern matching
     % operation.
     %
-:- pred cons_id_to_term(cons_id, prog_vars, elds_term,
+:- pred cons_id_to_term(cons_id, prog_vars, elds_term, elds_term,
     erl_gen_info, erl_gen_info).
-:- mode cons_id_to_term(in, in, out, in, out) is semidet.
-:- mode cons_id_to_term(in(termable_cons_id), in, out, in, out) is det.
+:- mode cons_id_to_term(in, in, in, out, in, out) is semidet.
+:- mode cons_id_to_term(in(termable_cons_id), in, in, out, in, out) is det.
 
 :- inst termable_cons_id
     --->    cons(ground, ground)
@@ -67,8 +67,8 @@
 
     % Convert a cons id to the ELDS equivalent expression.
     %
-:- pred cons_id_to_expr(cons_id::in, prog_vars::in, elds_expr::out,
-    erl_gen_info::in, erl_gen_info::out) is det.
+:- pred cons_id_to_expr(cons_id::in, prog_vars::in, elds_term::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -88,6 +88,7 @@
 
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -173,7 +174,7 @@ erl_gen_unification(complicated_unify(_, _, _), _, _, _, _, !Info) :-
 
 erl_gen_construct(Var, ConsId, Args, ArgTypes, UniModes, _Context, Statement,
         !Info) :-
-    cons_id_to_expr(ConsId, Args, RHS, !Info),
+    cons_id_to_expr(ConsId, Args, elds_false, RHS, !Info),
     Construct = elds_eq(expr_from_var(Var), RHS),
     %
     % If there are any free variables in Args, assign them to false first.
@@ -210,7 +211,7 @@ assign_free_var(ModuleInfo, Var, ArgType, UniMode) = var_eq_false(Var) :-
 
 erl_gen_det_deconstruct(Var, ConsId, Args, _Modes, _Context, Statement,
         !Info) :-
-    cons_id_to_expr(ConsId, Args, LHS, !Info),
+    cons_id_to_expr(ConsId, Args, elds_anon_var, LHS, !Info),
     Statement = elds_eq(LHS, expr_from_var(Var)).
 
 :- pred erl_gen_semidet_deconstruct(prog_var::in, cons_id::in, prog_vars::in,
@@ -219,7 +220,7 @@ erl_gen_det_deconstruct(Var, ConsId, Args, _Modes, _Context, Statement,
 
 erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
         SuccessExpr, Statement, !Info) :-
-    ( cons_id_to_term(ConsId, Args, Pattern0, !Info) ->
+    ( cons_id_to_term(ConsId, Args, elds_anon_var, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
         unexpected(this_file,
@@ -237,7 +238,7 @@ erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
 
 %-----------------------------------------------------------------------------%
 
-cons_id_to_term(ConsId, Args, Term, !Info) :-
+cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
     (
         ConsId = cons(Name, _Arity),
         (
@@ -249,7 +250,16 @@ cons_id_to_term(ConsId, Args, Term, !Info) :-
             % XXX optimise the cases where we don't actually need a
             % distinguishing atom.
             Functor = elds_term(elds_atom(Name)),
-            Term = elds_tuple([Functor | exprs_from_vars(Args)])
+            erl_gen_info_get_module_info(!.Info, ModuleInfo),
+            erl_gen_info_get_var_types(!.Info, VarTypes),
+
+            % Replace dummy variables in the term.  In construction
+            % unifications we would want to replace them with `false' (what
+            % we use for all dummy values).  In deconstructions we replace
+            % them by anonymous variables (_).
+            TermArgs = list.map(var_or_dummy_replacement(ModuleInfo, VarTypes,
+                DummyVarReplacement), Args),
+            Term = elds_tuple([Functor | TermArgs])
         )
     ;
         ConsId = int_const(Int),
@@ -262,14 +272,27 @@ cons_id_to_term(ConsId, Args, Term, !Info) :-
         Term = elds_float(Float)
     ).
 
-cons_id_to_expr(ConsId, Args, Expr, !Info) :-
+:- func var_or_dummy_replacement(module_info, vartypes, elds_term, prog_var) =
+    elds_expr.
+
+var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
+    (if
+        map.search(VarTypes, Var, Type),
+        is_dummy_argument_type(ModuleInfo, Type)
+    then
+        elds_term(DummyVarReplacement)
+    else
+        expr_from_var(Var)
+    ).
+
+cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
     (
         ( ConsId = cons(_, _)
         ; ConsId = int_const(_)
         ; ConsId = string_const(_)
         ; ConsId = float_const(_)
         ),
-        cons_id_to_term(ConsId, Args, Term, !Info),
+        cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info),
         Expr = elds_term(Term)
     ;
         ConsId = pred_const(ShroudedPredProcId, lambda_normal),

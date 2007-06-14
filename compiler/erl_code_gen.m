@@ -433,8 +433,7 @@ erl_gen_commit(Goal, CodeModel, ScopeDetism, InstMap, Context,
 erl_gen_commit_pieces(Goal, InstMap, _Context, DoRenaming,
         GoalStatement, PackedNonLocals, !Info) :-
     % Find the nonlocal variables bound by the goal.
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, NonLocalsSet),
+    erl_bound_nonlocals_in_goal(!.Info, InstMap, Goal, NonLocalsSet),
     NonLocals = set.to_sorted_list(NonLocalsSet),
 
     % Throw = ``throw({'MERCURY_COMMIT', {NonLocals, ...})''
@@ -616,9 +615,8 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
     %
 
     % Get the union of all nonlocal variables bound in all cases.
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
     CasesGoals = list.map((func(case(_, Goal)) = Goal), CasesList),
-    union_bound_nonlocals_in_goals(ModuleInfo, InstMap0, CasesGoals,
+    union_bound_nonlocals_in_goals(!.Info, InstMap0, CasesGoals,
         NonLocalsBoundInCases),
 
     % Create a closure for the success expression if it is too large to
@@ -657,7 +655,7 @@ erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     Size = cons_id_size(ModuleInfo, Type, ConsId),
     erl_gen_info_new_anonymous_vars(Size, DummyVars, !Info),
-    ( cons_id_to_term(ConsId, DummyVars, Pattern0, !Info) ->
+    ( cons_id_to_term(ConsId, DummyVars, elds_anon_var, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
         unexpected(this_file, "erl_gen_case: cannot pattern match on object")
@@ -708,11 +706,11 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
 %-----------------------------------------------------------------------------%
 % This code is shared by disjunctions and switches.
 
-:- pred union_bound_nonlocals_in_goals(module_info::in, instmap::in,
+:- pred union_bound_nonlocals_in_goals(erl_gen_info::in, instmap::in,
     hlds_goals::in, set(prog_var)::out) is det.
 
-union_bound_nonlocals_in_goals(ModuleInfo, InstMap, Goals, NonLocalsUnion) :-
-    IsBound = erl_bound_nonlocals_in_goal(ModuleInfo, InstMap),
+union_bound_nonlocals_in_goals(Info, InstMap, Goals, NonLocalsUnion) :-
+    IsBound = erl_bound_nonlocals_in_goal(Info, InstMap),
     list.map(IsBound, Goals, NonLocalsLists),
     NonLocalsUnion = set.union_list(NonLocalsLists).
 
@@ -831,10 +829,9 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         % Find the non-local variables bound in the condition.
         % The instmap before Then should really be
         % InstMap0 + instmap_delta(Cond) but this is okay.
-        erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Cond, CondVars),
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Then, ThenVars),
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, Else, ElseVars),
+        erl_bound_nonlocals_in_goal(!.Info, InstMap0, Cond, CondVars),
+        erl_bound_nonlocals_in_goal(!.Info, InstMap0, Then, ThenVars),
+        erl_bound_nonlocals_in_goal(!.Info, InstMap0, Else, ElseVars),
         CondVarsList = set.to_sorted_list(CondVars),
 
         % Generate the condition goal, making it evaluate to a tuple of the
@@ -1099,9 +1096,7 @@ erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
                 MaybeSuccessExpr, RestStatement, !Info),
 
             % Find the variables bound by First.
-            erl_gen_info_get_module_info(!.Info, ModuleInfo), 
-            erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, First,
-                NonLocalsSet),
+            erl_bound_nonlocals_in_goal(!.Info, InstMap0, First, NonLocalsSet),
             NonLocals = set.to_sorted_list(NonLocalsSet),
 
             % Make the success continuation.  Rename apart any variables bound
@@ -1163,8 +1158,7 @@ erl_gen_disj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr0,
     Rest = [_ | _],
 
     % Get the union of all nonlocal variables bound in all disjuncts.
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    union_bound_nonlocals_in_goals(ModuleInfo, InstMap0, [First | Rest],
+    union_bound_nonlocals_in_goals(!.Info, InstMap0, [First | Rest],
         NonLocalsBoundInGoals),
 
     % Create a closure for the success expression if it is too large to
@@ -1251,9 +1245,7 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
             % RestStatement end up binding the same variables which triggers a
             % (spurious) warning from the Erlang compiler.
             %
-            erl_gen_info_get_module_info(!.Info, ModuleInfo),
-            erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, First, 
-                FirstVarsSet),
+            erl_bound_nonlocals_in_goal(!.Info, InstMap, First, FirstVarsSet),
             FirstVars = set.to_sorted_list(FirstVarsSet),
             erl_create_renaming(FirstVars, Subn, !Info),
             erl_rename_vars_in_expr(Subn, FirstStatement0, FirstStatement),
@@ -1298,8 +1290,7 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         erl_gen_goal(model_non, InstMap, First, MaybeSuccessExprForFirst,
             FirstStatement0, !Info),
 
-        erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, First, FirstVarsSet),
+        erl_bound_nonlocals_in_goal(!.Info, InstMap, First, FirstVarsSet),
         FirstVars = set.to_sorted_list(FirstVarsSet),
         erl_create_renaming(FirstVars, Subst, !Info),
         erl_rename_vars_in_expr(Subst, FirstStatement0, FirstStatement),
