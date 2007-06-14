@@ -74,9 +74,9 @@
 
 :- pragma foreign_type("C", label_layout, "const MR_LabelLayout *",
     [can_pass_as_mercury_type, stable]).
-
-    % stub only
+    % stubs only
 :- pragma foreign_type("Java", label_layout, "java.lang.Object", []).
+:- pragma foreign_type("Erlang", label_layout, "").
 
 :- pragma foreign_proc("C",
     get_proc_layout_from_label_layout(Label::in) = (ProcLayout::out),
@@ -129,7 +129,9 @@ get_path_port_from_label_layout(Label) = PathPort :-
 
 :- pragma foreign_type("C", proc_layout, "const MR_ProcLayout *",
     [can_pass_as_mercury_type, stable]).
+    % stubs only
 :- pragma foreign_type("Java", proc_layout, "java.lang.Object", []). %stub only
+:- pragma foreign_type("Erlang", proc_layout, "").
 
 get_proc_label_from_layout(Layout) = ProcLabel :-
     ( proc_layout_is_uci(Layout) ->
