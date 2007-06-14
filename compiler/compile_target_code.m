@@ -2037,11 +2037,45 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
         % Quoting would prevent that.
         join_string_list(ObjectList, "", "", " ", Objects)
     ),
-    MakeLibCmd = string.append_list([
-        ArCmd, " ", ArFlags, " ", ArOutputFlag, " ",
-        LibFileName, " ", Objects]),
-    invoke_system_command(ErrorStream, cmd_verbose_commands,
-        MakeLibCmd, MakeLibCmdSucceeded, !IO),
+    ( ArCmd = "lib" ->
+            
+        %
+        % If we are using lib, we are on windows and windows doesn't
+        % handle long command lines, so place the list of object
+        % files in a file and pass that file as an argument to lib.
+        %
+        io.make_temp(TmpFile, !IO),
+        io.open_output(TmpFile, OpenResult, !IO),
+        (
+            OpenResult = ok(TmpStream),
+            io.write_string(TmpStream, Objects, !IO),
+            io.close_output(TmpStream, !IO),
+
+            MakeLibCmd = string.append_list([
+                ArCmd, " ", ArFlags, " ", ArOutputFlag,
+                LibFileName, " @", TmpFile]),
+            invoke_system_command(ErrorStream, cmd_verbose_commands,
+                MakeLibCmd, MakeLibCmdSucceeded0, !IO),
+
+            io.remove_file(TmpFile, RemoveResult, !IO),
+            (
+                RemoveResult = ok,
+                MakeLibCmdSucceeded = MakeLibCmdSucceeded0
+            ;
+                RemoveResult = error(_),
+                MakeLibCmdSucceeded = no
+            )
+        ;
+            OpenResult = error(_),
+            MakeLibCmdSucceeded = no
+        )
+    ;
+        MakeLibCmd = string.append_list([
+            ArCmd, " ", ArFlags, " ", ArOutputFlag, " ",
+            LibFileName, " ", Objects]),
+        invoke_system_command(ErrorStream, cmd_verbose_commands,
+            MakeLibCmd, MakeLibCmdSucceeded, !IO)
+    ),
     (
         ( RanLib = ""
         ; MakeLibCmdSucceeded = no
