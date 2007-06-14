@@ -705,7 +705,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
         ),
 
         CRttiId = rtti.ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
-        rtti.id_to_c_identifier(CRttiId, Atom)
+        rtti.id_to_c_identifier(CRttiId, Atom1)
     ;
         RttiId = elds_rtti_type_info_id(TypeInfo),
 
@@ -714,7 +714,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
         Atom0 = "ti_" ++ type_info_to_string(TypeInfo),
             
             % Erlang atoms have a maximum length, so shorten names
-        Atom = string.replace_all(Atom0, "type_ctor_info", "tci")
+        Atom1 = string.replace_all(Atom0, "type_ctor_info", "tci")
     ;
         RttiId = elds_rtti_pseudo_type_info_id(PseudoTypeInfo),
         ( PseudoTypeInfo = type_var(_) ->
@@ -728,16 +728,17 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
         Atom0 = Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo),
 
             % Erlang atoms have a maximum length, so shorten names
-        Atom = string.replace_all(Atom0, "type_ctor_info", "tci")
+        Atom1 = string.replace_all(Atom0, "type_ctor_info", "tci")
     ;
         RttiId = elds_rtti_base_typeclass_id(TCName, InstanceModule,
             InstanceStr),
         TCName = tc_name(ClassModuleName, ClassName, ClassArity),
         QClassName = qualified(ClassModuleName, ClassName),
         QClassNameStr = sym_name_to_string_sep(QClassName, "__"),
-        Atom = string.append_list(["BaseTypeclassInfo_", QClassNameStr,
+        Atom1 = string.append_list(["BaseTypeclassInfo_", QClassNameStr,
             "__arity", string.from_int(ClassArity), "__", InstanceStr])
     ),
+    Atom = shorten_long_atom_name(Atom1),
     (if CurModuleName \= InstanceModule then
         output_atom(erlang_module_name_to_str(InstanceModule), !IO),
         io.write_char(':', !IO)
@@ -745,6 +746,30 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
         true
     ),
     output_atom(Atom, !IO).
+
+    % Some RTTI function names can be longer than the 255 character limit on
+    % atom names.  To shorten long names, we take the left and right parts
+    % of the string and stick the hash of the string in the middle.
+    %
+:- func shorten_long_atom_name(string) = string.
+
+shorten_long_atom_name(Name0) = Name :-
+    (if string.length(Name0) =< 255 then
+        Name = Name0
+    else
+        % Use only lower 32 bits of the hash value so that the result is the
+        % same on 64-bit machines as 32-bit machines.
+        %
+        % XXX we assume that `int' is at least 32 bits wide
+        %
+        % XXX it would be better to use a cryptographic hash function
+        %
+        Hash = string.hash(Name0) /\ 0xffffffff,
+        Left = string.left(Name0, 64),
+        Right = string.right(Name0, 64),
+        Middle = string.int_to_base_string(Hash, 16),
+        Name = string.append_list([Left, "...", Middle, "...", Right])
+    ).
 
 %-----------------------------------------------------------------------------%
 
