@@ -309,6 +309,17 @@ else
 	MUTABLE_PROGS =
 endif
 
+# Trace goal with runtime conditions work properly only in C and Erlang grades.
+ifeq "$(filter il% java%,$(GRADE))" ""
+	TRACE_GOAL_ENV_PROGS= \
+		trace_goal_env_1 \
+		trace_goal_env_2 \
+		trace_goal_env_2 \
+		trace_goal_env_3
+else
+	TRACE_GOAL_ENV_PROGS=
+endif
+
 # Tests of the C#, MC++, and IL foreign language interfaces only
 # work in IL grades
 ifeq "$(filter il%,$(GRADE))" ""
@@ -329,17 +340,13 @@ endif
 
 # Fact tables currently work only in the C grades.
 # The foreign_type_assertion test is currently meaningful only in C grades.
-# Trace goal with runtime conditions work properly only in C grades.
 # The lookup_disj test case uses C foreign_proc code to print progress reports.
 ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS= \
 		factt \
 		factt_sort_test \
 		foreign_type_assertion \
-		lookup_disj \
-		trace_goal_env_1 \
-		trace_goal_env_2 \
-		trace_goal_env_2
+		lookup_disj
 else
 	C_ONLY_PROGS=
 endif
@@ -555,7 +562,7 @@ else
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
 		$(DOTNET_PROGS) $(JAVA_PROGS) $(TRAILED_PROGS) \
-		$(MUTABLE_PROGS) 
+		$(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS)
 endif
 
 #-----------------------------------------------------------------------------#
