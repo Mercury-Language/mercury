@@ -76,6 +76,16 @@
     %
 :- pred erl_variable_type(erl_gen_info::in, prog_var::in, mer_type::out) is det.
 
+    % Add the given string as the name of an environment variable used by
+    % the function being generated.
+    %
+:- pred erl_gen_info_add_env_var_name(string::in,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Get the names of the used environment variables.
+    %
+:- pred erl_gen_info_get_env_vars(erl_gen_info::in, set(string)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Various utility routines used for ELDS code generation
@@ -207,8 +217,8 @@
 :- type erl_gen_info
     --->    erl_gen_info(
                 % These fields remain constant for each procedure,
-                % except for the varset which can be added to as variables
-                % are introduced.
+                % except for the varset and the set of environment variables,
+                % which can be added to.
 
                 module_info         :: module_info,
                 pred_id             :: pred_id,
@@ -219,7 +229,10 @@
                 % input_vars and output_vars do not include variables of dummy
                 % types.
                 input_vars          :: prog_vars,
-                output_vars         :: prog_vars
+                output_vars         :: prog_vars,
+
+                % Set of environment variables used by this procedure.
+                env_var_names       :: set(string)
             ).
 
 erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
@@ -231,6 +244,7 @@ erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
     pred_info_get_arg_types(PredInfo, HeadTypes),
     erl_gen_arg_list(ModuleInfo, opt_dummy_args,
         HeadVars, HeadTypes, HeadModes, InputVars, OutputVars),
+    EnvVars = set.init,
     Info = erl_gen_info(
         ModuleInfo,
         PredId,
@@ -238,7 +252,8 @@ erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
         VarSet,
         VarTypes,
         InputVars,
-        OutputVars
+        OutputVars,
+        EnvVars
     ).
 
 erl_gen_info_get_module_info(Info, Info ^ module_info).
@@ -280,6 +295,13 @@ erl_variable_types(Info, Vars, Types) :-
 erl_variable_type(Info, Var, Type) :-
     erl_gen_info_get_var_types(Info, VarTypes),
     map.lookup(VarTypes, Var, Type).
+
+erl_gen_info_add_env_var_name(Name, !Info) :-
+    EnvVarNames0 = !.Info ^ env_var_names,
+    set.insert(EnvVarNames0, Name, EnvVarNames),
+    !:Info = !.Info ^ env_var_names := EnvVarNames.
+
+erl_gen_info_get_env_vars(Info, Info ^ env_var_names).
 
 %-----------------------------------------------------------------------------%
 %
@@ -454,6 +476,15 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
         Expr = elds_throw(ExprA)
     ;
+        Expr0 = elds_send(ExprA0, ExprB0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        erl_rename_vars_in_expr(Subn, ExprB0, ExprB),
+        Expr = elds_send(ExprA, ExprB)
+    ;
+        Expr0 = elds_receive(Cases0),
+        erl_rename_vars_in_cases(Subn, Cases0, Cases),
+        Expr = elds_receive(Cases)
+    ;
         ( Expr0 = elds_rtti_ref(_)
         ; Expr0 = elds_foreign_code(_)
         ),
@@ -600,6 +631,13 @@ erl_vars_in_expr(Expr, !Set) :-
         Expr = elds_throw(ExprA),
         erl_vars_in_expr(ExprA, !Set)
     ;
+        Expr = elds_send(ExprA, ExprB),
+        erl_vars_in_expr(ExprA, !Set),
+        erl_vars_in_expr(ExprB, !Set)
+    ;
+        Expr = elds_receive(Cases),
+        erl_vars_in_cases(Cases, !Set)
+    ;
         ( Expr = elds_rtti_ref(_)
         ; Expr = elds_foreign_code(_)
         )
@@ -717,6 +755,12 @@ erl_expr_size(Expr) = Size :-
     ;
         Expr = elds_throw(ExprA),
         Size = 1 + erl_expr_size(ExprA)
+    ;
+        Expr = elds_send(ExprA, ExprB),
+        Size = 1 + erl_expr_size(ExprA) + erl_expr_size(ExprB)
+    ;
+        Expr = elds_receive(Cases),
+        Size = 1 + erl_cases_size(Cases)
     ;
         Expr = elds_rtti_ref(_),
         Size = 1

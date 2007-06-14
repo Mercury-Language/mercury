@@ -72,6 +72,9 @@ stop_global_server(!IO).
 mutable_key(MutableName) ->
     {'ML_mutables', MutableName}.
 
+env_var_key(EnvVarName) ->
+    {'ML_env_vars', EnvVarName}.
+
 global_server_loop() ->
     receive
         {get_mutable, MutableName, From} ->
@@ -83,6 +86,21 @@ global_server_loop() ->
             put(mutable_key(MutableName), Value),
             global_server_loop();
 
+        {init_env_var, EnvVarName} ->
+            case os:getenv(EnvVarName) of
+                false ->
+                    Value = false;
+                _ ->
+                    Value = true
+            end,
+            put(env_var_key(EnvVarName), Value),
+            global_server_loop();
+
+        {trace_evaluate_runtime_condition, Cond, From} ->
+            Ret = trace_eval_runtime_cond(Cond),
+            From ! {trace_evaluate_runtime_condition_ack, Ret},
+            global_server_loop();
+
         {stop, From} ->
             From ! {stop_ack};
 
@@ -92,6 +110,15 @@ global_server_loop() ->
                 [Any]),
             global_server_loop()
     end.
+
+trace_eval_runtime_cond({env_var, EnvVarName}) ->
+    get(env_var_key(EnvVarName));
+trace_eval_runtime_cond({'not', Cond}) ->
+    not trace_eval_runtime_cond(Cond);
+trace_eval_runtime_cond({'or', CondA, CondB}) ->
+    trace_eval_runtime_cond(CondA) orelse trace_eval_runtime_cond(CondB);
+trace_eval_runtime_cond({'and', CondA, CondB}) ->
+    trace_eval_runtime_cond(CondA) andalso trace_eval_runtime_cond(CondB).
 ").
 
 %-----------------------------------------------------------------------------%

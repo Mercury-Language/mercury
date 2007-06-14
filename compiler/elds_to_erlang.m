@@ -62,6 +62,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -130,6 +131,8 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
         output_atom(ErlangModuleNameStr, !IO),
         io.write_string(":mercury__required_final\n", !IO)
     ),
+    EnvVarNames = elds_get_env_var_names(ProcDefns),
+    set.fold(output_env_var_directive, EnvVarNames, !IO),
     % We always write out ENDINIT so that mkinit_erl doesn't scan the whole
     % file.
     io.write_string("% ENDINIT\n", !IO),
@@ -161,7 +164,7 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     bool::in, bool::out, io::di, io::uo) is det.
 
 output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
-    Defn = elds_defn(PredProcId, _, Body),
+    Defn = elds_defn(PredProcId, _, Body, _),
     PredProcId = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
@@ -273,6 +276,7 @@ main_wrapper_code = "
         mercury__startup(),
         InitModule = list_to_atom(atom_to_list(?MODULE) ++ ""_init""),
         try
+            InitModule:init_env_vars(),
             InitModule:init_modules(),
             InitModule:init_modules_required(),
             main_2_p_0(),
@@ -327,6 +331,25 @@ main_wrapper_code = "
 
 %-----------------------------------------------------------------------------%
 
+:- func elds_get_env_var_names(list(elds_defn)) = set(string).
+
+elds_get_env_var_names(ProcDefns) =
+    set.union_list(list.map(elds_get_env_var_names_from_defn, ProcDefns)).
+
+:- func elds_get_env_var_names_from_defn(elds_defn) = set(string).
+
+elds_get_env_var_names_from_defn(ProcDefn) = EnvVarNameSet :-
+    ProcDefn = elds_defn(_, _, _, EnvVarNameSet).
+
+:- pred output_env_var_directive(string::in, io::di, io::uo) is det.
+
+output_env_var_directive(EnvVarName, !IO) :-
+    io.write_string("% ENVVAR ", !IO),
+    write_with_escaping(in_string, EnvVarName, !IO),
+    io.nl(!IO).
+
+%-----------------------------------------------------------------------------%
+
 :- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
 
 output_foreign_body_code(foreign_body_code(_Lang, Code, _Context), !IO) :-
@@ -362,7 +385,7 @@ output_init_fn_call(ModuleInfo, PredProcId, !IO) :-
 %-----------------------------------------------------------------------------%
 
 output_defn(ModuleInfo, Defn, !IO) :-
-    Defn = elds_defn(PredProcId, VarSet, Body),
+    Defn = elds_defn(PredProcId, VarSet, Body, _EnvVarNames),
     (
         Body = body_defined_here(Clause),
         io.nl(!IO),
@@ -544,6 +567,18 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         nl(!IO),
         io.write_string(Code, !IO),
         nl_indent_line(Indent, !IO)
+    ;
+        Expr = elds_send(ExprA, ExprB),
+        output_expr(ModuleInfo, VarSet, Indent, ExprA, !IO),
+        io.write_string(" ! ", !IO),
+        output_expr(ModuleInfo, VarSet, Indent, ExprB, !IO)
+    ;
+        Expr = elds_receive(Cases),
+        io.write_string("(receive", !IO),
+            io.write_list(Cases, ";",
+                output_case(ModuleInfo, VarSet, Indent + 1), !IO),
+        nl_indent_line(Indent, !IO),
+        io.write_string("end)", !IO)
     ).
 
 :- pred output_case(module_info::in, prog_varset::in, indent::in,

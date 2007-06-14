@@ -112,7 +112,6 @@ static int          req_final_module_next = 0;
 /*
 ** List of names of environment variables whose values should be sampled
 ** at initialization.
-** NOTE: the Erlang backend does not yet use these.
 */
 static const char   **mercury_env_vars = NULL;
 static int          mercury_env_var_max = 0;
@@ -262,6 +261,13 @@ output_init_program(void)
 
     output_init_function(PURPOSE_REQ_FINAL,
         req_final_modules, req_final_module_next);
+
+    printf("init_env_vars() -> \n");
+    for (i = 0; i < mercury_env_var_next; i++) {
+        printf("\t'ML_erlang_global_server' ! {init_env_var, \"%s\"},\n",
+            mercury_env_vars[i]);
+    }
+    printf("\tvoid.\n");
 
     if (num_errors > 0) {
         fputs("% Force syntax error, since there were\n", stdout);
@@ -503,25 +509,7 @@ process_init_file(const char *filename, const char *prefix_str)
         } else if (strncmp(line, envvar_str, envvar_strlen) == 0) {
             char    *envvar_name;
             int     i;
-            int     j;
             MR_bool found;
-
-            /*
-            ** Check that all characters in the name of the environment
-            ** variable are acceptable as components of a C variable name.
-            ** Note that the variable name doesn't have to start with a letter
-            ** because the variable name has a prefix.
-            */
-            for (j = envvar_strlen; MR_isalnumunder(line[j]); j++) {
-                /* VOID */
-            }
-
-            if (line[j] != '\n') {
-                printf("%s: error: bad environment variable name %s\n",
-                    MR_progname, line);
-            }
-
-            line[j] = '\0';     /* overwrite the newline */
 
             envvar_name = line + envvar_strlen;
 

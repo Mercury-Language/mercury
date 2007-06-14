@@ -546,96 +546,24 @@ std_binop_to_elds(float_ge, elds.(>=)).
 % unused variable warnings were switched off in the Erlang compiler.
 
 erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
-        PragmaImpl, CodeModel, _OuterContext, MaybeSuccessExpr, Statement,
+        PragmaImpl, CodeModel, OuterContext, MaybeSuccessExpr, Statement,
         !Info) :-
     (
-        MaybeTraceRuntimeCond = yes(_),
-        sorry(this_file, "trace runtime conditions in Erlang backend")
-    ;
-        MaybeTraceRuntimeCond = no
-    ),
-    (
-        PragmaImpl = fc_impl_ordinary(ForeignCode, _Context),
-        %
-        % In the following, F<n> are input variables to the foreign code (with
-        % fixed names), and G<n> are output variables from the foreign code
-        % (also with fixed names).  The variables V<n> are input variables and
-        % have arbitrary names.  We introduce variables with fixed names using
-        % a lambda function rather than direct assignments in case a single
-        % procedure makes calls to two pieces of foreign code which use the
-        % same fixed names (this can happen due to inlining).
-        %
-        % We generate code for calls to model_det foreign code like this:
-        %
-        %   (fun(F1, F2, ...) ->
-        %       <foreign code>,
-        %       {G1, G2, ...}
-        %   )(V1, V2, ...).
-        %
-        % We generate code for calls to model_semi foreign code like this:
-        %
-        %   (fun(F1, F2, ...) ->
-        %       <foreign code>,
-        %       case SUCCESS_INDICATOR of
-        %           true ->
-        %               {G1, G2, ...};
-        %           false ->
-        %               fail
-        %       end
-        %   )(V1, V2, ...)
-        %
-        % where `SUCCESS_INDICATOR' is a variable that should be set in the
-        % foreign code snippet to `true' or `false'.
-        %
-
-        % Separate the foreign call arguments into inputs and outputs.
-        erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        list.map2(foreign_arg_type_mode, ForeignArgs, ArgTypes, ArgModes),
-        erl_gen_arg_list(ModuleInfo, opt_dummy_args, ForeignArgs, ArgTypes,
-            ArgModes, InputForeignArgs, OutputForeignArgs),
-
-        % Get the variables involved in the call and their fixed names.
-        InputVars = list.map(foreign_arg_var, InputForeignArgs),
-        OutputVars = list.map(foreign_arg_var, OutputForeignArgs),
-        InputVarsNames = list.map(foreign_arg_name, InputForeignArgs),
-        OutputVarsNames = list.map(foreign_arg_name, OutputForeignArgs),
-
-        ForeignCodeExpr = elds_foreign_code(ForeignCode),
-        OutputTuple = elds_term(elds_tuple(
-            exprs_from_fixed_vars(OutputVarsNames))),
-
-        % Create the inner lambda function.
+        PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
         (
-            CodeModel = model_det,
-            %
-            %   <ForeignCodeExpr>,
-            %   {Outputs, ...}
-            %
-            InnerFunStatement = join_exprs(ForeignCodeExpr, OutputTuple)
+            MaybeTraceRuntimeCond = no,
+            (
+                MaybeContext = yes(Context)
+            ;
+                MaybeContext = no,
+                Context = OuterContext
+            ),
+            erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
+                CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
         ;
-            CodeModel = model_semi,
-            %
-            %   <ForeignCodeExpr>,
-            %   case SUCCESS_INDICATOR of
-            %       true -> {Outputs, ...};
-            %       false -> fail
-            %   end
-            %
-            InnerFunStatement = join_exprs(ForeignCodeExpr, MaybePlaceOutputs),
-            MaybePlaceOutputs = elds_case_expr(SuccessInd, [OnTrue, OnFalse]),
-            SuccessInd = elds_term(elds_fixed_name_var("SUCCESS_INDICATOR")),
-            OnTrue = elds_case(elds_true, OutputTuple),
-            OnFalse = elds_case(elds_false, elds_term(elds_fail))
-        ;
-            CodeModel = model_non,
-            sorry(this_file, "model_non foreign_procs in Erlang backend")
-        ),
-        InnerFun = elds_fun(elds_clause(terms_from_fixed_vars(InputVarsNames),
-            InnerFunStatement)),
-
-        % Call the inner function with the input variables.
-        erl_make_call(CodeModel, elds_call_ho(InnerFun), InputVars, OutputVars,
-            MaybeSuccessExpr, Statement)
+            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+            erl_gen_trace_runtime_cond(TraceRuntimeCond, Statement, !Info)
+        )
     ;
         PragmaImpl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
         sorry(this_file, "erl_gen_goal_expr: fc_impl_model_non")
@@ -643,6 +571,95 @@ erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
         PragmaImpl = fc_impl_import(_, _, _, _),
         sorry(this_file, "erl_gen_goal_expr: fc_impl_import")
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred erl_gen_ordinary_pragma_foreign_code(list(foreign_arg)::in,
+    string::in, code_model::in, prog_context::in, maybe(elds_expr)::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
+        CodeModel, _OuterContext, MaybeSuccessExpr, Statement, !Info) :-
+    %
+    % In the following, F<n> are input variables to the foreign code (with
+    % fixed names), and G<n> are output variables from the foreign code
+    % (also with fixed names).  The variables V<n> are input variables and
+    % have arbitrary names.  We introduce variables with fixed names using
+    % a lambda function rather than direct assignments in case a single
+    % procedure makes calls to two pieces of foreign code which use the
+    % same fixed names (this can happen due to inlining).
+    %
+    % We generate code for calls to model_det foreign code like this:
+    %
+    %   (fun(F1, F2, ...) ->
+    %       <foreign code>,
+    %       {G1, G2, ...}
+    %   )(V1, V2, ...).
+    %
+    % We generate code for calls to model_semi foreign code like this:
+    %
+    %   (fun(F1, F2, ...) ->
+    %       <foreign code>,
+    %       case SUCCESS_INDICATOR of
+    %           true ->
+    %               {G1, G2, ...};
+    %           false ->
+    %               fail
+    %       end
+    %   )(V1, V2, ...)
+    %
+    % where `SUCCESS_INDICATOR' is a variable that should be set in the
+    % foreign code snippet to `true' or `false'.
+    %
+
+    % Separate the foreign call arguments into inputs and outputs.
+    erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    list.map2(foreign_arg_type_mode, ForeignArgs, ArgTypes, ArgModes),
+    erl_gen_arg_list(ModuleInfo, opt_dummy_args, ForeignArgs, ArgTypes,
+        ArgModes, InputForeignArgs, OutputForeignArgs),
+
+    % Get the variables involved in the call and their fixed names.
+    InputVars = list.map(foreign_arg_var, InputForeignArgs),
+    OutputVars = list.map(foreign_arg_var, OutputForeignArgs),
+    InputVarsNames = list.map(foreign_arg_name, InputForeignArgs),
+    OutputVarsNames = list.map(foreign_arg_name, OutputForeignArgs),
+
+    ForeignCodeExpr = elds_foreign_code(ForeignCode),
+    OutputTuple = elds_term(elds_tuple(
+        exprs_from_fixed_vars(OutputVarsNames))),
+
+    % Create the inner lambda function.
+    (
+        CodeModel = model_det,
+        %
+        %   <ForeignCodeExpr>,
+        %   {Outputs, ...}
+        %
+        InnerFunStatement = join_exprs(ForeignCodeExpr, OutputTuple)
+    ;
+        CodeModel = model_semi,
+        %
+        %   <ForeignCodeExpr>,
+        %   case SUCCESS_INDICATOR of
+        %       true -> {Outputs, ...};
+        %       false -> fail
+        %   end
+        %
+        InnerFunStatement = join_exprs(ForeignCodeExpr, MaybePlaceOutputs),
+        MaybePlaceOutputs = elds_case_expr(SuccessInd, [OnTrue, OnFalse]),
+        SuccessInd = elds_term(elds_fixed_name_var("SUCCESS_INDICATOR")),
+        OnTrue = elds_case(elds_true, OutputTuple),
+        OnFalse = elds_case(elds_false, elds_term(elds_fail))
+    ;
+        CodeModel = model_non,
+        sorry(this_file, "model_non foreign_procs in Erlang backend")
+    ),
+    InnerFun = elds_fun(elds_clause(terms_from_fixed_vars(InputVarsNames),
+        InnerFunStatement)),
+
+    % Call the inner function with the input variables.
+    erl_make_call(CodeModel, elds_call_ho(InnerFun), InputVars, OutputVars,
+        MaybeSuccessExpr, Statement).
 
 :- pred foreign_arg_type_mode(foreign_arg::in, mer_type::out, mer_mode::out)
     is det.
@@ -666,6 +683,102 @@ foreign_arg_name(foreign_arg(_, MaybeNameMode, _, _)) = Name :-
         % This argument is unused.
         Name = "_"
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred erl_gen_trace_runtime_cond(trace_expr(trace_runtime)::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_gen_trace_runtime_cond(TraceRuntimeCond, Statement, !Info) :-
+    % Generate a data representation of the trace runtime condition.
+    erl_generate_runtime_cond_expr(TraceRuntimeCond, CondExpr, !Info),
+
+    % Send the data representation of the condition to the server
+    % for interpretation.
+    %
+    % 'ML_erlang_global_server' !
+    %   {trace_evaluate_runtime_condition, CondExpr, self()},
+    %
+    Send = elds_send(ServerPid, SendMsg),
+    ServerPid = elds_term(elds_atom_raw("ML_erlang_global_server")),
+    SendMsg = elds_term(elds_tuple([
+        elds_term(elds_atom_raw("trace_evaluate_runtime_condition")),
+        CondExpr,
+        elds_call_self
+    ])),
+
+    % Wait for an answer, which will be `true' or `false'.
+    %
+    % receive
+    %   {trace_evaluate_runtime_condition_ack, Result} ->
+    %       Result
+    % end
+    %
+    erl_gen_info_new_named_var("Result", Result, !Info),
+    ResultExpr = expr_from_var(Result),
+
+    Receive = elds_receive([elds_case(AckPattern, ResultExpr)]),
+    AckPattern = elds_tuple([
+        elds_term(elds_atom_raw("trace_evaluate_runtime_condition_ack")),
+        ResultExpr
+    ]),
+
+    SendAndRecv = join_exprs(Send, Receive),
+
+    % case
+    %   (begin <send>, <receive> end)
+    % of
+    %   true  -> {};
+    %   false -> fail
+    % end
+    %
+    Statement = elds_case_expr(SendAndRecv, [TrueCase, FalseCase]),
+    TrueCase  = elds_case(elds_true, elds_term(elds_empty_tuple)),
+    FalseCase = elds_case(elds_false, elds_term(elds_fail)).
+
+    % Instead of generating code which evaluates whether the trace runtime
+    % condition is true, we generate a data representation of the condition and
+    % send it to the "Erlang global server" for interpretation.  The process
+    % dictionary of the server is initialised at startup with whether each
+    % environment variable was set or not, so it makes sense to evaluate the
+    % trace condition in the server.
+    %
+    % The data representation is straightforward:
+    %
+    %   COND  ::=   {env_var, STRING}
+    %           |   {'and', COND, COND}
+    %           |   {'or', COND, COND}
+    %           |   {'not', COND}
+    %
+:- pred erl_generate_runtime_cond_expr(trace_expr(trace_runtime)::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_generate_runtime_cond_expr(TraceExpr, CondExpr, !Info) :-
+    (
+        TraceExpr = trace_base(trace_envvar(EnvVar)),
+        erl_gen_info_add_env_var_name(EnvVar, !Info),
+        Args = [
+            elds_term(elds_atom_raw("env_var")),
+            elds_term(elds_string(EnvVar))
+        ]
+    ;
+        TraceExpr = trace_not(ExprA),
+        erl_generate_runtime_cond_expr(ExprA, CondA, !Info),
+        Args = [elds_term(elds_atom_raw("not")), CondA]
+    ;
+        TraceExpr = trace_op(TraceOp, ExprA, ExprB),
+        erl_generate_runtime_cond_expr(ExprA, CondA, !Info),
+        erl_generate_runtime_cond_expr(ExprB, CondB, !Info),
+        (
+            TraceOp = trace_or,
+            Op = "or"
+        ;
+            TraceOp = trace_and,
+            Op = "and"
+        ),
+        Args = [elds_term(elds_atom_raw(Op)), CondA, CondB]
+    ),
+    CondExpr = elds_term(elds_tuple(Args)).
 
 %-----------------------------------------------------------------------------%
 

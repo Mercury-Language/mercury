@@ -1513,11 +1513,13 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                             Target = target_c,
                             !:EvalAttributes = default_attributes(lang_c)
                         ;
+                            Target = target_erlang,
+                            !:EvalAttributes = default_attributes(lang_erlang)
+                        ;
                             ( Target = target_il
                             ; Target = target_java
                             ; Target = target_asm
                             ; Target = target_x86_64
-                            ; Target = target_erlang
                             ),
                             sorry(this_file, "NYI: runtime trace conditions "
                                 ++ "in languages other than C")

@@ -33,6 +33,7 @@
 :- import_module char.
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -67,7 +68,10 @@
     --->    elds_defn(
                 defn_proc_id    :: pred_proc_id,
                 defn_varset     :: prog_varset,
-                defn_body       :: elds_body
+                defn_body       :: elds_body,
+                defn_env_vars   :: set(string)
+                                % The set of environment variables referred to
+                                % by the function body.
             ).
 
 :- type elds_body
@@ -185,7 +189,17 @@
     ;       elds_throw(elds_expr)
 
             % A piece of code to be embedded directly in the generated code.
-    ;       elds_foreign_code(string).
+    ;       elds_foreign_code(string)
+
+            % ExprA ! ExprB
+            %
+    ;       elds_send(elds_expr, elds_expr)
+
+            % receive
+            %   Pattern -> Expr;
+            %   ...
+            % end
+    ;       elds_receive(list(elds_case)).
 
 :- type elds_term
     --->    elds_char(char)
@@ -281,6 +295,7 @@
 
 :- func elds_call_builtin(string, list(elds_expr)) = elds_expr.
 :- func elds_call_element(prog_var, int) = elds_expr.
+:- func elds_call_self = elds_expr.
 
 :- func var_eq_false(prog_var) = elds_expr.
 
@@ -367,6 +382,8 @@ elds_call_builtin(FunName, Exprs) =
 % Arguments are flipped from the Erlang for currying.
 elds_call_element(Var, Index) = elds_call_builtin("element",
     [elds_term(elds_int(Index)), expr_from_var(Var)]).
+
+elds_call_self = elds_call_builtin("self", []).
 
 var_eq_false(Var) = elds_eq(expr_from_var(Var), elds_term(elds_false)).
 

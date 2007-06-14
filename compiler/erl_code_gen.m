@@ -195,16 +195,19 @@ erl_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable,
     proc_info::in, list(elds_defn)::in, list(elds_defn)::out) is det.
 
 erl_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, _ProcInfo, !Defns) :-
-    erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody),
-    ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet, ProcBody),
+    erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody,
+        EnvVarNames),
+    ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet, ProcBody,
+        EnvVarNames),
     !:Defns = [ProcDefn | !.Defns].
 
     % Generate an ELDS definition for the specified procedure.
     %
 :- pred erl_gen_proc_defn(module_info::in, pred_id::in, proc_id::in,
-    prog_varset::out, elds_body::out) is det.
+    prog_varset::out, elds_body::out, set(string)::out) is det.
 
-erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody) :-
+erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody,
+        EnvVarNames) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
     proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -243,7 +246,8 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody) :-
             ProcBody = body_defined_here(ProcClause)
         ),
 
-        erl_gen_info_get_varset(!.Info, ProcVarSet)
+        erl_gen_info_get_varset(!.Info, ProcVarSet),
+        erl_gen_info_get_env_vars(!.Info, EnvVarNames)
     ).
 
 :- pred erl_gen_proc_body(code_model::in, instmap::in, hlds_goal::in,
@@ -468,9 +472,6 @@ erl_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, _Detism,
 erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, Detism, InstMap,
         Context, MaybeSuccessExpr, Statement, !Info) :-
     (
-        ScopeReason = trace_goal(_, _, _, _, _),
-        sorry(this_file, "trace_goal scope in erlang code generator")
-    ;
         ( ScopeReason = promise_solutions(_, _)
         ; ScopeReason = commit(_)
         ),
@@ -481,6 +482,11 @@ erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, Detism, InstMap,
         ; ScopeReason = promise_purity(_, _)
         ; ScopeReason = barrier(_)
         ; ScopeReason = from_ground_term(_)
+        ; ScopeReason = trace_goal(_, _, _, _, _)
+            % Trace goals with run-time conditions are transformed into
+            % if-then-else goals where the condition is a special foreign_proc
+            % call and the then branch is the actual trace goal (i.e. this
+            % goal).  Thus there is nothing special we have to do here.
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         goal_info_get_determinism(GoalInfo, GoalDetism),
@@ -1327,7 +1333,8 @@ erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
     ( 
         search_elds_defn(ProcDefns, PredProcId, TargetProc)
     ->
-        TargetProc = elds_defn(_TargetPPId, _TargetVarSet, TargetBody),
+        TargetProc = elds_defn(_TargetPPId, _TargetVarSet, TargetBody,
+            _EnvVarNames),
         Arity = elds_body_arity(TargetBody),
 
         % ``Name(Vars, ...) -> PredProcId(Vars, ...)''
@@ -1344,7 +1351,7 @@ erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
     elds_defn::out) is semidet.
 
 search_elds_defn([Defn0 | Defns], PredProcId, Defn) :-
-    ( Defn0 = elds_defn(PredProcId, _, _) ->
+    ( Defn0 = elds_defn(PredProcId, _, _, _) ->
         Defn = Defn0
     ;
         search_elds_defn(Defns, PredProcId, Defn)
