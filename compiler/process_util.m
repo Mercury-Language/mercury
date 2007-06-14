@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module libs.process_util.
-
 :- interface.
 
 :- import_module bool.
@@ -86,8 +85,11 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+
+%-----------------------------------------------------------------------------%
 
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
     setup_signal_handlers(MaybeSigIntHandler, !IO),
@@ -415,4 +417,12 @@ call_child_process_io_pred(P, Status, !IO) :-
     P(Success, !IO),
     Status = ( Success = yes -> 0 ; 1 ).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "process_util.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module libs.process_util.
 %-----------------------------------------------------------------------------%
