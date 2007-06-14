@@ -995,12 +995,33 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         InitFileRes = ok(InitFileStream),
         list.map_foldl(module_name_to_file_name_ext(TargetExt, no),
             AllModules, AllTargetFilesList, !IO),
-        join_quoted_string_list(AllTargetFilesList, "", "", " ",
+        join_quoted_string_list(AllTargetFilesList, "", "\n", "",
             TargetFileNames),
         
-        MkInitCmd = string.append_list([MkInit, " -k ", TargetFileNames]),
-        invoke_system_command(InitFileStream, cmd_verbose, MkInitCmd, MkInitOK,
-            !IO),
+        io.make_temp(TmpFile, !IO),
+        io.open_output(TmpFile, OpenResult, !IO),
+        (
+            OpenResult = ok(TmpStream),
+            io.write_string(TmpStream, TargetFileNames, !IO),
+            io.close_output(TmpStream, !IO),
+
+            MkInitCmd = string.append_list([MkInit, " -k -f ", TmpFile]),
+            invoke_system_command(InitFileStream, cmd_verbose,
+                MkInitCmd, MkInitOK0, !IO),
+
+            io.remove_file(TmpFile, RemoveResult, !IO),
+            (
+                RemoveResult = ok,
+                MkInitOK = MkInitOK0
+            ;
+                RemoveResult = error(_),
+                MkInitOK = no
+            )
+        ;
+            OpenResult = error(_),
+            MkInitOK = no
+        ),
+
        
         ( 
             MkInitOK =  yes,

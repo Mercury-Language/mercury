@@ -59,7 +59,11 @@
 #endif
 
 /* --- adjustable limits --- */
-#define MAXCALLS    40  /* maximum number of calls per function */
+#define MAXCALLS    40      /* maximum number of calls per function */
+
+#define MAXFILENAME 4096    /* maximimum file name length           */
+#define NUMFILES    128     /* intial size of files array           */
+#define FACTOR      2       /* factor to increase files array by    */
 
 /* --- used to collect a list of strings --- */
 
@@ -277,7 +281,8 @@ static const char   *hl_entry_point = "main_2_p_0";
 static const char   *grade = "";
 static int          maxcalls = MAXCALLS;
 static int          num_files;
-static char         **files;
+static int          size_of_files;
+static char         **files = NULL;
 static MR_bool      output_main_func = MR_TRUE;
 static MR_bool      need_initialization_code = MR_FALSE;
 static MR_bool      need_tracing = MR_FALSE;
@@ -528,6 +533,7 @@ static const char main_func[] =
 
 /* --- function prototypes --- */
 static  void    parse_options(int argc, char *argv[]);
+static  void    process_file_list_file(char *filename);
 static  void    usage(void);
 static  void    output_complexity_proc(const char *procname);
 static  void    output_complexity_experiment_table(const char *filename);
@@ -721,12 +727,13 @@ parse_options(int argc, char *argv[])
     int         c;
     int         i;
     String_List *tmp_slist;
+    int         seen_f_option = 0;
 
     /*
     ** The set of options for mkinit and mkinit_erl should be
     ** kept in sync, even if they may not necessarily make sense.
     */
-    while ((c = getopt(argc, argv, "A:c:g:iI:lm:o:r:tw:xX:ks")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:f:g:iI:lm:o:r:tw:xX:ks")) != EOF) {
         switch (c) {
         case 'A':
             /*
@@ -749,6 +756,11 @@ parse_options(int argc, char *argv[])
                 usage();
             }
 
+            break;
+
+        case 'f':
+            process_file_list_file(optarg);
+            seen_f_option = 1;
             break;
 
         case 'g':
@@ -825,12 +837,66 @@ parse_options(int argc, char *argv[])
         }
     }
 
-    num_files = argc - optind;
+    if (seen_f_option) {
+        /* 
+        ** -f could be made compatible if we copied the filenames
+        ** from argv into files.
+        ** 
+        */
+        if ((argc - optind) > 0) {
+            fprintf(stderr,
+                "%s: -f incompatible with filenames on the command line\n",
+                MR_progname);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        num_files = argc - optind;
+        files = argv + optind;
+    }
+
     if (num_files <= 0) {
         usage();
     }
+}
 
-    files = argv + optind;
+static void
+process_file_list_file(char *filename)
+{
+    FILE *fp;
+    char *line;
+
+    fp = fopen(filename, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "%s: error opening file `%s': %s\n",
+            MR_progname, filename, strerror(errno));
+        num_errors++;
+        return;
+    } 
+        /* intialize the files structure, if required */
+    if (files == NULL) {
+        num_files = 0;
+        size_of_files = NUMFILES;
+        files = (char **) checked_malloc(sizeof(char *) * NUMFILES);
+    }
+
+    while ((line = read_line(filename, fp, MAXFILENAME)) != NULL) {
+            /* Ignore blank lines */
+        if (line[0] != '\0') {
+            if (num_files >= size_of_files) {
+                size_of_files *= FACTOR;
+                files = (char **)
+                    realloc(files, size_of_files * sizeof(char *));
+
+                if (files == NULL) {
+                    fprintf(stderr, "%s: unable to realloc\n", MR_progname);
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            files[num_files] = line;
+            num_files++;
+        }
+    }
 }
 
 static void
@@ -839,6 +905,7 @@ usage(void)
     fputs("Usage: mkinit [options] files...\n", stderr);
     fputs("Options:\n", stderr);
     fputs("  -c maxcalls:\tset the max size of an init function\n", stderr);
+    fputs("  -f filename:\tprocess the files one per line in filename\n", stderr);
     fputs("  -g grade:\tset the grade of the executable\n", stderr);
     fputs("  -i:\t\tenable initialization code\n", stderr);
     fputs("  -l:\t\tdo not output main function\n", stderr);
