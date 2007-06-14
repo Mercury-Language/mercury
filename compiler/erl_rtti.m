@@ -54,6 +54,7 @@
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
@@ -267,7 +268,6 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcId, WrapperFun,
         !VarSet) :-
     PredId = RttiProcId ^ pred_id,
     ProcId = RttiProcId ^ proc_id,
-    Arity = RttiProcId ^ proc_arity,
     ArgTypes = RttiProcId ^ proc_arg_types,
     ArgModes = RttiProcId ^ proc_arg_modes,
     Detism = RttiProcId ^ proc_interface_detism,
@@ -296,7 +296,7 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcId, WrapperFun,
     %
 
     svvarset.new_named_var("TypeClassInfo", TCIVar, !VarSet),
-    svvarset.new_vars(Arity, Ws, !VarSet),
+    svvarset.new_vars(list.length(ArgTypes) - NumExtra, Ws, !VarSet),
 
     % Make the ``E<n> = element(<n>, TypeClassInfo)'' expressions.
     list.map2_foldl(extract_extra_arg(TCIVar), 1 .. NumExtra,
@@ -544,10 +544,13 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         gen_init_special_pred(ModuleInfo, UnifyProcLabel, UnifyExpr, !VarSet),
         gen_init_special_pred(ModuleInfo,
             CompareProcLabel, CompareExpr, !VarSet),
+
+        erlang_type_ctor_details(ModuleInfo, Details, ELDSDetails0, RttiDefns0),
+        reduce_list_term_complexity(ELDSDetails0, ELDSDetails,
+            [], RevAssignments, !VarSet),
+
         VarSet = !.VarSet
     ),
-
-    erlang_type_ctor_details(ModuleInfo, Details, ELDSDetails, RttiDefns0),
 
     ELDSTypeCtorData = elds_tuple([
         elds_term(elds_int(Arity)),
@@ -559,11 +562,14 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         erlang_type_ctor_rep(Details),
         ELDSDetails
         ]),
+    ClauseBody = elds_block(list.reverse(RevAssignments) ++
+        [elds_term(ELDSTypeCtorData)]),
+
     TypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity),
     RttiId = elds_rtti_type_ctor_id(TypeCtor),
     IsExported = yes,
     RttiDefn = elds_rtti_defn(RttiId, IsExported, VarSet,
-        elds_clause([], elds_term(ELDSTypeCtorData))),
+        elds_clause([], ClauseBody)),
     RttiDefns = [RttiDefn | RttiDefns0].
 
 :- func erlang_type_ctor_rep(erlang_type_ctor_details) = elds_expr.
@@ -733,6 +739,32 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
         Defns = []
     ).
 
+    % For some types we can generate a very long list for the type ctor
+    % details, such that the Erlang compiler aborts with a message "An
+    % implementation limit was reached.  Try reducing the complexity of this
+    % function."
+    %
+    % Work around this problem by lifting the tail expression of each cons cell
+    % out and assigning it to a fresh variable.
+    %
+:- pred reduce_list_term_complexity(elds_expr::in, elds_expr::out,
+    list(elds_expr)::in, list(elds_expr)::out,
+    prog_varset::in, prog_varset::out) is det.
+
+reduce_list_term_complexity(Expr0, Expr, !RevAssignments, !VarSet) :-
+    (if
+        Expr0 = elds_term(elds_tuple([Functor, Head, Tail0])),
+        Functor = elds_term(elds_atom(SymName)),
+        unqualify_name(SymName) = "[|]"
+    then
+        reduce_list_term_complexity(Tail0, Tail, !RevAssignments, !VarSet),
+        svvarset.new_var(V, !VarSet),
+        Assign = elds_eq(expr_from_var(V), Tail),
+        Expr = elds_term(elds_tuple([Functor, Head, expr_from_var(V)])),
+        list.cons(Assign, !RevAssignments)
+    else
+        Expr = Expr0
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

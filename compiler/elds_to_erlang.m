@@ -782,14 +782,17 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
     ),
     output_atom(Atom, !IO).
 
-    % Some RTTI function names can be longer than the 255 character limit on
+    % Some RTTI function names can be longer than the character limit on
     % atom names.  To shorten long names, we take the left and right parts
     % of the string and stick the hash of the string in the middle.
     %
 :- func shorten_long_atom_name(string) = string.
 
 shorten_long_atom_name(Name0) = Name :-
-    (if string.length(Name0) =< 255 then
+    % Erlang atom names can be up to 255 characters long, but the Erlang
+    % compiler may mangle it (e.g. to derive the names of anonymous functions)
+    % which would then exceed the limit.
+    (if string.length(Name0) =< 200 then
         Name = Name0
     else
         % Use only lower 32 bits of the hash value so that the result is the
