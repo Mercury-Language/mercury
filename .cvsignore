@@ -9,6 +9,7 @@ configure.help
 so_locations
 Mmake.common
 Mmake.params
+Mmake.stage.params
 stage1 stage2 stage3
 Mercury.options
 autom4te.cache

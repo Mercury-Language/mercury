@@ -1,4 +1,5 @@
 .INSTALL.in
+.cvsignore
 config.sub
 config.guess
 NEWS
