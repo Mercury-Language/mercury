@@ -15,6 +15,8 @@
 % This module finds which renaming and reverse renaming are needed at each
 % program point so that the binding of non-local regions in the condition
 % goal of an if-then-else is resolved. 
+%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.condition_renaming.
 :- interface.
@@ -29,6 +31,8 @@
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 
 :- import_module map.
+
+%-----------------------------------------------------------------------------%
 
 :- type proc_goal_path_regions_table ==
 	map(pred_proc_id, goal_path_regions_table).
@@ -116,6 +120,8 @@
 :- import_module string.
 :- import_module svmap.
 
+%-----------------------------------------------------------------------------%
+
 collect_non_local_and_in_cond_regions(ModuleInfo, LRBeforeTable,
 		LRAfterTable, NonLocalRegionsTable, InCondRegionsTable) :-
     module_info_predids(PredIds, ModuleInfo, _),
@@ -161,18 +167,12 @@ collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
 				map.init, NonLocalRegionsProc,
 				map.init, InCondRegionsProc),
 			( if	map.count(NonLocalRegionsProc) = 0
-			  then
-					true
-			  else
-					svmap.set(PPId, NonLocalRegionsProc,
-						!NonLocalRegionsTable)
+			  then 	true
+			  else	svmap.set(PPId, NonLocalRegionsProc, !NonLocalRegionsTable)
 			),
 			( if	map.count(InCondRegionsProc) = 0
-			  then
-					true
-			  else
-					svmap.set(PPId, InCondRegionsProc,
-						!InCondRegionsTable)
+			  then 	true
+			  else	svmap.set(PPId, InCondRegionsProc, !InCondRegionsTable)
 			)
     ).
 
@@ -324,24 +324,17 @@ record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
 		% The current NonLocalRegions are attached to the goal path to
 		% the corresponding condition.
 		PathToCond = [step_ite_cond | Steps],
-		( if	map.search(!.NonLocalRegionProc, PathToCond,
-					NonLocalRegions0)
+		( if	map.search(!.NonLocalRegionProc, PathToCond, NonLocalRegions0)
 		  then
-				set.union(NonLocalRegions0, Created,
-					NonLocalRegions1),
-				set.difference(NonLocalRegions1, Removed,
-					NonLocalRegions)
+				set.union(NonLocalRegions0, Created, NonLocalRegions1),
+				set.difference(NonLocalRegions1, Removed, NonLocalRegions)
 		  else
-				set.difference(Created, Removed,
-					NonLocalRegions)
+				set.difference(Created, Removed, NonLocalRegions)
 		),
 		% Only record if some non-local region(s) exist.
 		( if	set.empty(NonLocalRegions)
-		  then
-				true
-		  else
-				svmap.set(PathToCond, NonLocalRegions,
-					!NonLocalRegionProc)
+		  then	true
+		  else 	svmap.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
 		)
 	;
 		true
@@ -360,18 +353,16 @@ collect_non_local_regions_in_ite_compound_goal(LRBeforeProc, LRAfterProc,
 	GoalInIte = hlds_goal(Expr, _),
 	(
 		Expr = conj(_, [Conj | Conjs]),
-		list.foldl(collect_non_local_regions_in_ite(LRBeforeProc,
-						LRAfterProc), 
+		list.foldl(collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc), 
 			[Conj | Conjs], !NonLocalRegionProc)
 	;
 		Expr = disj([Disj | Disjs]),
-		list.foldl(collect_non_local_regions_in_ite(LRBeforeProc,
-						LRAfterProc), 
+		list.foldl(collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc), 
 			[Disj | Disjs], !NonLocalRegionProc)
 	;
 		Expr = switch(_, _, Cases),
-		list.foldl(collect_non_local_regions_in_ite_case(LRBeforeProc,
-						LRAfterProc),
+		list.foldl(
+			collect_non_local_regions_in_ite_case(LRBeforeProc, LRAfterProc),
 			Cases, !NonLocalRegionProc)
 	;
 		Expr = negation(Goal),
@@ -445,8 +436,7 @@ collect_regions_created_in_condition(LRBeforeProc, LRAfterProc, Cond,
 				!InCondRegionsProc)
 	  else
 			collect_regions_created_in_condition_compound_goal(
-				LRBeforeProc, LRAfterProc, Cond,
-				!InCondRegionsProc)
+				LRBeforeProc, LRAfterProc, Cond, !InCondRegionsProc)
 	).
 
 	% The regions created inside the condition of an if-then-else will
@@ -464,28 +454,20 @@ record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
 	(
 		Step = step_ite_cond
 	->
-		( if	map.search(!.InCondRegionsProc, Path,
-					InCondRegions0)
-		  then
-				set.union(InCondRegions0, Created,
-					InCondRegions)
-		  else
-				InCondRegions = Created
+		( if	map.search(!.InCondRegionsProc, Path, InCondRegions0)
+		  then	set.union(InCondRegions0, Created, InCondRegions)
+		  else	InCondRegions = Created
 		),
 		% Only record if the some region(s) is actually created inside
 		% the condition.
 		( if	set.empty(InCondRegions)
-		  then
-				true
-		  else
-				svmap.set(Path, InCondRegions,
-					!InCondRegionsProc)
+		  then	true
+		  else 	svmap.set(Path, InCondRegions, !InCondRegionsProc)
 		)
 	;
 		true
 	),
-	record_regions_created_in_condition(Steps, Created,
-		!InCondRegionsProc).
+	record_regions_created_in_condition(Steps, Created, !InCondRegionsProc).
 
 :- pred collect_regions_created_in_condition_compound_goal(
 	pp_region_set_table::in, pp_region_set_table::in, hlds_goal::in,
@@ -754,10 +736,8 @@ record_ite_renaming(ProgPoint, HowMany, Graph, Region, !IteRenamingProc) :-
 	RegName = rptg_lookup_region_name(Graph, Region),
 	NewName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
 	( if	map.search(!.IteRenamingProc, ProgPoint, IteRenaming0)
-	  then
-			svmap.set(RegName, NewName, IteRenaming0, IteRenaming)
-	  else
-			svmap.set(RegName, NewName, map.init, IteRenaming)
+	  then 	svmap.set(RegName, NewName, IteRenaming0, IteRenaming)
+	  else	svmap.set(RegName, NewName, map.init, IteRenaming)
 	),
 	svmap.set(ProgPoint, IteRenaming, !IteRenamingProc).
 

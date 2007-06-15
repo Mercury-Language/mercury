@@ -52,6 +52,7 @@
 :- import_module transform_hlds.rbmm.points_to_analysis.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
+
 %-----------------------------------------------------------------------------%
 
 do_region_analysis(!ModuleInfo, !IO) :-

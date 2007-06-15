@@ -16,6 +16,8 @@
 % This module finds which renaming and reversed renaming of region variables
 % are needed so that region resurrection is resolved, and after applying 
 % the renaming, region variables are regular Mercury variables. 
+%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.region_resurrection_renaming.
 :- interface.
@@ -29,6 +31,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type renaming_table ==
 	map(pred_proc_id, renaming_proc).
@@ -76,7 +80,6 @@
 :- pred record_annotation(program_point::in, string::in,
     renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -94,6 +97,8 @@
 :- import_module set.
 :- import_module svmap.
 :- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
     % This predicate traveses execution paths and computes 2 pieces of
     % information:
@@ -191,8 +196,8 @@ compute_resurrection_paths_prog_point(LRBeforeProc, LRAfterProc, Born_Local,
     set.difference(set.union(!.Candidates, CreatedBeforeProgPoint),
         !.ResurrectedRegionsInExecPath, !:Candidates).
 
-% ----------------------------------------------------------------------------%
-% ----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % This predicate only traverses procedures with the execution paths
     % containing resurrection and computes *renaming* at the points
@@ -600,10 +605,8 @@ record_annotation(ProgPoint, Annotation, !AnnotationProc) :-
     ( if    map.search(!.AnnotationProc, ProgPoint, Annotations0)
       then
             ( if    list.member(Annotation, Annotations0)
-              then
-                    Annotations = Annotations0
-              else
-                    Annotations = [Annotation | Annotations0]
+              then  Annotations = Annotations0
+              else  Annotations = [Annotation | Annotations0]
             )
       else
             % No annotation exists at this program point yet.
@@ -618,4 +621,3 @@ record_annotation(ProgPoint, Annotation, !AnnotationProc) :-
 this_file = "rbmm.region_resurrection_renaming.m".
 
 %-----------------------------------------------------------------------------%
-
