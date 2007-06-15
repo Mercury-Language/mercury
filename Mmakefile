@@ -209,7 +209,7 @@ depend_deep_profiler:
 all: $(GENERATED_DOCS) mercury-compiler.spec $(SUBDIRS)
 
 .PHONY: util
-util: scripts
+util: scripts runtime
 	+cd util && $(SUBDIR_MMAKE)
 
 .PHONY: scripts
