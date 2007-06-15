@@ -651,21 +651,21 @@
 
 :- type mlds_class_kind
     --->    mlds_class     % A generic class: can inherit other classes and
-                            % interfaces (but most targets will only support
-                            % single inheritence, so usually there will be
-                            % at most one class).
+                           % interfaces (but most targets will only support
+                           % single inheritence, so usually there will be
+                           % at most one class).
 
     ;       mlds_package   % A class with only static members (can only
-                            % inherit other packages). Unlike other kinds
-                            % of classes, packages should not be used as types.
+                           % inherit other packages). Unlike other kinds
+                           % of classes, packages should not be used as types.
 
     ;       mlds_interface % A class with no variable data members (can only
-                            % inherit other interfaces).
+                           % inherit other interfaces).
 
     ;       mlds_struct    % A value class (can only inherit other structs).
 
     ;       mlds_enum.     % A class with one integer member and a bunch
-                            % of static consts (cannot inherit anything).
+                           % of static consts (cannot inherit anything).
 
 :- type mlds_class_name == string.
 :- type mlds_class == mlds_fully_qualified_name(mlds_class_name).

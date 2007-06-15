@@ -1424,11 +1424,16 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ReturnRvals = list.map((func(X) = lval(X)), ReturnLvals),
 
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    ( UnqualName = entity_function(PredLabel, ProcId, _MaybeSeq, _PredId) ->
+    (
+        UnqualName = entity_function(PredLabel, ProcId, _MaybeSeq, _PredId),
         CodeRval = const(mlconst_code_addr(code_addr_proc(
             qual(ModuleName, module_qual, mlds_proc_label(PredLabel, ProcId)),
             Signature)))
     ;
+        ( UnqualName = entity_type(_, _)
+        ; UnqualName = entity_data(_)
+        ; UnqualName = entity_export(_)
+        ),
         unexpected(this_file, "exported entity is not a function")
     ),
 

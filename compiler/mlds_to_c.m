@@ -1464,13 +1464,17 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
     % enumeration constants and for the nested classes that we generate for
     % constructors of discriminated union types.) Here we compute the
     % appropriate qualifier.
-
     Name = qual(ModuleName, QualKind, UnqualName),
-    ( UnqualName = entity_type(ClassName, ClassArity) ->
+    (
+        UnqualName = entity_type(ClassName, ClassArity),
         globals.io_get_globals(Globals, !IO),
         ClassModuleName = mlds_append_class_qualifier(ModuleName,
             QualKind, Globals, ClassName, ClassArity)
     ;
+        ( UnqualName = entity_data(_)
+        ; UnqualName = entity_function(_, _, _, _)
+        ; UnqualName = entity_export(_)
+        ),
         unexpected(this_file, "mlds_output_enum_constants")
     ),
 

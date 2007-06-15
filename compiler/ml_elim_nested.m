@@ -985,7 +985,8 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     % XXX This is a bit of a hack; maybe we should add
     % another field to the `function' ctor for mlds_entity_name.
     %
-    ( FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, PredId) ->
+    (
+        FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, PredId),
         (
             MaybeSeqNum = yes(SeqNum)
         ;
@@ -1000,6 +1001,10 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
         GCTraceFuncAddr =
             code_addr_internal(QualProcLabel, NewSeqNum, Signature)
     ;
+        ( FuncName = entity_type(_, _)
+        ; FuncName = entity_data(_)
+        ; FuncName = entity_export(_)
+        ),
         unexpected(this_file, "gen_gc_trace_func: not a function")
     ),
 

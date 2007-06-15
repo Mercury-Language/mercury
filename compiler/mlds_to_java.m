@@ -1228,11 +1228,16 @@ output_defn_body(Indent, ModuleInfo, Name, _, Context, mlds_class(ClassDefn),
 
 output_class(Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     Name = qual(ModuleName, _QualKind, UnqualName),
-    ( UnqualName = entity_type(ClassNamePrime, ArityPrime) ->
+    (
+        UnqualName = entity_type(ClassNamePrime, ArityPrime),
         ClassName = ClassNamePrime,
         Arity = ArityPrime
     ;
-        unexpected(this_file, "output_class")
+        ( UnqualName = entity_data(_)
+        ; UnqualName = entity_function(_, _, _, _)
+        ; UnqualName = entity_export(_)
+        ),
+        unexpected(this_file, "output_class: name is not entity_type.")
     ),
     ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, Implements,
         Ctors, AllMembers),
