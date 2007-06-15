@@ -2876,6 +2876,7 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     MercuryProfilingBuiltin = mercury_profiling_builtin_module,
     MercuryTermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
     MercuryParBuiltin = mercury_par_builtin_module,
+    MercuryRegionBuiltin = mercury_region_builtin_module,
     !:ImportDeps = [MercuryPublicBuiltin | !.ImportDeps],
     !:UseDeps = [MercuryPrivateBuiltin | !.UseDeps],
     (
@@ -2931,6 +2932,13 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         !:UseDeps = [MercuryParBuiltin | !.UseDeps]
     ;
         true
+    ),
+    globals.lookup_bool_option(Globals, use_regions, UseRegions),
+    (
+        UseRegions = yes,
+        !:UseDeps = [MercuryRegionBuiltin | !.UseDeps]
+    ;
+        UseRegions = no
     ).
 
 :- pred contains_tabling_pragma(item_list::in) is semidet.
