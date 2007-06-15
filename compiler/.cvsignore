@@ -39,3 +39,4 @@ Mercury.modules
 *.trans_opt
 *.trans_opt_date
 COMP_FLAGS
+config.log

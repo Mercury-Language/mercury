@@ -44,3 +44,4 @@ libmer_browser.dylib
 Mercury.modules
 browse_test
 MDB_FLAGS
+config.log

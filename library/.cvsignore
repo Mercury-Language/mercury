@@ -42,3 +42,4 @@ libmer_std.dylib
 *.class
 *.jar
 LIB_FLAGS
+config.log
