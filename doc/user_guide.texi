@@ -3473,7 +3473,11 @@ doesn't match @var{term}.
 @var{term} may contain integers and strings
 (as long as the strings don't contain double quotes),
 but floats and characters aren't supported (yet),
-and neither is any special syntax for lists, operators, etc.
+and neither is any special syntax for operators.
+Operators can be specified in prefix form
+by quoting them with escaped single quotes,
+as in @samp{\'+\'(1, 2)}.
+Lists can be specified using the usual syntax.
 @var{term} also may not contain variables, with one exception:
 any occurrence of @samp{_} in @var{term} matches any term.
 @sp 1

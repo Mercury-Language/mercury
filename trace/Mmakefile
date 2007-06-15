@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2006 The University of Melbourne.
+# Copyright (C) 1998-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -111,7 +111,9 @@ SRCS 			= $(TRACE_SRCS) $(EVENTSPEC_SRCS)
 # whose changes don't usually require a make clean but which nevertheless
 # require the trace library to be recompiled.
 RUNTIME_HDRS	=	\
-			$(RUNTIME_DIR)/mercury_stack_layout.h
+			$(RUNTIME_DIR)/mercury_stack_layout.h \
+			$(RUNTIME_DIR)/mercury_trace_base.h \
+			$(RUNTIME_DIR)/mercury_trace_term.h
 
 TRACE_OBJS		= $(TRACE_SRCS:.c=.$O)
 EVENTSPEC_OBJS		= $(EVENTSPEC_SRCS:.c=.$O)

@@ -373,6 +373,35 @@ Retry across I/O operations is not always safe.
 Are you sure you want to do it? yes
       E1:     C1 CALL queens.m:14
                          pred queens.main/2-0 (cc_multi)
+mdb> delete 0
+ 0: E stop  specific  pred queens.main/2-0 (cc_multi) EXIT 
+mdb> break safe
+ 0: + stop  interface pred queens.safe/1-0 (semidet)
+mdb> condition HeadVar__1 = [
+syntax error in term: [
+                      ^ unmatched character
+mdb> condition HeadVar__1 = [a, c
+syntax error in term: [a, c
+                      ^ unmatched character
+mdb> condition HeadVar__1 = [f(a, b]
+syntax error in term: [f(a, b]
+                             ^ here
+mdb> condition HeadVar__1 = [1,2, 5, 4, 3 ]
+ 0: + stop  interface pred queens.safe/1-0 (semidet)
+            HeadVar__1 = [1, 2, 5, 4, 3]
+mdb> continue
+     E61:    C19 CALL queens.m:52 (from queens.m:31)
+                         pred queens.safe/1-0 (semidet)
+mdb> print
+safe([1, 2, 5, 4, 3])
+mdb> retry 2
+Retry across I/O operations is not always safe.
+Are you sure you want to do it? yes
+      E1:     C1 CALL queens.m:14
+                         pred queens.main/2-0 (cc_multi)
+mdb> disable 0
+ 0: - stop  interface pred queens.safe/1-0 (semidet)
+            HeadVar__1 = [1, 2, 5, 4, 3]
 mdb> break nodiag SWTC
 Ambiguous port specification. The matches are:
 0: SWTC s1-2;
@@ -387,7 +416,9 @@ mdb> print *
        B (arg 1)              	1
        D (arg 2)              	1
        HeadVar__3             	[2, 3, 4, 5]
-mdb> delete 0
- 0: E stop  specific  pred queens.main/2-0 (cc_multi) EXIT 
+mdb> delete *
+ 0: D stop  interface pred queens.safe/1-0 (semidet)
+            HeadVar__1 = [1, 2, 5, 4, 3]
+ 1: E stop  specific  pred queens.nodiag/3-0 (semidet) SWTC s2-2;
 mdb> continue -n -S
 [1, 3, 5, 2, 4]

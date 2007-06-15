@@ -87,7 +87,6 @@ typedef struct {
     MR_bool         MR_cond_require_var;
     MR_bool         MR_cond_require_path;
     char            *MR_cond_what_string;
-    char            *MR_cond_term_string;
 } MR_SpyCond;
 
 struct MR_SpyPoint_Struct {

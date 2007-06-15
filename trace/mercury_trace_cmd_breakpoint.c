@@ -549,6 +549,8 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_SpyCond      *cond;
     MR_VarSpec      var_spec;
     char            *path;
+    MR_bool         mismatch;
+    char            *error_point;
 
     break_num = MR_most_recent_spy_point;
     require_var = MR_TRUE;
@@ -598,19 +600,50 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     len = 0;
     for (i = 3; i < word_count; i++) {
+        if (i > 3) {
+            len += 1;
+        }
+
         len += strlen(words[i]);
     }
 
     term_str = MR_malloc(len + 1);
     len = 0;
     for (i = 3; i < word_count; i++) {
+        if (i > 3) {
+            strcpy(term_str + len, " ");
+            len += 1;
+        }
+
         strcpy(term_str + len, words[i]);
         len += strlen(words[i]);
     }
 
-    term = MR_create_cterm(term_str, &rest);
+    term = MR_create_cterm(term_str, &rest, &mismatch, &error_point);
     if (term == NULL) {
-        fprintf(MR_mdb_out, "syntax error in term\n");
+        const char  *msg;
+        int         j;
+
+        msg = "syntax error in term: ";
+        fprintf(MR_mdb_out, "%s%s\n", msg, term_str);
+        if (term_str <= error_point &&
+            error_point < term_str + strlen(term_str))
+        {
+            for (j = 0; j < strlen(msg); j++) {
+                putc(' ', MR_mdb_out);
+            }
+
+            for (j = 0; term_str + j != error_point; j++) {
+                putc(' ', MR_mdb_out);
+            }
+
+            if (mismatch) {
+                fprintf(MR_mdb_out, "^ unmatched character\n");
+            } else {
+                fprintf(MR_mdb_out, "^ here\n");
+            }
+        }
+
         return KEEP_INTERACTING;
     }
 
@@ -622,7 +655,6 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (MR_spy_points[break_num]->MR_spy_cond != NULL) {
         MR_delete_cterm(MR_spy_points[break_num]->MR_spy_cond->MR_cond_term);
         MR_free(MR_spy_points[break_num]->MR_spy_cond->MR_cond_what_string);
-        MR_free(MR_spy_points[break_num]->MR_spy_cond->MR_cond_term_string);
         MR_free(MR_spy_points[break_num]->MR_spy_cond);
     }
 
@@ -636,12 +668,13 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
         require_path = MR_FALSE;
     }
 
+    MR_free(term_str);
+
     cond = MR_malloc(sizeof(MR_SpyCond));
     cond->MR_cond_var_spec = var_spec;
     cond->MR_cond_path = path;
     cond->MR_cond_test = test;
     cond->MR_cond_term = term;
-    cond->MR_cond_term_string = term_str;
     cond->MR_cond_what_string = what_str;
     cond->MR_cond_require_var = require_var;
     cond->MR_cond_require_path = require_path;

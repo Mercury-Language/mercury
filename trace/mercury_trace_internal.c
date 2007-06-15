@@ -1047,6 +1047,9 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 ** quotes (') or escapes (\) change the treatment of characters. Make
 ** each word a NULL-terminated string, and remove the quotes and escapes,
 ** overwriting some parts of the line array in the process.
+** XXX The "condition" command would work better if single quotes were
+** left in place; that way, users could type "condition X = '+'"
+** instead of "condition X = \'+\'".
 **
 ** On return *words will point to an array of strings, with space for
 ** *words_max strings. The number of strings filled in will be given by

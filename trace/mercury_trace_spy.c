@@ -1025,7 +1025,6 @@ MR_delete_spy_point(int point_table_slot)
     if (point->MR_spy_cond != NULL) {
         MR_delete_cterm(point->MR_spy_cond->MR_cond_term);
         MR_free(point->MR_spy_cond->MR_cond_what_string);
-        MR_free(point->MR_spy_cond->MR_cond_term_string);
         MR_free(point->MR_spy_cond);
 
         /* in case it gets deleted again */
@@ -1382,7 +1381,8 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
                     break;
             }
 
-            fprintf(fp, "%s\n", cond->MR_cond_term_string);
+            MR_print_cterm(fp, cond->MR_cond_term);
+            fprintf(fp, "\n");
         }
 
         if (!point->MR_spy_enabled) {

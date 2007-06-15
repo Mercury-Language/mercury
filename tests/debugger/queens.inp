@@ -102,9 +102,20 @@ break main EXIT
 continue -n
 retry
 yes
+delete 0
+break safe
+condition HeadVar__1 = [
+condition HeadVar__1 = [a, c
+condition HeadVar__1 = [f(a, b]
+condition HeadVar__1 = [1,2, 5, 4, 3 ]
+continue
+print
+retry 2
+yes
+disable 0
 break nodiag SWTC
 1
 continue
 print *
-delete 0
+delete *
 continue -n -S
