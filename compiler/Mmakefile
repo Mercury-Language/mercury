@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005-2006 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2007 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -9,6 +9,12 @@
 MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
+
+# Override the settings in ../Mmake.workspace so that in debugging grades we
+# do not include mer_mdbcomp.init twice in the list of files passed to mkinit.
+#
+C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
+
 -include Mmake.compiler.params
 
 # Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
