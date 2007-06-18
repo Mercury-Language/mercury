@@ -122,8 +122,6 @@ static int          mercury_env_var_next = 0;
 static const char   *output_file_name = NULL;
 static const char   *grade = "";
 static const char   *module_name = "unknown_module_name";
-static int          num_files;
-static char         **files;
 static Task         output_task = TASK_OUTPUT_INIT_PROG;
 
 /* --- code fragments to put in the output file --- */
@@ -291,13 +289,19 @@ parse_options(int argc, char *argv[])
     int         c;
     int         i;
     String_List *tmp_slist;
+    int         seen_f_option = 0;
 
     /*
     ** The set of options for mkinit and mkinit_erl should be
     ** kept in sync, even if they may not necessarily make sense.
     */
-    while ((c = getopt(argc, argv, "A:c:g:iI:lo:r:tw:xX:ksm:")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:f:g:iI:lo:r:tw:xX:ksm:")) != EOF) {
         switch (c) {
+        case 'f':
+            process_file_list_file(optarg);
+            seen_f_option = 1;
+            break;
+
         case 'g':
             grade = optarg;
             break;
@@ -343,12 +347,26 @@ parse_options(int argc, char *argv[])
         }
     }
 
-    num_files = argc - optind;
+    if (seen_f_option) {
+        /* 
+        ** -f could be made compatible if we copied the filenames
+        ** from argv into files.
+        ** 
+        */
+        if ((argc - optind) > 0) {
+            fprintf(stderr,
+                "%s: -f incompatible with filenames on the command line\n",
+                MR_progname);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        num_files = argc - optind;
+        files = argv + optind;
+    }
+
     if (num_files <= 0) {
         usage();
     }
-
-    files = argv + optind;
 }
 
 static void
@@ -358,6 +376,7 @@ usage(void)
     fputs("Options:\n", stderr);
     fputs("  -c maxcalls:\t(error)\n", stderr);
     fputs("  -g grade:\tset the grade of the executable\n", stderr);
+    fputs("  -f filename:\tprocess the files one per line in filename\n", stderr);
     fputs("  -i:\t\t(error)\n", stderr);
     fputs("  -l:\t\t(error)\n", stderr);
     fputs("  -o file:\toutput to the named file\n", stderr);

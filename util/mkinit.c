@@ -61,10 +61,6 @@
 /* --- adjustable limits --- */
 #define MAXCALLS    40      /* maximum number of calls per function */
 
-#define MAXFILENAME 4096    /* maximimum file name length           */
-#define NUMFILES    128     /* intial size of files array           */
-#define FACTOR      2       /* factor to increase files array by    */
-
 /* --- used to collect a list of strings --- */
 
 static const char if_need_to_init[] =
@@ -280,9 +276,6 @@ static const char   *entry_point = "mercury__main_2_0";
 static const char   *hl_entry_point = "main_2_p_0";
 static const char   *grade = "";
 static int          maxcalls = MAXCALLS;
-static int          num_files;
-static int          size_of_files;
-static char         **files = NULL;
 static MR_bool      output_main_func = MR_TRUE;
 static MR_bool      need_initialization_code = MR_FALSE;
 static MR_bool      need_tracing = MR_FALSE;
@@ -533,7 +526,6 @@ static const char main_func[] =
 
 /* --- function prototypes --- */
 static  void    parse_options(int argc, char *argv[]);
-static  void    process_file_list_file(char *filename);
 static  void    usage(void);
 static  void    output_complexity_proc(const char *procname);
 static  void    output_complexity_experiment_table(const char *filename);
@@ -856,46 +848,6 @@ parse_options(int argc, char *argv[])
 
     if (num_files <= 0) {
         usage();
-    }
-}
-
-static void
-process_file_list_file(char *filename)
-{
-    FILE *fp;
-    char *line;
-
-    fp = fopen(filename, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "%s: error opening file `%s': %s\n",
-            MR_progname, filename, strerror(errno));
-        num_errors++;
-        return;
-    } 
-        /* intialize the files structure, if required */
-    if (files == NULL) {
-        num_files = 0;
-        size_of_files = NUMFILES;
-        files = (char **) checked_malloc(sizeof(char *) * NUMFILES);
-    }
-
-    while ((line = read_line(filename, fp, MAXFILENAME)) != NULL) {
-            /* Ignore blank lines */
-        if (line[0] != '\0') {
-            if (num_files >= size_of_files) {
-                size_of_files *= FACTOR;
-                files = (char **)
-                    realloc(files, size_of_files * sizeof(char *));
-
-                if (files == NULL) {
-                    fprintf(stderr, "%s: unable to realloc\n", MR_progname);
-                    exit(EXIT_FAILURE);
-                }
-            }
-
-            files[num_files] = line;
-            num_files++;
-        }
     }
 }
 

@@ -39,6 +39,11 @@
 
 const char *MR_progname = NULL;
 int         num_errors = 0;
+int         num_files;
+char      **files = NULL;
+
+static int   size_of_files;
+
 
     /* List of directories to search for init files */
 static String_List  *init_file_dirs = NULL;
@@ -46,10 +51,57 @@ static String_List  *init_file_dirs = NULL;
     /* Pointer to tail of the init_file_dirs list */
 static String_List  **init_file_dirs_tail = &init_file_dirs;
 
+/* --- adjustable limits --- */
+#define MAXFILENAME 4096    /* maximimum file name length           */
+#define NUMFILES    128     /* intial size of files array           */
+#define FACTOR      2       /* factor to increase files array by    */
+
 /* --- function prototypes --- */
 
 static  char    *find_init_file(const char *base_name);
 static  MR_bool file_exists(const char *filename);
+
+/*---------------------------------------------------------------------------*/
+
+void
+process_file_list_file(char *filename)
+{
+    FILE *fp;
+    char *line;
+
+    fp = fopen(filename, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "%s: error opening file `%s': %s\n",
+            MR_progname, filename, strerror(errno));
+        num_errors++;
+        return;
+    } 
+        /* intialize the files structure, if required */
+    if (files == NULL) {
+        num_files = 0;
+        size_of_files = NUMFILES;
+        files = (char **) checked_malloc(sizeof(char *) * NUMFILES);
+    }
+
+    while ((line = read_line(filename, fp, MAXFILENAME)) != NULL) {
+            /* Ignore blank lines */
+        if (line[0] != '\0') {
+            if (num_files >= size_of_files) {
+                size_of_files *= FACTOR;
+                files = (char **)
+                    realloc(files, size_of_files * sizeof(char *));
+
+                if (files == NULL) {
+                    fprintf(stderr, "%s: unable to realloc\n", MR_progname);
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            files[num_files] = line;
+            num_files++;
+        }
+    }
+}
 
 /*---------------------------------------------------------------------------*/
 
@@ -100,15 +152,15 @@ add_init_file_dir(const char *dir_name)
 */
 
 void
-do_path_search(char **files, int num_files)
+do_path_search(char **lfiles, int lnum_files)
 {
     int     filenum;
     char    *init_file;
 
-    for (filenum = 0; filenum < num_files; filenum++) {
-        init_file = find_init_file(files[filenum]);
+    for (filenum = 0; filenum < lnum_files; filenum++) {
+        init_file = find_init_file(lfiles[filenum]);
         if (init_file != NULL) {
-            files[filenum] = init_file;
+            lfiles[filenum] = init_file;
         }
     }
 }
