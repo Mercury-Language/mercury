@@ -40,6 +40,14 @@
 
 all: c_main
 
+# This variables holds the options required to set the grade.
+# By default this is empty so the example will build in the default grade.
+# To try, for example, a deep profiling grade, set it to:
+#
+#    GRADEOPT=--grade asm_fast.gc.profdeep
+#
+GRADEOPT=
+
 # Build the example Mercury library, mercury_lib.
 # The dependency on the .init file is merely a convenience.  It's a good
 # one to choose since it will always be regenerated if one of the .m files
@@ -50,7 +58,7 @@ all: c_main
 # library.
 #
 mercury_lib.init: mercury_lib.m
-	mmc --make libmercury_lib
+	mmc $(GRADEOPT) --make libmercury_lib
 
 # The following rule creates the stand-alone interface to the mercury_lib
 # library, Mercury standard library and Mercury runtime.  Since we haven't
@@ -59,7 +67,7 @@ mercury_lib.init: mercury_lib.m
 # `--mld' option to specify its location.
 #
 mercury_lib_int.o: mercury_lib.init
-	mmc --mercury-linkage static --ml mercury_lib \
+	mmc $(GRADEOPT) --mercury-linkage static --ml mercury_lib \
 		--generate-standalone-interface mercury_lib_int
 
 # We use the mgnuc script here rather than invoking gcc directly since
@@ -70,16 +78,16 @@ mercury_lib_int.o: mercury_lib.init
 # the `-I' option.
 #
 c_main.o: c_main.c mercury_lib.init mercury_lib_int.o
-	mgnuc -c c_main.c
+	mgnuc $(GRADEOPT) -c c_main.c
 
 # For similar reasons we use the ml script rather than invoking ld directly.
 #
 c_main: c_main.o mercury_lib_int.o mercury_lib.init
-	ml --mercury-libs static -o c_main \
+	ml $(GRADEOPT) --mercury-libs static -o c_main \
 		c_main.o libmercury_lib.a mercury_lib_int.o	
 
 .PHONY: realclean
 realclean:
 	-mmc --make mercury_lib.realclean
-	/bin/rm -f mercury_lib_int.[cho] c_main.o c_main
+	/bin/rm -f mercury_lib_int.[cho] c_main.o c_main Deep.data
 	/bin/rm -rf Mercury
