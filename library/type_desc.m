@@ -882,39 +882,39 @@ get_type_info_for_type_info = TypeDesc :-
 ").
 
 :- pragma foreign_code("Erlang", "
-    '__Unify____type_desc_0'(X, Y) ->
+    '__Unify____type_desc_0_0'(X, Y) ->
         case X =:= Y of
             true -> {};
             false -> fail
         end.
 
-    '__Unify____type_ctor_desc_0'(X, Y) ->
+    '__Unify____type_ctor_desc_0_0'(X, Y) ->
         case X =:= Y of
             true -> {};
             false -> fail
         end.
 
-    '__Unify____pseudo_type_desc_0'(X, Y) ->
+    '__Unify____pseudo_type_desc_0_0'(X, Y) ->
         case X =:= Y of
             true -> {};
             false -> fail
         end.
 
-    '__Compare____type_desc_0'(X, Y) ->
+    '__Compare____type_desc_0_0'(X, Y) ->
         if
             X =:= Y -> {{'='}};
             X  <  Y -> {{'<'}};
             true    -> {{'>'}}
         end.
 
-    '__Compare____type_ctor_desc_0'(X, Y) ->
+    '__Compare____type_ctor_desc_0_0'(X, Y) ->
         if
             X =:= Y -> {{'='}};
             X  <  Y -> {{'<'}};
             true    -> {{'>'}}
         end.
 
-    '__Compare____pseudo_type_desc_0'(X, Y) ->
+    '__Compare____pseudo_type_desc_0_0'(X, Y) ->
         if
             X =:= Y -> {{'='}};
             X  <  Y -> {{'<'}};

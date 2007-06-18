@@ -567,28 +567,28 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_code("Erlang", "
 
-'__Unify____type_info_0'(X, Y) ->
+'__Unify____type_info_0_0'(X, Y) ->
     throw(""unify for type_info"").
 
-'__Unify____typeclass_info_0'(X, Y) ->
+'__Unify____typeclass_info_0_0'(X, Y) ->
     throw(""unify for typeclass_info"").
 
-'__Unify____base_typeclass_info_0'(X, Y) ->
+'__Unify____base_typeclass_info_0_0'(X, Y) ->
     throw(""unify for base_typeclass_info"").
 
-'__Unify____type_ctor_info_0'(X, Y) ->
+'__Unify____type_ctor_info_0_0'(X, Y) ->
     throw(""unify for type_ctor_info"").
 
-'__Compare____type_ctor_info_0'(X, Y) ->
+'__Compare____type_ctor_info_0_0'(X, Y) ->
     throw(""compare for type_ctor_info"").
 
-'__Compare____type_info_0'(X, Y) ->
+'__Compare____type_info_0_0'(X, Y) ->
     throw(""compare for type_info"").
 
-'__Compare____typeclass_info_0'(X, Y) ->
+'__Compare____typeclass_info_0_0'(X, Y) ->
     throw(""compare for typeclass_info"").
 
-'__Compare____base_typeclass_info_0'(X, Y) ->
+'__Compare____base_typeclass_info_0_0'(X, Y) ->
     throw(""compare for base_typeclass_info"").
 ").
 
@@ -1730,16 +1730,16 @@ no_clauses(PredName) :-
 ").
 
 :- pragma foreign_code("Erlang", "
-    '__Compare____heap_pointer_0'(_, _) ->
+    '__Compare____heap_pointer_0_0'(_, _) ->
         throw(""called compare/2 for type `private_builtin.heap_pointer'"").
         
-    '__Unify____heap_pointer_0'(_, _) ->
+    '__Unify____heap_pointer_0_0'(_, _) ->
         throw(""called unify/2 for type `private_builtin.heap_pointer'"").
 
-    '__Compare____ref_1'(_, _, _) ->
+    '__Compare____ref_1_0'(_, _, _) ->
         throw(""called compare/3 for type `private_builtin.ref'"").
 
-    '__Unify____ref_1'(TypeInfo, X, Y) ->
+    '__Unify____ref_1_0'(TypeInfo, X, Y) ->
         case X =:= Y of
             true -> {};
             false -> fail

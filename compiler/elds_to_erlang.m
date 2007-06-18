@@ -922,8 +922,9 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
                 MaybeExtModule = no
             )
         ),
+        proc_id_to_int(ProcId, ModeNum),
         ProcNameStr = ProcNameStr1 ++ TypeName ++ "_" ++
-            string.from_int(TypeArity)
+            string.from_int(TypeArity) ++ "_" ++ string.from_int(ModeNum)
     ;
         unexpected(this_file,
             "erlang_special_proc_name: cannot make label for special pred " ++

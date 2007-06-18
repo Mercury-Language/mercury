@@ -805,10 +805,10 @@ deep_copy(java.lang.Object original) {
 
 :- pragma foreign_code("Erlang", "
 
-    '__Compare____c_pointer_0'(_, _) ->
+    '__Compare____c_pointer_0_0'(_, _) ->
         throw(""called compare/3 for type `c_pointer'"").
 
-    '__Unify____c_pointer_0'(_, _) ->
+    '__Unify____c_pointer_0_0'(_, _) ->
         throw(""called unify for type `c_pointer'"").
 
     compare_3_p_0(TypeInfo, X, Y) ->
@@ -832,22 +832,22 @@ deep_copy(java.lang.Object original) {
         mercury__erlang_rtti_implementation:generic_unify_2_p_0(
             TypeInfo, X, Y).
 
-    '__Unify____tuple_0'(X, Y) ->
+    '__Unify____tuple_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to unify for tuple/0"").
 
-    '__Compare____tuple_0'(X, Y) ->
+    '__Compare____tuple_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to compare for tuple/0"").
 
-    '__Unify____void_0'(X, Y) ->
+    '__Unify____void_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to unify for void/0"").
 
-    '__Compare____void_0'(X, Y) ->
+    '__Compare____void_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to compare for void/0"").
 
-    '__Unify____func_0'(X, Y) ->
+    '__Unify____func_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to unify for func/0"").
 
-    '__Compare____func_0'(X, Y) ->
+    '__Compare____func_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to compare for func/0"").
 
 ").
