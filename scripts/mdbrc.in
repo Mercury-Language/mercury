@@ -1,4 +1,4 @@
-source @DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdb_doc
+source @DEFAULT_MERCURY_DEBUGGER_DOC@
 alias	s	step
 alias	g	goto
 alias	f	finish

@@ -12,6 +12,7 @@ RETRY_PROGS = \
 	mdb_command_test		\
 	queens				\
 	retry				\
+	scripts				\
 	tabled_read			\
 	tabled_read_unitize		\
 	tabled_read_decl
@@ -501,6 +502,9 @@ save.out: save save.inp
 	    sed 's/^alias open source.*$$/alias open source ZZZ\/mdb_open/' | \
 	    sed 's/^alias track source.*$$/alias track source ZZZ\/mdb_track/'\
 	    > save.out 2>&1
+
+scripts.out: scripts scripts.inp
+	EDITOR=cat $(MDB_STD) ./scripts < scripts.inp > scripts.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1

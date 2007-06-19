@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-1999, 2006 The University of Melbourne.
+** Copyright (C) 1998-1999, 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,15 +35,17 @@ extern  char    *MR_trace_readline(const char *prompt, FILE *in, FILE *out);
 extern  char    *MR_trace_readline_raw(FILE *in);
 
 /*
-** Read a line from a file and replace occurrences of the strings "$1" to
-** "$9" with the corresponding values in the args array.  If there is no
-** value in the args array, then the "$n" string is replaced by the empty
-** string.
+** Read a line from an mdb script.
+** Ocurrences of the strings "$1" to
+** "$9" are replaced with the corresponding values in the args array.
+** If there is no value in the args array, then the "$n" string is replaced
+** by the empty string.
+** Lines beginning with '#' and empty lines are ignored.
 ** Return a pointer to a MR_malloc'd buffer holding the new string (without
 ** the final newline).  If EOF occurs on a nonempty line, treat the EOF as a
 ** newline; if EOF occurs on an empty line, return NULL.  
 ** Don't use GNU readline.
 */
 
-extern  char    *MR_trace_readline_expand_args(FILE *fp, char **args,
+extern  char    *MR_trace_readline_from_script(FILE *fp, char **args,
                     int num_args);

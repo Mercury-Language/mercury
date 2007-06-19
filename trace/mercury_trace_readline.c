@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2005-2006 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -166,9 +166,9 @@ MR_trace_readline_raw(FILE *fp)
 }
 
 char *
-MR_trace_readline_expand_args(FILE *fp, char **args, int num_args)
+MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
 {
-    char    *line;
+    char    *line = NULL;
     size_t  line_length;
     int     line_index;
     size_t  expanded_line_length;
@@ -178,10 +178,19 @@ MR_trace_readline_expand_args(FILE *fp, char **args, int num_args)
     size_t  arg_length;
     char    *arg;
 
-    line = MR_trace_readline_raw(fp);
-    if (line == NULL) {
-        return NULL;
-    }
+    do {
+        if (line != NULL) {
+            MR_free(line);
+        }
+        line = MR_trace_readline_raw(fp);
+        if (line == NULL) {
+            return NULL;
+        }
+        /*
+        ** Ignore lines starting with '#'.
+        */
+    } while (*line == '#');
+
     line_length = strlen(line);
 
     expanded_line_length = line_length;

@@ -1,3 +1,7 @@
+# This script saves a term to a file and then opens the file with an
+# editor.
+# $1 is any valid term reference accepted by the dump command.
+#
 dump $1 .mdb_open_tmp
 shell ${EDITOR-vi} .mdb_open_tmp
 shell rm .mdb_open_tmp

@@ -711,7 +711,7 @@ MR_trace_source_from_open_file(FILE *fp, char **args, int num_args)
     ** preserving their order in the sourced file.
     */
 
-    while ((contents = MR_trace_readline_expand_args(fp, args, num_args))
+    while ((contents = MR_trace_readline_from_script(fp, args, num_args))
         != NULL)
     {
         line = MR_NEW(MR_Line);

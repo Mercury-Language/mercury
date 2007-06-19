@@ -2004,6 +2004,8 @@ You can put your usual aliases and settings here.
 The file named @samp{.mdbrc} in the current working directory.
 You can put program-specific aliases and settings here.
 @end enumerate
+mdb will ignore any lines starting with the character #
+in any of the above mentioned files.
 
 mdb accepts the following options from the command line.  The options
 should be given to mdb before the name of the executable to be debugged.
@@ -4280,6 +4282,9 @@ Optionally a list of at most nine arguments can be given.
 Occurrences of the strings "$1" to "$9" in the sourced file
 will be replaced by the corresponding arguments given in the source
 command before the commands in the sourced file are executed.
+@sp 1
+Lines that start with a hash (#) character are ignored.
+Hash characters can be used to place comments in your mdb scripts.
 @sp 1
 The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
 not to complain if the named file does not exist or is not readable.

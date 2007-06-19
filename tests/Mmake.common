@@ -57,7 +57,8 @@ JAVA=java
 # may get different version numbers printed in it. This would otherwise be
 # the source of irrelevant difference between the actual and expected outputs.
 
-MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes mdb
+MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes \
+	MERCURY_DEBUGGER_INIT=$(TESTS_DIR)/mdbrc mdb
 
 # Debugger test cases can standardize the reported event numbers and call
 # sequence numbers by using $(MDB_STD) instead of $(MDB) on the command line.
@@ -189,7 +190,10 @@ MERCURY_MAIN_MODULES = $(PROGS)
 ERROR_OUTPUT_FILE = runtests.errs
 
 realclean_local: clean_logs clean_errors
+	-rm mdbrc
+
 clean_local: clean_out clean_res clean_zip clean_trace_counts
+	-rm mdbrc.in
 
 # XXX what is this target for??
 clean_mc: clean_c clean_o clean_out clean_res 

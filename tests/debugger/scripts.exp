@@ -1,0 +1,26 @@
+      E1:     C1 CALL pred scripts.main/2-0 (det) scripts.m:16
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> step
+      E2:     C2 CALL pred scripts.p/1-0 (det) scripts.m:23 (scripts.m:17)
+mdb> finish
+      E3:     C2 EXIT pred scripts.p/1-0 (det) scripts.m:23 (scripts.m:17)
+mdb> track 1
+p(type1(1, "foo"))
+q(type1(1, "foo"))
+Context of current question : scripts.m:27 (scripts.m:23)
+Search mode                 : top down                   
+The current question was chosen because the marked subterm was bound by
+the unification inside the predicate scripts.q/1 (scripts.m:27). The
+path to the subterm in the atom is 1.
+      E4:     C3 EXIT pred scripts.q/1-0 (det) scripts.m:27 (scripts.m:23)
+mdb> open 1
+type1(
+ 1,
+ "foo"
+)
+mdb> grep foo 1
+ "foo"
+mdb> continue
+type1(1, "foo")

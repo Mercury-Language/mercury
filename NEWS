@@ -213,6 +213,9 @@ Changes to the Mercury debugger:
 
 * You can now put breakpoints on individual events inside procedures.
 
+* mdb now ignores lines beginning with a `#' character
+  in sourced files.  This is useful for commenting mdb scripts.
+
 DETAILED LISTING
 ================
 
@@ -304,6 +307,9 @@ Changes to the Mercury debugger:
   will cause execution to stop only at the specified port in the specified
   procedure. If there is more than event of the given port type in the
   procedure, mdb will prompt the user to select one.
+
+* mdb now ignores lines beginning with a `#' character
+  in sourced files.  This is useful for commenting mdb scripts.
 
 NEWS for Mercury 0.13.1
 -----------------------

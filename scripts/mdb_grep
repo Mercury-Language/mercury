@@ -1,3 +1,8 @@
+# This script saves a term to a file and then invokes grep on the file.
+# It is useful for checking if a data structure contains a particular value.
+# $1 is a regular expression to search for.
+# $2 is any valid term reference accepted by the dump command.
+#
 dump $2 .mdb_grep_tmp
 shell grep $1 .mdb_grep_tmp
 shell rm .mdb_grep_tmp
