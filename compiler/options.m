@@ -3151,12 +3151,11 @@ options_help_output -->
         "\tOutput the strongly connected components of the module",
         "\tdependency graph in top-down order to `<module>.order'.",
         "\tImplies --generate-dependencies.",
-        % XXX This documentation is commented out until the user's
-        % guide is updated.
-        %"--generate-standalone-interface <name>",
-        %"\tOutput an object file that can be used to embed the Mercury",
-        %"\truntime in an application written in a foreign language.",
-        %"\tSee Users's guide for more details.",
+        "--generate-standalone-interface <basename>",
+        "\tOutput a stand-alone interface.",
+        "\t<basename> is used as the basename of any files generated for",
+        "\tthe stand-alone interface.  (See the Stand-alone Interface",
+        "\tchapter of the Mercury User's Guide for further details.)",
         "-i, --make-int, --make-interface",
         "\tWrite the module interface to `<module>.int',",
         "\tand write the short interface to `<module>.int2'",

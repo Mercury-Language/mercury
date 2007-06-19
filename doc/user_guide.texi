@@ -118,6 +118,8 @@ how to build and debug Mercury programs.
 * C compilers::     How to use a C compiler other than GNU C.
 * Foreign language interface:: Interfacing to other programming
 		    languages from Mercury.
+* Stand-alone Interfaces:: Calling procedures in Mercury libraries from
+                           programs written in other languages.
 * Index::
 @end menu
 @end ifnottex
@@ -2352,7 +2354,7 @@ Argument attributes cannot be function attributes;
 they may be either ordinary attributes, or previously synthesized attributes.
 A synthesized attribute is not allowed
 to depend on itself directly or indirectly,
-but there are no restrictions on the positions of of synthesized attributes
+but there are no restrictions on the positions of synthesized attributes
 compared to the positions of the function attributes computing them
 or of the argument attributes of the synthesis functions.
 @end itemize
@@ -4543,7 +4545,7 @@ Normally, the list includes the procedures of only user defined predicates.
 @sp 1
 @item ambiguity [-o @var{filename}] [-ptf] [@var{modulename} ...]
 @kindex ambiguity (mdb command)
-Print ambiguous procecedure, type constructor and/or function symbol names.
+Print ambiguous procedure, type constructor and/or function symbol names.
 A procedure name is ambiguous
 if a predicate or function is defined with that name
 in more than one module or with more than one arity.
@@ -5512,7 +5514,7 @@ The output will go to standard output
 unless this is overridden by the @samp{-o} or @samp{--output-file} option.
 @sp 1
 If the @samp{-d} or @samp{--detailed} option is specified,
-then the the output will list all the @emph{events} in the program
+then the output will list all the @emph{events} in the program
 that were not executed in any of these runs.
 This option can thus show the unexecuted parts of the executed procedures.
 @sp 1
@@ -6423,6 +6425,7 @@ for which the file name does not match the module name.
 If there are no such modules the mapping need not be
 generated.
 
+@sp 1
 @item -M
 @itemx --generate-dependencies
 @findex -M
@@ -6432,15 +6435,26 @@ Output ``Make''-style dependencies for the module and all of its
 dependencies to @file{@var{module}.dep}, @file{@var{module}.dv} and the
 relevant @samp{.d} files.
 
+@sp 1
 @itemx --generate-dependency-file
 @findex --generate-dependency-file
 Output `Make'-style dependencies for the module to @file{@var{module}.d}'.
 
+@sp 1
 @item --generate-module-order
+@findex --generate-module-order
 Output the strongly connected components of the module
 dependency graph in top-down order to @file{@var{module}.order}.
 Implies @samp{--generate-dependencies}.
 
+@sp 1
+@item --generate-standalone-interface @var{basename}
+@findex --generate-standalone-interface @var{basename}
+Output a stand-alone interface.  @var{basename} is used as
+the basename of any files generated for the stand-alone interface.
+(See @pxref{Stand-alone Interfaces} for further details.)
+
+@sp 1
 @item --generate-mmc-deps
 @itemx --generate-mmc-make-module-dependencies
 @findex --generate-mmc-deps
@@ -7517,7 +7531,7 @@ This option is not yet supported for the IL or Java back-ends.
 @c RBMM is undocumented since it is still experimental.
 @c @sp 1
 @c @item @code{--use-regions} (grades: any grade containing @samp{.rbmm}) 
-@c Enable support for region-based memory managment."
+@c Enable support for region-based memory management."
 
 @end table
 
@@ -9687,8 +9701,100 @@ keywords and syntax.
 Only available on backends that compile to IL.
 This is the third preferred foreign language for IL code generation.
 
-
 @end table
+
+@c ----------------------------------------------------------------------------
+
+@node Stand-alone Interfaces
+@chapter Stand-alone Interfaces
+
+Programs written in a language other than Mercury should not make calls
+to foreign exported Mercury procedures unless the Mercury runtime has been
+initialised.
+(In the case where the Mercury runtime has not been intialised the
+behaviour of these calls is undefined.)
+Such programs must also ensure that any module specific initialisation is
+performed before calling foreign exported procedures in Mercury modules.
+Likewise, module specific finalisation may need to be performed after
+all calls to Mercury procedures have been made.
+
+A stand-alone interface provides a mechanism by which non-Mercury programs
+may initialise (and shut down) the Mercury runtime plus a specified set
+of Mercury libraries.
+
+A stand-alone interface is created by invoking the compiler with the
+@samp{--generate-standalone-interface} option.  
+The set of Mercury libraries to be included in the stand-alone interface
+is given via one of the usual mechanisms for specifying what libraries to link
+against, e.g. the @samp{--ml} and @samp{--mld} options.
+(See @pxref{Libraries} for further details).
+The Mercury standard library is always included in this set.
+
+In C grades the @samp{--generate-standalone-interface} option causes
+the compiler to generate an object file that should be linked into
+the executable.
+This object file contains two functions:
+@code{mercury_init()} and @code{mercury_terminate()}.
+The compiler also generates a C header file that contains 
+the prototypes of these functions.
+(This header file may be included in C++ programs.)
+The roles of the two functions are described below.
+
+@table @b
+@item @bullet{} @code{mercury_init()}
+Prototype:
+@example
+void mercury_init(int @var{argc}, char **@var{argv}, void *@var{stackbottom});
+@end example
+
+Initialise the Mercury runtime, standard library and any other Mercury
+libraries that were specified when the stand-alone interface was generated.
+@var{argc} and @var{argv} are the argument count and argument vector,
+as would be passed to the function @code{main()} in a C program.
+@var{stackbottom} is the address of the base of the stack.
+In grades that use conservative garbage collection this is used to
+tell the collector where to begin tracing.
+This function must be called before any Mercury procedures
+and must only be called once.
+It is recommended that the value of @var{stackbottom} be set by passing
+the address of a local variable in the @code{main()} function of a program,
+for example:
+@example
+    int main(int argc, char **argv) @{
+        void *dummy;
+        mercury_init(argc, argv, &dummy);
+        @dots{}
+    @}
+@end example
+Note that the address of the stack base should be word aligned as
+some garbage collectors rely upon this.
+(This is why the type of the dummy variable in the above example is
+@code{void *}.)
+
+@sp 1
+@item @bullet{} @code{mercury_terminate()}
+Prototype:
+@example
+int mercury_terminate(void);
+@end example
+
+Shut down the Mercury runtime.
+The value returned by this function is Mercury's exit status
+(as set by the predicate io.set_exit_status/3).
+This function will also invoke any finalisers contained in the set
+of libraries for which the stand-alone interface was generated.
+@end table
+
+The basename of the object and header file are provided as
+the argument of @samp{--generate-standalone-interface} option.
+
+@c XXX Mention that stand-alone interfaces work with debugging or
+@c (deep) profiling?
+
+Stand-alone interfaces are not currently supported for target languages
+other than C.
+For an example of using a stand-alone interface see the
+@samp{samples/c_interface/standalone_c} directory in the Mercury distribution.
 
 @c ----------------------------------------------------------------------------
 
