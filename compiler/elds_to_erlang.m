@@ -79,8 +79,8 @@ output_elds(ModuleInfo, ELDS, !IO) :-
     io::di, io::uo) is det.
 
 output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
-    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
-        RttiDefns, InitPreds, FinalPreds),
+    ELDS = elds(ModuleName, ForeignDecls, ForeignBodies, ProcDefns,
+        ForeignExportDefns, RttiDefns, InitPreds, FinalPreds),
     AddMainWrapper = should_add_main_wrapper(ModuleInfo),
 
     % Output intro.
@@ -112,6 +112,9 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
 
     % Useful for debugging.
     io.write_string("% -compile(export_all).\n", !IO),
+
+    % Output foreign declarations.
+    list.foldl(output_foreign_decl_code, ForeignDecls, !IO),
 
     % Write directives for mkinit_erl.
     ErlangModuleNameStr = erlang_module_name_to_str(ModuleName),
@@ -349,6 +352,13 @@ output_env_var_directive(EnvVarName, !IO) :-
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
+
+:- pred output_foreign_decl_code(foreign_decl_code::in, io::di, io::uo) is det.
+
+output_foreign_decl_code(foreign_decl_code(_Lang, _IsLocal, Code, _Context),
+        !IO) :-
+    io.write_string(Code, !IO),
+    io.nl(!IO).
 
 :- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
 

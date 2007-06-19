@@ -45,6 +45,9 @@
                 % The original Mercury module name.
                 elds_name           :: module_name,
 
+                % Foreign code declarations.
+                elds_foreign_decls  :: list(foreign_decl_code),
+
                 % Code defined in Erlang.
                 elds_foreign_bodies :: list(foreign_body_code),
 

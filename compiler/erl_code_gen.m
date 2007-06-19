@@ -23,8 +23,7 @@
 % TODO: (this is incomplete)
 % - contexts are ignored at the moment
 % - RTTI
-% - some scope types not yet supported
-% - trace runtime conditions
+% - support non-local foreign code declarations (e.g. for macros)
 %
 %-----------------------------------------------------------------------------%
 
@@ -81,19 +80,22 @@
 erl_code_gen(ModuleInfo, ELDS, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     erl_gen_preds(ModuleInfo, ProcDefns, !IO),
-    filter_erlang_foreigns(ModuleInfo, ForeignBodies, PragmaExports, !IO),
+    filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies,
+        PragmaExports, !IO),
     erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns),
     % RTTI function definitions are added later by rtti_data_list_to_elds.
     RttiDefns = [],
     module_info_user_init_pred_procs(ModuleInfo, InitPredProcs),
     module_info_user_final_pred_procs(ModuleInfo, FinalPredProcs),
-    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns,
-        RttiDefns, InitPredProcs, FinalPredProcs).
+    ELDS = elds(ModuleName, ForeignDecls, ForeignBodies, ProcDefns,
+        ForeignExportDefns, RttiDefns, InitPredProcs, FinalPredProcs).
 
-:- pred filter_erlang_foreigns(module_info::in, list(foreign_body_code)::out,
-    list(pragma_exported_proc)::out, io::di, io::uo) is det.
+:- pred filter_erlang_foreigns(module_info::in, list(foreign_decl_code)::out,
+    list(foreign_body_code)::out, list(pragma_exported_proc)::out,
+    io::di, io::uo) is det.
 
-filter_erlang_foreigns(ModuleInfo, ForeignBodies, PragmaExports, !IO) :-
+filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies, PragmaExports,
+        !IO) :-
     globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
     ( BackendForeignLanguages = [lang_erlang] ->
         true
@@ -101,12 +103,16 @@ filter_erlang_foreigns(ModuleInfo, ForeignBodies, PragmaExports, !IO) :-
         unexpected(this_file,
             "erl_gen_foreign_code: foreign language other than Erlang")
     ),
+    module_info_get_foreign_decl(ModuleInfo, AllForeignDecls),
     module_info_get_foreign_body_code(ModuleInfo, AllForeignBodys),
     module_info_get_pragma_exported_procs(ModuleInfo, AllPragmaExports),
+    foreign.filter_decls(lang_erlang, AllForeignDecls, RevForeignDecls,
+        _OtherForeignDecls),
     foreign.filter_bodys(lang_erlang, AllForeignBodys, RevForeignBodies,
         _OtherForeignBodys),
     foreign.filter_exports(lang_erlang, AllPragmaExports, RevPragmaExports,
         _OtherForeignExports),
+    ForeignDecls = list.reverse(RevForeignDecls),
     ForeignBodies = list.reverse(RevForeignBodies),
     PragmaExports = list.reverse(RevPragmaExports).
 
