@@ -320,7 +320,7 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
     % during the build (using AL.EXE).
     PackageName = mlds_module_name_to_package_name(ModuleName),
     (
-        PackageName = qualified(unqualified("mercury"), _)
+        sym_name_prefix(PackageName) = "mercury"
     ->
         ThisAssembly = [],
         AssemblerRefs = Imports
@@ -3625,6 +3625,10 @@ sym_name_to_class_name(SymName, Ids) :-
 sym_name_to_class_name_2(qualified(ModuleSpec, Name), [Name | Modules]) :-
     sym_name_to_class_name_2(ModuleSpec, Modules).
 sym_name_to_class_name_2(unqualified(Name), [Name]).
+
+:- func sym_name_prefix(sym_name) = string.
+sym_name_prefix(qualified(ModuleSpec, _)) = sym_name_prefix(ModuleSpec).
+sym_name_prefix(unqualified(Name)) = Name.
 
 %-----------------------------------------------------------------------------%
 %
