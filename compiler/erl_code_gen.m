@@ -1212,10 +1212,16 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         %   model_semi goal:
         %       <Goal ; Goals>
         %   ===>
-        %       case <Goal> of
-        %           fail -> <Goals> ;
-        %           Any  -> Anything
+        %       case
+        %           <Goal [[ {NonLocals, ...} ]]>
+        %       of
+        %           {NonLocals, ...} ->
+        %               <SuccessExpr> ;
+        %           fail ->
+        %               <Goals [[ SuccessExpr ]]>
         %       end
+        %
+        %   where NonLocals are variables bound by Goal.
         %
         % TODO This can lead to contorted code when <Goal> itself is a `case'
         % expression.  In that case it would be better for <Goals> to appear in
@@ -1234,25 +1240,22 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         ;
             FirstCodeModel = model_semi,
 
-            % If the outer code model is model_det then we might not have a
-            % success expression.  Then make up one while generating the
-            % model_semi first goal.  It doesn't matter what the value is,
-            % otherwise MaybeSuccessExpr wouldn't have been `no'.
-            %
-            erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,
-                MaybeSuccessExprForFirst, !Info),
-            SuccessExprFirst = expr_or_void(MaybeSuccessExprForFirst),
-            erl_gen_goal(model_semi, InstMap, First, yes(SuccessExprFirst),
-                FirstStatement0, !Info),
+            erl_bound_nonlocals_in_goal(!.Info, InstMap, First, FirstVarsSet),
+            FirstVars = set.to_sorted_list(FirstVarsSet),
+            FirstVarsTerm = elds_tuple(exprs_from_vars(FirstVars)),
+
+            % Generate code for the first goal, making it return a tuple of the
+            % nonlocal variables it binds on success.
+            erl_gen_goal(model_semi, InstMap, First,
+                yes(elds_term(FirstVarsTerm)), FirstStatement0, !Info),
+
+            % Generate the rest of the disjunction.
             erl_gen_disjunct(Rest, CodeModel, InstMap, Context,
                 MaybeSuccessExpr, RestStatement, !Info),
 
             % Need to do some renaming otherwise FirstStatement and
             % RestStatement end up binding the same variables which triggers a
             % (spurious) warning from the Erlang compiler.
-            %
-            erl_bound_nonlocals_in_goal(!.Info, InstMap, First, FirstVarsSet),
-            FirstVars = set.to_sorted_list(FirstVarsSet),
             erl_create_renaming(FirstVars, Subn, !Info),
             erl_rename_vars_in_expr(Subn, FirstStatement0, FirstStatement),
 
@@ -1265,12 +1268,13 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
                 % matter that some variables aren't bound in other branches).
                 Statement = join_exprs(FirstStatement0, RestStatement)
             ;
-                erl_gen_info_new_named_var("Any", AnyVar, !Info),
+                erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,
+                    MaybeSuccessExprForFirst, !Info),
                 Statement = elds_case_expr(FirstStatement,
-                    [FailCase, OtherCase]),
-                FailCase  = elds_case(elds_fail, RestStatement),
-                OtherCase = elds_case(term_from_var(AnyVar),
-                    expr_from_var(AnyVar))
+                    [SucceedCase, FailCase]),
+                SucceedCase = elds_case(FirstVarsTerm,
+                    expr_or_void(MaybeSuccessExprForFirst)),
+                FailCase = elds_case(elds_fail, RestStatement)
             )
         ;
             FirstCodeModel = model_non,
