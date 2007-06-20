@@ -1537,35 +1537,29 @@ public static class MercuryBitmap {
 }
 ").
 
-/* XXX UNTESTED
-:- pragma foreign_decl("C#", "
-namespace mercury {
-  namespace bitmap__csharp_code {
+:- pragma foreign_code("C#", "
+public class MercuryBitmap {
+    public int num_bits;
+    public byte[] elements;
 
-    public class MercuryBitmap {
-        public int num_bits;
-        public byte[] elements;
-
-        public MercuryBitmap(int numBits) {
-            num_bits = numBits;
-            elements = new byte[numBits / 8 + (((numBits % 8) != 0) ? 1: 0)];
-        }
+    public MercuryBitmap(int numBits) {
+        num_bits = numBits;
+        elements = new byte[numBits / 8 + (((numBits % 8) != 0) ? 1: 0)];
     }
-  }
 }
 ").
-*/
 
 :- pragma foreign_type("C", bitmap, "MR_BitmapPtr") 
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("Java", bitmap, "mercury.bitmap.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("IL", bitmap,
-    "class [mercury]mercury.bitmap__csharp_code.MercuryBitmap") 
+    "class [mercury]mercury.bitmap__csharp_code.mercury_code.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("Erlang", bitmap, "")
     where equality is bitmap_equal, comparison is bitmap_compare.
 
+:- pragma terminates(bitmap_equal/2).
 :- pred bitmap_equal(bitmap, bitmap).
 :- mode bitmap_equal(in, in) is semidet.
 
@@ -1591,6 +1585,7 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
         true
     ).
 
+:- pragma terminates(bitmap_compare/3).
 :- pred bitmap_compare(comparison_result, bitmap, bitmap).
 :- mode bitmap_compare(uo, in, in) is det.
 
@@ -1661,14 +1656,12 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
     NumBits = BM.num_bits;
 ").
 
-/* XXX UNTESTED
 :- pragma foreign_proc("C#",
     num_bits(BM::in) = (NumBits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     NumBits = BM.num_bits;
 ").
-*/
 
 %-----------------------------------------------------------------------------%
 
@@ -1690,7 +1683,6 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
     BM = BM0;
     BM.num_bits = NumBits;
 ").
-/* XXX UNTESTED
 :- pragma foreign_proc("C#",
     'num_bits :='(BM0::bitmap_di, NumBits::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -1698,7 +1690,6 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
     BM = BM0;
     BM.num_bits = NumBits;
 ").
-*/
 
 %-----------------------------------------------------------------------------%
 
@@ -1724,14 +1715,12 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     Byte = ((int) BM.elements[N]) & 0xff;
 ").
 
-/* XXX UNTESTED
 :- pragma foreign_proc("C#",
     unsafe_byte(N::in, BM::in) = (Byte::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Byte = BM.elements[N];
 ").
-*/
 
 %-----------------------------------------------------------------------------%
 
@@ -1761,7 +1750,6 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     BM.elements[N] = (byte) Byte;
 ").
 
-/* XXX UNTESTED
 :- pragma foreign_proc("C#",
     'unsafe_byte :='(N::in, BM0::bitmap_di, Byte::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -1769,7 +1757,6 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     BM = BM0;
     BM.elements[N] = (byte) Byte;
 ").
-*/
 
 %-----------------------------------------------------------------------------%
 
@@ -1790,14 +1777,12 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     BM = new mercury.bitmap.MercuryBitmap(N);
 ").
 
-/* XXX UNTESTED
 :- pragma foreign_proc("C#",
     allocate_bitmap(N::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    BM = new [mercury]mercury.bitmap__csharp_code.MercuryBitmap(N);
+    BM = new MercuryBitmap(N);
 ").
-*/
 
 :- func resize_bitmap(bitmap, num_bits) = bitmap.
 :- mode resize_bitmap(bitmap_di, in) = bitmap_uo is det.
