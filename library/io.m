@@ -7577,6 +7577,13 @@ io.stdin_stream = input_stream(io.stdin_stream_2).
     Stream = &mercury_stdin;
 ").
 
+:- pragma foreign_proc("C#",
+    io.stdin_stream_2 = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+"
+    Stream = mercury_stdin;
+").
+
 io.stdin_stream(input_stream(Stream), !IO) :-
     io.stdin_stream_2(Stream, !IO).
 
@@ -7600,6 +7607,13 @@ io.stdout_stream = output_stream(io.stdout_stream_2).
     Stream = &mercury_stdout;
 ").
 
+:- pragma foreign_proc("C#",
+    io.stdout_stream_2 = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+"
+    Stream = mercury_stdout;
+").
+
 io.stdout_stream(output_stream(Stream), !IO) :-
     io.stdout_stream_2(Stream, !IO).
 
@@ -7620,6 +7634,13 @@ io.stderr_stream = output_stream(io.stderr_stream_2).
     [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
 "
     Stream = &mercury_stderr;
+").
+
+:- pragma foreign_proc("C#",
+    io.stderr_stream_2 = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+"
+    Stream = mercury_stderr;
 ").
 
 io.stderr_stream(output_stream(Stream), !IO) :-
