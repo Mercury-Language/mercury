@@ -712,12 +712,20 @@ output_var(VarSet, Var, !IO) :-
 :- pred output_var_string(string::in, io::di, io::uo) is det.
 
 output_var_string(String, !IO) :-
-    % XXX this assumes all Mercury variable names are a subset of Erlang
-    % variable names
-    % However, the compiler can produce some illegal variable names
-    % which we should mangle e.g. TypeClassInfo_for_+_8
-    io.write_string(String, !IO),
+    % The compiler can produce some illegal variable names e.g.
+    % 'TypeClassInfo_for_+_8' so we need to mangle.  We assume the first
+    % character is okay for Erlang (uppercase or underscore).
+    string.foldl(output_var_string_2, String, !IO),
     space(!IO).
+
+:- pred output_var_string_2(char::in, io::di, io::uo) is det.
+
+output_var_string_2(C, !IO) :-
+    (if char.is_alnum_or_underscore(C) then
+        io.write_char(C, !IO)
+    else
+        io.write_int(char.to_int(C), !IO)
+    ).
 
 :- pred output_pred_proc_id(module_info::in, pred_proc_id::in,
     io::di, io::uo) is det.
