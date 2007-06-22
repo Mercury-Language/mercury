@@ -179,6 +179,7 @@
     ;       output_link_command
     ;       output_shared_lib_link_command
     ;       output_libgrades
+    ;       output_cc
 
     % Auxiliary output options
     ;       smart_recompilation
@@ -980,7 +981,8 @@ option_defaults_2(output_option, [
     output_grade_string                 -   bool(no),
     output_link_command                 -   bool(no),
     output_shared_lib_link_command      -   bool(no),
-    output_libgrades                    -   bool(no)
+    output_libgrades                    -   bool(no),
+    output_cc                           -   bool(no)
 
 ]).
 option_defaults_2(aux_output_option, [
@@ -1743,6 +1745,7 @@ long_option("output-grade-string",  output_grade_string).
 long_option("output-link-command",  output_link_command).
 long_option("output-shared-lib-link-command", output_shared_lib_link_command).
 long_option("output-libgrades", output_libgrades).
+long_option("output-cc",        output_cc).
 
 % aux output options
 long_option("smart-recompilation",  smart_recompilation).
@@ -3211,7 +3214,9 @@ options_help_output -->
         "\tstandard output.",
         "--output-libgrades",
         "\tPrint the list of compilation grades in which a library",
-        "\tto be installed should be built to the standard output."
+        "\tto be installed should be built to the standard output.",
+        "--output-cc",
+        "\tPrint the name of the C compiler to the standard output."
     ]).
 
 :- pred options_help_aux_output(io::di, io::uo) is det.

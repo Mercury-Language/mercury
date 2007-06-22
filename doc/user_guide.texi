@@ -6594,6 +6594,11 @@ standard output.
 Print the list of compilation grades in which a library to
 be installed should be built to the standard output.
 
+@sp 1
+@item --output-cc
+@findex --output-cc
+Print the name of the C compiler to the standard output.
+
 @end table
 
 @node Auxiliary output options

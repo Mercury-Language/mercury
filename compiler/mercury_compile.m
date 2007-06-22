@@ -386,6 +386,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         FileNamesFromStdin),
     globals.lookup_bool_option(Globals, output_libgrades,
         OutputLibGrades),
+    globals.lookup_bool_option(Globals, output_cc, OutputCC),
     globals.lookup_bool_option(Globals, make, Make),
     globals.lookup_maybe_string_option(Globals, generate_standalone_interface,
         GenerateStandaloneInt),
@@ -423,6 +424,10 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
         io.stdout_stream(Stdout, !IO),
         io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO)
+    ; OutputCC = yes ->
+        globals.lookup_string_option(Globals, cc, CC),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CC ++ "\n", !IO)
     ; GenerateMapping = yes ->
         source_file_map.write_source_file_map(Args, !IO)
     ; GenerateStandaloneInt = yes(StandaloneIntBasename) ->
