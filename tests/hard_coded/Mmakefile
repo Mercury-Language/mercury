@@ -182,6 +182,7 @@ ORDINARY_PROGS=	\
 	rtree_test \
 	rtti_strings \
 	runtime_opt \
+	seek_test \
 	setjmp_test \
 	shift_test \
 	solve_quadratic \

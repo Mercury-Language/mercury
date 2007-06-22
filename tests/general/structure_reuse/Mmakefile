@@ -9,8 +9,8 @@ STRUCTURE_REUSE_PROGS=		\
 	internal_alias		\
 	interpret
 
-# We currently don't do any testing in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
+# We currently don't do any testing in Java or Erlang grades on this directory.
+ifneq "$(filter java% erlang%,$(GRADE))" ""
 	PROGS=
 else
 	PROGS=$(STRUCTURE_REUSE_PROGS)

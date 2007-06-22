@@ -289,20 +289,34 @@ main_wrapper_code = "
                 StackTrace = erlang:get_stacktrace(),
                 mercury__exception:'ML_report_uncaught_exception'(Excp),
                 mercury__maybe_dump_stacktrace(StackTrace),
-                mercury__shutdown(),
-                % init:stop is preferred to calling halt but there seems
-                % to be no way to choose the exit code otherwise.
-                halt(1)
+                mercury__shutdown(true)
         end,
-        mercury__shutdown().
+        mercury__shutdown(false).
 
     mercury__startup() ->
         mercury__erlang_builtin:'ML_start_global_server'(),
         mercury__io:'ML_io_init_state'().
 
-    mercury__shutdown() ->
+    mercury__shutdown(ForceBadExit) ->
         mercury__io:'ML_io_finalize_state'(),
-        mercury__erlang_builtin:'ML_stop_global_server'().
+        'ML_erlang_global_server' ! {get_exit_status, self()},
+        receive
+            {get_exit_status_ack, ExitStatus0} ->
+                void
+        end,
+        if
+            ExitStatus0 =:= 0 andalso ForceBadExit ->
+                ExitStatus = 1;
+            true ->
+                ExitStatus = ExitStatus0
+        end,
+        mercury__erlang_builtin:'ML_stop_global_server'(),
+        % init:stop is preferred to calling halt but there seems
+        % to be no way to choose the exit code otherwise.
+        case ExitStatus of
+            0 -> void;
+            _ -> halt(ExitStatus)
+        end.
 
     mercury__maybe_dump_stacktrace(StackTrace) ->
         case os:getenv(""MERCURY_SUPPRESS_STACK_TRACE"") of

@@ -45,6 +45,7 @@
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Pid = spawn(fun global_server_loop/0),
+    Pid ! {set_exit_status, 0},
     register('ML_erlang_global_server', Pid)
 ").
 
@@ -99,6 +100,24 @@ global_server_loop() ->
         {trace_evaluate_runtime_condition, Cond, From} ->
             Ret = trace_eval_runtime_cond(Cond),
             From ! {trace_evaluate_runtime_condition_ack, Ret},
+            global_server_loop();
+
+        {init_std_streams, Streams} ->
+            put('ML_std_streams', Streams),
+            global_server_loop();
+
+        {get_std_streams, From} ->
+            Streams = get('ML_std_streams'),
+            From ! {get_std_streams_ack, Streams},
+            global_server_loop();
+
+        {get_exit_status, From} ->
+            ExitStatus = get('ML_exit_status'),
+            From ! {get_exit_status_ack, ExitStatus},
+            global_server_loop();
+
+        {set_exit_status, ExitStatus} ->
+            put('ML_exit_status', ExitStatus),
             global_server_loop();
 
         {stop, From} ->
