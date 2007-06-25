@@ -970,7 +970,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         CalledGoal = hlds_goal(call_foreign_proc(ForeignAttributes,
             _, _, _, _, _, _), _)
     ->
-        % Only inline foreign_code if it is appropriate for the target
+        % Only inline a foreign_proc if it is appropriate for the target
         % language.
         (
             ForeignLanguage = get_foreign_language(ForeignAttributes)
@@ -978,8 +978,8 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
             ok_to_inline_language(ForeignLanguage, Target)
         ),
 
-        % Don't inline foreign_code if it is has been marked with the attribute
-        % that requests the code not be duplicated.
+        % Don't inline a foreign_proc if it is has been marked with the
+        % attribute that requests the code not be duplicated.
         (
             MaybeMayDuplicate = get_may_duplicate(ForeignAttributes)
         =>
@@ -1004,7 +1004,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         pred_info_get_promised_purity(PredInfo, purity_impure)
     ).
 
-    % Succeed iff it is appropriate to inline `pragma foreign_code'
+    % Succeed iff it is appropriate to inline `pragma foreign_proc'
     % in the specified language for the given compilation_target.
     % Generally that will only be the case if the target directly
     % supports inline code in that language.
@@ -1013,6 +1013,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     is semidet.
 
 ok_to_inline_language(lang_c, target_c).
+ok_to_inline_language(lang_erlang, target_erlang).
 
 % ok_to_inline_language(il, il). %
 % XXX we need to fix the handling of parameter marshalling for inlined code
