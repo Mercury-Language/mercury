@@ -32,6 +32,7 @@
 % Mode analysis
 %:- module mode_analysis.
    :- include_module delay_info.
+   :- include_module delay_partial_inst.
    :- include_module inst_match.
    :- include_module inst_util.
    :- include_module mode_constraint_robdd.

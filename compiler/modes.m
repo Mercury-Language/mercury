@@ -348,6 +348,7 @@
 
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.delay_info.
+:- import_module check_hlds.delay_partial_inst.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
@@ -409,18 +410,34 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc,
     globals.io_lookup_int_option(mode_inference_iteration_limit,
         MaxIterations, !IO),
     modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, UnsafeToContinue, !IO),
+        MayChangeCalledProc, !ModuleInfo, UnsafeToContinue0, !IO),
     (
         WhatToCheck = check_unique_modes,
         write_mode_inference_messages(PredIds, yes, !.ModuleInfo, !IO),
-        check_eval_methods(!ModuleInfo, !IO)
+        check_eval_methods(!ModuleInfo, !IO),
+        UnsafeToContinue = UnsafeToContinue0
     ;
         WhatToCheck = check_modes,
         (
-            UnsafeToContinue = yes,
-            write_mode_inference_messages(PredIds, no, !.ModuleInfo, !IO)
+            UnsafeToContinue0 = yes,
+            write_mode_inference_messages(PredIds, no, !.ModuleInfo, !IO),
+            UnsafeToContinue = yes
         ;
-            UnsafeToContinue = no
+            UnsafeToContinue0 = no,
+            globals.io_lookup_bool_option(delay_partial_instantiations,
+                DelayPartialInstantiations, !IO),
+            (
+                DelayPartialInstantiations = yes,
+                delay_partial_inst_preds(PredIds, ChangedPreds, !ModuleInfo,
+                    !IO),
+                % --delay-partial-instantiations requires mode checking to be
+                % run again.
+                modecheck_to_fixpoint(ChangedPreds, MaxIterations, WhatToCheck,
+                    MayChangeCalledProc, !ModuleInfo, UnsafeToContinue, !IO)
+            ;
+                DelayPartialInstantiations = no,
+                UnsafeToContinue = no
+            )
         )
     ).
 

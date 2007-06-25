@@ -46,6 +46,8 @@ ORDINARY_PROGS=	\
 	deep_copy_bug \
 	deep_copy_exist \
 	deforest_cc_bug \
+	delay_partial_test \
+	delay_partial_test2 \
 	dense_lookup_switch \
 	dense_lookup_switch2 \
 	dense_lookup_switch3 \

@@ -92,9 +92,8 @@
 :- pred rename_var(bool::in, map(var(V), var(V))::in,
     var(V)::in, var(V)::out) is det.
 
-    % create_variables(OldVariables, OldVarset, InitialVarTypes,
-    %   InitialSubstitution, OldVarTypes, OldVarNames,  NewVarset,
-    %   NewVarTypes, NewSubstitution):
+    % create_variables(OldVariables, OldVarNames, OldVarTypes,
+    %   !Varset, !VarTypes, !Subn):
     %
     % create_variables takes a list of variables, a varset, and map
     % from vars to types and an initial substitution, and creates new instances

@@ -408,6 +408,8 @@
 
     ;       mutable_always_boxed
 
+    ;       delay_partial_instantiations
+
     % Options for internal use only (setting these options to non-default
     % values can result in programs that do not link, or programs that dump
     % core)
@@ -1156,6 +1158,7 @@ option_defaults_2(internal_use_option, [
     body_typeinfo_liveness              -   bool(no),
     can_compare_constants_as_ints       -   bool(no),
     mutable_always_boxed                -   bool(yes),
+    delay_partial_instantiations        -   bool(no),
     special_preds                       -   bool(yes),
     type_ctor_info                      -   bool(yes),
     type_ctor_layout                    -   bool(yes),
@@ -1922,6 +1925,7 @@ long_option("trace-stack-layout",   trace_stack_layout).
 long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
 long_option("can-compare-constants-as-ints",    can_compare_constants_as_ints).
 long_option("mutable-always-boxed", mutable_always_boxed).
+long_option("delay-partial-instantiations", delay_partial_instantiations).
 long_option("special-preds",        special_preds).
 long_option("type-ctor-info",       type_ctor_info).
 long_option("type-ctor-layout",     type_ctor_layout).
@@ -3971,6 +3975,10 @@ options_help_compilation_model -->
 %       "(This option is not for general use.)",
 %       For documentation, see the comment in the type declaration.
 
+        % This is a developer only option.
+%       "--delay-partial-instantiations",
+%       "(This option is not for general use.)",
+%       For documentation, see delay_partial_inst.m
     ]).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.

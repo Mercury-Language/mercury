@@ -1,0 +1,4 @@
+implied mode call 1 ok
+implied mode call 2 ok
+blah(42, 43, 'x')
+{blah(-42, -42, 'x'), blah(43, -42, 'x')}

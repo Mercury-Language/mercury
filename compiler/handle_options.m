@@ -631,6 +631,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %   - gc_method `automatic' and no heap reclamation on failure
         %     because GC is handled automatically by the Erlang
         %     implementation.
+        %   - delay-partial-instantiations
 
         ( 
             Target = target_erlang,
@@ -639,6 +640,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals),
             globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+                !Globals),
+            globals.set_option(delay_partial_instantiations, bool(yes),
                 !Globals)
         ;
             ( Target = target_c
