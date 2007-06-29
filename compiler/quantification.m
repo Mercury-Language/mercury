@@ -408,17 +408,23 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, _, !Info) :-
 
 implicitly_quantify_goal_quant_info_2(Expr0, Expr, _, !Info) :-
     Expr0 = disj(Goals0),
-    implicitly_quantify_disj(Goals0, Goals, !Info),
+    NonLocalVarSets0 = [],
+    implicitly_quantify_disj(Goals0, Goals, !Info,
+        NonLocalVarSets0, NonLocalVarSets),
+    union_list(NonLocalVarSets, NonLocalVars),
+    set_nonlocals(NonLocalVars, !Info),
     Expr = disj(Goals).
 
 implicitly_quantify_goal_quant_info_2(Expr0, Expr, _, !Info) :-
     Expr0 = switch(Var, Det, Cases0),
-    implicitly_quantify_cases(Cases0, Cases, !Info),
+    NonLocalVarSets0 = [],
+    implicitly_quantify_cases(Cases0, Cases, !Info,
+        NonLocalVarSets0, NonLocalVarSets),
     % The switch variable is guaranteed to be nonlocal to the switch, since
     % it has to be bound elsewhere, so we put it in the nonlocals here.
-    get_nonlocals(!.Info, NonLocals0),
-    insert(NonLocals0, Var, NonLocals),
-    set_nonlocals(NonLocals, !Info),
+    union_list(NonLocalVarSets, NonLocalVars0),
+    insert(NonLocalVars0, Var, NonLocalVars),
+    set_nonlocals(NonLocalVars, !Info),
     Expr = switch(Var, Det, Cases).
 
 implicitly_quantify_goal_quant_info_2(Expr0, Expr, _, !Info) :-
@@ -840,33 +846,28 @@ implicitly_quantify_conj_2(
     set_nonlocals(NonLocalVars, !Info).
 
 :- pred implicitly_quantify_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    quant_info::in, quant_info::out) is det.
+    quant_info::in, quant_info::out,
+    list(set_of_var)::in, list(set_of_var)::out) is det.
 
-implicitly_quantify_disj([], [], !Info) :-
-    NonLocalVars = init,
-    set_nonlocals(NonLocalVars, !Info).
-implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals], !Info) :-
+implicitly_quantify_disj([], [], !Info, !NonLocalVarSets).
+implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals], !Info,
+        !NonLocalVarSets) :-
     implicitly_quantify_goal_quant_info(Goal0, Goal, !Info),
-    get_nonlocals(!.Info, NonLocalVars0),
-    implicitly_quantify_disj(Goals0, Goals, !Info),
-    get_nonlocals(!.Info, NonLocalVars1),
-    union(NonLocalVars0, NonLocalVars1, NonLocalVars),
-    set_nonlocals(NonLocalVars, !Info).
+    get_nonlocals(!.Info, GoalNonLocalVars),
+    !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
+    implicitly_quantify_disj(Goals0, Goals, !Info, !NonLocalVarSets).
 
 :- pred implicitly_quantify_cases(list(case)::in, list(case)::out,
-    quant_info::in, quant_info::out) is det.
+    quant_info::in, quant_info::out,
+    list(set_of_var)::in, list(set_of_var)::out) is det.
 
-implicitly_quantify_cases([], [], !Info) :-
-    NonLocalVars = init,
-    set_nonlocals(NonLocalVars, !Info).
+implicitly_quantify_cases([], [], !Info, !NonLocalVarSets).
 implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
-        [case(Cons, Goal) | Cases], !Info) :-
+        [case(Cons, Goal) | Cases], !Info, !NonLocalVarSets) :-
     implicitly_quantify_goal_quant_info(Goal0, Goal, !Info),
-    get_nonlocals(!.Info, NonLocalVars0),
-    implicitly_quantify_cases(Cases0, Cases, !Info),
-    get_nonlocals(!.Info, NonLocalVars1),
-    union(NonLocalVars0, NonLocalVars1, NonLocalVars),
-    set_nonlocals(NonLocalVars, !Info).
+    get_nonlocals(!.Info, GoalNonLocalVars),
+    !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
+    implicitly_quantify_cases(Cases0, Cases, !Info, !NonLocalVarSets).
 
 %-----------------------------------------------------------------------------%
 
