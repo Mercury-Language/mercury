@@ -6785,6 +6785,13 @@ to the HLDS of the predicate or function with the specified pred id.
 May be given more than once.
 
 @sp 1
+@item --dump-hlds-pred-name @var{name}
+@findex --dump-hlds-pred-name
+With @samp{--dump-hlds}, restrict the output
+to the HLDS of the predicate or function with the specified name.
+May be given more than once.
+
+@sp 1
 @item --dump-hlds-file-suffix
 @findex --dump-hlds-file-suffix
 Append the given suffix to the names of the files created by the

@@ -219,6 +219,7 @@
     ;       dump_trace_counts
     ;       dump_hlds
     ;       dump_hlds_pred_id
+    ;       dump_hlds_pred_name
     ;       dump_hlds_alias
     ;       dump_hlds_options
     ;       dump_hlds_file_suffix
@@ -1016,6 +1017,7 @@ option_defaults_2(aux_output_option, [
     dump_trace_counts                   -   accumulating([]),
     dump_hlds                           -   accumulating([]),
     dump_hlds_pred_id                   -   accumulating([]),
+    dump_hlds_pred_name                 -   accumulating([]),
     dump_hlds_alias                     -   string(""),
     dump_hlds_options                   -   string(""),
     dump_hlds_file_suffix               -   string(""),
@@ -1782,6 +1784,7 @@ long_option("dump-trace-counts",    dump_trace_counts).
 long_option("dump-hlds",            dump_hlds).
 long_option("hlds-dump",            dump_hlds).
 long_option("dump-hlds-pred-id",    dump_hlds_pred_id).
+long_option("dump-hlds-pred-name",  dump_hlds_pred_name).
 long_option("dump-hlds-alias",      dump_hlds_alias).
 long_option("dump-hlds-options",    dump_hlds_options).
 long_option("dump-hlds-file-suffix", dump_hlds_file_suffix).
@@ -3349,6 +3352,8 @@ options_help_aux_output -->
         "--dump-hlds-pred-id <n>",
         "\tDump the HLDS only of the predicate/function with the given",
         "\tpred id.",
+        "--dump-hlds-pred-name <name>",
+        "\tDump the HLDS only of the predicate/function with the given name.",
 % This option is for developers only.
 %       "-D, --dump-hlds-alias <dump-alias>",
 %       "\tWith `--dump-hlds', include extra detail in the dump.",

@@ -640,30 +640,46 @@ write_hlds(Indent, Module, !IO) :-
     module_info_get_mode_table(Module, ModeTable),
     module_info_get_class_table(Module, ClassTable),
     module_info_get_instance_table(Module, InstanceTable),
+    module_info_get_globals(Module, Globals),
+    globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
+        DumpPredIdStrs),
+    globals.lookup_accumulating_option(Globals, dump_hlds_pred_name,
+        DumpPredNames),
     write_header(Indent, Module, !IO),
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'I') ->
-        write_imports(Indent, Imports, !IO)
-    ;
+    (
+        % If the user specifically requested one or more predicates and/or
+        % functions to be dumped, they won't be interested in the types,
+        % insts etc.
+        ( DumpPredIdStrs = [_ | _]
+        ; DumpPredNames = [_ | _]
+        )
+    ->
         true
-    ),
-    ( string.contains_char(Verbose, 'T') ->
-        write_types(Indent, TypeTable, !IO),
-        io.write_string("\n", !IO),
-        write_classes(Indent, ClassTable, !IO),
-        io.write_string("\n", !IO),
-        write_instances(Indent, InstanceTable, !IO),
-        io.write_string("\n", !IO)
     ;
-        true
-    ),
-    ( string.contains_char(Verbose, 'M') ->
-        write_insts(Indent, InstTable, !IO),
-        io.write_string("\n", !IO),
-        write_modes(Indent, ModeTable, !IO),
-        io.write_string("\n", !IO)
-    ;
-        true
+        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+        ( string.contains_char(Verbose, 'I') ->
+            write_imports(Indent, Imports, !IO)
+        ;
+            true
+        ),
+        ( string.contains_char(Verbose, 'T') ->
+            write_types(Indent, TypeTable, !IO),
+            io.write_string("\n", !IO),
+            write_classes(Indent, ClassTable, !IO),
+            io.write_string("\n", !IO),
+            write_instances(Indent, InstanceTable, !IO),
+            io.write_string("\n", !IO)
+        ;
+            true
+        ),
+        ( string.contains_char(Verbose, 'M') ->
+            write_insts(Indent, InstTable, !IO),
+            io.write_string("\n", !IO),
+            write_modes(Indent, ModeTable, !IO),
+            io.write_string("\n", !IO)
+        ;
+            true
+        )
     ),
     write_preds(Indent, Module, PredTable, !IO),
     write_footer(Indent, Module, !IO).
@@ -714,18 +730,28 @@ maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
     globals.lookup_string_option(Globals, dump_hlds_options, Verbose),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
         DumpPredIdStrs),
+    globals.lookup_accumulating_option(Globals, dump_hlds_pred_name,
+        DumpPredNames),
     pred_id_to_int(PredId, PredIdInt),
     map.lookup(PredTable, PredId, PredInfo),
     (
         % If the user requested one or more predicates/functions to be dumped,
-        % we dump them even if the condition of the nested if-then-else
-        % says it shouldn't be dumped, and we don't dump anything else.
-        DumpPredIdStrs = [_ | _],
+        % we dump them even if the condition of the nested if-then-else below
+        % would say they shouldn't be dumped, and we don't dump anything else.
+        ( DumpPredIdStrs = [_ | _]
+        ; DumpPredNames = [_ | _]
+        )
+    ->
         (
-            some [DumpPredIdStr, DumpPredId] (
-                list.member(DumpPredIdStr, DumpPredIdStrs),
-                string.to_int(DumpPredIdStr, DumpPredId),
-                PredIdInt = DumpPredId
+            (
+                some [DumpPredIdStr, DumpPredId] (
+                    list.member(DumpPredIdStr, DumpPredIdStrs),
+                    string.to_int(DumpPredIdStr, DumpPredId),
+                    PredIdInt = DumpPredId
+                )
+            ;
+                PredName = pred_info_name(PredInfo),
+                list.member(PredName, DumpPredNames)
             )
         ->
             write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
@@ -733,7 +759,6 @@ maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
             true
         )
     ;
-        DumpPredIdStrs = [],
         (
             (
                 \+ string.contains_char(Verbose, 'I'),
