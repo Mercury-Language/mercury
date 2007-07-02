@@ -656,6 +656,9 @@
     %   - IL
     %   (none yet)
 
+    %   - Erlang
+    ;       erlang_switch_on_strings_as_atoms
+
     % Target code compilation options
     ;       target_debug
 
@@ -1408,7 +1411,10 @@ option_defaults_2(optimization_option, [
     emit_c_loops                        -   bool(no),
     procs_per_c_function                -   int(1),
     everything_in_one_c_function        -   special,
-    local_thread_engine_base            -   bool(yes)
+    local_thread_engine_base            -   bool(yes),
+
+    % Erlang
+    erlang_switch_on_strings_as_atoms   -   bool(no)
 ]).
 option_defaults_2(target_code_compilation_option, [
     % Target code compilation options
@@ -2234,6 +2240,10 @@ long_option("everything-in-one-C-function", everything_in_one_c_function).
 long_option("inline-alloc",         inline_alloc).
 long_option("local-thread-engine-base", local_thread_engine_base).
 
+% Erlang
+long_option("erlang-switch-on-strings-as-atoms",
+                erlang_switch_on_strings_as_atoms).
+
 % Target code compilation options
 long_option("target-debug",         target_debug).
 
@@ -2937,6 +2947,7 @@ options_help -->
     options_help_hlds_llds_optimization,
     options_help_llds_llds_optimization,
     options_help_mlds_mlds_optimization,
+    options_help_hlds_elds_optimization,
     options_help_output_optimization,
     options_help_target_code_compilation,
     options_help_link,
@@ -4536,6 +4547,18 @@ options_help_mlds_mlds_optimization -->
         "\tbut instead insert calls to the versions of these operations",
         "\tin the standard library."
 ]).
+
+:- pred options_help_hlds_elds_optimization(io::di, io::uo) is det.
+
+options_help_hlds_elds_optimization -->
+    io.write_string("\n    HLDS -> ELDS optimizations:\n"),
+    write_tabbed_lines([
+        "--erlang-switch-on-strings-as-atoms",
+        "\tEnable a workaround for slow HiPE compilation of large string",
+        "\tswitches by converting the string to an atom at runtime and",
+        "\tswitching on atoms. Do not enable if the string switched on",
+        "\tcould be longer than 255 characters at runtime."
+    ]).
 
 :- pred options_help_output_optimization(io::di, io::uo) is det.
 

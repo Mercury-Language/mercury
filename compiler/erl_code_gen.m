@@ -62,6 +62,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -72,6 +73,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
+:- import_module string.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -586,6 +588,10 @@ erl_gen_goal_expr(shorthand(_), _, _, _, _, _, _, !Info) :-
 
 duplicate_expr_limit = 10.  % XXX arbitrary
 
+:- func switch_strings_as_atoms_limit = int.
+
+switch_strings_as_atoms_limit = 50. % XXX arbitrary
+
 :- pred erl_gen_switch(prog_var::in, can_fail::in, list(hlds_goal.case)::in,
     code_model::in, instmap::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
@@ -631,12 +637,51 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
         MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr,
         InstMap0, InstMap, !Info),
 
-    % Generate code for each case.
     erl_variable_type(!.Info, Var, VarType),
-    list.map_foldl(
-        erl_gen_case(VarType,
-            CodeModel, InstMap, NonLocalsBoundInCases, MaybeSuccessExpr),
-        CasesList, ErlCases0, !Info),
+    erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    type_util.classify_type(ModuleInfo, VarType) = TypeCategory,
+
+    (if
+        % The HiPE compiler is extremely slow compiling functions containing
+        % long case statements involving strings.  Workaround: for a string
+        % switch with many cases, convert the string to an atom and switch on
+        % atoms instead.
+        TypeCategory = type_cat_string,
+
+        % list_to_atom could throw an exception for long strings, so we don't
+        % enable the workaround unless the user specifically passes
+        % --erlang-switch-on-strings-as-atoms.
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, erlang_switch_on_strings_as_atoms,
+            yes),
+
+        list.length(CasesList) > switch_strings_as_atoms_limit,
+
+        % The Erlang implementation limits atoms to be 255 characters long or
+        % less, so we don't use the workaround if any cases are longer than
+        % that.
+        all [String] (
+            list.member(case(string_const(String), _), CasesList)
+        =>
+            string.length(String) =< 255
+        )
+    then
+        erl_gen_info_new_named_var("Atom", AtomVar, !Info),
+        StringToAtom = elds_eq(expr_from_var(AtomVar),
+            elds_call_builtin("list_to_atom", [expr_from_var(Var)])),
+        MaybeConvertToAtom = yes(StringToAtom),
+        SwitchVar = AtomVar,
+        GenCase = erl_gen_case_on_atom(CodeModel, InstMap,
+            NonLocalsBoundInCases, MaybeSuccessExpr)
+    else
+        MaybeConvertToAtom = no,
+        SwitchVar = Var,
+        GenCase = erl_gen_case(VarType,
+            CodeModel, InstMap, NonLocalsBoundInCases, MaybeSuccessExpr)
+    ),
+
+    % Generate code for each case.
+    list.map_foldl(GenCase, CasesList, ErlCases0, !Info),
     (
         CanFail = can_fail,
         % Add `_ -> fail' default case.
@@ -648,8 +693,9 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
     ),
 
     % Create the overall switch statement,.
-    CaseExpr = elds_case_expr(expr_from_var(Var), ErlCases),
-    Statement = maybe_join_exprs1(MaybeMakeClosure, CaseExpr).
+    CaseExpr = elds_case_expr(expr_from_var(SwitchVar), ErlCases),
+    Statement = maybe_join_exprs1(MaybeMakeClosure,
+        maybe_join_exprs1(MaybeConvertToAtom, CaseExpr)).
 
 :- pred erl_gen_case(mer_type::in,
     code_model::in, instmap::in, set(prog_var)::in,
@@ -708,6 +754,30 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
     ;
         Size = 0
     ).
+
+:- pred erl_gen_case_on_atom(code_model::in, instmap::in, set(prog_var)::in,
+    maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out, 
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
+        case(ConsId, Goal), ELDSCase, !Info) :-
+    ( ConsId = string_const(String0) ->
+        String = String0
+    ;
+        unexpected(this_file, "erl_gen_case_on_atom: non-string const")
+    ),
+    erl_fix_success_expr(InstMap, Goal, MaybeSuccessExpr,
+        MaybeSuccessExprForCase, !Info),
+    erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExprForCase, Statement0,
+        !Info),
+    %
+    % To prevent warnings from the Erlang compiler we must make sure all cases
+    % bind the same set of variables.  This might not be true if the Mercury
+    % compiler knows that a case calls a procedure which throws an exception.
+    %
+    erl_bind_unbound_vars(!.Info, MustBindNonLocals, Goal, InstMap,
+        Statement0, Statement),
+    ELDSCase = elds_case(elds_atom_raw(String), Statement).
 
 %-----------------------------------------------------------------------------%
 % This code is shared by disjunctions and switches.

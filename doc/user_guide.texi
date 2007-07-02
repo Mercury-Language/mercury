@@ -7810,6 +7810,7 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 * High-level (HLDS -> HLDS) optimization options::
 * MLDS backend (MLDS -> MLDS) optimization options::
 * Medium-level (HLDS -> LLDS) optimization options::
+* Erlang (HLDS -> ELDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
 @end menu
@@ -8333,6 +8334,21 @@ by replacing occurrences of such variables with their values.
 Do not generate trailing operations inline,
 but instead insert calls to the versions of these operations
 in the standard library.
+@end table
+
+@node Erlang (HLDS -> ELDS) optimization options
+@subsection Erlang (HLDS -> ELDS) optimization options
+@cindex HLDS
+@cindex ELDS
+
+@table @code
+@item --erlang-switch-on-strings-as-atoms
+@findex --no-erlang-switch-on-strings-as-atoms
+@findex --erlang-switch-on-strings-as-atoms
+Enable a workaround for slow HiPE compilation of large string
+switches by converting the string to an atom at runtime and
+switching on atoms. Do not enable if the string switched on
+could be longer than 255 characters at runtime.
 @end table
 
 @node Medium-level (HLDS -> LLDS) optimization options
