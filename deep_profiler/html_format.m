@@ -1753,11 +1753,11 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     (
         ShowCallSeqs = yes,
         CallSeqsSelfHTML =
-            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%i</TD>\n",
-                [i(OwnCallSeqs)]),
+            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%s</TD>\n",
+                [s(commas(OwnCallSeqs))]),
         CallSeqsTotalHTML =
-            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%i</TD>\n",
-                [i(TotalCallSeqs)]),
+            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%s</TD>\n",
+                [s(commas(TotalCallSeqs))]),
         CallSeqsPropSelfHTML =
             string.format("<TD CLASS=callseqs ALIGN=RIGHT>%s</TD>\n",
                 [s(OwnCallSeqsProp)]),
@@ -1775,18 +1775,20 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     (
         ShowCallSeqsPerCall = yes,
         ( Calls = 0 ->
-            OwnCallSeqsPerCall = 0.0,
-            TotalCallSeqsPerCall = 0.0
+            OwnCallSeqsPerCall = "N/A",
+            TotalCallSeqsPerCall = "N/A"
         ;
-            OwnCallSeqsPerCall = float(OwnCallSeqs) / float(Calls),
-            TotalCallSeqsPerCall = float(TotalCallSeqs) / float(Calls)
+            OwnCallSeqsPerCall =
+                one_decimal_fraction(float(OwnCallSeqs) / float(Calls)),
+            TotalCallSeqsPerCall =
+                one_decimal_fraction(float(TotalCallSeqs) / float(Calls))
         ),
         CallSeqsPerCallSelfHTML =
-            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%.1f</TD>\n",
-                [f(OwnCallSeqsPerCall)]),
+            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%s</TD>\n",
+                [s(OwnCallSeqsPerCall)]),
         CallSeqsPerCallTotalHTML =
-            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%.1f</TD>\n",
-                [f(TotalCallSeqsPerCall)])
+            string.format("<TD CLASS=callseqs ALIGN=RIGHT>%s</TD>\n",
+                [s(TotalCallSeqsPerCall)])
     ;
         ShowCallSeqsPerCall = no,
         CallSeqsPerCallSelfHTML = "",
@@ -1988,6 +1990,25 @@ format_time(Pref, Time) = TimeStr :-
         TimeStr0 = two_decimal_fraction(ScaledTime)
     ),
     TimeStr = TimeStr0 ++ Unit.
+
+:- func one_decimal_fraction(float) = string.
+
+one_decimal_fraction(Measure) = Representation :-
+    string.format("%.1f", [f(Measure)], Str0),
+    string.to_char_list(Str0, Chars0),
+    list.reverse(Chars0, RevChars0),
+    (
+        RevChars0 = [Tenth, DecimalPoint | WholeRevChars0],
+        char.is_digit(Tenth)
+        % DecimalPoint = ('.')
+    ->
+        WholeRevChars = add_commas(WholeRevChars0),
+        RevChars = [Tenth, DecimalPoint | WholeRevChars],
+        Chars = list.reverse(RevChars),
+        string.from_char_list(Chars, Representation)
+    ;
+        error("one_decimal_fraction: malformed number")
+    ).
 
 :- func two_decimal_fraction(float) = string.
 
