@@ -214,8 +214,8 @@ get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
     TypeBody = hlds_du_type(_, _, _, yes(UnifyCompare), _, _).
 get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
     TypeBody = hlds_foreign_type(ForeignTypeBody),
-    UnifyCompare = foreign_type_body_has_user_defined_eq_comp_pred(
-        ModuleInfo, ForeignTypeBody).
+    foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
+        ForeignTypeBody, UnifyCompare).
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
     TypeBody = hlds_solver_type(_, yes(UnifyCompare)).
 

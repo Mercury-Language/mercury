@@ -63,8 +63,8 @@
     % Does the implementation of the given foreign type body on
     % the current backend use a user-defined comparison predicate.
     %
-:- func foreign_type_body_has_user_defined_eq_comp_pred(module_info,
-    foreign_type_body) = unify_compare is semidet.
+:- pred foreign_type_body_has_user_defined_eq_comp_pred(module_info::in,
+    foreign_type_body::in, unify_compare::out) is semidet.
 
     % Find the current target backend from the module_info, and given
     % a foreign_type_body, return the name of the foreign language type
@@ -579,8 +579,8 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
         ExportType = mercury(Type)
     ).
 
-foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body) =
-        UserEqComp :-
+foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
+        UserEqComp) :-
     foreign_type_body_to_exported_type(ModuleInfo, Body, _,
         MaybeUserEqComp, _),
     MaybeUserEqComp = yes(UserEqComp).

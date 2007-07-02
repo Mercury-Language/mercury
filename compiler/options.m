@@ -407,6 +407,16 @@
             % constant, can be done by casting them both to integers and
             % comparing the integers for equality.
 
+    ;       can_compare_compound_values
+            % Should be set to yes if the target back end supports comparison
+            % of non-atomic values with builtin operators.
+
+    ;       lexically_order_constructors
+            % Should be set to yes if we need to order functors
+            % lexically when generating comparison predicates,
+            % e.g. to match the natural order that functors will be compared
+            % on the backend.
+
     ;       mutable_always_boxed
 
     ;       delay_partial_instantiations
@@ -1159,6 +1169,8 @@ option_defaults_2(internal_use_option, [
     trace_stack_layout                  -   bool(no),
     body_typeinfo_liveness              -   bool(no),
     can_compare_constants_as_ints       -   bool(no),
+    can_compare_compound_values         -   bool(no),
+    lexically_order_constructors        -   bool(no),
     mutable_always_boxed                -   bool(yes),
     delay_partial_instantiations        -   bool(no),
     special_preds                       -   bool(yes),
@@ -1927,6 +1939,9 @@ long_option("procid-stack-layout",  procid_stack_layout).
 long_option("trace-stack-layout",   trace_stack_layout).
 long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
 long_option("can-compare-constants-as-ints",    can_compare_constants_as_ints).
+long_option("can-compare-compound-values",      can_compare_compound_values).
+long_option("lexically-order-constructors",
+                                    lexically_order_constructors).
 long_option("mutable-always-boxed", mutable_always_boxed).
 long_option("delay-partial-instantiations", delay_partial_instantiations).
 long_option("special-preds",        special_preds).
@@ -3972,6 +3987,16 @@ options_help_compilation_model -->
 
         % This is a developer only option.
 %       "--can-compare-constants-as-ints",
+%       "(This option is not for general use.)",
+%       For documentation, see the comment in the type declaration.
+
+        % This is a developer only option.
+%       "--can-compare-compound-values"
+%       "(This option is not for general use.)",
+%       For documentation, see the comment in the type declaration.
+
+        % This is a developer only option.
+%       "--lexically-order-constructors"
 %       "(This option is not for general use.)",
 %       For documentation, see the comment in the type declaration.
 

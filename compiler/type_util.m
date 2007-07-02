@@ -73,6 +73,16 @@
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
     hlds_type_body::in, unify_compare::out) is semidet.
 
+    % Succeed iff the principal type constructor of the specified type and none
+    % of its arguments are known not to have user-defined equality or
+    % comparison predicates.
+    %
+    % If the type is a type variable, or is abstract, etc.  make the
+    % conservative approximation and fail.
+    %
+:- pred type_definitely_has_no_user_defined_equality_pred(module_info::in,
+    mer_type::in) is semidet.
+
     % Succeed iff the principal type constructor for the given type
     % is a solver type.
     %
@@ -373,17 +383,65 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
         ->
-            UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
-                ModuleInfo, ForeignTypeBody)
+            foreign_type_body_has_user_defined_eq_comp_pred(
+                ModuleInfo, ForeignTypeBody, UserEqComp)
         ;
             TypeBody ^ du_type_usereq = yes(UserEqComp)
         )
     ;
         TypeBody = hlds_foreign_type(ForeignTypeBody),
-        UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
-            ModuleInfo, ForeignTypeBody)
+        foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
+            ForeignTypeBody, UserEqComp)
     ;
         TypeBody = hlds_solver_type(_SolverTypeDetails, yes(UserEqComp))
+    ).
+
+type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type) :-
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
+        TypeBody),
+    type_to_ctor_and_args_det(Type, _, Args),
+    all [Arg] (
+        list.member(Arg, Args)
+    =>
+        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Arg)
+    ).
+
+:- pred type_body_definitely_has_no_user_defined_equality_pred(module_info::in,
+    hlds_type_body::in) is semidet.
+
+type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, TypeBody) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        TypeBody = hlds_du_type(Ctors, _, _, _, _, _),
+        (
+            TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
+            have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
+        ->
+            not foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
+                ForeignTypeBody, _)
+        ;
+            TypeBody ^ du_type_usereq = no,
+            % There must not be any existentially quantified type variables.
+            all [Ctor] (
+                list.member(Ctor, Ctors)
+            =>
+                Ctor = ctor([], _, _, _, _)
+            )
+        )
+    ;
+        TypeBody = hlds_eqv_type(EqvType),
+        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, EqvType)
+    ;
+        TypeBody = hlds_foreign_type(ForeignTypeBody),
+        not foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
+            ForeignTypeBody, _)
+    ;
+        TypeBody = hlds_solver_type(_, no)
+    ;
+        TypeBody = hlds_abstract_type(_),
+        fail
     ).
 
 type_is_solver_type(ModuleInfo, Type) :-

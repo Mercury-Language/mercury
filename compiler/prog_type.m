@@ -117,7 +117,7 @@
     list(mer_type)::out) is det.
 
     % Given a non-variable type, return its type_ctor and argument types.
-    % Fail if the type is a variable.
+    % Abort if the type is a variable.
     %
 :- pred type_to_ctor_det(mer_type::in, type_ctor::out) is det.
 

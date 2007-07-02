@@ -70,3 +70,7 @@ MCFLAGS-term_size_prof_builtin += --no-warn-unused-imports
 #
 MCFLAGS-thread += --no-local-thread-engine-base
 MCFLAGS-thread.semaphore += --no-local-thread-engine-base
+
+# Ignore warnings about missing clauses for builtin_compare_eq,
+# builtin_compare_lt until the compiler knows these are builtins.
+MCFLAGS-private_builtin += --allow-stubs --no-halt-at-warn

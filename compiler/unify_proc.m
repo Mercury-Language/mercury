@@ -1042,7 +1042,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             Res, X, Y, Context, Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
+            TypeBody = hlds_du_type(Ctors0, _, EnumDummy, _, _, _),
             (
                 EnumDummy = is_enum,
                 generate_enum_compare_proc_body(Res, X, Y, Context, Clause,
@@ -1053,6 +1053,16 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
                     !Info)
             ;
                 EnumDummy = not_enum_or_dummy,
+                module_info_get_globals(ModuleInfo, Globals),
+                globals.lookup_bool_option(Globals,
+                    lexically_order_constructors, LexicalOrder),
+                (
+                    LexicalOrder = yes,
+                    list.sort(compare_ctors_lexically, Ctors0, Ctors)
+                ;
+                    LexicalOrder = no,
+                    Ctors = Ctors0
+                ),
                 generate_du_compare_proc_body(Type, Ctors, Res, X, Y,
                     Context, Clause, !Info)
             )
@@ -1085,6 +1095,31 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
                     "trying to create compare proc for abstract type")
             )
         )
+    ).
+
+    % This should only used for the Erlang backend right now.  We follow the
+    % Erlang order that tuples of smaller arity always precede tuples of larger
+    % arity.
+    %
+:- pred compare_ctors_lexically(constructor::in, constructor::in,
+    comparison_result::out) is det.
+
+compare_ctors_lexically(A, B, Res) :-
+    list.length(A ^ cons_args, ArityA),
+    list.length(B ^ cons_args, ArityB),
+    compare(ArityRes, ArityA, ArityB),
+    (
+        ArityRes = (=),
+        % XXX this assumes the string ordering used by the Mercury compiler is
+        % the same as that of the target language compiler
+        NameA = unqualify_name(A ^ cons_name),
+        NameB = unqualify_name(B ^ cons_name),
+        compare(Res, NameA, NameB)
+    ;
+        ( ArityRes = (<)
+        ; ArityRes = (>)
+        ),
+        Res = ArityRes
     ).
 
 :- pred generate_enum_compare_proc_body(prog_var::in,

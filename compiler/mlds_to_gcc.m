@@ -3623,6 +3623,8 @@ convert_binary_op(float_lt,	gcc__lt_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_gt,	gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_le,	gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_ge,	gcc__ge_expr,	     gcc__boolean_type_node).
+convert_binary_op(compound_eq, _, _) :- unexpected(this_file, "compound_eq").
+convert_binary_op(compound_lt, _, _) :- unexpected(this_file, "compound_lt").
 
 :- pred build_call(gcc__func_decl::in, list(mlds_rval)::in, defn_info::in,
 		gcc__expr::out, io__state::di, io__state::uo) is det.

@@ -83,7 +83,12 @@
     ;       float_lt
     ;       float_gt
     ;       float_le
-    ;       float_ge.
+    ;       float_ge
+
+    ;       compound_eq
+    ;       compound_lt.
+            % Comparisons on values of non-atomic types. This is likely to be
+            % supported only on very high-level back-ends.
 
     % For the MLDS back-end, we need to know the element type for each
     % array_index operation.
@@ -190,6 +195,11 @@ builtin_translation("private_builtin", "builtin_int_gt", 0, [X, Y],
     test(binary(int_gt, leaf(X), leaf(Y)))).
 builtin_translation("private_builtin", "builtin_int_lt", 0, [X, Y],
     test(binary(int_lt, leaf(X), leaf(Y)))).
+
+builtin_translation("private_builtin", "builtin_compound_eq", 0, [X, Y],
+    test(binary(compound_eq, leaf(X), leaf(Y)))).
+builtin_translation("private_builtin", "builtin_compound_lt", 0, [X, Y],
+    test(binary(compound_lt, leaf(X), leaf(Y)))).
 
 builtin_translation("term_size_prof_builtin", "term_size_plus", 0, [X, Y, Z],
     assign(Z, binary(int_add, leaf(X), leaf(Y)))).

@@ -89,6 +89,13 @@
     %
 :- pred builtin_int_gt(int::in, int::in) is semidet.
 
+    % These should never be called -- the compiler replaces calls to these
+    % predicates with inline code.  These predicates are declared not to take
+    % type_infos.
+    %
+:- pred builtin_compound_eq(T::in, T::in) is semidet.
+:- pred builtin_compound_lt(T::in, T::in) is semidet.
+
     % A "typed" version of unify/2 -- i.e. one that can handle arguments
     % of different types.  It first unifies their types, and then if
     % the types are equal it unifies the values.

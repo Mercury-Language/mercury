@@ -632,6 +632,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %     because GC is handled automatically by the Erlang
         %     implementation.
         %   - delay-partial-instantiations
+        %   - no-can-compare-constants-as-ints
+        %   - can-compare-compound-values
+        %   - lexically-compare-constructors
 
         ( 
             Target = target_erlang,
@@ -642,6 +645,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
                 !Globals),
             globals.set_option(delay_partial_instantiations, bool(yes),
+                !Globals),
+            globals.set_option(can_compare_constants_as_ints, bool(no),
+                !Globals),
+            globals.set_option(can_compare_compound_values, bool(yes),
+                !Globals),
+            globals.set_option(lexically_order_constructors, bool(yes),
                 !Globals)
         ;
             ( Target = target_c

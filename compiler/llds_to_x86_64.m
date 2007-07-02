@@ -935,6 +935,8 @@ binop_instr(float_lt, _, _, [x86_64_comment("<<float_lt>>")]).
 binop_instr(float_gt, _, _, [x86_64_comment("<<float_gt>>")]).
 binop_instr(float_le, _, _, [x86_64_comment("<<float_le>>")]).
 binop_instr(float_ge, _, _, [x86_64_comment("<<float_ge>>")]).
+binop_instr(compound_eq, _, _, [x86_64_comment("<<compound_eq>>")]).
+binop_instr(compound_lt, _, _, [x86_64_comment("<<compound_lt>>")]).
 
     % Get a string representation of code address types. 
     %

@@ -1593,9 +1593,12 @@ simplify_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
         proc_id_to_int(ProcId, CallModeNum),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, cross_compiling, CrossCompiling),
+        globals.lookup_bool_option(Globals, can_compare_compound_values,
+            CanCompareCompoundValues),
         ArgVars = list.map(foreign_arg_var, Args0),
         simplify_library_call(CallModuleName, CallPredName, CallModeNum,
-            CrossCompiling, ArgVars, GoalExprPrime, !GoalInfo, !Info)
+            CrossCompiling, CanCompareCompoundValues, ArgVars, GoalExprPrime,
+            !GoalInfo, !Info)
     ->
         GoalExpr = GoalExprPrime,
         simplify_info_set_requantify(!Info)
@@ -1904,7 +1907,6 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
     % Try to evaluate the call at compile-time.
     (
         simplify_info_get_module_info(!.Info, ModuleInfo2),
-        simplify_do_const_prop(!.Info),
         !.GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
         module_info_pred_info(ModuleInfo2, CallPredId, CallPredInfo),
         CallModuleSymName = pred_info_module(CallPredInfo),
@@ -1916,6 +1918,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
         CallPredName = pred_info_name(CallPredInfo),
         proc_id_to_int(CallProcId, CallModeNum),
         (
+            simplify_do_const_prop(!.Info),
             const_prop.evaluate_call(CallModuleName, CallPredName, CallModeNum,
                 CallArgs, VarTypes, Instmap0, ModuleInfo2, GoalExprPrime,
                 !GoalInfo)
@@ -1926,8 +1929,11 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
             module_info_get_globals(ModuleInfo2, Globals),
             globals.lookup_bool_option(Globals, cross_compiling,
                 CrossCompiling),
+            globals.lookup_bool_option(Globals, can_compare_compound_values,
+                CanCompareCompoundValues),
             simplify_library_call(CallModuleName, CallPredName, CallModeNum,
-                CrossCompiling, CallArgs, GoalExprPrime, !GoalInfo, !Info)
+                CrossCompiling, CanCompareCompoundValues, CallArgs,
+                GoalExprPrime, !GoalInfo, !Info)
         ->
             !:GoalExpr = GoalExprPrime,
             simplify_info_set_requantify(!Info)
@@ -1938,7 +1944,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
         true
     ).
 
-    % simplify_det_call(ModuleName, ProcName, ModeNum, CrossCompiling,
+    % simplify_library_call(ModuleName, ProcName, ModeNum, CrossCompiling,
     %   Args, GoalExpr, !GoalInfo, !Info):
     %
     % This attempts to simplify a call to
@@ -1951,12 +1957,47 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
     % get here.
     %
 :- pred simplify_library_call(string::in, string::in, int::in, bool::in,
-    list(prog_var)::in, hlds_goal_expr::out,
+    bool::in, list(prog_var)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
-simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
-        GoalExpr, !GoalInfo, !Info) :-
+simplify_library_call("builtin", "compare", _ModeNum, _CrossCompiling,
+        CanCompareCompoundValues, Args, GoalExpr, !GoalInfo, !Info) :-
+    % On the Erlang backend, it is faster for us to use builtin comparison
+    % operators on high level data structures than to deconstruct the data
+    % structure and compare the atomic constituents.  We can only do this on
+    % values of types which we know not to have user-defined equality
+    % predicates.
+    %
+    CanCompareCompoundValues = yes,
+    list.reverse(Args, [Y, X, Res | _]),
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    simplify_info_get_var_types(!.Info, VarTypes),
+    map.lookup(VarTypes, Y, Type),
+    type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
+
+    goal_info_get_context(!.GoalInfo, Context),
+    goal_util.generate_simple_call(mercury_private_builtin_module,
+        "builtin_compound_eq", pf_predicate, only_mode, detism_semi, purity_pure,
+        [X, Y], [], [], ModuleInfo, Context, CondEq),
+    goal_util.generate_simple_call(mercury_private_builtin_module,
+        "builtin_compound_lt", pf_predicate, only_mode, detism_semi, purity_pure,
+        [X, Y], [], [], ModuleInfo, Context, CondLt),
+
+    Builtin = mercury_public_builtin_module,
+    make_const_construction(Res, cons(qualified(Builtin, "="), 0), ReturnEq),
+    make_const_construction(Res, cons(qualified(Builtin, "<"), 0), ReturnLt),
+    make_const_construction(Res, cons(qualified(Builtin, ">"), 0), ReturnGt),
+
+    NonLocals = set.from_list([Res, X, Y]),
+    goal_info_set_nonlocals(NonLocals, !GoalInfo),
+
+    GoalExpr = if_then_else([], CondEq, ReturnEq, Rest),
+    Rest = hlds_goal(if_then_else([], CondLt, ReturnLt, ReturnGt), !.GoalInfo).
+
+simplify_library_call("int", PredName, _ModeNum, CrossCompiling,
+        _CanCompareCompoundValues, Args, GoalExpr, !GoalInfo, !Info) :-
+    simplify_do_const_prop(!.Info),
     CrossCompiling = no,
     (
         PredName = "quot_bits_per_int",
@@ -2047,6 +2088,8 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
 % For some reason, the compiler records the original arity of
 % int.unchecked_quotient as 3, not 2. Don't check the arities
 % until this is fixed.
+simplify_may_introduce_calls("private_builtin", "builtin_compound_eq", _).
+simplify_may_introduce_calls("private_builtin", "builtin_compound_lt", _).
 simplify_may_introduce_calls("int", "unchecked_quotient", _).
 simplify_may_introduce_calls("int", "unchecked_rem", _).
 simplify_may_introduce_calls("int", "*", _).
@@ -2098,6 +2141,8 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             ProcId),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
+        globals.lookup_bool_option(Globals, can_compare_compound_values,
+            CanCompareCompoundValues),
         (
             hlds_pred.in_in_unification_proc_id(ProcId),
             (
@@ -2122,6 +2167,18 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             ),
             call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
                 Context, GoalInfo0, Call)
+        ;
+            % On the Erlang backend, it is faster for us to use builtin
+            % comparison operators on high level data structures than to
+            % deconstruct the data structure and compare the atomic
+            % constituents.  We can only do this on values of types which we
+            % know not to have user-defined equality predicates.
+            hlds_pred.in_in_unification_proc_id(ProcId),
+            CanCompareCompoundValues = yes,
+            type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
+        ->
+            ExtraGoals = [],
+            call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
         ;
             % Convert other complicated unifications into calls to
             % specific unification predicates, inserting extra typeinfo
@@ -2172,6 +2229,17 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
     goal_info_get_nonlocals(GoalInfo0, NonLocals0),
     set.insert_list(NonLocals0, TypeInfoVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
+
+:- pred call_builtin_compound_eq(prog_var::in, prog_var::in, module_info::in,
+    hlds_goal_info::in, hlds_goal::out) is det.
+
+call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo, Call) :-
+    goal_info_get_context(GoalInfo, Context),
+    goal_util.generate_simple_call(mercury_private_builtin_module,
+        "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
+        purity_pure, [XVar, YVar], [], [], ModuleInfo, Context, Call).
+
+%-----------------------------------------------------------------------------%
 
 :- pred make_type_info_vars(list(mer_type)::in, list(prog_var)::out,
     list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.

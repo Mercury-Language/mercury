@@ -346,7 +346,7 @@
     % Some predicates that operate on polymorphic values do not need
     % the type_infos describing the types bound to the variables.
     % It is of course faster not to pass type_infos to such predicates
-    % (especially since may also be able to avoid constructing those
+    % (especially since we may also be able to avoid constructing those
     % type_infos), and it can also be easier for a compiler module
     % (e.g. common.m, size_prof.m) that generates calls to such predicates
     % not to have to create those type_infos.
@@ -616,6 +616,8 @@ no_type_info_builtin_2(private_builtin,
     "type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
     "unconstrained_type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin, "builtin_compound_eq", 2).
+no_type_info_builtin_2(private_builtin, "builtin_compound_lt", 2).
 no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).

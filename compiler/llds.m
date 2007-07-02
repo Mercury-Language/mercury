@@ -1280,6 +1280,8 @@ binop_return_type(float_gt, bool).
 binop_return_type(float_le, bool).
 binop_return_type(float_ge, bool).
 binop_return_type(body, word).
+binop_return_type(compound_eq, bool).
+binop_return_type(compound_lt, bool).
 
 register_type(reg_r, word).
 register_type(reg_f, float).

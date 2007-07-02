@@ -1056,6 +1056,8 @@ binop_code(float_le,                33).
 binop_code(float_ge,                34).
 binop_code(body,                    35).
 binop_code(unsigned_le,             36).
+binop_code(compound_eq,             37).
+binop_code(compound_lt,             38).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1096,6 +1098,8 @@ binop_debug(float_le,               "float_le").
 binop_debug(float_ge,               "float_ge").
 binop_debug(body,                   "body").
 binop_debug(unsigned_le,            "unsigned_le").
+binop_debug(compound_eq,            "compound_eq").
+binop_debug(compound_lt,            "compound_lt").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 

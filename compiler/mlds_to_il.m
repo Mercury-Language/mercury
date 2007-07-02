@@ -2790,6 +2790,11 @@ binaryop_to_il(float_gt, node([cgt(signed)]), !Info).
 binaryop_to_il(float_le, node([cgt(signed), ldc(int32, i(0)), ceq]), !Info).
 binaryop_to_il(float_ge, node([clt(signed), ldc(int32, i(0)), ceq]), !Info).
 
+binaryop_to_il(compound_eq, _, !Info) :-
+    unexpected(this_file, "binop: compound_eq").
+binaryop_to_il(compound_lt, _, !Info) :-
+    unexpected(this_file, "binop: compound_lt").
+
 %-----------------------------------------------------------------------------%
 %
 % Generate code for conditional statements

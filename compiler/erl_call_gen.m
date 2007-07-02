@@ -530,6 +530,8 @@ std_binop_to_elds(float_lt, elds.(<)).
 std_binop_to_elds(float_gt, elds.(>)).
 std_binop_to_elds(float_le, elds.(=<)).
 std_binop_to_elds(float_ge, elds.(>=)).
+std_binop_to_elds(compound_eq, elds.(=:=)).
+std_binop_to_elds(compound_lt, elds.(<)).
 
 %-----------------------------------------------------------------------------%
 %

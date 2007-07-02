@@ -216,7 +216,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
 :- pred add_builtin(pred_id::in, list(mer_type)::in,
     pred_info::in, pred_info::out) is det.
 
-    % For a builtin predicate, say foo/2, we add a clause
+    % For most builtin predicates, say foo/2, we add a clause
     %
     %   foo(H1, H2) :- foo(H1, H2).
     %
@@ -224,6 +224,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     % generate the usual builtin inline code for foo/2 in the body. The reason
     % for generating this forwarding code stub is so that things work correctly
     % if you take the address of the predicate.
+    %
+    % A few builtins are treated specially.
     %
 add_builtin(PredId, Types, !PredInfo) :-
     Module = pred_info_module(!.PredInfo),
@@ -241,7 +243,10 @@ add_builtin(PredId, Types, !PredInfo) :-
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     (
         Module = mercury_private_builtin_module,
-        Name = "store_at_ref"
+        ( Name = "store_at_ref"
+        ; Name = "builtin_compound_eq"
+        ; Name = "builtin_compound_lt"
+        )
     ->
         GoalExpr = conj(plain_conj, []),
         ExtraVars = [],
