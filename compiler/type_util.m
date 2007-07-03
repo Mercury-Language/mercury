@@ -73,9 +73,8 @@
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
     hlds_type_body::in, unify_compare::out) is semidet.
 
-    % Succeed iff the principal type constructor of the specified type and none
-    % of its arguments are known not to have user-defined equality or
-    % comparison predicates.
+    % Succeed iff the type (not just the principal type constructor) is known
+    % to not have user-defined equality or comparison predicates.
     %
     % If the type is a type variable, or is abstract, etc.  make the
     % conservative approximation and fail.
@@ -323,6 +322,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module map.
+:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -397,20 +397,36 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     ).
 
 type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
-        TypeBody),
-    type_to_ctor_and_args_det(Type, _, Args),
-    all [Arg] (
-        list.member(Arg, Args)
-    =>
-        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Arg)
+    type_definitely_has_no_user_defined_equality_pred_2(ModuleInfo,
+        set.init, Type).
+
+:- pred type_definitely_has_no_user_defined_equality_pred_2(module_info::in,
+    set(mer_type)::in, mer_type::in) is semidet.
+
+type_definitely_has_no_user_defined_equality_pred_2(ModuleInfo,
+        SeenTypes0, Type) :-
+    (if set.contains(SeenTypes0, Type) then
+        % Don't loop on recursive types.
+        true
+    else
+        set.insert(SeenTypes0, Type, SeenTypes),
+        type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+        type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
+            SeenTypes, TypeBody),
+        type_to_ctor_and_args_det(Type, _, Args),
+        all [Arg] (
+            list.member(Arg, Args)
+        =>
+            type_definitely_has_no_user_defined_equality_pred_2(ModuleInfo,
+                SeenTypes, Arg)
+        )
     ).
 
 :- pred type_body_definitely_has_no_user_defined_equality_pred(module_info::in,
-    hlds_type_body::in) is semidet.
+    set(mer_type)::in, hlds_type_body::in) is semidet.
 
-type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, TypeBody) :-
+type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, SeenTypes,
+        TypeBody) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
@@ -423,12 +439,21 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, TypeBody) :-
                 ForeignTypeBody, _)
         ;
             TypeBody ^ du_type_usereq = no,
-            % There must not be any existentially quantified type variables.
             all [Ctor] (
                 list.member(Ctor, Ctors)
-            =>
-                Ctor = ctor([], _, _, _, _)
-            )
+            => (
+                % There must not be any existentially quantified type
+                % variables.
+                Ctor = ctor([], _, _, Args, _),
+                % The data constructor argument types must not have
+                % user-defined equality preds.
+                all [Arg] (
+                    list.member(ctor_arg(_, ArgType, _), Args)
+                =>
+                    type_definitely_has_no_user_defined_equality_pred_2(
+                        ModuleInfo, SeenTypes, ArgType)
+                )
+            ))
         )
     ;
         TypeBody = hlds_eqv_type(EqvType),

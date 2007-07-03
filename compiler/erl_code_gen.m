@@ -63,6 +63,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -189,8 +190,120 @@ erl_gen_procs([], _, _, _, _, !Defns).
 erl_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable,
         !Defns) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
-    erl_gen_proc(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, !Defns),
+    (
+        erl_maybe_gen_simple_special_pred(ModuleInfo, PredId, ProcId,
+            PredInfo, ProcInfo, !Defns)
+    ->
+        true
+    ;
+        erl_gen_proc(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, !Defns)
+    ),
     erl_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo, ProcTable, !Defns).
+
+%-----------------------------------------------------------------------------%
+
+    % erl_maybe_gen_simple_special_pred(ModuleInfo, PredId, ProcId,
+    %   PredInfo, ProcInfo, !Defns)
+    %
+    % If the procedure is a compiler generated unification or comparison
+    % procedure, and the arguments are ground, and the values of the types they
+    % are comparing do not have user-defined equality or comparison then
+    % generate simpler versions of those procedures using the Erlang comparison
+    % operators.  Otherwise fail.
+    %
+:- pred erl_maybe_gen_simple_special_pred(module_info::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+    list(elds_defn)::in, list(elds_defn)::out) is semidet.
+
+erl_maybe_gen_simple_special_pred(ModuleInfo, PredId, ProcId,
+        PredInfo, ProcInfo, !Defns) :-
+    PredName = pred_info_name(PredInfo),
+    PredArity = pred_info_orig_arity(PredInfo),
+    special_pred_name_arity(SpecialId, _, PredName, PredArity),
+    proc_info_get_headvars(ProcInfo, Args),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    (
+        SpecialId = spec_pred_unify,
+        in_in_unification_proc_id(ProcId),
+        list.reverse(Args, [Y, X | _]),
+        map.lookup(VarTypes, Y, Type),
+        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
+        erl_gen_simple_in_in_unification(ModuleInfo, PredId, ProcId, X, Y,
+            ProcDefn)
+    ;
+        SpecialId = spec_pred_compare,
+        list.reverse(Args, [Y, X, _Res | _]),
+        map.lookup(VarTypes, Y, Type),
+        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
+        erl_gen_simple_compare(ModuleInfo, PredId, ProcId, X, Y, ProcDefn)
+    ),
+    !:Defns = [ProcDefn | !.Defns].
+
+:- pred erl_gen_simple_in_in_unification(module_info::in,
+    pred_id::in, proc_id::in, prog_var::in, prog_var::in, elds_defn::out)
+    is det.
+
+erl_gen_simple_in_in_unification(ModuleInfo, PredId, ProcId, X, Y, ProcDefn) :-
+    Info = erl_gen_info_init(ModuleInfo, PredId, ProcId),
+    erl_gen_info_get_input_vars(Info, InputVars),
+
+    %   '__Unify__'(X, Y) ->
+    %       case X =:= Y of
+    %           true -> {};
+    %           false -> fail
+    %       end.
+
+    Clause = elds_clause(terms_from_vars(InputVars), ClauseExpr),
+    ClauseExpr = elds_case_expr(CompareXY, [TrueCase, FalseCase]),
+    CompareXY = elds_binop((=:=), expr_from_var(X), expr_from_var(Y)),
+    TrueCase = elds_case(elds_true, elds_term(elds_empty_tuple)),
+    FalseCase = elds_case(elds_false, elds_term(elds_fail)),
+
+    erl_gen_info_get_varset(Info, ProcVarSet),
+    erl_gen_info_get_env_vars(Info, EnvVarNames),
+    ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet,
+        body_defined_here(Clause), EnvVarNames).
+
+:- pred erl_gen_simple_compare(module_info::in, pred_id::in, proc_id::in,
+    prog_var::in, prog_var::in, elds_defn::out) is det.
+
+erl_gen_simple_compare(ModuleInfo, PredId, ProcId, X, Y, ProcDefn) :-
+    Info = erl_gen_info_init(ModuleInfo, PredId, ProcId),
+    erl_gen_info_get_input_vars(Info, InputVars),
+
+    XExpr = expr_from_var(X),
+    YExpr = expr_from_var(Y),
+
+    %   '__Compare__'(X, Y) ->
+    %       case X =:= Y of
+    %           true -> {{'='}};
+    %           false ->
+    %               case X < Y of
+    %                   true -> {{'<'}};
+    %                   false -> {{'>'}};
+    %               end
+    %       end.
+    %
+    Clause = elds_clause(terms_from_vars(InputVars), ClauseExpr),
+    ClauseExpr = elds_case_expr(CondEq, [IsEq, IsNotEq]),
+
+    CondEq = elds_binop((=:=), XExpr, YExpr),
+    IsEq = elds_case(elds_true, enum_in_tuple("=")),
+    IsNotEq = elds_case(elds_false, elds_case_expr(CondLt, [IsLt, IsGt])),
+
+    CondLt = elds_binop((<), XExpr, YExpr),
+    IsLt = elds_case(elds_true, enum_in_tuple("<")),
+    IsGt = elds_case(elds_false, enum_in_tuple(">")),
+
+    erl_gen_info_get_varset(Info, ProcVarSet),
+    erl_gen_info_get_env_vars(Info, EnvVarNames),
+    ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet,
+        body_defined_here(Clause), EnvVarNames).
+
+:- func enum_in_tuple(string) = elds_expr.
+
+enum_in_tuple(X) = 
+    elds_term(elds_tuple([elds_term(make_enum_alternative(X))])).
 
 %-----------------------------------------------------------------------------%
 %
@@ -202,9 +315,9 @@ erl_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable,
 :- pred erl_gen_proc(module_info::in, pred_id::in, proc_id::in, pred_info::in,
     proc_info::in, list(elds_defn)::in, list(elds_defn)::out) is det.
 
-erl_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, _ProcInfo, !Defns) :-
-    erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody,
-        EnvVarNames),
+erl_gen_proc(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, !Defns) :-
+    erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        ProcVarSet, ProcBody, EnvVarNames),
     ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet, ProcBody,
         EnvVarNames),
     !:Defns = [ProcDefn | !.Defns].
@@ -212,11 +325,11 @@ erl_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, _ProcInfo, !Defns) :-
     % Generate an ELDS definition for the specified procedure.
     %
 :- pred erl_gen_proc_defn(module_info::in, pred_id::in, proc_id::in,
-    prog_varset::out, elds_body::out, set(string)::out) is det.
+    pred_info::in, proc_info::in, prog_varset::out, elds_body::out,
+    set(string)::out) is det.
 
-erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcBody,
-        EnvVarNames) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        ProcVarSet, ProcBody, EnvVarNames) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
     proc_info_interface_code_model(ProcInfo, CodeModel),
     proc_info_get_headvars(ProcInfo, HeadVars),
