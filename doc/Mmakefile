@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2006 The University of Melbourne.
+# Copyright (C) 1996-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -401,13 +401,20 @@ uninstall:
 # a different directory (supplied by the environment variable
 # INSTALL_WEBPAGE_DIR).
 
+# XXX We should use this version but dvips is not working on the webserver.
+#
+#.PHONY: install_webpage
+#install_webpage: library-chapters.texi_pp split_html ps pdf install_dirs
+#	cp *.ps $(INSTALL_WEBPAGE_DIR)
+#	cp *.pdf $(INSTALL_WEBPAGE_DIR)
+#	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
+#		gzip -f -9 $$file ; \
+#	done
+#	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
+
 .PHONY: install_webpage
-install_webpage: library-chapters.texi_pp split_html ps pdf install_dirs
-	cp *.ps $(INSTALL_WEBPAGE_DIR)
+install_webpage: library-chapters.texi_pp split_html pdf install_dirs
 	cp *.pdf $(INSTALL_WEBPAGE_DIR)
-	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
-		gzip -f -9 $$file ; \
-	done
 	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
 
 #-----------------------------------------------------------------------------#
