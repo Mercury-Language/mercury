@@ -104,6 +104,7 @@
 %
 % XXX This does the wrong thing for copy/2 & typed_unify/2.  In both
 % cases the constraints should that |HeadVar__1| = |HeadVar__2|.
+% Also look at builtin_compound_eq, builtin_compound_lt.
 
 preprocess_module(!ModuleInfo, !IO) :-
     module_info_predids(PredIds, !ModuleInfo),
@@ -549,7 +550,10 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
             SizeVar2 = prog_var_to_size_var(SizeVarMap, HVar2),
             ConstraintsPrime = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
         ;
-            PredName = "store_at_ref"
+            ( PredName = "store_at_ref"
+            ; PredName = "builtin_compound_eq"
+            ; PredName = "builtin_compound_lt"
+            )
         ->
             ConstraintsPrime = []
         ;
