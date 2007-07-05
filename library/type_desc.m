@@ -790,10 +790,16 @@ pseudo_type_ctor_and_args(_, _, _) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
+    type_ctor_name_and_arity(TypeCtorDesc0::in, TypeCtorModuleName::out,
         TypeCtorName::out, TypeCtorArity::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
+    if
+        is_function(TypeCtorDesc0) ->
+            TypeCtorDesc = TypeCtorDesc0();
+        true ->
+            TypeCtorDesc = TypeCtorDesc0
+    end,
     {TypeCtorModuleName, TypeCtorName, TypeCtorArity} =
         mercury__erlang_rtti_implementation:
             type_ctor_name_and_arity_4_p_0(TypeCtorDesc)
@@ -882,44 +888,52 @@ get_type_info_for_type_info = TypeDesc :-
 ").
 
 :- pragma foreign_code("Erlang", "
-    '__Unify____type_desc_0_0'(X, Y) ->
+    % XXX in these functions we probably should deconstruct the type_infos and
+    % type_ctor_infos and compare the parts manually, as they can contain
+    % functions.
+
+    '__Unify____type_desc_0_0'(X0, Y0) ->
+        X = eval_if_function(X0),
+        Y = eval_if_function(Y0),
         case X =:= Y of
             true -> {};
             false -> fail
         end.
 
-    '__Unify____type_ctor_desc_0_0'(X, Y) ->
+    '__Unify____type_ctor_desc_0_0'(X0, Y0) ->
+        X = eval_if_function(X0),
+        Y = eval_if_function(Y0),
         case X =:= Y of
             true -> {};
             false -> fail
         end.
 
-    '__Unify____pseudo_type_desc_0_0'(X, Y) ->
-        case X =:= Y of
-            true -> {};
-            false -> fail
-        end.
+    '__Unify____pseudo_type_desc_0_0'(_, _) ->
+        throw(""foreign code for unifying pseudo_type_desc"").
 
-    '__Compare____type_desc_0_0'(X, Y) ->
+    '__Compare____type_desc_0_0'(X0, Y0) ->
+        X = eval_if_function(X0),
+        Y = eval_if_function(Y0),
         if
             X =:= Y -> {{'='}};
             X  <  Y -> {{'<'}};
             true    -> {{'>'}}
         end.
 
-    '__Compare____type_ctor_desc_0_0'(X, Y) ->
+    '__Compare____type_ctor_desc_0_0'(X0, Y0) ->
+        X = eval_if_function(X0),
+        Y = eval_if_function(Y0),
         if
             X =:= Y -> {{'='}};
             X  <  Y -> {{'<'}};
             true    -> {{'>'}}
         end.
 
-    '__Compare____pseudo_type_desc_0_0'(X, Y) ->
-        if
-            X =:= Y -> {{'='}};
-            X  <  Y -> {{'<'}};
-            true    -> {{'>'}}
-        end.
+    '__Compare____pseudo_type_desc_0_0'(_, _) ->
+        throw(""foreign code for comparing pseudo_type_desc"").
+
+    eval_if_function(X) when is_function(X) -> X();
+    eval_if_function(X)                     -> X.
 ").
 
 %-----------------------------------------------------------------------------%

@@ -584,8 +584,29 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         io.write_string(")", !IO)
     ;
         Expr = elds_rtti_ref(RttiId),
-        output_rtti_id(ModuleInfo, RttiId, !IO),
-        io.write_string("()", !IO)
+        (
+            RttiId = elds_rtti_type_ctor_id(_),
+            % 
+            % We don't immediately call the function to get the type_ctor_info,
+            % but only reference the function to be called if the
+            % type_ctor_info is actually needed.  This is a significant saving
+            % as most of the time we won't need the type_ctor_info anyway.  It
+            % does mean that we have to be careful in the places where we could
+            % be passed a function instead of a type_ctor_info.  Since zero-
+            % arity type_ctor_infos are also type_infos, it also affects
+            % type_infos.
+            %
+            io.write_string("fun ", !IO),
+            output_rtti_id(ModuleInfo, RttiId, !IO),
+            io.write_string("/0 ", !IO)
+        ;
+            ( RttiId = elds_rtti_type_info_id(_)
+            ; RttiId = elds_rtti_pseudo_type_info_id(_)
+            ; RttiId = elds_rtti_base_typeclass_id(_, _, _)
+            ),
+            output_rtti_id(ModuleInfo, RttiId, !IO),
+            io.write_string("()", !IO)
+        )
     ;
         Expr = elds_foreign_code(Code),
         nl(!IO),
