@@ -551,9 +551,10 @@
         MR_Unsigned old_counter;                                            \
                                                                             \
         if (debug && MR_io_tabling_debug) {                                 \
-            printf("checking table_io_in_range: prev %d, start %d, hwm %d", \
-                MR_io_tabling_counter, MR_io_tabling_start,                 \
-                MR_io_tabling_counter_hwm);                                 \
+            printf(                                                         \
+                "checking table_io_in_range: prev %ld, start %ld, hwm %ld", \
+                (long) MR_io_tabling_counter, (long) MR_io_tabling_start,   \
+                (long) MR_io_tabling_counter_hwm);                          \
         }                                                                   \
                                                                             \
         old_counter = MR_io_tabling_counter;                                \
