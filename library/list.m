@@ -1609,6 +1609,13 @@ list.reverse_2([], L, L).
 list.reverse_2([X | Xs], L0, L) :-
     list.reverse_2(Xs, [X | L0], L).
 
+:- pragma foreign_proc("Erlang",
+    list.reverse(L0::in, L::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    L = lists:reverse(L0)
+").
+
 %-----------------------------------------------------------------------------%
 
 list.sort(L0, L) :-

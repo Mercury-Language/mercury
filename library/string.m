@@ -1356,6 +1356,15 @@ string.from_char_list(Chars::in, Str::uo) :-
     Str[size] = '\\0';
 }").
 
+:- pragma foreign_proc("Erlang",
+    string.semidet_from_char_list(CharList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Str = CharList,
+    SUCCESS_INDICATOR = true
+").
+
 :- pragma promise_equivalent_clauses(string.semidet_from_char_list/2).
 
 string.semidet_from_char_list(CharList::in, Str::uo) :-
@@ -1692,6 +1701,22 @@ string.sub_string_search(WholeString, Pattern, Index) :-
     Index = WholeString.IndexOf(Pattern, BeginAt);
     SUCCESS_INDICATOR = (Index >= 0);
 }").
+
+:- pragma foreign_proc("Erlang",
+    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+        Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    String = lists:nthtail(BeginAt, WholeString),
+    case string:str(String, Pattern) of
+        0 ->
+            Index = -1,
+            SUCCESS_INDICATOR = false;
+        Match ->
+            Index = BeginAt + Match - 1,
+            SUCCESS_INDICATOR = true
+    end
+").
 
 % This is only used if there is no matching foreign_proc definition
 sub_string_search_start(String, SubString, BeginAt, Index) :-
@@ -3987,6 +4012,24 @@ strchars(I, End, Str) =
         SubString[Count] = '\\0';
     }
 }").
+
+:- pragma foreign_proc("Erlang",
+    string.substring(Str::in, Start0::in, Count::in, SubString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Start =
+        if
+            Start0 < 0 -> 0;
+            true -> Start0
+        end,
+    if
+        Count =< 0 ->
+            SubString = """";
+        true ->
+            SubString = string:substr(Str, 1 + Start, Count)
+    end
+").
 
 :- pragma foreign_proc("C",
     string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
