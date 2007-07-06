@@ -708,6 +708,10 @@ rename_unify(Must, Subn,
     ;
         How0 = construct_statically(_),
         How = How0
+    ;
+        How0 = construct_in_region(RegVar0),
+        rename_var(Must, Subn, RegVar0, RegVar),
+        How = construct_in_region(RegVar)
     ),
     (
         SubInfo0 = construct_sub_info(MTA, MaybeSize0),

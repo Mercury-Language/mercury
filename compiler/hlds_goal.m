@@ -521,7 +521,7 @@
     % This type contains the fields of a construct unification that are needed
     % only rarely. If a value of this type is bound to no_construct_sub_info,
     % this means the same as construct_sub_info(no, no), but takes less space.
-    % This matters because a modules have lots of construct unifications.
+    % This matters because a module has lots of construct unifications.
 :- type construct_sub_info
     --->    construct_sub_info(
                 take_address_fields     :: maybe(list(int)),
@@ -764,11 +764,15 @@
 :- type how_to_construct
     --->    construct_statically(
                 % Use a statically initialized constant.
-
                 args :: list(static_cons)
             )
+
     ;       construct_dynamically
-            % Allocate a new term on the heap
+            % Allocate a new term on the heap.
+
+    ;
+            construct_in_region(prog_var)
+            % Allocate a new term in a region.
 
     ;       reuse_cell(cell_to_reuse).
             % Reuse an existing heap cell.

@@ -787,6 +787,10 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 
         Decls = [],
         Statements = [Statement | Statements0]
+    ;
+        HowToConstruct = construct_in_region(_RegVar),
+        sorry(this_file, "ml_gen_new_object: " ++
+            "implementation for construct_in_region is not available")
     ).
 
 :- pred ml_gen_field_take_address_assigns(list(take_addr_info)::in,

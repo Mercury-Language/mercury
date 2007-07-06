@@ -302,6 +302,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
             ;
                 ( HowToConstruct = construct_dynamically
                 ; HowToConstruct = reuse_cell(_)
+                ; HowToConstruct = construct_in_region(_) 
                 )
             )
         ;

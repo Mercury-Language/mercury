@@ -2392,6 +2392,12 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
         io.write_string("% reuse cell: ", !IO),
         mercury_output_var(ProgVarSet, AppendVarNums, ReuseVar, !IO),
         io.write_string("\n", !IO)
+    ;
+        ConstructHow = construct_in_region(RegVar),
+        write_indent(Indent, !IO),
+        io.write_string(" construct in region: ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, RegVar, !IO),
+        io.write_string("\n", !IO)
     ).
 
 write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, CanCGC),

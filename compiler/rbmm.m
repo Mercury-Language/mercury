@@ -28,6 +28,7 @@
 :- include_module region_instruction.
 :- include_module region_liveness_info.
 :- include_module region_resurrection_renaming.
+:- include_module region_transformation.
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
@@ -52,7 +53,9 @@
 :- import_module transform_hlds.rbmm.points_to_analysis.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
+:- import_module transform_hlds.rbmm.region_transformation.
 
+:- import_module map.
 %-----------------------------------------------------------------------------%
 
 do_region_analysis(!ModuleInfo, !IO) :-
@@ -75,11 +78,11 @@ do_region_analysis(!ModuleInfo, !IO) :-
 		VoidVarRegionTable0, VoidVarRegionTable),
     introduce_region_instructions(!.ModuleInfo, RptaInfoTable,
 		ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
-		BornRTable, DeadRTable, LocalRTable, _AnnotationTable),
+		BornRTable, DeadRTable, LocalRTable, AnnotationTable),
 
     record_actual_region_arguments(!.ModuleInfo, RptaInfoTable,
 		ConstantRTable, DeadRTable, BornRTable,
-		_ActualRegionArgumentTable),
+		ActualRegionArgumentTable),
 
 	% The region analysis treats region variables as if they are
 	% imperative-style updatable variables. They may also have scopes
@@ -89,24 +92,30 @@ do_region_analysis(!ModuleInfo, !IO) :-
 	% The calls below derive the necessary mapping to resolve the problem.
     compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable, 
 		BornRTable, LocalRTable, CreatedBeforeTable,
-		ResurrectionPathTable),
+		ResurrectionPathTable0),
+	collect_join_points(ResurrectionPathTable0, ExecPathTable,
+		JoinPointTable),
+	collect_paths_containing_join_points(ExecPathTable, JoinPointTable,
+		ResurrectionPathTable0, ResurrectionPathTable),
     collect_region_resurrection_renaming(CreatedBeforeTable, LocalRTable,
 		RptaInfoTable, ResurrectionPathTable, ResurrectionRenameTable),
-	collect_join_points(ResurrectionRenameTable, ExecPathTable,
-		JoinPointTable),
     collect_renaming_and_annotation(ResurrectionRenameTable, JoinPointTable,
 		LRBeforeTable, BornRTable, RptaInfoTable, ResurrectionPathTable,
-		ExecPathTable, _RenamingAnnotationTable, _RenamingTable),
-
-	collect_non_local_and_in_cond_regions(!.ModuleInfo, LRBeforeTable,
-		LRAfterTable, LocalRegionsTable, InCondRegionsTable),
+		ExecPathTable, ResurRenamingAnnoTable, ResurRenamingTable),
+	collect_non_local_and_in_cond_regions(!.ModuleInfo, RptaInfoTable,
+		LRBeforeTable, LRAfterTable, ResurRenamingTable,
+		ResurRenamingAnnoTable, LocalRegionsTable, InCondRegionsTable),
 	collect_ite_renamed_regions(LocalRegionsTable, InCondRegionsTable,
 		RenamedRegionsTable),
 	collect_ite_renaming(!.ModuleInfo, RptaInfoTable, RenamedRegionsTable,
 		IteRenamingTable),
 	collect_ite_annotation(RenamedRegionsTable, ExecPathTable, 
-		RptaInfoTable, IteRenamingTable, _IteAnnoTable).
+		RptaInfoTable, IteRenamingTable, IteRenamingAnnoTable),
 
+	region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+		ActualRegionArgumentTable, ResurRenamingTable, IteRenamingTable,
+		AnnotationTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
+		map.init, _NameToVarTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.

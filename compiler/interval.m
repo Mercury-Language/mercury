@@ -353,6 +353,11 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
                 HowToConstruct = reuse_cell(_),
                 unexpected(this_file, "build_interval_info_in_goal: reuse")
             ;
+                % XXX Temporary for the time being.
+                HowToConstruct = construct_in_region(_),
+                unexpected(this_file,
+                    "build_interval_info_in_goal: construct in region")
+            ;
                 ( HowToConstruct = construct_statically(_)
                 ; HowToConstruct = construct_dynamically
                 )

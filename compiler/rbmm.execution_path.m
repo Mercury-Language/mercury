@@ -207,7 +207,7 @@ execution_paths_covered_disj(ProcInfo, [Disj | Disjs], !ExecPaths) :-
     % the execution paths to have fewer program points than they should.
     % If this happens we need to add a program point for the removed
     % unification.  The goal corresponding to this introduced program
-    % point is the switch goal itself.  This is so thtat we can get
+    % point is the switch goal itself.  This is so that we can get
     % information about the switch var in the live variable analysis.
     %
 :- pred execution_paths_covered_cases(proc_info::in, hlds_goal::in, 

@@ -519,13 +519,20 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
         (
             How = reuse_cell(cell_to_reuse(ReuseVar0, _, SetArgs)),
             MaybeSetArgs = yes(SetArgs),
-            MaybeReuseVar = yes(ReuseVar0)
+            MaybeReuseVar = yes(ReuseVar0),
+            MaybeRegionVar = no
+        ;
+            How = construct_in_region(RegionVar0),
+            MaybeSetArgs = no,
+            MaybeReuseVar = no,
+            MaybeRegionVar = yes(RegionVar0)
         ;
             ( How = construct_statically(_)
             ; How = construct_dynamically
             ),
             MaybeSetArgs = no,
-            MaybeReuseVar = no
+            MaybeReuseVar = no,
+            MaybeRegionVar = no
         ),
         (
             SubInfo = construct_sub_info(_, MaybeSize),
@@ -538,7 +545,8 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
     ;
         MaybeSetArgs = no,
         MaybeReuseVar = no,
-        MaybeSizeVar = no
+        MaybeSizeVar = no,
+        MaybeRegionVar = no
     ),
     implicitly_quantify_unify_rhs(MaybeSetArgs, Context, UnifyRHS0, UnifyRHS,
         Unification0, Unification, !Info),
@@ -555,10 +563,17 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
     ),
     (
         MaybeSizeVar = yes(SizeVar),
-        insert(GoalVars2, SizeVar, GoalVars)
+        insert(GoalVars2, SizeVar, GoalVars3)
     ;
         MaybeSizeVar = no,
-        GoalVars = GoalVars2
+        GoalVars3 = GoalVars2
+    ),
+    (
+        MaybeRegionVar = yes(RegionVar),
+        insert(GoalVars3, RegionVar, GoalVars)
+    ;
+        MaybeRegionVar = no,
+        GoalVars = GoalVars3
     ),
     update_seen_vars(GoalVars, !Info),
     intersect(GoalVars, OutsideVars, NonLocalVars1),
@@ -1127,6 +1142,10 @@ goal_vars_2(NonLocalsToRecompute, unify(LHS, RHS, _, Unification, _),
             How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)),
             MaybeSetArgs = yes(SetArgs),
             insert(!.Set, ReuseVar, !:Set)
+        ;
+            How = construct_in_region(RegionVar),
+            MaybeSetArgs = no,
+            insert(!.Set, RegionVar, !:Set)
         ;
             ( How = construct_statically(_)
             ; How = construct_dynamically

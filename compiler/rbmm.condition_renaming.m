@@ -16,6 +16,17 @@
 % program point so that the binding of non-local regions in the condition
 % goal of an if-then-else is resolved. 
 %
+% When reasoning about the renaming and reverse renaming needed for
+% an if-then-else here we take into account the changes to regions caused
+% by the renaming and renaming annotations needed for region resurrection.
+% This can be viewed as if the program is transformed by the renaming
+% and reverse renaming for region resurrection first. This is to solve the
+% problem with region resurrection. Then that transformed program is
+% transformed again to solve the problem with if-then-else. Note that the
+% first transformation may add to the problem with if-then-else, e.g.,
+% when it introduces reverse renaming to a non-local variable inside the
+% condition goal of an if-then-else.
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.condition_renaming.
@@ -31,12 +42,14 @@
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 
 :- import_module map.
+:- import_module set.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 :- type proc_goal_path_regions_table ==
 	map(pred_proc_id, goal_path_regions_table).
-:- type goal_path_regions_table == map(goal_path, region_set).
+:- type goal_path_regions_table == map(goal_path, set(string)).
 
 	% This predicate collects two pieces of information.
 	% 1. The non-local regions of if-then-elses.
@@ -46,17 +59,18 @@
 	% 2. The regions which are created (get bound) in the condition
 	% goals of if-then-else.
 	% We will only store information about a procedure if the information
-	% exists. That means, for example, there is no entry from PPId to
-	% empty.
+	% exists. That means, for example, there is no entry which maps a PPId
+	% to empty.
 	%
 	% This information is used to compute the regions which need to be 
 	% renamed, i.e., both non-local and created in the condition of an
 	% if-then-else.
 	%
 :- pred collect_non_local_and_in_cond_regions(module_info::in,
-	proc_pp_region_set_table::in, proc_pp_region_set_table::in, 
-	proc_goal_path_regions_table::out, proc_goal_path_regions_table::out)
-	is det.
+	rpta_info_table::in, proc_pp_region_set_table::in,
+	proc_pp_region_set_table::in, renaming_table::in, 
+	renaming_annotation_table::in, proc_goal_path_regions_table::out,
+	proc_goal_path_regions_table::out) is det.
 
 	% After having the 2 pieces of information calculated above, this step
 	% is simple. The only thing to note here is that we will only store
@@ -117,41 +131,50 @@
 :- import_module list.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module svmap.
+:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
-collect_non_local_and_in_cond_regions(ModuleInfo, LRBeforeTable,
-		LRAfterTable, NonLocalRegionsTable, InCondRegionsTable) :-
+collect_non_local_and_in_cond_regions(ModuleInfo, RptaInfoTable,
+		LRBeforeTable, LRAfterTable, ResurRenamingTable,
+		ResurRenamingAnnoTable, NonLocalRegionsTable, InCondRegionsTable) :-
     module_info_predids(PredIds, ModuleInfo, _),
     list.foldl2(collect_non_local_and_in_cond_regions_pred(ModuleInfo,
-		LRBeforeTable, LRAfterTable), PredIds,
+		RptaInfoTable, LRBeforeTable, LRAfterTable, ResurRenamingTable,
+		ResurRenamingAnnoTable), PredIds,
 		map.init, NonLocalRegionsTable, map.init, InCondRegionsTable).
 
 :- pred collect_non_local_and_in_cond_regions_pred(module_info::in,
-	proc_pp_region_set_table::in, proc_pp_region_set_table::in, pred_id::in,
+	rpta_info_table::in, proc_pp_region_set_table::in,
+	proc_pp_region_set_table::in, renaming_table::in,
+	renaming_annotation_table::in, pred_id::in,
 	proc_goal_path_regions_table::in, proc_goal_path_regions_table::out,
 	proc_goal_path_regions_table::in, proc_goal_path_regions_table::out)
 	is det.
 
-collect_non_local_and_in_cond_regions_pred(ModuleInfo, LRBeforeTable,
-		LRAfterTable, PredId, !NonLocalRegionsTable, !InCondRegionsTable) :-
+collect_non_local_and_in_cond_regions_pred(ModuleInfo, RptaInfoTable,
+		LRBeforeTable, LRAfterTable, ResurRenamingTable,
+		ResurRenamingAnnoTable, PredId, !NonLocalRegionsTable,
+		!InCondRegionsTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     list.foldl2(collect_non_local_and_in_cond_regions_proc(ModuleInfo,
-		PredId, LRBeforeTable, LRAfterTable), ProcIds,
+		PredId, RptaInfoTable, LRBeforeTable, LRAfterTable,
+		ResurRenamingTable, ResurRenamingAnnoTable), ProcIds,
 		!NonLocalRegionsTable, !InCondRegionsTable).
 
 :- pred collect_non_local_and_in_cond_regions_proc(module_info::in,
-	pred_id::in, proc_pp_region_set_table::in,
-	proc_pp_region_set_table::in, proc_id::in,
+	pred_id::in, rpta_info_table::in, proc_pp_region_set_table::in,
+	proc_pp_region_set_table::in, renaming_table::in,
+	renaming_annotation_table::in, proc_id::in,
 	proc_goal_path_regions_table::in, proc_goal_path_regions_table::out,
 	proc_goal_path_regions_table::in, proc_goal_path_regions_table::out)
 	is det.
 
 collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
-		LRBeforeTable, LRAfterTable, ProcId,
+		RptaInfoTable, LRBeforeTable, LRAfterTable, ResurRenamingTable,
+		ResurRenamingAnnoTable, ProcId,
 		!NonLocalRegionsTable, !InCondRegionsTable) :-
     PPId = proc(PredId, ProcId),
     ( if    some_are_special_preds([PPId], ModuleInfo)
@@ -160,115 +183,157 @@ collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
             module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
 			fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
             proc_info_get_goal(ProcInfo, Goal),
+			map.lookup(RptaInfoTable, PPId, rpta_info(Graph, _)),
 			map.lookup(LRBeforeTable, PPId, LRBeforeProc),
 			map.lookup(LRAfterTable, PPId, LRAfterProc),
-            collect_non_local_and_in_cond_regions_goal(LRBeforeProc,
-				LRAfterProc, Goal,
+			( if	map.search(ResurRenamingTable, PPId,
+						ResurRenamingProc0)
+			  then	ResurRenamingProc = ResurRenamingProc0
+			  else	ResurRenamingProc = map.init
+			),
+			( if 	map.search(ResurRenamingAnnoTable, PPId,
+						ResurRenamingAnnoProc0)
+			  then	ResurRenamingAnnoProc = ResurRenamingAnnoProc0
+			  else	ResurRenamingAnnoProc = map.init
+			),
+            collect_non_local_and_in_cond_regions_goal(Graph,
+				LRBeforeProc, LRAfterProc, ResurRenamingProc,
+				ResurRenamingAnnoProc, Goal,
 				map.init, NonLocalRegionsProc,
 				map.init, InCondRegionsProc),
 			( if	map.count(NonLocalRegionsProc) = 0
-			  then 	true
-			  else	svmap.set(PPId, NonLocalRegionsProc, !NonLocalRegionsTable)
+			  then	true
+			  else	svmap.set(PPId, NonLocalRegionsProc,
+						!NonLocalRegionsTable)
 			),
 			( if	map.count(InCondRegionsProc) = 0
-			  then 	true
-			  else	svmap.set(PPId, InCondRegionsProc, !InCondRegionsTable)
+			  then	true
+			  else	svmap.set(PPId, InCondRegionsProc,
+						!InCondRegionsTable)
 			)
     ).
 
-:- pred collect_non_local_and_in_cond_regions_goal(pp_region_set_table::in,
-	pp_region_set_table::in, hlds_goal::in,
+:- pred collect_non_local_and_in_cond_regions_goal(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, hlds_goal::in,
     goal_path_regions_table::in, goal_path_regions_table::out,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_non_local_and_in_cond_regions_goal(LRBeforeProc, LRAfterProc, Goal,
+collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, Goal,
 		!NonLocalRegionsProc, !InCondRegionsProc) :- 
 	Goal = hlds_goal(Expr, _),
-	collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc,
-		Expr, !NonLocalRegionsProc, !InCondRegionsProc).
+	collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, Expr,
+		!NonLocalRegionsProc, !InCondRegionsProc).
 
-:- pred collect_non_local_and_in_cond_regions_expr(pp_region_set_table::in,
-	pp_region_set_table::in, hlds_goal_expr::in,
+:- pred collect_non_local_and_in_cond_regions_expr(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, hlds_goal_expr::in,
 	goal_path_regions_table::in, goal_path_regions_table::out,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc,
-		conj(_, Conjs), !NonLocalRegionsProc, !InCondRegionsProc) :- 
-    list.foldl2(collect_non_local_and_in_cond_regions_goal(LRBeforeProc,
-					LRAfterProc),
+collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, conj(_, Conjs),
+		!NonLocalRegionsProc, !InCondRegionsProc) :- 
+    list.foldl2(collect_non_local_and_in_cond_regions_goal(Graph,
+					LRBeforeProc, LRAfterProc,
+					ResurRenamingProc,
+					ResurRenamingAnnoProc),
 		Conjs, !NonLocalRegionsProc, !InCondRegionsProc). 
 
-collect_non_local_and_in_cond_regions_expr(_, _,
+collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
 		plain_call(_, _, _, _, _, _),
 		!NonLocalRegionsProc, !InCondRegionsProc).
-collect_non_local_and_in_cond_regions_expr(_, _, generic_call(_, _, _, _),
+collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
+		generic_call(_, _, _, _),
 		!NonLocalRegionsProc, !InCondRegionsProc).
-collect_non_local_and_in_cond_regions_expr(_, _,
+collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
 		call_foreign_proc(_, _, _, _, _, _, _),
 		!NonLocalRegionsProc, !InCondRegionsProc).
 
-collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc,
-		switch(_, _, Cases), !NonLocalRegionsProc, !InCondRegionsProc) :- 
-    list.foldl2(collect_non_local_and_in_cond_regions_case(LRBeforeProc,
-					LRAfterProc),
+collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, switch(_, _, Cases),
+		!NonLocalRegionsProc, !InCondRegionsProc) :- 
+    list.foldl2(collect_non_local_and_in_cond_regions_case(Graph,
+					LRBeforeProc, LRAfterProc,
+					ResurRenamingProc,
+					ResurRenamingAnnoProc),
 		Cases, !NonLocalRegionsProc, !InCondRegionsProc).
-collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc,
-		disj(Disjs), !NonLocalRegionsProc, !InCondRegionsProc) :-
-    list.foldl2(collect_non_local_and_in_cond_regions_goal(LRBeforeProc,
-					LRAfterProc),
+collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, disj(Disjs),
+		!NonLocalRegionsProc, !InCondRegionsProc) :-
+    list.foldl2(collect_non_local_and_in_cond_regions_goal(Graph,
+					LRBeforeProc, LRAfterProc,
+					ResurRenamingProc,
+					ResurRenamingAnnoProc),
 		Disjs, !NonLocalRegionsProc, !InCondRegionsProc). 
-collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc,
-		negation(Goal), !NonLocalRegionsProc, !InCondRegionsProc) :- 
-    collect_non_local_and_in_cond_regions_goal(LRBeforeProc, LRAfterProc,
-		Goal, !NonLocalRegionsProc, !InCondRegionsProc). 
-collect_non_local_and_in_cond_regions_expr(_, _, unify(_, _, _, _, _),
+collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, negation(Goal),
+		!NonLocalRegionsProc, !InCondRegionsProc) :- 
+    collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, Goal,
+		!NonLocalRegionsProc, !InCondRegionsProc). 
+collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
+		unify(_, _, _, _, _), !NonLocalRegionsProc, !InCondRegionsProc).
+
+collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, scope(_, Goal),
+		!NonLocalRegionsProc, !InCondRegionsProc) :- 
+	collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, Goal,
 		!NonLocalRegionsProc, !InCondRegionsProc).
 
-collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc,
-		scope(_, Goal), !NonLocalRegionsProc, !InCondRegionsProc) :- 
-	collect_non_local_and_in_cond_regions_goal(LRBeforeProc, LRAfterProc,
-		Goal, !NonLocalRegionsProc, !InCondRegionsProc).
-
-collect_non_local_and_in_cond_regions_expr(LRBeforeProc, LRAfterProc, Expr,
+collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, Expr,
 		!NonLocalRegionProc, !InCondRegionsProc) :- 
 	Expr = if_then_else(_, Cond, Then, Else),
 
 	% We only care about regions created inside condition goals.
-	collect_regions_created_in_condition(LRBeforeProc, LRAfterProc, Cond,
+	collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, Cond,
 		!InCondRegionsProc),
 
 	% The sets of non_local regions in the (Cond, Then) and in the (Else)
 	% branch are the same, therefore we will only calculate in one of them.
 	% As it is here, we calculate for (Else) with the hope that it is
 	% usually more efficient (only Else compared to both Cond and Then).
-    collect_non_local_and_in_cond_regions_goal(LRBeforeProc, LRAfterProc,
+    collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 		Cond, !NonLocalRegionProc, !InCondRegionsProc),
-    collect_non_local_and_in_cond_regions_goal(LRBeforeProc, LRAfterProc,
+    collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 		Then, !NonLocalRegionProc, !InCondRegionsProc),
-    collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc, Else,
+    collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, Else,
 		!NonLocalRegionProc).
 
-collect_non_local_and_in_cond_regions_expr(_, _, shorthand(_),
+collect_non_local_and_in_cond_regions_expr(_, _, _, _, _, shorthand(_),
 		!NonLocalRegionProc, !InCondRegionsProc) :- 
     unexpected(this_file, "collect_non_local_and_in_cond_regions_expr: "
 		++ "shorthand not handled").
 
-:- pred collect_non_local_and_in_cond_regions_case(pp_region_set_table::in,
-	pp_region_set_table::in, case::in,
+:- pred collect_non_local_and_in_cond_regions_case(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, case::in,
 	goal_path_regions_table::in, goal_path_regions_table::out,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_non_local_and_in_cond_regions_case(LRBeforeProc, LRAfterProc, Case,
+collect_non_local_and_in_cond_regions_case(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, Case,
 		!NonLocalRegionProc, !InCondRegionsProc) :-
     Case = case(_, Goal),
-    collect_non_local_and_in_cond_regions_goal(LRBeforeProc, LRAfterProc,
-		Goal, !NonLocalRegionProc, !InCondRegionsProc).
+    collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, Goal,
+		!NonLocalRegionProc, !InCondRegionsProc).
 
-:- pred collect_non_local_regions_in_ite(pp_region_set_table::in, 
-	pp_region_set_table::in, hlds_goal::in, goal_path_regions_table::in,
-	goal_path_regions_table::out) is det.
+:- pred collect_non_local_regions_in_ite(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in, renaming_proc::in,
+	renaming_annotation_proc::in, hlds_goal::in,
+	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc, GoalInIte,
+collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, GoalInIte,
 		!NonLocalRegionProc) :-
 	GoalInIte = hlds_goal(Expr, Info),
 	( if	goal_is_atomic(Expr)
@@ -278,17 +343,78 @@ collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc, GoalInIte,
 			map.lookup(LRBeforeProc, ProgPoint, LRBefore),
 			map.lookup(LRAfterProc, ProgPoint, LRAfter),
 			
-			% XXX We may also need VoidVarRegionTable to be included
-			% in RemovedAfter.
-			set.difference(LRBefore, LRAfter, RemovedAfter),
-			set.difference(LRAfter, LRBefore, CreatedBefore),
+			% XXX We may also need VoidVarRegionTable to be
+			% included in RemovedAfter.
+			set.difference(LRBefore, LRAfter, RemovedAfterNodes),
+			set.difference(LRAfter, LRBefore, CreatedBeforeNodes),
+			% Those sets need to subject to resurrection renaming
+			% and annotations.
+			% Apply resurrection renaming to those sets.
+			% For each renaming annotation, the left one is put
+			% into CreatedBefore, and the right one is put into
+			% RemovedAfter.
+			( if	map.search(ResurRenamingProc, ProgPoint,
+						ResurRenaming0)
+			  then	ResurRenaming = ResurRenaming0
+			  else  ResurRenaming = map.init
+			),
+			set.fold(apply_region_renaming(Graph, ResurRenaming),
+				RemovedAfterNodes, set.init,
+				RemovedAfterRegions0),
+			set.fold(apply_region_renaming(Graph, ResurRenaming),
+				CreatedBeforeNodes, set.init,
+				CreatedBeforeRegions0),
 
-			record_non_local_regions(GoalPath, CreatedBefore,
-				RemovedAfter, !NonLocalRegionProc)
+			( if	map.search(ResurRenamingAnnoProc, ProgPoint,
+						ResurRenamingAnnos0)
+			  then	ResurRenamingAnnos = ResurRenamingAnnos0
+			  else	ResurRenamingAnnos = []
+			),  
+			list.foldl2(renaming_annotation_to_regions,
+				ResurRenamingAnnos, set.init, LeftRegions,
+				set.init, RightRegions),
+			set.union(RemovedAfterRegions0, RightRegions,
+				RemovedAfterRegions),
+			set.union(CreatedBeforeRegions0, LeftRegions,
+				CreatedBeforeRegions),
+			record_non_local_regions(GoalPath, CreatedBeforeRegions,
+				RemovedAfterRegions, !NonLocalRegionProc)
 	  else
-			collect_non_local_regions_in_ite_compound_goal(
-				LRBeforeProc, LRAfterProc, GoalInIte,
+			collect_non_local_regions_in_ite_compound_goal(Graph,
+				LRBeforeProc, LRAfterProc, ResurRenamingProc,
+				ResurRenamingAnnoProc, GoalInIte,
 				!NonLocalRegionProc)
+	).
+
+:- pred apply_region_renaming(rpt_graph::in, renaming::in, rptg_node::in,
+	set(string)::in, set(string)::out) is det.
+
+apply_region_renaming(Graph, Renaming, Node, !Regions) :-
+	RegionName = rptg_lookup_region_name(Graph, Node),	
+	( if	map.search(Renaming, RegionName, RenamedRegionName)
+	  then	svset.insert(RenamedRegionName, !Regions)
+	  else	svset.insert(RegionName, !Regions)
+	).
+	  		
+:- pred renaming_annotation_to_regions(string::in,
+	set(string)::in, set(string)::out,
+	set(string)::in, set(string)::out) is det.
+
+renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
+		!RightRegions) :-
+	( if	string.sub_string_search(RenameAnnotation, "=", Index)
+	  then
+	  		LeftRegion = string.substring(RenameAnnotation, 0,
+				Index - 1),
+
+			RightRegion = string.substring(RenameAnnotation,
+				Index + 2,
+				string.length(RenameAnnotation) - (Index + 2)),
+			svset.insert(LeftRegion, !LeftRegions),
+			svset.insert(RightRegion, !RightRegions)
+	  else
+	  		unexpected(this_file, "renaming_annotation_to_regions: "
+				++ "annotation is not assignment")
 	).
 
 	% The non-local regions of an if-then-else will be attached to 
@@ -311,8 +437,8 @@ collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc, GoalInIte,
 	% non-local sets of all the surrounding if-then-elses of this
 	% program point.
 	%
-:- pred record_non_local_regions(goal_path::in, region_set::in,
-	region_set::in, goal_path_regions_table::in,
+:- pred record_non_local_regions(goal_path::in, set(string)::in,
+	set(string)::in, goal_path_regions_table::in,
 	goal_path_regions_table::out) is det.
 
 record_non_local_regions([], _, _, !NonLocalRegionProc).
@@ -324,17 +450,22 @@ record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
 		% The current NonLocalRegions are attached to the goal path to
 		% the corresponding condition.
 		PathToCond = [step_ite_cond | Steps],
-		( if	map.search(!.NonLocalRegionProc, PathToCond, NonLocalRegions0)
+		( if	map.search(!.NonLocalRegionProc, PathToCond,
+					NonLocalRegions0)
 		  then
-				set.union(NonLocalRegions0, Created, NonLocalRegions1),
-				set.difference(NonLocalRegions1, Removed, NonLocalRegions)
+				set.union(NonLocalRegions0, Created,
+					NonLocalRegions1),
+				set.difference(NonLocalRegions1, Removed,
+					NonLocalRegions)
 		  else
-				set.difference(Created, Removed, NonLocalRegions)
+				set.difference(Created, Removed,
+					NonLocalRegions)
 		),
 		% Only record if some non-local region(s) exist.
 		( if	set.empty(NonLocalRegions)
 		  then	true
-		  else 	svmap.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
+		  else	svmap.set(PathToCond, NonLocalRegions,
+					!NonLocalRegionProc)
 		)
 	;
 		true
@@ -344,41 +475,54 @@ record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
 	% one, if any.
 	record_non_local_regions(Steps, Created, Removed, !NonLocalRegionProc).
 
-:- pred collect_non_local_regions_in_ite_compound_goal(
-	pp_region_set_table::in, pp_region_set_table::in, hlds_goal::in,
+:- pred collect_non_local_regions_in_ite_compound_goal(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, hlds_goal::in,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_non_local_regions_in_ite_compound_goal(LRBeforeProc, LRAfterProc,
+collect_non_local_regions_in_ite_compound_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 		GoalInIte, !NonLocalRegionProc) :-
 	GoalInIte = hlds_goal(Expr, _),
 	(
 		Expr = conj(_, [Conj | Conjs]),
-		list.foldl(collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc), 
+		list.foldl(collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+						LRAfterProc, ResurRenamingProc,
+						ResurRenamingAnnoProc), 
 			[Conj | Conjs], !NonLocalRegionProc)
 	;
 		Expr = disj([Disj | Disjs]),
-		list.foldl(collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc), 
+		list.foldl(collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+						LRAfterProc, ResurRenamingProc,
+						ResurRenamingAnnoProc), 
 			[Disj | Disjs], !NonLocalRegionProc)
 	;
 		Expr = switch(_, _, Cases),
-		list.foldl(
-			collect_non_local_regions_in_ite_case(LRBeforeProc, LRAfterProc),
+		list.foldl(collect_non_local_regions_in_ite_case(Graph,
+						LRBeforeProc, LRAfterProc,
+						ResurRenamingProc,
+						ResurRenamingAnnoProc),
 			Cases, !NonLocalRegionProc)
 	;
 		Expr = negation(Goal),
-		collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc,
+		collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 			Goal, !NonLocalRegionProc)
 	;
 		Expr = scope(_, Goal),
-		collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc,
+		collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 			Goal, !NonLocalRegionProc)
 	;
 		Expr = if_then_else(_, Cond, Then, Else),
-		collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc,
+		collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 			Cond, !NonLocalRegionProc),
-		collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc,
+		collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 			Then, !NonLocalRegionProc),
-		collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc,
+		collect_non_local_regions_in_ite(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
 			Else, !NonLocalRegionProc)
 	;
 		( Expr = unify(_, _, _, _, _) 
@@ -394,14 +538,16 @@ collect_non_local_regions_in_ite_compound_goal(LRBeforeProc, LRAfterProc,
 			++ "encountered atomic or unsupported goal")
 	).
 
-:- pred collect_non_local_regions_in_ite_case(pp_region_set_table::in,
-	pp_region_set_table::in, case::in, goal_path_regions_table::in,
-	goal_path_regions_table::out) is det.
+:- pred collect_non_local_regions_in_ite_case(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, case::in,
+	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_non_local_regions_in_ite_case(LRBeforeProc, LRAfterProc, Case,
+collect_non_local_regions_in_ite_case(Graph, LRBeforeProc, LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, Case,
 		!NonLocalRegionProc) :-
 	Case = case(_, Goal),
-	collect_non_local_regions_in_ite(LRBeforeProc, LRAfterProc, Goal,
+	collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc, Goal,
 		!NonLocalRegionProc).
 
 %-----------------------------------------------------------------------------%
@@ -417,11 +563,13 @@ collect_non_local_regions_in_ite_case(LRBeforeProc, LRAfterProc, Case,
 	% The difference is that this predicate is used only in the scope of
 	% a condition goal. 
 	%
-:- pred collect_regions_created_in_condition(pp_region_set_table::in, 
-	pp_region_set_table::in, hlds_goal::in, goal_path_regions_table::in,
-	goal_path_regions_table::out) is det.
+:- pred collect_regions_created_in_condition(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, hlds_goal::in,
+	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_regions_created_in_condition(LRBeforeProc, LRAfterProc, Cond,
+collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc, 
+		ResurRenamingProc, ResurRenamingAnnoProc, Cond,
 		!InCondRegionsProc) :-
 	Cond = hlds_goal(Expr, Info),
 	( if	goal_is_atomic(Expr)
@@ -431,21 +579,45 @@ collect_regions_created_in_condition(LRBeforeProc, LRAfterProc, Cond,
 			map.lookup(LRBeforeProc, ProgPoint, LRBefore),
 			map.lookup(LRAfterProc, ProgPoint, LRAfter),
 			
-			set.difference(LRAfter, LRBefore, Created),
-			record_regions_created_in_condition(GoalPath, Created,
-				!InCondRegionsProc)
+			set.difference(LRAfter, LRBefore, CreatedNodes),
+			% We need to apply renaming to this CreatedNodes set
+			% and look up the renaming annotations after this
+			% program point. For each renaming annotation the left
+			% one is created and the right is removed.
+			( if	map.search(ResurRenamingProc, ProgPoint,
+						ResurRenaming0)
+			  then	ResurRenaming = ResurRenaming0
+			  else  ResurRenaming = map.init
+			),
+			set.fold(apply_region_renaming(Graph, ResurRenaming),
+				CreatedNodes, set.init, CreatedRegions0),
+
+			( if	map.search(ResurRenamingAnnoProc, ProgPoint,
+						ResurRenamingAnnos0)
+			  then	ResurRenamingAnnos = ResurRenamingAnnos0
+			  else	ResurRenamingAnnos = []
+			),  
+			list.foldl2(renaming_annotation_to_regions,
+				ResurRenamingAnnos, set.init, LeftRegions,
+				set.init, _RightRegions),
+			set.union(CreatedRegions0, LeftRegions, CreatedRegions),
+		
+			record_regions_created_in_condition(GoalPath,
+				CreatedRegions, !InCondRegionsProc)
 	  else
 			collect_regions_created_in_condition_compound_goal(
-				LRBeforeProc, LRAfterProc, Cond, !InCondRegionsProc)
+				Graph, LRBeforeProc, LRAfterProc,
+				ResurRenamingProc, ResurRenamingAnnoProc, Cond,
+				!InCondRegionsProc)
 	).
-
+ 
 	% The regions created inside the condition of an if-then-else will
 	% be attached to the goal path to the condition.
 	%
 	% We need to update the sets of all the conditions surrounding this
 	% program point.
 	%
-:- pred record_regions_created_in_condition(goal_path::in, region_set::in,
+:- pred record_regions_created_in_condition(goal_path::in, set(string)::in,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
 record_regions_created_in_condition([], _, !InCondRegionsProc).
@@ -455,57 +627,70 @@ record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
 		Step = step_ite_cond
 	->
 		( if	map.search(!.InCondRegionsProc, Path, InCondRegions0)
-		  then	set.union(InCondRegions0, Created, InCondRegions)
+		  then	set.union(InCondRegions0, Created,
+					InCondRegions)
 		  else	InCondRegions = Created
 		),
 		% Only record if the some region(s) is actually created inside
 		% the condition.
 		( if	set.empty(InCondRegions)
 		  then	true
-		  else 	svmap.set(Path, InCondRegions, !InCondRegionsProc)
+		  else	svmap.set(Path, InCondRegions, !InCondRegionsProc)
 		)
 	;
 		true
 	),
 	record_regions_created_in_condition(Steps, Created, !InCondRegionsProc).
 
-:- pred collect_regions_created_in_condition_compound_goal(
-	pp_region_set_table::in, pp_region_set_table::in, hlds_goal::in,
+:- pred collect_regions_created_in_condition_compound_goal(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, hlds_goal::in,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_regions_created_in_condition_compound_goal(LRBeforeProc,
-		LRAfterProc, GoalInIte, !InCondRegionsProc) :-
+collect_regions_created_in_condition_compound_goal(Graph, LRBeforeProc,
+		LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, GoalInIte,
+		!InCondRegionsProc) :-
 	GoalInIte = hlds_goal(Expr, _),
 	(
 		Expr = conj(_, [Conj | Conjs]),
-		list.foldl(collect_regions_created_in_condition(LRBeforeProc,
-			LRAfterProc), [Conj | Conjs], !InCondRegionsProc)
+		list.foldl(collect_regions_created_in_condition(Graph,
+			LRBeforeProc, LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc), [Conj | Conjs],
+			!InCondRegionsProc)
 	;
 		Expr = disj([Disj | Disjs]),
-		list.foldl(collect_regions_created_in_condition(LRBeforeProc,
-			LRAfterProc), [Disj | Disjs], !InCondRegionsProc)
+		list.foldl(collect_regions_created_in_condition(Graph, 
+			LRBeforeProc, LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc), [Disj | Disjs],
+			!InCondRegionsProc)
 	;
 		Expr = switch(_, _, Cases),
 		list.foldl(
-			collect_regions_created_in_condition_case(LRBeforeProc,
-				LRAfterProc),
+			collect_regions_created_in_condition_case(Graph,
+			LRBeforeProc, LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc),
 			Cases, !InCondRegionsProc)
 	;
 		Expr = negation(Goal),
-		collect_regions_created_in_condition(LRBeforeProc,
-			LRAfterProc, Goal, !InCondRegionsProc)
+		collect_regions_created_in_condition(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc, Goal, !InCondRegionsProc)
 	;
 		Expr = scope(_, Goal),
-		collect_regions_created_in_condition(LRBeforeProc,
-			LRAfterProc, Goal, !InCondRegionsProc)
+		collect_regions_created_in_condition(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc, Goal, !InCondRegionsProc)
 	;
 		Expr = if_then_else(_, Cond, Then, Else),
-		collect_regions_created_in_condition(LRBeforeProc, LRAfterProc,
-			Cond, !InCondRegionsProc),
-		collect_regions_created_in_condition(LRBeforeProc, LRAfterProc,
-			Then, !InCondRegionsProc),
-		collect_regions_created_in_condition(LRBeforeProc, LRAfterProc,
-			Else, !InCondRegionsProc)
+		collect_regions_created_in_condition(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc, Cond, !InCondRegionsProc),
+		collect_regions_created_in_condition(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc, Then, !InCondRegionsProc),
+		collect_regions_created_in_condition(Graph, LRBeforeProc,
+			LRAfterProc, ResurRenamingProc,
+			ResurRenamingAnnoProc, Else, !InCondRegionsProc)
 	;
 		( Expr = unify(_, _, _, _, _) 
         ; Expr = plain_call(_, _, _, _, _, _) 
@@ -520,15 +705,18 @@ collect_regions_created_in_condition_compound_goal(LRBeforeProc,
 			++ "encountered atomic or unsupported goal")
 	).
 
-:- pred collect_regions_created_in_condition_case(pp_region_set_table::in,
-	pp_region_set_table::in, case::in, goal_path_regions_table::in,
-	goal_path_regions_table::out) is det.
+:- pred collect_regions_created_in_condition_case(rpt_graph::in,
+	pp_region_set_table::in, pp_region_set_table::in,
+	renaming_proc::in, renaming_annotation_proc::in, case::in,
+	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-collect_regions_created_in_condition_case(LRBeforeProc, LRAfterProc, Case,
-		!InCondRegionsProc) :-
+collect_regions_created_in_condition_case(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc,
+		Case, !InCondRegionsProc) :-
 	Case = case(_, Goal),
-	collect_regions_created_in_condition(LRBeforeProc, LRAfterProc, Goal,
-		!InCondRegionsProc).
+	collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
+		ResurRenamingProc, ResurRenamingAnnoProc,
+		Goal, !InCondRegionsProc).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -558,18 +746,15 @@ collect_ite_renamed_regions_proc(NonLocalRegionsTable, PPId,
 				InCondRegionsProc,
 				map.init, IteRenamedRegionProc),
 			( if	map.count(IteRenamedRegionProc) = 0
-			  then
-					true
-			  else
-					svmap.set(PPId, IteRenamedRegionProc,
+			  then	true
+			  else	svmap.set(PPId, IteRenamedRegionProc,
 						!IteRenamedRegionTable)
 			)
-	  else
-			true
+	  else	true
 	).
 
 :- pred collect_ite_renamed_regions_ite(goal_path_regions_table::in,
-	goal_path::in, region_set::in,
+	goal_path::in, set(string)::in,
 	goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
 collect_ite_renamed_regions_ite(NonLocalRegionsProc, PathToCond,
@@ -579,14 +764,11 @@ collect_ite_renamed_regions_ite(NonLocalRegionsProc, PathToCond,
 			set.intersect(NonLocalRegions, InCondRegions,
 				RenamedRegions),
 			( if	set.empty(RenamedRegions)
-			  then
-					true
-			  else
-					svmap.set(PathToCond, RenamedRegions,
+			  then	true
+			  else	svmap.set(PathToCond, RenamedRegions,
 						!IteRenamedRegionProc)
 			)
-	  else
-			true
+	  else	true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -710,11 +892,12 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
 				PathToClosestCond, 0, HowMany),
 			( if	map.search(IteRenamedRegionProc,
 						PathToClosestCond,
-						RenamedRegion)
+						RenamedRegions)
 			  then
 					set.fold(record_ite_renaming(ProgPoint,
 						HowMany, Graph),
-						RenamedRegion, !IteRenamingProc)
+						RenamedRegions,
+						!IteRenamingProc)
 			  else
 					% No region needs to be renamed due to
 					% if-then-else covering this program
@@ -730,10 +913,9 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
 	% A renaming is of the form: R --> R_ite_HowMany.
 	%
 :- pred record_ite_renaming(program_point::in, int::in, rpt_graph::in,
-	rptg_node::in, renaming_proc::in, renaming_proc::out) is det.
+	string::in, renaming_proc::in, renaming_proc::out) is det.
 
-record_ite_renaming(ProgPoint, HowMany, Graph, Region, !IteRenamingProc) :-
-	RegName = rptg_lookup_region_name(Graph, Region),
+record_ite_renaming(ProgPoint, HowMany, _Graph, RegName, !IteRenamingProc) :-
 	NewName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
 	( if	map.search(!.IteRenamingProc, ProgPoint, IteRenaming0)
 	  then 	svmap.set(RegName, NewName, IteRenaming0, IteRenaming)
@@ -849,16 +1031,16 @@ collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, IteRenamingTable,
 	map.lookup(RptaInfoTable, PPId, RptaInfo),
 	map.lookup(IteRenamingTable, PPId, IteRenamingProc),
 	RptaInfo = rpta_info(Graph, _),
-	map.foldl(collect_ite_annotation_region_set(ExecPaths, Graph,
+	map.foldl(collect_ite_annotation_region_names(ExecPaths, Graph,
 		IteRenamingProc),
 		IteRenamedRegionProc, map.init, IteAnnotationProc),
 	svmap.set(PPId, IteAnnotationProc, !IteAnnotationTable).
 
-:- pred collect_ite_annotation_region_set(list(execution_path)::in,
-	rpt_graph::in, renaming_proc::in, goal_path::in, region_set::in,
+:- pred collect_ite_annotation_region_names(list(execution_path)::in,
+	rpt_graph::in, renaming_proc::in, goal_path::in, set(string)::in,
 	renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
-collect_ite_annotation_region_set(ExecPaths, Graph, IteRenamingProc,
+collect_ite_annotation_region_names(ExecPaths, Graph, IteRenamingProc,
 		PathToCond, RenamedRegions, !IteAnnotationProc) :-
 	(
 		PathToCond = [],
@@ -877,7 +1059,7 @@ collect_ite_annotation_region_set(ExecPaths, Graph, IteRenamingProc,
 
 :- pred collect_ite_annotation_exec_path(rpt_graph::in,
 	renaming_proc::in, goal_path::in,
-	region_set::in, int::in, execution_path::in,
+	set(string)::in, int::in, execution_path::in,
 	renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
 collect_ite_annotation_exec_path(_, _, _, _, _, [], !IteAnnotationProc).
@@ -906,12 +1088,11 @@ collect_ite_annotation_exec_path(Graph, IteRenamingProc, PathToThen,
 	% R --> R_1, then the annotation is R_1 = R_ite_HowMany.
 	%
 :- pred introduce_reverse_renaming(rpt_graph::in, program_point::in,
-	renaming_proc::in, int::in, rptg_node::in,
+	renaming_proc::in, int::in, string::in,
 	renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
-introduce_reverse_renaming(Graph, ProgPoint, IteRenamingProc,
-		HowMany, RenamedRegion, !IteAnnotationProc) :-
-	RegName = rptg_lookup_region_name(Graph, RenamedRegion),
+introduce_reverse_renaming(_Graph, ProgPoint, IteRenamingProc,
+		HowMany, RegName, !IteAnnotationProc) :-
 	RightHand =
 		" = " ++ RegName ++ "_ite_" ++ string.int_to_string(HowMany),
 	( if	map.search(IteRenamingProc, ProgPoint, Renaming)
