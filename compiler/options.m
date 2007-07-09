@@ -717,6 +717,7 @@
     ;       erlang_flags
     ;       quoted_erlang_flag
     ;       erlang_object_file_extension
+    ;       erlang_native_code
 
     % Link options
     ;       output_file_name
@@ -1484,7 +1485,8 @@ option_defaults_2(target_code_compilation_option, [
     erlang_interpreter                  -   string("erl"),
     erlang_flags                        -   accumulating([]),
     quoted_erlang_flag                  -   string_special,
-    erlang_object_file_extension        -   string(".beam")
+    erlang_object_file_extension        -   string(".beam"),
+    erlang_native_code                  -   bool(no)
 ]).
 option_defaults_2(link_option, [
     % Link Options
@@ -2304,6 +2306,7 @@ long_option("erlang-compiler",      erlang_compiler).
 long_option("erlang-flags",         erlang_flags).
 long_option("erlang-flag",          quoted_erlang_flag).
 long_option("erlang-object-file-extension", erlang_object_file_extension).
+long_option("erlang-native-code",   erlang_native_code).
 
 % link options
 long_option("output-file",          output_file_name).
@@ -3613,7 +3616,8 @@ options_help_compilation_model -->
         "--target asm\t\t\t(grades: hlc)",
         "--target il\t\t\t(grades: il)",
         "--target java\t\t\t(grades: java)",
-        "\tSpecify the target language: C, assembler, IL or Java.",
+        "--target erlang\t\t\t(grades: erlang)",
+        "\tSpecify the target language: C, assembler, IL, Java or Erlang.",
         "\tThe default is C.  ""IL"" (also known as ""CIL"" or ""MSIL"")",
         "\tis the Intermediate Language for the .NET Common Language",
         "\tRuntime.",
@@ -3621,7 +3625,7 @@ options_help_compilation_model -->
         "\tAs an exception to the usual rule for options in this section,",
         "\twhere different option settings normally correspond to different",
         "\tABIs, code generated using `--target asm' is binary compatible",
-        "\twith code generated using `--target c --high-level code', so",
+        "\twith code generated using `--target c --high-level-code', so",
         "\tthese both use grade `hlc'.",
         "--il",
         "\tAn abbreviation for `--target il'.",
@@ -3646,6 +3650,13 @@ options_help_compilation_model -->
         "--java-only",
         "\tAn abbreviation for `--target java --target-code-only'.",
         "\tGenerate Java code in `<module>.java', but do not generate",
+        "\tobject code.",
+
+        "--erlang",
+        "\tAn abbreviation for `--target erlang'.",
+        "--erlang-only",
+        "\tAn abbreviation for `--target erlang --target-code-only'.",
+        "\tGenerate Erlang code in `<module>.erl', but do not generate",
         "\tobject code.",
 
         "--compile-to-c",
@@ -3725,7 +3736,7 @@ options_help_compilation_model -->
     write_tabbed_lines([
         "--gc {none, boehm, mps, accurate, automatic}",
         "--garbage-collection {none, boehm, mps, accurate, automatic}",
-        "\t\t\t\t(`java' and `il' grades use",
+        "\t\t\t\t(`java', `il' and `erlang' grades use",
         "\t\t\t\t\t`--gc automatic',",
         "\t\t\t\t`.gc' grades use `--gc boehm',",
         "\t\t\t\t`.mps' grades use `--gc mps',",
@@ -4686,7 +4697,24 @@ options_help_target_code_compilation -->
         "--csharp-flags <options>, --csharp-flag <option>",
         "\tSpecify options to be passed to the C# compiler.",
         "\t`--csharp-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell."
+        "\tto be quoted when passed to the shell.",
+
+        "--erlang-compiler <erlc>",
+        "\tSpecify the name of the Erlang compiler.  The default is `erlc'.",
+        "--erlang-interpreter <erl>",
+        "\tSpecify the name of the Erlang interpreter.  The default is `erl'.",
+        "--erlang-flags <options>, --erlang-flag <option>",
+        "\tSpecify options to be passed to the Erlang compiler.",
+        "\t`--erlang-flag' should be used for single words which need",
+        "\tto be quoted when passed to the shell.",
+        "--erlang-native-code",
+        "\tAdd `+native' to the start of flags passed to the Erlang compiler.",
+        "\tCancelled out by `--no-erlang-native-code' so it's useful when you",
+        "\twish to enable native code generation for all modules except for",
+        "\ta select few."
+
+        % --erlang-object-file-extension is deliberately not documented.
+        % It is not fully implemented and not very useful.
     ]).
 
 :- pred options_help_link(io::di, io::uo) is det.

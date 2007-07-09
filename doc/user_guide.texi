@@ -200,9 +200,10 @@ and @file{.trans_opt_date}
 files associated with the module are used as timestamp files;
 they are used when deciding whether the interface files need to be regenerated.
 
-@file{.c_date}, @file{.il_date}, @file{.java_date},
+@file{.c_date}, @file{.il_date}, @file{.java_date}, @file{.erl_date},
 @file{.s_date} and @file{.pic_s_date} files
 perform a similar function for @file{.c}, @file{.il}, @file{.java},
+@file{.erl},
 @file{.s} and @file{.pic_s} files respectively. When smart recompilation
 (@pxref{Auxiliary output options}) works out that a module
 does not need to be recompiled, the timestamp file for the
@@ -237,6 +238,10 @@ Java bytecode and Java archives respectively.
 @file{.il} files are Intermediate Language (IL) files
 for the .NET Common Language Runtime.
 @c XXX mention .dll and .exe?
+@file{.erl} and @file{.beam} files are Erlang source code and
+bytecode (object) files respectively.
+@file{.beams} directories are collections of @file{.beam} files which
+act like a library archive.
 
 @c ----------------------------------------------------------------------------
 
@@ -552,6 +557,12 @@ Compiles @var{main-module} to IL files (@file{*.il})
 for the .NET Common Language Runtime.
 
 @c XXX mention .dlls and .exe targets?
+
+@item @var{main-module}.erls
+Compiles @var{main-module} to Erlang source files (@file{*.erl}).
+
+@item @var{main-module}.beams
+Compiles @var{main-module} to Erlang bytecode (object) files (@file{*.beam}).
 
 @item lib@var{main-module}
 Builds a library whose top-level module is @var{main-module}.
@@ -920,6 +931,7 @@ and, on many platforms, it supports shared object libraries.
 * Building with mmc --make::
 * Building with Mmake::
 * Libraries and the Java grade::
+* Libraries and the Erlang grade::
 @end menu
 
 @node Writing libraries
@@ -1312,6 +1324,19 @@ Java libraries are installed to the directory
 addition to the instructions above, you will need to include the installed jar
 file in your @samp{CLASSPATH}, which you can set using
 @samp{--java-classpath @var{jarfile}} in @samp{MCFLAGS}.
+
+@node Libraries and the Erlang grade
+@section Libraries and the Erlang grade
+@cindex .beams directories
+@cindex Erlang libraries
+
+Since the Erlang implementation does not have library files, the Mercury
+compiler puts all the @file{.beam} files for a single Mercury library into a
+directory named @file{lib@var{library-name}.beams}.
+
+To create or install an Erlang "library", specify that you want to use
+the erlang grade and use @samp{mmc --make}.  Mmake does not, at present,
+support Erlang targets.
 
 @c ----------------------------------------------------------------------------
 
@@ -6558,7 +6583,8 @@ Check the module for errors, but do not generate any code.
 @findex --target-code-only
 Generate target code (i.e.@: C in @file{@var{module}.c},
 assembler in @file{@var{module}.s} or @file{@var{module}.pic_s},
-IL in @file{@var{module}.il} or Java in @file{@var{module}.java}),
+IL in @file{@var{module}.il}, Java in @file{@var{module}.java}
+or Erlang in @file{@var{module}.erl}),
 but not object code.
 
 @sp 1
@@ -7085,6 +7111,7 @@ The set of aspects and their alternatives are:
 @cindex hlc (compilation grade)
 @cindex il (compilation grade)
 @cindex java (compilation grade)
+@cindex erlang (compilation grade)
 @cindex .prof (grade modifier)
 @cindex .memprof (grade modifier)
 @cindex .profdeep (grade modifier)
@@ -7111,7 +7138,8 @@ The set of aspects and their alternatives are:
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, @samp{asm_fast}, @samp{hl}, @samp{hlc}, @samp{il} and @samp{java}
+@samp{fast}, @samp{asm_fast}, @samp{hl}, @samp{hlc}, @samp{il}, @samp{java} and
+@samp{erlang}
 (the default is system dependent).
 
 @item What garbage collection strategy to use:
@@ -7168,6 +7196,7 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --target
 @findex --il
 @findex --java
+@findex --erlang
 @findex --gc
 @findex --profiling
 @findex --memory-profiling
@@ -7204,6 +7233,9 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{java}
 @code{--target java --high-level-code --high-level-data}.
+
+@item @samp{erlang}
+@code{--target erlang}.
 
 @item @samp{.gc}
 @code{--gc boehm}.
@@ -7272,11 +7304,13 @@ and grade modifier; they are followed by descriptions of those options.
 @item @code{--target asm} (grades: hlc)
 @itemx @code{--il}, @code{--target il} (grades: il)
 @itemx @code{--java}, @code{--target java} (grades: java)
-Specify the target language used for compilation: C, assembler, IL or Java.
+@itemx @code{--erlang}, @code{--target erlang} (grades: erlang)
+Specify the target language used for compilation: C, assembler, IL, Java
+or Erlang.
 C means ANSI/ISO C, optionally with GNU C extensions (see below).
 IL means the Intermediate Language of the .NET Common Language Runtime.
 (IL is sometimes also known as "CIL" or "MSIL".)
-Targets other than C imply @samp{--high-level-code}.
+Targets other than C and Erlang imply @samp{--high-level-code}.
 
 @sp 1
 @item @code{--il-only}
@@ -7315,6 +7349,13 @@ C compiler to generate object code.
 An abbreviation for @samp{--target java --target-code-only}.
 Generate Java code in @file{@var{module}.java}, but do not invoke
 the Java compiler to produce Java bytecode.
+
+@sp 1
+@item @code{--erlang-only}
+@findex --erlang-only
+An abbreviation for @samp{--target erlang --target-code-only}.
+Generate Erlang code in @file{@var{module}.erl}, but do not invoke
+the Erlang compiler to produce Erlang bytecode.
 
 @end table
 
@@ -7495,7 +7536,8 @@ For now, this option itself is for developers only.
 @findex --gc
 @findex --garbage-collection
 Specify which method of garbage collection to use.
-Grades containing @samp{java} or @samp{il} use @samp{--gc automatic},
+Grades containing @samp{java}, @samp{il} or @samp{erlang} use
+@samp{--gc automatic},
 grades containing @samp{.gc} use @samp{--gc boehm},
 grades containing @samp{.mps} use @samp{--gc mps},
 other grades use @samp{--gc none}.
@@ -8941,6 +8983,36 @@ Set the classpath for the Java compiler.
 @cindex File extensions
 Specify an extension for Java object (bytecode) files.  By default this
 is @samp{.class}.
+
+@sp 1
+@item --erlang-compiler @var{compiler-name}
+@findex --erlang-compiler
+@cindex Erlang compiler
+Specify which Erlang compiler to use.  The default is @samp{erlc}.
+
+@sp 1
+@item --erlang-interpreter @var{interpreter-name}
+@findex --erlang-interpreter
+@cindex Erlang interpreter
+Specify which Erlang interpreter to use.  The default is @samp{erl}.
+
+@sp 1
+@item --erlang-flags @var{options}
+@itemx --erlang-flag @var{option}
+@findex --erlang-flags
+@findex --erlang-flag
+@cindex Erlang compiler options
+Specify options to be passed to the Erlang compiler.
+@samp{--erlang-flag} should be used for single words which need
+to be quoted when passed to the shell.
+
+@c This option is not fully implemented and not very useful.
+@c @sp 1
+@c @item --erlang-object-file-extension @var{extension}
+@c @findex --erlang-object-file-extension
+@c @cindex File extensions
+@c Specify an extension for Erlang object (bytecode) files.  By default this
+@c is @samp{.beam}.
 
 @end table
 

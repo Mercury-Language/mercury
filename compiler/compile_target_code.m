@@ -937,7 +937,15 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
     maybe_write_string(Verbose, ErlangFile, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
     globals.io_lookup_string_option(erlang_compiler, ErlangCompiler, !IO),
-    globals.io_lookup_accumulating_option(erlang_flags, ErlangFlagsList, !IO),
+    globals.io_lookup_accumulating_option(erlang_flags, ErlangFlagsList0, !IO),
+    globals.io_lookup_bool_option(erlang_native_code, ErlangNativeCode, !IO),
+    (
+        ErlangNativeCode = yes,
+        ErlangFlagsList = ["+native" | ErlangFlagsList0]
+    ;
+        ErlangNativeCode = no,
+        ErlangFlagsList = ErlangFlagsList0
+    ),
     ERLANGFLAGS = string.join_list(" ", ErlangFlagsList),
 
     globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
