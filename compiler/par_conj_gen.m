@@ -192,7 +192,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     MakeSyncTermCode = node([
         % The may_not_use_atomic here is conservative.
         llds_instr(incr_hp(RegLval, no, no, const(llconst_int(STSize)),
-            "sync term", may_not_use_atomic_alloc),
+            "sync term", may_not_use_atomic_alloc, no),
             "allocate a sync term"),
         llds_instr(init_sync_term(RegLval, NumGoals),
             "initialize sync term"),

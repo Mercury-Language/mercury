@@ -41,7 +41,7 @@
 % identical.
 % 
 %-----------------------------------------------------------------------------%
-
+ 
 :- module ll_backend.dupelim.
 :- interface.
 
@@ -366,11 +366,19 @@ standardize_instr(Instr1, Instr) :-
         Instr = restore_maxfr(Lval)
     ;
         Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg,
-            MayUseAtomic),
+            MayUseAtomic, MaybeRegionRval1),
         standardize_lval(Lval1, Lval),
         standardize_rval(Rval1, Rval),
+        (
+            MaybeRegionRval1 = yes(RegionRval1),
+            standardize_rval(RegionRval1, RegionRval),
+            MaybeRegionRval = yes(RegionRval)
+        ;
+            MaybeRegionRval1 = no,
+            MaybeRegionRval = MaybeRegionRval1
+        ),
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg,
-            MayUseAtomic)
+            MayUseAtomic, MaybeRegionRval)
     ;
         Instr1 = mark_hp(Lval1),
         standardize_lval(Lval1, Lval),
@@ -629,19 +637,29 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         )
     ;
         Instr1 = incr_hp(Lval1, MaybeTag1, MaybeOffset1, Rval1, Msg1,
-            MayUseAtomic1),
+            MayUseAtomic1, MaybeRegionRval1),
         (
             Instr2 = incr_hp(Lval2, MaybeTag2, MaybeOffset2, Rval2, Msg2,
-                MayUseAtomic2),
+                MayUseAtomic2, MaybeRegionRval2),
             most_specific_lval(Lval1, Lval2, Lval),
             most_specific_rval(Rval1, Rval2, Rval),
             MaybeTag1 = MaybeTag2,
             MaybeOffset1 = MaybeOffset2,
             Msg1 = Msg2,
-            MayUseAtomic1 = MayUseAtomic2
+            MayUseAtomic1 = MayUseAtomic2,
+            (
+                MaybeRegionRval1 = yes(RegionRval1),
+                MaybeRegionRval2 = yes(RegionRval2),
+                most_specific_rval(RegionRval1, RegionRval2, RegionRval),
+                MaybeRegionRval = yes(RegionRval)
+            ;
+                MaybeRegionRval1 = no,
+                MaybeRegionRval2 = no,
+                MaybeRegionRval = no
+            )
         ->
             MaybeInstr = yes(incr_hp(Lval, MaybeTag1, MaybeOffset1, Rval,
-                Msg1, MayUseAtomic1))
+                Msg1, MayUseAtomic1, MaybeRegionRval))
         ;
             MaybeInstr = no
         )

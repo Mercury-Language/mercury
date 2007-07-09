@@ -522,9 +522,16 @@ find_used_registers_instr(save_maxfr(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
 find_used_registers_instr(restore_maxfr(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(incr_hp(Lval, _, _, Rval, _, _), !Used) :-
+find_used_registers_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
+        !Used) :-
     find_used_registers_lval(Lval, !Used),
-    find_used_registers_rval(Rval, !Used).
+    find_used_registers_rval(Rval, !Used),
+    (
+        MaybeRegionRval = yes(RegionRval),
+        find_used_registers_rval(RegionRval, !Used)
+    ;
+        MaybeRegionRval = no
+    ).
 find_used_registers_instr(mark_hp(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
 find_used_registers_instr(restore_hp(Rval), !Used) :-

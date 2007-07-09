@@ -177,7 +177,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
                 Uinstr0 = assign(ToLval, _FromRval)
             ;
                 Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _MO, _Type,
-                    _Atomic)
+                    _Atomic, _)
             ),
             base_lval_worth_replacing(NumRealRRegs, ToLval),
             MaybeMore = no
@@ -478,10 +478,12 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
         expect(unify(ToLval, OldLval),
             this_file, "substitute_lval_in_defn: mismatch in assign"),
         Uinstr = assign(NewLval, FromRval)
-    ; Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type, MayUseAtomic) ->
+    ; Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type,
+            MayUseAtomic, MaybeRegionRval) ->
         expect(unify(ToLval, OldLval),
             this_file, "substitute_lval_in_defn: mismatch in incr_hp"),
-        Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type, MayUseAtomic)
+        Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type,
+            MayUseAtomic, MaybeRegionRval)
     ; Uinstr0 = foreign_proc_code(D, Comps0, MCM, FNL, FL, FOL, NF, S, MD) ->
         substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,
             0, NumSubsts),
@@ -588,7 +590,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
             substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
         )
     ;
-        Uinstr0 = incr_hp(Lval, _, _, _, _, _),
+        Uinstr0 = incr_hp(Lval, _, _, _, _, _, _),
         ( assignment_updates_oldlval(Lval, OldLval) = yes ->
             % If we alter any lval that occurs in OldLval, we must stop
             % the substitutions.

@@ -1955,9 +1955,16 @@ output_instr_decls(_, save_maxfr(Lval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, restore_maxfr(Lval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, incr_hp(Lval, _Tag, _, Rval, _, _), !DeclSet, !IO) :-
+output_instr_decls(_, incr_hp(Lval, _Tag, _, Rval, _, _, MaybeRegionRval),
+        !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
-    output_rval_decls(Rval, !DeclSet, !IO).
+    output_rval_decls(Rval, !DeclSet, !IO),
+    (
+        MaybeRegionRval = yes(RegionRval),
+        output_rval_decls(RegionRval, !DeclSet, !IO)
+    ;
+        MaybeRegionRval = no
+    ).
 output_instr_decls(_, mark_hp(Lval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, restore_hp(Rval), !DeclSet, !IO) :-
@@ -2388,111 +2395,134 @@ output_instruction(restore_maxfr(Lval), _, !IO) :-
     io.write_string(");\n", !IO).
 
 output_instruction(incr_hp(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
-        MayUseAtomicAlloc), ProfInfo, !IO) :-
-    globals.io_lookup_bool_option(profile_memory, ProfMem, !IO),
+        MayUseAtomicAlloc, MaybeRegionRval), ProfInfo, !IO) :-
     (
-        ProfMem = yes,
+        MaybeRegionRval = yes(RegionRval),
         (
             MaybeTag = no,
-            (
-                MayUseAtomicAlloc = may_not_use_atomic_alloc,
-                io.write_string("\tMR_offset_incr_hp_msg(", !IO)
-            ;
-                MayUseAtomicAlloc = may_use_atomic_alloc,
-                io.write_string("\tMR_offset_incr_hp_atomic_msg(", !IO)
-            ),
+            io.write_string("\tMR_alloc_in_region(", !IO),
             output_lval_as_word(Lval, !IO)
         ;
             MaybeTag = yes(Tag),
-            (
-                MayUseAtomicAlloc = may_not_use_atomic_alloc,
-                io.write_string("\tMR_tag_offset_incr_hp_msg(", !IO)
-            ;
-                MayUseAtomicAlloc = may_use_atomic_alloc,
-                io.write_string("\tMR_tag_offset_incr_hp_atomic_msg(", !IO)
-            ),
+            io.write_string("\tMR_tag_alloc_in_region(", !IO),
             output_lval_as_word(Lval, !IO),
             io.write_string(", ", !IO),
             output_tag(Tag, !IO)
         ),
         io.write_string(", ", !IO),
-        (
-            MaybeOffset = no,
-            io.write_string("0, ", !IO)
-        ;
-            MaybeOffset = yes(Offset),
-            io.write_int(Offset, !IO),
-            io.write_string(", ", !IO)
-        ),
-        output_rval_as_type(Rval, word, !IO),
+        output_rval(RegionRval, !IO),
         io.write_string(", ", !IO),
-        ProfInfo = CallerLabel - _,
-        output_label(CallerLabel, !IO),
-        io.write_string(", """, !IO),
-        c_util.output_quoted_string(TypeMsg, !IO),
-        io.write_string(""");\n", !IO)
+        output_rval_as_type(Rval, word, !IO),
+        io.write_string(");\n", !IO)
     ;
-        ProfMem = no,
+        MaybeRegionRval = no,
+        globals.io_lookup_bool_option(profile_memory, ProfMem, !IO),
         (
-            MaybeTag = no,
+            ProfMem = yes,
             (
-                MaybeOffset = yes(_),
+                MaybeTag = no,
                 (
                     MayUseAtomicAlloc = may_not_use_atomic_alloc,
-                    io.write_string("\tMR_offset_incr_hp(", !IO)
+                    io.write_string("\tMR_offset_incr_hp_msg(", !IO)
                 ;
                     MayUseAtomicAlloc = may_use_atomic_alloc,
-                    io.write_string("\tMR_offset_incr_hp_atomic(", !IO)
-                )
+                    io.write_string("\tMR_offset_incr_hp_atomic_msg(", !IO)
+                ),
+                output_lval_as_word(Lval, !IO)
             ;
-                MaybeOffset = no,
+                MaybeTag = yes(Tag),
                 (
                     MayUseAtomicAlloc = may_not_use_atomic_alloc,
-                    io.write_string("\tMR_alloc_heap(", !IO)
+                    io.write_string("\tMR_tag_offset_incr_hp_msg(", !IO)
                 ;
                     MayUseAtomicAlloc = may_use_atomic_alloc,
-                    io.write_string("\tMR_alloc_heap_atomic(", !IO)
-                )
-            ),
-            output_lval_as_word(Lval, !IO)
-        ;
-            MaybeTag = yes(Tag),
-            (
-                MaybeOffset = yes(_),
-                (
-                    MayUseAtomicAlloc = may_not_use_atomic_alloc,
-                    io.write_string("\tMR_tag_offset_incr_hp(", !IO)
-                ;
-                    MayUseAtomicAlloc = may_use_atomic_alloc,
-                    io.write_string("\tMR_tag_offset_incr_hp_atomic(", !IO)
+                    io.write_string(
+                        "\tMR_tag_offset_incr_hp_atomic_msg(", !IO)
                 ),
                 output_lval_as_word(Lval, !IO),
                 io.write_string(", ", !IO),
                 output_tag(Tag, !IO)
-            ;
+            ),
+            io.write_string(", ", !IO),
+            (
                 MaybeOffset = no,
-                (
-                    MayUseAtomicAlloc = may_not_use_atomic_alloc,
-                    io.write_string("\tMR_tag_alloc_heap(", !IO)
-                ;
-                    MayUseAtomicAlloc = may_use_atomic_alloc,
-                    io.write_string("\tMR_tag_alloc_heap_atomic(", !IO)
-                ),
-                output_lval_as_word(Lval, !IO),
-                io.write_string(", ", !IO),
-                io.write_int(Tag, !IO)
-            )
-        ),
-        io.write_string(", ", !IO),
-        (
-            MaybeOffset = yes(Offset),
-            io.write_int(Offset, !IO),
-            io.write_string(", ", !IO)
+                io.write_string("0, ", !IO)
+            ;
+                MaybeOffset = yes(Offset),
+                io.write_int(Offset, !IO),
+                io.write_string(", ", !IO)
+            ),
+            output_rval_as_type(Rval, word, !IO),
+            io.write_string(", ", !IO),
+            ProfInfo = CallerLabel - _,
+            output_label(CallerLabel, !IO),
+            io.write_string(", """, !IO),
+            c_util.output_quoted_string(TypeMsg, !IO),
+            io.write_string(""");\n", !IO)
         ;
-            MaybeOffset = no
-        ),
-        output_rval_as_type(Rval, word, !IO),
-        io.write_string(");\n", !IO)
+            ProfMem = no,
+            (
+                MaybeTag = no,
+                (
+                    MaybeOffset = yes(_),
+                    (
+                        MayUseAtomicAlloc = may_not_use_atomic_alloc,
+                        io.write_string("\tMR_offset_incr_hp(", !IO)
+                    ;
+                        MayUseAtomicAlloc = may_use_atomic_alloc,
+                        io.write_string("\tMR_offset_incr_hp_atomic(", !IO)
+                    )
+                ;
+                    MaybeOffset = no,
+                    (
+                        MayUseAtomicAlloc = may_not_use_atomic_alloc,
+                        io.write_string("\tMR_alloc_heap(", !IO)
+                    ;
+                        MayUseAtomicAlloc = may_use_atomic_alloc,
+                        io.write_string("\tMR_alloc_heap_atomic(", !IO)
+                    )
+                ),
+                output_lval_as_word(Lval, !IO)
+            ;
+                MaybeTag = yes(Tag),
+                (
+                    MaybeOffset = yes(_),
+                    (
+                        MayUseAtomicAlloc = may_not_use_atomic_alloc,
+                        io.write_string("\tMR_tag_offset_incr_hp(", !IO)
+                    ;
+                        MayUseAtomicAlloc = may_use_atomic_alloc,
+                        io.write_string(
+                            "\tMR_tag_offset_incr_hp_atomic(", !IO)
+                    ),
+                    output_lval_as_word(Lval, !IO),
+                    io.write_string(", ", !IO),
+                    output_tag(Tag, !IO)
+                ;
+                    MaybeOffset = no,
+                    (
+                        MayUseAtomicAlloc = may_not_use_atomic_alloc,
+                        io.write_string("\tMR_tag_alloc_heap(", !IO)
+                    ;
+                        MayUseAtomicAlloc = may_use_atomic_alloc,
+                        io.write_string("\tMR_tag_alloc_heap_atomic(", !IO)
+                    ),
+                    output_lval_as_word(Lval, !IO),
+                    io.write_string(", ", !IO),
+                    io.write_int(Tag, !IO)
+                )
+            ),
+            io.write_string(", ", !IO),
+            (
+                MaybeOffset = yes(Offset),
+                io.write_int(Offset, !IO),
+                io.write_string(", ", !IO)
+            ;
+                MaybeOffset = no
+            ),
+            output_rval_as_type(Rval, word, !IO),
+            io.write_string(");\n", !IO)
+        )
     ).
 
 output_instruction(mark_hp(Lval), _, !IO) :-

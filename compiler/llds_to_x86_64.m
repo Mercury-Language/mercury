@@ -344,8 +344,15 @@ instr_to_x86_64(RegMap, save_maxfr(_), RegMap, Instr) :-
     Instr = [x86_64_comment("<<save_maxfr>>")].
 instr_to_x86_64(RegMap, restore_maxfr(_), RegMap, Instr) :-
     Instr = [x86_64_comment("<<restore_maxfr>>")].
-instr_to_x86_64(RegMap0, incr_hp(Lval, Tag0, Words0, Rval, _, _), RegMap, 
-        Instrs) :-
+instr_to_x86_64(RegMap0,
+        incr_hp(Lval, Tag0, Words0, Rval, _, _, MaybeRegionRval),
+        RegMap, Instrs) :-
+    (
+        MaybeRegionRval = no
+    ;
+        MaybeRegionRval = yes(_),
+        unexpected(this_file, "instr_to_x86_64: encounter a region variable")
+    ),
     transform_rval(RegMap0, Rval, RegMap1, Res0, Res1),
     transform_lval(RegMap1, Lval, RegMap2, Res2, Res3),
     (

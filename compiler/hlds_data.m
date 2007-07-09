@@ -360,7 +360,7 @@
     % since atomic blocks are not scanned for included pointers. However,
     % this makes them safe to use *only* if the block allocated this way
     % can never contain any pointer the Boehm collector would be interested
-    % in tracing. In particular, it even if the cell initially contains no
+    % in tracing. In particular, even if the cell initially contains no
     % pointers, we must still use may_not_use_atomic_alloc for it if the cell
     % could possibly be reused later by compile-time garbage collection.
     %

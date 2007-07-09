@@ -183,7 +183,8 @@
     % obvious conflict.)
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, prog_var::in, bool::in,
-    tag::in, list(maybe(rval))::in, maybe(term_size_value)::in, list(int)::in,
+    tag::in, list(maybe(rval))::in, how_to_construct::in,
+    maybe(term_size_value)::in, list(int)::in,
     string::in, may_use_atomic_alloc::in, code_tree::out,
     static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
@@ -818,8 +819,8 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 %----------------------------------------------------------------------------%
 
 var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        MaybeRvals0, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code,
-        !StaticCellInfo, !VLI) :-
+        MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
+        MayUseAtomic, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
         (
@@ -851,17 +852,18 @@ var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         Code = empty
     ;
         var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var,
-            ReserveWordAtStart, Ptag, MaybeRvals, MaybeOffset, TypeMsg,
-            MayUseAtomic, Code, !VLI)
+            ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
+            MaybeOffset, TypeMsg, MayUseAtomic, Code, !VLI)
     ).
 
 :- pred var_locn_assign_dynamic_cell_to_var(module_info::in, prog_var::in,
-    bool::in, tag::in, list(maybe(rval))::in, maybe(int)::in, string::in,
-    may_use_atomic_alloc::in, code_tree::out,
+    bool::in, tag::in, list(maybe(rval))::in, how_to_construct::in,
+    maybe(int)::in, string::in, may_use_atomic_alloc::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        Vector, MaybeOffset, TypeMsg, MayUseAtomic, Code, !VLI) :-
+        Vector, HowToConstruct, MaybeOffset, TypeMsg, MayUseAtomic, Code,
+        !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
@@ -884,11 +886,28 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         TotalOffset = MaybeOffset,
         TotalSize = Size
     ),
+    (
+        HowToConstruct = construct_in_region(RegionVar),
+        var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
+            RegionVarCode, !VLI),
+        MaybeRegionRval = yes(RegionRval),
+        LldsComment = "Allocating region for "
+    ;
+        % XXX  We should probably throw an exception if we find either 
+        % construct_statically or reuse_cell here.
+        ( HowToConstruct = construct_statically(_)
+        ; HowToConstruct = construct_dynamically
+        ; HowToConstruct = reuse_cell(_)
+        ),
+        RegionVarCode = empty,
+        MaybeRegionRval = no,
+        LldsComment = "Allocating heap for "
+    ),
     CellCode = node([
         llds_instr(
             incr_hp(Lval, yes(Ptag), TotalOffset,
-                const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic),
-            "Allocating heap for " ++ VarName)
+                const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
+                MaybeRegionRval), LldsComment ++ VarName)
     ]),
     var_locn_set_magic_var_location(Var, Lval, !VLI),
     (
@@ -900,7 +919,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     ),
     assign_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval), StartOffset,
         ArgsCode, !VLI),
-    Code = tree(CellCode, ArgsCode).
+    Code = tree_list([CellCode, RegionVarCode, ArgsCode]).
 
 :- pred assign_cell_args(module_info::in, list(maybe(rval))::in,
     maybe(tag)::in, rval::in, int::in, code_tree::out,

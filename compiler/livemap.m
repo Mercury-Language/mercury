@@ -230,7 +230,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = restore_maxfr(Lval),
         livemap.make_live_in_rval(lval(Lval), !Livevals)
     ;
-        Uinstr0 = incr_hp(Lval, _, _, Rval, _, _),
+        Uinstr0 = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
 
         % Make dead the variable assigned, but make any variables
         % needed to access it live. Make the variables in the size
@@ -240,8 +240,15 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % common. This is why doing the deletion first works.
 
         set.delete(!.Livevals, Lval, !:Livevals),
-        opt_util.lval_access_rvals(Lval, Rvals),
-        livemap.make_live_in_rvals([Rval | Rvals], !Livevals)
+        opt_util.lval_access_rvals(Lval, Rvals0),
+        (
+            MaybeRegionRval = no,
+            Rvals = [Rval | Rvals0]
+        ;
+            MaybeRegionRval = yes(RegionRval),
+            Rvals = [Rval, RegionRval | Rvals0]
+        ),
+        livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
         Uinstr0 = mark_hp(Lval),
         set.delete(!.Livevals, Lval, !:Livevals),

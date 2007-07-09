@@ -683,7 +683,7 @@ may_replace_succeed_with_succeed_discard_2([Instr0 | Instrs0],
             ( Uinstr = comment(_)
             ; Uinstr = livevals(_)
             ; Uinstr = if_val(_, _)
-            ; Uinstr = incr_hp(_, _, _, _, _, _)
+            ; Uinstr = incr_hp(_, _, _, _, _, _, _)
             ; Uinstr = mark_hp(_)
             ; Uinstr = restore_hp(_)
             ; Uinstr = free_heap(_)
@@ -813,9 +813,15 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
             Between = [Instr0 | Between0]
         )
     ;
-        Uinstr0 = incr_hp(Lval, _, _, Rval, _, _),
+        Uinstr0 = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
         lval_refers_stackvars(Lval) = no,
         rval_refers_stackvars(Rval) = no,
+        (
+            MaybeRegionRval = yes(RegionRval),
+            rval_refers_stackvars(RegionRval) = no
+        ;
+            MaybeRegionRval = no
+        ),
         no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
         Between = [Instr0 | Between0]
     ;
@@ -885,10 +891,20 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         Uinstr = restore_maxfr(Lval),
         Refers = lval_refers_stackvars(Lval)
     ;
-        Uinstr = incr_hp(Lval, _, _, Rval, _, _),
-        Refers = bool.or(
-            lval_refers_stackvars(Lval),
-            rval_refers_stackvars(Rval))
+        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
+        (
+            MaybeRegionRval = no,
+            Refers = bool.or(
+                lval_refers_stackvars(Lval),
+                rval_refers_stackvars(Rval))
+        ;
+            MaybeRegionRval = yes(RegionRval),
+            Refers0 = bool.or(
+                lval_refers_stackvars(Lval),
+                rval_refers_stackvars(Rval)),
+            Refers = bool.or(Refers0,
+                rval_refers_stackvars(RegionRval))
+        )
     ;
         Uinstr = mark_hp(Lval),
         Refers = lval_refers_stackvars(Lval)
@@ -1054,7 +1070,7 @@ can_instr_branch_away(arbitrary_c_code(_, _, _)) = no.
 can_instr_branch_away(if_val(_, _)) = yes.
 can_instr_branch_away(save_maxfr(_)) = no.
 can_instr_branch_away(restore_maxfr(_)) = no.
-can_instr_branch_away(incr_hp(_, _, _, _, _, _)) = no.
+can_instr_branch_away(incr_hp(_, _, _, _, _, _, _)) = no.
 can_instr_branch_away(mark_hp(_)) = no.
 can_instr_branch_away(restore_hp(_)) = no.
 can_instr_branch_away(free_heap(_)) = no.
@@ -1128,7 +1144,7 @@ can_instr_fall_through(arbitrary_c_code(_, _, _)) = yes.
 can_instr_fall_through(if_val(_, _)) = yes.
 can_instr_fall_through(save_maxfr(_)) = yes.
 can_instr_fall_through(restore_maxfr(_)) = yes.
-can_instr_fall_through(incr_hp(_, _, _, _, _, _)) = yes.
+can_instr_fall_through(incr_hp(_, _, _, _, _, _, _)) = yes.
 can_instr_fall_through(mark_hp(_)) = yes.
 can_instr_fall_through(restore_hp(_)) = yes.
 can_instr_fall_through(free_heap(_)) = yes.
@@ -1174,7 +1190,7 @@ can_use_livevals(arbitrary_c_code(_, _, _), no).
 can_use_livevals(if_val(_, _), yes).
 can_use_livevals(save_maxfr(_), no).
 can_use_livevals(restore_maxfr(_), no).
-can_use_livevals(incr_hp(_, _, _, _, _, _), no).
+can_use_livevals(incr_hp(_, _, _, _, _, _, _), no).
 can_use_livevals(mark_hp(_), no).
 can_use_livevals(restore_hp(_), no).
 can_use_livevals(free_heap(_), no).
@@ -1237,7 +1253,7 @@ instr_labels_2(arbitrary_c_code(_, _, _), [], []).
 instr_labels_2(if_val(_, Addr), [], [Addr]).
 instr_labels_2(save_maxfr(_), [], []).
 instr_labels_2(restore_maxfr(_), [], []).
-instr_labels_2(incr_hp(_, _, _, _, _, _), [], []).
+instr_labels_2(incr_hp(_, _, _, _, _, _, _), [], []).
 instr_labels_2(mark_hp(_), [], []).
 instr_labels_2(restore_hp(_), [], []).
 instr_labels_2(free_heap(_), [], []).
@@ -1298,7 +1314,7 @@ possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
     ).
 possible_targets(save_maxfr(_), [], []).
 possible_targets(restore_maxfr(_), [], []).
-possible_targets(incr_hp(_, _, _, _, _, _), [], []).
+possible_targets(incr_hp(_, _, _, _, _, _, _), [], []).
 possible_targets(mark_hp(_), [], []).
 possible_targets(restore_hp(_), [], []).
 possible_targets(free_heap(_), [], []).
@@ -1371,7 +1387,15 @@ instr_rvals_and_lvals(arbitrary_c_code(_, _, _), [], []).
 instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
 instr_rvals_and_lvals(save_maxfr(Lval), [], [Lval]).
 instr_rvals_and_lvals(restore_maxfr(Lval), [], [Lval]).
-instr_rvals_and_lvals(incr_hp(Lval, _, _, Rval, _, _), [Rval], [Lval]).
+instr_rvals_and_lvals(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
+        Rvals, [Lval]) :-
+    (
+        MaybeRegionRval = yes(RegionRval),
+        Rvals = [Rval, RegionRval]
+    ;
+        MaybeRegionRval = no,
+        Rvals = [Rval]
+    ).
 instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
 instr_rvals_and_lvals(free_heap(Rval), [Rval], []).
@@ -1507,9 +1531,15 @@ count_temps_instr(save_maxfr(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(restore_maxfr(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(incr_hp(Lval, _, _, Rval, _, _), !R, !F) :-
+count_temps_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval), !R, !F) :-
     count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F).
+    count_temps_rval(Rval, !R, !F),
+    (
+        MaybeRegionRval = yes(RegionRval),
+        count_temps_rval(RegionRval, !R, !F)
+    ;
+        MaybeRegionRval = no
+    ).
 count_temps_instr(mark_hp(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(restore_hp(Rval), !R, !F) :-
@@ -1698,10 +1728,18 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         TouchRval = touches_nondet_ctrl_rval(Rval),
         bool.or(TouchLval, TouchRval, Touch)
     ;
-        Uinstr = incr_hp(Lval, _, _, Rval, _, _),
+        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
         TouchLval = touches_nondet_ctrl_lval(Lval),
         TouchRval = touches_nondet_ctrl_rval(Rval),
-        bool.or(TouchLval, TouchRval, Touch)
+        (
+            MaybeRegionRval = yes(RegionRval),
+            TouchRegionRval = touches_nondet_ctrl_rval(RegionRval)
+        ;
+            MaybeRegionRval = no,
+            TouchRegionRval = no
+        ),
+        bool.or(TouchLval, TouchRval, Touch0),
+        bool.or(Touch0, TouchRegionRval, Touch)
     ;
         Uinstr = mark_hp(Lval),
         Touch = touches_nondet_ctrl_lval(Lval)
@@ -1842,7 +1880,7 @@ count_incr_hp(Instrs, N) :-
 
 count_incr_hp_2([], !N).
 count_incr_hp_2([llds_instr(Uinstr0, _) | Instrs], !N) :-
-    ( Uinstr0 = incr_hp(_, _, _, _, _, _) ->
+    ( Uinstr0 = incr_hp(_, _, _, _, _, _, _) ->
         !:N = !.N + 1
     ;
         true
@@ -1989,16 +2027,27 @@ replace_labels_instr(restore_maxfr(Lval0), ReplMap, ReplData,
         ReplData = no,
         Lval = Lval0
     ).
-replace_labels_instr(incr_hp(Lval0, MaybeTag, MO, Rval0, Msg, Atomic),
-        ReplMap, ReplData, incr_hp(Lval, MaybeTag, MO, Rval, Msg, Atomic)) :-
+replace_labels_instr(
+        incr_hp(Lval0, MaybeTag, MO, Rval0, Msg, Atomic, MaybeRegionRval0),
+        ReplMap, ReplData,
+        incr_hp(Lval, MaybeTag, MO, Rval, Msg, Atomic, MaybeRegionRval)) :-
     (
         ReplData = yes,
         replace_labels_lval(Lval0, ReplMap, Lval),
-        replace_labels_rval(Rval0, ReplMap, Rval)
+        replace_labels_rval(Rval0, ReplMap, Rval),
+        (
+            MaybeRegionRval0 = yes(RegionRval0),
+            replace_labels_rval(RegionRval0, ReplMap, RegionRval),
+            MaybeRegionRval = yes(RegionRval)
+        ;
+            MaybeRegionRval0 = no,
+            MaybeRegionRval = MaybeRegionRval0
+        )
     ;
         ReplData = no,
         Lval = Lval0,
-        Rval = Rval0
+        Rval = Rval0,
+        MaybeRegionRval = MaybeRegionRval0
     ).
 replace_labels_instr(mark_hp(Lval0), ReplMap, ReplData,
         mark_hp(Lval)) :-

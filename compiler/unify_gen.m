@@ -100,7 +100,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
             Code = empty
         )
     ;
-        Uni = construct(Var, ConsId, Args, Modes, _, _, SubInfo),
+        Uni = construct(Var, ConsId, Args, Modes, HowToConstruct, _, SubInfo),
         (
             SubInfo = no_construct_sub_info,
             MaybeTakeAddr = no,
@@ -119,7 +119,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
                 MaybeTakeAddr = no,
                 TakeAddr = []
             ),
-            generate_construction(Var, ConsId, Args, Modes,
+            generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
                 TakeAddr, MaybeSize, GoalInfo, Code, !CI)
         ;
             Code = empty
@@ -355,29 +355,29 @@ generate_reserved_address(reserved_object(_, _, _)) = _ :-
     % of a function symbol if the function symbol has arity zero.
     % If the function symbol's arity is greater than zero, and all its
     % arguments are constants, the construction is implemented by
-    % constructing the new term statically. If not all the argumemts are
+    % constructing the new term statically. If not all the arguments are
     % constants, the construction is implemented as a heap-increment
     % to create a term, and a series of [optional] assignments to
     % instantiate the arguments of that term.
     %
 :- pred generate_construction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, list(int)::in,
-    maybe(term_size_value)::in, hlds_goal_info::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+    list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
+    list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-generate_construction(Var, ConsId, Args, Modes, TakeAddr, MaybeSize, GoalInfo,
-        Code, !CI) :-
+generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
+        TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
     Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
-    generate_construction_2(Tag, Var, Args, Modes, TakeAddr, MaybeSize,
-        GoalInfo, Code, !CI).
+    generate_construction_2(Tag, Var, Args, Modes, HowToConstruct,
+        TakeAddr, MaybeSize, GoalInfo, Code, !CI).
 
 :- pred generate_construction_2(cons_tag::in, prog_var::in,
-    list(prog_var)::in, list(uni_mode)::in, list(int)::in,
-    maybe(term_size_value)::in, hlds_goal_info::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+    list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
+    list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
-        GoalInfo, Code, !CI) :-
+generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
+        TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
     (
         ConsTag = string_tag(String),
         code_info.assign_const_to_var(Var, const(llconst_string(String)), !CI),
@@ -412,15 +412,15 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
     ;
         ConsTag = single_functor_tag,
         % Treat single_functor the same as unshared_tag(0).
-        generate_construction_2(unshared_tag(0),
-            Var, Args, Modes, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
+        generate_construction_2(unshared_tag(0), Var, Args, Modes,
+            HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = unshared_tag(Ptag),
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, !.CI,
             MaybeRvals, FieldAddrs, MayUseAtomic),
-        construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs,
-            MayUseAtomic, Code, !CI)
+        construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
+            MaybeSize, FieldAddrs, MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
         var_types(!.CI, Args, ArgTypes),
@@ -428,8 +428,8 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             MaybeRvals0, FieldAddrs, MayUseAtomic),
         % The first field holds the secondary tag.
         MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals0],
-        construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs,
-            MayUseAtomic, Code, !CI)
+        construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
+            MaybeSize, FieldAddrs, MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_local_tag(Bits1, Num1),
         code_info.assign_const_to_var(Var,
@@ -506,7 +506,8 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         % for tag tests, not for constructions, so here we just recurse
         % on the real representation.
         generate_construction_2(ThisTag,
-            Var, Args, Modes, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
+            Var, Args, Modes, HowToConstruct, TakeAddr, MaybeSize, GoalInfo,
+            Code, !CI)
     ;
         ConsTag = pred_closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), this_file,
@@ -612,7 +613,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                     "get number of arguments"),
                 llds_instr(incr_hp(NewClosure, no, no,
                     binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
-                    "closure", NewClosureMayUseAtomic),
+                    "closure", NewClosureMayUseAtomic, no),
                     "allocate new closure"),
                 llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
                     lval(field(yes(0), OldClosure, Zero))),
@@ -698,8 +699,10 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             yes(const(llconst_int(NumArgs)))
             | PredArgs
         ],
-        code_info.assign_cell_to_var(Var, no, 0, Vector, no, [], "closure",
-            MayUseAtomic, Code, !CI)
+        % XXX construct_dynamically is just a dummy value. We just want
+        % something which is not construct_in_region(_).
+        code_info.assign_cell_to_var(Var, no, 0, Vector,
+            construct_dynamically, no, [], "closure", MayUseAtomic, Code, !CI)
     ).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
@@ -825,12 +828,12 @@ initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
     ).
 
 :- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in,
-    maybe(term_size_value)::in, assoc_list(int, prog_var)::in,
-    may_use_atomic_alloc::in, code_tree::out, code_info::in, code_info::out)
-    is det.
+    how_to_construct::in, maybe(term_size_value)::in,
+    assoc_list(int, prog_var)::in, may_use_atomic_alloc::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, MayUseAtomic,
-        Code, !CI) :-
+construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
+        MayUseAtomic, Code, !CI) :-
     VarType = code_info.variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
     % If we're doing accurate GC, then for types which hold RTTI that
@@ -851,7 +854,8 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, MayUseAtomic,
     ),
     FieldNums = list.map(fst, FieldAddrs),
     code_info.assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
-        MaybeSize, FieldNums, VarTypeMsg, MayUseAtomic, CellCode, !CI),
+        HowToConstruct, MaybeSize, FieldNums, VarTypeMsg, MayUseAtomic,
+        CellCode, !CI),
     (
         FieldAddrs = [],
         % Optimize common case.

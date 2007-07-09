@@ -724,7 +724,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = restore_maxfr(Lval),
         Str = "restore_maxfr(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
-        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _, MayUseAtomic),
+        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _, MayUseAtomic,
+            MaybeRegionRval),
         (
             MaybeTag = no,
             T_str = "no"
@@ -739,10 +740,17 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             MaybeOffset = yes(Offset),
             string.int_to_string(Offset, O_str)
         ),
+        (
+            MaybeRegionRval = no,
+            Region_str = "no"
+        ;
+            MaybeRegionRval = yes(RegionRval),
+            Region_str = dump_rval(no, RegionRval) 
+        ),
         Str = "incr_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", " ++
             T_str ++ ", " ++ O_str ++ ", " ++
             dump_rval(yes(ProcLabel), Size) ++ ", " ++
-            dump_may_use_atomic(MayUseAtomic) ++ ")"
+            dump_may_use_atomic(MayUseAtomic) ++ ", " ++ Region_str ++ ")"
     ;
         Instr = mark_hp(Lval),
         Str = "mark_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"

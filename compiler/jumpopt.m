@@ -813,7 +813,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         ; Uinstr0 = mark_ticket_stack(_)
         ; Uinstr0 = mark_hp(_)
         ; Uinstr0 = free_heap(_)
-        ; Uinstr0 = incr_hp(_, _, _, _, _, _)
+        ; Uinstr0 = incr_hp(_, _, _, _, _, _, _)
         ; Uinstr0 = restore_hp(_)
         ; Uinstr0 = init_sync_term(_, _)
         ),

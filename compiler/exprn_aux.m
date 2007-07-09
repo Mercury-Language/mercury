@@ -393,10 +393,20 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         Transform(Lval0, Lval, !Acc),
         Uinstr = restore_maxfr(Lval)
     ;
-        Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor, MayUseAtomic),
+        Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor,
+            MayUseAtomic, MaybeRegionRval0),
         Transform(Lval0, Lval, !Acc),
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
-        Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor, MayUseAtomic)
+        (
+            MaybeRegionRval0 = no,
+            MaybeRegionRval = MaybeRegionRval0
+        ;
+            MaybeRegionRval0 = yes(RegionRval0),
+            transform_lval_in_rval(Transform, RegionRval0, RegionRval, !Acc),
+            MaybeRegionRval = yes(RegionRval)
+        ),
+        Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor,
+            MayUseAtomic, MaybeRegionRval)
     ;
         Uinstr0 = mark_hp(Lval0),
         Transform(Lval0, Lval, !Acc),

@@ -321,14 +321,16 @@
             % lval was saved with save_maxfr.
 
     ;       incr_hp(lval, maybe(tag), maybe(int), rval, string,
-                may_use_atomic_alloc)
+                may_use_atomic_alloc, maybe(rval))
             % Get a memory block of a size given by an rval and put its address
             % in the given lval, possibly after incrementing it by N words
             % (if the maybe(int) is bound to `yes(N)') and/or after tagging it
             % with a given tag. The string gives the name of the type
             % constructor of the memory cell for use in memory profiling.
-            % The last argument says whether we can use the atomic variants
-            % of the Boehm gc allocator calls.
+            % The may_use_atomic_alloc argument says whether we can use the
+            % atomic variants of the Boehm gc allocator calls. The last
+            % argument says if the memory block is from a region or not, and
+            % if yes, from which region.
 
     ;       mark_hp(lval)
             % Tell the heap sub-system to store a marker (for later use in
