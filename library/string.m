@@ -1708,13 +1708,20 @@ string.sub_string_search(WholeString, Pattern, Index) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     String = lists:nthtail(BeginAt, WholeString),
-    case string:str(String, Pattern) of
-        0 ->
-            Index = -1,
-            SUCCESS_INDICATOR = false;
-        Match ->
-            Index = BeginAt + Match - 1,
-            SUCCESS_INDICATOR = true
+    case Pattern of
+        """" ->
+            % string:str does not handle the empty pattern as we would like.
+            Index = BeginAt,
+            SUCCESS_INDICATOR = true;
+        _ ->
+            case string:str(String, Pattern) of
+                0 ->
+                    Index = -1,
+                    SUCCESS_INDICATOR = false;
+                Match ->
+                    Index = BeginAt + Match - 1,
+                    SUCCESS_INDICATOR = true
+            end
     end
 ").
 
