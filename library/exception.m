@@ -1401,7 +1401,7 @@ namespace mercury {
     catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    {T} = try
+    T = try
         Pred()
     catch
         throw: {'ML_exception', Excp} ->
@@ -1421,11 +1421,11 @@ namespace mercury {
                 Handler(Excp)
         end
     of
-        {T} ->
-            SUCCESS_INDICATOR = true;
-        _ ->
+        fail ->
             SUCCESS_INDICATOR = false,
-            T = null
+            T = null;
+        T ->
+            SUCCESS_INDICATOR = true
     end
 ").
 
@@ -1444,7 +1444,7 @@ namespace mercury {
             Pred(Succeed)
         catch
             throw: {'ML_exception', Excp} ->
-                {Result} = Handler(Excp),
+                Result = Handler(Excp),
                 Succeed(Result)
         end.
 
@@ -1453,7 +1453,7 @@ namespace mercury {
             Pred(Succeed)
         catch
             throw: {'ML_exception', Excp} ->
-                {Result} = Handler(Excp),
+                Result = Handler(Excp),
                 Succeed(Result)
         end.
 ").

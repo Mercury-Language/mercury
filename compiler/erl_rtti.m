@@ -318,11 +318,16 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcId, WrapperFun,
     determinism_to_code_model(Detism, CodeModel),
     WrapperOutputVarsExprs = exprs_from_vars(WrapperOutputVars),
     (
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
-        ),
+        CodeModel = model_det,
         AllWrapperInputVars = [TCIVar | WrapperInputVars],
-        % On success we return a tuple of the output arguments of the call.
+        % On success we either return a tuple of the output variables of the
+        % call, or if there is exactly one output variable, just that output
+        % variable.
+        SuccessExpr0 = tuple_or_single_expr(WrapperOutputVarsExprs)
+    ;
+        CodeModel = model_semi,
+        AllWrapperInputVars = [TCIVar | WrapperInputVars],
+        % On success we return a tuple of the output variables of the call.
         SuccessExpr0 = elds_term(elds_tuple(WrapperOutputVarsExprs))
     ;
         CodeModel = model_non,
@@ -675,9 +680,13 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
     determinism_to_code_model(Detism, CodeModel),
     WrapperOutputVarsExprs = exprs_from_vars(WrapperOutputVars),
     (
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
-        ),
+        CodeModel = model_det,
+        % On success we either return a tuple of the output variables of the
+        % call, or if there is exactly one output variable, just that output
+        % variable.
+        SuccessExpr0 = tuple_or_single_expr(WrapperOutputVarsExprs)
+    ;
+        CodeModel = model_semi,
         % On success we return a tuple of the output arguments of the call.
         SuccessExpr0 = elds_term(elds_tuple(WrapperOutputVarsExprs))
     ;

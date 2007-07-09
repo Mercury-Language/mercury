@@ -1060,39 +1060,39 @@ det_unimplemented(S) :-
     result_call_4(Pred::in, Res::out, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Res} = Pred(X, Y)
+    Res = Pred(X, Y)
 ").
 
 :- pragma foreign_proc("Erlang",
     result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Res} = Pred(A, X, Y)
+    Res = Pred(A, X, Y)
 ").
 :- pragma foreign_proc("Erlang",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Res} = Pred(A, B, X, Y)
+    Res = Pred(A, B, X, Y)
 ").
 :- pragma foreign_proc("Erlang",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Res} = Pred(A, B, C, X, Y)
+    Res = Pred(A, B, C, X, Y)
 ").
 :- pragma foreign_proc("Erlang",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Res} = Pred(A, B, C, D, X, Y)
+    Res = Pred(A, B, C, D, X, Y)
 ").
 :- pragma foreign_proc("Erlang",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Res} = Pred(A, B, C, D, E, X, Y)
+    Res = Pred(A, B, C, D, E, X, Y)
 ").
 
 %-----------------------------------------------------------------------------%

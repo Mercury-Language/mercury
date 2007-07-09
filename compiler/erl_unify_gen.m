@@ -363,9 +363,11 @@ pred_const_to_closure(ShroudedPredProcId, CurriedArgs, FunExpr, !Info) :-
 
     OutputVarsInclDummyExprs = exprs_from_vars(OutputVarsInclDummy),
     (
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
-        ),
+        CodeModel = model_det,
+        ClosureInputArgs = InputExtraVars,
+        SuccessExpr0 = tuple_or_single_expr(OutputVarsInclDummyExprs)
+    ;
+        CodeModel = model_semi,
         ClosureInputArgs = InputExtraVars,
         SuccessExpr0 = elds_term(elds_tuple(OutputVarsInclDummyExprs))
     ;

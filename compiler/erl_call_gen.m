@@ -206,7 +206,7 @@ make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
         )
     ;
         OutputVars = [_ | _],
-        UnpackTerm = elds_term(elds_tuple(elds.exprs_from_vars(OutputVars))),
+        UnpackTerm = tuple_or_single_expr(exprs_from_vars(OutputVars)),
         (if
             MaybeSuccessExpr = yes(UnpackTerm)
         then
@@ -627,17 +627,20 @@ erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
     OutputVarsNames = list.map(foreign_arg_name, OutputForeignArgs),
 
     ForeignCodeExpr = elds_foreign_code(ForeignCode),
-    OutputTuple = elds_term(elds_tuple(
-        exprs_from_fixed_vars(OutputVarsNames))),
 
     % Create the inner lambda function.
     (
         CodeModel = model_det,
         %
         %   <ForeignCodeExpr>,
+        %   SingleOutput
+        % or
+        %   <ForeignCodeExpr>,
         %   {Outputs, ...}
         %
-        InnerFunStatement = join_exprs(ForeignCodeExpr, OutputTuple)
+        OutputExpr = tuple_or_single_expr(
+            exprs_from_fixed_vars(OutputVarsNames)),
+        InnerFunStatement = join_exprs(ForeignCodeExpr, OutputExpr)
     ;
         CodeModel = model_semi,
         %
@@ -648,6 +651,8 @@ erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
         %   end
         %
         InnerFunStatement = join_exprs(ForeignCodeExpr, MaybePlaceOutputs),
+        OutputTuple = elds_term(elds_tuple(
+            exprs_from_fixed_vars(OutputVarsNames))),
         MaybePlaceOutputs = elds_case_expr(SuccessInd, [OnTrue, OnFalse]),
         SuccessInd = elds_term(elds_fixed_name_var("SUCCESS_INDICATOR")),
         OnTrue = elds_case(elds_true, OutputTuple),

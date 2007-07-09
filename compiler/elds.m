@@ -352,6 +352,12 @@
 
 :- func elds_clause_arity(elds_clause) = arity.
 
+    % tuple_or_single_expr(List)
+    % If List contains exactly one expression, return that expression.
+    % Otherwise return a tuple of the expressions in List.
+    %
+:- func tuple_or_single_expr(list(elds_expr)) = elds_expr.
+
     %
     % make_enum_alternative(F)
     %
@@ -443,6 +449,13 @@ elds_body_arity(body_defined_here(Clause)) = elds_clause_arity(Clause).
 elds_body_arity(body_external(Arity)) = Arity.
 
 elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
+
+tuple_or_single_expr(List) =
+    ( List = [SingleExpr] ->
+        SingleExpr
+    ;
+        elds_term(elds_tuple(List))
+    ).
 
 make_enum_alternative(F) = elds_tuple([elds_term(elds_atom(unqualified(F)))]).
 

@@ -278,11 +278,11 @@ erl_gen_simple_compare(ModuleInfo, PredId, ProcId, X, Y, ProcDefn) :-
 
     %   '__Compare__'(X, Y) ->
     %       case X =:= Y of
-    %           true -> {{'='}};
+    %           true -> {'='};
     %           false ->
     %               case X < Y of
-    %                   true -> {{'<'}};
-    %                   false -> {{'>'}};
+    %                   true -> {'<'};
+    %                   false -> {'>'};
     %               end
     %       end.
     %
@@ -290,22 +290,17 @@ erl_gen_simple_compare(ModuleInfo, PredId, ProcId, X, Y, ProcDefn) :-
     ClauseExpr = elds_case_expr(CondEq, [IsEq, IsNotEq]),
 
     CondEq = elds_binop((=:=), XExpr, YExpr),
-    IsEq = elds_case(elds_true, enum_in_tuple("=")),
+    IsEq = elds_case(elds_true, elds_term(make_enum_alternative("="))),
     IsNotEq = elds_case(elds_false, elds_case_expr(CondLt, [IsLt, IsGt])),
 
     CondLt = elds_binop((<), XExpr, YExpr),
-    IsLt = elds_case(elds_true, enum_in_tuple("<")),
-    IsGt = elds_case(elds_false, enum_in_tuple(">")),
+    IsLt = elds_case(elds_true, elds_term(make_enum_alternative("<"))),
+    IsGt = elds_case(elds_false, elds_term(make_enum_alternative(">"))),
 
     erl_gen_info_get_varset(Info, ProcVarSet),
     erl_gen_info_get_env_vars(Info, EnvVarNames),
     ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet,
         body_defined_here(Clause), EnvVarNames).
-
-:- func enum_in_tuple(string) = elds_expr.
-
-enum_in_tuple(X) = 
-    elds_term(elds_tuple([elds_term(make_enum_alternative(X))])).
 
 %-----------------------------------------------------------------------------%
 %
@@ -381,9 +376,18 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
     erl_gen_info_get_output_vars(!.Info, OutputVars),
     OutputVarsExprs = exprs_from_vars(OutputVars),
     (
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
-        ),
+        CodeModel = model_det,
+        InputVarsTerms = terms_from_vars(InputVars),
+        %
+        % On success, the procedure returns either:
+        % - the single output variable, or
+        % - a tuple of its output variables if there are zero or two or more
+        %   output variables.
+        % 
+        SuccessExpr = tuple_or_single_expr(OutputVarsExprs),
+        InstMap = InstMap0
+    ;
+        CodeModel = model_semi,
         InputVarsTerms = terms_from_vars(InputVars),
         %
         % On success, the procedure returns a tuple of its output variables.
