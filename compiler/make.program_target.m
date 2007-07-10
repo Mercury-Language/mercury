@@ -1579,9 +1579,12 @@ remove_init_files(Verbose, ModuleName, !Info, !IO) :-
         !IO),
     globals.io_lookup_string_option(link_with_pic_object_file_extension,
         LinkWithPicObjExt, !IO),
+    globals.io_lookup_string_option(erlang_object_file_extension, BeamExt,
+        !IO),
     list.foldl2(make_remove_file(Verbose, ModuleName),
         ["_init.c", "_init" ++ ObjExt,
-            "_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt],
+            "_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt,
+            "_init.erl", "_init" ++ BeamExt],
         !Info, !IO).
 
 :- pred make_module_clean(module_name::in, make_info::in, make_info::out,
