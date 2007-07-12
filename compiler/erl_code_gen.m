@@ -365,7 +365,17 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
             proc_info_get_argmodes(ProcInfo, ArgModes),
             erl_gen_arg_list(ModuleInfo, opt_dummy_args,
                 HeadVars, ArgTypes, ArgModes, InputArgs, _OutputArgs),
-            ProcBody = body_external(list.length(InputArgs))
+            (
+                ( CodeModel = model_det
+                ; CodeModel = model_semi
+                ),
+                Arity = list.length(InputArgs)
+            ;
+                CodeModel = model_non,
+                % Extra argument for success continuation.
+                Arity = list.length(InputArgs) + 1
+            ),
+            ProcBody = body_external(Arity)
         ;
             erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause,
                 !Info),

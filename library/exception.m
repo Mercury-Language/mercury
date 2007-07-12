@@ -1397,40 +1397,24 @@ namespace mercury {
     throw({'ML_exception', T})
 ").
 
-:- pragma foreign_proc("Erlang",
-    catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
-    [will_not_call_mercury, promise_pure],
-"
-    T = try
-        Pred()
-    catch
-        throw: {'ML_exception', Excp} ->
-            Handler(Excp)
-    end
-").
+:- pragma foreign_code("Erlang", "
 
-:- pragma foreign_proc("Erlang",
-    catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
-    [will_not_call_mercury, promise_pure],
-"
-    case
-        try
-            Pred()
+    % det ==> model_det
+    builtin_catch_3_p_0(TypeInfo, WrappedGoal, Handler) ->
+        T = try
+            WrappedGoal()
         catch
             throw: {'ML_exception', Excp} ->
                 Handler(Excp)
-        end
-    of
-        fail ->
-            SUCCESS_INDICATOR = false,
-            T = null;
-        T ->
-            SUCCESS_INDICATOR = true
-    end
-").
+        end.
 
-:- pragma foreign_code("Erlang", "
+    % semidet ==> model_semi
+    builtin_catch_3_p_1(_TypeInfo, _WrappedGoal, _Handler) ->
+        % This function is not called anywhere in this module.
+        mercury__private_builtin:sorry_1_p_0(
+            ""builtin_catch_3_p_1 not implemented"").
 
+    % cc_multi ==> model_det
     builtin_catch_3_p_2(TypeInfo, WrappedGoal, Handler) ->
         try
             WrappedGoal()
@@ -1439,6 +1423,13 @@ namespace mercury {
                 Handler(Excp)
         end.
 
+    % cc_nondet ==> model_semi
+    builtin_catch_3_p_3(_TypeInfo, _Pred, _Handler) ->
+        % This function is not called anywhere in this module.
+        mercury__private_builtin:sorry_1_p_0(
+            ""builtin_catch_3_p_3 not implemented"").
+
+    % multi ==> model_non
     builtin_catch_3_p_4(_TypeInfo_for_T, Pred, Handler, Succeed) ->
         try
             Pred(Succeed)
@@ -1448,6 +1439,7 @@ namespace mercury {
                 Succeed(Result)
         end.
 
+    % multi ==> model_non
     builtin_catch_3_p_5(_TypeInfo_for_T, Pred, Handler, Succeed) ->
         try
             Pred(Succeed)
