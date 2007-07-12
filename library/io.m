@@ -9004,12 +9004,72 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     MR_update_io(IO0, IO);
 ").
 
+:- pragma foreign_decl("C", "
+
+#ifdef MR_HAVE_ENVIRON
+    #include <unistd.h>
+
+    /* The man page says that this should be declared by the user program. */
+    extern char **environ;
+#endif
+
+#ifdef MR_HAVE_SPAWN_H
+    #include <spawn.h>
+#endif
+").
+
 :- pragma foreign_proc("C",
     io.call_system_code(Command::in, Status::out, Msg::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
+    /*
+    ** In multithreaded grades, try to use posix_spawn() instead of system().
+    ** There were problems with threads and system() on Linux/glibc, probably
+    ** because system() uses fork().
+    */
+#if defined(MR_THREAD_SAFE) && defined(MR_HAVE_POSIX_SPAWN) && \
+        defined(MR_HAVE_ENVIRON)
+
+    char    *argv[4];
+    pid_t   pid;
+    int     err;
+    int     st;
+
+    argv[0] = ""sh"";
+    argv[1] = ""-c"";
+    argv[2] = Command;
+    argv[3] = NULL;
+
+    /* Protect `environ' from concurrent modifications. */
+    MR_OBTAIN_GLOBAL_LOCK(MR_PROC_LABEL);
+
+    err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv,
+        (char * const) environ);
+    if (err != 0) {
+        /* Spawn failed. */
+        Status = 127;
+        ML_maybe_make_err_msg(MR_TRUE, errno,
+            ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE, Msg);
+    } else {
+        /* Wait for the spawned process to exit. */
+        err = waitpid(pid, &st, 0);
+        if (err == -1) {
+            Status = 127;
+            ML_maybe_make_err_msg(MR_TRUE, errno,
+                ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE,
+                Msg);
+        } else {
+            Status = st;
+            Msg = MR_make_string_const("""");
+        }
+    }
+
+    MR_RELEASE_GLOBAL_LOCK(MR_PROC_LABEL);
+
+#else   /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
+
     Status = system(Command);
     if (Status == -1) {
         /*
@@ -9023,6 +9083,9 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     } else {
         Msg = MR_make_string_const("""");
     }
+
+#endif  /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
+
     MR_update_io(IO0, IO);
 ").
 

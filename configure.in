@@ -963,7 +963,7 @@ mercury_check_for_functions \
 		getpid setpgid fork execlp wait kill \
 		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
 		access sleep opendir readdir closedir mkdir symlink readlink \
-		gettimeofday setenv putenv _putenv
+		gettimeofday setenv putenv _putenv posix_spawn
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_FOR_HEADERS( \
@@ -971,7 +971,7 @@ MERCURY_CHECK_FOR_HEADERS( \
 		asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
 		sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
 		sys/stropts.h windows.h dirent.h getopt.h malloc.h \
-		semaphore.h pthread.h time.h)
+		semaphore.h pthread.h time.h spawn.h)
 
 if test "$MR_HAVE_GETOPT_H" = 1; then
 	GETOPT_H_AVAILABLE=yes
@@ -3977,6 +3977,30 @@ AC_TRY_LINK([
 if test "$mercury_cv_have_posix_times" = yes; then
 	AC_MSG_RESULT(yes)
 	AC_DEFINE(MR_HAVE_POSIX_TIMES)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
+#
+# Check for the environ global variable.
+#
+AC_MSG_CHECKING(for environ global variable)
+AC_CACHE_VAL(mercury_cv_have_environ,
+AC_TRY_LINK([
+	#include <unistd.h>
+
+	extern char **environ;
+],[
+	environ
+],[mercury_cv_have_environ=yes],[mercury_cv_have_environ=no]))
+
+#
+# figure out whether the test succeeded
+#
+if test "$mercury_cv_have_environ" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_HAVE_ENVIRON)
 else
 	AC_MSG_RESULT(no)
 fi
