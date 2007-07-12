@@ -25,8 +25,9 @@
 
     % output_elds(ELDS, !IO):
     %
-    % Output Erlang code to the appropriate .erl file.  The file names are
-    % determined by the module name.
+    % Output Erlang code to the appropriate .erl file
+    % and exported foreign_decls to the corresponding .hrl file. 
+    % The file names are determined by the module name.
     %
 :- pred output_elds(module_info::in, elds::in, io::di, io::uo) is det.
 
@@ -70,30 +71,24 @@
 %-----------------------------------------------------------------------------%
 
 output_elds(ModuleInfo, ELDS, !IO) :-
-    module_name_to_file_name(ELDS ^ elds_name, ".erl", yes,
-        SourceFileName, !IO),
+    Name = ELDS ^ elds_name,
+    module_name_to_file_name(Name, ".erl", yes, SourceFileName, !IO),
+    module_name_to_file_name(Name, ".hrl", yes, HeaderFileName, !IO),
     output_to_file(SourceFileName, output_erl_file(ModuleInfo, ELDS,
+        SourceFileName), !IO),
+    output_to_file(HeaderFileName, output_hrl_file(Name, ELDS,
         SourceFileName), !IO).
 
 :- pred output_erl_file(module_info::in, elds::in, string::in,
     io::di, io::uo) is det.
 
 output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
-    ELDS = elds(ModuleName, ForeignDecls, ForeignBodies, ProcDefns,
+    ELDS = elds(ModuleName, Imports, ForeignDecls, ForeignBodies, ProcDefns,
         ForeignExportDefns, RttiDefns, InitPreds, FinalPreds),
     AddMainWrapper = should_add_main_wrapper(ModuleInfo),
 
     % Output intro.
-    library.version(Version),
-    io.write_strings([
-        "%\n",
-        "% Automatically generated from `", SourceFileName, "'\n",
-        "% by the Mercury compiler,\n",
-        "% version ", Version, ".\n",
-        "% Do not edit.\n",
-        "%\n",
-        "\n"
-    ], !IO),
+    output_do_no_edit_comment(SourceFileName, !IO),
 
     % Write module annotations.
     io.write_string("-module(", !IO),
@@ -112,6 +107,8 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
 
     % Useful for debugging.
     io.write_string("% -compile(export_all).\n", !IO),
+
+    set.fold(output_include_header_ann, Imports, !IO), 
 
     % Output foreign declarations.
     list.foldl(output_foreign_decl_code, ForeignDecls, !IO),
@@ -160,6 +157,20 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     list.foldl(output_foreign_export_defn(ModuleInfo), ForeignExportDefns,
         !IO),
     list.foldl(output_rtti_defn(ModuleInfo), RttiDefns, !IO).
+
+:- pred output_do_no_edit_comment(string::in, io::di, io::uo) is det.
+
+output_do_no_edit_comment(SourceFileName, !IO) :-
+    library.version(Version),
+    io.write_strings([
+        "%\n",
+        "% Automatically generated from `", SourceFileName, "'\n",
+        "% by the Mercury compiler,\n",
+        "% version ", Version, ".\n",
+        "% Do not edit.\n",
+        "%\n",
+        "\n"
+    ], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -364,6 +375,16 @@ output_env_var_directive(EnvVarName, !IO) :-
     io.write_string("% ENVVAR ", !IO),
     write_with_escaping(in_string, EnvVarName, !IO),
     io.nl(!IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_include_header_ann(module_name::in, io::di, io::uo) is det.
+
+output_include_header_ann(Import, !IO) :-
+    module_name_to_search_file_name(Import, ".hrl", HeaderFile, !IO),
+    io.write_string("-include(""", !IO),
+    write_with_escaping(in_string, HeaderFile, !IO),
+    io.write_string(""").\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1156,6 +1177,41 @@ escape("\\'", 39).
 escape("\\\"", 34).
 escape("\\\\", 92).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred output_hrl_file(module_name::in, elds::in, string::in,
+    io::di, io::uo) is det.
+
+output_hrl_file(ModuleName, ELDS, SourceFileName, !IO) :-
+    output_do_no_edit_comment(SourceFileName, !IO),
+
+    MangledModuleName = sym_name_mangle(ModuleName),
+    string.to_upper(MangledModuleName, UppercaseModuleName),
+    string.append(UppercaseModuleName, "_HRL", GuardMacroName),
+    io.write_strings([
+        "-ifndef(", GuardMacroName, ").\n",
+        "-define(", GuardMacroName, ", 1).\n"
+    ], !IO),
+
+    ForeignDecls = ELDS ^ elds_foreign_decls,
+    list.foldl(output_exported_foreign_decl_code, ForeignDecls, !IO),
+
+    io.write_string("-endif.\n", !IO).
+
+:- pred output_exported_foreign_decl_code(foreign_decl_code::in,
+    io::di, io::uo) is det.
+
+output_exported_foreign_decl_code(ForeignDecl, !IO) :-
+    IsLocal = ForeignDecl ^ fdecl_is_local,
+    (
+        IsLocal = foreign_decl_is_local
+    ;
+        IsLocal = foreign_decl_is_exported,
+        output_foreign_decl_code(ForeignDecl, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- type indent == int.

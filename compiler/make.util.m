@@ -1004,6 +1004,7 @@ target_extension(_, module_target_il_code) = yes(".il").
     % XXX ".exe" if the module contains main.
 target_extension(_, module_target_il_asm) = yes(".dll").
 target_extension(_, module_target_java_code) = yes(".java").
+target_extension(_, module_target_erlang_header) = yes(".hrl").
 target_extension(_, module_target_erlang_code) = yes(".erl").
 target_extension(_, module_target_erlang_beam_code) = yes(".beam").
 target_extension(_, module_target_asm_code(non_pic)) = yes(".s").
@@ -1143,6 +1144,8 @@ search_for_file_type(module_target_c_code) = no.
 search_for_file_type(module_target_il_code) = no.
 search_for_file_type(module_target_il_asm) = no.
 search_for_file_type(module_target_java_code) = no.
+search_for_file_type(module_target_erlang_header) =
+        yes(erlang_include_directory).
 search_for_file_type(module_target_erlang_code) = no.
 search_for_file_type(module_target_erlang_beam_code) = no.
 search_for_file_type(module_target_asm_code(_)) = no.
@@ -1166,6 +1169,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_short_interface
         ; Target = module_target_unqualified_short_interface
         ; Target = module_target_c_header(header_mh)
+        ; Target = module_target_erlang_header
         ; Target = module_target_xml_doc
         ),
         IsDependent = no

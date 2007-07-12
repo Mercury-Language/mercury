@@ -875,6 +875,7 @@ module_name_to_file_name_2(ModuleName0, Ext, Search, MkDir, FileName, !IO) :-
     ;
         (
             ( string.suffix(Ext, ".erl")
+            ; string.suffix(Ext, ".hrl")
             ; string.suffix(Ext, ".beam")
             )
         ->
@@ -935,10 +936,13 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             % in installed libraries will work.  `--c-include-directory' is
             % set so that searches for files in the current directory will
             % work.
+            % Similarly for `.hrl' files.  We set `--erlang-include-directory'
+            % for those. 
             %
             Search = yes,
             ( Ext = ".mih"
             ; Ext = ".mih.tmp"
+            ; Ext = ".hrl"
             )
         )
     ->
@@ -1280,12 +1284,15 @@ file_is_arch_or_grade_dependent_2(".erl").
 file_is_arch_or_grade_dependent_2(".erl_date").
 file_is_arch_or_grade_dependent_2(".beam").
 file_is_arch_or_grade_dependent_2(".beams").
+file_is_arch_or_grade_dependent_2(".hrl").
 file_is_arch_or_grade_dependent_2(".dir").
 file_is_arch_or_grade_dependent_2(".dll").
 file_is_arch_or_grade_dependent_2(".$A").
 file_is_arch_or_grade_dependent_2(".a").
 file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
+file_is_arch_or_grade_dependent_2("_init.erl").
+file_is_arch_or_grade_dependent_2("_init.beam").
 
 %-----------------------------------------------------------------------------%
 %
@@ -3528,8 +3535,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ;
                 Target = target_erlang,
                 ForeignImportTargets = [BeamFileName],
-                % XXX not sure about this
-                ForeignImportExt = ".erl"
+                ForeignImportExt = ".hrl"
             ;
                 Target = target_c,
                 % NOTE: for C (and asm) the possible targets might be a .o

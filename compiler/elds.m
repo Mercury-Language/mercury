@@ -45,6 +45,9 @@
                 % The original Mercury module name.
                 elds_name           :: module_name,
 
+                % Modules imported by this module.
+                elds_imports        :: set(module_name),
+
                 % Foreign code declarations.
                 elds_foreign_decls  :: list(foreign_decl_code),
 

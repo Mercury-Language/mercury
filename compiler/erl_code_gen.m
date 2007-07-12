@@ -23,7 +23,6 @@
 % TODO: (this is incomplete)
 % - contexts are ignored at the moment
 % - RTTI
-% - support non-local foreign code declarations (e.g. for macros)
 %
 %-----------------------------------------------------------------------------%
 
@@ -83,6 +82,7 @@
 erl_code_gen(ModuleInfo, ELDS, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     erl_gen_preds(ModuleInfo, ProcDefns, !IO),
+    erl_gen_imports(ModuleInfo, Imports),
     filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies,
         PragmaExports, !IO),
     erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns),
@@ -90,8 +90,16 @@ erl_code_gen(ModuleInfo, ELDS, !IO) :-
     RttiDefns = [],
     module_info_user_init_pred_procs(ModuleInfo, InitPredProcs),
     module_info_user_final_pred_procs(ModuleInfo, FinalPredProcs),
-    ELDS = elds(ModuleName, ForeignDecls, ForeignBodies, ProcDefns,
+    ELDS = elds(ModuleName, Imports, ForeignDecls, ForeignBodies, ProcDefns,
         ForeignExportDefns, RttiDefns, InitPredProcs, FinalPredProcs).
+
+:- pred erl_gen_imports(module_info::in, set(module_name)::out) is det.
+
+erl_gen_imports(ModuleInfo, AllImports) :-
+    module_info_get_all_deps(ModuleInfo, AllImports0),
+    % No module needs to import itself.
+    module_info_get_name(ModuleInfo, ThisModule),
+    AllImports = set.delete(AllImports0, ThisModule).
 
 :- pred filter_erlang_foreigns(module_info::in, list(foreign_decl_code)::out,
     list(foreign_body_code)::out, list(pragma_exported_proc)::out,

@@ -1665,7 +1665,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
 
         %
-        % Handle the `.opt', C header, init file and library search
+        % Handle the `.opt', C and Erlang header, init file and library search
         % directories for installed libraries.  These couldn't be handled by
         % options.m because they are grade dependent.
         %
@@ -1689,14 +1689,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(runtime_link_library_directories,
                 accumulating(Rpath ++ ExtraLinkLibDirs), !Globals),
 
-            ExtraCIncludeDirs = list.map(
+            ExtraIncludeDirs = list.map(
                 (func(MercuryLibDir) =
                     MercuryLibDir/"lib"/GradeString/"inc"
                 ), MercuryLibDirs),
             globals.lookup_accumulating_option(!.Globals, c_include_directory,
                 CIncludeDirs),
             globals.set_option(c_include_directory,
-                accumulating(ExtraCIncludeDirs ++ CIncludeDirs), !Globals),
+                accumulating(ExtraIncludeDirs ++ CIncludeDirs), !Globals),
+            globals.lookup_accumulating_option(!.Globals,
+                erlang_include_directory, ErlangIncludeDirs),
+            globals.set_option(erlang_include_directory,
+                accumulating(ExtraIncludeDirs ++ ErlangIncludeDirs), !Globals),
 
             ExtraIntermodDirs = list.map(
                 (func(MercuryLibDir) =
@@ -1804,7 +1808,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             accumulating(InitDirs), !Globals),
 
         %
-        % When searching for a header (.mh or .mih) file,
+        % When searching for a header (.mh, .mih, .hrl) file,
         % module_name_to_file_name uses the plain header name, so we need to
         % add the full path to the header files in the current directory,
         % and any directories listed with --search-library-files-directory.
@@ -1812,9 +1816,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
             ( UseGradeSubdirs = yes ->
-                ToMihsSubdir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs")
+                ToMihsSubdir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs"),
+                ToHrlsSubdir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"hrls")
             ; UseSubdirs = yes ->
-                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs")
+                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs"),
+                ToHrlsSubdir = (func(Dir) = Dir/"Mercury"/"hrls")
             ;
                 fail
             )
@@ -1826,7 +1832,14 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             SubdirCIncludeDirs = [dir.this_directory, MihsSubdir |
                 SearchLibMihsSubdirs ++ CIncludeDirs1],
             globals.set_option(c_include_directory,
-                accumulating(SubdirCIncludeDirs), !Globals)
+                accumulating(SubdirCIncludeDirs), !Globals),
+
+            globals.lookup_accumulating_option(!.Globals,
+                erlang_include_directory, ErlangIncludeDirs1),
+            HrlsSubdir = ToHrlsSubdir(dir.this_directory),
+            SubdirErlangIncludeDirs = [HrlsSubdir | ErlangIncludeDirs1],
+            globals.set_option(erlang_include_directory,
+                accumulating(SubdirErlangIncludeDirs), !Globals)
         ;
             true
         ),

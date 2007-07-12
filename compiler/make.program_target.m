@@ -1050,6 +1050,11 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
+            Target = target_erlang
+        ->
+            module_name_to_file_name(ModuleName, ".hrl", no, FileName, !IO),
+            install_file(FileName, LibDir/"inc", HeaderSucceeded, !IO)
+        ;
             HeaderSucceeded = yes
         ),
         Succeeded = bool.and_list([HeaderSucceeded | Results])
@@ -1602,6 +1607,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
         [module_target_errors, module_target_c_code,
         module_target_c_header(header_mih), module_target_il_code,
         module_target_java_code, module_target_erlang_code,
+        module_target_erlang_header,
         module_target_erlang_beam_code], !Info, !IO),
 
     list.foldl2(make_remove_file(very_verbose, ModuleName),
@@ -1682,7 +1688,8 @@ make_module_realclean(ModuleName, !Info, !IO) :-
             module_target_unqualified_short_interface, 
             module_target_intermodule_interface, 
             module_target_analysis_registry,
-            module_target_c_header(header_mh)
+            module_target_c_header(header_mh),
+            module_target_erlang_header
         ],
         !Info, !IO),
     make_remove_file(very_verbose, ModuleName, make_module_dep_file_extension,

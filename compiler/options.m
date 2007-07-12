@@ -54,6 +54,7 @@
 
     % Add a directory to search for Mercury libraries. This
     % adds `--search-directory', `--c-include-directory',
+    % `--erlang-include-directory',
     % `--library-directory' and `--init-file-directory' options.
     %
 :- func option_table_add_mercury_library_directory(option_table, string)
@@ -62,7 +63,8 @@
     % Add a directory using all of the
     % `--search-directory', `--intermod-directory',
     % `--library-directory', `--init-file-directory' and
-    % `--c-include-directory' options.
+    % `--c-include-directory', `--erlang-include-directory'
+    % options.
     %
 :- func option_table_add_search_library_files_directory(option_table,
     string) = option_table.
@@ -716,6 +718,7 @@
     ;       erlang_interpreter
     ;       erlang_flags
     ;       quoted_erlang_flag
+    ;       erlang_include_directory
     ;       erlang_object_file_extension
     ;       erlang_native_code
 
@@ -1485,6 +1488,7 @@ option_defaults_2(target_code_compilation_option, [
     erlang_interpreter                  -   string("erl"),
     erlang_flags                        -   accumulating([]),
     quoted_erlang_flag                  -   string_special,
+    erlang_include_directory            -   accumulating([]),
     erlang_object_file_extension        -   string(".beam"),
     erlang_native_code                  -   bool(no)
 ]).
@@ -2305,6 +2309,8 @@ long_option("csharp-flag",          quoted_csharp_flag).
 long_option("erlang-compiler",      erlang_compiler).
 long_option("erlang-flags",         erlang_flags).
 long_option("erlang-flag",          quoted_erlang_flag).
+long_option("erlang-include-directory", erlang_include_directory).
+long_option("erlang-include-dir",       erlang_include_directory).
 long_option("erlang-object-file-extension", erlang_object_file_extension).
 long_option("erlang-native-code",   erlang_native_code).
 
@@ -2649,6 +2655,7 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
     list.foldl(append_to_accumulating_option, [
         search_directories          - dir.make_path_name(Dir, "ints"),
         c_include_directory         - dir.make_path_name(Dir, "inc"),
+        erlang_include_directory    - dir.make_path_name(Dir, "inc"),
         mercury_library_directories - Dir
     ], OptionTable0).
 
@@ -2658,6 +2665,7 @@ option_table_add_search_library_files_directory(OptionTable0, Dir) =
     list.foldl(append_to_accumulating_option, [
         search_directories          - Dir,
         c_include_directory         - Dir,
+        erlang_include_directory    - Dir,
         search_library_files_directories - Dir
     ], OptionTable0).
 
@@ -4709,6 +4717,9 @@ options_help_target_code_compilation -->
         "\tSpecify options to be passed to the Erlang compiler.",
         "\t`--erlang-flag' should be used for single words which need",
         "\tto be quoted when passed to the shell.",
+        "--erlang-include-directory <dir>, --erlang-include-dir <dir>",
+        "\tAppend <dir> to the list of directories to be searched for",
+        "\tErlang header files (.hrl).",
         "--erlang-native-code",
         "\tAdd `+native' to the start of flags passed to the Erlang compiler.",
         "\tCancelled out by `--no-erlang-native-code' so it's useful when you",

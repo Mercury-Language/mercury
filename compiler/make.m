@@ -177,6 +177,7 @@
     ;       module_target_il_code
     ;       module_target_il_asm
     ;       module_target_java_code
+    ;       module_target_erlang_header
     ;       module_target_erlang_code
     ;       module_target_erlang_beam_code
     ;       module_target_asm_code(pic)

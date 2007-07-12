@@ -726,6 +726,8 @@ compilation_task(_, module_target_il_asm) =
         target_code_to_object_code(non_pic) - [].
 compilation_task(_, module_target_java_code) =
     process_module(task_compile_to_target_code) - ["--java-only"].
+compilation_task(Globals, module_target_erlang_header) =
+        compilation_task(Globals, module_target_erlang_code).
 compilation_task(_, module_target_erlang_code) =
     process_module(task_compile_to_target_code) - ["--erlang-only"].
 compilation_task(_, module_target_erlang_beam_code) =

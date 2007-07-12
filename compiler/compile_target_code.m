@@ -948,6 +948,11 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
     ),
     ERLANGFLAGS = string.join_list(" ", ErlangFlagsList),
 
+    globals.io_lookup_accumulating_option(erlang_include_directory,
+        Erlang_Incl_Dirs, !IO),
+    InclOpt = string.append_list(list.condense(list.map(
+        (func(E_INCL) = ["-I", quote_arg(E_INCL), " "]), Erlang_Incl_Dirs))),
+
     globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     globals.io_lookup_string_option(fullarch, FullArch, !IO),
@@ -971,8 +976,8 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
         DestDir = ""
     ),
 
-    string.append_list([ErlangCompiler, " ", DestDir, ERLANGFLAGS, " ",
-        ErlangFile], Command),
+    string.append_list([ErlangCompiler, " ", InclOpt, DestDir, ERLANGFLAGS,
+        " ", ErlangFile], Command),
     invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 

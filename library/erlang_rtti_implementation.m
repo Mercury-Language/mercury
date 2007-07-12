@@ -656,18 +656,18 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
     % These are macros for efficiency.
 
     % Location of element in a type_info
-    -define(ti_type_ctor_info, 1).
-    -define(ti_var_arity, 2).
+    -define(ML_ti_type_ctor_info, 1).
+    -define(ML_ti_var_arity, 2).
 
     % Location of elements in a type_ctor_info
-    -define(tci_arity, 1).
-    -define(tci_version, 2).
-    -define(tci_unify_pred, 3).
-    -define(tci_compare_pred, 4).
-    -define(tci_module_name, 5).
-    -define(tci_type_name, 6).
-    -define(tci_type_ctor_rep, 7).
-    -define(tci_details, 8).
+    -define(ML_tci_arity, 1).
+    -define(ML_tci_version, 2).
+    -define(ML_tci_unify_pred, 3).
+    -define(ML_tci_compare_pred, 4).
+    -define(ML_tci_module_name, 5).
+    -define(ML_tci_type_name, 6).
+    -define(ML_tci_type_ctor_rep, 7).
+    -define(ML_tci_details, 8).
 ").
 
 %-----------------------------------------------------------------------------%
@@ -703,7 +703,7 @@ type_info(_) = type_info :-
         is_function(TypeInfo) ->
             TypeCtorInfo = TypeInfo();
         true ->
-            FirstElement = element(?ti_type_ctor_info, TypeInfo),
+            FirstElement = element(?ML_ti_type_ctor_info, TypeInfo),
             TypeCtorInfo = FirstElement()
     end
 ").
@@ -717,7 +717,7 @@ type_ctor_info_evaled(_) = type_ctor_info_evaled :-
     var_arity_type_info_arity(TypeInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = element(?ti_var_arity, TypeInfo)
+    Arity = element(?ML_ti_var_arity, TypeInfo)
 ").
 
 var_arity_type_info_arity(_) = 0 :-
@@ -769,7 +769,7 @@ unsafe_type_info_index(_, _) = type_info :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % io:format(""type_ctor_rep(~p)~n"", [TypeCtorInfo]),
-    TypeCtorRep = element(?tci_type_ctor_rep, TypeCtorInfo),
+    TypeCtorRep = element(?ML_tci_type_ctor_rep, TypeCtorInfo),
     % io:format(""type_ctor_rep(~p) = ~p~n"", [TypeCtorInfo, TypeCtorRep]),
     void
 ").
@@ -787,7 +787,7 @@ type_ctor_rep(_) = _ :-
 "
         % The TypeInfo is never used so this is safe
     TypeInfo_for_P = 0,
-    UnifyPred = element(?tci_unify_pred, TypeCtorInfo)
+    UnifyPred = element(?ML_tci_unify_pred, TypeCtorInfo)
 ").
 
 type_ctor_unify_pred(_) = "dummy value" :-
@@ -801,7 +801,7 @@ type_ctor_unify_pred(_) = "dummy value" :-
 "
         % The TypeInfo is never used so this is safe
     TypeInfo_for_P = 0,
-    ComparePred = element(?tci_compare_pred, TypeCtorInfo)
+    ComparePred = element(?ML_tci_compare_pred, TypeCtorInfo)
 ").
 
 type_ctor_compare_pred(_) = "dummy value" :-
@@ -813,7 +813,7 @@ type_ctor_compare_pred(_) = "dummy value" :-
     type_ctor_module_name(TypeCtorInfo::in) = (ModuleName::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ModuleName = element(?tci_module_name, TypeCtorInfo)
+    ModuleName = element(?ML_tci_module_name, TypeCtorInfo)
 ").
 
 type_ctor_module_name(_) = "dummy value" :-
@@ -825,7 +825,7 @@ type_ctor_module_name(_) = "dummy value" :-
     type_ctor_type_name(TypeCtorInfo::in) = (TypeName::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeName = element(?tci_type_name, TypeCtorInfo)
+    TypeName = element(?ML_tci_type_name, TypeCtorInfo)
 ").
 
 type_ctor_type_name(_) = "dummy value" :-
@@ -837,7 +837,7 @@ type_ctor_type_name(_) = "dummy value" :-
     type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = element(?tci_arity, TypeCtorInfo)
+    Arity = element(?ML_tci_arity, TypeCtorInfo)
 ").
 
 type_ctor_arity(_) = 0 :-
@@ -849,7 +849,7 @@ type_ctor_arity(_) = 0 :-
     type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Functors = element(?tci_details, TypeCtorInfo)
+    Functors = element(?ML_tci_details, TypeCtorInfo)
 ").
 
 type_ctor_functors(_) = [] :-
@@ -861,7 +861,7 @@ type_ctor_functors(_) = [] :-
     type_ctor_dummy_functor_name(TypeCtorInfo::in) = (Functor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Functor = element(?tci_details, TypeCtorInfo)
+    Functor = element(?ML_tci_details, TypeCtorInfo)
 ").
 
 type_ctor_dummy_functor_name(_) = "dummy value" :-
@@ -873,7 +873,7 @@ type_ctor_dummy_functor_name(_) = "dummy value" :-
     type_ctor_eqv_type(TypeCtorInfo::in) = (EqvType::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    EqvType = element(?tci_details, TypeCtorInfo)
+    EqvType = element(?ML_tci_details, TypeCtorInfo)
 ").
 
 type_ctor_eqv_type(_) = plain(type_info_thunk) :-

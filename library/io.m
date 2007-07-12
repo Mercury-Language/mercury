@@ -6110,7 +6110,7 @@ static MR_MercuryFileStruct mercury_current_binary_output =
 static java.lang.Exception MR_io_exception;
 ").
 
-:- pragma foreign_decl("Erlang", "
+:- pragma foreign_decl("Erlang", local, "
 
     % These need to be exported because code in foreign_procs may be inlined
     % into other modules.  Hence, calls to these functions must be module
@@ -9686,7 +9686,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     end
 ").
 
-:- pragma foreign_decl("Erlang", "
+:- pragma foreign_decl("Erlang", local, "
     -export(['ML_do_make_temp_2'/5]).
 ").
 :- pragma foreign_code("Erlang", "
