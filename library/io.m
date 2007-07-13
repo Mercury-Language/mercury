@@ -9037,16 +9037,18 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     int     err;
     int     st;
 
-    argv[0] = ""sh"";
-    argv[1] = ""-c"";
+    argv[0] = (char *) ""sh"";
+    argv[1] = (char *) ""-c"";
     argv[2] = Command;
     argv[3] = NULL;
 
     /* Protect `environ' from concurrent modifications. */
     MR_OBTAIN_GLOBAL_LOCK(MR_PROC_LABEL);
 
-    err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv,
-        (char * const) environ);
+    err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv, environ);
+
+    MR_RELEASE_GLOBAL_LOCK(MR_PROC_LABEL);
+
     if (err != 0) {
         /* Spawn failed. */
         Status = 127;
@@ -9065,8 +9067,6 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
             Msg = MR_make_string_const("""");
         }
     }
-
-    MR_RELEASE_GLOBAL_LOCK(MR_PROC_LABEL);
 
 #else   /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
 
