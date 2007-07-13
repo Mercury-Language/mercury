@@ -151,7 +151,8 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % finishes.
     code_info.get_par_conj_depth(!.CI, Depth),
     ( Depth = 0 ->
-        code_info.acquire_temp_slot(lval(parent_sp), ParentSpSlot, !CI),
+        code_info.acquire_temp_slot(lval(parent_sp), non_persistent_temp_slot,
+            ParentSpSlot, !CI),
         MaybeSetParentSpCode = node([
             llds_instr(assign(ParentSpSlot, lval(parent_sp)),
                 "save the old parent stack pointer"),
@@ -182,7 +183,8 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
 
     list.length(Goals, NumGoals),
     code_info.acquire_reg(reg_r, RegLval, !CI),
-    code_info.acquire_persistent_temp_slot(sync_term, SyncSlot, !CI),
+    code_info.acquire_temp_slot(sync_term, persistent_temp_slot, SyncSlot,
+        !CI),
     ( SyncSlot = stackvar(SlotNum) ->
         ParentSyncSlot = parent_stackvar(SlotNum)
     ;
@@ -212,8 +214,12 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         llds_instr(label(EndLabel), "end of parallel conjunction")
     ]),
     Code = tree_list([
-        MaybeSetParentSpCode, SaveCode, MakeSyncTermCode,
-        GoalCode, EndLabelCode, MaybeRestoreParentSpCode
+        MaybeSetParentSpCode,
+        SaveCode,
+        MakeSyncTermCode,
+        GoalCode,
+        EndLabelCode,
+        MaybeRestoreParentSpCode
     ]),
 
     % We can't release the sync slot right now, in case we are in a
@@ -235,13 +241,14 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % XXX release sync slots of nested parallel conjunctions
     %
     ( Depth = 0 ->
-        code_info.release_persistent_temp_slot(SyncSlot, !CI)
+        code_info.release_temp_slot(SyncSlot, persistent_temp_slot, !CI)
     ;
         true
     ),
     (
         MaybeReleaseParentSpSlot = yes(ParentSpSlot1),
-        code_info.release_temp_slot(ParentSpSlot1, !CI)
+        code_info.release_temp_slot(ParentSpSlot1, non_persistent_temp_slot,
+            !CI)
     ;
         MaybeReleaseParentSpSlot = no
     ),
@@ -300,18 +307,20 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTerm, EndLabel,
     % context.
     %
 :- pred replace_stack_vars_by_parent_sv(code_tree::in, code_tree::out) is det.
-:- pred replace_stack_vars_by_parent_sv_instrs(list(instruction)::in,
-    list(instruction)::out) is det.
-:- pred replace_stack_vars_by_parent_sv_lval(lval::in, lval::out,
-    unit::in, unit::out) is det.
 
 replace_stack_vars_by_parent_sv(!Code) :-
     tree.map(replace_stack_vars_by_parent_sv_instrs, !Code).
+
+:- pred replace_stack_vars_by_parent_sv_instrs(list(instruction)::in,
+    list(instruction)::out) is det.
 
 replace_stack_vars_by_parent_sv_instrs(!Instrs) :-
     list.map_foldl(
         transform_lval_in_instr(replace_stack_vars_by_parent_sv_lval),
         !Instrs, unit, _).
+
+:- pred replace_stack_vars_by_parent_sv_lval(lval::in, lval::out,
+    unit::in, unit::out) is det.
 
 replace_stack_vars_by_parent_sv_lval(Lval0, Lval, !Acc) :-
     TransformRval = replace_stack_vars_by_parent_sv_lval,

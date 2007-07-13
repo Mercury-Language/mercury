@@ -140,9 +140,13 @@ is_lookup_disj(AddTrailOps, ResumeVars, Goals, DisjGoalInfo, LookupDisjInfo,
 
     code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
-    % We cannot release this stack slot anywhere, since it will be needed
-    % after backtracking.
-    code_info.acquire_temp_slot(lookup_disj_cur, CurSlot, !CI),
+    % We cannot release this stack slot anywhere within the disjunction,
+    % since it will be needed after backtracking to later disjuncts.
+    % However, if we are inside an outer branched control structure
+    % (disjunction, switch, if-then-else), it may be released (implicitly)
+    % when we get into the next branch of that outer control structure.
+    code_info.acquire_temp_slot(lookup_disj_cur, non_persistent_temp_slot,
+        CurSlot, !CI),
     code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
     code_info.get_globals(!.CI, Globals),

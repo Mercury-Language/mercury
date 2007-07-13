@@ -586,10 +586,12 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     % of the resume point will clobber the set of acquired registers.
     %
     % We cannot release the stack slots anywhere, since they will be needed
-    % after backtracking.
+    % after backtracking to later alternatives of any model_non switch arm.
     code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
-    code_info.acquire_temp_slot(lookup_switch_cur, CurSlot, !CI),
-    code_info.acquire_temp_slot(lookup_switch_max, MaxSlot, !CI),
+    code_info.acquire_temp_slot(lookup_switch_cur, non_persistent_temp_slot,
+        CurSlot, !CI),
+    code_info.acquire_temp_slot(lookup_switch_max, non_persistent_temp_slot,
+        MaxSlot, !CI),
     % IndexRval has already had Start subtracted from it.
     BaseRval = binop(int_mul, IndexRval, const(llconst_int(MainRowWidth))),
     BaseRegInitCode = node([

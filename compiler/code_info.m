@@ -1529,7 +1529,8 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     ->
         % Here ResumeKnown must be resume_point_unknown
         % or resume_point_known(wont_be_done).
-        acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(curfr))),
+            non_persistent_temp_slot, RedoipSlot, !CI),
         HijackInfo = disj_half_hijack(RedoipSlot),
         Code = node([
             llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
@@ -1537,8 +1538,10 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip_slot(lval(maxfr))), RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(maxfr))),
+            non_persistent_temp_slot, RedoipSlot, !CI),
+        acquire_temp_slot(lval(redofr_slot(lval(maxfr))),
+            non_persistent_temp_slot, RedofrSlot, !CI),
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
         Code = node([
             llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
@@ -1652,7 +1655,8 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
     ;
         ( Allow = not_allowed ; CondEnv = inside_non_condition )
     ->
-        acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+        acquire_temp_slot(lval(maxfr), non_persistent_temp_slot, MaxfrSlot,
+            !CI),
         HijackType = ite_temp_frame(MaxfrSlot),
         create_temp_frame(do_fail, "prepare for ite", TempFrameCode, !CI),
         MaxfrCode = node([
@@ -1671,7 +1675,8 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         CurfrMaxfr = must_be_equal
     ->
         % Here ResumeKnown must be resume_point_unknown.
-        acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(curfr))),
+            non_persistent_temp_slot, RedoipSlot, !CI),
         HijackType = ite_half_hijack(RedoipSlot),
         Code = node([
             llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
@@ -1679,9 +1684,12 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip_slot(lval(maxfr))), RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
-        acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(maxfr))),
+            non_persistent_temp_slot, RedoipSlot, !CI),
+        acquire_temp_slot(lval(redofr_slot(lval(maxfr))),
+            non_persistent_temp_slot, RedofrSlot, !CI),
+        acquire_temp_slot(lval(maxfr),
+            non_persistent_temp_slot, MaxfrSlot, !CI),
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         Code = node([
             llds_instr(assign(MaxfrSlot, lval(maxfr)),
@@ -1817,7 +1825,8 @@ prepare_for_det_commit(AddTrailOps, DetCommitInfo, Code, !CI) :-
     FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _),
     (
         CurfrMaxfr = may_be_different,
-        acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+        acquire_temp_slot(lval(maxfr), non_persistent_temp_slot, MaxfrSlot,
+            !CI),
         SaveMaxfrCode = node([
             llds_instr(save_maxfr(MaxfrSlot), "save the value of maxfr")
         ]),
@@ -1839,7 +1848,7 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
             llds_instr(restore_maxfr(MaxfrSlot),
                 "restore the value of maxfr - perform commit")
         ]),
-        release_temp_slot(MaxfrSlot, !CI)
+        release_temp_slot(MaxfrSlot, non_persistent_temp_slot, !CI)
     ;
         MaybeMaxfrSlot = no,
         RestoreMaxfrCode = node([
@@ -1898,7 +1907,8 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     (
         ( Allow = not_allowed ; CondEnv = inside_non_condition )
     ->
-        acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+        acquire_temp_slot(lval(maxfr), non_persistent_temp_slot, MaxfrSlot,
+            !CI),
         MaxfrCode = node([
             llds_instr(save_maxfr(MaxfrSlot),
                 "prepare for temp frame commit")
@@ -1957,7 +1967,8 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         % Here ResumeKnown must be resume_point_unknown or
         % resume_point_known(wont_be_done).
 
-        acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(curfr))),
+            non_persistent_temp_slot, RedoipSlot, !CI),
         HijackInfo = commit_half_hijack(RedoipSlot),
         HijackCode = node([
             llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
@@ -1967,9 +1978,12 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip_slot(lval(maxfr))), RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
-        acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(maxfr))),
+            non_persistent_temp_slot, RedoipSlot, !CI),
+        acquire_temp_slot(lval(redofr_slot(lval(maxfr))),
+            non_persistent_temp_slot, RedofrSlot, !CI),
+        acquire_temp_slot(lval(maxfr),
+            non_persistent_temp_slot, MaxfrSlot, !CI),
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         HijackCode = node([
             llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
@@ -2660,8 +2674,10 @@ resume_point_stack_addr(ResumePoint, StackAddr) :-
 maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
     (
         AddTrailOps = yes,
-        acquire_temp_slot(ticket_counter, CounterSlot, !CI),
-        acquire_temp_slot(ticket, TrailPtrSlot, !CI),
+        acquire_temp_slot(ticket_counter, non_persistent_temp_slot,
+            CounterSlot, !CI),
+        acquire_temp_slot(ticket, non_persistent_temp_slot,
+            TrailPtrSlot, !CI),
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
         SaveTrailCode = node([
             llds_instr(mark_ticket_stack(CounterSlot),
@@ -2697,8 +2713,8 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
             llds_instr(discard_ticket,
                 "restore ticket counter and high water mark")
         ]),
-        release_temp_slot(CounterSlot, !CI),
-        release_temp_slot(TrailPtrSlot, !CI)
+        release_temp_slot(CounterSlot, non_persistent_temp_slot, !CI),
+        release_temp_slot(TrailPtrSlot, non_persistent_temp_slot, !CI)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2937,7 +2953,7 @@ pickup_zombies(Zombies, !CI) :-
 :- implementation.
 
 save_hp(Code, HpSlot, !CI) :-
-    acquire_temp_slot(lval(hp), HpSlot, !CI),
+    acquire_temp_slot(lval(hp), non_persistent_temp_slot, HpSlot, !CI),
     Code = node([
         llds_instr(mark_hp(HpSlot), "Save heap pointer")
     ]).
@@ -2948,7 +2964,7 @@ restore_hp(HpSlot, Code) :-
     ]).
 
 release_hp(HpSlot, !CI) :-
-    release_temp_slot(HpSlot, !CI).
+    release_temp_slot(HpSlot, non_persistent_temp_slot, !CI).
 
 restore_and_release_hp(HpSlot, Code, !CI) :-
     restore_hp(HpSlot, Code),
@@ -2996,7 +3012,7 @@ maybe_restore_and_release_hp(MaybeHpSlot, Code, !CI) :-
 %---------------------------------------------------------------------------%
 
 save_ticket(Code, TicketSlot, !CI) :-
-    acquire_temp_slot(ticket, TicketSlot, !CI),
+    acquire_temp_slot(ticket, non_persistent_temp_slot, TicketSlot, !CI),
     Code = node([
         llds_instr(store_ticket(TicketSlot), "Save trail state")
     ]).
@@ -3007,7 +3023,7 @@ reset_ticket(TicketSlot, Reason, Code) :-
     ]).
 
 release_ticket(TicketSlot, !CI) :-
-    release_temp_slot(TicketSlot, !CI).
+    release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 reset_and_prune_ticket(TicketSlot, Reason, Code) :-
     Code = node([
@@ -3020,7 +3036,7 @@ reset_prune_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Release trail"),
         llds_instr(prune_ticket, "Prune ticket stack")
     ]),
-    release_temp_slot(TicketSlot, !CI).
+    release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 reset_and_discard_ticket(TicketSlot, Reason, Code) :-
     Code = node([
@@ -3033,13 +3049,13 @@ reset_discard_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Release trail"),
         llds_instr(discard_ticket, "Pop ticket stack")
     ]),
-    release_temp_slot(TicketSlot, !CI).
+    release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 discard_and_release_ticket(TicketSlot, Code, !CI) :-
     Code = node([
         llds_instr(discard_ticket, "Pop ticket stack")
     ]),
-    release_temp_slot(TicketSlot, !CI).
+    release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 %---------------------------------------------------------------------------%
 
@@ -3780,31 +3796,44 @@ generate_resume_layout(Label, ResumeMap, !CI) :-
     %
 :- pred get_total_stackslot_count(code_info::in, int::out) is det.
 
+    % If a stack slot is persistent, then the stack slot is not implicitly
+    % released when the code generator resets its location-dependent state,
+    % usually when entering the next arm of a disjunction, switch, etc.
+
+:- type temp_slot_persistence
+    --->    persistent_temp_slot
+    ;       non_persistent_temp_slot.
+
     % Acquire a stack slot for storing a temporary. The slot_contents
     % description is for accurate gc.
     %
-:- pred acquire_temp_slot(slot_contents::in, lval::out,
-    code_info::in, code_info::out) is det.
+:- pred acquire_temp_slot(slot_contents::in, temp_slot_persistence::in,
+    lval::out, code_info::in, code_info::out) is det.
 
     % Release a stack slot acquired earlier for a temporary value.
+    % The persistence argument should match the acquire operation.
     %
-:- pred release_temp_slot(lval::in, code_info::in, code_info::out) is det.
-
-    % Acquire a stack slot for storing a temporary. The stack slot is not
-    % implicitly released when the code generator resets its location-dependent
-    % state. The slot_contents description is for accurate gc.
-    %
-:- pred acquire_persistent_temp_slot(slot_contents::in, lval::out,
+:- pred release_temp_slot(lval::in, temp_slot_persistence::in,
     code_info::in, code_info::out) is det.
 
-    % Release a persistent stack slot acquired earlier for a temporary value.
+    % Perform an acquire_temp_slot operation for each element of the
+    % input list, all with the same persistence.
     %
-:- pred release_persistent_temp_slot(lval::in, code_info::in, code_info::out)
-    is det.
+    % Given an input list of length N, the returned list will contain
+    % N consecutive stack slots.
+    %
+:- pred acquire_several_temp_slots(list(slot_contents)::in,
+    temp_slot_persistence::in, list(lval)::out,
+    code_info::in, code_info::out) is det.
 
-    % Return the lval of the stack slot in which the given variable
-    % is stored. Aborts if the variable does not have a stack slot
-    % an assigned to it.
+    % Release the stack slots acquired by an earlier acquire_several_temp_slots
+    % operation. The persistence argument should match the acquire operation.
+    %
+:- pred release_several_temp_slots(list(lval)::in, temp_slot_persistence::in,
+    code_info::in, code_info::out) is det.
+
+    % Return the lval of the stack slot in which the given variable is stored.
+    % Aborts if the variable does not have a stack slot an assigned to it.
     %
 :- pred get_variable_slot(code_info::in, prog_var::in, lval::out) is det.
 
@@ -3813,49 +3842,154 @@ generate_resume_layout(Label, ResumeMap, !CI) :-
 
 :- implementation.
 
-acquire_temp_slot(Item, StackVar, !CI) :-
-    get_temps_in_use(!.CI, TempsInUse0),
-    IsTempUsable = (pred(TempContent::in, Lval::out) is semidet :-
-        TempContent = Lval - ContentType,
-        ContentType = Item,
-        \+ set.member(Lval, TempsInUse0)
-    ),
+acquire_temp_slot(Item, Persistence, StackVar, !CI) :-
     get_temp_content_map(!.CI, TempContentMap0),
     map.to_assoc_list(TempContentMap0, TempContentList),
-    list.filter_map(IsTempUsable, TempContentList, UsableLvals),
+    get_temps_in_use(!.CI, TempsInUse0),
     (
-        UsableLvals = [UsableLval | _],
-        StackVar = UsableLval
+        find_unused_slot_for_item(TempContentList, Item, TempsInUse0,
+            ChosenStackVar, _)
+    ->
+        StackVar = ChosenStackVar
     ;
-        UsableLvals = [],
-        get_var_slot_count(!.CI, VarSlots),
-        get_max_temp_slot_count(!.CI, TempSlots0),
-        TempSlots = TempSlots0 + 1,
-        Slot = VarSlots + TempSlots,
-        stack_variable(!.CI, Slot, StackVar),
-        set_max_temp_slot_count(TempSlots, !CI),
-        map.det_insert(TempContentMap0, StackVar, Item, TempContentMap),
-        set_temp_content_map(TempContentMap, !CI)
+        new_temp_slot(Item, StackVar, !CI)
     ),
     set.insert(TempsInUse0, StackVar, TempsInUse),
-    set_temps_in_use(TempsInUse, !CI).
+    set_temps_in_use(TempsInUse, !CI),
+    (
+        Persistence = persistent_temp_slot,
+        get_persistent_temps(!.CI, PersistentTemps0),
+        set.insert(PersistentTemps0, StackVar, PersistentTemps),
+        set_persistent_temps(PersistentTemps, !CI)
+    ;
+        Persistence = non_persistent_temp_slot
+    ).
 
-release_temp_slot(StackVar, !CI) :-
+acquire_several_temp_slots([], _, _, !CI) :-
+    % We could return an empty list of stack vars, but currently,
+    % this is always an error.
+    unexpected(this_file, "acquire_several_temp_slots: []").
+acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
+        !CI) :-
+    get_temp_content_map(!.CI, TempContentMap0),
+    map.to_assoc_list(TempContentMap0, TempContentList),
+    get_temps_in_use(!.CI, TempsInUse0),
+    (
+        find_unused_slots_for_items(TempContentList, HeadItem, TailItems,
+            TempsInUse0, ChosenStackVars)
+    ->
+        StackVars = ChosenStackVars
+    ;
+        list.map_foldl(new_temp_slot, [HeadItem | TailItems], StackVars, !CI)
+    ),
+    (
+        Persistence = persistent_temp_slot,
+        get_persistent_temps(!.CI, PersistentTemps0),
+        set.insert_list(PersistentTemps0, StackVars, PersistentTemps),
+        set_persistent_temps(PersistentTemps, !CI)
+    ;
+        Persistence = non_persistent_temp_slot
+    ).
+
+:- pred new_temp_slot(slot_contents::in, lval::out,
+    code_info::in, code_info::out) is det.
+
+new_temp_slot(Item, StackVar, !CI) :-
+    get_var_slot_count(!.CI, VarSlots),
+    get_max_temp_slot_count(!.CI, TempSlots0),
+    TempSlots = TempSlots0 + 1,
+    Slot = VarSlots + TempSlots,
+    stack_variable(!.CI, Slot, StackVar),
+    set_max_temp_slot_count(TempSlots, !CI),
+
+    get_temp_content_map(!.CI, TempContentMap0),
+    map.det_insert(TempContentMap0, StackVar, Item, TempContentMap),
+    set_temp_content_map(TempContentMap, !CI).
+
+:- pred find_unused_slot_for_item(assoc_list(lval, slot_contents)::in,
+    slot_contents::in, set(lval)::in, lval::out,
+    assoc_list(lval, slot_contents)::out) is semidet.
+
+find_unused_slot_for_item([Head | Tail], Item, TempsInUse,
+        ChosenStackVar, Remainder) :-
+    Head = HeadStackVar - HeadSlotType,
+    (
+        HeadSlotType = Item,
+        \+ set.member(HeadStackVar, TempsInUse)
+    ->
+        ChosenStackVar = HeadStackVar,
+        Remainder = Tail
+    ;
+        find_unused_slot_for_item(Tail, Item, TempsInUse,
+            ChosenStackVar, Remainder)
+    ).
+
+:- pred find_unused_slots_for_items(assoc_list(lval, slot_contents)::in,
+    slot_contents::in, list(slot_contents)::in, set(lval)::in, list(lval)::out)
+    is semidet.
+
+find_unused_slots_for_items([Head | Tail], HeadItem, TailItems,
+        TempsInUse, ChosenStackVars) :-
+    (
+        find_unused_slot_for_item([Head | Tail], HeadItem, TempsInUse,
+            ChosenHeadStackVar, Remainder),
+        find_next_slots_for_items(Remainder, ChosenHeadStackVar, TailItems,
+            TempsInUse, ChosenTailStackVars)
+    ->
+        ChosenStackVars = [ChosenHeadStackVar | ChosenTailStackVars]
+    ;
+        find_unused_slots_for_items(Tail, HeadItem, TailItems,
+            TempsInUse, ChosenStackVars)
+    ).
+
+:- pred find_next_slots_for_items(assoc_list(lval, slot_contents)::in,
+    lval::in, list(slot_contents)::in, set(lval)::in, list(lval)::out)
+    is semidet.
+
+find_next_slots_for_items([], _, [], _, []).
+find_next_slots_for_items([Head | Tail], PrevStackVar, [HeadItem | TailItems],
+        TempsInUse, [HeadStackVar | TailStackVars]) :-
+    Head = HeadStackVar - HeadSlotType,
+    HeadStackVar = get_next_stack_var(PrevStackVar),
+    HeadSlotType = HeadItem,
+    \+ set.member(HeadStackVar, TempsInUse),
+    find_next_slots_for_items(Tail, HeadStackVar, TailItems,
+        TempsInUse, TailStackVars).
+
+:- func get_next_stack_var(lval) = lval.
+
+get_next_stack_var(Lval) = NextLval :-
+    ( Lval = stackvar(N) ->
+        NextLval = stackvar(N+1)
+    ; Lval = framevar(N) ->
+        NextLval = framevar(N+1)
+    ;
+        unexpected(this_file, "get_next_stack_var: not stackvar or framevar")
+    ).
+
+release_temp_slot(StackVar, Persistence, !CI) :-
     get_temps_in_use(!.CI, TempsInUse0),
     set.delete(TempsInUse0, StackVar, TempsInUse),
-    set_temps_in_use(TempsInUse, !CI).
+    set_temps_in_use(TempsInUse, !CI),
 
-acquire_persistent_temp_slot(Item, StackVar, !CI) :-
-    acquire_temp_slot(Item, StackVar, !CI),
     get_persistent_temps(!.CI, PersistentTemps0),
-    set.insert(PersistentTemps0, StackVar, PersistentTemps),
-    set_persistent_temps(PersistentTemps, !CI).
+    set.is_member(StackVar, PersistentTemps0, IsInPersistentTemps0),
+    (
+        Persistence = persistent_temp_slot,
+        expect(unify(IsInPersistentTemps0, yes),
+            this_file, "released stack slot should be persistent"),
+        set.delete(PersistentTemps0, StackVar, PersistentTemps),
+        set_persistent_temps(PersistentTemps, !CI)
+    ;
+        Persistence = non_persistent_temp_slot,
+        expect(unify(IsInPersistentTemps0, no),
+            this_file, "released stack slot should not be persistent")
+    ).
 
-release_persistent_temp_slot(StackVar, !CI) :-
-    release_temp_slot(StackVar, !CI),
-    get_persistent_temps(!.CI, PersistentTemps0),
-    set.delete(PersistentTemps0, StackVar, PersistentTemps),
-    set_persistent_temps(PersistentTemps, !CI).
+release_several_temp_slots([], _Persistence, !CI).
+release_several_temp_slots([StackVar | StackVars], Persistence, !CI) :-
+    release_temp_slot(StackVar, Persistence, !CI),
+    release_several_temp_slots(StackVars, Persistence, !CI).
 
 %---------------------------------------------------------------------------%
 

@@ -734,7 +734,7 @@
     % as the same would compare as different. The live_value_types and
     % var_infos containing them would compare as different as well,
     % which can lead to a variable being listed more than once in
-    % a label's list of live variable.
+    % a label's list of live variables.
     %
     % At the moment, the LLDS only handles ground insts. When this changes,
     % the argument type of partial will have to be changed.
