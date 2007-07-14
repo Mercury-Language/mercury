@@ -248,7 +248,7 @@ generate_method_code(Defn, !IO) :-
             sorry(this_file, "multiple return values")
         ),
 
-        predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum, Id),
+        predlabel_to_csharp_id(PredLabel, ProcId, MaybeSeqNum, Id),
         io.write_string("public static ", !IO),
         write_il_ret_type_as_foreign_type(ReturnType, !IO),
 
