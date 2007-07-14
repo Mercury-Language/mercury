@@ -143,7 +143,6 @@ get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals,
                 ModuleInfo, ArgDecls)
     ;
         ( Lang = lang_csharp
-        ; Lang = lang_managed_cplusplus
         ; Lang = lang_java
         ; Lang = lang_il
         ; Lang = lang_erlang
@@ -721,7 +720,6 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
-        ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),

@@ -101,9 +101,9 @@
     % returns the module name which represents the ForeignImport.
     %
     % For instance for the foreign_import_module representing
-    %   :- foreign_import_module("MC++", module)
+    %   :- foreign_import_module("C#", module)
     % would return the module_name
-    %   unqualified("module__cpp_code")
+    %   unqualified("module__csharp_code")
     %
 :- func foreign_import_module_name(foreign_import_module_info) = module_name.
 
@@ -120,7 +120,6 @@
     %
 :- inst lang_gen_ext_file
     --->    lang_c
-    ;       lang_managed_cplusplus
     ;       lang_csharp.
 
     % The module name used for this foreign language.
@@ -212,9 +211,6 @@ foreign_import_module_name(ImportModule) = ModuleName :-
         Lang = lang_erlang,
         ModuleName = ForeignImportModule
     ;
-        Lang = lang_managed_cplusplus,
-        ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
-    ;
         Lang = lang_csharp,
         ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ).
@@ -229,10 +225,6 @@ foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
         ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
     ;
         Lang = lang_il,
-        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
-            ImportedForeignCodeModuleName1)
-    ;
-        Lang = lang_managed_cplusplus,
         ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
             ImportedForeignCodeModuleName1)
     ;
@@ -283,7 +275,6 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 %-----------------------------------------------------------------------------%
 
 foreign_language_file_extension(lang_c) = ".c".
-foreign_language_file_extension(lang_managed_cplusplus) = ".cpp".
 foreign_language_file_extension(lang_csharp) = ".cs".
 foreign_language_file_extension(lang_java) = ".java".
 foreign_language_file_extension(lang_il) = _ :-
@@ -312,9 +303,9 @@ prefer_foreign_language(_Globals, target_asm, Lang1, Lang2) =
     ).
 
 prefer_foreign_language(_Globals, target_il, Lang1, Lang2) = Comp :-
-    % Whe compiling to il, first we prefer il, then csharp, then
-    % managed_cplusplus, after that we don't care.
-    PreferredList = [lang_il, lang_csharp, lang_managed_cplusplus],
+    % When compiling to il, first we prefer il, then csharp.
+    % After that we don't care.
+    PreferredList = [lang_il, lang_csharp],
 
     FindLangPriority = (func(L) = X :-
         ( list.nth_member_search(PreferredList, L, X0) ->
@@ -352,7 +343,6 @@ prefer_foreign_language(_Globals, target_erlang, _Lang1, _Lang2) = no.
 foreign_language(lang_c).
 foreign_language(lang_java).
 foreign_language(lang_csharp).
-foreign_language(lang_managed_cplusplus).
 foreign_language(lang_il).
 foreign_language(lang_erlang).
 

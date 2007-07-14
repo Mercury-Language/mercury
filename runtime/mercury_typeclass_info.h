@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2005 The University of Melbourne.
+** Copyright (C) 2002-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -191,7 +191,7 @@ struct MR_TypeClassDecl_Struct {
 ** structures.
 **
 ** This number should be kept in sync with type_class_info_rtti_version in
-** compiler/type_class_info.m and with MR_TYPECLASS_VERSION in mercury_mcpp.h.
+** compiler/type_class_info.m.
 */
 
 #define MR_TYPECLASS_VERSION            MR_TYPECLASS_VERSION_INITIAL

@@ -472,7 +472,6 @@ output_java_decl(Indent, DeclCode, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
@@ -492,7 +491,6 @@ output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),

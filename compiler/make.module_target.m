@@ -495,11 +495,6 @@ compile_foreign_code_file(ErrorStream, _, _Imports,
         foreign_code_file(lang_java, JavaFile, _ClassFile), Succeeded, !IO) :-
     compile_target_code.compile_java_file(ErrorStream, JavaFile,
         Succeeded, !IO).
-compile_foreign_code_file(ErrorStream, _, _Imports,
-        foreign_code_file(lang_managed_cplusplus, MCPPFile, DLLFile),
-        Succeeded, !IO) :-
-    compile_target_code.compile_managed_cplusplus_file(ErrorStream,
-        MCPPFile, DLLFile, Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, Imports,
         foreign_code_file(lang_csharp, CSharpFile, DLLFile),
         Succeeded, !IO) :-

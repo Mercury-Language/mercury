@@ -70,11 +70,6 @@
 :- pred il_assemble(io.output_stream::in, file_name::in, file_name::in,
     has_main::in, bool::out, io::di, io::uo) is det.
 
-    % compile_managed_cplusplus_file(ErrorStream, MCPPFile, DLLFile, Succeeded)
-    %
-:- pred compile_managed_cplusplus_file(io.output_stream::in,
-    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
-
     % compile_csharp_file(ErrorStream, C#File, DLLFile, Succeeded)
     %
 :- pred compile_csharp_file(io.output_stream::in, module_imports::in,
@@ -228,7 +223,7 @@ il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
     module_name_to_file_name(ModuleName, ".dll", yes, DllFile, !IO),
 
     % If the module contains main/2 then we it should be built as an
-    % executable. Unfortunately MC++ or C# code may refer to the dll
+    % executable. Unfortunately C# code may refer to the dll
     % so we always need to build the dll.
     %
     il_assemble(ErrorStream, IL_File, DllFile, no_main, DllSucceeded, !IO),
@@ -282,42 +277,6 @@ il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Succeeded, !IO) :-
     ),
     string.append_list([ILASM, " ", SignOpt, VerboseOpt, DebugOpt,
         TargetOpt, ILASMFlags, " /out=", TargetFile, " ", IL_File], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
-
-compile_managed_cplusplus_file(ErrorStream, MCPPFileName, DLLFileName,
-        Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Compiling `", !IO),
-    maybe_write_string(Verbose, MCPPFileName, !IO),
-    maybe_write_string(Verbose, "':\n", !IO),
-    globals.io_lookup_string_option(mcpp_compiler, MCPP, !IO),
-    globals.io_lookup_accumulating_option(mcpp_flags, MCPPFlagsList, !IO),
-    join_string_list(MCPPFlagsList, "", "", " ", MCPPFlags),
-    globals.io_lookup_bool_option(target_debug, Debug, !IO),
-    (
-        Debug = yes,
-        DebugOpt = "/Zi "
-    ;
-        Debug = no,
-        DebugOpt = ""
-    ),
-
-    % XXX Should we introduce a `--mcpp-include-directory' option?
-    globals.io_lookup_accumulating_option(c_include_directory,
-        C_Incl_Dirs, !IO),
-    InclOpts = string.append_list(list.condense(list.map(
-        (func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))),
-
-    % XXX Should we use a separate dll_directories options?
-    globals.io_lookup_accumulating_option(link_library_directories,
-        DLLDirs, !IO),
-    DLLDirOpts = "-AIMercury/dlls " ++
-        string.append_list(list.condense(list.map(
-            (func(DLLDir) = ["-AI", DLLDir, " "]), DLLDirs))),
-
-    string.append_list([MCPP, " -CLR ", DebugOpt, InclOpts, DLLDirOpts,
-        MCPPFlags, " ", MCPPFileName, " -LD -o ", DLLFileName], Command),
     invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 

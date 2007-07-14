@@ -6645,11 +6645,6 @@ passed at all.
 and in C modifications to mutable state are done via side effects,
 rather than argument passing.)
 
-@c For the Managed C++ interface, the types are mapped slightly differently:
-@c Mercury variables which are polymorphically typed
-@c have type @samp{MR_Box} rather than @samp{MR_Word}.
-@c XXX We should document the Managed C++ interface somewhere.
-
 Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
 
@@ -6946,7 +6941,7 @@ before the object file for the module containing the
 @samp{pragma foreign_import_module} declaration.
 
 A cycle of @samp{pragma foreign_import_module}, where the language is
-@samp{"MC++"}, @samp{"C#"}, or @samp{"Java"}, is not permitted.
+@samp{"C#"} or @samp{"Java"}, is not permitted.
 
 @node Adding foreign definitions
 @section Adding foreign definitions
@@ -6981,8 +6976,6 @@ foreign language and occur in the same Mercury module.
 * Interfacing with C# 		:: How to write code to interface with C#
 * Interfacing with IL 		:: How to write code to interface with IL
 * Interfacing with Java 	:: How to write code to interface with Java
-* Interfacing with Managed C++ 	:: How to write code to interface with
-  				   Managed C++
 @end menu
 
 All Mercury implementations should support interfacing with C.
@@ -7010,11 +7003,6 @@ for the .NET Common Language Runtime.
 
 @item @samp{Java}
 Use the string @code{"Java"} to set the foreign language to Java.
-
-@item @samp{Managed C++}
-Use the string @code{"MC++"} to set the foreign language to Managed C++.
-Managed C++ is C++ with Microsoft's extensions to support interfacing
-with and generating code for the .NET Common Language Runtime.
 
 @end table
 
@@ -7412,7 +7400,7 @@ will use @var{DotNetForeignType} as the .NET CLR parameter type for
 parameters whose Mercury type is @var{MercuryTypeName}.
 
 The IL assembler syntax is used to specify type names for all the .NET CLR
-languages (IL, C# and Managed C++) supported by Mercury's
+languages (IL and C#) supported by Mercury's
 @samp{foreign_proc} mechanism.  
 This syntax is documented in the ECMA specifications for .NET.
 The .NET CLR backend supports reference and value types 
@@ -7715,118 +7703,6 @@ For example:
 @end example
 
 @c ----------------------------------------------------------------------------
-
-@node Interfacing with Managed C++
-@subsection Interfacing with Managed C++
-
-@menu
-* Using pragma foreign_type for MC++::  Declaring MC++ types in Mercury
-* Using pragma foreign_proc for MC++::  Calling MC++ code from Mercury
-* Using pragma foreign_export for MC++:: Calling Mercury from MC++ code
-* Using pragma foreign_decl for MC++::  Including MC++ declarations in Mercury
-* Using pragma foreign_code for MC++::  Including MC++ code in Mercury
-@end menu
-
-@node Using pragma foreign_type for MC++
-@subsubsection Using pragma foreign_type for MC++
-
-There is no direct support for using MC++ types from Mercury; however, the
-types for IL are compatible with MC++, and so the foreign_type
-support for IL can be used instead.
-See the section on using pragma foreign_type for IL
-(@pxref{Using pragma foreign_type for IL}).
-
-@node Using pragma foreign_proc for MC++
-@subsubsection Using pragma foreign_proc for MC++
-
-The MC++ code from MC++ pragma foreign_proc declarations will be copied into
-static member functions of an automatically-generated MC++ class.
-Since such MC++ code will become part of a static member function,
-it must not refer to the @samp{this} keyword.
-It may however refer to static member variables or static member
-functions declared with @samp{pragma foreign_code}.
-
-The input and output variables for an MC++ @samp{pragma foreign_proc} will
-have MC++ types corresponding to their Mercury types.  The exact rules
-for mapping Mercury types to MC++ types are determined by the rules
-for mapping Mercury types to IL (@pxref{IL and C# data passing conventions})
-and the rules relating IL types to MC++ types.
-
-MC++ code in a @code{pragma foreign_proc} declaration
-for any procedure whose determinism indicates that it can fail
-must assign a value of type @samp{bool} to the variable
-@samp{SUCCESS_INDICATOR}.  For example:
-
-@example
-:- pred string.contains_char(string, character).
-:- mode string.contains_char(in, in) is semidet.
-
-:- pragma foreign_proc("MC++", string.contains_char(Str::in, Ch::in),
-        [will_not_call_mercury, promise_pure],
-        "SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);").
-@end example
-
-@noindent
-MC++ code for procedures whose determinism indicates that they cannot fail
-should not access @code{SUCCESS_INDICATOR}.
-
-Arguments whose mode is input will have their values set by the
-Mercury implementation on entry to the MC++ code.  If the procedure
-succeeds, the MC++ code must set the values of all output arguments.
-If the procedure fails, the MC++ code need only
-set @code{SUCCESS_INDICATOR} to false.
-
-@node Using pragma foreign_export for MC++
-@subsubsection Using pragma foreign_export for MC++
-
-@samp{pragma foreign_export} is not currently supported for MC++.
-
-@node Using pragma foreign_decl for MC++
-@subsubsection Using pragma foreign_decl for MC++
-
-@samp{pragma foreign_decl} declarations for MC++ can be used to provide
-any top-level MC++ declarations (e.g.@: @samp{#include} or @samp{#using})
-which are needed by code in @code{pragma foreign_proc} declarations for MC++.
-
-For example:
-
-@example
-:- pragma foreign_decl("MC++", "
-	#include <stdio.h>
-	#using <mscorlib.dll>
-
-	#define MY_CONSTANT 42
-	// ...
-").
-@end example
-
-@node Using pragma foreign_code for MC++
-@subsubsection Using pragma foreign_code for MC++
-
-The MC++ code from @samp{pragma foreign_proc} declarations for MC++ will be
-placed in the bodies of static member functions of an
-automatically-generated C# class.  @samp{pragma foreign_code}
-can be used to define additional members of this automatically-generated
-class, which can then be referenced by @samp{pragma foreign_proc}
-declarations for MC++ from that module.
-
-For example:
-
-@example
-:- pragma foreign_code("MC++", "
-	static int counter = 0;
-").
-
-:- impure pred incr_counter is det.
-:- pragma foreign_proc("MC++", incr_counter,
-	[will_not_call_mercury], "counter++;").
-
-:- semipure func get_counter = int.
-:- pragma foreign_proc("MC++", get_counter = (Result::out),
-	[will_not_call_mercury, promise_semipure], "Result = counter;").
-@end example
-
-@c -----------------------------------------------------------------------
 
 @node C interface
 @chapter C interface

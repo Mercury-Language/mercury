@@ -21,24 +21,23 @@ main -->
 
 :- pragma foreign_import_module(c, foreign_import_module_2).
 :- pragma foreign_import_module(il, foreign_import_module_2).
-:- pragma foreign_import_module("MC++", foreign_import_module_2).
 % :- pragma foreign_import_module(il, std_util).
 
 :- pragma c_code(bar(X::in, Y::out), may_call_mercury,
 "
 	foo(X, &Y);
 ").
-:- pragma foreign_proc("MC++", bar(X::in, Y::out),
+:- pragma foreign_proc("C#", bar(X::in, Y::out),
 		[may_call_mercury, promise_pure], "
-	MR_Integer Y1, Y2;
+	int Y1, Y2;
 
-	foreign_import_module_2::mercury_code::foo(X, &Y1);
-	foreign_import_module_2__cpp_code::mercury_code::foo2(X, &Y2);
+	foreign_import_module_2.mercury_code.foo(X, ref Y1);
+	foreign_import_module_2__csharp_code.mercury_code.foo2(X, ref Y2);
 
 	if (Y1 == Y2) {
 		Y = Y1;
 	} else {
-		throw new System::Exception(""Y1 != Y2"");
+		throw new System.Exception(""Y1 != Y2"");
 	}
 ").
 

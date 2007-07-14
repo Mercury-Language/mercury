@@ -305,13 +305,6 @@ lib_std: mercury.dll lib$(STD_LIB_NAME)
 # We have to hardcode the names of the runtime DLL files.
 RUNTIME_DLLS=mercury_dotnet.dll mercury_il.dll
 
-	# -AI sets the assembly search path (just like -I for assemblies)
-MS_CLFLAGS  =	-AI`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` -I`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)`
-# For some reason, using /clr:noAssembly results in a link error when
-# building io__cpp_code.dll, because it doesn't link in the native library
-# needed for putenv().  So we need to use /link /noassembly instead.
-# MS_CL_NOASM=:noAssembly
-MS_CL_LIBS=/link /noassembly
 MS_CSCFLAGS=/t:module
 
 # If you do generate a new strong name, you had better update
@@ -498,10 +491,9 @@ install_library: mercury.dll install_grade_dirs install_gac \
 #
 #	EXTRA_MS_ILASMFLAGS=/debug
 #	EXTRA_MS_CSCFLAGS=/debug+ /debug:full
-#	EXTRA_MS_CLFLAGS=/Zi
 #
 # XXX Unfortunately, however, this is a problem with AL, which prohibits
-# linking debuggable C# code with IL or MC++ code.  The following
+# linking debuggable C# code with IL code.  The following
 # horrible hack avoids that problem.  After modifying Mmake.params as
 # described above, invoke `mmake install_debug_library'.
 

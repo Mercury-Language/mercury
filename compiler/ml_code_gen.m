@@ -2404,7 +2404,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
     ( CodeModel = model_non ->
 
         % For IL code, we can't call continutations because there is no syntax
-        % for calling managed function pointers in managed C++. Instead we have
+        % for calling managed function pointers in C#.  Instead we have
         % to call back into IL and make the continuation call in IL. This is
         % called an "indirect" success continuation call.
         %
@@ -2541,11 +2541,6 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
-        Lang = lang_managed_cplusplus,
-        ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
-            PredId, ProcId, Args, ExtraArgs,
-            Foreign_Code, Context, Decls, Statements, !Info)
-    ;
         Lang = lang_csharp,
         ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
@@ -2615,7 +2610,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
     ;       kind_semi
     ;       kind_failure.
 
-    % For ordinary (not model_non) pragma foreign_code in C# or MC++,
+    % For ordinary (not model_non) pragma foreign_code in C#,
     % we generate a call to an out-of-line procedure that contains
     % the user's code.
     %
@@ -3253,9 +3248,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             HighLevelData = no,
             % For --no-high-level-data, we only need to use a cast is for
             % polymorphic types, which are `MR_Word' in the C interface but
-            % `MR_Box' in the MLDS back-end. Except for MC++, where
-            % polymorphic types are MR_Box, but we get here only if Lang
-            % is c or java.
+            % `MR_Box' in the MLDS back-end.
             ( OrigType = type_variable(_, _) ->
                 Cast = "(MR_Word) "
             ; MaybeCast = yes(CastPrime) ->

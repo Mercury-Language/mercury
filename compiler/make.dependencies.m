@@ -257,9 +257,6 @@ target_dependencies(_, module_target_foreign_il_asm(_)) =
             direct_imports),
         module_target_il_asm `of` filter_module_names(maybe_keep_std_lib_module,
             foreign_imports_lang(lang_il)),
-        module_target_foreign_il_asm(lang_managed_cplusplus) `of`
-            filter_module_names(maybe_keep_std_lib_module,
-                foreign_imports_lang(lang_managed_cplusplus)),
         module_target_foreign_il_asm(lang_csharp) `of`
             filter_module_names(maybe_keep_std_lib_module,
                 foreign_imports_lang(lang_csharp))

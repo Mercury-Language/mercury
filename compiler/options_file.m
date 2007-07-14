@@ -874,7 +874,6 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
     ;       java_flags
     ;       ilasm_flags
     ;       csharp_flags
-    ;       mcpp_flags
     ;       ml_objs
     ;       ml_libs
     ;       ld_flags
@@ -901,7 +900,7 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
 options_variable_types =
     [grade_flags, linkage, mercury_linkage, lib_grades, lib_linkages,
     stdlib_dir, config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
-    csharp_flags, mcpp_flags, ml_objs, lib_dirs, ld_flags, ld_libflags,
+    csharp_flags, ml_objs, lib_dirs, ld_flags, ld_libflags,
     libraries, ml_libs, c2init_args, install_prefix].
 
 :- func options_variable_name(options_variable_type) = string.
@@ -911,7 +910,6 @@ options_variable_name(mmc_flags) = "MCFLAGS".
 options_variable_name(c_flags) = "CFLAGS".
 options_variable_name(java_flags) = "JAVACFLAGS".
 options_variable_name(ilasm_flags) = "MS_ILASM_FLAGS".
-options_variable_name(mcpp_flags) = "MS_CL_FLAGS".
 options_variable_name(csharp_flags) = "MS_CSC_FLAGS".
 options_variable_name(ml_objs) = "MLOBJS".
 options_variable_name(ml_libs) = "MLLIBS".
@@ -935,7 +933,6 @@ options_variable_type_is_target_specific(mmc_flags) = yes.
 options_variable_type_is_target_specific(c_flags) = yes.
 options_variable_type_is_target_specific(java_flags) = yes.
 options_variable_type_is_target_specific(ilasm_flags) = yes.
-options_variable_type_is_target_specific(mcpp_flags) = yes.
 options_variable_type_is_target_specific(csharp_flags) = yes.
 options_variable_type_is_target_specific(ml_objs) = yes.
 options_variable_type_is_target_specific(ml_libs) = yes.
@@ -994,7 +991,6 @@ mmc_option_type(mmc_flags) = mmc_flags.
 mmc_option_type(c_flags) = option([], "--cflag").
 mmc_option_type(java_flags) = option([], "--java-flag").
 mmc_option_type(ilasm_flags) = option([], "--ilasm-flag").
-mmc_option_type(mcpp_flags) = option([], "--mcpp-flag").
 mmc_option_type(csharp_flags) = option([], "--csharp-flag").
 mmc_option_type(ml_objs) = option([], "--link-object").
 mmc_option_type(ml_libs) = mmc_flags.

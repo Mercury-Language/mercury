@@ -703,11 +703,6 @@
     ;       support_ms_clr
     ;       support_rotor_clr
 
-    % Managed C++
-    ;       mcpp_compiler
-    ;       mcpp_flags
-    ;       quoted_mcpp_flag
-
     % C#
     ;       csharp_compiler
     ;       csharp_flags
@@ -1472,11 +1467,6 @@ option_defaults_2(target_code_compilation_option, [
                                         % library that came with Beta2.
     support_ms_clr                      -   bool(yes),
     support_rotor_clr                   -   bool(no),
-
-    % Managed C++
-    mcpp_compiler                       -   string("cl"),
-    mcpp_flags                          -   accumulating([]),
-    quoted_mcpp_flag                    -   string_special,
 
     % C#
     csharp_compiler                     -   string("csc"),
@@ -2298,10 +2288,6 @@ long_option("dotnet-library-version",   dotnet_library_version).
 long_option("support-ms-clr",       support_ms_clr).
 long_option("support-rotor-clr",    support_rotor_clr).
 
-long_option("mcpp-compiler",        mcpp_compiler).
-long_option("mcpp-flags",           mcpp_flags).
-long_option("mcpp-flag",            quoted_mcpp_flag).
-
 long_option("csharp-compiler",      csharp_compiler).
 long_option("csharp-flags",         csharp_flags).
 long_option("csharp-flag",          quoted_csharp_flag).
@@ -2613,9 +2599,6 @@ special_handler(quoted_java_flag, string(Flag),
 special_handler(quoted_ilasm_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(ilasm_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_mcpp_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(mcpp_flags, Flag, OptionTable0, OptionTable).
 special_handler(quoted_csharp_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(csharp_flags, Flag, OptionTable0, OptionTable).
@@ -4694,12 +4677,6 @@ options_help_target_code_compilation -->
         "--ilasm-flags <options>, --ilasm-flag <options>",
         "\tSpecify options to be passed to the IL assembler.",
         "\t`--ilasm-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
-        "--mcpp-compiler <cl>",
-        "\tSpecify the name of the Microsoft Managed C++ Compiler.",
-        "--mcpp-flags <options>, --mcpp-flag <option>",
-        "\tSpecify options to be passed to the Managed C++ compiler.",
-        "\t`--mcpp-flag' should be used for single words which need",
         "\tto be quoted when passed to the shell.",
 
         "--csharp-compiler <csc>",

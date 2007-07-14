@@ -1658,15 +1658,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
     make_remove_file(very_verbose, CSharpModule,
         foreign_language_file_extension(lang_csharp), !Info, !IO),
     make_remove_target_file(very_verbose, CSharpModule,
-        module_target_foreign_il_asm(lang_csharp), !Info, !IO),
-
-    McppModule = foreign_language_module_name(ModuleName,
-        lang_managed_cplusplus),
-    make_remove_file(very_verbose, McppModule,
-        foreign_language_file_extension(lang_managed_cplusplus),
-        !Info, !IO),
-    make_remove_target_file(very_verbose, McppModule,
-        module_target_foreign_il_asm(lang_managed_cplusplus), !Info, !IO).
+        module_target_foreign_il_asm(lang_csharp), !Info, !IO).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.

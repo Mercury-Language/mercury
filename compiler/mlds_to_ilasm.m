@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,9 +92,7 @@ output_foreign_file(MLDS, ForeignLang, !IO) :-
 :- pred handle_foreign_lang(foreign_language::in,
     pred(mlds, io, io)::out(pred(in, di, uo) is det)) is det.
 
-handle_foreign_lang(lang_managed_cplusplus,
-        output_managed_code(lang_managed_cplusplus)).
-handle_foreign_lang(lang_csharp, output_managed_code(lang_csharp)).
+handle_foreign_lang(lang_csharp, output_csharp_code).
 handle_foreign_lang(lang_c, _) :-
     sorry(this_file, "language C foreign code not supported").
 handle_foreign_lang(lang_il, _) :-

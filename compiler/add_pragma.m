@@ -405,7 +405,6 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                 (
                     ( Lang = lang_java
                     ; Lang = lang_csharp
-                    ; Lang = lang_managed_cplusplus
                     ),
                     Pieces = [words("Warning:"),
                         fixed("`:- pragma foreign_export' declarations"),
@@ -428,11 +427,10 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                 globals.get_backend_foreign_languages(Globals,
                     ForeignLanguages),
                 (
-                    % XXX C# and Managed C++ exports currently cause an
+                    % XXX C# exports currently cause an
                     % assertion failure in the MLDS->IL code generator.
 
                     Lang \= lang_csharp,
-                    Lang \= lang_managed_cplusplus,
                     list.member(Lang, ForeignLanguages)
                 ->
                     module_info_get_pragma_exported_procs(!.ModuleInfo,

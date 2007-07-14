@@ -9609,43 +9609,6 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-    /*
-    ** XXX For some reason this MC++ code below doesn't work.
-    ** We get the following error message:
-    **   Unhandled Exception: System.TypeInitializationException: The type
-    **   initializer for ""remove_file.mercury_code"" threw an exception.
-    **   ---> System.IO.FileLoadException: The dll initialization routine
-    **   failed for file 'io__cpp_code.dll'.
-    ** so instead we use the .NET call and ignore Dir and Prefix.
-    **
-    ** int result;
-    ** char __nogc *dir = static_cast<char*>(
-    **  System::Runtime::InteropServices::Marshal::
-    **  StringToHGlobalAnsi(Dir).ToPointer());;
-    ** char __nogc *prefix = static_cast<char*>(
-    **  System::Runtime::InteropServices::Marshal::
-    **  StringToHGlobalAnsi(Prefix).ToPointer());;
-    ** char tmpFileName[MAX_PATH];
-    ** System::String *msg[] = {
-    **  S""Unable to create temporary file in "",
-    **  Dir,
-    **  S"" with prefix "",
-    **  Prefix
-    ** };
-    **
-    ** result = GetTempFileName(dir, prefix, 0, tmpFileName);
-    **
-    ** if (result == 0) {
-    **  Error = -1;
-    **  FileName = S"""";
-    **  ErrorMessage = System::String::Join(S"""", msg);
-    ** } else {
-    **  Error = 0;
-    **  FileName = tmpFileName;
-    **  ErrorMessage = S"""";
-    ** }
-    */
-
     try {
         FileName = System.IO.Path.GetTempFileName();
         Error = 0;

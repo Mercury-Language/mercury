@@ -259,23 +259,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         (
             ForeignLanguage = lang_c
         ;
-            ( ForeignLanguage = lang_managed_cplusplus
-            ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_il
-            ; ForeignLanguage = lang_java
-            ; ForeignLanguage = lang_erlang
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_managed_cplusplus,
-        (
-            ( ForeignLanguage = lang_managed_cplusplus
-            ; ForeignLanguage = lang_c
-            )
-            % Don't do anything - C and MC++ are embedded inside MC++
-            % without any changes.
-        ;
             ( ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
@@ -289,7 +272,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ForeignLanguage = lang_csharp
         ;
             ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
             ; ForeignLanguage = lang_erlang
@@ -302,7 +284,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ForeignLanguage = lang_il
         ;
             ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_java
             ; ForeignLanguage = lang_erlang
@@ -315,7 +296,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ForeignLanguage = lang_java
         ;
             ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_erlang
@@ -328,7 +308,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ForeignLanguage = lang_erlang
         ;
             ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
@@ -357,9 +336,6 @@ make_pred_name(Lang, SymName) =
 :- func make_pred_name_rest(foreign_language, sym_name) = string.
 
 make_pred_name_rest(lang_c, _SymName) = "some_c_name".
-make_pred_name_rest(lang_managed_cplusplus, qualified(ModuleSpec, Name)) =
-    make_pred_name_rest(lang_managed_cplusplus, ModuleSpec) ++ "__" ++ Name.
-make_pred_name_rest(lang_managed_cplusplus, unqualified(Name)) = Name.
 make_pred_name_rest(lang_csharp, _SymName) = "some_csharp_name".
 make_pred_name_rest(lang_il, _SymName) = "some_il_name".
 make_pred_name_rest(lang_java, _SymName) = "some_java_name".
@@ -672,8 +648,6 @@ to_type_string(lang_c, foreign(ForeignType, _)) = Result :-
     ).
 to_type_string(lang_csharp, foreign(ForeignType, _)) =
         sym_name_to_string(ForeignType).
-to_type_string(lang_managed_cplusplus, foreign(ForeignType, _)) =
-        sym_name_to_string_sep(ForeignType, "::") ++ " *".
 to_type_string(lang_il, foreign(ForeignType, _)) =
         sym_name_to_string(ForeignType).
 to_type_string(lang_java, foreign(ForeignType, _)) =
@@ -702,12 +676,6 @@ to_type_string(lang_c, mercury(Type)) = Result :-
     ).
 to_type_string(lang_csharp, mercury(_Type)) = _ :-
     sorry(this_file, "to_type_string for csharp").
-to_type_string(lang_managed_cplusplus, mercury(Type)) = TypeString :-
-    ( Type = type_variable(_, _) ->
-        TypeString = "MR_Box"
-    ;
-        TypeString = to_type_string(lang_c, mercury(Type))
-    ).
 to_type_string(lang_il, mercury(_Type)) = _ :-
     sorry(this_file, "to_type_string for il").
 to_type_string(lang_java, mercury(Type)) = Result :-

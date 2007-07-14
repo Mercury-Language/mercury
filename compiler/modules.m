@@ -3823,7 +3823,6 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
             io.nl(DepStream, !IO)
         ;
             ( ForeignLang = lang_c
-            ; ForeignLang = lang_managed_cplusplus
             ; ForeignLang = lang_java
             ; ForeignLang = lang_il
             ; ForeignLang = lang_erlang

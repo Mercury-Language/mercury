@@ -379,9 +379,7 @@ clauses_contain_noninlinable_foreign_code(Target, [C | _Cs]) :-
     Target = target_il,
     Lang = C ^ clause_lang,
     Lang = impl_lang_foreign(ForeignLang),
-    ( ForeignLang = lang_csharp
-    ; ForeignLang = lang_managed_cplusplus
-    ).
+    ForeignLang = lang_csharp.
 clauses_contain_noninlinable_foreign_code(Target, [_ | Cs]) :-
     clauses_contain_noninlinable_foreign_code(Target, Cs).
 

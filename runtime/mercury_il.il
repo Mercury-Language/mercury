@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000-2003 The University of Melbourne.
+// Copyright (C) 2000-2003, 2007 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -37,10 +37,8 @@
 
 .namespace mercury.runtime {
 
-// Managed C++ can't call or create function pointers.
+// C# can't call or create function pointers.
 // So we have to do it in IL.  
-// MC++ used to handle this, and then it stopped working, so now it's just
-// not supported at all.  I hope it will make a comeback.
 
 .class public TempHack {
 
@@ -364,7 +362,7 @@ get_ftn_ptr_type_desc_unify() {
 // ------------------------------------------------------------------------
 
 // This class implements some specific instances of call/N, mostly used for 
-// doing unify and compare.  You can't call using a function pointer in MC++
+// doing unify and compare.  You can't call using a function pointer in C#
 // so we have to do it in IL.
 
 .class public GenericCall {

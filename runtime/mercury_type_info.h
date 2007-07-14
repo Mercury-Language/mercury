@@ -34,7 +34,6 @@
 **      library/private_builtin.m
 **      library/type_desc.m
 **      runtime/mercury_bootstrap.c
-**      runtime/mercury_mcpp.h
 **          (for updating the hand-written RTTI
 **          structures)
 **
@@ -46,8 +45,6 @@
 **      runtime/mercury_type_info.c
 **      library/type_desc.m
 **
-**      runtime/mercury_mcpp.h:
-**          (for updating the MC++ backend RTTI structures)
 **      java/ *.java
 **          (for updating the Java backend RTTI structures)
 */
@@ -72,7 +69,7 @@
 ** structures used for RTTI.
 **
 ** This number should be kept in sync with type_ctor_info_rtti_version in
-** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
+** compiler/type_ctor_info.m.
 */
 
 #define MR_RTTI_VERSION                 MR_RTTI_VERSION__BITMAP
@@ -611,7 +608,7 @@ extern  MR_Word MR_typeclass_ref_error(MR_Word tci, int n, const char *msg);
 ** constructor.
 **
 ** Any changes in this definition will also require changes in
-** MR_CTOR_REP_NAMES below, in runtime/mercury_mcpp.h, in
+** MR_CTOR_REP_NAMES below, in
 ** library/rtti_implementation.m (definitely the list of type_ctor_reps,
 ** maybe the bodies of predicates), in library/private_builtin.m (in two
 ** places), in java/runtime/TypeCtorRep.java, in compiler/mlds_to_gcc.m,

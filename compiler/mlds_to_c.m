@@ -806,7 +806,6 @@ mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
-        ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
@@ -850,7 +849,6 @@ mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
     ;
         ( Lang = lang_il
         ; Lang = lang_csharp
-        ; Lang = lang_managed_cplusplus
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
@@ -863,9 +861,6 @@ mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
 mlds_output_c_defn(_Indent, user_foreign_code(lang_c, Code, Context), !IO) :-
     output_context(mlds_make_context(Context), !IO),
     io.write_string(Code, !IO).
-mlds_output_c_defn(_Indent, user_foreign_code(lang_managed_cplusplus, _, _),
-        !IO) :-
-    sorry(this_file, "foreign code other than C").
 mlds_output_c_defn(_Indent, user_foreign_code(lang_csharp, _, _), !IO) :-
     sorry(this_file, "foreign code other than C").
 mlds_output_c_defn(_Indent, user_foreign_code(lang_il, _, _), !IO) :-

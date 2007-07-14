@@ -53,7 +53,7 @@
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such
 %     as `mercury_int_il_type'.
-% [ ] Implement `pragma foreign_export' for C# and MC++.
+% [ ] Implement `pragma foreign_export' for C#.
 %
 % XXX We should rename this module to mlds_to_ilds, since that is what
 %     it actually does.
@@ -87,19 +87,17 @@
 %-----------------------------------------------------------------------------%
 
     % The following predicates are exported so that we can get type
-    % conversions and name mangling consistent between the C# and managed
-    % C++ output (currently in mlds_to_managed.m) and IL output (in
-    % this file).
+    % conversions and name mangling consistent between the C# output
+    % (currently in mlds_to_managed.m) and IL output (in this file).
     %
     % XXX we should reduce the dependencies here to a bare minimum.
     %
 :- func params_to_il_signature(il_data_rep, mlds_module_name,
     mlds_func_params) = signature.
 
-    % Generate an identifier for a pred label, to be used in one of the
-    % managed languages.
+    % Generate an identifier for a pred label, to be used in C#.
     %
-:- pred predlabel_to_managed_id(mlds_pred_label::in, proc_id::in,
+:- pred predlabel_to_csharp_id(mlds_pred_label::in, proc_id::in,
     maybe(mlds_func_sequence_num)::in, ilds.id::out) is det.
 
     % Generate an IL identifier for a MLDS var.
@@ -225,8 +223,8 @@
                 % method-wide attributes (static)
                 arguments           :: arguments_map,   % The arguments
                 method_name         :: member_name,     % current method name
-                managed_method_name :: member_name,
-                                    % current managed method name
+                csharp_method_name  :: member_name,
+                                    % current C# method name
                 signature           :: signature        % current return type
             ).
 
@@ -307,7 +305,7 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
         IlInfo0, IlInfo),
 
     list.filter(has_foreign_code_defined(ForeignCode),
-        [lang_managed_cplusplus, lang_csharp], ForeignCodeLangs),
+        [lang_csharp], ForeignCodeLangs),
 
     ForeignLangs = IlInfo ^ file_foreign_langs `union`
         set.list_to_set(ForeignCodeLangs),
@@ -942,7 +940,7 @@ decl_flags_to_fieldattrs(Flags)
 entity_name_to_ilds_id(entity_export(Name)) = Name.
 entity_name_to_ilds_id(entity_function(PredLabel, ProcId, MaybeSeqNum, _))
         = Name :-
-    predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, Name).
+    predlabel_to_ilds_id(PredLabel, ProcId, MaybeSeqNum, Name).
 entity_name_to_ilds_id(entity_type(Name, Arity))
     = string.format("%s_%d", [s(Name), i(Arity)]).
 entity_name_to_ilds_id(entity_data(DataName))
@@ -1074,7 +1072,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     (
         IsCons = yes(ParentClass),
         MemberName = ctor,
-        ManagedMemberName = ctor,
+        CSharpMemberName = ctor,
         CtorInstrs = [load_this,
             call(methoddef(call_conv(yes, default), void,
             class_member_name(ParentClass, ctor), []))]
@@ -1082,15 +1080,15 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         IsCons = no,
         (
             Name = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
-            predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, MemberName0),
-            predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum,
-                    ManagedMemberName0),
+            predlabel_to_ilds_id(PredLabel, ProcId, MaybeSeqNum, MemberName0),
+            predlabel_to_csharp_id(PredLabel, ProcId, MaybeSeqNum,
+                    CSharpMemberName0),
             MemberName = id(MemberName0),
-            ManagedMemberName = id(ManagedMemberName0)
+            CSharpMemberName = id(CSharpMemberName0)
         ;
             Name = entity_export(ExportName),
             MemberName = id(ExportName),
-            ManagedMemberName = id(ExportName)
+            CSharpMemberName = id(ExportName)
         ;
             ( Name = entity_type(_, _)
             ; Name = entity_data(_)
@@ -1103,7 +1101,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     Attrs = decl_flags_to_methattrs(Flags),
 
     % Initialize the IL info with this method info.
-    il_info_new_method(ILArgs, ILSignature, MemberName, ManagedMemberName,
+    il_info_new_method(ILArgs, ILSignature, MemberName, CSharpMemberName,
             !Info),
 
     % Start a new block, which we will use to wrap up the entire method.
@@ -1144,7 +1142,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             comment_node("external -- call handwritten version"),
             node(LoadInstrs),
             instr_node(call(get_static_methodref(ClassName,
-                ManagedMemberName, ILRetType, TypeParams)))
+                CSharpMemberName, ILRetType, TypeParams)))
             ]),
         MaybeRet = instr_node(ret)
     ),
@@ -1860,9 +1858,9 @@ statement_to_il(statement(do_commit(_Ref), Context), Instrs, !Info) :-
     % For commits, we use exception handling.
     %
     % For a do_commit instruction, we generate code equivalent
-    % to the following C++/C#/Java code:
+    % to the following C#/Java code:
     %
-    %   throw new mercury::runtime::Commit();
+    %   throw new mercury.runtime.Commit();
     %
     % In IL the code looks like this:
     %
@@ -1974,7 +1972,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
             ReturnLvals = [_, _ | _],
             sorry(this_file, "multiple return values")
         ),
-        MethodName = !.Info ^ managed_method_name,
+        MethodName = !.Info ^ csharp_method_name,
         assoc_list.keys(Params, TypeParams),
         list.map_foldl((pred(_::in, Instr::out,
             Num::in, Num + 1::out) is det :-
@@ -3272,21 +3270,20 @@ get_ilds_type_class_name(ILType) = ClassName :-
     mangle_for_il
         % Names that are to be used only in IL are able to include spaces,
         % punctuation and other special characters, because they are in quotes.
-    ; mangle_for_managed.
-        % Names that are to be used in other managed languages (typically
-        % because they define foreign procedures in that language) must be
-        % mangled in the same way as for C.
+    ; mangle_for_csharp.
+        % Names that are to be used in C# (typically because they are foreign
+        % procedures) must be mangled in the same way as for C.
 
     % Create a mangled predicate identifier, suitable for use in IL.
     %
-:- pred predlabel_to_il_id(mlds_pred_label::in, proc_id::in,
+:- pred predlabel_to_ilds_id(mlds_pred_label::in, proc_id::in,
     maybe(mlds_func_sequence_num)::in, ilds.id::out) is det.
 
-predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, Id) :-
+predlabel_to_ilds_id(PredLabel, ProcId, MaybeSeqNum, Id) :-
     predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, mangle_for_il, Id).
 
-predlabel_to_managed_id(PredLabel, ProcId, MaybeSeqNum, Id) :-
-    predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, mangle_for_managed, Id).
+predlabel_to_csharp_id(PredLabel, ProcId, MaybeSeqNum, Id) :-
+    predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, mangle_for_csharp, Id).
 
     % XXX We may need to do different name mangling for CLS compliance
     % than we would otherwise need.
@@ -3416,7 +3413,7 @@ predlabel_to_id(mlds_special_pred_label(PredName, MaybeModuleName, TypeName,
 :- func mangle_pred_name(string, il_mangle_name) = string.
 
 mangle_pred_name(PredName, mangle_for_il) = PredName.
-mangle_pred_name(PredName, mangle_for_managed) = MangledName :-
+mangle_pred_name(PredName, mangle_for_csharp) = MangledName :-
     ( string.is_all_alnum_or_underscore(PredName) ->
         MangledName = PredName
     ;
@@ -3530,7 +3527,7 @@ mangle_dataname(mlds_tabling_ref(_, _), _MangledName) :-
 mangle_mlds_proc_label(qual(ModuleName, _, mlds_proc_label(PredLabel, ProcId)),
         MaybeSeqNum, ClassName, PredStr) :-
     ClassName = mlds_module_name_to_class_name(ModuleName),
-    predlabel_to_il_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
+    predlabel_to_ilds_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
 
 :- pred mangle_entity_name(mlds_entity_name::in, string::out) is det.
 
@@ -4421,11 +4418,11 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
         DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR,
         empty, empty, [], no, set.init, set.init,
         map.init, empty, counter.init(1), counter.init(1), no,
-        Args, MethodName, ManagedMethodName, DefaultSignature) :-
+        Args, MethodName, CSharpMethodName, DefaultSignature) :-
     Args = [],
     DefaultSignature = signature(call_conv(no, default), void, []),
     MethodName = id(""),
-    ManagedMethodName = id("").
+    CSharpMethodName = id("").
 
 :- pred il_info_new_class(mlds_class_defn::in, il_info::in, il_info::out)
     is det.
@@ -4448,7 +4445,7 @@ il_info_new_class(ClassDefn, !Info) :-
 :- pred il_info_new_method(arguments_map::in, signature::in, member_name::in,
     member_name::in, il_info::in, il_info::out) is det.
 
-il_info_new_method(ILArgs, ILSignature, MethodName, ManagedMethodName,
+il_info_new_method(ILArgs, ILSignature, MethodName, CSharpMethodName,
         !Info) :-
     Info0 = !.Info,
     (
@@ -4467,7 +4464,7 @@ il_info_new_method(ILArgs, ILSignature, MethodName, ManagedMethodName,
     !:Info = !.Info ^ method_foreign_lang := no,
     !:Info = !.Info ^ arguments := ILArgs,
     !:Info = !.Info ^ method_name := MethodName,
-    !:Info = !.Info ^ managed_method_name := ManagedMethodName,
+    !:Info = !.Info ^ csharp_method_name := CSharpMethodName,
     !:Info = !.Info ^ signature := ILSignature.
 
 :- pred il_info_set_arguments(assoc_list(ilds.id, mlds_type)::in,

@@ -59,25 +59,10 @@ bar(X) :- X = 1.
 
 	SUCCESS_INDICATOR = MR_FALSE;
 ").
-:- pragma foreign_proc("MC++", use(X::in),
+:- pragma foreign_proc("C#", use(_X::in),
 	[will_not_call_mercury, promise_pure],
 "
-	/*
-	** To exhibit the bug, this predicate needs only to fail.
-	** However, the symptom of the bug is an infinite loop.
-	** To detect the presence of the bug in finite time,
-	** we abort execution if this code is executed too many times.
-	**
-	** We mention X here to shut up a warning.
-	*/
-
-	static int counter = 0;
-
-	if (++counter > 100) {
-		throw new System::Exception(""the bug is back"");
-	}
-
-	SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = false
 ").
 :- pragma foreign_proc("Erlang", use(_X::in),
 	[will_not_call_mercury, promise_pure],

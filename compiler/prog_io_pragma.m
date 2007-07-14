@@ -948,9 +948,7 @@ parse_foreign_language_type(InputTerm, Language, Result) :-
             Result = error1(["invalid backend specification term" - InputTerm])
         )
     ;
-        ( Language = lang_managed_cplusplus
-        ; Language = lang_csharp
-        ),
+        Language = lang_csharp,
         Msg = "unsupported language specified, unable to parse backend type",
         Result = error1([Msg - InputTerm])
     ).
@@ -1640,7 +1638,6 @@ process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
     = maybe1(pragma_foreign_proc_attributes).
 
 check_required_attributes(lang_c, Attrs, _Term) = ok1(Attrs).
-check_required_attributes(lang_managed_cplusplus, Attrs, _Term) = ok1(Attrs).
 check_required_attributes(lang_csharp, Attrs, _Term) = ok1(Attrs).
 check_required_attributes(lang_il, Attrs, Term) = Res :-
     MaxStackAttrs = list.filter_map(

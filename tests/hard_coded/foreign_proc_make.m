@@ -19,5 +19,5 @@ main -->
 
 
 :- func f2 = int.
-:- pragma foreign_proc("MC++", f2 = (X::out), [promise_pure], "X=5;").
+:- pragma foreign_proc("C#", f2 = (X::out), [promise_pure], "X=5;").
 f2 = 5.

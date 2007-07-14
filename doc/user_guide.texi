@@ -689,19 +689,6 @@ Options to pass to the C compiler.
 @vindex EXTRA_JAVACFLAGS
 Options to pass to the Java compiler (if you are using it).
 
-@item MS_CLFLAGS and EXTRA_MS_CLFLAGS
-@vindex MS_CLFLAGS
-@vindex EXTRA_MS_CLFLAGS
-Options to pass to the Microsoft command line C++ compiler (if you are
-using it).
-
-@item MS_CL_NOASM
-@vindex MS_CL_NOASM
-The option to control whether the Microsoft command line C++ compiler
-will generate .NET assemblies from Managed C++ files.  Set to
-@samp{:noAssembly} to turn off assembly generation, leave empty to turn
-on assembly generation.  The default is to leave this variable empty.
-
 @item ML
 @vindex ML
 The executable that invokes the linker.
@@ -9813,13 +9800,6 @@ IL is the intermediate language of the .NET Common Language
 Runtime (sometimes also known as CIL or MSIL).
 Only available on backends that compile to IL.
 This is the preferred foreign language for IL code generation.
-
-@item @samp{Managed C++}
-Microsoft Managed Extensions for C++ is a language based on C++ that
-provide support for writing .NET components, by adding extra
-keywords and syntax.
-Only available on backends that compile to IL.
-This is the third preferred foreign language for IL code generation.
 
 @end table
 

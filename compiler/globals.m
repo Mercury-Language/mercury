@@ -55,7 +55,6 @@
     --->    lang_c
 %   ;       lang_cplusplus
     ;       lang_csharp
-    ;       lang_managed_cplusplus
     ;       lang_java
     ;       lang_il
     ;       lang_erlang.
@@ -294,9 +293,6 @@ convert_foreign_language(String, ForeignLanguage) :-
     is semidet.
 
 convert_foreign_language_2("c", lang_c).
-convert_foreign_language_2("mc++", lang_managed_cplusplus).
-convert_foreign_language_2("managedc++", lang_managed_cplusplus).
-convert_foreign_language_2("managed c++", lang_managed_cplusplus).
 convert_foreign_language_2("c#", lang_csharp).
 convert_foreign_language_2("csharp", lang_csharp).
 convert_foreign_language_2("c sharp", lang_csharp).
@@ -332,15 +328,12 @@ compilation_target_string(target_x86_64) = "x86_64".
 compilation_target_string(target_erlang) = "Erlang".
 
 foreign_language_string(lang_c) = "C".
-foreign_language_string(lang_managed_cplusplus) = "Managed C++".
 foreign_language_string(lang_csharp) = "C#".
 foreign_language_string(lang_il) = "IL".
 foreign_language_string(lang_java) = "Java".
 foreign_language_string(lang_erlang) = "Erlang".
 
 simple_foreign_language_string(lang_c) = "c".
-simple_foreign_language_string(lang_managed_cplusplus) = "cpp".
-    % XXX mcpp is better
 simple_foreign_language_string(lang_csharp) = "csharp".
 simple_foreign_language_string(lang_il) = "il".
 simple_foreign_language_string(lang_java) = "java".

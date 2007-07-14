@@ -191,6 +191,9 @@ Changes to the Mercury compiler:
 * A new option, `--generate-standalone-interface', simplifies the task
   of calling Mercury procedures from programs written in other languages.
 
+* We have removed support for Managed C++ as a foreign language for the IL
+  backend.
+
 Changes to the Mercury deep profiler:
 
 * The deep profiler now supports measuring a proxy for time: a counter that
@@ -293,6 +296,11 @@ Changes to the Mercury compiler:
   Mercury libraries.  This interface allows programs written in languages
   such as C or C++ to initialise the Mercury runtime and libraries prior to
   calling any foreign exported procedures defined in those libraries.
+
+* We have removed support for Managed C++ as a foreign language for the IL
+  backend.  This was desirable because it wasn't used, because it has been
+  deprecated by Microsoft, and because it complicated the dependencies for the
+  IL backend.
 
 Changes to the Mercury standard library:
 

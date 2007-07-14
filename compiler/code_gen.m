@@ -256,7 +256,6 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
         ;
             ( Lang = lang_java
             ; Lang = lang_csharp
-            ; Lang = lang_managed_cplusplus
             ; Lang = lang_il
             ; Lang = lang_erlang
             ),

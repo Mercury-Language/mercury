@@ -4682,10 +4682,6 @@ make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for C#")
     ;
-        Lang = lang_managed_cplusplus,
-        sorry(this_file, ":- import_module not yet implemented: " ++
-            "`:- pragma foreign_import_module' for Managed C++")
-    ;
         Lang = lang_il,
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for IL")

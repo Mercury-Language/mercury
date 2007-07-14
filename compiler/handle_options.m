@@ -1869,7 +1869,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             BackendForeignLanguages = ["c"]
         ;
             Target = target_il,
-            BackendForeignLanguages = ["il", "csharp", "mc++"],
+            BackendForeignLanguages = ["il", "csharp"],
             set_option(optimize_constructor_last_call, bool(no), !Globals)
         ;
             Target = target_asm,
