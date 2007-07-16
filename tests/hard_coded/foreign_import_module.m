@@ -21,14 +21,17 @@ main -->
 
 :- pragma foreign_import_module(c, foreign_import_module_2).
 :- pragma foreign_import_module(il, foreign_import_module_2).
-% :- pragma foreign_import_module(il, std_util).
 
-:- pragma c_code(bar(X::in, Y::out), may_call_mercury,
+:- pragma foreign_proc("C",
+	bar(X::in, Y::out),
+	[may_call_mercury, promise_pure],
 "
 	foo(X, &Y);
 ").
-:- pragma foreign_proc("C#", bar(X::in, Y::out),
-		[may_call_mercury, promise_pure], "
+:- pragma foreign_proc("C#",
+	bar(X::in, Y::out),
+	[may_call_mercury, promise_pure],
+"
 	int Y1, Y2;
 
 	foreign_import_module_2.mercury_code.foo(X, ref Y1);
@@ -42,12 +45,16 @@ main -->
 ").
 
 :- pred bar2(int::in, int::out) is det.
-:- pragma c_code(bar2(X::in, Y::out), may_call_mercury,
+:- pragma foreign_proc("C",
+	bar2(X::in, Y::out),
+	[may_call_mercury, promise_pure],
 "
 	foo(X, &Y);
 ").
-:- pragma foreign_proc("C#", bar2(X::in, Y::out),
-		[may_call_mercury, promise_pure], "
+:- pragma foreign_proc("C#",
+	bar2(X::in, Y::out),
+	[may_call_mercury, promise_pure],
+"
 	int Y1 = 0, Y2 = 0;
 
 	foreign_import_module_2.mercury_code.foo(X, ref Y1);
