@@ -1,2 +1,13 @@
 *.c
+*.c_date
+*.d
+*.date
+*.date3
+*.dep
+*.dv
+*.err
+*.int*
+*.mh
+*.mih
+*.o
 diff
