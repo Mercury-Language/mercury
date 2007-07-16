@@ -1,3 +1,9 @@
 *.c
+*.c_date
+*.d
+*.dep
+*.dv
+*.err
 *.il
+*.mh
 all_solutions calculator cat committed_choice eliza hello ultra_sub sort
