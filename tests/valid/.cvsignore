@@ -1,3 +1,4 @@
+*.cs
 *.d
 *.date
 *.date0
@@ -12,3 +13,5 @@
 *.res
 undead_proc.h
 CLEAN
+.mgnuc_opts
+.mgnuc_copts
