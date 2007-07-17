@@ -926,7 +926,6 @@ iterate_foldl(Start, Max, Pred, !Acc) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% :- pragma foreign_proc("Erlang", 
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),

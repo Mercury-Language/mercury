@@ -1730,7 +1730,6 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
       else throw_bounds_error(BM, "bitmap.'byte :='", N)
     ).
 
-:- pragma promise_pure('unsafe_byte :='/3).
 (_ ^ unsafe_byte(_) := _) = _ :-
     private_builtin.sorry("bitmap.'unsafe_byte :='").
 
