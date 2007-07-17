@@ -165,7 +165,7 @@ INIT mercury_sys_init_thread_modules
 
     MR_declare_entry(mercury__do_call_closure_1);
 
-    MR_BEGIN_MODULE(thread_module)
+    MR_BEGIN_MODULE(hand_written_thread_module)
         MR_init_entry_ai(mercury__thread__spawn_begin_thread);
         MR_init_label(mercury__thread__spawn_end_thread);
         MR_init_entry_ai(mercury__thread__yield_resume);
@@ -218,7 +218,7 @@ INIT mercury_sys_init_thread_modules
     void mercury_sys_init_thread_modules_init(void)
     {
     #ifndef MR_HIGHLEVEL_CODE
-        thread_module();
+        hand_written_thread_module();
     #endif
     }
 

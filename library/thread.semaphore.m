@@ -373,7 +373,7 @@ INIT mercury_sys_init_semaphore_modules
 "
 #ifndef MR_HIGHLEVEL_CODE
 
-    MR_BEGIN_MODULE(semaphores_module)
+    MR_BEGIN_MODULE(hand_written_semaphores_module)
         MR_init_entry_ai(mercury__thread__semaphore__nop);
     MR_BEGIN_CODE
 
@@ -395,7 +395,7 @@ INIT mercury_sys_init_semaphore_modules
     void mercury_sys_init_semaphore_modules_init(void)
     {
     #ifndef MR_HIGHLEVEL_CODE
-        semaphores_module();
+        hand_written_semaphores_module();
     #endif
     }
 

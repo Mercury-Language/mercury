@@ -2011,7 +2011,7 @@ MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
         MR_PREDICATE, exception, builtin_throw, 1, 0);
 MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_throw, 1, 0, 1);
 
-MR_BEGIN_MODULE(exceptions_module)
+MR_BEGIN_MODULE(hand_written_exception_module)
     MR_init_entry_sl(mercury__exception__builtin_catch_3_0);
     MR_init_entry_sl(mercury__exception__builtin_catch_3_1);
     MR_init_entry_sl(mercury__exception__builtin_catch_3_2);
@@ -2528,7 +2528,7 @@ void
 mercury_sys_init_exceptions_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
-    exceptions_module();
+    hand_written_exception_module();
 #endif
 }
 

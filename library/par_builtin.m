@@ -213,7 +213,7 @@ INIT mercury_sys_init_par_builtin_modules
 "
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
 
-    MR_BEGIN_MODULE(par_builtin_module)
+    MR_BEGIN_MODULE(hand_written_par_builtin_module)
         MR_init_entry_ai(mercury__par_builtin__wait_resume);
     MR_BEGIN_CODE
 
@@ -245,7 +245,7 @@ INIT mercury_sys_init_par_builtin_modules
     void mercury_sys_init_par_builtin_modules_init(void)
     {
     #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
-        par_builtin_module();
+        hand_written_par_builtin_module();
     #endif
     }
 
