@@ -3667,24 +3667,20 @@ mlds_output_std_unop(UnaryOp, Exprn, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_binop(Op, X, Y, !IO) :-
+    binop_category_string(Op, Category, OpStr),
     (
-        Op = array_index(_Type)
-    ->
+        Category = array_index_binop,
         mlds_output_bracketed_rval(X, !IO),
         io.write_string("[", !IO),
         mlds_output_rval(Y, !IO),
         io.write_string("]", !IO)
     ;
-        Op = body
-    ->
-        io.write_string("MR_body(", !IO),
-        mlds_output_rval(X, !IO),
-        io.write_string(", ", !IO),
-        mlds_output_rval(Y, !IO),
-        io.write_string(")", !IO)
+        Category = compound_compare_binop,
+        % These operators are intended to be generated only when using
+        % the Erlang backend.
+        unexpected(this_file, "mlds_output_binop: compound_compare_binop")
     ;
-        c_util.string_compare_op(Op, OpStr)
-    ->
+        Category = string_compare_binop,
         io.write_string("(strcmp(", !IO),
         mlds_output_rval(X, !IO),
         io.write_string(", ", !IO),
@@ -3695,14 +3691,9 @@ mlds_output_binop(Op, X, Y, !IO) :-
         io.write_string(" ", !IO),
         io.write_string("0)", !IO)
     ;
-        ( c_util.float_compare_op(Op, OpStr1) ->
-            OpStr = OpStr1
-        ; c_util.float_op(Op, OpStr2) ->
-            OpStr = OpStr2
-        ;
-            fail
-        )
-    ->
+        ( Category = float_compare_binop
+        ; Category = float_arith_binop
+        ),
         io.write_string("(", !IO),
         mlds_output_bracketed_rval(X, !IO),
         io.write_string(" ", !IO),
@@ -3711,39 +3702,33 @@ mlds_output_binop(Op, X, Y, !IO) :-
         mlds_output_bracketed_rval(Y, !IO),
         io.write_string(")", !IO)
     ;
-% XXX Broken for C == minint, (since `NewC is 0 - C' overflows)
-%       Op = (+),
-%       Y = const(int_const(C)),
-%       C < 0
-%   ->
-%       NewOp = (-),
-%       NewC is 0 - C,
-%       NewY = const(int_const(NewC)),
-%       io.write_string("(", !IO),
-%       mlds_output_rval(X, !IO),
-%       io.write_string(" ", !IO),
-%       mlds_output_binary_op(NewOp, !IO),
-%       io.write_string(" ", !IO),
-%       mlds_output_rval(NewY, !IO),
-%       io.write_string(")", !IO)
-%   ;
+        Category = unsigned_compare_binop,
+        io.write_string("( (MR_Unsigned) ", !IO),
+        mlds_output_rval(X, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" (MR_Unsigned) ", !IO),
+        mlds_output_rval(Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Category = int_or_bool_binary_infix_binop,
+        % We could treat X + (-const) specially, but we don't.
+        % The reason is documented in the equivalent code in llds_out.m.
         io.write_string("(", !IO),
         mlds_output_rval(X, !IO),
         io.write_string(" ", !IO),
-        mlds_output_binary_op(Op, !IO),
+        io.write_string(OpStr, !IO),
         io.write_string(" ", !IO),
         mlds_output_rval(Y, !IO),
         io.write_string(")", !IO)
-    ).
-
-:- pred mlds_output_binary_op(binary_op::in, io::di, io::uo) is det.
-
-mlds_output_binary_op(Op, !IO) :-
-    ( c_util.binary_infix_op(Op, OpStr) ->
-        io.write_string(OpStr, !IO)
     ;
-        unexpected(this_file,
-            "mlds_output_binary_op: invalid binary operator")
+        Category = macro_binop,
+        io.write_string(OpStr, !IO),
+        io.write_string("(", !IO),
+        mlds_output_rval(X, !IO),
+        io.write_string(", ", !IO),
+        mlds_output_rval(Y, !IO),
+        io.write_string(")", !IO)
     ).
 
 :- pred mlds_output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.

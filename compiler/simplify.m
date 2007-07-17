@@ -1090,7 +1090,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     (
         Args = [TI, X, Y],
         ModuleName = mercury_public_builtin_module,
-        ( Name =  "@<", Inequality = "<", Invert = no
+        ( Name = "@<", Inequality = "<", Invert = no
         ; Name = "@=<", Inequality = ">", Invert = yes
         ; Name = "@>=", Inequality = "<", Invert = yes
         ; Name = "@>",  Inequality = ">", Invert = no
@@ -1978,11 +1978,11 @@ simplify_library_call("builtin", "compare", _ModeNum, _CrossCompiling,
 
     goal_info_get_context(!.GoalInfo, Context),
     goal_util.generate_simple_call(mercury_private_builtin_module,
-        "builtin_compound_eq", pf_predicate, only_mode, detism_semi, purity_pure,
-        [X, Y], [], [], ModuleInfo, Context, CondEq),
+        "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
+        purity_pure, [X, Y], [], [], ModuleInfo, Context, CondEq),
     goal_util.generate_simple_call(mercury_private_builtin_module,
-        "builtin_compound_lt", pf_predicate, only_mode, detism_semi, purity_pure,
-        [X, Y], [], [], ModuleInfo, Context, CondLt),
+        "builtin_compound_lt", pf_predicate, only_mode, detism_semi,
+        purity_pure, [X, Y], [], [], ModuleInfo, Context, CondLt),
 
     Builtin = mercury_public_builtin_module,
     make_const_construction(Res, cons(qualified(Builtin, "="), 0), ReturnEq),

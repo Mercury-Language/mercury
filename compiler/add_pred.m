@@ -243,15 +243,21 @@ add_builtin(PredId, Types, !PredInfo) :-
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     (
         Module = mercury_private_builtin_module,
-        ( Name = "store_at_ref"
-        ; Name = "builtin_compound_eq"
-        ; Name = "builtin_compound_lt"
+        (
+            Name = "store_at_ref",
+            StubPrime = no
+        ;
+            ( Name = "builtin_compound_eq"
+            ; Name = "builtin_compound_lt"
+            ),
+            StubPrime = yes
         )
     ->
         GoalExpr = conj(plain_conj, []),
         ExtraVars = [],
         ExtraTypes = [],
-        VarSet = VarSet0
+        VarSet = VarSet0,
+        Stub = StubPrime
     ;
         Module = mercury_private_builtin_module,
         Name = "trace_get_io_state"
@@ -285,7 +291,8 @@ add_builtin(PredId, Types, !PredInfo) :-
         ConjGoal = hlds_goal(ConjExpr, GoalInfoWithZeroHeadVars),
 
         Reason = promise_purity(dont_make_implicit_promises, purity_semipure),
-        GoalExpr = scope(Reason, ConjGoal)
+        GoalExpr = scope(Reason, ConjGoal),
+        Stub = no
     ;
         Module = mercury_private_builtin_module,
         Name = "trace_set_io_state"
@@ -296,7 +303,8 @@ add_builtin(PredId, Types, !PredInfo) :-
         GoalExpr = scope(Reason, ConjGoal),
         ExtraVars = [],
         ExtraTypes = [],
-        VarSet = VarSet0
+        VarSet = VarSet0,
+        Stub = no
     ;
         % Construct the pseudo-recursive call to Module.Name(HeadVars).
         SymName = qualified(Module, Name),
@@ -308,7 +316,8 @@ add_builtin(PredId, Types, !PredInfo) :-
             MaybeUnifyContext, SymName),
         ExtraVars = [],
         ExtraTypes = [],
-        VarSet = VarSet0
+        VarSet = VarSet0,
+        Stub = no
     ),
 
     % Construct a clause containing that pseudo-recursive call.
@@ -333,7 +342,14 @@ add_builtin(PredId, Types, !PredInfo) :-
     % predicates. The code generator will still generate inline code for calls
     % to these predicates.
     pred_info_get_markers(!.PredInfo, Markers0),
-    add_marker(marker_user_marked_no_inline, Markers0, Markers),
+    add_marker(marker_user_marked_no_inline, Markers0, Markers1),
+    (
+        Stub = yes,
+        add_marker(marker_stub, Markers1, Markers)
+    ;
+        Stub = no,
+        Markers = Markers1
+    ),
     pred_info_set_markers(Markers, !PredInfo).
 
 %-----------------------------------------------------------------------------%

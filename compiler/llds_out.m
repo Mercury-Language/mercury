@@ -17,7 +17,6 @@
 :- module ll_backend.llds_out.
 :- interface.
 
-:- import_module backend_libs.builtin_ops.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module libs.globals.
@@ -101,10 +100,6 @@
     %
 :- func reg_to_string(reg_type, int) = string.
 
-    % Convert a binary operator to a string description of that operator.
-    %
-:- func binary_op_to_string(binary_op) = string.
-
     % Output an instruction and (if the third arg is yes) the comment.
     % This predicate is provided for debugging use only.
     %
@@ -146,7 +141,7 @@
 :- type decl_set.
 
     % Every time we emit a declaration for a symbol, we insert it into the
-    % set of symbols we've already declared.  That way, we avoid generating
+    % set of symbols we've already declared. That way, we avoid generating
     % the same symbol twice, which would cause an error in the C code.
 
 :- pred decl_set_init(decl_set::out) is det.
@@ -163,7 +158,7 @@
 % declaration must be consistent with the linkage in the definition.
 % For this reason, the field in c_data (which holds the information about
 % the definition) which says whether or not a data name is exported
-% is not useful.  Instead, we need to determine whether or not something
+% is not useful. Instead, we need to determine whether or not something
 % is exported from its `data_name'.
 
 :- type linkage
@@ -179,6 +174,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.export.
 :- import_module backend_libs.name_mangle.
@@ -1141,15 +1137,11 @@ output_table_stats(ModuleName, DataName, NumInputs, !DeclSet, !IO) :-
 :- pred output_static_linkage_define(io::di, io::uo) is det.
 
 output_static_linkage_define(!IO) :-
+    % The MS Visual C compiler treats the following declarations as
+    % definitions, for which it cannot determine the size and hence aborts:
+    %   static const struct s_name typename[];
+    % However if we mark the linkage as extern, it treats it as a declaration.
 
-        %   
-        % The MS Visual C compiler treats the following declarations as
-        % definitions, for which it cannot determine the size and hence
-        % aborts
-        %   static const struct s_name typename[];
-        % However if we mark the linkage as extern, it treats it as a
-        % declaration.
-        %   
     io.write_string("#ifdef _MSC_VER\n", !IO),
     io.write_string("#define MR_STATIC_LINKAGE extern\n", !IO),
     io.write_string("#else\n", !IO),
@@ -1295,7 +1287,7 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
         (
             PrintComments = yes,
-            LineNumbers =  yes
+            LineNumbers = yes
         ->
             io.write_string("/* ", !IO),
             prog_out.write_context(Context, !IO),
@@ -3107,12 +3099,13 @@ output_rval_decls_format(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
         !IO),
     output_rval_decls_format(Rval2, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO),
-        %
-        % If floats are boxed, and the static ground terms option is enabled,
-        % then for each float constant which we might want to box we declare
-        % a static const variable holding that constant.
-        %
-    ( c_util.float_op(Op, OpStr) ->
+
+    % If floats are boxed, and the static ground terms option is enabled,
+    % then for each float constant which we might want to box we declare
+    % a static const variable holding that constant.
+
+    c_util.binop_category_string(Op, Category, OpStr),
+    ( Category = float_arith_binop ->
         globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
         globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
             !IO),
@@ -3212,7 +3205,7 @@ float_const_expr_name(Expr, Name) :-
 
     % Given a binop rval, succeed iff that rval is a floating point constant
     % expression; if so, return a name for that rval that is suitable for use
-    % in a C identifier.  Different rvals must be given different names.
+    % in a C identifier. Different rvals must be given different names.
     %
 :- pred float_const_binop_expr_name(binary_op::in, rval::in, rval::in,
     string::out) is semidet.
@@ -4798,23 +4791,28 @@ is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
 output_rval(const(Const), !IO) :-
     output_rval_const(Const, !IO).
 output_rval(unop(UnaryOp, Exprn), !IO) :-
-    output_unary_op(UnaryOp, !IO),
+    c_util.unary_prefix_op(UnaryOp, OpString),
+    io.write_string(OpString, !IO),
     io.write_string("(", !IO),
     llds.unop_arg_type(UnaryOp, ArgType),
     output_rval_as_type(Exprn, ArgType, !IO),
     io.write_string(")", !IO).
 output_rval(binop(Op, X, Y), !IO) :-
+    binop_category_string(Op, Category, OpStr),
     (
-        Op = array_index(_Type)
-    ->
+        Category = array_index_binop,
         io.write_string("(", !IO),
         output_rval_as_type(X, data_ptr, !IO),
         io.write_string(")[", !IO),
         output_rval_as_type(Y, integer, !IO),
         io.write_string("]", !IO)
     ;
-        c_util.string_compare_op(Op, OpStr)
-    ->
+        Category = compound_compare_binop,
+        % These operators are intended to be generated only when using
+        % the Erlang backend.
+        unexpected(this_file, "output_rval: compound_compare_binop")
+    ;
+        Category = string_compare_binop,
         io.write_string("(strcmp((char *)", !IO),
         output_rval_as_type(X, word, !IO),
         io.write_string(", (char *)", !IO),
@@ -4825,14 +4823,9 @@ output_rval(binop(Op, X, Y), !IO) :-
         io.write_string(" ", !IO),
         io.write_string("0)", !IO)
     ;
-        ( c_util.float_compare_op(Op, OpStr1) ->
-            OpStr = OpStr1
-        ; c_util.float_op(Op, OpStr2) ->
-            OpStr = OpStr2
-        ;
-            fail
-        )
-    ->
+        ( Category = float_compare_binop
+        ; Category = float_arith_binop
+        ),
         io.write_string("(", !IO),
         output_rval_as_type(X, float, !IO),
         io.write_string(" ", !IO),
@@ -4841,43 +4834,7 @@ output_rval(binop(Op, X, Y), !IO) :-
         output_rval_as_type(Y, float, !IO),
         io.write_string(")", !IO)
     ;
-% XXX broken for C == minint
-% (since `NewC is 0 - C' overflows)
-%       Op = (+),
-%       Y = const(llconst_int(C)),
-%       C < 0
-%   ->
-%       NewOp = (-),
-%       NewC is 0 - C,
-%       NewY = const(llconst_int(NewC)),
-%       io.write_string("("),
-%       output_rval(X),
-%       io.write_string(" "),
-%       output_binary_op(NewOp),
-%       io.write_string(" "),
-%       output_rval(NewY),
-%       io.write_string(")")
-%   ;
-        % special-case equality ops to avoid some unnecessary
-        % casts -- there's no difference between signed and
-        % unsigned equality, so if both args are unsigned, we
-        % don't need to cast them to (Integer)
-        ( Op = eq ; Op = ne ),
-        ( llds.rval_type(X, XType) ),
-        ( XType = word ; XType = unsigned ),
-        ( llds.rval_type(Y, YType) ),
-        ( YType = word ; YType = unsigned )
-    ->
-        io.write_string("(", !IO),
-        output_rval(X, !IO),
-        io.write_string(" ", !IO),
-        output_binary_op(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval(Y, !IO),
-        io.write_string(")", !IO)
-    ;
-        c_util.unsigned_compare_op(Op, OpStr)
-    ->
+        Category = unsigned_compare_binop,
         io.write_string("(", !IO),
         output_rval_as_type(X, unsigned, !IO),
         io.write_string(" ", !IO),
@@ -4886,11 +4843,57 @@ output_rval(binop(Op, X, Y), !IO) :-
         output_rval_as_type(Y, unsigned, !IO),
         io.write_string(")", !IO)
     ;
+        Category = int_or_bool_binary_infix_binop,
+        (
+            % Special-case equality ops to avoid some unnecessary casts --
+            % there's no difference between signed and unsigned equality,
+            % so if both args are unsigned, we don't need to cast them to
+            % MR_Integer.
+            ( Op = eq ; Op = ne ),
+            llds.rval_type(X, XType),
+            ( XType = word ; XType = unsigned ),
+            llds.rval_type(Y, YType),
+            ( YType = word ; YType = unsigned )
+        ->
+            io.write_string("(", !IO),
+            output_rval(X, !IO),
+            io.write_string(" ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" ", !IO),
+            output_rval(Y, !IO),
+            io.write_string(")", !IO)
+    %   ;
+    %       XXX broken for C == minint
+    %       (since `NewC = 0 - C' overflows)
+    %       Op = (+),
+    %       Y = const(llconst_int(C)),
+    %       C < 0
+    %   ->
+    %       NewOp = (-),
+    %       NewC = 0 - C,
+    %       NewY = const(llconst_int(NewC)),
+    %       io.write_string("("),
+    %       output_rval(X),
+    %       io.write_string(" "),
+    %       io.write_string(NewOpStr),
+    %       io.write_string(" "),
+    %       output_rval(NewY),
+    %       io.write_string(")")
+        ;
+            io.write_string("(", !IO),
+            output_rval_as_type(X, integer, !IO),
+            io.write_string(" ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" ", !IO),
+            output_rval_as_type(Y, integer, !IO),
+            io.write_string(")", !IO)
+        )
+    ;
+        Category = macro_binop,
+        io.write_string(OpStr, !IO),
         io.write_string("(", !IO),
         output_rval_as_type(X, integer, !IO),
-        io.write_string(" ", !IO),
-        output_binary_op(Op, !IO),
-        io.write_string(" ", !IO),
+        io.write_string(", ", !IO),
         output_rval_as_type(Y, integer, !IO),
         io.write_string(")", !IO)
     ).
@@ -4974,12 +4977,6 @@ output_rval(mem_addr(MemRef), !IO) :-
         output_rval(FieldNumRval, !IO),
         io.write_string(")", !IO)
     ).
-
-:- pred output_unary_op(unary_op::in, io::di, io::uo) is det.
-
-output_unary_op(Op, !IO) :-
-    c_util.unary_prefix_op(Op, OpString),
-    io.write_string(OpString, !IO).
 
 :- pred output_rval_const(rval_const::in, io::di, io::uo) is det.
 
@@ -5342,7 +5339,7 @@ output_lval_for_assign(global_var_ref(GlobalVar), word, !IO) :-
 
 :- func c_global_var_name(c_global_var_ref) = string.
 
-% The calls to env_var_is_acceptable_char in prog_io_goal.m  ensure that
+% The calls to env_var_is_acceptable_char in prog_io_goal.m ensure that
 % EnvVarName is acceptable as part of a C identifier.
 % The prefix must be identical to envvar_prefix in util/mkinit.c and
 % global_var_name in mlds_to_c.m.
@@ -5361,26 +5358,6 @@ output_set_line_num(Context, !IO) :-
 
 output_reset_line_num(!IO) :-
     c_util.reset_line_num(!IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
-
-output_binary_op(Op, !IO) :-
-    ( c_util.binary_infix_op(Op, String) ->
-        io.write_string(String, !IO)
-    ;
-        unexpected(this_file, "output_binary_op/3: invalid binary operator")
-    ).
-
-binary_op_to_string(Op) = Name :-
-    ( c_util.binary_infix_op(Op, Name0) ->
-        Name = Name0
-    ;
-        % The following is just for debugging purposes -
-        % string operators are not output as `str_eq', etc.
-        functor(Op, canonicalize, Name, _)
-    ).
 
 %-----------------------------------------------------------------------------%
 

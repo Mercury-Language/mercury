@@ -2432,6 +2432,8 @@ long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent).
 long_option("trace-io-builtins-2006-08-14", compiler_sufficiently_recent).
 long_option("compound-compare-builtins-2007-07-09",
                                     compiler_sufficiently_recent).
+long_option("no-det-warning-compound-compare-2007-07-17",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("feedback-file",        feedback_file).
 

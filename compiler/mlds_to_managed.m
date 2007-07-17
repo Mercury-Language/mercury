@@ -443,7 +443,8 @@ write_rval(unop(Unop, Rval), !IO) :-
         sorry(this_file, "box or unbox unop")
     ).
 write_rval(binop(Binop, Rval1, Rval2), !IO) :-
-    ( c_util.binary_infix_op(Binop, BinopStr) ->
+    c_util.binop_category_string(Binop, Category, BinopStr),
+    ( Category = int_or_bool_binary_infix_binop ->
         io.write_string("(", !IO),
         write_rval(Rval1, !IO),
         io.write_string(") ", !IO),

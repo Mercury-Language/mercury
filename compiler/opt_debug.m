@@ -112,6 +112,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.c_util.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
@@ -524,8 +525,8 @@ dump_unop(logical_not) = "not".
 dump_unop(hash_string) = "hash_string".
 dump_unop(bitwise_complement) = "bitwise_complement".
 
-dump_binop(Op) =
-    llds_out.binary_op_to_string(Op).
+dump_binop(Op) = OpStr :-
+    c_util.binop_category_string(Op, _Category, OpStr).
 
 dump_maybe_rvals(_, [], _) = "".
 dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-
