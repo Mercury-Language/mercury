@@ -2293,6 +2293,7 @@ long_option("csharp-flags",         csharp_flags).
 long_option("csharp-flag",          quoted_csharp_flag).
 
 long_option("erlang-compiler",      erlang_compiler).
+long_option("erlang-interpreter",   erlang_interpreter).
 long_option("erlang-flags",         erlang_flags).
 long_option("erlang-flag",          quoted_erlang_flag).
 long_option("erlang-include-directory", erlang_include_directory).
