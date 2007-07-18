@@ -5123,7 +5123,7 @@ init_std_streams(!IO).
     % Save the standard streams to the global server. When we spawn a new
     % Mercury thread later we will need to look it up in order to initialise
     % the new process's process dictionary.
-    StdStreams = {Stdin, Stdout, Stderr, StdinBinary, StdoutBinaryPid},
+    StdStreams = {Stdin, Stdout, Stderr, StdinBinary, StdoutBinary},
     'ML_erlang_global_server' ! {init_std_streams, StdStreams}
 ").
 
