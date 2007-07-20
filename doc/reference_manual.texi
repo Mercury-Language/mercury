@@ -7832,9 +7832,6 @@ For example,
 :- pragma foreign_export("Erlang", foo(in, in, out), "foo").
 @end example
 
-(Currently foreign_exported procedures won't be visible outside
-the defining module.  This should be fixed soon.)
-
 The type signature of the Erlang interface to a Mercury procedure is
 described in @ref{Erlang data passing conventions}.
 
