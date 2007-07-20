@@ -531,7 +531,7 @@ erl_gen_commit(Goal, CodeModel, ScopeDetism, InstMap, Context,
             erl_gen_commit_pieces(Goal, InstMap, Context, no,
                 GoalStatement, PackedNonLocals, !Info),
 
-            Statement = elds_try(GoalStatement, [AnyCase], Catch),
+            Statement = elds_try(GoalStatement, [AnyCase], yes(Catch), no),
             AnyCase = elds_case(elds_anon_var, elds_term(elds_fail)),
             Catch = elds_catch(elds_throw_atom,
                 elds_tuple([elds_commit_marker, PackedNonLocals]),
@@ -562,7 +562,7 @@ erl_gen_commit(Goal, CodeModel, ScopeDetism, InstMap, Context,
         ResultsVarExpr = expr_from_var(ResultsVar),
 
         Statement = elds_eq(PackedNonLocals, TryExpr),
-        TryExpr = elds_try(GoalStatement, [], Catch),
+        TryExpr = elds_try(GoalStatement, [], yes(Catch), no),
         Catch = elds_catch(elds_throw_atom,
             elds_tuple([elds_commit_marker, ResultsVarExpr]), ResultsVarExpr)
     ;
@@ -1092,15 +1092,15 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         %       let PutAndThen = ``put(Ref, true), <Then && SUCCEED()>''
         %
         %       Ref = make_ref(),       /* defaults to `undefined' */
-        %       <Cond && PutAndThen>
-        %       case get(Ref) of
-        %           true -> true ;
-        %           _    -> <Else>
-        %       end,
-        %       erase(Ref)
-        %
-        %   XXX need to ensure the erase(Ref) is done even if an exception is
-        %   thrown (e.g. by commit) by wrapping this with `try'
+        %       try
+        %           <Cond && PutAndThen>
+        %           case get(Ref) of
+        %               true -> true ;
+        %               _    -> <Else>
+        %           end,
+        %       after
+        %           erase(Ref)
+        %       end
         %
 
         erl_gen_info_new_named_var("Ref", Ref, !Info),
@@ -1131,8 +1131,8 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         TrueCase = elds_case(elds_true, elds_term(elds_true)),
         OtherCase = elds_case(elds_anon_var, ElseStatement),
 
-        Statement = list.foldr(join_exprs,
-            [MakeRef, CondThen, CaseElse], EraseRef)
+        Statement = join_exprs(MakeRef,
+            elds_try(join_exprs(CondThen, CaseElse), [], no, yes(EraseRef)))
     ).
 
 %-----------------------------------------------------------------------------%

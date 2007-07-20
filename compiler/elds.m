@@ -187,7 +187,8 @@
     ;       elds_try(
                 try_expr    :: elds_expr,
                 try_cases   :: list(elds_case),
-                try_catch   :: elds_catch
+                try_catch   :: maybe(elds_catch),
+                try_after   :: maybe(elds_expr)
             )
 
             % throw(Expr)

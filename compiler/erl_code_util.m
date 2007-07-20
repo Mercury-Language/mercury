@@ -467,11 +467,26 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         erl_rename_vars_in_cases(Subn, Cases0, Cases),
         Expr = elds_case_expr(ExprA, Cases)
     ;
-        Expr0 = elds_try(ExprA0, Cases0, Catch0),
+        Expr0 = elds_try(ExprA0, Cases0, MaybeCatch0, MaybeAfter0),
         erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
         erl_rename_vars_in_cases(Subn, Cases0, Cases),
-        erl_rename_vars_in_catch(Subn, Catch0, Catch),
-        Expr = elds_try(ExprA, Cases, Catch)
+        (
+            MaybeCatch0 = yes(Catch0),
+            erl_rename_vars_in_catch(Subn, Catch0, Catch),
+            MaybeCatch = yes(Catch)
+        ;
+            MaybeCatch0 = no,
+            MaybeCatch = no
+        ),
+        (
+            MaybeAfter0 = yes(After0),
+            erl_rename_vars_in_expr(Subn, After0, After),
+            MaybeAfter = yes(After)
+        ;
+            MaybeAfter0 = no,
+            MaybeAfter = no
+        ),
+        Expr = elds_try(ExprA, Cases, MaybeCatch, MaybeAfter)
     ;
         Expr0 = elds_throw(ExprA0),
         erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
@@ -624,10 +639,21 @@ erl_vars_in_expr(Expr, !Set) :-
         erl_vars_in_expr(ExprA, !Set),
         erl_vars_in_cases(Cases, !Set)
     ;
-        Expr = elds_try(ExprA, Cases, Catch),
+        Expr = elds_try(ExprA, Cases, MaybeCatch, MaybeAfter),
         erl_vars_in_expr(ExprA, !Set),
         erl_vars_in_cases(Cases, !Set),
-        erl_vars_in_catch(Catch, !Set)
+        (
+            MaybeCatch = yes(Catch),
+            erl_vars_in_catch(Catch, !Set)
+        ;
+            MaybeCatch = no
+        ),
+        (
+            MaybeAfter = yes(After),
+            erl_vars_in_expr(After, !Set)
+        ;
+            MaybeAfter = no
+        )
     ;
         Expr = elds_throw(ExprA),
         erl_vars_in_expr(ExprA, !Set)
@@ -748,11 +774,24 @@ erl_expr_size(Expr) = Size :-
         Expr = elds_case_expr(ExprA, Cases),
         Size = 1 + erl_expr_size(ExprA) + erl_cases_size(Cases)
     ;
-        Expr = elds_try(ExprA, Cases, Catch),
-        Catch = elds_catch(TermA, TermB, CatchExpr),
+        Expr = elds_try(ExprA, Cases, MaybeCatch, MaybeAfter),
+        (
+            MaybeCatch = yes(elds_catch(TermA, TermB, CatchExpr)),
+            CatchSize = erl_term_size(TermA) + erl_term_size(TermB) +
+                erl_expr_size(CatchExpr)
+        ;
+            MaybeCatch = no,
+            CatchSize = 0
+        ),
+        (
+            MaybeAfter = yes(AfterExpr),
+            AfterSize = erl_expr_size(AfterExpr)
+        ;
+            MaybeAfter = no,
+            AfterSize = 0
+        ),
         Size = 1 + erl_expr_size(ExprA) + erl_cases_size(Cases) +
-            erl_term_size(TermA) + erl_term_size(TermB) +
-            erl_expr_size(CatchExpr)
+            CatchSize + AfterSize
     ;
         Expr = elds_throw(ExprA),
         Size = 1 + erl_expr_size(ExprA)

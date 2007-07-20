@@ -579,7 +579,7 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         nl_indent_line(Indent, !IO),
         io.write_string("end)", !IO)
     ;
-        Expr = elds_try(ExprA, Cases, Catch),
+        Expr = elds_try(ExprA, Cases, MaybeCatch, MaybeAfter),
         io.write_string("(try", !IO),
         nl_indent_line(Indent + 1, !IO),
         output_block_expr(ModuleInfo, VarSet, Indent + 1, ExprA, !IO),
@@ -592,10 +592,24 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
             io.write_list(Cases, ";",
                 output_case(ModuleInfo, VarSet, Indent + 1), !IO)
         ),
-        nl_indent_line(Indent, !IO),
-        io.write_string("catch", !IO),
-        nl_indent_line(Indent + 1, !IO),
-        output_catch(ModuleInfo, VarSet, Indent + 1, Catch, !IO),
+        (
+            MaybeCatch = yes(Catch),
+            nl_indent_line(Indent, !IO),
+            io.write_string("catch", !IO),
+            nl_indent_line(Indent + 1, !IO),
+            output_catch(ModuleInfo, VarSet, Indent + 1, Catch, !IO)
+        ;
+            MaybeCatch = no
+        ),
+        (
+            MaybeAfter = yes(After),
+            nl_indent_line(Indent, !IO),
+            io.write_string("after", !IO),
+            nl_indent_line(Indent + 1, !IO),
+            output_expr(ModuleInfo, VarSet, Indent + 1, After, !IO)
+        ;
+            MaybeAfter = no
+        ),
         nl_indent_line(Indent, !IO),
         io.write_string("end)", !IO)
     ;
