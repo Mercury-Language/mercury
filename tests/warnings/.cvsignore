@@ -3,3 +3,5 @@ CLEAN
 *.d
 *.res
 .allres
+.mgnuc_opts
+.mgnuc_copts
