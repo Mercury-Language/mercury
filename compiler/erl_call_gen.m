@@ -397,6 +397,7 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
 erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         MaybeSuccessExpr, Statement, !Info) :-
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    erl_gen_info_get_var_types(!.Info, VarTypes),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
     (
@@ -414,12 +415,12 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
             (
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
-                erl_variable_type(!.Info, Lval, LvalType),
+                map.lookup(VarTypes, Lval, LvalType),
                 is_dummy_argument_type(ModuleInfo, LvalType)
             ->
                 Statement = expr_or_void(MaybeSuccessExpr)
             ;
-                Rval = erl_gen_simple_expr(SimpleExpr),
+                Rval = erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr),
                 Assign = elds.elds_eq(elds.expr_from_var(Lval), Rval),
                 Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
             )
@@ -437,7 +438,7 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         CodeModel = model_semi,
         (
             SimpleCode = test(SimpleTest),
-            TestRval = erl_gen_simple_expr(SimpleTest),
+            TestRval = erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleTest),
             % Unlike Mercury procedures, the builtin tests return true and
             % false instead of {} and fail.
             Statement = elds_case_expr(TestRval, [TrueCase, FalseCase]),
@@ -458,25 +459,39 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         unexpected(this_file, "model_non builtin predicate")
     ).
 
-:- func erl_gen_simple_expr(simple_expr(prog_var)) = elds_expr.
+:- func erl_gen_simple_expr(module_info, vartypes, simple_expr(prog_var)) =
+    elds_expr.
 
-erl_gen_simple_expr(leaf(Var)) = elds.expr_from_var(Var).
-erl_gen_simple_expr(int_const(Int)) = elds_term(elds_int(Int)).
-erl_gen_simple_expr(float_const(Float)) = elds_term(elds_float(Float)).
-erl_gen_simple_expr(unary(StdOp, Expr0)) = Expr :-
-    ( std_unop_to_elds(StdOp, Op) ->
-        SimpleExpr = erl_gen_simple_expr(Expr0),
-        Expr = elds_unop(Op, SimpleExpr)
+erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
+    (
+        SimpleExpr = leaf(Var),
+        % Variables of dummy types need to be replaced since they probably
+        % don't exist.
+        Expr = erl_var_or_dummy_replacement(ModuleInfo, VarTypes, elds_false,
+            Var)
     ;
-        sorry(this_file, "unary builtin not supported on erlang target")
-    ).
-erl_gen_simple_expr(binary(StdOp, Expr1, Expr2)) = Expr :-
-    ( std_binop_to_elds(StdOp, Op) ->
-        SimpleExpr1 = erl_gen_simple_expr(Expr1),
-        SimpleExpr2 = erl_gen_simple_expr(Expr2),
-        Expr = elds_binop(Op, SimpleExpr1, SimpleExpr2)
+        SimpleExpr = int_const(Int),
+        Expr = elds_term(elds_int(Int))
     ;
-        sorry(this_file, "binary builtin not supported on erlang target")
+        SimpleExpr = float_const(Float),
+        Expr = elds_term(elds_float(Float))
+    ;
+        SimpleExpr = unary(StdOp, Expr0),
+        ( std_unop_to_elds(StdOp, Op) ->
+            SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr0),
+            Expr = elds_unop(Op, SimpleExpr1)
+        ;
+            sorry(this_file, "unary builtin not supported on erlang target")
+        )
+    ;
+        SimpleExpr = binary(StdOp, Expr1, Expr2),
+        ( std_binop_to_elds(StdOp, Op) ->
+            SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr1),
+            SimpleExpr2 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr2),
+            Expr = elds_binop(Op, SimpleExpr1, SimpleExpr2)
+        ;
+            sorry(this_file, "binary builtin not supported on erlang target")
+        )
     ).
 
 :- pred std_unop_to_elds(unary_op::in, elds_unop::out) is semidet.

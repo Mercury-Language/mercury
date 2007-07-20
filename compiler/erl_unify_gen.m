@@ -257,8 +257,8 @@ cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
             % unifications we would want to replace them with `false' (what
             % we use for all dummy values).  In deconstructions we replace
             % them by anonymous variables (_).
-            TermArgs = list.map(var_or_dummy_replacement(ModuleInfo, VarTypes,
-                DummyVarReplacement), Args),
+            TermArgs = list.map(erl_var_or_dummy_replacement(ModuleInfo,
+                VarTypes, DummyVarReplacement), Args),
             Term = elds_tuple([Functor | TermArgs])
         )
     ;
@@ -270,19 +270,6 @@ cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
     ;
         ConsId = float_const(Float),
         Term = elds_float(Float)
-    ).
-
-:- func var_or_dummy_replacement(module_info, vartypes, elds_term, prog_var) =
-    elds_expr.
-
-var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
-    (if
-        map.search(VarTypes, Var, Type),
-        is_dummy_argument_type(ModuleInfo, Type)
-    then
-        elds_term(DummyVarReplacement)
-    else
-        expr_from_var(Var)
     ).
 
 cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-

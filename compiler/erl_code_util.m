@@ -149,6 +149,14 @@
 :- pred erl_bind_unbound_vars(erl_gen_info::in, set(prog_var)::in,
     hlds_goal::in, instmap::in, elds_expr::in, elds_expr::out) is det.
 
+    % erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyRepl, Var) = Expr
+    %
+    % Return DummyRepl if Var is of a dummy type, otherwise return
+    % Var.
+    %
+:- func erl_var_or_dummy_replacement(module_info, vartypes, elds_term,
+    prog_var) = elds_expr.
+
     % erl_create_renaming(Vars, Subst, !Info):
     %
     % Create a substitution for each variable in Vars to a fresh variable.
@@ -403,6 +411,18 @@ erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
         NotBoundList = set.to_sorted_list(NotBound),
         Assignments = list.map(var_eq_false, NotBoundList),
         Statement = join_exprs(elds_block(Assignments), Statement0)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
+    (if
+        map.search(VarTypes, Var, Type),
+        is_dummy_argument_type(ModuleInfo, Type)
+    then
+        elds_term(DummyVarReplacement)
+    else
+        expr_from_var(Var)
     ).
 
 %-----------------------------------------------------------------------------%
