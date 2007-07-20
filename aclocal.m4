@@ -354,10 +354,34 @@ AC_SUBST(JAR)
 #
 # Erlang configuration
 #
+
+# copy of AC_ERLANG_PATH_ERLC from autoconf-2.60
+AC_DEFUN([MERCURY_ERLANG_PATH_ERLC],
+[AC_ARG_VAR([ERLC], [Erlang/OTP compiler command [autodetected]])dnl
+if test -n "$ERLC"; then
+    AC_MSG_CHECKING([for erlc])
+    AC_MSG_RESULT([$ERLC])
+else
+    AC_PATH_TOOL(ERLC, erlc, [$1], [$2])
+fi
+AC_ARG_VAR([ERLCFLAGS], [Erlang/OTP compiler flags [none]])dnl
+])
+
+# copy of AC_ERLANG_PATH_ERL from autoconf-2.60
+AC_DEFUN([MERCURY_ERLANG_PATH_ERL],
+[AC_ARG_VAR([ERL], [Erlang/OTP interpreter command [autodetected]])dnl
+if test -n "$ERL"; then
+    AC_MSG_CHECKING([for erl])
+    AC_MSG_RESULT([$ERL])
+else
+    AC_PATH_TOOL(ERL, erl, [$1], [$2])[]dnl
+fi
+])
+
 AC_DEFUN(MERCURY_CHECK_ERLANG,
 [
-AC_ERLANG_PATH_ERLC
-AC_ERLANG_PATH_ERL
+MERCURY_ERLANG_PATH_ERLC
+MERCURY_ERLANG_PATH_ERL
 
 if test "$ERLC" != "" -a "$ERL" != ""; then
 	mercury_cv_erlang="yes"
