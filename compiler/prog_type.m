@@ -298,6 +298,7 @@
 :- func sample_typeclass_info_type = mer_type.
 :- func comparison_result_type = mer_type.
 :- func io_state_type = mer_type.
+:- func region_type = mer_type.
 
     % Construct the types of type_infos and type_ctor_infos.
     %
@@ -904,6 +905,10 @@ type_ctor_info_type = defined_type(Name, [], kind_star) :-
 io_state_type = defined_type(Name, [], kind_star) :-
     Module = mercury_std_lib_module_name(unqualified("io")),
     Name = qualified(Module, "state").
+
+region_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_region_builtin_module,
+    Name = qualified(Module, "region").
 
 %-----------------------------------------------------------------------------%
 

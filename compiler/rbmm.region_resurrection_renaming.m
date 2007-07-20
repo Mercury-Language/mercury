@@ -26,6 +26,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.smm_common.
 :- import_module transform_hlds.rbmm.points_to_info.
+:- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_liveness_info.
 
 :- import_module list.
@@ -35,7 +36,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type renaming_table ==
-	map(pred_proc_id, renaming_proc).
+    map(pred_proc_id, renaming_proc).
 
 :- type renaming_proc ==
     map(program_point, renaming).
@@ -46,7 +47,7 @@
     map(pred_proc_id, renaming_annotation_proc).
 
 :- type renaming_annotation_proc ==
-    map(program_point, list(string)).
+    map(program_point, list(region_instruction)).
 
 :- type proc_resurrection_path_table ==
     map(pred_proc_id, exec_path_region_set_table).
@@ -117,8 +118,13 @@
 
     % Record the annotation for a procedure.
     % 
-:- pred record_annotation(program_point::in, string::in,
+:- pred record_annotation(program_point::in, region_instruction::in,
     renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
+
+    % Make a region renaming instruction.
+    %
+:- pred make_renaming_instruction(string::in, string::in,
+    region_instruction::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -646,15 +652,16 @@ add_annotation_and_renaming(PrevProgPoint, Graph, JoinPointName,
     % XXX Annotations are only added for resurrected regions that have been
     % renamed in this execution path (i.e., the execution path contains
     % PrevProgPoint and ProgPoint).
-    % It seems that we have to add annotations (reverse renaming) for
-    % ones that have not been renamed too. The only difference is that
+    % It seems that we have to add annotations (reverse renaming) for ones that
+    % have not been renamed as implemented below too. The only difference is
+    % that
     % the reverse renaming is between the new name and the original name.
     ( if    map.search(PrevRenaming, RegionName, CurrentName)
       then
-            Annotation = NewName ++ " = " ++ CurrentName,
+            make_renaming_instruction(CurrentName, NewName, Annotation),
             record_annotation(PrevProgPoint, Annotation, !AnnotationProc)
       else
-            Annotation = NewName ++ " = " ++ RegionName,
+            make_renaming_instruction(RegionName, NewName, Annotation),
             record_annotation(PrevProgPoint, Annotation, !AnnotationProc)
     ).
 
@@ -670,7 +677,7 @@ add_annotation(ProgPoint, Graph, Renaming, Region, !AnnotationProc) :-
     % renamed in this execution path.
     ( if    map.search(Renaming, RegionName, CurrentName)
       then
-            Annotation = RegionName ++ " = " ++ CurrentName,
+            make_renaming_instruction(CurrentName, RegionName, Annotation),
             record_annotation(ProgPoint, Annotation, !AnnotationProc)
       else  true
     ).
@@ -688,6 +695,8 @@ record_annotation(ProgPoint, Annotation, !AnnotationProc) :-
     ),
     svmap.set(ProgPoint, Annotations, !AnnotationProc).
 
+make_renaming_instruction(OldRegionName, NewRegionName, RenameInstruction) :-
+    RenameInstruction = rename_region(OldRegionName, NewRegionName).
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -37,7 +37,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred do_region_analysis(module_info::in, module_info::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -64,58 +64,58 @@ do_region_analysis(!ModuleInfo, !IO) :-
     live_variable_analysis(!.ModuleInfo, ExecPathTable, LVBeforeTable, 
         LVAfterTable, VoidVarTable),
     live_region_analysis(!.ModuleInfo, RptaInfoTable, 
-		LVBeforeTable, LVAfterTable, VoidVarTable, LRBeforeTable0,
-		LRAfterTable0, VoidVarRegionTable0, InputRTable, OutputRTable,
-		BornRTable0, DeadRTable0, LocalRTable0),
+        LVBeforeTable, LVAfterTable, VoidVarTable, LRBeforeTable0,
+        LRAfterTable0, VoidVarRegionTable0, InputRTable, OutputRTable,
+        BornRTable0, DeadRTable0, LocalRTable0),
     compute_interproc_region_lifetime(!.ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable0, LRAfterTable0, InputRTable,
-		OutputRTable, ConstantRTable0, BornRTable0, BornRTable1,
-		DeadRTable0, DeadRTable1),
+        OutputRTable, ConstantRTable0, BornRTable0, BornRTable1,
+        DeadRTable0, DeadRTable1),
     ignore_primitive_regions(!.ModuleInfo, RptaInfoTable, 
         BornRTable1, BornRTable, DeadRTable1, DeadRTable,
-		ConstantRTable0, ConstantRTable, LocalRTable0, LocalRTable,
-		LRBeforeTable0, LRBeforeTable, LRAfterTable0, LRAfterTable,
-		VoidVarRegionTable0, VoidVarRegionTable),
+        ConstantRTable0, ConstantRTable, LocalRTable0, LocalRTable,
+        LRBeforeTable0, LRBeforeTable, LRAfterTable0, LRAfterTable,
+        VoidVarRegionTable0, VoidVarRegionTable),
     introduce_region_instructions(!.ModuleInfo, RptaInfoTable,
-		ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
-		BornRTable, DeadRTable, LocalRTable, AnnotationTable),
+        ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
+        BornRTable, DeadRTable, LocalRTable, RegionInstructionTable),
 
     record_actual_region_arguments(!.ModuleInfo, RptaInfoTable,
-		ConstantRTable, DeadRTable, BornRTable,
-		ActualRegionArgumentTable),
+        ConstantRTable, DeadRTable, BornRTable,
+        ActualRegionArgumentTable),
 
-	% The region analysis treats region variables as if they are
-	% imperative-style updatable variables. They may also have scopes
-	% which are not valid in Mercury. In order for Mercury code to
-	% manipulate regions we need to map these "region variables" on to
-	% Mercury variables. 
-	% The calls below derive the necessary mapping to resolve the problem.
+    % The region analysis treats region variables as if they are
+    % imperative-style updatable variables. They may also have scopes
+    % which are not valid in Mercury. In order for Mercury code to
+    % manipulate regions we need to map these "region variables" on to
+    % Mercury variables. 
+    % The calls below derive the necessary mapping to resolve the problem.
     compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable, 
-		BornRTable, LocalRTable, CreatedBeforeTable,
-		ResurrectionPathTable0),
-	collect_join_points(ResurrectionPathTable0, ExecPathTable,
-		JoinPointTable),
-	collect_paths_containing_join_points(ExecPathTable, JoinPointTable,
-		ResurrectionPathTable0, ResurrectionPathTable),
+        BornRTable, LocalRTable, CreatedBeforeTable,
+        ResurrectionPathTable0),
+    collect_join_points(ResurrectionPathTable0, ExecPathTable,
+        JoinPointTable),
+    collect_paths_containing_join_points(ExecPathTable, JoinPointTable,
+        ResurrectionPathTable0, ResurrectionPathTable),
     collect_region_resurrection_renaming(CreatedBeforeTable, LocalRTable,
-		RptaInfoTable, ResurrectionPathTable, ResurrectionRenameTable),
+        RptaInfoTable, ResurrectionPathTable, ResurrectionRenameTable),
     collect_renaming_and_annotation(ResurrectionRenameTable, JoinPointTable,
-		LRBeforeTable, BornRTable, RptaInfoTable, ResurrectionPathTable,
-		ExecPathTable, ResurRenamingAnnoTable, ResurRenamingTable),
-	collect_non_local_and_in_cond_regions(!.ModuleInfo, RptaInfoTable,
-		LRBeforeTable, LRAfterTable, ResurRenamingTable,
-		ResurRenamingAnnoTable, LocalRegionsTable, InCondRegionsTable),
-	collect_ite_renamed_regions(LocalRegionsTable, InCondRegionsTable,
-		RenamedRegionsTable),
-	collect_ite_renaming(!.ModuleInfo, RptaInfoTable, RenamedRegionsTable,
-		IteRenamingTable),
-	collect_ite_annotation(RenamedRegionsTable, ExecPathTable, 
-		RptaInfoTable, IteRenamingTable, IteRenamingAnnoTable),
+        LRBeforeTable, BornRTable, RptaInfoTable, ResurrectionPathTable,
+        ExecPathTable, ResurRenamingAnnoTable, ResurRenamingTable),
+    collect_non_local_and_in_cond_regions(!.ModuleInfo, RptaInfoTable,
+        LRBeforeTable, LRAfterTable, ResurRenamingTable,
+        ResurRenamingAnnoTable, LocalRegionsTable, InCondRegionsTable),
+    collect_ite_renamed_regions(LocalRegionsTable, InCondRegionsTable,
+        RenamedRegionsTable),
+    collect_ite_renaming(!.ModuleInfo, RptaInfoTable, RenamedRegionsTable,
+        IteRenamingTable),
+    collect_ite_annotation(RenamedRegionsTable, ExecPathTable, 
+        RptaInfoTable, IteRenamingTable, IteRenamingAnnoTable),
 
-	region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-		ActualRegionArgumentTable, ResurRenamingTable, IteRenamingTable,
-		AnnotationTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
-		map.init, _NameToVarTable, !ModuleInfo).
+    region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+        ActualRegionArgumentTable, ResurRenamingTable, IteRenamingTable,
+        RegionInstructionTable, ResurRenamingAnnoTable,
+        IteRenamingAnnoTable, map.init, _NameToVarTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.
