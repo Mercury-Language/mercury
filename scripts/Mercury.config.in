@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003-2006 The University of Melbourne.
+# Copyright (C) 2003-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -27,6 +27,8 @@ MERCURY_MATH_LIB=@MATH_LIB@
 MERCURY_JAVA_COMPILER=@JAVAC@
 MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
 MERCURY_CSHARP_COMPILER=@MS_CSC@
+MERCURY_ERLANG_COMPILER=@ERLC@
+MERCURY_ERLANG_INTERPRETER=@ERL@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -52,6 +54,8 @@ DEFAULT_MCFLAGS=\
 		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
 		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
+		--erlang-compiler "$(MERCURY_ERLANG_COMPILER)" \
+		--erlang-interpreter "$(MERCURY_ERLANG_INTERPRETER)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
 		--cflags-for-warnings "@CFLAGS_FOR_WARNINGS@" \

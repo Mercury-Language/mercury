@@ -2428,10 +2428,14 @@ long_option("bug-intermod-2006-09-28",  compiler_sufficiently_recent).
 long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
 long_option("read-config-file-2003-03-01", compiler_sufficiently_recent).
+% XXX this option won't be recognised because of the "no-" prefix,
+% but "no-no-" will be recognised.
 long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent).
 long_option("trace-io-builtins-2006-08-14", compiler_sufficiently_recent).
 long_option("compound-compare-builtins-2007-07-09",
                                     compiler_sufficiently_recent).
+% XXX this option won't be recognised because of the "no-" prefix,
+% but "no-no-" will be recognised.
 long_option("no-det-warning-compound-compare-2007-07-17",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).

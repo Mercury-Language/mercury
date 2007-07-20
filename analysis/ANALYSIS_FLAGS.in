@@ -17,6 +17,9 @@
 --c-include-directory ../browser/Mercury/mihs
 --c-include-directory ../trace
 --c-include-directory ../analysis
+--erlang-include-directory ../library/Mercury/hrls
+--erlang-include-directory ../mdbcomp/Mercury/hrls
+--erlang-include-directory ../analysis/Mercury/hrls
 -L../boehm_gc
 -L../runtime
 -L../library

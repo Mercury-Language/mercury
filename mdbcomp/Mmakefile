@@ -85,11 +85,11 @@ LN	= ln
 
 #-----------------------------------------------------------------------------#
 
-# The IL and Java implementations of the standard library are not yet complete,
-# so we need to pass `--allow-stubs' to get them to compile.
+# The IL, Java and Erlang implementations of the standard library are not yet
+# complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter il% java%,$(GRADE))","")
+ifneq ("$(filter il% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -240,9 +240,9 @@ install_dirs:
 		mkdir -p $(INSTALL_GRADE_MODULE_DIR)
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
-ifneq ("$(filter il% java%,$(GRADE))","")
+ifneq ("$(filter il% java% erlang%,$(GRADE))","")
 
-# there is no debugger in the .NET and Java backends
+# there is no debugger in the .NET, Java, Erlang backends
 
 .PHONY: install_init
 install_init: 

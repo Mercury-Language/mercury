@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000,2002-2003, 2005 The University of Melbourne. 
+# Copyright (C) 1995-2000, 2002-2003, 2005, 2007 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -37,7 +37,7 @@ all:	mercury_profile $(TAGS_FILE_EXISTS)
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifeq ("$(filter il% java%,$(GRADE))","")        
+ifeq ("$(filter il% java% erlang%,$(GRADE))","")        
 mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005-2006 The University of Melbourne. 
+# Copyright (C) 2005-2007 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -89,7 +89,7 @@ $(MDBCOMP_MODULES): $(MDBCOMP_ORIG_MODULES)
 # Add some additional dependencies, so that Mmake knows to remake the
 # slicer and dicer if one of the libraries changes.
 
-ifeq ("$(filter il% java%,$(GRADE))","")        
+ifeq ("$(filter il% java% erlang%,$(GRADE))","")        
 mslice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mslice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mslice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A

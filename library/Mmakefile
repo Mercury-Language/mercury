@@ -97,11 +97,11 @@ endif
 MCFLAGS += --flags LIB_FLAGS $(CONFIG_OVERRIDE)
 MCFLAGS += $(LIBRARY_TRACE_LEVEL) $(INTER_FLAGS)
 
-# The IL and Java implementations of the standard library are not yet complete,
-# so we need to pass `--allow-stubs' to get them to compile.
+# The IL, Java and Erlang implementations of the standard library are not yet
+# complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter il% java%,$(GRADE))","")
+ifneq ("$(filter il% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -358,7 +358,7 @@ endif
 #
 # Some extra rules that we need for the C and asm back-ends
 #
-ifeq ("$(findstring il,$(GRADE))$(findstring java,$(GRADE))","")
+ifeq ("$(filter il% java% erlang%,$(GRADE))","")
 
 # The following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
@@ -379,7 +379,7 @@ MCFLAGS += --extra-init-command ./print_extra_inits
 
 endif
 
-endif	# GRADE != il && GRADE != java
+endif	# GRADE != il && GRADE != java && GRADE != erlang
 
 #-----------------------------------------------------------------------------#
 

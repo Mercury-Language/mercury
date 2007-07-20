@@ -689,6 +689,11 @@ Options to pass to the C compiler.
 @vindex EXTRA_JAVACFLAGS
 Options to pass to the Java compiler (if you are using it).
 
+@item ERLANG_FLAGS and EXTRA_ERLANG_FLAGS
+@vindex ERLANG_FLAGS
+@vindex EXTRA_ERLANG_FLAGS
+Options to pass to the Erlang compiler (if you are using it).
+
 @item ML
 @vindex ML
 The executable that invokes the linker.
@@ -7423,7 +7428,7 @@ or classes, rather than treating all objects as arrays.
 @cindex Debugging
 Enables the inclusion in the executable of code and data structures
 that allow the program to be debugged with @samp{mdb} (@pxref{Debugging}).
-This option is not yet supported for the @samp{--high-level-code} back-ends.
+This option is only supported by the low-level C back-end.
 
 @sp 1
 @item @code{--decl-debug} (grades: any grade containing @samp{.decldebug})
@@ -7431,7 +7436,7 @@ This option is not yet supported for the @samp{--high-level-code} back-ends.
 @cindex Debugging
 Enables the inclusion in the executable of code and data structures
 that allow subterm dependency tracking in the declarative debugger.
-This option is not yet supported for the @samp{--high-level-code} back-ends.
+This option is only supported by the low-level C back-end.
 
 @sp 1
 @item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
@@ -7443,7 +7448,7 @@ Enable time profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
-This option is not supported for the IL and Java back-ends.
+This option is only supported by the C back-ends.
 
 @sp 1
 @item @code{--memory-profiling} (grades: any grade containing @samp{.memprof})
@@ -7456,14 +7461,14 @@ Enable memory profiling.  Insert memory profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Using mprof for memory profiling}.
-This option is not supported for the IL and Java back-ends.
+This option is only supported by the C back-ends.
 
 @sp 1
 @item @code{--deep-profiling} (grades: any grade containing @samp{.profdeep})
 @findex --deep-profiling
 @cindex Deep profiling
 Enable deep profiling by inserting the appropriate hooks in the generated code.
-This option is not supported for the high-level C, IL and Java back-ends.
+This option is only supported by the low-level C back-end.
 
 @ignore
 	The following are basically useless, hence undocumented.
@@ -7535,8 +7540,8 @@ It requires @samp{--high-level-code}.
 @samp{mps} is another conservative collector based on Ravenbrook Limited's
 MPS (Memory Pool System) kit.
 @samp{automatic} means the target language provides it.
-This is the case for the IL and Java back-ends, which always use
-the underlying IL or Java implementation's garbage collector.
+This is the case for the IL, Java and Erlang back-ends, which always use
+the underlying implementation's garbage collector.
 
 @sp 1
 @item @code{--use-trail} (grades: any grade containing @samp{.tr})
@@ -7548,7 +7553,7 @@ the underlying IL or Java implementation's garbage collector.
 Enable use of a trail.
 This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
-This option is not yet supported for the IL or Java back-ends.
+This option is only supported by the C back-ends.
 
 @sp 1
 @item @code{--maybe-thread-safe @{yes, no@}}
@@ -7568,6 +7573,7 @@ Use single precision floats so that, on 32-bit machines
 floating point values don't need to be boxed.  Double
 precision floats are used by default.
 This option is not yet supported for the IL or Java back-ends.
+This option will not be supported for the Erlang back-end.
 
 @c RBMM is undocumented since it is still experimental.
 @c @sp 1

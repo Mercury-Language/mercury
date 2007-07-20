@@ -19,5 +19,8 @@
 --c-include-directory ../trace
 --c-include-directory ../analysis
 --c-include-directory ../analysis/Mercury/mihs
+--erlang-include-directory ../library/Mercury/hrls
+--erlang-include-directory ../mdbcomp/Mercury/hrls
+--erlang-include-directory ../analysis/Mercury/hrls
 --no-main
 --config-file ../scripts/Mercury.config.bootstrap

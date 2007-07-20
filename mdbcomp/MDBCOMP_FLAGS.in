@@ -10,6 +10,7 @@
 --c-include-directory ../runtime
 --c-include-directory ../library
 --c-include-directory ../library/Mercury/mihs
+--erlang-include-directory ../library/Mercury/hrls
 -L../boehm_gc
 -L../runtime
 -L../library

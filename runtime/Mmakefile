@@ -329,13 +329,13 @@ mercury_method_call_inits.i: ../tools/make_spec_method_call
 .PHONY: all
 all:	runtime $(TAGS_FILE_EXISTS)
 
-ifeq ($(findstring java,$(GRADE)),java)
+ifneq "$(filter java% erlang%,$(GRADE))" ""
 #
-# For grade java, there's nothing to do
+# For grade java and erlang, there's nothing to do
 
 .PHONY: runtime
 runtime:
-	@echo "No Mercury runtime needed for grade=java"
+	@echo "No Mercury runtime needed for grade=java and grade=erlang"
 
 else
 ifeq ($(findstring il,$(GRADE)),il)
@@ -445,12 +445,13 @@ install_dirs:
 	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
 		mkdir -p $(INSTALL_RECONF_DIR)/runtime
 
-ifeq ($(findstring java,$(GRADE)),java)
+ifneq "$(filter java% erlang%,$(GRADE))" ""
 
-# For grade java, there's nothing to do.
+# For grade java and erlang, there's nothing to do.
 # (The java version of the Mercury runtime is in mercury/java/runtime,
 # not mercury/runtime, and its build and installation is handled by
 # mercury/library/Mmakefile.)
+# (Runtime support for the Erlang backend is in the library directory.)
 
 .PHONY: install_headers
 install_headers:

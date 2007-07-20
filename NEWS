@@ -177,6 +177,8 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* We have added an Erlang back-end.
+
 * In parallel grades we now support thread-local trailing.
 
 * The compiler now issues a warning when an inst declaration is not
@@ -277,6 +279,14 @@ Changes to the Mercury language:
 		% perform the actual task
 
 Changes to the Mercury compiler:
+
+* There's a new back-end that targets Erlang.
+
+  Compiler support for this new back-end is mostly complete,
+  but large parts of the standard library are still not yet
+  implemented for this new port.
+
+  For more details, see the README.Erlang.
 
 * The compiler now issues a warning when an inst declaration isn't
   consistent with any of the types in scope.

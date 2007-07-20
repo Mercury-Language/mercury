@@ -32,6 +32,8 @@
                 target=il ;;
             java|Java)
                 target=java ;;
+            erlang|Erlang)
+                target=erlang ;;
             *)
                 echo "$0: invalid target \`$1'" 1>&2
                 exit 1
@@ -44,6 +46,9 @@
 
     --java|--Java|--java-only|--Java-only)
         target=java ;;
+
+    --erlang|--Erlang|--erlang-only|--Erlang-only)
+        target=erlang ;;
 
     --high-level-code|-H)
         highlevel_code=true ;;
@@ -274,6 +279,9 @@
                     highlevel_code=true
                     gcc_nested_functions=false
                     highlevel_data=true
+                    ;;
+                erlang)
+                    target=erlang
                     ;;
                 hl)
                     asm_labels=false

@@ -4756,7 +4756,7 @@ directives that have not yet been executed will not be executed,
 @samp{initialize} is also allowed as a synonym for @samp{initialise}.
 
 Note: @samp{initialise} declarations are currently only supported on
-the C backends.
+the C and Erlang backends.
 
 @node Module finalisation
 @section Module finalisation
@@ -4797,7 +4797,7 @@ be executed.
 @samp{finalize} is also allowed as a synonym for @samp{finalise}.
 
 Note: @samp{finalise} declarations are currently only supported on
-the C backends.
+the C and Erlang backends.
 
 @node Module-local mutable variables
 @section Module-local mutable variables
@@ -4928,8 +4928,7 @@ an uncaught exception is also the same as though it were a predicate
 specified in a @samp{initialise} directive.
 
 Note: @samp{mutable} declarations are currently only supported on
-the C backends.
-@c and Erlang backends
+the C and Erlang backends.
 
 @node Type classes
 @chapter Type classes
@@ -6579,6 +6578,7 @@ to the foreign language's parameter passing convention.
 * C data passing conventions ::
 * IL and C# data passing conventions ::
 * Java data passing conventions ::
+* Erlang data passing conventions ::
 @end menu
 
 @node C data passing conventions
@@ -6776,6 +6776,62 @@ passed or returned at all.
 and in Java modifications to mutable state are done via side effects,
 rather than argument passing.)
 
+@node Erlang data passing conventions
+@subsection Erlang data passing conventions
+
+The Mercury types @code{int}, @code{float} and @code{char}
+are mapped to Erlang integers, floats and integers respectively.
+A Mercury @code{string} is represented as a list of integers in Erlang.
+
+Mercury variables whose type is a Mercury discriminated union type
+will be passed as an Erlang tuple with the first element of the tuple
+being an Erlang atom named after the Mercury data constructor.
+For example, values of the type:
+
+@example
+    :- type maybe_int
+        --->    yes(int)
+        ;       no.
+@end example
+
+@noindent
+would be represented in Erlang as @samp{@{yes, @var{integer}@}} and
+@samp{@{no@}}.
+
+Mercury variables whose type is a Mercury equivalence type
+will be passed as the representation of the right hand side of the
+equivalence type.
+
+This mapping is subject to change and you should try to avoid writing
+code that relies heavily upon a particular representation of Mercury
+terms.
+
+Arguments of dummy types, e.g. @samp{io.state}, are represented by the
+atom @samp{false} when necessary.  They are not passed to and from
+calls to monomorphic procedures.
+
+Mercury arguments declared with input modes are passed by value to the
+corresponding Erlang function.
+
+The result of an Erlang function depends on the determinism of the
+Mercury procedure that it was derived from.  Procedures which succeed
+exactly once and have a single output variable return the single value
+directly.  Procedures which succeed exactly once and have zero or two
+or more output variables return a tuple of those output variables in
+order.
+
+Procedures which are semideterministic return, on success, a tuple of
+the variables with output modes (including when the number of output
+variables is one).  On failure they return the Erlang atom
+@samp{fail}.
+
+Procedures which are nondeterministic take as a final argument a
+success continuation.  This is an function which has an input variable
+for each variable of the Mercury procedure with an output mode.  For
+each solution, the success continuation with the values of those
+output variables.  When there are no more solutions the Erlang
+function returns with an undefined value.
+
 @c -----------------------------------------------------------------------
 
 @node Using foreign types from Mercury
@@ -6903,7 +6959,7 @@ you can use the following variant of the declaration:
 :- pragma foreign_decl("@var{Lang}", local, @var{DeclCode}).
 @end example
 
-Note: currently only the C backends support this variant
+Note: currently only the C and Erlang backends support this variant
 of the @samp{pragma foreign_decl} declaration.
 
 The declarations for Mercury predicates or functions exported to a 
@@ -6976,6 +7032,7 @@ foreign language and occur in the same Mercury module.
 * Interfacing with C# 		:: How to write code to interface with C#
 * Interfacing with IL 		:: How to write code to interface with IL
 * Interfacing with Java 	:: How to write code to interface with Java
+* Interfacing with Erlang 	:: How to write code to interface with Erlang
 @end menu
 
 All Mercury implementations should support interfacing with C.
@@ -7003,6 +7060,9 @@ for the .NET Common Language Runtime.
 
 @item @samp{Java}
 Use the string @code{"Java"} to set the foreign language to Java.
+
+@item @samp{Erlang}
+Use the string @code{"Erlang"} to set the foreign language to Erlang.
 
 @end table
 
@@ -7700,6 +7760,146 @@ For example:
 	get_counter = (Result::out),
 	[will_not_call_mercury, promise_semipure],
 	"Result = counter;").
+@end example
+
+@c ----------------------------------------------------------------------------
+
+@node Interfacing with Erlang
+@subsection Interfacing with Erlang
+
+@menu
+* Using pragma foreign_type for Erlang :: Declaring Erlang types in Mercury
+* Using pragma foreign_proc for Erlang :: Calling Erlang code from Mercury
+* Using pragma foreign_export for Erlang :: Calling Mercury from Erlang code
+* Using pragma foreign_decl for Erlang :: Including Erlang declarations in Mercury
+* Using pragma foreign_code for Erlang :: Including Erlang code in Mercury
+@end menu
+
+
+@node Using pragma foreign_type for Erlang
+@subsubsection Using pragma foreign_type for Erlang
+
+An Erlang @samp{pragma foreign_type} declaration has the form:
+
+@example
+:- pragma foreign_type("Erlang", @var{MercuryTypeName}, "").
+@end example
+
+The effect of this declaration is that Mercury values of type
+@var{MercuryTypeName} will be passed to and from Erlang foreign_procs
+as having some representation unknown to Mercury.
+
+@node Using pragma foreign_proc for Erlang
+@subsubsection Using pragma foreign_proc for Erlang
+
+The input and output variables for a Erlang @samp{pragma foreign_proc}
+will be the Erlang representations as described in
+@ref{Erlang data passing conventions}.
+
+The Erlang code in a @code{pragma foreign_proc} declaration
+for a procedure whose determinism indicates that it can fail
+must assign either @samp{true} or @samp{false} to the variable
+@samp{SUCCESS_INDICATOR}.  For example:
+
+@example
+:- pred string.contains_char(string, character).
+:- mode string.contains_char(in, in) is semidet.
+
+:- pragma foreign_proc("Erlang",
+	string.contains_char(Str::in, Ch::in),
+        [will_not_call_mercury, promise_pure],
+        "SUCCESS_INDICATOR = (string:chr(Str, Ch) =/= 0)").
+@end example
+
+Arguments whose mode is input will have their values set by the
+Mercury implementation on entry to the Erlang code.
+The Erlang code must set the values
+of all output variables, even if the procedure fails
+(i.e. sets the @samp{SUCCESS_INDICATOR} variable to @code{false}).
+
+@node Using pragma foreign_export for Erlang
+@subsubsection Using pragma foreign_export for Erlang
+
+A @samp{pragma foreign_export} declaration for Erlang has the form:
+
+@example
+:- pragma foreign_export("Erlang", @var{MercuryMode}, "@var{Erlang_Name}").
+@end example
+
+For example,
+
+@example
+:- pragma foreign_export("Erlang", foo(in, in, out), "foo").
+@end example
+
+(Currently foreign_exported procedures won't be visible outside
+the defining module.  This should be fixed soon.)
+
+The type signature of the Erlang interface to a Mercury procedure is
+described in @ref{Erlang data passing conventions}.
+
+Calling polymorphically typed Mercury procedures from Erlang is a little bit
+more difficult than calling ordinary (monomorphically typed) Mercury
+procedures.  The simplest method is to just create monomorphic forwarding
+procedures that call the polymorphic procedures, and export them, rather
+than exporting the polymorphic procedures.
+
+If you do export a polymorphically typed Mercury procedure, the compiler
+will prepend one @samp{type_info} argument to the parameter list of
+the Erlang interface function for each polymorphic type variable in the
+Mercury procedure's type signature.  The caller must arrange to pass
+in appropriate @samp{type_info} values corresponding to the types
+of the other arguments passed.  These @samp{type_info} arguments can
+be obtained using the Mercury @samp{type_of} function in the Mercury
+standard library module @samp{type_desc}.
+
+@node Using pragma foreign_decl for Erlang
+@subsubsection Using pragma foreign_decl for Erlang
+
+@samp{pragma foreign_decl} declarations for Erlang can be used to provide
+any top-level Erlang declarations (e.g.@: @samp{-define} macro declarations)
+which are needed by Erlang code.
+
+@samp{pragma foreign_decl} blocks which do not have the @samp{local} attribute
+will be copied into the @samp{.hrl} header file for that module, and
+automatically included by other modules that import the module.  Therefore
+@samp{-export} directives and Erlang module attributes should only appear in
+@samp{local} blocks.
+
+For example:
+
+@example
+:- pragma foreign_decl("Erlang", "
+	-define(FOO, 42).
+").
+:- pred hello(io.state::di, io.state::uo) is det.
+:- pragma foreign_proc("Erlang",
+	hello(_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	io:format(""FOO = ~w~n"", [?FOO])
+").
+@end example
+
+@node Using pragma foreign_code for Erlang
+@subsubsection Using pragma foreign_code for Erlang
+
+@samp{pragma foreign_code} can be used to define additional Erlang functions
+which can then be referenced by @samp{pragma foreign_proc} declarations for
+Erlang from that module.  By adding @samp{-export} directives inside
+@samp{pragma foreign_decl} declarations, those functions can additionally be
+called from outside the defining module.
+
+For example:
+
+@example
+:- pragma foreign_code("Erlang", "
+	foo() -> io:put_chars(""Foo."").
+").
+
+:- impure pred say_foo is det.
+:- pragma foreign_proc("Erlang", say_foo,
+	[will_not_call_mercury], "foo()").
 @end example
 
 @c ----------------------------------------------------------------------------

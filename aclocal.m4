@@ -351,3 +351,22 @@ AC_SUBST(JAR)
 ])
 
 #-----------------------------------------------------------------------------#
+#
+# Erlang configuration
+#
+AC_DEFUN(MERCURY_CHECK_ERLANG,
+[
+AC_ERLANG_PATH_ERLC
+AC_ERLANG_PATH_ERL
+
+if test "$ERLC" != "" -a "$ERL" != ""; then
+	mercury_cv_erlang="yes"
+else
+	mercury_cv_erlang="no"
+fi
+
+AC_SUBST(ERLC)
+AC_SUBST(ERL)
+])
+
+#-----------------------------------------------------------------------------#
