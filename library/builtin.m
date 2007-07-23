@@ -221,7 +221,10 @@
 :- type unify(T) == pred(T, T).
 :- inst unify == (pred(in, in) is semidet).
 
-:- type comparison_result ---> (=) ; (<) ; (>).
+:- type comparison_result
+    --->    (=)
+    ;       (<)
+    ;       (>).
 
     % compare(Res, X, Y) binds Res to =, <, or > depending on whether
     % X is =, <, or > Y in the standard ordering.
@@ -260,8 +263,7 @@
 :- func ordering(T, T) = comparison_result.
 
     % The standard inequalities defined in terms of compare/3.
-    % XXX The ui modes are commented out because they don't yet
-    % work properly.
+    % XXX The ui modes are commented out because they don't yet work properly.
     %
 :- pred T  @<  T.
 :- mode in @< in is semidet.
@@ -371,6 +373,7 @@
 :- semipure pred semipure_true is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 % Everything below here is not intended to be part of the public interface,
@@ -385,9 +388,9 @@
 
 :- interface.
     
-    % dynamic_cast(X, Y) succeeds with Y = X iff X has the same
-    % ground type as Y (so this may succeed if Y is of type
-    % list(int), say, but not if Y is of type list(T)).
+    % dynamic_cast(X, Y) succeeds with Y = X iff X has the same ground type
+    % as Y (so this may succeed if Y is of type list(int), say, but not if
+    % Y is of type list(T)).
     %
 :- pred dynamic_cast(T1::in, T2::out) is semidet.
 
@@ -437,7 +440,7 @@ false :-
 %-----------------------------------------------------------------------------%
 
 % NOTE: dynamic_cast/2 is handled specially compiler/const_prop.m.
-%       Any changes here may need to be reflected here.
+% Any changes here may need to be reflected here.
 
 dynamic_cast(X, Y) :-
     private_builtin.typed_unify(X, Y).
@@ -578,10 +581,14 @@ ordering(X, Y) = R :-
 
     % simplify.goal automatically inlines these definitions.
     %
-X  @< Y :- compare((<), X, Y).
-X @=< Y :- not compare((>), X, Y).
-X @>  Y :- compare((>), X, Y).
-X @>= Y :- not compare((<), X, Y).
+X  @< Y :-
+    compare((<), X, Y).
+X @=< Y :-
+    not compare((>), X, Y).
+X @>  Y :-
+    compare((>), X, Y).
+X @>= Y :-
+    not compare((<), X, Y).
 
 %-----------------------------------------------------------------------------%
 
@@ -602,7 +609,6 @@ call_rtti_generic_compare(Res, X, Y) :-
     rtti_implementation.generic_compare(Res, X, Y).
 
 :- pragma foreign_code("C#", "
-
 public static void compare_3(object[] TypeInfo_for_T, ref object[] Res,
     object X, object Y)
 {
@@ -681,11 +687,9 @@ public static void deep_copy_fields(System.Reflection.FieldInfo[] fields,
         f.SetValue(dest, deep_copy(f.GetValue(src)));
     }
 }
-
 ").
 
 :- pragma foreign_code("C#", "
-
 public static bool unify_2_p(object[] ti, object X, object Y)
 {
     return mercury.builtin.mercury_code.call_rtti_generic_unify_2_p(ti, X, Y);
@@ -749,7 +753,6 @@ special__Compare____tuple_0_0(ref object[] result,
 {
     mercury.runtime.Errors.fatal_error(""called compare/3 for `tuple' type"");
 }
-
 ").
 
 :- pragma foreign_code("Java",
@@ -849,7 +852,6 @@ deep_copy(java.lang.Object original) {
 
     '__Compare____func_0_0'(X, Y) ->
         mercury__require:error_1_p_0(""call to compare for func/0"").
-
 ").
 
 
@@ -1104,13 +1106,15 @@ namespace mercury.builtin {
 
 :- pragma foreign_proc("C",
     semidet_succeed,
-    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, thread_safe, promise_pure,
+        does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = MR_TRUE;
 ").
 :- pragma foreign_proc("C",
     semidet_fail,
-    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, thread_safe, promise_pure,
+        does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = MR_FALSE;
 ").
@@ -1155,8 +1159,10 @@ semidet_succeed :-
 semidet_fail :-
     0 + 0 \= 0.
 
-semidet_true :- semidet_succeed.
-semidet_false :- semidet_fail.
+semidet_true :-
+    semidet_succeed.
+semidet_false :-
+    semidet_fail.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1164,17 +1170,19 @@ semidet_false :- semidet_fail.
 %
 
 % NOTE: cc_multi_equal/2 is handled specially in browser/declarative_tree.m.
-%       Any changes here may need to be reflected there.
+% Any changes here may need to be reflected there.
 
 :- pragma foreign_proc("C",
     cc_multi_equal(X::in, Y::out),
-    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, thread_safe, promise_pure,
+        does_not_affect_liveness],
 "
     Y = X;
 ").
 :- pragma foreign_proc("C",
     cc_multi_equal(X::di, Y::uo),
-    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, thread_safe, promise_pure,
+        does_not_affect_liveness],
 "
     Y = X;
 ").
