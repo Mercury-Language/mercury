@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 
 % File rbmm.region_liveness_info.m.
-% Main author: Quan Phan
+% Main author: Quan Phan.
 %
 % Defines the data structures used in several phases of the live region
 % analysis.
@@ -42,7 +42,7 @@
     %
 :- type variable_set == set(prog_var).
 
-    % Represents the relation between a program point and a set of 
+    % Represents the relation between a program point and a set of
     % variables. E.g., a map of this type can be the sets of live
     % variables before program points in a procedure.
     %
@@ -63,14 +63,14 @@
 % The part for region/node
 %
 
-    % Represents a set of regions, e.g., deadR, bornR, ..., live regions 
+    % Represents a set of regions, e.g., deadR, bornR, ..., live regions
     % before and after a program point.
     %
 :- type region_set == set(rptg_node).
 
 :- pred region_set_equal(region_set::in, region_set::in) is semidet.
 
-    % Represents the relation between a procedure and its interesting sets 
+    % Represents the relation between a procedure and its interesting sets
     % of regions, such as deadR, bornR, constantR.
     %
 :- type proc_region_set_table == map(pred_proc_id, region_set).
@@ -93,9 +93,9 @@
 :- import_module hlds.arg_info.
 
 region_set_equal(RegionSet1, RegionSet2) :-
-	set.equal(RegionSet1, RegionSet2).
+    set.equal(RegionSet1, RegionSet2).
 
-proc_region_set_table_equal(ProcRegionSetTable1, ProcRegionSetTable2) :- 
+proc_region_set_table_equal(ProcRegionSetTable1, ProcRegionSetTable2) :-
     map.count(ProcRegionSetTable1, C1),
     map.count(ProcRegionSetTable2, C2),
     C1 = C2,
@@ -107,7 +107,7 @@ proc_region_set_table_equal(ProcRegionSetTable1, ProcRegionSetTable2) :-
     proc_region_set_table::in) is semidet.
 
 prst_equal_2([], _, _).
-prst_equal_2([PPId|PPIds], PRST1, PRST2) :-
+prst_equal_2([PPId | PPIds], PRST1, PRST2) :-
     map.search(PRST2, PPId, RS2),
 
     map.lookup(PRST1, PPId, RS1),
@@ -121,5 +121,3 @@ find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_argmodes(CalleeProcInfo, ArgModes),
     arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
         Inputs, Outputs).
-
-

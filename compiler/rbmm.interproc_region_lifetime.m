@@ -10,7 +10,7 @@
 % Main author: Quan Phan.
 %
 % This module detects lifetime of regions across procedure boundary. It
-% updates the initial bornR and deadR, then computing constantR for each 
+% updates the initial bornR and deadR, then computing constantR for each
 % procedure. It also provides a predicate to eliminate primitive regions
 % (i.e., ones that do not actually exist if primitive values are not boxed)
 % from analysis information.
@@ -26,22 +26,22 @@
 :- import_module transform_hlds.rbmm.region_liveness_info.
 
 %-----------------------------------------------------------------------------%
-    
+
     % This predicate reasons about lifetime of regions across procedure
     % boundary. It will update the initial deadR and bornR sets and compute
     % constantR set.
     %
-:- pred compute_interproc_region_lifetime(module_info::in, 
-    rpta_info_table::in, execution_path_table::in, 
-    proc_pp_region_set_table::in, proc_pp_region_set_table::in, 
-    proc_region_set_table::in, proc_region_set_table::in, 
-    proc_region_set_table::out, proc_region_set_table::in, 
-    proc_region_set_table::out, proc_region_set_table::in, 
+:- pred compute_interproc_region_lifetime(module_info::in,
+    rpta_info_table::in, execution_path_table::in,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::in,
+    proc_region_set_table::in, proc_region_set_table::in,
+    proc_region_set_table::out, proc_region_set_table::in,
+    proc_region_set_table::out, proc_region_set_table::in,
     proc_region_set_table::out) is det.
 
-    % This predicate removes regions of primitive types from the input data 
-    % structures. 
-    % The reason for this is the assumption that primitive values are not 
+    % This predicate removes regions of primitive types from the input data
+    % structures.
+    % The reason for this is the assumption that primitive values are not
     % boxed (i.e., not store in regions).
     %
 :- pred ignore_primitive_regions(module_info::in, rpta_info_table::in,
@@ -56,14 +56,14 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- implementation. 
+:- implementation.
 
 :- import_module check_hlds.
 :- import_module check_hlds.goal_path.
-:- import_module check_hlds.type_util. 
+:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred. 
+:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.
@@ -93,22 +93,22 @@
 %
 
 compute_interproc_region_lifetime(ModuleInfo, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, InputRTable, OutputRTable, 
+        LRBeforeTable, LRAfterTable, InputRTable, OutputRTable,
         ConstantRTable, !BornRTable, !DeadRTable) :-
-    
-    apply_live_region_born_removal_rules(ModuleInfo, RptaInfoTable, 
+
+    apply_live_region_born_removal_rules(ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, !BornRTable),
-    apply_live_region_dead_removal_rules(ModuleInfo, RptaInfoTable, 
+    apply_live_region_dead_removal_rules(ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, !DeadRTable),
-    map.foldl(compute_constantR(InputRTable, OutputRTable, !.BornRTable), 
+    map.foldl(compute_constantR(InputRTable, OutputRTable, !.BornRTable),
         !.DeadRTable, map.init, ConstantRTable).
 
-:- pred compute_constantR(proc_region_set_table::in, 
-    proc_region_set_table::in, proc_region_set_table::in, 
-    pred_proc_id::in, region_set::in, proc_region_set_table::in, 
+:- pred compute_constantR(proc_region_set_table::in,
+    proc_region_set_table::in, proc_region_set_table::in,
+    pred_proc_id::in, region_set::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
 
-compute_constantR(InputRTable, OutputRTable, BornRTable, PPId, DeadR, 
+compute_constantR(InputRTable, OutputRTable, BornRTable, PPId, DeadR,
         !ConstantRTable) :-
     map.lookup(InputRTable, PPId, InputR),
     map.lookup(OutputRTable, PPId, OutputR),
@@ -118,36 +118,36 @@ compute_constantR(InputRTable, OutputRTable, BornRTable, PPId, DeadR,
     set.difference(InputOutputR, DeadR, ConstantR),
     svmap.set(PPId, ConstantR, !ConstantRTable).
 
-    % Apply the live region analysis rules to update bornR and deadR 
+    % Apply the live region analysis rules to update bornR and deadR
     % sets of each procedure.
     %
-:- pred apply_live_region_dead_removal_rules(module_info::in, 
+:- pred apply_live_region_dead_removal_rules(module_info::in,
     rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::out) is det.
 
-apply_live_region_dead_removal_rules(ModuleInfo, RptaInfoTable, ExecPathTable, 
+apply_live_region_dead_removal_rules(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, !DeadRTable) :-
     apply_live_region_rule(dead_removal_rules, ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, !DeadRTable).
 
-:- pred apply_live_region_born_removal_rules(module_info::in, 
+:- pred apply_live_region_born_removal_rules(module_info::in,
     rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::out) is det.
 
-apply_live_region_born_removal_rules(ModuleInfo, RptaInfoTable, ExecPathTable, 
+apply_live_region_born_removal_rules(ModuleInfo, RptaInfoTable, ExecPathTable,
     LRBeforeTable, LRAfterTable, !BornRTable) :-
     apply_live_region_rule(born_removal_rules, ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, !BornRTable).
 
-:- type rule_pred == ( 
-        pred(pred_proc_id, region_set, region_set, proc_region_set_table, 
-            map(rptg_node, rptg_node), region_set) 
+:- type rule_pred == (
+        pred(pred_proc_id, region_set, region_set, proc_region_set_table,
+            map(rptg_node, rptg_node), region_set)
     ).
 :- inst rule_pred == ( pred(in, in, in, in, in, out) is det ).
 
-:- pred apply_live_region_rule(rule_pred::in(rule_pred), module_info::in, 
+:- pred apply_live_region_rule(rule_pred::in(rule_pred), module_info::in,
     rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::out) is det.
@@ -157,56 +157,55 @@ apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     module_info_ensure_dependency_info(ModuleInfo, ModuleInfo1),
     module_info_get_maybe_dependency_info(ModuleInfo1, MaybeDepInfo),
     (
-        MaybeDepInfo = yes(DepInfo)
-    ->
+        MaybeDepInfo = yes(DepInfo),
         hlds.hlds_module.hlds_dependency_info_get_dependency_ordering(
             DepInfo, DepOrdering),
         run_with_dependencies(Rule, DepOrdering, ModuleInfo1,
             RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
             !ProcRegionSetTable)
     ;
+        MaybeDepInfo = no,
         unexpected(this_file,
             "apply_live_region_rule: no dependency info")
     ).
 
 :- pred run_with_dependencies(rule_pred::in(rule_pred),
-    dependency_ordering::in, module_info::in, rpta_info_table::in, 
-    execution_path_table::in, proc_pp_region_set_table::in, 
-    proc_pp_region_set_table::in, proc_region_set_table::in, 
+    dependency_ordering::in, module_info::in, rpta_info_table::in,
+    execution_path_table::in, proc_pp_region_set_table::in,
+    proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
-    
+
 run_with_dependencies(Rule, Deps, ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, !ProcRegionSetTable) :-
     % We want to proceed the SCC graph top-down so reverse the list
     % (the process is foldr2, but it is not yet in list module)
-    list.reverse(Deps, Deps1), 
-    list.foldl(run_with_dependency(Rule, ModuleInfo, RptaInfoTable,
-        ExecPathTable, LRBeforeTable, LRAfterTable), Deps1,
-        !ProcRegionSetTable).
+    list.reverse(Deps, Deps1),
+    list.foldl(
+        run_with_dependency(Rule, ModuleInfo, RptaInfoTable,
+            ExecPathTable, LRBeforeTable, LRAfterTable),
+        Deps1, !ProcRegionSetTable).
 
-:- pred run_with_dependency(rule_pred::in(rule_pred), 
+:- pred run_with_dependency(rule_pred::in(rule_pred),
     module_info::in, rpta_info_table::in, execution_path_table::in,
-    proc_pp_region_set_table::in, proc_pp_region_set_table::in, 
-    list(pred_proc_id)::in, proc_region_set_table::in, 
+    proc_pp_region_set_table::in, proc_pp_region_set_table::in,
+    list(pred_proc_id)::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
 
 run_with_dependency(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, SCC, !ProcRegionSetTable) :- 
-    (
-        % Ignores special predicates.
-        some_are_special_preds(SCC, ModuleInfo)
-    ->
+        LRBeforeTable, LRAfterTable, SCC, !ProcRegionSetTable) :-
+    % Ignores special predicates.
+    ( some_are_special_preds(SCC, ModuleInfo) ->
         true
     ;
-        % Perform a fixpoint computation for each strongly connected 
-        % component. 
+        % Perform a fixpoint computation for each strongly connected
+        % component.
         run_with_dependency_until_fixpoint(Rule, SCC, ModuleInfo,
             RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
             !ProcRegionSetTable)
     ).
 
 :- pred run_with_dependency_until_fixpoint(rule_pred::in(rule_pred),
-    list(pred_proc_id)::in, module_info::in, rpta_info_table::in, 
+    list(pred_proc_id)::in, module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
@@ -218,10 +217,9 @@ run_with_dependency_until_fixpoint(Rule, SCC, ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable),
         SCC, !.ProcRegionSetTable, ProcRegionSetTable1),
     (
-        proc_region_set_table_equal(ProcRegionSetTable1, 
-            !.ProcRegionSetTable)
+        proc_region_set_table_equal(ProcRegionSetTable1, !.ProcRegionSetTable)
     ->
-        % If all region_set's in the FPTable are intact update the main 
+        % If all region_set's in the FPTable are intact update the main
         % ProcRegionSetTable.
         !:ProcRegionSetTable = ProcRegionSetTable1
     ;
@@ -232,24 +230,24 @@ run_with_dependency_until_fixpoint(Rule, SCC, ModuleInfo, RptaInfoTable,
     ).
 
 :- pred apply_rule_pred_proc(rule_pred::in(rule_pred),
-    module_info::in, rpta_info_table::in, execution_path_table::in, 
-    proc_pp_region_set_table::in, proc_pp_region_set_table::in, 
-    pred_proc_id::in, proc_region_set_table::in, proc_region_set_table::out) 
+    module_info::in, rpta_info_table::in, execution_path_table::in,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::in,
+    pred_proc_id::in, proc_region_set_table::in, proc_region_set_table::out)
     is det.
 
 apply_rule_pred_proc(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, PPId, !ProcRegionSetTable) :- 
-    % We need to follow each execution path and apply the two rules when 
+        LRBeforeTable, LRAfterTable, PPId, !ProcRegionSetTable) :-
+    % We need to follow each execution path and apply the two rules when
     % possible
     map.lookup(RptaInfoTable, PPId, RptaInfo),
-    map.lookup(ExecPathTable, PPId, EPs), 
+    map.lookup(ExecPathTable, PPId, EPs),
     map.lookup(LRBeforeTable, PPId, ProcLRBefore),
     map.lookup(LRAfterTable, PPId, ProcLRAfter),
 
-    % Here we analysing a caller but will update the region sets of its 
+    % Here we analysing a caller but will update the region sets of its
     % callees.
     apply_live_region_rules_exec_paths(Rule, EPs, ExecPathTable, ModuleInfo,
-        PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter, 
+        PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter,
         !ProcRegionSetTable).
 
 :- pred apply_live_region_rules_exec_paths(rule_pred::in(rule_pred),
@@ -267,10 +265,10 @@ apply_live_region_rules_exec_paths(Rule, [ExecPath|ExecPaths], ExecPathTable,
         ModuleInfo, PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter,
         !ProcRegionSetTable),
     apply_live_region_rules_exec_paths(Rule, ExecPaths, ExecPathTable,
-        ModuleInfo, PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter, 
+        ModuleInfo, PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter,
         !ProcRegionSetTable).
 
-    % Follow each execution path of a procedure and update deadR and bornR 
+    % Follow each execution path of a procedure and update deadR and bornR
     % sets
     %
 :- pred apply_live_region_rules_exec_path(rule_pred::in(rule_pred),
@@ -291,51 +289,47 @@ apply_live_region_rules_exec_path(Rule, [ProgPoint - Goal | ProgPoint_Goals],
         Expr = plain_call(CalleePredId, CalleeProcId, _, _, _, _)
       then
         CalleePPId = proc(CalleePredId, CalleeProcId),
-        ( if 
+        ( if
             some_are_special_preds([CalleePPId], ModuleInfo)
           then
             true
           else
             RptaInfo = rpta_info(_, AlphaMapping),
             map.lookup(AlphaMapping, ProgPoint, AlphaAtProgPoint),
-            
-            map.lookup(ProcLRBefore, ProgPoint, LRBefore), 
+
+            map.lookup(ProcLRBefore, ProgPoint, LRBefore),
             map.lookup(ProcLRAfter, ProgPoint, LRAfter),
 
             % apply a rule
-            call(Rule, CalleePPId, LRBefore, LRAfter, 
+            call(Rule, CalleePPId, LRBefore, LRAfter,
                 !.ProcRegionSetTable, AlphaAtProgPoint, RegionSet),
-                
-            map.lookup(!.ProcRegionSetTable, CalleePPId,
-                RegionSet0),
-            ( if 
+
+            map.lookup(!.ProcRegionSetTable, CalleePPId, RegionSet0),
+            ( if
                 set.equal(RegionSet, RegionSet0)
               then
-                % i.e., no region is removed, so everything is the same 
+                % i.e., no region is removed, so everything is the same
                 % as before
                 true
               else
                 % some regions are removed, record the new set for q and ...
-                svmap.set(CalleePPId, RegionSet,
-                    !ProcRegionSetTable),
+                svmap.set(CalleePPId, RegionSet, !ProcRegionSetTable),
 
-                % ... those removals need to be propagated to the ones 
+                % ... those removals need to be propagated to the ones
                 % called by q
-                set.difference(RegionSet0, RegionSet,
-                    ToBeRemoved),
+                set.difference(RegionSet0, RegionSet, ToBeRemoved),
                 list.foldl(
-                    remove_this_region_from_callees_of_proc(
-                        CalleePPId, ExecPathTable, ModuleInfo, RptaInfoTable), 
-                    set.to_sorted_list(ToBeRemoved),
-                    !ProcRegionSetTable)
-            )   
+                    remove_this_region_from_callees_of_proc(CalleePPId,
+                        ExecPathTable, ModuleInfo, RptaInfoTable),
+                    set.to_sorted_list(ToBeRemoved), !ProcRegionSetTable)
+            )
         )
       else
         % ignore other sorts of goal
         true
     ),
     apply_live_region_rules_exec_path(Rule, ProgPoint_Goals, ExecPathTable,
-        ModuleInfo, PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter, 
+        ModuleInfo, PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter,
         !ProcRegionSetTable).
 
 %-----------------------------------------------------------------------------%
@@ -343,33 +337,33 @@ apply_live_region_rules_exec_path(Rule, [ProgPoint - Goal | ProgPoint_Goals],
 % Live region analysis rules.
 %
 % Those rules ensure that:
-% 1. when it is not safe for a procedure to remove a region, that region must 
+% 1. when it is not safe for a procedure to remove a region, that region must
 % not be in the procedure's deadR seti,
 % 2. when a region exists before the procedure is called, that region must not
 % be in the procedure's bornR set.
-% 
+%
 
     % Rules for eliminating regions from deadR set.
     %
-:- pred dead_removal_rules(pred_proc_id::in, region_set::in, region_set::in, 
-    proc_region_set_table::in, map(rptg_node, rptg_node)::in, 
+:- pred dead_removal_rules(pred_proc_id::in, region_set::in, region_set::in,
+    proc_region_set_table::in, map(rptg_node, rptg_node)::in,
     region_set::out) is det.
 
 dead_removal_rules(Q_Id, LRBefore, LRAfter, DeadRTable, AlphaAtPP, DeadR_q) :-
     % The current deadR of q.
-    map.lookup(DeadRTable, Q_Id, DeadR_q0), 
+    map.lookup(DeadRTable, Q_Id, DeadR_q0),
 
-    % Apply dead removal rule L1 for r that is live before and after the 
+    % Apply dead removal rule L1 for r that is live before and after the
     % call to q.
     set.intersect(LRBefore, LRAfter, Rule1_Candidate),
-    set.fold(dead_removal_rule_1(AlphaAtPP), Rule1_Candidate, DeadR_q0, 
-        DeadR_q1),
-    
+    set.fold(dead_removal_rule_1(AlphaAtPP), Rule1_Candidate,
+        DeadR_q0, DeadR_q1),
+
     % Remove deadR rule L2.
     targets_with_more_than_one_source(AlphaAtPP, Targets),
     set.fold(dead_removal_rule_2(AlphaAtPP), Targets, DeadR_q1, DeadR_q).
-    
-:- pred dead_removal_rule_1(map(rptg_node, rptg_node)::in, rptg_node::in, 
+
+:- pred dead_removal_rule_1(map(rptg_node, rptg_node)::in, rptg_node::in,
     region_set::in, region_set::out) is det.
 
 dead_removal_rule_1(AlphaAtCallSite, Region, !DeadR_q) :-
@@ -385,20 +379,20 @@ dead_removal_rule_1(AlphaAtCallSite, Region, !DeadR_q) :-
 
 dead_removal_rule_2(AlphaAtCallSite, Region, !DeadR_q) :-
     solutions(map.inverse_search(AlphaAtCallSite, Region), SourceList),
-    set.list_to_set(SourceList, RPrimes),   
+    set.list_to_set(SourceList, RPrimes),
     set.difference(!.DeadR_q, RPrimes, !:DeadR_q).
 
     % rules for eliminating regions from bornR set.
     %
-:- pred born_removal_rules(pred_proc_id::in, region_set::in, region_set::in, 
-    proc_region_set_table::in, map(rptg_node, rptg_node)::in, 
+:- pred born_removal_rules(pred_proc_id::in, region_set::in, region_set::in,
+    proc_region_set_table::in, map(rptg_node, rptg_node)::in,
     region_set::out) is det.
 
 born_removal_rules(Q_Id, LRBefore, _, BornRTable, AlphaAtCallSite, BornR_q) :-
     % The current bornR of q.
     map.lookup(BornRTable, Q_Id, BornR_q0),
 
-    % Apply born removal rule L3 for r that is live before and after the 
+    % Apply born removal rule L3 for r that is live before and after the
     % call to q.
     set.fold(born_removal_rule_1(AlphaAtCallSite), LRBefore,
         BornR_q0, BornR_q1),
@@ -407,7 +401,7 @@ born_removal_rules(Q_Id, LRBefore, _, BornRTable, AlphaAtCallSite, BornR_q) :-
     targets_with_more_than_one_source(AlphaAtCallSite, Targets),
     set.fold(born_removal_rule_2(AlphaAtCallSite), Targets,
         BornR_q1, BornR_q).
-    
+
 :- pred born_removal_rule_1(map(rptg_node, rptg_node)::in, rptg_node::in,
     set(rptg_node)::in, set(rptg_node)::out) is det.
 
@@ -415,8 +409,8 @@ born_removal_rule_1(AlphaAtCallSite, Region, !BornR_q) :-
     solutions(map.inverse_search(AlphaAtCallSite, Region), SourceList),
     set.list_to_set(SourceList, RPrimes),
     set.difference(!.BornR_q, RPrimes, !:BornR_q).
-    
-    % alpha(r') = r, alpha(r'') = r, r', r'' in bornR(q) imply remove r', 
+
+    % alpha(r') = r, alpha(r'') = r, r', r'' in bornR(q) imply remove r',
     % r'' from bornR(q).
     %
 :- pred born_removal_rule_2(map(rptg_node, rptg_node)::in, rptg_node::in,
@@ -426,18 +420,18 @@ born_removal_rule_2(AlphaAtCallSite, Region, !BornR_q) :-
     solutions(map.inverse_search(AlphaAtCallSite, Region), SourceList),
     set.list_to_set(SourceList, RPrimes),
     set.difference(!.BornR_q, RPrimes, !:BornR_q).
-    
-    % Find targets of alpha mapping that are mapped to by more than one 
-    % source. 
+
+    % Find targets of alpha mapping that are mapped to by more than one
+    % source.
     %
-:- pred targets_with_more_than_one_source(map(rptg_node, rptg_node)::in, 
+:- pred targets_with_more_than_one_source(map(rptg_node, rptg_node)::in,
     region_set::out) is det.
 
 targets_with_more_than_one_source(AlphaAtCallSite, Targets) :-
     map.foldl2(process_one_mapping, AlphaAtCallSite, set.init,
         _Processed, set.init, Targets).
 
-:- pred process_one_mapping(rptg_node::in, rptg_node::in, region_set::in, 
+:- pred process_one_mapping(rptg_node::in, rptg_node::in, region_set::in,
     region_set::out, region_set::in, region_set::out) is det.
 
 process_one_mapping(_Source, Target, !Candidates, !Targets) :-
@@ -448,30 +442,30 @@ process_one_mapping(_Source, Target, !Candidates, !Targets) :-
       else
         svset.insert(Target, !Candidates)
     ).
-    
+
     % This predicate propagates the removal of a region from a deadR or
     % bornR sets of a procedure to the ones it calls, i.e., also remove
     % the region from the corresponding sets of them.
     %
-:- pred remove_this_region_from_callees_of_proc(pred_proc_id::in, 
+:- pred remove_this_region_from_callees_of_proc(pred_proc_id::in,
     execution_path_table::in, module_info::in, rpta_info_table::in,
     rptg_node::in, proc_region_set_table::in, proc_region_set_table::out)
     is det.
 
-remove_this_region_from_callees_of_proc(PPId, ExecPathTable, ModuleInfo, 
+remove_this_region_from_callees_of_proc(PPId, ExecPathTable, ModuleInfo,
         RptaInfoTable, Region, !ProcRegionSetTable) :-
     % to have the goal at each pp
-    map.lookup(ExecPathTable, PPId, ExecPaths), 
+    map.lookup(ExecPathTable, PPId, ExecPaths),
 
     % Follow execution paths of this procedure and remove the region from
     % this procedure's callees.
     remove_this_from_eps(ExecPaths, PPId, Region, ExecPathTable,
         ModuleInfo, RptaInfoTable, !ProcRegionSetTable).
 
-    % Follow each execution path of a procedure and update deadR and 
-    % bornR sets
+    % Follow each execution path of a procedure and update deadR and bornR
+    % sets.
     %
-:- pred remove_this_from_eps(list(execution_path)::in, pred_proc_id::in, 
+:- pred remove_this_from_eps(list(execution_path)::in, pred_proc_id::in,
     rptg_node::in, execution_path_table::in, module_info::in,
     rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
@@ -483,7 +477,7 @@ remove_this_from_eps([ExecPath | ExecPaths], PPId, Region, ExecPathTable,
     remove_this_from_eps(ExecPaths, PPId, Region, ExecPathTable, ModuleInfo,
         RptaInfoTable, !ProcRegionSetTable).
 
-:- pred remove_this_from_ep(execution_path::in, pred_proc_id::in, 
+:- pred remove_this_from_ep(execution_path::in, pred_proc_id::in,
     rptg_node::in, execution_path_table::in, module_info::in,
     rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
@@ -496,7 +490,7 @@ remove_this_from_ep([ProgPoint - Goal|ProgPoint_Goals], PPId,
         Expr = plain_call(CalleePredId, CalleeProcId, _, _, _, _)
       then
         CalleePPId = proc(CalleePredId, CalleeProcId),
-        ( if 
+        ( if
             some_are_special_preds([CalleePPId], ModuleInfo)
           then
             true
@@ -505,16 +499,16 @@ remove_this_from_ep([ProgPoint - Goal|ProgPoint_Goals], PPId,
             map.lookup(RptaInfoTable, PPId, RptaInfo_p),
             RptaInfo_p = rpta_info(_Graph_p, AlphaMapping),
             map.lookup(AlphaMapping, ProgPoint, AlphaAtCallSite),
-                
+
             map.foldl(find_alpha_source(ToBeRemovedRegion),
                 AlphaAtCallSite, set.init, Rs),
- 
-            % Remove the sources from the RegionSet (either deadR or 
+
+            % Remove the sources from the RegionSet (either deadR or
             % bornR) of this callee.
             map.lookup(!.ProcRegionSetTable, CalleePPId,
                 RegionSet0),
             set.difference(RegionSet0, Rs, RegionSet1),
-                
+
             % update the table and continue
             ( if
                 set.equal(RegionSet0, RegionSet1)
@@ -522,32 +516,30 @@ remove_this_from_ep([ProgPoint - Goal|ProgPoint_Goals], PPId,
                 % no need to update
                 true
               else
-                % Some is removed from deadR or bornR of this callee, 
+                % Some is removed from deadR or bornR of this callee,
                 % so we update the entry of this called and analyse it.
-                svmap.set(CalleePPId, RegionSet1,
-                    !ProcRegionSetTable),
-                set.difference(RegionSet0, RegionSet1,
-                    RemovedFromQ),
+                svmap.set(CalleePPId, RegionSet1, !ProcRegionSetTable),
+                set.difference(RegionSet0, RegionSet1, RemovedFromQ),
 
                 % Call this one mutually recursively.
                 list.foldl(
                     remove_this_region_from_callees_of_proc(CalleePPId,
-                        ExecPathTable, ModuleInfo, RptaInfoTable), 
+                        ExecPathTable, ModuleInfo, RptaInfoTable),
                     set.to_sorted_list(RemovedFromQ), !ProcRegionSetTable)
-            ) 
+            )
         )
       else
             % ignore other sorts of goals
             %
         true
     ),
-    remove_this_from_ep(ProgPoint_Goals, PPId, ToBeRemovedRegion, 
+    remove_this_from_ep(ProgPoint_Goals, PPId, ToBeRemovedRegion,
         ExecPathTable, ModuleInfo, RptaInfoTable, !ProcRegionSetTable).
 
 :- pred find_alpha_source(rptg_node::in, rptg_node::in, rptg_node::in,
     set(rptg_node)::in, set(rptg_node)::out) is det.
 find_alpha_source(ToBeRemovedRegion, Source, Target, !Rs) :-
-    ( if 
+    ( if
         ToBeRemovedRegion = Target
       then
         set.insert(!.Rs, Source, !:Rs)
@@ -560,59 +552,61 @@ find_alpha_source(ToBeRemovedRegion, Source, Target, !Rs) :-
 % Eliminating primitive regions from live region analysis's information.
 %
 
-ignore_primitive_regions(ModuleInfo, RptaInfoTable, !BornRTable, 
-        !DeadRTable, !ConstantRTable, !LocalRTable, !LRBeforeTable, 
+ignore_primitive_regions(ModuleInfo, RptaInfoTable, !BornRTable,
+        !DeadRTable, !ConstantRTable, !LocalRTable, !LRBeforeTable,
         !LRAfterTable, !VoidVarRegionTable) :-
-    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable),
         !.BornRTable, !BornRTable),
-    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable),
         !.DeadRTable, !DeadRTable),
-    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable),
         !.ConstantRTable, !ConstantRTable),
-    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions(ModuleInfo, RptaInfoTable),
         !.LocalRTable, !LocalRTable),
 
-    map.foldl(eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable),
         !.LRBeforeTable, !LRBeforeTable),
-    map.foldl(eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable),
         !.LRAfterTable, !LRAfterTable),
-    map.foldl(eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable), 
+    map.foldl(eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable),
         !.VoidVarRegionTable, !VoidVarRegionTable).
 
     % Eliminate regions of primitive types from the proc_region_set_table.
     %
-:- pred eliminate_primitive_regions(module_info::in, rpta_info_table::in, 
-    pred_proc_id::in, region_set::in, proc_region_set_table::in, 
+:- pred eliminate_primitive_regions(module_info::in, rpta_info_table::in,
+    pred_proc_id::in, region_set::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
 
-eliminate_primitive_regions(ModuleInfo, RptaInfoTable, PPId, RegionSet0, 
+eliminate_primitive_regions(ModuleInfo, RptaInfoTable, PPId, RegionSet0,
         !RegionSetTable) :-
     map.lookup(RptaInfoTable, PPId, RptaInfo),
     RptaInfo = rpta_info(Graph, _Alpha),
-    set.fold(retain_non_primitive_regions(ModuleInfo, Graph), RegionSet0, 
+    set.fold(retain_non_primitive_regions(ModuleInfo, Graph), RegionSet0,
         set.init, RegionSet),
     svmap.det_update(PPId, RegionSet, !RegionSetTable).
 
-:- pred retain_non_primitive_regions(module_info::in, rpt_graph::in, 
+:- pred retain_non_primitive_regions(module_info::in, rpt_graph::in,
     rptg_node::in, region_set::in, region_set::out) is det.
 
 retain_non_primitive_regions(ModuleInfo, Graph, Region, !RegionSet) :-
     NodeType = rptg_lookup_node_type(Graph, Region),
-    (   ( type_is_atomic(ModuleInfo, NodeType) 
+    (
+        ( type_is_atomic(ModuleInfo, NodeType)
         ; is_dummy_argument_type(ModuleInfo, NodeType)
         )
-    ->  true
-    ;   svset.insert(Region, !RegionSet)
+    ->
+        true
+    ;
+        svset.insert(Region, !RegionSet)
     ).
 
-    % Eliminate regions of primitive types from the 
-    % proc_pp_region_set_table.
+    % Eliminate regions of primitive types from the proc_pp_region_set_table.
     %
-:- pred eliminate_primitive_regions_2(module_info::in, rpta_info_table::in, 
-    pred_proc_id::in, pp_region_set_table::in, proc_pp_region_set_table::in, 
+:- pred eliminate_primitive_regions_2(module_info::in, rpta_info_table::in,
+    pred_proc_id::in, pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::out) is det.
 
-eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable, PPId, LRProc0, 
+eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable, PPId, LRProc0,
         !LRTable) :-
     map.lookup(RptaInfoTable, PPId, RptaInfo),
     RptaInfo = rpta_info(Graph, _Alpha),
@@ -620,13 +614,13 @@ eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable, PPId, LRProc0,
         LRProc0, map.init, LRProc),
     svmap.det_update(PPId, LRProc, !LRTable).
 
-:- pred retain_non_primitive_regions_at_pp(module_info::in, rpt_graph::in, 
-    program_point::in, region_set::in, pp_region_set_table::in, 
+:- pred retain_non_primitive_regions_at_pp(module_info::in, rpt_graph::in,
+    program_point::in, region_set::in, pp_region_set_table::in,
     pp_region_set_table::out) is det.
 
-retain_non_primitive_regions_at_pp(ModuleInfo, Graph, ProgPoint, 
+retain_non_primitive_regions_at_pp(ModuleInfo, Graph, ProgPoint,
         RegionSet0, !LRProc) :-
-    set.fold(retain_non_primitive_regions(ModuleInfo, Graph), RegionSet0, 
+    set.fold(retain_non_primitive_regions(ModuleInfo, Graph), RegionSet0,
         set.init, RegionSet),
     svmap.set(ProgPoint, RegionSet, !LRProc).
 

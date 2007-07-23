@@ -9,25 +9,25 @@
 % File rbmm.points_to_analysis.m.
 % Main author: Quan Phan.
 %
-% This module implements the region points-to analysis (rpta), which collects 
-% for each procedure a region points-to graph representing the splitting of 
-% the heap used by the procedure into regions, i.e., which variables are 
-% stored in which regions. Because the region model is polymorphic, i.e., we 
-% can pass different actual regions for region arguments, the analysis also 
-% gathers the alpha mapping, which maps formal region parameters to actual 
+% This module implements the region points-to analysis (rpta), which collects
+% for each procedure a region points-to graph representing the splitting of
+% the heap used by the procedure into regions, i.e., which variables are
+% stored in which regions. Because the region model is polymorphic, i.e., we
+% can pass different actual regions for region arguments, the analysis also
+% gathers the alpha mapping, which maps formal region parameters to actual
 % ones at each call site in a procedure. So there are 2 sorts of information:
 % region points-to graph (rptg) and alpha mapping.
 %
 % The analysis is composed of 2 phases:
-%	1. intraprocedural analysis: only analyses unifications and compute only
-%   rptgs.
-%	2. interprocedural analysis: only analyses (plain) procedure calls, 
-%   compute both rptgs and alpha mappings.
-% 
 %
-% Currently the analysis ONLY collects the information, do NOT record it into 
+%   1. intraprocedural analysis: only analyses unifications and compute only
+%      rptgs.
+%   2. interprocedural analysis: only analyses (plain) procedure calls,
+%      compute both rptgs and alpha mappings.
+%
+% Currently the analysis ONLY collects the information, do NOT record it into
 % the HLDS.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.points_to_analysis.
@@ -48,13 +48,13 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.goal_path. 
+:- import_module check_hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.
-:- import_module parse_tree.prog_data. 
+:- import_module parse_tree.prog_data.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
@@ -75,7 +75,7 @@
 
 region_points_to_analysis(InfoTable, !ModuleInfo) :-
     rpta_info_table_init = InfoTable0,
-    intra_proc_rpta(!.ModuleInfo, InfoTable0, InfoTable1),	
+    intra_proc_rpta(!.ModuleInfo, InfoTable0, InfoTable1),
     inter_proc_rpta(!.ModuleInfo, InfoTable1, InfoTable).
 
 %----------------------------------------------------------------------------%
@@ -90,7 +90,7 @@ intra_proc_rpta(ModuleInfo, !InfoTable) :-
     module_info_predids(PredIds, ModuleInfo, _),
     list.foldl(intra_proc_rpta_pred(ModuleInfo), PredIds, !InfoTable).
 
-:- pred intra_proc_rpta_pred(module_info::in, pred_id::in, 
+:- pred intra_proc_rpta_pred(module_info::in, pred_id::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
 intra_proc_rpta_pred(ModuleInfo, PredId, !InfoTable) :-
@@ -98,33 +98,33 @@ intra_proc_rpta_pred(ModuleInfo, PredId, !InfoTable) :-
     ProcIds = pred_info_non_imported_procids(PredInfo),
     list.foldl(intra_proc_rpta_proc(ModuleInfo, PredId), ProcIds, !InfoTable).
 
-:- pred intra_proc_rpta_proc(module_info::in, pred_id::in, proc_id::in, 
+:- pred intra_proc_rpta_proc(module_info::in, pred_id::in, proc_id::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
 intra_proc_rpta_proc(ModuleInfo, PredId, ProcId, !InfoTable) :-
     PPId = proc(PredId, ProcId),
-    ( if    some_are_special_preds([PPId], ModuleInfo)
-      then  true
-      else
-            module_info_proc_info(ModuleInfo, PPId, ProcInfo),
-            RptaInfo0 = rpta_info_init(ProcInfo),
-            proc_info_get_goal(ProcInfo, Goal),
-            intra_analyse_goal(Goal, RptaInfo0, RptaInfo),
-            rpta_info_table_set_rpta_info(PPId, RptaInfo, !InfoTable)
+    ( some_are_special_preds([PPId], ModuleInfo) ->
+        true
+    ;
+        module_info_proc_info(ModuleInfo, PPId, ProcInfo),
+        RptaInfo0 = rpta_info_init(ProcInfo),
+        proc_info_get_goal(ProcInfo, Goal),
+        intra_analyse_goal(Goal, RptaInfo0, RptaInfo),
+        rpta_info_table_set_rpta_info(PPId, RptaInfo, !InfoTable)
     ).
 
-:- pred intra_analyse_goal(hlds_goal::in,
-    rpta_info::in, rpta_info::out) is det.
+:- pred intra_analyse_goal(hlds_goal::in, rpta_info::in, rpta_info::out)
+    is det.
 
-intra_analyse_goal(Goal, !RptaInfo) :- 
-    Goal = hlds_goal(GoalExpr, _), 
+intra_analyse_goal(Goal, !RptaInfo) :-
+    Goal = hlds_goal(GoalExpr, _),
     intra_analyse_goal_expr(GoalExpr, !RptaInfo).
-	
-:- pred intra_analyse_goal_expr(hlds_goal_expr::in, 
+
+:- pred intra_analyse_goal_expr(hlds_goal_expr::in,
     rpta_info::in, rpta_info::out) is det.
 
-intra_analyse_goal_expr(conj(_ConjType, Goals), !RptaInfo) :- 
-    list.foldl(intra_analyse_goal, Goals, !RptaInfo). 
+intra_analyse_goal_expr(conj(_ConjType, Goals), !RptaInfo) :-
+    list.foldl(intra_analyse_goal, Goals, !RptaInfo).
 
     % Calls (of all types) are not considered during the intraprocedural
     % analysis.
@@ -133,21 +133,21 @@ intra_analyse_goal_expr(plain_call(_, _, _, _, _, _), !RptaInfo).
 intra_analyse_goal_expr(generic_call(_, _, _, _), !RptaInfo).
 intra_analyse_goal_expr(call_foreign_proc(_, _, _, _, _, _, _), !RptaInfo).
 
-intra_analyse_goal_expr(switch(_, _, Cases), !RptaInfo) :- 
+intra_analyse_goal_expr(switch(_, _, Cases), !RptaInfo) :-
     list.foldl(intra_analyse_case, Cases, !RptaInfo).
 intra_analyse_goal_expr(disj(Goals), !RptaInfo) :-
-    list.foldl(intra_analyse_goal, Goals, !RptaInfo). 
-intra_analyse_goal_expr(negation(Goal), !RptaInfo) :- 
-    intra_analyse_goal(Goal, !RptaInfo). 
-intra_analyse_goal_expr(unify(_, _, _, Unification, _), !RptaInfo) :- 
+    list.foldl(intra_analyse_goal, Goals, !RptaInfo).
+intra_analyse_goal_expr(negation(Goal), !RptaInfo) :-
+    intra_analyse_goal(Goal, !RptaInfo).
+intra_analyse_goal_expr(unify(_, _, _, Unification, _), !RptaInfo) :-
     intra_analyse_unification(Unification, !RptaInfo).
 
-    % scope 
-    % XXX: only analyse the goal. May need to take into account the Reason. 
+    % scope
+    % XXX: only analyse the goal. May need to take into account the Reason.
     %
-intra_analyse_goal_expr(scope(_Reason, Goal), !RptaInfo) :- 
+intra_analyse_goal_expr(scope(_Reason, Goal), !RptaInfo) :-
 %    (
-%	    ( Reason = exist_quant(_)
+%       ( Reason = exist_quant(_)
 %        ; Reason = promise_solutions(_, _)      % XXX ???
 %        ; Reason = promise_purity(_, _)
 %        ; Reason = commit(_)                    % XXX ???
@@ -162,12 +162,12 @@ intra_analyse_goal_expr(scope(_Reason, Goal), !RptaInfo) :-
 %        unexpected(this_file, Msg)
 %    ).
 
-intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :- 
+intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :-
     intra_analyse_goal(If, !RptaInfo),
     intra_analyse_goal(Then, !RptaInfo),
     intra_analyse_goal(Else, !RptaInfo).
 
-intra_analyse_goal_expr(shorthand(_), _, _) :- 
+intra_analyse_goal_expr(shorthand(_), _, _) :-
     unexpected(this_file, "intra_analyse_goal_expr: shorthand not handled").
 
 :- pred intra_analyse_case(case::in, rpta_info::in, rpta_info::out) is det.
@@ -175,13 +175,13 @@ intra_analyse_goal_expr(shorthand(_), _, _) :-
 intra_analyse_case(Case, !RptaInfo) :-
     Case = case(_, Goal),
     intra_analyse_goal(Goal, !RptaInfo).
-    
+
 %-----------------------------------------------------------------------------%
 
     % For construction and deconstruction unifications, add an edge from the
     % variable on the LHS to each variable on the RHS.
     %
-    % For assignment unifications we merge the nodes corresponding to 
+    % For assignment unifications we merge the nodes corresponding to
     % the variables on either side.
     %
     % For simple test unifications we do nothing.
@@ -189,26 +189,25 @@ intra_analyse_case(Case, !RptaInfo) :-
 :- pred intra_analyse_unification(unification::in,
     rpta_info::in, rpta_info::out) is det.
 
-    % For construction and deconstruction, add edges from LVar to 
+    % For construction and deconstruction, add edges from LVar to
     % each of RVars.
 intra_analyse_unification(Unification, !RptaInfo) :-
     ( Unification = construct(LVar, ConsId, RVars, _, _, _, _)
     ; Unification = deconstruct(LVar, ConsId, RVars, _, _, _)
     ),
-    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 1, _,
-        !RptaInfo).
+    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 1, _, !RptaInfo).
 intra_analyse_unification(assign(ToVar, FromVar), !RptaInfo) :-
     !.RptaInfo = rpta_info(Graph0, AlphaMapping),
     get_node_by_variable(Graph0, ToVar, ToNode),
     get_node_by_variable(Graph0, FromVar, FromNode),
-    ( if    ToNode = FromNode
-      then  true
-      else
-            unify_operator(ToNode, FromNode, Graph0, Graph),
-            !:RptaInfo = rpta_info(Graph, AlphaMapping),
-            % After merging the two nodes, apply rule P1 to restore the
-            % RPTG's invariants.
-            apply_rule_1(ToNode, !RptaInfo)
+    ( ToNode = FromNode ->
+        true
+    ;
+        unify_operator(ToNode, FromNode, Graph0, Graph),
+        !:RptaInfo = rpta_info(Graph, AlphaMapping),
+        % After merging the two nodes, apply rule P1 to restore the
+        % RPTG's invariants.
+        apply_rule_1(ToNode, !RptaInfo)
     ).
 intra_analyse_unification(simple_test(_, _), !RptaInfo).
 intra_analyse_unification(complicated_unify(_, _, _), _, _) :-
@@ -226,23 +225,23 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !RptaInfo) :-
     EdgeLabel = rptg_arc_content(Sel),
 
     % Only add the edge if it is not in the graph
-    % It is more suitable to the edge_operator's semantics if we check 
+    % It is more suitable to the edge_operator's semantics if we check
     % this inside the edge_operator. But we also want to know if the edge
-    % is actually added or not so it is convenient to check the edge's 
+    % is actually added or not so it is convenient to check the edge's
     % existence outside edge_operator. Otherwise we can extend edge_operator
     % with one more argument to indicate that.
-    ( if    edge_in_graph(L_Node, EdgeLabel, R_Node, Graph0)
-      then  true
-      else
-            edge_operator(L_Node, R_Node, EdgeLabel, Graph0, Graph1),
-            !:RptaInfo = rpta_info(Graph1, AlphaMapping), 
+    ( edge_in_graph(L_Node, EdgeLabel, R_Node, Graph0) ->
+        true
+    ;
+        edge_operator(L_Node, R_Node, EdgeLabel, Graph0, Graph1),
+        !:RptaInfo = rpta_info(Graph1, AlphaMapping),
 
-            % After an edge is added, rules P2 and P3 are applied to ensure 
-            % the invariants of the graph.
-            apply_rule_2(L_Node, R_Node, ConsId, !.Component, !RptaInfo),
-            !.RptaInfo = rpta_info(Graph2, _),	
-            get_node_by_variable(Graph2, RVar, RVarNode),
-            apply_rule_3(RVarNode, !RptaInfo)
+        % After an edge is added, rules P2 and P3 are applied to ensure
+        % the invariants of the graph.
+        apply_rule_2(L_Node, R_Node, ConsId, !.Component, !RptaInfo),
+        !.RptaInfo = rpta_info(Graph2, _),
+        get_node_by_variable(Graph2, RVar, RVarNode),
+        apply_rule_3(RVarNode, !RptaInfo)
     ),
     !:Component = !.Component + 1.
 
@@ -253,7 +252,7 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !RptaInfo) :-
 %
 
     % The interprocedural analysis requires fixpoint computation,
-    % so we will compute a fixpoint for each strongly connected component. 
+    % so we will compute a fixpoint for each strongly connected component.
     %
 :- pred inter_proc_rpta(module_info::in,
     rpta_info_table::in, rpta_info_table::out) is det.
@@ -270,46 +269,42 @@ inter_proc_rpta(ModuleInfo0, !InfoTable) :-
         unexpected(this_file, "inter_proc_rpta: no dependency information")
     ).
 
-:- pred run_with_dependencies(dependency_ordering::in, module_info::in, 
+:- pred run_with_dependencies(dependency_ordering::in, module_info::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
-run_with_dependencies(Deps, ModuleInfo, !InfoTable) :- 
+run_with_dependencies(Deps, ModuleInfo, !InfoTable) :-
     list.foldl(run_with_dependency(ModuleInfo), Deps, !InfoTable).
 
-:- pred run_with_dependency(module_info::in, list(pred_proc_id)::in, 
+:- pred run_with_dependency(module_info::in, list(pred_proc_id)::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
-run_with_dependency(ModuleInfo, SCC, !InfoTable) :- 
-    (
+run_with_dependency(ModuleInfo, SCC, !InfoTable) :-
+    ( some_are_special_preds(SCC, ModuleInfo) ->
         % Analysis ignores special predicates.
-        some_are_special_preds(SCC, ModuleInfo)
-    ->
         true
     ;
         % Run the fixpoint computation on the SCC.
         FPTable = init_rpta_fixpoint_table(SCC, !.InfoTable),
-        run_with_dependency_until_fixpoint(SCC, FPTable, ModuleInfo, 
+        run_with_dependency_until_fixpoint(SCC, FPTable, ModuleInfo,
             !InfoTable)
     ).
 
-:- pred run_with_dependency_until_fixpoint(list(pred_proc_id)::in, 
-    rpta_fixpoint_table::in, module_info::in, rpta_info_table::in, 
+:- pred run_with_dependency_until_fixpoint(list(pred_proc_id)::in,
+    rpta_fixpoint_table::in, module_info::in, rpta_info_table::in,
     rpta_info_table::out) is det.
 
 run_with_dependency_until_fixpoint(SCC, FPTable0, ModuleInfo, !InfoTable) :-
-    list.foldl(inter_analyse_proc(ModuleInfo, !.InfoTable), SCC, 
+    list.foldl(inter_analyse_proc(ModuleInfo, !.InfoTable), SCC,
         FPTable0, FPTable1),
-    (
-        fixpoint_reached(FPTable1)
-    ->
+    ( fixpoint_reached(FPTable1) ->
         % If we have reached a fixpoint for this SCC then update the
         % RPTA info table.
-        list.foldl(update_rpta_info_in_rpta_info_table(FPTable1), SCC, 
+        list.foldl(update_rpta_info_in_rpta_info_table(FPTable1), SCC,
             !InfoTable)
     ;
         % Otherwise, begin the next iteration.
         new_run(FPTable1, FPTable),
-        run_with_dependency_until_fixpoint(SCC, FPTable, ModuleInfo, 
+        run_with_dependency_until_fixpoint(SCC, FPTable, ModuleInfo,
             !InfoTable)
     ).
 
@@ -317,13 +312,13 @@ run_with_dependency_until_fixpoint(SCC, FPTable0, ModuleInfo, !InfoTable) :-
     pred_proc_id::in, rpta_fixpoint_table::in, rpta_fixpoint_table::out)
     is det.
 
-inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :- 
+inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :-
     % Look up the procedure's rpta_info.
     % If this is the first iteration then the rtpa_info we use is the
     % one computed for this procedure during the intraprocedural analysis.
     %
     lookup_rpta_info(PPId, InfoTable, !FPTable, ProcRptaInfo0, _),
-	
+
     % Start the analysis of the procedure's body.
     %
     % We will need the information about program point for storing alpha
@@ -333,11 +328,11 @@ inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :-
     %
     module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
     fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
-    
+
     proc_info_get_goal(ProcInfo, Goal),
     inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPTable,
         ProcRptaInfo0, ProcRptaInfo),
-   
+
     % Put the result of this iteration into the fixpoint table.
     %
     rpta_fixpoint_table_new_rpta_info(PPId, ProcRptaInfo, !FPTable).
@@ -346,38 +341,38 @@ inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :-
 %
 % Code for interprocedural analysis of goals
 %
-    
+
     % Analyse a given goal, with module_info and fixpoint table
-	% to lookup extra information, starting from an initial abstract
-	% substitution, and creating a new one. During this process,
-	% the fixpoint table might change (when recursive predicates are
-	% encountered).
-	%
-:- pred inter_analyse_goal(module_info::in, 
+    % to lookup extra information, starting from an initial abstract
+    % substitution, and creating a new one. During this process,
+    % the fixpoint table might change (when recursive predicates are
+    % encountered).
+    %
+:- pred inter_analyse_goal(module_info::in,
     rpta_info_table::in, hlds_goal::in,
     rpta_fixpoint_table::in, rpta_fixpoint_table::out,
     rpta_info::in, rpta_info::out) is det.
 
-inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPtable, !RptaInfo) :- 
-    Goal = hlds_goal(GoalExpr, GoalInfo), 
-    inter_analyse_goal_expr(GoalExpr, GoalInfo, ModuleInfo, InfoTable, 
+inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPtable, !RptaInfo) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    inter_analyse_goal_expr(GoalExpr, GoalInfo, ModuleInfo, InfoTable,
         !FPtable, !RptaInfo).
-	
-:- pred inter_analyse_goal_expr(hlds_goal_expr::in, hlds_goal_info::in, 
-    module_info::in, rpta_info_table::in, rpta_fixpoint_table::in, 
+
+:- pred inter_analyse_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
+    module_info::in, rpta_info_table::in, rpta_fixpoint_table::in,
     rpta_fixpoint_table::out, rpta_info::in, rpta_info::out) is det.
 
-inter_analyse_goal_expr(conj(_ConjType, Goals), _, ModuleInfo, 
-        InfoTable, !FPTable, !RptaInfo) :- 
+inter_analyse_goal_expr(conj(_ConjType, Goals), _, ModuleInfo,
+        InfoTable, !FPTable, !RptaInfo) :-
     list.foldl2(inter_analyse_goal(ModuleInfo, InfoTable), Goals,
-        !FPTable, !RptaInfo). 
+        !FPTable, !RptaInfo).
 
-    % There are two rpta_info's: 
-    % one is of the currently-analysed procedure (caller) which we are going 
+    % There are two rpta_info's:
+    % one is of the currently-analysed procedure (caller) which we are going
     % to update, the other is of the called procedure (callee).
     %
-    % The input RptaInfo is caller's, if the procedure calls itself then 
-    % this is also that of the callee but we will retrieve it again from the 
+    % The input RptaInfo is caller's, if the procedure calls itself then
+    % this is also that of the callee but we will retrieve it again from the
     % InfoTable.
     %
 inter_analyse_goal_expr(Goal, GoalInfo, ModuleInfo, InfoTable,
@@ -389,7 +384,7 @@ inter_analyse_goal_expr(Goal, GoalInfo, ModuleInfo, InfoTable,
     % As what I assume now, after the intraprocedural analysis we have all
     % the rpta_info's of all the procedures in the InfoTable, therefore
     % this lookup cannot fail. But it sometimes fails because the callee
-    % can be imported procedures, built-ins and so forth which are not 
+    % can be imported procedures, built-ins and so forth which are not
     % analysed by the intraprocedural analysis. In such cases, I assume that
     % the rpta_info of the caller is not updated, because no information is
     % available from the callee.
@@ -406,13 +401,13 @@ inter_analyse_goal_expr(Goal, GoalInfo, ModuleInfo, InfoTable,
         module_info_proc_info(ModuleInfo, CalleePPId, CalleeProcInfo),
         proc_info_get_headvars(CalleeProcInfo, FormalParams),
         !.CallerRptaInfo = rpta_info(CallerGraph0, CallerAlphaMappings0),
-        alpha_mapping_at_call_site(FormalParams, ActualParams, CalleeGraph, 
+        alpha_mapping_at_call_site(FormalParams, ActualParams, CalleeGraph,
             CallerGraph0, CallerGraph,
             map.init, CallerAlphaMappingAtCallSite),
-        svmap.set(CallSite, CallerAlphaMappingAtCallSite, 
+        svmap.set(CallSite, CallerAlphaMappingAtCallSite,
             CallerAlphaMappings0, CallerAlphaMappings),
         CallerRptaInfo1 = rpta_info(CallerGraph, CallerAlphaMappings),
-    
+
         % Follow the edges from the nodes rooted at the formal parameters
         % (in the callee's graph) and apply the interprocedural rules to
         % complete the alpha mapping and update the caller's graph with
@@ -428,12 +423,12 @@ inter_analyse_goal_expr(generic_call(_, _, _, _), _, _, _, !FPTable,
         "inter_analyse_goal_expr: generic_call not handled").
 
 inter_analyse_goal_expr(switch(_, _, Cases), _, ModuleInfo, InfoTable,
-        !FPTable, !RptaInfo) :- 
+        !FPTable, !RptaInfo) :-
     list.foldl2(inter_analyse_case(ModuleInfo, InfoTable), Cases,
         !FPTable, !RptaInfo).
 
-:- pred inter_analyse_case(module_info::in, 
-    rpta_info_table::in, case::in, rpta_fixpoint_table::in, 
+:- pred inter_analyse_case(module_info::in,
+    rpta_info_table::in, case::in, rpta_fixpoint_table::in,
     rpta_fixpoint_table::out, rpta_info::in, rpta_info::out) is det.
 
 inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
@@ -442,16 +437,16 @@ inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
 
     % Unifications are ignored in interprocedural analysis
     %
-inter_analyse_goal_expr(unify(_, _, _, _, _), _, _, _, !FPTable, !RptaInfo). 
+inter_analyse_goal_expr(unify(_, _, _, _, _), _, _, _, !FPTable, !RptaInfo).
 
-inter_analyse_goal_expr(disj(Disjs), _, ModuleInfo, InfoTable, 
-        !FPTable, !RptaInfo) :- 
+inter_analyse_goal_expr(disj(Disjs), _, ModuleInfo, InfoTable,
+        !FPTable, !RptaInfo) :-
     list.foldl2(inter_analyse_goal(ModuleInfo, InfoTable), Disjs,
-        !FPTable, !RptaInfo). 
-       
+        !FPTable, !RptaInfo).
+
 inter_analyse_goal_expr(negation(Goal), _, ModuleInfo, InfoTable,
-        !FPTable, !RptaInfo) :- 
-    inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPTable, !RptaInfo). 
+        !FPTable, !RptaInfo) :-
+    inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPTable, !RptaInfo).
 
     % XXX: may need to take into account the Reason.
     % for now just analyse the goal.
@@ -473,45 +468,45 @@ inter_analyse_goal_expr(scope(_Reason, Goal), _, ModuleInfo, InfoTable,
 %            ++ "not handled",
 %        unexpected(this_file, Msg)
 %    ).
-  
+
 inter_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), _, ModuleInfo,
-        InfoTable, !FPTable, !RptaInfo) :- 
+        InfoTable, !FPTable, !RptaInfo) :-
     inter_analyse_goal(ModuleInfo, InfoTable, If, !FPTable, !RptaInfo),
     inter_analyse_goal(ModuleInfo, InfoTable, Then, !FPTable, !RptaInfo),
     inter_analyse_goal(ModuleInfo, InfoTable, Else, !FPTable, !RptaInfo).
 
-inter_analyse_goal_expr(GoalExpr, _, _, _, !FPTable, !RptaInfo) :- 
+inter_analyse_goal_expr(GoalExpr, _, _, _, !FPTable, !RptaInfo) :-
     GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
     sorry(this_file,
         "inter_analyse_goal_expr: foreign code not handled").
 
-inter_analyse_goal_expr(shorthand(_), _, _, _, !FPTable, !RptaInfo) :- 
-    unexpected(this_file, 
+inter_analyse_goal_expr(shorthand(_), _, _, _, !FPTable, !RptaInfo) :-
+    unexpected(this_file,
         "inter_analyse_goal_expr: shorthand goal not handled").
 
 %-----------------------------------------------------------------------------%
 
-    % As said above, the rpta_info of a procedure when it is looked 
-    % up in interprocedural analysis is either in the InfoTable or in the 
+    % As said above, the rpta_info of a procedure when it is looked
+    % up in interprocedural analysis is either in the InfoTable or in the
     % fixpoint table. If the procedure happens to be imported ones, built-ins,
-    % and so on, we returns no and initialize the lookup value to a dummy 
-    % value. 
+    % and so on, we returns no and initialize the lookup value to a dummy
+    % value.
     %
-:- pred lookup_rpta_info(pred_proc_id::in, rpta_info_table::in, 
+:- pred lookup_rpta_info(pred_proc_id::in, rpta_info_table::in,
     rpta_fixpoint_table::in, rpta_fixpoint_table::out,
     rpta_info::out, bool::out) is det.
 
-lookup_rpta_info(PPId, InfoTable, !FPtable, RptaInfo, Init) :- 
+lookup_rpta_info(PPId, InfoTable, !FPtable, RptaInfo, Init) :-
     ( if
         % First look up in the current fixpoint table,
         get_from_fixpoint_table(PPId, RptaInfo0, !.FPtable, FPtable1)
       then
         RptaInfo  = RptaInfo0,
         !:FPtable = FPtable1,
-        Init = bool.no 
+        Init = bool.no
       else
-	    % ... second look up among already recorded rpta_info.
-        ( if 
+        % ... second look up among already recorded rpta_info.
+        ( if
             RptaInfo0 = rpta_info_table_search_rpta_info(PPId, InfoTable)
           then
             RptaInfo = RptaInfo0,
@@ -523,7 +518,7 @@ lookup_rpta_info(PPId, InfoTable, !FPtable, RptaInfo, Init) :-
         )
     ).
 
-:- pred update_rpta_info_in_rpta_info_table(rpta_fixpoint_table::in, 
+:- pred update_rpta_info_in_rpta_info_table(rpta_fixpoint_table::in,
     pred_proc_id::in, rpta_info_table::in, rpta_info_table::out) is det.
 
 update_rpta_info_in_rpta_info_table(FPTable, PPId, !InfoTable) :-
@@ -553,23 +548,23 @@ apply_rule_1(Node, !RptaInfo) :-
     ).
 
     % Rule 1:
-    % After two nodes are unified, it can happen that the unified node has 
-    % two edges with the same label pointing to 2 different nodes. This rule 
+    % After two nodes are unified, it can happen that the unified node has
+    % two edges with the same label pointing to 2 different nodes. This rule
     % ensures that it happens the 2 nodes will also be unified.
     %
-    % After a node is unified, the node itself was probably removed from 
+    % After a node is unified, the node itself was probably removed from
     % the graph so we need to trace "it" by the variables assigned to it.
     % That is why the first argument is the set of variables associated
     % with the unified node.
     %
-    % The algorithm is as follows.  
-    % 1. If the node has no or one out-arc we have to do nothing and the 
-    % predicate quits. 
-    % 2. The node has > 1 out-arc, take one of them, find in the rest 
-    % another arc that has a same label, unify the end nodes of the two arcs. 
-    % Because of this unification of the end nodes, more unifications are 
+    % The algorithm is as follows.
+    % 1. If the node has no or one out-arc we have to do nothing and the
+    % predicate quits.
+    % 2. The node has > 1 out-arc, take one of them, find in the rest
+    % another arc that has a same label, unify the end nodes of the two arcs.
+    % Because of this unification of the end nodes, more unifications are
     % probably triggered.
-    % 3. Start all over again with the same node and the *updated* graph. 
+    % 3. Start all over again with the same node and the *updated* graph.
     %
 :- pred rule_1(set(prog_var)::in, rpt_graph::in, rpt_graph::out) is det.
 
@@ -578,15 +573,15 @@ rule_1(VarSet, !Graph) :-
     rptg_get_edgemap(!.Graph, EdgeMap),
     map.lookup(EdgeMap, UnifiedNode, OutEdgesOfUnifiedNode),
     map.keys(OutEdgesOfUnifiedNode, OutArcsUnifiedNode),
-    ( 
+    (
         OutArcsUnifiedNode = [A | As],
-        merge_nodes_reached_by_same_labelled_arcs(A, As, As, !Graph, 
+        merge_nodes_reached_by_same_labelled_arcs(A, As, As, !Graph,
             Happened),
         (
             Happened = bool.no
         ;
-            % Some nodes have been merged, so size of !:Graph is strictly 
-            % smaller than that of !.Graph and at some point this predicate 
+            % Some nodes have been merged, so size of !:Graph is strictly
+            % smaller than that of !.Graph and at some point this predicate
             % will end up in the then-branch.
             Happened = bool.yes,
             rule_1(VarSet, !Graph)
@@ -594,30 +589,30 @@ rule_1(VarSet, !Graph) :-
     ;
         OutArcsUnifiedNode = []
     ).
-	
+
     % This predicate unifies the end nodes of the input arc and of an arc
-    % in the list which has the same label as the input arc. When one such 
+    % in the list which has the same label as the input arc. When one such
     % an arc found, the predicate will not look further in the list.
-    % The unification of nodes, if happends, will be propagated by calling 
-    % rule_1 predicate mutually recursively. 
+    % The unification of nodes, if happends, will be propagated by calling
+    % rule_1 predicate mutually recursively.
     %
 :- pred merge_nodes_reached_by_same_labelled_arcs(rptg_arc::in,
-    list(rptg_arc)::in, list(rptg_arc)::in, rpt_graph::in, rpt_graph::out, 
+    list(rptg_arc)::in, list(rptg_arc)::in, rpt_graph::in, rpt_graph::out,
     bool::out) is det.
 
     % The loop in this predicate is similar to
     % for i = ... to N - 1
     %    for j = i+1 to N ...
-    % ...	
-    % this clause is reached at the end of the inner loop. No unification 
-    % has happened so far therefore the list of arcs (Rest = [A | As]) 
+    % ...
+    % this clause is reached at the end of the inner loop. No unification
+    % has happened so far therefore the list of arcs (Rest = [A | As])
     % are still safe to use.
     %
 
-    % reach this clause means that no unification of nodes happened and 
+    % reach this clause means that no unification of nodes happened and
     % all the out-arcs have been processed (Rest = []).
     %
-merge_nodes_reached_by_same_labelled_arcs(_, [], [], !Graph, bool.no). 
+merge_nodes_reached_by_same_labelled_arcs(_, [], [], !Graph, bool.no).
 
     % Some out-arcs still need to be processed
     %
@@ -625,11 +620,11 @@ merge_nodes_reached_by_same_labelled_arcs(_, [], [A | As], !Graph,
         Happened) :-
     merge_nodes_reached_by_same_labelled_arcs(A, As, As, !Graph, Happened).
 
-merge_nodes_reached_by_same_labelled_arcs(Arc, [A | As], Rest, !Graph, 
+merge_nodes_reached_by_same_labelled_arcs(Arc, [A | As], Rest, !Graph,
         Happened) :-
-    % For a node, we do not allow two arcs with the same label to another 
-    % node. So End and E below must be definitely different nodes and we 
-    % only need to compare labels.   
+    % For a node, we do not allow two arcs with the same label to another
+    % node. So End and E below must be definitely different nodes and we
+    % only need to compare labels.
     rptg_arc_contents(!.Graph, Arc, _Start, End, ArcContent),
     rptg_arc_contents(!.Graph, A, _S, E, AC),
     ( if
@@ -641,19 +636,19 @@ merge_nodes_reached_by_same_labelled_arcs(Arc, [A | As], Rest, !Graph,
          % Apply rule 1 after the above unification.
          rptg_node_contents(Graph1, End, Content),
          rule_1(Content^varset, Graph1, !:Graph),
-         Happened = bool.yes 
+         Happened = bool.yes
       else
-         % Still not found an arc with the same label, continue the 
+         % Still not found an arc with the same label, continue the
          % inner loop.
          merge_nodes_reached_by_same_labelled_arcs(Arc, As, Rest, !Graph,
             Happened)
     ).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Rule P2
 %
-    
+
     % This predicate wraps rule_2 to work with rpta_info type.
     %
 :- pred apply_rule_2(rptg_node::in, rptg_node::in, cons_id::in, int::in,
@@ -672,22 +667,22 @@ apply_rule_2(Start, End, ConsId, Component, !RptaInfo) :-
 
     % Rule 2:
     % After an edge <N, Label, M) is added to a graph, it may happen
-    % that there exists another edge from N with the same label but 
+    % that there exists another edge from N with the same label but
     % pointing to a node different from M. This rule ensures that if that
     % the case the node will be unified with M.
-    % 
+    %
     % This predicate is called whenever a new edge has been added to the
     % graph. So when it is called there is at most one existing edge with
     % the same label to a different node. Because of that the predicate
     % need not be recursive.
     %
-:- pred rule_2(set(prog_var)::in, set(prog_var)::in, cons_id::in, int::in, 
+:- pred rule_2(set(prog_var)::in, set(prog_var)::in, cons_id::in, int::in,
     rpt_graph::in, rpt_graph::out) is det.
 
 rule_2(SVarSet, EVarSet, ConsId, Component, !Graph) :-
     get_node_by_varset(!.Graph, SVarSet, N),
     get_node_by_varset(!.Graph, EVarSet, M),
-    Sel = [termsel(ConsId, Component)], 
+    Sel = [termsel(ConsId, Component)],
     rptg_get_edgemap(!.Graph, EdgeMap),
     map.lookup(EdgeMap, N, OutEdgesN),
     map.keys(OutEdgesN, OutArcsN),
@@ -721,13 +716,13 @@ merge_nodes_reached_by_same_labelled_arc(Sel, M, [A | As], !Graph) :-
 %
 
     % Rule 3:
-    % This rule is applied after an edge is added TO the Node to enforce 
+    % This rule is applied after an edge is added TO the Node to enforce
     % the invariant that a subterm of the same type as the compounding
     % term is stored in the same region as the compounding term. In
     % the context of region points-to graph it means that there exists
     % a path between 2 nodes of the same type. In that case, this rule
     % will unify the 2 nodes.
-    % 
+    %
     % This algorithm may not be an efficient one because it checks all
     % the nodes in the graph one by one to see if a node can reach the
     % node or not.
@@ -736,15 +731,15 @@ merge_nodes_reached_by_same_labelled_arc(Sel, M, [A | As], !Graph) :-
     % is made invalid this rule will correct it) therefore whenever we
     % find a satisfied node and unify it with Node we can stop. This is
     % indicated by Happened.
-    % 
+    %
 :- pred rule_3(rptg_node::in, rpt_graph::in, rpt_graph::out) is det.
 
 rule_3(Node, !Graph) :-
     rptg_get_nodemap(!.Graph, NodeMap),
     map.keys(NodeMap, Nodes),
-    (  
+    (
         Nodes = [_N | _NS],
-        % The graph has some node(s), so check each node to see if it 
+        % The graph has some node(s), so check each node to see if it
         % satisfies the condition of rule 3 or not, if yes unify it
         % with NY (NY is the node that Node may be merged into.)
         get_node_by_node(!.Graph, Node, NY),
@@ -752,35 +747,35 @@ rule_3(Node, !Graph) :-
 
         % This predicate will quit when Happened = no, i.e. no more
         % nodes need to be unified.
-        ( 
-            Happened = bool.yes, 
-            % A node in Nodes has been unified with NY, so we start all 
-            % over again. Note that the node that has been unified has 
-            % been removed, so it will not be in the Graph1 in the below 
+        (
+            Happened = bool.yes,
+            % A node in Nodes has been unified with NY, so we start all
+            % over again. Note that the node that has been unified has
+            % been removed, so it will not be in the Graph1 in the below
             % call. So this predicate can terminate at some point (due
             % to the fact that the "size" of !.Graph is smaller than that
             % of !:Graph).
             rule_3(Node, !Graph)
           ;
-            % no node in Nodes has been unified with NY, which means that 
+            % no node in Nodes has been unified with NY, which means that
             % no more nodes need to be unified, so just quit.
             Happened = bool.no
-	)
-    ; 
+        )
+    ;
         Nodes = [],
         % no node in the graph, impossible
         unexpected(this_file, "rule_3: impossible having no node in graph")
     ).
 
-    % Check each node in the list to see if it satisfies the condition of 
-    % rule 3 or not, i.e., link to another node with the same type. 
-    %	1. If the predicate finds out such a node, it unifies it with NY
-    %	(also apply rule 1 here) and quit with Happend = 1.
-    %	2. if no such a node found, it processes the rest of the list. The 
-    %	process continues like that until either 1. happens (the case above) 
-    %	or the list becomes empty and the predicate quits with Happened = 0.
+    % Check each node in the list to see if it satisfies the condition of
+    % rule 3 or not, i.e., link to another node with the same type.
+    %   1. If the predicate finds out such a node, it unifies it with NY
+    %   (also apply rule 1 here) and quit with Happend = 1.
+    %   2. if no such a node found, it processes the rest of the list. The
+    %   process continues like that until either 1. happens (the case above)
+    %   or the list becomes empty and the predicate quits with Happened = 0.
     %
-:- pred rule_3_2(list(rptg_node)::in, rptg_node::in, rpt_graph::in, 
+:- pred rule_3_2(list(rptg_node)::in, rptg_node::in, rpt_graph::in,
     rpt_graph::out, bool::out) is det.
 
 rule_3_2([], _, !Graph, bool.no).
@@ -789,7 +784,7 @@ rule_3_2([NZ | NZs], NY, !Graph, Happened) :-
         rule_3_condition(NZ, NY, !.Graph, NZ1)
       then
         unify_operator(NZ, NZ1, !.Graph, Graph1),
-        
+
         % apply rule 1
         rptg_node_contents(Graph1, NZ, Content),
         rule_1(Content^varset, Graph1, !:Graph),
@@ -799,7 +794,7 @@ rule_3_2([NZ | NZs], NY, !Graph, Happened) :-
         rule_3_2(NZs, NY, !Graph, Happened)
     ).
 
-:- pred rule_3_condition(rptg_node::in, rptg_node::in, rpt_graph::in, 
+:- pred rule_3_condition(rptg_node::in, rptg_node::in, rpt_graph::in,
     rptg_node::out) is semidet.
 
 rule_3_condition(NZ, NY, Graph, NZ1) :-
@@ -809,36 +804,35 @@ rule_3_condition(NZ, NY, Graph, NZ1) :-
     % be exactly NY
     reachable_and_having_type(Graph, NY, NZType, NZ1),
     NZ \= NZ1.
-	
-    % This predicate is just to wrap the call to rule_3 so that the 
+
+    % This predicate is just to wrap the call to rule_3 so that the
     % changed graph is put into rpta_info structure.
     %
 :- pred apply_rule_3(rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
 apply_rule_3(Node, !RptaInfo) :-
-	!.RptaInfo = rpta_info(Graph0, AlphaMapping),
-	rule_3(Node, Graph0, Graph),
-	!:RptaInfo = rpta_info(Graph, AlphaMapping).
-
+    !.RptaInfo = rpta_info(Graph0, AlphaMapping),
+    rule_3(Node, Graph0, Graph),
+    !:RptaInfo = rpta_info(Graph, AlphaMapping).
 
 %-----------------------------------------------------------------------------%
 %
 % Rule P4 and alpha mapping
 %
 
-	% Build up the alpha mapping (node -> node) and apply rule P4
+    % Build up the alpha mapping (node -> node) and apply rule P4
     % to ensure that it is actually a function.
-	%
-:- pred alpha_mapping_at_call_site(list(prog_var)::in, list(prog_var)::in, 
-    rpt_graph::in, rpt_graph::in, rpt_graph::out, 
+    %
+:- pred alpha_mapping_at_call_site(list(prog_var)::in, list(prog_var)::in,
+    rpt_graph::in, rpt_graph::in, rpt_graph::out,
     map(rptg_node, rptg_node)::in, map(rptg_node, rptg_node)::out) is det.
 
-alpha_mapping_at_call_site([], [], _, !CallerGraph, !AlphaMap). 
+alpha_mapping_at_call_site([], [], _, !CallerGraph, !AlphaMap).
 alpha_mapping_at_call_site([], [_ | _], _, _, _, _, _) :-
-    unexpected(this_file, 
+    unexpected(this_file,
         "alpha_mapping_at_call_site: actuals and formals do not match.").
 alpha_mapping_at_call_site([_ | _], [], _, _, _, _, _) :-
-    unexpected(this_file, 
+    unexpected(this_file,
         "alpha_mapping_at_call_site: actuals and formals do not match.").
     % Xi's are formal arguments, Yi's are actual arguments at the call site
     %
@@ -846,25 +840,22 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
         !CallerGraph, !AlphaMap) :-
     get_node_by_variable(CalleeGraph, Xi, N_Xi),
     get_node_by_variable(!.CallerGraph, Yi, N_Yi),
-    ( if    map.search(!.AlphaMap, N_Xi, N_Y)
-      then
-        
-            % alpha(N_Xi) = N_Y, alpha(N_Xi) = N_Yi, N_Y != N_Yi.
-            %
-            ( if    N_Y \= N_Yi
-              then
-                    % Apply rule P4.
-                    unify_operator(N_Y, N_Yi, !CallerGraph),
+    ( map.search(!.AlphaMap, N_Xi, N_Y) ->
+        % alpha(N_Xi) = N_Y, alpha(N_Xi) = N_Yi, N_Y != N_Yi.
+        %
+        ( N_Y \= N_Yi ->
+            % Apply rule P4.
+            unify_operator(N_Y, N_Yi, !CallerGraph),
 
-                    % Apply rule P1 after some nodes are unified.
-                    rptg_node_contents(!.CallerGraph, N_Y, Content),
-                    N_Y_Vars = Content ^ varset,
-                    rule_1(N_Y_Vars, !CallerGraph)
-              else
-                    true
-            )
-    else
-            svmap.set(N_Xi, N_Yi, !AlphaMap)
+            % Apply rule P1 after some nodes are unified.
+            rptg_node_contents(!.CallerGraph, N_Y, Content),
+            N_Y_Vars = Content ^ varset,
+            rule_1(N_Y_Vars, !CallerGraph)
+        ;
+            true
+        )
+    ;
+        svmap.set(N_Xi, N_Yi, !AlphaMap)
     ),
     alpha_mapping_at_call_site(Xs, Ys, CalleeGraph, !CallerGraph, !AlphaMap).
 
@@ -877,14 +868,14 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
 %
 % The application of those rules happens at a call site, so related to a
 % caller and a callee.
-% 
+%
 % We will start from the rooted nodes, follow each outcoming edge in the
 % callee's graph exactly once and apply the rules.
 %
 
-:- pred apply_rules(list(rptg_node)::in, program_point::in, 
-    list(rptg_node)::in, rpta_info::in, rpta_info::in, 
-    rpta_info::out) is det.  
+:- pred apply_rules(list(rptg_node)::in, program_point::in,
+    list(rptg_node)::in, rpta_info::in, rpta_info::in,
+    rpta_info::out) is det.
 
 apply_rules([], _, _, _, !CallerRptaInfo).
 apply_rules([CalleeNode | CalleeNodes0], CallSite, Processed, CalleeRptaInfo,
@@ -893,7 +884,7 @@ apply_rules([CalleeNode | CalleeNodes0], CallSite, Processed, CalleeRptaInfo,
     !.CallerRptaInfo = rpta_info(_, CallerAlphaMapping0),
     map.lookup(CallerAlphaMapping0, CallSite, AlphaAtCallSite),
     map.lookup(AlphaAtCallSite, CalleeNode, CallerNode),
-    
+
     % Follow CalleeNode and apply rules when traversing its edges.
     apply_rules_node(CallSite, CalleeNode, CalleeRptaInfo, CallerNode,
         !CallerRptaInfo),
@@ -904,10 +895,10 @@ apply_rules([CalleeNode | CalleeNodes0], CallSite, Processed, CalleeRptaInfo,
     set.to_sorted_list(SuccessorsCalleeNode, SsList),
     list.delete_elems(SsList, Processed, ToBeProcessed),
     CalleeNodes = ToBeProcessed ++ CalleeNodes0,
-    apply_rules(CalleeNodes, CallSite, [CalleeNode | Processed], 
+    apply_rules(CalleeNodes, CallSite, [CalleeNode | Processed],
         CalleeRptaInfo, !CallerRptaInfo).
 
-:- pred apply_rules_node(program_point::in, rptg_node::in, rpta_info::in, 
+:- pred apply_rules_node(program_point::in, rptg_node::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
 apply_rules_node(CallSite, CalleeNode, CalleeRptaInfo, CallerNode,
@@ -921,24 +912,24 @@ apply_rules_node(CallSite, CalleeNode, CalleeRptaInfo, CallerNode,
     apply_rules_arcs(CalleeNodeOutArcs, CallerNode, CallSite,
         CalleeRptaInfo, !CallerRptaInfo).
 
-:- pred apply_rules_arcs(list(rptg_arc)::in, rptg_node::in, 
+:- pred apply_rules_arcs(list(rptg_arc)::in, rptg_node::in,
     program_point::in, rpta_info::in, rpta_info::in, rpta_info::out) is det.
 
 apply_rules_arcs([], _, _, _, !RptaInfoR).
 apply_rules_arcs([Arc | Arcs], CallerNode, CallSite, CalleeRptaInfo,
         !CallerRptaInfo) :-
-	rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-	rule_6(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-	rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-	rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-	apply_rules_arcs(Arcs, CallerNode, CallSite, CalleeRptaInfo,
+    rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    rule_6(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    apply_rules_arcs(Arcs, CallerNode, CallSite, CalleeRptaInfo,
         !CallerRptaInfo).
 
-:- pred rule_5(rptg_arc::in, program_point::in, rpta_info::in, 
+:- pred rule_5(rptg_arc::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
 rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label 
+    % Find an out-arc in the caller's graph that has a same label
     % the label of the out-arc in callee's graph
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
     rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
@@ -946,7 +937,7 @@ rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
     get_node_by_node(CallerGraph0, CallerNode, RealCallerNode),
     ( if
         find_arc_from_node_with_same_label(RealCallerNode, Label,
-            CallerGraph0, CallerMPrime), 
+            CallerGraph0, CallerMPrime),
         map.search(CallerAlphaMapping0, CallSite, AlphaAtCallSite),
         map.search(AlphaAtCallSite, CalleeM, CallerM),
         get_node_by_node(CallerGraph0, CallerM, RealCallerM),
@@ -966,7 +957,7 @@ rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
 rule_6(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label 
+    % Find an out-arc in the caller's graph that has a same label
     % the label of the out-arc in callee's graph.
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
     rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
@@ -999,7 +990,7 @@ rule_6(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
 rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label 
+    % Find an out-arc in the caller's graph that has a same label
     % the label of the out-arc in callee's graph.
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
     rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
@@ -1016,12 +1007,12 @@ rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
             map.lookup(CallerAlphaMapping, CallSite, AlphaAtCallSite),
             map.search(AlphaAtCallSite, CalleeM, CallerM)
           then
-            % Reach here means all the premises of rule P7 are satisfied, 
+            % Reach here means all the premises of rule P7 are satisfied,
             % add (CallerNode, sel, CallerM).
             get_node_by_node(CallerGraph0, CallerM, RealCallerM),
             edge_operator(RealCallerNode, RealCallerM, Label,
                 CallerGraph0, CallerGraph1),
-        
+
             % Need to apply rule 3.
             rule_3(RealCallerM, CallerGraph1, CallerGraph2),
             !:CallerRptaInfo = rpta_info(CallerGraph2, CallerAlphaMapping)
@@ -1034,7 +1025,7 @@ rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
 rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label 
+    % Find an out-arc in the caller's graph that has a same label
     % the label of the out-arc in callee's graph
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
     rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
@@ -1047,29 +1038,29 @@ rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
         true
       else
         % No edge from CallerNode with the label exists.
-        ( if 
+        ( if
             map.lookup(CallerAlphaMapping0, CallSite, AlphaAtCallSite0),
             map.search(AlphaAtCallSite0, CalleeM, _)
           then
             true
           else
-                % rule 8: add node CallerM, alpha(CalleeM) = CallerM, 
+                % rule 8: add node CallerM, alpha(CalleeM) = CallerM,
                 % edge(CallerNode, sel, CallerM)
                 %
             rptg_get_node_supply(CallerGraph0, NS0),
             string.append("R", string.int_to_string(NS0 + 1), RegName),
-            CallerMContent = rptg_node_content(set.init, RegName, set.init, 
+            CallerMContent = rptg_node_content(set.init, RegName, set.init,
                 rptg_lookup_node_type(CalleeGraph, CalleeM)),
-            rptg_set_node(CallerMContent, CallerM, 
+            rptg_set_node(CallerMContent, CallerM,
                 CallerGraph0, CallerGraph1),
             edge_operator(RealCallerNode, CallerM, Label,
                 CallerGraph1, CallerGraph2),
-            
+
             map.lookup(CallerAlphaMapping0, CallSite, AlphaAtCallSite0),
             svmap.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite),
             svmap.set(CallSite, AlphaAtCallSite,
                 CallerAlphaMapping0, CallerAlphaMapping),
-                
+
             rule_3(CallerM, CallerGraph2, CallerGraph),
             !:CallerRptaInfo = rpta_info(CallerGraph, CallerAlphaMapping)
         )
@@ -1082,43 +1073,43 @@ rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
 
     % The fixpoint table used by the region points-to analysis.
     %
-:- type rpta_fixpoint_table == fixpoint_table(pred_proc_id, rpta_info). 
+:- type rpta_fixpoint_table == fixpoint_table(pred_proc_id, rpta_info).
 
-	% Initialise the fixpoint table for the given set of pred_proc_ids. 
+    % Initialise the fixpoint table for the given set of pred_proc_ids.
     %
 :- func init_rpta_fixpoint_table(list(pred_proc_id), rpta_info_table)
     = rpta_fixpoint_table.
-    
+
 init_rpta_fixpoint_table(Keys, InfoTable) = Table :-
     Table = init_fixpoint_table(wrapped_init(InfoTable), Keys).
 
-	% Enter the newly computed region points-to information for a given 
+    % Enter the newly computed region points-to information for a given
     % procedure.
-	% If the description is different from the one that was already stored
-	% for that procedure, the stability of the fixpoint table is set to
-	% "unstable". 
-	% Aborts if the procedure is not already in the fixpoint table. 
+    % If the description is different from the one that was already stored
+    % for that procedure, the stability of the fixpoint table is set to
+    % "unstable".
+    % Aborts if the procedure is not already in the fixpoint table.
     %
 :- pred rpta_fixpoint_table_new_rpta_info(
     pred_proc_id::in, rpta_info::in,
     rpta_fixpoint_table::in, rpta_fixpoint_table::out) is det.
 
 rpta_fixpoint_table_new_rpta_info(PPId, RptaInfo, !Table) :-
-	EqualityTest = (pred(TabledElem::in, Elem::in) is semidet :-
+    EqualityTest = (pred(TabledElem::in, Elem::in) is semidet :-
         rpta_info_equal(Elem, TabledElem)
     ),
     add_to_fixpoint_table(EqualityTest, PPId, RptaInfo, !Table).
 
 :- func wrapped_init(rpta_info_table, pred_proc_id) = rpta_info.
-    
-wrapped_init(InfoTable, PPId) = Entry :- 
-	( if    Entry0 = rpta_info_table_search_rpta_info(PPId, InfoTable)
-	  then  Entry = Entry0
-	  else
-            % The information we are looking for should be there after the
-            % intraprocedural analysis.
-		    unexpected(this_file, "wrapper_init: rpta_info should exist.")
-	).
+
+wrapped_init(InfoTable, PPId) = Entry :-
+    ( Entry0 = rpta_info_table_search_rpta_info(PPId, InfoTable) ->
+        Entry = Entry0
+    ;
+        % The information we are looking for should be there after the
+        % intraprocedural analysis.
+        unexpected(this_file, "wrapper_init: rpta_info should exist.")
+    ).
 
 %-----------------------------------------------------------------------------%
 

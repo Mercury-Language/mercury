@@ -14,8 +14,8 @@
 % variable becomes bound, then unbound, then bound again. This makes region
 % variables different from regular Mercury variables.
 % This module finds which renaming and reversed renaming of region variables
-% are needed so that region resurrection is resolved, and after applying 
-% the renaming, region variables are regular Mercury variables. 
+% are needed so that region resurrection is resolved, and after applying
+% the renaming, region variables are regular Mercury variables.
 %
 %-----------------------------------------------------------------------------%
 
@@ -51,7 +51,7 @@
 
 :- type proc_resurrection_path_table ==
     map(pred_proc_id, exec_path_region_set_table).
-    
+
 :- type exec_path_region_set_table == map(execution_path, region_set).
 
 :- type join_point_region_name_table ==
@@ -61,7 +61,7 @@
     % information:
     % 1. The set of regions that become live before a program point
     % (for each program point in a procedure).
-    % 2. For each procedure, compute the execution paths in which 
+    % 2. For each procedure, compute the execution paths in which
     % resurrections of regions happen. For such an execution path
     % it also calculates the regions which resurrect. Only procedures
     % which contain resurrection are kept in the results. And for such
@@ -72,7 +72,7 @@
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
     proc_pp_region_set_table::out, proc_resurrection_path_table::out) is det.
-    
+
     % This predicate only traverses procedures with the execution paths
     % containing resurrection and computes *renaming* at the points
     % where a resurrected region becomes live.
@@ -117,7 +117,7 @@
     renaming_annotation_table::out, renaming_table::out) is det.
 
     % Record the annotation for a procedure.
-    % 
+    %
 :- pred record_annotation(program_point::in, region_instruction::in,
     renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
@@ -151,7 +151,7 @@
     % information:
     % 1. The set of regions that become live before a program point
     % (for each program point in a procedure).
-    % 2. For each procedure, compute the execution paths in which 
+    % 2. For each procedure, compute the execution paths in which
     % resurrections of regions happen. For such an execution path
     % it also calculates the regions which resurrect. Only procedures
     % which contain resurrection are kept in the results. And for such
@@ -162,13 +162,13 @@ compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable,
         BornRTable, LocalRTable, CreatedBeforeTable,
         PathContainsResurrectionTable) :-
     map.foldl2(compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable,
-        BornRTable, LocalRTable), ExecPathTable, 
+        BornRTable, LocalRTable), ExecPathTable,
         map.init, CreatedBeforeTable,
         map.init, PathContainsResurrectionTable).
 
 :- pred compute_resurrection_paths_proc(proc_pp_region_set_table::in,
-    proc_pp_region_set_table::in, proc_region_set_table::in, 
-    proc_region_set_table::in, pred_proc_id::in, list(execution_path)::in, 
+    proc_pp_region_set_table::in, proc_region_set_table::in,
+    proc_region_set_table::in, pred_proc_id::in, list(execution_path)::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::out,
     proc_resurrection_path_table::in, proc_resurrection_path_table::out)
     is det.
@@ -186,15 +186,15 @@ compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable, BornRTable,
     svmap.set(PPId, CreatedBeforeProc, !CreatedBeforeTable),
     % We only want to include procedures in which resurrection happens
     % in this map.
-    ( if    map.count(PathContainsResurrectionProc) = 0
-      then  true
-      else
+    ( map.count(PathContainsResurrectionProc) = 0 ->
+        true
+    ;
         svmap.set(PPId, PathContainsResurrectionProc,
             !PathContainsResurrectionTable)
     ).
-    
+
 :- pred compute_resurrection_paths_exec_path(pp_region_set_table::in,
-    pp_region_set_table::in, region_set::in, execution_path::in, 
+    pp_region_set_table::in, region_set::in, execution_path::in,
     pp_region_set_table::in, pp_region_set_table::out,
     exec_path_region_set_table::in, exec_path_region_set_table::out) is det.
 
@@ -206,11 +206,11 @@ compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc, Born_Local,
         set.init, ResurrectedRegionsInExecPath),
     % We want to record only execution paths in which resurrections
     % happen.
-    ( if    set.empty(ResurrectedRegionsInExecPath)
-      then  true
-      else
-            svmap.set(ExecPath, ResurrectedRegionsInExecPath,
-                !ResurrectedRegionProc)
+    ( set.empty(ResurrectedRegionsInExecPath) ->
+        true
+    ;
+        svmap.set(ExecPath, ResurrectedRegionsInExecPath,
+            !ResurrectedRegionProc)
     ).
 
 :- pred compute_resurrection_paths_prog_point(pp_region_set_table::in,
@@ -234,7 +234,7 @@ compute_resurrection_paths_prog_point(LRBeforeProc, LRAfterProc, Born_Local,
     % Resurrected regions become live at more than one program point
     % in an execution path.
     set.intersect(!.Candidates, CreatedBeforeProgPoint, ResurrectedRegions),
-    set.union(ResurrectedRegions, !ResurrectedRegionsInExecPath), 
+    set.union(ResurrectedRegions, !ResurrectedRegionsInExecPath),
 
     % When a region is known to become live at one program point, it is
     % considered a candidate for resurrection.
@@ -264,10 +264,11 @@ collect_join_points(PathContainsResurrectionTable, ExecPathTable,
 
 collect_join_points_proc(ExecPathTable, PPId, _, !JoinPointTable) :-
     map.lookup(ExecPathTable, PPId, ExecPaths),
-    list.foldr(pred(ExecPath::in, Ps0::in, Ps::out) is det :- (
-                    assoc_list.keys(ExecPath, P),
-                    Ps = [P | Ps0]
-               ), ExecPaths, [], Paths),
+    list.foldr(
+        pred(ExecPath::in, Ps0::in, Ps::out) is det :- (
+            assoc_list.keys(ExecPath, P),
+            Ps = [P | Ps0]),
+        ExecPaths, [], Paths),
     list.foldl3(collect_join_points_path(Paths), Paths,
         counter.init(0), _, set.init, _JoinPoints, map.init, JoinPointProc),
     svmap.set(PPId, JoinPointProc, !JoinPointTable).
@@ -282,43 +283,43 @@ collect_join_points_path(Paths, Path, !Counter, !JoinPoints,
     list.delete_all(Paths, Path, TheOtherPaths),
     % We ignore the first program point in each path because
     % it cannot be a join point.
-    ( if    Path = [PrevPoint, ProgPoint | ProgPoints]
-      then
-            ( if    is_join_point(ProgPoint, PrevPoint, TheOtherPaths)
-              then
-                    counter.allocate(N, !Counter),
-                    svmap.set(ProgPoint,
-                        "_jp_" ++ string.int_to_string(N),
-                        !JoinPointProc),
-                    svset.insert(ProgPoint, !JoinPoints)
-              else  true
-            ),
-            collect_join_points_path(Paths,
-                [ProgPoint | ProgPoints], !Counter, !JoinPoints,
-                !JoinPointProc)
-      else  true
+    ( Path = [PrevPoint, ProgPoint | ProgPoints] ->
+        ( is_join_point(ProgPoint, PrevPoint, TheOtherPaths) ->
+            counter.allocate(N, !Counter),
+            svmap.set(ProgPoint, "_jp_" ++ string.int_to_string(N),
+                !JoinPointProc),
+            svset.insert(ProgPoint, !JoinPoints)
+        ;
+            true
+        ),
+        collect_join_points_path(Paths, [ProgPoint | ProgPoints],
+            !Counter, !JoinPoints, !JoinPointProc)
+    ;
+        true
     ).
 
-    % This predicate succeeds if the first program point is a join point. 
+    % This predicate succeeds if the first program point is a join point.
     % That means it is at least in another execution path and is preceded
     % by some program point, which is different from the second one.
     %
-:- pred is_join_point(program_point::in, program_point::in, 
+:- pred is_join_point(program_point::in, program_point::in,
     list(list(program_point))::in) is semidet.
 
 is_join_point(ProgPoint, PrevProgPoint, [Path | Paths]) :-
-    ( if    is_join_point_2(ProgPoint, PrevProgPoint, Path)
-      then  true
-      else  is_join_point(ProgPoint, PrevProgPoint, Paths)
+    ( is_join_point_2(ProgPoint, PrevProgPoint, Path) ->
+        true
+    ;
+        is_join_point(ProgPoint, PrevProgPoint, Paths)
     ).
-    
-:- pred is_join_point_2(program_point::in, program_point::in, 
+
+:- pred is_join_point_2(program_point::in, program_point::in,
     list(program_point)::in) is semidet.
 
 is_join_point_2(ProgPoint, PrevProgPoint, [P1, P2 | Ps]) :-
-    ( if    P2 = ProgPoint
-      then  P1 \= PrevProgPoint
-      else  is_join_point_2(ProgPoint, PrevProgPoint, [P2 | Ps])
+    ( P2 = ProgPoint ->
+        P1 \= PrevProgPoint
+    ;
+        is_join_point_2(ProgPoint, PrevProgPoint, [P2 | Ps])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -326,9 +327,10 @@ is_join_point_2(ProgPoint, PrevProgPoint, [P1, P2 | Ps]) :-
 
 collect_paths_containing_join_points(ExecPathTable, JoinPointTable,
         !PathContainsResurrectionTable) :-
-    map.foldl(collect_paths_containing_join_points_proc(ExecPathTable,
-        JoinPointTable), !.PathContainsResurrectionTable,
-        !PathContainsResurrectionTable).
+    map.foldl(
+        collect_paths_containing_join_points_proc(ExecPathTable,
+            JoinPointTable),
+        !.PathContainsResurrectionTable, !PathContainsResurrectionTable).
 
 :- pred collect_paths_containing_join_points_proc(execution_path_table::in,
     join_point_region_name_table::in, pred_proc_id::in,
@@ -339,18 +341,19 @@ collect_paths_containing_join_points_proc(ExecPathTable, JoinPointTable, PPId,
         PathContainsResurrectionProc, !PathContainsResurrectionTable) :-
     map.lookup(ExecPathTable, PPId, ExecPaths),
     map.values(PathContainsResurrectionProc, ResurrectedRegionsInPaths),
-    list.foldl(pred(ResurRegions::in, R0::in, R::out) is det :- (
-                    set.union(R0, ResurRegions, R)
-               ), ResurrectedRegionsInPaths,
-               set.init, ResurrectedRegionsProc),
-    map.keys(PathContainsResurrectionProc, PathsContainResurrection), 
+    list.foldl(
+        pred(ResurRegions::in, R0::in, R::out) is det :- (
+            set.union(R0, ResurRegions, R)
+        ),
+        ResurrectedRegionsInPaths, set.init, ResurrectedRegionsProc),
+    map.keys(PathContainsResurrectionProc, PathsContainResurrection),
     list.delete_elems(ExecPaths, PathsContainResurrection, NonResurPaths),
-    ( if    map.search(JoinPointTable, PPId, JoinPointProc)
-      then
-            list.foldl(path_containing_join_point(JoinPointProc, PPId,
-                ResurrectedRegionsProc),
-                NonResurPaths, !PathContainsResurrectionTable)
-      else  true
+    ( map.search(JoinPointTable, PPId, JoinPointProc) ->
+        list.foldl(path_containing_join_point(JoinPointProc, PPId,
+            ResurrectedRegionsProc),
+            NonResurPaths, !PathContainsResurrectionTable)
+    ;
+        true
     ).
 
 :- pred path_containing_join_point(map(program_point, string)::in,
@@ -363,15 +366,15 @@ path_containing_join_point(JoinPointProc, PPId, ResurrectedRegionsProc,
     assoc_list.keys(NonResurPath, ProgPointsInPath),
     map.foldl(find_join_points_in_path(ProgPointsInPath), JoinPointProc,
         set.init, JoinPointsInThisPath),
-    ( if    set.empty(JoinPointsInThisPath)
-      then  true
-      else
-            map.lookup(!.PathContainsResurrectionTable, PPId,
-                PathContainsResurrectionProc0),
-            svmap.det_insert(NonResurPath, ResurrectedRegionsProc,
-                PathContainsResurrectionProc0, PathContainsResurrectionProc),
-            svmap.set(PPId, PathContainsResurrectionProc,
-                !PathContainsResurrectionTable) 
+    ( set.empty(JoinPointsInThisPath) ->
+        true
+    ;
+        map.lookup(!.PathContainsResurrectionTable, PPId,
+            PathContainsResurrectionProc0),
+        svmap.det_insert(NonResurPath, ResurrectedRegionsProc,
+            PathContainsResurrectionProc0, PathContainsResurrectionProc),
+        svmap.set(PPId, PathContainsResurrectionProc,
+            !PathContainsResurrectionTable)
     ).
 
 :- pred find_join_points_in_path(list(program_point)::in,
@@ -379,9 +382,10 @@ path_containing_join_point(JoinPointProc, PPId, ResurrectedRegionsProc,
     set(program_point)::out) is det.
 
 find_join_points_in_path(ProgPointsInPath, JoinPoint, _, !JoinPoints) :-
-    ( if    list.member(JoinPoint, ProgPointsInPath)
-      then  svset.insert(JoinPoint, !JoinPoints)
-      else  true
+    ( list.member(JoinPoint, ProgPointsInPath) ->
+        svset.insert(JoinPoint, !JoinPoints)
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -406,8 +410,9 @@ collect_region_resurrection_renaming_proc(CreatedBeforeTable, _LocalRTable,
     map.lookup(CreatedBeforeTable, PPId, CreatedBeforeProc),
     map.lookup(RptaInfoTable, PPId, RptaInfo),
     RptaInfo = rpta_info(Graph, _),
-    map.foldl(collect_region_resurrection_renaming_exec_path(Graph,
-        CreatedBeforeProc),
+    map.foldl(
+        collect_region_resurrection_renaming_exec_path(Graph,
+            CreatedBeforeProc),
         PathsContainResurrection, map.init, ResurrectionRenameProc),
     svmap.set(PPId, ResurrectionRenameProc, !ResurrectionRenameTable).
 
@@ -418,9 +423,10 @@ collect_region_resurrection_renaming_proc(CreatedBeforeTable, _LocalRTable,
 
 collect_region_resurrection_renaming_exec_path(Graph, CreatedBeforeProc,
         ExecPath, ResurrectedRegions, !ResurrectionRenameProc) :-
-    list.foldl2(collect_region_resurrection_renaming_prog_point(Graph,
-        CreatedBeforeProc, ResurrectedRegions), ExecPath, 1, _,
-        !ResurrectionRenameProc).
+    list.foldl2(
+        collect_region_resurrection_renaming_prog_point(Graph,
+            CreatedBeforeProc, ResurrectedRegions),
+        ExecPath, 1, _, !ResurrectionRenameProc).
 
 :- pred collect_region_resurrection_renaming_prog_point(rpt_graph::in,
     pp_region_set_table::in, region_set::in,
@@ -431,18 +437,18 @@ collect_region_resurrection_renaming_prog_point(Graph, CreatedBeforeProc,
         ResurrectedRegions, ProgPoint - _, !RenamingCounter,
         !ResurrectionRenameProc) :-
     map.lookup(CreatedBeforeProc, ProgPoint, CreatedBeforeProgPoint),
-    set.intersect(ResurrectedRegions, CreatedBeforeProgPoint, 
+    set.intersect(ResurrectedRegions, CreatedBeforeProgPoint,
         ToBeRenamedRegions),
     % We only record the program points where resurrection renaming exists.
-    ( if    set.empty(ToBeRenamedRegions)
-      then  true
-      else
-            set.fold(record_renaming_prog_point(Graph, ProgPoint,
-                !.RenamingCounter), ToBeRenamedRegions,
-                !ResurrectionRenameProc)
+    ( set.empty(ToBeRenamedRegions) ->
+        true
+    ;
+        set.fold(
+            record_renaming_prog_point(Graph, ProgPoint, !.RenamingCounter),
+            ToBeRenamedRegions, !ResurrectionRenameProc)
     ),
     !:RenamingCounter = !.RenamingCounter + 1.
- 
+
 :- pred record_renaming_prog_point(rpt_graph::in, program_point::in, int::in,
     rptg_node::in, renaming_proc::in, renaming_proc::out) is det.
 
@@ -452,15 +458,12 @@ record_renaming_prog_point(Graph, ProgPoint, RenamingCounter, Region,
     Renamed = RegionName ++ "_Resur_"
         ++ string.int_to_string(RenamingCounter),
 
-    ( if    map.search(!.ResurrectionRenameProc, ProgPoint,
-                RenamingProgPoint0)
-      then
-            svmap.set(RegionName, Renamed,
-                RenamingProgPoint0, RenamingProgPoint)
-      else  svmap.det_insert(RegionName, Renamed, map.init, RenamingProgPoint)
+    ( map.search(!.ResurrectionRenameProc, ProgPoint, RenamingProgPoint0) ->
+        svmap.set(RegionName, Renamed, RenamingProgPoint0, RenamingProgPoint)
+    ;
+        svmap.det_insert(RegionName, Renamed, map.init, RenamingProgPoint)
     ),
     svmap.set(ProgPoint, RenamingProgPoint, !ResurrectionRenameProc).
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -504,10 +507,11 @@ collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
     % for all resurrecting regions that become live at the join point.
     map.lookup(ResurrectionPathTable, PPId, PathsContainResurrection),
     map.values(PathsContainResurrection, ResurrectedRegionsInPaths),
-    list.foldl(pred(ResurRegions::in, R0::in, R::out) is det :- (
-                    set.union(R0, ResurRegions, R)
-               ), ResurrectedRegionsInPaths,
-               set.init, ResurrectedRegionsProc),
+    list.foldl(
+        pred(ResurRegions::in, R0::in, R::out) is det :- (
+            set.union(R0, ResurRegions, R)
+        ),
+        ResurrectedRegionsInPaths, set.init, ResurrectedRegionsProc),
     map.lookup(ExecPathTable, PPId, ExecPaths),
     list.foldl2(collect_renaming_and_annotation_exec_path(
         ResurrectionRenameProc, JoinPointProc, LRBeforeProc, BornR,
@@ -516,7 +520,7 @@ collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
     svmap.set(PPId, AnnotationProc, !AnnotationTable),
     svmap.set(PPId, RenamingProc, !RenamingTable).
 
-    % The renaming along an execution path is built up. Let's see an 
+    % The renaming along an execution path is built up. Let's see an
     % example of renamings.
     % (1) R1 --> R1_1   // i.e., R1 resurrects and therefore needs renaming.
     % (2) R1 --> R1_1, R2 --> R2_1
@@ -541,9 +545,10 @@ collect_renaming_and_annotation_exec_path(_, _, _, _, _, _, [],
 collect_renaming_and_annotation_exec_path(ResurrectionRenameProc,
         JoinPointProc, LRBeforeProc, BornR, Graph, ResurrectedRegions,
         [ProgPoint - _ | ProgPoint_Goals], !AnnotationProc, !RenamingProc) :-
-    ( if    map.search(ResurrectionRenameProc, ProgPoint, ResurRename)
-      then  svmap.set(ProgPoint, ResurRename, !RenamingProc)
-      else  svmap.set(ProgPoint, map.init, !RenamingProc)
+    ( map.search(ResurrectionRenameProc, ProgPoint, ResurRename) ->
+        svmap.set(ProgPoint, ResurRename, !RenamingProc)
+    ;
+        svmap.set(ProgPoint, map.init, !RenamingProc)
     ),
     collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
         JoinPointProc, LRBeforeProc, BornR, Graph, ResurrectedRegions,
@@ -570,7 +575,7 @@ collect_renaming_and_annotation_exec_path_2(_, _, _, _, _, _, _, [],
     % renaming information about some resurrected region(s) which does not
     % resurrect in the already-processed paths covering this program point.
     % To avoid updating information related to the already-processed paths
-    % whenever we process a join point we include the information about ALL 
+    % whenever we process a join point we include the information about ALL
     % resurrected regions that are live before the join point. This will
     % ensure that no new renaming information arises when the program
     % point is processed again.
@@ -582,40 +587,37 @@ collect_renaming_and_annotation_exec_path_2(_, _, _, _, _, _, _, [],
     % parameters which resurrect.
     %
 collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
-        JoinPointProc, LRBeforeProc, BornR, Graph, ResurrectedRegions, 
+        JoinPointProc, LRBeforeProc, BornR, Graph, ResurrectedRegions,
         PrevProgPoint, [ProgPoint - _ | ProgPoint_Goals],
         !AnnotationProc, !RenamingProc) :-
-    map.lookup(!.RenamingProc, PrevProgPoint, PrevRenaming), 
-    ( if    map.search(ResurrectionRenameProc, ProgPoint, ResurRenaming)
-      then
-            % This is a resurrection point of some region(s). We need to 
-            % merge the existing renaming at the previous point with the 
-            % resurrection renaming here. When two renamings have the same
-            % key, i.e., the region resurrects, the resurrection renaming
-            % takes priority.
-            map.overlay(PrevRenaming, ResurRenaming, Renaming0),
-            svmap.set(ProgPoint, Renaming0, !RenamingProc)
-      else
-            % This is not a resurrection point (of any regions).
-            % Renaming at this point is the same as at its
-            % previous point
-            svmap.set(ProgPoint, PrevRenaming, !RenamingProc)
+    map.lookup(!.RenamingProc, PrevProgPoint, PrevRenaming),
+    ( map.search(ResurrectionRenameProc, ProgPoint, ResurRenaming) ->
+        % This is a resurrection point of some region(s). We need to merge
+        % the existing renaming at the previous point with the resurrection
+        % renaming here. When two renamings have the same key, i.e., the region
+        % resurrects, the resurrection renaming takes priority.
+        map.overlay(PrevRenaming, ResurRenaming, Renaming0),
+        svmap.set(ProgPoint, Renaming0, !RenamingProc)
+    ;
+        % This is not a resurrection point (of any regions).
+        % Renaming at this point is the same as at its previous point.
+        svmap.set(ProgPoint, PrevRenaming, !RenamingProc)
     ),
-    ( if    map.search(JoinPointProc, ProgPoint, JoinPointName)
-      then
-            % This is a join point.
-            % Add annotations to the previous point.
-            map.lookup(LRBeforeProc, ProgPoint, LRBeforeProgPoint),
-            set.intersect(ResurrectedRegions, LRBeforeProgPoint,
-                ResurrectedAndLiveRegions),
-            set.fold2(add_annotation_and_renaming(PrevProgPoint,
-                Graph, JoinPointName, PrevRenaming),
-                ResurrectedAndLiveRegions, !AnnotationProc,
-                map.init, Renaming),
-            % We will just overwrite any existing renaming
-            % information at this point.
-            svmap.set(ProgPoint, Renaming, !RenamingProc) 
-      else  true
+    ( map.search(JoinPointProc, ProgPoint, JoinPointName) ->
+        % This is a join point.
+        % Add annotations to the previous point.
+        map.lookup(LRBeforeProc, ProgPoint, LRBeforeProgPoint),
+        set.intersect(ResurrectedRegions, LRBeforeProgPoint,
+            ResurrectedAndLiveRegions),
+        set.fold2(
+            add_annotation_and_renaming(PrevProgPoint, Graph,
+                JoinPointName, PrevRenaming),
+            ResurrectedAndLiveRegions, !AnnotationProc, map.init, Renaming),
+        % We will just overwrite any existing renaming information
+        % at this point.
+        svmap.set(ProgPoint, Renaming, !RenamingProc)
+    ;
+        true
     ),
     (
         % This is the last program point in this execution path.
@@ -634,7 +636,7 @@ collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
 
     % This predicate adds renaming annotation after the previous program
     % point and records renaming from existing region name.
-    %  
+    %
 :- pred add_annotation_and_renaming(program_point::in,
     rpt_graph::in, string::in, renaming::in, rptg_node::in,
     renaming_annotation_proc::in, renaming_annotation_proc::out,
@@ -645,7 +647,7 @@ add_annotation_and_renaming(PrevProgPoint, Graph, JoinPointName,
     RegionName = rptg_lookup_region_name(Graph, Region),
     NewName = RegionName ++ JoinPointName,
 
-    % Add renaming. 
+    % Add renaming.
     svmap.det_insert(RegionName, NewName, !Renaming),
 
     % Add annotation to (after) the previous program point.
@@ -654,15 +656,13 @@ add_annotation_and_renaming(PrevProgPoint, Graph, JoinPointName,
     % PrevProgPoint and ProgPoint).
     % It seems that we have to add annotations (reverse renaming) for ones that
     % have not been renamed as implemented below too. The only difference is
-    % that
-    % the reverse renaming is between the new name and the original name.
-    ( if    map.search(PrevRenaming, RegionName, CurrentName)
-      then
-            make_renaming_instruction(CurrentName, NewName, Annotation),
-            record_annotation(PrevProgPoint, Annotation, !AnnotationProc)
-      else
-            make_renaming_instruction(RegionName, NewName, Annotation),
-            record_annotation(PrevProgPoint, Annotation, !AnnotationProc)
+    % that the reverse renaming is between the new name and the original name.
+    ( map.search(PrevRenaming, RegionName, CurrentName) ->
+        make_renaming_instruction(CurrentName, NewName, Annotation),
+        record_annotation(PrevProgPoint, Annotation, !AnnotationProc)
+    ;
+        make_renaming_instruction(RegionName, NewName, Annotation),
+        record_annotation(PrevProgPoint, Annotation, !AnnotationProc)
     ).
 
 :- pred add_annotation(program_point::in, rpt_graph::in, renaming::in,
@@ -675,28 +675,29 @@ add_annotation(ProgPoint, Graph, Renaming, Region, !AnnotationProc) :-
     % Add annotation to (after) the program point.
     % Annotations are only added for resurrected regions that have been
     % renamed in this execution path.
-    ( if    map.search(Renaming, RegionName, CurrentName)
-      then
-            make_renaming_instruction(CurrentName, RegionName, Annotation),
-            record_annotation(ProgPoint, Annotation, !AnnotationProc)
-      else  true
+    ( map.search(Renaming, RegionName, CurrentName) ->
+        make_renaming_instruction(CurrentName, RegionName, Annotation),
+        record_annotation(ProgPoint, Annotation, !AnnotationProc)
+    ;
+        true
     ).
 
 record_annotation(ProgPoint, Annotation, !AnnotationProc) :-
-    ( if    map.search(!.AnnotationProc, ProgPoint, Annotations0)
-      then
-            ( if    list.member(Annotation, Annotations0)
-              then  Annotations = Annotations0
-              else  Annotations = [Annotation | Annotations0]
-            )
-      else
-            % No annotation exists at this program point yet.
-            Annotations = [Annotation]
+    ( map.search(!.AnnotationProc, ProgPoint, Annotations0) ->
+        ( list.member(Annotation, Annotations0) ->
+            Annotations = Annotations0
+        ;
+            Annotations = [Annotation | Annotations0]
+        )
+    ;
+        % No annotation exists at this program point yet.
+        Annotations = [Annotation]
     ),
     svmap.set(ProgPoint, Annotations, !AnnotationProc).
 
 make_renaming_instruction(OldRegionName, NewRegionName, RenameInstruction) :-
     RenameInstruction = rename_region(OldRegionName, NewRegionName).
+
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
