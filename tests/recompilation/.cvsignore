@@ -1,0 +1,4 @@
+CLEAN
+*.err
+.mgnuc_copts
+.mgnuc_opts
