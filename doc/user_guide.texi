@@ -9817,7 +9817,7 @@ This is the preferred foreign language for IL code generation.
 Programs written in a language other than Mercury should not make calls
 to foreign exported Mercury procedures unless the Mercury runtime has been
 initialised.
-(In the case where the Mercury runtime has not been intialised the
+(In the case where the Mercury runtime has not been initialised the
 behaviour of these calls is undefined.)
 Such programs must also ensure that any module specific initialisation is
 performed before calling foreign exported procedures in Mercury modules.
