@@ -3,6 +3,8 @@ NEWS since Mercury 0.13.1
 
 Changes to the Mercury language:
 
+* A new pragma, foreign_export_enum, allows the constructors of Mercury
+  enumeration types, to be referred to in foreign language code.
 * Some of the restrictions on typeclass instances have been relaxed, allowing
   support for polymorphic instances with functional dependencies.
 * We now support trace goals, which can be used to print progress messages or
@@ -228,6 +230,22 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* The new pragma, foreign_export_enum, can be used to establish a
+  mapping between the constructors of a Mercury enumeration type and
+  a symbolic name for values of that type in the foreign language.
+
+  For example, given the type
+
+  	:- type status ---> ok ; error.
+
+  the declaration
+
+  	:- pragma foreign_export_enum("C", status/0, [prefix("STATUS_")]).
+  
+  allows code in C foreign_proc and foreign_code pragma bodies to refer
+  to the value `ok' via the name `STATUS_ok' and to the value `error'
+  via the name `STATUS_error'.
 
 * The restriction on typeclass instances that all type variables appearing in
   the range of a functional dependency must be monomorphic has been relaxed.

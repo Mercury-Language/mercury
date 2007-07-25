@@ -71,6 +71,7 @@ SINGLEMODULE= \
 	det_errors_cc \
 	duplicate_modes \
 	duplicate_module_test \
+	ee_invalid \
 	erroneous_throw_promise \
 	error_in_list \
 	errors \

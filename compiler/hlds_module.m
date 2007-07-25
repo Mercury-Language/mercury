@@ -202,6 +202,19 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Types for foreign exported enumerations
+%
+
+:- type exported_enum_info
+    --->    exported_enum_info(
+                foreign_language,
+                prog_context,
+                type_ctor,
+                map(sym_name, string)
+            ).
+
+%-----------------------------------------------------------------------------%
+%
 % Various predicates for manipulating the module_info data structure
 %
 
@@ -500,6 +513,12 @@
 :- pred module_info_get_interface_module_specifiers(module_info::in,
     set(module_name)::out) is det.
 
+:- pred module_info_get_exported_enums(module_info::in,
+    list(exported_enum_info)::out) is det.
+
+:- pred module_info_set_exported_enums(list(exported_enum_info)::in,
+    module_info::in, module_info::out) is det.
+
 :- pred module_info_get_event_set(module_info::in, event_set::out) is det.
 
 :- pred module_info_set_event_set(event_set::in,
@@ -770,6 +789,10 @@
                 % All the directly imported module specifiers in the interface.
                 % (Used by unused_imports analysis).
                 interface_module_specifiers :: set(module_specifier),
+           
+                % Enumeration types that have been exported to a foreign
+                % language.
+                exported_enums              :: list(exported_enum_info),
 
                 event_set                   :: event_set
             ).
@@ -815,7 +838,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
         init_analysis_info(mmc), [], [],
-        map.init, used_modules_init, set.init, EventSet),
+        map.init, used_modules_init, set.init, [], EventSet),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, InstanceTable, AssertionTable, ExclusiveTable,
@@ -842,8 +865,9 @@ module_info_get_ctor_field_table(MI, MI ^ ctor_field_table).
 module_info_get_maybe_recompilation_info(MI, MI ^ maybe_recompilation_info).
 
 %-----------------------------------------------------------------------------%
-
-    % Various predicates which modify the module_info data structure.
+%
+% Various predicates which modify the module_info data structure.
+%
 
 module_info_set_predicate_table(PT, MI, MI ^ predicate_table := PT).
 module_info_set_proc_requests(PR, MI, MI ^ proc_requests := PR).
@@ -863,9 +887,10 @@ module_info_set_maybe_recompilation_info(I, MI,
     MI ^ maybe_recompilation_info := I).
 
 %-----------------------------------------------------------------------------%
-
-    % Various predicates which access the module_sub_info data structure
-    % via the module_info structure.
+%
+% Various predicates which access the module_sub_info data structure
+% via the module_info structure.
+%
 
 module_info_get_name(MI, MI ^ sub_info ^ module_name).
 module_info_get_globals(MI, MI ^ sub_info ^ globals).
@@ -906,6 +931,7 @@ module_info_get_structure_reuse_map(MI, MI ^ sub_info ^ structure_reuse_map).
 module_info_get_used_modules(MI, MI ^ sub_info ^ used_modules).
 module_info_get_interface_module_specifiers(MI,
     MI ^ sub_info ^ interface_module_specifiers).
+module_info_get_exported_enums(MI, MI ^ sub_info ^ exported_enums).
 module_info_get_event_set(MI, MI ^ sub_info ^ event_set).
 
     % XXX There is some debate as to whether duplicate initialise directives
@@ -969,9 +995,10 @@ module_info_user_init_fn_pred_procs_2(MI, SymName / Arity, PredProcId) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-    % Various predicates which modify the module_sub_info data structure
-    % via the module_info structure.
+%
+% Various predicates which modify the module_sub_info data structure
+% via the module_info structure.
+%
 
 module_info_set_globals(NewVal, MI,
     MI ^ sub_info ^ globals := NewVal).
@@ -1046,6 +1073,8 @@ module_info_add_parents_to_used_modules(Modules, MI,
     module_info_get_used_modules(MI, UsedModules0),
     list.foldl(add_all_modules(visibility_public),
             Modules, UsedModules0, UsedModules).
+module_info_set_exported_enums(ExportedEnums, MI,
+        MI ^ sub_info ^ exported_enums := ExportedEnums).
 
 %-----------------------------------------------------------------------------%
 

@@ -238,7 +238,7 @@ mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 	% XXX We need to handle initialise declarations properly here.
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
-		InitPreds, FinalPreds) },
+		InitPreds, FinalPreds, ExportedEnums) },
 
 	%
 	% Handle output of any foreign code (C, Ada, Fortran, etc.)
@@ -291,7 +291,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% to create the .mih file, and if necessary the .c file.
 		{ ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
 			list__map(make_public, ForeignDefns), InitPreds,
-			FinalPreds) },
+			FinalPreds, ExportedEnums) },
 		mlds_to_c__output_c_file(ForeignMLDS, "")
 	),
 	%

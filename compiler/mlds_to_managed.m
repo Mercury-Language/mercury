@@ -66,7 +66,7 @@
 
 output_csharp_code(MLDS, !IO) :-
     MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns,
-        _InitPreds, _FinalPreds),
+        _InitPreds, _FinalPreds, _ExportedEnums),
     output_src_start(ModuleName, !IO),
     io.nl(!IO),
     generate_code(MLDS, !IO),
@@ -97,7 +97,7 @@ output_src_end(ModuleName, !IO) :-
 
 generate_code(MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, _Imports, Defns,
-        _InitPreds, _FinalPreds),
+        _InitPreds, _FinalPreds, _ExportedEnums),
     ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
         wrapper_class_name),
     io.nl(!IO),

@@ -407,6 +407,7 @@
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.version.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module lexer.
 :- import_module map.
@@ -598,6 +599,11 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
             ExportName),
         mercury_format_pragma_foreign_export(Lang, Pred, PredOrFunc, ModeList,
             ExportName, !IO)
+    ;    
+        Pragma = pragma_foreign_export_enum(Lang, TypeName, TypeArity,
+            Attributes, Overrides),
+        mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity, 
+            Attributes, Overrides, !IO)
     ;
         Pragma = pragma_obsolete(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate, "obsolete", no,
@@ -3604,12 +3610,68 @@ mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
     add_string(C_Function, !U),
     add_string(""").\n", !U).
 
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_format_pragma_foreign_export_enum(foreign_language::in,
+    sym_name::in, arity::in, export_enum_attributes::in,
+    assoc_list(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity,
+        Attributes, Overrides, !U) :-
+    add_string(":- pragma foreign_export_enum(", !U),        
+    mercury_format_foreign_language_string(Lang, !U),
+    add_string(", ", !U),
+    mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token, !U),
+    add_string("/", !U),
+    add_int(TypeArity, !U),
+    add_string(", ", !U),
+    mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U),
+    add_string(", ", !U),
+    mercury_format_pragma_foreign_export_enum_overrides(Overrides, !U),
+    add_string(").\n", !U).
+
+:- pred mercury_format_pragma_foreign_export_enum_attributes(
+    export_enum_attributes::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U) :-
+    MaybePrefix = Attributes ^ ee_attr_prefix,
+    add_string("[", !U),
+    (
+        MaybePrefix = no
+    ;
+        MaybePrefix = yes(Prefix),
+        add_string("prefix(", !U),
+        add_quoted_string(Prefix, !U),
+        add_char(')', !U)
+    ),
+    add_string("]", !U).
+
+:- pred mercury_format_pragma_foreign_export_enum_overrides(
+    assoc_list(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_foreign_export_enum_overrides(Overrides, !U) :-
+    add_char('[', !U),
+    add_list(Overrides, ",",
+        mercury_format_pragma_foreign_export_enum_override, !U),
+    add_char(']', !U).
+
+:- pred mercury_format_pragma_foreign_export_enum_override(
+    pair(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_foreign_export_enum_override(CtorName - ForeignName,
+        !U) :-
+    mercury_format_bracketed_sym_name(CtorName, next_to_graphic_token, !U),
+    add_string(" - ", !U),
+    add_quoted_string(ForeignName, !U).
+
+%-----------------------------------------------------------------------------%
+
 :- pred mercury_format_pragma_foreign_export(foreign_language::in,
     sym_name::in, pred_or_func::in, list(mer_mode)::in, string::in,
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_export(Lang, Name, PredOrFunc, ModeList,
-    ExportName, !U) :-
+        ExportName, !U) :-
     varset.init(Varset), % The varset isn't really used.
     InstInfo = simple_inst_info(Varset),
     add_string(":- pragma foreign_export(", !U),
@@ -3677,8 +3739,8 @@ mercury_format_pragma_foreign_attributes(Attributes, !U) :-
 
 %-----------------------------------------------------------------------------%
 
-    % write a term to standard output.
-
+    % Write a term to standard output.
+    %
 mercury_output_term(VarSet, AppendVarnums, Term, !IO) :-
     mercury_output_term_nq(VarSet, AppendVarnums, not_next_to_graphic_token,
         Term, !IO).
@@ -4316,8 +4378,9 @@ output_list([Item | Items], Sep, Pred, !Str) :-
 
 %-----------------------------------------------------------------------------%
 
-% Succeed if the sym_name describes a builtin inst.
 
+    % Succeed if the sym_name describes a builtin inst.
+    %
 :- pred builtin_inst_name(sym_name::in, list(inst_var)::in) is semidet.
 
 builtin_inst_name(unqualified(Name), Args0) :-

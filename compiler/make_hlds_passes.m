@@ -1065,6 +1065,11 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         add_pragma_reserve_tag(TypeName, TypeArity, !.Status, Context,
             !ModuleInfo, !Specs)
     ;
+        Pragma = pragma_foreign_export_enum(Lang, TypeName, TypeArity,
+            Attributes, Overrides),
+        add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
+            Overrides, !.Status, Context, !ModuleInfo, !Specs)
+    ;
         Pragma = pragma_foreign_export(Lang, Name, PredOrFunc, Modes,
             C_Function),
         add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,

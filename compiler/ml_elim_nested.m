@@ -463,7 +463,7 @@
 ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
     globals.io_get_globals(Globals, !IO),
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
-        FinalPreds),
+        FinalPreds, ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     OuterVars = [],
     DefnsList = list.map(
@@ -477,7 +477,7 @@ ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
     % of constants.
     Defns = list.remove_dups(Defns1),
     MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
-        FinalPreds).
+        FinalPreds, ExportedEnums).
 
     % Either eliminated nested functions:
     % Hoist out any nested function occurring in a single mlds_defn.

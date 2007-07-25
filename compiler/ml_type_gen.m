@@ -75,6 +75,14 @@
     %
 :- pred ml_tag_uses_base_class(cons_tag::in) is semidet.
 
+
+    % Exported enumeration info in the HLDS is converted into an MLDS
+    % specific representation.  The target specific code generators may
+    % further transform it.
+    %
+:- pred ml_gen_exported_enums(module_info::in, mlds_exported_enums::out,
+    io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -92,11 +100,13 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -999,6 +1009,61 @@ ml_gen_special_member_decl_flags = MLDS_DeclFlags :-
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
+
+%----------------------------------------------------------------------------%
+
+ml_gen_exported_enums(ModuleInfo, MLDS_ExportedEnums, !IO) :-
+     module_info_get_exported_enums(ModuleInfo, ExportedEnumInfo),
+     module_info_get_type_table(ModuleInfo, TypeTable), 
+     list.map_foldl(ml_gen_exported_enum(ModuleInfo, TypeTable),
+        ExportedEnumInfo, MLDS_ExportedEnums, !IO).
+
+:- pred ml_gen_exported_enum(module_info::in, type_table::in,
+    exported_enum_info::in, mlds_exported_enum::out, io::di, io::uo) is det.
+
+ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
+        MLDS_ExportedEnum, !IO) :-
+    ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor, Mapping),
+    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    get_type_defn_body(TypeDefn, TypeBody),
+    (
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
+        unexpected(this_file, "ml_gen_exported_enum - invalid type (2).")
+    ;
+        TypeBody = hlds_du_type(Ctors, TagValues, _IsEnumOrDummy, _MaybeUserEq,
+            _ReservedTag, _IsForeignType),
+        list.foldl(generate_foreign_enum_constant(Mapping, TagValues),
+            Ctors, [], NamesAndTags),
+        MLDS_ExportedEnum = mlds_exported_enum(Lang, Context,
+            mlds_native_int_type, NamesAndTags)
+    ).
+
+:- pred generate_foreign_enum_constant(map(sym_name, string)::in,
+    cons_tag_values::in, constructor::in,
+    assoc_list(string, mlds_entity_defn)::in,
+    assoc_list(string, mlds_entity_defn)::out) is det.
+
+generate_foreign_enum_constant(Mapping, TagValues, Ctor, !NamesAndTags) :-
+    Ctor = ctor(_, _, QualName, Args, _),
+    list.length(Args, Arity),
+    map.lookup(TagValues, cons(QualName, Arity), TagVal),
+    ( TagVal = int_tag(Int) ->
+        ConstValue = const(mlconst_int(Int))
+    ; 
+        unexpected(this_file, "enum constant requires an int tag")
+    ),
+    % Sanity check.
+    expect(unify(Arity, 0), this_file, "enum constant arity != 0"),
+    EntityDefn = mlds_data(mlds_native_int_type, init_obj(ConstValue),
+        gc_no_stmt),
+    UnqualName = unqualify_name(QualName),
+    UnqualSymName = unqualified(UnqualName),
+    map.lookup(Mapping, UnqualSymName, ForeignName),
+    list.cons(ForeignName - EntityDefn, !NamesAndTags).
 
 %-----------------------------------------------------------------------------%
 

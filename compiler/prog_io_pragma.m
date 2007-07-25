@@ -213,6 +213,188 @@ parse_pragma_type(ModuleName, "foreign_proc", PragmaTerms, ErrorTerm,
     parse_pragma_foreign_proc_pragma(ModuleName, "foreign_proc",
         PragmaTerms, ErrorTerm, VarSet, Result).
 
+
+%----------------------------------------------------------------------------%
+%
+% Code for parsing foreign_export_enum pragmas
+%
+
+parse_pragma_type(_ModuleName, "foreign_export_enum", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    ( 
+
+        (
+            PragmaTerms = [LangTerm, MercuryTypeTerm],
+            MaybeAttributesTerm = no,
+            MaybeOverridesTerm = no
+        ;
+            PragmaTerms = [LangTerm, MercuryTypeTerm, AttributesTerm],
+            MaybeAttributesTerm = yes(AttributesTerm),
+            MaybeOverridesTerm = no
+
+        ;
+            PragmaTerms = [LangTerm, MercuryTypeTerm, AttributesTerm,
+                OverridesTerm],
+            MaybeAttributesTerm = yes(AttributesTerm),
+            MaybeOverridesTerm = yes(OverridesTerm)
+        )
+    ->
+        ( parse_foreign_language(LangTerm, ForeignLanguage) ->
+            parse_export_enum_type(MercuryTypeTerm, MaybeType),
+            (
+                MaybeType = ok2(Name, Arity),
+                maybe_parse_export_enum_attributes(MaybeAttributesTerm,
+                    MaybeAttributes),
+                (
+                    MaybeAttributes = ok1(Attributes),
+                    maybe_parse_export_enum_overrides(MaybeOverridesTerm,
+                        MaybeOverrides),
+                    (
+                        MaybeOverrides = ok1(Overrides),
+                        PragmaExportEnum = pragma_foreign_export_enum(
+                            ForeignLanguage, Name, Arity, Attributes,
+                            Overrides
+                        ),
+                        Item = item_pragma(user, PragmaExportEnum),
+                        Result = ok1(Item)
+                    ;
+                        MaybeOverrides = error1(Errors),
+                        Result = error1(Errors)
+                    )
+                )
+            ;
+                MaybeType = error2(Errors),
+                Result = error1(Errors)
+            )
+        ;
+            Msg = "invalid foreign langauge in " ++
+                "`:- pragma foreign_export_enum' declaration",
+            Result = error1([Msg - ErrorTerm])
+        )
+    ;
+        Msg = "wrong number of arguments in " ++
+            "`:- pragma foreign_export_enum' declaration",
+        Result = error1([Msg - ErrorTerm])
+    ).                
+               
+:- pred parse_export_enum_type(term::in,
+    maybe2(sym_name, arity)::out) is det.
+
+parse_export_enum_type(TypeTerm, Result) :-
+    ( parse_name_and_arity(TypeTerm, Name, Arity) ->
+        Result = ok2(Name, Arity)
+    ;
+        Msg = "expected name/arity for type in " ++
+            "`pragma foreign_expor_enum' declaration",
+        Result = error2([Msg - TypeTerm])
+    ).
+                
+:- pred maybe_parse_export_enum_overrides(maybe(term)::in, 
+    maybe1(assoc_list(sym_name, string))::out) is det.
+
+maybe_parse_export_enum_overrides(no, ok1([])).
+maybe_parse_export_enum_overrides(yes(OverridesTerm), MaybeOverrides) :-
+    Msg = "not a valid mapping element",
+    convert_maybe_list(OverridesTerm, parse_export_enum_override, Msg, MaybeOverrides).
+
+:- pred parse_export_enum_override(term::in,
+    maybe1(pair(sym_name, string))::out) is semidet.
+
+parse_export_enum_override(Renaming, MaybeMappingElement) :-
+    Renaming = functor(Functor, Args, _),
+    Functor = term.atom("-"),
+    Args = [CtorTerm, ForeignNameTerm],
+    ForeignNameTerm = functor(term.string(ForeignName), _, _), 
+    parse_qualified_term(CtorTerm, CtorTerm, "export enum const",
+        MaybeCtorResult),
+    (
+        MaybeCtorResult = ok2(SymName, []),
+        MaybeMappingElement = ok1(SymName - ForeignName)
+    ;
+        MaybeCtorResult = error2(Errs),
+        MaybeMappingElement = error1(Errs)
+    ).
+                    
+:- pred maybe_parse_export_enum_attributes(maybe(term)::in,
+    maybe1(export_enum_attributes)::out) is det.
+
+maybe_parse_export_enum_attributes(no, ok1(default_export_enum_attributes)).
+maybe_parse_export_enum_attributes(yes(AttributesTerm), MaybeAttributes) :-
+    parse_export_enum_attributes(AttributesTerm, MaybeAttributes).
+
+:- type collected_export_enum_attribute
+    --->    ee_attr_prefix(maybe(string)).
+
+:- pred parse_export_enum_attributes(term::in,
+    maybe1(export_enum_attributes)::out) is det.
+
+parse_export_enum_attributes(AttributesTerm, AttributesResult) :-
+    Attributes0 = default_export_enum_attributes,
+    ConflictingAttributes = [],
+    (
+        list_term_to_term_list(AttributesTerm, AttributesTerms),
+        map_parser(parse_export_enum_attr, AttributesTerms, MaybeAttrList),
+        MaybeAttrList = ok1(CollectedAttributes)
+    ->
+        (
+            list.member(ConflictA - ConflictB, ConflictingAttributes),
+            list.member(ConflictA, CollectedAttributes),
+            list.member(ConflictB, CollectedAttributes)
+        ->
+            Msg = "conflicting attributes in attribute list",
+            AttributesResult = error1([Msg - AttributesTerm])
+        ;   
+            % Check that the prefix attribute is specified at most once.
+            %
+            IsPrefixAttr = (pred(A::in) is semidet :-
+                A = ee_attr_prefix(_)
+            ),
+            list.filter(IsPrefixAttr, CollectedAttributes, PrefixAttributes),
+            (
+                ( PrefixAttributes = []
+                ; PrefixAttributes = [_]
+                ),
+                list.foldl(process_export_enum_attribute, CollectedAttributes,
+                    Attributes0, Attributes),
+                AttributesResult = ok1(Attributes)
+            ;
+                PrefixAttributes = [_, _ | _],
+                Msg = "prefix attribute occurs multiple times in " ++
+                    "foreign_export_enum pragma",
+                AttributesResult = error1([Msg - AttributesTerm])
+            )
+        )
+    ;
+        Msg = "malformed attributes list in foreign_export_enum pragma",
+        AttributesResult = error1([Msg - AttributesTerm])
+    ).
+
+:- pred process_export_enum_attribute(collected_export_enum_attribute::in,
+    export_enum_attributes::in, export_enum_attributes::out) is det.
+
+process_export_enum_attribute(ee_attr_prefix(MaybePrefix), _, Attributes) :-
+    Attributes = export_enum_attributes(MaybePrefix).
+        
+:- pred parse_export_enum_attr(term::in,
+    maybe1(collected_export_enum_attribute)::out) is det.
+
+parse_export_enum_attr(Term, Result) :-  
+    (
+        Term = functor(atom("prefix"), Args, _),
+        Args = [ ForeignNameTerm ],
+        ForeignNameTerm = functor(string(Prefix), [], _)
+    ->
+        Result = ok1(ee_attr_prefix(yes(Prefix)))
+    ;
+        Msg = "unrecognised attribute in foreign_export_enum pragma",
+        Result = error1([Msg - Term])
+    ).
+
+%----------------------------------------------------------------------------%
+%
+% Code for parsing foreign_export pragmas
+%
+
 parse_pragma_type(_ModuleName, "foreign_export", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     ( PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] ->

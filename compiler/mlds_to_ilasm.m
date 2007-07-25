@@ -110,7 +110,7 @@ handle_foreign_lang(lang_erlang, _) :-
 
 output_assembler(MLDS, ForeignLangs, !IO) :-
     MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns,
-        _InitPreds, _FinalPreds),
+        _InitPreds, _FinalPreds, _ExportedEnums),
     output_src_start(ModuleName, !IO),
     io.nl(!IO),
 

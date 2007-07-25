@@ -601,6 +601,19 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Stuff for the `foreign_export_enum' pragma
+%
+
+
+:- type export_enum_attributes
+    --->    export_enum_attributes(
+                ee_attr_prefix :: maybe(string)
+            ).
+
+:- func default_export_enum_attributes = export_enum_attributes.
+
+%-----------------------------------------------------------------------------%
+%
 % Type classes
 %
 
@@ -1185,7 +1198,7 @@
 :- type type_param  ==  tvar.
 
     % Use type_util.type_to_ctor_and_args to convert a type to a qualified
-    % type_ctor and a list of arguments.  Use type_util.construct_type to
+    % type_ctor and a list of arguments.  Use prog_type.construct_type to
     % construct a type from a type_ctor and a list of arguments.
     %
 :- type mer_type
@@ -2203,6 +2216,14 @@ add_module(visibility_public, Module, !UsedModules) :-
 add_module(visibility_private, Module, !UsedModules) :-
     !:UsedModules = !.UsedModules ^ impl_used_modules :=
             set.insert(!.UsedModules ^ impl_used_modules, Module).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% Stuff for the `foreign_export_enum' pragma
+%
+
+default_export_enum_attributes = export_enum_attributes(no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

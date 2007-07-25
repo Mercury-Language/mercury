@@ -1132,10 +1132,23 @@ qualify_type(apply_n_type(Var, Args0, Kind), apply_n_type(Var, Args, Kind),
 qualify_type(kinded_type(Type0, Kind), kinded_type(Type, Kind),
         !Info, !Specs) :-
     qualify_type(Type0, Type, !Info, !Specs).
+    
+:- pred qualify_type_ctor(type_ctor::in, type_ctor::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Qualify the modes in a pragma c_code(...) decl.
-    %
-:- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
+qualify_type_ctor(!TypeCtor, !Info, !Specs) :-
+    !.TypeCtor = type_ctor(SymName0, Arity),
+    ( is_builtin_atomic_type(!.TypeCtor) ->
+        SymName = SymName0
+    ;
+        TypeCtorId0 = mq_id(SymName0, Arity),
+        mq_info_get_types(!.Info, Types),
+        find_unique_match(TypeCtorId0, TypeCtorId, Types, type_id, !Info, !Specs),
+        TypeCtorId = mq_id(SymName, _)
+    ),
+    !:TypeCtor = type_ctor(SymName, Arity).
+
+:- pred qualify_pragma(pragma_type::in, pragma_type::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1143,6 +1156,13 @@ qualify_pragma(X @ pragma_source_file(_), X, !Info, !Specs).
 qualify_pragma(X @ pragma_foreign_decl(_, _, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_foreign_code(_, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_foreign_import_module(_, _), X, !Info, !Specs).
+qualify_pragma(X, Y, !Info, !Specs) :-
+    X = pragma_foreign_export_enum(Lang, TypeName0, TypeArity0, Attributes,
+        Overrides),
+    qualify_type_ctor(type_ctor(TypeName0, TypeArity0), 
+        type_ctor(TypeName, TypeArity), !Info, !Specs),
+    Y = pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
+        Overrides).
 qualify_pragma(X, Y, !Info, !Specs) :-
     X = pragma_foreign_proc(Attrs0, Name, PredOrFunc, Vars0, Varset,
         InstVarset, Impl),

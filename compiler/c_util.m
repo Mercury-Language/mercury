@@ -25,10 +25,11 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
+
 %-----------------------------------------------------------------------------%
 %
-% Line numbering.
-
+% Line numbering
+%
     % set_line_num(FileName, LineNum):
     %
     % Emit a #line directive to set the specified filename and linenumber
@@ -45,7 +46,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% String and character handling.
+% String and character handling
+%
 
     % Print out a string suitably escaped for use as a C string literal.
     % This doesn't actually print out the enclosing double quotes --
@@ -80,7 +82,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Float literals.
+% Float literals
+%
 
     % Convert a float to a string suitable for use as a C (or Java, or IL)
     % floating point literal.
@@ -94,7 +97,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Operators.
+% Operators
 %
 % The following predicates all take as input an operator, and return the name
 % of the corresponding C operator that can be used to implement it.
@@ -130,6 +133,14 @@
     %
 :- pred output_c_file_intro_and_grade(string::in, string::in,
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Utility predicates for working with C code
+%
+    % Succeeds iff the given string is a valid C identifier.
+    %
+:- pred is_valid_c_identifier(string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -191,7 +202,8 @@ reset_line_num(!IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% String and character handling.
+% String and character handling
+%
 
 output_quoted_string(S, !IO) :-
     output_quoted_string(0, length(S), S, !IO).
@@ -341,7 +353,7 @@ escape_any_char(Char, EscapeCodeChars) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Floating point literals.
+% Floating point literals
 %
 % XXX These routines do not yet handle infinities and NaNs properly.
 
@@ -358,7 +370,8 @@ output_float_literal(Float, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Operators.
+% Operators
+%
 
 unary_prefix_op(mktag,              "MR_mktag").
 unary_prefix_op(tag,                "MR_tag").
@@ -452,5 +465,12 @@ output_c_file_intro_and_grade(SourceFileName, Version, !IO) :-
 
 convert_bool_to_string(no) = "no".
 convert_bool_to_string(yes) = "yes".
+
+%-----------------------------------------------------------------------------%
+
+is_valid_c_identifier(S) :-
+    string.index(S, 0, Start),
+    char.is_alpha_or_underscore(Start),
+    string.is_all_alnum_or_underscore(S).
 
 %-----------------------------------------------------------------------------%

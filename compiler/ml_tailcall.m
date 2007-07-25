@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -526,7 +526,8 @@ ml_warn_tailcalls(Globals, MLDS, !IO) :-
 :- pred nontailcall_in_mlds(mlds::in, tailcall_warning::out) is nondet.
 
 nontailcall_in_mlds(MLDS, Warning) :-
-    MLDS = mlds(ModuleName, _ForeignCode, _Imports, Defns, _InitPreds, _),
+    MLDS = mlds(ModuleName, _ForeignCode, _Imports, Defns, _InitPreds,
+        _FinalPreds, _ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     nontailcall_in_defns(MLDS_ModuleName, Defns, Warning).
 

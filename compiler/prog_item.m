@@ -433,6 +433,14 @@
                 %    whether or not the foreign code is thread-safe
                 % foreign function name.
             )
+    ;
+            pragma_foreign_export_enum(
+                export_enum_language   :: foreign_language,
+                export_enum_type_name  :: sym_name,
+                export_enum_type_arity :: arity,
+                export_enum_attributes :: export_enum_attributes,
+                export_enum_overrides  :: assoc_list(sym_name, string)
+            )
     %
     % Optimization pragmas
     %

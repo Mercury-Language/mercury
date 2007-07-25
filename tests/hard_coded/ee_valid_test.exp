@@ -1,0 +1,5 @@
+default mapping: apple = apple
+default mapping: orange = orange
+with prefix: pear = pear
+user mapping: lemon = lemon
+default mapping with quoted names: bar = 'BAR'

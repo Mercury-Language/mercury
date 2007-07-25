@@ -344,6 +344,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_foreign.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -381,7 +382,8 @@
                 % XXX These only work for the C backend because initialisers
                 % and finalisers do not (yet) work for the other backends.
                 init_preds          :: list(string),
-                final_preds         :: list(string)
+                final_preds         :: list(string),
+                exported_enums      :: list(mlds_exported_enum)
             ).
 
 :- func mlds_get_module_name(mlds) = mercury_module_name.
@@ -1714,6 +1716,21 @@
     % a (possibly) qualified name.  This is used for the Java back-end.
     %
 :- func flip_initial_case_of_final_part(sym_name) = sym_name.
+
+%-----------------------------------------------------------------------------%
+
+:- type mlds_exported_enums == list(mlds_exported_enum).
+
+:- type mlds_exported_enum
+    --->    mlds_exported_enum(
+                foreign_language,       % For sanity checking.
+                prog_context,
+                mlds_type,              % Type of the constants (hard coded as
+                                        % mlds_native_int_type in ml_type_gen.m.)
+                assoc_list(string, mlds_entity_defn)
+                % The name of each constant
+                % plus a value to initialize it to.
+            ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

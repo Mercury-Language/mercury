@@ -157,7 +157,7 @@ output_header_file(MLDS, Suffix, !IO) :-
 
 mlds_output_hdr_file(Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, InitPreds,
-        FinalPreds),
+        FinalPreds, ExportEnums),
     mlds_output_hdr_start(Indent, ModuleName, !IO),
     io.nl(!IO),
     mlds_output_hdr_imports(Indent, Imports, !IO),
@@ -166,6 +166,8 @@ mlds_output_hdr_file(Indent, MLDS, !IO) :-
     % Get the foreign code for C
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
     mlds_output_c_hdr_decls(MLDS_ModuleName, Indent, ForeignCode, !IO),
+    io.nl(!IO),
+    mlds_output_export_enums(ExportEnums, Indent, !IO),
     io.nl(!IO),
 
     % The header file must contain _definitions_ of all public types, but only
@@ -263,7 +265,7 @@ mlds_output_src_import(_Indent, Import, !IO) :-
 
 mlds_output_src_file(Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns,
-        InitPreds, FinalPreds),
+        InitPreds, FinalPreds, _ExportEnums),
 
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
     EnvVarNameSet = mlds_get_env_var_names(Defns),
@@ -1205,6 +1207,51 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
     ),
     Params = mlds_func_params(InputArgs, [ReturnArgType]).
 
+:- pred mlds_output_export_enums(list(mlds_exported_enum)::in, indent::in,
+    io::di, io::uo) is det.
+
+mlds_output_export_enums(ExportedEnums, Indent, !IO) :-
+    list.foldl(mlds_output_export_enum(Indent), ExportedEnums, !IO).
+
+:- pred mlds_output_export_enum(indent::in, mlds_exported_enum::in,
+    io::di, io::uo) is det.
+
+mlds_output_export_enum(_Indent, ExportedEnum, !IO) :-
+    ExportedEnum = mlds_exported_enum(Lang, Context, _Type,
+        NamesAndTags0),
+    (
+        Lang = lang_c,
+        output_context(mlds_make_context(Context), !IO),
+        % We reverse the list so the constants are printed out in order.
+        list.reverse(NamesAndTags0, NamesAndTags),
+        list.foldl(mlds_output_exported_enum_constant, NamesAndTags, !IO)
+    ;
+        ( Lang = lang_csharp
+        ; Lang = lang_java
+        ; Lang = lang_il
+        ; Lang = lang_erlang
+        )
+    ).
+
+:- pred mlds_output_exported_enum_constant(pair(string, mlds_entity_defn)::in,
+    io::di, io::uo) is det.
+
+mlds_output_exported_enum_constant(NameAndTag, !IO) :-
+    NameAndTag = Name - Tag,
+    ( 
+        Tag = mlds_data(mlds_native_int_type, Initializer, gc_no_stmt),
+        Initializer = init_obj(const(mlconst_int(Value)))
+    ->
+        io.write_string("#define ", !IO),
+        io.write_string(Name, !IO),
+        io.write_string(" ", !IO),
+        io.write_int(Value, !IO),
+        io.nl(!IO)
+    ;
+        unexpected(this_file,
+            "bad mlds_entity_defn for exported enumeration value.")
+    ).
+    
 %-----------------------------------------------------------------------------%
 %
 % Code to output declarations and definitions

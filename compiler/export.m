@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: export.m.
-% Main author: dgj.
+% Main author: dgj, juliensf.
 %
 % This module defines predicates to produce the functions which are
 % exported to a foreign language via a `pragma foreign_export' declaration.
@@ -50,8 +50,8 @@
     % Produce an interface file containing declarations for the exported
     % foreign functions (if required in this foreign language).
     %
-:- pred produce_header_file(foreign_export_decls::in, module_name::in,
-    io::di, io::uo) is det.
+:- pred produce_header_file(module_info::in, foreign_export_decls::in,
+    module_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -91,6 +91,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
@@ -626,14 +627,18 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Code to create the .mh files
+%
 
 % This procedure is used for both the MLDS and LLDS back-ends.
 
-produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
+produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     % We always produce a .mh file because with intermodule optimization
     % enabled the .o file depends on all the .mh files of the imported modules
     % so we always need to produce a .mh file even if it contains nothing.
     ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls),
+    module_info_get_exported_enums(ModuleInfo, ExportedEnums),
     HeaderExt = ".mh",
     module_name_to_file_name(ModuleName, HeaderExt, yes, FileName, !IO),
     io.open_output(FileName ++ ".tmp", Result, !IO),
@@ -676,6 +681,7 @@ produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
         io.write_strings([
             "#ifndef ", decl_guard(ModuleName), "\n",
             "#define ", decl_guard(ModuleName), "\n"], !IO),
+        list.foldl(output_exported_enum(ModuleInfo), ExportedEnums, !IO),
         list.foldl(output_foreign_decl(yes(foreign_decl_is_exported)),
             ForeignDecls, !IO),
         io.write_string("\n#endif\n", !IO),
@@ -750,6 +756,79 @@ output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
     ;
         true
     ).
+        
+%-----------------------------------------------------------------------------%
+%
+% Code for writing out foreign exported enumerations
+%
+
+% For C/C++ we emit a #defined constant for constructors exported from an
+% enumeration.
+
+:- pred output_exported_enum(module_info::in, exported_enum_info::in,
+    io::di, io::uo) is det.
+
+output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
+    ExportedEnumInfo = exported_enum_info(_Lang, Context, TypeCtor,
+        NameMapping),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    get_type_defn_body(TypeDefn, TypeBody),
+    (
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
+        unexpected(this_file, "invalid type for foreign_export_enum")
+    ;
+        TypeBody = hlds_du_type(Ctors, TagValues, IsEnumOrDummy,
+            _MaybeUserEq, _ReservedTag, _IsForeignType),
+        (
+            IsEnumOrDummy = not_enum_or_dummy,
+            unexpected(this_file, "d.u. is not an enumeration.")
+        ;
+            ( IsEnumOrDummy = is_enum
+            ; IsEnumOrDummy = is_dummy
+            ),
+            list.foldl(foreign_const_name_and_tag(NameMapping, TagValues),
+                Ctors, [], ForeignNamesAndTags0),
+            % We reverse the list so the constants are printed out in order.
+            list.reverse(ForeignNamesAndTags0, ForeignNamesAndTags),
+            term.context_file(Context, File),
+            term.context_line(Context, Line),
+            c_util.set_line_num(File, Line, !IO),
+            io.write_list(ForeignNamesAndTags, "\n",
+                output_exported_enum_2(ModuleInfo), !IO),
+            io.nl(!IO),
+            c_util.reset_line_num(!IO)
+        )
+    ).
+
+:- pred output_exported_enum_2(module_info::in, pair(string, int)::in,
+    io::di, io::uo) is det.
+
+output_exported_enum_2(_, ConstName - Tag, !IO) :-
+    io.format("#define %s %d", [s(ConstName), i(Tag)], !IO).
+
+:- pred foreign_const_name_and_tag(map(sym_name, string)::in,
+    cons_tag_values::in, constructor::in,
+    assoc_list(string, int)::in, assoc_list(string, int)::out) is det.
+
+foreign_const_name_and_tag(Mapping, TagValues, Ctor, !NamesAndTags) :-
+    Ctor = ctor(_, _, QualifiedCtorName, Args, _),
+    list.length(Args, Arity),
+    map.lookup(TagValues, cons(QualifiedCtorName, Arity), TagVal),
+    ( TagVal = int_tag(Tag0) ->
+        Tag = Tag0 
+    ; 
+        unexpected(this_file, "enum constant requires an int tag")
+    ),
+    % Sanity check.
+    expect(unify(Arity, 0), this_file, "enum constant arity != 0"),
+    UnqualifiedCtorName = unqualified(unqualify_name(QualifiedCtorName)),
+    map.lookup(Mapping, UnqualifiedCtorName, ForeignName),
+    list.cons(ForeignName - Tag, !NamesAndTags).
 
 %-----------------------------------------------------------------------------%
 

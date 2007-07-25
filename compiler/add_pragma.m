@@ -36,6 +36,11 @@
 :- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+        
+:- pred add_pragma_foreign_export_enum(foreign_language::in, sym_name::in,
+    arity::in, export_enum_attributes::in, assoc_list(sym_name, string)::in,
+    import_status::in, prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_type_spec(pragma_type::in(pragma_type_spec),
     term.context::in, module_info::in, module_info::out,
@@ -126,9 +131,11 @@
 :- implementation.
 
 :- import_module backend_libs.
+:- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -168,6 +175,7 @@
 :- import_module transform_hlds.term_util.
 
 :- import_module bag.
+:- import_module bimap.
 :- import_module bool.
 :- import_module int.
 :- import_module list.
@@ -217,6 +225,10 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs) :-
     ;
         % Handle pragma foreign procs later on (when we process clauses).
         Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
+    ;
+        % Handle pragma foreign_export_enum (after we have added all the
+        % types).
+        Pragma = pragma_foreign_export_enum(_, _, _, _, _)
     ;
         % Handle pragma tabled decls later on (when we process clauses).
         Pragma = pragma_tabled(_, _, _, _, _, _)
@@ -581,6 +593,356 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         !:Specs = [Spec | !.Specs]
     ).
 
+%-----------------------------------------------------------------------------%
+
+add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
+        Overrides, _ImportStatus, Context, !ModuleInfo, !Specs) :-
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    module_info_get_type_table(!.ModuleInfo, TypeDefnTable),
+    ContextPieces = [
+        words("In"), fixed("`pragma foreign_export_enum'"),
+        words("declaration for"),
+        sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
+    ],
+    (   
+        % Emit an error message for foreign_export_num pragmas for the
+        % builtin atomic types.
+        TypeArity = 0,
+        ( TypeName = unqualified("character")
+        ; TypeName = unqualified("float")
+        ; TypeName = unqualified("int")
+        ; TypeName = unqualified("string")
+        )
+    ->
+        MaybeSeverity = yes(severity_error),
+        ErrorPieces = [
+            words("error: "),
+            sym_name_and_arity(TypeName / TypeArity),
+            words("is an atomic type"),
+            suffix(".")
+        ]
+    ;
+        ( map.search(TypeDefnTable, TypeCtor, TypeDefn) ->
+            get_type_defn_body(TypeDefn, TypeBody),
+            ( 
+                ( TypeBody = hlds_eqv_type(_)
+                ; TypeBody = hlds_abstract_type(_)
+                ; TypeBody = hlds_solver_type(_, _)
+                ; TypeBody = hlds_foreign_type(_)
+                ),
+                MaybeSeverity = yes(severity_error),
+                    ErrorPieces = [
+                    words("error: "),
+                    sym_name_and_arity(TypeName / TypeArity),
+                    words("is not an enumeration type"),
+                    suffix(".")
+                ]
+            ;
+                % XXX How should we handle IsForeignType here?
+                TypeBody = hlds_du_type(Ctors, _TagValues, IsEnumOrDummy,
+                    _MaybeUserEq, _ReservedTag, _IsForeignType),
+                (
+                    ( IsEnumOrDummy = is_enum
+                    ; IsEnumOrDummy = is_dummy
+                    ),
+                    Attributes = export_enum_attributes(MaybePrefix),
+                    (
+                        MaybePrefix = yes(Prefix)
+                    ;
+                        MaybePrefix = no,
+                        Prefix = ""
+                    ),
+                    build_export_enum_overrides_map(TypeName, Context,
+                        ContextPieces, Overrides, MaybeOverridesMap, !Specs),
+                    (
+                        MaybeOverridesMap = yes(OverridesMap),
+                        build_export_enum_name_map(ContextPieces, Lang, TypeName,
+                            TypeArity, Context, Prefix, OverridesMap, Ctors,
+                            MaybeMapping, !Specs),
+                        (
+                            MaybeMapping = yes(Mapping),
+                            ExportedEnum = exported_enum_info(Lang, Context,
+                                TypeCtor, Mapping),
+                            module_info_get_exported_enums(!.ModuleInfo,
+                                ExportedEnums0),
+                            ExportedEnums = [ ExportedEnum | ExportedEnums0 ],
+                            module_info_set_exported_enums(ExportedEnums,
+                                !ModuleInfo)
+                        ;
+                            MaybeMapping = no
+                        ),
+                        ErrorPieces = [],
+                        MaybeSeverity = no
+                    ;
+                        MaybeOverridesMap = no,
+                        ErrorPieces = [],
+                        MaybeSeverity = no
+                    )
+                ;
+                    IsEnumOrDummy = not_enum_or_dummy,
+                    MaybeSeverity = yes(severity_error),
+                    % XXX Maybe we should add a verbose error message that
+                    % identifies the non-zero arity constructors.
+                    ErrorPieces = [
+                        words("error: "),
+                        sym_name_and_arity(TypeName / TypeArity),
+                        words("is not an enumeration type."),
+                        words("It has one more non-zero arity"),
+                        words("constructors.")
+                    ]
+                )
+            )
+        ;
+            % This case corresponds to an undefined type.  We do not
+            % issue an error message for it here since module qualification
+            % will have already done so.
+            MaybeSeverity = no,
+            ErrorPieces = []
+        )
+    ),
+    (
+        ErrorPieces = []
+    ;
+        ErrorPieces = [_ | _],
+        (
+            MaybeSeverity = yes(Severity)
+        ;
+            MaybeSeverity = no,
+            unexpected(this_file, "add_foreign_export_enum: no severity")
+        ),
+        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred build_export_enum_overrides_map(sym_name::in, prog_context::in,
+    format_components::in, assoc_list(sym_name, string)::in,
+    maybe(map(sym_name, string))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+build_export_enum_overrides_map(TypeName, Context, ContextPieces,
+        OverridesList0, MaybeOverridesMap, !Specs) :-
+    ( sym_name_get_module_name(TypeName, ModuleName0) ->
+        ModuleName = ModuleName0
+    ;
+        unexpected(this_file,
+            "unqualified type name while building override map")
+    ),
+    %
+    % Strip off module qualifiers that match those of the type
+    % being exported.  We leave those that do not match so that
+    % they can be reported as errors later.
+    % 
+    StripQualifiers = (func(Name0) = Name :-
+        ( 
+            Name0 = qualified(ModuleQualifier, UnqualName),
+            ( ModuleQualifier = ModuleName ->
+                Name = unqualified(UnqualName)
+            ;
+                Name = Name0
+            )
+        ;
+            Name0 = unqualified(_),
+            Name = Name0
+        )
+    ),
+    OverridesList = assoc_list.map_keys_only(StripQualifiers,
+        OverridesList0),
+    ( bimap.from_assoc_list(OverridesList, OverridesMap0) ->
+        OverridesMap = bimap.forward_map(OverridesMap0),
+        MaybeOverridesMap = yes(OverridesMap)
+    ;
+        MaybeOverridesMap = no,
+        % XXX we should report exactly why it is not a bijective.
+        ErrorPieces = [
+            words("error: "),
+            words("the user-specified mapping between Mercury and"),
+            words("foreign names does not form a bijection.")
+        ],
+        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+    
+:- pred build_export_enum_name_map(format_components::in,
+    foreign_language::in, sym_name::in, arity::in, prog_context::in,
+    string::in, map(sym_name, string)::in, list(constructor)::in,
+    maybe(map(sym_name, string))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
+        Context, Prefix, Overrides0, Ctors, MaybeMapping, !Specs) :-
+    ( 
+        TypeName = qualified(TypeModuleQual, _)
+
+    ;
+        % The type name should have been module qualified by now.
+        TypeName = unqualified(_),
+        unexpected(this_file, "unqualified type name for foreign_export_enum")
+    ),
+        
+    list.foldl3(add_ctor_to_name_map(Lang, Prefix, TypeModuleQual),
+        Ctors, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
+    %
+    % Check for any remaining user-specified renamings that didn't
+    % match the constructors of the type and report and error
+    % for them.
+    %
+    ( not map.is_empty(Overrides) ->
+       InvalidRenamingPieces = [
+            words("user-specified foreign names for constructors"),
+            words("that do not match match any of the constructors of"),
+            sym_name_and_arity(TypeName / TypeArity), suffix(".")
+        ],
+        InvalidRenamings = map.keys(Overrides),
+        InvalidRenamingComponents =
+            list.map((func(S) = [sym_name(S)]), InvalidRenamings),
+        InvalidRenamingList = component_list_to_line_pieces(
+            InvalidRenamingComponents, [nl]),
+        InvalidRenamingVerbosePieces = [
+            words("The following"),
+            words(choose_number(InvalidRenamings,
+                "constructor does", "constructors do")),
+            words("not match"), suffix(":"), nl_indent_delta(2)
+        ] ++ InvalidRenamingList,
+        InvalidRenamingMsg = simple_msg(Context,
+            [
+                always(ContextPieces ++ InvalidRenamingPieces),
+                verbose_only(InvalidRenamingVerbosePieces)
+            ]),
+        InvalidRenamingSpec = error_spec(severity_error,
+            phase_parse_tree_to_hlds, [InvalidRenamingMsg]),
+        list.cons(InvalidRenamingSpec, !Specs),
+        MaybeMapping = no
+        % NOTE: in the presence of this error we do not report if
+        % contructors could not be converted to names in the foreign
+        % language.
+    ;
+        (
+            BadCtors = [],
+            check_name_map_for_conflicts(Context, ContextPieces, NameMap,
+                MaybeMapping, !Specs)
+        ;
+            BadCtors = [_ | _],
+            (
+                Lang = lang_c,
+                What = "C identifiers."
+            ;
+                ( Lang = lang_csharp
+                ; Lang = lang_java
+                ; Lang = lang_il
+                ; Lang = lang_erlang
+                ),
+                sorry(this_file,
+                    "foreign_export_enum pragma for unsupported language")
+            ),
+            BadCtorsErrorPieces = [
+                words("error: not all the constructors of the type"),
+                sym_name_and_arity(TypeName / TypeArity),
+                words("can be converted into valid " ++ What)
+            ],
+            list.sort(BadCtors, SortedBadCtors),
+            BadCtorComponents = list.map((func(S) = [sym_name(S)]),
+                SortedBadCtors),
+            BadCtorsList = component_list_to_line_pieces(
+                BadCtorComponents, [nl]),
+            BadCtorsVerboseErrorPieces = [
+                words("The following"),
+                words(choose_number(BadCtors, "constructor",
+                    "constructors")),
+                words("cannot be converted:"), nl_indent_delta(2)
+            ] ++ BadCtorsList,
+            BadCtorsMsg = simple_msg(Context,
+                [
+                    always(ContextPieces ++ BadCtorsErrorPieces),
+                    verbose_only(BadCtorsVerboseErrorPieces)
+                ]),  
+            BadCtorsSpec = error_spec(severity_error,
+                phase_parse_tree_to_hlds, [BadCtorsMsg]),
+            list.cons(BadCtorsSpec, !Specs),
+            MaybeMapping = no
+        )
+    ).
+            
+    % Check that the mapping from foreign names to Mercury names is not
+    % one-to-many.  
+    %
+:- pred check_name_map_for_conflicts(prog_context::in, format_components::in,
+    map(sym_name, string)::in, maybe(map(sym_name, string))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_name_map_for_conflicts(Context, ContextPieces, NameMap,
+        MaybeNameMap, !Specs) :-
+    NamesAndForeignNames  = map.to_assoc_list(NameMap),
+    ( bimap.from_assoc_list(NamesAndForeignNames, _) ->
+        MaybeNameMap = yes(NameMap) 
+    ;
+        
+        MaybeNameMap = no,
+        % XXX we should report exactly why it is not bijective.
+        ErrorPieces = [
+            words("error: the mapping between Mercury and foreign names"),
+            words("does not form a bijection.")
+        ],
+        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).        
+
+    % add_ctor_to_name_map(ForeignLanguage, Overrides, Prefix, Ctor, !Map,
+    %   !BadCtors):
+    %
+:- pred add_ctor_to_name_map(foreign_language::in,
+    string::in, sym_name::in, constructor::in,
+    map(sym_name, string)::in, map(sym_name, string)::out,
+    map(sym_name, string)::in, map(sym_name, string)::out,
+    list(sym_name)::in, list(sym_name)::out) is det.
+
+add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
+        !BadCtors) :-
+    CtorSymName = Ctor ^ cons_name,
+    ( 
+        % All of the constructor sym_names should be module qualified by now.
+        % We unqualify them before inserting them into the mapping since
+        % the code in export.m expects that to be done.
+        %
+        CtorSymName    = qualified(_, _),
+        UnqualCtorName = unqualify_name(CtorSymName),
+        UnqualSymName  = unqualified(UnqualCtorName) 
+    ;
+        CtorSymName = unqualified(_),
+        unexpected(this_file, "unqualified constructor name")
+    ),
+    %
+    % If the user specified a name for this constructor then use that.
+    %
+    ( svmap.remove(UnqualSymName, ForeignName0, !Overrides) ->
+        ForeignName1 = ForeignName0
+    ;
+        % Otherwise try to derive a name automatically from the
+        % constructor name.
+        ForeignName1 = UnqualCtorName
+    ),
+    ForeignName = Prefix ++ ForeignName1,
+    (     
+        Lang  = lang_c,
+        IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
+    ;
+        ( Lang = lang_csharp
+        ; Lang = lang_java
+        ; Lang = lang_il
+        ; Lang = lang_erlang
+        ),
+        sorry(this_file, "foreign_export_enum for language other than C")
+    ),
+    (
+        IsValidForeignName = yes,
+        svmap.det_insert(UnqualSymName, ForeignName, !NameMap)
+    ;
+        IsValidForeignName = no,
+        list.cons(UnqualSymName, !BadCtors)
+    ).
+    
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_unused_args(pred_or_func::in, sym_name::in, arity::in,

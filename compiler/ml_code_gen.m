@@ -805,10 +805,11 @@ ml_code_gen(ModuleInfo, MLDS, !IO) :-
     ml_gen_foreign_code(ModuleInfo, ForeignCode, !IO),
     ml_gen_imports(ModuleInfo, Imports),
     ml_gen_defns(ModuleInfo, Defns, !IO),
+    ml_gen_exported_enums(ModuleInfo, ExportedEnums, !IO),
     module_info_user_init_pred_c_names(ModuleInfo, InitPreds),
     module_info_user_final_pred_c_names(ModuleInfo, FinalPreds),
     MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
-        InitPreds, FinalPreds).
+        InitPreds, FinalPreds, ExportedEnums).
 
 :- pred ml_gen_foreign_code(module_info::in,
     map(foreign_language, mlds_foreign_code)::out,

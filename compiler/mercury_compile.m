@@ -1600,7 +1600,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             % referred to by foreign_export pragmas.
             %
             export.get_foreign_export_decls(!.HLDS, ExportDecls),
-            export.produce_header_file(ExportDecls, ModuleName, !IO)
+            export.produce_header_file(!.HLDS, ExportDecls, ModuleName,
+                !IO)
         ;
             ( Target = target_java
             ; Target = target_il
@@ -1748,7 +1749,7 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
 
 mlds_has_main(MLDS) =
     (
-        MLDS = mlds(_, _, _, Defns, _, _),
+        MLDS = mlds(_, _, _, Defns, _, _, _),
         defns_contain_main(Defns)
     ->
         has_main
@@ -4579,7 +4580,7 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         Verbose, Stats, !IO),
 
     C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
-    export.produce_header_file(C_ExportDecls, ModuleName, !IO),
+    export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
 
     % Finally we invoke the C compiler to compile it.
     globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
@@ -4939,10 +4940,10 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
         NewTypeClassInfoRttiData], RttiData),
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
-        FinalPreds),
+        FinalPreds, ExportedEnums),
     list.append(RttiDefns, Defns0, Defns),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
-        InitPreds, FinalPreds).
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
+        FinalPreds, ExportedEnums).
 
 %-----------------------------------------------------------------------------%
 %
