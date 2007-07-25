@@ -1,6 +1,13 @@
 *.dep
 *.d
+*.dv
 *.c *.out *.res
+*.err
+*.mh
+*.res1
+*.gz
+*.c_date
+*.log
 export_test.h pragma_import.h
 .allres
 address_of_builtins
@@ -96,3 +103,12 @@ type_spec
 write
 write_reg1
 CLEAN
+*.fix_out
+nonascii_gen
+nonascii.data
+runtests.errs
+.mgnuc_copts
+.mgnuc_opts
+FAILED_TESTS
+NOMAKE_DIRS
+Mercury.modules

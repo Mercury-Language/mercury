@@ -1,5 +1,9 @@
 *.dep
 *.d
+*.dv
+*.err
+*.log
+*.mh
 *.res
 *.out
 CLEAN
@@ -18,3 +22,7 @@ superclass_call
 test_default_func_mode
 typeclass_test_5
 typeclass_test_6
+FAILED_TESTS
+.mgnuc_copts
+.mgnuc_opts
+runtests.errs

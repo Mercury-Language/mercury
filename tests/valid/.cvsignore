@@ -1,13 +1,17 @@
 *.cs
 *.d
+*.dv
 *.date
 *.date0
 *.date3
 *.dep
+*.err
 *.int
 *.int0
 *.int2
 *.int3
+*.log
+*.mh
 *.opt
 *.optdate
 *.res
@@ -15,3 +19,5 @@ undead_proc.h
 CLEAN
 .mgnuc_opts
 .mgnuc_copts
+FAILED_TESTS
+runtests.errs

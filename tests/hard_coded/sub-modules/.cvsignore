@@ -1,6 +1,9 @@
 *.dep
 *.d
+*.err
 *.int0
 *.out
 *.res
 CLEAN
+.mgnuc_copts
+.mgnuc_opts

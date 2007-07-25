@@ -1,3 +1,5 @@
+*.c
+*.c_date
 *.d
 *.date
 *.date0
@@ -8,6 +10,10 @@
 *.int0
 *.int2
 *.int3
+*.mh
+*.mih
 *.dv
 .allres
 CLEAN
+.mgnuc_copts
+.mgnuc_opts

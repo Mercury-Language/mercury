@@ -1,6 +1,11 @@
 *.d
 *.dep
 *.res
+*.mh
 .allres
+*.pic_o
 *.out
 CLEAN
+dice.passes
+.mgnuc_copts
+.mgnuc_opts

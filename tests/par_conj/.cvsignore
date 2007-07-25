@@ -12,3 +12,5 @@
 *.res
 undead_proc.h
 CLEAN
+.mgnuc_copts
+.mgnuc_opts

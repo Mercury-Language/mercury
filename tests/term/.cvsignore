@@ -61,3 +61,5 @@ subset
 sum
 vangelder
 CLEAN
+.mgnuc_copts
+.mgnuc_opts

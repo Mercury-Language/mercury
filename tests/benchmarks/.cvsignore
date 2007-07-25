@@ -8,3 +8,5 @@ poly.*.memprof.Decl
 Prof.MemoryWords Prof.MemoryCells
 .allres
 CLEAN
+.mgnuc_copts
+.mgnuc_opts

@@ -3,3 +3,6 @@
 *.out
 *.res
 CLEAN
+dice.pass
+.mgnuc_copts
+.mgnuc_opts

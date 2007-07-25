@@ -1,6 +1,2 @@
-*.out
-*.res
-*.ugly
-CLEAN
 .mgnuc_copts
 .mgnuc_opts

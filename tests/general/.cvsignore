@@ -14,3 +14,5 @@ mode_inf
 intermod_type
 CLEAN
 base_string_to_integer
+.mgnuc_copts
+.mgnuc_opts
