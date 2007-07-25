@@ -491,7 +491,7 @@ more_precise_answer(Result, Best0, Best) :-
     Best0  = {_, BestAnswer0, _},
     ( more_precise_than(ResultAnswer, BestAnswer0) ->
         Best = Result
-    ->
+    ; 
         Best = Best0
     ).
 
@@ -889,8 +889,8 @@ taint_module_overall_status(Status, ModuleId, !Info, !IO) :-
 update_extra_infos(!Info) :-
     map.foldl(update_extra_infos_2,
         !.Info ^ new_extra_infos, !.Info ^ old_extra_infos, ExtraInfos),
-    !:Info = !.Info0 ^ old_extra_infos := ExtraInfos,
-    !:Info = !.Info0 ^ new_extra_infos := map.init.
+    !:Info = !.Info ^ old_extra_infos := ExtraInfos,
+    !:Info = !.Info ^ new_extra_infos := map.init.
 
 :- pred update_extra_infos_2(module_id::in, module_extra_info_map::in,
     map(module_id, module_extra_info_map)::in,
@@ -1015,7 +1015,7 @@ write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
     % lub of all the new analysis results generated.
     ( NewResults = !.Info ^ new_analysis_results ^ elem(ModuleId) ->
         ModuleStatus = lub_result_statuses(NewResults)
-    else
+    ; 
         ModuleStatus = optimal,
         % Force an `.analysis' file to be written out for this module,
         % even though there are no results recorded for it.
