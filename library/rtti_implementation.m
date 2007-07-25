@@ -2301,6 +2301,13 @@ type_ctor_num_functors(_) = _ :-
     VarOut = VarIn;
 ").
 
+:- pragma foreign_proc("Erlang",
+    unsafe_cast(VarIn::in) = (VarOut::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    VarOut = VarIn
+").
+
 unsafe_cast(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.

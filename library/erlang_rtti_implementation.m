@@ -21,6 +21,7 @@
 
 :- import_module deconstruct.
 :- import_module list.
+:- import_module type_desc.
 :- import_module univ.
 
 :- type type_info.
@@ -52,6 +53,19 @@
 :- mode deconstruct(in, in(canonicalize), out, out, out) is det.
 :- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
 :- mode deconstruct(in, in, out, out, out) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%
+% Implementations for use from construct.
+
+:- func num_functors(type_desc.type_desc) = int is semidet.
+
+:- pred get_functor(type_desc.type_desc::in, int::in, string::out, int::out,
+    list(type_desc.type_desc)::out) is semidet.
+
+:- pred get_functor_with_names(type_desc.type_desc::in, int::in, string::out,
+    int::out, list(type_desc.type_desc)::out, list(string)::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -606,7 +620,7 @@ extra_args(Functor) = ExtraArgs :-
 
 get_du_functor_arg(TypeInfo, Functor, Term, Loc) = Univ :-
     ArgInfo = list.index1_det(Functor ^ edu_arg_infos, Loc),
-        
+
     MaybePTI = ArgInfo ^ du_arg_type,
     Info = yes({TypeInfo, yes({Functor, Term})}),
     ArgTypeInfo = type_info(Info, MaybePTI),
@@ -648,6 +662,184 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
     ;
         TypeInfo = TypeInfo0
     ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+num_functors(TypeDesc) = NumFunctors :-
+    num_functors(unsafe_cast(TypeDesc), yes(NumFunctors)).
+
+:- pred num_functors(type_info::in, maybe(int)::out) is det.
+
+num_functors(TypeInfo, MaybeNumFunctors) :-
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    (
+        TypeCtorRep = etcr_du,
+        FunctorReps = TypeCtorInfo ^ type_ctor_functors,
+        MaybeNumFunctors = yes(list.length(FunctorReps))
+    ;
+        ( TypeCtorRep = etcr_dummy
+        ; TypeCtorRep = etcr_tuple
+        ),
+        MaybeNumFunctors = yes(1)
+    ;
+        TypeCtorRep = etcr_list,
+        MaybeNumFunctors = yes(2)
+    ;
+        ( TypeCtorRep = etcr_array
+        ; TypeCtorRep = etcr_eqv
+        ; TypeCtorRep = etcr_int
+        ; TypeCtorRep = etcr_float
+        ; TypeCtorRep = etcr_char
+        ; TypeCtorRep = etcr_string
+        ; TypeCtorRep = etcr_void
+        ; TypeCtorRep = etcr_stable_c_pointer
+        ; TypeCtorRep = etcr_c_pointer
+        ; TypeCtorRep = etcr_pred
+        ; TypeCtorRep = etcr_func
+        ; TypeCtorRep = etcr_ref
+        ; TypeCtorRep = etcr_type_desc
+        ; TypeCtorRep = etcr_pseudo_type_desc
+        ; TypeCtorRep = etcr_type_ctor_desc
+        ; TypeCtorRep = etcr_type_info
+        ; TypeCtorRep = etcr_type_ctor_info
+        ; TypeCtorRep = etcr_typeclass_info
+        ; TypeCtorRep = etcr_base_typeclass_info
+        ; TypeCtorRep = etcr_foreign
+        ),
+        MaybeNumFunctors = no
+    ;
+        ( TypeCtorRep = etcr_hp
+        ; TypeCtorRep = etcr_subgoal
+        ; TypeCtorRep = etcr_ticket
+        ),
+        error("num_functors: type_ctor_rep not handled")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_functor(TypeDesc, FunctorNum, Name, Arity, ArgTypes) :-
+    get_functor_with_names(TypeDesc, FunctorNum, Name, Arity, ArgTypes, _).
+
+get_functor_with_names(TypeDesc, FunctorNum, Name, Arity, ArgTypes, ArgNames) :-
+    MaybeResult = get_functor_with_names(unsafe_cast(TypeDesc), FunctorNum),
+    MaybeResult = yes({Name, Arity, ArgTypeInfos, ArgNames}),
+    ArgTypes = list.map(unsafe_cast, ArgTypeInfos).
+
+:- func get_functor_with_names(type_info, int) =
+    maybe({string, int, list(type_info), list(string)}).
+
+get_functor_with_names(TypeInfo, NumFunctor) = Result :-
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    (
+        TypeCtorRep = etcr_du,
+        FunctorReps = TypeCtorInfo ^ type_ctor_functors,
+        ( list.index0(FunctorReps, NumFunctor, FunctorRep) ->
+            MaybeExistInfo = FunctorRep ^ edu_exist_info,
+            (
+                MaybeExistInfo = yes(_),
+                Result = no
+            ;
+                MaybeExistInfo = no,
+                ArgInfos = FunctorRep ^ edu_arg_infos,
+
+                list.foldl2(
+                    (pred(ArgInfo::in, T0::in, T::out, N0::in, N::out) is det :-
+                        MaybePTI = ArgInfo ^ du_arg_type,
+                        Info = yes({TypeInfo, no : pti_info(int)}),
+                        ArgTypeInfo = type_info(Info, MaybePTI),
+                        T = [ArgTypeInfo | T0],
+                        
+                        MaybeArgName = ArgInfo ^ du_arg_name,
+                        (
+                            MaybeArgName = yes(ArgName)
+                        ;
+                            MaybeArgName = no,
+                            ArgName = ""
+                        ),
+                        N = [ArgName | N0]
+                    ), ArgInfos, [], RevArgTypes, [], RevArgNames),
+
+                Name = FunctorRep ^ edu_name,
+                Arity = FunctorRep ^ edu_orig_arity,
+                ArgTypes = list.reverse(RevArgTypes),
+                ArgNames = list.reverse(RevArgNames),
+                Result = yes({Name, Arity, ArgTypes, ArgNames})
+            )
+        ;
+            Result = no
+        )
+    ;
+        TypeCtorRep = etcr_dummy,
+        Name = TypeCtorInfo ^ type_ctor_dummy_functor_name,
+        Arity = 0,
+        ArgTypes = [],
+        ArgNames = [],
+        Result = yes({Name, Arity, ArgTypes, ArgNames})
+    ;
+        TypeCtorRep = etcr_tuple,
+        type_ctor_and_args(TypeInfo, _TypeCtorInfo, ArgTypes),
+        Name = "{}",
+        Arity = list.length(ArgTypes),
+        ArgNames = list.duplicate(Arity, ""),
+        Result = yes({Name, Arity, ArgTypes, ArgNames})
+    ;
+        TypeCtorRep = etcr_list,
+        ( NumFunctor = 1 ->
+            Name = "[]",
+            Arity = 0,
+            ArgTypes = [],
+            ArgNames = [],
+            Result = yes({Name, Arity, ArgTypes, ArgNames})
+
+        ; NumFunctor = 2 ->
+            ArgTypeInfo = TypeInfo ^ type_info_index(1),
+
+            Name = "[|]",
+            Arity = 2,
+            ArgTypes = [ArgTypeInfo, TypeInfo],
+            ArgNames = ["", ""],
+            Result = yes({Name, Arity, ArgTypes, ArgNames})
+        ;
+            Result = no
+        )
+    ;
+        ( TypeCtorRep = etcr_array
+        ; TypeCtorRep = etcr_eqv
+        ; TypeCtorRep = etcr_int
+        ; TypeCtorRep = etcr_float
+        ; TypeCtorRep = etcr_char
+        ; TypeCtorRep = etcr_string
+        ; TypeCtorRep = etcr_void
+        ; TypeCtorRep = etcr_stable_c_pointer
+        ; TypeCtorRep = etcr_c_pointer
+        ; TypeCtorRep = etcr_pred
+        ; TypeCtorRep = etcr_func
+        ; TypeCtorRep = etcr_ref
+        ; TypeCtorRep = etcr_type_desc
+        ; TypeCtorRep = etcr_pseudo_type_desc
+        ; TypeCtorRep = etcr_type_ctor_desc
+        ; TypeCtorRep = etcr_type_info
+        ; TypeCtorRep = etcr_type_ctor_info
+        ; TypeCtorRep = etcr_typeclass_info
+        ; TypeCtorRep = etcr_base_typeclass_info
+        ; TypeCtorRep = etcr_foreign
+        ),
+        Result = no
+    ;
+        ( TypeCtorRep = etcr_hp
+        ; TypeCtorRep = etcr_subgoal
+        ; TypeCtorRep = etcr_ticket
+        ),
+        error("num_functors: type_ctor_rep not handled")
+    ).
+
+
+
+
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1450,6 +1642,21 @@ eval_pseudo_type_info_thunk(X) = erlang_rtti_implementation.unsafe_cast(X) :-
 ").
 eval_type_info_thunk_2(X) = erlang_rtti_implementation.unsafe_cast(X) :-
     det_unimplemented("eval_type_info_thunk_2/1").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+:- pred is_erlang_backend is semidet.
+:- implementation.
+
+:- pragma foreign_proc("Erlang", is_erlang_backend,
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    SUCCESS_INDICATOR = true
+").
+
+is_erlang_backend :-
+    semidet_fail.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

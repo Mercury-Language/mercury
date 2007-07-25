@@ -1009,16 +1009,6 @@ limited_deconstruct_idcc(Term::in, _MaxArity::in,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred is_erlang_backend is semidet.
-
-:- pragma foreign_proc("Erlang", is_erlang_backend,
-        [will_not_call_mercury, thread_safe, promise_pure], "
-    SUCCESS_INDICATOR = true
-").
-
-is_erlang_backend :-
-    semidet_fail.
-
 :- pred local_deconstruct(T, noncanon_handling, string, int, list(univ)).
 :- mode local_deconstruct(in, in(do_not_allow), out, out, out) is det.
 :- mode local_deconstruct(in, in(canonicalize), out, out, out) is det.
@@ -1026,7 +1016,7 @@ is_erlang_backend :-
 :- mode local_deconstruct(in, in, out, out, out) is cc_multi.
 
 local_deconstruct(T, H, F, A, As) :-
-    ( is_erlang_backend ->
+    ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.deconstruct(T, H, F, A, As)
     ;
         rtti_implementation.deconstruct(T, H, F, A, As)

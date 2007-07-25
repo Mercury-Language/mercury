@@ -117,6 +117,10 @@
 
 :- import_module require.
 
+% For use by the Erlang backends.
+%
+:- use_module erlang_rtti_implementation.
+
 % For use by the Java and IL backends.
 %
 :- use_module rtti_implementation.
@@ -145,7 +149,12 @@ det_num_functors(TypeInfo) =
     SUCCESS_INDICATOR = (Functors >= 0);
 }").
 
-num_functors(TypeDesc) = rtti_implementation.num_functors(TypeDesc).
+num_functors(TypeDesc) = 
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.num_functors(TypeDesc)
+    ;
+        rtti_implementation.num_functors(TypeDesc)
+    ).
 
 get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
             PseudoTypeInfoList) :-
@@ -163,8 +172,14 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
 
 get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
         MaybeTypeInfoList) :-
-    rtti_implementation.get_functor(TypeInfo, FunctorNumber,
-        FunctorName, Arity, TypeInfoList),
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.get_functor(TypeInfo, FunctorNumber,
+            FunctorName, Arity, TypeInfoList)
+    ;
+        rtti_implementation.get_functor(TypeInfo, FunctorNumber,
+            FunctorName, Arity, TypeInfoList)
+    ),
+
     % The backends in which we use this definition of this predicate
     % don't yet support function symbols with existential types, which is
     % the only kind of function symbol in which we may want to return unbound.
@@ -234,8 +249,14 @@ get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
 
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         MaybeTypeInfoList, Names) :-
-    rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
-        FunctorName, Arity, TypeInfoList, Names),
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
+            FunctorName, Arity, TypeInfoList, Names)
+    ;
+        rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
+            FunctorName, Arity, TypeInfoList, Names)
+    ),
+
     % The backends in which we use this definition of this predicate
     % don't yet support function symbols with existential types, which is
     % the only kind of function symbol in which we may want to return unbound.
