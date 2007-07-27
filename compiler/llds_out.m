@@ -193,6 +193,7 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module char.
@@ -2705,10 +2706,21 @@ output_foreign_proc_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
 
 output_foreign_proc_inputs([], !IO).
 output_foreign_proc_inputs([Input | Inputs], !IO) :-
-    Input = foreign_proc_input(_VarName, _VarType, IsDummy, _OrigType, _Rval,
+    Input = foreign_proc_input(VarName, VarType, IsDummy, _OrigType, _Rval,
         _MaybeForeignTypeInfo, _BoxPolicy),
     (
-        IsDummy = yes
+        IsDummy = yes,
+        ( 
+            % Avoid outputting an assignment for builtin dummy types.
+            % For other dummy types we must output an assignment because
+            % code in the foreign_proc body may examine the value.
+            type_to_ctor_and_args(VarType, VarTypeCtor, []),
+            is_builtin_dummy_argument_type(VarTypeCtor)
+        ->
+            true
+        ;
+            io.write_string("\t" ++ VarName ++ " = 0;\n", !IO)
+        )
     ;
         IsDummy = no,
         output_foreign_proc_input(Input, !IO)
