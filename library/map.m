@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,6 +294,12 @@
 :- mode map.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
 :- mode map.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 
+:- func map.foldr(func(K, V, A) = A, map(K, V), A) = A.
+:- pred map.foldr(pred(K, V, A, A), map(K, V), A, A).
+:- mode map.foldr(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode map.foldr(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode map.foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
+
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with two accumulators for each key-value pair.
     % (Although no more expressive than map.foldl, this is often
@@ -307,6 +313,16 @@
 :- mode map.foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
 :- mode map.foldl2(pred(in, in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+
+:- pred map.foldr2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
+:- mode map.foldr2(pred(in, in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode map.foldr2(pred(in, in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode map.foldr2(pred(in, in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode map.foldr2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
 
     % Perform an inorder traversal of the map, applying an accumulator
@@ -326,6 +342,18 @@
 :- mode map.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
 
+:- pred map.foldr3(pred(K, V, A, A, B, B, C, C), map(K, V), A, A, B, B, C, C).
+:- mode map.foldr3(pred(in, in, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out) is det.
+:- mode map.foldr3(pred(in, in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode map.foldr3(pred(in, in, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, di, uo) is det.
+:- mode map.foldr3(pred(in, in, in, out, di, uo, di, uo) is det,
+    in, in, out, di, uo, di, uo) is det.
+:- mode map.foldr3(pred(in, in, di, uo, di, uo, di, uo) is det,
+    in, di, uo, di, uo, di, uo) is det.
+
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with four accumulators for each key-value pair.
     % (Although no more expressive than map.foldl, this is often
@@ -343,6 +371,21 @@
 :- mode map.foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo, di, uo) is det.
 :- mode map.foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
+    in, di, uo, di, uo, di, uo, di, uo) is det.
+
+:- pred map.foldr4(pred(K, V, A, A, B, B, C, C, D, D), map(K, V),
+    A, A, B, B, C, C, D, D).
+:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out) is det.
+:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out) is semidet.
+:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, di, uo) is det.
+:- mode map.foldr4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
+    in, in, out, in, out, di, uo, di, uo) is det.
+:- mode map.foldr4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
+    in, in, out, di, uo, di, uo, di, uo) is det.
+:- mode map.foldr4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo, di, uo) is det.
 
     % Apply a transformation predicate to all the values in a map.
@@ -836,6 +879,18 @@ map.foldl3(Pred, Map, !A, !B, !C) :-
 map.foldl4(Pred, Map, !A, !B, !C, !D) :-
     tree234.foldl4(Pred, Map, !A, !B, !C, !D).
 
+map.foldr(Pred, Map, !A) :-
+    tree234.foldr(Pred, Map, !A).
+
+map.foldr2(Pred, Map, !A, !B) :-
+    tree234.foldr2(Pred, Map, !A, !B).
+
+map.foldr3(Pred, Map, !A, !B, !C) :-
+    tree234.foldr3(Pred, Map, !A, !B, !C).
+
+map.foldr4(Pred, Map, !A, !B, !C, !D) :-
+    tree234.foldr4(Pred, Map, !A, !B, !C, !D).
+
 %-----------------------------------------------------------------------------%
 
 map.map_values(Pred, Map0, Map) :-
@@ -1097,6 +1152,10 @@ map.optimize(M1) = M2 :-
 map.foldl(F, M, A) = B :-
     P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
     map.foldl(P, M, A, B).
+
+map.foldr(F, M, A) = B :-
+    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+    map.foldr(P, M, A, B).
 
 map.map_values(F, M1) = M2 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),

@@ -130,6 +130,7 @@ ORDINARY_PROGS=	\
 	list_series_int \
 	loop_inv_test \
 	loop_inv_test1 \
+	map_fold \
 	mapped_module \
 	merge_and_remove_dups \
 	minint_bug \

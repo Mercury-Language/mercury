@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -169,6 +169,54 @@
 :- mode tree234.foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
 	in, in, out, di, uo, di, uo, di, uo) is det.
 :- mode tree234.foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
+	in, di, uo, di, uo, di, uo, di, uo) is det.
+
+:- func tree234.foldr(func(K, V, A) = A, tree234(K, V), A) = A.
+
+:- pred tree234.foldr(pred(K, V, A, A), tree234(K, V), A, A).
+:- mode tree234.foldr(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode tree234.foldr(pred(in, in, in, out) is semidet, in, in, out)
+    is semidet.
+:- mode tree234.foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
+
+:- pred tree234.foldr2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
+:- mode tree234.foldr2(pred(in, in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode tree234.foldr2(pred(in, in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode tree234.foldr2(pred(in, in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode tree234.foldr2(pred(in, in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+
+:- pred tree234.foldr3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
+	A, A, B, B, C, C).
+:- mode tree234.foldr3(pred(in, in, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out) is det.
+:- mode tree234.foldr3(pred(in, in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode tree234.foldr3(pred(in, in, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, di, uo) is det.
+:- mode tree234.foldr3(pred(in, in, in, out, di, uo, di, uo) is det,
+    in, in, out, di, uo, di, uo) is det.
+:- mode tree234.foldr3(pred(in, in, di, uo, di, uo, di, uo) is det,
+    in, di, uo, di, uo, di, uo) is det.
+
+:- pred tree234.foldr4(pred(K, V, A, A, B, B, C, C, D, D), tree234(K, V),
+	A, A, B, B, C, C, D, D).
+:- mode tree234.foldr4(pred(in, in, in, out, in, out, in, out, in, out)
+	is det,
+	in, in, out, in, out, in, out, in, out) is det.
+:- mode tree234.foldr4(pred(in, in, in, out, in, out, in, out, in, out)
+	is semidet,
+	in, in, out, in, out, in, out, in, out) is semidet.
+:- mode tree234.foldr4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
+	in, in, out, in, out, in, out, di, uo) is det.
+:- mode tree234.foldr4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
+	in, in, out, in, out, di, uo, di, uo) is det.
+:- mode tree234.foldr4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
+	in, in, out, di, uo, di, uo, di, uo) is det.
+:- mode tree234.foldr4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
 	in, di, uo, di, uo, di, uo, di, uo) is det.
 
 :- func tree234.map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
@@ -2510,6 +2558,90 @@ tree234.foldl4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 
 %------------------------------------------------------------------------------%
 
+tree234.foldr(_Pred, empty, !A).
+tree234.foldr(Pred, two(K, V, T0, T1), !A) :-
+    tree234.foldr(Pred, T1, !A),
+    Pred(K, V, !A),
+    tree234.foldr(Pred, T0, !A).
+tree234.foldr(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A) :-
+    tree234.foldr(Pred, T2, !A),
+    Pred(K1, V1, !A),
+    tree234.foldr(Pred, T1, !A),
+    Pred(K0, V0, !A),
+    tree234.foldr(Pred, T0, !A).
+tree234.foldr(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), !A) :-
+    tree234.foldr(Pred, T3, !A),
+    Pred(K2, V2, !A),
+    tree234.foldr(Pred, T2, !A),
+    Pred(K1, V1, !A),
+    tree234.foldr(Pred, T1, !A),
+    Pred(K0, V0, !A),
+    tree234.foldr(Pred, T0, !A).
+
+tree234.foldr2(_Pred, empty, !A, !B).
+tree234.foldr2(Pred, two(K, V, T0, T1), !A, !B) :-
+    tree234.foldr2(Pred, T1, !A, !B),
+    Pred(K, V, !A, !B),
+    tree234.foldr2(Pred, T0, !A, !B).
+tree234.foldr2(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B) :-
+    tree234.foldr2(Pred, T2, !A, !B),
+    Pred(K1, V1, !A, !B),
+    tree234.foldr2(Pred, T1, !A, !B),
+    Pred(K0, V0, !A, !B),
+    tree234.foldr2(Pred, T0, !A, !B).
+tree234.foldr2(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), !A, !B) :-
+    tree234.foldr2(Pred, T3, !A, !B),
+    Pred(K2, V2, !A, !B),
+    tree234.foldr2(Pred, T2, !A, !B),
+    Pred(K1, V1, !A, !B),
+    tree234.foldr2(Pred, T1, !A, !B),
+    Pred(K0, V0, !A, !B),
+    tree234.foldr2(Pred, T0, !A, !B).
+
+tree234.foldr3(_Pred, empty, !A, !B, !C).
+tree234.foldr3(Pred, two(K, V, T0, T1), !A, !B, !C) :-
+    tree234.foldr3(Pred, T1, !A, !B, !C),
+    Pred(K, V, !A, !B, !C),
+    tree234.foldr3(Pred, T0, !A, !B, !C).
+tree234.foldr3(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C) :-
+    tree234.foldr3(Pred, T2, !A, !B, !C),
+    Pred(K1, V1, !A, !B, !C),
+    tree234.foldr3(Pred, T1, !A, !B, !C),
+    Pred(K0, V0, !A, !B, !C),
+    tree234.foldr3(Pred, T0, !A, !B, !C).
+tree234.foldr3(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+        !A, !B, !C) :-
+    tree234.foldr3(Pred, T3, !A, !B, !C),
+    Pred(K2, V2, !A, !B, !C),
+    tree234.foldr3(Pred, T2, !A, !B, !C),
+    Pred(K1, V1, !A, !B, !C),
+    tree234.foldr3(Pred, T1, !A, !B, !C),
+    Pred(K0, V0, !A, !B, !C),
+    tree234.foldr3(Pred, T0, !A, !B, !C).
+
+tree234.foldr4(_Pred, empty, !A, !B, !C, !D).
+tree234.foldr4(Pred, two(K, V, T0, T1), !A, !B, !C, !D) :-
+	tree234.foldr4(Pred, T1, !A, !B, !C, !D),
+	Pred(K, V, !A, !B, !C, !D),
+	tree234.foldr4(Pred, T0, !A, !B, !C, !D).
+tree234.foldr4(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C, !D) :-
+	tree234.foldr4(Pred, T2, !A, !B, !C, !D),
+	Pred(K1, V1, !A, !B, !C, !D),
+	tree234.foldr4(Pred, T1, !A, !B, !C, !D),
+	Pred(K0, V0, !A, !B, !C, !D),
+	tree234.foldr4(Pred, T0, !A, !B, !C, !D).
+tree234.foldr4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		!A, !B, !C, !D) :-
+	tree234.foldr4(Pred, T3, !A, !B, !C, !D),
+	Pred(K2, V2, !A, !B, !C, !D),
+	tree234.foldr4(Pred, T2, !A, !B, !C, !D),
+	Pred(K1, V1, !A, !B, !C, !D),
+	tree234.foldr4(Pred, T1, !A, !B, !C, !D),
+	Pred(K0, V0, !A, !B, !C, !D),
+	tree234.foldr4(Pred, T0, !A, !B, !C, !D).
+
+%------------------------------------------------------------------------------%
+
 tree234.map_values(_Pred, empty, empty).
 tree234.map_values(Pred, Tree0, Tree) :-
     Tree0 = two(K0, V0, Left0, Right0),
@@ -2644,6 +2776,10 @@ tree234.tree234_to_assoc_list(T) = AL :-
 tree234.foldl(F, T, A) = B :-
     P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
     tree234.foldl(P, T, A, B).
+
+tree234.foldr(F, T, A) = B :-
+    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+    tree234.foldr(P, T, A, B).
 
 tree234.map_values(F, T1) = T2 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),

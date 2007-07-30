@@ -21,6 +21,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* The foldr family of functions and predicates has been added to the map
+  and tree234 modules.
+
 * The following functions have been added to the integer module:
 	integer.from_base_string/2
 	integer.det_from_base_string/2
