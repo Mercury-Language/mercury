@@ -193,7 +193,6 @@ A. The following language features are not supported and will not be:
 
 	benchmarking
 	bit_buffer
-	bitmap
 	construct
 	deconstruct
 	dir

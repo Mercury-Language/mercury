@@ -1570,6 +1570,13 @@ public class MercuryBitmap {
     SUCCESS_INDICATOR = MR_bitmap_eq(BM1, BM2);
 ").
 
+:- pragma foreign_proc("Erlang",
+    bitmap_equal(BM1::in, BM2::in),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    SUCCESS_INDICATOR = (BM1 =:= BM2)
+").
+
 bitmap_equal(BM1, BM2) :-
     BM1 ^ num_bits = (BM2 ^ num_bits) @ NumBits,
     bytes_equal(0, byte_index_for_bit(NumBits), BM1, BM2).
@@ -1598,6 +1605,20 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     Result = ((res < 0) ? MR_COMPARE_LESS
                 : (res == 0) ? MR_COMPARE_EQUAL
                 : MR_COMPARE_GREATER);
+").
+
+:- pragma foreign_proc("Erlang",
+    bitmap_compare(Result::uo, BM1::in, BM2::in),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    if
+        BM1 =:= BM2 ->
+            Result = {'='};
+        BM1 < BM2 ->
+            Result = {'<'};
+        true ->
+            Result = {'>'}
+    end
 ").
 
 bitmap_compare(Result, BM1, BM2) :-
@@ -1663,6 +1684,13 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
     NumBits = BM.num_bits;
 ").
 
+:- pragma foreign_proc("Erlang",
+    num_bits(BM::in) = (NumBits::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    {_, NumBits} = BM
+").
+
 %-----------------------------------------------------------------------------%
 
 :- func 'num_bits :='(bitmap, num_bits) = bitmap.
@@ -1689,6 +1717,14 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
 "
     BM = BM0;
     BM.num_bits = NumBits;
+").
+
+:- pragma foreign_proc("Erlang",
+    'num_bits :='(BM0::bitmap_di, NumBits::in) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    {Bin, _} = BM0,
+    BM = {Bin, NumBits}
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1720,6 +1756,17 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Byte = BM.elements[N];
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_byte(N::in, BM::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    {Bin, _} = BM,
+    Size = size(Bin),
+    Left = N * 8,
+    Right = (Size - N - 1) * 8,
+    <<_:Left, Byte:8, _:Right>> = Bin
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1757,6 +1804,17 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     BM.elements[N] = (byte) Byte;
 ").
 
+:- pragma foreign_proc("Erlang",
+    'unsafe_byte :='(N::in, BM0::bitmap_di, Byte::in) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    {Bin0, NumBits} = BM0,
+    {Left, Mid} = split_binary(Bin0, N),
+    {_, Right} = split_binary(Mid, 1),
+    Bin = list_to_binary([Left, Byte, Right]),
+    BM = {Bin, NumBits}
+").
+
 %-----------------------------------------------------------------------------%
 
 :- func allocate_bitmap(num_bits) = bitmap.
@@ -1783,6 +1841,15 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     BM = new MercuryBitmap(N);
 ").
 
+:- pragma foreign_proc("Erlang",
+    allocate_bitmap(N::in) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Roundup = 8 * ((N + 7) div 8),
+    Bin = <<0:Roundup>>,
+    BM = {Bin, N}
+").
+
 :- func resize_bitmap(bitmap, num_bits) = bitmap.
 :- mode resize_bitmap(bitmap_di, in) = bitmap_uo is det.
 
@@ -1797,6 +1864,13 @@ resize_bitmap(OldBM, N) =
 "
     MR_allocate_bitmap_msg(BM, BM0->num_bits, MR_PROC_LABEL);
     MR_copy_bitmap(BM, BM0);
+").
+
+:- pragma foreign_proc("Erlang",
+    copy(BM0::in) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0
 ").
 
 copy(BM0) = BM :-
