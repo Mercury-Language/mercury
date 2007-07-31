@@ -60,7 +60,7 @@
 :- pred lookup_mmc_options(options_variables::in, maybe(list(string))::out,
     io::di, io::uo) is det.
 
-    % Same as lookup_mmc_module_options, but also adds the module-specific
+    % Same as lookup_mmc_options, but also adds the module-specific
     % (MCFLAGS-module) options.
     %
 :- pred lookup_mmc_module_options(options_variables::in, module_name::in,

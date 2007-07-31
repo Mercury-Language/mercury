@@ -663,7 +663,7 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
             BaseName = ""
         ),
         file_name_to_module_name(BaseName, DefaultModuleName),
-        read_first_item(DefaultModuleName, FileName,
+        read_first_item(DefaultModuleName, FileName, _,
             ModuleName, RevMessages, _, _, _, !IO),
         MaybeModuleName = yes(ModuleName),
         prog_out.write_messages(list.reverse(RevMessages), !IO),
@@ -700,9 +700,9 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
 read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
     % Read all the items (the first one is handled specially).
     io.input_stream(Stream, !IO),
-    io.input_stream_name(Stream, SourceFileName, !IO),
-    read_first_item(DefaultModuleName, SourceFileName, ModuleName,
-        RevMessages0, RevItems0, MaybeSecondTerm, Error0, !IO),
+    io.input_stream_name(Stream, SourceFileName0, !IO),
+    read_first_item(DefaultModuleName, SourceFileName0, SourceFileName,
+        ModuleName, RevMessages0, RevItems0, MaybeSecondTerm, Error0, !IO),
     (
         MaybeSecondTerm = yes(SecondTerm),
         process_read_term(ModuleName, SecondTerm, MaybeSecondItem),
@@ -738,11 +738,11 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
     % and then if it turns out to not be a `:- module' declaration
     % we reparse it in the default module scope. Blecchh.
     %
-:- pred read_first_item(module_name::in, file_name::in, module_name::out,
-    message_list::out, item_list::out, maybe(read_term)::out,
+:- pred read_first_item(module_name::in, file_name::in, file_name::out,
+    module_name::out, message_list::out, item_list::out, maybe(read_term)::out,
     module_error::out, io.state::di, io.state::uo) is det.
 
-read_first_item(DefaultModuleName, SourceFileName, ModuleName,
+read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         Messages, Items, MaybeSecondTerm, Error, !IO) :-
     globals.io_lookup_bool_option(warn_missing_module_name, WarnMissing, !IO),
     globals.io_lookup_bool_option(warn_wrong_module_name, WarnWrong, !IO),
@@ -750,16 +750,16 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
-    parser.read_term_filename(SourceFileName, MaybeFirstTerm, !IO),
+    parser.read_term_filename(!.SourceFileName, MaybeFirstTerm, !IO),
     root_module_name(RootModuleName),
     process_read_term(RootModuleName, MaybeFirstTerm, MaybeFirstItem),
     (
         % Apply and then skip `pragma source_file' decls, by calling ourselves
         % recursively with the new source file name.
         MaybeFirstItem = read_item_ok(FirstItem, _),
-        FirstItem = item_pragma(_, pragma_source_file(NewSourceFileName))
+        FirstItem = item_pragma(_, pragma_source_file(!:SourceFileName))
     ->
-        read_first_item(DefaultModuleName, NewSourceFileName,
+        read_first_item(DefaultModuleName, !SourceFileName,
             ModuleName, Messages, Items, MaybeSecondTerm, Error, !IO)
     ;
         % Check if the first term was a `:- module' decl.
@@ -777,7 +777,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
             Messages = []
         ;
             StartModuleNameString = sym_name_to_string(StartModuleName),
-            WrongModuleWarning = "source file `" ++ SourceFileName ++
+            WrongModuleWarning = "source file `" ++ !.SourceFileName ++
                 "' contains module named `" ++ StartModuleNameString ++ "'",
             maybe_add_warning(WarnWrong, MaybeFirstTerm, FirstContext,
             WrongModuleWarning, [], Messages),
@@ -798,7 +798,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         ( MaybeFirstItem = read_item_ok(_FirstItem, FirstContext0) ->
             FirstContext = FirstContext0
         ;
-            term.context_init(SourceFileName, 1, FirstContext)
+            term.context_init(!.SourceFileName, 1, FirstContext)
         ),
         (
             WarnMissing = yes,

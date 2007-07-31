@@ -152,6 +152,7 @@ SINGLEMODULE= \
 	polymorphic_unification \
 	pragma_c_code_dup_var \
 	pragma_c_code_no_det \
+	pragma_source_file \
 	predmode \
 	prog_io_erroneous \
 	promise_equivalent_clauses \
