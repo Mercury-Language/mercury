@@ -271,7 +271,7 @@ slice_add_trace_count(LineNoAndCount, ExecCounts0, ExecCounts) :-
 % mechanism for reading in slices above.
 
 :- pragma foreign_export("C", read_dice(in, in, out, di, uo),
-    "MR_MDB_read_dice").
+    "MR_MDBCOMP_read_dice").
 
 read_dice(PassFile, FailFile, Result, !IO) :-
     read_trace_counts_source(PassFile, ReadPassResult, !IO),
@@ -301,7 +301,7 @@ read_dice(PassFile, FailFile, Result, !IO) :-
 	is det.
 
 :- pragma foreign_export("C", maybe_dice_error_to_problem_string(in, out),
-	"MR_DD_maybe_dice_error_to_problem_string").
+	"MR_MDBCOMP_maybe_dice_error_to_problem_string").
 
 maybe_dice_error_to_problem_string(ok(_), "").
 maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
@@ -309,7 +309,7 @@ maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
 :- pred det_maybe_dice_error_to_dice(maybe_error(dice)::in, dice::out) is det.
 
 :- pragma foreign_export("C", det_maybe_dice_error_to_dice(in, out),
-	"MR_DD_det_maybe_dice_error_to_dice").
+	"MR_MDBCOMP_det_maybe_dice_error_to_dice").
 
 det_maybe_dice_error_to_dice(ok(Dice), Dice).
 det_maybe_dice_error_to_dice(error(_), _) :-
@@ -586,7 +586,7 @@ format_slice_exec_count(slice_exec_count(_, _, Count, Tests)) =
 
 :- pragma foreign_export("C",
     read_dice_to_string_no_limit(in, in, in, in, in, out, out, di, uo),
-    "MR_MDB_read_dice_to_string").
+    "MR_MDBCOMP_read_dice_to_string").
 
 :- pred read_dice_to_string_no_limit(string::in, string::in, string::in,
     int::in, string::in, string::out, string::out, io::di, io::uo) is det.
@@ -834,7 +834,7 @@ suspicion_ratio_binary(PassCount, FailCount) = R :-
 
 :- pragma foreign_export("C",
     get_suspicion_for_label_layout(in, in) = out,
-	"MR_DD_get_suspicion_for_label_layout").
+	"MR_MDBCOMP_get_suspicion_for_label_layout").
 
 get_suspicion_for_label_layout(Dice, LabelLayout) = Suspicion :-
 	ProcLayout = get_proc_layout_from_label_layout(LabelLayout),

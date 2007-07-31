@@ -2268,17 +2268,17 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
     );
 
     MR_TRACE_CALL_MERCURY(
-        MR_MDB_read_dice(
+        MR_MDBCOMP_read_dice(
             aligned_pass_trace_counts_file,
             aligned_fail_trace_counts_file,
             &maybe_dice);
-        MR_DD_maybe_dice_error_to_problem_string(maybe_dice, problem);
+        MR_MDBCOMP_maybe_dice_error_to_problem_string(maybe_dice, problem);
     );
     if (! MR_streq(*problem, "")) {
         return MR_FALSE;
     } else {
         MR_TRACE_CALL_MERCURY(
-            MR_DD_det_maybe_dice_error_to_dice(maybe_dice, &dice);
+            MR_MDBCOMP_det_maybe_dice_error_to_dice(maybe_dice, &dice);
         );
     }
 
@@ -2306,7 +2306,7 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
                 table_cell = &(module->MR_ml_label_exec_count[label_index]);
                 MR_TRACE_CALL_MERCURY(
                     f_suspicion =
-                        MR_DD_get_suspicion_for_label_layout(dice, label);
+                        MR_MDBCOMP_get_suspicion_for_label_layout(dice, label);
                 );
                 /*
                 ** Instead of using a ratio between 0 and 1 we store an integer

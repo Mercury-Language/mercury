@@ -35,6 +35,7 @@
 :- interface.
 
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.rtti_access.
 
 :- import_module bool.
 :- import_module char.
@@ -282,11 +283,11 @@
     % goal_paths, this list is in top-down order.
 :- type term_path ==    list(int).
 
-    % Returns type_of(_ `with_type` proc_rep), for use in C code.
+    % Returns type_of(_ : proc_rep), for use in C code.
     %
 :- func proc_rep_type = type_desc.
 
-    % Returns type_of(_ `with_type` goal_rep), for use in C code.
+    % Returns type_of(_ : goal_rep), for use in C code.
     %
 :- func goal_rep_type = type_desc.
 
@@ -330,7 +331,7 @@
 
 :- func goal_type_to_byte(bytecode_goal_type) = int.
 
-:- func byte_to_goal_type(int) = bytecode_goal_type is semidet.
+:- pred byte_to_goal_type(int::in, bytecode_goal_type::out) is semidet.
 
     % A variable number is represented in a byte if there are no more than
     % 255 variables in the procedure.  Otherwise a short is used.
@@ -342,6 +343,19 @@
 :- pred var_num_rep_byte(var_num_rep, int).
 :- mode var_num_rep_byte(in, out) is det.
 :- mode var_num_rep_byte(out, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+:- type bytecode
+    --->    dummy_bytecode.
+
+:- pragma foreign_type("C", bytecode, "const MR_uint_least8_t *",
+    [can_pass_as_mercury_type, stable]).
+:- pragma foreign_type("Java", bytecode, "java.lang.Object", []). %stub only
+
+:- pred read_proc_rep(bytecode::in, label_layout::in, proc_rep::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % Some predicates that operate on polymorphic values do not need
     % the type_infos describing the types bound to the variables.
@@ -370,6 +384,8 @@
 :- implementation.
 
 :- import_module char.
+:- import_module exception.
+:- import_module int.
 :- import_module require.
 :- import_module string.
 
@@ -444,11 +460,11 @@ atomic_goal_identifiable(event_call_rep(_, _)) = no.
 
 :- pragma export(proc_rep_type = out, "ML_proc_rep_type").
 
-proc_rep_type = type_of(_ `with_type` proc_rep).
+proc_rep_type = type_of(_ : proc_rep).
 
 :- pragma export(goal_rep_type = out, "ML_goal_rep_type").
 
-goal_rep_type = type_of(_ `with_type` goal_rep).
+goal_rep_type = type_of(_ : goal_rep).
 
 %-----------------------------------------------------------------------------%
 
@@ -542,7 +558,7 @@ determinism_representation(cc_multidet_rep, 14).
 goal_type_to_byte(Type) = TypeInt :-
     goal_type_byte(TypeInt, Type).
 
-byte_to_goal_type(TypeInt) = Type :-
+byte_to_goal_type(TypeInt, Type) :-
     goal_type_byte(TypeInt, Type).
 
 :- pred goal_type_byte(int, bytecode_goal_type).
@@ -574,6 +590,354 @@ goal_type_byte(19, goal_event_call).
 var_num_rep_byte(byte, 0).
 var_num_rep_byte(short, 1).
 
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_export("C", read_proc_rep(in, in, out),
+    "MR_MDBCOMP_trace_read_rep").
+
+read_proc_rep(Bytecode, Label, ProcRep) :-
+    some [!Pos] (
+        !:Pos = 0,
+        read_int32(Bytecode, !Pos, Limit),
+        read_var_num_rep(Bytecode, !Pos, VarNumRep),
+        read_string(Bytecode, Label, !Pos, FileName),
+        Info = read_proc_rep_info(Limit, FileName),
+        read_vars(VarNumRep, Bytecode, !Pos, HeadVars),
+        read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Goal),
+        ProcRep = proc_rep(HeadVars, Goal),
+        require(unify(!.Pos, Limit), "read_proc_rep: limit mismatch")
+    ).
+
+:- type read_proc_rep_info
+    --->    read_proc_rep_info(
+                limit       :: int,
+                filename    :: string
+            ).
+
+:- pred read_goal(var_num_rep::in, bytecode::in, label_layout::in, int::in,
+    int::out, read_proc_rep_info::in, goal_rep::out) is det.
+
+read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Goal) :-
+    read_byte(Bytecode, !Pos, GoalTypeByte),
+    ( byte_to_goal_type(GoalTypeByte, GoalType) ->
+        (
+            GoalType = goal_conj,
+            read_goals(VarNumRep, Bytecode, Label, !Pos, Info,  Goals),
+            Goal = conj_rep(Goals)
+        ;
+            GoalType = goal_disj,
+            read_goals(VarNumRep, Bytecode, Label, !Pos, Info, Goals),
+            Goal = disj_rep(Goals)
+        ;
+            GoalType = goal_neg,
+            read_goal(VarNumRep, Bytecode, Label, !Pos, Info, SubGoal),
+            Goal = negation_rep(SubGoal)
+        ;
+            GoalType = goal_ite,
+            read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Cond),
+            read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Then),
+            read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Else),
+            Goal = ite_rep(Cond, Then, Else)
+        ;
+            GoalType = goal_switch,
+            read_goals(VarNumRep, Bytecode, Label, !Pos, Info, Goals),
+            Goal = switch_rep(Goals)
+        ;
+            GoalType = goal_assign,
+            read_var(VarNumRep, Bytecode, !Pos, Target),
+            read_var(VarNumRep, Bytecode, !Pos, Source),
+            AtomicGoal = unify_assign_rep(Target, Source),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_construct,
+            read_var(VarNumRep, Bytecode, !Pos, Var),
+            read_cons_id(Bytecode, Label, !Pos, ConsId),
+            read_vars(VarNumRep, Bytecode, !Pos, ArgVars),
+            AtomicGoal = unify_construct_rep(Var, ConsId, ArgVars),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_deconstruct,
+            read_var(VarNumRep, Bytecode, !Pos, Var),
+            read_cons_id(Bytecode, Label, !Pos, ConsId),
+            read_vars(VarNumRep, Bytecode, !Pos, ArgVars),
+            AtomicGoal = unify_deconstruct_rep(Var, ConsId, ArgVars),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_partial_construct,
+            read_var(VarNumRep, Bytecode, !Pos, Var),
+            read_cons_id(Bytecode, Label, !Pos, ConsId),
+            read_maybe_vars(VarNumRep, Bytecode, !Pos, MaybeVars),
+            AtomicGoal = partial_construct_rep(Var, ConsId, MaybeVars),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_partial_deconstruct,
+            read_var(VarNumRep, Bytecode, !Pos, Var),
+            read_cons_id(Bytecode, Label, !Pos, ConsId),
+            read_maybe_vars(VarNumRep, Bytecode, !Pos, MaybeVars),
+            AtomicGoal = partial_deconstruct_rep(Var, ConsId, MaybeVars),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_simple_test,
+            read_var(VarNumRep, Bytecode, !Pos, Var1),
+            read_var(VarNumRep, Bytecode, !Pos, Var2),
+            AtomicGoal = unify_simple_test_rep(Var1, Var2),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_scope,
+            read_byte(Bytecode, !Pos, MaybeCutByte),
+            ( MaybeCutByte = 0 ->
+                MaybeCut = scope_is_no_cut
+            ; MaybeCutByte = 1 ->
+                MaybeCut = scope_is_cut
+            ;
+                error("read_goal: bad maybe_cut")
+            ),
+            read_goal(VarNumRep, Bytecode, Label, !Pos, Info, SubGoal),
+            Goal = scope_rep(SubGoal, MaybeCut)
+        ;
+            GoalType = goal_ho_call,
+            read_var(VarNumRep, Bytecode, !Pos, Var),
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = higher_order_call_rep(Var, Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_method_call,
+            read_var(VarNumRep, Bytecode, !Pos, Var),
+            read_method_num(Bytecode, !Pos, MethodNum),
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = method_call_rep(Var, MethodNum, Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_cast,
+            read_var(VarNumRep, Bytecode, !Pos, OutputVar),
+            read_var(VarNumRep, Bytecode, !Pos, InputVar),
+            AtomicGoal = cast_rep(OutputVar, InputVar),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_plain_call,
+            read_string(Bytecode, Label, !Pos, ModuleName),
+            read_string(Bytecode, Label, !Pos, PredName),
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = plain_call_rep(ModuleName, PredName, Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_builtin_call,
+            read_string(Bytecode, Label, !Pos, ModuleName),
+            read_string(Bytecode, Label, !Pos, PredName),
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = builtin_call_rep(ModuleName, PredName, Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_event_call,
+            read_string(Bytecode, Label, !Pos, EventName),
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = event_call_rep(EventName, Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
+            GoalType = goal_foreign,
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = pragma_foreign_code_rep(Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        )
+    ;
+        error("read_goal: invalid goal type")
+    ).
+
+:- pred read_atomic_info(var_num_rep::in, bytecode::in, label_layout::in,
+    int::in, int::out, read_proc_rep_info::in, atomic_goal_rep::in,
+    goal_rep::out) is det.
+
+read_atomic_info(VarNumRep, Bytecode, Label, !Pos, Info, AtomicGoal, Goal) :-
+    read_byte(Bytecode, !Pos, DetismByte),
+    ( determinism_representation(DetismPrime, DetismByte) ->
+        Detism = DetismPrime
+    ;
+        error("read_atomic_info: bad detism")
+    ),
+    read_string(Bytecode, Label, !Pos, FileName0),
+    ( FileName0 = "" ->
+        FileName = Info ^ filename
+    ;
+        FileName = FileName0
+    ),
+    read_lineno(Bytecode, !Pos, LineNo),
+    read_vars(VarNumRep, Bytecode, !Pos, BoundVars),
+    Goal = atomic_goal_rep(Detism, FileName, LineNo, BoundVars, AtomicGoal).
+
+:- pred read_goals(var_num_rep::in, bytecode::in, label_layout::in, int::in,
+    int::out, read_proc_rep_info::in, list(goal_rep)::out) is det.
+
+read_goals(VarNumRep, Bytecode, Label, !Pos, Info, Goals) :-
+    read_length(Bytecode, !Pos, Len),
+    read_goals_2(VarNumRep, Bytecode, Label, !Pos, Info, Len, Goals).
+
+:- pred read_goals_2(var_num_rep::in, bytecode::in, label_layout::in, int::in,
+    int::out, read_proc_rep_info::in, int::in, list(goal_rep)::out) is det.
+
+read_goals_2(VarNumRep, Bytecode, Label, !Pos, Info, N, Goals) :-
+    ( N > 0 ->
+        read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Head),
+        read_goals_2(VarNumRep, Bytecode, Label, !Pos, Info, N - 1, Tail),
+        Goals = [Head | Tail]
+    ;
+        Goals = []
+    ).
+
+:- pred read_vars(var_num_rep::in, bytecode::in, int::in, int::out,
+    list(var_rep)::out) is det.
+
+read_vars(VarNumRep, Bytecode, !Pos, Vars) :-
+    read_length(Bytecode, !Pos, Len),
+    read_vars_2(VarNumRep, Bytecode, Len, !Pos, Vars).
+
+:- pred read_vars_2(var_num_rep::in, bytecode::in, int::in, int::in, int::out,
+    list(var_rep)::out) is det.
+
+read_vars_2(VarNumRep, Bytecode, N, !Pos, Vars) :-
+    ( N > 0 ->
+        read_var(VarNumRep, Bytecode, !Pos, Head),
+        read_vars_2(VarNumRep, Bytecode, N - 1, !Pos, Tail),
+        Vars = [Head | Tail]
+    ;
+        Vars = []
+    ).
+
+:- pred read_maybe_vars(var_num_rep::in, bytecode::in, int::in, int::out,
+    list(maybe(var_rep))::out) is det.
+
+read_maybe_vars(VarNumRep, Bytecode, !Pos, MaybeVars) :-
+    read_length(Bytecode, !Pos, Len),
+    read_maybe_vars_2(VarNumRep, Bytecode, Len, !Pos, MaybeVars).
+
+:- pred read_maybe_vars_2(var_num_rep::in, bytecode::in, int::in, int::in,
+    int::out, list(maybe(var_rep))::out) is det.
+
+read_maybe_vars_2(VarNumRep, Bytecode, N, !Pos, MaybeVars) :-
+    ( N > 0 ->
+        read_byte(Bytecode, !Pos, YesOrNo),
+        ( YesOrNo = 1 ->
+            read_var(VarNumRep, Bytecode, !Pos, Head),
+            MaybeHead = yes(Head)
+        ; YesOrNo = 0 ->
+            MaybeHead = no
+        ;
+            error("read_maybe_vars_2: invalid yes or no flag")
+        ),
+        read_maybe_vars_2(VarNumRep, Bytecode, N - 1, !Pos, Tail),
+        MaybeVars = [MaybeHead | Tail]
+    ;
+        MaybeVars = []
+    ).
+
+:- pred read_var(var_num_rep::in, bytecode::in, int::in, int::out,
+    var_rep::out) is det.
+
+read_var(VarNumRep, Bytecode, !Pos, Var) :-
+    (
+        VarNumRep = byte,
+        read_byte(Bytecode, !Pos, Var)
+    ;
+        VarNumRep = short,
+        read_short(Bytecode, !Pos, Var)
+    ).
+
+:- pred read_length(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_length(Bytecode, !Pos, Len) :-
+    read_short(Bytecode, !Pos, Len).
+
+:- pred read_lineno(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_lineno(Bytecode, !Pos, LineNo) :-
+    read_short(Bytecode, !Pos, LineNo).
+
+:- pred read_method_num(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_method_num(Bytecode, !Pos, MethodNum) :-
+    read_short(Bytecode, !Pos, MethodNum).
+
+:- pred read_cons_id(bytecode::in, label_layout::in, int::in, int::out,
+    cons_id_rep::out) is det.
+
+read_cons_id(Bytecode, Label, !Pos, ConsId) :-
+    read_string(Bytecode, Label, !Pos, ConsId).
+
+%-----------------------------------------------------------------------------%
+
+:- pred read_byte(bytecode::in, int::in, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+    read_byte(Bytecode::in, Pos0::in, Pos::out, Value::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Value = Bytecode[Pos0];
+    Pos = Pos0 + 1;
+").
+
+:- pred read_short(bytecode::in, int::in, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+    read_short(Bytecode::in, Pos0::in, Pos::out, Value::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Value = (Bytecode[Pos0] << 8) + Bytecode[Pos0+1];
+    Pos = Pos0 + 2;
+").
+
+:- pred read_int32(bytecode::in, int::in, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+    read_int32(Bytecode::in, Pos0::in, Pos::out, Value::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Value = (Bytecode[Pos0] << 24) + (Bytecode[Pos0+1] << 16) +
+        (Bytecode[Pos0+2] << 8) + Bytecode[Pos0+3];
+    Pos = Pos0 + 4;
+").
+
+:- pred read_string(bytecode::in, label_layout::in, int::in, int::out,
+    string::out) is det.
+
+:- pragma foreign_proc("C",
+    read_string(Bytecode::in, Label::in, Pos0::in, Pos::out, Value::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    int         offset;
+    const char  *str;
+
+    offset = (Bytecode[Pos0] << 24) + (Bytecode[Pos0+1] << 16) +
+        (Bytecode[Pos0+2] << 8) + Bytecode[Pos0+3];
+    Pos = Pos0 + 4;
+    str = Label->MR_sll_entry->MR_sle_module_layout->MR_ml_string_table
+        + offset;
+    MR_make_aligned_string(Value, str);
+").
+
+:- pred read_var_num_rep(bytecode::in, int::in, int::out, var_num_rep::out)
+    is det.
+
+read_var_num_rep(Bytecode, !Pos, VarNumRep) :-
+    read_byte(Bytecode, !Pos, Byte),
+    ( var_num_rep_byte(VarNumRep0, Byte) ->
+        VarNumRep = VarNumRep0
+    ;
+        error("read_var_num_rep: unknown var_num_rep")
+    ).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 no_type_info_builtin(ModuleName, PredName, Arity) :-
