@@ -169,12 +169,18 @@
             % and set the flag that triggers the printing of the message
             % reminding the user about --verbose-errors.
 
-    ;       print_anything(pred(io, io)).
+    ;       some [T] ( print_anything(T) => print_anything(T) ).
             % This alternative allows the caller to specify an arbitrary thing
             % to be printed at any point in the sequence. Since things printed
             % this way aren't formatted as error messages should be (context
             % at start etc), this capability is intended only for messages
             % that help debug the compiler itself.
+
+:- typeclass print_anything(T) where [
+
+    pred print_anything(T::in, io::di, io::uo) is det
+
+].
 
 %-----------------------------------------------------------------------------%
 
@@ -784,8 +790,7 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         !:PrintedSome = yes
     ;
         Component = print_anything(Anything),
-        unsafe_cast_to_io_pred(Anything, Pred),
-        Pred(!IO),
+        print_anything(Anything, !IO),
         !:First = no,
         !:PrintedSome = yes
     ),

@@ -469,10 +469,11 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     Msg1 = simple_msg(Context,
         [option_is_set(debug_modes, yes, [always(Pieces1)])]),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    Closure = write_indented_goal(Goal, ModuleInfo, VarSet),
     Msg2 = error_msg(no, no, 0,
         [option_is_set(very_verbose, yes,
-            [always([nl]), print_anything(Closure)])]),
+            [always([nl]),
+             'new print_anything'(
+                write_indented_goal(Goal, ModuleInfo, VarSet))])]),
     Error = mode_error_info(_, ModeError, ErrorContext, ModeContext),
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
@@ -480,12 +481,17 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     SubSpec = error_spec(_, _, SubMsgs),
     Msgs = [Msg1, Msg2] ++ SubMsgs.
 
-:- pred write_indented_goal(hlds_goal::in, module_info::in, prog_varset::in,
-    io::di, io::uo) is det.
+:- type write_indented_goal
+    --->    write_indented_goal(hlds_goal, module_info, prog_varset).
 
-write_indented_goal(Goal, ModuleInfo, VarSet, !IO) :-
-    io.write_string("\t\t", !IO),
-    hlds_out.write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO).
+:- instance error_util.print_anything(write_indented_goal) where [
+
+    ( print_anything(write_indented_goal(Goal, ModuleInfo, VarSet), !IO) :-
+        io.write_string("\t\t", !IO),
+        hlds_out.write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO)
+    )
+
+].
 
 %-----------------------------------------------------------------------------%
 
