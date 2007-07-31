@@ -150,11 +150,6 @@
     --no-use-trail)
         use_trail=false ;;
 
-    --reserve-tag)
-        reserve_tag=true ;;
-    --no-reserve-tag)
-        reserve_tag=false ;;
-
     --use-minimal-model-stack-copy)
         use_minimal_model_stack_copy=true ;;
     --no-use-minimal-model-stack-copy)
@@ -236,7 +231,6 @@
         record_term_sizes_as_words=false
         record_term_sizes_as_cells=false
         use_trail=false
-        reserve_tag=false
         use_minimal_model_stack_copy=false
         use_minimal_model_own_stacks=false
         minimal_model_debug=false
@@ -439,10 +433,6 @@
 
                 tr)
                     use_trail=true
-                    ;;
-
-                rt)
-                    reserve_tag=true
                     ;;
 
                 mm)

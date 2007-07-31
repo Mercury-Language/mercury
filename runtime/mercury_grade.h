@@ -217,13 +217,12 @@
   #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6
 #endif
 
-#ifdef MR_RESERVE_TAG
-  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _rt)
-  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".rt"
-#else
-  #define MR_GRADE_PART_8	MR_GRADE_PART_7
-  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7
-#endif
+/*
+** Grade component 8 used to be used for the .rt (reserve tag) grades.
+** It is currently unused.
+*/
+#define MR_GRADE_PART_8		MR_GRADE_PART_7
+#define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7
 
 #ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
   #ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS

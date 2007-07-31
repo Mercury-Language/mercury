@@ -354,11 +354,6 @@ case $use_trail in
     false)          TRAIL_OPTS="" ;;
 esac
 
-case $reserve_tag in
-    true)           RESERVE_TAG_OPTS="-DMR_RESERVE_TAG" ;;
-    false)          RESERVE_TAG_OPTS="" ;;
-esac
-
 case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks in
     true,true)      progname=`basename $0`
                     echo "$progname: can't enable both forms of minimal model tabling at once"
@@ -609,7 +604,6 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $INLINE_ALLOC_OPTS\
     $TRAIL_OPTS\
     $RECORD_TERM_SIZE_OPTS\
-    $RESERVE_TAG_OPTS\
     $MINIMAL_MODEL_OPTS\
     $SINGLE_PREC_FLOAT_OPTS\
     $SPLIT_OPTS\

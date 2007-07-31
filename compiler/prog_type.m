@@ -1032,7 +1032,6 @@ type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
         MaybeArgName),
     (
         ReserveTagPragma = no,
-        globals.lookup_bool_option(Globals, reserve_tag, no),
         globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes)
     ;
         % Dummy types always need to be treated as no-tag types as the

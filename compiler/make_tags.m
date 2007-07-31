@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2006 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,14 +109,11 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
 
     % Determine if we need to reserve a tag for use by HAL's Herbrand
     % constraint solver. (This also disables enumerations and no_tag types.)
-    globals.lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
-    ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
-
     (
-        ReserveTag = yes,
+        ReservedTagPragma = yes,
         InitTag = 1
     ;
-        ReserveTag = no,
+        ReservedTagPragma = no,
         InitTag = 0
     ),
 
@@ -127,7 +124,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         % must be constant, and we must be allowed to make unboxed enums.
         globals.lookup_bool_option(Globals, unboxed_enums, yes),
         ctors_are_all_constants(Ctors),
-        ReserveTag = no
+        ReservedTagPragma = no
     ->
         ( Ctors = [_] ->
             EnumDummy = is_dummy
@@ -140,7 +137,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         (
             % Try representing it as a no-tag type.
             type_with_constructors_should_be_no_tag(Globals, TypeCtor,
-                ReserveTag, Ctors, UserEqCmp, SingleFunc, SingleArg, _)
+                ReservedTagPragma, Ctors, UserEqCmp, SingleFunc, SingleArg, _)
         ->
             SingleConsId = make_cons_id_from_qualified_sym_name(SingleFunc,
                 [SingleArg]),
@@ -149,12 +146,12 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
             NumTagBits = 0
         ->
             (
-                ReserveTag = yes,
+                ReservedTagPragma = yes,
                 % XXX Need to fix this.
                 % This occurs for the .NET and Java backends.
                 sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
             ;
-                ReserveTag = no
+                ReservedTagPragma = no
             ),
             % Assign reserved addresses to the constants, if possible.
             separate_out_constants(Ctors, Constants, Functors),

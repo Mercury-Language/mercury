@@ -421,34 +421,14 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ** Definitions for handwritten code, mostly for mercury_compare_typeinfo.
 */
 
-#ifdef MR_RESERVE_TAG
-    /*
-    ** In reserve-tag grades, enumerations are disabled, so the
-    ** representation of the 'comparison_result' type is quite different.
-    ** The enumeration constants (for (<), (=) and (>)) wind up sharing
-    ** the same primary tag (1), and are all allocated secondary tags
-    ** starting from 0.
-    */
-  #define MR_ENUM_TAG         MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG)
+#define MR_COMPARE_EQUAL    0
+#define MR_COMPARE_LESS     1
+#define MR_COMPARE_GREATER  2
 
-  #define MR_COMPARE_EQUAL    ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
-  #define MR_COMPARE_LESS     ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(1)))
-  #define MR_COMPARE_GREATER  ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(2)))
+#define MR_BOOL_NO          0
+#define MR_BOOL_YES         1
 
-  #define MR_BOOL_NO          ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
-  #define MR_BOOL_YES         ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(1)))
-
-  #define MR_UNBOUND          ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
-#else
-  #define MR_COMPARE_EQUAL    0
-  #define MR_COMPARE_LESS     1
-  #define MR_COMPARE_GREATER  2
-
-  #define MR_BOOL_NO          0
-  #define MR_BOOL_YES         1
-
-  #define MR_UNBOUND          0
-#endif
+#define MR_UNBOUND          0
 
 /*---------------------------------------------------------------------------*/
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001, 2003-2006 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -102,12 +102,7 @@
 ** representation scheme used by compiler/make_tags.m.
 */
 
-#ifdef MR_RESERVE_TAG
-  #define MR_RAW_TAG_VAR               0     /* for Prolog-style variables */
-  #define MR_FIRST_UNRESERVED_RAW_TAG  1
-#else
-  #define MR_FIRST_UNRESERVED_RAW_TAG  0
-#endif
+#define MR_FIRST_UNRESERVED_RAW_TAG  0
 
 #if MR_TAGBITS == 0 && \
 	(MR_NUM_RESERVED_ADDRESSES > 0 || MR_NUM_RESERVED_OBJECTS > 0)
@@ -125,10 +120,6 @@
 
 #define	MR_TAG_NIL		MR_mktag(MR_RAW_TAG_NIL)
 #define	MR_TAG_CONS		MR_mktag(MR_RAW_TAG_CONS)
-
-#ifdef MR_RESERVE_TAG
-  #define MR_TAG_VAR		MR_mktag(MR_RAW_TAG_VAR)
-#endif
 
 #define	MR_UNIV_TAG		MR_mktag(MR_RAW_UNIV_TAG)
 
@@ -303,37 +294,11 @@
 ** be defined.
 */
 
-#ifdef MR_RESERVE_TAG
+#define MR_CONVERT_C_ENUM_CONSTANT(x)   (x)
 
-	#define MR_CONVERT_C_ENUM_CONSTANT(x) \
-		MR_mkword(MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG), MR_mkbody(x))
+#define MR_DEFINE_MERCURY_ENUM_CONST(x)	x
 
-		/*
-		** We generate three enumeration constants:
-		** 	- the first one, with '_val' pasted at the end of its
-		**	  name, to give us a name for the current *unconverted*
-		**	  enumeration value
-		**	- the converted enumeration value
-		**	- a '_dummy' value to reset the unconverted enumeration
-		**	  value
-		*/
-	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	\
-		MR_PASTE2(x, _val),	\
-		x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)), \
-		MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
-
-	/* This is the inverse of MR_CONVERT_C_ENUM_CONSTANT */
-	#define MR_GET_ENUM_VALUE(x) \
-		MR_body((x), MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG))
-#else
-
-	#define MR_CONVERT_C_ENUM_CONSTANT(x)   (x)
-
-	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	x
-
-	#define MR_GET_ENUM_VALUE(x) (x)
-
-#endif
+#define MR_GET_ENUM_VALUE(x) (x)
 
 /*
 ** For each enumeration constant defined in the runtime (not in Mercury)

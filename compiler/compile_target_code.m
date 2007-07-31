@@ -619,14 +619,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         UseTrail = no,
         UseTrailOpt = ""
     ),
-    globals.io_lookup_bool_option(reserve_tag, ReserveTag, !IO),
-    (
-        ReserveTag = yes,
-        ReserveTagOpt = "-DMR_RESERVE_TAG "
-    ;
-        ReserveTag = no,
-        ReserveTagOpt = ""
-    ),
     globals.io_lookup_bool_option(use_minimal_model_stack_copy,
         MinimalModelStackCopy, !IO),
     globals.io_lookup_bool_option(use_minimal_model_own_stacks,
@@ -764,7 +756,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         ExtendOpt,
         Target_DebugOpt, LL_DebugOpt, DeclDebugOpt, ExecTraceOpt,
         UseTrailOpt, 
-        ReserveTagOpt, 
         MinimalModelOpt, 
         SinglePrecFloatOpt,
         UseRegionsOpt,

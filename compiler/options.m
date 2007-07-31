@@ -314,7 +314,6 @@
     ;       use_regions
 
     % Data representation compilation model options
-    ;       reserve_tag
     ;       tags
     ;       num_tag_bits
     ;       num_reserved_addresses
@@ -1122,7 +1121,6 @@ option_defaults_2(compilation_model_option, [
     type_layout                         -   bool(yes),
 
     % Data representation compilation model options
-    reserve_tag                         -   bool(no),
     pic_reg                             -   bool(no),
     tags                                -   string("low"),
     num_tag_bits                        -   int(-1),
@@ -1907,7 +1905,6 @@ long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
 long_option("stack-segments",       stack_segments).
 long_option("use-regions",          use_regions).
 % Data representation options
-long_option("reserve-tag",          reserve_tag).
 long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
 long_option("minimal-model-debug",  minimal_model_debug).
@@ -3947,15 +3944,7 @@ options_help_compilation_model -->
         "--num-reserved-objects <n>    (This option is not for general use.)",
         "\tAllocate up to <n> global objects per type,",
         "\tfor representing nullary constructors",
-        "\t(constants) of discriminated union types.",
-
-
-        "--reserve-tag\t\t\t(grade modifier: `.rt')",
-        "\tReserve a tag in the data representation of the generated ",
-        "\tcode. This tag is intended to be used to give an explicit",
-        "\trepresentation to free variables.",
-        "\tThis is necessary for a seamless Herbrand constraint solver -",
-        "\tfor use with HAL."
+        "\t(constants) of discriminated union types."
 
         % The --conf-low-tag-bits option is reserved for use
         % by the `mmc' script; it is deliberately not documented.

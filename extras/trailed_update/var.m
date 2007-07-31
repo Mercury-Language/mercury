@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2002-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1998-2000, 2002-2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,8 +167,6 @@
 %
 % Note that the way we use setarg assumes that the alias/1 functor of the
 % var_rep/1 type is represented using only a primary tag, not a secondary tag.
-% This assumption is false for .rt (--reserve-tag) grades, so this module
-% doesn't work in .rt grades.
 %
 %---------------------------------------------------------------------------%
 

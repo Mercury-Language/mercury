@@ -2170,7 +2170,6 @@ long_usage(!IO) :-
     ;       comp_prof           % what profiling options to use
     ;       comp_term_size      % whether or not to record term sizes
     ;       comp_trail          % whether or not to use trailing
-    ;       comp_tag            % whether or not to reserve a tag
     ;       comp_minimal_model  % whether we set up for minimal model tabling
     ;       comp_single_prec_float
                                 % whether or not to use single precision
@@ -2455,9 +2454,6 @@ grade_component_table("tsc", comp_term_size,
     % Trailing components.
 grade_component_table("tr", comp_trail, [use_trail - bool(yes)], no, yes).
 
-    % Tag reservation components.
-grade_component_table("rt", comp_tag, [reserve_tag - bool(yes)], no, yes).
-
     % Minimal model tabling components.
     % NOTE: we do not include `.mm' and `.dmm' in grade strings
     % because they are just synonyms for `.mmsc' and `.dmmsc'.
@@ -2540,7 +2536,6 @@ grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
-grade_start_values(reserve_tag - bool(no)).
 grade_start_values(use_minimal_model_stack_copy - bool(no)).
 grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).

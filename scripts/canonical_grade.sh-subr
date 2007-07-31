@@ -121,11 +121,6 @@ case $use_trail in
 	false)		;;
 esac
 
-case $reserve_tag in
-	true)		GRADE="$GRADE.rt" ;;
-	false)		;;
-esac
-
 case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks,$minimal_model_debug in
 	true,false,false)	GRADE="$GRADE.mmsc" ;;
 	true,false,true)	GRADE="$GRADE.dmmsc" ;;

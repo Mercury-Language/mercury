@@ -7146,9 +7146,6 @@ The set of aspects and their alternatives are:
 @item Whether to enable the trail:
 @samp{tr} (the default is no trailing).
 
-@item Whether or not to reserve a tag in the data representation of the generated code:
-@samp{rt} (the default is no reserved tag)
-
 @item Whether to use single-precision representation of floating point values:
 @samp{spf} (the default is to use double-precision floats)
 
@@ -7270,9 +7267,6 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{.tsc}
 @code{--record-term-sizes-as-cells}.
-
-@item @samp{.rt}
-@code{--reserve-tag}.
 
 @item @samp{.spf}
 @code{--single-prec-float}
@@ -7639,17 +7633,6 @@ constructors (constants) of discriminated union types.
 Note that reserved objects will only be used if reserved addresses
 (see @code{--num-reserved-addresses}) are not available, since the
 latter are more efficient.
-
-@sp 1
-@item @code{--reserve-tag} (grades: any grade containing @samp{.rt})
-@findex --reserve-tag
-@cindex Tags
-@cindex Data representation
-Reserve a tag in the data representation of the generated
-code. This tag is intended to be used to give an explicit
-representation to free variables.
-This is necessary for a seamless Herbrand constraint solver ---
-for use with HAL.
 
 @sp 1
 @item @code{--no-type-layout}

@@ -144,12 +144,8 @@ else
 endif
 
 # The uci test matches its expected output only if the grade supports
-# enumerated types. Reserved tag grades do not.
-ifeq "$(findstring .rt,$(GRADE))" ""
-    ENUM_PROGS = uci
-else 
-    ENUM_PROGS =
-endif
+# enumerated types.  Currently all grades do support enumerated types.
+ENUM_PROGS = uci
 
 # The tests term_size_words and term_size_cells are each meant to be used
 # in their respective grades only.
