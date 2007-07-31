@@ -251,10 +251,10 @@
 :- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
 
     % Given a list of variables, remove all the type_info-related
-    % variables. 
+    % variables.
     %
 :- func remove_typeinfo_vars(vartypes, list(prog_var)) = list(prog_var).
-:- func remove_typeinfo_vars_from_set(vartypes, set(prog_var)) 
+:- func remove_typeinfo_vars_from_set(vartypes, set(prog_var))
     = set(prog_var).
 
     % In the forwards mode, this predicate checks for a "new " prefix
@@ -299,6 +299,10 @@
 :- func comparison_result_type = mer_type.
 :- func io_state_type = mer_type.
 :- func region_type = mer_type.
+
+    % Succeed iff the given variable is of region_type.
+    %
+:- pred is_region_var(vartypes::in, prog_var::in) is semidet.
 
     % Construct the types of type_infos and type_ctor_infos.
     %
@@ -835,22 +839,22 @@ is_introduced_type_info_type_category(type_cat_user_ctor) = no.
 
 put_typeinfo_vars_first(VarsList, VarTypes) =
         TypeInfoVarsList ++ NonTypeInfoVarsList :-
-    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, 
-        TypeInfoVarsList, NonTypeInfoVarsList). 
+    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes,
+        TypeInfoVarsList, NonTypeInfoVarsList).
 
-remove_typeinfo_vars(VarTypes, VarsList) = NonTypeInfoVarsList :- 
-    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, _, 
+remove_typeinfo_vars(VarTypes, VarsList) = NonTypeInfoVarsList :-
+    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, _,
         NonTypeInfoVarsList).
 
-remove_typeinfo_vars_from_set(VarTypes, VarsSet) = 
-    set.from_list(remove_typeinfo_vars(VarTypes, 
+remove_typeinfo_vars_from_set(VarTypes, VarsSet) =
+    set.from_list(remove_typeinfo_vars(VarTypes,
         set.to_sorted_list(VarsSet))).
-    
-:- pred split_vars_typeinfo_no_typeinfo(list(prog_var)::in, 
+
+:- pred split_vars_typeinfo_no_typeinfo(list(prog_var)::in,
     vartypes::in, list(prog_var)::out, list(prog_var)::out) is det.
 
-split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList, 
-        NonTypeInfoVarsList) :- 
+split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList,
+        NonTypeInfoVarsList) :-
     list.filter((pred(Var::in) is semidet :-
             Type = map.lookup(VarTypes, Var),
             is_introduced_type_info_type(Type)),
@@ -909,6 +913,10 @@ io_state_type = defined_type(Name, [], kind_star) :-
 region_type = defined_type(Name, [], kind_star) :-
     Module = mercury_region_builtin_module,
     Name = qualified(Module, "region").
+
+is_region_var(VarTypes, Var)  :-
+    map.lookup(VarTypes, Var, Type),
+    Type = region_type.
 
 %-----------------------------------------------------------------------------%
 

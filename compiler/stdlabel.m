@@ -59,7 +59,7 @@ standardize_labels(Instrs0, Instrs, _, !:ProcCounter) :-
     ->
         build_std_map(Instrs1, ProcLabel, counter.init(1), !:ProcCounter,
             map.init, Map),
-        replace_labels_instruction_list(Instrs1, Map, yes, yes, Instrs2),
+        replace_labels_instruction_list(Instrs1, Instrs2, Map, yes, yes),
         Instrs = [LabelInstr | Comments] ++ Instrs2
     ;
         unexpected(this_file, "standardize_labels: no proc_label")

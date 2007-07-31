@@ -372,6 +372,11 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = assign(Lval, Rval)
     ;
+        Uinstr0 = keep_assign(Lval0, Rval0),
+        Transform(Lval0, Lval, !Acc),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
+        Uinstr = keep_assign(Lval, Rval)
+    ;
         Uinstr0 = computed_goto(Rval0, Labels),
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = computed_goto(Rval, Labels)
@@ -419,6 +424,26 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         Uinstr0 = free_heap(Rval0),
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = free_heap(Rval)
+    ;
+        Uinstr0 = push_region_frame(StackId, EmbeddedStackFrame),
+        Uinstr = push_region_frame(StackId, EmbeddedStackFrame)
+    ;
+        Uinstr0 = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval0,
+            NumLval0, AddrLval0),
+        transform_lval_in_rval(Transform, IdRval0, IdRval, !Acc),
+        Transform(NumLval0, NumLval, !Acc),
+        Transform(AddrLval0, AddrLval, !Acc),
+        Uinstr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval)
+    ;
+        Uinstr0 = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+            ValueRval0),
+        transform_lval_in_rval(Transform, ValueRval0, ValueRval, !Acc),
+        Uinstr = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+            ValueRval)
+    ;
+        Uinstr0 = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
+        Uinstr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
     ;
         Uinstr0 = store_ticket(Lval0),
         Transform(Lval0, Lval, !Acc),

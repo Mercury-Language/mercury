@@ -115,7 +115,6 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.prog_data.
@@ -151,8 +150,8 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % finishes.
     code_info.get_par_conj_depth(!.CI, Depth),
     ( Depth = 0 ->
-        code_info.acquire_temp_slot(lval(parent_sp), non_persistent_temp_slot,
-            ParentSpSlot, !CI),
+        code_info.acquire_temp_slot(slot_lval(parent_sp),
+            non_persistent_temp_slot, ParentSpSlot, !CI),
         MaybeSetParentSpCode = node([
             llds_instr(assign(ParentSpSlot, lval(parent_sp)),
                 "save the old parent stack pointer"),
@@ -183,7 +182,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
 
     list.length(Goals, NumGoals),
     code_info.acquire_reg(reg_r, RegLval, !CI),
-    code_info.acquire_temp_slot(sync_term, persistent_temp_slot, SyncSlot,
+    code_info.acquire_temp_slot(slot_sync_term, persistent_temp_slot, SyncSlot,
         !CI),
     ( SyncSlot = stackvar(SlotNum) ->
         ParentSyncSlot = parent_stackvar(SlotNum)

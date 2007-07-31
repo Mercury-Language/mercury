@@ -465,6 +465,16 @@
     ;       disable_trail_ops
             % This is used to analyze the performance effects of trailing.
 
+    ;       size_region_ite_fixed
+    ;       size_region_disj_fixed
+    ;       size_region_commit_fixed
+
+    ;       size_region_ite_protect
+    ;       size_region_ite_snapshot
+    ;       size_region_disj_protect
+    ;       size_region_disj_snapshot
+    ;       size_region_commit_entry
+
     % Code generation options
     ;       low_level_debug
     ;       table_debug
@@ -567,6 +577,7 @@
     ;       deforestation_size_threshold
     ;       analyse_trail_usage
     ;       optimize_trail_usage
+    ;       optimize_region_ops
     ;       analyse_mm_tabling
     ;       untuple
     ;       tuple
@@ -1185,7 +1196,16 @@ option_defaults_2(internal_use_option, [
     disable_minimal_model_stack_copy_cut -  bool(no),
     use_minimal_model_stack_copy_pneg   -   bool(no),
     use_minimal_model_stack_copy_cut    -   bool(no), 
-    disable_trail_ops                   -   bool(no)
+    disable_trail_ops                   -   bool(no),
+    % The size_region_* values are just dummies for now; Quan, please set them.
+    size_region_ite_fixed               -   int(4),
+    size_region_disj_fixed              -   int(4),
+    size_region_commit_fixed            -   int(4),
+    size_region_ite_protect             -   int(0),
+    size_region_ite_snapshot            -   int(0),
+    size_region_disj_protect            -   int(0),
+    size_region_disj_snapshot           -   int(0),
+    size_region_commit_entry            -   int(0)
 ]).
 option_defaults_2(code_gen_option, [
     % Code Generation Options
@@ -1277,6 +1297,7 @@ option_defaults_2(special_optimization_option, [
     analyse_closures                    -   bool(no),
     analyse_trail_usage                 -   bool(no),
     optimize_trail_usage                -   bool(no),
+    optimize_region_ops                 -   bool(no),
     analyse_mm_tabling                  -   bool(no)
 ]).
 option_defaults_2(optimization_option, [
@@ -1955,6 +1976,14 @@ long_option("rtti-line-numbers",    rtti_line_numbers).
 long_option("disable-mm-pneg",      disable_minimal_model_stack_copy_pneg).
 long_option("disable-mm-cut",       disable_minimal_model_stack_copy_cut).
 long_option("disable-trail-ops",    disable_trail_ops).
+long_option("size-region-ite-fixed",        size_region_ite_fixed).
+long_option("size-region-disj-fixed",       size_region_disj_fixed).
+long_option("size-region-commit-fixed",     size_region_commit_fixed).
+long_option("size-region-ite-protect",      size_region_ite_protect).
+long_option("size-region-ite-snapshot",     size_region_ite_snapshot).
+long_option("size-region-disj-protect",     size_region_disj_protect).
+long_option("size-region-disj-snapshot",    size_region_disj_snapshot).
+long_option("size-region-commit-entry",     size_region_commit_entry).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).
@@ -1965,9 +1994,9 @@ long_option("parallel-liveness",    parallel_liveness).
 long_option("parallel-code-gen",    parallel_code_gen).
 long_option("reclaim-heap-on-failure",  reclaim_heap_on_failure).
 long_option("reclaim-heap-on-semidet-failure",
-                    reclaim_heap_on_semidet_failure).
+                                    reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
-                    reclaim_heap_on_nondet_failure).
+                                    reclaim_heap_on_nondet_failure).
 long_option("branch-delay-slot",    have_delay_slot).
 long_option("have-delay-slot",      have_delay_slot).
 long_option("num-real-r-regs",      num_real_r_regs).
@@ -2142,9 +2171,10 @@ long_option("term2-max-matrix-size", term2_maximum_matrix_size).
 long_option("analyse-exceptions",   analyse_exceptions).
 long_option("analyse-closures",     analyse_closures).
 long_option("analyse-local-closures",   analyse_closures).
-long_option("analyse-trail-usage",      analyse_trail_usage).
-long_option("optimize-trail-usage",     optimize_trail_usage).
-long_option("analyse-mm-tabling",       analyse_mm_tabling).
+long_option("analyse-trail-usage",  analyse_trail_usage).
+long_option("optimize-trail-usage", optimize_trail_usage).
+long_option("optimize-region-ops",  optimize_region_ops).
+long_option("analyse-mm-tabling",   analyse_mm_tabling).
 long_option("untuple",              untuple).
 long_option("tuple",                tuple).
 long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
@@ -4031,6 +4061,18 @@ options_help_compilation_model -->
 %       "--delay-partial-instantiations",
 %       "(This option is not for general use.)",
 %       For documentation, see delay_partial_inst.m
+
+        % All these are developer only options.
+%       "(These options are not for general use.)",
+%       For documentation, see runtime/mercury_region.h.
+%       "--size-region-ite-fixed"
+%       "--size-region-disj-fixed"
+%       "--size-region-commit-fixed"
+%       "--size-region-ite-protect"
+%       "--size-region-ite-snapshot"
+%       "--size-region-disj-protect"
+%       "--size-region-disj-snapshot"
+%       "--size-region-commit-entry"
     ]).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.
@@ -4379,13 +4421,18 @@ options_help_hlds_hlds_optimization -->
         "\tprocedures that will not modify the trail.",
         "\tThis information is used to reduce the overhead",
         "\tof trailing.",
-% `--no-optimize-trail-usage' is a developer-only option.  It 
-% is intended for benchmarking the trail usage optimization.
+% `--no-optimize-trail-usage' is a developer-only option.
+% It is intended for the benchmarking of trail usage optimization.
 % Otherwise, it should not be turned off as doing so interferes with
 % the results of the trail usage analysis.
-        %"--no-optimize-trail-usage",
-        %"\tDo not try and restrict trailing to those parts",
-        %"\tof the program that actually use it.",
+        % "--no-optimize-trail-usage",
+        % "\tDo not try and restrict trailing to those parts",
+        % "\tof the program that actually use it.",
+% `--no-optimize-region-ops' is a developer-only option.
+% It is intended for the benchmarking of region ops optimization.
+        % "--no-optimize-region-ops",
+        % "\tDo not try and restrict region operations to those parts",
+        % "\tof the program that actually use it.",
         "--analyse-mm-tabling",
         "\tIdentify those goals that do not call procedures",
         "\tthat are evaluated using minimal model tabling.",

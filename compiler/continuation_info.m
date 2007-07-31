@@ -312,16 +312,19 @@
             ).
 
 :- type slot_contents
-    --->    ticket          % A ticket (trail pointer).
-    ;       ticket_counter  % A copy of the ticket counter.
-    ;       trace_data
-    ;       lookup_disj_cur
-    ;       lookup_switch_cur
-    ;       lookup_switch_max
-    ;       sync_term       % A syncronization term used
-                            % at the end of par_conjs.
-                            % See par_conj_gen.m for details.
-    ;       lval(lval).
+    --->    slot_ticket             % A ticket (trail pointer).
+    ;       slot_ticket_counter     % A copy of the ticket counter.
+    ;       slot_trace_data
+    ;       slot_lookup_disj_cur
+    ;       slot_lookup_switch_cur
+    ;       slot_lookup_switch_max
+    ;       slot_sync_term          % A syncronization term used
+                                    % at the end of par_conjs.
+                                    % See par_conj_gen.m for details.
+    ;       slot_region_ite
+    ;       slot_region_disj
+    ;       slot_region_commit
+    ;       slot_lval(lval).
 
     % Call maybe_process_proc_llds on the code of every procedure in the list.
     %
@@ -883,35 +886,38 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
 
 :- pred live_value_type(slot_contents::in, live_value_type::out) is det.
 
-live_value_type(lval(succip), live_value_succip).
-live_value_type(lval(hp), live_value_hp).
-live_value_type(lval(maxfr), live_value_maxfr).
-live_value_type(lval(curfr), live_value_curfr).
-live_value_type(lval(succfr_slot(_)), live_value_unwanted).
-live_value_type(lval(prevfr_slot(_)), live_value_unwanted).
-live_value_type(lval(redofr_slot(_)), live_value_unwanted).
-live_value_type(lval(redoip_slot(_)), live_value_unwanted).
-live_value_type(lval(succip_slot(_)), live_value_unwanted).
-live_value_type(lval(sp), live_value_unwanted).
-live_value_type(lval(parent_sp), live_value_unwanted).
-live_value_type(lval(lvar(_)), live_value_unwanted).
-live_value_type(lval(field(_, _, _)), live_value_unwanted).
-live_value_type(lval(temp(_, _)), live_value_unwanted).
-live_value_type(lval(reg(_, _)), live_value_unwanted).
-live_value_type(lval(stackvar(_)), live_value_unwanted).
-live_value_type(lval(parent_stackvar(_)), live_value_unwanted).
-live_value_type(lval(framevar(_)), live_value_unwanted).
-live_value_type(lval(mem_ref(_)), live_value_unwanted). % XXX
-live_value_type(lval(global_var_ref(_)), live_value_unwanted).
-live_value_type(ticket, live_value_unwanted).
+live_value_type(slot_lval(succip), live_value_succip).
+live_value_type(slot_lval(hp), live_value_hp).
+live_value_type(slot_lval(maxfr), live_value_maxfr).
+live_value_type(slot_lval(curfr), live_value_curfr).
+live_value_type(slot_lval(succfr_slot(_)), live_value_unwanted).
+live_value_type(slot_lval(prevfr_slot(_)), live_value_unwanted).
+live_value_type(slot_lval(redofr_slot(_)), live_value_unwanted).
+live_value_type(slot_lval(redoip_slot(_)), live_value_unwanted).
+live_value_type(slot_lval(succip_slot(_)), live_value_unwanted).
+live_value_type(slot_lval(sp), live_value_unwanted).
+live_value_type(slot_lval(parent_sp), live_value_unwanted).
+live_value_type(slot_lval(lvar(_)), live_value_unwanted).
+live_value_type(slot_lval(field(_, _, _)), live_value_unwanted).
+live_value_type(slot_lval(temp(_, _)), live_value_unwanted).
+live_value_type(slot_lval(reg(_, _)), live_value_unwanted).
+live_value_type(slot_lval(stackvar(_)), live_value_unwanted).
+live_value_type(slot_lval(parent_stackvar(_)), live_value_unwanted).
+live_value_type(slot_lval(framevar(_)), live_value_unwanted).
+live_value_type(slot_lval(mem_ref(_)), live_value_unwanted). % XXX
+live_value_type(slot_lval(global_var_ref(_)), live_value_unwanted).
+live_value_type(slot_ticket, live_value_unwanted).
     % XXX we may need to modify this, if the GC is going to garbage-collect
     % the trail.
-live_value_type(ticket_counter, live_value_unwanted).
-live_value_type(lookup_disj_cur, live_value_unwanted).
-live_value_type(lookup_switch_cur, live_value_unwanted).
-live_value_type(lookup_switch_max, live_value_unwanted).
-live_value_type(sync_term, live_value_unwanted).
-live_value_type(trace_data, live_value_unwanted).
+live_value_type(slot_ticket_counter, live_value_unwanted).
+live_value_type(slot_lookup_disj_cur, live_value_unwanted).
+live_value_type(slot_lookup_switch_cur, live_value_unwanted).
+live_value_type(slot_lookup_switch_max, live_value_unwanted).
+live_value_type(slot_sync_term, live_value_unwanted).
+live_value_type(slot_trace_data, live_value_unwanted).
+live_value_type(slot_region_ite, live_value_region_ite).
+live_value_type(slot_region_disj, live_value_region_disj).
+live_value_type(slot_region_commit, live_value_region_commit).
 
 %-----------------------------------------------------------------------------%
 

@@ -769,7 +769,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
                 % Generate code which discards the ticket only if it was
                 % allocated, i.e. only if MR_trace_from_full was true on entry.
                 FromFullSlotLval =
-                    llds.stack_slot_num_to_lval(model_non, FromFullSlot),
+                    llds.stack_slot_num_to_lval(nondet_stack, FromFullSlot),
                 code_info.get_next_label(SkipLabel, !CI),
                 DiscardTraceTicketCode = node([
                     llds_instr(
@@ -1065,9 +1065,10 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 % generate two different copies of this with different labels;
                 % this is needed for semidet code, which will get one copy
                 % in the success epilogue and one copy in the failure epilogue.
-                %
+
+                StackId = code_model_to_main_stack(CodeModel),
                 FromFullSlotLval =
-                    llds.stack_slot_num_to_lval(CodeModel, FromFullSlot),
+                    llds.stack_slot_num_to_lval(StackId, FromFullSlot),
                 code_info.get_next_label(SkipLabel, !CI),
                 code_info.get_next_label(SkipLabelCopy, !CI),
                 PruneTraceTicketCode = node([

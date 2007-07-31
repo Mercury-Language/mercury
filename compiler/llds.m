@@ -255,9 +255,13 @@
             % some local temporary variables.
 
     ;       assign(lval, rval)
-            % assign(Location, Value):
-            % Assign the value specified by rval to the location
-            % specified by lval.
+            % assign(Lval, Rval):
+            % Assign Rval to the location specified by Lval.
+
+    ;       keep_assign(lval, rval)
+            % As assign, but this operation cannot be optimized away or
+            % the target replaced by a temp register, even if the target
+            % *appears* to be unused by the following code.
 
     ;       llcall(code_addr, code_addr, list(liveinfo), term.context,
                 goal_path, call_model)
@@ -345,6 +349,69 @@
             % Notify the garbage collector that the heap space associated with
             % the top-level cell of the rval is no longer needed. `free' is
             % useless but harmless without conservative garbage collection.
+
+    ;       push_region_frame(region_stack_id, embedded_stack_frame_id)
+            % push_region_frame(RegionStackId, EmbeddedStackId)
+            %
+            % Set the stack pointer of the region stack identified by the
+            % first argument to point to the group of stack slots identified
+            % by the second argument (which specifies to the new top embedded
+            % stack frame on that stack) *after* saving the old value of the
+            % stack pointer in the fixed slot reserved for this purpose in
+            % the new frame.
+            %
+            % The instruction will also fill in whatever other fixed slots
+            % of the new stack frame may be filled in at this time.
+
+    ;       region_fill_frame(region_fill_frame_op, embedded_stack_frame_id,
+                rval, lval, lval)
+            % region_fill_frame(FillOp, EmbeddedStackId,
+            %   RegionId, NumLval, AddrLval)
+            %
+            % EmbeddedStackId should match the parameter of the
+            % push_region_frame instruction that created the embedded stack
+            % frame to which this instruction refers. RegionId should
+            % identify a region (i.e. it should point to the region header).
+            %
+            % If the condition appropriate to FillOp is true, then this
+            % instruction will
+            %
+            % (a) increment NumLval by one, and
+            % (b) store the aspects of the region relevant to FillOp
+            %     in one or more consecutive memory locations starting at
+            %     AddrRval,  after which it will increment AddrRval
+            %     by the number of words this uses.
+            %
+            % If the condition is false, the instruction will do nothing.
+            %
+            % The size of the frame must be big enough that the sequence of
+            % region_fill_frame operations executed on it don't overflow.
+            %
+            % At the end of the sequence, NumLval will be stored back into
+            % a fixed slot in the embedded frame using a region_set_fixed_slot
+            % instruction.
+
+    ;       region_set_fixed_slot(region_set_fixed_op, embedded_stack_frame_id,
+                rval)
+            % region_set_fixed_op(SetOp, EmbeddedStackId, Value)
+            %
+            % Given an embedded stack frame identified by EmbeddedStackId,
+            % set the fixed field of this frame identified by SetOp to Value.
+
+    ;       use_and_maybe_pop_region_frame(region_use_frame_op,
+                embedded_stack_frame_id)
+            % use_and_maybe_pop_region_frame(UseOp, EmbeddedStackId)
+            %
+            % For some values of UseOp, this instruction uses the contents of
+            % the frame identified by EmbeddedStackId (including values saved
+            % by region_set_fixed_op instructions) to operate on the values
+            % recorded in the frame by region_fill_frame instructions.
+            %
+            % For some other values of UseOp, this instruction logically pops
+            % the embedded stack off its stack. (The Mercury stacks are
+            % untouched.)
+            %
+            % For yet other values of UseOp, it does both.
 
     ;       store_ticket(lval)
             % Allocate a new "ticket" and store it in the lval.
@@ -492,7 +559,7 @@
 
     ;       join_and_continue(lval, label).
             % Signal that this thread of execution has finished in the current
-            % parallel conjunct.  For details of how we at the end of a parallel
+            % parallel conjunct. For details of how we at the end of a parallel
             % conjunct see runtime/mercury_context.{c,h}.
             % The synchronisation term is specified by the given lval.
             % The label gives the address of the code following the parallel
@@ -662,6 +729,14 @@
                                 % declarations that the C type name came from.
             ).
 
+:- type add_trail_ops
+    --->    add_trail_ops
+    ;       do_not_add_trail_ops.
+
+:- type add_region_ops
+    --->    add_region_ops
+    ;       do_not_add_region_ops.
+
     % See runtime/mercury_trail.h.
 :- type reset_trail_reason
     --->    reset_reason_undo
@@ -671,7 +746,65 @@
     ;       reset_reason_retry
     ;       reset_reason_gc.
 
-:- type add_trail_ops == bool.
+    % See runtime/mercury_region.h
+    % XXX The documentation is not there yet, but should be there soon.
+:- type region_stack_id
+    --->    region_stack_ite
+    ;       region_stack_disj
+    ;       region_stack_commit.
+
+:- type region_fill_frame_op
+    --->    region_fill_ite_protect
+    ;       region_fill_ite_snapshot(removed_at_start_of_else)
+    ;       region_fill_disj_protect
+    ;       region_fill_disj_snapshot
+    ;       region_fill_commit.
+
+:- type removed_at_start_of_else
+    --->    removed_at_start_of_else
+    ;       not_removed_at_start_of_else.
+
+:- type region_set_fixed_op
+    --->    region_set_ite_num_protects
+    ;       region_set_ite_num_snapshots
+    ;       region_set_disj_num_protects
+    ;       region_set_disj_num_snapshots
+    ;       region_set_commit_num_entries.
+
+:- type region_use_frame_op
+    --->    region_ite_then(region_ite_kind)    % uses; pop only if semi
+    ;       region_ite_else(region_ite_kind)    % uses and pops
+    ;       region_ite_nondet_cond_fail         % pops
+    ;       region_disj_later                   % uses
+    ;       region_disj_last                    % uses and pops
+    ;       region_commit_success               % uses and pops
+    ;       region_commit_failure.              % only pops
+
+:- type region_ite_kind
+    --->    region_ite_semidet_cond
+    ;       region_ite_nondet_cond.
+
+:- type embedded_stack_frame_id
+    --->    embedded_stack_frame_id(
+                % The emdedded stack frame consists of the lvals
+                %
+                %   stack_slot_num_to_lval(StackId, FirstSlot)
+                % to
+                %   stack_slot_num_to_lval(StackId, LastSlot)
+                %
+                % with FirstSlot < LastSlot.
+
+                main_stack,                     % StackId
+                int,                            % FirstSlot
+                int                             % LastSlot
+            ).
+
+    % first_nonfixed_embedded_slot_addr(EmbeddedStackId, FixedSize):
+    %
+    % Return the address of the lowest-address non-fixed slot in the given
+    % embedded stack frame.
+    %
+:- func first_nonfixed_embedded_slot_addr(embedded_stack_frame_id, int) = rval.
 
     % Each call instruction has a list of liveinfo, which stores information
     % about which variables are live after the call (that is, on return).
@@ -679,21 +812,23 @@
     %
 :- type liveinfo
     --->    live_lvalue(
+                % What location does this lifeinfo structure refer to?
                 layout_locn,
-                    % What location does this lifeinfo structure refer to?
+
+                % What is the type of this live value?
                 live_value_type,
-                    % What is the type of this live value?
+
+                % For each tvar that is a parameter of the type of this value,
+                % give the set of locations where the type_info variable
+                % describing the actual type bound to the type parameter
+                % may be found.
+                %
+                % We record all the locations of the typeinfo, in case
+                % different paths of arriving a this program point leave
+                % the typeinfo in different sets of locations. However,
+                % there must be at least type_info location that is valid
+                % along all paths leading to this point.
                 map(tvar, set(layout_locn))
-                    % For each tvar that is a parameter of the type of this
-                    % value, give the set of locations where the type_info
-                    % variable describing the actual type bound to the
-                    % type parameter may be found.
-                    %
-                    % We record all the locations of the typeinfo, in case
-                    % different paths of arriving a this program point
-                    % leave the typeinfo in different sets of locations.
-                    % However, there must be at least type_info location
-                    % that is valid along all paths leading to this point.
             ).
 
     % For an explanation of this type, see the comment on
@@ -715,6 +850,9 @@
     ;       live_value_hp                  % A stored heap pointer.
     ;       live_value_trail_ptr           % A stored trail pointer.
     ;       live_value_ticket              % A stored ticket.
+    ;       live_value_region_ite
+    ;       live_value_region_disj
+    ;       live_value_region_commit
 
     ;       live_value_var(prog_var, string, mer_type, llds_inst)
             % A variable (the var number and name are for execution tracing;
@@ -756,7 +894,26 @@
 
 :- func key_abs_locn_to_lval(_, abs_locn) = lval.
 
-:- func stack_slot_num_to_lval(code_model, int) = lval.
+:- type main_stack
+    --->    det_stack
+    ;       nondet_stack.
+
+    % Return the id of the stack on which procedures with the given code model
+    % have their stack frames.
+    %
+:- func code_model_to_main_stack(code_model) = main_stack.
+
+    % stack_slot_num_to_lval(StackId, N):
+    %
+    % Return an lval for slot N in a stack frame on StackId.
+    %
+:- func stack_slot_num_to_lval(main_stack, int) = lval.
+
+    % stack_slot_num_to_lval(StackId, N):
+    %
+    % Return an rval for the address of slot N in a stack frame on StackId.
+    %
+:- func stack_slot_num_to_lval_ref(main_stack, int) = rval.
 
     % An lval represents a data location or register that can be used
     % as the target of an assignment.
@@ -826,6 +983,11 @@
             % code address to jump to on successful exit from this nondet
             % procedure.
 
+    ;       succfr_slot(rval)
+            % The succfr slot of the specified nondet stack frame; holds the
+            % address of caller's nondet stack frame.  On successful exit
+            % from this nondet procedure, we will set curfr to this value.
+
     ;       redoip_slot(rval)
             % The redoip slot of the specified nondet stack frame; holds the
             % code address to jump to on failure.
@@ -834,11 +996,6 @@
             % The redofr slot of the specified nondet stack frame; holds the
             % address of the frame that the curfr register should be set to
             % when backtracking through the redoip slot.
-
-    ;       succfr_slot(rval)
-            % The succfr slot of the specified nondet stack frame; holds the
-            % address of caller's nondet stack frame.  On successful exit
-            % from this nondet procedure, we will set curfr to this value.
 
     ;       prevfr_slot(rval)
             % The prevfr slot of the specified nondet stack frame; holds the
@@ -1085,6 +1242,8 @@
             % i.e., something whose size is a word but which may be either
             % signed or unsigned (used for registers, stack slots, etc).
 
+:- func region_stack_id_to_string(region_stack_id) = string.
+
 :- pred break_up_local_label(label::in, proc_label::out, int::out) is det.
 
     % Given a non-var rval, figure out its type.
@@ -1126,7 +1285,18 @@
 
 :- import_module libs.compiler_util.
 
+:- import_module int.
+
 %-----------------------------------------------------------------------------%
+
+first_nonfixed_embedded_slot_addr(EmbeddedStackId, FixedSize) = Rval :-
+    EmbeddedStackId = embedded_stack_frame_id(MainStackId,
+        _FirstSlot, LastSlot),
+    % LastSlot has the lowest address; FirstSlot has the highest address.
+    % The fixed slots are at the lowest addresses.
+    % XXX Quan: we may need a +1 here.
+    LowestAddrNonfixedSlot = LastSlot - FixedSize,
+    Rval = stack_slot_num_to_lval_ref(MainStackId, LowestAddrNonfixedSlot).
 
 stack_slot_to_lval(det_slot(N)) = stackvar(N).
 stack_slot_to_lval(parent_det_slot(N)) = parent_stackvar(N).
@@ -1152,12 +1322,21 @@ abs_locn_to_lval(abs_framevar(N)) = framevar(N).
 key_abs_locn_to_lval(_, AbsLocn) =
     abs_locn_to_lval(AbsLocn).
 
-stack_slot_num_to_lval(CodeModel, SlotNum) =
-    ( CodeModel = model_non ->
-        framevar(SlotNum)
-    ;
-        stackvar(SlotNum)
-    ).
+code_model_to_main_stack(model_det) = det_stack.
+code_model_to_main_stack(model_semi) = det_stack.
+code_model_to_main_stack(model_non) = nondet_stack.
+
+stack_slot_num_to_lval(det_stack, SlotNum) = stackvar(SlotNum).
+stack_slot_num_to_lval(nondet_stack, SlotNum) = framevar(SlotNum).
+
+stack_slot_num_to_lval_ref(det_stack, SlotNum) =
+    mem_addr(stackvar_ref(const(llconst_int(SlotNum)))).
+stack_slot_num_to_lval_ref(nondet_stack, SlotNum) =
+    mem_addr(framevar_ref(const(llconst_int(SlotNum)))).
+
+region_stack_id_to_string(region_stack_ite) = "region_ite_stack".
+region_stack_id_to_string(region_stack_disj) = "region_disj_stack".
+region_stack_id_to_string(region_stack_commit) = "region_commit_stack".
 
 break_up_local_label(Label, ProcLabel, LabelNum) :-
     (

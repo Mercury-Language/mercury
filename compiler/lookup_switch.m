@@ -107,9 +107,9 @@
                 assoc_list(int, soln_consts),
                 set(prog_var),          % The resume vars.
                 bool                    % The Boolean "or" of the result
-                                        % of invoking should_emit_trail_ops
-                                        % on the goal_infos of the
-                                        % disjunctions.
+                                        % of invoking goal_may_modify_trail
+                                        % on the goal_infos of the switch arms
+                                        % that are disjunctions.
             ).
 
 :- type soln_consts
@@ -242,7 +242,7 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     code_info.remember_position(!.CI, CurPos),
     generate_constants_for_lookup_switch(TaggedCases, OutVars, StoreMap,
         CaseSolns, !MaybeEnd, MaybeLiveness, set.init, ResumeVars,
-        no, GoalTrailOps, !CI),
+        no, GoalsMayModifyTrail, !CI),
     code_info.reset_to_position(CurPos, !CI),
     (
         MaybeLiveness = yes(Liveness)
@@ -257,7 +257,8 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         CaseConsts = all_one_soln(CaseValuePairs),
         assoc_list.values(CaseValuePairs, CaseValues)
     ;
-        CaseConsts = some_several_solns(CaseSolns, ResumeVars, GoalTrailOps),
+        CaseConsts = some_several_solns(CaseSolns, ResumeVars,
+            GoalsMayModifyTrail),
         % This generates CaseValues in reverse order of index, but given that
         % we only use CaseValues to find out the right LLDSTypes, this is OK.
         project_solns_to_rval_lists(CaseSolns, [], CaseValues)
@@ -321,7 +322,7 @@ generate_constants_for_lookup_switch([], _Vars, _StoreMap, [], !MaybeEnd, no,
         !ResumeVars, !GoalTrailOps, !CI).
 generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
         [CaseVal | Rest], !MaybeEnd, MaybeLiveness, !ResumeVars,
-        !GoalTrailOps, !CI) :-
+        !GoalsMayModifyTrail, !CI) :-
     Case = extended_case(_, int_tag(CaseTag), _, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
@@ -331,7 +332,7 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
     not set.member(feature_save_deep_excp_vars, Features),
 
     ( GoalExpr = disj(Disjuncts) ->
-        bool.or(goal_may_modify_trail(GoalInfo), !GoalTrailOps),
+        bool.or(goal_may_modify_trail(GoalInfo), !GoalsMayModifyTrail),
         (
             Disjuncts = [],
             % Cases like this should have been filtered out by
@@ -372,7 +373,7 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
         CaseVal = CaseTag - one_soln(Soln)
     ),
     generate_constants_for_lookup_switch(Cases, Vars, StoreMap, Rest,
-        !MaybeEnd, _, !ResumeVars, !GoalTrailOps, !CI).
+        !MaybeEnd, _, !ResumeVars, !GoalsMayModifyTrail, !CI).
 
 %---------------------------------------------------------------------------%
 
@@ -412,9 +413,16 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
             StartVal, EndVal, CaseValues, OutVars, LLDSTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns, ResumeVars, GoalTrailOps),
+        CaseConsts = some_several_solns(CaseSolns, ResumeVars,
+            GoalsMayModifyTrail),
         get_emit_trail_ops(!.CI, EmitTrailOps),
-        bool.and(EmitTrailOps, GoalTrailOps, AddTrailOps),
+        (
+            GoalsMayModifyTrail = yes,
+            AddTrailOps = EmitTrailOps
+        ;
+            GoalsMayModifyTrail = no,
+            AddTrailOps = do_not_add_trail_ops
+        ),
         Comment = node([
             llds_instr(comment("several soln lookup switch"), "")
         ]),
@@ -525,9 +533,9 @@ construct_simple_vector(CurIndex, LLDSTypes, [Index - Rvals | Rest],
 
 :- pred generate_several_soln_lookup_switch(rval::in, abs_store_map::in,
     branch_end::in, int::in, int::in, assoc_list(int, soln_consts)::in,
-    set(prog_var)::in, bool::in, list(prog_var)::in, list(llds_type)::in,
-    need_bit_vec_check::in, set(prog_var)::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+    set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
+    list(llds_type)::in, need_bit_vec_check::in, set(prog_var)::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
         StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
@@ -588,10 +596,10 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     % We cannot release the stack slots anywhere, since they will be needed
     % after backtracking to later alternatives of any model_non switch arm.
     code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
-    code_info.acquire_temp_slot(lookup_switch_cur, non_persistent_temp_slot,
-        CurSlot, !CI),
-    code_info.acquire_temp_slot(lookup_switch_max, non_persistent_temp_slot,
-        MaxSlot, !CI),
+    code_info.acquire_temp_slot(slot_lookup_switch_cur,
+        non_persistent_temp_slot, CurSlot, !CI),
+    code_info.acquire_temp_slot(slot_lookup_switch_max,
+        non_persistent_temp_slot, MaxSlot, !CI),
     % IndexRval has already had Start subtracted from it.
     BaseRval = binop(int_mul, IndexRval, const(llconst_int(MainRowWidth))),
     BaseRegInitCode = node([
@@ -632,8 +640,8 @@ case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
 :- pred generate_code_for_each_kind(assoc_list(int, case_kind)::in,
     lval::in, lval::in, lval::in, rval::in, label::in, position_info::in,
-    set(prog_var)::in, bool::in, list(prog_var)::in, abs_store_map::in,
-    branch_end::in, set(prog_var)::in, code_tree::out,
+    set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
+    abs_store_map::in, branch_end::in, set(prog_var)::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
 generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-

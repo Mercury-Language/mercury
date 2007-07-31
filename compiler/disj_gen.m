@@ -25,8 +25,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_disj(add_trail_ops::in, code_model::in, list(hlds_goal)::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_disj(code_model::in, list(hlds_goal)::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -58,32 +58,40 @@
 
 %-----------------------------------------------------------------------------%
 
-generate_disj(AddTrailOps, CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
+generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
     (
         Goals = [],
-        ( CodeModel = model_semi ->
+        (
+            CodeModel = model_semi,
             code_info.generate_failure(Code, !CI)
         ;
+            ( CodeModel = model_det
+            ; CodeModel = model_non
+            ),
             unexpected(this_file, "generate_disj: empty disjunction.")
         )
     ;
         Goals = [Goal | _],
         Goal = hlds_goal(_, GoalInfo),
         goal_info_get_resume_point(GoalInfo, Resume),
-        ( Resume = resume_point(ResumeVarsPrime, _) ->
+        (
+            Resume = resume_point(ResumeVarsPrime, _),
             ResumeVars = ResumeVarsPrime
         ;
+            Resume = no_resume_point,
             set.init(ResumeVars)
         ),
+        AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
+        AddRegionOps = should_add_region_ops(!.CI, GoalInfo),
         (
             CodeModel = model_non,
-            is_lookup_disj(AddTrailOps, ResumeVars, Goals, DisjGoalInfo,
-                LookupDisjInfo, !CI)
+            is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals,
+                DisjGoalInfo, LookupDisjInfo, !CI)
         ->
             generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI)
         ;
-            generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals,
-                DisjGoalInfo, Code, !CI)
+            generate_real_disj(AddTrailOps, AddRegionOps, CodeModel,
+                ResumeVars, Goals, DisjGoalInfo, Code, !CI)
         )
     ).
 
@@ -114,18 +122,22 @@ generate_disj(AddTrailOps, CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
                 ldi_field_types         :: list(llds_type)
             ).
 
-:- pred is_lookup_disj(bool::in, set(prog_var)::in, list(hlds_goal)::in,
-    hlds_goal_info::in, lookup_disj_info::out, code_info::in, code_info::out)
-    is semidet.
+:- pred is_lookup_disj(add_trail_ops::in, add_region_ops::in,
+    set(prog_var)::in, list(hlds_goal)::in, hlds_goal_info::in,
+    lookup_disj_info::out, code_info::in, code_info::out) is semidet.
 
-is_lookup_disj(AddTrailOps, ResumeVars, Goals, DisjGoalInfo, LookupDisjInfo,
-        !CI) :-
+is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
+        LookupDisjInfo, !CI) :-
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     MaybeTraceInfo = no,
 
     % Lookup disjunctions rely on static ground terms to work.
     code_info.get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, static_ground_terms, yes),
+
+    % XXX The code to generate lookup disjunctions hasn't yet been updated
+    % to handle region operations.
+    AddRegionOps = do_not_add_region_ops,
 
     % Since we generate two code sequences, one for the first solution and one
     % for all the later solutions, we don't get any benefit over the code
@@ -145,7 +157,7 @@ is_lookup_disj(AddTrailOps, ResumeVars, Goals, DisjGoalInfo, LookupDisjInfo,
     % However, if we are inside an outer branched control structure
     % (disjunction, switch, if-then-else), it may be released (implicitly)
     % when we get into the next branch of that outer control structure.
-    code_info.acquire_temp_slot(lookup_disj_cur, non_persistent_temp_slot,
+    code_info.acquire_temp_slot(slot_lookup_disj_cur, non_persistent_temp_slot,
         CurSlot, !CI),
     code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
@@ -295,26 +307,40 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
 
     code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
 
-    EndLabelCode = node([
-        llds_instr(label(EndLabel), "end of lookup disj")
-    ]),
-
+    EndLabelCode = node([llds_instr(label(EndLabel), "end of lookup disj")]),
     Comment = node([llds_instr(comment("lookup disj"), "")]),
-    Code = tree_list([Comment, FlushCode, BaseRegInitCode,
-        SaveSlotCode, SaveTicketCode, SaveHpCode, PrepareHijackCode,
-        UpdateRedoipCode, FirstFlushResumeVarsCode, FirstBranchEndCode,
-        GotoEndCode, ResumePointCode, RestoreTicketCode, RestoreHpCode,
-        TestMoreSolnsCode, UndoHijackCode, AfterUndoLabelCode,
-        LaterFlushResumeVarsCode, LaterBranchEndCode, EndLabelCode]).
+
+    Code = tree_list([
+        Comment,
+        FlushCode,
+        BaseRegInitCode,
+        SaveSlotCode,
+        SaveTicketCode,
+        SaveHpCode,
+        PrepareHijackCode,
+        UpdateRedoipCode,
+        FirstFlushResumeVarsCode,
+        FirstBranchEndCode,
+        GotoEndCode,
+        ResumePointCode,
+        RestoreTicketCode,
+        RestoreHpCode,
+        TestMoreSolnsCode,
+        UndoHijackCode,
+        AfterUndoLabelCode,
+        LaterFlushResumeVarsCode,
+        LaterBranchEndCode,
+        EndLabelCode
+    ]).
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_real_disj(bool::in, code_model::in, set(prog_var)::in,
-    list(hlds_goal)::in, hlds_goal_info::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_real_disj(add_trail_ops::in, add_region_ops::in,
+    code_model::in, set(prog_var)::in, list(hlds_goal)::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
-        Code, !CI)  :-
+generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
+        DisjGoalInfo, Code, !CI)  :-
     % Make sure that the variables whose values will be needed on backtracking
     % to any disjunct are materialized into registers or stack slots. Their
     % locations are recorded in ResumeMap.
@@ -331,15 +357,27 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
 
     % If we are using a grade in which we can recover memory by saving
     % and restoring the heap pointer, set up for doing so if necessary.
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         % With nondet disjunctions, we must recover memory across all
         % disjuncts, even disjuncts that cannot themselves allocate memory,
         % since we can backtrack to disjunct N after control leaves
         % disjunct N-1.
         globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
             ReclaimHeap),
-        code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI)
+        code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+
+        maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
+            FirstRegionCode, LaterRegionCode, LastRegionCode,
+            _RegionStackVars, !CI),
+        % We can't release any of the stack slots holding the embedded stack
+        % frame, since we can't let code to the right of the disjunction reuse
+        % any of those slots.
+        RegionStackVarsToRelease = []
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         % With other disjunctions, we can backtrack to disjunct N only from
         % disjunct N-1, so if disjunct N-1 does not allocate memory, we need
         % not recover memory across it. Since it is possible (and common)
@@ -348,7 +386,22 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
         globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
             ReclaimHeap),
         SaveHpCode = empty,
-        MaybeHpSlot = no
+        MaybeHpSlot = no,
+
+        % XXX The condition should succeed only if some disjunct performs
+        % some region operations (allocation or removal). The HLDS does not yet
+        % contain the information we need to decide whether this is the case.
+        ( semidet_succeed ->
+            maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
+                FirstRegionCode, LaterRegionCode, LastRegionCode,
+                RegionStackVars, !CI),
+            RegionStackVarsToRelease = RegionStackVars
+        ;
+            FirstRegionCode = empty,
+            LaterRegionCode = empty,
+            LastRegionCode = empty,
+            RegionStackVarsToRelease = []
+        )
     ),
 
     % Save the values of any stack slots we may hijack, and if necessary,
@@ -361,33 +414,45 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
     code_info.remember_position(!.CI, BranchStart),
     generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
         DisjGoalInfo, EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
-        BranchStart, no, MaybeEnd, GoalsCode, !CI),
+        LaterRegionCode, LastRegionCode, BranchStart, no, MaybeEnd, GoalsCode,
+        !CI),
 
     goal_info_get_store_map(DisjGoalInfo, StoreMap),
     code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
-    ( CodeModel = model_non ->
+    code_info.release_several_temp_slots(RegionStackVarsToRelease,
+        non_persistent_temp_slot, !CI),
+    (
+        CodeModel = model_non,
         code_info.set_resume_point_to_unknown(!CI)
     ;
-        true
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        )
+        % The resume point is unchanged.
     ),
-    Code = tree_list([FlushCode, SaveTicketCode, SaveHpCode, PrepareHijackCode,
-         GoalsCode]).
 
-%---------------------------------------------------------------------------%
+    Code = tree_list([
+        FlushCode,
+        SaveTicketCode,
+        SaveHpCode,
+        FirstRegionCode,
+        PrepareHijackCode,
+        GoalsCode
+    ]).
 
 :- pred generate_disjuncts(list(hlds_goal)::in, code_model::in,
     resume_map::in, maybe(resume_point_info)::in, disj_hijack_info::in,
     hlds_goal_info::in, label::in, bool::in, maybe(lval)::in,
-    maybe(lval)::in, position_info::in, maybe(branch_end_info)::in,
-    maybe(branch_end_info)::out, code_tree::out, code_info::in,
-    code_info::out) is det.
+    maybe(lval)::in, code_tree::in, code_tree::in,
+    position_info::in, maybe(branch_end_info)::in, maybe(branch_end_info)::out,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
     unexpected(this_file, "generate_disjuncts: empty disjunction!").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel, ReclaimHeap,
-        MaybeHpSlot0, MaybeTicketSlot, BranchStart0, MaybeEnd0, MaybeEnd,
-        Code, !CI) :-
+        MaybeHpSlot0, MaybeTicketSlot, LaterRegionCode, LastRegionCode,
+        BranchStart0, MaybeEnd0, MaybeEnd, Code, !CI) :-
 
     code_info.reset_to_position(BranchStart0, !CI),
 
@@ -404,7 +469,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_get_resume_point(GoalInfo0, Resume),
-    ( Resume = resume_point(ResumeVars, ResumeLocs) ->
+    (
+        Resume = resume_point(ResumeVars, ResumeLocs),
         % Emit code for a non-last disjunct, including setting things
         % up for the execution of the next disjunct.
 
@@ -467,7 +533,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         goal_info_get_code_model(GoalInfo, GoalCodeModel),
         code_gen.generate_goal(GoalCodeModel, Goal, GoalCode, !CI),
 
-        ( CodeModel = model_non ->
+        (
+            CodeModel = model_non,
+
             % We can backtrack to the next disjunct from outside, so we make
             % sure every variable in the resume set is in its stack slot.
             code_info.flush_resume_vars_to_stack(ResumeVarsCode, !CI),
@@ -477,6 +545,10 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             % after the disjunction.
             PruneTicketCode = empty
         ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
+
             ResumeVarsCode = empty,
 
             code_info.maybe_release_hp(MaybeHpSlot, !CI),
@@ -509,14 +581,28 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
         generate_disjuncts(Goals, CodeModel, FullResumeMap,
             yes(NextResumePoint), HijackInfo, DisjGoalInfo,
-            EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot, BranchStart,
+            EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
+            LaterRegionCode, LastRegionCode, BranchStart,
             MaybeEnd1, MaybeEnd, RestCode, !CI),
 
-        Code = tree_list([EntryResumePointCode, RestoreHpCode,
-            RestoreTicketCode, SaveHpCode, ModContCode, TraceCode,
-            GoalCode, ResumeVarsCode, PruneTicketCode, SaveCode,
-            BranchCode, RestCode])
+        Code = tree_list([
+            EntryResumePointCode,
+            RestoreHpCode,
+            RestoreTicketCode,
+            SaveHpCode,
+            LaterRegionCode,
+            ModContCode,
+            TraceCode,
+            GoalCode,
+            ResumeVarsCode,
+            PruneTicketCode,
+            SaveCode,
+            BranchCode,
+            RestCode
+        ])
     ;
+        Resume = no_resume_point,
+
         % Emit code for the last disjunct.
 
         % Restore the heap pointer and solver state if necessary.
@@ -537,9 +623,166 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         EndCode = node([
             llds_instr(label(EndLabel), "End of nondet disj")
         ]),
-        Code = tree_list([EntryResumePointCode, TraceCode, RestoreHpCode,
-            RestoreTicketCode, UndoCode, GoalCode, SaveCode, EndCode])
+        Code = tree_list([
+            EntryResumePointCode,
+            TraceCode,      % XXX Should this be after LastRegionCode?
+            RestoreHpCode,
+            RestoreTicketCode,
+            LastRegionCode,
+            UndoCode,
+            GoalCode,
+            SaveCode,
+            EndCode
+        ])
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_create_disj_region_frame(add_region_ops::in, hlds_goal_info::in,
+    code_tree::out, code_tree::out, code_tree::out, list(lval)::out,
+    code_info::in, code_info::out) is det.
+
+maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
+        FirstCode, LaterCode, LastCode, StackVars, !CI) :-
+    (
+        DisjRegionOps = do_not_add_region_ops,
+        FirstCode = empty,
+        LaterCode = empty,
+        LastCode = empty,
+        StackVars = []
+    ;
+        DisjRegionOps = add_region_ops,
+        code_info.get_forward_live_vars(!.CI, ForwardLiveVars),
+        LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
+
+        % XXX In computing both ProtectRegionVars and SnapshotRegionVars,
+        % we should intersect LiveRegionVars with the set of region variables
+        % whose regions (the regions themselves, not their variables) are live
+        % at the starts of some later disjuncts (i.e. aren't used only in the
+        % first disjunct). We don't yet gather this information.
+        %
+        % XXX In computing ProtectRegionVars, we should also delete any
+        % variables that are statically known to be already protected by
+        % an outer disjunction, but we don't yet have the program analysis
+        % required to gather such information.
+        ProtectRegionVars = LiveRegionVars,
+        SnapshotRegionVars = LiveRegionVars,
+
+        ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
+        SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
+
+        list.length(ProtectRegionVarList, NumProtectRegionVars),
+        list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
+
+        code_info.get_globals(!.CI, Globals),
+        globals.lookup_int_option(Globals, size_region_disj_fixed,
+            FixedSize),
+        globals.lookup_int_option(Globals, size_region_disj_protect,
+            ProtectSize),
+        globals.lookup_int_option(Globals, size_region_disj_snapshot,
+            SnapshotSize),
+        FrameSize = FixedSize
+            + ProtectSize * NumProtectRegionVars
+            + SnapshotSize * NumSnapshotRegionVars,
+
+        Items = list.duplicate(FrameSize, slot_region_disj),
+        acquire_several_temp_slots(Items, non_persistent_temp_slot,
+            StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
+        EmbeddedStackFrame = embedded_stack_frame_id(MainStackId,
+            FirstSlotNum, LastSlotNum),
+        FirstNonFixedAddr =
+            first_nonfixed_embedded_slot_addr(EmbeddedStackFrame, FixedSize),
+        acquire_reg(reg_r, ProtectNumRegLval, !CI),
+        acquire_reg(reg_r, SnapshotNumRegLval, !CI),
+        acquire_reg(reg_r, AddrRegLval, !CI),
+        PushInitCode = node([
+            llds_instr(
+                push_region_frame(region_stack_disj, EmbeddedStackFrame),
+                "Save stack pointer of embedded region nondet stack"),
+            llds_instr(
+                assign(ProtectNumRegLval, const(llconst_int(0))),
+                "Initialize number of protect_infos"),
+            llds_instr(
+                assign(SnapshotNumRegLval, const(llconst_int(0))),
+                "Initialize number of snapshot_infos"),
+            llds_instr(
+                assign(AddrRegLval, FirstNonFixedAddr),
+                "Initialize pointer to nonfixed part of embedded frame")
+        ]),
+        disj_protect_regions(ProtectNumRegLval, AddrRegLval,
+            EmbeddedStackFrame, ProtectRegionVarList, ProtectRegionCode,
+            !CI),
+        disj_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
+            EmbeddedStackFrame, SnapshotRegionVarList, SnapshotRegionCode,
+            !CI),
+        SetCode = node([
+            llds_instr(
+                region_set_fixed_slot(region_set_disj_num_protects,
+                    EmbeddedStackFrame, lval(ProtectNumRegLval)),
+                "Store the number of protect_infos"),
+            llds_instr(
+                region_set_fixed_slot(region_set_disj_num_snapshots,
+                    EmbeddedStackFrame, lval(SnapshotNumRegLval)),
+                "Store the number of snapshot_infos")
+        ]),
+        release_reg(ProtectNumRegLval, !CI),
+        release_reg(SnapshotNumRegLval, !CI),
+        release_reg(AddrRegLval, !CI),
+
+        FirstCode = tree_list([
+            PushInitCode,
+            ProtectRegionCode,
+            SnapshotRegionCode,
+            SetCode
+        ]),
+        LaterCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(region_disj_later,
+                    EmbeddedStackFrame),
+                "region enter later disjunct")
+        ]),
+        LastCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(region_disj_last,
+                    EmbeddedStackFrame),
+                "region enter last disjunct")
+        ])
+    ).
+
+:- pred disj_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,
+    list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+
+disj_protect_regions(_, _, _, [], empty, !CI).
+disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
+        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
+    SaveCode = node([
+        llds_instr(
+            region_fill_frame(region_fill_disj_protect,
+                EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
+            "disj protect the region if needed")
+    ]),
+    Code = tree(ProduceVarCode, SaveCode),
+    disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
+        RegionVars, Codes, !CI).
+
+:- pred disj_alloc_snapshot_regions(lval::in, lval::in,
+    embedded_stack_frame_id::in, list(prog_var)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+disj_alloc_snapshot_regions(_, _, _, [], empty, !CI).
+disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
+        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
+    SaveCode = node([
+        llds_instr(
+            region_fill_frame(region_fill_disj_snapshot,
+                EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
+            "take alloc snapshot of the region")
+    ]),
+    Code = tree(ProduceVarCode, SaveCode),
+    disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
+        RegionVars, Codes, !CI).
 
 %-----------------------------------------------------------------------------%
 

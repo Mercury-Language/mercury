@@ -476,6 +476,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
     ),
     FromFullSlot = eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo,
         ProcInfo, TraceLevel),
+    StackId = code_model_to_main_stack(CodeModel),
     (
         FromFullSlot = no,
         MaybeFromFullSlot = no,
@@ -484,16 +485,15 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
     ;
         FromFullSlot = yes,
         MaybeFromFullSlot = yes(NextSlotAfterRedoLayout),
-        CallFromFullSlot = llds.stack_slot_num_to_lval(
-            CodeModel, NextSlotAfterRedoLayout),
+        CallFromFullSlot = stack_slot_num_to_lval(StackId,
+            NextSlotAfterRedoLayout),
         MaybeFromFullSlotLval = yes(CallFromFullSlot),
         NextSlotAfterFromFull = NextSlotAfterRedoLayout + 1
     ),
     (
         TraceTableIo = yes,
         MaybeIoSeqSlot = yes(NextSlotAfterFromFull),
-        IoSeqLval = llds.stack_slot_num_to_lval(CodeModel,
-            NextSlotAfterFromFull),
+        IoSeqLval = stack_slot_num_to_lval(StackId, NextSlotAfterFromFull),
         MaybeIoSeqLval = yes(IoSeqLval),
         NextSlotAfterIoSeq = NextSlotAfterFromFull + 1
     ;
@@ -506,10 +506,8 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
     (
         UseTrail = yes,
         MaybeTrailSlot = yes(NextSlotAfterIoSeq),
-        TrailLval = llds.stack_slot_num_to_lval(CodeModel,
-            NextSlotAfterIoSeq),
-        TicketLval = llds.stack_slot_num_to_lval(CodeModel,
-            NextSlotAfterIoSeq + 1),
+        TrailLval = stack_slot_num_to_lval(StackId, NextSlotAfterIoSeq),
+        TicketLval = stack_slot_num_to_lval(StackId, NextSlotAfterIoSeq + 1),
         MaybeTrailLvals = yes(TrailLval - TicketLval),
         NextSlotAfterTrail = NextSlotAfterIoSeq + 2
     ;
@@ -522,8 +520,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
     (
         NeedMaxfr = yes,
         MaybeMaxfrSlot = yes(NextSlotAfterTrail),
-        MaxfrLval = llds.stack_slot_num_to_lval(CodeModel,
-            NextSlotAfterTrail),
+        MaxfrLval = stack_slot_num_to_lval(StackId, NextSlotAfterTrail),
         MaybeMaxfrLval = yes(MaxfrLval),
         NextSlotAfterMaxfr = NextSlotAfterTrail + 1
     ;
@@ -534,8 +531,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
     ),
     ( proc_info_get_call_table_tip(ProcInfo, yes(_)) ->
         MaybeCallTableSlot = yes(NextSlotAfterMaxfr),
-        CallTableLval = llds.stack_slot_num_to_lval(CodeModel,
-            NextSlotAfterMaxfr),
+        CallTableLval = stack_slot_num_to_lval(StackId, NextSlotAfterMaxfr),
         MaybeCallTableLval = yes(CallTableLval)
     ;
         MaybeCallTableSlot = no,

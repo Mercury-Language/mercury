@@ -138,6 +138,7 @@
 :- import_module counter.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module svbimap.
@@ -407,7 +408,7 @@ find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
     % has a value of one kind in one switch arm and a value of the other kind
     % in another switch arm. We can mix the two because it is OK to initialize
     % a field declared to be a data_ptr with an integer rval.
-    % 
+    %
     % If there are any other similar cases, they should be added here.
     % The value of Type may be useful in such code.
     (
@@ -691,10 +692,10 @@ merge_static_cell_infos(SCIa, SCIb, SCI, Remap) :-
 
 merge_cell_type_num_maps(CellType, BTypeNum,
         !TypeCounter, !CellTypeNumMap, !TypeNumRemap) :-
-    (if bimap.search(!.CellTypeNumMap, CellType, ATypeNum) then
+    ( bimap.search(!.CellTypeNumMap, CellType, ATypeNum) ->
         % A type also in GlobalDataA.
         svmap.det_insert(BTypeNum, ATypeNum, !TypeNumRemap)
-    else
+    ;
         % A type not in GlobalDataA.
         counter.allocate(N, !TypeCounter),
         NewTypeNum = type_num(N),
@@ -725,11 +726,9 @@ merge_scalar_cell_group_maps(TypeNumRemap,
 merge_scalar_cell_group_maps_2(TypeNumRemap, BTypeNum, BScalarCellGroup,
         !ScalarCellGroupMap, !Remap) :-
     map.lookup(TypeNumRemap, BTypeNum, TypeNum),
-    (if
-        ScalarCellGroupPrime = !.ScalarCellGroupMap ^ elem(TypeNum)
-    then
+    ( map.search(!.ScalarCellGroupMap, TypeNum, ScalarCellGroupPrime) ->
         ScalarCellGroup0 = ScalarCellGroupPrime
-    else
+    ;
         % Could do this more efficiently.
         ScalarCellGroup0 = scalar_cell_group(counter.init(0), bimap.init, [])
     ),
@@ -759,19 +758,17 @@ merge_scalar_cell_groups(TypeNum, GroupA, GroupB, GroupAB, GroupRemap) :-
         GroupMembersA, GroupMembersAB, map.init, GroupRemap).
 
 :- pred merge_scalar_cell_groups_2(type_num::in,
-    list(common_cell_value)::in, list(common_cell_value)::in, 
+    list(common_cell_value)::in, list(common_cell_value)::in,
     list(rval)::in, data_name::in,
     bimap(list(rval), data_name)::in, bimap(list(rval), data_name)::out,
     scalar_cell_group_remap::in, scalar_cell_group_remap::out) is det.
 
 merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
         Rvals, BDataName, !GroupMembers, !GroupRemap) :-
-    (if
-        bimap.search(!.GroupMembers, Rvals, DataName)
-    then
+    ( bimap.search(!.GroupMembers, Rvals, DataName) ->
         % Seen this list of rvals before in the group.
         svmap.det_insert(BDataName, DataName, !GroupRemap)
-    else
+    ;
         % Not seen this list of rvals before in the group.
         (
             BDataName = scalar_common_ref(_, BCellNum),
@@ -820,40 +817,41 @@ nth_member_lookup0(List, Elem) = Pos-1 :-
     % The scalar cell group and vector cell group contents themselves
     % need to be updated to use the merged cell information.
     %
-:- func remap_static_cell_info(static_cell_remap_info,
-    static_cell_info) = static_cell_info.
+:- func remap_static_cell_info(static_cell_remap_info, static_cell_info)
+    = static_cell_info.
 
 remap_static_cell_info(Remap, SCI0) = SCI :-
     ScalarMap = map.map_values(remap_scalar_cell_group(Remap),
         SCI0 ^ scalar_cell_group_map),
     VectorMap = map.map_values(remap_vector_cell_group(Remap),
         SCI0 ^ vector_cell_group_map),
-    SCI = (SCI0 ^ scalar_cell_group_map := ScalarMap)
-                ^ vector_cell_group_map := VectorMap.
+    SCI = (SCI0
+        ^ scalar_cell_group_map := ScalarMap)
+        ^ vector_cell_group_map := VectorMap.
 
 :- func remap_scalar_cell_group(static_cell_remap_info,
     type_num, scalar_cell_group) = scalar_cell_group.
 
 remap_scalar_cell_group(Remap, _, ScalarCellGroup0) = ScalarCellGroup :-
     Array0 = ScalarCellGroup0 ^ scalar_cell_rev_array,
-    Array  = list.map(remap_common_cell_value(Remap), Array0),
-    ScalarCellGroup = ScalarCellGroup0 ^ scalar_cell_rev_array := Array.
+    ScalarCellGroup = ScalarCellGroup0 ^ scalar_cell_rev_array := Array,
+    Array = list.map(remap_common_cell_value(Remap), Array0).
 
 :- func remap_vector_cell_group(static_cell_remap_info,
     type_num, vector_cell_group) = vector_cell_group.
 
 remap_vector_cell_group(Remap, _, VectorCellGroup0) = VectorCellGroup :-
     VectorCellGroup0 = vector_cell_group(Counter, Map0),
-    VectorCellGroup  = vector_cell_group(Counter, Map),
-    Map = map.map_values(remap_vector_contents(Remap), Map0).
+    Map = map.map_values(remap_vector_contents(Remap), Map0),
+    VectorCellGroup = vector_cell_group(Counter, Map).
 
 :- func remap_vector_contents(static_cell_remap_info,
     int, vector_contents) = vector_contents.
 
 remap_vector_contents(Remap, _, Contents0) = Contents :-
     Contents0 = vector_contents(Values0),
-    Contents  = vector_contents(Values),
-    Values = list.map(remap_common_cell_value(Remap), Values0).
+    Values = list.map(remap_common_cell_value(Remap), Values0),
+    Contents = vector_contents(Values).
 
 :- func remap_common_cell_value(static_cell_remap_info,
     common_cell_value) = common_cell_value.
@@ -861,12 +859,12 @@ remap_vector_contents(Remap, _, Contents0) = Contents :-
 remap_common_cell_value(Remap, CommonCellValue0) = CommonCellValue :-
     (
         CommonCellValue0 = plain_value(RvalsTypes0),
-        CommonCellValue  = plain_value(RvalsTypes),
-        RvalsTypes = list.map(remap_plain_value(Remap), RvalsTypes0)
+        RvalsTypes = list.map(remap_plain_value(Remap), RvalsTypes0),
+        CommonCellValue = plain_value(RvalsTypes)
     ;
         CommonCellValue0 = grouped_args_value(ArgGroup0),
-        CommonCellValue  = grouped_args_value(ArgGroup),
-        ArgGroup = list.map(remap_arg_group_value(Remap), ArgGroup0)
+        ArgGroup = list.map(remap_arg_group_value(Remap), ArgGroup0),
+        CommonCellValue = grouped_args_value(ArgGroup)
     ).
 
 :- func remap_plain_value(static_cell_remap_info,
@@ -881,12 +879,12 @@ remap_plain_value(Remap, Rval0 - Type) = Rval - Type :-
 remap_arg_group_value(Remap, GroupedArgs0) = GroupedArgs :-
     (
         GroupedArgs0 = common_cell_grouped_args(Type, Fields, Rvals0),
-        GroupedArgs  = common_cell_grouped_args(Type, Fields, Rvals),
-        Rvals = list.map(remap_rval(Remap), Rvals0)
+        Rvals = list.map(remap_rval(Remap), Rvals0),
+        GroupedArgs = common_cell_grouped_args(Type, Fields, Rvals)
     ;
         GroupedArgs0 = common_cell_ungrouped_arg(Type, Rvals0),
-        GroupedArgs  = common_cell_ungrouped_arg(Type, Rvals),
-        Rvals = remap_rval(Remap, Rvals0)
+        Rvals = remap_rval(Remap, Rvals0),
+        GroupedArgs = common_cell_ungrouped_arg(Type, Rvals)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -906,20 +904,105 @@ remap_instruction(Remap, llds_instr(Instr0, Comment))
 remap_instr(Remap, Instr0) = Instr :-
     (
         Instr0 = block(NumIntTemps, NumFloatTemps, Block0),
-        Instr  = block(NumIntTemps, NumFloatTemps, Block),
-        Block  = list.map(remap_instruction(Remap), Block0)
+        Block = list.map(remap_instruction(Remap), Block0),
+        Instr = block(NumIntTemps, NumFloatTemps, Block)
     ;
         Instr0 = assign(Lval, Rval0),
-        Instr  = assign(Lval, Rval),
-        Rval = remap_rval(Remap, Rval0)
+        Rval = remap_rval(Remap, Rval0),
+        Instr = assign(Lval, Rval)
+    ;
+        Instr0 = keep_assign(Lval, Rval0),
+        Rval = remap_rval(Remap, Rval0),
+        Instr = keep_assign(Lval, Rval)
     ;
         Instr0 = if_val(Rval0, CodeAddr),
-        Instr  = if_val(Rval, CodeAddr),
-        Rval = remap_rval(Remap, Rval0)
+        Rval = remap_rval(Remap, Rval0),
+        Instr  = if_val(Rval, CodeAddr)
     ;
         Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H),
-        Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H),
-        Comps = list.map(remap_foreign_proc_component(Remap), Comps0)
+        Comps = list.map(remap_foreign_proc_component(Remap), Comps0),
+        Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H)
+    ;
+        Instr0 = computed_goto(Rval0, CodeAddrs),
+        Rval = remap_rval(Remap, Rval0),
+        Instr = computed_goto(Rval, CodeAddrs)
+    ;
+        Instr0 = save_maxfr(Lval0),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = save_maxfr(Lval)
+    ;
+        Instr0 = restore_maxfr(Lval0),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = restore_maxfr(Lval)
+    ;
+        Instr0 = incr_hp(Lval0, MaybeTag, MaybeOffset, SizeRval0, Prof,
+            Atomic, MaybeRegion0),
+        Lval = remap_lval(Remap, Lval0),
+        SizeRval = remap_rval(Remap, SizeRval0),
+        (
+            MaybeRegion0 = yes(Region0),
+            Region = remap_rval(Remap, Region0),
+            MaybeRegion = yes(Region)
+        ;
+            MaybeRegion0 = no,
+            MaybeRegion = no
+        ),
+        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, Prof,
+            Atomic, MaybeRegion)
+    ;
+        Instr0 = mark_hp(Lval0),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = mark_hp(Lval)
+    ;
+        Instr0 = restore_hp(Rval0),
+        Rval = remap_rval(Remap, Rval0),
+        Instr = restore_hp(Rval)
+    ;
+        Instr0 = free_heap(Rval0),
+        Rval = remap_rval(Remap, Rval0),
+        Instr = free_heap(Rval)
+    ;
+        Instr0 = push_region_frame(StackId, EmbeddedStackFrame),
+        Instr = push_region_frame(StackId, EmbeddedStackFrame)
+    ;
+        Instr0 = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval0,
+            NumLval0, AddrLval0),
+        IdRval = remap_rval(Remap, IdRval0),
+        NumLval = remap_lval(Remap, NumLval0),
+        AddrLval = remap_lval(Remap, AddrLval0),
+        Instr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval)
+    ;
+        Instr0 = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval0),
+        ValueRval = remap_rval(Remap, ValueRval0),
+        Instr = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval)
+    ;
+        Instr0 = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
+        Instr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
+    ;
+        Instr0 = store_ticket(Lval0),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = store_ticket(Lval)
+    ;
+        Instr0 = reset_ticket(Rval0, Reason),
+        Rval = remap_rval(Remap, Rval0),
+        Instr = reset_ticket(Rval, Reason)
+    ;
+        Instr0 = mark_ticket_stack(Lval0),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = mark_ticket_stack(Lval)
+    ;
+        Instr0 = prune_tickets_to(Rval0),
+        Rval = remap_rval(Remap, Rval0),
+        Instr = prune_tickets_to(Rval)
+    ;
+        Instr0 = init_sync_term(Lval0, NumJoins),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = init_sync_term(Lval, NumJoins)
+    ;
+        Instr0 = join_and_continue(Lval0, Label),
+        Lval = remap_lval(Remap, Lval0),
+        Instr = join_and_continue(Lval, Label)
     ;
         ( Instr0 = comment(_)
         ; Instr0 = livevals(_)
@@ -927,42 +1010,29 @@ remap_instr(Remap, Instr0) = Instr :-
         ; Instr0 = mkframe(_, _)
         ; Instr0 = label(_)
         ; Instr0 = goto(_)
-        ; Instr0 = computed_goto(_, _)
         ; Instr0 = arbitrary_c_code(_, _, _)
-        ; Instr0 = save_maxfr(_)
-        ; Instr0 = restore_maxfr(_)
-        ; Instr0 = incr_hp(_, _, _, _, _, _, _)
-        ; Instr0 = mark_hp(_)
-        ; Instr0 = restore_hp(_)
-        ; Instr0 = free_heap(_)
-        ; Instr0 = store_ticket(_)
-        ; Instr0 = reset_ticket(_, _)
         ; Instr0 = prune_ticket
         ; Instr0 = discard_ticket
-        ; Instr0 = mark_ticket_stack(_)
-        ; Instr0 = prune_tickets_to(_)
         ; Instr0 = incr_sp(_, _, _)
         ; Instr0 = decr_sp(_)
         ; Instr0 = decr_sp_and_return(_)
-        ; Instr0 = init_sync_term(_, _)
         ; Instr0 = fork(_)
-        ; Instr0 = join_and_continue(_, _)
         ),
         Instr = Instr0
     ).
 
 :- func remap_foreign_proc_component(static_cell_remap_info,
-        foreign_proc_component) = foreign_proc_component.
+    foreign_proc_component) = foreign_proc_component.
 
 remap_foreign_proc_component(Remap, Comp0) = Comp :-
     (
         Comp0 = foreign_proc_inputs(Inputs0),
-        Comp  = foreign_proc_inputs(Inputs),
-        Inputs = list.map(remap_foreign_proc_input(Remap), Inputs0) 
+        Inputs = list.map(remap_foreign_proc_input(Remap), Inputs0),
+        Comp = foreign_proc_inputs(Inputs)
     ;
         Comp0 = foreign_proc_outputs(Outputs0),
-        Comp  = foreign_proc_outputs(Outputs),
-        Outputs = list.map(remap_foreign_proc_output(Remap), Outputs0)
+        Outputs = list.map(remap_foreign_proc_output(Remap), Outputs0),
+        Comp = foreign_proc_outputs(Outputs)
     ;
         ( Comp0 = foreign_proc_raw_code(_, _, _, _)
         ; Comp0 = foreign_proc_user_code(_, _, _)
@@ -975,28 +1045,30 @@ remap_foreign_proc_component(Remap, Comp0) = Comp :-
 :- func remap_foreign_proc_input(static_cell_remap_info, foreign_proc_input)
     = foreign_proc_input.
 
-remap_foreign_proc_input(Remap, foreign_proc_input(A, B, C, D, Rval0, E, F))
-        = foreign_proc_input(A, B, C, D, Rval, E, F) :-
-    Rval = remap_rval(Remap, Rval0).
+remap_foreign_proc_input(Remap, Input0) = Input :-
+    Input0 = foreign_proc_input(A, B, C, D, Rval0, E, F),
+    Rval = remap_rval(Remap, Rval0),
+    Input = foreign_proc_input(A, B, C, D, Rval, E, F).
 
 :- func remap_foreign_proc_output(static_cell_remap_info, foreign_proc_output)
     = foreign_proc_output.
 
-remap_foreign_proc_output(Remap, foreign_proc_output(Lval0, A, B, C, D, E, F))
-        = foreign_proc_output(Lval, A, B, C, D, E, F) :-
-    Lval = remap_lval(Remap, Lval0).
+remap_foreign_proc_output(Remap, Output0) = Output :-
+    Output0 = foreign_proc_output(Lval0, A, B, C, D, E, F),
+    Lval = remap_lval(Remap, Lval0),
+    Output = foreign_proc_output(Lval, A, B, C, D, E, F).
 
 :- func remap_lval(static_cell_remap_info, lval) = lval.
 
 remap_lval(Remap, Lval0) = Lval :-
     (
         Lval0 = field(MaybeTag, Rval0, FieldNum),
-        Lval  = field(MaybeTag, Rval, FieldNum),
-        Rval  = remap_rval(Remap, Rval0)
+        Rval = remap_rval(Remap, Rval0),
+        Lval = field(MaybeTag, Rval, FieldNum)
     ;
         Lval0 = mem_ref(Rval0),
-        Lval  = mem_ref(Rval),
-        Rval  = remap_rval(Remap, Rval0)
+        Rval = remap_rval(Remap, Rval0),
+        Lval = mem_ref(Rval)
     ;
         ( Lval0 = reg(_, _)
         ; Lval0 = succip
@@ -1025,32 +1097,32 @@ remap_lval(Remap, Lval0) = Lval :-
 remap_rval(Remap, Rval0) = Rval :-
     (
         Rval0 = lval(Lval0),
-        Rval  = lval(Lval),
-        Lval  = remap_lval(Remap, Lval0)
+        Lval = remap_lval(Remap, Lval0),
+        Rval = lval(Lval)
     ;
         Rval0 = var(_),
-        Rval  = Rval0
+        Rval = Rval0
     ;
         Rval0 = mkword(Tag, Ptr0),
-        Rval  = mkword(Tag, Ptr),
-        Ptr   = remap_rval(Remap, Ptr0)
+        Ptr = remap_rval(Remap, Ptr0),
+        Rval = mkword(Tag, Ptr)
     ;
         Rval0 = const(Const0),
-        Rval  = const(Const),
-        Const = remap_rval_const(Remap, Const0)
+        Const = remap_rval_const(Remap, Const0),
+        Rval = const(Const)
     ;
         Rval0 = unop(Unop, A0),
-        Rval  = unop(Unop, A),
-        A = remap_rval(Remap, A0)
+        A = remap_rval(Remap, A0),
+        Rval = unop(Unop, A)
     ;
         Rval0 = binop(Binop, A0, B0),
-        Rval  = binop(Binop, A, B),
         A = remap_rval(Remap, A0),
-        B = remap_rval(Remap, B0)
+        B = remap_rval(Remap, B0),
+        Rval = binop(Binop, A, B)
     ;
         Rval0 = mem_addr(MemRef0),
-        Rval  = mem_addr(MemRef),
-        MemRef = remap_mem_ref(Remap, MemRef0)
+        MemRef = remap_mem_ref(Remap, MemRef0),
+        Rval = mem_addr(MemRef)
     ).
 
 :- func remap_rval_const(static_cell_remap_info, rval_const) = rval_const.
@@ -1058,18 +1130,17 @@ remap_rval(Remap, Rval0) = Rval :-
 remap_rval_const(Remap, Const0) = Const :-
     (
         Const0 = llconst_data_addr(Addr0, MaybeOffset),
-        Const  = llconst_data_addr(Addr,  MaybeOffset),
         (
             Addr0 = data_addr(ModuleName, DataName0),
-            Addr  = data_addr(ModuleName, DataName),
-            DataName = remap_data_name(Remap, DataName0)
+            DataName = remap_data_name(Remap, DataName0),
+            Addr = data_addr(ModuleName, DataName)
         ;
-            Addr0 = rtti_addr(_),
+            ( Addr0 = rtti_addr(_)
+            ; Addr0 = layout_addr(_)
+            ),
             Addr = Addr0
-        ;
-            Addr0 = layout_addr(_),
-            Addr = Addr0
-        )
+        ),
+        Const  = llconst_data_addr(Addr,  MaybeOffset)
     ;
         ( Const0 = llconst_true
         ; Const0 = llconst_false
@@ -1110,15 +1181,14 @@ remap_data_name(Remap, DataName0) = DataName :-
 
 remap_mem_ref(Remap, MemRef0) = MemRef :-
     (
-        MemRef0 = stackvar_ref(_),
-        MemRef = MemRef0
-    ;
-        MemRef0 = framevar_ref(_),
+        ( MemRef0 = stackvar_ref(_)
+        ; MemRef0 = framevar_ref(_)
+        ),
         MemRef = MemRef0
     ;
         MemRef0 = heap_ref(Ptr0, Tag, FieldNum),
-        MemRef  = heap_ref(Ptr, Tag, FieldNum),
-        Ptr = remap_rval(Remap, Ptr0)
+        Ptr = remap_rval(Remap, Ptr0),
+        MemRef = heap_ref(Ptr, Tag, FieldNum)
     ).
 
 %-----------------------------------------------------------------------------%

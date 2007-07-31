@@ -192,7 +192,10 @@ instr_to_x86_64(!RegMap, livevals(RegsAndStackLocs), Instrs) :-
     transform_livevals(!.RegMap, List, Instrs).
 instr_to_x86_64(!RegMap, block(_, _, CInstrs), Instrs) :-
     transform_block_instr(!.RegMap, CInstrs, Instrs).
-instr_to_x86_64(!RegMap, assign(Lval, Rval), Instrs) :-
+instr_to_x86_64(!RegMap, Op, Instrs) :-
+    ( Op = assign(Lval, Rval)
+    ; Op = keep_assign(Lval, Rval)
+    ),
     transform_lval(!RegMap, Lval, Res0, Res1),
     transform_rval(!RegMap, Rval, Res2, Res3),
     (
@@ -381,11 +384,20 @@ instr_to_x86_64(!RegMap,
     SetTag = x86_64_instr(or(operand_imm(imm32(int32(Tag))), TempReg2)),
     Instr1 = x86_64_instr(mov(TempReg2, LvalOp)),
     Instrs = IncrAddrInstrs ++ [ImmToReg] ++ [SetTag] ++ [Instr1].
-instr_to_x86_64(!RegMap, mark_hp(_), [x86_64_comment("<<mark_hp>>")]).
+instr_to_x86_64(!RegMap, mark_hp(_), Instr) :-
+    Instr = [x86_64_comment("<<mark_hp>>")].
 instr_to_x86_64(!RegMap, restore_hp(_), Instr) :-
     Instr = [x86_64_comment("<<restore_hp>>")].
 instr_to_x86_64(!RegMap, free_heap(_), Instr) :-
     Instr = [x86_64_comment("<<free_heap>>")].
+instr_to_x86_64(!RegMap, push_region_frame(_, _), Instr) :-
+    Instr = [x86_64_comment("<<push_region_frame>>")].
+instr_to_x86_64(!RegMap, region_fill_frame(_, _, _, _, _), Instr) :-
+    Instr = [x86_64_comment("<<region_fill_frame>>")].
+instr_to_x86_64(!RegMap, region_set_fixed_slot(_, _, _), Instr) :-
+    Instr = [x86_64_comment("<<region_set_fixed_slot>>")].
+instr_to_x86_64(!RegMap, use_and_maybe_pop_region_frame(_, _), Instr) :-
+    Instr = [x86_64_comment("<<use_and_maybe_pop_region_frame>>")].
 instr_to_x86_64(!RegMap, store_ticket(_), Instr) :-
     Instr = [x86_64_comment("<<store_ticket>>")].
 instr_to_x86_64(!RegMap, reset_ticket(_, _), Instr) :-

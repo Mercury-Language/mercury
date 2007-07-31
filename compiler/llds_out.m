@@ -1893,6 +1893,9 @@ output_instr_decls( StackLayoutLabels, block(_TempR, _TempF, Instrs),
 output_instr_decls(_, assign(Lval, Rval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
     output_rval_decls(Rval, !DeclSet, !IO).
+output_instr_decls(_, keep_assign(Lval, Rval), !DeclSet, !IO) :-
+    output_lval_decls(Lval, !DeclSet, !IO),
+    output_rval_decls(Rval, !DeclSet, !IO).
 output_instr_decls(_, llcall(Target, ContLabel, _, _, _, _), !DeclSet, !IO) :-
     output_code_addr_decls(Target, !DeclSet, !IO),
     output_code_addr_decls(ContLabel, !DeclSet, !IO).
@@ -1962,6 +1965,18 @@ output_instr_decls(_, restore_hp(Rval), !DeclSet, !IO) :-
     output_rval_decls(Rval, !DeclSet, !IO).
 output_instr_decls(_, free_heap(Rval), !DeclSet, !IO) :-
     output_rval_decls(Rval, !DeclSet, !IO).
+output_instr_decls(_, push_region_frame(_StackId, _EmbeddedFrame),
+        !DeclSet, !IO).
+output_instr_decls(_, region_fill_frame(_FillOp, _EmbeddedFrame, IdRval,
+        NumLval, AddrLval), !DeclSet, !IO) :-
+    output_rval_decls(IdRval, !DeclSet, !IO),
+    output_lval_decls(NumLval, !DeclSet, !IO),
+    output_lval_decls(AddrLval, !DeclSet, !IO).
+output_instr_decls(_, region_set_fixed_slot(_SetOp, _EmbeddedFrame, ValueRval),
+        !DeclSet, !IO) :-
+    output_rval_decls(ValueRval, !DeclSet, !IO).
+output_instr_decls(_, use_and_maybe_pop_region_frame(_UseOp, _EmbeddedFrame),
+        !DeclSet, !IO).
 output_instr_decls(_, store_ticket(Lval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, reset_ticket(Rval, _Reason), !DeclSet, !IO) :-
@@ -2259,6 +2274,13 @@ output_instruction(assign(Lval, Rval), _, !IO) :-
     output_rval_as_type(Rval, Type, !IO),
     io.write_string(";\n", !IO).
 
+output_instruction(keep_assign(Lval, Rval), _, !IO) :-
+    io.write_string("\t", !IO),
+    output_lval_for_assign(Lval, Type, !IO),
+    io.write_string(" = ", !IO),
+    output_rval_as_type(Rval, Type, !IO),
+    io.write_string(";\n", !IO).
+
 output_instruction(llcall(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
         !IO) :-
     ProfInfo = CallerLabel - _,
@@ -2531,6 +2553,119 @@ output_instruction(free_heap(Rval), _, !IO) :-
     output_rval_as_type(Rval, data_ptr, !IO),
     io.write_string(");\n", !IO).
 
+output_instruction(push_region_frame(StackId, EmbeddedFrame), _, !IO) :-
+    (
+        StackId = region_stack_ite,
+        io.write_string("\tMR_push_region_ite_frame", !IO)
+    ;
+        StackId = region_stack_disj,
+        io.write_string("\tMR_push_region_disj_frame", !IO)
+    ;
+        StackId = region_stack_commit,
+        io.write_string("\tMR_push_region_commit_frame", !IO)
+    ),
+    io.write_string("(", !IO),
+    output_embedded_frame_addr(EmbeddedFrame, !IO),
+    io.write_string(");", !IO),
+
+    % The comment is to make the code easier to debug;
+    % we can stop printing it out once that has been done.
+    EmbeddedFrame = embedded_stack_frame_id(_StackId, FirstSlot, LastSlot),
+    Comment = " /* " ++ int_to_string(FirstSlot) ++ ".." ++
+        int_to_string(LastSlot) ++ " */",
+    io.write_string(Comment, !IO),
+
+    io.write_string("\n", !IO).
+
+output_instruction(region_fill_frame(FillOp, EmbeddedFrame, IdRval,
+        NumLval, AddrLval), _, !IO) :-
+    (
+        FillOp = region_fill_ite_protect,
+        io.write_string("\tMR_region_fill_ite_protect", !IO)
+    ;
+        FillOp = region_fill_ite_snapshot(removed_at_start_of_else),
+        io.write_string("\tMR_region_fill_ite_snapshot_removed", !IO)
+    ;
+        FillOp = region_fill_ite_snapshot(not_removed_at_start_of_else),
+        io.write_string("\tMR_region_fill_ite_snapshot_not_removed", !IO)
+    ;
+        FillOp = region_fill_disj_protect,
+        io.write_string("\tMR_region_fill_disj_protect", !IO)
+    ;
+        FillOp = region_fill_disj_snapshot,
+        io.write_string("\tMR_region_fill_disj_snapshot", !IO)
+    ;
+        FillOp = region_fill_commit,
+        io.write_string("\tMR_region_fill_commit", !IO)
+    ),
+    io.write_string("(", !IO),
+    output_embedded_frame_addr(EmbeddedFrame, !IO),
+    io.write_string(", ", !IO),
+    output_rval(IdRval, !IO),
+    io.write_string(", ", !IO),
+    output_lval(NumLval, !IO),
+    io.write_string(", ", !IO),
+    output_lval(AddrLval, !IO),
+    io.write_string(");\n", !IO).
+
+output_instruction(region_set_fixed_slot(SetOp, EmbeddedFrame, ValueRval),
+        _, !IO) :-
+    (
+        SetOp = region_set_ite_num_protects,
+        io.write_string("\tMR_region_set_ite_num_protects", !IO)
+    ;
+        SetOp = region_set_ite_num_snapshots,
+        io.write_string("\tMR_region_set_ite_num_snapshots", !IO)
+    ;
+        SetOp = region_set_disj_num_protects,
+        io.write_string("\tMR_region_set_disj_num_protects", !IO)
+    ;
+        SetOp = region_set_disj_num_snapshots,
+        io.write_string("\tMR_region_set_disj_num_snapshots", !IO)
+    ;
+        SetOp = region_set_commit_num_entries,
+        io.write_string("\tMR_region_set_commit_num_entries", !IO)
+    ),
+    io.write_string("(", !IO),
+    output_embedded_frame_addr(EmbeddedFrame, !IO),
+    io.write_string(", ", !IO),
+    output_rval(ValueRval, !IO),
+    io.write_string(");\n", !IO).
+
+output_instruction(use_and_maybe_pop_region_frame(UseOp, EmbeddedFrame),
+        _, !IO) :-
+    (
+        UseOp = region_ite_then(region_ite_semidet_cond),
+        io.write_string("\tMR_use_region_ite_then_semidet", !IO)
+    ;
+        UseOp = region_ite_then(region_ite_nondet_cond),
+        io.write_string("\tMR_use_region_ite_then_nondet", !IO)
+    ;
+        UseOp = region_ite_else(region_ite_semidet_cond),
+        io.write_string("\tMR_use_region_ite_else_semidet", !IO)
+    ;
+        UseOp = region_ite_else(region_ite_nondet_cond),
+        io.write_string("\tMR_use_region_ite_else_nondet", !IO)
+    ;
+        UseOp = region_ite_nondet_cond_fail,
+        io.write_string("\tMR_use_region_ite_nondet_cond_fail", !IO)
+    ;
+        UseOp = region_disj_later,
+        io.write_string("\tMR_use_region_disj_later", !IO)
+    ;
+        UseOp = region_disj_last,
+        io.write_string("\tMR_use_region_disj_last", !IO)
+    ;
+        UseOp = region_commit_success,
+        io.write_string("\tMR_use_region_commit_success", !IO)
+    ;
+        UseOp = region_commit_failure,
+        io.write_string("\tMR_use_region_commit_failure", !IO)
+    ),
+    io.write_string("(", !IO),
+    output_embedded_frame_addr(EmbeddedFrame, !IO),
+    io.write_string(");\n", !IO).
+
 output_instruction(store_ticket(Lval), _, !IO) :-
     io.write_string("\tMR_store_ticket(", !IO),
     output_lval_as_word(Lval, !IO),
@@ -2616,6 +2751,23 @@ output_instruction(join_and_continue(Lval, Label), _, !IO) :-
     io.write_string(", ", !IO),
     output_label_as_code_addr(Label, !IO),
     io.write_string(");\n", !IO).
+
+    % Our stacks grow upwards in that new stack frames have higher addresses
+    % than old stack frames, but within in each stack frame, we compute the
+    % address of stackvar N or framevar N by *subtracting* N from the address
+    % of the top of (the non-fixed part of) the stack frame, so that e.g.
+    % framevar N+1 is actually stored at a *lower* address than framevar N.
+    %
+    % The C code we interact with refers to embedded stack frames by the
+    % starting (i.e. lowest) address.
+    %
+:- pred output_embedded_frame_addr(embedded_stack_frame_id::in,
+    io::di, io::uo) is det.
+
+output_embedded_frame_addr(EmbeddedFrame, !IO) :-
+    EmbeddedFrame = embedded_stack_frame_id(MainStackId, _FirstSlot, LastSlot),
+    FrameStartRval = stack_slot_num_to_lval_ref(MainStackId, LastSlot),
+    output_rval_as_type(FrameStartRval, data_ptr, !IO).
 
 :- func max_leaf_stack_frame_size = int.
 
@@ -2988,6 +3140,12 @@ output_live_value_type(live_value_trail_ptr, !IO) :-
     io.write_string("type trail_ptr", !IO).
 output_live_value_type(live_value_ticket, !IO) :-
     io.write_string("type ticket", !IO).
+output_live_value_type(live_value_region_disj, !IO) :-
+    io.write_string("type region disj", !IO).
+output_live_value_type(live_value_region_commit, !IO) :-
+    io.write_string("type region commit", !IO).
+output_live_value_type(live_value_region_ite, !IO) :-
+    io.write_string("type region ite", !IO).
 output_live_value_type(live_value_unwanted, !IO) :-
     io.write_string("unwanted", !IO).
 output_live_value_type(live_value_var(Var, Name, Type, LldsInst), !IO) :-

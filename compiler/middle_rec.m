@@ -509,6 +509,9 @@ find_used_registers_instr(block(_, _, Instrs), !Used) :-
 find_used_registers_instr(assign(Lval, Rval), !Used) :-
     find_used_registers_lval(Lval, !Used),
     find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(keep_assign(Lval, Rval), !Used) :-
+    find_used_registers_lval(Lval, !Used),
+    find_used_registers_rval(Rval, !Used).
 find_used_registers_instr(llcall(_, _, _, _, _, _), !Used).
 find_used_registers_instr(mkframe(_, _), !Used).
 find_used_registers_instr(label(_), !Used).
@@ -538,6 +541,17 @@ find_used_registers_instr(restore_hp(Rval), !Used) :-
     find_used_registers_rval(Rval, !Used).
 find_used_registers_instr(free_heap(Rval), !Used) :-
     find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(push_region_frame(_Id, _EmbeddedStackFrame), !Used).
+find_used_registers_instr(region_fill_frame(_FillOp, _EmbeddedStackFrame,
+        IdRval, NumLval, AddrLval), !Used) :-
+    find_used_registers_rval(IdRval, !Used),
+    find_used_registers_lval(NumLval, !Used),
+    find_used_registers_lval(AddrLval, !Used).
+find_used_registers_instr(region_set_fixed_slot(_SetOp, _EmbeddedStackFrame,
+        ValueRval), !Used) :-
+    find_used_registers_rval(ValueRval, !Used).
+find_used_registers_instr(use_and_maybe_pop_region_frame(_UseOp,
+    _EmbeddedStackFrame), !Used).
 find_used_registers_instr(store_ticket(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
 find_used_registers_instr(reset_ticket(Rval, _Rsn), !Used) :-

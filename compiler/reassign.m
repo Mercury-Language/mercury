@@ -47,8 +47,8 @@
 % a value that it already holds, we remove the assignment.  The removed
 % assignment will either be a copy of the original assignment TargetLval =
 % SourceRval, or its converse, SourceLval = lval(TargetLval).  The mechanism
-% that enables us to do this is a map that maps lvals
-% (e.g. TargetLval) to its known contents (e.g. SourceRval).
+% that enables us to do this is a map that maps lvals (e.g. TargetLval)
+% to its known contents (e.g. SourceRval).
 %
 % Of course, if any of the lvals occurring on the right hand side of an
 % assignment change, we cannot remove a later copy of that assignment or of
@@ -114,6 +114,7 @@
 :- import_module libs.compiler_util.
 :- import_module ll_backend.code_util.
 
+:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module set.
@@ -171,6 +172,9 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
             )
         )
     ;
+        Uinstr0 = keep_assign(_, _),
+        !:RevInstrs = [Instr0 | !.RevInstrs]
+    ;
         Uinstr0 = llcall(_, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The call may clobber any lval.
@@ -214,7 +218,8 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = save_maxfr(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
+        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
+        svmap.delete(Target, !KnownContentsMap)
     ;
         Uinstr0 = restore_maxfr(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -227,7 +232,8 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = mark_hp(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
+        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
+        svmap.delete(Target, !KnownContentsMap)
     ;
         Uinstr0 = restore_hp(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -237,6 +243,21 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs]
         % There is no need to update KnownContentsMap since later code
         % should never refer to the freed cell.
+    ;
+        ( Uinstr0 = push_region_frame(_, EmbeddedFrame)
+        ; Uinstr0 = region_set_fixed_slot(_, EmbeddedFrame, _)
+        ; Uinstr0 = use_and_maybe_pop_region_frame(_, EmbeddedFrame)
+        ),
+        !:RevInstrs = [Instr0 | !.RevInstrs],
+        update_embdedded_frame(EmbeddedFrame, !KnownContentsMap, !DepLvalMap)
+    ;
+        Uinstr0 = region_fill_frame(_, EmbeddedFrame, _, NumLval, AddrLval),
+        !:RevInstrs = [Instr0 | !.RevInstrs],
+        update_embdedded_frame(EmbeddedFrame, !KnownContentsMap, !DepLvalMap),
+        clobber_dependents(NumLval, !KnownContentsMap, !DepLvalMap),
+        clobber_dependents(AddrLval, !KnownContentsMap, !DepLvalMap),
+        svmap.delete(NumLval, !KnownContentsMap),
+        svmap.delete(AddrLval, !KnownContentsMap)
     ;
         Uinstr0 = store_ticket(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -313,6 +334,31 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     remove_reassign_loop(Instrs0, !.KnownContentsMap, !.DepLvalMap,
         !RevInstrs).
 
+:- pred update_embdedded_frame(embedded_stack_frame_id::in,
+    known_contents::in, known_contents::out,
+    dependent_lval_map::in, dependent_lval_map::out) is det.
+
+update_embdedded_frame(EmbeddedFrame, !KnownContentsMap, !DepLvalMap) :-
+    EmbeddedFrame = embedded_stack_frame_id(StackId, FirstSlot, LastSlot),
+    update_embdedded_frame_2(StackId, FirstSlot, LastSlot,
+        !KnownContentsMap, !DepLvalMap).
+
+:- pred update_embdedded_frame_2(main_stack::in, int::in, int::in,
+    known_contents::in, known_contents::out,
+    dependent_lval_map::in, dependent_lval_map::out) is det.
+
+update_embdedded_frame_2(StackId, CurSlot, LastSlot,
+        !KnownContentsMap, !DepLvalMap) :-
+    ( CurSlot =< LastSlot ->
+        StackVar = stack_slot_num_to_lval(StackId, CurSlot),
+        clobber_dependents(StackVar, !KnownContentsMap, !DepLvalMap),
+        svmap.delete(StackVar, !KnownContentsMap),
+        update_embdedded_frame_2(StackId, CurSlot + 1, LastSlot,
+            !KnownContentsMap, !DepLvalMap)
+    ;
+        true
+    ).
+
     % Succeed iff the lval cannot have an alias created for it without the
     % use of a mem_ref lval or an instruction with embedded C code, both of
     % which cause us to clobber the known contents map.
@@ -342,8 +388,10 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     % that may be referred to via this mem_ref.
     code_util.lvals_in_rval(lval(Target), SubLvals),
     (
-        list.member(SubLval, SubLvals),
-        SubLval = mem_ref(_)
+        some [SubLval] (
+            list.member(SubLval, SubLvals),
+            SubLval = mem_ref(_)
+        )
     ->
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init

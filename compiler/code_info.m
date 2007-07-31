@@ -143,6 +143,8 @@
 
 :- pred get_emit_trail_ops(code_info::in, add_trail_ops::out) is det.
 
+:- pred get_emit_region_ops(code_info::in, add_region_ops::out) is det.
+
     % Get the set of currently forward-live variables.
     %
 :- pred get_forward_live_vars(code_info::in, set(prog_var)::out) is det.
@@ -213,6 +215,8 @@
     is det.
 
 :- pred get_opt_trail_ops(code_info::in, bool::out) is det.
+
+:- pred get_opt_region_ops(code_info::in, bool::out) is det.
 
 :- pred get_auto_comments(code_info::in, bool::out) is det.
 
@@ -343,11 +347,18 @@
                                     % Should we optimize calls that cannot
                                     % return?
 
-                emit_trail_ops      :: bool,
+                emit_trail_ops      :: add_trail_ops,
                                     % Should we emit trail operations?
 
                 opt_trail_ops       :: bool,
                                     % Should we try to avoid emiting trail
+                                    % operations?
+
+                emit_region_ops     :: add_region_ops,
+                                    % Should we emit region operations?
+
+                opt_region_ops      :: bool,
+                                    % Should we try to avoid emiting region
                                     % operations?
 
                 auto_comments       :: bool,
@@ -517,11 +528,20 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         UseTrail = yes,
         DisableTrailOps = no
     ->
-        EmitTrailOps = yes
+        EmitTrailOps = add_trail_ops
     ;
-        EmitTrailOps = no
+        EmitTrailOps = do_not_add_trail_ops
     ),
     globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
+    globals.lookup_bool_option(Globals, optimize_region_ops, OptRegionOps),
+    globals.lookup_bool_option(Globals, use_regions, UseRegions),
+    (
+        UseRegions = yes,
+        EmitRegionOps = add_region_ops
+    ;
+        UseRegions = no,
+        EmitRegionOps = do_not_add_region_ops
+    ),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, optimize_constructor_last_call_null,
         LCMCNull),
@@ -539,6 +559,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             OptNoReturnCalls,
             EmitTrailOps,
             OptTrailOps,
+            EmitRegionOps,
+            OptRegionOps,
             AutoComments,
             LCMCNull
         ),
@@ -603,6 +625,8 @@ get_maybe_trace_info(CI, CI ^ code_info_static ^ maybe_trace_info).
 get_opt_no_return_calls(CI, CI ^ code_info_static ^ opt_no_resume_calls).
 get_emit_trail_ops(CI, CI ^ code_info_static ^ emit_trail_ops).
 get_opt_trail_ops(CI, CI ^ code_info_static ^ opt_trail_ops).
+get_emit_region_ops(CI, CI ^ code_info_static ^ emit_region_ops).
+get_opt_region_ops(CI, CI ^ code_info_static ^ opt_region_ops).
 get_auto_comments(CI, CI ^ code_info_static ^ auto_comments).
 get_lcmc_null(CI, CI ^ code_info_static ^ lcmc_null).
 get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ forward_live_vars).
@@ -707,6 +731,8 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
 :- func variable_type(code_info, prog_var) = mer_type.
 
 :- func lookup_type_defn(code_info, mer_type) = hlds_type_defn.
+
+:- func filter_region_vars(code_info, set(prog_var)) = set(prog_var).
 
     % Given a constructor id, and a variable (so that we can work out the
     % type of the constructor), determine correct tag (representation)
@@ -887,6 +913,11 @@ lookup_type_defn(CI, Type) = TypeDefn :-
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
     map.lookup(TypeTable, TypeCtor, TypeDefn).
+
+filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
+    VarTypes = code_info.get_var_types(CI),
+    RegionVars = set.filter(is_region_var(VarTypes),
+        ForwardLiveVarsBeforeGoal).
 
 cons_id_to_tag_for_var(CI, Var, ConsId) = ConsTag :-
     get_module_info(CI, ModuleInfo),
@@ -1302,10 +1333,14 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % being cut across. If the goal succeeds, the commit will cut
     % any choice points generated in the goal.
     %
+    % The set(prog_var) should be the set of variables live before
+    % the scope goal.
+    %
 :- type det_commit_info.
 
-:- pred prepare_for_det_commit(add_trail_ops::in, det_commit_info::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred prepare_for_det_commit(add_trail_ops::in, add_region_ops::in,
+    set(prog_var)::in, det_commit_info::out, code_tree::out,
+    code_info::in, code_info::out) is det.
 
 :- pred generate_det_commit(det_commit_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
@@ -1315,10 +1350,14 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % being cut across. If the goal succeeds, the commit will cut
     % any choice points generated in the goal.
     %
+    % The set(prog_var) should be the set of variables live before
+    % the scope goal.
+    %
 :- type semi_commit_info.
 
-:- pred prepare_for_semi_commit(bool::in, semi_commit_info::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred prepare_for_semi_commit(add_trail_ops::in, add_region_ops::in,
+    set(prog_var)::in, semi_commit_info::out, code_tree::out,
+    code_info::in, code_info::out) is det.
 
 :- pred generate_semi_commit(semi_commit_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
@@ -1529,7 +1568,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     ->
         % Here ResumeKnown must be resume_point_unknown
         % or resume_point_known(wont_be_done).
-        acquire_temp_slot(lval(redoip_slot(lval(curfr))),
+        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
             non_persistent_temp_slot, RedoipSlot, !CI),
         HijackInfo = disj_half_hijack(RedoipSlot),
         Code = node([
@@ -1538,9 +1577,9 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip_slot(lval(maxfr))),
+        acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
             non_persistent_temp_slot, RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr_slot(lval(maxfr))),
+        acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
             non_persistent_temp_slot, RedofrSlot, !CI),
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
         Code = node([
@@ -1655,8 +1694,8 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
     ;
         ( Allow = not_allowed ; CondEnv = inside_non_condition )
     ->
-        acquire_temp_slot(lval(maxfr), non_persistent_temp_slot, MaxfrSlot,
-            !CI),
+        acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
+            MaxfrSlot, !CI),
         HijackType = ite_temp_frame(MaxfrSlot),
         create_temp_frame(do_fail, "prepare for ite", TempFrameCode, !CI),
         MaxfrCode = node([
@@ -1675,7 +1714,7 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         CurfrMaxfr = must_be_equal
     ->
         % Here ResumeKnown must be resume_point_unknown.
-        acquire_temp_slot(lval(redoip_slot(lval(curfr))),
+        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
             non_persistent_temp_slot, RedoipSlot, !CI),
         HijackType = ite_half_hijack(RedoipSlot),
         Code = node([
@@ -1684,11 +1723,11 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip_slot(lval(maxfr))),
+        acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
             non_persistent_temp_slot, RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr_slot(lval(maxfr))),
+        acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
             non_persistent_temp_slot, RedofrSlot, !CI),
-        acquire_temp_slot(lval(maxfr),
+        acquire_temp_slot(slot_lval(maxfr),
             non_persistent_temp_slot, MaxfrSlot, !CI),
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         Code = node([
@@ -1727,7 +1766,7 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
                 "soft cut for temp frame ite")
         ]),
         ElseCode = node([
-            % XXX, search /assign(maxfr
+            % XXX search for assignments to maxfr
             llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
                 "restore maxfr for temp frame ite")
         ])
@@ -1767,9 +1806,11 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
                 "restore redofr for full ite hijack")
         ])
     ),
-    ( ResumeKnown0 = resume_point_unknown ->
+    (
+        ResumeKnown0 = resume_point_unknown,
         ResumeKnown = resume_point_unknown
     ;
+        ResumeKnown0 = resume_point_known(_),
         ResumeKnown = HijackResumeKnown
     ),
     FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, OldCondEnv,
@@ -1816,17 +1857,37 @@ make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
 :- type det_commit_info
     --->    det_commit_info(
                 maybe(lval),        % Location of saved maxfr.
-                maybe(pair(lval))   % Location of saved ticket
+                maybe(pair(lval)),  % Location of saved ticket
                                     % counter and trail pointer.
+                maybe(region_commit_stack_frame)
             ).
 
-prepare_for_det_commit(AddTrailOps, DetCommitInfo, Code, !CI) :-
+:- type region_commit_stack_frame
+    --->    region_commit_stack_frame(
+                embedded_stack_frame_id,
+                                    % The id of the region commit stack frame,
+                                    % which is emdedded in the current
+                                    % procedure's stack frame, and whose
+                                    % layout is:
+
+                                    % saved region_commit_stack_pointer
+                                    % saved region sequence number
+                                    % number of live nonprotected regions
+                                    % space reserved for the ids of live
+                                    %   nonprotected regions
+
+                list(lval)          % The list of temporary slots that
+                                    % constitute this embedded stack frame.
+            ).
+
+prepare_for_det_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
+        DetCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _),
     (
         CurfrMaxfr = may_be_different,
-        acquire_temp_slot(lval(maxfr), non_persistent_temp_slot, MaxfrSlot,
-            !CI),
+        acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
+            MaxfrSlot, !CI),
         SaveMaxfrCode = node([
             llds_instr(save_maxfr(MaxfrSlot), "save the value of maxfr")
         ]),
@@ -1837,11 +1898,19 @@ prepare_for_det_commit(AddTrailOps, DetCommitInfo, Code, !CI) :-
         MaybeMaxfrSlot = no
     ),
     maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
-    DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots),
-    Code = tree(SaveMaxfrCode, SaveTrailCode).
+    maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
+        MaybeRegionCommitFrameInfo, SaveRegionCommitFrameCode, !CI),
+    DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots,
+        MaybeRegionCommitFrameInfo),
+    Code = tree_list([
+        SaveMaxfrCode,
+        SaveTrailCode,
+        SaveRegionCommitFrameCode
+    ]).
 
 generate_det_commit(DetCommitInfo, Code, !CI) :-
-    DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots),
+    DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots,
+        MaybeRegionCommitFrameInfo),
     (
         MaybeMaxfrSlot = yes(MaxfrSlot),
         RestoreMaxfrCode = node([
@@ -1857,7 +1926,13 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
         ])
     ),
     maybe_restore_trail_info(MaybeTrailSlots, CommitTrailCode, _, !CI),
-    Code = tree(RestoreMaxfrCode, CommitTrailCode).
+    maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
+        SuccessRegionCode, _FailureRegionCode, !CI),
+    Code = tree_list([
+        RestoreMaxfrCode,
+        CommitTrailCode,
+        SuccessRegionCode
+    ]).
 
 %---------------------------------------------------------------------------%
 
@@ -1866,8 +1941,9 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
                 fail_info,              % Fail_info on entry.
                 resume_point_info,
                 commit_hijack_info,
-                maybe(pair(lval))       % Location of saved ticket
+                maybe(pair(lval)),      % Location of saved ticket
                                         % counter and trail pointer.
+                maybe(region_commit_stack_frame)
             ).
 
 :- type commit_hijack_info
@@ -1891,7 +1967,8 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
                             % the value of maxfr.
             ).
 
-prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
+prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
+        SemiCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr, CondEnv,
         Allow),
@@ -1907,8 +1984,8 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     (
         ( Allow = not_allowed ; CondEnv = inside_non_condition )
     ->
-        acquire_temp_slot(lval(maxfr), non_persistent_temp_slot, MaxfrSlot,
-            !CI),
+        acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
+            MaxfrSlot, !CI),
         MaxfrCode = node([
             llds_instr(save_maxfr(MaxfrSlot),
                 "prepare for temp frame commit")
@@ -1921,15 +1998,13 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModelStackCopyCut),
         (
             UseMinimalModelStackCopyCut = yes,
-            % If the code we are committing across starts but
-            % does not complete the evaluation of a tabled subgoal,
-            % the cut will remove the generator's choice point,
-            % so that the evaluation of the subgoal will never
-            % be completed. We handle such "dangling" generators
-            % by removing them from the subgoal trie of the
-            % tabled procedure. This requires knowing what
-            % tabled subgoals are started inside commits,
-            % which is why we wrap the goal being committed across
+            % If the code we are committing across starts but does not complete
+            % the evaluation of a tabled subgoal, the cut will remove the
+            % generator's choice point, so that the evaluation of the subgoal
+            % will never be completed. We handle such "dangling" generators
+            % by removing them from the subgoal trie of the tabled procedure.
+            % This requires knowing what tabled subgoals are started inside
+            % commits, which is why we wrap the goal being committed across
             % inside MR_commit_{mark,cut}.
             Components = [
                 foreign_proc_raw_code(cannot_branch_away,
@@ -1967,7 +2042,7 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         % Here ResumeKnown must be resume_point_unknown or
         % resume_point_known(wont_be_done).
 
-        acquire_temp_slot(lval(redoip_slot(lval(curfr))),
+        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
             non_persistent_temp_slot, RedoipSlot, !CI),
         HijackInfo = commit_half_hijack(RedoipSlot),
         HijackCode = node([
@@ -1978,11 +2053,11 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip_slot(lval(maxfr))),
+        acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
             non_persistent_temp_slot, RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr_slot(lval(maxfr))),
+        acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
             non_persistent_temp_slot, RedofrSlot, !CI),
-        acquire_temp_slot(lval(maxfr),
+        acquire_temp_slot(slot_lval(maxfr),
             non_persistent_temp_slot, MaxfrSlot, !CI),
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         HijackCode = node([
@@ -1999,13 +2074,19 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         ])
     ),
     maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
+    maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
+        MaybeRegionCommitFrameInfo, SaveRegionCommitFrameCode, !CI),
     SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
-        HijackInfo, MaybeTrailSlots),
-    Code = tree(HijackCode, SaveTrailCode).
+        HijackInfo, MaybeTrailSlots, MaybeRegionCommitFrameInfo),
+    Code = tree_list([
+        HijackCode,
+        SaveTrailCode,
+        SaveRegionCommitFrameCode
+    ]).
 
 generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     SemiCommitInfo = semi_commit_info(FailInfo, ResumePoint,
-        HijackInfo, MaybeTrailSlots),
+        HijackInfo, MaybeTrailSlots, MaybeRegionCommitFrameInfo),
 
     set_fail_info(FailInfo, !CI),
     % XXX Should release the temp slots in each arm of the switch.
@@ -2088,6 +2169,8 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
 
     maybe_restore_trail_info(MaybeTrailSlots, CommitTrailCode,
         RestoreTrailCode, !CI),
+    maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
+        SuccessRegionCode, FailureRegionCode, !CI),
 
     get_next_label(SuccLabel, !CI),
     GotoSuccLabel = node([
@@ -2096,11 +2179,144 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     SuccLabelCode = node([
         llds_instr(label(SuccLabel), "Success continuation")
     ]),
-    SuccessCode = tree(SuccessUndoCode, CommitTrailCode),
-    FailureCode = tree_list([ResumePointCode, FailureUndoCode,
-        RestoreTrailCode, FailCode]),
-    Code = tree_list([SuccessCode, GotoSuccLabel,
-        FailureCode, SuccLabelCode]).
+    SuccessCode = tree_list([
+        SuccessUndoCode,
+        CommitTrailCode,
+        SuccessRegionCode
+    ]),
+    FailureCode = tree_list([
+        ResumePointCode,
+        FailureUndoCode,
+        RestoreTrailCode,
+        FailureRegionCode,
+        FailCode
+    ]),
+    Code = tree_list([
+        SuccessCode,
+        GotoSuccLabel,
+        FailureCode,
+        SuccLabelCode
+    ]).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_save_region_commit_frame(add_region_ops::in, set(prog_var)::in,
+    maybe(region_commit_stack_frame)::out, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
+        MaybeRegionCommitFrameInfo, Code, !CI) :-
+    (
+        AddRegionOps = do_not_add_region_ops,
+        MaybeRegionCommitFrameInfo = no,
+        Code = empty
+    ;
+        AddRegionOps = add_region_ops,
+        RegionVars = filter_region_vars(!.CI, ForwardLiveVarsBeforeGoal),
+
+        % XXX RemovedRegionVars should be the set of region vars whose
+        % regions are removed in the scope. However, this information
+        % is not yet available in the HLDS, and there is no simple way here
+        % to reconstruct it.
+        RemovedRegionVars = RegionVars,
+
+        RemovedRegionVarList = set.to_sorted_list(RemovedRegionVars),
+
+        NumRemovedRegionVars = list.length(RemovedRegionVarList),
+
+        code_info.get_globals(!.CI, Globals),
+        globals.lookup_int_option(Globals, size_region_commit_fixed,
+            FixedSize),
+        globals.lookup_int_option(Globals, size_region_commit_entry,
+            EntrySize),
+        FrameSize = FixedSize + EntrySize * NumRemovedRegionVars,
+        Items = list.duplicate(FrameSize, slot_region_commit),
+        acquire_several_temp_slots(Items, non_persistent_temp_slot,
+            StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
+        EmbeddedStackFrame = embedded_stack_frame_id(MainStackId,
+            FirstSlotNum, LastSlotNum),
+        FirstSavedRegionAddr =
+            first_nonfixed_embedded_slot_addr(EmbeddedStackFrame, FixedSize),
+        acquire_reg(reg_r, NumRegLval, !CI),
+        acquire_reg(reg_r, AddrRegLval, !CI),
+        PushInitCode = node([
+            llds_instr(
+                push_region_frame(region_stack_commit, EmbeddedStackFrame),
+                "Save stack pointer of embedded region commit stack"),
+            llds_instr(
+                assign(NumRegLval, const(llconst_int(0))),
+                "Initialize number of unprotected live regions"),
+            llds_instr(
+                assign(AddrRegLval, FirstSavedRegionAddr),
+                "Initialize pointer to the next unprotected live region slot")
+        ]),
+        save_unprotected_live_regions(NumRegLval, AddrRegLval,
+            EmbeddedStackFrame, RemovedRegionVarList, FillCode, !CI),
+        SetCode = node([
+            llds_instr(
+                region_set_fixed_slot(region_set_commit_num_entries,
+                    EmbeddedStackFrame, lval(NumRegLval)),
+                "Store the number of unprotected live regions")
+        ]),
+        release_reg(NumRegLval, !CI),
+        release_reg(AddrRegLval, !CI),
+
+        RegionCommitFrameInfo = region_commit_stack_frame(EmbeddedStackFrame,
+            StackVars),
+        MaybeRegionCommitFrameInfo = yes(RegionCommitFrameInfo),
+
+        Code = tree_list([
+            PushInitCode,
+            FillCode,
+            SetCode
+        ])
+    ).
+
+:- pred save_unprotected_live_regions(lval::in, lval::in,
+    embedded_stack_frame_id::in, list(prog_var)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+save_unprotected_live_regions(_, _, _, [], empty, !CI).
+save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
+        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
+    SaveCode = node([
+        llds_instr(
+            region_fill_frame(region_fill_commit, EmbeddedStackFrame,
+                RegionVarRval, NumLval, AddrLval),
+            "Save the region in the commit stack frame if it is unprotected")
+    ]),
+    Code = tree(ProduceVarCode, SaveCode),
+    save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
+        RegionVars, Codes, !CI).
+
+:- pred maybe_restore_region_commit_frame(maybe(region_commit_stack_frame)::in,
+    code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
+
+maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
+        SuccessCode, FailureCode, !CI) :-
+    (
+        MaybeRegionCommitFrameInfo = no,
+        SuccessCode = empty,
+        FailureCode = empty
+    ;
+        MaybeRegionCommitFrameInfo = yes(RegionCommitFrameInfo),
+        RegionCommitFrameInfo = region_commit_stack_frame(EmbeddedStackFrame,
+            StackVars),
+        SuccessCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(region_commit_success,
+                    EmbeddedStackFrame),
+                "Destroy removed regions protected by cut away disjunctions")
+        ]),
+        FailureCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(region_commit_failure,
+                    EmbeddedStackFrame),
+                "Undo the creation of the commit frame")
+        ]),
+        release_several_temp_slots(StackVars, non_persistent_temp_slot, !CI)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -2668,15 +2884,15 @@ resume_point_stack_addr(ResumePoint, StackAddr) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_save_trail_info(bool::in, maybe(pair(lval))::out,
+:- pred maybe_save_trail_info(add_trail_ops::in, maybe(pair(lval))::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
 maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
     (
-        AddTrailOps = yes,
-        acquire_temp_slot(ticket_counter, non_persistent_temp_slot,
+        AddTrailOps = add_trail_ops,
+        acquire_temp_slot(slot_ticket_counter, non_persistent_temp_slot,
             CounterSlot, !CI),
-        acquire_temp_slot(ticket, non_persistent_temp_slot,
+        acquire_temp_slot(slot_ticket, non_persistent_temp_slot,
             TrailPtrSlot, !CI),
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
         SaveTrailCode = node([
@@ -2686,7 +2902,7 @@ maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
                 "save the trail pointer")
         ])
     ;
-        AddTrailOps = no,
+        AddTrailOps = do_not_add_trail_ops,
         MaybeTrailSlots = no,
         SaveTrailCode = empty
     ).
@@ -2917,7 +3133,7 @@ pickup_zombies(Zombies, !CI) :-
 :- pred discard_and_release_ticket(lval::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-:- pred maybe_save_ticket(bool::in, code_tree::out,
+:- pred maybe_save_ticket(add_trail_ops::in, code_tree::out,
     maybe(lval)::out, code_info::in, code_info::out) is det.
 
 :- pred maybe_reset_ticket(maybe(lval)::in, reset_trail_reason::in,
@@ -2948,12 +3164,17 @@ pickup_zombies(Zombies, !CI) :-
     %
 :- func should_add_trail_ops(code_info, hlds_goal_info) = add_trail_ops.
 
+    % Should we add region ops to the code we generate for the goal with the
+    % given goal_info.  This will be 'no' unless we are in a rbmm grade.
+    %
+:- func should_add_region_ops(code_info, hlds_goal_info) = add_region_ops.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 save_hp(Code, HpSlot, !CI) :-
-    acquire_temp_slot(lval(hp), non_persistent_temp_slot, HpSlot, !CI),
+    acquire_temp_slot(slot_lval(hp), non_persistent_temp_slot, HpSlot, !CI),
     Code = node([
         llds_instr(mark_hp(HpSlot), "Save heap pointer")
     ]).
@@ -3012,7 +3233,7 @@ maybe_restore_and_release_hp(MaybeHpSlot, Code, !CI) :-
 %---------------------------------------------------------------------------%
 
 save_ticket(Code, TicketSlot, !CI) :-
-    acquire_temp_slot(ticket, non_persistent_temp_slot, TicketSlot, !CI),
+    acquire_temp_slot(slot_ticket, non_persistent_temp_slot, TicketSlot, !CI),
     Code = node([
         llds_instr(store_ticket(TicketSlot), "Save trail state")
     ]).
@@ -3059,13 +3280,13 @@ discard_and_release_ticket(TicketSlot, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_save_ticket(Maybe, Code, MaybeTicketSlot, !CI) :-
+maybe_save_ticket(AddTrailOps, Code, MaybeTicketSlot, !CI) :-
     (
-        Maybe = yes,
+        AddTrailOps = add_trail_ops,
         save_ticket(Code, TicketSlot, !CI),
         MaybeTicketSlot = yes(TicketSlot)
     ;
-        Maybe = no,
+        AddTrailOps = do_not_add_trail_ops,
         Code = empty,
         MaybeTicketSlot = no
     ).
@@ -3136,17 +3357,15 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
         Code = empty
     ).
 
-    % XXX We will eventually need to pass GoalInfo here.
+    % XXX We will eventually need to make use of GoalInfo here.
     %
 should_add_trail_ops(CodeInfo, _GoalInfo) = AddTrailOps :-
-    get_emit_trail_ops(CodeInfo, EmitTrailOps),
-    (
-        EmitTrailOps = no,
-        AddTrailOps = no
-    ;
-        EmitTrailOps = yes,
-        AddTrailOps = yes
-    ).
+    get_emit_trail_ops(CodeInfo, AddTrailOps).
+
+    % XXX We will eventually need to make use of GoalInfo here.
+    %
+should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
+    get_emit_region_ops(CodeInfo, AddRegionOps).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3411,8 +3630,8 @@ acquire_reg_for_var(Var, Lval, !CI) :-
         var_locn_acquire_reg_prefer_given(PrefRegNum, Lval,
         VarLocnInfo0, VarLocnInfo)
     ;
-        % XXX We should only get a register if the map.search
-        % succeeded; otherwise we should put the var in its stack slot.
+        % XXX We should only get a register if the map.search succeeded;
+        % otherwise we should put the var in its stack slot.
         var_locn_acquire_reg_start_at_given(NextNonReserved, Lval,
             VarLocnInfo0, VarLocnInfo)
     ),
@@ -3816,15 +4035,19 @@ generate_resume_layout(Label, ResumeMap, !CI) :-
 :- pred release_temp_slot(lval::in, temp_slot_persistence::in,
     code_info::in, code_info::out) is det.
 
+    % acquire_several_temp_slots(Items, Persistence, StackVars,
+    %   StackId, N, M, !Info):
+    %
     % Perform an acquire_temp_slot operation for each element of the
     % input list, all with the same persistence.
     %
-    % Given an input list of length N, the returned list will contain
-    % N consecutive stack slots.
+    % The slots will be the ones from stack_slot_num_to_lval(StackId, N)
+    % consecutively to stack_slot_num_to_lval(StackId, M), with N < M.
+    % These will also be returned as StackVars.
     %
 :- pred acquire_several_temp_slots(list(slot_contents)::in,
     temp_slot_persistence::in, list(lval)::out,
-    code_info::in, code_info::out) is det.
+    main_stack::out, int::out, int::out, code_info::in, code_info::out) is det.
 
     % Release the stack slots acquired by an earlier acquire_several_temp_slots
     % operation. The persistence argument should match the acquire operation.
@@ -3865,22 +4088,27 @@ acquire_temp_slot(Item, Persistence, StackVar, !CI) :-
         Persistence = non_persistent_temp_slot
     ).
 
-acquire_several_temp_slots([], _, _, !CI) :-
-    % We could return an empty list of stack vars, but currently,
-    % this is always an error.
+acquire_several_temp_slots([], _, _, _, _, _, !CI) :-
+    % We could return an empty list of stack vars for StackVars, but there is
+    % nothing meaningful we can return for the other outputs.
     unexpected(this_file, "acquire_several_temp_slots: []").
 acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
-        !CI) :-
+        StackId, FirstSlotNum, LastSlotNum, !CI) :-
     get_temp_content_map(!.CI, TempContentMap0),
     map.to_assoc_list(TempContentMap0, TempContentList),
     get_temps_in_use(!.CI, TempsInUse0),
     (
         find_unused_slots_for_items(TempContentList, HeadItem, TailItems,
-            TempsInUse0, ChosenStackVars)
+            TempsInUse0, StackVarsPrime,
+            StackIdPrime, FirstSlotNumPrime, LastSlotNumPrime)
     ->
-        StackVars = ChosenStackVars
+        StackVars = StackVarsPrime,
+        StackId = StackIdPrime,
+        FirstSlotNum = FirstSlotNumPrime,
+        LastSlotNum = LastSlotNumPrime
     ;
-        list.map_foldl(new_temp_slot, [HeadItem | TailItems], StackVars, !CI)
+        new_temp_slots([HeadItem | TailItems], StackVars,
+            StackId, FirstSlotNum, LastSlotNum, !CI)
     ),
     (
         Persistence = persistent_temp_slot,
@@ -3895,16 +4123,49 @@ acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
     code_info::in, code_info::out) is det.
 
 new_temp_slot(Item, StackVar, !CI) :-
-    get_var_slot_count(!.CI, VarSlots),
-    get_max_temp_slot_count(!.CI, TempSlots0),
-    TempSlots = TempSlots0 + 1,
-    Slot = VarSlots + TempSlots,
-    stack_variable(!.CI, Slot, StackVar),
-    set_max_temp_slot_count(TempSlots, !CI),
+    get_var_slot_count(!.CI, VarSlotCount),
+    get_max_temp_slot_count(!.CI, TempSlotCount0),
+    TempSlotCount = TempSlotCount0 + 1,
+    SlotNum = VarSlotCount + TempSlotCount,
+    CodeModel = get_proc_model(!.CI),
+    StackId = code_model_to_main_stack(CodeModel),
+    StackVar = stack_slot_num_to_lval(StackId, SlotNum),
+    set_max_temp_slot_count(TempSlotCount, !CI),
 
     get_temp_content_map(!.CI, TempContentMap0),
     map.det_insert(TempContentMap0, StackVar, Item, TempContentMap),
     set_temp_content_map(TempContentMap, !CI).
+
+:- pred new_temp_slots(list(slot_contents)::in, list(lval)::out,
+    main_stack::out, int::out, int::out, code_info::in, code_info::out) is det.
+
+new_temp_slots(Items, StackVars, StackId, FirstSlotNum, LastSlotNum, !CI) :-
+    get_var_slot_count(!.CI, VarSlotCount),
+    get_max_temp_slot_count(!.CI, TempSlotCount0),
+    FirstSlotNum = VarSlotCount + TempSlotCount0 + 1,
+    CodeModel = get_proc_model(!.CI),
+    StackId = code_model_to_main_stack(CodeModel),
+    get_temp_content_map(!.CI, TempContentMap0),
+    record_new_temp_slots(Items, StackId, FirstSlotNum, LastSlotNum,
+        TempSlotCount0, TempSlotCount, TempContentMap0, TempContentMap,
+        StackVars),
+    set_max_temp_slot_count(TempSlotCount, !CI),
+    set_temp_content_map(TempContentMap, !CI).
+
+:- pred record_new_temp_slots(list(slot_contents)::in,
+    main_stack::in, int::in, int::out, int::in, int::out,
+    map(lval, slot_contents)::in, map(lval, slot_contents)::out,
+    list(lval)::out) is det.
+
+record_new_temp_slots([], _, !CurSlotNum, !TempSlotCount, !TempContentMap, []).
+record_new_temp_slots([Item | Items], StackId, !CurSlotNum,
+        !TempSlotCount, !TempContentMap, [StackVar | StackVars]) :-
+    StackVar = stack_slot_num_to_lval(StackId, !.CurSlotNum),
+    map.det_insert(!.TempContentMap, StackVar, Item, !:TempContentMap),
+    !:CurSlotNum = !.CurSlotNum + 1,
+    !:TempSlotCount = !.TempSlotCount + 1,
+    record_new_temp_slots(Items, StackId, !CurSlotNum,
+        !TempSlotCount, !TempContentMap, StackVars).
 
 :- pred find_unused_slot_for_item(assoc_list(lval, slot_contents)::in,
     slot_contents::in, set(lval)::in, lval::out,
@@ -3925,47 +4186,52 @@ find_unused_slot_for_item([Head | Tail], Item, TempsInUse,
     ).
 
 :- pred find_unused_slots_for_items(assoc_list(lval, slot_contents)::in,
-    slot_contents::in, list(slot_contents)::in, set(lval)::in, list(lval)::out)
-    is semidet.
+    slot_contents::in, list(slot_contents)::in, set(lval)::in, list(lval)::out,
+    main_stack::out, int::out, int::out) is semidet.
 
-find_unused_slots_for_items([Head | Tail], HeadItem, TailItems,
-        TempsInUse, ChosenStackVars) :-
+find_unused_slots_for_items([Head | Tail], HeadItem, TailItems, TempsInUse,
+        ChosenStackVars, StackId, FirstSlotNum, LastSlotNum) :-
     (
         find_unused_slot_for_item([Head | Tail], HeadItem, TempsInUse,
             ChosenHeadStackVar, Remainder),
-        find_next_slots_for_items(Remainder, ChosenHeadStackVar, TailItems,
-            TempsInUse, ChosenTailStackVars)
+        ( ChosenHeadStackVar =  stackvar(N) ->
+            StackId0 = det_stack,
+            FirstSlotNum0 = N
+        ; ChosenHeadStackVar =  framevar(N) ->
+            StackId0 = nondet_stack,
+            FirstSlotNum0 = N
+        ;
+            unexpected(this_file,
+                "find_unused_slots_for_items: not stackvar or framevar")
+        ),
+        StackId1 = StackId0,
+        FirstSlotNum1 = FirstSlotNum0,
+        find_next_slots_for_items(Remainder, TailItems, TempsInUse,
+            ChosenTailStackVars, StackId1, FirstSlotNum1, LastSlotNum1)
     ->
-        ChosenStackVars = [ChosenHeadStackVar | ChosenTailStackVars]
+        ChosenStackVars = [ChosenHeadStackVar | ChosenTailStackVars],
+        StackId = StackId1,
+        FirstSlotNum = FirstSlotNum1,
+        LastSlotNum = LastSlotNum1
     ;
-        find_unused_slots_for_items(Tail, HeadItem, TailItems,
-            TempsInUse, ChosenStackVars)
+        find_unused_slots_for_items(Tail, HeadItem, TailItems, TempsInUse,
+            ChosenStackVars, StackId, FirstSlotNum, LastSlotNum)
     ).
 
 :- pred find_next_slots_for_items(assoc_list(lval, slot_contents)::in,
-    lval::in, list(slot_contents)::in, set(lval)::in, list(lval)::out)
-    is semidet.
+    list(slot_contents)::in, set(lval)::in, list(lval)::out,
+    main_stack::in, int::in, int::out) is semidet.
 
-find_next_slots_for_items([], _, [], _, []).
-find_next_slots_for_items([Head | Tail], PrevStackVar, [HeadItem | TailItems],
-        TempsInUse, [HeadStackVar | TailStackVars]) :-
+find_next_slots_for_items([], [], _, [], _, !SlotNum).
+find_next_slots_for_items([Head | Tail], [HeadItem | TailItems], TempsInUse,
+        [HeadStackVar | TailStackVars], StackId, !SlotNum) :-
     Head = HeadStackVar - HeadSlotType,
-    HeadStackVar = get_next_stack_var(PrevStackVar),
+    !:SlotNum = !.SlotNum + 1,
+    HeadStackVar = stack_slot_num_to_lval(StackId, !.SlotNum),
     HeadSlotType = HeadItem,
     \+ set.member(HeadStackVar, TempsInUse),
-    find_next_slots_for_items(Tail, HeadStackVar, TailItems,
-        TempsInUse, TailStackVars).
-
-:- func get_next_stack_var(lval) = lval.
-
-get_next_stack_var(Lval) = NextLval :-
-    ( Lval = stackvar(N) ->
-        NextLval = stackvar(N+1)
-    ; Lval = framevar(N) ->
-        NextLval = framevar(N+1)
-    ;
-        unexpected(this_file, "get_next_stack_var: not stackvar or framevar")
-    ).
+    find_next_slots_for_items(Tail, TailItems, TempsInUse,
+        TailStackVars, StackId, !SlotNum).
 
 release_temp_slot(StackVar, Persistence, !CI) :-
     get_temps_in_use(!.CI, TempsInUse0),
@@ -4032,24 +4298,6 @@ max_var_slot_2([L | Ls], !Max) :-
         int.max(N, !Max)
     ),
     max_var_slot_2(Ls, !Max).
-
-:- pred stack_variable(code_info::in, int::in, lval::out) is det.
-
-stack_variable(CI, Num, Lval) :-
-    ( get_proc_model(CI) = model_non ->
-        Lval = framevar(Num)
-    ;
-        Lval = stackvar(Num)
-    ).
-
-:- pred stack_variable_reference(code_info::in, int::in, rval::out) is det.
-
-stack_variable_reference(CI, Num, mem_addr(Ref)) :-
-    ( get_proc_model(CI) = model_non ->
-        Ref = framevar_ref(const(llconst_int(Num)))
-    ;
-        Ref = stackvar_ref(const(llconst_int(Num)))
-    ).
 
 %---------------------------------------------------------------------------%
 

@@ -71,7 +71,9 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
 
-    % Make any changes to liveness before Goal
+    code_info.get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
+
+    % Make any changes to liveness before Goal.
     ( goal_is_atomic(GoalExpr) ->
         IsAtomic = yes
     ;
@@ -101,7 +103,8 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
             )
         ),
 
-        generate_goal_2(GoalExpr, GoalInfo, CodeModel, GoalCode, !CI),
+        generate_goal_2(GoalExpr, GoalInfo, CodeModel,
+            ForwardLiveVarsBeforeGoal, GoalCode, !CI),
         goal_info_get_features(GoalInfo, Features),
         code_info.get_proc_info(!.CI, ProcInfo),
 
@@ -192,9 +195,11 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    code_model::in, code_tree::out, code_info::in, code_info::out) is det.
+    code_model::in, set(prog_var)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
-generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
+generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
+        Code, !CI) :-
     (
         GoalExpr = unify(_, _, _, Uni, _),
         unify_gen.generate_unification(CodeModel, Uni, GoalInfo, Code, !CI)
@@ -210,38 +215,35 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
         )
     ;
         GoalExpr = disj(Goals),
-        AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
-        disj_gen.generate_disj(AddTrailOps, CodeModel, Goals, GoalInfo, Code,
-            !CI)
+        disj_gen.generate_disj(CodeModel, Goals, GoalInfo, Code, !CI)
     ;
         GoalExpr = negation(Goal),
-        AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
-        ite_gen.generate_negation(AddTrailOps, CodeModel, Goal, GoalInfo,
-            Code, !CI)
+        ite_gen.generate_negation(CodeModel, Goal, GoalInfo, Code, !CI)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
-        ite_gen.generate_ite(AddTrailOps, CodeModel, Cond, Then, Else,
-            GoalInfo, Code, !CI)
+        ite_gen.generate_ite(CodeModel, Cond, Then, Else, GoalInfo, Code, !CI)
     ;
         GoalExpr = switch(Var, CanFail, CaseList),
         switch_gen.generate_switch(CodeModel, Var, CanFail, CaseList, GoalInfo,
             Code, !CI)
     ;
         GoalExpr = scope(Reason, Goal),
-        AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
-        commit_gen.generate_scope(Reason, AddTrailOps, CodeModel, Goal, Code,
-            !CI)
+        commit_gen.generate_scope(Reason, CodeModel, GoalInfo,
+            ForwardLiveVarsBeforeGoal, Goal, Code, !CI)
     ;
         GoalExpr = generic_call(GenericCall, Args, Modes, Det),
         call_gen.generate_generic_call(CodeModel, GenericCall, Args,
             Modes, Det, GoalInfo, Code, !CI)
     ;
         GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, _, _),
-        ( BuiltinState = not_builtin ->
-            call_gen.generate_call(CodeModel, PredId, ProcId, Args,
-                GoalInfo, Code, !CI)
+        (
+            BuiltinState = not_builtin,
+            call_gen.generate_call(CodeModel, PredId, ProcId, Args, GoalInfo,
+                Code, !CI)
         ;
+            ( BuiltinState = inline_builtin
+            ; BuiltinState = out_of_line_builtin
+            ),
             call_gen.generate_builtin(CodeModel, PredId, ProcId, Args,
                 Code, !CI)
         )
@@ -249,7 +251,8 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
         Lang = get_foreign_language(Attributes),
-        (   Lang = lang_c,
+        (
+            Lang = lang_c,
             generate_foreign_proc_code(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, MaybeTraceRuntimeCond,
                 PragmaCode, GoalInfo, Code, !CI)

@@ -649,6 +649,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = dump_lval(yes(ProcLabel), Lval) ++ " := " ++
             dump_rval(yes(ProcLabel), Rval)
     ;
+        Instr = keep_assign(Lval, Rval),
+        Str = "keep " ++ dump_lval(yes(ProcLabel), Lval) ++ " := " ++
+            dump_rval(yes(ProcLabel), Rval)
+    ;
         Instr = llcall(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
             CallModel),
         (
@@ -762,6 +766,94 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = free_heap(Rval),
         Str = "free_heap(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
     ;
+        Instr = push_region_frame(StackId, EmbeddedStackFrame),
+        Str = "push_region_frame(" ++
+            region_stack_id_to_string(StackId) ++ "," ++
+            dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ ")"
+    ;
+        Instr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval),
+        (
+            FillOp = region_fill_ite_protect,
+            FillOpStr = "ite_protect"
+        ;
+            FillOp = region_fill_ite_snapshot(removed_at_start_of_else),
+            FillOpStr = "ite_snapshot(removed_at_start_of_else)"
+        ;
+            FillOp = region_fill_ite_snapshot(not_removed_at_start_of_else),
+            FillOpStr = "ite_snapshot(not_removed_at_start_of_else)"
+        ;
+            FillOp = region_fill_disj_protect,
+            FillOpStr = "disj_protect"
+        ;
+            FillOp = region_fill_disj_snapshot,
+            FillOpStr = "disj_snapshot"
+        ;
+            FillOp = region_fill_commit,
+            FillOpStr = "commit"
+        ),
+        Str = "region_fill_frame(" ++
+            FillOpStr ++ "," ++
+            dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ "," ++
+            dump_rval(yes(ProcLabel), IdRval) ++ "," ++
+            dump_lval(yes(ProcLabel), NumLval) ++ "," ++
+            dump_lval(yes(ProcLabel), AddrLval) ++ ")"
+    ;
+        Instr = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval),
+        (
+            SetOp = region_set_ite_num_protects,
+            SetOpStr = "ite_num_protects"
+        ;
+            SetOp = region_set_ite_num_snapshots,
+            SetOpStr = "ite_num_snapshots"
+        ;
+            SetOp = region_set_disj_num_protects,
+            SetOpStr = "disj_num_protects"
+        ;
+            SetOp = region_set_disj_num_snapshots,
+            SetOpStr = "disj_num_snapshots"
+        ;
+            SetOp = region_set_commit_num_entries,
+            SetOpStr = "commit_num_entries"
+        ),
+        Str = "region_set_fixed_slot(" ++
+            SetOpStr ++ "," ++
+            dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ "," ++
+            dump_rval(yes(ProcLabel), ValueRval) ++ ")"
+    ;
+        Instr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
+        (
+            UseOp = region_ite_then(region_ite_semidet_cond),
+            UseOpStr = "region_ite_then(semidet)"
+        ;
+            UseOp = region_ite_then(region_ite_nondet_cond),
+            UseOpStr = "region_ite_then(nondet)"
+        ;
+            UseOp = region_ite_else(region_ite_semidet_cond),
+            UseOpStr = "region_ite_else(semidet)"
+        ;
+            UseOp = region_ite_else(region_ite_nondet_cond),
+            UseOpStr = "region_ite_else(nondet)"
+        ;
+            UseOp = region_ite_nondet_cond_fail,
+            UseOpStr = "region_ite_nondet_cond_fail"
+        ;
+            UseOp = region_disj_later,
+            UseOpStr = "region_disj_later"
+        ;
+            UseOp = region_disj_last,
+            UseOpStr = "region_disj_last"
+        ;
+            UseOp = region_commit_success,
+            UseOpStr = "region_commit_success"
+        ;
+            UseOp = region_commit_failure,
+            UseOpStr = "region_commit_failure"
+        ),
+        Str = "use_and_maybe_pop_region_frame(" ++
+            UseOpStr ++ "," ++
+            dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ ")"
+    ;
         Instr = store_ticket(Lval),
         Str = "store_ticket(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
@@ -815,6 +907,20 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             ++ dump_bool_msg("stack slot ref:", SSR)
             ++ dump_may_duplicate(MD) ++ "\n"
             ++ ")"
+    ).
+
+:- func dump_embedded_stack_frame_id(embedded_stack_frame_id) = string.
+
+dump_embedded_stack_frame_id(EmbeddedStackFrame) = Str :-
+    EmbeddedStackFrame = embedded_stack_frame_id(StackId, FirstSlot, LastSlot),
+    (
+        StackId = det_stack,
+        Str = "detstack slots " ++ int_to_string(FirstSlot)
+            ++ ".." ++ int_to_string(LastSlot)
+    ;
+        StackId = nondet_stack,
+        Str = "nondetstack slots " ++ int_to_string(FirstSlot)
+            ++ ".." ++ int_to_string(LastSlot)
     ).
 
 :- func dump_may_call_mercury(proc_may_call_mercury) = string.

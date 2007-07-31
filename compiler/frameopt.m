@@ -1199,24 +1199,24 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         (
             LastUinstr0 = goto(GotoTarget0)
         ->
-            replace_labels_code_addr(GotoTarget0, PreExitDummyLabelMap,
-                GotoTarget),
+            replace_labels_code_addr(GotoTarget0, GotoTarget,
+                PreExitDummyLabelMap),
             LastUinstr = goto(GotoTarget),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr0 = if_val(Rval, GotoTarget0)
         ->
-            replace_labels_code_addr(GotoTarget0, PreExitDummyLabelMap,
-                GotoTarget),
+            replace_labels_code_addr(GotoTarget0, GotoTarget,
+                PreExitDummyLabelMap),
             LastUinstr = if_val(Rval, GotoTarget),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr0 = computed_goto(Rval, GotoTargets0)
         ->
-            replace_labels_label_list(GotoTargets0, PreExitDummyLabelMap,
-                GotoTargets),
+            replace_labels_label_list(GotoTargets0, GotoTargets, 
+                PreExitDummyLabelMap),
             LastUinstr = computed_goto(Rval, GotoTargets),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
@@ -1230,9 +1230,9 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
                 Comps0 = Comps
             ;
                 NF0 = yes(NFLabel0),
-                replace_labels_label(NFLabel0, PreExitDummyLabelMap, NFLabel),
+                replace_labels_label(NFLabel0, NFLabel, PreExitDummyLabelMap),
                 NF = yes(NFLabel),
-                replace_labels_comps(Comps0, PreExitDummyLabelMap, Comps)
+                replace_labels_comps(Comps0, Comps, PreExitDummyLabelMap)
             ),
             LastUinstr = foreign_proc_code(D, Comps, MC, FNL, FL, FOL, NF,
                 S, MD),
@@ -1952,7 +1952,7 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
     ),
     list.split_last_det(Instrs0, PrevInstrs, LastInstr0),
     map.from_assoc_list(AssocLabelMap, LabelMap),
-    opt_util.replace_labels_instruction(LastInstr0, LabelMap, no, LastInstr),
+    opt_util.replace_labels_instruction(LastInstr0, LastInstr, LabelMap, no),
     Instrs = PrevInstrs ++ [LastInstr | RedirectFallThrough],
     BlockInfo = frame_block_info(Label0, Instrs, FallInto,
         SideLabels, MaybeFallThrough, Type),

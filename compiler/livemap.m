@@ -47,6 +47,7 @@
 :- import_module bool.
 :- import_module pair.
 :- import_module string.
+:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -140,7 +141,9 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = block(_, _, _),
         unexpected(this_file, "block found in backward scan in build_livemap")
     ;
-        Uinstr0 = assign(Lval, Rval),
+        ( Uinstr0 = assign(Lval, Rval)
+        ; Uinstr0 = keep_assign(Lval, Rval)
+        ),
 
         % Make dead the variable assigned, but make any variables
         % needed to access it live. Make the variables in the assigned
@@ -149,7 +152,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % appears on the right hand side as well as the left, then we
         % want make_live to put it back into the liveval set.
 
-        set.delete(!.Livevals, Lval, !:Livevals),
+        svset.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals([Rval | Rvals], !Livevals)
     ;
@@ -223,7 +226,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         )
     ;
         Uinstr0 = save_maxfr(Lval),
-        set.delete(!.Livevals, Lval, !:Livevals),
+        svset.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -239,7 +242,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % to lval, but the two should never have any variables in
         % common. This is why doing the deletion first works.
 
-        set.delete(!.Livevals, Lval, !:Livevals),
+        svset.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals0),
         (
             MaybeRegionRval = no,
@@ -251,7 +254,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
         Uinstr0 = mark_hp(Lval),
-        set.delete(!.Livevals, Lval, !:Livevals),
+        svset.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -261,8 +264,31 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = free_heap(Rval),
         livemap.make_live_in_rvals([Rval], !Livevals)
     ;
+        Uinstr0 = push_region_frame(_RegionStackId, _EmbeddedStackFrame)
+    ;
+        Uinstr0 = region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval),
+        livemap.make_live_in_rval(IdRval, !Livevals),
+        % The instruction takes the current values in NumLval and AddrLval
+        % as inputs, and then updates those values. This means that they are
+        % live on entry to the instruction, and will stay that way afterward.
+        livemap.make_live_in_rval(lval(NumLval), !Livevals),
+        livemap.make_live_in_rval(lval(AddrLval), !Livevals)
+    ;
+        Uinstr0 = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame,
+            ValueRval),
+        livemap.make_live_in_rval(ValueRval, !Livevals)
+    ;
+        Uinstr0 = use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame)
+        % XXX We should make all stackvars or framevars in _EmbeddedStackFrame
+        % live, to prevent the compiler from optimizing away assignments to
+        % them. However, at the moment all such assignments are done via
+        % region_fill_frame and region_set_fixed_slot instructions, which
+        % we currently do not ever optimize away, so recording the stack slots
+        % as live would be redundant.
+    ;
         Uinstr0 = store_ticket(Lval),
-        set.delete(!.Livevals, Lval, !:Livevals),
+        svset.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -274,7 +300,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = prune_ticket
     ;
         Uinstr0 = mark_ticket_stack(Lval),
-        set.delete(!.Livevals, Lval, !:Livevals),
+        svset.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;

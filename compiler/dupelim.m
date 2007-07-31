@@ -108,9 +108,9 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
         process_clusters(Clusters, LabelSeq0, LabelSeq, BlockMap0, BlockMap,
             ReplMap0, ReplMap),
         flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
-        opt_util.replace_labels_instruction_list(Instrs1,
-            ReplMap, yes, no, Instrs2),
-        list.append(Comments, Instrs2, Instrs)
+        opt_util.replace_labels_instruction_list(Instrs1, Instrs2,
+            ReplMap, yes, no),
+        Instrs = Comments ++ Instrs2
     ).
 
 %-----------------------------------------------------------------------------%
@@ -319,123 +319,113 @@ standardize_instrs([llds_instr(Instr, _) | Instrs], StdInstrs) :-
     %
 :- pred standardize_instr(instr::in, instr::out) is det.
 
-standardize_instr(Instr1, Instr) :-
+standardize_instr(Instr0, Instr) :-
     (
-        Instr1 = comment(_),
-        Instr = Instr1
-    ;
-        Instr1 = livevals(_),
-        Instr = Instr1
-    ;
-        Instr1 = block(_, _, _),
-        Instr = Instr1
-    ;
-        Instr1 = assign(Lval1, Rval1),
-        standardize_lval(Lval1, Lval),
-        standardize_rval(Rval1, Rval),
+        Instr0 = assign(Lval0, Rval0),
+        standardize_lval(Lval0, Lval),
+        standardize_rval(Rval0, Rval),
         Instr = assign(Lval, Rval)
     ;
-        Instr1 = llcall(_, _, _, _, _, _),
-        Instr = Instr1
+        Instr0 = keep_assign(Lval0, Rval0),
+        standardize_lval(Lval0, Lval),
+        standardize_rval(Rval0, Rval),
+        Instr = keep_assign(Lval, Rval)
     ;
-        Instr1 = mkframe(_, _),
-        Instr = Instr1
-    ;
-        Instr1 = label(_),
-        Instr = Instr1
-    ;
-        Instr1 = goto(_),
-        Instr = Instr1
-    ;
-        Instr1 = computed_goto(_, _),
-        Instr = Instr1
-    ;
-        Instr1 = arbitrary_c_code(_, _, _),
-        Instr = Instr1
-    ;
-        Instr1 = if_val(Rval1, CodeAddr),
-        standardize_rval(Rval1, Rval),
+        Instr0 = if_val(Rval0, CodeAddr),
+        standardize_rval(Rval0, Rval),
         Instr = if_val(Rval, CodeAddr)
     ;
-        Instr1 = save_maxfr(Lval1),
-        standardize_lval(Lval1, Lval),
+        Instr0 = save_maxfr(Lval0),
+        standardize_lval(Lval0, Lval),
         Instr = save_maxfr(Lval)
     ;
-        Instr1 = restore_maxfr(Lval1),
-        standardize_lval(Lval1, Lval),
+        Instr0 = restore_maxfr(Lval0),
+        standardize_lval(Lval0, Lval),
         Instr = restore_maxfr(Lval)
     ;
-        Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg,
-            MayUseAtomic, MaybeRegionRval1),
-        standardize_lval(Lval1, Lval),
-        standardize_rval(Rval1, Rval),
+        Instr0 = incr_hp(Lval0, MaybeTag, MaybeOffset, Rval0, Msg,
+            MayUseAtomic, MaybeRegionRval0),
+        standardize_lval(Lval0, Lval),
+        standardize_rval(Rval0, Rval),
         (
-            MaybeRegionRval1 = yes(RegionRval1),
-            standardize_rval(RegionRval1, RegionRval),
+            MaybeRegionRval0 = yes(RegionRval0),
+            standardize_rval(RegionRval0, RegionRval),
             MaybeRegionRval = yes(RegionRval)
         ;
-            MaybeRegionRval1 = no,
-            MaybeRegionRval = MaybeRegionRval1
+            MaybeRegionRval0 = no,
+            MaybeRegionRval = MaybeRegionRval0
         ),
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg,
             MayUseAtomic, MaybeRegionRval)
     ;
-        Instr1 = mark_hp(Lval1),
-        standardize_lval(Lval1, Lval),
+        Instr0 = mark_hp(Lval0),
+        standardize_lval(Lval0, Lval),
         Instr = mark_hp(Lval)
     ;
-        Instr1 = restore_hp(Rval1),
-        standardize_rval(Rval1, Rval),
+        Instr0 = restore_hp(Rval0),
+        standardize_rval(Rval0, Rval),
         Instr = restore_hp(Rval)
     ;
-        Instr1 = free_heap(Rval1),
-        standardize_rval(Rval1, Rval),
+        Instr0 = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval0,
+            NumLval0, AddrLval0),
+        standardize_rval(IdRval0, IdRval),
+        standardize_lval(NumLval0, NumLval),
+        standardize_lval(AddrLval0, AddrLval),
+        Instr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval)
+    ;
+        Instr0 = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval0),
+        standardize_rval(ValueRval0, ValueRval),
+        Instr = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval)
+    ;
+        Instr0 = free_heap(Rval0),
+        standardize_rval(Rval0, Rval),
         Instr = free_heap(Rval)
     ;
-        Instr1 = store_ticket(Lval1),
-        standardize_lval(Lval1, Lval),
+        Instr0 = store_ticket(Lval0),
+        standardize_lval(Lval0, Lval),
         Instr = store_ticket(Lval)
     ;
-        Instr1 = reset_ticket(Rval1, Reason),
-        standardize_rval(Rval1, Rval),
+        Instr0 = reset_ticket(Rval0, Reason),
+        standardize_rval(Rval0, Rval),
         Instr = reset_ticket(Rval, Reason)
     ;
-        Instr1 = discard_ticket,
-        Instr = Instr1
-    ;
-        Instr1 = prune_ticket,
-        Instr = Instr1
-    ;
-        Instr1 = mark_ticket_stack(Lval1),
-        standardize_lval(Lval1, Lval),
+        Instr0 = mark_ticket_stack(Lval0),
+        standardize_lval(Lval0, Lval),
         Instr = mark_ticket_stack(Lval)
     ;
-        Instr1 = prune_tickets_to(Rval1),
-        standardize_rval(Rval1, Rval),
+        Instr0 = prune_tickets_to(Rval0),
+        standardize_rval(Rval0, Rval),
         Instr = prune_tickets_to(Rval)
     ;
-        Instr1 = incr_sp(_, _, _),
-        Instr = Instr1
-    ;
-        Instr1 = decr_sp(_),
-        Instr = Instr1
-    ;
-        Instr1 = decr_sp_and_return(_),
-        Instr = Instr1
-    ;
-        Instr1 = fork(_),
-        Instr = Instr1
-    ;
-        Instr1 = init_sync_term(Lval1, N),
-        standardize_lval(Lval1, Lval),
+        Instr0 = init_sync_term(Lval0, N),
+        standardize_lval(Lval0, Lval),
         Instr = init_sync_term(Lval, N)
     ;
-        Instr1 = join_and_continue(Lval1, Label),
-        standardize_lval(Lval1, Lval),
+        Instr0 = join_and_continue(Lval0, Label),
+        standardize_lval(Lval0, Lval),
         Instr = join_and_continue(Lval, Label)
     ;
-        Instr1 = foreign_proc_code(_, _, _, _, _, _, _, _, _),
-        Instr = Instr1
+        ( Instr0 = comment(_)
+        ; Instr0 = livevals(_)
+        ; Instr0 = block(_, _, _)
+        ; Instr0 = llcall(_, _, _, _, _, _)
+        ; Instr0 = mkframe(_, _)
+        ; Instr0 = label(_)
+        ; Instr0 = goto(_)
+        ; Instr0 = computed_goto(_, _)
+        ; Instr0 = arbitrary_c_code(_, _, _)
+        ; Instr0 = push_region_frame(_, _)
+        ; Instr0 = use_and_maybe_pop_region_frame(_, _)
+        ; Instr0 = discard_ticket
+        ; Instr0 = prune_ticket
+        ; Instr0 = incr_sp(_, _, _)
+        ; Instr0 = decr_sp(_)
+        ; Instr0 = decr_sp_and_return(_)
+        ; Instr0 = fork(_)
+        ; Instr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
+        ),
+        Instr = Instr0
     ).
 
     % Compute the standard form of an lval.
@@ -476,32 +466,29 @@ standardize_lval(Lval0, Lval) :-
     %
 :- pred standardize_rval(rval::in, rval::out) is det.
 
-standardize_rval(Rval1, Rval) :-
+standardize_rval(Rval0, Rval) :-
     (
-        Rval1 = lval(Lval1),
-        standardize_lval(Lval1, Lval),
+        Rval0 = lval(Lval0),
+        standardize_lval(Lval0, Lval),
         Rval = lval(Lval)
     ;
-        Rval1 = var(_),
-        unexpected(this_file, "var in standardize_rval")
+        ( Rval0 = mkword(_, _)
+        ; Rval0 = const(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        Rval = Rval0
     ;
-        Rval1 = mkword(_, _),
-        Rval = Rval1
-    ;
-        Rval1 = const(_),
-        Rval = Rval1
-    ;
-        Rval1 = unop(Unop, Rval1L),
-        standardize_rval(Rval1L, RvalL),
+        Rval0 = unop(Unop, Rval0L),
+        standardize_rval(Rval0L, RvalL),
         Rval = unop(Unop, RvalL)
     ;
-        Rval1 = binop(Binop, Rval1L, Rval1R),
-        standardize_rval(Rval1L, RvalL),
-        standardize_rval(Rval1R, RvalR),
+        Rval0 = binop(Binop, Rval0L, Rval0R),
+        standardize_rval(Rval0L, RvalL),
+        standardize_rval(Rval0R, RvalR),
         Rval = binop(Binop, RvalL, RvalR)
     ;
-        Rval1 = mem_addr(_),
-        Rval = Rval1
+        Rval0 = var(_),
+        unexpected(this_file, "var in standardize_rval")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -559,50 +546,50 @@ most_specific_block(Instrs1, MaybeFallThrough1,
 :- pred most_specific_instrs(list(instruction)::in, list(instruction)::in,
     list(instruction)::out) is semidet.
 
-most_specific_instrs(Instrs1, Instrs2, Instrs) :-
+most_specific_instrs(InstrsA, InstrsB, Instrs) :-
     (
-        Instrs1 = [Instr1 | Tail1],
-        Instrs2 = [Instr2 | Tail2]
+        InstrsA = [InstrA | TailA],
+        InstrsB = [InstrB | TailB]
     ->
-        Instr1 = llds_instr(Uinstr1, Comment1),
-        Instr2 = llds_instr(Uinstr2, Comment2),
+        InstrA = llds_instr(UinstrA, CommentA),
+        InstrB = llds_instr(UinstrB, CommentB),
         (
-            most_specific_instr(Uinstr1, Uinstr2, yes(Uinstr))
+            most_specific_instr(UinstrA, UinstrB, yes(Uinstr))
         ->
-            ( Comment1 = Comment2 ->
-                Comment = Comment1
+            ( CommentA = CommentB ->
+                Comment = CommentA
             ;
                 Comment = "unified intruction"
             ),
             Instr = llds_instr(Uinstr, Comment),
-            most_specific_instrs(Tail1, Tail2, Tail),
+            most_specific_instrs(TailA, TailB, Tail),
             Instrs = [Instr | Tail]
         ;
-            Uinstr1 = comment(_)
+            UinstrA = comment(_)
         ->
-            most_specific_instrs(Tail1, Instrs2, Instrs)
+            most_specific_instrs(TailA, InstrsB, Instrs)
         ;
-            Uinstr2 = comment(_)
+            UinstrB = comment(_)
         ->
-            most_specific_instrs(Instrs1, Tail2, Instrs)
+            most_specific_instrs(InstrsA, TailB, Instrs)
         ;
             fail
         )
     ;
-        Instrs1 = [],
-        Instrs2 = []
+        InstrsA = [],
+        InstrsB = []
     ->
         Instrs = []
     ;
-        Instrs1 = [Instr1 | Tail1],
-        Instr1 = llds_instr(comment(_), _)
+        InstrsA = [InstrA | TailA],
+        InstrA = llds_instr(comment(_), _)
     ->
-        most_specific_instrs(Tail1, Instrs2, Instrs)
+        most_specific_instrs(TailA, InstrsB, Instrs)
     ;
-        Instrs2 = [Instr2 | Tail2],
-        Instr2 = llds_instr(comment(_), _)
+        InstrsB = [InstrB | TailB],
+        InstrB = llds_instr(comment(_), _)
     ->
-        most_specific_instrs(Instrs1, Tail2, Instrs)
+        most_specific_instrs(InstrsA, TailB, Instrs)
     ;
         fail
     ).
@@ -612,155 +599,209 @@ most_specific_instrs(Instrs1, Instrs2, Instrs) :-
     %
 :- pred most_specific_instr(instr::in, instr::in, maybe(instr)::out) is det.
 
-most_specific_instr(Instr1, Instr2, MaybeInstr) :-
+most_specific_instr(InstrA, InstrB, MaybeInstr) :-
     (
-        Instr1 = assign(Lval1, Rval1),
+        InstrA = assign(LvalA, RvalA),
         (
-            Instr2 = assign(Lval2, Rval2),
-            most_specific_lval(Lval1, Lval2, Lval),
-            most_specific_rval(Rval1, Rval2, Rval)
+            InstrB = assign(LvalB, RvalB),
+            most_specific_lval(LvalA, LvalB, Lval),
+            most_specific_rval(RvalA, RvalB, Rval)
         ->
             MaybeInstr = yes(assign(Lval, Rval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = if_val(Rval1, CodeAddr1),
+        InstrA = keep_assign(LvalA, RvalA),
         (
-            Instr2 = if_val(Rval2, CodeAddr2),
-            most_specific_rval(Rval1, Rval2, Rval),
-            CodeAddr1 = CodeAddr2
+            InstrB = keep_assign(LvalB, RvalB),
+            most_specific_lval(LvalA, LvalB, Lval),
+            most_specific_rval(RvalA, RvalB, Rval)
         ->
-            MaybeInstr = yes(if_val(Rval, CodeAddr1))
+            MaybeInstr = yes(keep_assign(Lval, Rval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = incr_hp(Lval1, MaybeTag1, MaybeOffset1, Rval1, Msg1,
-            MayUseAtomic1, MaybeRegionRval1),
+        InstrA = if_val(RvalA, CodeAddrA),
         (
-            Instr2 = incr_hp(Lval2, MaybeTag2, MaybeOffset2, Rval2, Msg2,
-                MayUseAtomic2, MaybeRegionRval2),
-            most_specific_lval(Lval1, Lval2, Lval),
-            most_specific_rval(Rval1, Rval2, Rval),
-            MaybeTag1 = MaybeTag2,
-            MaybeOffset1 = MaybeOffset2,
-            Msg1 = Msg2,
-            MayUseAtomic1 = MayUseAtomic2,
+            InstrB = if_val(RvalB, CodeAddrB),
+            most_specific_rval(RvalA, RvalB, Rval),
+            CodeAddrA = CodeAddrB
+        ->
+            MaybeInstr = yes(if_val(Rval, CodeAddrA))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = incr_hp(LvalA, MaybeTag, MaybeOffset, RvalA, Msg,
+            MayUseAtomic, MaybeRegionRvalA),
+        (
+            InstrB = incr_hp(LvalB, MaybeTag, MaybeOffset, RvalB, Msg,
+                MayUseAtomic, MaybeRegionRvalB),
+            most_specific_lval(LvalA, LvalB, Lval),
+            most_specific_rval(RvalA, RvalB, Rval),
             (
-                MaybeRegionRval1 = yes(RegionRval1),
-                MaybeRegionRval2 = yes(RegionRval2),
-                most_specific_rval(RegionRval1, RegionRval2, RegionRval),
+                MaybeRegionRvalA = yes(RegionRvalA),
+                MaybeRegionRvalB = yes(RegionRvalB),
+                most_specific_rval(RegionRvalA, RegionRvalB, RegionRval),
                 MaybeRegionRval = yes(RegionRval)
             ;
-                MaybeRegionRval1 = no,
-                MaybeRegionRval2 = no,
+                MaybeRegionRvalA = no,
+                MaybeRegionRvalB = no,
                 MaybeRegionRval = no
             )
         ->
-            MaybeInstr = yes(incr_hp(Lval, MaybeTag1, MaybeOffset1, Rval,
-                Msg1, MayUseAtomic1, MaybeRegionRval))
+            MaybeInstr = yes(incr_hp(Lval, MaybeTag, MaybeOffset, Rval,
+                Msg, MayUseAtomic, MaybeRegionRval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = mark_hp(Lval1),
+        InstrA = mark_hp(LvalA),
         (
-            Instr2 = mark_hp(Lval2),
-            most_specific_lval(Lval1, Lval2, Lval)
+            InstrB = mark_hp(LvalB),
+            most_specific_lval(LvalA, LvalB, Lval)
         ->
             MaybeInstr = yes(mark_hp(Lval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = restore_hp(Rval1),
+        InstrA = restore_hp(RvalA),
         (
-            Instr2 = restore_hp(Rval2),
-            most_specific_rval(Rval1, Rval2, Rval)
+            InstrB = restore_hp(RvalB),
+            most_specific_rval(RvalA, RvalB, Rval)
         ->
             MaybeInstr = yes(restore_hp(Rval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = free_heap(Rval1),
+        InstrA = free_heap(RvalA),
         (
-            Instr2 = free_heap(Rval2),
-            most_specific_rval(Rval1, Rval2, Rval)
+            InstrB = free_heap(RvalB),
+            most_specific_rval(RvalA, RvalB, Rval)
         ->
             MaybeInstr = yes(free_heap(Rval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = store_ticket(Lval1),
+        InstrA = push_region_frame(StackId, EmbeddedStackFrame),
         (
-            Instr2 = store_ticket(Lval2),
-            most_specific_lval(Lval1, Lval2, Lval)
+            InstrB = push_region_frame(StackId, EmbeddedStackFrame)
+        ->
+            MaybeInstr = yes(push_region_frame(StackId, EmbeddedStackFrame))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = region_fill_frame(FillOp, EmbeddedStackFrame,
+            IdRvalA, NumLvalA, AddrLvalA),
+        (
+            InstrB = region_fill_frame(FillOp, EmbeddedStackFrame,
+                IdRvalB, NumLvalB, AddrLvalB),
+            most_specific_rval(IdRvalA, IdRvalB, IdRval),
+            most_specific_lval(NumLvalA, NumLvalB, NumLval),
+            most_specific_lval(AddrLvalA, AddrLvalB, AddrLval)
+        ->
+            MaybeInstr = yes(region_fill_frame(FillOp, EmbeddedStackFrame,
+                IdRval, NumLval, AddrLval))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+            ValueRvalA),
+        (
+            InstrB = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+                ValueRvalB),
+            most_specific_rval(ValueRvalA, ValueRvalB, ValueRval)
+        ->
+            MaybeInstr = yes(region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+                ValueRval))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
+        (
+            InstrB = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
+        ->
+            MaybeInstr = yes(use_and_maybe_pop_region_frame(UseOp,
+                EmbeddedStackFrame))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = store_ticket(LvalA),
+        (
+            InstrB = store_ticket(LvalB),
+            most_specific_lval(LvalA, LvalB, Lval)
         ->
             MaybeInstr = yes(store_ticket(Lval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = reset_ticket(Rval1, Reason),
+        InstrA = reset_ticket(RvalA, Reason),
         (
-            Instr2 = reset_ticket(Rval2, Reason),
-            most_specific_rval(Rval1, Rval2, Rval)
+            InstrB = reset_ticket(RvalB, Reason),
+            most_specific_rval(RvalA, RvalB, Rval)
         ->
             MaybeInstr = yes(reset_ticket(Rval, Reason))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = mark_ticket_stack(Lval1),
+        InstrA = mark_ticket_stack(LvalA),
         (
-            Instr2 = mark_ticket_stack(Lval2),
-            most_specific_lval(Lval1, Lval2, Lval)
+            InstrB = mark_ticket_stack(LvalB),
+            most_specific_lval(LvalA, LvalB, Lval)
         ->
             MaybeInstr = yes(mark_ticket_stack(Lval))
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = prune_tickets_to(Rval1),
+        InstrA = prune_tickets_to(RvalA),
         (
-            Instr2 = prune_tickets_to(Rval2),
-            most_specific_rval(Rval1, Rval2, Rval)
+            InstrB = prune_tickets_to(RvalB),
+            most_specific_rval(RvalA, RvalB, Rval)
         ->
             MaybeInstr = yes(prune_tickets_to(Rval))
         ;
             MaybeInstr = no
         )
     ;
-        ( Instr1 = livevals(_)
-        ; Instr1 = block(_, _, _)
-        ; Instr1 = llcall(_, _, _, _, _, _)
-        ; Instr1 = mkframe(_, _)
-        ; Instr1 = label(_)
-        ; Instr1 = goto(_)
-        ; Instr1 = computed_goto(_, _)
-        ; Instr1 = arbitrary_c_code(_, _, _)
-        ; Instr1 = save_maxfr(_)
-        ; Instr1 = restore_maxfr(_)
-        ; Instr1 = discard_ticket
-        ; Instr1 = prune_ticket
-        ; Instr1 = incr_sp(_, _, _)
-        ; Instr1 = decr_sp(_)
-        ; Instr1 = decr_sp_and_return(_)
-        ; Instr1 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
-        ; Instr1 = fork(_)
-        ; Instr1 = init_sync_term(_, _)
-        ; Instr1 = join_and_continue(_, _)
+        ( InstrA = livevals(_)
+        ; InstrA = block(_, _, _)
+        ; InstrA = llcall(_, _, _, _, _, _)
+        ; InstrA = mkframe(_, _)
+        ; InstrA = label(_)
+        ; InstrA = goto(_)
+        ; InstrA = computed_goto(_, _)
+        ; InstrA = arbitrary_c_code(_, _, _)
+        ; InstrA = save_maxfr(_)
+        ; InstrA = restore_maxfr(_)
+        ; InstrA = discard_ticket
+        ; InstrA = prune_ticket
+        ; InstrA = incr_sp(_, _, _)
+        ; InstrA = decr_sp(_)
+        ; InstrA = decr_sp_and_return(_)
+        ; InstrA = foreign_proc_code(_, _, _, _, _, _, _, _, _)
+        ; InstrA = fork(_)
+        ; InstrA = init_sync_term(_, _)
+        ; InstrA = join_and_continue(_, _)
         ),
-        ( Instr1 = Instr2 ->
-            MaybeInstr = yes(Instr1)
+        ( InstrA = InstrB ->
+            MaybeInstr = yes(InstrA)
         ;
             MaybeInstr = no
         )
     ;
-        Instr1 = comment(_),
+        InstrA = comment(_),
         MaybeInstr = no
     ).
 
@@ -769,86 +810,39 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
     %
 :- pred most_specific_lval(lval::in, lval::in, lval::out) is semidet.
 
-most_specific_lval(Lval1, Lval2, Lval) :-
+most_specific_lval(LvalA, LvalB, Lval) :-
     (
-        Lval1 = reg(_, _),
-        Lval2 = Lval1,
-        Lval = Lval1
+        ( LvalA = reg(_, _)
+        ; LvalA = succip
+        ; LvalA = maxfr
+        ; LvalA = curfr
+        ; LvalA = hp
+        ; LvalA = sp
+        ; LvalA = parent_sp
+        ; LvalA = temp(_, _)
+        ; LvalA = stackvar(_)
+        ; LvalA = parent_stackvar(_)
+        ; LvalA = framevar(_)
+        ; LvalA = succip_slot(_)
+        ; LvalA = redoip_slot(_)
+        ; LvalA = redofr_slot(_)
+        ; LvalA = succfr_slot(_)
+        ; LvalA = prevfr_slot(_)
+        ; LvalA = mem_ref(_)
+        ),
+        LvalA = LvalB,
+        Lval = LvalA
     ;
-        Lval1 = succip,
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = maxfr,
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = curfr,
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = hp,
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = sp,
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = parent_sp,
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = temp(_, _),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = stackvar(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = parent_stackvar(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = framevar(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = succip_slot(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = redoip_slot(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = redofr_slot(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = succfr_slot(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = prevfr_slot(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = field(MaybeTag1, Addr, FieldNum),
-        Lval2 = field(MaybeTag2, Addr, FieldNum),
-        ( MaybeTag1 = MaybeTag2 ->
-            MaybeTag = MaybeTag1
+        LvalA = field(MaybeTagA, Addr, FieldNum),
+        LvalB = field(MaybeTagB, Addr, FieldNum),
+        ( MaybeTagA = MaybeTagB ->
+            MaybeTag = MaybeTagA
         ;
             MaybeTag = no
         ),
         Lval = field(MaybeTag, Addr, FieldNum)
     ;
-        Lval1 = mem_ref(_),
-        Lval2 = Lval1,
-        Lval = Lval1
-    ;
-        Lval1 = lvar(_),
+        LvalA = lvar(_),
         unexpected(this_file, "lvar in most_specific_lval")
     ).
 
@@ -857,38 +851,33 @@ most_specific_lval(Lval1, Lval2, Lval) :-
     %
 :- pred most_specific_rval(rval::in, rval::in, rval::out) is semidet.
 
-most_specific_rval(Rval1, Rval2, Rval) :-
+most_specific_rval(RvalA, RvalB, Rval) :-
     (
-        Rval1 = lval(Lval1),
-        Rval2 = lval(Lval2),
-        most_specific_lval(Lval1, Lval2, Lval),
+        RvalA = lval(LvalA),
+        RvalB = lval(LvalB),
+        most_specific_lval(LvalA, LvalB, Lval),
         Rval = lval(Lval)
     ;
-        Rval1 = var(_),
+        RvalA = var(_),
         unexpected(this_file, "var in most_specific_rval")
     ;
-        Rval1 = mkword(_, _),
-        Rval2 = Rval1,
-        Rval = Rval1
+        ( RvalA = mkword(_, _)
+        ; RvalA = const(_)
+        ; RvalA = mem_addr(_)
+        ),
+        RvalB = RvalA,
+        Rval = RvalA
     ;
-        Rval1 = const(_),
-        Rval2 = Rval1,
-        Rval = Rval1
-    ;
-        Rval1 = unop(Unop, Rval1L),
-        Rval2 = unop(Unop, Rval2L),
-        most_specific_rval(Rval1L, Rval2L, RvalL),
+        RvalA = unop(Unop, RvalAL),
+        RvalB = unop(Unop, RvalBL),
+        most_specific_rval(RvalAL, RvalBL, RvalL),
         Rval = unop(Unop, RvalL)
     ;
-        Rval1 = binop(Binnop, Rval1L, Rval1R),
-        Rval2 = binop(Binnop, Rval2L, Rval2R),
-        most_specific_rval(Rval1L, Rval2L, RvalL),
-        most_specific_rval(Rval1R, Rval2R, RvalR),
+        RvalA = binop(Binnop, RvalAL, RvalAR),
+        RvalB = binop(Binnop, RvalBL, RvalBR),
+        most_specific_rval(RvalAL, RvalBL, RvalL),
+        most_specific_rval(RvalAR, RvalBR, RvalR),
         Rval = binop(Binnop, RvalL, RvalR)
-    ;
-        Rval1 = mem_addr(_),
-        Rval2 = Rval1,
-        Rval = Rval1
     ).
 
 %-----------------------------------------------------------------------------%

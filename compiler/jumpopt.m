@@ -692,6 +692,17 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = specified(NewInstrs, Instrs0)
         )
     ;
+        Uinstr0 = keep_assign(Lval, Rval0),
+        % Any labels mentioned in Rval0 should be short-circuited.
+        jumpopt.short_labels_rval(Instrmap, Rval0, Rval),
+        ( Rval = Rval0 ->
+            NewRemain = usual_case
+        ;
+            Shorted = Comment0 ++ " (some shortcircuits)",
+            NewInstrs = [llds_instr(keep_assign(Lval, Rval), Shorted)],
+            NewRemain = specified(NewInstrs, Instrs0)
+        )
+    ;
         Uinstr0 = mkframe(FrameInfo, Redoip),
         ( Redoip = yes(code_label(Label0)) ->
             jumpopt.short_label(Instrmap, Label0, Label),
@@ -805,6 +816,10 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         ; Uinstr0 = incr_sp(_, _, _)
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
+        ; Uinstr0 = push_region_frame(_, _)
+        ; Uinstr0 = region_fill_frame(_, _, _, _, _)
+        ; Uinstr0 = region_set_fixed_slot(_, _, _)
+        ; Uinstr0 = use_and_maybe_pop_region_frame(_, _)
         ; Uinstr0 = store_ticket(_)
         ; Uinstr0 = reset_ticket(_, _)
         ; Uinstr0 = discard_ticket

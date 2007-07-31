@@ -172,12 +172,6 @@ standardize_instrs([llds_instr(Instr, _) | Instrs],
 
 standardize_instr(Instr, StdInstr, DupProcMap) :-
     (
-        Instr = comment(_),
-        StdInstr = comment("")
-    ;
-        Instr = livevals(_),
-        StdInstr = Instr
-    ;
         Instr = block(NumIntTemps, NumFloatTemps, Instrs),
         standardize_instrs(Instrs, StdInstrs, DupProcMap),
         StdInstr = block(NumIntTemps, NumFloatTemps, StdInstrs)
@@ -185,6 +179,10 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         Instr = assign(Lval, Rval),
         standardize_rval(Rval, StdRval, DupProcMap),
         StdInstr = assign(Lval, StdRval)
+    ;
+        Instr = keep_assign(Lval, Rval),
+        standardize_rval(Rval, StdRval, DupProcMap),
+        StdInstr = keep_assign(Lval, StdRval)
     ;
         Instr = llcall(Target, Cont, LiveInfo, Context, GoalPath, Model),
         standardize_code_addr(Target, StdTarget, DupProcMap),
@@ -216,73 +214,52 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         standardize_labels(Targets, StdTargets, DupProcMap),
         StdInstr = computed_goto(Rval, StdTargets)
     ;
-        Instr = arbitrary_c_code(_, _, _),
-        StdInstr = Instr
-    ;
-        Instr = save_maxfr(_),
-        StdInstr = Instr
-    ;
-        Instr = restore_maxfr(_),
-        StdInstr = Instr
-    ;
         Instr = if_val(Rval, Target),
         standardize_rval(Rval, StdRval, DupProcMap),
         standardize_code_addr(Target, StdTarget, DupProcMap),
         StdInstr = if_val(StdRval, StdTarget)
     ;
-        Instr = incr_hp(_, _, _, _, _, _, _),
-        StdInstr = Instr
-    ;
-        Instr = mark_hp(_),
-        StdInstr = Instr
-    ;
-        Instr = restore_hp(_),
-        StdInstr = Instr
-    ;
-        Instr = free_heap(_),
-        StdInstr = Instr
-    ;
-        Instr = store_ticket(_),
-        StdInstr = Instr
-    ;
-        Instr = reset_ticket(_, _),
-        StdInstr = Instr
-    ;
-        Instr = discard_ticket,
-        StdInstr = Instr
-    ;
-        Instr = prune_ticket,
-        StdInstr = Instr
-    ;
-        Instr = mark_ticket_stack(_),
-        StdInstr = Instr
-    ;
-        Instr = prune_tickets_to(_),
-        StdInstr = Instr
-    ;
         Instr = incr_sp(NumSlots, _, Kind),
         StdInstr = incr_sp(NumSlots, "", Kind)
-    ;
-        Instr = decr_sp(_),
-        StdInstr = Instr
-    ;
-        Instr = decr_sp_and_return(_),
-        StdInstr = Instr
     ;
         Instr = fork(Child),
         standardize_label(Child, StdChild, DupProcMap),
         StdInstr = fork(StdChild)
     ;
-        Instr = init_sync_term(_, _),
-        StdInstr = Instr
-    ;
         Instr = join_and_continue(Lval, Label),
         standardize_label(Label, StdLabel, DupProcMap),
         StdInstr = join_and_continue(Lval, StdLabel)
     ;
-        Instr = foreign_proc_code(_, _, _, _, _, _, _, _, _),
         % The labels occurring in foreign_proc_code instructions
         % cannot be substituted.
+        Instr = foreign_proc_code(_, _, _, _, _, _, _, _, _),
+        StdInstr = Instr
+    ;
+        % These instructions have no labels inside them, or anything else
+        % that can be standardized.
+        ( Instr = comment(_)
+        ; Instr = livevals(_)
+        ; Instr = arbitrary_c_code(_, _, _)
+        ; Instr = save_maxfr(_)
+        ; Instr = restore_maxfr(_)
+        ; Instr = incr_hp(_, _, _, _, _, _, _)
+        ; Instr = mark_hp(_)
+        ; Instr = restore_hp(_)
+        ; Instr = free_heap(_)
+        ; Instr = push_region_frame(_, _)
+        ; Instr = region_fill_frame(_, _, _, _, _)
+        ; Instr = region_set_fixed_slot(_, _, _)
+        ; Instr = use_and_maybe_pop_region_frame(_, _)
+        ; Instr = store_ticket(_)
+        ; Instr = reset_ticket(_, _)
+        ; Instr = discard_ticket
+        ; Instr = prune_ticket
+        ; Instr = mark_ticket_stack(_)
+        ; Instr = prune_tickets_to(_)
+        ; Instr = decr_sp(_)
+        ; Instr = decr_sp_and_return(_)
+        ; Instr = init_sync_term(_, _)
+        ),
         StdInstr = Instr
     ).
 

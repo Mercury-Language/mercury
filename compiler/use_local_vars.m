@@ -173,6 +173,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     Instr0 = llds_instr(Uinstr0, _Comment0),
     (
         (
+            % We don't optimize keep_assign instructions.
             (
                 Uinstr0 = assign(ToLval, _FromRval)
             ;
@@ -590,7 +591,13 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
             substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
         )
     ;
-        Uinstr0 = incr_hp(Lval, _, _, _, _, _, _),
+        Uinstr0 = keep_assign(_, _),
+        exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N)
+    ;
+        ( Uinstr0 = incr_hp(Lval, _, _, _, _, _, _)
+        ; Uinstr0 = save_maxfr(Lval)
+        ; Uinstr0 = mark_hp(Lval)
+        ),
         ( assignment_updates_oldlval(Lval, OldLval) = yes ->
             % If we alter any lval that occurs in OldLval, we must stop
             % the substitutions.
@@ -599,6 +606,29 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
             exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
             substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
         )
+    ;
+        Uinstr0 = region_fill_frame(_, _, _, NumLval, AddrLval),
+        (
+            ( assignment_updates_oldlval(NumLval, OldLval) = yes
+            ; assignment_updates_oldlval(AddrLval, OldLval) = yes
+            )
+        ->
+            % If we alter any lval that occurs in NumLval or AddrLval,
+            % we must stop the substitutions.
+            true
+        ;
+            exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+            substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
+        )
+    ;
+        ( Uinstr0 = restore_maxfr(_)
+        ; Uinstr0 = restore_hp(_)
+        ; Uinstr0 = push_region_frame(_, _)
+        ; Uinstr0 = region_set_fixed_slot(_, _, _)
+        ; Uinstr0 = use_and_maybe_pop_region_frame(_, _)
+        ),
+        exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+        substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
     ;
         Uinstr0 = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
         AffectsLiveness = components_affect_liveness(Components),
@@ -633,10 +663,6 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         ; Uinstr0 = llcall(_, _, _, _, _, _)
         ; Uinstr0 = mkframe(_, _)
         ; Uinstr0 = goto(_)
-        ; Uinstr0 = save_maxfr(_)
-        ; Uinstr0 = restore_maxfr(_)
-        ; Uinstr0 = mark_hp(_)
-        ; Uinstr0 = restore_hp(_)
         ; Uinstr0 = free_heap(_)
         ; Uinstr0 = store_ticket(_)
         ; Uinstr0 = reset_ticket(_, _)

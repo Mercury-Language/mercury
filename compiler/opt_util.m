@@ -289,29 +289,31 @@
     % called procedure) are always replaced; references that treat the label
     % as data are replaced iff the third argument is set to "yes".
     %
-    % With replace_labels_instruction_list, the fourth arg says whether
+    % With replace_labels_instruction_list, the last arg says whether
     % it is OK to replace a label in a label instruction itself.
     %
-:- pred replace_labels_instr(instr::in, map(label, label)::in,
-    bool::in, instr::out) is det.
+:- pred replace_labels_instr(instr::in, instr::out,
+    map(label, label)::in, bool::in) is det.
 
-:- pred replace_labels_instruction(instruction::in,
-    map(label, label)::in, bool::in, instruction::out) is det.
+:- pred replace_labels_instruction(instruction::in, instruction::out,
+    map(label, label)::in, bool::in) is det.
 
-:- pred replace_labels_instruction_list(list(instruction)::in,
-    map(label, label)::in, bool::in, bool::in, list(instruction)::out) is det.
+:- pred replace_labels_instruction_list(
+    list(instruction)::in, list(instruction)::out,
+    map(label, label)::in, bool::in, bool::in) is det.
 
-:- pred replace_labels_comps(list(foreign_proc_component)::in,
-    map(label, label)::in, list(foreign_proc_component)::out) is det.
+:- pred replace_labels_comps(
+    list(foreign_proc_component)::in, list(foreign_proc_component)::out,
+    map(label, label)::in) is det.
 
-:- pred replace_labels_code_addr(code_addr::in, map(label, label)::in,
-    code_addr::out) is det.
+:- pred replace_labels_code_addr(code_addr::in, code_addr::out,
+    map(label, label)::in) is det.
 
-:- pred replace_labels_label_list(list(label)::in,
-    map(label, label)::in, list(label)::out) is det.
+:- pred replace_labels_label_list(list(label)::in, list(label)::out,
+    map(label, label)::in) is det.
 
-:- pred replace_labels_label(label::in, map(label, label)::in,
-    label::out) is det.
+:- pred replace_labels_label(label::in, label::out, map(label, label)::in)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -860,19 +862,28 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         ),
         Refers = no
     ;
+        ( Uinstr = llcall(_, _, _, _, _, _)
+        ; Uinstr = mkframe(_, _)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = region_fill_frame(_, _, _, _, _)
+        ; Uinstr = region_set_fixed_slot(_, _, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = decr_sp_and_return(_)
+        ; Uinstr = fork(_)
+        ),
+        Refers = yes
+    ;
         Uinstr = block(_, _, BlockInstrs),
         Refers = block_refers_to_stack(BlockInstrs)
     ;
-        Uinstr = assign(Lval, Rval),
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
+        ),
         Refers = bool.or(
             lval_refers_stackvars(Lval),
             rval_refers_stackvars(Rval))
-    ;
-        Uinstr = llcall(_, _, _, _, _, _),
-        Refers = yes
-    ;
-        Uinstr = mkframe(_, _),
-        Refers = yes
     ;
         Uinstr = goto(CodeAddr),
         Refers = code_addr_refers_to_stack(CodeAddr)
@@ -892,18 +903,15 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         Refers = lval_refers_stackvars(Lval)
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
+        Refers0 = bool.or(
+            lval_refers_stackvars(Lval),
+            rval_refers_stackvars(Rval)),
         (
             MaybeRegionRval = no,
-            Refers = bool.or(
-                lval_refers_stackvars(Lval),
-                rval_refers_stackvars(Rval))
+            Refers = Refers0
         ;
             MaybeRegionRval = yes(RegionRval),
-            Refers0 = bool.or(
-                lval_refers_stackvars(Lval),
-                rval_refers_stackvars(Rval)),
-            Refers = bool.or(Refers0,
-                rval_refers_stackvars(RegionRval))
+            Refers = bool.or(Refers0, rval_refers_stackvars(RegionRval))
         )
     ;
         Uinstr = mark_hp(Lval),
@@ -927,24 +935,12 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         Uinstr = prune_tickets_to(Rval),
         Refers = rval_refers_stackvars(Rval)
     ;
-        Uinstr = incr_sp(_, _, _),
-        Refers = yes
-    ;
-        Uinstr = decr_sp(_),
-        Refers = yes
-    ;
-        Uinstr = decr_sp_and_return(_),
-        Refers = yes
-    ;
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
         Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
             Components))
     ;
         Uinstr = init_sync_term(Lval, _),
         Refers = lval_refers_stackvars(Lval)
-    ;
-        Uinstr = fork(_),
-        Refers = yes
     ;
         Uinstr = join_and_continue(Lval, _),
         Refers = lval_refers_stackvars(Lval)
@@ -1061,6 +1057,7 @@ can_instr_branch_away(comment(_)) = no.
 can_instr_branch_away(livevals(_)) = no.
 can_instr_branch_away(block(_, _, _)) = yes.
 can_instr_branch_away(assign(_, _)) = no.
+can_instr_branch_away(keep_assign(_, _)) = no.
 can_instr_branch_away(llcall(_, _, _, _, _, _)) = yes.
 can_instr_branch_away(mkframe(_, _)) = no.
 can_instr_branch_away(label(_)) = no.
@@ -1074,6 +1071,10 @@ can_instr_branch_away(incr_hp(_, _, _, _, _, _, _)) = no.
 can_instr_branch_away(mark_hp(_)) = no.
 can_instr_branch_away(restore_hp(_)) = no.
 can_instr_branch_away(free_heap(_)) = no.
+can_instr_branch_away(push_region_frame(_, _)) = no.
+can_instr_branch_away(region_fill_frame(_, _, _, _, _)) = no.
+can_instr_branch_away(region_set_fixed_slot(_, _, _)) = no.
+can_instr_branch_away(use_and_maybe_pop_region_frame(_, _)) = no.
 can_instr_branch_away(store_ticket(_)) = no.
 can_instr_branch_away(reset_ticket(_, _)) = no.
 can_instr_branch_away(discard_ticket) = no.
@@ -1135,6 +1136,7 @@ can_instr_fall_through(livevals(_)) = yes.
 can_instr_fall_through(block(_, _, Instrs)) = FallThrough :-
     can_block_fall_through(Instrs, FallThrough).
 can_instr_fall_through(assign(_, _)) = yes.
+can_instr_fall_through(keep_assign(_, _)) = yes.
 can_instr_fall_through(llcall(_, _, _, _, _, _)) = no.
 can_instr_fall_through(mkframe(_, _)) = yes.
 can_instr_fall_through(label(_)) = yes.
@@ -1148,6 +1150,10 @@ can_instr_fall_through(incr_hp(_, _, _, _, _, _, _)) = yes.
 can_instr_fall_through(mark_hp(_)) = yes.
 can_instr_fall_through(restore_hp(_)) = yes.
 can_instr_fall_through(free_heap(_)) = yes.
+can_instr_fall_through(push_region_frame(_, _)) = yes.
+can_instr_fall_through(region_fill_frame(_, _, _, _, _)) = yes.
+can_instr_fall_through(region_set_fixed_slot(_, _, _)) = yes.
+can_instr_fall_through(use_and_maybe_pop_region_frame(_, _)) = yes.
 can_instr_fall_through(store_ticket(_)) = yes.
 can_instr_fall_through(reset_ticket(_, _)) = yes.
 can_instr_fall_through(discard_ticket) = yes.
@@ -1181,6 +1187,7 @@ can_use_livevals(comment(_), no).
 can_use_livevals(livevals(_), no).
 can_use_livevals(block(_, _, _), no).
 can_use_livevals(assign(_, _), no).
+can_use_livevals(keep_assign(_, _), no).
 can_use_livevals(llcall(_, _, _, _, _, _), yes).
 can_use_livevals(mkframe(_, _), no).
 can_use_livevals(label(_), no).
@@ -1194,6 +1201,10 @@ can_use_livevals(incr_hp(_, _, _, _, _, _, _), no).
 can_use_livevals(mark_hp(_), no).
 can_use_livevals(restore_hp(_), no).
 can_use_livevals(free_heap(_), no).
+can_use_livevals(push_region_frame(_, _), no).
+can_use_livevals(region_fill_frame(_, _, _, _, _), no).
+can_use_livevals(region_set_fixed_slot(_, _, _), no).
+can_use_livevals(use_and_maybe_pop_region_frame(_, _), no).
 can_use_livevals(store_ticket(_), no).
 can_use_livevals(reset_ticket(_, _), no).
 can_use_livevals(discard_ticket, no).
@@ -1243,6 +1254,7 @@ instr_labels_2(livevals(_), [], []).
 instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
     instr_list_labels(Instrs, Labels, CodeAddrs).
 instr_labels_2(assign(_,_), [], []).
+instr_labels_2(keep_assign(_,_), [], []).
 instr_labels_2(llcall(Target, Ret, _, _, _, _), [], [Target, Ret]).
 instr_labels_2(mkframe(_, yes(Addr)), [], [Addr]).
 instr_labels_2(mkframe(_, no), [], []).
@@ -1257,6 +1269,10 @@ instr_labels_2(incr_hp(_, _, _, _, _, _, _), [], []).
 instr_labels_2(mark_hp(_), [], []).
 instr_labels_2(restore_hp(_), [], []).
 instr_labels_2(free_heap(_), [], []).
+instr_labels_2(push_region_frame(_, _), [], []).
+instr_labels_2(region_fill_frame(_, _, _, _, _), [], []).
+instr_labels_2(region_set_fixed_slot(_, _, _), [], []).
+instr_labels_2(use_and_maybe_pop_region_frame(_, _), [], []).
 instr_labels_2(store_ticket(_), [], []).
 instr_labels_2(reset_ticket(_, _), [], []).
 instr_labels_2(discard_ticket, [], []).
@@ -1284,6 +1300,7 @@ possible_targets(livevals(_), [], []).
 possible_targets(block(_, _, _), _, _) :-
     unexpected(this_file, "block in possible_targets").
 possible_targets(assign(_, _), [], []).
+possible_targets(keep_assign(_, _), [], []).
 possible_targets(llcall(_, Return, _, _, _, _), Labels, CodeAddrs) :-
     ( Return = code_label(ReturnLabel) ->
         Labels = [ReturnLabel],
@@ -1318,6 +1335,10 @@ possible_targets(incr_hp(_, _, _, _, _, _, _), [], []).
 possible_targets(mark_hp(_), [], []).
 possible_targets(restore_hp(_), [], []).
 possible_targets(free_heap(_), [], []).
+possible_targets(push_region_frame(_, _), [], []).
+possible_targets(region_fill_frame(_, _, _, _, _), [], []).
+possible_targets(region_set_fixed_slot(_, _, _), [], []).
+possible_targets(use_and_maybe_pop_region_frame(_, _), [], []).
 possible_targets(store_ticket(_), [], []).
 possible_targets(reset_ticket(_, _), [], []).
 possible_targets(discard_ticket, [], []).
@@ -1378,6 +1399,7 @@ instr_rvals_and_lvals(livevals(_), [], []).
 instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
     instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
+instr_rvals_and_lvals(keep_assign(Lval,Rval), [Rval], [Lval]).
 instr_rvals_and_lvals(llcall(_, _, _, _, _, _), [], []).
 instr_rvals_and_lvals(mkframe(_, _), [], []).
 instr_rvals_and_lvals(label(_), [], []).
@@ -1399,6 +1421,16 @@ instr_rvals_and_lvals(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
 instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
 instr_rvals_and_lvals(free_heap(Rval), [Rval], []).
+    % The region instructions implicitly specify some stackvars or framevars,
+    % but they cannot reference lvals or rvals that involve code addresses or
+    % labels, and that is the motivation of the only current invoker of
+    % instr_rvals_and_lvals.
+instr_rvals_and_lvals(push_region_frame(_, _), [], []).
+instr_rvals_and_lvals(region_fill_frame(_, _, IdRval, NumLval, AddrLval),
+    [IdRval], [NumLval, AddrLval]).
+instr_rvals_and_lvals(region_set_fixed_slot(_, _, ValueRval),
+    [ValueRval], []).
+instr_rvals_and_lvals(use_and_maybe_pop_region_frame(_, _), [], []).
 instr_rvals_and_lvals(store_ticket(Lval), [], [Lval]).
 instr_rvals_and_lvals(reset_ticket(Rval, _Reason), [Rval], []).
 instr_rvals_and_lvals(discard_ticket, [], []).
@@ -1518,6 +1550,9 @@ count_temps_instr(block(_, _, _), !R, !F).
 count_temps_instr(assign(Lval, Rval), !R, !F) :-
     count_temps_lval(Lval, !R, !F),
     count_temps_rval(Rval, !R, !F).
+count_temps_instr(keep_assign(Lval, Rval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F),
+    count_temps_rval(Rval, !R, !F).
 count_temps_instr(llcall(_, _, _, _, _, _), !R, !F).
 count_temps_instr(mkframe(_, _), !R, !F).
 count_temps_instr(label(_), !R, !F).
@@ -1546,6 +1581,17 @@ count_temps_instr(restore_hp(Rval), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
 count_temps_instr(free_heap(Rval), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
+count_temps_instr(push_region_frame(_StackId, _EmbeddedStackFrame), !R, !F).
+count_temps_instr(region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
+        NumLval, AddrLval), !R, !F) :-
+    count_temps_rval(IdRval, !R, !F),
+    count_temps_lval(NumLval, !R, !F),
+    count_temps_lval(AddrLval, !R, !F).
+count_temps_instr(region_set_fixed_slot(_SetlOp, _EmbeddedStackFrame,
+        ValueRval), !R, !F) :-
+    count_temps_rval(ValueRval, !R, !F).
+count_temps_instr(use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame),
+        !R, !F).
 count_temps_instr(store_ticket(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(reset_ticket(Rval, _Reason), !R, !F) :-
@@ -1619,7 +1665,21 @@ count_temps_outputs([Output | Outputs], !R, !F) :-
     is det.
 
 count_temps_lval(Lval, !R, !F) :-
-    ( Lval = temp(Type, N) ->
+    (
+        ( Lval = reg(_, _)
+        ; Lval = succip
+        ; Lval = maxfr
+        ; Lval = curfr
+        ; Lval = hp
+        ; Lval = sp
+        ; Lval = parent_sp
+        ; Lval = stackvar(_)
+        ; Lval = framevar(_)
+        ; Lval = parent_stackvar(_)
+        ; Lval = global_var_ref(_)
+        )
+    ;
+        Lval = temp(Type, N),
         (
             Type = reg_r,
             int.max(N, !R)
@@ -1627,19 +1687,65 @@ count_temps_lval(Lval, !R, !F) :-
             Type = reg_f,
             int.max(N, !F)
         )
-    ; Lval = field(_, Rval, FieldNum) ->
-        count_temps_rval(Rval, !R, !F),
-        count_temps_rval(FieldNum, !R, !F)
     ;
-        true
+        Lval = field(_, BaseAddrRval, FieldNumRval),
+        count_temps_rval(BaseAddrRval, !R, !F),
+        count_temps_rval(FieldNumRval, !R, !F)
+    ;
+        ( Lval = succip_slot(Rval)
+        ; Lval = succfr_slot(Rval)
+        ; Lval = redoip_slot(Rval)
+        ; Lval = redofr_slot(Rval)
+        ; Lval = prevfr_slot(Rval)
+        ; Lval = mem_ref(Rval)
+        ),
+        count_temps_rval(Rval, !R, !F)
+    ;
+        Lval = lvar(_),
+        unexpected(this_file, "count_temps_lval: lvar")
     ).
 
 :- pred count_temps_rval(rval::in, int::in, int::out, int::in, int::out)
     is det.
 
-% XXX We assume that we don't generate code
-% that uses a temp var without defining it.
-count_temps_rval(_, !R, !F).
+count_temps_rval(Rval, !R, !F) :-
+    (
+        Rval = lval(Lval),
+        count_temps_lval(Lval, !R, !F)
+    ;
+        Rval = var(_),
+        unexpected(this_file, "count_temps_rval: var")
+    ;
+        Rval = mkword(_Tag, SubRval),
+        count_temps_rval(SubRval, !R, !F)
+    ;
+        Rval = const(_Const)
+    ;
+        Rval = unop(_Unop, SubRvalA),
+        count_temps_rval(SubRvalA, !R, !F)
+    ;
+        Rval = binop(_Binop, SubRvalA, SubRvalB),
+        count_temps_rval(SubRvalA, !R, !F),
+        count_temps_rval(SubRvalB, !R, !F)
+    ;
+        Rval = mem_addr(MemRef),
+        count_temps_mem_ref(MemRef, !R, !F)
+    ).
+
+:- pred count_temps_mem_ref(mem_ref::in, int::in, int::out, int::in, int::out)
+    is det.
+
+count_temps_mem_ref(MemRef, !R, !F) :-
+    (
+        ( MemRef = stackvar_ref(Rval)
+        ; MemRef = framevar_ref(Rval)
+        ),
+        count_temps_rval(Rval, !R, !F)
+    ;
+        MemRef = heap_ref(CellRval, _Tag, FieldNumRval),
+        count_temps_rval(CellRval, !R, !F),
+        count_temps_rval(FieldNumRval, !R, !F)
+    ).
 
 format_label(internal_label(_, ProcLabel)) = format_proc_label(ProcLabel).
 format_label(entry_label(_, ProcLabel)) = format_proc_label(ProcLabel).
@@ -1692,13 +1798,8 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         ( Uinstr = comment(_)
         ; Uinstr = livevals(_)
         ; Uinstr = label(_)
-        ; Uinstr = free_heap(_)
-        ; Uinstr = store_ticket(_)
-        ; Uinstr = reset_ticket(_, _)
         ; Uinstr = prune_ticket
         ; Uinstr = discard_ticket
-        ; Uinstr = prune_tickets_to(_)
-        ; Uinstr = mark_ticket_stack(_)
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = decr_sp_and_return(_)
@@ -1723,28 +1824,61 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         % Blocks aren't introduced until after the last user of this predicate.
         unexpected(this_file, "touches_nondet_ctrl_instr: block")
     ;
-        Uinstr = assign(Lval, Rval),
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
+        ),
         TouchLval = touches_nondet_ctrl_lval(Lval),
         TouchRval = touches_nondet_ctrl_rval(Rval),
         bool.or(TouchLval, TouchRval, Touch)
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
-        TouchLval = touches_nondet_ctrl_lval(Lval),
-        TouchRval = touches_nondet_ctrl_rval(Rval),
+        Touch0 = bool.or(
+            touches_nondet_ctrl_lval(Lval),
+            touches_nondet_ctrl_rval(Rval)),
         (
             MaybeRegionRval = yes(RegionRval),
-            TouchRegionRval = touches_nondet_ctrl_rval(RegionRval)
+            Touch = bool.or(Touch0, touches_nondet_ctrl_rval(RegionRval))
         ;
             MaybeRegionRval = no,
-            TouchRegionRval = no
-        ),
-        bool.or(TouchLval, TouchRval, Touch0),
-        bool.or(Touch0, TouchRegionRval, Touch)
+            Touch = Touch0
+        )
     ;
         Uinstr = mark_hp(Lval),
         Touch = touches_nondet_ctrl_lval(Lval)
     ;
         Uinstr = restore_hp(Rval),
+        Touch = touches_nondet_ctrl_rval(Rval)
+    ;
+        Uinstr = free_heap(Rval),
+        Touch = touches_nondet_ctrl_rval(Rval)
+    ;
+        Uinstr = push_region_frame(_StackId, _EmbeddedStackFrame),
+        Touch = no
+    ;
+        Uinstr = region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval),
+        Touch = bool.or(
+            touches_nondet_ctrl_rval(IdRval),
+            bool.or(
+                touches_nondet_ctrl_lval(NumLval),
+                touches_nondet_ctrl_lval(AddrLval)))
+    ;
+        Uinstr = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame, ValueRval),
+        Touch = touches_nondet_ctrl_rval(ValueRval)
+    ;
+        Uinstr = use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame),
+        Touch = no
+    ;
+        Uinstr = store_ticket(Lval),
+        Touch = touches_nondet_ctrl_lval(Lval)
+    ;
+        Uinstr = reset_ticket(Rval, _),
+        Touch = touches_nondet_ctrl_rval(Rval)
+    ;
+        Uinstr = mark_ticket_stack(Lval),
+        Touch = touches_nondet_ctrl_lval(Lval)
+    ;
+        Uinstr = prune_tickets_to(Rval),
         Touch = touches_nondet_ctrl_rval(Rval)
     ;
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
@@ -1922,369 +2056,538 @@ propagate_livevals_2([Instr0 | Instrs0], Livevals0,
 % The code in this section is concerned with replacing all references
 % to one given label with a reference to another given label.
 
-replace_labels_instruction_list([], _, _, _, []).
-replace_labels_instruction_list([Instr0 | Instrs0], ReplMap, ReplData,
-        ReplLabel, [Instr | Instrs]) :-
+replace_labels_instruction_list([], [], _, _, _).
+replace_labels_instruction_list([Instr0 | Instrs0], [Instr | Instrs],
+        ReplMap, ReplData, ReplLabel) :-
     (
         Instr0 = llds_instr(label(InstrLabel), Comment),
         ReplLabel = yes
     ->
-        replace_labels_label(InstrLabel, ReplMap, ReplInstrLabel),
+        replace_labels_label(InstrLabel, ReplInstrLabel, ReplMap),
         Instr = llds_instr(label(ReplInstrLabel), Comment)
     ;
-        replace_labels_instruction(Instr0, ReplMap, ReplData, Instr)
+        replace_labels_instruction(Instr0, Instr, ReplMap, ReplData)
     ),
-    replace_labels_instruction_list(Instrs0, ReplMap, ReplData, ReplLabel,
-        Instrs).
+    replace_labels_instruction_list(Instrs0, Instrs,
+        ReplMap, ReplData, ReplLabel).
 
-replace_labels_instruction(llds_instr(Instr0, Comment), ReplMap, ReplData,
-        llds_instr(Instr, Comment)) :-
-    replace_labels_instr(Instr0, ReplMap, ReplData, Instr).
+replace_labels_instruction(Instr0, Instr, ReplMap, ReplData) :-
+    Instr0 = llds_instr(Uinstr0, Comment),
+    replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData),
+    Instr = llds_instr(Uinstr, Comment).
 
-replace_labels_instr(comment(Comment), _, _, comment(Comment)).
-replace_labels_instr(livevals(Livevals), _, _, livevals(Livevals)).
-replace_labels_instr(block(R, F, Instrs0), ReplMap, ReplData,
-        block(R, F, Instrs)) :-
-    % There should be no labels in Instrs0.
-    replace_labels_instruction_list(Instrs0, ReplMap, ReplData, no, Instrs).
-replace_labels_instr(assign(Lval0, Rval0), ReplMap, ReplData,
-        assign(Lval, Rval)) :-
+replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
     (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval),
-        replace_labels_rval(Rval0, ReplMap, Rval)
+        ( Uinstr0 = comment(_)
+        ; Uinstr0 = livevals(_)
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = incr_sp(_, _, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+        ),
+        Uinstr = Uinstr0
     ;
-        ReplData = no,
-        Lval = Lval0,
-        Rval = Rval0
-    ).
-replace_labels_instr(llcall(Target, Return0, LiveInfo, CXT, GP, CM),
-        ReplMap, _, llcall(Target, Return, LiveInfo, CXT, GP, CM)) :-
-    replace_labels_code_addr(Return0, ReplMap, Return).
-replace_labels_instr(mkframe(NondetFrameInfo, MaybeRedoip0), ReplMap,
-        ReplData, mkframe(NondetFrameInfo, MaybeRedoip)) :-
-    (
-        ReplData = yes,
+        Uinstr0 = block(R, F, Instrs0),
+        % There should be no labels in Instrs0.
+        replace_labels_instruction_list(Instrs0, Instrs,
+            ReplMap, ReplData, no),
+        Uinstr = block(R, F, Instrs)
+    ;
+        Uinstr0 = assign(Lval0, Rval0),
         (
-            MaybeRedoip0 = yes(Redoip0),
-            replace_labels_code_addr(Redoip0, ReplMap, Redoip),
-            MaybeRedoip = yes(Redoip)
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap),
+            replace_labels_rval(Rval0, Rval, ReplMap)
         ;
-            MaybeRedoip0 = no,
-            MaybeRedoip = no
-        )
+            ReplData = no,
+            Lval = Lval0,
+            Rval = Rval0
+        ),
+        Uinstr = assign(Lval, Rval)
     ;
-        ReplData = no,
-        MaybeRedoip = MaybeRedoip0
-    ).
-replace_labels_instr(label(Label), ReplMap, _, label(Label)) :-
-    ( map.search(ReplMap, Label, _) ->
-        % The reason why we are replacing references to this label is that
-        % it is being eliminated, and in fact should have been already
-        % eliminated by the time replace_labels_instr is called.
-        unexpected(this_file, "eliminated label in replace_labels_instr")
-    ;
-        true
-    ).
-replace_labels_instr(goto(Target0), ReplMap, _, goto(Target)) :-
-    replace_labels_code_addr(Target0, ReplMap, Target).
-replace_labels_instr(computed_goto(Rval0, Labels0), ReplMap,
-        ReplData, computed_goto(Rval, Labels)) :-
-    (
-        ReplData = yes,
-        replace_labels_rval(Rval0, ReplMap, Rval)
-    ;
-        ReplData = no,
-        Rval = Rval0
-    ),
-    replace_labels_label_list(Labels0, ReplMap, Labels).
-replace_labels_instr(arbitrary_c_code(Lvals, AffectsLiveness, Code), _, _,
-        arbitrary_c_code(Lvals, AffectsLiveness, Code)).
-replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
-        if_val(Rval, Target)) :-
-    (
-        ReplData = yes,
-        replace_labels_rval(Rval0, ReplMap, Rval)
-    ;
-        ReplData = no,
-        Rval = Rval0
-    ),
-    replace_labels_code_addr(Target0, ReplMap, Target).
-replace_labels_instr(save_maxfr(Lval0), ReplMap, ReplData, save_maxfr(Lval)) :-
-    (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval)
-    ;
-        ReplData = no,
-        Lval = Lval0
-    ).
-replace_labels_instr(restore_maxfr(Lval0), ReplMap, ReplData,
-        restore_maxfr(Lval)) :-
-    (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval)
-    ;
-        ReplData = no,
-        Lval = Lval0
-    ).
-replace_labels_instr(
-        incr_hp(Lval0, MaybeTag, MO, Rval0, Msg, Atomic, MaybeRegionRval0),
-        ReplMap, ReplData,
-        incr_hp(Lval, MaybeTag, MO, Rval, Msg, Atomic, MaybeRegionRval)) :-
-    (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval),
-        replace_labels_rval(Rval0, ReplMap, Rval),
+        Uinstr0 = keep_assign(Lval0, Rval0),
         (
-            MaybeRegionRval0 = yes(RegionRval0),
-            replace_labels_rval(RegionRval0, ReplMap, RegionRval),
-            MaybeRegionRval = yes(RegionRval)
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap),
+            replace_labels_rval(Rval0, Rval, ReplMap)
         ;
-            MaybeRegionRval0 = no,
+            ReplData = no,
+            Lval = Lval0,
+            Rval = Rval0
+        ),
+        Uinstr = keep_assign(Lval, Rval)
+    ;
+        Uinstr0 = llcall(Target, Return0, LiveInfo, CXT, GP, CM),
+        replace_labels_code_addr(Return0, Return, ReplMap),
+        Uinstr = llcall(Target, Return, LiveInfo, CXT, GP, CM)
+    ;
+        Uinstr0 = mkframe(NondetFrameInfo, MaybeRedoip0),
+        (
+            ReplData = yes,
+            (
+                MaybeRedoip0 = yes(Redoip0),
+                replace_labels_code_addr(Redoip0, Redoip, ReplMap),
+                MaybeRedoip = yes(Redoip)
+            ;
+                MaybeRedoip0 = no,
+                MaybeRedoip = no
+            )
+        ;
+            ReplData = no,
+            MaybeRedoip = MaybeRedoip0
+        ),
+        Uinstr = mkframe(NondetFrameInfo, MaybeRedoip)
+    ;
+        Uinstr0 = label(Label),
+        ( map.search(ReplMap, Label, _) ->
+            % The reason why we are replacing references to this label is that
+            % it is being eliminated, and in fact should have been already
+            % eliminated by the time replace_labels_instr is called.
+            unexpected(this_file, "eliminated label in replace_labels_instr")
+        ;
+            true
+        ),
+        Uinstr = label(Label)
+    ;
+        Uinstr0 = goto(Target0),
+        replace_labels_code_addr(Target0, Target, ReplMap),
+        Uinstr = goto(Target)
+    ;
+        Uinstr0 = computed_goto(Rval0, Labels0),
+        (
+            ReplData = yes,
+            replace_labels_rval(Rval0, Rval, ReplMap)
+        ;
+            ReplData = no,
+            Rval = Rval0
+        ),
+        replace_labels_label_list(Labels0, Labels, ReplMap),
+        Uinstr = computed_goto(Rval, Labels)
+    ;
+        Uinstr0 = arbitrary_c_code(AffectsLiveness, Lvals0, Code),
+        (
+            ReplData = yes,
+            replace_labels_c_code_live_lvals(Lvals0, Lvals, ReplMap)
+        ;
+            ReplData = no,
+            Lvals = Lvals0
+        ),
+        Uinstr = arbitrary_c_code(AffectsLiveness, Lvals, Code)
+    ;
+        Uinstr0 = if_val(Rval0, Target0),
+        (
+            ReplData = yes,
+            replace_labels_rval(Rval0, Rval, ReplMap)
+        ;
+            ReplData = no,
+            Rval = Rval0
+        ),
+        replace_labels_code_addr(Target0, Target, ReplMap),
+        Uinstr = if_val(Rval, Target)
+    ;
+        Uinstr0 = save_maxfr(Lval0),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = save_maxfr(Lval)
+    ;
+        Uinstr0 = restore_maxfr(Lval0),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = restore_maxfr(Lval)
+    ;
+        Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, Msg, Atomic,
+            MaybeRegionRval0),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap),
+            replace_labels_rval(Rval0, Rval, ReplMap),
+            (
+                MaybeRegionRval0 = yes(RegionRval0),
+                replace_labels_rval(RegionRval0, RegionRval, ReplMap),
+                MaybeRegionRval = yes(RegionRval)
+            ;
+                MaybeRegionRval0 = no,
+                MaybeRegionRval = MaybeRegionRval0
+            )
+        ;
+            ReplData = no,
+            Lval = Lval0,
+            Rval = Rval0,
             MaybeRegionRval = MaybeRegionRval0
-        )
+        ),
+        Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, Msg, Atomic,
+            MaybeRegionRval)
     ;
-        ReplData = no,
-        Lval = Lval0,
-        Rval = Rval0,
-        MaybeRegionRval = MaybeRegionRval0
-    ).
-replace_labels_instr(mark_hp(Lval0), ReplMap, ReplData,
-        mark_hp(Lval)) :-
-    (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval)
+        Uinstr0 = mark_hp(Lval0),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = mark_hp(Lval)
     ;
-        ReplData = no,
-        Lval = Lval0
-    ).
-replace_labels_instr(restore_hp(Rval0), ReplMap, ReplData,
-        restore_hp(Rval)) :-
-    (
-        ReplData = yes,
-        replace_labels_rval(Rval0, ReplMap, Rval)
+        Uinstr0 = restore_hp(Rval0),
+        (
+            ReplData = yes,
+            replace_labels_rval(Rval0, Rval, ReplMap)
+        ;
+            ReplData = no,
+            Rval = Rval0
+        ),
+        Uinstr = restore_hp(Rval)
     ;
-        ReplData = no,
-        Rval = Rval0
-    ).
-replace_labels_instr(free_heap(Rval0), ReplMap, ReplData,
-        free_heap(Rval)) :-
-    (
-        ReplData = yes,
-        replace_labels_rval(Rval0, ReplMap, Rval)
+        Uinstr0 = free_heap(Rval0),
+        (
+            ReplData = yes,
+            replace_labels_rval(Rval0, Rval, ReplMap)
+        ;
+            ReplData = no,
+            Rval = Rval0
+        ),
+        Uinstr = free_heap(Rval)
     ;
-        ReplData = no,
-        Rval = Rval0
-    ).
-replace_labels_instr(store_ticket(Lval0), ReplMap, ReplData,
-        store_ticket(Lval)) :-
-    (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval)
+        Uinstr0 = push_region_frame(StackId, EmbeddedStackFrame),
+        Uinstr = push_region_frame(StackId, EmbeddedStackFrame)
     ;
-        ReplData = no,
-        Lval = Lval0
-    ).
-replace_labels_instr(reset_ticket(Rval0, Reason), ReplMap, ReplData,
-        reset_ticket(Rval, Reason)) :-
-    (
-        ReplData = yes,
-        replace_labels_rval(Rval0, ReplMap, Rval)
+        Uinstr0 = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval0,
+            NumLval0, AddrLval0),
+        (
+            ReplData = yes,
+            replace_labels_rval(IdRval0, IdRval, ReplMap),
+            replace_labels_lval(NumLval0, NumLval, ReplMap),
+            replace_labels_lval(AddrLval0, AddrLval, ReplMap)
+        ;
+            ReplData = no,
+            IdRval = IdRval0,
+            NumLval = NumLval0,
+            AddrLval = AddrLval0
+        ),
+        Uinstr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval)
     ;
-        ReplData = no,
-        Rval = Rval0
-    ).
-replace_labels_instr(discard_ticket, _, _, discard_ticket).
-replace_labels_instr(prune_ticket, _, _, prune_ticket).
-replace_labels_instr(mark_ticket_stack(Lval0), ReplMap, ReplData,
-        mark_ticket_stack(Lval)) :-
-    (
-        ReplData = yes,
-        replace_labels_lval(Lval0, ReplMap, Lval)
+        Uinstr0 = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+            ValueRval0),
+        (
+            ReplData = yes,
+            replace_labels_rval(ValueRval0, ValueRval, ReplMap)
+        ;
+            ReplData = no,
+            ValueRval = ValueRval0
+        ),
+        Uinstr = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
+            ValueRval)
     ;
-        ReplData = no,
-        Lval = Lval0
-    ).
-replace_labels_instr(prune_tickets_to(Rval0), ReplMap, ReplData,
-        prune_tickets_to(Rval)) :-
-    (
-        ReplData = yes,
-        replace_labels_rval(Rval0, ReplMap, Rval)
+        Uinstr0 = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
+        Uinstr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
     ;
-        ReplData = no,
-        Rval = Rval0
-    ).
-replace_labels_instr(incr_sp(Size, Msg, Kind), _, _, incr_sp(Size, Msg, Kind)).
-replace_labels_instr(decr_sp(Size), _, _, decr_sp(Size)).
-replace_labels_instr(decr_sp_and_return(Size), _, _, decr_sp_and_return(Size)).
-replace_labels_instr(init_sync_term(T, N), _, _, init_sync_term(T, N)).
-replace_labels_instr(fork(Child0), Replmap, _, fork(Child)) :-
-    replace_labels_label(Child0, Replmap, Child).
-replace_labels_instr(join_and_continue(Lval0, Label0),
-        Replmap, _, join_and_continue(Lval, Label)) :-
-    replace_labels_label(Label0, Replmap, Label),
-    replace_labels_lval(Lval0, Replmap, Lval).
-replace_labels_instr(foreign_proc_code(A, Comps0, C, MaybeFix, MaybeLayout,
-        MaybeOnlyLayout, MaybeSub0, H, I), ReplMap, _,
-        foreign_proc_code(A, Comps, C, MaybeFix, MaybeLayout, MaybeOnlyLayout,
-            MaybeSub, H, I)) :-
-    (
-        MaybeFix = no
+        Uinstr0 = store_ticket(Lval0),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = store_ticket(Lval)
     ;
-        MaybeFix = yes(FixLabel0),
-        replace_labels_label(FixLabel0, ReplMap, FixLabel),
+        Uinstr0 = reset_ticket(Rval0, Reason),
+        (
+            ReplData = yes,
+            replace_labels_rval(Rval0, Rval, ReplMap)
+        ;
+            ReplData = no,
+            Rval = Rval0
+        ),
+        Uinstr = reset_ticket(Rval, Reason)
+    ;
+        Uinstr0 = mark_ticket_stack(Lval0),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = mark_ticket_stack(Lval)
+    ;
+        Uinstr0 = prune_tickets_to(Rval0),
+        (
+            ReplData = yes,
+            replace_labels_rval(Rval0, Rval, ReplMap)
+        ;
+            ReplData = no,
+            Rval = Rval0
+        ),
+        Uinstr = prune_tickets_to(Rval)
+    ;
+        Uinstr0 = init_sync_term(Lval0, N),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = init_sync_term(Lval, N)
+    ;
+        Uinstr0 = fork(Child0),
+        replace_labels_label(Child0, Child, ReplMap),
+        Uinstr = fork(Child)
+    ;
+        Uinstr0 = join_and_continue(Lval0, Label0),
+        replace_labels_label(Label0, Label, ReplMap),
+        replace_labels_lval(Lval0, Lval, ReplMap),
+        Uinstr = join_and_continue(Lval, Label)
+    ;
+        Uinstr0 = foreign_proc_code(A, Comps0, C, MaybeFix, MaybeLayout,
+            MaybeOnlyLayout, MaybeSub0, H, I),
+        (
+            MaybeFix = no
+        ;
+            MaybeFix = yes(FixLabel0),
+            replace_labels_label(FixLabel0, FixLabel, ReplMap),
             % We cannot replace the label in the C code string itself.
-        expect(unify(FixLabel0, FixLabel), this_file,
-            "trying to replace Mercury label in C code")
-    ),
-    (
-        MaybeLayout = no
-    ;
-        MaybeLayout = yes(LayoutLabel0),
-        replace_labels_label(LayoutLabel0, ReplMap, LayoutLabel),
+            expect(unify(FixLabel0, FixLabel), this_file,
+                "trying to replace Mercury label in C code")
+        ),
+        (
+            MaybeLayout = no
+        ;
+            MaybeLayout = yes(LayoutLabel0),
+            replace_labels_label(LayoutLabel0, LayoutLabel, ReplMap),
             % We cannot replace a label that has a layout structure.
-        expect(unify(LayoutLabel0, LayoutLabel), this_file,
-            "trying to replace Mercury label with layout")
-    ),
-    (
-        MaybeOnlyLayout = no
-    ;
-        MaybeOnlyLayout = yes(OnlyLayoutLabel0),
-        replace_labels_label(OnlyLayoutLabel0, ReplMap, OnlyLayoutLabel),
+            expect(unify(LayoutLabel0, LayoutLabel), this_file,
+                "trying to replace Mercury label with layout")
+        ),
+        (
+            MaybeOnlyLayout = no
+        ;
+            MaybeOnlyLayout = yes(OnlyLayoutLabel0),
+            replace_labels_label(OnlyLayoutLabel0, OnlyLayoutLabel, ReplMap),
             % We cannot replace a label that has a layout structure.
-        expect(unify(OnlyLayoutLabel0, OnlyLayoutLabel), this_file,
-            "trying to replace Mercury label with layout")
-    ),
-    (
-        MaybeSub0 = no,
-        MaybeSub = no,
-        Comps = Comps0
-    ;
-        MaybeSub0 = yes(SubLabel0),
-        replace_labels_label(SubLabel0, ReplMap, SubLabel),
-        MaybeSub = yes(SubLabel),
-        replace_labels_comps(Comps0, ReplMap, Comps)
+            expect(unify(OnlyLayoutLabel0, OnlyLayoutLabel), this_file,
+                "trying to replace Mercury label with layout")
+        ),
+        (
+            MaybeSub0 = no,
+            MaybeSub = no,
+            Comps = Comps0
+        ;
+            MaybeSub0 = yes(SubLabel0),
+            replace_labels_label(SubLabel0, SubLabel, ReplMap),
+            MaybeSub = yes(SubLabel),
+            replace_labels_comps(Comps0, Comps, ReplMap)
+        ),
+        Uinstr = foreign_proc_code(A, Comps, C, MaybeFix, MaybeLayout,
+            MaybeOnlyLayout, MaybeSub, H, I)
     ).
 
-replace_labels_comps([], _, []).
-replace_labels_comps([Comp0 | Comps0], ReplMap, [Comp | Comps]) :-
-    replace_labels_comp(Comp0, ReplMap, Comp),
-    replace_labels_comps(Comps0, ReplMap, Comps).
+replace_labels_comps([], [], _).
+replace_labels_comps([Comp0 | Comps0], [Comp | Comps], ReplMap) :-
+    replace_labels_comp(Comp0, Comp, ReplMap),
+    replace_labels_comps(Comps0, Comps, ReplMap).
 
-:- pred replace_labels_comp(foreign_proc_component::in,
-    map(label, label)::in, foreign_proc_component::out) is det.
+:- pred replace_labels_comp(
+    foreign_proc_component::in, foreign_proc_component::out,
+    map(label, label)::in) is det.
 
-replace_labels_comp(foreign_proc_inputs(A), _, foreign_proc_inputs(A)).
-replace_labels_comp(foreign_proc_outputs(A), _, foreign_proc_outputs(A)).
-replace_labels_comp(foreign_proc_user_code(A, B, C), _,
-        foreign_proc_user_code(A, B, C)).
-replace_labels_comp(foreign_proc_raw_code(A, B, C, D), _,
-        foreign_proc_raw_code(A, B, C, D)).
-replace_labels_comp(foreign_proc_fail_to(Label0), ReplMap,
-        foreign_proc_fail_to(Label)) :-
-    replace_labels_label(Label0, ReplMap, Label).
-replace_labels_comp(foreign_proc_noop, _, foreign_proc_noop).
+replace_labels_comp(Comp0, Comp, ReplMap) :-
+    (
+        ( Comp0 = foreign_proc_inputs(_)
+        ; Comp0 = foreign_proc_outputs(_)
+        ; Comp0 = foreign_proc_user_code(_, _, _)
+        ; Comp0 = foreign_proc_raw_code(_, _, _, _)
+        ; Comp0 = foreign_proc_noop
+        ),
+        Comp = Comp0
+    ;
+        Comp0 = foreign_proc_fail_to(Label0),
+        replace_labels_label(Label0, Label, ReplMap),
+        Comp = foreign_proc_fail_to(Label)
+    ).
 
-:- pred replace_labels_lval(lval::in, map(label, label)::in, lval::out) is det.
+:- pred replace_labels_c_code_live_lvals(
+    c_code_live_lvals::in, c_code_live_lvals::out, map(label, label)::in)
+    is det.
 
-replace_labels_lval(reg(RegType, RegNum), _, reg(RegType, RegNum)).
-replace_labels_lval(stackvar(N), _, stackvar(N)).
-replace_labels_lval(parent_stackvar(N), _, parent_stackvar(N)).
-replace_labels_lval(framevar(N), _, framevar(N)).
-replace_labels_lval(succip, _, succip).
-replace_labels_lval(maxfr, _, maxfr).
-replace_labels_lval(curfr, _, curfr).
-replace_labels_lval(succip_slot(Rval0), ReplMap, succip_slot(Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(redoip_slot(Rval0), ReplMap, redoip_slot(Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(redofr_slot(Rval0), ReplMap, redofr_slot(Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(succfr_slot(Rval0), ReplMap, succfr_slot(Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(prevfr_slot(Rval0), ReplMap, prevfr_slot(Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(hp, _, hp).
-replace_labels_lval(sp, _, sp).
-replace_labels_lval(parent_sp, _, parent_sp).
-replace_labels_lval(field(Tag, Base0, Offset0), ReplMap,
-        field(Tag, Base, Offset)) :-
-    replace_labels_rval(Base0, ReplMap, Base),
-    replace_labels_rval(Offset0, ReplMap, Offset).
-replace_labels_lval(lvar(Var), _, lvar(Var)).
-replace_labels_lval(temp(Type, Num), _, temp(Type, Num)).
-replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(global_var_ref(Name), _, global_var_ref(Name)).
+replace_labels_c_code_live_lvals(LiveLvals0, LiveLvals, ReplMap) :-
+    (
+        LiveLvals0 = no_live_lvals_info,
+        LiveLvals = LiveLvals0
+    ;
+        LiveLvals0 = live_lvals_info(LvalSet0),
+        set.to_sorted_list(LvalSet0, Lvals0),
+        list.map(replace_labels_lval_map(ReplMap), Lvals0, Lvals),
+        % We cannot replace the lvals inside the C code.
+        expect(unify(Lvals0, Lvals), this_file,
+            "replace_labels_c_code_live_lvals: some replacements"),
+        LiveLvals = LiveLvals0
+    ).
 
-:- pred replace_labels_rval(rval::in, map(label, label)::in,
-    rval::out) is det.
+:- pred replace_labels_lval_map(map(label, label)::in, lval::in, lval::out)
+    is det.
 
-replace_labels_rval(lval(Lval0), ReplMap, lval(Lval)) :-
-    replace_labels_lval(Lval0, ReplMap, Lval).
-replace_labels_rval(var(Var), _, var(Var)).
-replace_labels_rval(mkword(Tag, Rval0), ReplMap,
-        mkword(Tag, Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_rval(const(Const0), ReplMap, const(Const)) :-
-    replace_labels_rval_const(Const0, ReplMap, Const).
-replace_labels_rval(unop(Op, Rval0), ReplMap, unop(Op, Rval)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_rval(binop(Op, LRval0, RRval0), ReplMap,
-        binop(Op, LRval, RRval)) :-
-    replace_labels_rval(LRval0, ReplMap, LRval),
-    replace_labels_rval(RRval0, ReplMap, RRval).
-replace_labels_rval(mem_addr(MemRef0), ReplMap, mem_addr(MemRef)) :-
-    replace_labels_mem_ref(MemRef0, ReplMap, MemRef).
+replace_labels_lval_map(ReplMap, Lval0, Lval) :-
+    replace_labels_lval(Lval0, Lval, ReplMap).
 
-:- pred replace_labels_mem_ref(mem_ref::in, map(label, label)::in,
-    mem_ref::out) is det.
+:- pred replace_labels_lval(lval::in, lval::out, map(label, label)::in) is det.
 
-replace_labels_mem_ref(stackvar_ref(N), _, stackvar_ref(N)).
-replace_labels_mem_ref(framevar_ref(N), _, framevar_ref(N)).
-replace_labels_mem_ref(heap_ref(Rval0, Tag, N), ReplMap,
-        heap_ref(Rval, Tag, N)) :-
-    replace_labels_rval(Rval0, ReplMap, Rval).
+replace_labels_lval(Lval0, Lval, ReplMap) :-
+    (
+        ( Lval0 = reg(_, _)
+        ; Lval0 = temp(_, _)
+        ; Lval0 = stackvar(_)
+        ; Lval0 = framevar(_)
+        ; Lval0 = parent_stackvar(_)
+        ; Lval0 = succip
+        ; Lval0 = maxfr
+        ; Lval0 = curfr
+        ; Lval0 = hp
+        ; Lval0 = sp
+        ; Lval0 = parent_sp
+        ; Lval0 = lvar(_)
+        ; Lval0 = global_var_ref(_)
+        ),
+        Lval = Lval0
+    ;
+        Lval0 = succip_slot(Rval0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        Lval = succip_slot(Rval)
+    ;
+        Lval0 = succfr_slot(Rval0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        Lval = succfr_slot(Rval)
+    ;
+        Lval0 = redoip_slot(Rval0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        Lval = redoip_slot(Rval)
+    ;
+        Lval0 = redofr_slot(Rval0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        Lval = redofr_slot(Rval)
+    ;
+        Lval0 = prevfr_slot(Rval0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        Lval = prevfr_slot(Rval)
+    ;
+        Lval0 = field(Tag, BaseRval0, OffsetRval0),
+        replace_labels_rval(BaseRval0, BaseRval, ReplMap),
+        replace_labels_rval(OffsetRval0, OffsetRval, ReplMap),
+        Lval = field(Tag, BaseRval, OffsetRval)
+    ;
+        Lval0 = mem_ref(Rval0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        Lval = mem_ref(Rval)
+    ).
 
-:- pred replace_labels_rval_const(rval_const::in,
-    map(label, label)::in, rval_const::out) is det.
+:- pred replace_labels_rval(rval::in, rval::out, map(label, label)::in) is det.
 
-replace_labels_rval_const(llconst_true, _, llconst_true).
-replace_labels_rval_const(llconst_false, _, llconst_false).
-replace_labels_rval_const(llconst_int(N), _, llconst_int(N)).
-replace_labels_rval_const(llconst_float(N), _, llconst_float(N)).
-replace_labels_rval_const(llconst_string(S), _, llconst_string(S)).
-replace_labels_rval_const(llconst_multi_string(S), _, llconst_multi_string(S)).
-replace_labels_rval_const(llconst_code_addr(Addr0), ReplMap,
-        llconst_code_addr(Addr)) :-
-    replace_labels_code_addr(Addr0, ReplMap, Addr).
-replace_labels_rval_const(llconst_data_addr(DataAddr, MaybeOffset), _,
-        llconst_data_addr(DataAddr, MaybeOffset)).
+replace_labels_rval(Rval0, Rval, ReplMap) :-
+    (
+        Rval0 = lval(Lval0),
+        replace_labels_lval(Lval0, Lval, ReplMap),
+        Rval = lval(Lval)
+    ;
+        Rval0 = var(_Var),
+        Rval = Rval0
+    ;
+        Rval0 = mkword(Tag, SubRval0),
+        replace_labels_rval(SubRval0, SubRval, ReplMap),
+        Rval = mkword(Tag, SubRval)
+    ;
+        Rval0 = const(Const0),
+        replace_labels_rval_const(Const0, Const, ReplMap),
+        Rval = const(Const)
+    ;
+        Rval0 = unop(UnOp, SubRvalA0),
+        replace_labels_rval(SubRvalA0, SubRvalA, ReplMap),
+        Rval = unop(UnOp, SubRvalA)
+    ;
+        Rval0 = binop(BinOp, SubRvalA0, SubRvalB0),
+        replace_labels_rval(SubRvalA0, SubRvalA, ReplMap),
+        replace_labels_rval(SubRvalB0, SubRvalB, ReplMap),
+        Rval = binop(BinOp, SubRvalA, SubRvalB)
+    ;
+        Rval0 = mem_addr(MemRef0),
+        replace_labels_mem_ref(MemRef0, MemRef, ReplMap),
+        Rval = mem_addr(MemRef)
+    ).
 
-replace_labels_code_addr(code_label(Label0), ReplMap, code_label(Label)) :-
-    replace_labels_label(Label0, ReplMap, Label).
-replace_labels_code_addr(code_imported_proc(Proc), _,
-        code_imported_proc(Proc)).
-replace_labels_code_addr(code_succip, _, code_succip).
-replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
-replace_labels_code_addr(do_redo, _, do_redo).
-replace_labels_code_addr(do_fail, _, do_fail).
-replace_labels_code_addr(do_trace_redo_fail_shallow, _,
-    do_trace_redo_fail_shallow).
-replace_labels_code_addr(do_trace_redo_fail_deep, _,
-    do_trace_redo_fail_deep).
-replace_labels_code_addr(do_call_closure(MaybeSpec), _,
-        do_call_closure(MaybeSpec)).
-replace_labels_code_addr(do_call_class_method(MaybeSpec), _,
-        do_call_class_method(MaybeSpec)).
-replace_labels_code_addr(do_not_reached, _, do_not_reached).
+:- pred replace_labels_mem_ref(mem_ref::in, mem_ref::out,
+    map(label, label)::in) is det.
 
-replace_labels_label_list([], _ReplMap, []).
-replace_labels_label_list([Label0 | Labels0], ReplMap, [Label | Labels]) :-
-    replace_labels_label(Label0, ReplMap, Label),
-    replace_labels_label_list(Labels0, ReplMap, Labels).
+replace_labels_mem_ref(MemRef0, MemRef, ReplMap) :-
+    (
+        ( MemRef0 = stackvar_ref(_)
+        ; MemRef0 = framevar_ref(_)
+        ),
+        MemRef = MemRef0
+    ;
+        MemRef0 = heap_ref(CellRval0, Tag, FieldNumRval0),
+        replace_labels_rval(CellRval0, CellRval, ReplMap),
+        replace_labels_rval(FieldNumRval0, FieldNumRval, ReplMap),
+        MemRef = heap_ref(CellRval, Tag, FieldNumRval)
+    ).
 
-replace_labels_label(Label0, ReplMap, Label) :-
+:- pred replace_labels_rval_const(rval_const::in, rval_const::out,
+    map(label, label)::in) is det.
+
+replace_labels_rval_const(Const0, Const, ReplMap) :-
+    (
+        ( Const0 = llconst_true
+        ; Const0 = llconst_false
+        ; Const0 = llconst_int(_)
+        ; Const0 = llconst_float(_)
+        ; Const0 = llconst_string(_)
+        ; Const0 = llconst_multi_string(_)
+        ; Const0 = llconst_data_addr(_, _)
+        ),
+        Const = Const0
+    ;
+        Const0 = llconst_code_addr(Addr0),
+        replace_labels_code_addr(Addr0, Addr, ReplMap),
+        Const = llconst_code_addr(Addr)
+    ).
+
+replace_labels_code_addr(Addr0, Addr, ReplMap) :-
+    (
+        Addr0 = code_label(Label0),
+        replace_labels_label(Label0, Label, ReplMap),
+        Addr = code_label(Label)
+    ;
+        ( Addr0 = code_imported_proc(_)
+        ; Addr0 = code_succip
+        ; Addr0 = do_succeed(_)
+        ; Addr0 = do_redo
+        ; Addr0 = do_fail
+        ; Addr0 = do_trace_redo_fail_shallow
+        ; Addr0 = do_trace_redo_fail_deep
+        ; Addr0 = do_call_closure(_)
+        ; Addr0 = do_call_class_method(_)
+        ; Addr0 = do_not_reached
+        ),
+        Addr = Addr0
+    ).
+
+replace_labels_label_list([], [], _ReplMap).
+replace_labels_label_list([Label0 | Labels0], [Label | Labels], ReplMap) :-
+    replace_labels_label(Label0, Label, ReplMap),
+    replace_labels_label_list(Labels0, Labels, ReplMap).
+
+replace_labels_label(Label0, Label, ReplMap) :-
     ( map.search(ReplMap, Label0, NewLabel) ->
         Label = NewLabel
     ;

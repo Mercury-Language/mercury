@@ -1456,6 +1456,14 @@ represent_live_value_type(live_value_trail_ptr, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("trail_ptr", Rval).
 represent_live_value_type(live_value_ticket, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("ticket", Rval).
+represent_live_value_type(RegionType, Rval, data_ptr, !Info) :-
+    ( RegionType = live_value_region_ite
+    ; RegionType = live_value_region_disj
+    ; RegionType = live_value_region_commit
+    ),
+    % Neither the garbage collector nor the debugger need info about
+    % regions.
+    represent_special_live_value_type("unwanted", Rval).
 represent_live_value_type(live_value_unwanted, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("unwanted", Rval).
 represent_live_value_type(live_value_var(_, _, Type, _), Rval, LldsType,
