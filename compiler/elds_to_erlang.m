@@ -455,7 +455,7 @@ output_defn(ModuleInfo, Defn, !IO) :-
         io.nl(!IO),
         (
             % If the function definition is for a pragma foreign_proc then
-            % output ``-line(File, Line).'' before and after the function
+            % output ``-file(File, Line).'' before and after the function
             % definition.
             Clause = elds_clause(_HeadVars, ClauseBody),
             ClauseBody = elds_call(elds_call_ho(Fun), _CallArgs),
