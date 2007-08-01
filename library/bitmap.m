@@ -1763,10 +1763,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     {Bin, _} = BM,
-    Size = size(Bin),
-    Left = N * 8,
-    Right = (Size - N - 1) * 8,
-    <<_:Left, Byte:8, _:Right>> = Bin
+    <<_:N/binary, Byte/integer, _/binary>> = Bin
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1809,9 +1806,8 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     {Bin0, NumBits} = BM0,
-    {Left, Mid} = split_binary(Bin0, N),
-    {_, Right} = split_binary(Mid, 1),
-    Bin = list_to_binary([Left, Byte, Right]),
+    <<Left:N/binary, _/integer, Right/binary>> = Bin0,
+    Bin = <<Left/binary, Byte/integer, Right/binary>>,
     BM = {Bin, NumBits}
 ").
 
