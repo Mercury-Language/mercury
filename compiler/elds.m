@@ -196,7 +196,7 @@
     ;       elds_throw(elds_expr)
 
             % A piece of code to be embedded directly in the generated code.
-    ;       elds_foreign_code(string)
+    ;       elds_foreign_code(string, prog_context)
 
             % ExprA ! ExprB
             %

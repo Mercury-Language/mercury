@@ -522,7 +522,7 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         Expr = elds_receive(Cases)
     ;
         ( Expr0 = elds_rtti_ref(_)
-        ; Expr0 = elds_foreign_code(_)
+        ; Expr0 = elds_foreign_code(_, _)
         ),
         Expr = Expr0
     ).
@@ -686,7 +686,7 @@ erl_vars_in_expr(Expr, !Set) :-
         erl_vars_in_cases(Cases, !Set)
     ;
         ( Expr = elds_rtti_ref(_)
-        ; Expr = elds_foreign_code(_)
+        ; Expr = elds_foreign_code(_, _)
         )
     ).
 
@@ -825,7 +825,7 @@ erl_expr_size(Expr) = Size :-
         Expr = elds_rtti_ref(_),
         Size = 1
     ;
-        Expr = elds_foreign_code(_),
+        Expr = elds_foreign_code(_, _),
         % Arbitrary number.
         Size = 10000
     ).

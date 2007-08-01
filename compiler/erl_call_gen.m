@@ -596,7 +596,7 @@ erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
-        CodeModel, _OuterContext, MaybeSuccessExpr, Statement, !Info) :-
+        CodeModel, OuterContext, MaybeSuccessExpr, Statement, !Info) :-
     %
     % In the following, F<n> are input variables to the foreign code (with
     % fixed names), and G<n> are output variables from the foreign code
@@ -641,7 +641,7 @@ erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
     InputVarsNames = list.map(foreign_arg_name, InputForeignArgs),
     OutputVarsNames = list.map(foreign_arg_name, OutputForeignArgs),
 
-    ForeignCodeExpr = elds_foreign_code(ForeignCode),
+    ForeignCodeExpr = elds_foreign_code(ForeignCode, OuterContext),
 
     % Create the inner lambda function.
     (

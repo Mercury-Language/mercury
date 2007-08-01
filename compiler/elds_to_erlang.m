@@ -366,8 +366,7 @@ elds_get_env_var_names(ProcDefns) =
 
 :- func elds_get_env_var_names_from_defn(elds_defn) = set(string).
 
-elds_get_env_var_names_from_defn(ProcDefn) = EnvVarNameSet :-
-    ProcDefn = elds_defn(_, _, _, EnvVarNameSet).
+elds_get_env_var_names_from_defn(ProcDefn) = ProcDefn ^ defn_env_vars.
 
 :- pred output_env_var_directive(string::in, io::di, io::uo) is det.
 
@@ -390,16 +389,36 @@ output_include_header_ann(Import, !IO) :-
 
 :- pred output_foreign_decl_code(foreign_decl_code::in, io::di, io::uo) is det.
 
-output_foreign_decl_code(foreign_decl_code(_Lang, _IsLocal, Code, _Context),
+output_foreign_decl_code(foreign_decl_code(_Lang, _IsLocal, Code, Context),
         !IO) :-
+    output_file_directive(Context, !IO),
     io.write_string(Code, !IO),
-    io.nl(!IO).
+    io.nl(!IO),
+    reset_file_directive(!IO).
 
 :- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
 
-output_foreign_body_code(foreign_body_code(_Lang, Code, _Context), !IO) :-
+output_foreign_body_code(foreign_body_code(_Lang, Code, Context), !IO) :-
+    output_file_directive(Context, !IO),
     io.write_string(Code, !IO),
-    io.nl(!IO).
+    io.nl(!IO),
+    reset_file_directive(!IO).
+
+:- pred output_file_directive(context::in, io::di, io::uo) is det.
+
+output_file_directive(context(FileName, LineNr), !IO) :-
+    io.write_string("-file(""", !IO),
+    write_with_escaping(in_string, FileName, !IO),
+    io.write_string(""", ", !IO),
+    io.write_int(LineNr, !IO),
+    io.write_string(").\n", !IO).
+
+:- pred reset_file_directive(io::di, io::uo) is det.
+
+reset_file_directive(!IO) :-
+    io.output_stream_name(FileName, !IO),
+    io.get_output_line_number(LineNr, !IO),
+    output_file_directive(context(FileName, LineNr), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -434,8 +453,30 @@ output_defn(ModuleInfo, Defn, !IO) :-
     (
         Body = body_defined_here(Clause),
         io.nl(!IO),
-        output_pred_proc_id(ModuleInfo, PredProcId, !IO),
-        output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO)
+        (
+            % If the function definition is for a pragma foreign_proc then
+            % output ``-line(File, Line).'' before and after the function
+            % definition.
+            Clause = elds_clause(_HeadVars, ClauseBody),
+            ClauseBody = elds_call(elds_call_ho(Fun), _CallArgs),
+            Fun = elds_fun(elds_clause(_FunVars, FunBody)),
+            FunBody = elds_block([
+                elds_foreign_code(_Code, Context),
+                _PlaceOutputs
+            ])
+        ->
+            % We need to subtract 3 lines so that the line numbers in the
+            % foreign code block will match up with the line numbers in the
+            % source file.
+            Context = context(FileName, LineNr),
+            output_file_directive(context(FileName, LineNr - 3), !IO),
+            output_pred_proc_id(ModuleInfo, PredProcId, !IO),
+            output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO),
+            reset_file_directive(!IO)
+        ;
+            output_pred_proc_id(ModuleInfo, PredProcId, !IO),
+            output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO)
+        )
     ;
         Body = body_external(_Arity)
     ).
@@ -643,8 +684,7 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
             io.write_string("()", !IO)
         )
     ;
-        Expr = elds_foreign_code(Code),
-        nl(!IO),
+        Expr = elds_foreign_code(Code, _Context),
         io.write_string(Code, !IO),
         nl_indent_line(Indent, !IO)
     ;
