@@ -2361,21 +2361,29 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             % even in the presence of errors above, because if didn't do so,
             % later compiler passes would report errors at the sites where
             % these predicates are called.
-            (
-                Statistics = table_gather_statistics,
-                create_tabling_statistics_pred(ProcId, Context,
-                    SimpleCallId, SingleProc, !ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !Specs)
+            % We only do it if C is supported as a foreign language, otherwise
+            % we get warnings that these predicates are missing clauses.
+            module_info_get_globals(!.ModuleInfo, Globals),
+            get_backend_foreign_languages(Globals, ForeignLanguages),
+            ( list.member(lang_c, ForeignLanguages) ->
+                (
+                    Statistics = table_gather_statistics,
+                    create_tabling_statistics_pred(ProcId, Context,
+                        SimpleCallId, SingleProc, !ProcTable,
+                        !Status, !ModuleInfo, !QualInfo, !Specs)
+                ;
+                    Statistics = table_dont_gather_statistics
+                ),
+                (
+                    AllowReset = table_allow_reset,
+                    create_tabling_reset_pred(ProcId, Context,
+                        SimpleCallId, SingleProc, !ProcTable,
+                        !Status, !ModuleInfo, !QualInfo, !Specs)
+                ;
+                    AllowReset = table_dont_allow_reset
+                )
             ;
-                Statistics = table_dont_gather_statistics
-            ),
-            (
-                AllowReset = table_allow_reset,
-                create_tabling_reset_pred(ProcId, Context,
-                    SimpleCallId, SingleProc, !ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !Specs)
-            ;
-                AllowReset = table_dont_allow_reset
+                true
             )
         )
     ).
@@ -2429,7 +2437,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         Arg2 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
         Arg3 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
-        Global = table_info_global_var_name(!.ModuleInfo, SimpleCallId,
+        Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
         StatsPredClause = item_pragma(compiler(pragma_memo_attribute),
             pragma_foreign_proc(!.Attrs, StatsPredSymName, pf_predicate,
@@ -2481,7 +2489,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
         Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
-        Global = table_info_global_var_name(!.ModuleInfo, SimpleCallId,
+        Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
         ResetPredClause = item_pragma(compiler(pragma_memo_attribute),
             pragma_foreign_proc(!.Attrs, ResetPredSymName, pf_predicate,
@@ -2538,10 +2546,10 @@ tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
         NewSymName = unqualified(NewName)
     ).
 
-:- func table_info_global_var_name(module_info, simple_call_id, proc_id)
+:- func table_info_c_global_var_name(module_info, simple_call_id, proc_id)
     = string.
 
-table_info_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
+table_info_c_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     expect(unify(Target, target_c), this_file,
