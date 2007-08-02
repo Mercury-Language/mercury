@@ -513,14 +513,15 @@ goal_info_maybe_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
 goal_info_initialize_liveness_info(PreBirths, PostBirths,
         PreDeaths, PostDeaths, ResumePoint, !GoalInfo) :-
     goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
-    LLDSInfo0 = get_details(CodeGenInfo0),
-    LLDSInfo = (((((LLDSInfo0
-        ^ pre_births := PreBirths)
-        ^ post_births := PostBirths)
-        ^ pre_deaths := PreDeaths)
-        ^ post_deaths := PostDeaths)
-        ^ resume_point := ResumePoint),
-    CodeGenInfo = llds_code_gen_info(LLDSInfo),
+    some [!LLDSInfo] (
+        !:LLDSInfo = get_details(CodeGenInfo0),
+        !:LLDSInfo = !.LLDSInfo ^ pre_births := PreBirths,
+        !:LLDSInfo = !.LLDSInfo ^ post_births := PostBirths,
+        !:LLDSInfo = !.LLDSInfo ^ pre_deaths := PreDeaths,
+        !:LLDSInfo = !.LLDSInfo ^ post_deaths := PostDeaths,
+        !:LLDSInfo = !.LLDSInfo ^ resume_point := ResumePoint,
+        CodeGenInfo = llds_code_gen_info(!.LLDSInfo)
+    ),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_pre_births(PreBirths, !GoalInfo) :-
@@ -608,8 +609,7 @@ goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
         Resume = resume_point(Vars, Locs)
     ;
         Resume = no_resume_point,
-        unexpected(this_file,
-            "goal_info_resume_vars_and_loc: no resume point")
+        unexpected(this_file, "goal_info_resume_vars_and_loc: no resume point")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -623,7 +623,7 @@ get_details(llds_code_gen_info(LLDSInfo)) = LLDSInfo.
 
 init_llds_code_gen_details =
     llds_code_gen_details(set.init, set.init, set.init, set.init,
-    no, map.init, no_resume_point, no_need).
+        no, map.init, no_resume_point, no_need).
 
 %-----------------------------------------------------------------------------%
 

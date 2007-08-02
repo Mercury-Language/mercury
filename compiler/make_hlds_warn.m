@@ -152,10 +152,9 @@ warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
             Vars = [_ | _]
         ->
             SubGoalVars = free_goal_vars(SubGoal),
-            goal_info_get_context(GoalInfo, Context),
             set.init(EmptySet),
             warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, SubGoalVars,
-                VarSet, Context, PredCallId, !Specs),
+                VarSet, PredCallId, !Specs),
             set.insert_list(QuantVars, Vars, SubQuantVars)
         ;
             SubQuantVars = QuantVars
@@ -172,10 +171,9 @@ warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
             CondVars = free_goal_vars(Cond),
             ThenVars = free_goal_vars(Then),
             set.union(CondVars, ThenVars, CondThenVars),
-            goal_info_get_context(GoalInfo, Context),
             set.init(EmptySet),
             warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, CondThenVars,
-                VarSet, Context, PredCallId, !Specs)
+                VarSet, PredCallId, !Specs)
         ;
             Vars = []
         ),
@@ -189,17 +187,15 @@ warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
     ;
         GoalExpr = plain_call(_, _, Args, _, _, _),
         goal_info_get_nonlocals(GoalInfo, NonLocals),
-        goal_info_get_context(GoalInfo, Context),
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
-            Context, PredCallId, !Specs)
+            PredCallId, !Specs)
     ;
         GoalExpr = generic_call(GenericCall, Args0, _, _),
         goal_util.generic_call_vars(GenericCall, Args1),
         list.append(Args0, Args1, Args),
         goal_info_get_nonlocals(GoalInfo, NonLocals),
-        goal_info_get_context(GoalInfo, Context),
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
-            Context, PredCallId, !Specs)
+            PredCallId, !Specs)
     ;
         GoalExpr = unify(Var, RHS, _, _, _),
         warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
@@ -260,30 +256,27 @@ warn_singletons_in_cases([Case | Cases], QuantVars, VarSet, CallPredId,
 warn_singletons_in_unify(X, rhs_var(Y), GoalInfo, QuantVars, VarSet,
         CallPredId, _, !Specs) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    goal_info_get_context(GoalInfo, Context),
     warn_singletons_goal_vars([X, Y], GoalInfo, NonLocals, QuantVars,
-        VarSet, Context, CallPredId, !Specs).
+        VarSet, CallPredId, !Specs).
 warn_singletons_in_unify(X, rhs_functor(_ConsId, _, Vars), GoalInfo,
         QuantVars, VarSet, CallPredId, _, !Specs) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    goal_info_get_context(GoalInfo, Context),
     warn_singletons_goal_vars([X | Vars], GoalInfo, NonLocals, QuantVars,
-        VarSet, Context, CallPredId, !Specs).
+        VarSet, CallPredId, !Specs).
 warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
         _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
         GoalInfo, QuantVars, VarSet, CallPredId, ModuleInfo, !Specs) :-
     % Warn if any lambda-quantified variables occur only in the quantifier.
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
     goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
-    goal_info_get_context(GoalInfo, Context),
     warn_singletons_goal_vars(LambdaVars, GoalInfo, LambdaNonLocals, QuantVars,
-        VarSet, Context, CallPredId, !Specs),
+        VarSet, CallPredId, !Specs),
 
     % Warn if X (the variable we're unifying the lambda expression with)
     % is singleton.
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     warn_singletons_goal_vars([X], GoalInfo, NonLocals, QuantVars,
-        VarSet, Context, CallPredId, !Specs),
+        VarSet, CallPredId, !Specs),
 
     % Warn if the lambda-goal contains singletons.
     warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId,
@@ -299,12 +292,11 @@ warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
     % Omit the warning if GoalInfo says we should.
     %
 :- pred warn_singletons_goal_vars(list(prog_var)::in, hlds_goal_info::in,
-    set(prog_var)::in, set(prog_var)::in, prog_varset::in,
-    prog_context::in, simple_call_id::in,
+    set(prog_var)::in, set(prog_var)::in, prog_varset::in, simple_call_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
-        Context, PredOrFuncCallId, !Specs) :-
+        PredOrFuncCallId, !Specs) :-
     % Find all the variables in the goal that don't occur outside the goal
     % (i.e. are singleton), have a variable name that doesn't start with "_"
     % or "DCG_", and don't have the same name as any variable in QuantVars
@@ -335,7 +327,8 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
             SinglesPieces = [words("warning: variables"), SingleVarsPiece,
                 words("occur only once in this scope."), nl]
         ),
-        SinglesMsg = simple_msg(Context,
+        goal_info_get_context(GoalInfo, Context1),
+        SinglesMsg = simple_msg(Context1,
             [option_is_set(warn_singleton_vars, yes,
                 [always(SinglesPreamble ++ SinglesPieces)])]),
         SingleSeverity = severity_conditional(warn_singleton_vars, yes,
@@ -365,7 +358,8 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
             MultiPieces = [words("warning: variables"), MultiVarsPiece,
                 words("ccur more than once in this scope."), nl]
         ),
-        MultiMsg = simple_msg(Context,
+        goal_info_get_context(GoalInfo, Context2),
+        MultiMsg = simple_msg(Context2,
             [option_is_set(warn_singleton_vars, yes,
                 [always(MultiPreamble ++ MultiPieces)])]),
         MultiSeverity = severity_conditional(warn_singleton_vars, yes,

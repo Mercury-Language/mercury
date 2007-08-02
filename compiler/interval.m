@@ -1170,7 +1170,7 @@ apply_headvar_correction(HeadVarSet, RenameMap, Goal0, Goal) :-
     ( map.is_empty(Subst) ->
         Goal = Goal0
     ;
-        goal_util.rename_some_vars_in_goal(Subst, Goal0, Goal)
+        rename_some_vars_in_goal(Subst, Goal0, Goal)
     ).
 
 :- pred build_headvar_subst(list(prog_var)::in, rename_map::in,

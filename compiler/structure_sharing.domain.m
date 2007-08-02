@@ -38,6 +38,7 @@
 %     to any existing sharing.
 % 
 % Additional operations:
+%
 %   * extend_datastruct: compute the set of datastructures referring to the
 %     same memory space as a given datastructure, using sharing information;
 %     needed by the reuse analysis to check whether a given datastructure is
@@ -51,7 +52,6 @@
 :- module transform_hlds.ctgc.structure_sharing.domain.
 :- interface.
 
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.

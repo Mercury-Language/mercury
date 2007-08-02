@@ -1425,7 +1425,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
     goal_util.create_variables(FirstVersionVars,
         FirstVersionVarSet, FirstVersionVarTypes,
         !VarSet, !VarTypes, FirstRenaming0, FirstRenaming),
-    goal_util.must_rename_vars_in_goal(FirstRenaming,
+    must_rename_vars_in_goal(FirstRenaming,
         FirstVersionGoal, RenamedFirstVersionGoal),
 
     % Look up the version which was generalised to create the version

@@ -273,8 +273,7 @@ implicitly_quantify_goal_2(RecomputeNonLocals, OutsideVars0, Warnings,
 implicitly_quantify_goal_quant_info(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     get_seen(!.Info, SeenVars),
-    goal_info_get_context(GoalInfo0, Context),
-    implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr1, Context,
+    implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr1, GoalInfo0,
         !Info),
     get_nonlocals(!.Info, NonLocalVars),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
@@ -323,11 +322,15 @@ implicitly_quantify_goal_quant_info(Goal0, Goal, !Info) :-
     % doesn't, so we don't.)  Thus we replace `scope(exist_quant(Vars), Goal0)'
     % with an empty quantifier `scope(exist_quant([]), Goal)'.
     %
+    % We pass GoalInfo0 to allow warnings to have the proper context. We don't
+    % pass the context itself to avoid the work of extracting the context from
+    % goal_infos in the usual (no warning) case.
+    %
 :- pred implicitly_quantify_goal_quant_info_2(
-    hlds_goal_expr::in, hlds_goal_expr::out, prog_context::in,
+    hlds_goal_expr::in, hlds_goal_expr::out, hlds_goal_info::in,
     quant_info::in, quant_info::out) is det.
 
-implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
+implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
     Expr0 = scope(Reason0, Goal0),
     (
         Reason0 = exist_quant(Vars0),
@@ -369,13 +372,13 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
         Vars = Vars0,
         Reason = Reason1
     ;
+        goal_info_get_context(GoalInfo0, Context),
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
-        goal_util.rename_var_list(no, RenameMap, Vars0, Vars),
+        rename_var_list(no, RenameMap, Vars0, Vars),
         (
             Reason1 = promise_solutions(PromiseVars0, Kind),
-            goal_util.rename_var_list(no, RenameMap,
-                PromiseVars0, PromiseVars),
+            rename_var_list(no, RenameMap, PromiseVars0, PromiseVars),
             Reason = promise_solutions(PromiseVars, Kind)
         ;
             Reason1 = exist_quant(_),
@@ -444,7 +447,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, _, !Info) :-
     set_outside(OutsideVars, !Info),
     set_quant_vars(QuantVars, !Info).
 
-implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
+implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
     Expr0 = if_then_else(Vars0, Cond0, Then0, Else0),
     % After this pass, explicit quantifiers are redundant, since all variables
     % which were explicitly quantified have been renamed apart. So we don't
@@ -465,10 +468,11 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
         Then1 = Then0,
         Vars = Vars0
     ;
+        goal_info_get_context(GoalInfo0, Context),
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Cond0, Cond1, !Info),
-        goal_util.rename_some_vars_in_goal(RenameMap, Then0, Then1),
-        goal_util.rename_var_list(no, RenameMap, Vars0, Vars)
+        rename_some_vars_in_goal(RenameMap, Then0, Then1),
+        rename_var_list(no, RenameMap, Vars0, Vars)
     ),
     insert_list(QuantVars, Vars, QuantVars1),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
@@ -510,7 +514,7 @@ implicitly_quantify_goal_quant_info_2(Expr, Expr, _, !Info) :-
     list.append(ArgVars0, CallArgVars, ArgVars),
     implicitly_quantify_atomic_goal(ArgVars, !Info).
 
-implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
+implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
     Expr0 = unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
@@ -548,7 +552,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
         MaybeSizeVar = no,
         MaybeRegionVar = no
     ),
-    implicitly_quantify_unify_rhs(MaybeSetArgs, Context, UnifyRHS0, UnifyRHS,
+    implicitly_quantify_unify_rhs(MaybeSetArgs, GoalInfo0, UnifyRHS0, UnifyRHS,
         Unification0, Unification, !Info),
     Expr = unify(Var, UnifyRHS, Mode, Unification, UnifyContext),
     get_nonlocals(!.Info, VarsUnifyRHS),
@@ -588,17 +592,17 @@ implicitly_quantify_goal_quant_info_2(Expr, Expr, _, !Info) :-
     list.append(Vars, ExtraVars, AllVars),
     implicitly_quantify_atomic_goal(AllVars, !Info).
 
-implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
+implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
     Expr0 = shorthand(ShorthandGoal),
-    implicitly_quantify_goal_quant_info_2_shorthand(ShorthandGoal, Context,
-        Expr, !Info).
+    implicitly_quantify_goal_quant_info_2_shorthand(ShorthandGoal, Expr,
+        GoalInfo0, !Info).
 
 :- pred implicitly_quantify_goal_quant_info_2_shorthand(
-    shorthand_goal_expr::in, prog_context::in, hlds_goal_expr::out,
+    shorthand_goal_expr::in, hlds_goal_expr::out, hlds_goal_info::in,
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
-        Context, GoalExpr, !Info) :-
+        GoalExpr, OldGoalInfo, !Info) :-
 
     % Get the initial values of various settings.
     get_quant_vars(!.Info, QuantVars0),
@@ -661,6 +665,7 @@ implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
     % ===>
     %   (not (LHS, not RHS)), (not (RHS, not LHS))
 
+    goal_info_get_context(OldGoalInfo, Context),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
     set_goal_nonlocals(LHS_NonLocalVars, GoalInfo1, LHS_GI, !Info),
@@ -697,9 +702,9 @@ implicitly_quantify_atomic_goal(HeadVars, !Info) :-
     union(NonLocals1, NonLocals2, NonLocals),
     set_nonlocals(NonLocals, !Info).
 
-:- pred implicitly_quantify_unify_rhs(maybe(list(bool))::in, prog_context::in,
-    unify_rhs::in, unify_rhs::out, unification::in, unification::out,
-    quant_info::in, quant_info::out) is det.
+:- pred implicitly_quantify_unify_rhs(maybe(list(bool))::in,
+    hlds_goal_info::in, unify_rhs::in, unify_rhs::out,
+    unification::in, unification::out, quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_unify_rhs(_, _, !RHS, !Unification, !Info) :-
     !.RHS = rhs_var(X),
@@ -720,7 +725,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, _, !RHS, !Unification, !Info) :-
         Vars = list_to_set(ArgVars)
     ),
     set_nonlocals(Vars, !Info).
-implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
+implicitly_quantify_unify_rhs(_, GoalInfo0, !RHS, !Unification, !Info) :-
     !.RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
         LambdaNonLocals0, LambdaVars0, Modes, Det, Goal0),
 
@@ -737,6 +742,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     ( empty(RenameVars0) ->
         true
     ;
+        goal_info_get_context(GoalInfo0, Context),
         warn_overlapping_scope(RenameVars0, Context, !Info)
     ),
     % We need to rename apart any of the lambda vars that we have already seen,
@@ -746,7 +752,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
 
     union(RenameVars0, RenameVars1, RenameVars),
     rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
-    goal_util.rename_var_list(no, RenameMap, LambdaVars0, LambdaVars),
+    rename_var_list(no, RenameMap, LambdaVars0, LambdaVars),
 
     % Quantified variables cannot be pushed inside a lambda goal,
     % so we insert the quantified vars into the outside vars set,
@@ -1373,7 +1379,7 @@ rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
         map.init(RenameMap0),
         goal_util.create_variables(RenameList, Varset0, VarTypes0,
             Varset0, Varset, VarTypes0, VarTypes, RenameMap0, RenameMap),
-        goal_util.rename_some_vars_in_goal(RenameMap, !Goal),
+        rename_some_vars_in_goal(RenameMap, !Goal),
         set_varset(Varset, !Info),
         set_vartypes(VarTypes, !Info)
 

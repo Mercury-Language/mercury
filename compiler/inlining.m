@@ -816,7 +816,7 @@ rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
     goal_util.create_variables(CalleeListOfVars,
         CalleeVarSet, CalleeVarTypes,
         VarSet0, VarSet, VarTypes1, VarTypes, Subn0, Subn),
-    goal_util.must_rename_vars_in_goal(Subn, CalledGoal, Goal).
+    must_rename_vars_in_goal(Subn, CalledGoal, Goal).
 
 %-----------------------------------------------------------------------------%
 

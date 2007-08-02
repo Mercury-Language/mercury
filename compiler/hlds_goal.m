@@ -437,7 +437,7 @@
             )
 
     ;       event_call(
-                event_name      :: string 
+                event_name      :: string
             )
 
     ;       cast(
@@ -1135,9 +1135,8 @@
 :- type short_reuse_description
     --->    cell_died
     ;       cell_reused(
-                dead_var,       % The dead variable selected
-                                % for reusing.
-                is_conditional, % states if the reuse is conditional.
+                dead_var,       % The dead variable selected for reusing.
+                is_conditional, % States whether the reuse is conditional.
                 list(cons_id),  % What are the possible cons_ids that the
                                 % variable to be reused can have.
                 list(needs_update)
@@ -1182,6 +1181,48 @@
     hlds_goal_info::out) is det.
 :- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% The rename_var* predicates take a structure and a mapping from var -> var
+% and apply that translation. If a var in the input structure does not
+% occur as a key in the mapping, then the variable is left unsubstituted
+% (if Must = no) or we throw an exception (if Must = yes).
+%
+% We keep these predicates here to allow rename_vars_in_goal_info to exploit
+% knowledge of the actual representation of hlds_goal_infos; since
+% hlds_goal_info is an abstract type, this knowledge is not available
+% in any other module.
+%
+% This exploitation also makes the code of rename_vars_in_goal_info depend on
+% the structure of hlds_goal_infos, which makes accidentally forgetting to
+% update that predicate after modifying the hlds_goal_info type much harder.
+
+:- type prog_var_renaming == map(prog_var, prog_var).
+
+:- pred rename_some_vars_in_goal(prog_var_renaming::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+:- pred must_rename_vars_in_goal(prog_var_renaming::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+:- pred rename_vars_in_goals(bool::in, prog_var_renaming::in,
+    hlds_goals::in, hlds_goals::out) is det.
+
+:- pred rename_vars_in_goal_expr(bool::in, prog_var_renaming::in,
+    hlds_goal_expr::in, hlds_goal_expr::out) is det.
+
+:- pred rename_vars_in_goal_info(bool::in, prog_var_renaming::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+:- pred rename_vars_in_var_set(bool::in, prog_var_renaming::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+:- pred rename_var_list(bool::in, map(var(T), var(T))::in,
+    list(var(T))::in, list(var(T))::out) is det.
+
+:- pred rename_var(bool::in, map(var(V), var(V))::in,
+    var(V)::in, var(V)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1490,8 +1531,13 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 % Information stored with all kinds of goals
 %
 
-    % NB. Don't forget to check goal_util.name_apart_goalinfo
-    % if this structure is modified.
+    % This type has eight fields, which means that the Boehm collector
+    % allocates eight words for it. For a type with nine or ten fields,
+    % the Boehm collector would allocate a sixteen word block, so if
+    % you need any new fields, you probably want to add them to the
+    % extension structure in the hlds_goal_extra_info field instead of
+    % directly to this type.
+
 :- type hlds_goal_info
     --->    goal_info(
                 determinism     :: determinism,
@@ -1523,8 +1569,6 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                                 % Normally the instmap_delta will list only
                                 % the nonlocal variables of the goal.
 
-                context         :: prog_context,
-
                 nonlocals       :: set(prog_var),
                                 % The non-local vars in the goal, i.e. the
                                 % variables that occur both inside and outside
@@ -1544,9 +1588,6 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                                 % The path to this goal from the root in
                                 % reverse order.
 
-                maybe_mode_constraint_info ::
-                                maybe(mode_constraint_goal_info),
-
                 code_gen_info   :: hlds_goal_code_gen_info,
 
                 extra_goal_info :: hlds_goal_extra_info
@@ -1555,24 +1596,37 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                                 % passes, e.g closure analysis.
             ).
 
+:- type hlds_goal_extra_info
+    --->    extra_goal_info(
+                context                     :: prog_context,
+
+                extra_info_ho_vals          :: ho_values,
+
+                % Any information related to structure reuse (CTGC).
+                extra_info_maybe_ctgc_info  :: maybe(ctgc_info),
+
+                maybe_mode_constraint_info  ::
+                                maybe(mode_constraint_goal_info)
+            ).
+
 :- type mode_constraint_goal_info
     --->    mode_constraint_goal_info(
-                mci_occurring_vars :: set(prog_var),
-                                % Inst_graph nodes that are reachable from
-                                % variables that occur in the goal.
+                % Inst_graph nodes that are reachable from variables
+                % that occur in the goal.
+                mci_occurring_vars          :: set(prog_var),
 
-                mci_producing_vars :: set(prog_var),
-                                % Inst_graph nodes produced by this goal.
+                % Inst_graph nodes produced by this goal.
+                mci_producing_vars          :: set(prog_var),
 
-                mci_consuming_vars :: set(prog_var),
-                                % Inst_graph nodes consumed by this goal.
+                % Inst_graph nodes consumed by this goal.
+                mci_consuming_vars          :: set(prog_var),
 
-                mci_make_visible_vars :: set(prog_var),
-                                % Variables that this goal makes visible.
+                % The variables that this goal makes visible.
+                mci_make_visible_vars       :: set(prog_var),
 
-                mci_need_visible_vars :: set(prog_var)
-                                % Variables that this goal need to be visible
-                                % before it is executed.
+                % The variables that this goal needs to be visible
+                % before it is executed.
+                mci_need_visible_vars       :: set(prog_var)
             ).
 
 :- pragma inline(goal_info_init/1).
@@ -1583,8 +1637,8 @@ goal_info_init(GoalInfo) :-
     set.init(NonLocals),
     term.context_init(Context),
     set.init(Features),
-    GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals, purity_pure,
-        Features, [], no, no_code_gen_info, hlds_goal_extra_info_init).
+    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
+        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
 
 :- pragma inline(goal_info_init/2).
 
@@ -1593,23 +1647,28 @@ goal_info_init(Context, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     set.init(NonLocals),
     set.init(Features),
-    GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals, purity_pure,
-        Features, [], no, no_code_gen_info, hlds_goal_extra_info_init).
+    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
+        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
-    term.context_init(Context),
     set.init(Features),
-    GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals, Purity,
-        Features, [], no, no_code_gen_info, hlds_goal_extra_info_init).
+    term.context_init(Context),
+    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
+        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
-    GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals, Purity,
-        Features, [], no, no_code_gen_info, hlds_goal_extra_info_init).
+    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
+        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
+
+:- func hlds_goal_extra_info_init(term.context) = hlds_goal_extra_info.
+
+hlds_goal_extra_info_init(Context) = ExtraInfo :-
+    HO_Values = map.init,
+    ExtraInfo = extra_goal_info(Context, HO_Values, no, no).
 
 goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
 goal_info_get_instmap_delta(GoalInfo, GoalInfo ^ instmap_delta).
-goal_info_get_context(GoalInfo, GoalInfo ^ context).
 goal_info_get_nonlocals(GoalInfo, GoalInfo ^ nonlocals).
 goal_info_get_purity(GoalInfo, GoalInfo ^ purity).
 goal_info_get_features(GoalInfo, GoalInfo ^ features).
@@ -1617,46 +1676,10 @@ goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
 goal_info_get_code_gen_info(GoalInfo, GoalInfo ^ code_gen_info).
 goal_info_get_extra_info(GoalInfo) = GoalInfo ^ extra_goal_info.
 
-goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
-    ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
-        OccurringVars = MCI ^ mci_occurring_vars
-    ;
-        OccurringVars = set.init
-    ).
-
-goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
-    ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
-        ProducingVars = MCI ^ mci_producing_vars
-    ;
-        ProducingVars = set.init
-    ).
-
-goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
-    ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
-        ConsumingVars = MCI ^ mci_consuming_vars
-    ;
-        ConsumingVars = set.init
-    ).
-
-goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
-    ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
-        MakeVisibleVars = MCI ^ mci_make_visible_vars
-    ;
-        MakeVisibleVars = set.init
-    ).
-
-goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
-    ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
-        NeedVisibleVars = MCI ^ mci_need_visible_vars
-    ;
-        NeedVisibleVars = set.init
-    ).
-
 goal_info_set_determinism(Determinism, GoalInfo,
         GoalInfo ^ determinism := Determinism).
 goal_info_set_instmap_delta(InstMapDelta, GoalInfo,
         GoalInfo ^ instmap_delta := InstMapDelta).
-goal_info_set_context(Context, GoalInfo, GoalInfo ^ context := Context).
 goal_info_set_nonlocals(NonLocals, GoalInfo,
         GoalInfo ^ nonlocals := NonLocals).
 goal_info_set_purity(Purity, GoalInfo,
@@ -1667,7 +1690,7 @@ goal_info_set_goal_path(GoalPath, GoalInfo,
 goal_info_set_code_gen_info(CodeGenInfo, GoalInfo,
         GoalInfo ^ code_gen_info := CodeGenInfo).
 goal_info_set_extra_info(ExtraInfo, GoalInfo,
-    GoalInfo ^ extra_goal_info := ExtraInfo).
+        GoalInfo ^ extra_goal_info := ExtraInfo).
 
     % The code-gen non-locals are always the same as the
     % non-locals when structure reuse is not being performed.
@@ -1678,8 +1701,69 @@ goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
 goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
     goal_info_set_nonlocals(NonLocals, !GoalInfo).
 
+goal_info_get_context(GoalInfo,
+    GoalInfo ^ extra_goal_info ^ context).
+goal_info_set_context(Context, GoalInfo,
+    GoalInfo ^ extra_goal_info ^ context := Context).
+
+goal_info_get_ho_values(GoalInfo) =
+    GoalInfo ^ extra_goal_info ^ extra_info_ho_vals.
+
+goal_info_set_ho_values(Values, !GoalInfo) :-
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ extra_info_ho_vals := Values.
+
+goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
+    MMCI = GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
+    (
+        MMCI = yes(MCI),
+        OccurringVars = MCI ^ mci_occurring_vars
+    ;
+        MMCI = no,
+        OccurringVars = set.init
+    ).
+
+goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
+    MMCI = GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
+    (
+        MMCI = yes(MCI),
+        ProducingVars = MCI ^ mci_producing_vars
+    ;
+        MMCI = no,
+        ProducingVars = set.init
+    ).
+
+goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
+    MMCI = GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
+    (
+        MMCI = yes(MCI),
+        ConsumingVars = MCI ^ mci_consuming_vars
+    ;
+        MMCI = no,
+        ConsumingVars = set.init
+    ).
+
+goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
+    MMCI = GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
+    (
+        MMCI = yes(MCI),
+        MakeVisibleVars = MCI ^ mci_make_visible_vars
+    ;
+        MMCI = no,
+        MakeVisibleVars = set.init
+    ).
+
+goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
+    MMCI = GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
+    (
+        MMCI = yes(MCI),
+        NeedVisibleVars = MCI ^ mci_need_visible_vars
+    ;
+        MMCI = no,
+        NeedVisibleVars = set.init
+    ).
+
 goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
-    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    MMCI0 = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
     (
         MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_occurring_vars := OccurringVars
@@ -1692,10 +1776,11 @@ goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info
+        := yes(MCI).
 
 goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
-    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    MMCI0 = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
     (
         MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_producing_vars := ProducingVars
@@ -1708,10 +1793,11 @@ goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info
+        := yes(MCI).
 
 goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
-    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    MMCI0 = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
     (
         MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_consuming_vars := ConsumingVars
@@ -1724,10 +1810,11 @@ goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info
+        := yes(MCI).
 
 goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
-    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    MMCI0 = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
     (
         MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_make_visible_vars := MakeVisibleVars
@@ -1740,10 +1827,11 @@ goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info
+        := yes(MCI).
 
 goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
-    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    MMCI0 = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info,
     (
         MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_need_visible_vars := NeedVisibleVars
@@ -1756,7 +1844,8 @@ goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ maybe_mode_constraint_info
+        := yes(MCI).
 
 producing_vars(GoalInfo) = ProducingVars :-
     goal_info_get_producing_vars(GoalInfo, ProducingVars).
@@ -1781,6 +1870,112 @@ need_visible_vars(GoalInfo) = NeedVisibleVars :-
 
 'need_visible_vars :='(GoalInfo0, NeedVisibleVars) = GoalInfo :-
     goal_info_set_need_visible_vars(NeedVisibleVars, GoalInfo0, GoalInfo).
+
+%-----------------------------------------------------------------------------%
+%
+% Information about compile-time garbage collection.
+
+:- type ctgc_info
+    --->    ctgc_info(
+                % The local forward use set: this set contains the variables
+                % that are syntactically needed during forward execution.
+                % It is computed as the set of instantiated vars (input vars
+                % + sum(pre_births), minus the set of dead vars
+                % (sum(post_deaths and pre_deaths).
+                % The information is needed for determining the direct reuses.
+                lfu     :: set(prog_var),
+
+                % The local backward use set. This set contains the
+                % instantiated variables that are needed upon backtracking
+                % (i.e. syntactically appearing in any nondet call preceding
+                % this goal).
+                lbu     :: set(prog_var),
+
+                % Any structure reuse information related to this call.
+                reuse   :: reuse_description
+            ).
+
+:- func ctgc_info_init = ctgc_info.
+
+ctgc_info_init = ctgc_info(set.init, set.init, no_reuse_info).
+
+goal_info_get_lfu(GoalInfo) = LFU :-
+    ( goal_info_maybe_get_lfu(GoalInfo, LFU0) ->
+        LFU = LFU0
+    ;
+        unexpected(this_file,
+            "Requesting LFU information while CTGC field not set.")
+    ).
+
+goal_info_get_lbu(GoalInfo) = LBU :-
+    ( goal_info_maybe_get_lbu(GoalInfo, LBU0) ->
+        LBU = LBU0
+    ;
+        unexpected(this_file,
+            "Requesting LBU information while CTGC field not set.")
+    ).
+
+goal_info_get_reuse(GoalInfo) = Reuse :-
+    ( goal_info_maybe_get_reuse(GoalInfo, Reuse0) ->
+        Reuse = Reuse0
+    ;
+        unexpected(this_file,
+            "Requesting reuse information while CTGC field not set.")
+    ).
+
+goal_info_maybe_get_lfu(GoalInfo, LFU) :-
+    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    MaybeCTGC = yes(CTGC),
+    LFU = CTGC ^ lfu.
+
+goal_info_maybe_get_lbu(GoalInfo, LBU) :-
+    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    MaybeCTGC = yes(CTGC),
+    LBU = CTGC ^ lbu.
+
+goal_info_maybe_get_reuse(GoalInfo, Reuse) :-
+    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    MaybeCTGC = yes(CTGC),
+    Reuse = CTGC ^ reuse.
+
+goal_info_set_lfu(LFU, !GoalInfo) :-
+    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_info_init
+    ),
+    CTGC = CTGC0 ^ lfu := LFU,
+    MaybeCTGC = yes(CTGC),
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info
+        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
+
+goal_info_set_lbu(LBU, !GoalInfo) :-
+    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_info_init
+    ),
+    CTGC = CTGC0 ^ lbu := LBU,
+    MaybeCTGC = yes(CTGC),
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info
+        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
+
+goal_info_set_reuse(Reuse, !GoalInfo) :-
+    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_info_init
+    ),
+    CTGC = CTGC0 ^ reuse := Reuse,
+    MaybeCTGC = yes(CTGC),
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info
+        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
 
 %-----------------------------------------------------------------------------%
 
@@ -1845,6 +2040,383 @@ goal_remove_feature(Feature, hlds_goal(GoalExpr, GoalInfo0),
 
 goal_has_feature(hlds_goal(_GoalExpr, GoalInfo), Feature) :-
     goal_info_has_feature(GoalInfo, Feature).
+
+%-----------------------------------------------------------------------------%
+%
+% Rename predicates.
+%
+
+rename_some_vars_in_goal(Subn, Goal0, Goal) :-
+    rename_vars_in_goal(no, Subn, Goal0, Goal).
+
+must_rename_vars_in_goal(Subn, Goal0, Goal) :-
+    rename_vars_in_goal(yes, Subn, Goal0, Goal).
+
+:- pred rename_vars_in_goal(bool::in, prog_var_renaming::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+rename_vars_in_goal(Must, Subn, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    rename_vars_in_goal_expr(Must, Subn, GoalExpr0, GoalExpr),
+    rename_vars_in_goal_info(Must, Subn, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+rename_vars_in_goals(_, _, [], []).
+rename_vars_in_goals(Must, Subn, [Goal0 | Goals0], [Goal | Goals]) :-
+    rename_vars_in_goal(Must, Subn, Goal0, Goal),
+    rename_vars_in_goals(Must, Subn, Goals0, Goals).
+
+%-----------------------------------------------------------------------------%
+
+rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
+    (
+        Expr0 = conj(ConjType, Goals0),
+        rename_vars_in_goals(Must, Subn, Goals0, Goals),
+        Expr = conj(ConjType, Goals)
+    ;
+        Expr0 = disj(Goals0),
+        rename_vars_in_goals(Must, Subn, Goals0, Goals),
+        Expr = disj(Goals)
+    ;
+        Expr0 = switch(Var0, Det, Cases0),
+        rename_var(Must, Subn, Var0, Var),
+        rename_vars_in_cases(Must, Subn, Cases0, Cases),
+        Expr = switch(Var, Det, Cases)
+    ;
+        Expr0 = if_then_else(Vars0, Cond0, Then0, Else0),
+        rename_var_list(Must, Subn, Vars0, Vars),
+        rename_vars_in_goal(Must, Subn, Cond0, Cond),
+        rename_vars_in_goal(Must, Subn, Then0, Then),
+        rename_vars_in_goal(Must, Subn, Else0, Else),
+        Expr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        Expr0 = negation(Goal0),
+        rename_vars_in_goal(Must, Subn, Goal0, Goal),
+        Expr = negation(Goal)
+    ;
+        Expr0 = scope(Reason0, Goal0),
+        (
+            Reason0 = exist_quant(Vars0),
+            rename_var_list(Must, Subn, Vars0, Vars),
+            Reason = exist_quant(Vars)
+        ;
+            Reason0 = promise_purity(_, _),
+            Reason = Reason0
+        ;
+            Reason0 = promise_solutions(Vars0, Kind),
+            rename_var_list(Must, Subn, Vars0, Vars),
+            Reason = promise_solutions(Vars, Kind)
+        ;
+            Reason0 = barrier(_),
+            Reason = Reason0
+        ;
+            Reason0 = commit(_),
+            Reason = Reason0
+        ;
+            Reason0 = from_ground_term(Var0),
+            rename_var(Must, Subn, Var0, Var),
+            Reason = from_ground_term(Var)
+        ;
+            Reason0 = trace_goal(Flag, Grade, Env, Vars, QuantVars0),
+            rename_var_list(Must, Subn, QuantVars0, QuantVars),
+            Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
+        ),
+        rename_vars_in_goal(Must, Subn, Goal0, Goal),
+        Expr = scope(Reason, Goal)
+    ;
+        Expr0 = generic_call(GenericCall0, Args0, Modes, Det),
+        rename_generic_call(Must, Subn, GenericCall0, GenericCall),
+        rename_var_list(Must, Subn, Args0, Args),
+        Expr = generic_call(GenericCall, Args, Modes, Det)
+    ;
+        Expr0 = plain_call(PredId, ProcId, Args0, Builtin, Context, Sym),
+        rename_var_list(Must, Subn, Args0, Args),
+        Expr = plain_call(PredId, ProcId, Args, Builtin, Context, Sym)
+    ;
+        Expr0 = unify(LHS0, RHS0, Mode, Unify0, Context),
+        rename_var(Must, Subn, LHS0, LHS),
+        rename_unify_rhs(Must, Subn, RHS0, RHS),
+        rename_unify(Must, Subn, Unify0, Unify),
+        Expr = unify(LHS, RHS, Mode, Unify, Context)
+    ;
+        Expr0 = call_foreign_proc(Attrs, PredId, ProcId, Args0, Extra0,
+            MTRC, Impl),
+        rename_arg_list(Must, Subn, Args0, Args),
+        rename_arg_list(Must, Subn, Extra0, Extra),
+        Expr = call_foreign_proc(Attrs, PredId, ProcId, Args, Extra,
+            MTRC, Impl)
+    ;
+        Expr0 = shorthand(ShorthandGoal0),
+        rename_vars_in_shorthand(Must, Subn, ShorthandGoal0, ShorthandGoal),
+        Expr = shorthand(ShorthandGoal)
+    ).
+
+:- pred rename_vars_in_shorthand(bool::in, prog_var_renaming::in,
+    shorthand_goal_expr::in, shorthand_goal_expr::out) is det.
+
+rename_vars_in_shorthand(Must, Subn,
+        bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) :-
+    rename_vars_in_goal(Must, Subn, LHS0, LHS),
+    rename_vars_in_goal(Must, Subn, RHS0, RHS).
+
+:- pred rename_arg_list(bool::in, prog_var_renaming::in,
+    list(foreign_arg)::in, list(foreign_arg)::out) is det.
+
+rename_arg_list(_Must, _Subn, [], []).
+rename_arg_list(Must, Subn, [Arg0 | Args0], [Arg | Args]) :-
+    rename_arg(Must, Subn, Arg0, Arg),
+    rename_arg_list(Must, Subn, Args0, Args).
+
+:- pred rename_arg(bool::in, prog_var_renaming::in,
+    foreign_arg::in, foreign_arg::out) is det.
+
+rename_arg(Must, Subn, Arg0, Arg) :-
+    Arg0 = foreign_arg(Var0, B, C, D),
+    rename_var(Must, Subn, Var0, Var),
+    Arg = foreign_arg(Var, B, C, D).
+
+:- pred rename_vars_in_cases(bool::in, prog_var_renaming::in,
+    list(case)::in, list(case)::out) is det.
+
+rename_vars_in_cases(_Must, _Subn, [], []).
+rename_vars_in_cases(Must, Subn,
+        [case(Cons, G0) | Gs0], [case(Cons, G) | Gs]) :-
+    rename_vars_in_goal(Must, Subn, G0, G),
+    rename_vars_in_cases(Must, Subn, Gs0, Gs).
+
+:- pred rename_unify_rhs(bool::in, prog_var_renaming::in,
+    unify_rhs::in, unify_rhs::out) is det.
+
+rename_unify_rhs(Must, Subn, rhs_var(Var0), rhs_var(Var)) :-
+    rename_var(Must, Subn, Var0, Var).
+rename_unify_rhs(Must, Subn,
+        rhs_functor(Functor, E, ArgVars0), rhs_functor(Functor, E, ArgVars)) :-
+    rename_var_list(Must, Subn, ArgVars0, ArgVars).
+rename_unify_rhs(Must, Subn,
+        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+            NonLocals0, Vars0, Modes, Det, Goal0),
+        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, Det, Goal)) :-
+    rename_var_list(Must, Subn, NonLocals0, NonLocals),
+    rename_var_list(Must, Subn, Vars0, Vars),
+    rename_vars_in_goal(Must, Subn, Goal0, Goal).
+
+:- pred rename_unify(bool::in, prog_var_renaming::in,
+    unification::in, unification::out) is det.
+
+rename_unify(Must, Subn, Unify0, Unify) :-
+    (
+        Unify0 = construct(Var0, ConsId, Vars0, Modes, How0, Uniq, SubInfo0),
+        rename_var(Must, Subn, Var0, Var),
+        rename_var_list(Must, Subn, Vars0, Vars),
+        (
+            How0 = reuse_cell(cell_to_reuse(ReuseVar0, B, C)),
+            rename_var(Must, Subn, ReuseVar0, ReuseVar),
+            How = reuse_cell(cell_to_reuse(ReuseVar, B, C))
+        ;
+            How0 = construct_dynamically,
+            How = How0
+        ;
+            How0 = construct_statically(_),
+            How = How0
+        ;
+            How0 = construct_in_region(RegVar0),
+            rename_var(Must, Subn, RegVar0, RegVar),
+            How = construct_in_region(RegVar)
+        ),
+        (
+            SubInfo0 = construct_sub_info(MTA, MaybeSize0),
+            (
+                MaybeSize0 = no,
+                MaybeSize = no
+            ;
+                MaybeSize0 = yes(Size0),
+                (
+                    Size0 = known_size(_),
+                    Size = Size0
+                ;
+                    Size0 = dynamic_size(SizeVar0),
+                    rename_var(Must, Subn, SizeVar0, SizeVar),
+                    Size = dynamic_size(SizeVar)
+                ),
+                MaybeSize = yes(Size)
+            ),
+            SubInfo = construct_sub_info(MTA, MaybeSize)
+        ;
+            SubInfo0 = no_construct_sub_info,
+            SubInfo = no_construct_sub_info
+        ),
+        Unify = construct(Var, ConsId, Vars, Modes, How, Uniq, SubInfo)
+    ;
+        Unify0 = deconstruct(Var0, ConsId, Vars0, Modes, Cat, CanCGC),
+        rename_var(Must, Subn, Var0, Var),
+        rename_var_list(Must, Subn, Vars0, Vars),
+        Unify = deconstruct(Var, ConsId, Vars, Modes, Cat, CanCGC)
+    ;
+        Unify0 = assign(L0, R0),
+        rename_var(Must, Subn, L0, L),
+        rename_var(Must, Subn, R0, R),
+        Unify = assign(L, R)
+    ;
+        Unify0 = simple_test(L0, R0),
+        rename_var(Must, Subn, L0, L),
+        rename_var(Must, Subn, R0, R),
+        Unify = simple_test(L, R)
+    ;
+        Unify0 = complicated_unify(Modes, Cat, TypeInfoVars0),
+        rename_var_list(Must, Subn, TypeInfoVars0, TypeInfoVars),
+        Unify = complicated_unify(Modes, Cat, TypeInfoVars)
+    ).
+
+:- pred rename_generic_call(bool::in, prog_var_renaming::in,
+    generic_call::in, generic_call::out) is det.
+
+rename_generic_call(Must, Subn, Call0, Call) :-
+    (
+        Call0 = higher_order(Var0, Purity, PredOrFunc, Arity),
+        rename_var(Must, Subn, Var0, Var),
+        Call = higher_order(Var, Purity, PredOrFunc, Arity)
+    ;
+        Call0 = class_method(Var0, Method, ClassId, MethodId),
+        rename_var(Must, Subn, Var0, Var),
+        Call = class_method(Var, Method, ClassId, MethodId)
+    ;
+        ( Call0 = event_call(_EventName)
+        ; Call0 = cast(_CastKind)
+        ),
+        Call = Call0
+    ).
+
+rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
+    !.GoalInfo = goal_info(Detism, InstMapDelta0, NonLocals0, Purity,
+        Features, GoalPath, CodeGenInfo0, ExtraInfo0),
+
+    rename_vars_in_var_set(Must, Subn, NonLocals0, NonLocals),
+    instmap_delta_apply_sub(Must, Subn, InstMapDelta0, InstMapDelta),
+    (
+        CodeGenInfo0 = no_code_gen_info,
+        CodeGenInfo = no_code_gen_info
+    ;
+        CodeGenInfo0 = llds_code_gen_info(LldsInfo0),
+        rename_vars_in_llds_code_gen_info(Must, Subn, LldsInfo0, LldsInfo),
+        CodeGenInfo = llds_code_gen_info(LldsInfo)
+    ),
+
+    ExtraInfo0 = extra_goal_info(Context, HO_Values, MaybeCTGC0, MaybeMCI0),
+    (
+        MaybeCTGC0 = no,
+        MaybeCTGC = no
+    ;
+        MaybeCTGC0 = yes(CTGC0),
+        CTGC0 = ctgc_info(ForwardUse0, BackwardUse0, ReuseDesc0),
+        rename_vars_in_var_set(Must, Subn, ForwardUse0, ForwardUse),
+        rename_vars_in_var_set(Must, Subn, BackwardUse0, BackwardUse),
+        (
+            ( ReuseDesc0 = no_reuse_info
+            ; ReuseDesc0 = missed_reuse(_)
+            ),
+            ReuseDesc = ReuseDesc0
+        ;
+            ReuseDesc0 = potential_reuse(ShortReuseDesc0),
+            rename_vars_in_short_reuse_desc(Must, Subn,
+                ShortReuseDesc0, ShortReuseDesc),
+            ReuseDesc = potential_reuse(ShortReuseDesc)
+        ;
+            ReuseDesc0 = reuse(ShortReuseDesc0),
+            rename_vars_in_short_reuse_desc(Must, Subn,
+                ShortReuseDesc0, ShortReuseDesc),
+            ReuseDesc = reuse(ShortReuseDesc)
+        ),
+        CTGC = ctgc_info(ForwardUse, BackwardUse, ReuseDesc),
+        MaybeCTGC = yes(CTGC)
+    ),
+    (
+        MaybeMCI0 = no,
+        MaybeMCI = no
+    ;
+        MaybeMCI0 = yes(MCI0),
+        MCI0 = mode_constraint_goal_info(Occurring0, Producing0, Consuming0,
+            MakeVisible0, NeedVisible0),
+        rename_vars_in_var_set(Must, Subn, Occurring0, Occurring),
+        rename_vars_in_var_set(Must, Subn, Producing0, Producing),
+        rename_vars_in_var_set(Must, Subn, Consuming0, Consuming),
+        rename_vars_in_var_set(Must, Subn, MakeVisible0, MakeVisible),
+        rename_vars_in_var_set(Must, Subn, NeedVisible0, NeedVisible),
+        MCI = mode_constraint_goal_info(Occurring, Producing, Consuming,
+            MakeVisible, NeedVisible),
+        MaybeMCI = yes(MCI)
+    ),
+    ExtraInfo = extra_goal_info(Context, HO_Values, MaybeCTGC, MaybeMCI),
+
+    !:GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
+        Features, GoalPath, CodeGenInfo, ExtraInfo).
+
+:- pred rename_vars_in_short_reuse_desc(bool::in, prog_var_renaming::in,
+    short_reuse_description::in, short_reuse_description::out) is det.
+
+rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
+    (
+        ( ShortReuseDesc0 = cell_died
+        ; ShortReuseDesc0 = reuse_call(_)
+        ),
+        ShortReuseDesc = ShortReuseDesc0
+    ;
+        ShortReuseDesc0 = cell_reused(DeadVar0, IsCond, ConsIds,
+            FieldNeedUpdates),
+        rename_var(Must, Subn, DeadVar0, DeadVar),
+        ShortReuseDesc = cell_reused(DeadVar, IsCond, ConsIds,
+            FieldNeedUpdates)
+    ).
+
+:- pred rename_var_maps(bool::in, prog_var_renaming::in,
+    map(prog_var, T)::in, map(prog_var, T)::out) is det.
+
+rename_var_maps(Must, Subn, Map0, Map) :-
+    map.to_assoc_list(Map0, AssocList0),
+    rename_var_maps_2(Must, Subn, AssocList0, AssocList),
+    map.from_assoc_list(AssocList, Map).
+
+:- pred rename_var_maps_2(bool::in, map(var(V), var(V))::in,
+    assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
+
+rename_var_maps_2(_Must, _Subn, [], []).
+rename_var_maps_2(Must, Subn, [V - L | Vs], [N - L | Ns]) :-
+    rename_var(Must, Subn, V, N),
+    rename_var_maps_2(Must, Subn, Vs, Ns).
+
+rename_vars_in_var_set(Must, Subn, Vars0, Vars) :-
+    set.to_sorted_list(Vars0, VarsList0),
+    rename_var_list(Must, Subn, VarsList0, VarsList),
+    set.list_to_set(VarsList, Vars).
+
+:- pred rename_var_pair_list(bool::in, prog_var_renaming::in,
+    assoc_list(prog_var, T)::in, list(pair(prog_var, T))::out) is det.
+
+rename_var_pair_list(_Must, _Subn, [], []).
+rename_var_pair_list(Must, Subn, [V - D | VDs], [N - D | NDs]) :-
+    rename_var(Must, Subn, V, N),
+    rename_var_pair_list(Must, Subn, VDs, NDs).
+
+rename_var_list(_Must, _Subn, [], []).
+rename_var_list(Must, Subn, [V | Vs], [N | Ns]) :-
+    rename_var(Must, Subn, V, N),
+    rename_var_list(Must, Subn, Vs, Ns).
+
+rename_var(Must, Subn, V, N) :-
+    ( map.search(Subn, V, N0) ->
+        N = N0
+    ;
+        (
+            Must = no,
+            N = V
+        ;
+            Must = yes,
+            term.var_to_int(V, VInt),
+            string.format("rename_var: no substitute for var %i", [i(VInt)],
+                Msg),
+            unexpected(this_file, Msg)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2313,131 +2885,6 @@ get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
         MaybeName = no
     ),
     get_pragma_foreign_var_names_2(MaybeNames, !Names).
-
-%-----------------------------------------------------------------------------%
-%
-% Extra goal info.
-%
-
-:- type hlds_goal_extra_info
-    --->    extra_info(
-                extra_info_ho_vals              :: ho_values,
-                extra_info_maybe_ctgc_info      :: maybe(ctgc_info)
-                    % Any information related to structure reuse (CTGC).
-            ).
-
-:- func hlds_goal_extra_info_init = hlds_goal_extra_info.
-
-hlds_goal_extra_info_init = ExtraInfo :-
-    HO_Values = map.init,
-    ExtraInfo = extra_info(HO_Values, no).
-
-goal_info_get_ho_values(GoalInfo) =
-    GoalInfo ^ extra_goal_info ^ extra_info_ho_vals.
-
-goal_info_set_ho_values(Values, !GoalInfo) :-
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ extra_info_ho_vals := Values.
-
-%-----------------------------------------------------------------------------%
-% hlds_goal_reuse_info
-
-:- type ctgc_info
-    --->    ctgc_info(
-                % The local forward use set: this set contains the variables
-                % that are syntactically needed during forward execution.
-                % It is computed as the set of instantiated vars (input vars
-                % + sum(pre_births), minus the set of dead vars
-                % (sum(post_deaths and pre_deaths).
-                % The information is needed for determining the direct reuses.
-                lfu     :: set(prog_var),
-
-                % The local backward use set. This set contains the
-                % instantiated variables that are needed upon backtracking
-                % (i.e. syntactically appearing in any nondet call preceding
-                % this goal).
-                lbu     :: set(prog_var),
-
-                % Any structure reuse information related to this call.
-                reuse   :: reuse_description
-            ).
-
-:- func ctgc_info_init = ctgc_info.
-
-ctgc_info_init = ctgc_info(set.init, set.init, no_reuse_info).
-
-goal_info_get_lfu(GoalInfo) = LFU :-
-    ( goal_info_maybe_get_lfu(GoalInfo, LFU0) ->
-        LFU = LFU0
-    ;
-        unexpected(this_file,
-            "Requesting LFU information while CTGC field not set.")
-    ).
-goal_info_get_lbu(GoalInfo) = LBU :-
-    ( goal_info_maybe_get_lbu(GoalInfo, LBU0) ->
-        LBU = LBU0
-    ;
-        unexpected(this_file,
-            "Requesting LBU information while CTGC field not set.")
-    ).
-goal_info_get_reuse(GoalInfo) = Reuse :-
-    ( goal_info_maybe_get_reuse(GoalInfo, Reuse0) ->
-        Reuse = Reuse0
-    ;
-        unexpected(this_file,
-            "Requesting reuse information while CTGC field not set.")
-    ).
-
-goal_info_maybe_get_lfu(GoalInfo, LFU) :-
-    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
-    MaybeCTGC = yes(CTGC),
-    LFU = CTGC ^ lfu.
-goal_info_maybe_get_lbu(GoalInfo, LBU) :-
-    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
-    MaybeCTGC = yes(CTGC),
-    LBU = CTGC ^ lbu.
-goal_info_maybe_get_reuse(GoalInfo, Reuse) :-
-    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
-    MaybeCTGC = yes(CTGC),
-    Reuse = CTGC ^ reuse.
-
-goal_info_set_lfu(LFU, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_info_init
-    ),
-    CTGC = CTGC0 ^ lfu := LFU,
-    MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info
-        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
-
-goal_info_set_lbu(LBU, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_info_init
-    ),
-    CTGC = CTGC0 ^ lbu := LBU,
-    MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info
-        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
-
-goal_info_set_reuse(Reuse, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_info_init
-    ),
-    CTGC = CTGC0 ^ reuse := Reuse,
-    MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info
-        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
 
 %-----------------------------------------------------------------------------%
 

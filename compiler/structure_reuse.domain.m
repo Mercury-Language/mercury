@@ -17,7 +17,7 @@
 :- module transform_hlds.ctgc.structure_reuse.domain.
 :- interface.
 
-:- import_module hlds.goal_util.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
