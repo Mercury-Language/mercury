@@ -21,6 +21,13 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* An improved pretty printer module, pretty_printer.m has been added.  This
+  supercedes pprint.m in that it is more economical, produces better
+  quality output (line overruns are completely avoided wherever possible),
+  has better control over the amount of output produced, and supports
+  user-specifiable formatting for arbitrary types.  Further use of pprint is
+  deprecated.
+
 * The foldr family of functions and predicates has been added to the map
   and tree234 modules.
 

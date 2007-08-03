@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne
+% Copyright (C) 2000-2007 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,6 +9,11 @@
 % File: pprint.m
 % Main author: rafe
 % Stability: medium
+%
+% NOTE: this module has now been superceded by pretty_printer.m
+% which is more economical, produces better output, has better
+% control over the amount of output produced, and supports user-
+% specifiable formatting for arbitrary types.
 % 
 % ABOUT
 % -----
