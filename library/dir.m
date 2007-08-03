@@ -905,6 +905,21 @@ dir.make_directory(PathName, Result, !IO) :-
     }
 ").
 
+:- pragma foreign_proc("Erlang",
+    dir.make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+"
+    % filelib:ensure_dir makes all the parent directories.
+    case filelib:ensure_dir(DirName) of
+        ok ->
+            ErrorIfExists = 0,
+            Res = mercury__dir:'ML_make_single_directory_2'(ErrorIfExists,
+                DirName);
+        {error, Reason} ->
+            Res = mercury__dir:'ML_make_mkdir_res_error'(Reason)
+    end
+").
+
 :- pred can_implement_make_directory is semidet.
 
 can_implement_make_directory :- semidet_fail.
@@ -936,9 +951,19 @@ can_implement_make_directory :- semidet_fail.
     succeeded = true;
 "
 ).
+:- pragma foreign_proc("Erlang",
+    can_implement_make_directory,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true
+").
 
 dir.make_single_directory(DirName, Result, !IO) :-
     dir.make_single_directory_2(1, DirName, Result, !IO).
+
+:- pragma foreign_export("Erlang",
+    dir.make_single_directory_2(in, in, out, di, uo),
+    "ML_make_single_directory_2").
 
 :- pred dir.make_single_directory_2(int::in, string::in, io.res::out,
     io::di, io::uo) is det.
@@ -1048,10 +1073,27 @@ dir.make_single_directory(DirName, Result, !IO) :-
     }
 ").
 
+:- pragma foreign_proc("Erlang",
+    dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
+        Result::out, _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+"
+    case file:make_dir(DirName) of
+        ok ->
+            Result = mercury__dir:'ML_make_mkdir_res_ok'();
+        {error, eexist} when ErrorIfExists =:= 0 ->
+            Result = mercury__dir:'ML_make_mkdir_res_exists'(eexist, DirName);
+        {error, Reason} ->
+            Result = mercury__dir:'ML_make_mkdir_res_error'(Reason)
+    end
+").
+
 :- func dir.make_mkdir_res_ok = io.res.
 :- pragma foreign_export("C", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
 :- pragma foreign_export("IL", (dir.make_mkdir_res_ok = out),
+    "ML_make_mkdir_res_ok").
+:- pragma foreign_export("Erlang", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
 
 dir.make_mkdir_res_ok = ok.
@@ -1061,6 +1103,8 @@ dir.make_mkdir_res_ok = ok.
 :- pragma foreign_export("C", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 :- pragma foreign_export("IL", dir.make_mkdir_res_error(in, out, di, uo),
+    "ML_make_mkdir_res_error").
+:- pragma foreign_export("Erlang", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 
 dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
@@ -1072,6 +1116,8 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 :- pragma foreign_export("C", dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 :- pragma foreign_export("IL", dir.make_mkdir_res_exists(in, in, out, di, uo),
+    "ML_make_mkdir_res_exists").
+:- pragma foreign_export("Erlang", dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 
 dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
@@ -1087,6 +1133,8 @@ dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 :- pragma foreign_export("C", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 :- pragma foreign_export("IL", dir.check_dir_accessibility(in, out, di, uo),
+    "ML_check_dir_accessibility").
+:- pragma foreign_export("Erlang", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 
 dir.check_dir_accessibility(DirName, Res, !IO) :-

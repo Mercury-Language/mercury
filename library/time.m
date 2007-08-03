@@ -458,7 +458,7 @@ time.time(Result, !IO) :-
     time.c_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Ret = time()
+    Ret = erlang:universaltime()
 ").
 
 :- pred time.time_t_is_invalid(time_t_rep::in) is semidet.
@@ -480,6 +480,12 @@ time.time(Result, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     succeeded = false;
+").
+:- pragma foreign_proc("Erlang",
+    time.time_t_is_invalid(_Val::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = false
 ").
 
 %-----------------------------------------------------------------------------%
@@ -515,7 +521,9 @@ time.difftime(time_t(T1), time_t(T0)) = Diff :-
     time.c_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Diff = float(calendar:time_to_seconds(T1) - calendar:time_to_seconds(T0))
+    S0 = calendar:datetime_to_gregorian_seconds(T0),
+    S1 = calendar:datetime_to_gregorian_seconds(T1),
+    Diff = float(S1 - S0)
 ").
 
 %-----------------------------------------------------------------------------%

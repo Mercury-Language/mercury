@@ -145,6 +145,7 @@
 % NOTE: changes to this list may need to be reflected in mdbcomp/prim_data.m.
 %
 :- import_module erlang_builtin.
+:- import_module erlang_conf.
 :- import_module erlang_rtti_implementation.
 :- import_module mutvar.
 :- import_module par_builtin.
@@ -190,6 +191,13 @@
         + mercury.runtime.Constants.MR_FULLARCH;
 ").
 
+:- pragma foreign_proc("Erlang",
+    library.version(Version::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Version = ?MR_VERSION ++ "" configured for "" ++ ?MR_FULLARCH
+").
+
 %---------------------------------------------------------------------------%
 
 mercury_std_library_module("array").
@@ -216,6 +224,7 @@ mercury_std_library_module("dir").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
 mercury_std_library_module("erlang_builtin").
+mercury_std_library_module("erlang_conf").
 mercury_std_library_module("erlang_rtti_implementation").
 mercury_std_library_module("exception").
 mercury_std_library_module("float").

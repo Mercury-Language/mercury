@@ -4570,6 +4570,7 @@ scripts/prepare_tmp_dir_fixed_part
 bindist/bindist.INSTALL bindist/bindist.Makefile
 tools/lmc tools/dotime runtime/mercury_dotnet.cs java/runtime/Constants.java
 java/runtime/Native.java
+library/erlang_conf.m
 compiler/COMP_FLAGS
 library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS
