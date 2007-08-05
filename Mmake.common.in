@@ -291,11 +291,16 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # XXX The base_typeclass_info prefix is allowed only temporarily; it should
 # be fixed by adding a prefix giving the name of the module defining the
 # typeclass.
+#
+# XXX the pretty_printer_ prefix is allows only tempriarily; it is neccessary
+# because the name of global variables used for mutables in rotd-2007-08-06 and
+# before were not being prefixed with `mercury_' if they were defined in
+# standard library modules.
 
 GEN_MACRO_PREFIX_EXPRS = \
 	-e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_'
 GEN_OBJ_PREFIX_EXPRS = \
-	-e '^MR_' -e '^_entry' -e '^mercury_'  -e '^base_typeclass_info_' 
+	-e '^MR_' -e '^_entry' -e '^mercury_'  -e '^base_typeclass_info_' -e '^pretty_printer_'
 
 ifeq ("$(ALLOW_LIB_PREFIX)","yes")
 LIB_MACRO_PREFIX_EXPRS = \
