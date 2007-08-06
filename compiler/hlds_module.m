@@ -646,6 +646,7 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module counter.
@@ -939,29 +940,39 @@ module_info_get_event_set(MI, MI ^ sub_info ^ event_set).
     % we may wish to revisit this code. The reference manual is therefore
     % deliberately quiet on the subject.
     %
-module_info_new_user_init_pred(SymName, Arity, CName, MI0, MI) :-
-    InitPredCNames0 = MI0 ^ sub_info ^ user_init_pred_c_names,
+module_info_new_user_init_pred(SymName, Arity, CName, !MI) :-
+    InitPredCNames0 = !.MI ^ sub_info ^ user_init_pred_c_names,
     UserInitPredNo = list.length(InitPredCNames0),
-    module_info_get_name(MI0, ModuleSymName),
+    module_info_get_name(!.MI, ModuleSymName0),
+    ( mercury_std_library_module_name(ModuleSymName0) ->
+        ModuleSymName = add_outermost_qualifier("mercury", ModuleSymName0)
+    ;
+        ModuleSymName = ModuleSymName0
+    ),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_init_pred_%d",
         [s(ModuleName), i(UserInitPredNo)]),
     InitPredCNames = InitPredCNames0 ++ [SymName / Arity - CName],
-    MI = MI0 ^ sub_info ^ user_init_pred_c_names := InitPredCNames.
+    !:MI = !.MI ^ sub_info ^ user_init_pred_c_names := InitPredCNames.
 
 module_info_user_init_pred_c_names(MI, CNames) :-
     InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
     CNames = assoc_list.values(InitPredCNames).
 
-module_info_new_user_final_pred(SymName, Arity, CName, MI0, MI) :-
-    FinalPredCNames0 = MI0 ^ sub_info ^ user_final_pred_c_names,
+module_info_new_user_final_pred(SymName, Arity, CName, !MI) :-
+    FinalPredCNames0 = !.MI ^ sub_info ^ user_final_pred_c_names,
     UserFinalPredNo = list.length(FinalPredCNames0),
-    module_info_get_name(MI0, ModuleSymName),
+    module_info_get_name(!.MI, ModuleSymName0),
+    ( mercury_std_library_module_name(ModuleSymName0) ->
+        ModuleSymName = add_outermost_qualifier("mercury", ModuleSymName0)
+    ;
+        ModuleSymName = ModuleSymName0
+    ),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_final_pred_%d",
         [s(ModuleName), i(UserFinalPredNo)]),
     FinalPredCNames = FinalPredCNames0 ++ [SymName / Arity - CName],
-    MI = MI0 ^ sub_info ^ user_final_pred_c_names := FinalPredCNames.
+    !:MI = !.MI ^ sub_info ^ user_final_pred_c_names := FinalPredCNames.
 
 module_info_user_final_pred_c_names(MI, CNames) :-
     FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,

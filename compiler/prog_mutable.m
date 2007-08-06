@@ -410,9 +410,11 @@
 
 :- implementation.
 
+:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module list.
 :- import_module maybe.
@@ -623,9 +625,15 @@ mutable_pre_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "pre_initialise_mutable_" ++ Name).
 
 mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
-    RawCVarName       = "mutable_variable_" ++ Name,
-    QualifiedCVarName = qualified(ModuleName, RawCVarName),
-    MangledCVarName   = sym_name_mangle(QualifiedCVarName).
+    RawCVarName = "mutable_variable_" ++ Name,
+    QualifiedCVarName0 = qualified(ModuleName, RawCVarName),
+    ( mercury_std_library_module_name(ModuleName) ->
+        QualifiedCVarName =
+            add_outermost_qualifier("mercury", QualifiedCVarName0)
+    ;
+        QualifiedCVarName = QualifiedCVarName0
+    ),
+    MangledCVarName = sym_name_mangle(QualifiedCVarName).
 
 mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
     MutexVarName = TargetMutableVarName ++ "_lock". 
