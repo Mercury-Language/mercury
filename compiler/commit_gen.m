@@ -69,7 +69,7 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
     AddRegionOps = should_add_region_ops(!.CI, OuterGoalInfo),
 
     Goal = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
+    InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
     (
         OuterCodeModel = model_det,
         (

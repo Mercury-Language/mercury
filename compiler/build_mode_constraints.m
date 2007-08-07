@@ -290,13 +290,13 @@ add_mc_var_for_pred_head(ProgVarset, PredId, HeadVar, !VarInfo) :-
 
 add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
         !VarInfo) :-
-    goal_info_get_nonlocals(GoalInfo, Nonlocals),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    Nonlocals = goal_info_get_nonlocals(GoalInfo),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
 
     set.to_sorted_list(Nonlocals, NlsList),
     prog_vars_at_path(ProgVarset, PredId, NlsList, GoalPath, _, !VarInfo),
 
-        % Switch on GoalExpr for recursion
+    % Switch on GoalExpr for recursion
     (
         GoalExpr = conj(ConjType, Goals),
         (
@@ -387,9 +387,9 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
 
 add_goal_constraints(ModuleInfo, ProgVarset, PredId,
         hlds_goal(GoalExpr, GoalInfo), !VarInfo, !Constraints) :-
-    goal_info_get_nonlocals(GoalInfo, Nonlocals),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
-    goal_info_get_context(GoalInfo, Context),
+    Nonlocals = goal_info_get_nonlocals(GoalInfo),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
     add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr, Context,
         GoalPath, Nonlocals, !VarInfo, !Constraints).
 
@@ -534,7 +534,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         !VarInfo),
 
     GoalInfos = list.map(get_hlds_goal_info, Goals),
-    list.map(goal_info_get_goal_path, GoalInfos, DisjunctGoalPaths),
+    DisjunctGoalPaths = list.map(goal_info_get_goal_path, GoalInfos),
 
     list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
         Goals, !VarInfo, !Constraints),
@@ -550,7 +550,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         negation(Goal), Context, GoalPath, Nonlocals, !VarInfo,
         !Constraints) :-
     Goal = hlds_goal(_, NegatedGoalInfo),
-    goal_info_get_goal_path(NegatedGoalInfo, NegatedGoalPath),
+    NegatedGoalPath = goal_info_get_goal_path(NegatedGoalInfo),
     VarMap = rep_var_map(!.VarInfo),
     NonlocalsAtPath = set.fold(cons_prog_var_at_path(VarMap, PredId, GoalPath),
         Nonlocals, []),
@@ -569,7 +569,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         scope(_Reason, Goal), Context, GoalPath, Nonlocals, !VarInfo,
         !Constraints) :-
     Goal = hlds_goal(_, SomeGoalInfo),
-    goal_info_get_goal_path(SomeGoalInfo, SomeGoalPath),
+    SomeGoalPath = goal_info_get_goal_path(SomeGoalInfo),
 
     % If a program variable is produced by the sub-goal of the some
     % statement, it is produced at the main goal as well
@@ -594,9 +594,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
     Cond = hlds_goal(_, CondInfo),
     Then = hlds_goal(_, ThenInfo),
     Else = hlds_goal(_, ElseInfo),
-    goal_info_get_goal_path(CondInfo, CondPath),
-    goal_info_get_goal_path(ThenInfo, ThenPath),
-    goal_info_get_goal_path(ElseInfo, ElsePath),
+    CondPath = goal_info_get_goal_path(CondInfo),
+    ThenPath = goal_info_get_goal_path(ThenInfo),
+    ElsePath = goal_info_get_goal_path(ElseInfo),
 
     prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalPath,
         NonlocalsHere, !VarInfo),
@@ -611,8 +611,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
     % The existentially quantified variables shared between the condition
     % and the then-part have special constraints.
 
-    goal_info_get_nonlocals(CondInfo, CondNonlocals),
-    goal_info_get_nonlocals(ThenInfo, ThenNonlocals),
+    CondNonlocals = goal_info_get_nonlocals(CondInfo),
+    ThenNonlocals = goal_info_get_nonlocals(ThenInfo),
     list.filter(set.contains(CondNonlocals), ExistVars, NonlocalToCond),
     list.filter(set.contains(ThenNonlocals), NonlocalToCond, LocalAndShared),
     prog_vars_at_path(ProgVarset, PredId, LocalAndShared, CondPath,
@@ -837,8 +837,8 @@ single_mode_constraints(ModuleInfo, MCVar, Mode) =
 
 add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId, Nonlocals,
         hlds_goal(_SubGoalExpr, SubGoalInfo), !ConjConstraintsInfo) :-
-    goal_info_get_nonlocals(SubGoalInfo, SubGoalNonlocals),
-    goal_info_get_goal_path(SubGoalInfo, SubGoalPath),
+    SubGoalNonlocals = goal_info_get_nonlocals(SubGoalInfo),
+    SubGoalPath = goal_info_get_goal_path(SubGoalInfo),
 
     % These are variables nonlocal to the conjunction that
     % appear in this particular conjunct.

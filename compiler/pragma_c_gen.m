@@ -571,7 +571,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     C_Code_Comp = foreign_proc_user_code(Context, AffectsLiveness, C_Code),
 
     % <for semidet code, check of SUCCESS_INDICATOR>
-    goal_info_get_determinism(GoalInfo, Detism),
+    Detism = goal_info_get_determinism(GoalInfo),
     ( CodeModel = model_semi ->
         ( Detism = detism_failure ->
             CheckSuccess_Comp = foreign_proc_noop,
@@ -621,7 +621,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         MayCallMercury = proc_will_not_call_mercury
     ;
         MayCallMercury = proc_may_call_mercury,
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         ( instmap_delta_is_reachable(InstMapDelta) ->
             OkToDelete = no
         ;

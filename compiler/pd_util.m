@@ -207,7 +207,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         proc_info_get_varset(ProcInfo0, VarSet0),
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
         Goal0 = hlds_goal(_, GoalInfo0),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         constraint.propagate_constraints_in_goal(!Goal, CInfo0, CInfo, !IO),
         constraint_info_deconstruct(CInfo, ModuleInfo, VarTypes, VarSet,
             Changed),
@@ -326,9 +326,9 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
 
 get_goal_live_vars(PDInfo, hlds_goal(_, GoalInfo), !:Vars) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     pd_info_get_instmap(PDInfo, InstMap),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     set.to_sorted_list(NonLocals, NonLocalsList),
     set.init(!:Vars),
     get_goal_live_vars_2(ModuleInfo, NonLocalsList, InstMap, InstMapDelta,
@@ -361,8 +361,8 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
 rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     Goal0 = hlds_goal(_, GoalInfo0),
 
-    goal_info_get_determinism(GoalInfo0, Det),
-    det_get_soln_context(Det, SolnContext),
+    Detism = goal_info_get_determinism(GoalInfo0),
+    det_get_soln_context(Detism, SolnContext),
 
     % det_infer_goal looks up the proc_info in the module_info for the
     % vartypes, so we'd better stick them back in the module_info.
@@ -542,7 +542,7 @@ get_branch_vars_goal_2(_, [], yes, _, _, !LeftVars, !Vars).
 get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
         VarTypes, InstMap0, !LeftVars, !Vars) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     ( get_branch_instmap_deltas(Goal, InstMapDeltas) ->
         % Only look for goals with one top-level branched goal,
@@ -568,21 +568,21 @@ get_branch_instmap_deltas(Goal, [CondDelta, ThenDelta, ElseDelta]) :-
     Cond = hlds_goal(_, CondInfo),
     Then = hlds_goal(_, ThenInfo),
     Else = hlds_goal(_, ElseInfo),
-    goal_info_get_instmap_delta(CondInfo, CondDelta),
-    goal_info_get_instmap_delta(ThenInfo, ThenDelta),
-    goal_info_get_instmap_delta(ElseInfo, ElseDelta).
+    CondDelta = goal_info_get_instmap_delta(CondInfo),
+    ThenDelta = goal_info_get_instmap_delta(ThenInfo),
+    ElseDelta = goal_info_get_instmap_delta(ElseInfo).
 get_branch_instmap_deltas(hlds_goal(switch(_, _, Cases), _), InstMapDeltas) :-
     GetCaseInstMapDelta =
         (pred(Case::in, InstMapDelta::out) is det :-
             Case = case(_, hlds_goal(_, CaseInfo)),
-            goal_info_get_instmap_delta(CaseInfo, InstMapDelta)
+            InstMapDelta = goal_info_get_instmap_delta(CaseInfo)
         ),
     list.map(GetCaseInstMapDelta, Cases, InstMapDeltas).
 get_branch_instmap_deltas(hlds_goal(disj(Disjuncts), _), InstMapDeltas) :-
     GetDisjunctInstMapDelta =
         (pred(Disjunct::in, InstMapDelta::out) is det :-
             Disjunct = hlds_goal(_, DisjInfo),
-            goal_info_get_instmap_delta(DisjInfo, InstMapDelta)
+            InstMapDelta = goal_info_get_instmap_delta(DisjInfo)
         ),
     list.map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas).
 
@@ -659,7 +659,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
     Goal = hlds_goal(GoalExpr, GoalInfo),
     ( GoalExpr = if_then_else(_, Cond, Then, Else) ->
         Cond = hlds_goal(_, CondInfo),
-        goal_info_get_instmap_delta(CondInfo, CondDelta),
+        CondDelta = goal_info_get_instmap_delta(CondInfo),
         instmap.apply_instmap_delta(InstMap0, CondDelta, InstMap1),
         goal_to_conj_list(Then, ThenList),
         examine_branch(!.ModuleInfo, ProcArgInfo, 1, ThenList,
@@ -676,7 +676,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
     ;
         Vars2 = Vars0
     ),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     get_sub_branch_vars_goal(ProcArgInfo, GoalList,
         VarTypes, InstMap, Vars2, SubVars, !ModuleInfo).
@@ -741,7 +741,7 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
         true
     ),
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
     examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
         Goals, VarTypes, InstMap1, !Vars).
@@ -966,7 +966,7 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     ),
     list.map(Search, OldArgs, NewArgs),
     NewGoal = hlds_goal(_, NewGoalInfo),
-    goal_info_get_nonlocals(NewGoalInfo, NewNonLocals),
+    NewNonLocals = goal_info_get_nonlocals(NewGoalInfo),
     set.delete_list(NewNonLocals, NewArgs, UnmatchedNonLocals),
     set.empty(UnmatchedNonLocals),
 
@@ -1099,8 +1099,8 @@ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     LaterGoal = hlds_goal(_, LaterGoalInfo),
 
-    goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
-    goal_info_get_determinism(LaterGoalInfo, LaterDetism),
+    EarlierDetism = goal_info_get_determinism(EarlierGoalInfo),
+    LaterDetism = goal_info_get_determinism(LaterGoalInfo),
 
     % Check that the reordering would not violate determinism correctness
     % by moving a goal out of a single solution context by placing a goal
@@ -1135,9 +1135,9 @@ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
 :- pred goal_depends_on_goal(hlds_goal::in, hlds_goal::in) is semidet.
 
 goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
-    goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
+    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     instmap_delta_changed_vars(InstmapDelta1, ChangedVars1),
-    goal_info_get_nonlocals(GoalInfo2, NonLocals2),
+    NonLocals2 = goal_info_get_nonlocals(GoalInfo2),
     set.intersect(ChangedVars1, NonLocals2, Intersection),
     \+ set.empty(Intersection).
 

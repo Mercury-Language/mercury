@@ -438,10 +438,13 @@ add_recursive_call(Goal, IGCs) =
 
 invariant_goal_candidates_handle_non_recursive_call(
         Goal @ hlds_goal(_GoalExpr, GoalInfo), IGCs) =
-    ( if   not model_non(GoalInfo),
-           goal_info_get_purity(GoalInfo, purity_pure)
-      then IGCs ^ path_candidates := [Goal | IGCs ^ path_candidates]
-      else IGCs
+    (
+        not model_non(GoalInfo),
+        goal_info_get_purity(GoalInfo) = purity_pure
+    ->
+        IGCs ^ path_candidates := [Goal | IGCs ^ path_candidates]
+    ;
+        IGCs
     ).
 
 %-----------------------------------------------------------------------------%
@@ -449,7 +452,7 @@ invariant_goal_candidates_handle_non_recursive_call(
 :- pred model_non(hlds_goal_info::in) is semidet.
 
 model_non(GoalInfo) :-
-    hlds_goal.goal_info_get_determinism(GoalInfo, Detism),
+    Detism = hlds_goal.goal_info_get_determinism(GoalInfo),
     code_model.determinism_to_code_model(Detism, model_non).
 
 %-----------------------------------------------------------------------------%
@@ -586,7 +589,7 @@ inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
 :- pred has_uniquely_used_arg(prog_vars::in, hlds_goal::in) is semidet.
 
 has_uniquely_used_arg(UUVs, hlds_goal(_GoalExpr, GoalInfo)) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     list.member(UUV, UUVs),
     set.member(UUV, NonLocals).
 
@@ -664,14 +667,14 @@ deconstruction(hlds_goal(GoalExpr, _GoalInfo)) :-
 :- pred impure_goal(hlds_goal::in) is semidet.
 
 impure_goal(Goal) :-
-    goal_get_purity(Goal, purity_impure).
+    goal_get_purity(Goal) = purity_impure.
 
 %-----------------------------------------------------------------------------%
 
 :- pred cannot_succeed(hlds_goal::in) is semidet.
 
 cannot_succeed(hlds_goal(_GoalExpr, GoalInfo)) :-
-    goal_info_get_determinism(GoalInfo, Detism),
+    Detism = goal_info_get_determinism(GoalInfo),
     determinism_components(Detism, _CanFail, MaxSolns),
     MaxSolns = at_most_zero.
 
@@ -746,7 +749,7 @@ add_output(UniquelyUsedVars, X, InvVars) =
 compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
     ApplyGoalInstMap =
         ( func(hlds_goal(_GoalExpr, GoalInfo), IM0) = IM1 :-
-            goal_info_get_instmap_delta(GoalInfo, IMD),
+            IMD = goal_info_get_instmap_delta(GoalInfo),
             apply_instmap_delta(IM0, IMD, IM1)
         ).
 
@@ -780,7 +783,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
     hlds_pred.proc_id_to_int(ProcId, ProcNo),
     AuxNamePrefix = string.format("loop_inv_%d", [i(ProcNo)]),

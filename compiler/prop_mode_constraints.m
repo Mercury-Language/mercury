@@ -292,7 +292,7 @@ ensure_unique_arguments_in_goal(hlds_goal(!.GoalExpr, !.GoalInfo),
     ;
         !.GoalExpr = plain_call(CalleePredId, CalleeProcId, Args0,
             Builtin, UnifyContext, SymName),
-        goal_info_get_context(!.GoalInfo, Context),
+        Context = goal_info_get_context(!.GoalInfo),
         make_unifications(Context, Unifications, Args0, Args, !SeenSoFar,
             !Varset, !Vartypes),
         (
@@ -311,7 +311,7 @@ ensure_unique_arguments_in_goal(hlds_goal(!.GoalExpr, !.GoalInfo),
 
     ;
         !.GoalExpr = generic_call(Details, Args0, Modes, Determinism),
-        goal_info_get_context(!.GoalInfo, Context),
+        Context = goal_info_get_context(!.GoalInfo),
         make_unifications(Context, Unifications, Args0, Args, !SeenSoFar,
             !Varset, !Vartypes),
         (
@@ -457,8 +457,8 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
 replace_call_with_conjunction(CallGoalExpr, Unifications, NewArgs, GoalExpr,
         !GoalInfo) :-
     CallGoalInfo0 = !.GoalInfo,
-    goal_info_get_context(CallGoalInfo0, Context),
-    goal_info_get_nonlocals(CallGoalInfo0, CallNonlocals0),
+    Context = goal_info_get_context(CallGoalInfo0),
+    CallNonlocals0 = goal_info_get_nonlocals(CallGoalInfo0),
     CallNonlocals = set.insert_list(CallNonlocals0, NewArgs),
     goal_info_set_nonlocals(CallNonlocals, CallGoalInfo0, CallGoalInfo),
     Goals = list.cons(hlds_goal(CallGoalExpr, CallGoalInfo), Unifications),

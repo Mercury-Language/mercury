@@ -487,8 +487,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         RevGoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
             SymName),
         set.member(proc(PredId, ProcId), ConstInfo ^ cur_scc),
-        goal_info_get_determinism(RevGoalInfo, RevGoalDetism),
-        RevGoalDetism = ConstInfo ^ cur_proc_detism,
+        goal_info_get_determinism(RevGoalInfo) = ConstInfo ^ cur_proc_detism,
 
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             _CalleePredInfo, CalleeProcInfo),
@@ -722,7 +721,7 @@ update_construct(Subst, Goal0, Goal) :-
             SubInfo0 = construct_sub_info(no, TermSizeSlot)
         )
     ->
-        goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+        InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         update_construct_args(Subst, 1, ArgVars, UpdatedArgVars, AddrFields,
             InstMapDelta0, InstMapDelta),
         (

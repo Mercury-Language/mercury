@@ -97,7 +97,7 @@ goal_expr_cost(generic_call(_, Args, _, _), _, Cost) :-
     Cost = Cost0 + cost_of_stack_flush + cost_of_higher_order_call.
 
 goal_expr_cost(unify(_, _, _, Unification, _), GoalInfo, Cost) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     unify_cost(NonLocals, Unification, Cost).
 
 goal_expr_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _), _, Cost) :-

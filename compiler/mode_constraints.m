@@ -409,8 +409,8 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
 number_robdd_variables_in_goal(InstGraph, ParentNonLocals, Occurring,
         hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         !RInfo) :-
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    goal_info_get_goal_path(GoalInfo0, GoalPath),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
+    GoalPath = goal_info_get_goal_path(GoalInfo0),
     number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals,
         NonLocals, Occurring, GoalExpr0, GoalExpr, !RInfo),
     goal_info_set_occurring_vars(Occurring, GoalInfo0, GoalInfo).
@@ -1117,7 +1117,7 @@ goal_constraints(ParentNonLocals, CanSucceed, hlds_goal(GoalExpr0, GoalInfo0),
         true
     ),
 
-    goal_info_get_goal_path(GoalInfo0, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo0),
     goal_info_get_occurring_vars(GoalInfo0, Vars),
 
     % Number the vars we want to keep for this goal.
@@ -1127,7 +1127,7 @@ goal_constraints(ParentNonLocals, CanSucceed, hlds_goal(GoalExpr0, GoalInfo0),
         ), set.to_sorted_list(Vars), !GCInfo),
     save_thresh(Threshold, !GCInfo),
 
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
 
     InstGraph = !.GCInfo ^ inst_graph,
     NonLocalReachable = solutions.solutions_set(inst_graph.reachable_from_list(
@@ -2075,8 +2075,8 @@ arg_modes_map_2(MV - RV, Constraint0, Constraint, ArgModes0, ArgModes) :-
 
 :- func goal_path(hlds_goal) = goal_path.
 
-goal_path(hlds_goal(_, GoalInfo)) = GoalPath :-
-    goal_info_get_goal_path(GoalInfo, GoalPath).
+goal_path(hlds_goal(_, GoalInfo)) =
+    goal_info_get_goal_path(GoalInfo).
 
 :- func vars(hlds_goal) = set(prog_var).
 

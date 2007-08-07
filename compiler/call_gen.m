@@ -104,8 +104,8 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     Address = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, yes),
     code_info.get_next_label(ReturnLabel, !CI),
     call_gen.call_comment(!.CI, PredId, CodeModel, CallComment),
-    goal_info_get_context(GoalInfo, Context),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    Context = goal_info_get_context(GoalInfo),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     CallCode = node([
         llds_instr(livevals(LiveVals), ""),
         llds_instr(llcall(Address, code_label(ReturnLabel), ReturnLiveLvalues,
@@ -116,7 +116,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     % Figure out what variables will be live at the return point, and where,
     % for use in the accurate garbage collector, and in the debugger.
     code_info.get_instmap(!.CI, InstMap),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
     % Update the code generator state to reflect the situation after the call.
@@ -124,7 +124,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
     % If the call can fail, generate code to check for and handle the failure.
-    handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
+    handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
     Code = tree_list([SetupCode, TraceCode, CallCode, FailHandlingCode]).
 
@@ -206,13 +206,13 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
     % Make the call.
     code_info.get_next_label(ReturnLabel, !CI),
-    goal_info_get_context(GoalInfo, Context),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    Context = goal_info_get_context(GoalInfo),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
 
     % Figure out what variables will be live at the return point, and where,
     % for use in the accurate garbage collector, and in the debugger.
     code_info.get_instmap(!.CI, InstMap),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
     % Update the code generator state to reflect the situation after the call.
@@ -227,7 +227,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     ]),
 
     % If the call can fail, generate code to check for and handle the failure.
-    handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
+    handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
     Code = tree_list([SetupCode, NonVarCode, TraceCode, CallCode,
         FailHandlingCode]).
@@ -429,12 +429,13 @@ prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
     ),
     trace_prepare_for_call(!.CI, TraceCode).
 
-:- pred handle_failure(code_model::in, hlds_goal_info::in,
+:- pred handle_call_failure(code_model::in, hlds_goal_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
-handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
-    ( CodeModel = model_semi ->
-        goal_info_get_determinism(GoalInfo, Detism),
+handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
+    (
+        CodeModel = model_semi,
+        Detism = goal_info_get_determinism(GoalInfo),
         ( Detism = detism_failure ->
             code_info.generate_failure(FailHandlingCode, !CI)
         ;
@@ -451,6 +452,9 @@ handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
                 FailCode, ContLabelCode])
         )
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         FailHandlingCode = empty
     ).
 
@@ -518,7 +522,7 @@ kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI) :-
 
 handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
         ReturnLiveLvalues, !CI) :-
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_reachable(InstMapDelta) ->
         OkToDeleteAny = no
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,7 +163,7 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
 
 generate_proc_arg_info(ArgTypes, ModuleInfo, !ProcInfo) :-
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    proc_info_interface_code_model(!.ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(!.ProcInfo),
     make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
     proc_info_set_arg_info(ArgInfo, !ProcInfo).
 

@@ -297,7 +297,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     ensure_all_headvars_are_named(ProcInfo0, ProcInfo),
 
     proc_info_interface_determinism(ProcInfo, Detism),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(_, GoalInfo),
     goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
@@ -330,7 +330,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         Clauses = [],
         % This predicate must have been created by the compiler. In that case,
         % the context of the body goal is the best we can do.
-        goal_info_get_context(GoalInfo, ProcContext)
+        ProcContext = goal_info_get_context(GoalInfo)
     ;
         Clauses = [FirstClause | _],
         ProcContext = FirstClause ^ clause_context

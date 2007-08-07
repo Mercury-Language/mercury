@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
         DummyVars),
     graph_colour.group_elements(LiveSets, ColourSets),
     set.to_sorted_list(ColourSets, ColourList),
-    proc_info_interface_code_model(!.ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(!.ProcInfo),
     allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
         MaybeReservedVarInfo, StackSlots1),
     allocate_dummy_stack_slots(DummyVars, CodeModel, -1,

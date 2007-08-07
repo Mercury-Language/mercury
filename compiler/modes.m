@@ -829,14 +829,14 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
                 Cases0 = [_ | _],
                 ClausesForm0 = clause_switch(SwitchVar0, CanFail0, Cases0)
             ),
-            goal_info_get_nonlocals(BodyGoalInfo0, BodyNonLocals),
+            BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
             mode_info_get_var_types(!.ModeInfo, VarTypes0),
             SolverNonLocals = list.filter(
                 is_solver_var(VarTypes0, !.ModuleInfo),
                 set.to_sorted_list(BodyNonLocals)),
             SolverNonLocals = []
         ->
-            goal_info_get_context(BodyGoalInfo0, BodyContext),
+            BodyContext = goal_info_get_context(BodyGoalInfo0),
             term.context_init(EmptyContext),
             ( BodyContext = EmptyContext ->
                 true
@@ -866,8 +866,8 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             ;
                 WhatToCheck = check_unique_modes,
                 mode_info_get_nondet_live_vars(!.ModeInfo, NondetLiveVars0),
-                goal_info_get_determinism(BodyGoalInfo0, Detism),
-                goal_info_get_nonlocals(BodyGoalInfo0, NonLocals),
+                Detism = goal_info_get_determinism(BodyGoalInfo0),
+                NonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
                 ( determinism_components(Detism, _, at_most_many) ->
                     true
                 ;
@@ -1235,7 +1235,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 prepend_initialisation_call(Var, VarType, InitialInst, Goal0, Goal,
         !ModeInfo) :-
     Goal0   = hlds_goal(_GoalExpr0, GoalInfo0),
-    hlds_goal.goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     CallUnifyContext = no,
     construct_initialisation_call(Var, VarType, InitialInst, Context,
         CallUnifyContext, InitVarGoal, !ModeInfo),
@@ -1250,7 +1250,7 @@ modecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
     % Note: any changes here may need to be duplicated in unique_modes.m.
 
     % Store the current context in the mode_info.
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     term.context_init(EmptyContext),
     ( Context = EmptyContext ->
         true
@@ -1283,7 +1283,7 @@ compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
         instmap_delta_init_reachable(DeltaInstMap),
         mode_info_set_instmap(InstMap0, !ModeInfo)
     ;
-        goal_info_get_nonlocals(!.GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(!.GoalInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap)
     ),
@@ -1325,7 +1325,7 @@ modecheck_goal_expr(disj(Disjs0), GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
         % modecheck_clause_disj or the code that calls it.
 
         Disjs0 = [_ | _],
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         modecheck_disj_list(Disjs0, Disjs1, InstMapList0, !ModeInfo, !IO),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         handle_solver_vars_in_disjs(set.to_sorted_list(NonLocals),
@@ -1339,8 +1339,8 @@ modecheck_goal_expr(disj(Disjs0), GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
 modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
         GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "if-then-else", !ModeInfo, !IO),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    goal_get_nonlocals(Then0, ThenVars),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
+    ThenVars = goal_get_nonlocals(Then0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     % We need to lock the non-local variables, to ensure that the condition
@@ -1375,7 +1375,7 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     ( mode_info_get_in_promise_purity_scope(!.ModeInfo, no) ->
-        goal_get_nonlocals(Cond, CondNonLocals0),
+        CondNonLocals0 = goal_get_nonlocals(Cond),
         CondNonLocals =
             set.to_sorted_list(CondNonLocals0 `intersect` NonLocals),
         check_no_inst_any_vars(if_then_else, CondNonLocals,
@@ -1388,7 +1388,7 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
 modecheck_goal_expr(negation(SubGoal0), GoalInfo0, negation(SubGoal),
         !ModeInfo, !IO) :-
     mode_checkpoint(enter, "not", !ModeInfo, !IO),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     % When analyzing a negated goal, nothing is forward-live (live on forward
@@ -1408,7 +1408,7 @@ modecheck_goal_expr(negation(SubGoal0), GoalInfo0, negation(SubGoal),
     mode_info_unlock_vars(var_lock_negation, NonLocals, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     ( mode_info_get_in_promise_purity_scope(!.ModeInfo, no) ->
-        goal_info_get_nonlocals(GoalInfo0, NegNonLocals),
+        NegNonLocals = goal_info_get_nonlocals(GoalInfo0),
         instmap.init_unreachable(Unreachable),
         check_no_inst_any_vars(negation, set.to_sorted_list(NegNonLocals),
             InstMap0, Unreachable, !ModeInfo)
@@ -1423,7 +1423,7 @@ modecheck_goal_expr(scope(Reason, SubGoal0), GoalInfo0, GoalExpr, !ModeInfo,
         Reason = trace_goal(_, _, _, _, _),
         mode_checkpoint(enter, "scope", !ModeInfo, !IO),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         % We need to lock the non-local variables, to ensure that
         % the trace goal does not bind them. If it did, then the code
         % would not be valid with the trace goal disabled.
@@ -1625,9 +1625,8 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
         % modecheck_clause_switch or the code that calls it.
 
         Cases0 = [_ | _],
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        modecheck_case_list(Cases0, Var, Cases, InstMapList,
-            !ModeInfo, !IO),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
+        modecheck_case_list(Cases0, Var, Cases, InstMapList, !ModeInfo, !IO),
         instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
     ),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
@@ -1726,7 +1725,7 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         %       % InstMapAtEnd (from the ModeInfo) is here
 
         % Recompute the new set of non-local variables for the main goal.
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set.list_to_set(Args0, OldArgVars),
         set.list_to_set(Args, NewArgVars),
         set.difference(NewArgVars, OldArgVars, IntroducedVars),
@@ -1736,7 +1735,7 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 
         % Combine the main goal and the extra goals into a conjunction.
         Goal0 = hlds_goal(MainGoal, GoalInfo),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         handle_extra_goals_contexts(BeforeGoals0, Context, BeforeGoals),
         handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
         list.append(BeforeGoals, [Goal0 | AfterGoals], GoalList0),
@@ -1878,7 +1877,7 @@ add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
 
 append_init_calls_to_goal(InitedVars, InitCalls, Goal0) = Goal :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     NonLocals = set.union(InitedVars, NonLocals0),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     ( GoalExpr0 = disj(Disjs0) ->
@@ -1934,7 +1933,7 @@ set_vars_to_inst_any([Var | Vars], InstMap0) = InstMap :-
 modecheck_conj_list_no_delay([], [], !ModeInfo, !IO).
 modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals], !ModeInfo,
         !IO) :-
-    goal_get_nonlocals(Goal0, NonLocals),
+    NonLocals = goal_get_nonlocals(Goal0),
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -2035,7 +2034,7 @@ mode_info_add_goals_live_vars(ConjType, [Goal | Goals], !ModeInfo) :-
     ->
         mode_info_add_goals_live_vars(ConjType, ConjGoals, !ModeInfo)
     ;
-        goal_get_nonlocals(Goal, NonLocals),
+        NonLocals = goal_get_nonlocals(Goal),
         mode_info_add_live_vars(NonLocals, !ModeInfo)
     ).
 
@@ -2048,7 +2047,7 @@ mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
     ->
         mode_info_remove_goals_live_vars(ConjGoals, !ModeInfo)
     ;
-        goal_get_nonlocals(Goal, NonLocals),
+        NonLocals = goal_get_nonlocals(Goal),
         mode_info_remove_live_vars(NonLocals, !ModeInfo)
     ),
     mode_info_remove_goals_live_vars(Goals, !ModeInfo).
@@ -2091,7 +2090,7 @@ modecheck_conj_list_2(ConjType, [Goal0 | Goals0], Goals, !ImpurityErrors,
     %
 modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         !ModeInfo, !IO) :-
-    goal_get_purity(Goal0, Purity),
+    Purity = goal_get_purity(Goal0),
     ( Purity = purity_impure ->
         Impure = yes,
         check_for_impurity_error(Goal0, ScheduledSolverGoals,
@@ -2107,7 +2106,7 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
 
     % Modecheck the goal, noting first that the non-locals
     % which occur in the goal might not be live anymore.
-    goal_get_nonlocals(Goal0, NonLocalVars),
+    NonLocalVars = goal_get_nonlocals(Goal0),
     mode_info_remove_live_vars(NonLocalVars, !ModeInfo),
     modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
 
@@ -2440,7 +2439,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     GoalExpr = if_then_else(_LocalVars, CondGoal, ThenGoal, ElseGoal),
 
     CondGoal = hlds_goal(_CondGoalExpr, CondGoalInfo),
-    goal_info_get_nonlocals(CondGoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(CondGoalInfo),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_var_types(ModeInfo, VarTypes),
     NonSolverNonLocals =

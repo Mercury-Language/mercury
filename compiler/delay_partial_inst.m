@@ -327,7 +327,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
 
                 % Unify the canonical variables and corresponding ground
                 % arguments (if any).
-                goal_info_get_context(GoalInfo0, ProgContext),
+                ProgContext = goal_info_get_context(GoalInfo0),
                 SubUnifyGoals = list.filter_map_corresponding3(
                     maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
                     CanonVars, Args, UniModes),
@@ -362,7 +362,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 % Unify each ground argument with the corresponding canonical
                 % variable.
                 ModuleInfo = !.DelayInfo ^ dpi_module_info,
-                goal_info_get_context(GoalInfo0, ProgContext),
+                ProgContext = goal_info_get_context(GoalInfo0),
                 SubUnifyGoals = list.filter_map_corresponding3(
                     maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
                     CanonArgs, DeconArgs, UniModes),
@@ -408,7 +408,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 get_sole_cons_id_and_canon_vars(!.ConstructMap, LHS, ConsId,
                     CanonArgs)
             then
-                goal_info_get_context(GoalInfo0, ProgContext),
+                ProgContext = goal_info_get_context(GoalInfo0),
                 create_pure_atomic_complicated_unification(RHSVar,
                     rhs_functor(ConsId, no, CanonArgs),
                     ProgContext, umc_explicit, [], TestGoal),

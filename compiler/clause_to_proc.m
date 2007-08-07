@@ -225,7 +225,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         goal_info_init(GoalInfo0),
         ( GoalList = [FirstGoal | _] ->
             FirstGoal = hlds_goal(_, FirstGoalInfo),
-            goal_info_get_context(FirstGoalInfo, Context)
+            Context = goal_info_get_context(FirstGoalInfo)
         ;
             proc_info_get_context(!.Proc, Context)
         ),
@@ -240,7 +240,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         % is impure/semipure.
 
         ( contains_nonpure_goal(GoalList) ->
-            list.map(goal_get_purity, GoalList, PurityList),
+            PurityList = list.map(goal_get_purity, GoalList),
             Purity = list.foldl(worst_purity, PurityList, purity_pure),
             goal_info_set_purity(Purity, GoalInfo2, GoalInfo)
         ;
@@ -258,8 +258,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 
 contains_nonpure_goal([Goal | Goals]) :-
     (
-        goal_get_purity(Goal, Purity),
-        Purity \= purity_pure
+        goal_get_purity(Goal) \= purity_pure
     ;
         contains_nonpure_goal(Goals)
     ).

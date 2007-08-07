@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,9 +36,9 @@
 :- mode determinism_to_code_model(in, out) is det.
 :- mode determinism_to_code_model(out, in) is multi.
 
-:- pred proc_info_interface_code_model(proc_info::in, code_model::out) is det.
+:- func proc_info_interface_code_model(proc_info) = code_model.
 
-:- pred goal_info_get_code_model(hlds_goal_info::in, code_model::out) is det.
+:- func goal_info_get_code_model(hlds_goal_info) = code_model.
 
     % Construct a representation of the interface determinism of a procedure.
     % The code we have chosen is not sequential; instead it encodes the various
@@ -67,12 +67,12 @@ determinism_to_code_model(detism_cc_multi,  model_det).
 determinism_to_code_model(detism_erroneous, model_det).
 determinism_to_code_model(detism_failure,   model_semi).
 
-proc_info_interface_code_model(ProcInfo, CodeModel) :-
+proc_info_interface_code_model(ProcInfo) = CodeModel :-
     proc_info_interface_determinism(ProcInfo, Determinism),
     determinism_to_code_model(Determinism, CodeModel).
 
-goal_info_get_code_model(GoalInfo, CodeModel) :-
-    goal_info_get_determinism(GoalInfo, Determinism),
+goal_info_get_code_model(GoalInfo) = CodeModel :-
+    Determinism = goal_info_get_determinism(GoalInfo),
     determinism_to_code_model(Determinism, CodeModel).
 
 represent_determinism(detism_det) = detism_rep(det_rep).

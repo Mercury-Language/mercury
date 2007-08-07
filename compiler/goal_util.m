@@ -385,7 +385,7 @@
 %-----------------------------------------------------------------------------%
 
 update_instmap(hlds_goal(_GoalExpr0, GoalInfo0), !InstMap) :-
-    goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
+    DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
     instmap.apply_instmap_delta(!.InstMap, DeltaInstMap, !:InstMap).
 
 %-----------------------------------------------------------------------------%
@@ -1137,14 +1137,14 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     % Work out the nonlocals, instmap_delta and determinism
     % of the entire conjunction.
     CaseGoal = hlds_goal(_, CaseGoalInfo),
-    goal_info_get_nonlocals(CaseGoalInfo, CaseNonLocals0),
+    CaseNonLocals0 = goal_info_get_nonlocals(CaseGoalInfo),
     set.insert(CaseNonLocals0, Var, CaseNonLocals),
-    goal_info_get_instmap_delta(CaseGoalInfo, CaseInstMapDelta),
+    CaseInstMapDelta = goal_info_get_instmap_delta(CaseGoalInfo),
     instmap_delta_apply_instmap_delta(ExtraInstMapDelta, CaseInstMapDelta,
         test_size, InstMapDelta),
-    goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
+    CaseDetism0 = goal_info_get_determinism(CaseGoalInfo),
     det_conjunction_detism(detism_semi, CaseDetism0, Detism),
-    goal_info_get_purity(CaseGoalInfo, CasePurity),
+    CasePurity = goal_info_get_purity(CaseGoalInfo),
     goal_info_init(CaseNonLocals, InstMapDelta,
         Detism, CasePurity, CombinedGoalInfo),
     Disjunct = hlds_goal(conj(plain_conj, GoalList), CombinedGoalInfo).
@@ -1156,7 +1156,7 @@ if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
     conj_list_to_goal([Cond0, Then], CondThenInfo, CondThen),
 
     Cond0 = hlds_goal(_, CondInfo0),
-    goal_info_get_determinism(CondInfo0, CondDetism0),
+    CondDetism0 = goal_info_get_determinism(CondInfo0),
 
     determinism_components(CondDetism0, CondCanFail0, CondMaxSoln0),
 
@@ -1189,8 +1189,8 @@ if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
     ;
         instmap_delta_init_reachable(NegCondDelta)
     ),
-    goal_info_get_nonlocals(CondInfo, CondNonLocals),
-    goal_info_get_purity(CondInfo, CondPurity),
+    CondNonLocals = goal_info_get_nonlocals(CondInfo),
+    CondPurity = goal_info_get_purity(CondInfo),
     goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, CondPurity,
         NegCondInfo),
 
@@ -1209,20 +1209,20 @@ compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
     Goal1 = hlds_goal(_, GoalInfo1),
     Goal2 = hlds_goal(_, GoalInfo2),
 
-    goal_info_get_nonlocals(GoalInfo1, NonLocals1),
-    goal_info_get_nonlocals(GoalInfo2, NonLocals2),
-    goal_info_get_nonlocals(GoalInfo, OuterNonLocals),
+    NonLocals1 = goal_info_get_nonlocals(GoalInfo1),
+    NonLocals2 = goal_info_get_nonlocals(GoalInfo2),
+    OuterNonLocals = goal_info_get_nonlocals(GoalInfo),
     set.union(NonLocals1, NonLocals2, CombinedNonLocals0),
     set.intersect(CombinedNonLocals0, OuterNonLocals, CombinedNonLocals),
 
-    goal_info_get_instmap_delta(GoalInfo1, Delta1),
-    goal_info_get_instmap_delta(GoalInfo2, Delta2),
+    Delta1 = goal_info_get_instmap_delta(GoalInfo1),
+    Delta2 = goal_info_get_instmap_delta(GoalInfo2),
     instmap_delta_apply_instmap_delta(Delta1, Delta2, test_size,
         CombinedDelta0),
     instmap_delta_restrict(OuterNonLocals, CombinedDelta0, CombinedDelta),
 
-    goal_info_get_determinism(GoalInfo1, Detism1),
-    goal_info_get_determinism(GoalInfo2, Detism2),
+    Detism1 = goal_info_get_determinism(GoalInfo1),
+    Detism2 = goal_info_get_determinism(GoalInfo2),
     det_conjunction_detism(Detism1, Detism2, CombinedDetism),
 
     goal_list_purity([Goal1, Goal2], CombinedPurity),
@@ -1251,7 +1251,7 @@ create_conj(GoalA, GoalB, Type, ConjGoal) :-
     goal_list_determinism(GoalsInConj, Detism),
     goal_list_purity(GoalsInConj, Purity),
     GoalAInfo = GoalA ^ hlds_goal_info,
-    goal_info_get_context(GoalAInfo, Context),
+    Context = goal_info_get_context(GoalAInfo),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, 
         ConjGoalInfo),
     ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo).
@@ -1348,9 +1348,9 @@ reordering_maintains_termination_old(ModuleInfo, FullyStrict,
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     LaterGoal = hlds_goal(_, LaterGoalInfo),
 
-    goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
+    EarlierDetism = goal_info_get_determinism(EarlierGoalInfo),
     determinism_components(EarlierDetism, EarlierCanFail, _),
-    goal_info_get_determinism(LaterGoalInfo, LaterDetism),
+    LaterDetism = goal_info_get_determinism(LaterGoalInfo),
     determinism_components(LaterDetism, LaterCanFail, _),
 
     % If --fully-strict was specified, don't convert (can_loop, can_fail)
@@ -1376,9 +1376,9 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     LaterGoal = hlds_goal(_, LaterGoalInfo),
 
-    goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
+    EarlierDetism = goal_info_get_determinism(EarlierGoalInfo),
     determinism_components(EarlierDetism, EarlierCanFail, _),
-    goal_info_get_determinism(LaterGoalInfo, LaterDetism),
+    LaterDetism = goal_info_get_determinism(LaterGoalInfo),
     determinism_components(LaterDetism, LaterCanFail, _),
 
     % If --fully-strict was specified, don't convert (can_loop, can_fail) into
@@ -1420,14 +1420,14 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
         VarTypes, ModuleInfo) :-
     LaterGoal = hlds_goal(_, LaterGoalInfo),
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
-    goal_info_get_instmap_delta(EarlierGoalInfo, EarlierInstMapDelta),
+    EarlierInstMapDelta = goal_info_get_instmap_delta(EarlierGoalInfo),
     instmap.apply_instmap_delta(InstMapBeforeEarlierGoal,
         EarlierInstMapDelta, InstMapAfterEarlierGoal),
 
     instmap_changed_vars(InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
         VarTypes, ModuleInfo, EarlierChangedVars),
 
-    goal_info_get_nonlocals(LaterGoalInfo, LaterGoalNonLocals),
+    LaterGoalNonLocals = goal_info_get_nonlocals(LaterGoalInfo),
     set.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
     not set.empty(Intersection).
 

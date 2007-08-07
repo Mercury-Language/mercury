@@ -86,8 +86,8 @@ propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
     % We need to treat all single goals as conjunctions so that propagate_conj
     % can move the constraints to the left of the goal if that is allowed.
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_features(GoalInfo0, Features0),
-    goal_info_get_context(GoalInfo0, Context),
+    Features0 = goal_info_get_features(GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
     goal_to_conj_list(Goal0, Goals0),
     propagate_conj(Goals0, Constraints, Goals, !Info, !IO),
     goal_list_nonlocals(Goals, NonLocals),
@@ -285,7 +285,7 @@ annotate_conj_output_vars([], _, _, _, !RevGoals).
 annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
         !RevGoals) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
 
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     instmap_changed_vars(InstMap0, InstMap, VarTypes,
@@ -404,7 +404,7 @@ annotate_conj_constraints(ModuleInfo,
     Conjunct = annotated_conjunct(Goal, ChangedVars, OutputVars,
         IncompatibleInstVars),
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     CI_ModuleInfo0 = !.Info ^ module_info,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo, !IO),
@@ -414,7 +414,7 @@ annotate_conj_constraints(ModuleInfo,
         % Propagating cc_nondet goals would be tricky, because we would
         % need to be careful about reordering the constraints (the cc_nondet
         % goal can't be moved before any goals which can fail).
-        goal_info_get_determinism(GoalInfo, Detism),
+        Detism = goal_info_get_determinism(GoalInfo),
         ( Detism = detism_semi
         ; Detism = detism_failure
         ),
@@ -424,7 +424,7 @@ annotate_conj_constraints(ModuleInfo,
         set.empty(OutputVars),
 
         % Don't propagate impure goals.
-        goal_info_get_purity(GoalInfo, purity_pure),
+        goal_info_get_purity(GoalInfo) = purity_pure,
 
         % Only propagate goals that cannot loop or throw exceptions.
         GoalCanLoopOrThrow = cannot_loop_or_throw
@@ -458,7 +458,7 @@ annotate_conj_constraints(ModuleInfo,
     ;
         % Prune away the constraints after a goal that cannot succeed
         % -- they can never be executed.
-        goal_info_get_determinism(GoalInfo, Detism),
+        Detism = goal_info_get_determinism(GoalInfo),
         determinism_components(Detism, _, at_most_zero)
     ->
         constraint_info_update_changed(Constraints0, !Info),
@@ -467,7 +467,7 @@ annotate_conj_constraints(ModuleInfo,
     ;
         % Don't propagate constraints into or past impure goals.
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_purity(GoalInfo, purity_impure)
+        goal_info_get_purity(GoalInfo) = purity_impure
     ->
         Constraints1 = [],
         flatten_constraints(Constraints0,
@@ -538,7 +538,7 @@ add_constant_construction(ConstructVar, Construct0,
         IncompatibleInstVars, Constructs0),
     (
         ConstraintGoal0 = hlds_goal(_, ConstraintInfo),
-        goal_info_get_nonlocals(ConstraintInfo, ConstraintNonLocals),
+        ConstraintNonLocals = goal_info_get_nonlocals(ConstraintInfo),
         set.member(ConstructVar, ConstraintNonLocals)
     ->
         VarSet0 = !.Info ^ varset,
@@ -594,7 +594,7 @@ filter_dependent_constraints_2(NonLocals, GoalOutputVars,
         [Constraint | Constraints], !RevDependent, !RevIndependent) :-
     Constraint = constraint(ConstraintGoal, _, IncompatibleInstVars, _),
     ConstraintGoal = hlds_goal(_, ConstraintGoalInfo),
-    goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
+    ConstraintNonLocals = goal_info_get_nonlocals(ConstraintGoalInfo),
 
     (
         (
@@ -636,7 +636,7 @@ can_reorder_constraints(EarlierConstraint, Constraint) :-
     EarlierConstraint = constraint(_, EarlierChangedVars, _, _),
     Constraint = constraint(ConstraintGoal, _, _, _),
     ConstraintGoal = hlds_goal(_, ConstraintGoalInfo),
-    goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
+    ConstraintNonLocals = goal_info_get_nonlocals(ConstraintGoalInfo),
     set.intersect(EarlierChangedVars, ConstraintNonLocals,
         EarlierConstraintIntersection),
     set.empty(EarlierConstraintIntersection).
@@ -740,7 +740,7 @@ constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
 
 constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
     InstMap0 = !.Info ^ instmap,
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     !:Info = !.Info ^ instmap := InstMap.
 

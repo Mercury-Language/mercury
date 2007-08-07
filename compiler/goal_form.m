@@ -191,7 +191,7 @@
 %
 
 goal_can_throw(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo, !IO) :-
-    goal_info_get_determinism(GoalInfo, Determinism),
+    Determinism = goal_info_get_determinism(GoalInfo),
     ( Determinism \= detism_erroneous ->
         goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo, !IO)
     ;
@@ -448,7 +448,7 @@ goal_cannot_throw(ModuleInfo, Goal) :-
 
 goal_can_throw_func(MaybeModuleInfo, hlds_goal(GoalExpr, GoalInfo))
         = CanThrow :-
-    goal_info_get_determinism(GoalInfo, Determinism),
+    Determinism = goal_info_get_determinism(GoalInfo),
     ( Determinism = detism_erroneous ->
         CanThrow = yes
     ;
@@ -712,7 +712,7 @@ cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
 %-----------------------------------------------------------------------------%
 
 cannot_fail_before_stack_flush(hlds_goal(GoalExpr, GoalInfo)) :-
-    goal_info_get_determinism(GoalInfo, Detism),
+    Detism = goal_info_get_determinism(GoalInfo),
     determinism_components(Detism, CanFail, _),
     (
         CanFail = cannot_fail
@@ -742,7 +742,7 @@ cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
     ->
         true
     ;
-        goal_info_get_determinism(GoalInfo, Detism),
+        Detism = goal_info_get_determinism(GoalInfo),
         determinism_components(Detism, cannot_fail, _)
     ->
         cannot_fail_before_stack_flush_conj(Goals)

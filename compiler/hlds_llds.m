@@ -368,7 +368,7 @@
 %-----------------------------------------------------------------------------%
 
 goal_info_get_pre_births(GoalInfo, PreBirths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( PreBirthsPrime = CodeGenInfo ^ llds_code_gen ^ pre_births ->
         PreBirths = PreBirthsPrime
     ;
@@ -376,7 +376,7 @@ goal_info_get_pre_births(GoalInfo, PreBirths) :-
     ).
 
 goal_info_get_post_births(GoalInfo, PostBirths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( PostBirthsPrime = CodeGenInfo ^ llds_code_gen ^ post_births ->
         PostBirths = PostBirthsPrime
     ;
@@ -384,7 +384,7 @@ goal_info_get_post_births(GoalInfo, PostBirths) :-
     ).
 
 goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( PreDeathsPrime = CodeGenInfo ^ llds_code_gen ^ pre_deaths ->
         PreDeaths = PreDeathsPrime
     ;
@@ -392,7 +392,7 @@ goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
     ).
 
 goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( PostDeathsPrime = CodeGenInfo ^ llds_code_gen ^ post_deaths ->
         PostDeaths = PostDeathsPrime
     ;
@@ -400,7 +400,7 @@ goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
     ).
 
 goal_info_get_follow_vars(GoalInfo, FollowVars) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( FollowVarsPrime = CodeGenInfo ^ llds_code_gen ^ follow_vars ->
         FollowVars = FollowVarsPrime
     ;
@@ -408,7 +408,7 @@ goal_info_get_follow_vars(GoalInfo, FollowVars) :-
     ).
 
 goal_info_get_store_map(GoalInfo, StoreMap) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( StoreMapPrime = CodeGenInfo ^ llds_code_gen ^ store_map ->
         StoreMap = StoreMapPrime
     ;
@@ -416,7 +416,7 @@ goal_info_get_store_map(GoalInfo, StoreMap) :-
     ).
 
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( ResumePointPrime = CodeGenInfo ^ llds_code_gen ^ resume_point ->
         ResumePoint = ResumePointPrime
     ;
@@ -424,7 +424,7 @@ goal_info_get_resume_point(GoalInfo, ResumePoint) :-
     ).
 
 goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
         ( MaybeNeed = need_call(NeedAtCall) ->
             MaybeNeedAtCall = yes(NeedAtCall)
@@ -436,7 +436,7 @@ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
     ).
 
 goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
         ( MaybeNeed = need_resume(NeedInResume) ->
             MaybeNeedInResume = yes(NeedInResume)
@@ -448,7 +448,7 @@ goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
     ).
 
 goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
         ( MaybeNeed = need_par_conj(NeedInParConj) ->
             MaybeNeedInParConj = yes(NeedInParConj)
@@ -463,47 +463,47 @@ goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
 %-----------------------------------------------------------------------------%
 
 goal_info_maybe_get_pre_births(GoalInfo, PreBirths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     PreBirths = CodeGenInfo ^ llds_code_gen ^ pre_births.
 
 goal_info_maybe_get_post_births(GoalInfo, PostBirths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     PostBirths = CodeGenInfo ^ llds_code_gen ^ post_births.
 
 goal_info_maybe_get_pre_deaths(GoalInfo, PreDeaths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     PreDeaths = CodeGenInfo ^ llds_code_gen ^ pre_deaths.
 
 goal_info_maybe_get_post_deaths(GoalInfo, PostDeaths) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     PostDeaths = CodeGenInfo ^ llds_code_gen ^ post_deaths.
 
 goal_info_maybe_get_follow_vars(GoalInfo, FollowVars) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     FollowVars = CodeGenInfo ^ llds_code_gen ^ follow_vars.
 
 goal_info_maybe_get_store_map(GoalInfo, StoreMap) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     StoreMap = CodeGenInfo ^ llds_code_gen ^ store_map.
 
 goal_info_maybe_get_resume_point(GoalInfo, ResumePoint) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ResumePoint = CodeGenInfo ^ llds_code_gen ^ resume_point.
 
 goal_info_maybe_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need,
     MaybeNeed = need_call(NeedAcrossCall),
     MaybeNeedAcrossCall = yes(NeedAcrossCall).
 
 goal_info_maybe_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need,
     MaybeNeed = need_resume(NeedInResume),
     MaybeNeedInResume = yes(NeedInResume).
 
 goal_info_maybe_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need,
     MaybeNeed = need_par_conj(NeedInParConj),
     MaybeNeedInParConj = yes(NeedInParConj).
@@ -512,7 +512,7 @@ goal_info_maybe_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
 
 goal_info_initialize_liveness_info(PreBirths, PostBirths,
         PreDeaths, PostDeaths, ResumePoint, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     some [!LLDSInfo] (
         !:LLDSInfo = get_details(CodeGenInfo0),
         !:LLDSInfo = !.LLDSInfo ^ pre_births := PreBirths,
@@ -525,70 +525,70 @@ goal_info_initialize_liveness_info(PreBirths, PostBirths,
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_pre_births(PreBirths, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ pre_births := PreBirths,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_post_births(PostBirths, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ post_births := PostBirths,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_pre_deaths(PreDeaths, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ pre_deaths := PreDeaths,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_post_deaths(PostDeaths, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ post_deaths := PostDeaths,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_follow_vars(FollowVars, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ follow_vars := FollowVars,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_store_map(StoreMap, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ store_map := StoreMap,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_resume_point(ResumePoint, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ resume_point := ResumePoint,
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_need_across_call(NeedAcrossCall, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ maybe_need := need_call(NeedAcrossCall),
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_need_in_resume(NeedInResume, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ maybe_need := need_resume(NeedInResume),
     CodeGenInfo = llds_code_gen_info(LLDSInfo),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
 
 goal_info_set_need_in_par_conj(NeedInParConj, !GoalInfo) :-
-    goal_info_get_code_gen_info(!.GoalInfo, CodeGenInfo0),
+    CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     LLDSInfo0 = get_details(CodeGenInfo0),
     LLDSInfo = LLDSInfo0 ^ maybe_need := need_par_conj(NeedInParConj),
     CodeGenInfo = llds_code_gen_info(LLDSInfo),

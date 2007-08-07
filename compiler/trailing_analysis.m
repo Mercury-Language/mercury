@@ -436,8 +436,8 @@ check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, OuterGoalInfo,
     check_goal_for_trail_mods(SCC, VarTypes, InnerGoal, Result0,
         MaybeAnalysisStatus, !ModuleInfo, !IO),
     InnerGoal = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
-    goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
+    InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
+    OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
     %
     % `trail_conditional' scope goals (of the type that require extra trailing
     % code) will have there status changed to `trail_may_modify'.
@@ -474,8 +474,7 @@ check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
         %
         Result0 = trail_will_not_modify,
         Cond = hlds_goal(_CondGoalExpr, CondGoalInfo),
-        goal_info_get_code_model(CondGoalInfo, CondCodeModel),
-        CondCodeModel \= model_non
+        goal_info_get_code_model(CondGoalInfo) \= model_non
     -> 
         Result = trail_will_not_modify
     ;
@@ -946,8 +945,8 @@ annotate_goal_2(VarTypes, OuterGoalInfo, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = scope(Reason, InnerGoal0),
     annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0, !ModuleInfo, !IO),
     InnerGoal = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
-    goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
+    InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
+    OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
     Status = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Status0),
     !:Goal = scope(Reason, InnerGoal).
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-

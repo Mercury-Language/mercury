@@ -454,7 +454,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         (
             MayDuplicate = proc_may_duplicate,
             ( check_marker(Markers, marker_user_marked_no_inline) ->
-                goal_info_get_context(GoalInfo, Context),
+                Context = goal_info_get_context(GoalInfo),
                 Pieces = [words("Error: the `may_duplicate' attribute"),
                     words("on the foreign_proc"),
                     words("contradicts the `no_inline' pragma"),
@@ -470,7 +470,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         ;
             MayDuplicate = proc_may_not_duplicate,
             ( check_marker(Markers, marker_user_marked_inline) ->
-                goal_info_get_context(GoalInfo, Context),
+                Context = goal_info_get_context(GoalInfo),
                 Pieces = [words("Error: the `may_not_duplicate' attribute"),
                     words("on the foreign_proc"),
                     words("contradicts the `inline' pragma"),
@@ -547,7 +547,7 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ( simplify_info_requantify(!.Info) ->
         Goal1 = hlds_goal(_, GoalInfo1),
-        goal_info_get_nonlocals(GoalInfo1, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo1),
         implicitly_quantify_goal(NonLocals, _, Goal1, Goal2,
             VarSet0, VarSet1, VarTypes0, VarTypes1,
             RttiVarMaps0, RttiVarMaps1),
@@ -571,8 +571,8 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
     ),
     ( simplify_info_rerun_det(!.Info) ->
         Goal0 = hlds_goal(_, GoalInfo0),
-        goal_info_get_determinism(GoalInfo0, Det),
-        det_get_soln_context(Det, SolnContext),
+        Detism = goal_info_get_determinism(GoalInfo0),
+        det_get_soln_context(Detism, SolnContext),
 
         % det_infer_goal looks up the proc_info in the module_info
         % for the vartypes, so we'd better stick them back in the module_info.
@@ -618,13 +618,13 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
     ;
         true
     ),
-    goal_info_get_determinism(GoalInfo0, Detism),
+    Detism = goal_info_get_determinism(GoalInfo0),
     simplify_info_get_det_info(!.Info, DetInfo),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     goal_can_loop_or_throw(Goal0, Goal0CanLoopOrThrow, ModuleInfo0, ModuleInfo,
          !IO),
     simplify_info_set_module_info(ModuleInfo, !Info),
-    goal_info_get_purity(GoalInfo0, Purity),
+    Purity = goal_info_get_purity(GoalInfo0),
     (
         % If --no-fully-strict, replace goals with determinism failure
         % with `fail'.
@@ -639,7 +639,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         % `builtin.false/0' or  some goal containing `fail' or a call to
         % `builtin.false/0'.
 
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         (
             simplify_do_warn_simple_code(!.Info),
             \+ (
@@ -668,7 +668,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         ),
 
         % If the goal had any non-locals we should requantify.
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         ( set.empty(NonLocals0) ->
             true
         ;
@@ -687,8 +687,8 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         %
         determinism_components(Detism, cannot_fail, MaxSoln),
         MaxSoln \= at_most_zero,
-        goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
-        goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
+        NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
         simplify_info_get_instmap(!.Info, InstMap0),
         det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta, DetInfo),
         ( Purity = purity_pure ; Purity = purity_semipure ),
@@ -733,7 +733,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
 %       ),
 
         % If the goal had any non-locals we should requantify.
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         ( set.empty(NonLocals0) ->
             true
         ;
@@ -741,7 +741,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         Goal1 = true_goal_with_context(Context)
     ;
         Goal1 = Goal0
@@ -782,19 +782,19 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
     simplify_info::in, simplify_info::out) is det.
 
 enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
-    goal_info_get_determinism(GoalInfo0, Determinism0),
-    goal_info_get_instmap_delta(GoalInfo0, DeltaInstmap0),
+    Determinism0 = goal_info_get_determinism(GoalInfo0),
+    InstmapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     determinism_components(Determinism0, CanFail0, NumSolns0),
     (
         NumSolns0 = at_most_zero,
-        instmap_delta_is_reachable(DeltaInstmap0)
+        instmap_delta_is_reachable(InstmapDelta0)
     ->
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
         goal_info_set_instmap_delta(UnreachableInstMapDelta,
             GoalInfo0, GoalInfo),
         simplify_info_set_rerun_det(!Info)
     ;
-        instmap_delta_is_unreachable(DeltaInstmap0),
+        instmap_delta_is_unreachable(InstmapDelta0),
         NumSolns0 \= at_most_zero
     ->
         determinism_components(Determinism, CanFail0, at_most_zero),
@@ -812,92 +812,167 @@ goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
 
 %-----------------------------------------------------------------------------%
 
+:- inst goal_expr_conj == bound(conj(ground, ground)).
+:- inst goal_expr_plain_conj == bound(conj(bound(plain_conj), ground)).
+:- inst goal_expr_parallel_conj == bound(conj(bound(parallel_conj), ground)).
+:- inst goal_expr_disj == bound(disj(ground)).
+:- inst goal_expr_switch == bound(switch(ground, ground, ground)).
+:- inst goal_expr_generic_call == bound(generic_call(ground, ground, ground,
+    ground)).
+:- inst goal_expr_plain_call == bound(plain_call(ground, ground, ground,
+    ground, ground, ground)).
+:- inst goal_expr_unify == bound(unify(ground, ground, ground, ground,
+    ground)).
+:- inst goal_expr_ite == bound(if_then_else(ground, ground, ground, ground)).
+:- inst goal_expr_neg == bound(negation(ground)).
+:- inst goal_expr_scope == bound(scope(ground, ground)).
+:- inst goal_expr_foreign_proc == bound(call_foreign_proc(ground, ground,
+    ground, ground, ground, ground, ground)).
+:- inst goal_expr_shorthand == bound(shorthand(ground)).
+
 :- pred simplify_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
-        !Info, !IO) :-
+simplify_goal_2(!GoalExpr, !GoalInfo, !Info, !IO) :-
     (
-        ConjType = plain_conj,
-        simplify_info_get_instmap(!.Info, InstMap0),
-        excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
-        simplify_conj(Goals1, [], Goals, GoalInfo0, !Info, !IO),
-        simplify_info_set_instmap(InstMap0, !Info),
+        !.GoalExpr = conj(ConjType, Goals),
         (
-            Goals = [],
-            goal_info_get_context(GoalInfo0, Context),
-            hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
+            ConjType = plain_conj,
+            simplify_goal_2_plain_conj(Goals, !:GoalExpr, !GoalInfo, !Info,
+                !IO)
         ;
-            Goals = [hlds_goal(SingleGoal, SingleGoalInfo)],
-            % A singleton conjunction is equivalent to the goal itself.
-            maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
-                Goal, GoalInfo, !Info)
-        ;
-            Goals = [_, _ | _],
-
-            % Conjunctions that cannot produce solutions may nevertheless
-            % contain nondet and multi goals. If this happens, the conjunction
-            % is put inside a `scope' to appease the code generator.
-
-            goal_info_get_determinism(GoalInfo0, Detism),
-            (
-                simplify_do_once(!.Info),
-                determinism_components(Detism, CanFail, at_most_zero),
-                contains_multisoln_goal(Goals)
-            ->
-                determinism_components(InnerDetism, CanFail, at_most_many),
-                goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
-                InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
-                Goal = scope(commit(dont_force_pruning), InnerGoal)
-            ;
-                Goal = conj(plain_conj, Goals)
-            ),
-            GoalInfo = GoalInfo0
+            ConjType = parallel_conj,
+            simplify_goal_2_parallel_conj(Goals, !:GoalExpr, !GoalInfo, !Info,
+                !IO)
         )
     ;
-        ConjType = parallel_conj,
-        (
-            Goals0 = [],
-            goal_info_get_context(GoalInfo0, Context),
-            hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
-        ;
-            Goals0 = [SingleGoal0],
-            simplify_goal(SingleGoal0, hlds_goal(SingleGoal, SingleGoalInfo),
-                !Info, !IO),
-            maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
-                Goal, GoalInfo, !Info)
-        ;
-            Goals0 = [_, _ | _],
-            GoalInfo = GoalInfo0,
-            simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
-            Goal = conj(parallel_conj, Goals),
-            simplify_info_set_has_parallel_conj(yes, !Info)
-        )
+        !.GoalExpr = disj(_),
+        simplify_goal_2_disj(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = switch(_, _, _),
+        simplify_goal_2_switch(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = generic_call(_, _, _, _),
+        simplify_goal_2_generic_call(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = plain_call(_, _, _, _, _, _),
+        simplify_goal_2_plain_call(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = unify(_, _, _, _, _),
+        simplify_goal_2_unify(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = if_then_else(_, _, _, _),
+        simplify_goal_2_ite(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = negation(_),
+        simplify_goal_2_neg(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = scope(_, _),
+        simplify_goal_2_scope(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        simplify_goal_2_foreign_proc(!GoalExpr, !GoalInfo, !Info, !IO)
+    ;
+        !.GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "goal_2: unexpected shorthand")
     ).
 
-simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
+:- pred simplify_goal_2_plain_conj(list(hlds_goal)::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
+        !Info, !IO) :-
+    simplify_info_get_instmap(!.Info, InstMap0),
+    excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
+    simplify_conj(Goals1, [], Goals, GoalInfo0, !Info, !IO),
+    simplify_info_set_instmap(InstMap0, !Info),
+    (
+        Goals = [],
+        Context = goal_info_get_context(GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
+    ;
+        Goals = [hlds_goal(SingleGoal, SingleGoalInfo)],
+        % A singleton conjunction is equivalent to the goal itself.
+        maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
+            GoalExpr, GoalInfo, !Info)
+    ;
+        Goals = [_, _ | _],
+
+        % Conjunctions that cannot produce solutions may nevertheless contain
+        % nondet and multi goals. If this happens, the conjunction is put
+        % inside a scope to appease the code generator.
+
+        Detism = goal_info_get_determinism(GoalInfo0),
+        (
+            simplify_do_once(!.Info),
+            determinism_components(Detism, CanFail, at_most_zero),
+            contains_multisoln_goal(Goals)
+        ->
+            determinism_components(InnerDetism, CanFail, at_most_many),
+            goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
+            InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
+            GoalExpr = scope(commit(dont_force_pruning), InnerGoal)
+        ;
+            GoalExpr = conj(plain_conj, Goals)
+        ),
+        GoalInfo = GoalInfo0
+    ).
+
+:- pred simplify_goal_2_parallel_conj(list(hlds_goal)::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
+        !Info, !IO) :-
+    (
+        Goals0 = [],
+        Context = goal_info_get_context(GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
+    ;
+        Goals0 = [SingleGoal0],
+        simplify_goal(SingleGoal0, hlds_goal(SingleGoal, SingleGoalInfo),
+            !Info, !IO),
+        maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal, GoalExpr,
+            GoalInfo, !Info)
+    ;
+        Goals0 = [_, _ | _],
+        GoalInfo = GoalInfo0,
+        simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
+        GoalExpr = conj(parallel_conj, Goals),
+        simplify_info_set_has_parallel_conj(yes, !Info)
+    ).
+
+:- pred simplify_goal_2_disj(
+    hlds_goal_expr::in(goal_expr_disj), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
+    GoalExpr0 = disj(Disjuncts0),
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info, !IO),
     (
         Disjuncts = [],
-        goal_info_get_context(GoalInfo0, Context),
-        hlds_goal(Goal, GoalInfo) = fail_goal_with_context(Context)
+        Context = goal_info_get_context(GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
         Disjuncts = [SingleGoal],
         % A singleton disjunction is equivalent to the goal itself.
         SingleGoal = hlds_goal(Goal1, GoalInfo1),
-        maybe_wrap_goal(GoalInfo0, GoalInfo1, Goal1, Goal, GoalInfo, !Info)
+        maybe_wrap_goal(GoalInfo0, GoalInfo1, Goal1, GoalExpr, GoalInfo, !Info)
     ;
         Disjuncts = [_, _ | _],
-        Goal = disj(Disjuncts),
+        GoalExpr = disj(Disjuncts),
         ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal) ->
             % Recomputing the instmap delta would take very long
             % and is very unlikely to get any better precision.
             GoalInfo = GoalInfo0
         ;
             simplify_info_get_module_info(!.Info, ModuleInfo1),
-            goal_info_get_nonlocals(GoalInfo0, NonLocals),
+            NonLocals = goal_info_get_nonlocals(GoalInfo0),
             simplify_info_get_var_types(!.Info, VarTypes),
             merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
                 NewDelta, ModuleInfo1, ModuleInfo2),
@@ -909,12 +984,12 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     list.length(Disjuncts0, Disjuncts0Length),
     ( DisjunctsLength \= Disjuncts0Length ->
         % If we pruned some disjuncts, variables used by those disjuncts
-        % may no longer be non-local to the disjunction. Also, the determinism
-        % may have changed (especially if we pruned all the disjuncts).
-        % If the disjunction now can't succeed, it is necessary to recompute
-        % instmap_deltas and rerun determinism analysis to avoid aborts
-        % in the code generator because the disjunction now cannot produce
-        % variables it did before.
+        % may no longer be non-local to the disjunction. Also, the
+        % determinism may have changed (especially if we pruned all the
+        % disjuncts). If the disjunction now can't succeed, it is necessary
+        % to recompute instmap_deltas and rerun determinism analysis
+        % to avoid aborts in the code generator because the disjunction
+        % now cannot produce variables it did before.
 
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
@@ -922,8 +997,13 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         true
     ).
 
-simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
-        GoalInfo0, GoalInfo, !Info, !IO) :-
+:- pred simplify_goal_2_switch(
+    hlds_goal_expr::in(goal_expr_switch), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
+    GoalExpr0 = switch(Var, SwitchCanFail0, Cases0),
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     instmap.lookup_var(InstMap0, Var, VarInst),
@@ -942,8 +1022,8 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         Cases = [],
         % An empty switch always fails.
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info),
-        goal_info_get_context(GoalInfo0, Context),
-        hlds_goal(Goal, GoalInfo) = fail_goal_with_context(Context)
+        Context = goal_info_get_context(GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
         Cases = [case(ConsId, SingleGoal)],
         % A singleton switch is equivalent to the goal itself with a
@@ -962,8 +1042,8 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
             map.lookup(VarTypes1, Var, Type),
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             ( type_util.is_existq_cons(ModuleInfo1, Type, ConsId) ->
-                Goal = switch(Var, SwitchCanFail, Cases),
-                goal_info_get_nonlocals(GoalInfo0, NonLocals),
+                GoalExpr = switch(Var, SwitchCanFail, Cases),
+                NonLocals = goal_info_get_nonlocals(GoalInfo0),
                 simplify_info_get_var_types(!.Info, VarTypes),
                 merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
                     InstMaps, NewDelta, ModuleInfo1, ModuleInfo2),
@@ -978,40 +1058,39 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
 
                 % Work out the nonlocals, instmap_delta
                 % and determinism of the entire conjunction.
-                goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+                NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
                 set.insert(NonLocals0, Var, NonLocals),
-                goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+                InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                 simplify_info_get_instmap(!.Info, InstMap),
-                instmap_delta_bind_var_to_functor(Var, Type, ConsId,
-                    InstMap, InstMapDelta0, InstMapDelta,
-                    ModuleInfo1, ModuleInfo),
+                instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap,
+                    InstMapDelta0, InstMapDelta, ModuleInfo1, ModuleInfo),
                 simplify_info_set_module_info(ModuleInfo, !Info),
-                goal_info_get_determinism(GoalInfo0, CaseDetism),
+                CaseDetism = goal_info_get_determinism(GoalInfo0),
                 det_conjunction_detism(detism_semi, CaseDetism, Detism),
                 goal_list_purity(GoalList, Purity),
                 goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
                     CombinedGoalInfo),
 
                 simplify_info_set_requantify(!Info),
-                Goal = conj(plain_conj, GoalList),
+                GoalExpr = conj(plain_conj, GoalList),
                 GoalInfo = CombinedGoalInfo
             )
         ;
             % The var can only be bound to this cons_id, so a test
             % is unnecessary.
-            SingleGoal = hlds_goal(Goal, GoalInfo)
+            SingleGoal = hlds_goal(GoalExpr, GoalInfo)
         ),
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info)
     ;
         Cases = [_, _ | _],
-        Goal = switch(Var, SwitchCanFail, Cases),
+        GoalExpr = switch(Var, SwitchCanFail, Cases),
         ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal) ->
             % Recomputing the instmap delta would take very long and is
             % very unlikely to get any better precision.
             GoalInfo = GoalInfo0
         ;
             simplify_info_get_module_info(!.Info, ModuleInfo1),
-            goal_info_get_nonlocals(GoalInfo0, NonLocals),
+            NonLocals = goal_info_get_nonlocals(GoalInfo0),
             simplify_info_get_var_types(!.Info, VarTypes),
             merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
                 NewDelta, ModuleInfo1, ModuleInfo2),
@@ -1035,8 +1114,14 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         true
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
-    Goal0 = generic_call(GenericCall, Args, Modes, Det),
+:- pred simplify_goal_2_generic_call(
+    hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
+        !Info, !IO) :-
+    GoalExpr0 = generic_call(GenericCall, Args, Modes, Det),
     (
         GenericCall = higher_order(Closure, Purity, _, _),
         (
@@ -1047,7 +1132,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
             Purity = purity_pure
         ->
             common_optimise_higher_order_call(Closure, Args, Modes, Det,
-                GoalInfo, Goal0, Goal, !Info)
+                GoalInfo, GoalExpr0, GoalExpr, !Info)
         ;
             simplify_do_warn_duplicate_calls(!.Info),
             % XXX Should we handle impure/semipure higher-order calls too?
@@ -1056,24 +1141,30 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
             % We need to do the pass, for the warnings, but we ignore
             % the optimized goal and instead use the original one.
             common_optimise_higher_order_call(Closure, Args, Modes, Det,
-                GoalInfo, Goal0, _Goal1, !Info),
-            Goal = Goal0
+                GoalInfo, GoalExpr0, _GoalExpr1, !Info),
+            GoalExpr = GoalExpr0
         ;
-            Goal = Goal0
+            GoalExpr = GoalExpr0
         )
     ;
         GenericCall = event_call(_),
         simplify_info_set_has_user_event(yes, !Info),
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ;
         ( GenericCall = class_method(_, _, _, _)
         ; GenericCall = cast(_)
         ),
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
-    Goal0 = plain_call(PredId, ProcId, Args, IsBuiltin, _, _),
+:- pred simplify_goal_2_plain_call(
+    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        !Info, !IO) :-
+    GoalExpr0 = plain_call(PredId, ProcId, Args, IsBuiltin, _, _),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = hlds_pred.pred_info_module(PredInfo),
@@ -1083,10 +1174,10 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     ;
         true
     ),
-    %
+
     % Convert calls to builtin @=<, @<, @>=, @> into the corresponding
     % calls to builtin.compare/3.
-    %
+
     (
         Args = [TI, X, Y],
         ModuleName = mercury_public_builtin_module,
@@ -1097,20 +1188,25 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         )
     ->
         inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo0,
-            Goal, GoalInfo, !Info)
+            GoalExpr, GoalInfo, !Info)
     ;
-        call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal,
+        call_goal(PredId, ProcId, Args, IsBuiltin, GoalExpr0, GoalExpr,
             GoalInfo0, GoalInfo, !Info)
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
-    Goal0 = unify(LT0, RT0, M, U0, C),
+:- pred simplify_goal_2_unify(
+    hlds_goal_expr::in(goal_expr_unify), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
+    GoalExpr0 = unify(LT0, RT0, M, U0, C),
     (
         % A unification of the form X = X can be safely optimised away.
         RT0 = rhs_var(LT0)
     ->
-        goal_info_get_context(GoalInfo0, Context),
-        hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
+        Context = goal_info_get_context(GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
     ;
         RT0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
             Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
@@ -1134,15 +1230,15 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         RT = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
             Vars, Modes, LambdaDeclaredDet, LambdaGoal),
         simplify_info_leave_lambda(!Info),
-        Goal = unify(LT0, RT, M, U0, C),
+        GoalExpr = unify(LT0, RT, M, U0, C),
         GoalInfo = GoalInfo0
     ;
         U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
     ->
         ( RT0 = rhs_var(V) ->
             process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
-                GoalInfo0, Goal1, !Info, !IO),
-            Goal1 = hlds_goal(Goal, GoalInfo)
+                GoalInfo0, GoalExpr1, !Info, !IO),
+            GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
         ;
             unexpected(this_file, "invalid RHS for complicated unify")
         )
@@ -1150,7 +1246,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         simplify_do_common_struct(!.Info)
     ->
         common_optimise_unification(U0, LT0, RT0, M, C,
-            Goal0, Goal, GoalInfo0, GoalInfo, !Info)
+            GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
     ;
         ( simplify_do_opt_duplicate_calls(!.Info)
         ; simplify_do_warn_duplicate_calls(!.Info)
@@ -1161,16 +1257,20 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         % But we don't want to perform the optimization, so we disregard
         % the optimized goal and instead use the original one.
         common_optimise_unification(U0, LT0, RT0, M, C,
-            Goal0, _Goal1, GoalInfo0, _GoalInfo1, !Info),
-        Goal = Goal0,
+            GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Info),
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ).
 
-simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
-        GoalInfo0, GoalInfo, !Info, !IO) :-
+:- pred simplify_goal_2_ite(
+    hlds_goal_expr::in(goal_expr_ite), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
     % (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
     % If the determinism of A means that one of these disjuncts
     % cannot succeed, then we replace the if-then-else with the
@@ -1196,15 +1296,16 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
     % conjunction construct. This will change when constraint pushing
     % is finished, or when we start doing coroutining.
 
+    GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
     Cond0 = hlds_goal(_, CondInfo0),
-    goal_info_get_determinism(CondInfo0, CondDetism0),
+    CondDetism0 = goal_info_get_determinism(CondInfo0),
     determinism_components(CondDetism0, CondCanFail0, CondSolns0),
     ( CondCanFail0 = cannot_fail ->
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list.append(CondList, ThenList, List),
         simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
-            hlds_goal(Goal, GoalInfo), !Info, !IO),
+            hlds_goal(GoalExpr, GoalInfo), !Info, !IO),
         simplify_info_get_inside_duplicated_for_switch(!.Info,
             InsideDuplForSwitch),
         (
@@ -1215,7 +1316,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             % the exact same piece of source code.
         ;
             InsideDuplForSwitch = no,
-            goal_info_get_context(GoalInfo0, Context),
+            Context = goal_info_get_context(GoalInfo0),
             Pieces = [words("Warning: the condition of this if-then-else"),
                 words("cannot fail.")],
             Msg = simple_msg(Context,
@@ -1264,7 +1365,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_to_conj_list(Else0, ElseList),
         List = [Cond | ElseList],
         simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
-            hlds_goal(Goal, GoalInfo), !Info, !IO),
+            hlds_goal(GoalExpr, GoalInfo), !Info, !IO),
         simplify_info_get_inside_duplicated_for_switch(!.Info,
             InsideDuplForSwitch),
         (
@@ -1275,7 +1376,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             % the exact same piece of source code.
         ;
             InsideDuplForSwitch = no,
-            goal_info_get_context(GoalInfo0, Context),
+            Context = goal_info_get_context(GoalInfo0),
             Pieces = [words("Warning: the condition of this if-then-else"),
                 words("cannot succeed.")],
             Msg = simple_msg(Context,
@@ -1294,7 +1395,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_to_conj_list(Then0, ThenList),
         list.append(CondList, ThenList, List),
         simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
-            hlds_goal(Goal, GoalInfo), !Info, !IO),
+            hlds_goal(GoalExpr, GoalInfo), !Info, !IO),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ;
@@ -1310,14 +1411,14 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         simplify_goal(Else0, Else, !Info, !IO),
         simplify_info_post_branch_update(Info0, !Info),
         Cond = hlds_goal(_, CondInfo),
-        goal_info_get_instmap_delta(CondInfo, CondDelta),
+        CondDelta = goal_info_get_instmap_delta(CondInfo),
         Then = hlds_goal(_, ThenInfo),
-        goal_info_get_instmap_delta(ThenInfo, ThenDelta),
+        ThenDelta = goal_info_get_instmap_delta(ThenInfo),
         instmap_delta_apply_instmap_delta(CondDelta, ThenDelta,
             test_size, CondThenDelta),
         Else = hlds_goal(_, ElseInfo),
-        goal_info_get_instmap_delta(ElseInfo, ElseDelta),
-                goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        ElseDelta = goal_info_get_instmap_delta(ElseInfo),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         simplify_info_get_module_info(!.Info, ModuleInfo0),
         simplify_info_get_var_types(!.Info, VarTypes),
         merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
@@ -1327,11 +1428,11 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo1),
         IfThenElse = if_then_else(Vars, Cond, Then, Else),
 
-        goal_info_get_determinism(GoalInfo0, IfThenElseDetism0),
+        IfThenElseDetism0 = goal_info_get_determinism(GoalInfo0),
         determinism_components(IfThenElseDetism0, IfThenElseCanFail,
             IfThenElseNumSolns),
 
-        goal_info_get_determinism(CondInfo, CondDetism),
+        CondDetism = goal_info_get_determinism(CondInfo),
         determinism_components(CondDetism, CondCanFail, CondSolns),
         (
             % Check again if we can apply one of the above simplifications
@@ -1344,7 +1445,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             )
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
-            simplify_goal_2(IfThenElse, Goal, GoalInfo1, GoalInfo, !Info,
+            simplify_goal_2(IfThenElse, GoalExpr, GoalInfo1, GoalInfo, !Info,
                 !IO)
         ;
             (
@@ -1361,25 +1462,31 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
                 determinism_components(InnerDetism,
                     IfThenElseCanFail, at_most_many),
                 goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
-                Goal = scope(commit(dont_force_pruning),
+                GoalExpr = scope(commit(dont_force_pruning),
                     hlds_goal(IfThenElse, InnerInfo))
             ;
-                Goal = IfThenElse
+                GoalExpr = IfThenElse
             ),
             GoalInfo = GoalInfo1
         )
     ).
 
-simplify_goal_2(negation(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
+:- pred simplify_goal_2_neg(
+    hlds_goal_expr::in(goal_expr_neg), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
+    GoalExpr0 = negation(SubGoal0),
     % Can't use calls or unifications seen within a negation,
     % since non-local variables may not be bound within the negation.
     simplify_info_get_common_info(!.Info, Common),
-    simplify_goal(Goal0, Goal1, !Info, !IO),
+    simplify_goal(SubGoal0, SubGoal1, !Info, !IO),
     simplify_info_set_common_info(Common, !Info),
-    Goal1 = hlds_goal(_, GoalInfo1),
-    goal_info_get_determinism(GoalInfo1, Detism),
+    SubGoal1 = hlds_goal(_, SubGoalInfo1),
+    Detism = goal_info_get_determinism(SubGoalInfo1),
     determinism_components(Detism, CanFail, MaxSoln),
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     ( CanFail = cannot_fail ->
         Pieces = [words("Warning: the negated goal cannot fail.")],
         Msg = simple_msg(Context,
@@ -1403,34 +1510,41 @@ simplify_goal_2(negation(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     ),
     (
         % replace `not true' with `fail'
-        Goal1 = hlds_goal(conj(plain_conj, []), _)
+        SubGoal1 = hlds_goal(conj(plain_conj, []), _)
     ->
-        hlds_goal(Goal, GoalInfo) = fail_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
         % replace `not fail' with `true'
-        Goal1 = hlds_goal(disj([]), _)
+        SubGoal1 = hlds_goal(disj([]), _)
     ->
-        hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
     ;
         % remove double negation
-        Goal1 = hlds_goal(negation(hlds_goal(SubGoal, SubGoalInfo)), _),
+        SubGoal1 =
+            hlds_goal(negation(hlds_goal(SubSubGoal, SubSubGoalInfo)), _),
         % XXX BUG! This optimization is only safe if it preserves
         % mode correctness, which means in particular that the
         % the negated goal must not clobber any variables.
         % For now I've just disabled the optimization.
         semidet_fail
     ->
-        maybe_wrap_goal(GoalInfo0, SubGoalInfo, SubGoal, Goal, GoalInfo, !Info)
+        maybe_wrap_goal(GoalInfo0, SubSubGoalInfo, SubSubGoal, GoalExpr,
+            GoalInfo, !Info)
     ;
-        Goal = negation(Goal1),
+        GoalExpr = negation(SubGoal1),
         GoalInfo = GoalInfo0
     ).
 
-simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
-        !Info, !IO) :-
+:- pred simplify_goal_2_scope(
+    hlds_goal_expr::in(goal_expr_scope), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
+    GoalExpr0 = scope(Reason0, SubGoal0), 
     simplify_info_get_common_info(!.Info, Common),
     simplify_goal(SubGoal0, SubGoal, !Info, !IO),
-    nested_scopes(Reason0, SubGoal, ScopeGoalInfo, Goal1),
+    nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
         (
@@ -1477,7 +1591,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                 ),
                 (
                     KeepGoal = no,
-                    goal_info_get_context(ScopeGoalInfo, Context),
+                    Context = goal_info_get_context(GoalInfo0),
                     Goal = true_goal_with_context(Context)
                 ;
                     KeepGoal = yes,
@@ -1543,7 +1657,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                     % we do here.
                     EvalCode = "",
                     EvalInstMapDeltaSrc = [],
-                    goal_info_get_context(ScopeGoalInfo, Context),
+                    Context = goal_info_get_context(GoalInfo0),
                     generate_foreign_proc(PrivateBuiltin, EvalPredName,
                         pf_predicate, only_mode, detism_semi, purity_semipure,
                         EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
@@ -1578,7 +1692,12 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-simplify_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
+:- pred simplify_goal_2_foreign_proc(
+    hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
     GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
         Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
     (
@@ -1618,7 +1737,7 @@ simplify_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
         ),
         (
             simplify_do_opt_duplicate_calls(!.Info),
-            goal_info_get_purity(!.GoalInfo, purity_pure),
+            goal_info_get_purity(!.GoalInfo) = purity_pure,
             ExtraArgs = []
         ->
             ArgVars = list.map(foreign_arg_var, Args),
@@ -1628,10 +1747,6 @@ simplify_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
             GoalExpr = GoalExpr1
         )
     ).
-
-simplify_goal_2(shorthand(_), _, _, _, _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "goal_2: unexpected shorthand").
 
 :- func make_arg_always_boxed(foreign_arg) = foreign_arg.
 
@@ -1701,7 +1816,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     simplify_info_set_var_types(VarTypes, !Info),
 
     % Construct the call to compare/3.
-    hlds_goal.goal_info_get_context(GoalInfo, Context),
+    Context = hlds_goal.goal_info_get_context(GoalInfo),
     Args     = [TI, R, X, Y],
 
     simplify_info_get_instmap(!.Info, InstMap),
@@ -1722,8 +1837,8 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
         mode_no(ModeNo), detism_det, purity_pure, Args, [], ArgInsts,
         ModuleInfo, Context, CmpGoal0),
     CmpGoal0 = hlds_goal(CmpExpr, CmpInfo0),
-    goal_info_get_nonlocals(CmpInfo0, CmpNonLocals0),
-    goal_info_set_nonlocals(CmpNonLocals0 `insert` R, CmpInfo0, CmpInfo),
+    CmpNonLocals0 = goal_info_get_nonlocals(CmpInfo0),
+    goal_info_set_nonlocals(set.insert(CmpNonLocals0, R), CmpInfo0, CmpInfo),
     CmpGoal  = hlds_goal(CmpExpr, CmpInfo),
 
     % Construct the unification R = Inequality.
@@ -1735,8 +1850,8 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     UContext = unify_context(umc_implicit(
         "replacement of inequality with call to compare/3"), []),
     UfyExpr  = unify(R, RHS, UMode, UKind, UContext),
-    goal_info_get_nonlocals(GoalInfo, UfyNonLocals0),
-    goal_info_set_nonlocals(UfyNonLocals0 `insert` R, GoalInfo, UfyInfo),
+    UfyNonLocals0 = goal_info_get_nonlocals(GoalInfo),
+    goal_info_set_nonlocals(set.insert(UfyNonLocals0, R), GoalInfo, UfyInfo),
     UfyGoal  = hlds_goal(UfyExpr, UfyInfo),
 
     (
@@ -1759,7 +1874,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo, ProcInfo),
-    goal_info_get_context(!.GoalInfo, GoalContext),
+    GoalContext = goal_info_get_context(!.GoalInfo),
     % Check for calls to predicates with `pragma obsolete' declarations.
     (
         simplify_do_warn_obsolete(!.Info),
@@ -1888,13 +2003,13 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
     % Check for duplicate calls to the same procedure.
     (
         simplify_do_opt_duplicate_calls(!.Info),
-        goal_info_get_purity(!.GoalInfo, purity_pure)
+        goal_info_get_purity(!.GoalInfo) = purity_pure
     ->
         common_optimise_call(PredId, ProcId, Args, !.GoalInfo, !GoalExpr,
             !Info)
     ;
         simplify_do_warn_duplicate_calls(!.Info),
-        goal_info_get_purity(!.GoalInfo, purity_pure)
+        goal_info_get_purity(!.GoalInfo) = purity_pure
     ->
         % We need to do the pass, for the warnings, but we ignore
         % the optimized goal and instead use the original one.
@@ -1976,7 +2091,7 @@ simplify_library_call("builtin", "compare", _ModeNum, _CrossCompiling,
     map.lookup(VarTypes, Y, Type),
     type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
 
-    goal_info_get_context(!.GoalInfo, Context),
+    Context = goal_info_get_context(!.GoalInfo),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
         purity_pure, [X, Y], [], [], ModuleInfo, Context, CondEq),
@@ -2078,7 +2193,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
         MaybeUnifyContext, OpSymName),
 
     OpGoalInfo0 = !.GoalInfo,
-    goal_info_get_nonlocals(OpGoalInfo0, OpNonLocals0),
+    OpNonLocals0 = goal_info_get_nonlocals(OpGoalInfo0),
     set.insert(OpNonLocals0, ConstVar, OpNonLocals),
     goal_info_set_nonlocals(OpNonLocals, OpGoalInfo0, OpGoalInfo),
     OpGoal = hlds_goal(OpGoalExpr, OpGoalInfo),
@@ -2107,13 +2222,12 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
     simplify_info_get_var_types(!.Info, VarTypes),
     map.lookup(VarTypes, XVar, Type),
     ( Type = type_variable(TypeVar, Kind) ->
-        %
         % Convert polymorphic unifications into calls to `unify/2',
         % the general unification predicate, passing the appropriate type_info:
         %   unify(TypeInfoVar, X, Y)
         % where TypeInfoVar is the type_info variable associated with
         % the type of the variables that are being unified.
-        %
+
         type_info_locn(TypeVar, Kind, TypeInfoVar, ExtraGoals, !Info),
         call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
             Context, GoalInfo0, Call)
@@ -2121,7 +2235,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
     ; type_is_higher_order(Type) ->
         % Convert higher-order unifications into calls to
         % builtin_unify_pred (which calls error/1).
-        goal_info_get_context(GoalInfo0, GContext),
+        GContext = goal_info_get_context(GoalInfo0),
         generate_simple_call(mercury_private_builtin_module,
             "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
             purity_pure, [XVar, YVar], [], [], ModuleInfo, GContext,
@@ -2201,7 +2315,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
 call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
         Call) :-
     ArgVars = [TypeInfoVar, XVar, YVar],
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     goal_util.generate_simple_call(mercury_public_builtin_module,
         "unify", pf_predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
         [], [], ModuleInfo, Context, Call).
@@ -2226,7 +2340,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
         yes(CallContext), SymName),
 
     % Add the extra type_info vars to the nonlocals for the call.
-    goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     set.insert_list(NonLocals0, TypeInfoVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
 
@@ -2234,7 +2348,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
     hlds_goal_info::in, hlds_goal::out) is det.
 
 call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo, Call) :-
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
         purity_pure, [XVar, YVar], [], [], ModuleInfo, Context, Call).
@@ -2331,7 +2445,7 @@ extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Goals, TypeInfoVar,
 
 %-----------------------------------------------------------------------------%
 
-    % input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo1):
+    % input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo):
     %
     % Succeeds if all the input arguments (determined by looking at `Modes')
     % in `Args' are equivalent (according to the equivalence class specified
@@ -2363,8 +2477,9 @@ nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
     InnerGoal = hlds_goal(_, GoalInfo),
     (
         Reason = exist_quant(_),
-        goal_info_get_determinism(GoalInfo, Detism),
-        goal_info_get_determinism(OuterGoalInfo, Detism)
+        Detism = goal_info_get_determinism(GoalInfo),
+        OuterDetism = goal_info_get_determinism(OuterGoalInfo),
+        Detism = OuterDetism
     ->
         % If the inner and outer detisms match the `some' scope is unnecessary.
         Goal = InnerGoal
@@ -2440,16 +2555,18 @@ nested_scopes_2(Reason0, Reason, Goal0, Goal) :-
     hlds_goal_expr::in, hlds_goal_expr::out, hlds_goal_info::out,
     simplify_info::in, simplify_info::out)  is det.
 
-maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, Goal1, Goal, GoalInfo, !Info) :-
+maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, GoalExpr1, GoalExpr, GoalInfo,
+        !Info) :-
     (
-        goal_info_get_determinism(InnerGoalInfo, Det),
-        goal_info_get_determinism(OuterGoalInfo, Det)
+        InnerDet = goal_info_get_determinism(InnerGoalInfo),
+        OuterDet = goal_info_get_determinism(OuterGoalInfo),
+        InnerDet = OuterDet
     ->
-        Goal = Goal1,
+        GoalExpr = GoalExpr1,
         GoalInfo = InnerGoalInfo
     ;
-        Goal = scope(commit(dont_force_pruning),
-            hlds_goal(Goal1, InnerGoalInfo)),
+        GoalExpr = scope(commit(dont_force_pruning),
+            hlds_goal(GoalExpr1, InnerGoalInfo)),
         GoalInfo = OuterGoalInfo,
         simplify_info_set_rerun_det(!Info)
     ).
@@ -2484,7 +2601,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
                 instmap.is_unreachable(InstMap1)
             ;
                 Goal1 = hlds_goal(_, GoalInfo1),
-                goal_info_get_determinism(GoalInfo1, Detism1),
+                Detism1 = goal_info_get_determinism(GoalInfo1),
                 determinism_components(Detism1, _, at_most_zero)
             )
         ->
@@ -2505,7 +2622,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
                 % specification, mode analysis does not use inferred
                 % determinism information when deciding what can never succeed.
                 Goal0 = hlds_goal(_, GoalInfo0),
-                goal_info_get_context(GoalInfo0, Context),
+                Context = goal_info_get_context(GoalInfo0),
                 FailGoal = fail_goal_with_context(Context),
                 conjoin_goal_and_rev_goal_list(FailGoal, !RevGoals)
             ),
@@ -2553,7 +2670,7 @@ simplify_par_conj([Goal0 |Goals0], [Goal | Goals], Info0, !Info, !IO) :-
 
 excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
     ( simplify_do_excess_assign(!.Info) ->
-        goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
+        ConjNonLocals = goal_info_get_nonlocals(ConjInfo),
         map.init(Subn0),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
@@ -2713,7 +2830,7 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
         % variable does not appear in this branch's instmap_delta, the inst
         % before the goal would be used, resulting in a mode error.
 
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
+        InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo),
         simplify_info_get_module_info(!.Info, ModuleInfo2),
         instmap_delta_bind_var_to_functor(Var, Type, ConsId,
             InstMap0, InstMapDelta0, InstMapDelta, ModuleInfo2, ModuleInfo),
@@ -2788,12 +2905,12 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
         Info0, !Info, !IO) :-
     simplify_goal(Goal0, Goal, !Info, !IO),
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_purity(GoalInfo, Purity),
+    Purity = goal_info_get_purity(GoalInfo),
 
     (
         % Don't prune or warn about impure disjuncts that can't succeed.
         Purity \= purity_impure,
-        goal_info_get_determinism(GoalInfo, Detism),
+        Detism = goal_info_get_determinism(GoalInfo),
         determinism_components(Detism, _CanFail, MaxSolns),
         MaxSolns = at_most_zero
     ->
@@ -2804,7 +2921,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             % succeed due to sub-typing in the modes.
             Goal0 \= hlds_goal(disj([]), _)
         ->
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Warning: this disjunct"),
                 words("will never have any solutions.")],
             Msg = simple_msg(Context,
@@ -2832,12 +2949,12 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             RevGoals1 = RevGoals0
         ;
             RevGoals1 = [Goal | RevGoals0],
-            goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+            InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             !:PostBranchInstMaps = [InstMapDelta | !.PostBranchInstMaps]
         )
     ;
         RevGoals1 = [Goal | RevGoals0],
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         !:PostBranchInstMaps = [InstMapDelta | !.PostBranchInstMaps]
     ),
 
@@ -2918,17 +3035,17 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
         det_disj_to_ite(Disjuncts, GoalInfo, Rest),
         Rest = hlds_goal(_RestGoal, RestGoalInfo),
 
-        goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
-        goal_info_get_nonlocals(RestGoalInfo, RestNonLocals),
+        CondNonLocals = goal_info_get_nonlocals(CondGoalInfo),
+        RestNonLocals = goal_info_get_nonlocals(RestGoalInfo),
         set.union(CondNonLocals, RestNonLocals, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo, NewGoalInfo0),
 
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
+        InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, NewGoalInfo0, NewGoalInfo1),
 
-        goal_info_get_determinism(CondGoalInfo, CondDetism),
-        goal_info_get_determinism(RestGoalInfo, RestDetism),
+        CondDetism = goal_info_get_determinism(CondGoalInfo),
+        RestDetism = goal_info_get_determinism(RestGoalInfo),
         determinism_components(CondDetism, CondCanFail, CondMaxSoln),
         determinism_components(RestDetism, RestCanFail, RestMaxSoln),
         det_disjunction_canfail(CondCanFail, RestCanFail, CanFail),
@@ -2950,7 +3067,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 
 contains_multisoln_goal(Goals) :-
     list.member(hlds_goal(_GoalExpr, GoalInfo), Goals),
-    goal_info_get_determinism(GoalInfo, Detism),
+    Detism = goal_info_get_determinism(GoalInfo),
     determinism_components(Detism, _, at_most_many).
 
 %-----------------------------------------------------------------------------%

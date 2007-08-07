@@ -83,7 +83,7 @@
 represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
         ModuleInfo, !StackInfo, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName),
     MaxVarNum = map.foldl(max_var_num, VarNumMap, 0),
     ( MaxVarNum =< 255 ->
@@ -144,7 +144,7 @@ goal_expr_to_byte_list(negation(Goal), _GoalInfo, InstMap0, Info, !StackInfo,
 goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
         !StackInfo, Bytes) :- 
     Cond = hlds_goal(_, CondGoalInfo),
-    goal_info_get_instmap_delta(CondGoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(CondGoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
     goal_to_byte_list(Cond, InstMap0, Info, !StackInfo, CondBytes),
     goal_to_byte_list(Then, InstMap1, Info, !StackInfo, ThenBytes),
@@ -213,8 +213,8 @@ goal_expr_to_byte_list(switch(_, _, Cases), _, InstMap0, Info, !StackInfo,
 goal_expr_to_byte_list(scope(_, Goal), GoalInfo, InstMap0, Info, !StackInfo, 
         Bytes) :-
     Goal = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_determinism(GoalInfo, OuterDetism),
-    goal_info_get_determinism(InnerGoalInfo, InnerDetism),
+    OuterDetism = goal_info_get_determinism(GoalInfo),
+    InnerDetism = goal_info_get_determinism(InnerGoalInfo),
     ( InnerDetism = OuterDetism ->
         MaybeCut = 0
     ;
@@ -327,8 +327,8 @@ filter_input_args(_, [_ | _], [], _) :-
 
 atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
         BoundVars) :-
-    goal_info_get_determinism(GoalInfo, Detism),
-    goal_info_get_context(GoalInfo, Context),
+    Detism = goal_info_get_determinism(GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName0),
     ( FileName0 = Info ^ filename ->
         FileName = ""
@@ -336,7 +336,7 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
         FileName = FileName0
     ),
     term.context_line(Context, LineNo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     instmap_changed_vars(InstMap0, InstMap, Info ^ vartypes,
         Info ^ module_info, ChangedVars),
@@ -384,7 +384,7 @@ conj_to_byte_list([], _, _, !StackInfo, []).
 conj_to_byte_list([Goal | Goals], InstMap0, Info, !StackInfo, Bytes) :-
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
     conj_to_byte_list(Goals, InstMap1, Info, !StackInfo, GoalsBytes),
     Bytes = GoalBytes ++ GoalsBytes.

@@ -579,7 +579,7 @@ in_interface_check(ModuleInfo, PredInfo, hlds_goal(GoalExpr, GoalInfo),
         module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
         pred_info_get_import_status(CallPredInfo, ImportStatus),
         ( status_defined_in_impl_section(ImportStatus) = yes ->
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
             Arity = pred_info_orig_arity(CallPredInfo),
             IdPieces =
@@ -593,7 +593,7 @@ in_interface_check(ModuleInfo, PredInfo, hlds_goal(GoalExpr, GoalInfo),
         GoalExpr = generic_call(_, _, _, _)
     ;
         GoalExpr = unify(Var, RHS, _, _, _),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
             !Specs)
     ;
@@ -601,7 +601,7 @@ in_interface_check(ModuleInfo, PredInfo, hlds_goal(GoalExpr, GoalInfo),
         module_info_pred_info(ModuleInfo, PredId, PragmaPredInfo),
         pred_info_get_import_status(PragmaPredInfo, ImportStatus),
         ( status_defined_in_impl_section(ImportStatus) = yes ->
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
             Name = pred_info_name(PragmaPredInfo),
             SymName = unqualified(Name),
@@ -977,7 +977,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         list.append(ArgTypes0, [TypeOfX], ArgTypes),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         ConstraintSearch =
             search_hlds_constraint_list(ConstraintMap, unproven, GoalPath),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
@@ -1130,7 +1130,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber),
 
-    goal_info_get_goal_path(OldGoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(OldGoalInfo),
     get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         TermType, ArgTypes0, ExistQVars, !PredInfo),
 
@@ -1165,7 +1165,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 
     list.append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
 
-    goal_info_get_nonlocals(OldGoalInfo, RestrictNonLocals),
+    RestrictNonLocals = goal_info_get_nonlocals(OldGoalInfo),
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId, no, ArgVars), OldGoalInfo, RestrictNonLocals,
         [FieldVar, TermInputVar], UnifyContext, FunctorGoal),
@@ -1185,7 +1185,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId0, FieldNumber),
 
-    goal_info_get_goal_path(OldGoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(OldGoalInfo),
     get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId0,
         TermType, ArgTypes, ExistQVars, !PredInfo),
 
@@ -1199,7 +1199,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     % Build a goal to deconstruct the input.
     list.append(VarsBeforeField, [SingletonFieldVar | VarsAfterField],
         DeconstructArgs),
-    goal_info_get_nonlocals(OldGoalInfo, OldNonLocals),
+    OldNonLocals = goal_info_get_nonlocals(OldGoalInfo),
     list.append(VarsBeforeField, VarsAfterField, NonLocalArgs),
     set.insert_list(OldNonLocals, NonLocalArgs,
         DeconstructRestrictNonLocals),
@@ -1417,8 +1417,8 @@ get_constructor_containing_field_3([CtorArg | CtorArgs],
 
 create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
         RestrictNonLocals, VarsList, UnifyContext, Goal) :-
-    goal_info_get_context(OldGoalInfo, Context),
-    goal_info_get_goal_path(OldGoalInfo, GoalPath),
+    Context = goal_info_get_context(OldGoalInfo),
+    GoalPath = goal_info_get_goal_path(OldGoalInfo),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     create_pure_atomic_complicated_unification(Var, RHS,
         Context, UnifyMainContext, UnifySubContext, Goal0),

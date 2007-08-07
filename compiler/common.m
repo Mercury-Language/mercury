@@ -299,7 +299,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
             % is in the instmap_delta, which will not be true if the
             % variable is local to the unification. The optimization
             % is pointless in that case.
-            goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+            InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
             instmap_delta_search_var(InstMapDelta, Var, _),
 
             map.search(AllStructMap0, TypeCtor, ConsIdMap0),
@@ -503,7 +503,7 @@ record_equivalence(Var1, Var2, !Info) :-
 
 common_optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
     (
-        goal_info_get_determinism(GoalInfo, Det),
+        Det = goal_info_get_determinism(GoalInfo),
         check_call_detism(Det),
         simplify_info_get_var_types(!.Info, VarTypes),
         simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -573,7 +573,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 map.apply_to_list(OutputArgs2, VarTypes, OutputArgTypes2),
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
             ->
-                goal_info_get_context(GoalInfo, Context),
+                Context = goal_info_get_context(GoalInfo),
                 CallPieces = det_report_seen_call_id(ModuleInfo, SeenCall),
                 CurPieces = [words("Warning: redundant") | CallPieces]
                     ++ [suffix(".")],
@@ -597,14 +597,14 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             goal_cost(hlds_goal(GoalExpr0, GoalInfo), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
-            goal_info_get_determinism(GoalInfo, Detism0),
+            Detism0 = goal_info_get_determinism(GoalInfo),
             ( Detism0 \= detism_det ->
                 simplify_info_set_rerun_det(!Info)
             ;
                 true
             )
         ;
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             ThisCall = call_args(Context, InputArgs, OutputArgs),
             map.det_update(SeenCalls0, SeenCall, [ThisCall | SeenCallsList0],
                 SeenCalls),
@@ -612,7 +612,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             GoalExpr = GoalExpr0
         )
     ;
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         ThisCall = call_args(Context, InputArgs, OutputArgs),
         map.det_insert(SeenCalls0, SeenCall, [ThisCall], SeenCalls),
         CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,

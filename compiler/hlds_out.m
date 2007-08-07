@@ -1215,7 +1215,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO) :-
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string.contains_char(Verbose, 'c') ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
         ( FileName \= "" ->
@@ -1232,7 +1232,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         true
     ),
     ( string.contains_char(Verbose, 'P') ->
-        goal_info_get_goal_path(GoalInfo, Path),
+        Path = goal_info_get_goal_path(GoalInfo),
         (
             Path = [_ | _],
             write_indent(Indent, !IO),
@@ -1246,7 +1246,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         true
     ),
     ( string.contains_char(Verbose, 'n') ->
-        goal_info_get_nonlocals(GoalInfo, NonLocalsSet),
+        NonLocalsSet = goal_info_get_nonlocals(GoalInfo),
         set.to_sorted_list(NonLocalsSet, NonLocalsList),
         (
             NonLocalsList = [_ | _],
@@ -1340,14 +1340,14 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ( string.contains_char(Verbose, 'd') ->
         write_indent(Indent, !IO),
         io.write_string("% determinism: ", !IO),
-        goal_info_get_determinism(GoalInfo, Determinism),
+        Determinism = goal_info_get_determinism(GoalInfo),
         io.write_string(determinism_to_string(Determinism), !IO),
         io.write_string("\n", !IO)
     ;
         true
     ),
     ( string.contains_char(Verbose, 'z') ->
-        goal_info_get_purity(GoalInfo, Purity),
+        Purity = goal_info_get_purity(GoalInfo),
         (
             Purity = purity_pure
         ;
@@ -1365,7 +1365,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     write_goal_2(GoalExpr, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
         TypeQual, !IO),
     ( string.contains_char(Verbose, 'i') ->
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         (
             instmap_delta_is_reachable(InstMapDelta),
             instmap_delta_changed_vars(InstMapDelta, Vars),
@@ -1419,9 +1419,9 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ),
     ( string.contains_char(Verbose, 'R') ->
         (
-            goal_info_maybe_get_lfu(GoalInfo, LFU),
-            goal_info_maybe_get_lbu(GoalInfo, LBU), 
-            goal_info_maybe_get_reuse(GoalInfo, ReuseDescription), 
+            yes(LFU) = goal_info_get_maybe_lfu(GoalInfo),
+            yes(LBU) = goal_info_get_maybe_lbu(GoalInfo), 
+            yes(ReuseDescription) = goal_info_get_maybe_reuse(GoalInfo), 
             set.to_sorted_list(LFU, ListLFU),
             set.to_sorted_list(LBU, ListLBU)
         ->
@@ -1464,7 +1464,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
+    CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     (
         CodeGenInfo = no_code_gen_info
     ;
@@ -1473,7 +1473,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
             Verbose, !IO)
     ),
     ( string.contains_char(Verbose, 'g') ->
-        goal_info_get_features(GoalInfo, Features),
+        Features = goal_info_get_features(GoalInfo),
         set.to_sorted_list(Features, FeatureList),
         (
             FeatureList = []

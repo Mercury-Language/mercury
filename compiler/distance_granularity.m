@@ -518,7 +518,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
                     
         % The non-locals of the hlds_goal_info of the if_then_else goal must 
         % contain the variable controlling the granularity. 
-        goal_info_get_nonlocals(ConjInfo, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(ConjInfo),
         set.insert(NonLocals0, GranularityVar, NonLocals),
         goal_info_set_nonlocals(NonLocals, ConjInfo, IfThenElseInfo),
         IfThenElseGoal = hlds_goal(if_then_else([], Cond, Then, Else), 
@@ -582,7 +582,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                         CallBuiltin, CallUnifyContext, CallSymName),
                     
                     % Var has instmap bound(Distance).
-                    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+                    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                     MerInst = bound(shared, [bound_functor(int_const(Distance), 
                         [])]), 
                     instmap_delta_insert(Var, MerInst, InstMapDelta0, 
@@ -707,7 +707,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     % Take the context of the first goal of the conjunction.
                     list.index1_det(Goals0, 1, FirstGoal),
                     FirstGoal = hlds_goal(_, FirstGoalInfo),
-                    goal_info_get_context(FirstGoalInfo, Context),
+                    Context = goal_info_get_context(FirstGoalInfo),
                     goal_info_init(NonLocals, InstMapDeltaDecrement, Detism, 
                         Purity, Context, DecrementGoalInfo),
                     DecrementGoal = hlds_goal(DecrementGoalExpr, 
@@ -724,7 +724,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     
                     GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, 
                         CallBuiltin, CallUnifyContext, CallSymName),
-                    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+                    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                     MerInst = ground(shared, none), 
                     instmap_delta_insert(Var, MerInst, InstMapDelta0, 
                         InstMapDelta),
@@ -961,10 +961,10 @@ update_original_predicate_plain_call(!Call, CallerPredId, CallerProcId,
             
             % Update the nonlocals and the instmap_delta of the hlds_goal_info 
             % of the recursive plain call for Var.
-            goal_info_get_nonlocals(CallInfo0, NonLocals0),
+            NonLocals0 = goal_info_get_nonlocals(CallInfo0),
             set.insert(NonLocals0, Var, NonLocals),
             goal_info_set_nonlocals(NonLocals, CallInfo0, CallInfo1),
-            goal_info_get_instmap_delta(CallInfo1, InstMapDelta0),
+            InstMapDelta0 = goal_info_get_instmap_delta(CallInfo1),
             MerInst = ground(shared, none), 
             instmap_delta_insert(Var, MerInst, InstMapDelta0, InstMapDelta),
             goal_info_set_instmap_delta(InstMapDelta, CallInfo1, CallInfo),

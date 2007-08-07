@@ -426,13 +426,13 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
             NondetLiveVars),
         VarsOnStack0 = set.union_list([ForwardVars, ResumeVars,
             NondetLiveVars]),
-        goal_info_get_goal_path(GoalInfo, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo),
         CallAnchor = anchor_call_site(GoalPath),
         get_cur_interval(AfterCallId, !.IntervalInfo),
         new_interval_id(BeforeCallId, !IntervalInfo),
         record_interval_start(AfterCallId, CallAnchor, !IntervalInfo),
         record_interval_end(BeforeCallId, CallAnchor, !IntervalInfo),
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         IntParams = !.IntervalInfo ^ interval_params,
         (
             ( instmap_delta_is_reachable(InstMapDelta)
@@ -449,11 +449,14 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
         ),
         set_cur_interval(BeforeCallId, !IntervalInfo),
         assign_open_intervals_to_anchor(CallAnchor, !IntervalInfo),
-        goal_info_get_code_model(GoalInfo, CodeModel),
-        ( CodeModel = model_non ->
+        CodeModel = goal_info_get_code_model(GoalInfo),
+        (
+            CodeModel = model_non,
             record_model_non_anchor(CallAnchor, !IntervalInfo)
         ;
-            true
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            )
         ),
         one_open_interval(BeforeCallId, !IntervalInfo),
         require_flushed(VarsOnStack, !IntervalInfo),
@@ -524,7 +527,7 @@ build_interval_info_in_cases([case(_Var, Goal) | Cases],
 reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
         StartAnchor, EndAnchor, BeforeIntervalId, AfterIntervalId,
         MaybeResumeVars, !IntervalInfo, !Acc) :-
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     record_branch_end_info(GoalPath, !IntervalInfo),
     (
         MaybeResumeGoal = yes(hlds_goal(_ResumeGoalExpr, ResumeGoalInfo)),
@@ -549,7 +552,7 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
     EndAnchor = anchor_branch_end(Construct, GoalPath),
     StartAnchor = anchor_branch_start(Construct, GoalPath),
     assign_open_intervals_to_anchor(EndAnchor, !IntervalInfo),
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    CodeModel = goal_info_get_code_model(GoalInfo),
     ( CodeModel = model_non ->
         record_model_non_anchor(EndAnchor, !IntervalInfo)
     ;
@@ -591,7 +594,7 @@ reached_branch_start(MaybeNeedsFlush, StartAnchor, BeforeId, OpenIntervals,
     interval_info::out) is det.
 
 reached_cond_then(GoalInfo, !IntervalInfo) :-
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     record_cond_end(GoalPath, !IntervalInfo),
     get_cur_interval(ThenStartId, !.IntervalInfo),
     record_interval_start(ThenStartId, CondThenAnchor, !IntervalInfo),
@@ -1096,7 +1099,7 @@ record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
             MaybeNeedAcrossCall),
         MaybeNeedAcrossCall = yes(_NeedAcrossCall)
     ->
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         Anchor = anchor_call_site(GoalPath),
         lookup_inserts(InsertMap, Anchor, Inserts),
         insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
@@ -1193,7 +1196,7 @@ build_headvar_subst([HeadVar | HeadVars], RenameMap, !Subst) :-
 
 construct_anchors(Construct, Goal, StartAnchor, EndAnchor) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     StartAnchor = anchor_branch_start(Construct, GoalPath),
     EndAnchor = anchor_branch_end(Construct, GoalPath).
 

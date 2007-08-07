@@ -121,7 +121,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 MaybeRuntimeCond = no,
                 Features = [],
                 InstMapDeltaSrc = [],
-                goal_info_get_context(GoalInfo, Context),
+                Context = goal_info_get_context(GoalInfo),
                 some [!Attributes] (
                     !:Attributes = default_attributes(lang_c),
                     set_purity(purity_impure, !Attributes),

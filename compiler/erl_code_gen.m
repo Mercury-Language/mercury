@@ -336,7 +336,7 @@ erl_gen_proc(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, !Defns) :-
 erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         ProcVarSet, ProcBody, EnvVarNames) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
@@ -348,13 +348,13 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     % declared.
 
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals0),
+    NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo0),
     set.list_to_set(HeadVars, HeadVarsSet),
     set.intersect(HeadVarsSet, NonLocals0, NonLocals),
     goal_info_set_code_gen_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
-    goal_info_get_context(GoalInfo, _Context),
+    _Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
         !:Info = erl_gen_info_init(ModuleInfo, PredId, ProcId),
@@ -447,8 +447,8 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
     %
 erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr0, Code, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    goal_info_get_context(GoalInfo, Context),
-    goal_info_get_code_model(GoalInfo, GoalCodeModel),
+    Context = goal_info_get_context(GoalInfo),
+    GoalCodeModel = goal_info_get_code_model(GoalInfo),
     (
         (
             CodeModel = model_det,
@@ -463,7 +463,7 @@ erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr0, Code, !Info) :-
     ->
         unexpected(this_file, "erl_gen_goal: code model mismatch")
     ;
-        goal_info_get_determinism(GoalInfo, Determinism),
+        Determinism = goal_info_get_determinism(GoalInfo),
         (
             Determinism = detism_erroneous
         ->
@@ -490,8 +490,8 @@ erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr0, Code, !Info) :-
 erl_gen_commit(Goal, CodeModel, ScopeDetism, InstMap, Context,
         MaybeSuccessExpr, Statement, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_code_model(GoalInfo, GoalCodeModel),
-    goal_info_get_context(GoalInfo, _GoalContext),
+    GoalCodeModel = goal_info_get_code_model(GoalInfo),
+    _GoalContext = goal_info_get_context(GoalInfo),
 
     (
         GoalCodeModel = model_non,
@@ -633,7 +633,7 @@ erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, Detism, InstMap,
             % goal).  Thus there is nothing special we have to do here.
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo),
-        goal_info_get_determinism(GoalInfo, GoalDetism),
+        GoalDetism = goal_info_get_determinism(GoalInfo),
         erl_gen_goal_expr(GoalExpr, CodeModel, GoalDetism, InstMap, Context,
             MaybeSuccessExpr, Statement, !Info)
     ).
@@ -1000,7 +1000,7 @@ ground_var_in_instmap(Var, !InstMap) :-
 erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         Statement, !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
-    goal_info_get_code_model(CondGoalInfo, CondCodeModel),
+    CondCodeModel = goal_info_get_code_model(CondGoalInfo),
     (
         %   model_det Cond:
         %       <(Cond -> Then ; Else)>
@@ -1010,7 +1010,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
 
         CondCodeModel = model_det,
         erl_gen_goal(model_det, InstMap0, Cond, no, CondStatement, !Info),
-        goal_info_get_determinism(CondGoalInfo, CondDeterminism),
+        CondDeterminism = goal_info_get_determinism(CondGoalInfo),
         ( CondDeterminism = detism_erroneous ->
             % The `Then' code is unreachable.
             Statement = CondStatement
@@ -1147,7 +1147,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
 erl_gen_negation(Cond, CodeModel, InstMap, _Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
-    goal_info_get_code_model(CondGoalInfo, CondCodeModel),
+    CondCodeModel = goal_info_get_code_model(CondGoalInfo),
     (
         % model_det negation:
         %       <not(Goal)>
@@ -1253,7 +1253,7 @@ erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Rest = [_ | _],
     First = hlds_goal(_, FirstGoalInfo),
-    goal_info_get_determinism(FirstGoalInfo, FirstDeterminism),
+    FirstDeterminism = goal_info_get_determinism(FirstGoalInfo),
     ( determinism_components(FirstDeterminism, _, at_most_zero) ->
         % the `Rest' code is unreachable
         % There is no success expression in this case.
@@ -1436,8 +1436,8 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         %
 
         First = hlds_goal(_, FirstGoalInfo),
-        goal_info_get_code_model(FirstGoalInfo, FirstCodeModel),
-        goal_info_get_determinism(FirstGoalInfo, FirstDeterminism),
+        FirstCodeModel = goal_info_get_code_model(FirstGoalInfo),
+        FirstDeterminism = goal_info_get_determinism(FirstGoalInfo),
         (
             FirstCodeModel = model_det,
             erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,

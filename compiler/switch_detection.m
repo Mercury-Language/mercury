@@ -195,7 +195,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
             Goal = disj([])
         ;
             Goals0 = [_ | _],
-            goal_info_get_nonlocals(GoalInfo, NonLocals),
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
             set.to_sorted_list(NonLocals, NonLocalsList),
             detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo, InstMap0,
                 VarTypes, NonLocalsList, ModuleInfo, [], Goal, !Requant)

@@ -98,7 +98,7 @@ delay_construct_in_goal(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, DelayInfo,
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            goal_info_get_determinism(GoalInfo0, Detism),
+            Detism = goal_info_get_determinism(GoalInfo0),
             determinism_components(Detism, CanFail, MaxSoln),
             (
                 % If the conjunction cannot fail, then its conjuncts cannot
@@ -144,7 +144,7 @@ delay_construct_in_goal(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, DelayInfo,
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         Cond0 = hlds_goal(_, CondInfo0),
-        goal_info_get_instmap_delta(CondInfo0, CondInstMapDelta),
+        CondInstMapDelta = goal_info_get_instmap_delta(CondInfo0),
         instmap.apply_instmap_delta(InstMap0, CondInstMapDelta, InstMapThen),
         delay_construct_in_goal(Cond0, InstMap0, DelayInfo, Cond),
         delay_construct_in_goal(Then0, InstMapThen, DelayInfo, Then),
@@ -203,7 +203,7 @@ delay_construct_in_conj([], _, _, _, RevDelayedGoals, DelayedGoals) :-
 delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         ConstructedVars0, RevDelayedGoals0, Goals) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
     (
         GoalExpr0 = unify(_, _, _, Unif, _),
@@ -221,7 +221,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
     ;
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         delay_construct_skippable(GoalExpr0, GoalInfo0),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         maybe_complete_with_typeinfo_vars(NonLocals,
             DelayInfo ^ body_typeinfo_liveness,
             DelayInfo ^ vartypes,
@@ -229,7 +229,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         set.intersect(CompletedNonLocals, ConstructedVars0,
             Intersection),
         set.empty(Intersection),
-        goal_info_get_purity(GoalInfo0, purity_pure)
+        goal_info_get_purity(GoalInfo0) = purity_pure
     ->
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars0, RevDelayedGoals0, Goals1),
@@ -250,7 +250,7 @@ delay_construct_skippable(GoalExpr, GoalInfo) :-
     ;
         GoalExpr = plain_call(_, _, _, inline_builtin, _, _)
     ),
-    goal_info_get_determinism(GoalInfo, Detism),
+    Detism = goal_info_get_determinism(GoalInfo),
     determinism_components(Detism, _CanFail, MaxSoln),
     MaxSoln \= at_most_many.
 

@@ -208,7 +208,7 @@ build_live_sets_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
         % stackslot because they are passed out by reference to that stackslot.
         % Variables needed on backtracking must be available in a stackslot
         % past the parallel conjunction as well.
-        goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
         LiveSet = set.union_list([NonLocals, !.Liveness, ResumeVars0]),
 
         InnerNonLocals = LiveSet `set.union` OuterNonLocals,
@@ -261,7 +261,7 @@ build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
             % disjuncts'; the disjunction as a whole can be model_non
             % without any disjunct being model_non.
             (
-                goal_info_get_code_model(GoalInfo, model_non),
+                goal_info_get_code_model(GoalInfo) = model_non,
                 some [Disjunct] (
                     list.member(Disjunct, Goals),
                     Disjunct = hlds_goal(_, DisjunctGoalInfo),
@@ -326,10 +326,13 @@ build_live_sets_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
     % code following the "some" can reuse any stack slots needed by nondet
     % code in the inner goal.
 
-    goal_info_get_code_model(GoalInfo, CodeModel),
-    ( CodeModel = model_non ->
-        true
+    CodeModel = goal_info_get_code_model(GoalInfo),
+    (
+        CodeModel = model_non
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         !:NondetLiveness = NondetLiveness0
     ).
 
@@ -386,7 +389,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
     ArgVars = list.map(foreign_arg_var, Args),
     arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
         ArgVars, _InVars, OutVars, _UnusedVars),
-    goal_info_get_code_model(GoalInfo0, CodeModel),
+    CodeModel = goal_info_get_code_model(GoalInfo0),
     (
         % We don't need to save any variables onto the stack before a
         % foreign_proc if we know that it can't succeed more than once
@@ -437,7 +440,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     maybe_add_typeinfo_liveness(AllocData ^ proc_info,
         AllocData ^ typeinfo_liveness, OutVars, ForwardVars0, ForwardVars),
 
-    goal_info_get_determinism(GoalInfo0, Detism),
+    Detism = goal_info_get_determinism(GoalInfo0),
     (
         Detism = detism_erroneous,
         AllocData ^ opt_no_return_calls = yes
@@ -453,7 +456,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     % If this is a nondet call, then all the stack slots we need
     % must be protected against reuse in following code.
 
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    CodeModel = goal_info_get_code_model(GoalInfo),
     ( CodeModel = model_non ->
         set.union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
     ;
@@ -483,7 +486,7 @@ build_live_sets_in_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
     (
         Goal0 = hlds_goal(_, GoalInfo),
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_is_unreachable(InstMapDelta)
     ->
         build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
@@ -542,7 +545,7 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
     build_live_sets_in_disj(Goals0, Goals, DisjGoalInfo, ResumeVars0,
         AllocData, !StackAlloc, Liveness0, _Liveness2,
         NondetLiveness0, NondetLiveness2, !ParStackVars),
-    goal_info_get_code_model(DisjGoalInfo, DisjCodeModel),
+    DisjCodeModel = goal_info_get_code_model(DisjGoalInfo),
     ( DisjCodeModel = model_non ->
         % NondetLiveness should be a set of prog_var sets. Instead of taking
         % the union of the NondetLive sets at the ends of disjuncts, we should

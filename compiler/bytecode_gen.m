@@ -195,7 +195,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 gen_goal(hlds_goal(GoalExpr, GoalInfo), !ByteInfo, Code) :-
     gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
     Code = tree(node([byte_context(Line)]), GoalCode).
 
@@ -220,7 +220,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         ( BuiltinState = not_builtin ->
-            goal_info_get_determinism(GoalInfo, Detism),
+            Detism = goal_info_get_determinism(GoalInfo),
             gen_call(PredId, ProcId, ArgVars, Detism, !.ByteInfo, Code)
         ;
             gen_builtin(PredId, ProcId, ArgVars, !.ByteInfo, Code)
@@ -240,9 +240,9 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     ;
         GoalExpr = scope(_, InnerGoal),
         gen_goal(InnerGoal, !ByteInfo, InnerCode),
-        goal_info_get_determinism(GoalInfo, OuterDetism),
+        OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerGoal = hlds_goal(_, InnerGoalInfo),
-        goal_info_get_determinism(InnerGoalInfo, InnerDetism),
+        InnerDetism = goal_info_get_determinism(InnerGoalInfo),
         determinism_to_code_model(OuterDetism, OuterCodeModel),
         determinism_to_code_model(InnerDetism, InnerCodeModel),
         ( InnerCodeModel = OuterCodeModel ->

@@ -299,7 +299,7 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
     proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, NeededVarsList),
     map.init(WhereNeededMap0),
@@ -321,8 +321,8 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
         this_file, "process_proc: goal reattachment unsuccessful"),
     (
         Changed = yes,
-            % We need to fix up the goal_info by recalculating
-            % the nonlocal vars and the non-atomic instmap deltas.
+        % We need to fix up the goal_info by recalculating the nonlocal vars
+        % and the non-atomic instmap deltas.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
@@ -365,12 +365,8 @@ process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
         Goal = true_goal,
         !:Changed = yes
     ),
-    undemand_virgin_outputs(Goal0, ModuleInfo, InitInstMap,
-        !WhereNeededMap),
-    (
-        goal_get_purity(Goal, Purity),
-        Purity = purity_impure
-    ->
+    undemand_virgin_outputs(Goal0, ModuleInfo, InitInstMap, !WhereNeededMap),
+    ( goal_get_purity(Goal) = purity_impure ->
         % By saying that all vars that are live before the impure goal are
         % needed everywhere, we prevent the movement of the goals producing
         % those vars across the impure goal.
@@ -420,7 +416,7 @@ can_eliminate_or_move(Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
     map.init(Empty),
     !:WhereInfo = branches(Empty),
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_goal_path(GoalInfo, CurrentPath),
+    CurrentPath = goal_info_get_goal_path(GoalInfo),
     list.foldl(collect_where_needed(CurrentPath, WhereNeededMap), ChangedVars,
         !WhereInfo),
     adjust_where_needed(Goal, Options, !WhereInfo).
@@ -450,13 +446,12 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
             % Do not move goals that can fail, since doing so can cause
             % execution to reach goals it shouldn't, and those goals may have
             % undesirable behavior (e.g. infinite loops).
-            goal_info_get_determinism(GoalInfo, Detism),
+            Detism = goal_info_get_determinism(GoalInfo),
             detism_is_moveable(Detism, no)
         ;
             % Do not move impure or semipure goals, since their ordering
             % wrt other such goals must be preserved.
-            goal_info_get_purity(GoalInfo, Purity),
-            Purity \= purity_pure
+            goal_info_get_purity(GoalInfo) \= purity_pure
         ;
             % With --fully-strict, we cannot optimize away infinite loops
             % or exceptions.
@@ -515,8 +510,8 @@ detism_is_moveable(detism_cc_multi, yes).
 
 demand_inputs(Goal, ModuleInfo, InitInstMap, WhereNeeded, !WhereNeededMap) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_nonlocals(GoalInfo, NonLocalSet),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    NonLocalSet = goal_info_get_nonlocals(GoalInfo),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     set.to_sorted_list(NonLocalSet, NonLocals),
     list.filter(nonlocal_may_be_input(ModuleInfo, InitInstMap), NonLocals,
         Inputs),
@@ -536,7 +531,7 @@ nonlocal_may_be_input(ModuleInfo, InstMap, Var) :-
 
 undemand_virgin_outputs(Goal, ModuleInfo, InstMap, !WhereNeededMap) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_nonlocals(GoalInfo, NonLocalSet),
+    NonLocalSet = goal_info_get_nonlocals(GoalInfo),
     set.to_sorted_list(NonLocalSet, NonLocals),
     list.filter(nonlocal_is_virgin_output(ModuleInfo, InstMap), NonLocals,
         VirginOutputs),
@@ -624,7 +619,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         (
             Cases0 = [case(_, hlds_goal(_, FirstCaseGoalInfo)) | _],
-            goal_info_get_goal_path(FirstCaseGoalInfo, FirstCaseGoalPath),
+            FirstCaseGoalPath = goal_info_get_goal_path(FirstCaseGoalInfo),
             FirstCaseGoalPath = [SwitchStep | _],
             SwitchStep = step_switch(_, MaybeNumAltPrime)
         ->
@@ -632,7 +627,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         ;
             unexpected(this_file, "process_goal_internal: switch count")
         ),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         BranchPoint = branch_point(GoalPath, alt_switch(MaybeNumAlt)),
         map.map_values(demand_var_everywhere, !WhereNeededMap),
         map.init(BranchNeededMap0),
@@ -646,7 +641,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         map.map_values(demand_var_everywhere, !WhereNeededMap),
         process_disj(Disjuncts0, Disjuncts, InitInstMap, FinalInstMap,
             VarTypes, ModuleInfo, Options, GoalPath,
@@ -656,7 +651,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         BranchPoint = branch_point(GoalPath, alt_ite),
         map.map_values(demand_var_everywhere, !WhereNeededMap),
         process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
@@ -709,7 +704,7 @@ build_bracketed_conj([Goal | Goals], InitInstMap, BracketedGoals) :-
         BracketedGoals = []
     ;
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
         build_bracketed_conj(Goals, FinalInstMap, BracketedTail),
         BracketedGoal = bracketed_goal(Goal, InitInstMap, FinalInstMap),
@@ -796,7 +791,7 @@ process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
         InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options,
         CurrentPath, !WhereNeededMap, !RefinedGoals, !Changed) :-
     Cond0 = hlds_goal(_, CondInfo0),
-    goal_info_get_instmap_delta(CondInfo0, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(CondInfo0),
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, InstMapCond),
 
     process_goal(Else0, Else, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
@@ -912,19 +907,19 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
         )
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         refine_cases(Cases0, Cases, !RefinedGoals, GoalPath, 1),
         GoalExpr = switch(SwitchVar, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         refine_disj(Disjuncts0, Disjuncts, !RefinedGoals, GoalPath, 1),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         refine_ite(Cond0, Cond, Then0, Then, Else0, Else, !RefinedGoals,
             GoalPath),
         GoalExpr = if_then_else(Quant, Cond, Then, Else),

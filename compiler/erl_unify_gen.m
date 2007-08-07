@@ -327,7 +327,7 @@ pred_const_to_closure(ShroudedPredProcId, CurriedArgs, FunExpr, !Info) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     pred_info_get_arg_types(PredInfo, CalleeTypes),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
 
     % Create extra variables needed to complete the call to the procedure.
     NumExtraVars = list.length(CalleeTypes) - list.length(CurriedArgs),

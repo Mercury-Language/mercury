@@ -172,10 +172,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     code_info.get_known_variables(!.CI, Vars),
     code_info.save_variables_on_stack(Vars, SaveCode, !CI),
 
-    goal_info_get_code_gen_nonlocals(GoalInfo, Nonlocals),
+    Nonlocals = goal_info_get_code_gen_nonlocals(GoalInfo),
     set.to_sorted_list(Nonlocals, Variables),
     code_info.get_instmap(!.CI, Initial),
-    goal_info_get_instmap_delta(GoalInfo, Delta),
+    Delta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(Initial, Delta, Final),
     code_info.get_module_info(!.CI, ModuleInfo),
     find_outputs(Variables, Initial, Final, ModuleInfo, [], Outputs),

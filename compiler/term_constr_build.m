@@ -478,7 +478,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     ->
         true
     ;
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Error = Context - foreign_proc_called(proc(PredId, ProcId)),
         info_update_errors(Error, !Info)
     ),
@@ -493,7 +493,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     %
 build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     GoalExpr = generic_call(_, _, _, _),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     AbstractGoal = term_primitive(polyhedron.universe, [], []),
     info_update_ho_info(Context, !Info).
 
@@ -526,7 +526,7 @@ build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
     traversal_info::out) is det.
 
 build_abstract_call(CalleePPId, CallerArgs, GoalInfo, AbstractGoal, !Info) :-
-    goal_info_get_context(GoalInfo,  Context),
+    Context = goal_info_get_context(GoalInfo),
     ( if    list.member(CalleePPId, !.Info ^ scc)
       then  build_recursive_call(CalleePPId, CallerArgs, Context, 
             AbstractGoal, !Info)
@@ -936,7 +936,7 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
 :- func local_vars(hlds_goal) = prog_vars.
 
 local_vars(hlds_goal(GoalExpr, GoalInfo)) = Locals :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
     LocalsSet = set.difference(QuantVars, NonLocals),
     Locals = set.to_sorted_list(LocalsSet).
@@ -947,7 +947,7 @@ local_vars(hlds_goal(GoalExpr, GoalInfo)) = Locals :-
 :- pred partition_vars(hlds_goal::in, prog_vars::out, prog_vars::out) is det.
 
 partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo),
     QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
     Locals = set.to_sorted_list(set.difference(QuantVars, NonLocals0)),
     NonLocals = set.to_sorted_list(NonLocals0).
@@ -1031,7 +1031,7 @@ find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
     ->
         AbstractGoal = AbstractGoal0
     ;
-        goal_info_get_nonlocals(Goal ^ hlds_goal_info, NonLocalProgVars0),
+        NonLocalProgVars0 = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
         NonLocalProgVars = set.to_sorted_list(NonLocalProgVars0),
         NonLocalSizeVars = prog_vars_to_size_vars(Info ^ var_map,
             NonLocalProgVars),

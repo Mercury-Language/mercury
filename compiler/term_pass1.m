@@ -334,18 +334,17 @@ check_goal_expr_non_term_calls(PPId, VarTypes, Goal, GoalInfo,
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_proc_info(!.ModuleInfo, CallPPId, _, ProcInfo),
     proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     (
         TerminationInfo = yes(can_loop(_)),
         TermError = Context - can_loop_proc_called(PPId, CallPPId),
         list.cons(TermError, !Errors)
     ;
         ( TerminationInfo = yes(cannot_loop(_))
-        ; TerminationInfo = no)
+        ; TerminationInfo = no
+        )
     ),
-    (
-        horder_vars(Args, VarTypes)
-    ->
+    ( horder_vars(Args, VarTypes) ->
         HigherOrderError = Context - horder_args(PPId, CallPPId),
         list.cons(HigherOrderError, !Errors)
     ;
@@ -355,7 +354,7 @@ check_goal_expr_non_term_calls(_, _, Goal, GoalInfo, !Errors, !ModuleInfo,
         !IO) :-
     % XXX Use closure analysis results here.
     Goal = generic_call(_, _, _, _),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     list.cons(Context - horder_call, !Errors).
 check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
         !IO) :-

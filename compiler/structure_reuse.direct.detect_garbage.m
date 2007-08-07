@@ -101,7 +101,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
             PredId, ProcId, ActualVars, !SharingAs)
     ;
         GoalExpr = generic_call(_GenDetails, _, _, _),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         context_to_string(Context, ContextString),
         !:SharingAs = sharing_as_top_sharing_accumulate(
             "generic call (" ++ ContextString ++ ")", !.SharingAs)
@@ -141,7 +141,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
     ;
         GoalExpr = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
             _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo, 
             proc(ForeignPredId, ForeignProcId), Attributes, Context, 
             !.SharingAs)

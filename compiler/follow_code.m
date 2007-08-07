@@ -109,7 +109,7 @@ move_follow_code_in_goal(Goal0, Goal, !Changed) :-
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            goal_info_get_purity(GoalInfo, ConjPurity),
+            ConjPurity = goal_info_get_purity(GoalInfo),
             move_follow_code_in_conj(Goals0, ConjPurity, Goals, !Changed)
         ;
             ConjType = parallel_conj,
@@ -233,7 +233,7 @@ move_follow_code_select([], [], [], !Purity).
 move_follow_code_select([Goal | Goals], FollowGoals, RestGoals, !Purity) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     ( move_follow_code_is_builtin(GoalExpr) ->
-        goal_info_get_purity(GoalInfo, GoalPurity),
+        GoalPurity = goal_info_get_purity(GoalInfo),
         !:Purity = worst_purity(!.Purity, GoalPurity),
         move_follow_code_select(Goals, FollowGoals0, RestGoals, !Purity),
         FollowGoals = [Goal | FollowGoals0]
@@ -267,7 +267,7 @@ move_follow_code_move_goals(Goal0, FollowGoals, FollowPurity, Goal) :-
             FollowPurity, Else),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ),
-    goal_info_get_purity(GoalInfo0, OldPurity),
+    OldPurity = goal_info_get_purity(GoalInfo0),
     NewPurity = worst_purity(OldPurity, FollowPurity),
     goal_info_set_purity(NewPurity, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -311,7 +311,7 @@ move_follow_code_move_goals_disj([Goal0 | Goals0], FollowGoals, FollowPurity,
 follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
         Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_get_determinism(GoalInfo0, Detism0),
+    Detism0 = goal_info_get_determinism(GoalInfo0),
     determinism_components(Detism0, _CanFail0, MaxSolns0),
     ( MaxSolns0 = at_most_zero ->
         Goal = Goal0
@@ -323,7 +323,7 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
         ;
             GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])
         ),
-        goal_info_get_purity(GoalInfo0, OldPurity),
+        OldPurity = goal_info_get_purity(GoalInfo0),
         NewPurity = worst_purity(OldPurity, FollowPurity),
         goal_info_set_purity(NewPurity, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
@@ -337,7 +337,7 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
 
 check_follow_code_detism([], _).
 check_follow_code_detism([hlds_goal(_, GoalInfo) | Goals], Detism0) :-
-    goal_info_get_determinism(GoalInfo, Detism1),
+    Detism1 = goal_info_get_determinism(GoalInfo),
     det_conjunction_detism(Detism0, Detism1, Detism0),
     check_follow_code_detism(Goals, Detism0).
 

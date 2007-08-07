@@ -230,10 +230,14 @@ goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
 goal_may_alloc_temp_frame_2(call_foreign_proc(_, _, _, _, _, _, _), yes).
 goal_may_alloc_temp_frame_2(scope(_, Goal), May) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_code_model(GoalInfo, CodeModel),
-    ( CodeModel = model_non ->
+    CodeModel = goal_info_get_code_model(GoalInfo),
+    (
+        CodeModel = model_non,
         May = yes
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         goal_may_alloc_temp_frame(Goal, May)
     ).
 goal_may_alloc_temp_frame_2(negation(Goal), May) :-

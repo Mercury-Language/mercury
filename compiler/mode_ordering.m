@@ -284,7 +284,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
         RHS = rhs_lambda_goal(A, B, C, NonLocals, LambdaVars, Modes,
             G, SubGoal),
 
-        goal_info_get_goal_path(!.GoalInfo, GoalPath),
+        GoalPath = goal_info_get_goal_path(!.GoalInfo),
         enter_lambda_goal(GoalPath, !MOI),
         mode_order_goal(SubGoal0, SubGoal, !MOI),
         leave_lambda_goal(!MOI),
@@ -414,8 +414,7 @@ mode_order_conj(Goals0, Goals) :-
     GoalMap = list.foldl((func(G, GM) = map.det_insert(GM, Index, G) :-
         (
             G = hlds_goal(_, GI),
-            goal_info_get_goal_path(GI, GP),
-            GP = [step_conj(Index0) | _]
+            goal_info_get_goal_path(GI) = [step_conj(Index0) | _]
         ->
             Index = Index0
         ;
@@ -470,7 +469,7 @@ mode_order_conj(Goals0, Goals) :-
 set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI) :-
     LambdaNesting = !.MOI ^ lambda_nesting,
     AtomicProdVars = !.MOI ^ prodvars_map,
-    goal_info_get_goal_path(!.GoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(!.GoalInfo),
     (
         map.search(AtomicProdVars, stack.push(LambdaNesting, GoalPath),
             ProdVars0)

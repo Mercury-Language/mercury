@@ -560,7 +560,7 @@ eval_unify(X, Y, Result) :-
 
 make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
     make_assignment(OutputArg, InputArg, Goal),
-    goal_info_get_instmap_delta(!.GoalInfo, Delta0),
+    Delta0 = goal_info_get_instmap_delta(!.GoalInfo),
     instmap_delta_set(OutputArg ^ arg_var, InputArg ^ arg_inst, Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
     goal_info_set_determinism(detism_det, !GoalInfo).
@@ -570,7 +570,7 @@ make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
 
 make_construction_goal(OutputArg, Cons, Goal, !GoalInfo) :-
     make_construction(OutputArg, Cons, Goal),
-    goal_info_get_instmap_delta(!.GoalInfo, Delta0),
+    Delta0 = goal_info_get_instmap_delta(!.GoalInfo),
     instmap_delta_set(OutputArg ^ arg_var, bound(unique,
         [bound_functor(Cons, [])]), Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),

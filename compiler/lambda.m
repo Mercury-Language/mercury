@@ -327,7 +327,7 @@ lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
     % (see the documentation at top of this file).
     ExistQVars = [],
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
-    goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals),
+    LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
     set.insert_list(LambdaGoalNonLocals, Vars, LambdaNonLocals),
     goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         LambdaNonLocals, ExtraTypeInfos),
@@ -392,7 +392,7 @@ lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         % back-end (i.e. not --high-level-code), det is compatible with nondet.
         % If we're using the MLDS back-end, then predicates and functions have
         % different calling conventions.
-        proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
+        Call_CodeModel = proc_info_interface_code_model(Call_ProcInfo),
         determinism_to_code_model(Detism, CodeModel),
         module_info_get_globals(ModuleInfo0, Globals),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
@@ -441,14 +441,14 @@ lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         list.append(ArgVars, Vars, AllArgVars),
 
         module_info_get_name(ModuleInfo0, ModuleName),
-        goal_info_get_context(LambdaGoalInfo, OrigContext),
+        OrigContext = goal_info_get_context(LambdaGoalInfo),
         term.context_file(OrigContext, OrigFile),
         term.context_line(OrigContext, OrigLine),
         module_info_next_lambda_count(OrigContext, LambdaCount,
             ModuleInfo0, ModuleInfo1),
         make_pred_name_with_context(ModuleName, "IntroducedFrom",
             PredOrFunc, OrigPredName, OrigLine, LambdaCount, PredName),
-        goal_info_get_context(LambdaGoalInfo, LambdaContext),
+        LambdaContext = goal_info_get_context(LambdaGoalInfo),
         % The TVarSet is a superset of what it really ought be,
         % but that shouldn't matter.
         % Existentially typed lambda expressions are not yet supported

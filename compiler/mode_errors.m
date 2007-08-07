@@ -425,7 +425,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
     ;
         Culprit = goals_followed_by_impure_goal(ImpureGoal),
         ImpureGoal = hlds_goal(_, ImpureGoalInfo),
-        goal_info_get_context(ImpureGoalInfo, ImpureGoalContext),
+        ImpureGoalContext = goal_info_get_context(ImpureGoalInfo),
         Pieces1 = [words("The goal could not be reordered,"),
             words("because it was followed by an impure goal.")],
         Pieces2 = [words("This is the location of the impure goal.")],

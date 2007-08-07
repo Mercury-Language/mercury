@@ -204,7 +204,7 @@ first_order_check_goal(call_foreign_proc(_Attributes, CPred, CProc,
         Negated = yes,
         list.member(proc(CPred, CProc),  WholeScc)
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         emit_message(ThisPredProcId, Context,
             "call introduces a non-stratified loop.", Error, !ModuleInfo, !IO)
     ;
@@ -220,7 +220,7 @@ first_order_check_goal(plain_call(CPred, CProc, _Args, _BuiltinState, _UC,
         Negated = yes,
         list.member(Callee, WholeScc)
     ->
-        goal_info_get_context(GInfo, Context),
+        Context = goal_info_get_context(GInfo),
         emit_message(ThisPredProcId, Context,
             "call introduces a non-stratified loop.", Error, !ModuleInfo, !IO)
     ;
@@ -359,7 +359,7 @@ higher_order_check_goal(plain_call(_CPred, _CProc, _Args, _Builtin, _UC, Sym),
         ),
         Name = "solutions"
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         emit_message(ThisPredProcId, Context,
             "call to solutions/2 introduces a non-stratified loop.",
             Error, !ModuleInfo, !IO)
@@ -377,7 +377,7 @@ higher_order_check_goal(generic_call(GenericCall, _Vars, _Modes, _Det),
         ; GenericCall = class_method(_, _, _, _), Msg = "class method"
         )
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         ErrorMsg = Msg ++ " call may introduce a non-stratified loop.",
         emit_message(ThisPredProcId, Context, ErrorMsg, Error, !ModuleInfo,
             !IO)

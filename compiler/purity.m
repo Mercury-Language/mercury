@@ -494,8 +494,8 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity,
         PredId = PredId0,
         Goal = Goal0
     ),
-    goal_info_get_purity(GoalInfo, DeclaredPurity),
-    goal_info_get_context(GoalInfo, CallContext),
+    DeclaredPurity = goal_info_get_purity(GoalInfo),
+    CallContext = goal_info_get_context(GoalInfo),
     perform_goal_purity_checks(CallContext, PredId,
         DeclaredPurity, ActualPurity, !Info).
 compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
@@ -532,9 +532,9 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
         % the unification itself is always pure,
         % even if the lambda expression body is impure
-        goal_info_get_purity(GoalInfo, DeclaredPurity),
+        DeclaredPurity = goal_info_get_purity(GoalInfo),
         ( DeclaredPurity \= purity_pure ->
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             Spec = impure_unification_expr_error(Context, DeclaredPurity),
             purity_info_add_message(Spec, !Info)
         ;
@@ -714,12 +714,12 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     ActualPurity = purity_pure,
 
     % Check for a bogus purity annotation on the unification.
-    goal_info_get_purity(GoalInfo, DeclaredPurity),
+    DeclaredPurity = goal_info_get_purity(GoalInfo),
     (
         DeclaredPurity \= purity_pure,
         !.Info ^ implicit_purity = dont_make_implicit_promises
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Spec = impure_unification_expr_error(Context, DeclaredPurity),
         purity_info_add_message(Spec, !Info)
     ;
@@ -935,7 +935,7 @@ compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
     ;
         GoalPurity = purity_impure,
         Goal0 = hlds_goal(_, GoalInfo0),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         Spec = impure_parallel_conjunct_error(Context, GoalPurity),
         purity_info_add_message(Spec, !Info)
     ),
@@ -951,7 +951,7 @@ compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
 
 check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !Info) :-
     ( ActualPurity `less_pure` DeclaredPurity ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Spec = report_error_closure_purity(Context,
             DeclaredPurity, ActualPurity),
         purity_info_add_message(Spec, !Info)

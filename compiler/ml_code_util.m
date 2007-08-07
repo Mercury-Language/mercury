@@ -1011,7 +1011,7 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_arg_types(PredInfo, HeadTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
     FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
         HeadModes, PredOrFunc, CodeModel).
@@ -1024,7 +1024,7 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_arg_types(PredInfo, HeadTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
     % We must not generate GC tracing code for no_type_info_builtin
     % procedures, because the generated GC tracing code would refer
@@ -1239,7 +1239,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     pred_info_is_pred_or_func(PredInfo) = pf_function,
-    proc_info_interface_code_model(ProcInfo, model_det),
+    proc_info_interface_code_model(ProcInfo) = model_det,
 
     proc_info_get_argmodes(ProcInfo, Modes),
     pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -2036,8 +2036,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     ml_gen_make_type_info_var(ActualType, Context,
         TypeInfoVar, HLDS_TypeInfoGoals, !Info),
     NonLocalsList = list.map(
-        (func(hlds_goal(_G, GI)) = NL :-
-            goal_info_get_nonlocals(GI, NL)),
+        (func(hlds_goal(_GX, GI)) = goal_info_get_nonlocals(GI)),
         HLDS_TypeInfoGoals),
     NonLocals = set.union_list(NonLocalsList),
     instmap_delta_from_assoc_list([TypeInfoVar - ground(shared, none)],

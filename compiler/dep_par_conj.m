@@ -617,7 +617,7 @@ transform_conjunction(SharedVars, Goals, GoalInfo, NewGoal, InstMap,
     % Wrap a purity scope around the goal if purity would have been lessened
     % by the addition of signal goals (which are impure) or calls to
     % parallelised procs (which may be impure).
-    goal_info_get_purity(GoalInfo, Purity),
+    Purity = goal_info_get_purity(GoalInfo),
     ( Purity = purity_impure ->
         NewGoal = NewGoal0
     ;
@@ -644,13 +644,13 @@ allocate_future(ModuleInfo, SharedVar, AllocGoal,
 
 transform_conjunct(SharedVars, FutureMap, Goal0, Goal, !InstMap,
         !VarSet, !VarTypes, !ModuleInfo, !ParProcs) :-
-    goal_get_nonlocals(Goal0, Nonlocals),
+    Nonlocals = goal_get_nonlocals(Goal0),
     set.intersect(Nonlocals, SharedVars, Intersect),
     ( set.empty(Intersect) ->
         Goal = Goal0
     ;
         Goal0 = hlds_goal(_, GoalInfo0),
-        goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+        InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
 
         % Divide shared variables into those that are produced by this
         % conjunct, and those that are consumed by it.
@@ -694,8 +694,8 @@ find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
     set(prog_var)::out, instmap_delta::out) is det.
 
 get_nonlocals_and_instmaps(hlds_goal(_, GoalInfo), Nonlocals, InstMapDelta) :-
-    goal_info_get_nonlocals(GoalInfo, Nonlocals),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta).
+    Nonlocals = goal_info_get_nonlocals(GoalInfo),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo).
 
 :- pred find_shared_variables_2(module_info::in, int::in,
     list(set(prog_var))::in, instmap::in, list(instmap_delta)::in,
@@ -1035,8 +1035,7 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
 :- pred var_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
 
 var_in_nonlocals(Var, Goal) :-
-    goal_get_nonlocals(Goal, Nonlocals),
-    set.member(Var, Nonlocals).
+    set.member(Var, goal_get_nonlocals(Goal)).
 
 :- pred var_not_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
 

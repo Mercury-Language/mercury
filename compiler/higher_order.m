@@ -1381,7 +1381,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         )
     ->
         list.reverse(HigherOrderArgs0, HigherOrderArgs),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         find_matching_version(!.Info, CalledPred, CalledProc, Args0,
             Context, HigherOrderArgs, IsUserSpecProc, FindResult),
         (
@@ -2150,7 +2150,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
                 not_builtin, MaybeContext, SymName)
         ;
             NeedIntCast = yes,
-            goal_info_get_context(OrigGoalInfo, Context),
+            Context = goal_info_get_context(OrigGoalInfo),
             generate_unsafe_type_cast(Context, CompareType, Arg1, CastArg1,
                 CastGoal1, ProcInfo0, ProcInfo1),
             generate_unsafe_type_cast(Context, CompareType, Arg2, CastArg2,
@@ -2180,7 +2180,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
         !Info) :-
     ModuleInfo = !.Info ^ global_info ^ module_info,
     ProcInfo0 = !.Info ^ proc_info,
-    goal_info_get_context(OrigGoalInfo, Context),
+    Context = goal_info_get_context(OrigGoalInfo),
     unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg1,
         UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
     unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg2,

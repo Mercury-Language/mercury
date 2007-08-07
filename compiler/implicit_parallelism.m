@@ -744,9 +744,9 @@ add_call_to_parallel_conjunction(Call, ParallelGoal0, ParallelGoal) :-
 :- pred goal_depends_on_goal(hlds_goal::in, hlds_goal::in) is semidet.
 
 goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
-    goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
+    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     instmap_delta_changed_vars(InstmapDelta1, ChangedVars1),
-    goal_info_get_nonlocals(GoalInfo2, NonLocals2),
+    NonLocals2 = goal_info_get_nonlocals(GoalInfo2),
     set.intersect(ChangedVars1, NonLocals2, Intersection),
     \+ set.empty(Intersection).
 

@@ -330,7 +330,7 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     % non-local variables, since it could get called more than once, or
     % from inside a negation.)
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     set.delete_list(NonLocals0, Vars, NonLocals),
     set.to_sorted_list(NonLocals, NonLocalsList),
     instmap.lookup_vars(NonLocalsList, InstMap1, NonLocalInsts),
@@ -1021,7 +1021,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
     mode_info::in, mode_info::out) is det.
 
 record_optimize_away(GoalInfo, Var1, Var2, !ModeInfo) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     (
         set.member(Var1, NonLocals),
         set.member(Var2, NonLocals)

@@ -197,7 +197,7 @@ is_associativity_assertion(Module, AssertId, CallVars,
     assert_id_goal(Module, AssertId, hlds_goal(GoalExpr, GoalInfo)),
     goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
 
-    goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
+    UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
 
         % There may or may not be a some [] depending on whether
         % the user explicity qualified the call or not.
@@ -303,7 +303,7 @@ number_of_associative_vars = 3.
 is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
     assert_id_goal(Module, AssertId, hlds_goal(GoalExpr, GoalInfo)),
     goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
-    goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
+    UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
 
         % There may or may not be an explicit some [Vars] there,
         % as quantification now works correctly.

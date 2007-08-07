@@ -82,7 +82,7 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
     code_info.pre_goal_update(GoalInfo, IsAtomic, !CI),
     code_info.get_instmap(!.CI, InstMap),
     ( instmap.is_reachable(InstMap) ->
-        goal_info_get_code_model(GoalInfo, CodeModel),
+        CodeModel = goal_info_get_code_model(GoalInfo),
         % Sanity check: code of some code models should occur
         % only in limited contexts.
         (
@@ -105,7 +105,7 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
 
         generate_goal_2(GoalExpr, GoalInfo, CodeModel,
             ForwardLiveVarsBeforeGoal, GoalCode, !CI),
-        goal_info_get_features(GoalInfo, Features),
+        Features = goal_info_get_features(GoalInfo),
         code_info.get_proc_info(!.CI, ProcInfo),
 
         % If the predicate's evaluation method is memo, loopcheck or minimal

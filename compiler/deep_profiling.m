@@ -359,7 +359,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         )
     ;
         GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
-        goal_info_get_features(GoalInfo, Features),
+        Features = goal_info_get_features(GoalInfo),
         ( set.member(feature_tailcall, Features) ->
             !:TailCallSites = [!.N | !.TailCallSites]
         ;
@@ -462,7 +462,7 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
 
 deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepInfo),
-    proc_info_interface_code_model(!.ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(!.ProcInfo),
     (
         CodeModel = model_det,
         (
@@ -819,7 +819,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     % means that the procedure body does actually leave a nondet stack frame
     % when it succeeds, and its determinism must be adjusted accordingly.
     %
-    goal_info_get_determinism(GoalInfo0, Detism0),
+    Detism0 = goal_info_get_determinism(GoalInfo0),
     determinism_components(Detism0, CanFail, _),
     determinism_components(Detism, CanFail, at_most_many),
     goal_info_set_determinism(Detism, GoalInfo0, GoalInfo1),
@@ -872,7 +872,7 @@ transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     varset.new_named_var(VarSet0, "MiddleCSD", MiddleCSD, VarSet1),
     map.set(VarTypes0, MiddleCSD, CPointerType, VarTypes1),
 
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     FileName = term.context_file(Context),
 
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
@@ -1011,8 +1011,8 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         SubGoal0 = hlds_goal(_, InnerInfo),
-        goal_info_get_determinism(GoalInfo0, OuterDetism),
-        goal_info_get_determinism(InnerInfo, InnerDetism),
+        OuterDetism = goal_info_get_determinism(GoalInfo0),
+        InnerDetism = goal_info_get_determinism(InnerInfo),
         ( InnerDetism = OuterDetism ->
             MaybeCut = scope_is_no_cut,
             Reason = Reason0,
@@ -1100,7 +1100,7 @@ deep_prof_transform_switch(MaybeNumCases, N, Path, [case(Id, Goal0) | Goals0],
 deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo), !DeepInfo) :-
     ModuleInfo = !.DeepInfo ^ deep_module_info,
-    goal_info_get_features(GoalInfo0, GoalFeatures),
+    GoalFeatures = goal_info_get_features(GoalInfo0),
     goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
     make_impure(GoalInfo1, GoalInfo),
 
@@ -1125,7 +1125,7 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
     !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes1,
     !:DeepInfo = !.DeepInfo ^ deep_site_num_counter := SiteNumCounter,
 
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     FileName0 = term.context_file(Context),
     LineNumber = term.context_line(Context),
     compress_filename(!.DeepInfo, FileName0, FileName),
@@ -1204,7 +1204,7 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
             Generic = cast(_),
             unexpected(this_file, "deep_profiling.wrap_call: cast")
         ),
-        goal_info_get_code_model(GoalInfo0, GoalCodeModel),
+        GoalCodeModel = goal_info_get_code_model(GoalInfo0),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, use_zeroing_for_ho_cycles,
             UseZeroing),
@@ -1244,7 +1244,7 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
                 "wrap_call: multi-procedure SCCs not yet implemented")
         ),
 
-        goal_info_get_code_model(GoalInfo0, CodeModel),
+        CodeModel = goal_info_get_code_model(GoalInfo0),
         ( CodeModel = model_det ->
             list.condense([
                 CallGoals,
@@ -1423,7 +1423,7 @@ deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
     generate_deep_det_call(ModuleInfo, "prepare_for_callback", 1,
         [SiteNumVar], [], PrepareGoal),
 
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     LineNumber = term.context_line(Context),
     FileName0 = term.context_file(Context),
     compress_filename(!.DeepInfo, FileName0, FileName),
@@ -1769,7 +1769,7 @@ impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
     = hlds_goal_info.
 
 goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
-    goal_info_get_nonlocals(!.GoalInfo, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
     NonLocals = set.union(NonLocals0, NewNonLocals),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),
     make_impure(!GoalInfo).
@@ -1784,7 +1784,7 @@ fail_goal_info = GoalInfo :-
 :- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
 
 make_impure(!GoalInfo) :-
-    ( goal_info_get_purity(!.GoalInfo, purity_impure) ->
+    ( goal_info_get_purity(!.GoalInfo) = purity_impure ->
         % We don't add not_impure_for_determinism, since we want to
         % keep the existing determinism.
         true

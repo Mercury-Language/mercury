@@ -530,7 +530,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             !CI),
 
         maybe_generate_internal_event_code(Goal, DisjGoalInfo, TraceCode, !CI),
-        goal_info_get_code_model(GoalInfo, GoalCodeModel),
+        GoalCodeModel = goal_info_get_code_model(GoalInfo),
         code_gen.generate_goal(GoalCodeModel, Goal, GoalCode, !CI),
 
         (

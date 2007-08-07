@@ -292,7 +292,7 @@ deforest_goal_expr(conj(ConjType, !.Goals), conj(ConjType, !:Goals), !GoalInfo,
         pd_info_get_instmap(!.PDInfo, InstMap0),
         partially_evaluate_conj_goals(!.Goals, [], !:Goals, !PDInfo, !IO),
         pd_info_set_instmap(InstMap0, !PDInfo),
-        goal_info_get_nonlocals(!.GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(!.GoalInfo),
         globals.io_lookup_bool_option(deforestation, Deforestation, !IO),
         (
             Deforestation = yes,
@@ -783,7 +783,7 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo, !IO) :-
         ; OpaqueGoal = LaterGoal
         ),
         OpaqueGoal = hlds_goal(_, OpaqueGoalInfo),
-        goal_info_get_nonlocals(OpaqueGoalInfo, OpaqueNonLocals),
+        OpaqueNonLocals = goal_info_get_nonlocals(OpaqueGoalInfo),
         set.intersect(OpaqueNonLocals, OpaqueVars, UsedOpaqueVars),
         \+ set.empty(UsedOpaqueVars)
     ->
@@ -878,7 +878,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         ; MaybeLaterGoal = yes(ImpureGoal)
         ),
         ImpureGoal = hlds_goal(_, ImpureGoalInfo),
-        \+ goal_info_get_purity(ImpureGoalInfo, purity_pure)
+        \+ goal_info_get_purity(ImpureGoalInfo) = purity_pure
     ->
         pd_debug_message("goal list contains impure goal(s)\n", [], !IO),
         ShouldTry = no
@@ -1273,7 +1273,7 @@ create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, NonLocals, FoldGoal) :-
     % Give the conjunction a context so that the generated predicate
     % name points to the location of the first goal.
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
-    goal_info_get_context(EarlierGoalInfo, EarlierContext),
+    EarlierContext = goal_info_get_context(EarlierGoalInfo),
     goal_info_set_context(EarlierContext, ConjInfo0, ConjInfo),
     FoldGoal = hlds_goal(conj(plain_conj, DeforestConj), ConjInfo).
 
@@ -1497,7 +1497,7 @@ get_sub_conj_nonlocals(!.NonLocals, RevBeforeGoals, BeforeIrrelevant,
         AfterIrrelevant, AfterGoals, !:SubConjNonLocals) :-
     AddGoalNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_nonlocals(GoalInfo, GoalNonLocals),
+        GoalNonLocals = goal_info_get_nonlocals(GoalInfo),
         set.union(Vars0, GoalNonLocals, Vars)
     ),
     list.foldl(AddGoalNonLocals, RevBeforeGoals, !NonLocals),
@@ -1618,7 +1618,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     ; EarlierGoalExpr = if_then_else(Vars, Cond, Then0, Else0) ->
         pd_info_update_goal(Cond, !PDInfo),
         Cond = hlds_goal(_, CondInfo),
-        goal_info_get_nonlocals(CondInfo, CondNonLocals),
+        CondNonLocals = goal_info_get_nonlocals(CondInfo),
         set.union(CondNonLocals, NonLocals, ThenNonLocals),
         append_goal(Then0, BetweenGoals, LaterGoal,
             ThenNonLocals, 1, DeforestInfo, Then, !PDInfo, !IO),
@@ -1636,14 +1636,14 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     pd_info_set_instmap(InstMap0, !PDInfo),
     goal_list_instmap_delta([EarlierGoal | BetweenGoals], Delta0),
     LaterGoal = hlds_goal(_, LaterInfo),
-    goal_info_get_instmap_delta(LaterInfo, Delta1),
+    Delta1 = goal_info_get_instmap_delta(LaterInfo),
     instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta2),
     instmap_delta_restrict(NonLocals, Delta2, Delta),
     goal_list_determinism([EarlierGoal | BetweenGoals], Detism0),
-    goal_info_get_determinism(LaterInfo, Detism1),
+    Detism1 = goal_info_get_determinism(LaterInfo),
     det_conjunction_detism(Detism0, Detism1, Detism),
     goal_list_purity([EarlierGoal | BetweenGoals], Purity0),
-    goal_info_get_purity(LaterInfo, Purity1),
+    Purity1 = goal_info_get_purity(LaterInfo),
     worst_purity(Purity0, Purity1) = Purity,
     goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo),
     Goal2 = hlds_goal(GoalExpr, GoalInfo),
@@ -1740,7 +1740,7 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
     Name = unqualify_name(SymName),
     list.length(Args, Arity),
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
 
     pd_info_get_local_term_info(!.PDInfo, LocalTermInfo0),
 
@@ -1863,7 +1863,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 
         % Update the quantification if not all the output arguments are used.
         Goal1 = hlds_goal(_, GoalInfo1),
-        goal_info_get_nonlocals(GoalInfo1, NonLocals1),
+        NonLocals1 = goal_info_get_nonlocals(GoalInfo1),
         set.list_to_set(Args, NonLocals),
         ( set.equal(NonLocals1, NonLocals) ->
             Goal2 = Goal1
@@ -1922,9 +1922,9 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
             pd_info_incr_size_delta(SizeDelta, !PDInfo),
             pd_info_set_changed(yes, !PDInfo),
             Goal0 = hlds_goal(_, GoalInfo0),
-            goal_info_get_determinism(GoalInfo0, Det0),
+            Det0 = goal_info_get_determinism(GoalInfo0),
             Goal = hlds_goal(_, GoalInfo),
-            goal_info_get_determinism(GoalInfo, Det),
+            Det = goal_info_get_determinism(GoalInfo),
 
             % Rerun determinism analysis later if the determinism of any of
             % the sub-goals changes - this avoids problems with inlining

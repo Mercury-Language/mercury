@@ -367,7 +367,7 @@ detect_liveness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         BaseNonLocals, CompletedNonLocals),
     set.difference(CompletedNonLocals, Liveness0, NewVarsSet),
     set.to_sorted_list(NewVarsSet, NewVarsList),
-    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
     set.init(Empty),
     ( instmap_delta_is_unreachable(InstMapDelta) ->
         Births = Empty
@@ -447,7 +447,7 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
     % in the else part should be put in the post-birth set of the then part
     % by add_liveness_after_goal, and the other sets should be empty.
     Cond = hlds_goal(_, CondInfo),
-    goal_info_get_instmap_delta(CondInfo, CondDelta),
+    CondDelta = goal_info_get_instmap_delta(CondInfo),
     ( instmap_delta_is_unreachable(CondDelta) ->
         LivenessThen = LivenessCond,
         Then1 = Then0
@@ -498,7 +498,7 @@ detect_liveness_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness,
     detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo),
     (
         Goal0 = hlds_goal(_, GoalInfo),
-        goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+        InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_is_unreachable(InstmapDelta)
     ->
         % If we continued processing goals, the final value of Liveness
@@ -659,14 +659,14 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 
     liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
         _, CompletedNonLocals),
-    goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_reachable(InstmapDelta) ->
         Cond0 = hlds_goal(_, CondGoalInfo),
-        goal_info_get_instmap_delta(CondGoalInfo, CondInstmapDelta),
+        CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
         Then0 = hlds_goal(_, ThenGoalInfo),
-        goal_info_get_instmap_delta(ThenGoalInfo, ThenInstmapDelta),
+        ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
         Else0 = hlds_goal(_, ElseGoalInfo),
-        goal_info_get_instmap_delta(ElseGoalInfo, ElseInstmapDelta),
+        ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
         (
             instmap_delta_is_reachable(CondInstmapDelta),
             instmap_delta_is_reachable(ThenInstmapDelta)
@@ -734,7 +734,7 @@ detect_deadness_in_conj([], [], !Deadness, _, _LiveInfo).
 detect_deadness_in_conj([Goal0 | Goals0], [Goal | Goals], !Deadness,
         Liveness0, LiveInfo) :-
     Goal0 = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_unreachable(InstmapDelta) ->
         Goals = Goals0,
         detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo)
@@ -760,7 +760,7 @@ detect_deadness_in_disj([Goal0 | Goals0], [Goal | Goals], Deadness0, Liveness0,
     detect_deadness_in_goal(Goal0, Goal1, Deadness0, DeadnessGoal,
         Liveness0, LiveInfo),
     Goal1 = hlds_goal(_, GoalInfo1),
-    goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
+    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     ( instmap_delta_is_reachable(InstmapDelta1) ->
         InstmapReachable = yes
     ;
@@ -790,7 +790,7 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0],
     detect_deadness_in_goal(Goal0, Goal1, Deadness0, DeadnessGoal,
         Liveness0, LiveInfo),
     Goal1 = hlds_goal(_, GoalInfo1),
-    goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
+    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     ( instmap_delta_is_reachable(InstmapDelta1) ->
         InstmapReachable = yes
     ;
@@ -822,7 +822,7 @@ detect_deadness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Deadness0,
         Liveness0, CompletedNonLocals, LiveInfo, !Union,
         CompletedNonLocalUnion),
     Goal1 = hlds_goal(_, GoalInfo1),
-    goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
+    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     ( instmap_delta_is_reachable(InstmapDelta1) ->
         InstmapReachable = yes
     ;
@@ -941,11 +941,11 @@ update_liveness_expr(switch(_, _, Cases), _GoalInfo, LiveInfo, !Liveness) :-
 update_liveness_expr(if_then_else(_, Cond, Then, Else), _GoalInfo, LiveInfo,
         !Liveness) :-
     Else = hlds_goal(_, ElseGoalInfo),
-    goal_info_get_instmap_delta(ElseGoalInfo, ElseInstmapDelta),
+    ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
     Cond = hlds_goal(_, CondGoalInfo),
-    goal_info_get_instmap_delta(CondGoalInfo, CondInstmapDelta),
+    CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
     Then = hlds_goal(_, ThenGoalInfo),
-    goal_info_get_instmap_delta(ThenGoalInfo, ThenInstmapDelta),
+    ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
     (
         instmap_delta_is_reachable(ElseInstmapDelta)
     ->
@@ -978,7 +978,7 @@ update_liveness_conj([Goal | Goals], LiveInfo, !Liveness) :-
 
 find_reachable_goal([Goal | Goals], ReachableGoal) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_reachable(InstmapDelta) ->
         ReachableGoal = Goal
     ;
@@ -989,7 +989,7 @@ find_reachable_goal([Goal | Goals], ReachableGoal) :-
 
 find_reachable_case([case(_, Goal) | Cases], ReachableGoal) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_unreachable(InstmapDelta) ->
         find_reachable_case(Cases, ReachableGoal)
     ;
@@ -1284,11 +1284,15 @@ detect_resume_points_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
 
 detect_resume_points_in_goal_2(disj(Goals0), disj(Goals), !Liveness, GoalInfo,
         LiveInfo, ResumeVars0) :-
-    goal_info_get_code_model(GoalInfo, CodeModel),
-    ( CodeModel = model_non ->
+    CodeModel = goal_info_get_code_model(GoalInfo),
+    (
+        CodeModel = model_non,
         detect_resume_points_in_non_disj(Goals0, Goals, !Liveness,
             LiveInfo, ResumeVars0, _)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         detect_resume_points_in_pruned_disj(Goals0, Goals, !Liveness,
             LiveInfo, ResumeVars0, _)
     ).
@@ -1323,7 +1327,7 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
     % the amount of data movement code we emit between such labels.
     (
         cannot_stack_flush(Cond1),
-        goal_info_get_code_model(GoalInfo0, CodeModel),
+        CodeModel = goal_info_get_code_model(GoalInfo0),
         CodeModel \= model_non
     ->
         CondResumeLocs = resume_locs_orig_only
@@ -1459,7 +1463,7 @@ detect_resume_points_in_pruned_disj([], [], !Liveness, _, _, Needed) :-
 detect_resume_points_in_pruned_disj([Goal0 | Goals0], [Goal | Goals],
         Liveness0, Liveness, LiveInfo, ResumeVars0, Needed) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_determinism(GoalInfo0, Detism0),
+    Detism0 = goal_info_get_determinism(GoalInfo0),
     determinism_components(Detism0, CanFail0, _),
     (
         % This disjunct establishes a resumption point only if
@@ -1616,7 +1620,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     %
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_goal(ProcInfo, hlds_goal(_Goal, GoalInfo)),
-    goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
+    NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
@@ -1727,7 +1731,7 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 
 liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
         NonLocals, CompletedNonLocals) :-
-    goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo),
     liveness.maybe_complete_with_typeinfos(LiveInfo,
         NonLocals, CompletedNonLocals).
 

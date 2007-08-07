@@ -1692,7 +1692,7 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, !.SomeUsed,
     hlds_goal_info::out) is det.
 
 fixup_goal_info(UnusedVars, !GoalInfo) :-
-    goal_info_get_instmap_delta(!.GoalInfo, InstMap0),
+    InstMap0 = goal_info_get_instmap_delta(!.GoalInfo),
     instmap_delta_delete_vars(UnusedVars, InstMap0, InstMap),
     goal_info_set_instmap_delta(InstMap, !GoalInfo).
 

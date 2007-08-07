@@ -300,7 +300,7 @@ trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 
 do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
-    proc_info_interface_code_model(!.ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(!.ProcInfo),
     (
         eff_trace_level_is_none(ModuleInfo, PredInfo0, !.ProcInfo, TraceLevel)
             = no,
@@ -403,7 +403,7 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         FixedSlots = yes,
         Fixed = 3, % event#, call#, call depth
         (
-            proc_info_interface_code_model(ProcInfo, model_non),
+            proc_info_interface_code_model(ProcInfo) = model_non,
             eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
                 TraceSuppress, port_redo) = yes
         ->
@@ -684,7 +684,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
     (
         MaybeTraceInfo = yes(TraceInfo),
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_goal_path(GoalInfo, Path),
+        Path = goal_info_get_goal_path(GoalInfo),
         (
             Path = [LastStep | _],
             (
@@ -724,7 +724,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
                 TraceInfo ^ trace_suppress_items, Port) = yes
         ->
             goal_info_get_pre_deaths(GoalInfo, PreDeaths),
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             (
                 goal_info_has_feature(OutsideGoalInfo,
                     feature_hide_debug_event)
@@ -762,8 +762,8 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_goal_path(GoalInfo, Path),
-        goal_info_get_context(GoalInfo, Context),
+        Path = goal_info_get_goal_path(GoalInfo),
+        Context = goal_info_get_context(GoalInfo),
         ( goal_info_has_feature(OutsideGoalInfo, feature_hide_debug_event) ->
             HideEvent = yes
         ;
@@ -794,8 +794,8 @@ maybe_generate_foreign_proc_event_code(PragmaPort, Context, Code, !CI) :-
     ).
 
 generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
-    goal_info_get_goal_path(GoalInfo, Path),
-    goal_info_get_context(GoalInfo, Context),
+    Path = goal_info_get_goal_path(GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
     Port = port_user,
     PortInfo = port_info_user(Path),
     MaybeTraceInfo = no,

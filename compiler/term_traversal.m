@@ -126,7 +126,7 @@
 traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
-        goal_info_get_determinism(GoalInfo, Detism),
+        Detism = goal_info_get_determinism(GoalInfo),
         determinism_components(Detism, _, at_most_zero)
     ->
         cannot_succeed(!Info)
@@ -215,7 +215,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     proc_info_get_argmodes(CallProcInfo, CallArgModes),
     ArgVars = list.map(foreign_arg_var, Args),
     partition_call_args(!.ModuleInfo, CallArgModes, ArgVars, _InVars, OutVars),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
 
     ( is_termination_known(!.ModuleInfo, proc(CallPredId, CallProcId)) ->
         error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
@@ -229,7 +229,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
             
 traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     Goal = generic_call(Details, Args, ArgModes, _),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     (
         Details = higher_order(Var, _, _, _),
         ClosureValueMap = goal_info_get_ho_values(GoalInfo),
@@ -277,7 +277,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
 
 traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     Goal = plain_call(CallPredId, CallProcId, Args, _, _, _),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     params_get_ppid(Params, PPId),
     CallPPId = proc(CallPredId, CallProcId),
 

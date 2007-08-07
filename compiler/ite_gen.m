@@ -71,7 +71,7 @@
 generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         !CI) :-
     CondGoal0 = hlds_goal(CondExpr, CondInfo0),
-    goal_info_get_code_model(CondInfo0, CondCodeModel),
+    CondCodeModel = goal_info_get_code_model(CondInfo0),
     (
         CodeModel = model_non,
         CondCodeModel \= model_non
@@ -486,7 +486,7 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         UseMinimalModelStackCopyPNeg = yes,
         not goal_info_has_feature(GoalInfo, feature_will_not_call_mm_tabled)
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         term.context_file(Context, File),
         term.context_line(Context, Line),
         (
@@ -560,7 +560,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         code_info.get_forward_live_vars(!.CI, ForwardLiveVars),
         LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
 
-        goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
+        CondNonLocals = goal_info_get_nonlocals(CondGoalInfo),
         CondNonlocalRegionVars = filter_region_vars(!.CI, CondNonLocals),
 
         % XXX CondRemovedRegionVars should be the set of region vars whose
@@ -658,7 +658,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         release_reg(SnapshotNumRegLval, !CI),
         release_reg(AddrRegLval, !CI),
 
-        goal_info_get_code_model(CondGoalInfo, CondCodeModel),
+        CondCodeModel = goal_info_get_code_model(CondGoalInfo),
         (
             CondCodeModel = model_non,
             CondKind = region_ite_nondet_cond

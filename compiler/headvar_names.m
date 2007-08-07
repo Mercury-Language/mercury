@@ -77,7 +77,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             improve_single_clause_headvars(Conj0, HeadVars0, [],
                 VarSet0, VarSet, map.init, Subst, [], RevConj),
 
-            goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+            NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
             rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
             conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
@@ -152,7 +152,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
                 ; list.member(OtherGoal, !.RevConj)
                 ),
                 OtherGoal = hlds_goal(_, OtherGoalInfo),
-                goal_info_get_nonlocals(OtherGoalInfo, OtherNonLocals),
+                OtherNonLocals = goal_info_get_nonlocals(OtherGoalInfo),
                 set.member(HeadVar, OtherNonLocals)
             ))
         ->

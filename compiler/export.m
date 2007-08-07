@@ -391,7 +391,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
         generate_proc_arg_info(ArgTypes, ModuleInfo, ProcInfo, NewProcInfo),
         proc_info_arg_info(NewProcInfo, ArgInfos)
     ),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     assoc_list.from_corresponding_lists(ArgInfos, ArgTypes, ArgInfoTypes0),
 
     % Figure out what the C return type should be, and build the `return'

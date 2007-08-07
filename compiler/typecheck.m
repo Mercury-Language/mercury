@@ -1053,7 +1053,7 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
     %
 typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         !Info) :-
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     term.context_init(EmptyContext),
     ( Context = EmptyContext ->
         EnclosingContext = !.Info ^ tc_info_context,
@@ -1175,7 +1175,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         list.length(Args, Arity),
         CurCall = simple_call_id(pf_predicate, Name, Arity),
         typecheck_info_set_called_predid(plain_call_id(CurCall), !Info),
-        goal_info_get_goal_path(GoalInfo, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo),
         typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info),
         GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
     ;
@@ -1214,7 +1214,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ),
         !:Info = !.Info ^ tc_info_arg_num := 0,
         !:Info = !.Info ^ tc_info_unify_context := UnifyContext,
-        goal_info_get_goal_path(GoalInfo, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo),
         typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info),
         GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext)
     ;
@@ -1229,7 +1229,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         % than the way it is done below, though.)
         OrigTypeAssignSet = !.Info ^ tc_info_type_assign_set,
         ArgVars = list.map(foreign_arg_var, Args),
-        goal_info_get_goal_path(GoalInfo, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo),
         typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info),
         perform_context_reduction(OrigTypeAssignSet, !Info),
         GoalExpr = GoalExpr0

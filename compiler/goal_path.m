@@ -165,8 +165,8 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
     ;
         Goal0 = scope(Reason, SubGoal0),
         SubGoal0 = hlds_goal(_, InnerInfo),
-        goal_info_get_determinism(GoalInfo, OuterDetism),
-        goal_info_get_determinism(InnerInfo, InnerDetism),
+        OuterDetism = goal_info_get_determinism(GoalInfo),
+        InnerDetism = goal_info_get_determinism(InnerInfo),
         ( InnerDetism = OuterDetism ->
             MaybeCut = scope_is_no_cut
         ;

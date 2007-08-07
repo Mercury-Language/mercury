@@ -489,7 +489,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         Cond = hlds_goal(_CondGoalExpr, CondGoalInfo),
-        goal_info_get_instmap_delta(CondGoalInfo, CondInstMapDelta),
+        CondInstMapDelta = goal_info_get_instmap_delta(CondGoalInfo),
 
         goal_to_conj_list(Then, GoalAList),
         goal_to_conj_list(Else, GoalBList)
@@ -561,7 +561,7 @@ initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap) = C :-
 
 store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(IM0, InstMapDelta, IM),
 
     goal_store_det_insert(Identifier - N, Goal - IM0, GS0, GS).
@@ -1084,7 +1084,7 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
     P = (pred(Id::in, Set0::in, Set::out) is det :-
         goal_store_lookup(GoalStore, Id, Goal - _InstMap),
         Goal = hlds_goal(_GoalExpr, GoalInfo),
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         Set = NonLocals `union` Set0
     ),
     list.foldl(P, set.to_sorted_list(Before), set.init, BeforeNonLocals),
@@ -1215,7 +1215,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
             set.member(DuringAssocVar, PossibleDuringAssocVars),
             Warning = []
         ;
-            goal_info_get_context(GoalInfo, ProgContext),
+            ProgContext = goal_info_get_context(GoalInfo),
             Warning = [warn(ProgContext, PredId, BeforeAssocVar,
                 DuringAssocVar)]
         ),
@@ -1352,7 +1352,7 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
             goal_store_member(GS, Key, Goal - InstMap0),
             Key = base - _,
             Goal = hlds_goal(_GoalExpr, GoalInfo),
-            goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+            InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
             instmap_changed_vars(InstMap0, InstMap, VarTypes,
                 ModuleInfo, ChangedVars),

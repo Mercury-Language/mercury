@@ -387,8 +387,8 @@ erl_bound_nonlocals_in_goal(Info, InstMap, Goal, BoundNonLocals) :-
     erl_gen_info_get_module_info(Info, ModuleInfo),
     erl_gen_info_get_var_types(Info, VarTypes),
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
-    goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     BoundNonLocals = set.filter(is_bound_and_not_dummy(ModuleInfo, VarTypes,
         InstMap, InstmapDelta), NonLocals).
 

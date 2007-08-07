@@ -195,7 +195,7 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
 process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
         clause(ProcIds, Goal, Lang, Context), !HI) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
 
     process_goal(NonLocals, Goal0, Goal, !HI).
 % XXX We probably need to requantify, but it stuffs up the inst_graph to do
@@ -220,7 +220,7 @@ process_goal(NonLocals, Goal0, Goal, !HI) :-
 
 goal_use_own_nonlocals(Goal0, Goal, !HI) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -272,11 +272,11 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr0 = if_then_else(Vs, Cond0, Then0, Else0),
         process_goal(NonLocals, Cond0, Cond, !HI),
         Then0 = hlds_goal(ThenExpr0, ThenInfo),
-        goal_info_get_nonlocals(ThenInfo, ThenNonLocals),
+        ThenNonLocals = goal_info_get_nonlocals(ThenInfo),
         process_goal_expr(ThenNonLocals, ThenInfo, ThenExpr0, ThenExpr, !HI),
         Then = hlds_goal(ThenExpr, ThenInfo),
         Else0 = hlds_goal(ElseExpr0, ElseInfo),
-        goal_info_get_nonlocals(ElseInfo, ElseNonLocals),
+        ElseNonLocals = goal_info_get_nonlocals(ElseInfo),
         process_goal_expr(ElseNonLocals, ElseInfo, ElseExpr0, ElseExpr, !HI),
         Else = hlds_goal(ElseExpr, ElseInfo),
         GoalExpr = if_then_else(Vs, Cond, Then, Else)
@@ -316,8 +316,8 @@ process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
         list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
         !:HI = !.HI ^ inst_graph := InstGraph
     ),
-    goal_info_get_nonlocals(GoalInfo0, GINonlocals0),
-    GINonlocals = GINonlocals0 `set.union` list_to_set(Args),
+    GINonlocals0 = goal_info_get_nonlocals(GoalInfo0),
+    GINonlocals = set.union(GINonlocals0, list_to_set(Args)),
     goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
     UnifyGoalExpr = unify(X, rhs_functor(ConsId, IsExistConstruct, Args),
         Mode, Unif, Context),
@@ -335,8 +335,8 @@ make_unifications([], [_ | _], _, _, _, _, _) :-
     unexpected(this_file, "hhf_make_unifications: length mismatch (2)").
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
         [hlds_goal(unify(A, rhs_var(B), M, U, C), GI) | Us]) :-
-    goal_info_get_nonlocals(GI0, GINonlocals0),
-    GINonlocals = GINonlocals0 `set.insert` A `set.insert` B,
+    GINonlocals0 = goal_info_get_nonlocals(GI0),
+    GINonlocals = set.insert_list(GINonlocals0, [A, B]),
     goal_info_set_nonlocals(GINonlocals, GI0, GI),
     make_unifications(As, Bs, GI0, M, U, C, Us).
 
@@ -353,7 +353,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
             map.lookup(InstGraph0, A, Node),
             Node = node(_, parent(_))
         ;
-            A `set.member` NonLocals
+            set.member(A, NonLocals)
         )
     ->
         VarSet0 = !.HI ^ varset,
@@ -366,8 +366,8 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         !:HI = !.HI ^ varset := VarSet,
         !:HI = !.HI ^ vartypes := VarTypes,
         !:HI = !.HI ^ inst_graph := InstGraph,
-        goal_info_get_nonlocals(GI0, GINonlocals0),
-        GINonlocals = GINonlocals0 `set.insert` V,
+        GINonlocals0 = goal_info_get_nonlocals(GI0),
+        GINonlocals = set.insert(GINonlocals0, V),
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
         Goals = [hlds_goal(unify(A, rhs_var(V), M, U, C), GI) | Goals0]
     ;

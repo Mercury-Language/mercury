@@ -139,8 +139,8 @@ proc_not_defined_in_module(ModuleInfo, proc(PredId, _)):-
     % filled with path information, i.e. call to fill_goal_path_slots(...).
     %
 program_point_init(GoalInfo) = ProgPoint :-
-	goal_info_get_context(GoalInfo, Context),
-	goal_info_get_goal_path(GoalInfo, GoalPath),
+	Context = goal_info_get_context(GoalInfo),
+	GoalPath = goal_info_get_goal_path(GoalInfo),
 	ProgPoint = pp(Context, GoalPath).
 
 dump_program_point(pp(Context, GoalPath), !IO):- 

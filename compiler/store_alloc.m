@@ -255,7 +255,7 @@ store_alloc_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness, !LastLocns,
     (
         % XXX should be threading the instmap.
         Goal0 = hlds_goal(_, GoalInfo),
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_is_unreachable(InstMapDelta)
     ->
         store_alloc_in_goal(Goal0, Goal, !Liveness, !LastLocns,

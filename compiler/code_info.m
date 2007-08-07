@@ -480,7 +480,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         CodeInfo) :-
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     build_input_arg_list(ProcInfo, ArgList),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -883,7 +883,7 @@ post_goal_update(GoalInfo, !CI) :-
     goal_info_get_post_births(GoalInfo, PostBirths),
     add_forward_live_vars(PostBirths, !CI),
     make_vars_forward_live(PostBirths, !CI),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     get_instmap(!.CI, InstMap0),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     set_instmap(InstMap, !CI).
@@ -927,7 +927,7 @@ cons_id_to_tag_for_var(CI, Var, ConsId) = ConsTag :-
 
 get_proc_model(CI) = CodeModel :-
     get_proc_info(CI, ProcInfo),
-    proc_info_interface_code_model(ProcInfo, CodeModel).
+    CodeModel = proc_info_interface_code_model(ProcInfo).
 
 get_headvars(CI) = HeadVars :-
     get_module_info(CI, ModuleInfo),
@@ -3698,7 +3698,7 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos),
     assoc_list.keys(OutArgInfos, OutVars),
     set.list_to_set(OutVars, OutVarSet),
-    goal_info_get_determinism(GoalInfo, Detism),
+    Detism = goal_info_get_determinism(GoalInfo),
     get_opt_no_return_calls(!.CI, OptNoReturnCalls),
     get_module_info(!.CI, ModuleInfo),
     (
@@ -3709,8 +3709,9 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
         DummyStackVarLocs = []
     ;
         compute_forward_live_var_saves(!.CI, OutVarSet, ForwardVarLocs),
-        goal_info_get_code_model(GoalInfo, CodeModel),
-        ( CodeModel = model_non ->
+        CodeModel = goal_info_get_code_model(GoalInfo),
+        (
+            CodeModel = model_non,
             % Save variables protected by the nearest resumption point on the
             % stack.
             % XXX This should be unnecessary; with the current setup, the code
@@ -3722,6 +3723,9 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
             compute_resume_var_stack_locs(!.CI, ResumeVarLocs),
             list.append(ResumeVarLocs, ForwardVarLocs, StackVarLocs)
         ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
             StackVarLocs = ForwardVarLocs
         ),
         VarTypes = get_var_types(!.CI),

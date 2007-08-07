@@ -167,7 +167,7 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     code_info.get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, static_ground_terms, yes),
 
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    CodeModel = goal_info_get_code_model(GoalInfo),
     (
         ( CodeModel = model_non
         ; CodeModel = model_semi
@@ -327,7 +327,7 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % Goals with these features need special treatment in generate_goal.
-    goal_info_get_features(GoalInfo, Features),
+    Features = goal_info_get_features(GoalInfo),
     not set.member(feature_call_table_gen, Features),
     not set.member(feature_save_deep_excp_vars, Features),
 

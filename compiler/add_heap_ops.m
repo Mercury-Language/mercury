@@ -115,8 +115,8 @@ goal_expr_add_heap_ops(disj(Goals0), GoalInfo, hlds_goal(GoalExpr, GoalInfo),
         !Info) :-
     Goals0 = [FirstDisjunct | _],
 
-    goal_info_get_context(GoalInfo, Context),
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    Context = goal_info_get_context(GoalInfo),
+    CodeModel = goal_info_get_code_model(GoalInfo),
 
     % If necessary, save the heap pointer so that we can restore it
     % on back-tracking. We don't need to do this here if it is a model_det
@@ -148,9 +148,9 @@ goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     % We handle negations by converting them into if-then-elses:
     %   not(G)  ===>  (if G then fail else true)
     %
-    goal_info_get_context(OuterGoalInfo, Context),
+    Context = goal_info_get_context(OuterGoalInfo),
     InnerGoal = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_determinism(InnerGoalInfo, Determinism),
+    Determinism = goal_info_get_determinism(InnerGoalInfo),
     determinism_components(Determinism, _CanFail, NumSolns),
     True = true_goal_with_context(Context),
     Fail = fail_goal_with_context(Context),
@@ -183,7 +183,7 @@ goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
     % so that we can restore it if the condition fails.
     ( goal_may_allocate_heap(Cond0) ->
         new_saved_hp_var(SavedHeapPointerVar, !Info),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
 
         % Generate code to restore the heap pointer, and insert that code
@@ -217,7 +217,7 @@ goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
         % a call to a procedure which will at runtime call error/1 with an
         % appropriate "Sorry, not implemented" error message.
         ModuleInfo = !.Info ^ module_info,
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         generate_call("reclaim_heap_nondet_pragma_foreign_code",
             detism_erroneous, purity_pure, [], [], ModuleInfo, Context,
             SorryNotImplementedCode),
@@ -245,7 +245,7 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
         DisjGoalInfo, DisjGoals, !Info) :-
     goal_add_heap_ops(Goal0, Goal1, !Info),
     Goal1 = hlds_goal(_, GoalInfo),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
 
     % If needed, reset the heap pointer before executing the goal,
     % to reclaim heap space allocated in earlier branches.

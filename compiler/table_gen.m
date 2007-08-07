@@ -161,10 +161,13 @@ table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
         proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0,
             _InArgNum, _OutArgNum)
     ->
-        proc_info_interface_code_model(ProcInfo0, CodeModel),
-        ( CodeModel = model_det ->
-            true
+        CodeModel = proc_info_interface_code_model(ProcInfo0),
+        (
+            CodeModel = model_det
         ;
+            ( CodeModel = model_semi
+            ; CodeModel = model_non
+            ),
             pred_id_to_int(PredId, PredIdInt),
             Msg = string.format("I/O procedure pred id %d not model_det",
                 [i(PredIdInt)]),
@@ -631,8 +634,8 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = hlds_goal(_, OrigGoalInfo),
-    goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    goal_info_get_context(OrigGoalInfo, Context),
+    OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
+    Context = goal_info_get_context(OrigGoalInfo),
 
     ModuleInfo = !.TableInfo ^ table_module_info,
     generate_simple_call_table_lookup_goal(loop_status_type,
@@ -685,7 +688,7 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         InactiveGoalExpr = conj(plain_conj, [OrigGoal, MarkInactiveGoal])
     ;
         CodeModel = model_semi,
-        goal_info_get_instmap_delta(OrigGoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
         create_renaming(OutputVars, InstMapDelta, !VarSet, !VarTypes,
             Unifies, NewVars, Renaming),
         rename_some_vars_in_goal(Renaming, OrigGoal, RenamedOrigGoal),
@@ -708,7 +711,7 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
             AfterGoalInfo),
         AfterGoal = hlds_goal(AfterGoalExpr, AfterGoalInfo),
         FirstGoalExpr = conj(plain_conj, [OrigGoal, AfterGoal]),
-        goal_info_get_nonlocals(OrigGoalInfo, OrigGINonLocals),
+        OrigGINonLocals = goal_info_get_nonlocals(OrigGoalInfo),
         set.insert(OrigGINonLocals, TableTipVar, FirstNonlocals),
         goal_info_set_nonlocals(FirstNonlocals, OrigGoalInfo, FirstGoalInfo),
         FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
@@ -872,8 +875,8 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = hlds_goal(_, OrigGoalInfo),
-    goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    goal_info_get_context(OrigGoalInfo, Context),
+    OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
+    Context = goal_info_get_context(OrigGoalInfo),
 
     ModuleInfo = !.TableInfo ^ table_module_info,
     determinism_to_code_model(Detism, CodeModel),
@@ -995,8 +998,8 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = hlds_goal(_, OrigGoalInfo),
-    goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    goal_info_get_context(OrigGoalInfo, Context),
+    OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
+    Context = goal_info_get_context(OrigGoalInfo),
 
     ModuleInfo = !.TableInfo ^ table_module_info,
     list.length(NumberedOutputVars, BlockSize),
@@ -1196,8 +1199,8 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         NewGoal = OrigGoal,
         ModuleInfo = ModuleInfo0
     ),
-    goal_info_get_nonlocals(OrigGoalInfo, OrigNonLocals),
-    goal_info_get_context(OrigGoalInfo, Context),
+    OrigNonLocals = goal_info_get_nonlocals(OrigGoalInfo),
+    Context = goal_info_get_context(OrigGoalInfo),
 
     (
         TableIoStates = yes,
@@ -1264,7 +1267,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         MaybeProcTableInfo = no
     ),
     list.length(NumberedSaveVars, BlockSize),
-    goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
+    OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
     generate_memo_restore_goal(NumberedRestoreVars, OrigInstMapDelta, TipVar,
         Context, !VarSet, !VarTypes, !.TableInfo, RestoreAnswerGoal0),
     (
@@ -1294,8 +1297,8 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         create_instmap_delta([RestoreAnswerGoal0, IoStateAssignGoal],
             RestoreAnswerInstMapDelta0),
         RestoreAnswerGoal0 = hlds_goal(_, RestoreAnswerGoal0Info),
-        goal_info_get_nonlocals(RestoreAnswerGoal0Info,
-            RestoreAnswer0NonLocals),
+        RestoreAnswer0NonLocals =
+            goal_info_get_nonlocals(RestoreAnswerGoal0Info),
         set.insert_list(RestoreAnswer0NonLocals,
             [IoStateAssignFromVar, IoStateAssignToVar],
             RestoreAnswerNonLocals),
@@ -1440,8 +1443,8 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = hlds_goal(_, OrigGoalInfo),
-    goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    goal_info_get_context(OrigGoalInfo, Context),
+    OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
+    Context = goal_info_get_context(OrigGoalInfo),
 
     ModuleInfo = !.TableInfo ^ table_module_info,
     list.length(NumberedOutputVars, BlockSize),
@@ -1566,8 +1569,8 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = hlds_goal(_, OrigGoalInfo),
-    goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    goal_info_get_context(OrigGoalInfo, Context),
+    OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
+    Context = goal_info_get_context(OrigGoalInfo),
 
     list.length(NumberedInputVars, NumInputVars),
     ModuleInfo = !.TableInfo ^ table_module_info,
@@ -1755,7 +1758,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     OrigGoal = hlds_goal(_, OrigGoalInfo),
 
     MainGoalExpr = conj(plain_conj, [OrigGoal | SaveReturnAnswerGoals]),
-    goal_info_get_determinism(OrigGoalInfo, Detism),
+    Detism = goal_info_get_determinism(OrigGoalInfo),
     set.insert(OrigNonLocals, GeneratorVar, NonLocals),
     goal_info_init(NonLocals, OrigInstMapDelta, Detism, purity_impure, Context,
         MainGoalInfo0),
@@ -2246,7 +2249,7 @@ generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
 
 attach_call_table_tip(hlds_goal(GoalExpr, GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo)) :-
-    goal_info_get_features(GoalInfo0, Features0),
+    Features0 = goal_info_get_features(GoalInfo0),
     set.insert(Features0, feature_call_table_gen, Features),
     goal_info_set_features(Features, GoalInfo0, GoalInfo).
 
@@ -3008,8 +3011,8 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
 
 append_fail(Goal, GoalAndThenFail) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
-    goal_info_get_context(GoalInfo, Context),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
     instmap_delta_init_unreachable(UnreachInstMapDelta),
     goal_info_init_hide(NonLocals, UnreachInstMapDelta, detism_failure,
         purity_impure, Context, ConjGoalInfo),
@@ -3180,7 +3183,7 @@ create_instmap_delta([], IMD) :-
     instmap_delta_from_assoc_list([], IMD).
 create_instmap_delta([Goal | Rest], IMD) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, IMD0),
+    IMD0 = goal_info_get_instmap_delta(GoalInfo),
     create_instmap_delta(Rest, IMD1),
     instmap_delta_apply_instmap_delta(IMD0, IMD1, test_size, IMD).
 

@@ -348,7 +348,7 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
 
     % Build a list of argument variables, together with their names, modes,
     % and types.

@@ -239,7 +239,7 @@ detect_cse_in_goal_1(hlds_goal(GoalExpr0, GoalInfo), InstMap0, !CseInfo, Redo,
         hlds_goal(GoalExpr, GoalInfo), InstMap) :-
     detect_cse_in_goal_2(GoalExpr0, GoalInfo, InstMap0, !CseInfo, Redo,
         GoalExpr),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
     % Here we process each of the different sorts of goals.
@@ -285,20 +285,20 @@ detect_cse_in_goal_2(disj(Goals0), GoalInfo, InstMap, !CseInfo, Redo, Goal) :-
         Redo = no,
         Goal = disj([])
     ;
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         set.to_sorted_list(NonLocals, NonLocalsList),
         detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
             InstMap, !CseInfo, Redo, Goal)
     ).
 detect_cse_in_goal_2(switch(Var, CanFail, Cases0), GoalInfo, InstMap,
         !CseInfo, Redo, Goal) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     set.to_sorted_list(NonLocals, NonLocalsList),
     detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
         InstMap, !CseInfo, Redo, Goal).
 detect_cse_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo,
         InstMap, !CseInfo, Redo, Goal) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     set.to_sorted_list(NonLocals, NonLocalsList),
     detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, Goal).
@@ -561,7 +561,7 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
         !.CseState = have_candidate(HoistedGoal,
             FirstOldNewVars, LaterOldNewVars0),
         Goal0 = hlds_goal(_, GoalInfo),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         (
             find_similar_deconstruct(HoistedGoal,
                 Goal0, Context, OldNewVars, Goals0)
@@ -597,7 +597,7 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
             unexpected(this_file,
                 "non-functor unify in construct_common_unify")
         ),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         create_parallel_subterms(Args, Context, Ucontext, !CseInfo,
             OldNewVars, Replacements),
         map.from_assoc_list(OldNewVars, Sub),

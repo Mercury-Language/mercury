@@ -647,17 +647,14 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 
         % If some of the output variables are not used in the calling
         % procedure, requantify the procedure.
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         ( set.list_to_set(ArgVars) = NonLocals ->
             Requantify = Requantify0
         ;
             Requantify = yes
         ),
 
-        (
-            goal_info_get_purity(GoalInfo0, Purity),
-            goal_info_get_purity(GoalInfo, Purity)
-        ->
+        ( goal_info_get_purity(GoalInfo0) = goal_info_get_purity(GoalInfo) ->
             PurityChanged = PurityChanged0
         ;
             PurityChanged = yes
@@ -666,9 +663,8 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         % If the inferred determinism of the called goal differs from the
         % declared determinism, flag that we should re-run determinism analysis
         % on this proc.
-        goal_info_get_determinism(GoalInfo0, Determinism0),
-        goal_info_get_determinism(GoalInfo, Determinism),
-        DidInlining = yes,
+        Determinism0 = goal_info_get_determinism(GoalInfo0),
+        Determinism = goal_info_get_determinism(GoalInfo),
         ( Determinism0 = Determinism ->
             DetChanged = DetChanged0
         ;
@@ -683,6 +679,8 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             HasParallelConj = no,
             InlinedParallel = InlinedParallel0
         ),
+
+        DidInlining = yes,
 
         !:Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
             InlinedProcs, ModuleInfo, HeadTypeParams, Markers,

@@ -91,7 +91,7 @@
 :- import_module solutions.
 
 figure_out_output_vars(CI, GoalInfo, OutVars) :-
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_unreachable(InstMapDelta) ->
         OutVars = []
     ;
@@ -113,7 +113,7 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
 
 goal_is_conj_of_unify(Goal) :-
     Goal = hlds_goal(_GoalExpr, GoalInfo),
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    CodeModel = goal_info_get_code_model(GoalInfo),
     CodeModel = model_det,
     goal_to_conj_list(Goal, Conj),
     only_constant_goals(Conj).
@@ -148,7 +148,7 @@ do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
         !MaybeEnd, Liveness, !CI) :-
     code_info.remember_position(!.CI, BranchStart),
     Goal = hlds_goal(_GoalExpr, GoalInfo),
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    CodeModel = goal_info_get_code_model(GoalInfo),
     code_gen.generate_goal(CodeModel, Goal, Code, !CI),
     tree.tree_of_lists_is_empty(Code),
     code_info.get_forward_live_vars(!.CI, Liveness),

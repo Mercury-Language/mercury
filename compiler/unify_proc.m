@@ -2066,7 +2066,7 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
             make_const_construction(Res, cons(qualified(Builtin, "="), 0),
                 EqualGoal),
             EqualGoal = hlds_goal(_, EqualGoalInfo),
-            goal_info_get_instmap_delta(EqualGoalInfo, InstmapDelta),
+            InstmapDelta = goal_info_get_instmap_delta(EqualGoalInfo),
             goal_info_set_instmap_delta(InstmapDelta,
                 ContextGoalInfo, GoalInfo)
         ),

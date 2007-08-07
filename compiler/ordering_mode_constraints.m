@@ -507,8 +507,8 @@ make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-
 
 make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
     GoalInfo = Goal ^ hlds_goal_info,
-    goal_info_get_nonlocals(GoalInfo, Nonlocals),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    Nonlocals = goal_info_get_nonlocals(GoalInfo),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
 
     set.fold(
         (pred(NL::in, RMap0::in, RMap::out) is det :-
@@ -758,7 +758,7 @@ dump_proc_goal_paths(ProcTable, ProcId, !IO) :-
 :- pred dump_goal_goal_paths(int::in, hlds_goal::in, io::di, io::uo) is det.
 
 dump_goal_goal_paths(Indent, hlds_goal(GoalExpr, GoalInfo), !IO) :-
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     GoalPathFormat = [words(goal_path_to_string(GoalPath)), nl],
     write_error_pieces_maybe_with_context(no, Indent, GoalPathFormat, !IO),
     dump_goal_expr_goal_paths(Indent+1, GoalExpr, !IO).

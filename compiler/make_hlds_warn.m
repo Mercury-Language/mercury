@@ -186,14 +186,14 @@ warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
             ModuleInfo, !Specs)
     ;
         GoalExpr = plain_call(_, _, Args, _, _, _),
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
             PredCallId, !Specs)
     ;
         GoalExpr = generic_call(GenericCall, Args0, _, _),
         goal_util.generic_call_vars(GenericCall, Args1),
         list.append(Args0, Args1, Args),
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
             PredCallId, !Specs)
     ;
@@ -202,7 +202,7 @@ warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
             PredCallId, ModuleInfo, !Specs)
     ;
         GoalExpr = call_foreign_proc(Attrs, _, _, Args, _, _, PragmaImpl),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Lang = get_foreign_language(Attrs),
         NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
         warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
@@ -255,12 +255,12 @@ warn_singletons_in_cases([Case | Cases], QuantVars, VarSet, CallPredId,
 
 warn_singletons_in_unify(X, rhs_var(Y), GoalInfo, QuantVars, VarSet,
         CallPredId, _, !Specs) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     warn_singletons_goal_vars([X, Y], GoalInfo, NonLocals, QuantVars,
         VarSet, CallPredId, !Specs).
 warn_singletons_in_unify(X, rhs_functor(_ConsId, _, Vars), GoalInfo,
         QuantVars, VarSet, CallPredId, _, !Specs) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     warn_singletons_goal_vars([X | Vars], GoalInfo, NonLocals, QuantVars,
         VarSet, CallPredId, !Specs).
 warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
@@ -268,13 +268,13 @@ warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
         GoalInfo, QuantVars, VarSet, CallPredId, ModuleInfo, !Specs) :-
     % Warn if any lambda-quantified variables occur only in the quantifier.
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
-    goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
+    LambdaNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
     warn_singletons_goal_vars(LambdaVars, GoalInfo, LambdaNonLocals, QuantVars,
         VarSet, CallPredId, !Specs),
 
     % Warn if X (the variable we're unifying the lambda expression with)
     % is singleton.
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     warn_singletons_goal_vars([X], GoalInfo, NonLocals, QuantVars,
         VarSet, CallPredId, !Specs),
 
@@ -327,8 +327,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
             SinglesPieces = [words("warning: variables"), SingleVarsPiece,
                 words("occur only once in this scope."), nl]
         ),
-        goal_info_get_context(GoalInfo, Context1),
-        SinglesMsg = simple_msg(Context1,
+        SinglesMsg = simple_msg(goal_info_get_context(GoalInfo),
             [option_is_set(warn_singleton_vars, yes,
                 [always(SinglesPreamble ++ SinglesPieces)])]),
         SingleSeverity = severity_conditional(warn_singleton_vars, yes,
@@ -358,8 +357,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
             MultiPieces = [words("warning: variables"), MultiVarsPiece,
                 words("ccur more than once in this scope."), nl]
         ),
-        goal_info_get_context(GoalInfo, Context2),
-        MultiMsg = simple_msg(Context2,
+        MultiMsg = simple_msg(goal_info_get_context(GoalInfo),
             [option_is_set(warn_singleton_vars, yes,
                 [always(MultiPreamble ++ MultiPieces)])]),
         MultiSeverity = severity_conditional(warn_singleton_vars, yes,

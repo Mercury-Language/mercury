@@ -115,7 +115,7 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            goal_info_get_nonlocals(GoalInfo0, NonLocals),
+            NonLocals = goal_info_get_nonlocals(GoalInfo0),
             saved_vars_in_conj(Goals0, Goals, NonLocals, !SlotInfo),
             conj_list_to_goal(Goals, GoalInfo0, Goal)
         ;
@@ -184,7 +184,7 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
     (
         Goal0 = hlds_goal(unify(_, _, _, Unif, _), GoalInfo),
         Unif = construct(Var, _, [], _, _, _, _),
-        goal_info_get_features(GoalInfo, Features),
+        Features = goal_info_get_features(GoalInfo),
         ( all [Feature]
             (
                 set.member(Feature, Features)
@@ -263,7 +263,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 
 can_push(Var, First) :-
     First = hlds_goal(FirstExpr, FirstInfo),
-    goal_info_get_nonlocals(FirstInfo, FirstNonLocals),
+    FirstNonLocals = goal_info_get_nonlocals(FirstInfo),
     ( set.member(Var, FirstNonLocals) ->
         (
             FirstExpr = conj(plain_conj, _)
@@ -314,7 +314,7 @@ saved_vars_delay_goal([], Goals, Construct, _Var, IsNonLocal, !SlotInfo) :-
 saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         !SlotInfo) :-
     Goal0 = hlds_goal(Goal0Expr, Goal0Info),
-    goal_info_get_nonlocals(Goal0Info, Goal0NonLocals),
+    Goal0NonLocals = goal_info_get_nonlocals(Goal0Info),
     ( set.member(Var, Goal0NonLocals) ->
         (
             Goal0Expr = unify(_, _, _, _, _),
@@ -452,7 +452,7 @@ push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
 
 push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
     ( set.member(Var, NonLocals) ->
         rename_var(Var, NewVar, Subst, !SlotInfo),
         rename_some_vars_in_goal(Subst, Construct, NewConstruct),

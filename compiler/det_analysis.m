@@ -386,14 +386,14 @@ det_infer_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         InstMap0, !.SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, DetInfo, Detism, GoalFailingContexts,
         !Specs) :-
-    goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
-    goal_info_get_instmap_delta(GoalInfo0, InstmapDelta),
+    NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
 
     % If a pure or semipure goal has no output variables, then the goal
     % is in a single-solution context.
     (
         det_no_output_vars(NonLocalVars, InstMap0, InstmapDelta, DetInfo),
-        goal_info_get_purity(GoalInfo0, Purity),
+        Purity = goal_info_get_purity(GoalInfo0),
         (
             Purity = purity_impure
         =>
@@ -481,7 +481,7 @@ det_infer_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         % LLDS back-ends rely on this.)
 
         GoalExpr1 = if_then_else(_, hlds_goal(_, CondInfo), _, _),
-        goal_info_get_determinism(CondInfo, CondDetism),
+        CondDetism = goal_info_get_determinism(CondInfo),
         determinism_components(CondDetism, _, at_most_many),
         Solns \= at_most_many
     ->
@@ -495,7 +495,7 @@ det_infer_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         Solns = at_most_zero,
         some [ConjGoalInfo] (
             list.member(hlds_goal(_, ConjGoalInfo), ConjGoals),
-            goal_info_get_determinism(ConjGoalInfo, ConjGoalDetism),
+            ConjGoalDetism = goal_info_get_determinism(ConjGoalInfo),
             determinism_components(ConjGoalDetism, _, at_most_many)
         )
     ->
@@ -697,7 +697,7 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
     ->
         true
     ;
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         determinism_components(Detism, CanFail, MaxSoln),
         ( CanFail \= cannot_fail ->
             First = "Error: parallel conjunct may fail."
@@ -758,7 +758,7 @@ det_infer_disj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
         can_fail, at_most_zero, Detism, [], GoalFailingContexts0, !Specs),
     (
         Goals = [],
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         FailingContext = failing_context(Context, fail_goal),
         GoalFailingContexts = [FailingContext | GoalFailingContexts0]
     ;
@@ -862,7 +862,7 @@ det_infer_switch(Var, SwitchCanFail, Cases0, Cases, GoalInfo, InstMap0,
     determinism_components(Detism, CanFail, NumSolns),
     (
         SwitchCanFail = can_fail,
-        goal_info_get_context(GoalInfo, SwitchContext),
+        SwitchContext = goal_info_get_context(GoalInfo),
         FailingContext = failing_context(SwitchContext,
             incomplete_switch(Var)),
         GoalFailingContexts = [FailingContext | GoalFailingContexts0]
@@ -930,7 +930,7 @@ det_infer_call(PredId, ProcId0, ProcId, GoalInfo, SolnContext,
             ProcId = ProcIdPrime,
             determinism_components(Detism, CanFail, at_most_many)
         ;
-            goal_info_get_context(GoalInfo, GoalContext),
+            GoalContext = goal_info_get_context(GoalInfo),
             det_get_proc_info(DetInfo, ProcInfo),
             proc_info_get_varset(ProcInfo, VarSet),
             det_info_get_module_info(DetInfo, ModuleInfo),
@@ -960,7 +960,7 @@ det_infer_call(PredId, ProcId0, ProcId, GoalInfo, SolnContext,
     ),
     (
         CanFail = can_fail,
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         FailingContext = failing_context(Context, call_goal(PredId, ProcId)),
         GoalFailingContexts = [FailingContext]
     ;
@@ -978,7 +978,7 @@ det_infer_generic_call(GenericCall, CallDetism,
         GoalInfo, SolnContext, RightFailingContexts, DetInfo,
         Detism, GoalFailingContexts, !Specs) :-
     determinism_components(CallDetism, CanFail, NumSolns),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     (
         NumSolns = at_most_many_cc,
         SolnContext = all_solns
@@ -1063,7 +1063,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             NumSolns1 = at_most_many_cc,
             SolnContext = all_solns
         ->
-            goal_info_get_context(GoalInfo, GoalContext),
+            GoalContext = goal_info_get_context(GoalInfo),
             proc_info_get_varset(ProcInfo, VarSet),
             WrongContextPredPieces = describe_one_pred_name(ModuleInfo,
                 should_module_qualify, PredId),
@@ -1086,7 +1086,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         determinism_components(Detism, CanFail, NumSolns),
         (
             CanFail = can_fail,
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             FailingContext = failing_context(Context,
                 call_goal(PredId, ProcId)),
             GoalFailingContexts = [FailingContext]
@@ -1152,7 +1152,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
     determinism_components(Detism, UnifyCanFail, UnifyNumSolns),
     (
         UnifyCanFail = can_fail,
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         (
             Unify = construct(_, _, _, _, _, _, _),
             unexpected(this_file, "can_fail construct")
@@ -1284,7 +1284,7 @@ det_infer_not(Goal0, Goal, GoalInfo, InstMap0, MaybePromiseEqvSolutionSets,
     determinism_components(Detism, CanFail, _),
     (
         CanFail = can_fail,
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         GoalFailingContexts = [failing_context(Context, negated_goal)]
     ;
         CanFail = cannot_fail,
@@ -1310,7 +1310,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_get_varset(ProcInfo, VarSet),
 
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         (
             Kind = equivalent_solutions,
             SolnContextToUse = first_soln,
@@ -1395,14 +1395,14 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MaybePromiseEqvSolutionSets = no,
             SolnContextToUse = first_soln
         ),
-        goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+        InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_changed_vars(InstmapDelta, ChangedVars),
         det_info_get_module_info(DetInfo, ModuleInfo),
         % BoundVars must include both vars whose inst has changed and vars
         % with inst any which may have been further constrained by the goal.
         set.divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
             ChangedVars, _GroundAtStartVars, GroundBoundVars),
-        goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+        NonLocalVars = goal_info_get_nonlocals(GoalInfo),
         AnyBoundVars = set.filter(var_is_any_in_instmap(ModuleInfo, InstMap0),
             NonLocalVars),
         BoundVars = set.union(GroundBoundVars, AnyBoundVars),
@@ -1484,7 +1484,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ->
             true
         ;
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             DetismStr = determinism_to_string(Detism),
             Pieces = [words("Error: trace goal has determinism"),
                 quote(DetismStr), suffix(","),
@@ -1563,7 +1563,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         det_type_has_user_defined_equality_pred(DetInfo, Type)
     ->
         ( CanFail = can_fail ->
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             proc_info_get_varset(ProcInfo, VarSet),
             (
                 GoalContext = ccuc_switch,
@@ -1603,7 +1603,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     verbose_only(VerbosePieces)])]),
             !:Specs = [Spec | !.Specs]
         ; SolnContext = all_solns ->
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             proc_info_get_varset(ProcInfo, VarSet),
             (
                 GoalContext = ccuc_switch,

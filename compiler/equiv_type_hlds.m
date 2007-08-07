@@ -708,7 +708,7 @@ replace_in_goal(EqvMap, Goal0 @ hlds_goal(GoalExpr0, GoalInfo0), Goal,
         Changed, !Info) :-
     replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed0, !Info),
 
-    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     TVarSet0 = !.Info ^ tvarset,
     Cache0 = !.Info ^ inst_cache,
     instmap_delta_map_foldl(

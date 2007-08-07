@@ -284,7 +284,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         !:Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
         GoalExpr0 = generic_call(_GenDetails, _, _, _),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         context_to_string(Context, ContextString),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
             sharing_as_top_sharing_accumulate("generic call ("
@@ -375,7 +375,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
     ;
         GoalExpr0 = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
             _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
             add_foreign_proc_sharing(ModuleInfo, ProcInfo,
             proc(ForeignPredId, ForeignProcId), Attributes, Context,

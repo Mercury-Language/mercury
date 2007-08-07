@@ -457,7 +457,7 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
         Name = pred_info_name(PredInfo),
         ( is_format_call(ModuleName, Name, Args, StringVar, ValuesVar) ->
             Arity = pred_info_orig_arity(PredInfo),
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             FormatCallSite = format_call_site(StringVar, ValuesVar,
                 ModuleName, Name, Arity, Context, CurId),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],

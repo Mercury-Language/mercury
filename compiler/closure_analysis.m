@@ -462,8 +462,7 @@ dump_closure_info_expr(_, shorthand(_), _, _, _) :-
 dump_ho_values(GoalInfo, Varset, !IO) :-
     HO_Values = goal_info_get_ho_values(GoalInfo),
     ( not map.is_empty(HO_Values) ->
-        goal_info_get_context(GoalInfo, Context),
-        prog_out.write_context(Context, !IO),
+        prog_out.write_context(goal_info_get_context(GoalInfo), !IO),
         io.nl(!IO),
         map.foldl(dump_ho_value(Varset), HO_Values, !IO)
     ;

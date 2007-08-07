@@ -145,8 +145,8 @@ goal_expr_add_trail_ops(disj([]), GI, hlds_goal(disj([]), GI), !Info).
 goal_expr_add_trail_ops(disj(Goals0), GoalInfo, hlds_goal(GoalExpr, GoalInfo),
         !Info) :-
     Goals0 = [_ | _],
-    goal_info_get_context(GoalInfo, Context),
-    goal_info_get_code_model(GoalInfo, CodeModel),
+    Context = goal_info_get_context(GoalInfo),
+    CodeModel = goal_info_get_code_model(GoalInfo),
     %
     % Allocate a new trail ticket so that we can restore things on
     % back-tracking.
@@ -166,9 +166,9 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     % We handle negations by converting them into if-then-elses:
     %   not(G)  ===>  (if G then fail else true)
     %
-    goal_info_get_context(OuterGoalInfo, Context),
+    Context = goal_info_get_context(OuterGoalInfo),
     InnerGoal = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_determinism(InnerGoalInfo, Determinism),
+    Determinism = goal_info_get_determinism(InnerGoalInfo),
     determinism_components(Determinism, _CanFail, NumSolns),
     True = true_goal_with_context(Context),
     Fail = fail_goal_with_context(Context),
@@ -191,8 +191,8 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
 goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
         hlds_goal(GoalExpr, OuterGoalInfo), !Info) :-
     Goal0 = hlds_goal(_, InnerGoalInfo),
-    goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
-    goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
+    InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
+    OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
     (
         InnerCodeModel = model_non,
         OuterCodeModel \= model_non
@@ -201,7 +201,7 @@ goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
 
         % Before executing the goal, we save the ticket counter,
         % and allocate a new trail ticket.
-        goal_info_get_context(OuterGoalInfo, Context),
+        Context = goal_info_get_context(OuterGoalInfo),
         new_ticket_counter_var(SavedTicketCounterVar, !Info),
         new_ticket_var(TicketVar, !Info),
         gen_mark_ticket_stack(SavedTicketCounterVar, Context,
@@ -259,7 +259,7 @@ goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0),
     %
     OptTrailUsage = !.Info ^ opt_trail_usage,
     Cond = hlds_goal(_, CondGoalInfo),
-    goal_info_get_code_model(CondGoalInfo, CondCodeModel),
+    CondCodeModel = goal_info_get_code_model(CondGoalInfo),
     (
         OptTrailUsage = yes,
         CondCodeModel \= model_non,
@@ -271,7 +271,7 @@ goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0),
         % condition fails.
         %
         new_ticket_var(TicketVar, !Info),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
         %
         % Commit the trail ticket entries if the condition succeeds.
@@ -324,7 +324,7 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
         % to a procedure which will at runtime call error/1 with an appropriate
         % "Sorry, not implemented" error message.
         ModuleInfo = !.Info^ module_info,
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         trail_generate_call("trailed_nondet_pragma_foreign_code",
             detism_erroneous, purity_pure, [], [], ModuleInfo, Context,
             SorryNotImplementedCode),
@@ -354,7 +354,7 @@ disj_add_trail_ops([], _, _, _, [], !Info).
 disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
         [Goal | Goals], !Info) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
 
     % First undo the effects of any earlier branches.
     (

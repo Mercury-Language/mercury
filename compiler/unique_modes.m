@@ -119,7 +119,7 @@ unique_modes_check_proc(ProcId, PredId, !ModuleInfo, Changed, !IO) :-
 
 unique_modes_check_goal(Goal0, Goal, !ModeInfo, !IO) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_get_context(GoalInfo0, Context),
+    Context = goal_info_get_context(GoalInfo0),
     term.context_init(EmptyContext),
     ( Context = EmptyContext ->
         true
@@ -139,7 +139,7 @@ unique_modes_check_goal(Goal0, Goal, !ModeInfo, !IO) :-
 
     % If the goal is not nondet, then nothing is nondet-live, so reset the bag
     % of nondet-live vars to be empty.
-    goal_info_get_determinism(GoalInfo0, Detism),
+    Detism = goal_info_get_determinism(GoalInfo0),
     ( determinism_components(Detism, _, at_most_many) ->
         true
     ;
@@ -288,9 +288,9 @@ unique_modes_check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo,
         % "shallow" backtracking from semidet disjuncts. But we handle that
         % separately for each disjunct, in unique_modes_check_disj.
 
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        goal_info_get_determinism(GoalInfo0, Determinism),
-        % does this disjunction create a choice point?
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
+        Determinism = goal_info_get_determinism(GoalInfo0),
+        % Does this disjunction create a choice point?
         ( determinism_components(Determinism, _, at_most_many) ->
             mode_info_add_live_vars(NonLocals, !ModeInfo),
             make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
@@ -310,10 +310,10 @@ unique_modes_check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo,
 unique_modes_check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
         Goal, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "if-then-else", !ModeInfo, !IO),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    goal_get_nonlocals(Cond0, Cond_Vars),
-    goal_get_nonlocals(Then0, Then_Vars),
-    goal_get_nonlocals(Else0, Else_Vars),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
+    Cond_Vars = goal_get_nonlocals(Cond0),
+    Then_Vars = goal_get_nonlocals(Then0),
+    Else_Vars = goal_get_nonlocals(Else0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_lock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
 
@@ -345,7 +345,7 @@ unique_modes_check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
     set.to_sorted_list(Cond_Vars, Cond_Vars_List),
     select_live_vars(Cond_Vars_List, !.ModeInfo, Cond_Live_Vars),
     Cond0 = hlds_goal(_, Cond0_GoalInfo),
-    goal_info_get_instmap_delta(Cond0_GoalInfo, Cond0_DeltaInstMap),
+    Cond0_DeltaInstMap = goal_info_get_instmap_delta(Cond0_GoalInfo),
     select_changed_inst_vars(Cond_Live_Vars, Cond0_DeltaInstMap, !.ModeInfo,
         ChangedVars),
     make_var_list_mostly_uniq(ChangedVars, !ModeInfo),
@@ -384,7 +384,7 @@ unique_modes_check_goal_2(negation(SubGoal0), GoalInfo0, negation(SubGoal),
     % as nondet-live for the negated goal, since if the negated goal fails,
     % then the negation will succeed, and so these variables can be accessed
     % again after backtracking.
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
     set.to_sorted_list(NonLocals, NonLocalsList),
     select_live_vars(NonLocalsList, !.ModeInfo, LiveNonLocals),
     make_var_list_mostly_uniq(LiveNonLocals, !ModeInfo),
@@ -483,7 +483,7 @@ unique_modes_check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         Cases0 = [_ | _],
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         unique_modes_check_case_list(Cases0, Var, Cases, InstMapList,
             !ModeInfo, !IO),
         instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
@@ -658,7 +658,7 @@ unique_modes_check_conj(ConjType, [Goal0 | Goals0], Goals, !ModeInfo, !IO) :-
 
 unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals], !ModeInfo,
         !IO) :-
-    goal_get_nonlocals(Goal0, NonLocals),
+    NonLocals = goal_get_nonlocals(Goal0),
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -684,7 +684,7 @@ make_par_conj_nonlocal_multiset([], Empty) :-
     bag.init(Empty).
 make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
     make_par_conj_nonlocal_multiset(Goals, NonLocalsMultiSet0),
-    goal_get_nonlocals(Goal, NonLocals),
+    NonLocals = goal_get_nonlocals(Goal),
     set.to_sorted_list(NonLocals, NonLocalsList),
     bag.from_list(NonLocalsList, NonLocalsMultiSet1),
     bag.union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
@@ -739,7 +739,7 @@ unique_modes_check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
 unique_modes_check_par_conj_1([], [], [], !ModeInfo, !IO).
 unique_modes_check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
         [InstMap - NonLocals | InstMaps], !ModeInfo, !IO) :-
-    goal_get_nonlocals(Goal0, NonLocals),
+    NonLocals = goal_get_nonlocals(Goal0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -782,7 +782,7 @@ prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
         % in that case we need to mark all the non-locals as being only
         % mostly-unique rather than unique.
         Goal0 = hlds_goal(_, GoalInfo0),
-        goal_info_get_determinism(GoalInfo0, Determinism),
+        Determinism = goal_info_get_determinism(GoalInfo0),
         determinism_components(Determinism, CanFail, _),
         CanFail = can_fail
     ->

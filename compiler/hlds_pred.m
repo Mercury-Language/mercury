@@ -1126,7 +1126,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         VarSet0, InstVarSet, Markers, IsAddressTaken, VarNameRemap,
         ModuleInfo0, ModuleInfo, PredProcId) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 
     % XXX The set of existentially quantified type variables
@@ -1143,7 +1143,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         IsAddressTaken, Globals, TypeInfoLiveness),
     (
         TypeInfoLiveness = yes,
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
             ExistQVars, NonLocals, ExtraTypeInfos0),
         set.delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
@@ -1155,8 +1155,8 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         ExtraTypeInfos = []
     ),
 
-    goal_info_get_context(GoalInfo, Context),
-    goal_info_get_determinism(GoalInfo, Detism),
+    Context = goal_info_get_context(GoalInfo),
+    Detism = goal_info_get_determinism(GoalInfo),
     compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
         ArgTypes, ArgModes),
 

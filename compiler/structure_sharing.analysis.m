@@ -336,7 +336,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
                 SharingTable), Goals, !FixpointTable, !SharingAs, !IO)
         ;
             ConjType = parallel_conj,
-            goal_info_get_context(GoalInfo, Context),
+            Context = goal_info_get_context(GoalInfo),
             context_to_string(Context, ContextString),
             !:SharingAs = sharing_as_top_sharing_accumulate(
                 "par_conj (" ++ ContextString ++ ")", !.SharingAs)
@@ -359,7 +359,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
             RenamedSharing, !.SharingAs)
     ;
         GoalExpr = generic_call(_GenDetails, _, _, _),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         context_to_string(Context, ContextString),
         !:SharingAs = sharing_as_top_sharing_accumulate(
             "generic call (" ++ ContextString ++ ")", !.SharingAs)
@@ -401,7 +401,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
     ;
         GoalExpr = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
             _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo,
             proc(ForeignPredId, ForeignProcId), Attributes, Context,
             !.SharingAs)

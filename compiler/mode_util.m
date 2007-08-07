@@ -960,7 +960,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal,
     ;
         recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalInfo0,
             GoalExpr, VarTypes, InstMap0, InstMapDelta0, !RI),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta1),
         goal_info_set_instmap_delta(InstMapDelta1, GoalInfo0, GoalInfo1)
     ),
@@ -974,7 +974,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal,
         GoalInfo = GoalInfo1
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta).
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo).
 
 :- type recompute_info
     --->    recompute_info(
@@ -1003,9 +1003,9 @@ recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0), GoalInfo,
         switch(Var, Det, Cases), VarTypes, InstMap, InstMapDelta, !RI) :-
     ( goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal) ->
         Cases = Cases0,
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo)
     ;
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
             VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
     ).
@@ -1019,9 +1019,9 @@ recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
         VarTypes, InstMap, InstMapDelta, !RI) :-
     ( goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal) ->
         Goals = Goals0,
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo)
     ;
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         recompute_instmap_delta_disj(Atomic, Goals0, Goals,
             VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
     ).
@@ -1044,7 +1044,7 @@ recompute_instmap_delta_2(Atomic, if_then_else(Vars, Cond0, Then0, Else0),
         InstMapDeltaElse, !RI),
     instmap_delta_apply_instmap_delta(InstMapDeltaCond, InstMapDeltaThen,
         test_size, InstMapDeltaCondThen),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
     update_module_info(
         merge_instmap_delta(InstMap0, NonLocals,
             VarTypes, InstMapDeltaElse, InstMapDeltaCondThen),
@@ -1091,7 +1091,7 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
     ;
         Atomic = no,
         UniMode = UniMode0,
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo)
     ).
 
 recompute_instmap_delta_2(_,
@@ -1107,7 +1107,7 @@ recompute_instmap_delta_2(_,
         InstMapDelta = InstMapDelta0
     ;
         ExtraArgs = [_ | _],
-        goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
+        OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
         instmap_delta_restrict(set.list_to_set(ExtraArgVars),
             OldInstMapDelta, ExtraArgsInstMapDelta),
@@ -1333,7 +1333,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         % Get the final inst of the deconstructed var, which will be the same
         % as in the old instmap.
         %
-        goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
+        OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap.lookup_var(InstMap, Var, InitialInst),
         ( instmap_delta_search_var(OldInstMapDelta, Var, FinalInst1) ->
             % XXX we need to merge the information in InitialInst
@@ -1359,9 +1359,9 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         UniMode = UniMode0
     ;
         Uni = construct(Var, ConsId, Args, _, _, _, _),
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         set.member(Var, NonLocals),
-        goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
+        OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
         MaybeInst = cons_id_to_shared_inst(ModuleInfo, ConsId, length(Args)),
         MaybeInst = yes(Inst)
@@ -1370,7 +1370,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         instmap_delta_init_reachable(InstMapDelta0),
         instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta)
     ;
-        goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         UniMode = UniMode0
     ).
 
@@ -1490,7 +1490,7 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
 
 fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     instmap.lookup_var(InstMap0, Var, Inst0),
     instmap.lookup_var(InstMap, Var, Inst),
     ( Inst = Inst0 ->

@@ -309,7 +309,7 @@ implicitly_quantify_goal_quant_info(Goal0, Goal, !Info) :-
     % to become local when previously it was nonlocal),
     % then we may need to likewise shrink the instmap delta.
 
-    goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0),
+    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo2),
     instmap_delta_restrict(NonLocalVarsSet, InstMapDelta0, InstMapDelta),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -372,7 +372,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
         Vars = Vars0,
         Reason = Reason1
     ;
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
         rename_var_list(no, RenameMap, Vars0, Vars),
@@ -468,7 +468,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
         Then1 = Then0,
         Vars = Vars0
     ;
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Cond0, Cond1, !Info),
         rename_some_vars_in_goal(RenameMap, Then0, Then1),
@@ -665,7 +665,7 @@ implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
     % ===>
     %   (not (LHS, not RHS)), (not (RHS, not LHS))
 
-    goal_info_get_context(OldGoalInfo, Context),
+    Context = goal_info_get_context(OldGoalInfo),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
     set_goal_nonlocals(LHS_NonLocalVars, GoalInfo1, LHS_GI, !Info),
@@ -742,7 +742,7 @@ implicitly_quantify_unify_rhs(_, GoalInfo0, !RHS, !Unification, !Info) :-
     ( empty(RenameVars0) ->
         true
     ;
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         warn_overlapping_scope(RenameVars0, Context, !Info)
     ),
     % We need to rename apart any of the lambda vars that we have already seen,
@@ -790,7 +790,7 @@ implicitly_quantify_unify_rhs(_, GoalInfo0, !RHS, !Unification, !Info) :-
     % the quantified variables.
 
     Goal = hlds_goal(_, LambdaGoalInfo),
-    goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals),
+    LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
     list.filter(contains(LambdaGoalNonLocals),
         LambdaNonLocals0, LambdaNonLocals),
 

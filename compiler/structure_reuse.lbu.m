@@ -85,7 +85,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         !.Expr = unify(_, _, _, _, _)
     ;
         !.Expr = plain_call(_,_, _, _, _, _),
-        goal_info_get_determinism(Info0, Det),
+        Det = goal_info_get_determinism(Info0),
         (
             detism_allows_multiple_solns(Det)
         ->

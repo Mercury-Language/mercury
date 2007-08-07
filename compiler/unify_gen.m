@@ -557,7 +557,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     % should be used as a goal, not an expression).
 
     proc_info_get_goal(ProcInfo, ProcInfoGoal),
-    proc_info_interface_code_model(ProcInfo, CodeModel),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     (
         EvalMethod = lambda_normal,
@@ -667,10 +667,10 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
         module_info_get_name(ModuleInfo, ModuleName),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
-        goal_info_get_goal_path(GoalInfo, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo),
         GoalPathStr = goal_path_to_string(GoalPath),
         code_info.get_cur_proc_label(!.CI, CallerProcLabel),
         code_info.get_next_closure_seq_no(SeqNo, !CI),

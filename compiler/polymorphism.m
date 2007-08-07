@@ -679,7 +679,7 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
         UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info) :-
     pred_info_get_origin(PredInfo, Origin),
-    ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode), 
+    ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode),
     ( Origin = origin_instance_method(InstanceMethodConstraints) ->
         setup_headvars_instance_method(PredInfo,
             InstanceMethodConstraints, !HeadVars,
@@ -710,7 +710,7 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
     poly_info::in, poly_info::out) is det.
 
 setup_headvars_instance_method(PredInfo,
-        InstanceMethodConstraints, !HeadVars, 
+        InstanceMethodConstraints, !HeadVars,
         UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !ExtraArgModes, !Info) :-
 
@@ -725,17 +725,17 @@ setup_headvars_instance_method(PredInfo,
         ArgTypeVarSet, UnconstrainedInstanceTypeInfoVars, !Info),
     make_typeclass_info_head_vars(do_record_type_info_locns,
         InstanceConstraints, InstanceHeadTypeClassInfoVars, !Info),
-    
+
     proc_arg_vector_set_instance_type_infos(UnconstrainedInstanceTypeInfoVars,
         !HeadVars),
     proc_arg_vector_set_instance_typeclass_infos(InstanceHeadTypeClassInfoVars,
          !HeadVars),
-    
+
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     list.foldl(rtti_reuse_typeclass_info_var,
         InstanceHeadTypeClassInfoVars, RttiVarMaps0, RttiVarMaps),
     poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-    
+
     in_mode(InMode),
     list.duplicate(list.length(UnconstrainedInstanceTypeInfoVars),
         InMode, UnconstrainedInstanceTypeInfoModes),
@@ -744,7 +744,7 @@ setup_headvars_instance_method(PredInfo,
     poly_arg_vector_set_instance_type_infos(
         UnconstrainedInstanceTypeInfoModes, !ExtraArgModes),
     poly_arg_vector_set_instance_typeclass_infos(
-        InstanceHeadTypeClassInfoModes, !ExtraArgModes), 
+        InstanceHeadTypeClassInfoModes, !ExtraArgModes),
 
     setup_headvars_2(PredInfo, ClassContext,
         InstanceTVars,
@@ -848,7 +848,7 @@ setup_headvars_2(PredInfo, ClassContext,
         ++ ExtraHeadTypeInfoVars,
     list.condense([UnconstrainedInstanceTVars, UnconstrainedUnivTVars,
         UnconstrainedExistTVars], AllUnconstrainedTVars),
-    
+
     proc_arg_vector_set_univ_type_infos(UnivHeadTypeInfoVars,
         HeadVars0, HeadVars1),
     proc_arg_vector_set_exist_type_infos(ExistHeadTypeInfoVars,
@@ -857,7 +857,7 @@ setup_headvars_2(PredInfo, ClassContext,
         HeadVars2, HeadVars3),
     proc_arg_vector_set_exist_typeclass_infos(ExistHeadTypeClassInfoVars,
         HeadVars3, HeadVars),
- 
+
     % Figure out the modes of the introduced type_info and typeclass_info
     % arguments.
 
@@ -935,7 +935,7 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
         ActualExistConstraints),
     ExistQVarsForCall = [],
     Goal0 = hlds_goal(_, GoalInfo),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     make_typeclass_info_vars(ActualExistConstraints,
         ExistQVarsForCall, Context, ExistTypeClassVars,
         ExtraTypeClassGoals, !Info),
@@ -1176,7 +1176,7 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         list.append(NonLocalTypeInfosList, ArgVars0, ArgVars),
         Y1 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
             LambdaVars, Modes, Det, LambdaGoal),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set.union(NonLocals0, NonLocalTypeInfos, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
@@ -1220,7 +1220,7 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
 
     % Insert the TypeInfoVars into the nonlocals field of the goal_info
     % for the unification goal.
-    goal_info_get_nonlocals(!.GoalInfo, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
     set.insert_list(NonLocals0, TypeInfoVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),
 
@@ -1279,7 +1279,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
     ->
         % Convert the higher order pred term to a lambda goal.
         poly_info_get_varset(!.Info, VarSet0),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
             ArgVars0, CalleeArgTypes, UnifyContext, GoalInfo0, Context,
@@ -1317,7 +1317,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
             IsConstruction, ActualArgTypes, TypeOfX, GoalInfo0,
             ExtraVars, ExtraGoals, !Info),
         list.append(ExtraVars, ArgVars0, ArgVars),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set.insert_list(NonLocals0, ExtraVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
@@ -1369,11 +1369,11 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % the nonlocals field in the goal_info correctly. The goal_path is needed
     % to compute constraint_ids correctly.
     %
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
     set.insert_list(NonLocals, LambdaVars, OutsideVars),
     set.list_to_set(Args, InsideVars),
     set.intersect(OutsideVars, InsideVars, LambdaNonLocals),
-    goal_info_get_goal_path(GoalInfo0, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo0),
     goal_info_init(LambdaGoalInfo0),
     goal_info_set_context(Context, LambdaGoalInfo0, LambdaGoalInfo1),
     goal_info_set_nonlocals(LambdaNonLocals, LambdaGoalInfo1, LambdaGoalInfo2),
@@ -1454,9 +1454,9 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
 
     % Create type_class_info variables for the type class constraints.
     poly_info_get_constraint_map(!.Info, ConstraintMap),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
+    GoalPath = goal_info_get_goal_path(GoalInfo),
     list.length(ParentExistentialConstraints, NumExistentialConstraints),
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     (
         IsConstruction = yes,
         % Assume it's a construction.
@@ -1783,7 +1783,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Make the universally quantified typeclass_infos for the call.
         poly_info_get_constraint_map(!.Info, ConstraintMap),
-        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        GoalPath = goal_info_get_goal_path(GoalInfo0),
         list.length(ParentUnivConstraints, NumUnivConstraints),
         lookup_hlds_constraint_list(ConstraintMap, unproven, GoalPath,
             NumUnivConstraints, ActualUnivConstraints),
@@ -1797,7 +1797,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ;
             unexpected(this_file, "existq_tvar bound")
         ),
-        goal_info_get_context(GoalInfo0, Context),
+        Context = goal_info_get_context(GoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
             Context, ExtraUnivClassVars, ExtraUnivClassGoals, !Info),
 
@@ -1831,7 +1831,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             ++ ExtraUnivClassVars ++ ExtraExistClassVars,
 
         % Update the nonlocals.
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set.insert_list(NonLocals0, ExtraVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo)
     ).
@@ -1906,7 +1906,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     polymorphism_make_type_info_vars(ActualTypeInfoTypes, Ctxt,
         ExtraArgs, ExtraGoals, !Info),
     CallArgs = ExtraArgs ++ CallArgs0,
-    goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     NonLocals1 = set.list_to_set(ExtraArgs),
     NonLocals = set.union(NonLocals0, NonLocals1),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
@@ -1976,7 +1976,7 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
         !.Goal = hlds_goal(_, GoalInfo0),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         set.insert_list(NonLocals, ArgVars, NonLocalsPlusArgs0),
         set.insert_list(NonLocalsPlusArgs0, LambdaVars, NonLocalsPlusArgs),
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps0, VarTypes0,

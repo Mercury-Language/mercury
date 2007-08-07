@@ -392,7 +392,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
         Cmp = tighter,
         det_info_get_pred_id(DetInfo, PredId),
         det_info_get_proc_id(DetInfo, ProcId),
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         det_info_get_module_info(DetInfo, ModuleInfo),
         PredPieces = describe_one_proc_name_mode(ModuleInfo,
             should_not_module_qualify, proc(PredId, ProcId)),
@@ -495,7 +495,7 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
 
 det_diagnose_goal(hlds_goal(GoalExpr, GoalInfo), Desired, SwitchContext,
         DetInfo, Msgs) :-
-    goal_info_get_determinism(GoalInfo, Actual),
+    Actual = goal_info_get_determinism(GoalInfo),
     ( compare_determinisms(Desired, Actual, tighter) ->
         det_diagnose_goal_2(GoalExpr, GoalInfo, Desired, Actual, SwitchContext,
             DetInfo, Msgs)
@@ -523,7 +523,7 @@ det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, Actual, SwitchContext,
         DesSolns \= at_most_many_cc,
         ClausesWithSoln > 1
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Pieces = [words("Disjunction has multiple clauses with solutions.")],
         Msg = simple_msg(Context, [always(Pieces)]),
         Msgs = [Msg] ++ Msgs1
@@ -542,7 +542,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
         SwitchCanFail = can_fail,
         determinism_components(Desired, cannot_fail, _)
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         det_diagnose_switch_context(SwitchContext, DetInfo, NestingPieces),
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_get_varset(ProcInfo, VarSet),
@@ -571,7 +571,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 
 det_diagnose_goal_2(plain_call(PredId, ProcId, _, _, CallContext, _), GoalInfo,
         Desired, Actual, _, DetInfo, Msgs) :-
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     det_report_call_context(Context, CallContext, DetInfo, PredId, ProcId,
         InitMsgs, StartingPieces),
     det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces,
@@ -580,13 +580,13 @@ det_diagnose_goal_2(plain_call(PredId, ProcId, _, _, CallContext, _), GoalInfo,
 
 det_diagnose_goal_2(generic_call(GenericCall, _, _, _), GoalInfo,
         Desired, Actual, _, _DetInfo, Msgs) :-
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     report_generic_call_context(GenericCall, StartingPieces),
     det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces, Msgs).
 
 det_diagnose_goal_2(unify(LHS, RHS, _, _, UnifyContext), GoalInfo,
         Desired, Actual, _, DetInfo, Msgs) :-
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     First = yes,
     Last = yes,
     det_report_unify_context(First, Last, Context, UnifyContext,
@@ -597,7 +597,7 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
         Desired, _Actual, SwitchContext, DetInfo, Msgs) :-
     determinism_components(Desired, _DesiredCanFail, DesiredSolns),
     Cond = hlds_goal(_CondGoal, CondInfo),
-    goal_info_get_determinism(CondInfo, CondDetism),
+    CondDetism = goal_info_get_determinism(CondInfo),
     determinism_components(CondDetism, _CondCanFail, CondSolns),
     (
         CondSolns = at_most_many,
@@ -619,14 +619,14 @@ det_diagnose_goal_2(negation(_), GoalInfo, Desired, Actual, _, _, Msgs) :-
         DesiredCanFail = cannot_fail,
         ActualCanFail = can_fail
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Pieces = [words("Negated goal can succeed.")],
         Msgs = [simple_msg(Context, [always(Pieces)])]
     ;
         DesiredSolns = at_most_zero,
         ActualSolns \= at_most_zero
     ->
-        goal_info_get_context(GoalInfo, Context),
+        Context = goal_info_get_context(GoalInfo),
         Pieces = [words("Negated goal can fail.")],
         Msgs = [simple_msg(Context, [always(Pieces)])]
     ;
@@ -636,7 +636,7 @@ det_diagnose_goal_2(negation(_), GoalInfo, Desired, Actual, _, _, Msgs) :-
 det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual, SwitchContext, DetInfo,
         Msgs) :-
     Goal = hlds_goal(_, GoalInfo),
-    goal_info_get_determinism(GoalInfo, Internal),
+    Internal = goal_info_get_determinism(GoalInfo),
     ( Actual = Internal ->
         InternalDesired = Desired
     ;
@@ -647,7 +647,7 @@ det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual, SwitchContext, DetInfo,
 
 det_diagnose_goal_2(call_foreign_proc(_, _, _, _, _, _, _), GoalInfo, Desired,
         _, _, _, Msgs) :-
-    goal_info_get_context(GoalInfo, Context),
+    Context = goal_info_get_context(GoalInfo),
     DesiredStr = determinism_to_string(Desired),
     Pieces = [words("Determinism declaration not satisfied."),
         words("Desired determinism is " ++ DesiredStr ++ ".")],
@@ -746,7 +746,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
     det_diagnose_goal(Goal, ClauseDesired, SwitchContext, DetInfo, Msgs1),
     (
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_determinism(GoalInfo, GoalDetism),
+        GoalDetism = goal_info_get_determinism(GoalInfo),
         determinism_components(GoalDetism, _, at_most_zero)
     ->
         true
