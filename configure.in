@@ -4552,23 +4552,36 @@ else
 fi
 export had_old_conf_h
 
-# IMPORTANT NOTE
-# --------------
-# Any new entries here may need to be handled by scripts/mercury_config.in.
-# Failing to do this correctly may break the binary distributions
-# This is especially true of files in the runtime or java directories;
-# if you add new .in files to either of those you *must* update
-# scripts/mercury_config.in.
-#
-AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc
-scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
-scripts/mgnuc scripts/parse_ml_options.sh-subr scripts/ml
-scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
-scripts/canonical_grade scripts/mkfifo_using_mknod
-scripts/mercury_config scripts/Mercury.config scripts/Mercury.config.bootstrap
+executable_output_files='
+scripts/mmc
+scripts/mercury.bat
+scripts/mprof
+scripts/mercury_update_interface
+scripts/mgnuc
+scripts/ml
+scripts/c2init
+scripts/mmake
+scripts/mdb
+scripts/mdprof
+scripts/canonical_grade
+scripts/mkfifo_using_mknod
+scripts/mercury_config
 scripts/prepare_tmp_dir_fixed_part
-bindist/bindist.INSTALL bindist/bindist.Makefile
-tools/lmc tools/dotime runtime/mercury_dotnet.cs java/runtime/Constants.java
+tools/lmc
+tools/dotime
+'
+
+nonexecutable_output_files='
+Mmake.common
+scripts/Mmake.vars
+scripts/parse_ml_options.sh-subr
+scripts/mdbrc
+scripts/Mercury.config
+scripts/Mercury.config.bootstrap
+bindist/bindist.INSTALL
+bindist/bindist.Makefile
+runtime/mercury_dotnet.cs
+java/runtime/Constants.java
 java/runtime/Native.java
 library/erlang_conf.m
 compiler/COMP_FLAGS
@@ -4579,6 +4592,19 @@ analysis/ANALYSIS_FLAGS
 slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
+'
+
+output_files="$executable_output_files $nonexecutable_output_files"
+
+# IMPORTANT NOTE
+# --------------
+# Any new entries here may need to be handled by scripts/mercury_config.in.
+# Failing to do this correctly may break the binary distributions
+# This is especially true of files in the runtime or java directories;
+# if you add new .in files to either of those you *must* update
+# scripts/mercury_config.in.
+#
+AC_OUTPUT($output_files
 "$test_flags"
 "$test_mdbrc"
 ,
@@ -4625,6 +4651,11 @@ case $reconfiguring in no)
 esac],
 [reconfiguring=$reconfiguring]
 )
+
+for file in $nonexecutable_output_files
+do
+	chmod a-x "$file"
+done
 
 case "$remake_dependencies.$reconfiguring" in "true.no")
 	MERCURY_MSG(
