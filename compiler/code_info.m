@@ -4110,6 +4110,8 @@ acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
         new_temp_slots([HeadItem | TailItems], StackVars,
             StackId, FirstSlotNum, LastSlotNum, !CI)
     ),
+    set.insert_list(TempsInUse0, StackVars, TempsInUse),
+    set_temps_in_use(TempsInUse, !CI),
     (
         Persistence = persistent_temp_slot,
         get_persistent_temps(!.CI, PersistentTemps0),
@@ -4146,9 +4148,10 @@ new_temp_slots(Items, StackVars, StackId, FirstSlotNum, LastSlotNum, !CI) :-
     CodeModel = get_proc_model(!.CI),
     StackId = code_model_to_main_stack(CodeModel),
     get_temp_content_map(!.CI, TempContentMap0),
-    record_new_temp_slots(Items, StackId, FirstSlotNum, LastSlotNum,
+    record_new_temp_slots(Items, StackId, FirstSlotNum, FirstUnusedSlotNum,
         TempSlotCount0, TempSlotCount, TempContentMap0, TempContentMap,
         StackVars),
+    LastSlotNum = FirstUnusedSlotNum - 1,
     set_max_temp_slot_count(TempSlotCount, !CI),
     set_temp_content_map(TempContentMap, !CI).
 

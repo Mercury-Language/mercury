@@ -5126,25 +5126,37 @@ output_rval(var(_), !IO) :-
 output_rval(mem_addr(MemRef), !IO) :-
     (
         MemRef = stackvar_ref(Rval),
-        output_llds_type_cast(data_ptr, !IO),
         io.write_string("&MR_sv(", !IO),
-        output_rval(Rval, !IO),
+        % Don't clutter the output with unnecessary casts.
+        ( Rval = const(llconst_int(SlotNum)) ->
+            io.write_int(SlotNum, !IO)
+        ;
+            output_rval_as_type(Rval, integer, !IO)
+        ),
         io.write_string(")", !IO)
     ;
         MemRef = framevar_ref(Rval),
-        output_llds_type_cast(data_ptr, !IO),
         io.write_string("&MR_fv(", !IO),
-        output_rval(Rval, !IO),
+        % Don't clutter the output with unnecessary casts.
+        ( Rval = const(llconst_int(SlotNum)) ->
+            io.write_int(SlotNum, !IO)
+        ;
+            output_rval_as_type(Rval, integer, !IO)
+        ),
         io.write_string(")", !IO)
     ;
         MemRef = heap_ref(BaseRval, Tag, FieldNumRval),
-        output_llds_type_cast(data_ptr, !IO),
         io.write_string("&MR_tfield(", !IO),
         io.write_int(Tag, !IO),
         io.write_string(", ", !IO),
         output_rval(BaseRval, !IO),
         io.write_string(", ", !IO),
-        output_rval(FieldNumRval, !IO),
+        % Don't clutter the output with unnecessary casts.
+        ( FieldNumRval = const(llconst_int(FieldNum)) ->
+            io.write_int(FieldNum, !IO)
+        ;
+            output_rval_as_type(FieldNumRval, integer, !IO)
+        ),
         io.write_string(")", !IO)
     ).
 
