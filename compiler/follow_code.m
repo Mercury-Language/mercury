@@ -45,8 +45,10 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
+:- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -56,6 +58,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module pair.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -203,11 +206,22 @@ move_follow_code_in_conj_2([], _ConjPurity, !RevPrevGoals, !Changed).
 move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, !RevPrevGoals,
         !Changed) :-
     (
-        Goal0 = hlds_goal(GoalExpr0, _),
+        Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         goal_util.goal_is_branched(GoalExpr0),
         move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime,
             ConjPurity, WorstPurity),
         FollowGoals = [_ | _],
+        % Moving any goals that bind variables into a model_semi (or model_det)
+        % disjunction gives that disjunction some outputs, which means that it
+        % will become nondet.
+        (
+            (
+                GoalExpr0 = disj(_),
+                goal_info_get_code_model(GoalInfo0) \= model_non
+            )
+        =>
+            no_bind_vars(FollowGoals)
+        ),
         move_follow_code_move_goals(Goal0, FollowGoals, WorstPurity,
             Goal1Prime)
     ->
@@ -221,6 +235,16 @@ move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, !RevPrevGoals,
     move_follow_code_in_goal(Goal1, Goal, !Changed),
     !:RevPrevGoals = [Goal | !.RevPrevGoals],
     move_follow_code_in_conj_2(RestGoals, ConjPurity, !RevPrevGoals, !Changed).
+
+:- pred no_bind_vars(list(hlds_goal)::in) is semidet.
+
+no_bind_vars([]).
+no_bind_vars([Goal | Goals]) :-
+    Goal = hlds_goal(_, GoalInfo),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+    instmap_delta_changed_vars(InstMapDelta, ChangedVars),
+    set.empty(ChangedVars),
+    no_bind_vars(Goals).
 
 %-----------------------------------------------------------------------------%
 

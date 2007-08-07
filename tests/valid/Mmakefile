@@ -62,8 +62,8 @@ OTHER_PROGS= \
 	big_foreign_type \
 	builtin_false \
 	common_struct_bug \
-	complicated_unify \
 	compl_unify_bug \
+	complicated_unify \
 	constr_inst_syntax \
 	constrained_poly_bound_arg \
 	constrained_poly_insts \
@@ -77,7 +77,6 @@ OTHER_PROGS= \
 	det_inference \
 	det_switch \
 	double_vn \
-	file_stream_instances \
 	easy_nondet_test \
 	easy_nondet_test_2 \
 	empty_bound_inst_list \
@@ -89,6 +88,7 @@ OTHER_PROGS= \
 	export_before_func \
 	exported_foreign_type \
 	fail_ite \
+	file_stream_instances \
 	followcode_det_problem \
 	foreign_underscore_var \
 	func_default_modes \
@@ -127,8 +127,8 @@ OTHER_PROGS= \
 	intermod_quote \
 	intermod_record \
 	intermod_test \
-	intermod_typeclass \
 	intermod_type_spec \
+	intermod_typeclass \
 	intermod_user_equality \
 	intermod_user_equality_nested \
 	lambda_inference\
@@ -154,8 +154,8 @@ OTHER_PROGS= \
 	merge_ground_any \
 	mert \
 	middle_rec_labels \
-	modes_bug \
 	mode_syntax \
+	modes_bug \
 	module_a \
 	module_b \
 	module_c \
@@ -215,8 +215,8 @@ OTHER_PROGS= \
 	tuple_eqv \
 	two_pragma_c_codes \
 	two_way_unif \
-	typeclass_inlining_bug \
 	type_inf_ambig_test \
+	typeclass_inlining_bug \
 	unbound_inst_var \
 	unbound_tvar_in_lambda \
 	undead_proc \
@@ -240,7 +240,8 @@ LLDS_PROGS= \
 # These tests only work in grades that support tabling.
 #
 TABLE_PROGS=\
-	table_wrong_func_arity
+	table_wrong_func_arity \
+	mercury_java_parser_follow_code_bug
 
 # These tests only work in grades that support parallel conjunction.
 #
