@@ -27,6 +27,7 @@ BC
 bintree
 blah
 Boehm
+builtin
 bytecode
 bytecodes
 bytedebug
@@ -63,6 +64,7 @@ DCGGoal
 DCGMode
 DCGs
 DCGVar
+Dowd
 debugflag
 debuggable
 decl
@@ -104,6 +106,7 @@ errorcheck
 euclidean
 Evan
 exp
+expandtab
 Fergus
 fie
 FileName
@@ -143,6 +146,7 @@ ids
 ie
 iff
 ifinfo
+ifnottex
 ifset
 INCL
 IndexType
@@ -195,6 +199,7 @@ lmypackage
 loc
 LocalVars
 LOWLEVEL
+Lutz
 MADITI
 malloc
 maxdepth
@@ -370,6 +375,7 @@ subsubsection
 subterms
 Sudarshan
 summarize
+SUNY
 supp
 tcl
 temps
