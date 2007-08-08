@@ -330,7 +330,7 @@ X / Y = Z :-
 	float(IntVal::in) = (FloatVal::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	FloatVal = IntVal
+	FloatVal = float(IntVal)
 ").
 
 :- pragma foreign_proc("C",
