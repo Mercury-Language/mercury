@@ -29,13 +29,12 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
 :- type dead_proc_pass
-    --->    warning_pass
-    ;       final_optimization_pass.
+    --->    dead_proc_warning_pass
+    ;       dead_proc_final_optimization_pass.
 
     % Eliminate dead procedures. If the first argument is `warning_pass',
     % also warn about any user-defined procedures that are dead.
@@ -61,10 +60,14 @@
 :- pred dead_pred_elim(module_info::in, module_info::out) is det.
 
 :- type entity
-    --->    proc(pred_id, proc_id)
-    ;       base_gen_info(module_name, string, int).
+    --->    entity_proc(pred_id, proc_id)
+    ;       entity_type_ctor(module_name, string, int).
 
-:- type needed_map == map(entity, maybe(int)).
+:- type needed_map == map(entity, maybe_needed).
+
+:- type maybe_needed
+    --->    not_eliminable
+    ;       maybe_eliminable(num_references :: int).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -87,6 +90,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module io.
+:- import_module maybe.
 :- import_module pair.
 :- import_module queue.
 :- import_module set.
@@ -97,7 +101,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% We deal with two kinds of entities, procedures and base_gen_info structures.
+% We deal with two kinds of entities, procedures and type_ctor_info structures.
 %
 % The algorithm has three main data structures:
 %
@@ -110,14 +114,14 @@
 %   - a set of entities that have been examined.
 %
 % The needed map and the queue are both initialized with the ids of the
-% procedures and base_gen_info structures exported from the module.
+% procedures and type_ctor_info structures exported from the module.
 % The algorithm then takes the ids of entities from the queue one at a time,
 % and if the entity hasn't been examined before, examines the entity
 % definition to find all mention of other entities. Their ids are then
 % put into both the needed map and the queue.
 %
 % The final pass of the algorithm deletes from the HLDS any procedure
-% or base_gen_info structure whose id is not in the needed map.
+% or type_ctor_info structure whose id is not in the needed map.
 
 :- type entity_queue    ==  queue(entity).
 :- type examined_set    ==  set(entity).
@@ -157,7 +161,7 @@ dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
     dead_proc_initialize_init_fn_procs(FinalPreds, !Queue, !Needed),
 
     module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos),
-    dead_proc_initialize_base_gen_infos(TypeCtorGenInfos, !Queue, !Needed),
+    dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, !Queue, !Needed),
 
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, Instances),
@@ -185,8 +189,9 @@ dead_proc_initialize_preds([PredId | PredIds], PredTable, !Queue, !Needed) :-
 
 dead_proc_initialize_procs(_PredId, [], !Queue, !Needed).
 dead_proc_initialize_procs(PredId, [ProcId | ProcIds], !Queue, !Needed) :-
-    svqueue.put(proc(PredId, ProcId), !Queue),
-    svmap.set(proc(PredId, ProcId), no, !Needed),
+    Entity = entity_proc(PredId, ProcId),
+    svqueue.put(Entity, !Queue),
+    svmap.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_procs(PredId, ProcIds, !Queue, !Needed).
 
     % Add procedures exported to foreign language by a `:- pragma
@@ -201,8 +206,9 @@ dead_proc_initialize_pragma_exports([PragmaProc | PragmaProcs],
         !Queue, !Needed) :-
     PragmaProc = pragma_exported_proc(_Lang, PredId, ProcId,
         _ExportName, _Ctxt),
-    svqueue.put(proc(PredId, ProcId), !Queue),
-    svmap.set(proc(PredId, ProcId), no, !Needed),
+    Entity = entity_proc(PredId, ProcId),
+    svqueue.put(Entity, !Queue),
+    svmap.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_pragma_exports(PragmaProcs, !Queue, !Needed).
 
     % Add module initialisation/finalisation procedures to the queue and map
@@ -215,16 +221,17 @@ dead_proc_initialize_pragma_exports([PragmaProc | PragmaProcs],
 dead_proc_initialize_init_fn_procs([], !Queue, !Needed).
 dead_proc_initialize_init_fn_procs([PPId | PPIds], !Queue, !Needed) :-
     PPId = proc(PredId, ProcId),
-    svqueue.put(proc(PredId, ProcId), !Queue),
-    svmap.set(proc(PredId, ProcId), no, !Needed),
+    Entity = entity_proc(PredId, ProcId),
+    svqueue.put(Entity, !Queue),
+    svmap.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_init_fn_procs(PPIds, !Queue, !Needed).
 
-:- pred dead_proc_initialize_base_gen_infos(list(type_ctor_gen_info)::in,
+:- pred dead_proc_initialize_type_ctor_infos(list(type_ctor_gen_info)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_initialize_base_gen_infos([], !Queue, !Needed).
-dead_proc_initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
+dead_proc_initialize_type_ctor_infos([], !Queue, !Needed).
+dead_proc_initialize_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
         !Queue, !Needed) :-
     TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
         Arity, _Status, _HldsDefn, _Unify, _Compare),
@@ -245,13 +252,13 @@ dead_proc_initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
         % and hence no special preds will be eliminated.
         semidet_succeed
     ->
-        Entity = base_gen_info(ModuleName, TypeName, Arity),
+        Entity = entity_type_ctor(ModuleName, TypeName, Arity),
         svqueue.put(Entity, !Queue),
-        svmap.set(Entity, no, !Needed)
+        svmap.set(Entity, not_eliminable, !Needed)
     ;
         true
     ),
-    dead_proc_initialize_base_gen_infos(TypeCtorGenInfos, !Queue, !Needed).
+    dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, !Queue, !Needed).
 
 :- pred dead_proc_initialize_class_methods(class_table::in,
     instance_table::in, entity_queue::in, entity_queue::out,
@@ -274,7 +281,7 @@ get_instance_pred_procs(Instance, !Queue, !Needed) :-
     % We need to keep the instance methods for all instances
     % for optimization of method lookups.
     (
-        % This should never happen
+        % This should never happen.
         PredProcIds = no
     ;
         PredProcIds = yes(Ids),
@@ -295,8 +302,9 @@ get_class_pred_procs(Class, !Queue, !Needed) :-
 
 get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
     ClassProc = hlds_class_proc(PredId, ProcId),
-    svqueue.put(proc(PredId, ProcId), !Queue),
-    svmap.set(proc(PredId, ProcId), no, !Needed).
+    Entity = entity_proc(PredId, ProcId),
+    svqueue.put(Entity, !Queue),
+    svmap.set(Entity, not_eliminable, !Needed).
 
 %-----------------------------------------------------------------------------%
 
@@ -312,12 +320,12 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
         ;
             svset.insert(Entity, !Examined),
             (
-                Entity = proc(PredId, ProcId),
+                Entity = entity_proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
                 dead_proc_examine_proc(PredProcId, ModuleInfo, !Queue, !Needed)
             ;
-                Entity = base_gen_info(Module, Type, Arity),
-                dead_proc_examine_base_gen_info(Module, Type, Arity,
+                Entity = entity_type_ctor(Module, Type, Arity),
+                dead_proc_examine_type_ctor_info(Module, Type, Arity,
                     ModuleInfo, !Queue, !Needed)
             ),
             dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
@@ -328,15 +336,15 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead_proc_examine_base_gen_info(module_name::in, string::in,
+:- pred dead_proc_examine_type_ctor_info(module_name::in, string::in,
     arity::in, module_info::in, entity_queue::in, entity_queue::out,
     needed_map::in, needed_map::out) is det.
 
-dead_proc_examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
+dead_proc_examine_type_ctor_info(ModuleName, TypeName, Arity, ModuleInfo,
         !Queue, !Needed) :-
     module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
     (
-        find_base_gen_info(ModuleName, TypeName, Arity, TypeCtorGenInfos,
+        find_type_ctor_info(ModuleName, TypeName, Arity, TypeCtorGenInfos,
             Refs)
     ->
         dead_proc_examine_refs(Refs, !Queue, !Needed)
@@ -344,11 +352,11 @@ dead_proc_examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
         true
     ).
 
-:- pred find_base_gen_info(module_name::in, string::in,
+:- pred find_type_ctor_info(module_name::in, string::in,
     arity::in, list(type_ctor_gen_info)::in, list(pred_proc_id)::out)
     is semidet.
 
-find_base_gen_info(ModuleName, TypeName, TypeArity,
+find_type_ctor_info(ModuleName, TypeName, TypeArity,
         [TypeCtorGenInfo | TypeCtorGenInfos], Refs) :-
     (
         TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName,
@@ -356,7 +364,7 @@ find_base_gen_info(ModuleName, TypeName, TypeArity,
     ->
         Refs = [Unify, Compare]
     ;
-        find_base_gen_info(ModuleName, TypeName, TypeArity, TypeCtorGenInfos,
+        find_type_ctor_info(ModuleName, TypeName, TypeArity, TypeCtorGenInfos,
             Refs)
     ).
 
@@ -373,9 +381,9 @@ maybe_add_ref(yes(Ref), Refs, [Ref | Refs]).
 dead_proc_examine_refs([], !Queue, !Needed).
 dead_proc_examine_refs([Ref | Refs], !Queue, !Needed) :-
     Ref = proc(PredId, ProcId),
-    Entity = proc(PredId, ProcId),
+    Entity = entity_proc(PredId, ProcId),
     svqueue.put(Entity, !Queue),
-    svmap.set(Entity, no, !Needed),
+    svmap.set(Entity, not_eliminable, !Needed),
     dead_proc_examine_refs(Refs, !Queue, !Needed).
 
 %-----------------------------------------------------------------------------%
@@ -448,43 +456,45 @@ dead_proc_examine_expr(if_then_else(_, Cond, Then, Else), CurrProc, !Queue,
 dead_proc_examine_expr(generic_call(_,_,_,_), _, !Queue, !Needed).
 dead_proc_examine_expr(plain_call(PredId, ProcId, _,_,_,_), CurrProc, !Queue,
         !Needed) :-
-    queue.put(!.Queue, proc(PredId, ProcId), !:Queue),
+    Entity = entity_proc(PredId, ProcId),
+    queue.put(!.Queue, Entity, !:Queue),
     ( proc(PredId, ProcId) = CurrProc ->
-        % if it's reachable and recursive, then we can't
-        % eliminate or inline it
-        NewNotation = no,
-        svmap.set(proc(PredId, ProcId), NewNotation, !Needed)
-    ; map.search(!.Needed, proc(PredId, ProcId), OldNotation) ->
+        % If it's reachable and recursive, then we can't eliminate it
+        % or inline it.
+        NewNotation = not_eliminable,
+        svmap.set(Entity, NewNotation, !Needed)
+    ; map.search(!.Needed, Entity, OldNotation) ->
         (
-            OldNotation = no,
-            NewNotation = no
+            OldNotation = not_eliminable,
+            NewNotation = not_eliminable
         ;
-            OldNotation = yes(Count),
-            NewNotation = yes(Count + 1)
+            OldNotation = maybe_eliminable(Count),
+            NewNotation = maybe_eliminable(Count + 1)
         ),
-        svmap.det_update(proc(PredId, ProcId), NewNotation, !Needed)
+        svmap.det_update(Entity, NewNotation, !Needed)
     ;
-        NewNotation = yes(1),
-        svmap.set(proc(PredId, ProcId), NewNotation, !Needed)
+        NewNotation = maybe_eliminable(1),
+        svmap.set(Entity, NewNotation, !Needed)
     ).
 dead_proc_examine_expr(call_foreign_proc(_, PredId, ProcId, _, _, _, _),
         _CurrProc, !Queue, !Needed) :-
-    svqueue.put(proc(PredId, ProcId), !Queue),
-    svmap.set(proc(PredId, ProcId), no, !Needed).
+    Entity = entity_proc(PredId, ProcId),
+    svqueue.put(Entity, !Queue),
+    svmap.set(Entity, not_eliminable, !Needed).
 dead_proc_examine_expr(unify(_,_,_, Uni, _), _CurrProc, !Queue, !Needed) :-
     (
         Uni = construct(_, ConsId, _, _, _, _, _),
         (
             ConsId = pred_const(ShroudedPredProcId, _),
             proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-            Entity = proc(PredId, ProcId)
+            Entity = entity_proc(PredId, ProcId)
         ;
             ConsId = type_ctor_info_const(Module, TypeName, Arity),
-            Entity = base_gen_info(Module, TypeName, Arity)
+            Entity = entity_type_ctor(Module, TypeName, Arity)
         )
     ->
         svqueue.put(Entity, !Queue),
-        svmap.set(Entity, no, !Needed)
+        svmap.set(Entity, not_eliminable, !Needed)
     ;
         true
     ).
@@ -531,7 +541,7 @@ dead_proc_eliminate(Pass, !.Needed, !ModuleInfo, Specs) :-
 
     module_info_set_preds(PredTable, !ModuleInfo),
     module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
-    dead_proc_eliminate_base_gen_infos(TypeCtorGenInfos0, !.Needed,
+    dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, !.Needed,
         TypeCtorGenInfos),
     module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo),
     (
@@ -607,7 +617,7 @@ dead_proc_eliminate_pred(Pass, PredId, !ProcElimInfo) :-
         % by this point managed to inline or specialize; this code should be
         % called with `Pass = final_optimization_pass' only after inlining
         % and specialization is complete).
-        Pass = final_optimization_pass,
+        Pass = dead_proc_final_optimization_pass,
         Status = status_opt_imported
     ->
         Changed = yes,
@@ -660,10 +670,26 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc, ProcElimInfo,
     Needed = ProcElimInfo ^ proc_elim_needed_map,
     ModuleInfo = ProcElimInfo ^ proc_elim_module_info,
     (
-        % Keep the procedure if it is in the needed map
-        % or if it is to be kept because it is exported.
-        ( map.search(Needed, proc(PredId, ProcId), _)
-        ; Keep = yes(ProcId)
+        (
+            % Keep the procedure if it is in the needed map.
+            map.search(Needed, entity_proc(PredId, ProcId), _)
+        ;
+            % Or if it is to be kept because it is exported.
+            Keep = yes(ProcId)
+        ;
+            % Or if its elimination could cause a link error.
+            % Some eval methods cause the procedure implementation to include
+            % a global variable representing the root of the per-procedure call
+            % and answer tables. In some rare cases, the code of a tabled
+            % procedure may be dead, but other predicates (such as the
+            % predicate to reset the table) that refer to the global are
+            % still alive. In such cases, we cannot eliminate the tabled
+            % procedure itself, since doing so would also eliminate the
+            % definition of the global variable, leaving a dangling reference.
+
+            map.lookup(!.ProcTable, ProcId, ProcInfo),
+            proc_info_get_eval_method(ProcInfo, EvalMethod),
+            eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes
         )
     ->
         true
@@ -704,18 +730,18 @@ warn_dead_proc(PredId, ProcId, Context, ModuleInfo) = Spec :-
         [option_is_set(warn_dead_procs, yes, [always(Pieces)])]),
     Spec = error_spec(severity_warning, phase_dead_code, [Msg]).
 
-:- pred dead_proc_eliminate_base_gen_infos(list(type_ctor_gen_info)::in,
+:- pred dead_proc_eliminate_type_ctor_infos(list(type_ctor_gen_info)::in,
     needed_map::in, list(type_ctor_gen_info)::out) is det.
 
-dead_proc_eliminate_base_gen_infos([], _Needed, []).
-dead_proc_eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
+dead_proc_eliminate_type_ctor_infos([], _Needed, []).
+dead_proc_eliminate_type_ctor_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
         Needed, TypeCtorGenInfos) :-
-    dead_proc_eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,
+    dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, Needed,
         TypeCtorGenInfos1),
     TypeCtorGenInfo0 = type_ctor_gen_info(_TypeCtor, ModuleName,
         TypeName, Arity, _Status, _HldsDefn, _Unify, _Compare),
     (
-        Entity = base_gen_info(ModuleName, TypeName, Arity),
+        Entity = entity_type_ctor(ModuleName, TypeName, Arity),
         map.search(Needed, Entity, _)
     ->
         TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
@@ -796,8 +822,8 @@ dead_pred_elim(!ModuleInfo) :-
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
     queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.
 
-dead_pred_elim_add_entity(base_gen_info(_, _, _), !Queue, !Preds).
-dead_pred_elim_add_entity(proc(PredId, _), !Queue, !Preds) :-
+dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
+dead_pred_elim_add_entity(entity_proc(PredId, _), !Queue, !Preds) :-
     svqueue.put(PredId, !Queue),
     svset.insert(PredId, !Preds).
 
@@ -835,9 +861,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 \+ pred_info_get_import_status(PredInfo, status_opt_imported)
             ;
                 % Don't eliminate predicates declared in this module with a
-                % `:- external' or `:- pragma base_relation' declaration.
-                % magic.m will change the import_status to `exported' when it
-                % generates the interface procedure for a base relation.
+                % `:- external' declaration.
                 module_info_get_name(ModuleInfo, PredModule)
             ;
                 % Don't eliminate <foo>_init_any/1 predicates; modes.m may

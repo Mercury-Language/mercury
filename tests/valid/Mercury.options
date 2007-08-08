@@ -79,6 +79,7 @@ MCFLAGS-mc_extra_nonlocals	= --prop-mode-constraints
 MCFLAGS-mc_graph		= --prop-mode-constraints
 MCFLAGS-mc_hhf_nonlocals_bug	= --prop-mode-constraints
 MCFLAGS-mc_implied_modes	= --prop-mode-constraints
+MCFLAGS-mercury_java_parser_dead_proc_elim_bug = --no-target-code-only
 MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mpj6			= --infer-all

@@ -3250,7 +3250,7 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Warning about dead procedures...\n",
             !IO),
         maybe_flush_output(Verbose, !IO),
-        dead_proc_elim(warning_pass, !.HLDS, _HLDS1, Specs),
+        dead_proc_elim(dead_proc_warning_pass, !.HLDS, _HLDS1, Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_info_get_globals(!.HLDS, Globals),
@@ -3935,7 +3935,7 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         % Ignore any warning messages generated.
-        dead_proc_elim(final_optimization_pass, !HLDS, _Specs),
+        dead_proc_elim(dead_proc_final_optimization_pass, !HLDS, _Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

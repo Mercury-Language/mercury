@@ -284,7 +284,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
         pred_info_get_procedures(PredInfo, Procs),
         map.lookup(Procs, ProcId, ProcInfo),
         proc_info_get_goal(ProcInfo, CalledGoal),
-        Entity = proc(PredId, ProcId),
+        Entity = entity_proc(PredId, ProcId),
 
         % The heuristic represented by the following code could be improved.
         (
@@ -293,7 +293,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
         ;
             CompoundThreshold > 0,
             map.search(NeededMap, Entity, Needed),
-            Needed = yes(NumUses),
+            Needed = maybe_eliminable(NumUses),
             goal_size(CalledGoal, Size),
             % The size increase due to inlining at a call site is not Size,
             % but the difference between Size and the size of the call.
@@ -303,7 +303,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
         ;
             SingleUse = yes,
             map.search(NeededMap, Entity, Needed),
-            Needed = yes(NumUses),
+            Needed = maybe_eliminable(NumUses),
             NumUses = 1
         ),
         % Don't inline recursive predicates (unless explicitly requested).
