@@ -4248,7 +4248,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, region_analysis, Analysis),
+    globals.lookup_bool_option(Globals, use_regions, Analysis),
     (
         Analysis = yes,
         maybe_write_string(Verbose, "% Analysing regions ...\n", !IO),
