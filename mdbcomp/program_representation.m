@@ -99,7 +99,7 @@
                 cons_id_rep,
                 list(var_rep)
             )
-        ;   partial_deconstruct_rep(
+    ;       partial_deconstruct_rep(
                 % A partial deconstruction of the form
                 % X = f(Y_1, Y_2, ..., Y_n)
                 % where X is more instanciated after the unification
@@ -111,7 +111,7 @@
                                     % are wrapped in `yes', while the other
                                     % Y_i positions are `no'.
             )
-        ;   partial_construct_rep(
+    ;       partial_construct_rep(
                 % A partial construction of the form
                 % X = f(Y_1, Y_2, ..., Y_n)
                 % where X is free before the unification and bound,
