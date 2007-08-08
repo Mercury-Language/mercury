@@ -12,6 +12,7 @@ TYPECLASSES_PROGS= \
 	complicated_fundeps \
 	constrained_lambda \
 	extract_typeinfo \
+	extract_typeinfo2 \
 	exist_disjunction \
 	existential_type_classes \
 	existential_data_types \
