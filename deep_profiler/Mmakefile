@@ -163,7 +163,7 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test mdprof_feedback
 	# in case this is the third or later installation.
 	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
 		rm -f $(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
-		mv $(INSTALL_CGI_DIR)/mdprof_cgi \
+		mv -f $(INSTALL_CGI_DIR)/mdprof_cgi \
 			$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
 		cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
 	fi
