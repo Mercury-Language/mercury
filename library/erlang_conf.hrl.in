@@ -7,20 +7,20 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: erlang_conf.m.in.
+% File: erlang_conf.hrl.in.
 %
 % At the moment this file just stores the library version for Erlang.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module erlang_conf.
-:- implementation.
+-ifndef(MERCURY__ERLANG_CONF_HRL).
+-define(MERCURY__ERLANG_CONF_HRL, 1).
 
-:- pragma foreign_decl("Erlang", "
--define(MR_VERSION, ""@VERSION@"").
--define(MR_FULLARCH, ""@FULLARCH@"").
-").
+-define(MR_VERSION, "@VERSION@").
+-define(MR_FULLARCH, "@FULLARCH@").
+
+-endif.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

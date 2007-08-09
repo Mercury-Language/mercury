@@ -4583,7 +4583,7 @@ bindist/bindist.Makefile
 runtime/mercury_dotnet.cs
 java/runtime/Constants.java
 java/runtime/Native.java
-library/erlang_conf.m
+library/erlang_conf.hrl
 compiler/COMP_FLAGS
 library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS

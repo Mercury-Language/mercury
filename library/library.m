@@ -146,7 +146,6 @@
 % NOTE: changes to this list may need to be reflected in mdbcomp/prim_data.m.
 %
 :- import_module erlang_builtin.
-:- import_module erlang_conf.
 :- import_module erlang_rtti_implementation.
 :- import_module mutvar.
 :- import_module par_builtin.
@@ -162,6 +161,11 @@
 % parameters.  We can't just generate library.m from library.m.in
 % at configuration time, because that would cause bootstrapping problems --
 % we might not have a Mercury compiler around to compile library.m with.
+
+% We can't allow library.version to inlined into other modules.  The Erlang
+% definition depends on erlang_conf.hrl, which will only be included by this
+% module and not installed.
+:- pragma no_inline(library.version/1).
 
 :- pragma foreign_proc("C",
     library.version(Version::out),
@@ -192,11 +196,15 @@
         + mercury.runtime.Constants.MR_FULLARCH;
 ").
 
+:- pragma foreign_decl("Erlang", local, "
+-include(""erlang_conf.hrl"").
+").
+
 :- pragma foreign_proc("Erlang",
     library.version(Version::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Version = ?MR_VERSION ++ "" configured for "" ++ ?MR_FULLARCH
+    Version = ?MR_VERSION "" configured for "" ?MR_FULLARCH
 ").
 
 %---------------------------------------------------------------------------%
@@ -225,7 +233,6 @@ mercury_std_library_module("dir").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
 mercury_std_library_module("erlang_builtin").
-mercury_std_library_module("erlang_conf").
 mercury_std_library_module("erlang_rtti_implementation").
 mercury_std_library_module("exception").
 mercury_std_library_module("float").

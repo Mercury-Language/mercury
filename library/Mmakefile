@@ -445,6 +445,7 @@ realclean_local:
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class
 	rm -f $(JARS) $(NATIVE_SO)
+	rm -f erlang_conf.hrl
 
 #-----------------------------------------------------------------------------#
 
