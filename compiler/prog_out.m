@@ -202,13 +202,10 @@ write_messages([Message | Messages], !IO) :-
 :- pred write_message(pair(string, term)::in, io::di, io::uo) is det.
 
 write_message(Msg - Term, !IO) :-
-    ( Term = term.functor(_Functor, _Args, Context0) ->
-        Context0 = term.context(File, Line),
-        Context = term.context(File, Line),
-        write_context(Context, !IO)
-    ;
-        true
+    ( Term = term.functor(_Functor, _Args, Context)
+    ; Term = term.variable(_Var, Context)
     ),
+    write_context(Context, !IO),
     io.write_string(Msg, !IO),
     ( Term = term.functor(term.atom(""), [], _Context2) ->
         io.write_string(".\n", !IO)
