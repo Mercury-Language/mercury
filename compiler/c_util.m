@@ -240,7 +240,7 @@ output_quoted_string(Cur, Len, S, !IO) :-
         % "??-" gets converted to "?" "?-".
         (
             Char = '?',
-            Cur < Len + 2
+            Cur + 2 < Len
         ->
             (
                 string.unsafe_index(S, Cur + 1, '?'),
