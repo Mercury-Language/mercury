@@ -48,7 +48,8 @@
     % Obtain the type definition and type definition body respectively,
     % if known, for the principal type constructor of the given type.
     %
-    % Fail if the given type is a type variable.
+    % Fail if the given type is a type variable or if the type is a builtin
+    % type.
     %
 :- pred type_to_type_defn(module_info::in, mer_type::in, hlds_type_defn::out)
     is semidet.
@@ -323,6 +324,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module set.
+:- import_module svset.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -397,40 +399,50 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     ).
 
 type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type) :-
-    type_definitely_has_no_user_defined_equality_pred_2(ModuleInfo,
-        set.init, Type).
+    type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type,
+        set.init, _).
 
-:- pred type_definitely_has_no_user_defined_equality_pred_2(module_info::in,
-    set(mer_type)::in, mer_type::in) is semidet.
+:- pred type_definitely_has_no_user_defined_eq_pred_2(module_info::in,
+    mer_type::in, set(mer_type)::in, set(mer_type)::out) is semidet.
 
-type_definitely_has_no_user_defined_equality_pred_2(ModuleInfo,
-        SeenTypes0, Type) :-
-    (if set.contains(SeenTypes0, Type) then
+type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type, !SeenTypes) :-
+    (if set.contains(!.SeenTypes, Type) then
         % Don't loop on recursive types.
         true
     else
-        set.insert(SeenTypes0, Type, SeenTypes),
-        type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-        type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
-            SeenTypes, TypeBody),
-        type_to_ctor_and_args_det(Type, _, Args),
-        all [Arg] (
-            list.member(Arg, Args)
-        =>
-            type_definitely_has_no_user_defined_equality_pred_2(ModuleInfo,
-                SeenTypes, Arg)
+        svset.insert(Type, !SeenTypes),
+        ( Type = builtin_type(_) ->
+            true
+        ; Type = tuple_type(Args, _Kind) ->
+            types_definitely_have_no_user_defined_eq_pred(ModuleInfo,
+                Args, !SeenTypes)
+        ;
+            type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+            type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
+                Type, TypeBody, !SeenTypes),
+            type_to_ctor_and_args_det(Type, _, Args),
+            types_definitely_have_no_user_defined_eq_pred(ModuleInfo,
+                Args, !SeenTypes)
         )
     ).
 
-:- pred type_body_definitely_has_no_user_defined_equality_pred(module_info::in,
-    set(mer_type)::in, hlds_type_body::in) is semidet.
+:- pred types_definitely_have_no_user_defined_eq_pred(module_info::in,
+    list(mer_type)::in, set(mer_type)::in, set(mer_type)::out) is semidet.
 
-type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, SeenTypes,
-        TypeBody) :-
+types_definitely_have_no_user_defined_eq_pred(ModuleInfo, Types, !SeenTypes) :-
+    list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
+        Types, !SeenTypes).
+
+:- pred type_body_definitely_has_no_user_defined_equality_pred(module_info::in,
+    mer_type::in, hlds_type_body::in, set(mer_type)::in, set(mer_type)::out)
+    is semidet.
+
+type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
+        TypeBody, !SeenTypes) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(Ctors, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -439,21 +451,10 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, SeenTypes,
                 ForeignTypeBody, _)
         ;
             TypeBody ^ du_type_usereq = no,
-            all [Ctor] (
-                list.member(Ctor, Ctors)
-            => (
-                % There must not be any existentially quantified type
-                % variables.
-                Ctor = ctor([], _, _, Args, _),
-                % The data constructor argument types must not have
-                % user-defined equality preds.
-                all [Arg] (
-                    list.member(ctor_arg(_, ArgType, _), Args)
-                =>
-                    type_definitely_has_no_user_defined_equality_pred_2(
-                        ModuleInfo, SeenTypes, ArgType)
-                )
-            ))
+            % type_constructors does substitution of types variables.
+            type_constructors(Type, ModuleInfo, Ctors),
+            list.foldl(ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo),
+                Ctors, !SeenTypes)
         )
     ;
         TypeBody = hlds_eqv_type(EqvType),
@@ -468,6 +469,18 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, SeenTypes,
         TypeBody = hlds_abstract_type(_),
         fail
     ).
+
+:- pred ctor_definitely_has_no_user_defined_eq_pred(module_info::in,
+    constructor::in, set(mer_type)::in, set(mer_type)::out) is semidet.
+
+ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
+    % There must not be any existentially quantified type variables.
+    Ctor = ctor([], _, _, Args, _),
+    % The data constructor argument types must not have user-defined equality
+    % or comparison predicates.
+    ArgTypes = list.map((func(A) = A ^ arg_type), Args),
+    list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
+        ArgTypes, !SeenTypes).
 
 type_is_solver_type(ModuleInfo, Type) :-
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
@@ -502,7 +515,7 @@ type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
     %
 is_solver_type(ModuleInfo, Type) :-
     % Type_to_type_defn_body will fail for builtin types such as `int/0'.
-    % Such types are not solver types so gis_solver_type fails too.
+    % Such types are not solver types so is_solver_type fails too.
     % Type_to_type_defn_body also fails for type variables.
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
     type_body_is_solver_type(ModuleInfo, TypeBody).

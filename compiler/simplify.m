@@ -2258,6 +2258,18 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         globals.lookup_bool_option(Globals, can_compare_compound_values,
             CanCompareCompoundValues),
         (
+            % On the Erlang backend, it is faster for us to use builtin
+            % comparison operators on high level data structures than to
+            % deconstruct the data structure and compare the atomic
+            % constituents.  We can only do this on values of types which we
+            % know not to have user-defined equality predicates.
+            hlds_pred.in_in_unification_proc_id(ProcId),
+            CanCompareCompoundValues = yes,
+            type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
+        ->
+            ExtraGoals = [],
+            call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
+        ;
             hlds_pred.in_in_unification_proc_id(ProcId),
             (
                 SpecialPreds = no
@@ -2281,18 +2293,6 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             ),
             call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
                 Context, GoalInfo0, Call)
-        ;
-            % On the Erlang backend, it is faster for us to use builtin
-            % comparison operators on high level data structures than to
-            % deconstruct the data structure and compare the atomic
-            % constituents.  We can only do this on values of types which we
-            % know not to have user-defined equality predicates.
-            hlds_pred.in_in_unification_proc_id(ProcId),
-            CanCompareCompoundValues = yes,
-            type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
-        ->
-            ExtraGoals = [],
-            call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
         ;
             % Convert other complicated unifications into calls to
             % specific unification predicates, inserting extra typeinfo
