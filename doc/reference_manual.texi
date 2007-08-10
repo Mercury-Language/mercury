@@ -7079,10 +7079,10 @@ before the object file for the module containing the
 A cycle of @samp{pragma foreign_import_module}, where the language is
 @samp{"C#"} or @samp{"Java"}, is not permitted.
 
-Note that the Melbourne Mercury implementation often implicitly insert
+Note that the Melbourne Mercury implementation often implicitly inserts
 @samp{pragma foreign_import_module} declarations but programmers should
 @emph{not} write code that depends upon this behaviour;
-@samp{pragma foreign_import_module} declarations should always explicitly
+@samp{pragma foreign_import_module} declarations should always be explicitly
 included if needed.
 
 @node Adding foreign definitions
