@@ -3862,7 +3862,7 @@ set_equals(S1, S2) :-
 
 If a unification predicate is supplied without a comparison predicate,
 the compiler will generate a comparison predicate which throws an
-exception of type @samp{require.software_error} when called.
+exception of type @samp{exception.software_error} when called.
 
 A type declaration for a type @samp{foo(T1, @dots{}, TN)} may contain a
 @samp{where equality is @var{equalitypred}} specification only if it
