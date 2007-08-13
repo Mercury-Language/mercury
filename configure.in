@@ -4594,7 +4594,12 @@ profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
 '
 
-output_files="$executable_output_files $nonexecutable_output_files"
+# The order in which we output files matters, because in some cases, one of the
+# files we output (e.g. scripts/parse_ml_options.sh-subr) will be bodily
+# included in other files we output (e.g. scripts/ml, scripts/c2init etc).
+# If we attempted to create the latter files first, the bodily inclusion would
+# include the empty file instead.
+output_files="$nonexecutable_output_files $executable_output_files"
 
 # IMPORTANT NOTE
 # --------------
