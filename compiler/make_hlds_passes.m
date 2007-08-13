@@ -1523,7 +1523,7 @@ get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
 
 global_foreign_type_name(yes, _, _, _) = "MR_Word".
 global_foreign_type_name(no, Lang, ModuleInfo, Type) =
-    to_type_string(Lang, ModuleInfo, Type).
+    mercury_exported_type_to_string(ModuleInfo, Lang, Type).
 
 %-----------------------------------------------------------------------------%
 

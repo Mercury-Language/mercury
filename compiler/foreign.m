@@ -86,8 +86,9 @@
     % for use with foreign language interfacing (`pragma export' or
     % `pragma foreign_proc').
     %
-:- func to_type_string(foreign_language, exported_type) = string.
-:- func to_type_string(foreign_language, module_info, mer_type) = string.
+:- func exported_type_to_string(foreign_language, exported_type) = string.
+:- func mercury_exported_type_to_string(module_info, foreign_language,
+    mer_type) = string.
 
     % Filter the decls for the given foreign language.
     % The first return value is the list of matches, the second is
@@ -528,14 +529,14 @@ have_foreign_type_for_backend(target_x86_64, ForeignTypeBody, Result) :-
     have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
 
 :- type exported_type
-    --->    foreign(sym_name, list(foreign_type_assertion))
+    --->    exported_type_foreign(sym_name, list(foreign_type_assertion))
             % A type defined by a pragma foreign_type, and the assertions
             % on that foreign_type.
 
-    ;       mercury(mer_type).
+    ;       exported_type_mercury(mer_type).
             % Any other mercury type.
 
-non_foreign_type(Type) = mercury(Type).
+non_foreign_type(Type) = exported_type_mercury(Type).
 
 to_exported_type(ModuleInfo, Type) = ExportType :-
     module_info_get_type_table(ModuleInfo, Types),
@@ -547,12 +548,12 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
         ( Body = hlds_foreign_type(ForeignTypeBody) ->
             foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody,
                 ForeignTypeName, _, Assertions),
-            ExportType = foreign(ForeignTypeName, Assertions)
+            ExportType = exported_type_foreign(ForeignTypeName, Assertions)
         ;
-            ExportType = mercury(Type)
+            ExportType = exported_type_mercury(Type)
         )
     ;
-        ExportType = mercury(Type)
+        ExportType = exported_type_mercury(Type)
     ).
 
 foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
@@ -634,70 +635,117 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         )
     ).
 
-is_foreign_type(foreign(_, Assertions)) = yes(Assertions).
-is_foreign_type(mercury(_)) = no.
+is_foreign_type(exported_type_foreign(_, Assertions)) = yes(Assertions).
+is_foreign_type(exported_type_mercury(_)) = no.
 
-to_type_string(Lang, ModuleInfo, Type) =
-    to_type_string(Lang, to_exported_type(ModuleInfo, Type)).
+mercury_exported_type_to_string(ModuleInfo, Lang, Type) =
+    exported_type_to_string(Lang, to_exported_type(ModuleInfo, Type)).
 
-to_type_string(lang_c, foreign(ForeignType, _)) = Result :-
-    ( ForeignType = unqualified(Result0) ->
-        Result = Result0
-    ;
-        unexpected(this_file, "to_type_string: qualified C type")
-    ).
-to_type_string(lang_csharp, foreign(ForeignType, _)) =
-        sym_name_to_string(ForeignType).
-to_type_string(lang_il, foreign(ForeignType, _)) =
-        sym_name_to_string(ForeignType).
-to_type_string(lang_java, foreign(ForeignType, _)) =
-        sym_name_to_string(ForeignType).
-to_type_string(lang_erlang, foreign(ForeignType, _)) =
-        sym_name_to_string(ForeignType).
-
-    % XXX does this do the right thing for high level data?
-to_type_string(lang_c, mercury(Type)) = Result :-
-    ( Type = builtin_type(BuiltinType) ->
+exported_type_to_string(Lang, ExportedType) = Result :-
+    (
+        ExportedType = exported_type_foreign(ForeignType, _),
         (
-            BuiltinType = builtin_type_int,
-            Result = "MR_Integer"
+            Lang = lang_c,
+            (
+                ForeignType = unqualified(Result0),
+                Result = Result0
+            ;
+                ForeignType = qualified(_, _),
+                unexpected(this_file,
+                    "exported_type_to_string: qualified C type")
+            )
         ;
-            BuiltinType = builtin_type_float,
-            Result = "MR_Float"
-        ;
-            BuiltinType = builtin_type_string,
-            Result = "MR_String"
-        ;
-            BuiltinType = builtin_type_character,
-            Result = "MR_Char"
+            ( Lang = lang_csharp
+            ; Lang = lang_il
+            ; Lang = lang_java
+            ; Lang = lang_erlang
+            ),
+            Result = sym_name_to_string(ForeignType)
         )
     ;
-        Result = "MR_Word"
-    ).
-to_type_string(lang_csharp, mercury(_Type)) = _ :-
-    sorry(this_file, "to_type_string for csharp").
-to_type_string(lang_il, mercury(_Type)) = _ :-
-    sorry(this_file, "to_type_string for il").
-to_type_string(lang_java, mercury(Type)) = Result :-
-    ( Type = builtin_type(BuiltinType) ->
+        ExportedType = exported_type_mercury(Type),
         (
-            BuiltinType = builtin_type_int,
-            Result = "int"
+            Lang = lang_c,
+            % With --high-level-code, the value we return here should agree
+            % with what happens is generated (indirectly) through
+            % mercury_type_to_mlds_type.
+            %
+            % XXX I don't think this is yet true in all cases. -zs
+            %
+            % It is possible that in some cases, the right type name may depend
+            % on whether --high-level-code is set.
+            (
+                Type = builtin_type(BuiltinType),
+                (
+                    BuiltinType = builtin_type_int,
+                    Result = "MR_Integer"
+                ;
+                    BuiltinType = builtin_type_float,
+                    Result = "MR_Float"
+                ;
+                    BuiltinType = builtin_type_string,
+                    Result = "MR_String"
+                ;
+                    BuiltinType = builtin_type_character,
+                    Result = "MR_Char"
+                )
+            ;
+                Type = tuple_type(_, _),
+                Result = "MR_Tuple"
+            ;
+                % XXX Is MR_Word the right thing for any of these kinds of
+                % types for high level code, with or without high level data?
+                ( Type = defined_type(_, _, _)
+                ; Type = higher_order_type(_, _, _, _)
+                ; Type = apply_n_type(_, _, _)
+                ),
+                Result = "MR_Word"
+            ;
+                Type = type_variable(_, _),
+                Result = "MR_Word"
+            ;
+                Type = kinded_type(_, _),
+                unexpected(this_file,
+                    "exported_type_to_string: kinded type")
+            )
         ;
-            BuiltinType = builtin_type_float,
-            Result = "double"
+            Lang = lang_csharp,
+            sorry(this_file, "exported_type_to_string for csharp")
         ;
-            BuiltinType = builtin_type_string,
-            Result = "java.lang.String"
+            Lang = lang_il,
+            sorry(this_file, "exported_type_to_string for il")
         ;
-            BuiltinType = builtin_type_character,
-            Result = "char"
+            Lang = lang_java,
+            (
+                Type = builtin_type(BuiltinType),
+                (
+                    BuiltinType = builtin_type_int,
+                    Result = "int"
+                ;
+                    BuiltinType = builtin_type_float,
+                    Result = "double"
+                ;
+                    BuiltinType = builtin_type_string,
+                    Result = "java.lang.String"
+                ;
+                    BuiltinType = builtin_type_character,
+                    Result = "char"
+                )
+            ;
+                ( Type = tuple_type(_, _)
+                ; Type = defined_type(_, _, _)
+                ; Type = higher_order_type(_, _, _, _)
+                ; Type = apply_n_type(_, _, _)
+                ; Type = type_variable(_, _)
+                ; Type = kinded_type(_, _)
+                ),
+                Result = "java.lang.Object"
+            )
+        ;
+            Lang = lang_erlang,
+            sorry(this_file, "exported_type_to_string for erlang")
         )
-    ;
-        Result = "java.lang.Object"
     ).
-to_type_string(lang_erlang, mercury(_Type)) = _ :-
-    sorry(this_file, "to_type_string for erlang").
 
 %-----------------------------------------------------------------------------%
 

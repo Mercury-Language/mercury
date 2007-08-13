@@ -278,7 +278,7 @@
     % and initializer, and given the code to trace it for accurate GC
     % (if needed).
     %
-:- func ml_gen_mlds_var_decl(mlds_data_name, mlds_type, mlds_initializer,
+:- func ml_gen_mlds_var_decl_init(mlds_data_name, mlds_type, mlds_initializer,
     mlds_gc_statement, mlds_context) = mlds_defn.
 
     % Generate declaration flags for a local variable.
@@ -1495,11 +1495,11 @@ ml_gen_var_decl(VarName, Type, Context, Defn, !Info) :-
         GCStatement, mlds_make_context(Context)).
 
 ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
-    ml_gen_mlds_var_decl(DataName, MLDS_Type, no_initializer, GCStatement,
+    ml_gen_mlds_var_decl_init(DataName, MLDS_Type, no_initializer, GCStatement,
         Context).
 
-ml_gen_mlds_var_decl(DataName, MLDS_Type, Initializer, GCStatement, Context) =
-        MLDS_Defn :-
+ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
+        Context) = MLDS_Defn :-
     Name = entity_data(DataName),
     Defn = mlds_data(MLDS_Type, Initializer, GCStatement),
     DeclFlags = ml_gen_local_var_decl_flags,
@@ -2303,7 +2303,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % and we don't need to trace them.
         GCStatement = gc_no_stmt,
         Context = !.Fixup ^ context,
-        VarDecl = ml_gen_mlds_var_decl(var(VarName), VarType, Initializer,
+        VarDecl = ml_gen_mlds_var_decl_init(var(VarName), VarType, Initializer,
             GCStatement, Context),
         !:Fixup = !.Fixup ^ next_id := NextId,
         !:Fixup= !.Fixup ^ locals := !.Fixup ^ locals ++ [VarDecl],

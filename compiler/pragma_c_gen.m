@@ -1357,7 +1357,8 @@ make_foreign_proc_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
         MaybeName = yes(Name),
         (
             BoxPolicy = native_if_possible,
-            OrigTypeString = foreign.to_type_string(lang_c, Module, OrigType)
+            OrigTypeString = mercury_exported_type_to_string(Module, lang_c,
+                OrigType)
         ;
             BoxPolicy = always_boxed,
             OrigTypeString = "MR_Word"

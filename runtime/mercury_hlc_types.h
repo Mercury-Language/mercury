@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2006 The University of Melbourne.
+** Copyright (C) 2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -93,11 +93,6 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef MR_Word MR_Mercury_TypeClass_Info;
   typedef MR_Word MR_Mercury_Base_TypeClass_Info;
 #endif
-
-/*
-** Tuples are always just arrays of polymorphic terms.
-*/
-typedef MR_Box *MR_Tuple;
 
 #endif	/* MR_HIGHLEVEL_CODE */
 

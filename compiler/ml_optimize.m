@@ -357,8 +357,8 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             % We don't need to trace the temporary variables for GC, since they
             % are not live across a call or a heap allocation.
             GCStatement = gc_no_stmt,
-            TempDefn = ml_gen_mlds_var_decl(var(TempName), Type, Initializer,
-                GCStatement, OptInfo ^ context),
+            TempDefn = ml_gen_mlds_var_decl_init(var(TempName), Type,
+                Initializer, GCStatement, OptInfo ^ context),
             TempInitStatement = statement(
                 atomic(assign(var(QualTempName, Type), ArgRval)),
                 OptInfo ^ context),

@@ -924,7 +924,7 @@ mlds_output_pragma_export_type(prefix, mlds_mercury_array_type(_ElemType),
     io.write_string("MR_ArrayPtr", !IO).
 mlds_output_pragma_export_type(prefix, mercury_type(_, _, ExportedType),
         !IO) :-
-    io.write_string(foreign.to_type_string(lang_c, ExportedType), !IO).
+    io.write_string(exported_type_to_string(lang_c, ExportedType), !IO).
 mlds_output_pragma_export_type(prefix, mlds_cont_type(_), !IO) :-
     io.write_string("MR_Word", !IO).
 mlds_output_pragma_export_type(prefix, mlds_commit_type, !IO) :-

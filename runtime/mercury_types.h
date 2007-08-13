@@ -181,6 +181,16 @@ typedef const MR_BitmapType	*MR_ConstBitmapPtr;
 #endif
 
 /*
+** Tuples are always just arrays of polymorphic terms.
+*/
+#ifdef MR_HIGHLEVEL_CODE
+  typedef MR_Box    *MR_Tuple;
+#else
+  typedef MR_Word   MR_Tuple;
+#endif
+
+
+/*
 ** These typedefs are forward declarations, used to avoid circular dependencies
 ** between header files.
 */

@@ -1183,7 +1183,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     TypeInfoType = mercury_type_to_mlds_type(ModuleInfo, TypeInfoMercuryType),
     ml_gen_var_lval(!.Info, TypeInfoName, TypeInfoType, TypeInfoLval),
     TypeInfoDecl = ml_gen_mlds_var_decl(var(TypeInfoName), TypeInfoType,
-        no_initializer, gc_no_stmt, MLDS_Context),
+        gc_no_stmt, MLDS_Context),
 
     ml_gen_gc_statement_with_typeinfo(VarName, Type,
         lval(TypeInfoLval), Context, GCStatement0, !Info),

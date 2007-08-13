@@ -1397,9 +1397,8 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
             % accurate GC in the IL back-end -- the .NET runtime
             % system itself provides accurate GC.
             GCStatement = gc_no_stmt,
-            RV = ml_gen_mlds_var_decl(
-                var(VN), RT, no_initializer, GCStatement,
-                Context),
+            RV = ml_gen_mlds_var_decl_init(var(VN), RT, no_initializer,
+                GCStatement, Context),
             Lval = var(qual(ModuleName, module_qual, VN), RT)
         ), RetTypes, ReturnVars, 0, _),
 

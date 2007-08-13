@@ -406,7 +406,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
             \+ is_dummy_argument_type(ModuleInfo, RetType)
         ->
             Export_RetType = foreign.to_exported_type(ModuleInfo, RetType),
-            C_RetType = foreign.to_type_string(lang_c, Export_RetType),
+            C_RetType = exported_type_to_string(lang_c, Export_RetType),
             argloc_to_string(RetArgLoc, RetArgString0),
             convert_type_from_mercury(RetArgString0, RetType, RetArgString),
             MaybeDeclareRetval = "\t" ++ C_RetType ++ " return_value;\n",
@@ -506,7 +506,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, ModuleInfo,
         NameThem = no,
         ArgName = ""
     ),
-    TypeString0 = foreign.to_type_string(lang_c, ModuleInfo, Type),
+    TypeString0 = mercury_exported_type_to_string(ModuleInfo, lang_c, Type),
     ( Mode = top_out ->
         % output variables are passed as pointers
         TypeString = TypeString0 ++ " *"
@@ -532,7 +532,7 @@ get_input_args([AT | ATs], Num0, ModuleInfo, Result) :-
         % We need to box non-word-sized foreign types
         % before passing them to Mercury code
         ( foreign.is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = foreign.to_type_string(lang_c, Export_Type),
+            C_Type = exported_type_to_string(lang_c, Export_Type),
             string.append_list(["\tMR_MAYBE_BOX_FOREIGN_TYPE(",
                 C_Type, ", ", ArgName, ", ", ArgLocString, ");\n"], InputArg)
         ;
@@ -569,7 +569,7 @@ copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
         % We need to unbox non-word-sized foreign types
         % before returning them to C code
         ( foreign.is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = foreign.to_type_string(lang_c, Export_Type),
+            C_Type = exported_type_to_string(lang_c, Export_Type),
             string.append_list(["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", C_Type,
                 ", ", ArgLocString, ", * ", ArgName, ");\n"], OutputArg)
         ;
