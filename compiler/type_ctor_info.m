@@ -456,7 +456,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
 
 make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
     PredProcId = proc(PredId, ProcId),
-    ProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId).
+    ProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
 

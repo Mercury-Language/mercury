@@ -2701,13 +2701,14 @@ backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 305, "args_to_regs", !DumpInfo, !IO),
 
     globals.io_lookup_bool_option(trad_passes, TradPasses, !IO),
+    add_all_tabling_info_structs(!.HLDS, GlobalData0, GlobalData1),
     (
         TradPasses = no,
-        backend_pass_by_phases(!HLDS, GlobalData0, GlobalData, LLDS, !DumpInfo,
+        backend_pass_by_phases(!HLDS, GlobalData1, GlobalData, LLDS, !DumpInfo,
             !IO)
     ;
         TradPasses = yes,
-        backend_pass_by_preds(!HLDS, GlobalData0, GlobalData, LLDS, !IO)
+        backend_pass_by_preds(!HLDS, GlobalData1, GlobalData, LLDS, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

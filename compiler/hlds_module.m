@@ -119,9 +119,19 @@
                 proc_maybe_trail_analysis_status    :: maybe(analysis_status)
             ).
 
-    % Map from a proc to a indication of whether or not it (or one of
-    % its subgoals) calls a procedure that is tabled using minimal
-    % model tabling.
+    % For every procedure that requires its own tabling structure,
+    % this field records the information needed to define that
+    % structure.
+:- type table_struct_map == map(pred_proc_id, table_struct_info).
+
+:- type table_struct_info
+    --->    table_struct_info(
+                table_struct_proc                   :: proc_table_struct_info,
+                table_struct_attrs                  :: table_attributes
+            ).
+
+    % Map from a proc to a indication of whether or not it (or one of its
+    % subgoals) calls a procedure that is tabled using minimal model tabling.
     %
 :- type mm_tabling_info == map(pred_proc_id, proc_mm_tabling_info).
 
@@ -407,6 +417,9 @@
 :- pred module_info_get_trailing_info(module_info::in, trailing_info::out)
     is det.
 
+:- pred module_info_get_table_struct_map(module_info::in,
+    table_struct_map::out) is det.
+
 :- pred module_info_get_mm_tabling_info(module_info::in, mm_tabling_info::out)
     is det.
 
@@ -420,6 +433,9 @@
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_trailing_info(trailing_info::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_set_table_struct_map(table_struct_map::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_mm_tabling_info(mm_tabling_info::in,
@@ -727,6 +743,11 @@
                 % NOTE: this includes opt_imported procedures.
                 trailing_info               :: trailing_info,
 
+                % For every procedure that requires its own tabling structure,
+                % this field records the information needed to define that
+                % structure.
+                table_struct_map            :: table_struct_map,
+
                 % Information about if procedures in the current module make
                 % calls to procedures that are evaluted using minimal model
                 % tabling.
@@ -800,18 +821,30 @@
 
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         ModuleInfo) :-
-    predicate_table_init(PredicateTable),
-    unify_proc.init_requests(Requests),
-    map.init(UnifyPredMap),
-    map.init(Types),
-    inst_table_init(Insts),
-    mode_table_init(Modes),
-    map.init(Ctors),
+    ContainsParConj = no,
+    ContainsUserEvent = no,
+    ContainsForeignType = no,
+    ForeignDeclInfo = [],
+    ForeignBodyInfo = [],
+    ForeignImportModules = [],
+    FactTableFiles = [],
+    MaybeDependencyInfo = no,
+    NumErrors = 0,
+    PragmaExportedProcs = [],
+    MustBeStratifiedPreds = [],
     set.init(StratPreds),
     map.init(UnusedArgInfo),
     map.init(ExceptionInfo),
     map.init(TrailingInfo),
+    map.init(TablingStructMap),
     map.init(MM_TablingInfo),
+    map.init(LambdasPerContext),
+    counter.init(1, ModelNonPragmaCounter),
+
+    % The builtin modules are automatically imported.
+    get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
+    set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
+    set.init(IndirectlyImportedModules),
 
     set.init(TypeSpecPreds),
     set.init(TypeSpecForcePreds),
@@ -820,26 +853,45 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     TypeSpecInfo = type_spec_info(TypeSpecPreds, TypeSpecForcePreds,
         SpecMap, PragmaMap),
 
+    map.init(NoTagTypes),
+
+    MaybeComplexityMap = no,
+    ComplexityProcInfos = [],
+    AnalysisInfo = init_analysis_info(mmc),
+    UserInitPredCNames = [],
+    UserFinalPredCNames = [],
+    map.init(StructureReuseMap),
+    UsedModules = used_modules_init,
+    set.init(InterfaceModuleSpecs),
+    ExportedEnums = [],
+    EventSet = event_set("", map.init),
+
+    ModuleSubInfo = module_sub_info(Name, Globals,
+        ContainsParConj, ContainsUserEvent, ContainsForeignType,
+        ForeignDeclInfo, ForeignBodyInfo, ForeignImportModules, FactTableFiles,
+        MaybeDependencyInfo, NumErrors, PragmaExportedProcs,
+        MustBeStratifiedPreds, StratPreds, UnusedArgInfo,
+        ExceptionInfo, TrailingInfo, TablingStructMap, MM_TablingInfo,
+        LambdasPerContext, ModelNonPragmaCounter, ImportedModules,
+        IndirectlyImportedModules, TypeSpecInfo, NoTagTypes,
+        MaybeComplexityMap, ComplexityProcInfos,
+        AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
+        StructureReuseMap, UsedModules, InterfaceModuleSpecs,
+        ExportedEnums, EventSet),
+
+    predicate_table_init(PredicateTable),
+    unify_proc.init_requests(Requests),
+    map.init(UnifyPredMap),
+    map.init(Types),
+    inst_table_init(Insts),
+    mode_table_init(Modes),
+    map.init(Ctors),
     map.init(ClassTable),
     map.init(InstanceTable),
-
-    % The builtin modules are automatically imported.
-    get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
-    set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
-    set.init(IndirectlyImportedModules),
-
     assertion_table_init(AssertionTable),
     exclusive_table_init(ExclusiveTable),
     map.init(FieldNameTable),
 
-    map.init(NoTagTypes),
-    EventSet = event_set("", map.init),
-    ModuleSubInfo = module_sub_info(Name, Globals, no, no, no, [], [], [], [],
-        no, 0, [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
-        MM_TablingInfo, map.init, counter.init(1), ImportedModules,
-        IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
-        init_analysis_info(mmc), [], [],
-        map.init, used_modules_init, set.init, [], EventSet),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, InstanceTable, AssertionTable, ExclusiveTable,
@@ -913,6 +965,7 @@ module_info_get_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
 module_info_get_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
 module_info_get_exception_info(MI, MI ^ sub_info ^ exception_info).
 module_info_get_trailing_info(MI, MI ^ sub_info ^ trailing_info).
+module_info_get_table_struct_map(MI, MI ^ sub_info ^ table_struct_map).
 module_info_get_mm_tabling_info(MI, MI ^ sub_info ^ mm_tabling_info).
 module_info_get_lambdas_per_context(MI, MI ^ sub_info ^ lambdas_per_context).
 module_info_get_model_non_pragma_counter(MI,
@@ -1041,6 +1094,8 @@ module_info_set_exception_info(NewVal, MI,
     MI ^ sub_info ^ exception_info := NewVal).
 module_info_set_trailing_info(NewVal, MI,
     MI ^ sub_info ^ trailing_info := NewVal).
+module_info_set_table_struct_map(NewVal, MI,
+    MI ^ sub_info ^ table_struct_map := NewVal).
 module_info_set_mm_tabling_info(NewVal, MI,
     MI ^ sub_info ^ mm_tabling_info := NewVal).
 module_info_set_lambdas_per_context(NewVal, MI,

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
 construct_proc_labels([], _, []).
 construct_proc_labels([proc(PredId, ProcId) | Procs], ModuleInfo,
         [ProcLabel | ProcLabels]) :-
-    ProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    ProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     construct_proc_labels(Procs, ModuleInfo, ProcLabels).
 
 %----------------------------------------------------------------------------%

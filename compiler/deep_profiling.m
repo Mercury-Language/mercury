@@ -36,6 +36,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
@@ -1148,7 +1149,7 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
             PredProcId = !.DeepInfo ^ deep_pred_proc_id
         ->
             OuterPredProcId = proc(OuterPredId, OuterProcId),
-            RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
+            RttiProcLabel = make_rtti_proc_label(ModuleInfo,
                 OuterPredId, OuterProcId)
         ;
             MaybeRecInfo = yes(RecInfo2),
@@ -1157,11 +1158,10 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         ->
             OuterPredProcId = !.DeepInfo ^ deep_pred_proc_id,
             OuterPredProcId = proc(OuterPredId, OuterProcId),
-            RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
+            RttiProcLabel = make_rtti_proc_label(ModuleInfo,
                 OuterPredId, OuterProcId)
         ;
-            RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
-                PredId, ProcId)
+            RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId)
         ),
         CallSite = normal_call(RttiProcLabel, TypeSubst,
             FileName, LineNumber, GoalPath),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006 The University of Melbourne.
+% Copyright (C) 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
     ).
 
 make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
-    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     make_proc_label_from_rtti(RttiProcLabel) = ProcLabel.
 
 make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,

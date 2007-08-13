@@ -82,75 +82,83 @@
     %
 :- type proc_layout_info
     --->    proc_layout_info(
-                rtti_proc_label     :: rtti_proc_label,
+                pli_rtti_proc_label     :: rtti_proc_label,
                 % The identity of the procedure.
 
-                entry_label         :: label,
+                pli_entry_label         :: label,
 
-                detism              :: determinism,
+                pli_detism              :: determinism,
                 % Determines which stack is used.
 
-                stack_slot_count    :: int,
+                pli_stack_slot_count    :: int,
                 % Number of stack slots.
 
-                succip_slot         :: maybe(int),
+                pli_succip_slot         :: maybe(int),
                 % Location of succip on stack.
 
-                eval_method         :: eval_method,
+                pli_eval_method         :: eval_method,
                 % The evaluation method of the procedure.
 
-                eff_trace_level     :: trace_level,
+                pli_eff_trace_level     :: trace_level,
                 % The effective trace level of the procedure.
 
-                call_label          :: maybe(label),
+                pli_call_label          :: maybe(label),
                 % If the trace level is not none, this contains the label
                 % associated with the call event, whose stack layout says
                 % which variables were live and where on entry.
 
-                max_trace_reg       :: int,
+                pli_max_trace_reg       :: int,
                 % The number of the highest numbered rN register that can
                 % contain useful information during a call to MR_trace from
                 % within this procedure.
 
-                head_vars           :: list(prog_var),
+                pli_head_vars           :: list(prog_var),
                 % The head variables, in order, including the ones introduced
                 % by the compiler.
 
-                arg_modes           :: list(mer_mode),
+                pli_arg_modes           :: list(mer_mode),
                 % The modes of the head variables.
 
-                proc_body           :: hlds_goal,
+                pli_proc_body           :: hlds_goal,
                 % The body of the procedure.
 
-                needs_body_rep      :: bool,
+                pli_needs_body_rep      :: bool,
                 % Do we need to include a representation of the procedure body
                 % in the exec trace layout?
 
-                initial_instmap     :: instmap,
+                pli_initial_instmap     :: instmap,
                 % The instmap at the start of the procedure body.
 
-                trace_slot_info     :: trace_slot_info,
+                pli_trace_slot_info     :: trace_slot_info,
                 % Info about the stack slots used for tracing.
 
-                need_proc_id        :: bool,
+                pli_need_proc_id        :: bool,
                 % Do we require the procedure id section of the procedure
                 % layout to be present, even if the option procid_stack_layout
                 % is not set?
 
-                varset              :: prog_varset,
-                vartypes            :: vartypes,
+                pli_varset              :: prog_varset,
+                pli_vartypes            :: vartypes,
                 % The names and types of all the variables.
 
-                internal_map        :: proc_label_layout_info,
+                pli_internal_map        :: proc_label_layout_info,
                 % Info for each internal label, needed for basic_stack_layouts.
 
-                maybe_table_info    :: maybe(proc_table_info),
+                pli_maybe_table_info    :: maybe(proc_layout_table_info),
 
-                need_all_names      :: bool,
+                pli_need_all_names      :: bool,
                 % True iff we need the names of all the variables.
 
-                deep_prof           :: maybe(proc_layout_proc_static)
+                pli_deep_prof           :: maybe(proc_layout_proc_static)
         ).
+
+:- type proc_layout_table_info
+    --->    proc_table_io_decl(
+                proc_table_io_info
+            )
+    ;       proc_table_struct(
+                proc_table_struct_info
+            ).
 
     % Information about the labels internal to a procedure.
     %
@@ -442,7 +450,7 @@ maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
 process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
     % Get all the continuation info from the call instructions.
     global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
-    Internals0 = ProcLayoutInfo0^internal_map,
+    Internals0 = ProcLayoutInfo0 ^ pli_internal_map,
     GetCallInfo = (pred(Instr::in, Call::out) is semidet :-
         Instr = llds_instr(llcall(Target, code_label(ReturnLabel), LiveInfo,
             Context, GoalPath, _), _Comment),
@@ -454,7 +462,7 @@ process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
     list.foldl(process_continuation(WantReturnInfo), Calls,
         Internals0, Internals),
 
-    ProcLayoutInfo = ProcLayoutInfo0^internal_map := Internals,
+    ProcLayoutInfo = ProcLayoutInfo0 ^ pli_internal_map := Internals,
     global_data_update_proc_layout(PredProcId, ProcLayoutInfo, !GlobalData).
 
 %-----------------------------------------------------------------------------%
@@ -823,27 +831,31 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
 %---------------------------------------------------------------------------%
 
 generate_table_arg_type_info(ProcInfo, NumberedVars, TableArgInfos) :-
+    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     set.init(TypeVars0),
-    build_table_arg_info(VarTypes, NumberedVars, ArgLayouts,
+    build_table_arg_info(VarSet, VarTypes, NumberedVars, ArgLayouts,
         TypeVars0, TypeVars),
     set.to_sorted_list(TypeVars, TypeVarsList),
     find_typeinfos_for_tvars_table(TypeVarsList, NumberedVars, ProcInfo,
         TypeInfoDataMap),
     TableArgInfos = table_arg_infos(ArgLayouts, TypeInfoDataMap).
 
-:- pred build_table_arg_info(vartypes::in,
+:- pred build_table_arg_info(prog_varset::in, vartypes::in,
     assoc_list(prog_var, int)::in, list(table_arg_info)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-build_table_arg_info(_, [], [], !TypeVars).
-build_table_arg_info(VarTypes, [Var - SlotNum | NumberedVars],
+build_table_arg_info(_, _, [], [], !TypeVars).
+build_table_arg_info(VarSet, VarTypes, [Var - SlotNum | NumberedVars],
         [ArgLayout | ArgLayouts], !TypeVars) :-
+    term.var_to_int(Var, VarNum),
+    varset.lookup_name(VarSet, Var, VarName),
     map.lookup(VarTypes, Var, Type),
-    ArgLayout = table_arg_info(Var, SlotNum, Type),
+    ArgLayout = table_arg_info(VarNum, VarName, SlotNum, Type),
     type_vars(Type, VarTypeVars),
     svset.insert_list(VarTypeVars, !TypeVars),
-    build_table_arg_info(VarTypes, NumberedVars, ArgLayouts, !TypeVars).
+    build_table_arg_info(VarSet, VarTypes, NumberedVars,
+        ArgLayouts, !TypeVars).
 
 %---------------------------------------------------------------------------%
 

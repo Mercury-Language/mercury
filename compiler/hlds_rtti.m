@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,6 +17,7 @@
 :- module hlds.hlds_rtti.
 :- interface.
 
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -81,6 +82,15 @@
 
                 proc_is_imported        ::  bool
             ).
+
+    % Construct an rtti_proc_label for a given procedure.
+    %
+:- func make_rtti_proc_label(module_info, pred_id, proc_id) = rtti_proc_label.
+
+    % The inverse of make_rtti_proc_label.
+    %
+:- pred proc_label_pred_proc_id(rtti_proc_label::in,
+    pred_id::out, proc_id::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -310,13 +320,61 @@
 
 :- implementation.
 
+:- import_module check_hlds.mode_util.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module pair.
 :- import_module solutions.
 :- import_module svmap.
 :- import_module term.
+:- import_module varset.
+
+%-----------------------------------------------------------------------------%
+
+make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
+    module_info_get_name(ModuleInfo, ThisModule),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredModule = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    proc_info_get_varset(ProcInfo, ProcVarSet),
+    proc_info_get_headvars(ProcInfo, ProcHeadVars),
+    proc_info_get_argmodes(ProcInfo, ProcModes),
+    proc_info_interface_determinism(ProcInfo, ProcDetism),
+    modes_to_arg_modes(ModuleInfo, ProcModes, ArgTypes, ProcArgModes),
+    PredIsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
+    PredIsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
+    ProcIsExported = (procedure_is_exported(ModuleInfo, PredInfo, ProcId)
+        -> yes ; no),
+    pred_info_get_origin(PredInfo, Origin),
+    ProcHeadVarsWithNames = list.map((func(Var) = Var - Name :-
+            Name = varset.lookup_name(ProcVarSet, Var)
+        ), ProcHeadVars),
+    (
+        (
+            PredIsImported = yes
+        ;
+            PredIsPseudoImp = yes,
+            hlds_pred.in_in_unification_proc_id(ProcId)
+        )
+    ->
+        ProcIsImported = yes
+    ;
+        ProcIsImported = no
+    ),
+    ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
+        PredName, Arity, ArgTypes, PredId, ProcId,
+        ProcHeadVarsWithNames, ProcArgModes, ProcDetism,
+        PredIsImported, PredIsPseudoImp, Origin,
+        ProcIsExported, ProcIsImported).
+
+proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
+    PredId = ProcLabel ^ pred_id,
+    ProcId = ProcLabel ^ proc_id.
 
 %-----------------------------------------------------------------------------%
 

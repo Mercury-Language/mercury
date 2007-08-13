@@ -60,6 +60,12 @@
     %
 :- func push_msg(module_info, pred_id, proc_id) = string.
 
+    % Add all the global variables required for tabling by the procedures
+    % of the module.
+    %
+:- pred add_all_tabling_info_structs(module_info::in,
+    global_data::in, global_data::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -74,6 +80,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -383,14 +390,14 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         Instructions = Instructions0
     ),
 
-    proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
+    proc_info_get_maybe_proc_table_io_info(ProcInfo, MaybeTableIOInfo),
     (
         ( BasicStackLayout = yes
-        ; MaybeTableInfo = yes(table_io_decl_info(_TableIoDeclInfo))
+        ; MaybeTableIOInfo = yes(_TableIODeclInfo)
         )
     ->
         % Create the procedure layout structure.
-        RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+        RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         code_info.get_layout_info(CodeInfo, InternalMap),
         EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
         proc_info_get_eval_method(ProcInfo, EvalMethod),
@@ -423,6 +430,26 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         ),
         EffTraceLevel = eff_trace_level(ModuleInfo, PredInfo, ProcInfo,
             TraceLevel),
+        module_info_get_table_struct_map(ModuleInfo, TableStructMap),
+        PredProcId = proc(PredId, ProcId),
+        (
+            MaybeTableIOInfo = no,
+            ( map.search(TableStructMap, PredProcId, TableStructInfo) ->
+                TableStructInfo = table_struct_info(ProcTableStructInfo,
+                    _Attributes),
+                MaybeTableInfo = yes(proc_table_struct(ProcTableStructInfo))
+            ;
+                MaybeTableInfo = no
+            )
+        ;
+            MaybeTableIOInfo = yes(TableIOInfo),
+            ( map.search(TableStructMap, PredProcId, _TableStructInfo) ->
+                unexpected(this_file,
+                    "generate_proc_code: conflicting kinds of tabling")
+            ;
+                MaybeTableInfo = yes(proc_table_io_decl(TableIOInfo))
+            )
+        ),
         ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
             Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
             EffTraceLevel, MaybeTraceCallLabel, MaxTraceReg,
@@ -439,8 +466,6 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     code_info.get_closure_layouts(CodeInfo, ClosureLayouts),
     global_data_add_new_closure_layouts(ClosureLayouts, !GlobalData),
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    maybe_add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo,
-        ProcLabel, !GlobalData),
 
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -545,65 +570,6 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
     DeepExcpSlots = deep_excp_slots(TopCSDSlotNum, MiddleCSDSlotNum,
         OldOutermostSlotNum),
     DeepProfInfo = proc_layout_proc_static(HLDSProcStatic, DeepExcpSlots).
-
-:- pred maybe_add_tabling_info_struct(module_info::in,
-    pred_id::in, proc_id::in, proc_info::in, proc_label::in,
-    global_data::in, global_data::out) is det.
-
-maybe_add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
-        !GlobalData) :-
-    proc_info_get_eval_method(ProcInfo, EvalMethod),
-    HasTablingPointer = eval_method_has_per_proc_tabling_pointer(EvalMethod),
-    (
-        HasTablingPointer = yes,
-        add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo,
-            ProcLabel, EvalMethod, !GlobalData)
-    ;
-        HasTablingPointer = no
-    ).
-
-:- pred add_tabling_info_struct(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, proc_label::in, eval_method::in,
-    global_data::in, global_data::out) is det.
-
-add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
-        EvalMethod, !GlobalData) :-
-    proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
-    (
-        MaybeTableInfo = yes(TableInfo),
-        (
-            TableInfo = table_gen_info(NumInputs, NumOutputs,
-                InputSteps, MaybeOutputSteps, ArgInfos)
-        ;
-            TableInfo = table_io_decl_info(_),
-            unexpected(this_file, "add_tabling_info_struct: bad TableInfo")
-        )
-    ;
-        MaybeTableInfo = no,
-        unexpected(this_file, "add_tabling_info_struct: no TableInfo")
-    ),
-    global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
-    convert_table_arg_info(ArgInfos, NumPTIs, PTIVectorRval,
-        TVarVectorRval, StaticCellInfo0, StaticCellInfo),
-    global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
-    NumArgs = NumInputs + NumOutputs,
-    expect(unify(NumArgs, NumPTIs), this_file,
-        "add_tabling_info_struct: args mismatch"),
-
-    module_info_get_name(ModuleInfo, ModuleName),
-    proc_info_get_table_attributes(ProcInfo, MaybeAttributes),
-    (
-        MaybeAttributes = yes(Attributes)
-    ;
-        MaybeAttributes = no,
-        Attributes = default_memo_table_attributes
-    ),
-    MaybeSizeLimit = Attributes ^ table_attr_size_limit,
-    Statistics = Attributes ^ table_attr_statistics,
-    Var = tabling_info_struct(ModuleName, ProcLabel, EvalMethod,
-        NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, PTIVectorRval,
-        TVarVectorRval, MaybeSizeLimit, Statistics),
-    global_data_add_new_proc_var(proc(PredId, ProcId), Var, !GlobalData).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1327,6 +1293,40 @@ find_arg_type_ctor_name(TypeCtor, TypeName) :-
     TypeCtorName = sym_name_to_string(TypeCtorSymName),
     string.int_to_string(TypeCtorArity, ArityStr),
     string.append_list([TypeCtorName, "_", ArityStr], TypeName).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+add_all_tabling_info_structs(ModuleInfo, !GlobalData) :-
+    module_info_get_table_struct_map(ModuleInfo, TableStructMap),
+    map.to_assoc_list(TableStructMap, TableStructs),
+    list.foldl(add_tabling_info_struct, TableStructs, !GlobalData).
+
+:- pred add_tabling_info_struct(pair(pred_proc_id, table_struct_info)::in,
+    global_data::in, global_data::out) is det.
+
+add_tabling_info_struct(PredProcId - TableStructInfo, !GlobalData) :-
+    TableStructInfo = table_struct_info(ProcTableStructInfo, TableAttributes),
+    ProcTableStructInfo = proc_table_struct_info(RttiProcLabel, _TVarSet,
+        _Context, NumInputs, NumOutputs, InputSteps, MaybeOutputSteps,
+        ArgInfos, EvalMethod),
+
+    global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
+    convert_table_arg_info(ArgInfos, NumPTIs, PTIVectorRval,
+        TVarVectorRval, StaticCellInfo0, StaticCellInfo),
+    global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
+    NumArgs = NumInputs + NumOutputs,
+    expect(unify(NumArgs, NumPTIs), this_file,
+        "add_tabling_info_struct: args mismatch"),
+
+    MaybeSizeLimit = TableAttributes ^ table_attr_size_limit,
+    Statistics = TableAttributes ^ table_attr_statistics,
+    ModuleName = RttiProcLabel ^ proc_module,
+    ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+    Var = tabling_info_struct(ModuleName, ProcLabel, EvalMethod,
+        NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, PTIVectorRval,
+        TVarVectorRval, MaybeSizeLimit, Statistics),
+    global_data_add_new_proc_var(PredProcId, Var, !GlobalData).
 
 %---------------------------------------------------------------------------%
 

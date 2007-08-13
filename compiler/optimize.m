@@ -81,7 +81,7 @@ optimize_proc(GlobalData, CProc0, CProc, !IO) :-
             global_data_maybe_get_proc_layout(GlobalData,
                 PredProcId, ProcLayout)
         ->
-            LabelMap = ProcLayout ^ internal_map,
+            LabelMap = ProcLayout ^ pli_internal_map,
             map.sorted_keys(LabelMap, LayoutLabelNums),
             LayoutLabels = list.map(
                 make_internal_label_for_proc_label(ProcLabel),

@@ -241,7 +241,6 @@ LLDS_PROGS= \
 #
 TABLE_PROGS=\
 	table_wrong_func_arity \
-	mercury_java_parser_dead_proc_elim_bug \
 	mercury_java_parser_follow_code_bug
 
 # These tests only work in grades that support parallel conjunction.

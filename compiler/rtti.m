@@ -28,7 +28,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module mdbcomp.
@@ -695,15 +694,6 @@
 :- func ctor_rtti_name_is_exported(ctor_rtti_name) = bool.
 :- func tc_rtti_name_is_exported(tc_rtti_name) = bool.
 
-    % Construct an rtti_proc_label for a given procedure.
-    %
-:- func make_rtti_proc_label(module_info, pred_id, proc_id) = rtti_proc_label.
-
-    % The inverse of make_rtti_proc_label.
-    %
-:- pred proc_label_pred_proc_id(rtti_proc_label::in,
-    pred_id::out, proc_id::out) is det.
-
     % Return the C variable name of the RTTI data structure identified
     % by the input argument.
     %
@@ -1120,49 +1110,6 @@ pseudo_type_info_is_exported(plain_arity_zero_pseudo_type_info(_)) = yes.
 pseudo_type_info_is_exported(plain_pseudo_type_info(_, _)) = no.
 pseudo_type_info_is_exported(var_arity_pseudo_type_info(_, _))  = no.
 pseudo_type_info_is_exported(type_var(_)) = no.
-
-make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
-    module_info_get_name(ModuleInfo, ThisModule),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_varset(ProcInfo, ProcVarSet),
-    proc_info_get_headvars(ProcInfo, ProcHeadVars),
-    proc_info_get_argmodes(ProcInfo, ProcModes),
-    proc_info_interface_determinism(ProcInfo, ProcDetism),
-    modes_to_arg_modes(ModuleInfo, ProcModes, ArgTypes, ProcArgModes),
-    PredIsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
-    PredIsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
-    ProcIsExported = (procedure_is_exported(ModuleInfo, PredInfo, ProcId)
-        -> yes ; no),
-    pred_info_get_origin(PredInfo, Origin),
-    ProcHeadVarsWithNames = list.map((func(Var) = Var - Name :-
-            Name = varset.lookup_name(ProcVarSet, Var)
-        ), ProcHeadVars),
-    (
-        (
-            PredIsImported = yes
-        ;
-            PredIsPseudoImp = yes,
-            hlds_pred.in_in_unification_proc_id(ProcId)
-        )
-    ->
-        ProcIsImported = yes
-    ;
-        ProcIsImported = no
-    ),
-    ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
-        PredName, Arity, ArgTypes, PredId, ProcId,
-        ProcHeadVarsWithNames, ProcArgModes, ProcDetism,
-        PredIsImported, PredIsPseudoImp, Origin,
-        ProcIsExported, ProcIsImported).
-
-proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
-    PredId = ProcLabel ^ pred_id,
-    ProcId = ProcLabel ^ proc_id.
 
 id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, RttiName), Str) :-
     Str = name_to_string(RttiTypeCtor, RttiName).

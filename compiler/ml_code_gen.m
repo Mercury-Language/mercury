@@ -912,8 +912,9 @@ foreign_type_required_imports(target_erlang, _) = _ :-
 
 ml_gen_defns(ModuleInfo, Defns, !IO) :-
     ml_gen_types(ModuleInfo, TypeDefns, !IO),
+    ml_gen_table_structs(ModuleInfo, TableStructDefns),
     ml_gen_preds(ModuleInfo, PredDefns, !IO),
-    Defns = list.append(TypeDefns, PredDefns).
+    Defns = TypeDefns ++ TableStructDefns ++ PredDefns.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1026,64 +1027,56 @@ ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, !Defns) :-
     DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
     ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns),
     ProcDefn = mlds_defn(Name, MLDS_Context, DeclFlags, ProcDefnBody),
-    !:Defns = list.append(ExtraDefns, [ProcDefn | !.Defns]),
-    ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, !Defns).
+    !:Defns = list.append(ExtraDefns, [ProcDefn | !.Defns]).
 
-:- pred ml_gen_maybe_add_table_var(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, mlds_defns::in, mlds_defns::out) is det.
+%-----------------------------------------------------------------------------%
+%
+% Code for handling tabling structures
+%
 
-ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, !Defns) :-
-    proc_info_get_eval_method(ProcInfo, EvalMethod),
-    HasTablingPointer = eval_method_has_per_proc_tabling_pointer(EvalMethod),
+:- pred ml_gen_table_structs(module_info::in, mlds_defns::out) is det.
+
+ml_gen_table_structs(ModuleInfo, Defns) :-
+    module_info_get_table_struct_map(ModuleInfo, TableStructMap),
+    map.to_assoc_list(TableStructMap, TableStructs),
     (
-        HasTablingPointer = yes,
-        ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
-            !Defns)
+        TableStructs = [],
+        Defns = []
     ;
-        HasTablingPointer = no
+        TableStructs = [_ | _],
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_gc_method(Globals, GC_Method),
+        % XXX To handle accurate GC properly, the GC would need to trace
+        % through the global variables that we generate for the tables.
+        % Support for this is not yet implemented. Also, we would need to add
+        % GC support (stack frame registration, and calls to MR_GC_check()) to
+        % MR_make_long_lived() and MR_deep_copy() so that we do garbage
+        % collection of the "global heap" which is used to store the tables.
+        expect(isnt(unify(gc_accurate), GC_Method), this_file,
+            "tabling and `--gc accurate'"),
+
+        list.foldl(ml_gen_add_table_var(ModuleInfo), TableStructs, [], Defns)
     ).
 
-:- pred ml_gen_add_table_var(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, eval_method::in, mlds_defns::in, mlds_defns::out) is det.
+:- pred ml_gen_add_table_var(module_info::in,
+    pair(pred_proc_id, table_struct_info)::in,
+    mlds_defns::in, mlds_defns::out) is det.
 
-ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
-        !Defns) :-
+ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !Defns) :-
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, _PredModule),
+    PredProcId = proc(_PredId, ProcId),
+
+    TableStructInfo = table_struct_info(ProcTableStructInfo, _Attributes),
+    ProcTableStructInfo = proc_table_struct_info(RttiProcLabel, _TVarSet,
+        Context, NumInputs, NumOutputs, InputSteps, MaybeOutputSteps,
+        _ArgInfos, EvalMethod),
+
+    ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, PredLabel,
+        _PredModule),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    proc_info_get_context(ProcInfo, Context),
     MLDS_Context = mlds_make_context(Context),
-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_gc_method(Globals, GC_Method),
-    % XXX To handle accurate GC properly, the GC would need to trace through
-    % the global variable that we generate for the table pointer. Support
-    % for this is not yet implemented. Also, we would need to add GC support
-    % (stack frame registration, and calls to MR_GC_check()) to
-    % MR_make_long_lived() and MR_deep_copy() so that we do garbage collection
-    % of the "global heap" which is used to store the tables.
-    expect(isnt(unify(gc_accurate), GC_Method), this_file,
-        "tabling and `--gc accurate'"),
-
     TableTypeStr = eval_method_to_table_type(EvalMethod),
-    proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
-    (
-        MaybeTableInfo = yes(TableInfo),
-        (
-            % The _ArgInfos argument is intended for the debugger,
-            % which isn't supported by the this backend.
-            TableInfo = table_gen_info(NumInputs, NumOutputs,
-                InputSteps, MaybeOutputSteps, _ArgInfos)
-        ;
-            TableInfo = table_io_decl_info(_),
-            unexpected(this_file, "ml_gen_add_table_var: bad TableInfo")
-        )
-    ;
-        MaybeTableInfo = no,
-        unexpected(this_file, "ml_gen_add_table_var: no TableInfo")
-    ),
-
     (
         InputSteps = [],
         % We don't want to generate arrays with zero elements.
@@ -1295,6 +1288,11 @@ tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for handling individual procedures (continued)
+%
 
     % Return the declaration flags appropriate for a procedure definition.
     %

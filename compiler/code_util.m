@@ -104,7 +104,7 @@
 %---------------------------------------------------------------------------%
 
 make_entry_label(ModuleInfo, PredId, ProcId, Immed) = ProcAddr :-
-    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     ProcAddr = make_entry_label_from_rtti(RttiProcLabel, Immed).
 
 make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
@@ -117,7 +117,7 @@ make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
     ).
 
 make_local_entry_label(ModuleInfo, PredId, ProcId, Immed) = Label :-
-    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     Label = make_local_entry_label_from_rtti(RttiProcLabel, Immed).
 
 :- func make_local_entry_label_from_rtti(rtti_proc_label, immed) = label.

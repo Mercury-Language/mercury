@@ -1707,9 +1707,16 @@ attribute_list_to_attributes(Attributes, Attributes).
                                 % MR_ProcStatic structures.
             ).
 
+:- type table_arg_infos
+    --->    table_arg_infos(
+                list(table_arg_info),
+                map(tvar, table_locn)
+            ).
+
 :- type table_arg_info
     --->    table_arg_info(
-                headvar         :: prog_var,
+                orig_var_num    :: int,
+                orig_var_name   :: string,
                 slot_num        :: int,
                 arg_type        :: mer_type
             ).
@@ -1742,37 +1749,56 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       table_trie_step_typeclassinfo
     ;       table_trie_step_promise_implied.
 
-:- type table_arg_infos
-    --->    table_arg_infos(
-                list(table_arg_info),
-                map(tvar, table_locn)
-            ).
-
-:- type proc_table_info
-    --->    table_io_decl_info(
+:- type proc_table_io_info
+    --->    proc_table_io_info(
                 % The information we need to display an I/O action to the user.
                 %
-                % The table_arg_type_infos correspond one to one to the
-                % elements of the block saved for an I/O action. The first
-                % element will be the pointer to the proc_layout of the
-                % action's procedure.
+                % The table_arg_infos correspond one to one to the elements
+                % of the block saved for an I/O action. The first element
+                % will be the pointer to the proc_layout of the action's
+                % procedure.
+                %
+                % The right tvarset for interpreting the types in the
+                % table_arg_infos is the one in the proc_info in which
+                % the proc_table_io_info is stored.
 
                 table_arg_infos
-            )
-    ;       table_gen_info(
-                % The information we need to interpret the data structures
-                % created by tabling for a procedure, except the information
-                % (such as determinism) that is already available from
-                % proc_layout structures.
-                %
-                % The table_arg_type_infos list first all the input arguments,
-                % then all the output arguments.
+            ).
 
-                num_inputs          :: int,
-                num_outputs         :: int,
-                input_steps         :: list(table_trie_step),
-                maybe_output_steps  :: maybe(list(table_trie_step)),
-                gen_arg_infos       :: table_arg_infos
+:- type proc_table_struct_info
+    --->    proc_table_struct_info(
+                % The information we need to create the data structures
+                % created by tabling for a procedure, and to interpret them
+                % for the debugger (except the information -such as
+                % determinism- that is already available from proc_layout
+                % structures.
+                %
+                % The table_arg_infos list first all the input arguments,
+                % then all the output arguments.
+                %
+                % The right tvarset for interpreting the types in the
+                % table_arg_infos is the one stored below. It is taken from
+                % the proc_info of the procedure whose table this structure
+                % describes. Since we care only about the shapes of the types,
+                % we don't care about neither the actual numerical values
+                % nor the names of the type variables, so we don't care if
+                % the tvarset in that proc_info changes after table_gen.m
+                % takes the snapshot stored here.
+                %
+                % We record the rtti_proc_label of the procedure whose table
+                % this is. We can't record its identity in the form of a
+                % pred_proc_id, since that won't work if the procedure is
+                % deleted before the code generation phase.
+
+                ptsi_proc_label             :: rtti_proc_label,
+                ptsi_tvarset                :: tvarset,
+                ptsi_context                :: prog_context,
+                ptsi_num_inputs             :: int,
+                ptsi_num_outputs            :: int,
+                ptsi_input_steps            :: list(table_trie_step),
+                ptsi_maybe_output_steps     :: maybe(list(table_trie_step)),
+                ptsi_gen_arg_infos          :: table_arg_infos,
+                ptsi_eval_method            :: eval_method
             ).
 
 :- type special_proc_return
@@ -1843,8 +1869,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_has_parallel_conj(proc_info::in, bool::out) is det.
 :- pred proc_info_get_call_table_tip(proc_info::in,
     maybe(prog_var)::out) is det.
-:- pred proc_info_get_maybe_proc_table_info(proc_info::in,
-    maybe(proc_table_info)::out) is det.
+:- pred proc_info_get_maybe_proc_table_io_info(proc_info::in,
+    maybe(proc_table_io_info)::out) is det.
 :- pred proc_info_get_table_attributes(proc_info::in,
     maybe(table_attributes)::out) is det.
 :- pred proc_info_get_maybe_special_return(proc_info::in,
@@ -1902,7 +1928,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_call_table_tip(maybe(prog_var)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_proc_table_info(maybe(proc_table_info)::in,
+:- pred proc_info_set_maybe_proc_table_io_info(maybe(proc_table_io_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
     proc_info::in, proc_info::out) is det.
@@ -2204,18 +2230,19 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % accessible to the debugger, if debugging is enabled.
                 call_table_tip              :: maybe(prog_var),
 
-                % If set, it means that procedure has been subject to a tabling
-                % transformation, either I/O tabling or the regular kind.
-                % In the former case, the argument will contain all the
+                % If set, it means that procedure has been subject to the I/O
+                % tabling transformation. The argument will contain all the
                 % information we need to display I/O actions involving
-                % this procedure; in the latter case, it will contain
-                % all the information we need to display the call tables,
-                % answer tables and answer blocks of the procedure.
+                % this procedure.
+                %
+                % (If the procedure has been subject to other kinds of tabling
+                % transformations, the corresponding information will be
+                % recorded in a map in the module_info.)
                 % XXX For now, the compiler fully supports only procedures
                 % whose arguments are all either ints, floats or strings.
                 % However, this is still sufficient for debugging most problems
                 % in the tabling system.
-                maybe_table_info            :: maybe(proc_table_info),
+                maybe_table_io_info         :: maybe(proc_table_io_info),
 
                 table_attributes            :: maybe(table_attributes),
 
@@ -2401,7 +2428,8 @@ proc_info_get_has_user_event(PI, PI ^ proc_sub_info ^ proc_has_user_event).
 proc_info_get_has_parallel_conj(PI,
     PI ^ proc_sub_info ^ proc_has_parallel_conj).
 proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
-proc_info_get_maybe_proc_table_info(PI, PI ^ proc_sub_info ^ maybe_table_info).
+proc_info_get_maybe_proc_table_io_info(PI,
+    PI ^ proc_sub_info ^ maybe_table_io_info).
 proc_info_get_table_attributes(PI, PI ^ proc_sub_info ^ table_attributes).
 proc_info_get_maybe_special_return(PI,
     PI ^ proc_sub_info ^ maybe_special_return).
@@ -2441,8 +2469,8 @@ proc_info_set_has_parallel_conj(HPC, PI,
     PI ^ proc_sub_info ^ proc_has_parallel_conj := HPC).
 proc_info_set_call_table_tip(CTT, PI,
     PI ^ proc_sub_info ^ call_table_tip := CTT).
-proc_info_set_maybe_proc_table_info(MTI, PI,
-    PI ^ proc_sub_info ^ maybe_table_info := MTI).
+proc_info_set_maybe_proc_table_io_info(MTI, PI,
+    PI ^ proc_sub_info ^ maybe_table_io_info := MTI).
 proc_info_set_table_attributes(TA, PI,
     PI ^ proc_sub_info ^ table_attributes := TA).
 proc_info_set_maybe_special_return(MSR, PI,

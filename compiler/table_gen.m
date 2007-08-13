@@ -64,6 +64,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
@@ -438,18 +439,20 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         create_new_io_goal(OrigGoal, Decl, Unitize, TableIoStates,
             PredId, ProcId, HeadVarModes, NumberedInputVars,
             NumberedOutputVars, VarSet0, VarSet, VarTypes0, VarTypes,
-            TableInfo0, TableInfo, Goal, MaybeProcTableInfo),
-        MaybeCallTableTip = no
+            TableInfo0, TableInfo, Goal, MaybeProcTableIOInfo),
+        MaybeCallTableTip = no,
+        MaybeProcTableStructInfo = no
     ;
         EvalMethod = eval_loop_check,
         create_new_loop_goal(Detism, OrigGoal, Statistics,
             PredId, ProcId, HeadVars, NumberedInputVars, NumberedOutputVars,
             VarSet0, VarSet, VarTypes0, VarTypes,
             TableInfo0, TableInfo, CallTableTip, Goal, InputSteps),
-        generate_gen_proc_table_info(TableInfo, InputSteps, no,
-            InputVarModeMethods, OutputVarModeMethods, ProcTableInfo),
+        generate_gen_proc_table_info(TableInfo, PredId, ProcId, InputSteps, no,
+            InputVarModeMethods, OutputVarModeMethods, ProcTableStructInfo),
         MaybeCallTableTip = yes(CallTableTip),
-        MaybeProcTableInfo = yes(ProcTableInfo)
+        MaybeProcTableIOInfo = no,
+        MaybeProcTableStructInfo = yes(ProcTableStructInfo)
     ;
         EvalMethod = eval_memo,
         ( CodeModel = model_non ->
@@ -458,19 +461,21 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 HeadVars, NumberedInputVars, NumberedOutputVars,
                 VarSet0, VarSet, VarTypes0, VarTypes, TableInfo0, TableInfo,
                 CallTableTip, Goal, InputSteps, OutputSteps),
-                MaybeOutputSteps = yes(OutputSteps)
+            MaybeOutputSteps = yes(OutputSteps)
         ;
             create_new_memo_goal(Detism, OrigGoal, Statistics, MaybeSizeLimit,
                 PredId, ProcId,
                 HeadVars, NumberedInputVars, NumberedOutputVars,
                 VarSet0, VarSet, VarTypes0, VarTypes,
                 TableInfo0, TableInfo, CallTableTip, Goal, InputSteps),
-                MaybeOutputSteps = no
+            MaybeOutputSteps = no
         ),
-        generate_gen_proc_table_info(TableInfo, InputSteps, MaybeOutputSteps,
-            InputVarModeMethods, OutputVarModeMethods, ProcTableInfo),
+        generate_gen_proc_table_info(TableInfo, PredId, ProcId, InputSteps,
+            MaybeOutputSteps, InputVarModeMethods, OutputVarModeMethods,
+            ProcTableStructInfo),
         MaybeCallTableTip = yes(CallTableTip),
-        MaybeProcTableInfo = yes(ProcTableInfo)
+        MaybeProcTableIOInfo = no,
+        MaybeProcTableStructInfo = yes(ProcTableStructInfo)
     ;
         EvalMethod = eval_minimal(MinimalMethod),
         expect(unify(CodeModel, model_non), this_file,
@@ -483,10 +488,10 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 CallTableTip, Goal, InputSteps, OutputSteps),
             MaybeCallTableTip = yes(CallTableTip),
             MaybeOutputSteps = yes(OutputSteps),
-            generate_gen_proc_table_info(TableInfo, InputSteps,
+            generate_gen_proc_table_info(TableInfo, PredId, ProcId, InputSteps,
                 MaybeOutputSteps, InputVarModeMethods, OutputVarModeMethods,
-                ProcTableInfo),
-            MaybeProcTableInfo = yes(ProcTableInfo)
+                ProcTableStructInfo),
+            MaybeProcTableStructInfo = yes(ProcTableStructInfo)
         ;
             MinimalMethod = own_stacks_consumer,
             do_own_stack_transform(Detism, OrigGoal, Statistics,
@@ -495,7 +500,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 VarSet0, VarSet, VarTypes0, VarTypes, TableInfo0, TableInfo,
                 !GenMap, Goal, _InputSteps, _OutputSteps),
             MaybeCallTableTip = no,
-            MaybeProcTableInfo = no
+            MaybeProcTableStructInfo = no
         ;
             MinimalMethod = own_stacks_generator,
             % The own_stacks_generator minimal_method is only ever introduced
@@ -503,7 +508,8 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             % been transformed yet should not have this eval_method.
             unexpected(this_file,
                 "table_gen_transform_proc: own stacks generator")
-        )
+        ),
+        MaybeProcTableIOInfo = no
     ),
 
     table_info_extract(TableInfo, !:ModuleInfo, !:PredInfo, !:ProcInfo),
@@ -514,10 +520,27 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_call_table_tip(MaybeCallTableTip, !ProcInfo),
-    proc_info_set_maybe_proc_table_info(MaybeProcTableInfo, !ProcInfo),
+
+    (
+        MaybeProcTableIOInfo = no
+    ;
+        MaybeProcTableIOInfo = yes(FinalProcTableIOInfo),
+        proc_info_set_maybe_proc_table_io_info(yes(FinalProcTableIOInfo),
+            !ProcInfo)
+    ),
+
+    (
+        MaybeProcTableStructInfo = no
+    ;
+        MaybeProcTableStructInfo = yes(FinalProcTableStructInfo),
+        PredProcId = proc(PredId, ProcId),
+        add_proc_table_struct(PredProcId, FinalProcTableStructInfo, !.ProcInfo,
+            !ModuleInfo)
+    ),
 
     % Some of the instmap_deltas generated in this module are pretty dodgy
     % (especially those for if-then-elses), so recompute them here.
+    % XXX Fix this: generate correct-by-construction instmap_deltas.
     RecomputeAtomic = no,
     recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo),
 
@@ -1172,11 +1195,11 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out,
-    hlds_goal::out, maybe(proc_table_info)::out) is det.
+    hlds_goal::out, maybe(proc_table_io_info)::out) is det.
 
 create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         PredId, ProcId, HeadVarModes, OrigInputVars, OrigOutputVars,
-        !VarSet, !VarTypes, !TableInfo, Goal, MaybeProcTableInfo) :-
+        !VarSet, !VarTypes, !TableInfo, Goal, MaybeProcTableIOInfo) :-
     OrigGoal = hlds_goal(_, OrigGoalInfo),
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
@@ -1256,15 +1279,15 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         continuation_info.generate_table_arg_type_info(ProcInfo0,
             list.map(project_var_pos, NumberedSavedHeadVars),
             TableArgTypeInfo),
-        ProcTableInfo = table_io_decl_info(TableArgTypeInfo),
-        MaybeProcTableInfo = yes(ProcTableInfo)
+        ProcTableIOInfo = proc_table_io_info(TableArgTypeInfo),
+        MaybeProcTableIOInfo = yes(ProcTableIOInfo)
     ;
         TableDecl = table_io_proc,
         TableIoDeclGoal = true_goal,
         NumberedRestoreVars =
             list.map(project_out_arg_method, SavedOutputVars),
         NumberedSaveVars = list.map(project_out_arg_method, SavedOutputVars),
-        MaybeProcTableInfo = no
+        MaybeProcTableIOInfo = no
     ),
     list.length(NumberedSaveVars, BlockSize),
     OrigInstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
@@ -1787,9 +1810,13 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
 
     InputVarModeMethods = list.map(project_out_pos, NumberedInputVars),
     OutputVarModeMethods = list.map(project_out_pos, NumberedOutputVars),
-    generate_gen_proc_table_info(!.TableInfo, InputSteps, yes(OutputSteps),
-        InputVarModeMethods, OutputVarModeMethods, ProcTableInfo),
-    proc_info_set_maybe_proc_table_info(yes(ProcTableInfo), !ProcInfo),
+    generate_gen_proc_table_info(!.TableInfo, PredId, ProcId, InputSteps,
+        yes(OutputSteps), InputVarModeMethods, OutputVarModeMethods,
+        ProcTableStructInfo),
+
+    PredProcId = proc(PredId, ProcId),
+    add_proc_table_struct(PredProcId, ProcTableStructInfo, !.ProcInfo,
+        ModuleInfo0, ModuleInfo1),
 
     SpecialReturn = generator_return(returning_generator_locn, DebugArgStr),
     proc_info_set_maybe_special_return(yes(SpecialReturn), !ProcInfo),
@@ -1799,9 +1826,9 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     map.det_insert(ProcTable0, ProcId, !.ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
 
-    module_info_preds(ModuleInfo0, PredTable0),
+    module_info_preds(ModuleInfo1, PredTable0),
     map.det_update(PredTable0, PredId, !.PredInfo, PredTable),
-    module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo),
+    module_info_set_preds(PredTable, ModuleInfo1, ModuleInfo),
     !:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
 
 :- pred clone_pred_info(pred_id::in, pred_info::in, list(prog_var)::in,
@@ -1945,14 +1972,23 @@ keep_marker(marker_mutable_access_pred) = yes.
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_gen_proc_table_info(table_info::in,
+:- pred generate_gen_proc_table_info(table_info::in, pred_id::in, proc_id::in,
     list(table_trie_step)::in, maybe(list(table_trie_step))::in,
     list(var_mode_method)::in, list(var_mode_method)::in,
-    proc_table_info::out) is det.
+    proc_table_struct_info::out) is det.
 
-generate_gen_proc_table_info(TableInfo, InputSteps, MaybeOutputSteps,
-        InputVars, OutputVars, ProcTableInfo) :-
+generate_gen_proc_table_info(TableInfo, PredId, ProcId,
+        InputSteps, MaybeOutputSteps, InputVars, OutputVars,
+        ProcTableStructInfo) :-
+    ModuleInfo = TableInfo ^ table_module_info,
+    RTTIProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+
+    PredInfo = TableInfo ^ table_cur_pred_info,
+    pred_info_get_typevarset(PredInfo, TVarSet),
     ProcInfo = TableInfo ^ table_cur_proc_info,
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_context(ProcInfo, Context),
+
     InOutHeadVars = InputVars ++ OutputVars,
     allocate_slot_numbers(InOutHeadVars, 1, NumberedInOutHeadVars),
     ArgInfos = list.map(project_var_pos, NumberedInOutHeadVars),
@@ -1960,8 +1996,10 @@ generate_gen_proc_table_info(TableInfo, InputSteps, MaybeOutputSteps,
         TableArgTypeInfo),
     NumInputs = list.length(InputVars),
     NumOutputs = list.length(OutputVars),
-    ProcTableInfo = table_gen_info(NumInputs, NumOutputs, InputSteps,
-        MaybeOutputSteps, TableArgTypeInfo).
+
+    ProcTableStructInfo = proc_table_struct_info(RTTIProcLabel, TVarSet,
+        Context, NumInputs, NumOutputs, InputSteps, MaybeOutputSteps,
+        TableArgTypeInfo, EvalMethod).
 
 %-----------------------------------------------------------------------------%
 
@@ -3186,6 +3224,27 @@ create_instmap_delta([Goal | Rest], IMD) :-
     IMD0 = goal_info_get_instmap_delta(GoalInfo),
     create_instmap_delta(Rest, IMD1),
     instmap_delta_apply_instmap_delta(IMD0, IMD1, test_size, IMD).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_proc_table_struct(pred_proc_id::in, proc_table_struct_info::in,
+    proc_info::in, module_info::in, module_info::out) is det.
+
+add_proc_table_struct(PredProcId, ProcTableStructInfo, ProcInfo,
+        !ModuleInfo) :-
+    module_info_get_table_struct_map(!.ModuleInfo, TableStructMap0),
+    proc_info_get_table_attributes(ProcInfo, MaybeTableAttributes),
+    (
+        MaybeTableAttributes = yes(TableAttributes)
+    ;
+        MaybeTableAttributes = no,
+        TableAttributes = default_memo_table_attributes
+    ),
+    TableStructInfo = table_struct_info(ProcTableStructInfo,
+        TableAttributes),
+    map.det_insert(TableStructMap0, PredProcId, TableStructInfo,
+        TableStructMap),
+    module_info_set_table_struct_map(TableStructMap, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

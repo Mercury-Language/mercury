@@ -1315,7 +1315,7 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
     % Generate the mlds_pred_label and module name for a given procedure.
     %
 ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
-    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel,
         MLDS_PredLabel, MLDS_Module).
 

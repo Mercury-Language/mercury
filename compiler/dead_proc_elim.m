@@ -61,6 +61,7 @@
 
 :- type entity
     --->    entity_proc(pred_id, proc_id)
+    ;       entity_table_struct(pred_id, proc_id)
     ;       entity_type_ctor(module_name, string, int).
 
 :- type needed_map == map(entity, maybe_needed).
@@ -324,6 +325,9 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
                 PredProcId = proc(PredId, ProcId),
                 dead_proc_examine_proc(PredProcId, ModuleInfo, !Queue, !Needed)
             ;
+                Entity = entity_table_struct(_PredId, _ProcId)
+                % Nothing further to examine.
+            ;
                 Entity = entity_type_ctor(Module, Type, Arity),
                 dead_proc_examine_type_ctor_info(Module, Type, Arity,
                     ModuleInfo, !Queue, !Needed)
@@ -402,10 +406,41 @@ dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo,
         pred_info_get_procedures(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo)
     ->
+        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+            io.write_string("examining proc ", !IO),
+            io.write_int(pred_id_to_int(PredId), !IO),
+            io.write_string(" ", !IO),
+            io.write_int(proc_id_to_int(ProcId), !IO),
+            io.nl(!IO)
+        ),
         proc_info_get_goal(ProcInfo, Goal),
-        dead_proc_examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed)
+        dead_proc_examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed),
+
+        proc_info_get_eval_method(ProcInfo, EvalMethod),
+        HasPerProcTablingPtr =
+            eval_method_has_per_proc_tabling_pointer(EvalMethod),
+        (
+            HasPerProcTablingPtr = no
+        ;
+            HasPerProcTablingPtr = yes,
+            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                io.write_string("need table struct for proc ", !IO),
+                io.write_int(pred_id_to_int(PredId), !IO),
+                io.write_string(" ", !IO),
+                io.write_int(proc_id_to_int(ProcId), !IO),
+                io.nl(!IO)
+            ),
+            TableStructEntity = entity_table_struct(PredId, ProcId),
+            svmap.set(TableStructEntity, not_eliminable, !Needed)
+        )
     ;
-        true
+        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+            io.write_string("not examining proc ", !IO),
+            io.write_int(pred_id_to_int(PredId), !IO),
+            io.write_string(" ", !IO),
+            io.write_int(proc_id_to_int(ProcId), !IO),
+            io.nl(!IO)
+        )
     ).
 
 :- pred dead_proc_examine_goals(list(hlds_goal)::in, pred_proc_id::in,
@@ -459,6 +494,13 @@ dead_proc_examine_expr(plain_call(PredId, ProcId, _,_,_,_), CurrProc, !Queue,
     Entity = entity_proc(PredId, ProcId),
     queue.put(!.Queue, Entity, !:Queue),
     ( proc(PredId, ProcId) = CurrProc ->
+        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+            io.write_string("plain_call recursive ", !IO),
+            io.write_int(pred_id_to_int(PredId), !IO),
+            io.write_string(" ", !IO),
+            io.write_int(proc_id_to_int(ProcId), !IO),
+            io.nl(!IO)
+        ),
         % If it's reachable and recursive, then we can't eliminate it
         % or inline it.
         NewNotation = not_eliminable,
@@ -466,37 +508,105 @@ dead_proc_examine_expr(plain_call(PredId, ProcId, _,_,_,_), CurrProc, !Queue,
     ; map.search(!.Needed, Entity, OldNotation) ->
         (
             OldNotation = not_eliminable,
-            NewNotation = not_eliminable
+            NewNotation = not_eliminable,
+            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                io.write_string("plain_call old not_eliminable ", !IO),
+                io.write_int(pred_id_to_int(PredId), !IO),
+                io.write_string(" ", !IO),
+                io.write_int(proc_id_to_int(ProcId), !IO),
+                io.nl(!IO)
+            )
         ;
             OldNotation = maybe_eliminable(Count),
-            NewNotation = maybe_eliminable(Count + 1)
+            NewNotation = maybe_eliminable(Count + 1),
+            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                io.write_string("plain_call incr maybe_eliminable ", !IO),
+                io.write_int(pred_id_to_int(PredId), !IO),
+                io.write_string(" ", !IO),
+                io.write_int(proc_id_to_int(ProcId), !IO),
+                io.nl(!IO)
+            )
         ),
         svmap.det_update(Entity, NewNotation, !Needed)
     ;
+        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+            io.write_string("plain_call init maybe_eliminable ", !IO),
+            io.write_int(pred_id_to_int(PredId), !IO),
+            io.write_string(" ", !IO),
+            io.write_int(proc_id_to_int(ProcId), !IO),
+            io.nl(!IO)
+        ),
         NewNotation = maybe_eliminable(1),
         svmap.set(Entity, NewNotation, !Needed)
     ).
 dead_proc_examine_expr(call_foreign_proc(_, PredId, ProcId, _, _, _, _),
         _CurrProc, !Queue, !Needed) :-
     Entity = entity_proc(PredId, ProcId),
+    trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+        io.write_string("foreign_proc ", !IO),
+        io.write_int(pred_id_to_int(PredId), !IO),
+        io.write_string(" ", !IO),
+        io.write_int(proc_id_to_int(ProcId), !IO),
+        io.nl(!IO)
+    ),
     svqueue.put(Entity, !Queue),
     svmap.set(Entity, not_eliminable, !Needed).
 dead_proc_examine_expr(unify(_,_,_, Uni, _), _CurrProc, !Queue, !Needed) :-
     (
         Uni = construct(_, ConsId, _, _, _, _, _),
         (
-            ConsId = pred_const(ShroudedPredProcId, _),
-            proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-            Entity = entity_proc(PredId, ProcId)
+            (
+                ConsId = pred_const(ShroudedPredProcId, _),
+                proc(PredId, ProcId) =
+                    unshroud_pred_proc_id(ShroudedPredProcId),
+                Entity = entity_proc(PredId, ProcId),
+                trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                    io.write_string("pred_const ", !IO),
+                    io.write_int(pred_id_to_int(PredId), !IO),
+                    io.write_string(" ", !IO),
+                    io.write_int(proc_id_to_int(ProcId), !IO),
+                    io.nl(!IO)
+                )
+            ;
+                ConsId = type_ctor_info_const(Module, TypeName, Arity),
+                Entity = entity_type_ctor(Module, TypeName, Arity)
+            ;
+                ConsId = tabling_info_const(ShroudedPredProcId),
+                proc(PredId, ProcId) =
+                    unshroud_pred_proc_id(ShroudedPredProcId),
+                Entity = entity_table_struct(PredId, ProcId),
+                trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                    io.write_string("table struct const ", !IO),
+                    io.write_int(pred_id_to_int(PredId), !IO),
+                    io.write_string(" ", !IO),
+                    io.write_int(proc_id_to_int(ProcId), !IO),
+                    io.nl(!IO)
+                )
+            ),
+            svqueue.put(Entity, !Queue),
+            svmap.set(Entity, not_eliminable, !Needed)
         ;
-            ConsId = type_ctor_info_const(Module, TypeName, Arity),
-            Entity = entity_type_ctor(Module, TypeName, Arity)
+            ( ConsId = cons(_, _)
+            ; ConsId = int_const(_)
+            ; ConsId = string_const(_)
+            ; ConsId = float_const(_)
+            ; ConsId = base_typeclass_info_const(_, _, _, _)
+            ; ConsId = type_info_cell_constructor(_)
+            ; ConsId = typeclass_info_cell_constructor
+            ; ConsId = deep_profiling_proc_layout(_)
+            ; ConsId = table_io_decl(_)
+            )
+            % Do nothing.
         )
-    ->
-        svqueue.put(Entity, !Queue),
-        svmap.set(Entity, not_eliminable, !Needed)
     ;
-        true
+        ( Uni = deconstruct(_, _, _, _, _, _)
+        ; Uni = assign(_, _)
+        ; Uni = simple_test(_, _)
+        )
+        % Do nothing.
+    ;
+        Uni = complicated_unify(_, _, _),
+        unexpected(this_file, "dead_proc_examine_expr: complicated_unify")
     ).
 dead_proc_examine_expr(shorthand(_), _, !Queue, !Needed) :-
     % These should have been expanded out by now.
@@ -544,6 +654,12 @@ dead_proc_eliminate(Pass, !.Needed, !ModuleInfo, Specs) :-
     dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, !.Needed,
         TypeCtorGenInfos),
     module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo),
+
+    % We could also eliminate eliminate table structs, but we don't do that
+    % yet, because some references to such structs are currently visible
+    % only in C code embedded in compiler-generated foreign_procs, and
+    % therefore we might accidentally create dangling references.
+
     (
         Changed = yes,
         % The dependency graph will still contain references to the eliminated
@@ -624,14 +740,11 @@ dead_proc_eliminate_pred(Pass, PredId, !ProcElimInfo) :-
         ProcIds = pred_info_procids(PredInfo0),
         pred_info_get_procedures(PredInfo0, ProcTable0),
 
-        % Reduce memory usage by replacing the goals with conj([]).
-        % XXX this looks fishy to me - zs
+        % Reduce memory usage by replacing the goals with "true".
         DestroyGoal =
             (pred(Id::in, PTable0::in, PTable::out) is det :-
                 map.lookup(ProcTable0, Id, ProcInfo0),
-                goal_info_init(GoalInfo),
-                Goal = hlds_goal(true_goal_expr, GoalInfo),
-                proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
+                proc_info_set_goal(true_goal, ProcInfo0, ProcInfo),
                 map.det_update(PTable0, Id, ProcInfo, PTable)
             ),
         list.foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
@@ -676,20 +789,6 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc, ProcElimInfo,
         ;
             % Or if it is to be kept because it is exported.
             Keep = yes(ProcId)
-        ;
-            % Or if its elimination could cause a link error.
-            % Some eval methods cause the procedure implementation to include
-            % a global variable representing the root of the per-procedure call
-            % and answer tables. In some rare cases, the code of a tabled
-            % procedure may be dead, but other predicates (such as the
-            % predicate to reset the table) that refer to the global are
-            % still alive. In such cases, we cannot eliminate the tabled
-            % procedure itself, since doing so would also eliminate the
-            % definition of the global variable, leaving a dangling reference.
-
-            map.lookup(!.ProcTable, ProcId, ProcInfo),
-            proc_info_get_eval_method(ProcInfo, EvalMethod),
-            eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes
         )
     ->
         true
@@ -707,9 +806,10 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc, ProcElimInfo,
         ;
             VeryVerbose = no
         ),
+        map.lookup(!.ProcTable, ProcId, ProcInfo0),
         (
             WarnForThisProc = yes,
-            proc_info_get_context(!.ProcTable ^ det_elem(ProcId), Context),
+            proc_info_get_context(ProcInfo0, Context),
             Spec = warn_dead_proc(PredId, ProcId, Context, ModuleInfo),
             !:Specs = [Spec | !.Specs]
         ;
@@ -728,7 +828,9 @@ warn_dead_proc(PredId, ProcId, Context, ModuleInfo) = Spec :-
         [words("is never called."), nl],
     Msg = simple_msg(Context,
         [option_is_set(warn_dead_procs, yes, [always(Pieces)])]),
-    Spec = error_spec(severity_warning, phase_dead_code, [Msg]).
+    Severity = severity_conditional(warn_dead_procs, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_dead_code, [Msg]).
 
 :- pred dead_proc_eliminate_type_ctor_infos(list(type_ctor_gen_info)::in,
     needed_map::in, list(type_ctor_gen_info)::out) is det.
@@ -823,6 +925,7 @@ dead_pred_elim(!ModuleInfo) :-
     queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.
 
 dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
+dead_pred_elim_add_entity(entity_table_struct(_, _), !Queue, !Preds).
 dead_pred_elim_add_entity(entity_proc(PredId, _), !Queue, !Preds) :-
     svqueue.put(PredId, !Queue),
     svset.insert(PredId, !Preds).

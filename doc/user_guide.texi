@@ -6792,8 +6792,10 @@ G - compile-time garbage collection information,
 I - imported predicates,
 M - mode and inst information,
 P - path information,
+S - information about structure sharing
 T - type and typeclass information,
-U - unify and compare predicates.
+U - unify and compare predicates,
+Z - information about globals structs representing call and answer tables.
 
 @sp 1
 @item --dump-hlds-pred-id @var{predid}
