@@ -735,6 +735,23 @@ time.gmtime(time_t(Time)) = TM :-
 
     N = 0;
 ").
+:- pragma foreign_proc("Erlang",
+    time.c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out),
+    [will_not_call_mercury, promise_pure],
+"
+    {{Yr0, Mnt, MD}, {Hrs, Min, Sec}} = Time,
+    Yr = Yr0 - 1900,
+
+    DayNumber = calendar:date_to_gregorian_days(Yr, Mnt, MD),
+    Jan1_Number = calendar:date_to_gregorian_days(Yr, 1, 1),
+    YD = DayNumber - Jan1_Number,
+
+    % Sunday = 7 = 0
+    WD = calendar:day_of_the_week(Yr, Mnt, MD) rem 7,
+
+    N = 0
+").
 
 :- func int_to_maybe_dst(int) = maybe(dst).
 
