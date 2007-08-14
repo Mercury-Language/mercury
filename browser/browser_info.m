@@ -27,6 +27,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module stream.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%
@@ -282,6 +283,11 @@
     ;       browser_nl
     ;       browser_end_command
     ;       browser_quit.
+
+:- instance stream.stream(debugger, io).
+:- instance stream.output(debugger, io).
+:- instance stream.writer(debugger, string, io).
+:- instance stream.writer(debugger, int, io).
 
 :- pred run_param_command(debugger::in, param_cmd::in, bool::in,
     browser_info::in, browser_info::out, io::di, io::uo) is det.
@@ -1028,6 +1034,34 @@ send_term_to_socket(Term, !IO) :-
     write(Term, !IO),
     print(".\n", !IO),
     flush_output(!IO).
+
+%---------------------------------------------------------------------------%
+
+:- instance stream.stream(debugger, io) where [
+    stream.name(_, "debugger", !IO)
+].
+
+:- instance stream.output(debugger, io) where [
+    (flush(internal, !IO) :-
+        io.flush_output(!IO)
+    ),
+    (flush(external, !IO) :-
+        % XXX
+        true
+    )
+].
+
+:- instance stream.writer(debugger, string, io) where [
+    (put(D, S, !IO) :-
+        write_string_debugger(D, S, !IO)
+    )
+].
+
+:- instance stream.writer(debugger, int, io) where [
+    (put(D, I, !IO) :-
+        write_int_debugger(D, I, !IO)
+    )
+].
 
 %---------------------------------------------------------------------------%
 
