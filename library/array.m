@@ -63,6 +63,7 @@
 
 :- import_module list.
 :- import_module maybe.
+:- import_module pretty_printer.
 :- import_module random.
 
 :- type array(T).
@@ -379,6 +380,10 @@
 :- pred array.random_permutation(array(T), array(T),
     random.supply, random.supply).
 :- mode array.random_permutation(array_di, array_uo, mdi, muo) is det.
+
+    % Convert an array to a pretty_printer.doc for formatting.
+    %
+:- func array.array_to_doc(array(T)) = pretty_printer.doc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1656,6 +1661,25 @@ out_of_bounds_error(Array, Index, PredName) :-
 array.least_index(A) = array.min(A).
 
 array.greatest_index(A) = array.max(A).
+
+%-----------------------------------------------------------------------------%
+
+array.array_to_doc(A) =
+    indent([str("array(["), array_to_doc_2(0, A), str("])")]).
+
+
+:- func array_to_doc_2(int, array(T)) = doc.
+
+array_to_doc_2(I, A) =
+    ( if I > array.max(A) then
+        str("")
+      else
+        docs([
+            group([nl, format_arg(format(A ^ elem(I)))]),
+            str((if I = array.max(A) then "" else ", ")),
+            format_susp((func) = array_to_doc_2(I + 1, A))
+        ])
+    ).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

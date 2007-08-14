@@ -124,6 +124,12 @@
     %
 :- func format(T) = doc.
 
+    % format_arg(Doc) has the effect of formatting any term in Doc as though
+    % it were an argument in a Mercury term by enclosing it in parentheses if
+    % necessary.
+    %
+:- func format_arg(doc) = doc.
+
     % The pretty-printer limit type, used to control conversion by
     % format_univ, format_list, and format_term.
     %
@@ -189,8 +195,13 @@
                 pp_limit        :: formatting_limit % Term formatting limit.
             ).
 
-    % The default formatter_map may also be updated by initialisation goals in
-    % various modules.
+    % An initial default formatter_map is provided for the most commonly
+    % used types in the Mercury standard library (array, char, float,
+    % int, map, string, etc.)
+    %
+    % The default formatter_map may also be updated by 
+    % users' modules (e.g., in initialisation goals).
+    %
     % These defaults are thread local (i.e., changes made by one thread to
     % the default formatter_map will not be visible in another thread).
     %
@@ -219,13 +230,17 @@
 
 :- implementation.
 
+:- import_module array.                 % For array_to_doc.
 :- import_module bool.
+:- import_module char.                  % For char_to_doc.
 :- import_module deconstruct.
 :- import_module exception.
+:- import_module float.                 % For float_to_doc.
 :- import_module int.
 :- import_module map.
 :- import_module ops.
 :- import_module term_io.
+:- import_module tree234.               % For tree234_to_doc.
 
 
 
@@ -303,10 +318,12 @@ format(X) = format_univ(univ(X)).
 
 %-----------------------------------------------------------------------------%
 
-:- func set_arg_priority = doc.
-
-set_arg_priority =
-    pp_internal(set_op_priority(ops.arg_priority(ops.init_mercury_op_table))).
+format_arg(Doc) =
+    docs([
+        pp_internal(
+            set_op_priority(ops.arg_priority(ops.init_mercury_op_table))),
+        Doc
+    ]).
 
 %-----------------------------------------------------------------------------%
 
@@ -648,11 +665,11 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
       else
         (
             Univs = [],
-            Doc = group([set_arg_priority, nl, format_univ(Univ)])
+            Doc = format_arg(group([nl, format_univ(Univ)]))
         ;
             Univs = [_ | _],
             Doc = docs([
-                group([set_arg_priority, nl, format_univ(Univ), Sep]),
+                format_arg(group([nl, format_univ(Univ), Sep])),
                 format_list(Univs, Sep)
             ])
         )
@@ -821,7 +838,7 @@ decrement_limit(triangular(N), triangular(N - 1)).
 %-----------------------------------------------------------------------------%
 % Convenience predicates.
 
-:- mutable(io_formatter_map, formatter_map, new_formatter_map, ground,
+:- mutable(io_formatter_map, formatter_map, initial_formatter_map, ground,
     [attach_to_io_state, untrailed, thread_local]).
 
 :- mutable(io_pp_params, pp_params, pp_params(78, 100, triangular(100)),
@@ -857,6 +874,109 @@ format(Stream, Doc, !IO) :-
     get_default_formatter_map(Formatters, !IO),
     get_default_params(pp_params(LineWidth, MaxLines, Limit), !IO),
     format(Stream, Formatters, LineWidth, MaxLines, Limit, Doc, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % Construct the initial default formatter map.  This function
+    % should be extended as more specialised formatters are added
+    % to the standard library modules.
+    %
+:- func initial_formatter_map = formatter_map.
+
+initial_formatter_map = !:Formatters :-
+    !:Formatters = new_formatter_map,
+    set_formatter_sv("builtin", "character", 0, fmt_char,    !Formatters),
+    set_formatter_sv("builtin", "float",     0, fmt_float,   !Formatters),
+    set_formatter_sv("builtin", "int",       0, fmt_int,     !Formatters),
+    set_formatter_sv("builtin", "string",    0, fmt_string,  !Formatters),
+    set_formatter_sv("array",   "array",     1, fmt_array,   !Formatters),
+    set_formatter_sv("list",    "list",      1, fmt_list,    !Formatters),
+    set_formatter_sv("tree234", "tree234",   2, fmt_tree234, !Formatters).
+
+%-----------------------------------------------------------------------------%
+
+:- pred set_formatter_sv(string::in, string::in, int::in, formatter::in,
+        formatter_map::in, formatter_map::out) is det.
+
+set_formatter_sv(ModuleName, TypeName, Arity, Formatter, FMap0, FMap) :-
+    FMap = set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_char(univ, list(type_desc)) = doc.
+
+fmt_char(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then char_to_doc(X) else str("?char?") ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_float(univ, list(type_desc)) = doc.
+
+fmt_float(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then float_to_doc(X) else str("?float?") ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_int(univ, list(type_desc)) = doc.
+
+fmt_int(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then int_to_doc(X) else str("?int?") ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_string(univ, list(type_desc)) = doc.
+
+fmt_string(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then string_to_doc(X) else str("?string?") ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_array(univ, list(type_desc)) = doc.
+
+fmt_array(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : array(T))
+      then
+        array_to_doc(X)
+      else
+        str("?array?")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_list(univ, list(type_desc)) = doc.
+
+fmt_list(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : list(T))
+      then
+        list_to_doc(X)
+      else
+        str("?list?")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_tree234(univ, list(type_desc)) = doc.
+
+fmt_tree234(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDescA, ArgDescB],
+        has_type(_ArgA : K, ArgDescA),
+        has_type(_ArgB : V, ArgDescB),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : tree234(K, V))
+      then
+        tree234_to_doc(X)
+      else
+        str("?tree234?")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

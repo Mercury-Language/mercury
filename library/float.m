@@ -51,6 +51,8 @@
 :- module float.
 :- interface.
 
+:- import_module pretty_printer.
+
 %---------------------------------------------------------------------------%
 %
 % Arithmetic functions
@@ -216,6 +218,10 @@
 	%
 :- func float.max_exponent = int.
 
+    % Convert a float to a pretty_printer.doc for formatting.
+    %
+:- func float.float_to_doc(float) = doc.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -224,6 +230,7 @@
 :- import_module exception.
 :- import_module int.
 :- import_module math.
+:- import_module string.
 
 %
 % Header files of mathematical significance.
@@ -841,6 +848,10 @@ float.min_exponent = -1021.
 %	IEEE.
 %
 float.max_exponent = 1024.
+
+    % Convert a float to a pretty_printer.doc.
+    %
+float.float_to_doc(X) = str(string.float_to_string(X)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

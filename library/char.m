@@ -25,6 +25,7 @@
 :- module char.
 :- interface.
 :- import_module enum.
+:- import_module pretty_printer.
 
 %-----------------------------------------------------------------------------%
 
@@ -170,12 +171,17 @@
 :- func char.det_int_to_digit(int) = char.
 :- pred char.det_int_to_digit(int::in, char::out) is det.
 
+    % Convert a char to a pretty_printer.doc for formatting.
+    %
+:- func char.char_to_doc(char) = pretty_printer.doc.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module require.
+:- import_module term_io.
 
 :- instance enum(character) where [
     (to_int(X) = Y :- char.to_int(X, Y)),
@@ -647,3 +653,6 @@ char.to_lower(C1) = C2 :-
 
 char.det_int_to_digit(N) = C :-
     char.det_int_to_digit(N, C).
+
+char.char_to_doc(C) = str(term_io.quoted_char(C)).
+

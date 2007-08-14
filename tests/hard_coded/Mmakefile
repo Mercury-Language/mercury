@@ -220,6 +220,7 @@ ORDINARY_PROGS=	\
 	test_cord \
 	test_imported_no_tag \
 	test_pretty_printer \
+	test_pretty_printer_defaults \
 	test_promise_impure_implicit \
 	tim_qual1 \
 	time_test \

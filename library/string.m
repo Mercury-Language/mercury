@@ -39,6 +39,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module ops.
+:- import_module pretty_printer.
 
 %-----------------------------------------------------------------------------%
 
@@ -827,6 +828,10 @@
     % or equal to N, then no separator is used.
     %
 :- func string.word_wrap_separator(string, int, string) = string.
+
+    % Convert a string to a pretty_printer.doc for formatting.
+    %
+:- func string.string_to_doc(string) = pretty_printer.doc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -5361,5 +5366,9 @@ break_up_string_reverse(Str, N, Prev) = Strs :-
         string.split(Str, N, Left, Right),
         Strs = break_up_string_reverse(Right, N, [Left | Prev])
     ).
+
+%-----------------------------------------------------------------------------%
+
+string.string_to_doc(S) = docs([str("\""), str(S), str("\"")]).
 
 %-----------------------------------------------------------------------------%

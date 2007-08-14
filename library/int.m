@@ -26,6 +26,7 @@
 
 :- import_module array.
 :- import_module enum.
+:- import_module pretty_printer.
 
 %-----------------------------------------------------------------------------%
 
@@ -317,6 +318,10 @@
 :- mode int.fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
 
+    % Convert an int to a pretty_printer.doc for formatting.
+    %
+:- func int.int_to_doc(int) = pretty_printer.doc.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -375,6 +380,7 @@
 
 :- import_module exception.
 :- import_module math.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -801,6 +807,10 @@ int.fold_down2(P, Lo, Hi, !A, !B) :-
       then  P(Hi, !A, !B), int.fold_down2(P, Lo, Hi - 1, !A, !B)
       else  true
     ).
+
+%-----------------------------------------------------------------------------%
+
+int.int_to_doc(X) = str(string.int_to_string(X)).
 
 %-----------------------------------------------------------------------------%
 :- end_module int.

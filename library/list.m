@@ -19,6 +19,8 @@
 :- module list.
 :- interface.
 
+:- import_module pretty_printer.
+
 %-----------------------------------------------------------------------------%
 
     % The definition of the type `list(T)':
@@ -1297,6 +1299,12 @@
 :- func list.det_tail(list(T)) = list(T).
 
 %-----------------------------------------------------------------------------%
+
+    % Convert a list to a pretty_printer.doc for formatting.
+    %
+:- func list_to_doc(list(T)) = pretty_printer.doc.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -2568,6 +2576,22 @@ successive_integers(Lo, Hi, !Ints) :-
 inst_preserving_append([], L) = L.
 inst_preserving_append([H | T], L) = [H | NT] :-
     inst_preserving_append(T, L) = NT.
+
+%-----------------------------------------------------------------------------%
+
+list_to_doc(Xs) = indent([str("["), list_to_doc_2(Xs), str("]")]).
+
+
+:- func list_to_doc_2(list(T)) = doc.
+
+list_to_doc_2([]) = str("").
+
+list_to_doc_2([X | Xs]) =
+    docs([
+        group([nl, format_arg(format(X))]),
+        str((if Xs = [] then "" else ", ")),
+        format_susp((func) = list_to_doc_2(Xs))
+    ]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
