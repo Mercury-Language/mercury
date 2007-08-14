@@ -407,13 +407,12 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 
 modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
         InstVarSub, ArgVars, ExtraGoals, !ModeInfo) :-
-    mode_info_get_may_initialise_solver_vars(MayInitSolverVars,
-        !.ModeInfo),
+    mode_info_get_may_init_solver_vars(!.ModeInfo, MayInitSolverVars),
 
     % Since we can't reschedule impure goals, we must allow the initialisation
     % of free solver type args if necessary in impure calls.
     ( Purity = purity_impure ->
-        mode_info_set_may_initialise_solver_vars(yes, !ModeInfo)
+        mode_info_set_may_init_solver_vars(may_init_solver_vars, !ModeInfo)
     ;
         true
     ),
@@ -433,7 +432,7 @@ modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
     ;
         NeverSucceeds = no
     ),
-    mode_info_set_may_initialise_solver_vars(MayInitSolverVars, !ModeInfo).
+    mode_info_set_may_init_solver_vars(MayInitSolverVars, !ModeInfo).
 
 :- pred insert_new_mode(pred_id::in, list(prog_var)::in,
     maybe(determinism)::in, proc_id::out,

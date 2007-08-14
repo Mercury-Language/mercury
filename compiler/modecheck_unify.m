@@ -130,7 +130,7 @@ modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
     % insert initialisation calls at this point, then do so to allow
     % scheduling of the unification.
     (
-        mode_info_may_initialise_solver_vars(!.ModeInfo),
+        mode_info_may_init_solver_vars(!.ModeInfo),
         InstOfX0   = free,
         InstOfY0   = free,
         VarType    = VarTypes^elem(X),
@@ -523,7 +523,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         ArgVars0 = [_ | _],
         HowToCheckGoal = check_modes,
         inst_match.inst_is_free(ModuleInfo0, InstOfX),
-        mode_info_may_initialise_solver_vars(!.ModeInfo),
+        mode_info_may_init_solver_vars(!.ModeInfo),
         instmap.lookup_vars(ArgVars0, InstMap0, InstArgs0),
         all_arg_vars_are_non_free_or_solver_vars(ArgVars0, InstArgs0,
             VarTypes, ModuleInfo0, ArgVarsToInit)
@@ -624,7 +624,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         UnifyArgInsts = list.map(func(I) = yes(I), InstOfXArgs),
         mode_info_get_in_from_ground_term(!.ModeInfo, InFromGroundTerm),
         (
-            InFromGroundTerm = yes
+            InFromGroundTerm = in_from_ground_term
             % In the goals that result from the transformation of a unification
             % of a variable with a ground term, the variables on the right hand
             % sides of the construct unifications are all local to the scope
@@ -637,7 +637,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             % are N intermediate variables, the complexity of updating their
             % insts would be quadratic.
         ;
-            InFromGroundTerm = no,
+            InFromGroundTerm = not_in_from_ground_term,
             bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
         )
     ;
@@ -687,16 +687,14 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             WarnCannotSucceed, !IO),
         (
             WarnCannotSucceed = yes,
-            mode_info_get_in_dupl_for_switch(!.ModeInfo, InDupForSwitch),
+            mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
             (
-                InDupForSwitch = yes
-                %
+                InDuplForSwitch = in_dupl_for_switch
                 % Suppress the warning, since the unification may succeed
                 % in another copy of this duplicated switch arm.
-                %
             ;
-                InDupForSwitch = no,
-                mode_info_get_predid(!.ModeInfo, PredId),
+                InDuplForSwitch = not_in_dupl_for_switch,
+                mode_info_get_pred_id(!.ModeInfo, PredId),
                 mode_info_get_module_info(!.ModeInfo, ModuleInfo),
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 pred_info_get_origin(PredInfo, Origin),
@@ -870,8 +868,8 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
     % since it is needed by polymorphism.unification_typeinfos.
 
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    mode_info_get_predid(ModeInfo, PredId),
-    mode_info_get_procid(ModeInfo, ProcId),
+    mode_info_get_pred_id(ModeInfo, PredId),
+    mode_info_get_proc_id(ModeInfo, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
@@ -990,7 +988,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
             WarnCannotSucceed = yes,
             mode_get_insts(ModuleInfo0, ModeOfX, InstOfX, _),
             mode_get_insts(ModuleInfo0, ModeOfY, InstOfY, _),
-            mode_info_get_predid(!.ModeInfo, PredId),
+            mode_info_get_pred_id(!.ModeInfo, PredId),
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_origin(PredInfo, Origin),
             should_report_mode_warning_for_pred_origin(Origin, ReportWarning),
@@ -1106,7 +1104,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         % until runtime so that it only occurs if the compiler-generated
         % predicate gets called. not_reached is considered bound, so the
         % error message would be spurious if the instmap is unreachable.
-        mode_info_get_predid(!.ModeInfo, PredId),
+        mode_info_get_pred_id(!.ModeInfo, PredId),
         module_info_pred_info(ModuleInfo3, PredId, PredInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         (

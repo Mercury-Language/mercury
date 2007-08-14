@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mode_info.m.
 % Main author: fjh.
-% 
+%
 % This file defines the mode_info data structure, which is used to hold
 % the information we need during mode analysis.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_info.
@@ -36,7 +36,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -108,14 +107,50 @@
     proc_id::in, prog_context::in, set(prog_var)::in, instmap::in,
     how_to_check_goal::in, may_change_called_proc::in, mode_info::out) is det.
 
+:- type need_to_requantify
+    --->    need_to_requantify
+    ;       do_not_need_to_requantify.
+
+    % The mode_info contains a flag indicating whether initialisation calls,
+    % converting a solver variable from `free' to `any', may be inserted
+    % during mode analysis.
+:- type may_init_solver_vars
+    --->    may_init_solver_vars
+    ;       may_not_init_solver_vars.
+
+:- type in_promise_purity_scope
+    --->    in_promise_purity_scope
+    ;       not_in_promise_purity_scope.
+
+:- type in_from_ground_term
+    --->    in_from_ground_term
+    ;       not_in_from_ground_term.
+
+:- type in_dupl_for_switch
+    --->    in_dupl_for_switch
+    ;       not_in_dupl_for_switch.
+
+    % We use a stack of pairs of sets of variables used to mode-check
+    % parallel conjunctions. The first set is the nonlocals of the
+    % parallel conjunction. The second set is a subset of the
+    % first, and is the set of variables that have been [further]
+    % bound inside the current parallel conjunct. The stack
+    % is for the correct handling of nested parallel conjunctions.
+:- type par_conj_mode_check_stack == list(par_conj_mode_check).
+:- type par_conj_mode_check
+    --->    par_conj_mode_check(
+                par_conj_nonlocals  :: set(prog_var),
+                par_conj_bound      :: set(prog_var)
+            ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_module_info(mode_info::in, module_info::out) is det.
 :- pred mode_info_get_preds(mode_info::in, pred_table::out) is det.
 :- pred mode_info_get_modes(mode_info::in, mode_table::out) is det.
 :- pred mode_info_get_insts(mode_info::in, inst_table::out) is det.
-:- pred mode_info_get_predid(mode_info::in, pred_id::out) is det.
-:- pred mode_info_get_procid(mode_info::in, proc_id::out) is det.
+:- pred mode_info_get_pred_id(mode_info::in, pred_id::out) is det.
+:- pred mode_info_get_proc_id(mode_info::in, proc_id::out) is det.
 :- pred mode_info_get_debug_modes(mode_info::in, maybe(debug_flags)::out)
     is det.
 :- pred mode_info_get_context(mode_info::in, prog_context::out) is det.
@@ -125,8 +160,10 @@
 :- pred mode_info_get_errors(mode_info::in, list(mode_error_info)::out) is det.
 :- pred mode_info_get_warnings(mode_info::in, list(mode_warning_info)::out)
     is det.
-:- pred mode_info_get_need_to_requantify(mode_info::in, bool::out) is det.
-:- pred mode_info_get_in_promise_purity_scope(mode_info::in, bool::out) is det.
+:- pred mode_info_get_need_to_requantify(mode_info::in,
+    need_to_requantify::out) is det.
+:- pred mode_info_get_in_promise_purity_scope(mode_info::in,
+    in_promise_purity_scope::out) is det.
 :- pred mode_info_get_num_errors(mode_info::in, int::out) is det.
 :- pred mode_info_get_liveness(mode_info::in, set(prog_var)::out) is det.
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
@@ -139,23 +176,28 @@
 :- pred mode_info_get_last_checkpoint_insts(mode_info::in, instmap::out)
     is det.
 :- pred mode_info_get_parallel_vars(mode_info::in,
-    list(pair(set(prog_var)))::out) is det.
+    par_conj_mode_check_stack::out) is det.
 :- pred mode_info_get_changed_flag(mode_info::in, bool::out) is det.
 :- pred mode_info_get_how_to_check(mode_info::in,
     how_to_check_goal::out) is det.
 :- pred mode_info_get_may_change_called_proc(mode_info::in,
     may_change_called_proc::out) is det.
 :- pred mode_info_get_initial_instmap(mode_info::in, instmap::out) is det.
-:- pred mode_info_get_in_from_ground_term(mode_info::in, bool::out) is det.
-:- pred mode_info_get_in_dupl_for_switch(mode_info::in, bool::out) is det.
+:- pred mode_info_get_checking_extra_goals(mode_info::in, bool::out) is det.
+:- pred mode_info_get_may_init_solver_vars(mode_info::in,
+    may_init_solver_vars::out) is det.
+:- pred mode_info_get_in_from_ground_term(mode_info::in,
+    in_from_ground_term::out) is det.
+:- pred mode_info_get_in_dupl_for_switch(mode_info::in,
+    in_dupl_for_switch::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_set_module_info(module_info::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_predid(pred_id::in,
+:- pred mode_info_set_pred_id(pred_id::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_procid(proc_id::in,
+:- pred mode_info_set_proc_id(proc_id::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_context(prog_context::in,
     mode_info::in, mode_info::out) is det.
@@ -175,9 +217,9 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_warnings(list(mode_warning_info)::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_need_to_requantify(bool::in,
+:- pred mode_info_set_need_to_requantify(need_to_requantify::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_in_promise_purity_scope(bool::in,
+:- pred mode_info_set_in_promise_purity_scope(in_promise_purity_scope::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_add_live_vars(set(prog_var)::in,
     mode_info::in, mode_info::out) is det.
@@ -195,7 +237,7 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_last_checkpoint_insts(instmap::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_parallel_vars(list(pair(set(prog_var)))::in,
+:- pred mode_info_set_parallel_vars(par_conj_mode_check_stack::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_changed_flag(bool::in,
     mode_info::in, mode_info::out) is det.
@@ -205,9 +247,11 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_checking_extra_goals(bool::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_in_from_ground_term(bool::in,
+:- pred mode_info_set_may_init_solver_vars(may_init_solver_vars::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_in_dupl_for_switch(bool::in,
+:- pred mode_info_set_in_from_ground_term(in_from_ground_term::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_in_dupl_for_switch(in_dupl_for_switch::in,
     mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -262,18 +306,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The mode_info contains a flag indicating whether initialisation calls,
-    % converting a solver variable from `free' to `any', may be inserted
-    % during mode analysis.
-    %
-:- pred mode_info_may_initialise_solver_vars(mode_info::in)
-    is semidet.
-
-:- pred mode_info_get_may_initialise_solver_vars(bool::out, mode_info::in)
-    is det.
-
-:- pred mode_info_set_may_initialise_solver_vars(bool::in,
-    mode_info::in, mode_info::out) is det.
+:- pred mode_info_may_init_solver_vars(mode_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -290,6 +323,7 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module string.
 :- import_module svbag.
 :- import_module term.
@@ -297,11 +331,53 @@
 
 :- type mode_sub_info
     --->    mode_sub_info(
+                % The pred we are checking.
+                msi_pred_id                 :: pred_id,
+
                 % The mode which we are checking.
-                procid                  :: proc_id,
+                msi_proc_id                 :: proc_id,
 
                 % The variables in the current proc.
-                varset                  :: prog_varset,
+                msi_varset                  :: prog_varset,
+
+                % The types of the variables.
+                msi_vartypes                :: vartypes,
+
+                % Is mode debugging of this procedure enabled? If yes,
+                % is verbose mode debugging enabled, is minimal mode debugging
+                % enabled, and is statistics printing enabled?
+                msi_debug                   :: maybe(debug_flags),
+
+                % The "locked" variables, i.e. variables which cannot be
+                % further instantiated inside a negated context.
+                msi_locked_vars             :: locked_vars,
+
+                % The live variables, i.e. those variables which may be
+                % referenced again on forward execution or after shallow
+                % backtracking. (By shallow backtracking, I mean semidet
+                % backtracking in a negation, if-then-else, or semidet
+                % disjunction within the current predicate.)
+                msi_live_vars               :: bag(prog_var),
+
+                msi_instvarset              :: inst_varset,
+
+                % A stack of pairs of sets of variables used to mode-check
+                % parallel conjunctions. The first set is the nonlocals of the
+                % parallel conjunction. The second set is a subset of the
+                % first, and is the set of variables that have been [further]
+                % bound inside the current parallel conjunct - the stack
+                % is for the correct handling of nested parallel conjunctions.
+                msi_par_conj                :: par_conj_mode_check_stack,
+
+                msi_how_to_check            :: how_to_check_goal,
+
+                % Is mode analysis allowed to change which procedure is called?
+                msi_may_change_called_proc  :: may_change_called_proc,
+
+                % `yes' if calls to the initialisation predicates for solver
+                % vars can be inserted during mode analysis in order to make
+                % goals schedulable.
+                msi_may_init_solver_vars    :: may_init_solver_vars,
 
                 % This field is used by the checkpoint code when debug_modes
                 % is on. It has the instmap that was current at the last mode
@@ -310,86 +386,67 @@
                 % checkpoint. This field will always contain an unreachable
                 % instmap if debug_modes is off, since its information is not
                 % needed then.
-                last_checkpoint_insts   :: instmap,
+                msi_last_checkpoint_insts   :: instmap,
 
                 % Changed flag: if `yes', then we may need to repeat
                 % mode inference.
-                changed_flag            :: bool,
+                msi_changed_flag            :: bool,
 
                 % Are we rechecking a goal after introducing unifications
                 % for complicated sub-unifications or an implied mode? If so,
                 % redoing the mode check should not introduce more extra
                 % unifications.
-                checking_extra_goals    :: bool,
+                msi_checking_extra_goals    :: bool,
 
                 % The initial instmap of the procedure body. Used to decide
                 % whether a unification that cannot fail could be influenced
                 % by an argument mode that enforces a subtype.
-                initial_instmap         :: instmap,
+                msi_initial_instmap         :: instmap,
 
                 % The mode warnings found.
-                warnings                :: list(mode_warning_info),
+                msi_warnings                :: list(mode_warning_info),
 
                 % Set to `yes' if we need to requantify the procedure body
                 % after mode analysis finishes.
-                need_to_requantify      :: bool,
+                msi_need_to_requantify      :: need_to_requantify,
 
                 % Set to `yes' if we are in a promise_<purity> scope.
                 % This information is needed to check that potentially impure
                 % uses of inst any non-locals in negated contexts are properly
                 % acknowledged by the programmer.
-                in_promise_purity_scope :: bool,
+                msi_in_promise_purity_scope :: in_promise_purity_scope,
 
                 % Set to `yes' if we are in a from_ground_term scope.
                 % This information allows us to optimize some aspects of
                 % mode analysis.
-                in_from_ground_term     :: bool,
+                msi_in_from_ground_term     :: in_from_ground_term,
 
                 % Set to `yes' if we are inside a goal with a
                 % duplicate_for_switch feature.
-                in_dupl_for_switch      :: bool
+                msi_in_dupl_for_switch      :: in_dupl_for_switch
             ).
 
+    % Please try to keep the size of this structure down to eight fields.
+    % Even one more field will cause the Boehm allocator to round up the size
+    % of each memory cell to 16 words.
 :- type mode_info
     --->    mode_info(
-                module_info             :: module_info,
-
-                % The pred we are checking.
-                predid                  :: pred_id,
-
-                % The types of the variables.
-                var_types               :: vartypes,
-
-                % Is mode debugging of this procedure enabled? If yes,
-                % is verbose mode debugging enabled, is minimal mode debugging
-                % enabled, and is statistics printing enabled?
-                debug                   :: maybe(debug_flags),
-
-                % The line number of the subgoal we are currently checking.
-                context                 :: prog_context,
-
-                % A description of where in the goal the error occurred.
-                mode_context            :: mode_context,
+                mi_module_info              :: module_info,
 
                 % The current instantiatedness of the variables.
-                instmap                 :: instmap,
-
-                % The "locked" variables, i.e. variables which cannot be
-                % further instantiated inside a negated context.
-                locked_vars             :: locked_vars,
+                mi_instmap                  :: instmap,
 
                 % Info about delayed goals.
-                delay_info              :: delay_info,
+                mi_delay_info               :: delay_info,
 
                 % The mode errors found.
-                errors                  :: list(mode_error_info),
+                mi_errors                   :: list(mode_error_info),
 
-                % The live variables, i.e. those variables which may be
-                % referenced again on forward execution or after shallow
-                % backtracking. (By shallow backtracking, I mean semidet
-                % backtracking in a negation, if-then-else, or semidet
-                % disjunction within the current predicate.)
-                live_vars               :: bag(prog_var),
+                % A description of where in the goal the error occurred.
+                mi_mode_context             :: mode_context,
+
+                % The line number of the subgoal we are currently checking.
+                mi_context                  :: prog_context,
 
                 % The nondet-live variables, i.e. those variables which may be
                 % referenced again after deep backtracking TO THE CURRENT
@@ -400,35 +457,14 @@
                 % to a point EARLIER THAN the current execution point, since
                 % those variables will *already* have been marked as
                 % mostly_unique rather than unique.)
-                nondet_live_vars        :: bag(prog_var),
+                mi_nondet_live_vars         :: bag(prog_var),
 
-                instvarset              :: inst_varset,
-
-                % A stack of pairs of sets of variables used to mode-check
-                % parallel conjunctions. The first set is the nonlocals of the
-                % parallel conjunction. The second set is a subset of the
-                % first, and is the set of variables that have been [further]
-                % bound inside the current parallel conjunct - the stack
-                % is for the correct handling of nested parallel conjunctions.
-                parallel_vars           :: list(pair(set(prog_var),
-                                            set(prog_var))),
-
-                how_to_check            :: how_to_check_goal,
-
-                % Is mode analysis allowed to change which procedure is called?
-                may_change_called_proc  :: may_change_called_proc,
-
-                % `yes' if calls to the initialisation predicates for solver
-                % vars can be inserted during mode analysis in order to make
-                % goals schedulable.
-                may_initialise_solver_vars :: bool,
-
-                mode_sub_info           :: mode_sub_info
+                mi_sub_info                 :: mode_sub_info
             ).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
+mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMap0,
         HowToCheck, MayChangeProc, ModeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_modes, DebugModes),
@@ -449,131 +485,149 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
         Debug = no
     ),
 
-    instmap.init_unreachable(Unreachable),
-    mode_context_init(ModeContext),
-    LockedVars = [],
-    delay_info_init(DelayInfo),
-    ErrorList = [],
-    WarningList = [],
-    module_info_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, Procs),
-    map.lookup(Procs, ProcId, ProcInfo),
+    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
     bag.from_set(LiveVars, LiveVarsBag),
-    bag.from_set(LiveVars, NondetLiveVarsBag),
+    instmap.init_unreachable(LastCheckpointInstMap),
+    LockedVars = [],
+    ParallelVars = [],
+    WarningList = [],
 
     Changed = no,
     CheckingExtraGoals = no,
-    MayInitSolverVars = yes,
-    NeedToRequantify = no,
-    InNegatedContext = no,
+    MayInitSolverVars = may_init_solver_vars,
+    NeedToRequantify = do_not_need_to_requantify,
+    InPromisePurityScope = not_in_promise_purity_scope,
+    InFromGroundTerm = not_in_from_ground_term,
+    InDuplForSwitch = not_in_dupl_for_switch,
 
-    ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable,
-        Changed, CheckingExtraGoals, InstMapping0, WarningList,
-        NeedToRequantify, InNegatedContext, no, no),
+    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
+        LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
+        MayChangeProc, MayInitSolverVars, LastCheckpointInstMap, Changed,
+        CheckingExtraGoals, InstMap0, WarningList, NeedToRequantify,
+        InPromisePurityScope, InFromGroundTerm, InDuplForSwitch),
 
-    ModeInfo = mode_info(ModuleInfo, PredId, VarTypes, Debug,
-        Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
-        ErrorList, LiveVarsBag, NondetLiveVarsBag, InstVarSet, [],
-        HowToCheck, MayChangeProc, MayInitSolverVars, ModeSubInfo).
+    mode_context_init(ModeContext),
+    delay_info_init(DelayInfo),
+    ErrorList = [],
+    bag.from_set(LiveVars, NondetLiveVarsBag),
+
+    ModeInfo = mode_info(ModuleInfo, InstMap0, DelayInfo, ErrorList,
+        ModeContext, Context, NondetLiveVarsBag, ModeSubInfo).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_module_info(MI, MI ^ module_info).
-mode_info_get_predid(MI, MI ^ predid).
-mode_info_get_procid(MI, MI ^ mode_sub_info ^ procid).
-mode_info_get_debug_modes(MI, MI ^ debug).
-mode_info_get_varset(MI, MI ^ mode_sub_info ^ varset).
-mode_info_get_var_types(MI, MI ^ var_types).
-mode_info_get_context(MI, MI ^ context).
-mode_info_get_mode_context(MI, MI ^ mode_context).
-mode_info_get_instmap(MI, MI ^ instmap).
-mode_info_get_instvarset(ModeInfo, ModeInfo ^ instvarset).
-mode_info_get_locked_vars(MI, MI ^ locked_vars).
-mode_info_get_errors(MI, MI ^ errors).
-mode_info_get_warnings(MI, MI ^ mode_sub_info ^ warnings).
-mode_info_get_need_to_requantify(MI, MI ^ mode_sub_info ^ need_to_requantify).
+mode_info_get_module_info(MI, MI ^ mi_module_info).
+mode_info_get_pred_id(MI, MI ^ mi_sub_info ^ msi_pred_id).
+mode_info_get_proc_id(MI, MI ^ mi_sub_info ^ msi_proc_id).
+mode_info_get_debug_modes(MI, MI ^ mi_sub_info ^ msi_debug).
+mode_info_get_varset(MI, MI ^ mi_sub_info ^ msi_varset).
+mode_info_get_var_types(MI, MI ^ mi_sub_info ^ msi_vartypes).
+mode_info_get_context(MI, MI ^ mi_context).
+mode_info_get_mode_context(MI, MI ^ mi_mode_context).
+mode_info_get_instmap(MI, MI ^ mi_instmap).
+mode_info_get_instvarset(ModeInfo, ModeInfo ^ mi_sub_info ^ msi_instvarset).
+mode_info_get_locked_vars(MI, MI ^ mi_sub_info ^ msi_locked_vars).
+mode_info_get_errors(MI, MI ^ mi_errors).
+mode_info_get_warnings(MI, MI ^ mi_sub_info ^ msi_warnings).
+mode_info_get_need_to_requantify(MI,
+    MI ^ mi_sub_info ^ msi_need_to_requantify).
 mode_info_get_in_promise_purity_scope(MI,
-    MI ^ mode_sub_info ^ in_promise_purity_scope).
-mode_info_get_delay_info(MI, MI ^ delay_info).
-mode_info_get_live_vars(MI, MI ^ live_vars).
-mode_info_get_nondet_live_vars(MI, MI ^ nondet_live_vars).
+    MI ^ mi_sub_info ^ msi_in_promise_purity_scope).
+mode_info_get_delay_info(MI, MI ^ mi_delay_info).
+mode_info_get_live_vars(MI, MI ^ mi_sub_info ^ msi_live_vars).
+mode_info_get_nondet_live_vars(MI, MI ^ mi_nondet_live_vars).
 mode_info_get_last_checkpoint_insts(MI,
-    MI ^ mode_sub_info ^ last_checkpoint_insts).
-mode_info_get_parallel_vars(MI, MI ^  parallel_vars).
-mode_info_get_changed_flag(MI, MI ^ mode_sub_info ^ changed_flag).
-mode_info_get_how_to_check(MI, MI ^ how_to_check).
-mode_info_get_may_change_called_proc(MI, MI ^ may_change_called_proc).
-mode_info_get_initial_instmap(MI, MI ^ mode_sub_info ^ initial_instmap).
+    MI ^ mi_sub_info ^ msi_last_checkpoint_insts).
+mode_info_get_parallel_vars(MI, MI ^  mi_sub_info ^ msi_par_conj).
+mode_info_get_changed_flag(MI, MI ^ mi_sub_info ^ msi_changed_flag).
+mode_info_get_how_to_check(MI, MI ^ mi_sub_info ^ msi_how_to_check).
+mode_info_get_may_change_called_proc(MI,
+    MI ^ mi_sub_info ^ msi_may_change_called_proc).
+mode_info_get_may_init_solver_vars(MI,
+    MI ^ mi_sub_info ^ msi_may_init_solver_vars).
+mode_info_get_initial_instmap(MI, MI ^ mi_sub_info ^ msi_initial_instmap).
+mode_info_get_checking_extra_goals(MI,
+    MI ^ mi_sub_info ^ msi_checking_extra_goals).
 mode_info_get_in_from_ground_term(MI,
-    MI ^ mode_sub_info ^ in_from_ground_term).
+    MI ^ mi_sub_info ^ msi_in_from_ground_term).
 mode_info_get_in_dupl_for_switch(MI,
-    MI ^ mode_sub_info ^ in_dupl_for_switch).
+    MI ^ mi_sub_info ^ msi_in_dupl_for_switch).
 
-mode_info_set_module_info(ModuleInfo, MI, MI ^ module_info := ModuleInfo).
-mode_info_set_predid(PredId, MI, MI ^ predid := PredId).
-mode_info_set_procid(ProcId, MI, MI ^ mode_sub_info ^ procid := ProcId).
-mode_info_set_varset(VarSet, MI, MI ^ mode_sub_info ^ varset := VarSet).
-mode_info_set_var_types(VTypes, MI, MI ^ var_types := VTypes).
-mode_info_set_context(Context, MI, MI ^ context := Context).
-mode_info_set_mode_context(ModeContext, MI, MI ^ mode_context := ModeContext).
-mode_info_set_locked_vars(LockedVars, MI, MI ^ locked_vars := LockedVars).
-mode_info_set_errors(Errors, MI, MI ^ errors := Errors).
+mode_info_set_module_info(ModuleInfo, MI, MI ^ mi_module_info := ModuleInfo).
+mode_info_set_pred_id(PredId, MI, MI ^ mi_sub_info ^ msi_pred_id := PredId).
+mode_info_set_proc_id(ProcId, MI, MI ^ mi_sub_info ^ msi_proc_id := ProcId).
+mode_info_set_varset(VarSet, MI, MI ^ mi_sub_info ^ msi_varset := VarSet).
+mode_info_set_var_types(VarTypes, MI,
+    MI ^ mi_sub_info ^ msi_vartypes := VarTypes).
+mode_info_set_context(Context, MI, MI ^ mi_context := Context).
+mode_info_set_mode_context(ModeContext,
+    MI, MI ^ mi_mode_context := ModeContext).
+mode_info_set_locked_vars(LockedVars, MI,
+    MI ^ mi_sub_info ^ msi_locked_vars := LockedVars).
+mode_info_set_errors(Errors, MI, MI ^ mi_errors := Errors).
 mode_info_set_warnings(Warnings, MI,
-    MI ^ mode_sub_info ^ warnings := Warnings).
+    MI ^ mi_sub_info ^ msi_warnings := Warnings).
 mode_info_set_need_to_requantify(NTRQ, MI,
-    MI ^ mode_sub_info ^ need_to_requantify := NTRQ).
+    MI ^ mi_sub_info ^ msi_need_to_requantify := NTRQ).
 mode_info_set_in_promise_purity_scope(INC, MI,
-    MI ^ mode_sub_info ^ in_promise_purity_scope := INC).
-mode_info_set_delay_info(DelayInfo, MI, MI ^ delay_info := DelayInfo).
-mode_info_set_live_vars(LiveVarsList, MI, MI ^ live_vars := LiveVarsList).
+    MI ^ mi_sub_info ^ msi_in_promise_purity_scope := INC).
+mode_info_set_delay_info(DelayInfo, MI, MI ^ mi_delay_info := DelayInfo).
+mode_info_set_live_vars(LiveVarsList, MI,
+    MI ^ mi_sub_info ^ msi_live_vars := LiveVarsList).
 mode_info_set_nondet_live_vars(NondetLiveVars, MI,
-    MI ^ nondet_live_vars := NondetLiveVars).
+    MI ^ mi_nondet_live_vars := NondetLiveVars).
 mode_info_set_last_checkpoint_insts(LastCheckpointInsts, MI,
-    MI ^ mode_sub_info ^ last_checkpoint_insts := LastCheckpointInsts).
-mode_info_set_parallel_vars(PVars, MI, MI ^ parallel_vars := PVars).
+    MI ^ mi_sub_info ^ msi_last_checkpoint_insts := LastCheckpointInsts).
+mode_info_set_parallel_vars(PVars, MI,
+    MI ^ mi_sub_info ^ msi_par_conj := PVars).
 mode_info_set_changed_flag(Changed, MI,
-    MI ^ mode_sub_info ^ changed_flag := Changed).
-mode_info_set_how_to_check(How, MI, MI ^ how_to_check := How).
+    MI ^ mi_sub_info ^ msi_changed_flag := Changed).
+mode_info_set_how_to_check(How, MI,
+    MI ^ mi_sub_info ^ msi_how_to_check := How).
 mode_info_set_may_change_called_proc(MayChange, MI,
-    MI ^ may_change_called_proc := MayChange).
+    MI ^ mi_sub_info ^ msi_may_change_called_proc := MayChange).
+mode_info_set_may_init_solver_vars(MayInit, MI,
+    MI ^ mi_sub_info ^ msi_may_init_solver_vars := MayInit).
 mode_info_set_in_from_ground_term(FGI, MI,
-    MI ^ mode_sub_info ^ in_from_ground_term := FGI).
+    MI ^ mi_sub_info ^ msi_in_from_ground_term := FGI).
 mode_info_set_in_dupl_for_switch(INFS, MI,
-    MI ^ mode_sub_info ^ in_dupl_for_switch := INFS).
+    MI ^ mi_sub_info ^ msi_in_dupl_for_switch := INFS).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_preds(ModeInfo, Preds) :-
-    module_info_preds(ModeInfo ^ module_info, Preds).
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_preds(ModuleInfo, Preds).
 
 mode_info_get_modes(ModeInfo, Modes) :-
-    module_info_get_mode_table(ModeInfo ^ module_info, Modes).
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_get_mode_table(ModuleInfo, Modes).
 
 mode_info_get_insts(ModeInfo, Insts) :-
-    module_info_get_inst_table(ModeInfo ^ module_info, Insts).
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_get_inst_table(ModuleInfo, Insts).
 
 mode_info_set_call_context(call_context_unify(UnifyContext), !MI) :-
     mode_info_set_mode_context(mode_context_unify(UnifyContext, left), !MI).
 mode_info_set_call_context(call_context_call(CallId), !MI) :-
     mode_info_set_mode_context(mode_context_call(CallId, 0), !MI).
 
-mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
-    mode_info_get_mode_context(ModeInfo0, ModeContext0),
+mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
+    mode_info_get_mode_context(!.ModeInfo, ModeContext0),
     (
         ModeContext0 = mode_context_call(CallId, _),
         mode_info_set_mode_context(mode_context_call(CallId, ArgNum),
-            ModeInfo0, ModeInfo)
+            !ModeInfo)
     ;
         ModeContext0 = mode_context_unify(_UnifyContext, _Side),
         % This only happens when checking that the typeinfo variables
         % for polymorphic complicated unifications are ground.
         % For that case, we don't care about the ArgNum.
-        ModeInfo = ModeInfo0
+        true
     ;
         ModeContext0 = mode_context_uninitialized,
         unexpected(this_file, "mode_info_set_call_arg_context uninitialized")
@@ -585,15 +639,15 @@ mode_info_unset_call_context(!MI) :-
 %-----------------------------------------------------------------------------%
 
 mode_info_set_instmap(InstMap, !MI) :-
-    InstMap0 = !.MI ^ instmap,
-    !:MI = !.MI ^ instmap := InstMap,
+    mode_info_get_instmap(!.MI, InstMap0),
+    !MI ^ mi_instmap := InstMap,
     (
         instmap.is_unreachable(InstMap),
         instmap.is_reachable(InstMap0)
     ->
-        DelayInfo0 = !.MI ^ delay_info,
+        mode_info_get_delay_info(!.MI, DelayInfo0),
         delay_info_bind_all_vars(DelayInfo0, DelayInfo),
-        !:MI = !.MI ^ delay_info := DelayInfo
+        mode_info_set_delay_info(DelayInfo, !MI)
     ;
         true
     ).
@@ -601,7 +655,8 @@ mode_info_set_instmap(InstMap, !MI) :-
 %-----------------------------------------------------------------------------%
 
 mode_info_get_num_errors(ModeInfo, NumErrors) :-
-    list.length(ModeInfo^errors, NumErrors).
+    mode_info_get_errors(ModeInfo, Errors),
+    list.length(Errors, NumErrors).
 
 %-----------------------------------------------------------------------------%
 
@@ -614,29 +669,30 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
     % nondet-live vars.
 
 mode_info_add_live_vars(NewLiveVars, !MI) :-
-    LiveVars0 = !.MI ^ live_vars,
-    NondetLiveVars0 = !.MI ^ nondet_live_vars,
+    mode_info_get_live_vars(!.MI, LiveVars0),
+    mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
     svbag.insert_set(NewLiveVars, LiveVars0, LiveVars),
     svbag.insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
-    !:MI = !.MI ^ live_vars := LiveVars,
-    !:MI = !.MI ^ nondet_live_vars := NondetLiveVars.
+    mode_info_set_live_vars(LiveVars, !MI),
+    mode_info_set_nondet_live_vars(NondetLiveVars, !MI).
 
     % Remove a set of vars from the bag of live vars and
     % the bag of nondet-live vars.
 
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
-    LiveVars0 = !.MI ^ live_vars,
-    NondetLiveVars0 = !.MI ^ nondet_live_vars,
+    mode_info_get_live_vars(!.MI, LiveVars0),
+    mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
     svbag.det_remove_set(OldLiveVars, LiveVars0, LiveVars),
     svbag.det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
-    !:MI = !.MI ^ live_vars := LiveVars,
-    !:MI = !.MI ^ nondet_live_vars := NondetLiveVars,
-        % When a variable becomes dead, we may be able to wake up a goal
-        % which is waiting on that variable
+    mode_info_set_live_vars(LiveVars, !MI),
+    mode_info_set_nondet_live_vars(NondetLiveVars, !MI),
+
+    % When a variable becomes dead, we may be able to wake up a goal
+    % which is waiting on that variable.
     set.to_sorted_list(OldLiveVars, VarList),
-    DelayInfo0 = !.MI ^ delay_info,
+    mode_info_get_delay_info(!.MI, DelayInfo0),
     delay_info_bind_var_list(VarList, DelayInfo0, DelayInfo),
-    !:MI = !.MI ^ delay_info := DelayInfo.
+    mode_info_set_delay_info(DelayInfo, !MI).
 
 mode_info_var_list_is_live(_, [], []).
 mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
@@ -646,21 +702,24 @@ mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
     % Check whether a variable is live or not
 
 mode_info_var_is_live(ModeInfo, Var, Result) :-
-    ( bag.contains(ModeInfo ^ live_vars, Var) ->
+    mode_info_get_live_vars(ModeInfo, LiveVars0),
+    ( bag.contains(LiveVars0, Var) ->
         Result = is_live
     ;
         Result = is_dead
     ).
 
 mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
-    ( bag.contains(ModeInfo ^ nondet_live_vars, Var) ->
+    mode_info_get_nondet_live_vars(ModeInfo, NondetLiveVars0),
+    ( bag.contains(NondetLiveVars0, Var) ->
         Result = is_live
     ;
         Result = is_dead
     ).
 
 mode_info_get_liveness(ModeInfo, LiveVars) :-
-    bag.to_list_without_duplicates(ModeInfo ^ live_vars, SortedList),
+    mode_info_get_live_vars(ModeInfo, LiveVarsBag),
+    bag.to_list_without_duplicates(LiveVarsBag, SortedList),
     set.sorted_list_to_set(SortedList, LiveVars).
 
 %-----------------------------------------------------------------------------%
@@ -710,18 +769,17 @@ mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
     ).
 
 mode_info_set_checking_extra_goals(Checking, !MI) :-
+    mode_info_get_checking_extra_goals(!.MI, Checking0),
     (
-        yes = !.MI ^ mode_sub_info ^ checking_extra_goals,
+        Checking0 = yes,
         Checking = yes
     ->
-        % This should never happen - once the extra goals are
-        % introduced, rechecking the goal should not introduce
-        % more extra goals.
-        unexpected(this_file, 
-            "mode analysis: rechecking extra goals " ++
-            "adds more extra goals")
+        % This should never happen - once the extra goals are introduced,
+        % rechecking the goal should not introduce more extra goals.
+        unexpected(this_file,
+            "mode analysis: rechecking extra goals adds more extra goals")
     ;
-        !:MI = !.MI ^ mode_sub_info ^ checking_extra_goals := Checking
+        !MI ^ mi_sub_info ^ msi_checking_extra_goals := Checking
     ).
 
 %-----------------------------------------------------------------------------%
@@ -756,18 +814,13 @@ mode_info_add_warning(ModeWarningInfo, !ModeInfo) :-
     mode_info_set_warnings(Warnings, !ModeInfo).
 
 mode_info_need_to_requantify(!ModeInfo) :-
-    mode_info_set_need_to_requantify(yes, !ModeInfo).
+    mode_info_set_need_to_requantify(need_to_requantify, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_may_initialise_solver_vars(ModeInfo) :-
-    ModeInfo ^ may_initialise_solver_vars = yes.
-
-mode_info_get_may_initialise_solver_vars(MayInit, !.ModeInfo) :-
-    MayInit = !.ModeInfo ^ may_initialise_solver_vars.
-
-mode_info_set_may_initialise_solver_vars(MayInit, !ModeInfo) :-
-    !:ModeInfo = !.ModeInfo ^ may_initialise_solver_vars := MayInit.
+mode_info_may_init_solver_vars(ModeInfo) :-
+    mode_info_get_may_init_solver_vars(ModeInfo, MayInitSolverVars),
+    MayInitSolverVars = may_init_solver_vars.
 
 %-----------------------------------------------------------------------------%
 

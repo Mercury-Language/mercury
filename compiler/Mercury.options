@@ -26,6 +26,9 @@ MGNUCFLAGS-make.module_dep_file = --no-ansi
 MGNUCFLAGS-make.module_target = --no-ansi
 MGNUCFLAGS-make.program_target = --no-ansi
 
+MCFLAGS-check_hlds.modes = --inline-vars-threshold 10000
+MCFLAGS-check_hlds.unique_modes = --inline-vars-threshold 10000
+
 MCFLAGS-libs.process_util = --no-ansi-c
 MCFLAGS-make.module_dep_file = --no-ansi-c
 MCFLAGS-make.module_target = --no-ansi-c
