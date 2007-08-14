@@ -179,7 +179,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
-:- import_module pprint.
+:- import_module pretty_printer.
 :- import_module require.
 :- import_module stream.
 :- import_module stream.string_writer.
@@ -900,9 +900,8 @@ portray_verbose(Debugger, BrowserTerm, Params, !IO) :-
     io::di, io::uo) is det.
 
 portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
-    browser_term_to_string_pretty(BrowserTerm, Params ^ width,
-        Params ^ depth, Str),
-    write_string_debugger(Debugger, Str, !IO).
+    browser_term_to_string_pretty(Debugger, BrowserTerm, Params ^ width,
+        Params ^ lines, Params ^ size, Params ^ depth, !IO).
 
 :- pred portray_raw_pretty(debugger::in, browser_term::in, format_params::in,
     io::di, io::uo) is cc_multi.
@@ -1196,20 +1195,33 @@ browser_term_compress(BrowserDb, BrowserTerm, Str) :-
 %---------------------------------------------------------------------------%
 
     % Print using the pretty printer from the standard library.
-    % XXX The size of the term is not limited -- the pretty printer
-    % provides no way of doing this.
+    % XXX because the pretty printer doesn't support a combination
+    % of both size and depth, we use the depth except for when depth
+    % is 0 then we use the size.
     %
-:- pred browser_term_to_string_pretty(browser_term::in, int::in, int::in,
-    string::out) is det.
+    %
+:- pred browser_term_to_string_pretty(S::in,
+    browser_term::in, int::in, int::in,
+    int::in, int::in, io::di, io::uo) is det
+    <= stream.writer(S, string, io).
 
-browser_term_to_string_pretty(plain_term(Univ), Width, MaxDepth, Str) :-
-    Value = univ_value(Univ),
-    Doc = to_doc(MaxDepth, Value),
-    Str = to_string(Width, Doc).
-browser_term_to_string_pretty(synthetic_term(Functor, Args, MaybeReturn),
-        Width, MaxDepth, Str) :-
-    Doc = synthetic_term_to_doc(MaxDepth, Functor, Args, MaybeReturn),
-    Str = to_string(Width, Doc).
+browser_term_to_string_pretty(S, Term, Width, Lines, Size, Depth, !IO) :-
+    (
+        Term = plain_term(Univ),
+        Doc = format_univ(Univ)
+    ;
+        Term = synthetic_term(Functor, Args, MaybeReturn),
+        Doc = synthetic_term_to_doc(Functor, Args, MaybeReturn)
+    ),
+    get_default_formatter_map(Formatters, !IO),
+
+    ( Depth > 0 ->
+        Limit = triangular(Depth)
+    ;
+        Limit = linear(Size)
+    ),
+
+    format(S, Formatters, Width, Lines, Limit, Doc, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1676,48 +1688,10 @@ browser_mode_to_string(unbound) = "Unbound".
     % of arguments, and if the synthetic term is a function application, then
     % the result of that function application.
     %
-:- func synthetic_term_to_doc(string, list(univ), maybe(univ))      = doc.
-:- func synthetic_term_to_doc(int, string, list(univ), maybe(univ)) = doc.
+:- func synthetic_term_to_doc(string, list(univ), maybe(univ)) = doc.
 
-synthetic_term_to_doc(Functor, Args, MaybeReturn) =
-    synthetic_term_to_doc(int.max_int, Functor, Args, MaybeReturn).
-
-synthetic_term_to_doc(Depth, Functor, Args, MaybeReturn) = Doc :-
-    Arity = list.length(Args),
-    ( Depth =< 0 ->
-        ( Arity = 0 ->
-            Doc = text(Functor)
-        ;
-            (
-                MaybeReturn = yes(_),
-                Doc = text(Functor) `<>` text("/") `<>`
-                    poly(i(Arity)) `<>` text("+1")
-            ;
-                MaybeReturn = no,
-                Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
-            )
-        )
-    ;
-        ( Arity = 0 ->
-            Doc = text(Functor)
-        ;
-            ArgDocs = packed_cs_univ_args(Depth - 1, Args),
-            (
-                MaybeReturn = yes(Return),
-                Doc = group(
-                    text(Functor) `<>`
-                    parentheses(nest(2, ArgDocs)) `<>`
-                    nest(2, text(" = ") `<>`
-                        to_doc(Depth - 1, univ_value(Return))
-                    )
-                )
-            ;
-                MaybeReturn = no,
-                Doc = group(
-                    text(Functor) `<>` parentheses(nest(2, ArgDocs))
-                )
-            )
-        )
-    ).
+synthetic_term_to_doc(Functor, Args, no) = format_term(Functor, Args).
+synthetic_term_to_doc(Functor, Args, yes(Return)) =
+    docs([format_term(Functor, Args), str(" = "), format_univ(Return)]).
 
 %---------------------------------------------------------------------------%
