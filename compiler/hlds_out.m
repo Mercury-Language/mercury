@@ -279,6 +279,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_io.
+:- import_module table_builtin.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -4039,12 +4040,24 @@ table_trie_step_desc(_, table_trie_step_float) = "float".
 table_trie_step_desc(_, table_trie_step_dummy) = "dummy".
 table_trie_step_desc(_, table_trie_step_enum(N)) =
     "enum(" ++ int_to_string(N) ++ ")".
-table_trie_step_desc(TVarSet, table_trie_step_user(Type)) =
-    "user(" ++ mercury_type_to_string(TVarSet, yes, Type) ++ ")".
-table_trie_step_desc(TVarSet, table_trie_step_user_fast_loose(Type)) =
-    "user_fast_loose(" ++ mercury_type_to_string(TVarSet, yes, Type) ++ ")".
-table_trie_step_desc(_, table_trie_step_poly) = "poly".
-table_trie_step_desc(_, table_trie_step_poly_fast_loose) = "poly_fast_loose".
+table_trie_step_desc(TVarSet, table_trie_step_general(Type, IsPoly, IsAddr)) =
+        Str :-
+    (
+        IsPoly = table_is_poly,
+        IsPolyStr = "poly"
+    ;
+        IsPoly = table_is_mono,
+        IsPolyStr = "mono"
+    ),
+    (
+        IsAddr = table_value,
+        IsAddrStr = "value"
+    ;
+        IsAddr = table_addr,
+        IsAddrStr = "addr"
+    ),
+    Str = "general(" ++ mercury_type_to_string(TVarSet, yes, Type) ++ ", " ++
+        IsPolyStr ++ ", " ++ IsAddrStr ++ ")".
 table_trie_step_desc(_, table_trie_step_typeinfo) = "typeinfo".
 table_trie_step_desc(_, table_trie_step_typeclassinfo) = "typeclassinfo".
 table_trie_step_desc(_, table_trie_step_promise_implied) = "promise_implied".

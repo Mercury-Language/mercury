@@ -87,6 +87,7 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
+:- import_module table_builtin.
 :- import_module term.
 :- import_module unit.
 :- import_module varset.
@@ -2341,104 +2342,137 @@ generate_table_lookup_goals([VarModePos | NumberedVars], Statistics,
     table_trie_step::out, list(foreign_arg)::out, list(hlds_goal)::out,
     string::out) is det.
 
-gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar,
-        VarSeqNum, Statistics, Kind, DebugArgStr, BackArgStr, Context,
-        !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs, PrefixGoals,
-        CodeStr) :-
+gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
+        Statistics, Kind, DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes,
+        !TableInfo, Step, ExtraArgs, PrefixGoals, CodeStr) :-
     ModuleInfo = !.TableInfo ^ table_module_info,
     ArgName = arg_name(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type,
         native_if_possible),
-    ( TypeCat = type_cat_enum ->
-        ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-            module_info_get_type_table(ModuleInfo, TypeDefnTable),
-            map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
-            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            (
-                Ctors = TypeBody ^ du_type_ctors,
-                TypeBody ^ du_type_is_enum = is_enum,
-                TypeBody ^ du_type_usereq  = no
-            ->
-                list.length(Ctors, EnumRange)
-            ;
-                unexpected(this_file,
-                    "gen_lookup_call_for_type: enum type is not du_type?")
-            ),
-            LookupMacroName = "MR_tbl_lookup_insert_enum",
-            Step = table_trie_step_enum(EnumRange),
-            PrefixGoals = [],
-            ExtraArgs = [ForeignArg],
-            StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
-            CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
-                DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
-                cur_table_node_name ++ ", " ++ int_to_string(EnumRange) ++
-                ", " ++ ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+    (
+        TypeCat = type_cat_enum,
+        type_to_ctor_det(Type, TypeCtor),
+        module_info_get_type_table(ModuleInfo, TypeDefnTable),
+        map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        (
+            Ctors = TypeBody ^ du_type_ctors,
+            TypeBody ^ du_type_is_enum = is_enum,
+            TypeBody ^ du_type_usereq  = no
+        ->
+            list.length(Ctors, EnumRange)
         ;
             unexpected(this_file,
-                "gen_lookup_call_for_type: unexpected enum type")
-        )
-    ; TypeCat = type_cat_dummy ->
+                "gen_lookup_call_for_type: enum type is not du_type?")
+        ),
+        LookupMacroName = "MR_tbl_lookup_insert_enum",
+        Step = table_trie_step_enum(EnumRange),
+        PrefixGoals = [],
+        ExtraArgs = [ForeignArg],
+        StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
+        CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
+            DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
+            cur_table_node_name ++ ", " ++ int_to_string(EnumRange) ++
+            ", " ++ ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+    ;
+        (
+            TypeCat = type_cat_int,
+            CatString = "int",
+            Step = table_trie_step_int
+        ;
+            TypeCat = type_cat_char,
+            CatString = "char",
+            Step = table_trie_step_char
+        ;
+            TypeCat = type_cat_string,
+            CatString = "string",
+            Step = table_trie_step_string
+        ;
+            TypeCat = type_cat_float,
+            CatString = "float",
+            Step = table_trie_step_float
+        ;
+            TypeCat = type_cat_type_info,
+            CatString = "typeinfo",
+            Step = table_trie_step_typeinfo
+        ;
+            TypeCat = type_cat_type_ctor_info,
+            CatString = "typeinfo",
+            Step = table_trie_step_typeinfo
+        ),
+        LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
+        PrefixGoals = [],
+        ExtraArgs = [ForeignArg],
+        StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
+        CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
+            DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
+            cur_table_node_name ++ ", " ++ ArgName ++ ", " ++
+            next_table_node_name ++ ");\n"
+    ;
+        (
+            TypeCat = type_cat_higher_order
+        ;
+            TypeCat = type_cat_tuple
+        ;
+            TypeCat = type_cat_variable
+        ;
+            TypeCat = type_cat_user_ctor
+        ),
+        type_vars(Type, TypeVars),
+        (
+            TypeVars = [],
+            MaybePolyString = "",
+            IsPoly = table_is_mono
+        ;
+            TypeVars = [_ | _],
+            MaybePolyString = "_poly",
+            IsPoly = table_is_poly
+        ),
+        (
+            ArgTablingMethod = arg_value,
+            MaybeAddrString = "",
+            IsAddr = table_value
+        ;
+            ArgTablingMethod = arg_addr,
+            MaybeAddrString = "_addr",
+            IsAddr = table_addr
+        ;
+            ArgTablingMethod = arg_promise_implied,
+            unexpected(this_file,
+            "gen_lookup_call_for_type: arg_promise_implied")
+        ),
+        Step = table_trie_step_general(Type, IsPoly, IsAddr),
+        LookupMacroName = "MR_tbl_lookup_insert_gen" ++
+            MaybePolyString ++ MaybeAddrString,
+        table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
+            !TableInfo, TypeInfoVar, PrefixGoals),
+        TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
+        map.lookup(!.VarTypes, TypeInfoVar, TypeInfoType),
+        ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
+            yes(TypeInfoArgName - in_mode), TypeInfoType, native_if_possible),
+        ExtraArgs = [ForeignTypeInfoArg, ForeignArg],
+        StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
+        CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
+            DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
+            cur_table_node_name ++ ", " ++ TypeInfoArgName ++ ", " ++
+            ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+    ;
+        TypeCat = type_cat_dummy,
         Step = table_trie_step_dummy,
         PrefixGoals = [],
         ExtraArgs = [],
-        CodeStr0 = next_table_node_name ++ " = "
-            ++ cur_table_node_name ++ ";\n "
+        CodeStr0 = "\t" ++ next_table_node_name ++ " = " ++
+            cur_table_node_name ++ ";\n"
     ;
-        lookup_tabling_category(TypeCat, MaybeCatStringStep),
-        (
-            MaybeCatStringStep = no,
-            type_vars(Type, TypeVars),
-            (
-                ArgTablingMethod = arg_value,
-                (
-                    TypeVars = [],
-                    LookupMacroName = "MR_tbl_lookup_insert_user",
-                    Step = table_trie_step_user(Type)
-                ;
-                    TypeVars = [_ | _],
-                    LookupMacroName = "MR_tbl_lookup_insert_poly",
-                    Step = table_trie_step_poly
-                )
-            ;
-                ArgTablingMethod = arg_addr,
-                (
-                    TypeVars = [],
-                    LookupMacroName = "MR_tbl_lookup_insert_user_addr",
-                    Step = table_trie_step_user_fast_loose(Type)
-                ;
-                    TypeVars = [_ | _],
-                    LookupMacroName = "MR_tbl_lookup_insert_poly_addr",
-                    Step = table_trie_step_poly_fast_loose
-                )
-            ;
-                ArgTablingMethod = arg_promise_implied,
-                unexpected(this_file,
-                    "gen_lookup_call_for_type: arg_promise_implied")
-            ),
-            table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
-                !TableInfo, TypeInfoVar, PrefixGoals),
-            TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
-            map.lookup(!.VarTypes, TypeInfoVar, TypeInfoType),
-            ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
-                yes(TypeInfoArgName - in_mode), TypeInfoType,
-                native_if_possible),
-            ExtraArgs = [ForeignTypeInfoArg, ForeignArg],
-            StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
-            CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
-                DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
-                cur_table_node_name ++ ", " ++ TypeInfoArgName ++ ", " ++
-                ArgName ++ ", " ++ next_table_node_name ++ ");\n"
-        ;
-            MaybeCatStringStep = yes(CatString - Step),
-            LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
-            PrefixGoals = [],
-            ExtraArgs = [ForeignArg],
-            StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
-            CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
-                DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
-                cur_table_node_name ++ ", " ++ ArgName ++ ", " ++
-                next_table_node_name ++ ");\n"
-        )
+        TypeCat = type_cat_void,
+        unexpected(this_file, "gen_lookup_call_for_type: void")
+    ;
+        TypeCat = type_cat_typeclass_info,
+        unexpected(this_file, "gen_lookup_call_for_type: typeclass_info_type")
+    ;
+        TypeCat = type_cat_base_typeclass_info,
+        unexpected(this_file,
+            "gen_lookup_call_for_type: base_typeclass_info_type")
     ),
     CodeStr = CodeStr0 ++ "\t" ++ cur_table_node_name ++ " = " ++
         next_table_node_name ++ ";\n".
@@ -3401,38 +3435,6 @@ builtin_type(type_cat_dummy) = no.
 builtin_type(type_cat_variable) = no.
 builtin_type(type_cat_tuple) = no.
 builtin_type(type_cat_user_ctor) = no.
-
-    % Figure out what kind of data structure implements the lookup table
-    % for values of a given builtin type.
-    %
-:- pred lookup_tabling_category(type_category::in,
-    maybe(pair(string, table_trie_step))::out) is det.
-
-lookup_tabling_category(type_cat_int,
-        yes("int" -    table_trie_step_int)).
-lookup_tabling_category(type_cat_char,
-        yes("char" -   table_trie_step_char)).
-lookup_tabling_category(type_cat_string,
-        yes("string" - table_trie_step_string)).
-lookup_tabling_category(type_cat_float,
-        yes("float" -  table_trie_step_float)).
-lookup_tabling_category(type_cat_void, _) :-
-    unexpected(this_file, "lookup_tabling_category: void").
-lookup_tabling_category(type_cat_dummy, _) :-
-    unexpected(this_file, "lookup_tabling_category: dummy_type").
-lookup_tabling_category(type_cat_type_info,
-        yes("typeinfo" - table_trie_step_typeinfo)).
-lookup_tabling_category(type_cat_type_ctor_info,
-        yes("typeinfo" - table_trie_step_typeinfo)).
-lookup_tabling_category(type_cat_typeclass_info, _) :-
-    unexpected(this_file, "lookup_tabling_category: typeclass_info_type").
-lookup_tabling_category(type_cat_base_typeclass_info, _) :-
-    unexpected(this_file, "lookup_tabling_category: base_typeclass_info_type").
-lookup_tabling_category(type_cat_enum, no).
-lookup_tabling_category(type_cat_higher_order, no).
-lookup_tabling_category(type_cat_tuple, no).
-lookup_tabling_category(type_cat_variable, no).
-lookup_tabling_category(type_cat_user_ctor, no).
 
     % Figure out which save and restore predicates in library/table_builtin.m
     % we need to use for values of types belonging the type category given by

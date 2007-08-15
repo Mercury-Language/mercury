@@ -137,6 +137,9 @@
                 step_statistics             :: list(table_step_stats)
             ).
 
+    % The definition of this type should be kept in sync with the type
+    % table_trie_step in hlds_pred.m.
+    % MR_TableTrieStep in runtime/mercury_tabling.h.
 :- type table_step_kind
     --->    table_step_dummy
     ;       table_step_int
@@ -144,13 +147,21 @@
     ;       table_step_string
     ;       table_step_float
     ;       table_step_enum
-    ;       table_step_user
-    ;       table_step_user_fast_loose
-    ;       table_step_poly
-    ;       table_step_poly_fast_loose
+    ;       table_step_general(
+                table_is_poly,
+                table_value_or_addr
+            )
     ;       table_step_typeinfo
     ;       table_step_typeclassinfo
     ;       table_step_promise_implied.
+
+:- type table_is_poly
+    --->    table_is_poly       % The table type is polymorphic.
+    ;       table_is_mono.      % The table type is monomorphic.
+
+:- type table_value_or_addr
+    --->    table_value         % We are tabling the value itself.
+    ;       table_addr.         % We are tabling only the address.
 
 :- type table_step_stats
     --->    table_step_stats(
@@ -1559,33 +1570,35 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_float(ml_trie_node::in, float::in,
     ml_trie_node::out) is det.
 
-    % Lookup or inert an enumeration type in the given trie.
+    % Lookup or insert an enumeration type in the given trie.
     %
 :- impure pred table_lookup_insert_enum(ml_trie_node::in, int::in, T::in,
     ml_trie_node::out) is det.
 
-    % Lookup or insert a monomorphic user defined type in the given trie.
+    % Lookup or insert a monomorphic general type in the given trie.
     %
-:- impure pred table_lookup_insert_user(ml_trie_node::in, T::in,
+:- impure pred table_lookup_insert_gen(ml_trie_node::in, T::in,
     ml_trie_node::out) is det.
 
-    % Lookup or insert a monomorphic user defined type in the given trie,
+    % Lookup or insert a monomorphic general type in the given trie,
     % tabling terms without traversing them. This makes the operation fast,
     % but if a term was inserted previously, we will catch it only if the
     % insert was the exact same memory cells. (This is the "loose" part.)
-:- impure pred table_lookup_insert_user_fast_loose(ml_trie_node::in, T::in,
-    ml_trie_node::out) is det.
-
-    % Lookup or insert a polymorphic user defined type in the given trie.
     %
-:- impure pred table_lookup_insert_poly(ml_trie_node::in, T::in,
+:- impure pred table_lookup_insert_gen_addr(ml_trie_node::in, T::in,
     ml_trie_node::out) is det.
 
-    % Lookup or insert a polymorphic user defined type in the given trie,
+    % Lookup or insert a polymorphic general type in the given trie.
+    %
+:- impure pred table_lookup_insert_gen_poly(ml_trie_node::in, T::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert a polymorphic general type in the given trie,
     % tabling terms without traversing them. This makes the operation fast,
     % but if a term was inserted previously, we will catch it only if the
     % insert was the exact same memory cells. (This is the "loose" part.)
-:- impure pred table_lookup_insert_poly_fast_loose(ml_trie_node::in, T::in,
+    %
+:- impure pred table_lookup_insert_gen_poly_addr(ml_trie_node::in, T::in,
     ml_trie_node::out) is det.
 
     % Lookup or insert a type_info in the given trie.
@@ -1740,50 +1753,51 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
-    table_lookup_insert_user(T0::in, V::in, T::out),
+    table_lookup_insert_gen(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_lookup_insert_user(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+    MR_tbl_lookup_insert_gen(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-    table_lookup_insert_user_fast_loose(T0::in, V::in, T::out),
+    table_lookup_insert_gen_addr(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_lookup_insert_user_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+    MR_tbl_lookup_insert_gen_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-    table_lookup_insert_poly(T0::in, V::in, T::out),
+    table_lookup_insert_gen_poly(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_lookup_insert_poly(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+    MR_tbl_lookup_insert_gen_poly(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-    table_lookup_insert_poly_fast_loose(T0::in, V::in, T::out),
+    table_lookup_insert_gen_poly_addr(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_lookup_insert_poly_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
-        TypeInfo_for_T, V, T);
+    MR_tbl_lookup_insert_gen_poly_addr(NULL, MR_TABLE_DEBUG_BOOL,
+        MR_FALSE, T0, TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeinfo(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_lookup_insert_typeinfo(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+    MR_tbl_lookup_insert_typeinfo(NULL, MR_TABLE_DEBUG_BOOL,
+        MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeclassinfo(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_lookup_insert_typeclassinfo(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
-        T0, V, T);
+    MR_tbl_lookup_insert_typeclassinfo(NULL, MR_TABLE_DEBUG_BOOL,
+        MR_FALSE, T0, V, T);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1919,17 +1933,29 @@ table_lookup_insert_enum(_, _, _, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("table_lookup_insert_enum").
 
-table_lookup_insert_user(_, _, _) :-
+table_lookup_insert_gen(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_user").
+    private_builtin.sorry("table_lookup_insert_gen").
 
-table_lookup_insert_poly(_, _, _) :-
+table_lookup_insert_gen_poly(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_poly").
+    private_builtin.sorry("table_lookup_insert_gen_poly").
+
+table_lookup_insert_gen_addr(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_gen_addr").
+
+table_lookup_insert_gen_poly_addr(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_gen_poly_addr").
 
 table_save_int_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no

@@ -43,6 +43,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module table_builtin.
 
 :- implementation.
 
@@ -1738,13 +1739,16 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       table_trie_step_string
     ;       table_trie_step_float
     ;       table_trie_step_dummy
-    ;       table_trie_step_enum(int)
+    ;       table_trie_step_enum(
                 % The int gives the number of alternatives in the enum type,
                 % and thus the size of the corresponding trie node.
-    ;       table_trie_step_user(mer_type)
-    ;       table_trie_step_user_fast_loose(mer_type)
-    ;       table_trie_step_poly
-    ;       table_trie_step_poly_fast_loose
+                int
+            )
+    ;       table_trie_step_general(
+                mer_type,
+                table_is_poly,
+                table_value_or_addr
+            )
     ;       table_trie_step_typeinfo
     ;       table_trie_step_typeclassinfo
     ;       table_trie_step_promise_implied.

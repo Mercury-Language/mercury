@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 et
 */
 /*
 ** Copyright (C) 2004-2007 The University of Melbourne.
@@ -32,14 +32,14 @@
         MR_tbl_lookup_insert_float(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_enum(a, b, c, d)                             \
         MR_tbl_lookup_insert_enum(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
-#define MR_table_lookup_insert_user(a, b, c, d)                             \
-        MR_tbl_lookup_insert_user(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
-#define MR_table_lookup_insert_user_addr(a, b, c, d)                        \
-        MR_tbl_lookup_insert_user_addr(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
-#define MR_table_lookup_insert_poly(a, b, c, d)                             \
-        MR_tbl_lookup_insert_poly_addr(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
-#define MR_table_lookup_insert_poly_addr(a, b, c, d)                        \
-        MR_tbl_lookup_insert_poly(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
+#define MR_table_lookup_insert_gen(a, b, c, d)                              \
+        MR_tbl_lookup_insert_gen(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
+#define MR_table_lookup_insert_gen_addr(a, b, c, d)                         \
+        MR_tbl_lookup_insert_gen_addr(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
+#define MR_table_lookup_insert_gen_poly(a, b, c, d)                         \
+        MR_tbl_lookup_insert_gen_poly(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
+#define MR_table_lookup_insert_gen_poly_addr(a, b, c, d)                    \
+        MR_tbl_lookup_insert_gen_poly_addr(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
 #define MR_table_lookup_insert_typeinfo(a, b, c)                            \
         MR_tbl_lookup_insert_typeinfo(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_typeclassinfo(a, b, c)                       \
@@ -173,27 +173,31 @@
 
 #define MR_tbl_lookup_insert_enum(stats, debug, back, T0, R, V, T)          \
     do {                                                                    \
-        MR_TABLE_ENUM(stats, debug, back, T, T0, R, V);               \
+        MR_TABLE_ENUM(stats, debug, back, T, T0, R, V);                     \
     } while(0)
 
-#define MR_tbl_lookup_insert_user(stats, debug, back, T0, TI, V, T)         \
+#define MR_tbl_lookup_insert_gen(stats, debug, back, T0, TI, V, T)          \
     do {                                                                    \
-        MR_TABLE_ANY(stats, debug, back, T, T0, (MR_TypeInfo) TI, V);       \
+        MR_TABLE_ANY(stats, debug, back, "gen", T, T0,                      \
+            (MR_TypeInfo) TI, (MR_Word) V);                                 \
     } while(0)
 
-#define MR_tbl_lookup_insert_user_addr(stats, debug, back, T0, TI, V, T)    \
+#define MR_tbl_lookup_insert_gen_poly(stats, debug, back, T0, TI, V, T)     \
     do {                                                                    \
-        MR_TABLE_ANY_ADDR(stats, debug, back, T, T0, (MR_TypeInfo) TI, V);  \
+        MR_TABLE_ANY(stats, debug, back, "gen poly", T, T0,                 \
+            (MR_TypeInfo) TI, (MR_Word) V);                                 \
     } while(0)
 
-#define MR_tbl_lookup_insert_poly(stats, debug, back, T0, TI, V, T)         \
+#define MR_tbl_lookup_insert_gen_addr(stats, debug, back, T0, TI, V, T)     \
     do {                                                                    \
-        MR_TABLE_ANY(stats, debug, back, T, T0, (MR_TypeInfo) TI, V);       \
+        MR_TABLE_ANY_ADDR(stats, debug, back, "gen addr", T, T0,            \
+            (MR_TypeInfo) TI, (MR_Word) V);                                 \
     } while(0)
 
-#define MR_tbl_lookup_insert_poly_addr(stats, debug, back, T0, TI, V, T)    \
+#define MR_tbl_lookup_insert_gen_poly_addr(stats, debug, back, T0, TI, V, T) \
     do {                                                                    \
-        MR_TABLE_ANY_ADDR(stats, debug, back, T, T0, (MR_TypeInfo) TI, V);  \
+        MR_TABLE_ANY_ADDR(stats, debug, back, "gen poly addr", T, T0,       \
+            (MR_TypeInfo) TI, (MR_Word) V);                                 \
     } while(0)
 
 #define MR_tbl_lookup_insert_typeinfo(stats, debug, back, T0, TI, T)        \

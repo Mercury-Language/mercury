@@ -11,6 +11,7 @@ SIMPLE_NONLOOP_PROGS = \
 	expand_float \
 	expand_poly \
 	expand_tuple \
+	expand_tuple2 \
 	fast_loose \
 	fib \
 	fib_float \

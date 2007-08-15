@@ -941,6 +941,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module string.
+:- import_module table_builtin.
 :- import_module varset.
 
 %----------------------------------------------------------------------------%
@@ -2086,12 +2087,14 @@ table_trie_step_to_c(table_trie_step_string, "MR_TABLE_STEP_STRING", no).
 table_trie_step_to_c(table_trie_step_float, "MR_TABLE_STEP_FLOAT", no).
 table_trie_step_to_c(table_trie_step_enum(EnumRange), "MR_TABLE_STEP_ENUM",
     yes(EnumRange)).
-table_trie_step_to_c(table_trie_step_user(_), "MR_TABLE_STEP_USER", no).
-table_trie_step_to_c(table_trie_step_user_fast_loose(_),
-    "MR_TABLE_STEP_USER_FAST_LOOSE", no).
-table_trie_step_to_c(table_trie_step_poly, "MR_TABLE_STEP_POLY", no).
-table_trie_step_to_c(table_trie_step_poly_fast_loose,
-    "MR_TABLE_STEP_POLY_FAST_LOOSE", no).
+table_trie_step_to_c(table_trie_step_general(_, table_is_mono, table_value),
+    "MR_TABLE_STEP_GEN", no).
+table_trie_step_to_c(table_trie_step_general(_, table_is_poly, table_value),
+    "MR_TABLE_STEP_GEN_POLY", no).
+table_trie_step_to_c(table_trie_step_general(_, table_is_mono, table_addr),
+    "MR_TABLE_STEP_GEN_ADDR", no).
+table_trie_step_to_c(table_trie_step_general(_, table_is_poly, table_addr),
+    "MR_TABLE_STEP_GEN_POLY_ADDR", no).
 table_trie_step_to_c(table_trie_step_typeinfo, "MR_TABLE_STEP_TYPEINFO", no).
 table_trie_step_to_c(table_trie_step_typeclassinfo,
     "MR_TABLE_STEP_TYPECLASSINFO", no).

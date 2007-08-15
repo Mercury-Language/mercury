@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4
+** vim: ts=4 sw=4 et
 */
 /*
 ** Copyright (C) 1997-2000,2002-2007 The University of Melbourne.
@@ -91,7 +91,7 @@
 #define MR_RAW_TABLE_BITMAP(table, value)                                   \
     MR_bitmap_hash_lookup_or_add((table), (value));
 
-#define MR_RAW_TABLE_BITMAP_STATS(stats, table, value)                  	\
+#define MR_RAW_TABLE_BITMAP_STATS(stats, table, value)                      \
     MR_bitmap_hash_lookup_or_add_stats((stats), (table), (value));
 
 #define MR_RAW_TABLE_TYPEINFO(table, type_info)                             \
@@ -108,7 +108,7 @@
 
 /***********************************************************************/
 
-#define MR_TABLE_ANY(stats, debug, back, t, t0, type_info, value)           \
+#define MR_TABLE_ANY(stats, debug, back, kind, t, t0, type_info, value)     \
     do {                                                                    \
         if (stats != NULL) {                                                \
             (t) = MR_RAW_TABLE_ANY_STATS((stats), (t0),                     \
@@ -117,12 +117,12 @@
             (t) = MR_RAW_TABLE_ANY((t0), (type_info), (value));             \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: any %lx type %p => %p\n",                     \
-                (t0), (long) (value), (type_info), (t));                    \
+            printf("TABLE %p: %s %lx type %p => %p\n",                      \
+                (t0), (kind), (long) (value), (type_info), (t));            \
         }                                                                   \
     } while (0)
 
-#define MR_TABLE_ANY_ADDR(stats, debug, back, t, t0, type_info, value)      \
+#define MR_TABLE_ANY_ADDR(stats, debug, back, kind, t, t0, type_info, value)\
     do {                                                                    \
         if (stats != NULL) {                                                \
             (t) = MR_RAW_TABLE_ANY_ADDR_STATS((stats), (t0),                \
@@ -131,8 +131,8 @@
             (t) = MR_RAW_TABLE_ANY_ADDR((t0), (type_info), (value));        \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: any %lx type %p => %p\n",                     \
-                (t0), (long) (value), (type_info), (t));                    \
+            printf("TABLE %p: %s %lx type %p => %p\n",                      \
+                (t0), (kind), (long) (value), (type_info), (t));            \
         }                                                                   \
     } while (0)
 
@@ -249,9 +249,9 @@
             (t) = MR_RAW_TABLE_BITMAP((t0), (value));                       \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-			/* XXX print value */											\
-            printf("TABLE %p: bitmap => %p\n",                     		    \
-                (t0), (t));                               					\
+            /* XXX print value */                                           \
+            printf("TABLE %p: bitmap => %p\n",                              \
+                (t0), (t));                                                 \
         }                                                                   \
     } while (0)
 
@@ -315,6 +315,6 @@
             printf("saving to answer block: %p, slot %d = %lx\n",           \
                 (ab), (int) (offset), (long) (value));                      \
         }                                                                   \
-        (ab)[offset] = 														\
-			MR_make_permanent((value), (MR_TypeInfo) (type_info)); 			\
+        (ab)[offset] =                                                      \
+            MR_make_permanent((value), (MR_TypeInfo) (type_info));          \
     } while(0)

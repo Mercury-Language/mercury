@@ -209,7 +209,8 @@
                             functor_desc->MR_du_functor_arg_types[i]);
                     }
 
-                    MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
+                    MR_TABLE_ANY(STATS, DEBUG, BACK, "du arg",
+                        table_next, table,
                         arg_type_info, arg_vector[meta_args + i]);
                     table = table_next;
                 }
@@ -228,8 +229,8 @@
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                     MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                         MR_notag_functor_arg_type, &allocated_memory_cells);
-                MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
-                    eqv_type_info, data);
+                MR_TABLE_ANY(STATS, DEBUG, BACK, "notag arg",
+                    table_next, table, eqv_type_info, data);
                 table = table_next;
                 MR_deallocate(allocated_memory_cells);
             }
@@ -237,7 +238,8 @@
 
         case MR_TYPECTOR_REP_NOTAG_GROUND: 
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
+            MR_TABLE_ANY(STATS, DEBUG, BACK, "notag ground arg",
+                table_next, table,
                 MR_pseudo_type_info_is_ground(
                     MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                     MR_notag_functor_arg_type), data);
@@ -253,7 +255,7 @@
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                     MR_type_ctor_layout(type_ctor_info).MR_layout_equiv,
                     &allocated_memory_cells);
-                MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
+                MR_TABLE_ANY(STATS, DEBUG, BACK, "equiv", table_next, table,
                     eqv_type_info, data);
                 table = table_next;
                 MR_deallocate(allocated_memory_cells);
@@ -262,7 +264,7 @@
             return table;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
-            MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
+            MR_TABLE_ANY(STATS, DEBUG, BACK, "equiv ground", table_next, table,
                 MR_pseudo_type_info_is_ground(
                     MR_type_ctor_layout(type_ctor_info).MR_layout_equiv),
                 data);
@@ -315,7 +317,8 @@
                     closure->MR_closure_code);
                 table = table_next;
                 for (i = 1; i <= num_hidden_args; i++) {
-                    MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
+                    MR_TABLE_ANY(STATS, DEBUG, BACK, "closure arg",
+                        table_next, table,
                         <type_info for hidden closure argument number i>,
                         closure->MR_closure_hidden_args(i));
                     table = table_next;
@@ -346,7 +349,8 @@
                     MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                 for (i = 0; i < arity; i++) {
                     /* type_infos are counted starting at one */
-                    MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
+                    MR_TABLE_ANY(STATS, DEBUG, BACK, "tuple arg",
+                        table_next, table,
                         arg_type_info_vector[i + 1], data_value[i]);
                     table = table_next;
                 }
@@ -421,8 +425,8 @@
                     (MR_PseudoTypeInfo) 1, &allocated_memory_cells);
 
                 for (i = 0; i < array_size; i++) {
-                    MR_TABLE_ANY(STATS, DEBUG, BACK, table_next, table,
-                        new_type_info, array->elements[i]);
+                    MR_TABLE_ANY(STATS, DEBUG, BACK, "array element",
+                        table_next, table, new_type_info, array->elements[i]);
                     table = table_next;
                 }
 
