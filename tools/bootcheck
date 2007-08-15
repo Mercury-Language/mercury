@@ -648,6 +648,7 @@ then
         cd library
         $LN_S $root/library/[a-l]*.m .
         $LN_S $root/library/[m-z]*.m .
+        $LN_S $root/library/*.hrl .
         # See comment below for why we use $LN rather than $LN_S here
         $LN $root/library/library_strong_name.sn .
         $LN_S $root/library/print_extra_inits .
@@ -1126,6 +1127,7 @@ then
     cd library
     $LN_S $root/library/[a-l]*.m .
     $LN_S $root/library/[m-z]*.m .
+    $LN_S $root/library/*.hrl .
     $LN_S $root/library/print_extra_inits .
     $LN_S $root/library/library_strong_name.sn .
     cp $root/library/Mmake* $root/library/Mercury.options .

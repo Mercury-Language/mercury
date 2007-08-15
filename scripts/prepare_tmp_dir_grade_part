@@ -52,6 +52,7 @@ cp library/*FLAGS* tmp_dir/library
 cp library/print_extra_inits tmp_dir/library
 cp library/library_strong_name.sn tmp_dir/library
 cp library/*.m tmp_dir/library
+cp library/*.hrl tmp_dir/library
 mkdir tmp_dir/mdbcomp
 cp mdbcomp/Mmake* tmp_dir/mdbcomp
 cp mdbcomp/Mercury.* tmp_dir/mdbcomp
