@@ -1078,9 +1078,10 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         erl_bind_unbound_vars(!.Info, ThenVars, Else, InstMap0,
             ElseStatement0, ElseStatement),
 
-        IfStatement = elds_case_expr(CondStatement, [TrueCase, FalseCase]),
+        IfStatement0 = elds_case_expr(CondStatement, [TrueCase, FalseCase]),
         TrueCase  = elds_case(CondVarsTerm, ThenStatement),
         FalseCase = elds_case(elds_anon_var, ElseStatement),
+        maybe_simplify_nested_cases(IfStatement0, IfStatement),
         Statement = maybe_join_exprs1(MaybeMakeClosure, IfStatement)
     ;
         CondCodeModel = model_non,
@@ -1430,10 +1431,6 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         %
         %   where NonLocals are variables bound by Goal.
         %
-        % TODO This can lead to contorted code when <Goal> itself is a `case'
-        % expression.  In that case it would be better for <Goals> to appear in
-        % the failure case of <Goal> directly.
-        %
 
         First = hlds_goal(_, FirstGoalInfo),
         FirstCodeModel = goal_info_get_code_model(FirstGoalInfo),
@@ -1477,11 +1474,20 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
             ;
                 erl_fix_success_expr(InstMap, First, MaybeSuccessExpr,
                     MaybeSuccessExprForFirst, !Info),
-                Statement = elds_case_expr(FirstStatement,
-                    [SucceedCase, FailCase]),
-                SucceedCase = elds_case(FirstVarsTerm,
-                    expr_or_void(MaybeSuccessExprForFirst)),
-                FailCase = elds_case(elds_fail, RestStatement)
+                (
+                    MaybeSuccessExprForFirst = yes(elds_term(FirstVarsTerm)),
+                    RestStatement = elds_term(elds_fail)
+                ->
+                    % No need to wrap this with a case expression.
+                    Statement = FirstStatement
+                ;
+                    Statement0 = elds_case_expr(FirstStatement,
+                        [SucceedCase, FailCase]),
+                    SucceedCase = elds_case(FirstVarsTerm,
+                        expr_or_void(MaybeSuccessExprForFirst)),
+                    FailCase = elds_case(elds_fail, RestStatement),
+                    maybe_simplify_nested_cases(Statement0, Statement)
+                )
             )
         ;
             FirstCodeModel = model_non,

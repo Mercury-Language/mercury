@@ -235,9 +235,10 @@ make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr, Statement) :-
         %   _ -> fail
         % end
         %
-        Statement = elds_case_expr(CallExpr, [TrueCase, FalseCase]),
+        Statement0 = elds_case_expr(CallExpr, [TrueCase, FalseCase]),
         TrueCase  = elds_case(UnpackTerm, SuccessExpr),
-        FalseCase = elds_case(elds_anon_var, elds_term(elds_fail))
+        FalseCase = elds_case(elds_anon_var, elds_term(elds_fail)),
+        maybe_simplify_nested_cases(Statement0, Statement)
     ).
 
 :- pred make_nondet_call(elds_call_target::in, list(elds_expr)::in,
