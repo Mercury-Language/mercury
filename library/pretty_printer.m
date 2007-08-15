@@ -633,7 +633,7 @@ expand_pp(FMap, Univ, Doc, !Limit, CurrentPri) :-
     ( if
         limit_overrun(!.Limit)
       then
-        Doc = str("...")
+        Doc = ellipsis
       else if
         Value = univ_value(Univ),
         type_ctor_and_args(type_of(Value), TypeCtorDesc, ArgTypeDescs),
@@ -661,7 +661,7 @@ expand_format_list([], _Sep, docs([]), !Limit).
 
 expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
     ( if limit_overrun(!.Limit) then
-        Doc = str("...")
+        Doc = ellipsis
       else
         (
             Univs = [],
@@ -688,7 +688,7 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     ( if Args = [] then
         Doc0 = str(term_io.quoted_atom(Name))
       else if limit_overrun(!.Limit) then
-        Doc0 = str("...")
+        Doc0 = ellipsis
       else if expand_format_op(Name, Args, CurrentPri, OpDoc) then
         Doc0 = OpDoc
       else if Name = "{}" then
@@ -710,7 +710,7 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
 
 expand_format_susp(Susp, Doc, !Limit) :-
     ( if limit_overrun(!.Limit) then
-        Doc = str("...")
+        Doc = ellipsis
       else
         decrement_limit(!Limit),
         Doc = set_formatting_limit_correctly(!.Limit, apply(Susp))
@@ -977,6 +977,12 @@ fmt_tree234(Univ, ArgDescs) =
       else
         str("?tree234?")
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func ellipsis = doc.
+
+ellipsis = str("...").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

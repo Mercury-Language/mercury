@@ -3,7 +3,7 @@ goto 3
 print *
 browse 1
 format pretty
-depth 10
+depth 20
 ls
 width 131
 ls

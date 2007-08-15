@@ -1675,8 +1675,8 @@ array_to_doc_2(I, A) =
         str("")
       else
         docs([
-            group([nl, format_arg(format(A ^ elem(I)))]),
-            str((if I = array.max(A) then "" else ", ")),
+            format_arg(format(A ^ elem(I))),
+            ( if I = array.max(A) then str("") else group([str(", "), nl]) ),
             format_susp((func) = array_to_doc_2(I + 1, A))
         ])
     ).
