@@ -262,6 +262,7 @@ output_init_program(void)
 
     printf("init_env_vars() -> \n");
     for (i = 0; i < mercury_env_var_next; i++) {
+        /* The environment variable is passed as a string, not a binary. */
         printf("\t'ML_erlang_global_server' ! {init_env_var, \"%s\"},\n",
             mercury_env_vars[i]);
     }

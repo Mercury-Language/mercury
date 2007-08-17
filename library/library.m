@@ -204,7 +204,7 @@
     library.version(Version::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Version = ?MR_VERSION "" configured for "" ?MR_FULLARCH
+    Version = << ?MR_VERSION "" configured for "" ?MR_FULLARCH >>
 ").
 
 %---------------------------------------------------------------------------%

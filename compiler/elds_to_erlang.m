@@ -738,10 +738,16 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         io.write_float(Float, !IO),
         space(!IO)
     ;
-        Term = elds_string(String),
-        io.write_char('"', !IO),
+        Term = elds_binary(String),
+        io.write_string("<<""", !IO),
         write_with_escaping(in_string, String, !IO),
-        io.write_char('"', !IO),
+        io.write_string(""">>", !IO),
+        space(!IO)
+    ;
+        Term = elds_list_of_ints(String),
+        io.write_string("""", !IO),
+        write_with_escaping(in_string, String, !IO),
+        io.write_string("""", !IO),
         space(!IO)
     ;
         Term = elds_char(Char),

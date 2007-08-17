@@ -782,7 +782,7 @@ erl_generate_runtime_cond_expr(TraceExpr, CondExpr, !Info) :-
         erl_gen_info_add_env_var_name(EnvVar, !Info),
         Args = [
             elds_term(elds_atom_raw("env_var")),
-            elds_term(elds_string(EnvVar))
+            elds_term(elds_binary(EnvVar))
         ]
     ;
         TraceExpr = trace_not(ExprA),

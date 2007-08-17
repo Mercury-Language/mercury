@@ -1283,7 +1283,7 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    CharList = Str
+    CharList = binary_to_list(Str)
 ").
 
 string.to_char_list_2(Str, CharList) :-
@@ -1366,8 +1366,8 @@ string.from_char_list(Chars::in, Str::uo) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    Str = CharList,
-    SUCCESS_INDICATOR = true
+    SUCCESS_INDICATOR = true,
+    Str = list_to_binary(CharList)
 ").
 
 :- pragma promise_equivalent_clauses(string.semidet_from_char_list/2).
@@ -1579,7 +1579,7 @@ string.append_list(Lists, string.append_list(Lists)).
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    Str = lists:concat(Strs)
+    Str = list_to_binary(Strs)
 ").
 
     % We implement string.join_list in C as this minimises the amount of
@@ -1708,26 +1708,32 @@ string.sub_string_search(WholeString, Pattern, Index) :-
 }").
 
 :- pragma foreign_proc("Erlang",
-    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
-        Index::out),
+    sub_string_search_start(String::in, SubString::in, BeginAt::in, Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    String = lists:nthtail(BeginAt, WholeString),
-    case Pattern of
-        """" ->
-            % string:str does not handle the empty pattern as we would like.
-            Index = BeginAt,
-            SUCCESS_INDICATOR = true;
-        _ ->
-            case string:str(String, Pattern) of
-                0 ->
-                    Index = -1,
-                    SUCCESS_INDICATOR = false;
-                Match ->
-                    Index = BeginAt + Match - 1,
-                    SUCCESS_INDICATOR = true
-            end
-    end
+    Index = mercury__string:sub_string_search_start_2(String, SubString,
+        BeginAt, size(String), size(SubString)),
+    SUCCESS_INDICATOR = (Index =/= -1)
+").
+
+:- pragma foreign_decl("Erlang", local, "
+-export([sub_string_search_start_2/5]).
+").
+
+:- pragma foreign_code("Erlang", "
+sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
+    case I + SubLength =< Length of
+        true ->
+            case String of
+                <<_:I/binary, SubString:SubLength/binary, _/binary>> ->
+                    I;
+                _ ->
+                    sub_string_search_start_2(String, SubString, I + 1,
+                        Length, SubLength)
+            end;
+        false ->
+            -1
+    end.
 ").
 
 % This is only used if there is no matching foreign_proc definition
@@ -3293,7 +3299,8 @@ max_precision = min_precision + 2.
     string.lowlevel_float_to_string(FloatVal::in, FloatString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    [FloatString] = io_lib:format(""~.12f"", [FloatVal])
+    List = io_lib:format(""~.12f"", [FloatVal]),
+    FloatString = list_to_binary(List)
 ").
 
 string.det_to_float(FloatString) =
@@ -3397,8 +3404,9 @@ string.det_to_float(FloatString) =
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
+    S = binary_to_list(FloatString),
     % string:to_float fails on integers, so tack on a trailing '.0' string.
-    case string:to_float(FloatString ++ "".0"") of
+    case string:to_float(S ++ "".0"") of
         {FloatVal, []} ->
             SUCCESS_INDICATOR = true;
         {FloatVal, "".0""} ->
@@ -3455,12 +3463,6 @@ count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
-").
-:- pragma foreign_proc("Erlang",
-    string.contains_char(Str::in, Ch::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (string:chr(Str, Ch) =/= 0)
 ").
 string.contains_char(String, Char) :-
     string.contains_char(String, Char, 0, string.length(String)).
@@ -3547,8 +3549,7 @@ string.index_check(Index, Length) :-
     string.unsafe_index(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    % `lists:nth' counts from 1.
-    Ch = lists:nth(Index + 1, Str)
+    <<_:Index/binary, Ch/integer, _/binary>> = Str
 ").
 string.unsafe_index(Str, Index, Char) :-
     ( string.first_char(Str, First, Rest) ->
@@ -3709,8 +3710,8 @@ string.unsafe_set_char(Char, Index, !Str) :-
     string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {Left, [_ | Right]} = lists:split(Index, Str0),
-    Str = Left ++ [Ch | Right]
+    <<Left:Index/binary, _/integer, Right/binary>> = Str0,
+    Str = list_to_binary([Left, Ch, Right])
 ").
 
 % :- pragma foreign_proc("C",
@@ -3762,7 +3763,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
     string.length(Str::in, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Length = string:len(Str)
+    Length = size(Str)
 ").
 
 :- pragma foreign_proc("C",
@@ -3788,7 +3789,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
     string.length(Str::ui, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Length = string:len(Str)
+    Length = size(Str)
 ").
 
 string.length(Str0, Len) :-
@@ -3843,7 +3844,15 @@ string.append(S1::out, S2::out, S3::in) :-
     string.append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = string:equal(S1 ++ S2, S3)
+    S1_length = size(S1),
+    S2_length = size(S2),
+    case S1_length + S2_length =:= size(S3) of
+        true ->
+            <<Left:S1_length/binary, Right/binary>> = S3,
+            SUCCESS_INDICATOR = (Left =:= S1 andalso Right =:= S2);
+        false ->
+            SUCCESS_INDICATOR = false
+    end
 ").
 
 string.append_iii(X, Y, Z) :-
@@ -3914,7 +3923,7 @@ string.append_ioi(X, Y, Z) :-
     string.append_iio(S1::in, S2::in, S3::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    S3 = S1 ++ S2
+    S3 = list_to_binary([S1, S2])
 ").
 
 string.append_iio(X, Y, Z) :-
@@ -3967,7 +3976,7 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
     string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {S1, S2} = lists:split(S1Len, S3)
+    << S1:S1Len/binary, S2/binary >> = S3
 ").
 
 string.append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
@@ -4030,16 +4039,23 @@ strchars(I, End, Str) =
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    Start =
-        if
-            Start0 < 0 -> 0;
-            true -> Start0
-        end,
+    if
+        Start0 < 0 ->
+            Start = 0;
+        true ->
+            Start = Start0
+    end,
     if
         Count =< 0 ->
-            SubString = """";
+            SubString = <<>>;
         true ->
-            SubString = string:substr(Str, 1 + Start, Count)
+            End = size(Str),
+            case Start + Count >= End of
+                true ->
+                    <<_:Start/binary, SubString/binary>> = Str;
+                false ->
+                    <<_:Start/binary, SubString:Count/binary, _/binary>> = Str
+            end
     end
 ").
 
@@ -4070,7 +4086,7 @@ strchars(I, End, Str) =
     string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SubString = string:sub_string(Str, 1 + Start, Start + Count)
+    << _:Start/binary, SubString:Count/binary, _/binary >> = Str
 ").
 
 :- pragma foreign_proc("C",
@@ -4127,13 +4143,13 @@ strchars(I, End, Str) =
 "
     if
         Count =< 0 ->
-            Left = """",
+            Left = <<>>,
             Right = Str;
-        Count > length(Str) ->
+        Count > size(Str) ->
             Left = Str,
-            Right = """";
+            Right = <<>>;
         true ->
-            {Left, Right} = lists:split(Count, Str)
+            << Left:Count/binary, Right/binary >> = Str
     end
 ").
 
@@ -4194,14 +4210,10 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        [First0 | Rest0] ->
-            SUCCESS_INDICATOR = true,
-            First = First0,
-            Rest = Rest0;
+        <<First, Rest/binary>> ->
+            SUCCESS_INDICATOR = true;
         _ ->
-            SUCCESS_INDICATOR = false,
-            First = 0,
-            Rest = []
+            SUCCESS_INDICATOR = false
     end
 ").
 
@@ -4243,7 +4255,7 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        [First | Rest] ->
+        << First, Rest/binary >> ->
             SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false,
@@ -4301,11 +4313,11 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        [First | Rest] ->
+        <<First, Rest/binary>> ->
             SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false,
-            Rest = []
+            Rest = <<>>
     end
 ").
 
@@ -4359,14 +4371,12 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        [First0 | Rest0] ->
-            SUCCESS_INDICATOR = true,
-            First = First0,
-            Rest = Rest0;
+        <<First, Rest/binary>> ->
+            SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false,
             First = 0,
-            Rest = []
+            Rest = <<>>
     end
 ").
 
@@ -4399,7 +4409,7 @@ string.split(Str, Count, Left, Right) :-
     string.first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Str = [First | Rest]
+    Str = list_to_binary([First, Rest])
 ").
 
 %-----------------------------------------------------------------------------%

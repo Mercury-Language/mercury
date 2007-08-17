@@ -803,9 +803,11 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
             string.length(String) =< 255
         )
     then
+        % Atom = list_to_atom(binary_to_list(Var))
         erl_gen_info_new_named_var("Atom", AtomVar, !Info),
+        CharList = elds_call_builtin("binary_to_list", [expr_from_var(Var)]),
         StringToAtom = elds_eq(expr_from_var(AtomVar),
-            elds_call_builtin("list_to_atom", [expr_from_var(Var)])),
+            elds_call_builtin("list_to_atom", [CharList])),
         MaybeConvertToAtom = yes(StringToAtom),
         SwitchVar = AtomVar,
         GenCase = erl_gen_case_on_atom(CodeModel, InstMap,

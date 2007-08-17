@@ -73,6 +73,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module char.
 :- import_module int.
 :- import_module require.
 :- import_module string.
@@ -371,7 +372,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         TypeCtorRep = etcr_du,
         FunctorReps = TypeCtorInfo ^ type_ctor_functors,
         FunctorRep = matching_du_functor(FunctorReps, Term),
-        Functor = FunctorRep ^ edu_name,
+        Functor = string.from_char_list(FunctorRep ^ edu_name),
         Arity = FunctorRep ^ edu_orig_arity,
         Arguments = list.map(
             get_du_functor_arg(TypeInfo, FunctorRep, Term), 1 .. Arity)
@@ -754,7 +755,8 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
                         
                         MaybeArgName = ArgInfo ^ du_arg_name,
                         (
-                            MaybeArgName = yes(ArgName)
+                            MaybeArgName = yes(ArgName0),
+                            ArgName = string.from_char_list(ArgName0)
                         ;
                             MaybeArgName = no,
                             ArgName = ""
@@ -762,7 +764,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
                         N = [ArgName | N0]
                     ), ArgInfos, [], RevArgTypes, [], RevArgNames),
 
-                Name = FunctorRep ^ edu_name,
+                Name = string.from_char_list(FunctorRep ^ edu_name),
                 Arity = FunctorRep ^ edu_orig_arity,
                 ArgTypes = list.reverse(RevArgTypes),
                 ArgNames = list.reverse(RevArgNames),
@@ -1005,7 +1007,7 @@ type_ctor_compare_pred(_) = "dummy value" :-
     type_ctor_module_name(TypeCtorInfo::in) = (ModuleName::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ModuleName = element(?ML_tci_module_name, TypeCtorInfo)
+    ModuleName = list_to_binary(element(?ML_tci_module_name, TypeCtorInfo))
 ").
 
 type_ctor_module_name(_) = "dummy value" :-
@@ -1017,7 +1019,7 @@ type_ctor_module_name(_) = "dummy value" :-
     type_ctor_type_name(TypeCtorInfo::in) = (TypeName::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeName = element(?ML_tci_type_name, TypeCtorInfo)
+    TypeName = list_to_binary(element(?ML_tci_type_name, TypeCtorInfo))
 ").
 
 type_ctor_type_name(_) = "dummy value" :-
@@ -1053,7 +1055,7 @@ type_ctor_functors(_) = [] :-
     type_ctor_dummy_functor_name(TypeCtorInfo::in) = (Functor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Functor = element(?ML_tci_details, TypeCtorInfo)
+    Functor = list_to_binary(element(?ML_tci_details, TypeCtorInfo))
 ").
 
 type_ctor_dummy_functor_name(_) = "dummy value" :-
@@ -1310,7 +1312,7 @@ det_dynamic_cast(Term, Actual) :-
 
 :- type erlang_du_functor
     --->    erlang_du_functor(
-                edu_name            :: string,
+                edu_name            :: list(char),
                 edu_orig_arity      :: int,
                 edu_ordinal         :: int,
                 edu_rep             :: erlang_atom,
@@ -1320,7 +1322,7 @@ det_dynamic_cast(Term, Actual) :-
 
 :- type du_arg_info
     --->    du_arg_info(
-                du_arg_name         :: maybe(string),
+                du_arg_name         :: maybe(list(char)),
                 du_arg_type         :: maybe_pseudo_type_info
             ).
 
@@ -1355,15 +1357,15 @@ det_dynamic_cast(Term, Actual) :-
 :- type tc_name
     --->    tc_name(
                 tcn_module              :: module_name,
-                tcn_name                :: string,
+                tcn_name                :: list(char),
                 tcn_arity               :: int
             ).
 
 :- type module_name == sym_name.
 
 :- type sym_name
-    --->    unqualified(string)
-    ;       qualified(sym_name, string).
+    --->    unqualified(list(char))
+    ;       qualified(sym_name, list(char)).
 
 :- type tc_type == maybe_pseudo_type_info.
 

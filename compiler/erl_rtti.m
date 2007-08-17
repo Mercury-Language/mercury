@@ -562,8 +562,8 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         elds_term(elds_int(Version)),
         UnifyExpr,
         CompareExpr,
-        elds_term(elds_string(sym_name_to_string(ModuleName))),
-        elds_term(elds_string(TypeName)),
+        elds_term(elds_list_of_ints(sym_name_to_string(ModuleName))),
+        elds_term(elds_list_of_ints(TypeName)),
         erlang_type_ctor_rep(Details),
         ELDSDetails
         ]),
@@ -803,7 +803,7 @@ rtti_to_elds_expr(MI, Term, ELDS, !Defns) :-
     ; dynamic_cast(Term, Char) ->
         ELDS = elds_term(elds_char(Char))
     ; dynamic_cast(Term, String) ->
-        ELDS = elds_term(elds_string(String))
+        ELDS = elds_term(elds_list_of_ints(String))
     ; dynamic_cast(Term, Float) ->
         ELDS = elds_term(elds_float(Float))
 

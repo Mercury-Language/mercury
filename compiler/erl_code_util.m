@@ -504,7 +504,8 @@ non_variable_term(Term) :-
     ( Term = elds_char(_)
     ; Term = elds_int(_)
     ; Term = elds_float(_)
-    ; Term = elds_string(_)
+    ; Term = elds_binary(_)
+    ; Term = elds_list_of_ints(_)
     ; Term = elds_atom_raw(_)
     ; Term = elds_atom(_)
     ; Term = elds_tuple(SubTerms),
@@ -642,7 +643,8 @@ erl_rename_vars_in_term(Subn, Term0, Term) :-
     (
         ( Term0 = elds_int(_)
         ; Term0 = elds_float(_)
-        ; Term0 = elds_string(_)
+        ; Term0 = elds_binary(_)
+        ; Term0 = elds_list_of_ints(_)
         ; Term0 = elds_char(_)
         ; Term0 = elds_atom_raw(_)
         ; Term0 = elds_atom(_)
@@ -805,7 +807,8 @@ erl_vars_in_term(Term, !Set) :-
     (
         ( Term = elds_int(_)
         ; Term = elds_float(_)
-        ; Term = elds_string(_)
+        ; Term = elds_binary(_)
+        ; Term = elds_list_of_ints(_)
         ; Term = elds_char(_)
         ; Term = elds_atom_raw(_)
         ; Term = elds_atom(_)
@@ -942,7 +945,8 @@ erl_term_size(Term) = Size :-
     (
         ( Term = elds_int(_)
         ; Term = elds_float(_)
-        ; Term = elds_string(_)
+        ; Term = elds_binary(_)
+        ; Term = elds_list_of_ints(_)
         ; Term = elds_char(_)
         ; Term = elds_atom_raw(_)
         ; Term = elds_atom(_)

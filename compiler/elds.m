@@ -212,7 +212,15 @@
     --->    elds_char(char)
     ;       elds_int(int)
     ;       elds_float(float)
-    ;       elds_string(string)
+
+    ;       elds_binary(string)
+            % We use Erlang binaries to represent most Mercury strings.
+
+    ;       elds_list_of_ints(string)
+            % In RTTI data we use the conventional Erlang representation of
+            % strings (a list of integers) because the HiPE compiler doesn't
+            % seem to treat binaries as static data as efficiently.
+
     ;       elds_atom_raw(string)
     ;       elds_atom(sym_name)
             % `elds_atom_raw' is useful to introduce arbitrary atoms into the

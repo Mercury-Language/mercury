@@ -87,14 +87,15 @@ global_server_loop() ->
             put(mutable_key(MutableName), Value),
             global_server_loop();
 
-        {init_env_var, EnvVarName} ->
-            case os:getenv(EnvVarName) of
+        {init_env_var, EnvVarNameStr} ->
+            % EnvVarNameStr is a string (list of integers), not a binary.
+            case os:getenv(EnvVarNameStr) of
                 false ->
                     Value = false;
                 _ ->
                     Value = true
             end,
-            put(env_var_key(EnvVarName), Value),
+            put(env_var_key(list_to_binary(EnvVarNameStr)), Value),
             global_server_loop();
 
         {trace_evaluate_runtime_condition, Cond, From} ->

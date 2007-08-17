@@ -909,12 +909,13 @@ dir.make_directory(PathName, Result, !IO) :-
     dir.make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
+    DirNameStr = binary_to_list(DirName),
     % filelib:ensure_dir makes all the parent directories.
-    case filelib:ensure_dir(DirName) of
+    case filelib:ensure_dir(DirNameStr) of
         ok ->
             ErrorIfExists = 0,
             Res = mercury__dir:'ML_make_single_directory_2'(ErrorIfExists,
-                DirName);
+                DirName);   % not DirNameStr
         {error, Reason} ->
             Res = mercury__dir:'ML_make_mkdir_res_error'(Reason)
     end
@@ -1078,11 +1079,13 @@ dir.make_single_directory(DirName, Result, !IO) :-
         Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    case file:make_dir(DirName) of
+    DirNameStr = binary_to_list(DirName),
+    case file:make_dir(DirNameStr) of
         ok ->
             Result = mercury__dir:'ML_make_mkdir_res_ok'();
         {error, eexist} when ErrorIfExists =:= 0 ->
-            Result = mercury__dir:'ML_make_mkdir_res_exists'(eexist, DirName);
+            Result = mercury__dir:'ML_make_mkdir_res_exists'(eexist,
+                DirName);   % not DirNameStr
         {error, Reason} ->
             Result = mercury__dir:'ML_make_mkdir_res_error'(Reason)
     end

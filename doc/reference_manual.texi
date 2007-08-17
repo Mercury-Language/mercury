@@ -6784,7 +6784,8 @@ rather than argument passing.)
 
 The Mercury types @code{int}, @code{float} and @code{char}
 are mapped to Erlang integers, floats and integers respectively.
-A Mercury @code{string} is represented as a list of integers in Erlang.
+A Mercury @code{string} is represented by an Erlang binary,
+not by a list of integers.
 
 Mercury variables whose type is a Mercury discriminated union type
 will be passed as an Erlang tuple with the first element of the tuple
@@ -6831,7 +6832,7 @@ variables is one).  On failure they return the Erlang atom
 Procedures which are nondeterministic take as a final argument a
 success continuation.  This is an function which has an input variable
 for each variable of the Mercury procedure with an output mode.  For
-each solution, the success continuation with the values of those
+each solution, the success continuation is called with the values of those
 output variables.  When there are no more solutions the Erlang
 function returns with an undefined value.
 
@@ -7911,12 +7912,11 @@ must assign either @samp{true} or @samp{false} to the variable
 @samp{SUCCESS_INDICATOR}.  For example:
 
 @example
-:- pred string.contains_char(string, character).
-:- mode string.contains_char(in, in) is semidet.
+:- pred contains_char(list(char)::in, char::in) is semidet.
 
 :- pragma foreign_proc("Erlang",
-	string.contains_char(Str::in, Ch::in),
-        [will_not_call_mercury, promise_pure],
+	contains_char(Str::in, Ch::in),
+        [will_not_call_mercury, promise_pure, thread_safe],
         "SUCCESS_INDICATOR = (string:chr(Str, Ch) =/= 0)").
 @end example
 

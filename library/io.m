@@ -2539,7 +2539,7 @@ io.check_err(Stream, Res, !IO) :-
 "
     % XXX see clearerr
     RetVal = 0,
-    RetStr = """"
+    RetStr = <<>>
 ").
 
 :- pred io.make_err_msg(string::in, string::out, io::di, io::uo) is det.
@@ -2626,7 +2626,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
         undefined ->
             Msg = Msg0;
         Reason ->
-            Msg = Msg0 ++ file:format_error(Reason)
+            Msg = list_to_binary([Msg0, file:format_error(Reason)])
     end
 ").
 
@@ -2868,15 +2868,16 @@ io.file_modification_time(File, Result, !IO) :-
         Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    case filelib:last_modified(FileName) of
+    FileNameStr = binary_to_list(FileName),
+    case filelib:last_modified(FileNameStr) of
         {YMD, HMS} ->
             Status = 1,
-            Msg = """",
+            Msg = <<>>,
             % time_t in Erlang is in UTC.
             Time = {time_t, erlang:localtime_to_universaltime({YMD, HMS})};
         _ ->
             Status = 0,
-            Msg = ""filelib:last_modified failed"",
+            Msg = <<""filelib:last_modified failed"">>,
             Time = -1
     end
 ").
@@ -3123,11 +3124,12 @@ file_type_implemented :- semidet_fail.
         Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
+    FileNameStr = binary_to_list(FileName),
     case FollowSymLinks of
         0 -> Read = fun file:read_link_info/1;
         1 -> Read = fun file:read_file_info/1
     end,
-    case Read(FileName) of
+    case Read(FileNameStr) of
         {ok, FileInfo} ->
             #file_info{type = Type} = FileInfo,
             case Type of
@@ -3519,8 +3521,6 @@ access_types_includes_execute(Access) :-
 :- pragma foreign_export("C", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
 :- pragma foreign_export("IL", (make_io_res_0_ok = out),
-    "ML_make_io_res_0_ok").
-:- pragma foreign_export("Erlang", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
 
 make_io_res_0_ok = ok.
@@ -6263,6 +6263,26 @@ static java.lang.Exception MR_io_exception;
     % Note that we send back acknowledgements for all messages.  This is to
     % ensure that two operations from the same process are done in order.
     %
+mercury_start_file_server(ParentPid, FileName, Mode) ->
+    case Mode of
+        [$r | _] ->
+            ModeList = [read, raw, read_ahead];
+        [$w | _] ->
+            ModeList = [write, raw, delayed_write];
+        [$a | _] ->
+            ModeList = [append, raw, delayed_write]
+    end,
+    case file:open(FileName, ModeList) of
+        {ok, IoDevice} ->
+            StreamId = make_ref(),
+            Stream = {'ML_stream', StreamId, self()},
+            ParentPid ! {self(), open_ack, {ok, Stream}},
+            mercury_file_server(IoDevice, 1, [])
+    ;
+        {error, Reason} ->
+            ParentPid ! {self(), open_ack, {error, Reason}}
+    end.
+
 mercury_file_server(IoDevice, LineNr0, PutBack0) ->
     receive
         {From, close} ->
@@ -6291,18 +6311,19 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
     ;
         {From, read_string_to_eof} ->
             % Grab everything from the putback buffer.
-            Pre = lists:reverse(PutBack0),
+            Pre = list_to_binary(lists:reverse(PutBack0)),
             PutBack = [],
 
             % Read everything to EOF.
             case mercury_read_file_to_eof_2(IoDevice, []) of
-                {ok, String} ->
-                    PrePlusString = Pre ++ String,
-                    Ret = {ok, PrePlusString},
-                    LineNr = LineNr0 + count_nls(PrePlusString, 0);
-                {error, Reason} ->
-                    Ret = {error, Pre, Reason},
-                    LineNr = LineNr0 + count_nls(Pre, 0)
+                {ok, Chunks} ->
+                    Binary = list_to_binary([Pre | Chunks]),
+                    Ret = {ok, Binary},
+                    LineNr = LineNr0 + count_nls(Binary, 0);
+                {error, Chunks, Reason} ->
+                    Binary = list_to_binary([Pre | Chunks]),
+                    Ret = {error, list_to_binary(Chunks), Reason},
+                    LineNr = LineNr0 + count_nls(Binary, 0)
             end,
 
             From ! {self(), read_string_to_eof_ack, Ret},
@@ -6316,25 +6337,22 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
     ;
         {From, write_char, Char} ->
             From ! {self(), write_char_ack},
-            % XXX use file:write with raw streams
             % XXX return error code
-            io:put_chars(IoDevice, [Char]),
+            file:write(IoDevice, [Char]),
             LineNr = LineNr0 + one_if_nl(Char),
             mercury_file_server(IoDevice, LineNr, PutBack0)
     ;
         {From, write_string, Chars} ->
             From ! {self(), write_string_ack},
-            % XXX use file:write with raw streams
             % XXX return error code
-            io:put_chars(IoDevice, Chars),
+            file:write(IoDevice, Chars),
             LineNr = LineNr0 + count_nls(Chars, 0),
             mercury_file_server(IoDevice, LineNr, PutBack0)
     ;
         {From, write_int, Val} ->
             From ! {self(), write_int_ack},
-            % XXX use file:write with raw streams
             % XXX return error code
-            io:format(IoDevice, ""~B"", [Val]),
+            file:write(IoDevice, integer_to_list(Val)),
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     ;
         {From, sync} ->
@@ -6372,39 +6390,37 @@ mercury_read_file_to_eof_2(IoDevice, Acc) ->
         {ok, Chunk} ->
             mercury_read_file_to_eof_2(IoDevice, [Chunk | Acc]);
         eof ->
-            {ok, lists:flatten(lists:reverse(Acc))};
+            {ok, lists:reverse(Acc)};
         {error, Reason} ->
-            {error, Acc, Reason}
+            {error, lists:reverse(Acc), Reason}
     end.
 
 one_if_nl($\\n) -> 1;
 one_if_nl(_)    -> 0.
 
-count_nls([], N) -> N;
-count_nls([$\\n | Cs], N) -> count_nls(Cs, N + 1);
-count_nls([_    | Cs], N) -> count_nls(Cs, N).
+count_nls(Bin, N) ->
+    count_nls_2(Bin, size(Bin) - 1, N).
+
+count_nls_2(_,  -1, N) -> N;
+count_nls_2(Bin, I, N) ->
+    case Bin of
+        <<_:I/binary, $\\n, _/binary>> ->
+            count_nls_2(Bin, I - 1, N + 1);
+        _ ->
+            count_nls_2(Bin, I - 1, N)
+    end.
 
 % Client side.
 
 mercury_open_stream(FileName, Mode) ->
-    case Mode of
-        [$r | _] ->
-            ModeList = [read];
-        [$w | _] ->
-            ModeList = [write];
-        [$a | _] ->
-            ModeList = [append]
-    end,
-    case file:open(FileName, ModeList) of
-        {ok, IoDevice} ->
-            Pid = spawn(fun() -> 
-                mercury_file_server(IoDevice, 1, [])
-            end),
-            StreamId = make_ref(),
-            Stream = {'ML_stream', StreamId, Pid},
-            {ok, Stream};
-        {error, Reason} ->
-            {error, Reason}
+    ParentPid = self(),
+    Pid = spawn(fun() -> 
+        % Raw streams can only be used by the process which opened it.
+        mercury_start_file_server(ParentPid, FileName, Mode)
+    end),
+    receive
+        {Pid, open_ack, Result} ->
+            Result
     end.
 
 mercury_close_stream(Stream) ->
@@ -9017,8 +9033,11 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
+    FileNameStr = binary_to_list(FileName),
+    ModeStr = binary_to_list(Mode),
+
     % Text and binary streams are exactly the same so far.
-    case mercury__io:mercury_open_stream(FileName, Mode) of
+    case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
         {ok, Stream} ->
             {'ML_stream', StreamId, _Pid} = Stream,
             ResultCode = 0;
@@ -9035,8 +9054,11 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
+    FileNameStr = binary_to_list(FileName),
+    ModeStr = binary_to_list(Mode),
+
     % Text and binary streams are exactly the same so far.
-    case mercury__io:mercury_open_stream(FileName, Mode) of
+    case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
         {ok, Stream} ->
             {'ML_stream', StreamId, _Pid} = Stream,
             ResultCode = 0;
@@ -9246,7 +9268,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     % 3. the error code is returned in an inefficient way
     % 4. standard output and standard error are always tied together
     %
-    OutputCode = os:cmd(Command ++ ""; echo -n $?""),
+    CommandStr = binary_to_list(Command),
+    OutputCode = os:cmd(CommandStr ++ ""; echo -n $?""),
     case string:rchr(OutputCode, $\\n) of
         0 ->
             Code = OutputCode;
@@ -9257,9 +9280,9 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     {Status, []} = string:to_integer(Code),
     case Status =:= 0 of
         true ->
-            Msg = """";
+            Msg = <<>>;
         false ->
-            Msg = ""error invoking system command""
+            Msg = <<""error invoking system command"">>
     end
 ").
 
@@ -9406,7 +9429,8 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
     io.command_line_arguments(Args::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    Args = init:get_plain_arguments()
+    ArgStrings = init:get_plain_arguments(),
+    Args = lists:map(fun list_to_binary/1, ArgStrings)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9562,12 +9586,13 @@ command_line_argument(_, "") :-
     io.getenv(Var::in, Value::out),
     [will_not_call_mercury, tabled_for_io],
 "
-    case os:getenv(Var) of
+    case os:getenv(binary_to_list(Var)) of
         false ->
             SUCCESS_INDICATOR = false,
-            Value = """";
-        Value ->
-            SUCCESS_INDICATOR = true
+            Value = <<>>;
+        ValueStr ->
+            SUCCESS_INDICATOR = true,
+            Value = list_to_binary(ValueStr)
     end
 ").
 
@@ -9631,7 +9656,9 @@ io.setenv(Var, Value) :-
     io.setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io],
 "
-    os:putenv(Var, Value),
+    VarStr = binary_to_list(Var),
+    ValueStr = binary_to_list(Value),
+    os:putenv(VarStr, ValueStr),
     SUCCESS_INDICATOR = true
 ").
 
@@ -9834,6 +9861,10 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
+    DirStr = binary_to_list(Dir),
+    PrefixStr = binary_to_list(Prefix),
+    SepStr = binary_to_list(Sep),
+
     % Constructs a temporary name by concatenating Dir, Sep, Prefix
     % three hex digits, '.', and 3 more hex digits.
 
@@ -9853,16 +9884,17 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     Seed = {A1 + Pid, A2, A3},
 
     case
-        mercury__io:'ML_do_make_temp_2'(Dir, Prefix, Sep, MaxTries, Seed)
+        mercury__io:'ML_do_make_temp_2'(DirStr, PrefixStr, SepStr,
+            MaxTries, Seed)
     of
         {ok, FileName0} ->
-            FileName = FileName0,
+            FileName = list_to_binary(FileName0),
             Error = 0,
-            ErrorMessage = """";
+            ErrorMessage = <<>>;
         {error, Reason} ->
-            FileName = """",
+            FileName = <<>>,
             Error = -1,
-            ErrorMessage = Reason
+            ErrorMessage = list_to_binary(Reason)
     end
 ").
 
@@ -10093,13 +10125,15 @@ io.remove_file(FileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
-    case file:delete(FileName) of
+    FileNameStr = binary_to_list(FileName),
+    case file:delete(FileNameStr) of
         ok ->
             RetVal = 0,
-            RetStr = """";
+            RetStr = <<>>;
         {error, Reason} ->
             RetVal = -1,
-            RetStr = ""remove failed: "" ++ file:format_error(Reason)
+            ReasonStr = file:format_error(Reason),
+            RetStr = list_to_binary([""remove failed: "", ReasonStr])
     end
 ").
 
@@ -10221,13 +10255,16 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
         RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    case file:rename(OldFileName, NewFileName) of
+    OldFileNameStr = binary_to_list(OldFileName),
+    NewFileNameStr = binary_to_list(NewFileName),
+    case file:rename(OldFileNameStr, NewFileNameStr) of
         ok ->
             RetVal = 0,
-            RetStr = """";
+            RetStr = <<>>;
         {error, Reason} ->
             RetVal = -1,
-            RetStr = ""rename_file failed: "" ++ file:format_error(Reason)
+            ReasonStr = file:format_error(Reason),
+            RetStr = list_to_binary([""rename_file failed: "", ReasonStr])
     end
 ").
 
@@ -10291,7 +10328,9 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
-    case file:make_symlink(FileName, LinkFileName) of
+    FileNameStr = binary_to_list(FileName),
+    LinkFileNameStr = binary_to_list(LinkFileName),
+    case file:make_symlink(FileNameStr, LinkFileNameStr) of
         ok ->
             Status = 0;
         {error, _Reason} ->
@@ -10377,14 +10416,15 @@ io.read_symlink(FileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
-    case file:read_link(FileName) of
-        {ok, TargetFileName} ->
+    case file:read_link(binary_to_list(FileName)) of
+        {ok, TargetFileNameStr} ->
+            TargetFileName = list_to_binary(TargetFileNameStr),
             Status = 1,
-            Error = """";
+            Error = <<>>;
         {error, Reason} ->
             Status = 0,
-            TargetFileName = """",
-            Error = file:format_error(Reason)
+            TargetFileName = <<>>,
+            Error = list_to_binary(file:format_error(Reason))
     end
 ").
 

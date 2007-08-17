@@ -266,7 +266,7 @@ cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
         Term = elds_int(Int)
     ;
         ConsId = string_const(String),
-        Term = elds_string(String)
+        Term = elds_binary(String)
     ;
         ConsId = float_const(Float),
         Term = elds_float(Float)
