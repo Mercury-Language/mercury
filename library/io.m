@@ -2287,6 +2287,14 @@ io.read_file_as_string(Result, !IO) :-
     io.input_stream(Stream, !IO),
     io.read_file_as_string(Stream, Result, !IO).
 
+:- pragma foreign_proc("Erlang",
+    io.read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {input_stream, Stream} = InputStream,
+    Result = mercury__io:mercury_read_string_to_eof(Stream)
+").
+
 io.read_file_as_string(Stream, Result, !IO) :-
     % Check if the stream is a regular file; if so, allocate a buffer
     % according to the size of the file. Otherwise, just use a default buffer
@@ -2764,6 +2772,20 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Size = Stream.size();
+").
+
+:- pragma foreign_proc("Erlang",
+    io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    OrigPos = mercury_seek(Stream, cur),
+    if
+        OrigPos >= 0 ->
+            Size = mercury_seek(Stream, eof),
+            mercury_seek(Stream, {bof, OrigPos});
+        true ->
+            Size = -1
+    end
 ").
 
 io.file_modification_time(File, Result, !IO) :-
@@ -6203,6 +6225,7 @@ static java.lang.Exception MR_io_exception;
     mercury_open_stream/2,
     mercury_close_stream/1,
     mercury_getc/1,
+    mercury_read_string_to_eof/1,
     mercury_putback/2,
     mercury_write_string/2,
     mercury_write_char/2,
@@ -6266,6 +6289,25 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
             From ! {self(), read_char_ack, Ret},
             mercury_file_server(IoDevice, LineNr, PutBack)
     ;
+        {From, read_string_to_eof} ->
+            % Grab everything from the putback buffer.
+            Pre = lists:reverse(PutBack0),
+            PutBack = [],
+
+            % Read everything to EOF.
+            case mercury_read_file_to_eof_2(IoDevice, []) of
+                {ok, String} ->
+                    PrePlusString = Pre ++ String,
+                    Ret = {ok, PrePlusString},
+                    LineNr = LineNr0 + count_nls(PrePlusString, 0);
+                {error, Reason} ->
+                    Ret = {error, Pre, Reason},
+                    LineNr = LineNr0 + count_nls(Pre, 0)
+            end,
+
+            From ! {self(), read_string_to_eof_ack, Ret},
+            mercury_file_server(IoDevice, LineNr, PutBack)
+    ;
         {From, putback, Char} ->
             From ! {self(), putback_ack},
             PutBack = [Char | PutBack0],
@@ -6324,6 +6366,17 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     end.
 
+mercury_read_file_to_eof_2(IoDevice, Acc) ->
+    ChunkSize = 65536,
+    case file:read(IoDevice, ChunkSize) of
+        {ok, Chunk} ->
+            mercury_read_file_to_eof_2(IoDevice, [Chunk | Acc]);
+        eof ->
+            {ok, lists:flatten(lists:reverse(Acc))};
+        {error, Reason} ->
+            {error, Acc, Reason}
+    end.
+
 one_if_nl($\\n) -> 1;
 one_if_nl(_)    -> 0.
 
@@ -6376,6 +6429,20 @@ mercury_getc(Stream) ->
                     put('MR_io_exception', Reason),
                     -2
             end
+    end.
+
+mercury_read_string_to_eof(Stream) ->
+    {'ML_stream', _Id, Pid} = Stream,
+    Pid ! {self(), read_string_to_eof},
+    receive
+        {Pid, read_string_to_eof_ack, Ret} ->
+            case Ret of
+                {error, _Partial, Reason} ->
+                    put('MR_io_exception', Reason);
+                _ ->
+                    void
+            end,
+            Ret
     end.
 
 mercury_putback(Stream, Character) ->
