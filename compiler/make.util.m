@@ -58,9 +58,9 @@
     %
     % Like foldl2_maybe_stop_at_error, but if parallel make is enabled, it
     % tries to perform a first pass that overlaps execution of P(elem) in
-    % separate threads.  Updates to !Info in the first pass are ignored.  If
-    % the first pass succeeds, a second sequential pass is made in which
-    % updates !Info are kept.  Hence it must be safe to execute P(elem)
+    % separate threads or processes.  Updates to !Info in the first pass are
+    % ignored.  If the first pass succeeds, a second sequential pass is made in
+    % which updates !Info are kept.  Hence it must be safe to execute P(elem)
     % concurrently, in any order, and multiple times.
     %
 :- pred foldl2_maybe_stop_at_error_maybe_parallel(bool::in,
@@ -300,6 +300,7 @@
 :- import_module analysis.
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
+:- import_module libs.process_util.
 :- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -307,17 +308,11 @@
 :- import_module char.
 :- import_module dir.
 :- import_module exception.
+:- import_module set.
 :- import_module thread.
 :- import_module thread.channel.
-:- import_module univ.
 :- import_module unit.
-
-:- type child_exit
-    --->    child_succeeded
-    ;       child_failed
-    ;       child_exception(univ).
-
-:- type child_exits == channel(child_exit).
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -371,19 +366,58 @@ foldl3_maybe_stop_at_error_2(KeepGoing, P, [T | Ts],
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Parallel (concurrent) fold
+%
+
+:- type child_exit
+    --->    child_succeeded
+    ;       child_failed
+    ;       child_exception(univ).
+
+:- inst child_succeeded_or_failed
+    --->    child_succeeded
+    ;       child_failed.
+
+    % A generic interface for the two parallel fold implementations:
+    % one using processes and one using threads.
+    %
+:- typeclass par_fold(PF) where [
+
+    % run_in_child(Pred, Info, T, Succeeded, !PF, !IO)
+    %
+    % Start executing Pred in a child thread/process.  Succeeded is `yes' iff
+    % the child was successfully spawned.
+    %
+    pred run_in_child(
+        foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+        Info::in, T::in, bool::out, PF::in, PF::out, io::di, io::uo) is det,
+
+    % Block until a child exit code is received.
+    %
+    pred wait_for_child_exit(child_exit::out(child_succeeded_or_failed),
+        PF::in, PF::out, io::di, io::uo) is det
+].
 
 foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
         Success, !Info, !IO) :-
+    % First pass.
     globals.io_lookup_int_option(jobs, Jobs, !IO),
-    ( 
-        thread.can_spawn,
-        Jobs > 1
-    ->
-        foldl2_maybe_stop_at_error_parallel(KeepGoing, Jobs,
-            MakeTarget, Targets, Success0, !.Info, !IO)
+    ( Jobs > 1 ->
+        % fork() is disabled on threaded grades.
+        ( process_util.can_fork ->
+            foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
+                MakeTarget, Targets, Success0, !.Info, !IO)
+        ; thread.can_spawn ->
+            foldl2_maybe_stop_at_error_parallel_threads(KeepGoing, Jobs,
+                MakeTarget, Targets, Success0, !.Info, !IO)
+        ;
+            Success0 = yes
+        )
     ;
         Success0 = yes
     ),
+    % Second pass (sequential).
     (
         Success0 = yes,
         foldl2_maybe_stop_at_error(KeepGoing, MakeTarget, Targets, Success,
@@ -393,60 +427,70 @@ foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
         Success = no
     ).
 
-:- pred foldl2_maybe_stop_at_error_parallel(bool::in, int::in,
+:- pred do_parallel_foldl2(bool::in, int::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    list(T)::in, bool::out, Info::in, io::di, io::uo) is det.
+    Info::in, list(T)::in, bool::out, PF::in, PF::out, io::di, io::uo)
+    is det <= par_fold(PF).
 
-foldl2_maybe_stop_at_error_parallel(KeepGoing, Jobs, MakeTarget, Targets,
-        Success, Info, !IO) :-
-    channel.init(ChildExits, !IO),
+do_parallel_foldl2(KeepGoing, Jobs, MakeTarget, Info, Targets, Success,
+        !PF, !IO) :-
     list.split_upto(Jobs, Targets, InitialTargets, LaterTargets),
-    list.foldl(run_in_child(ChildExits, MakeTarget, Info), InitialTargets,
-        !IO),
-    parent_loop(ChildExits, KeepGoing, MakeTarget, Info,
-        length(InitialTargets), LaterTargets, yes, Success, no, MaybeExcp,
-        !IO),
-    %
-    % Rethrow the first of any exceptions which terminated a child thread.
-    %
-    (
-        MaybeExcp = yes(Excp),
-        rethrow(exception(Excp) : exception_result(unit))
+    start_initial_child_jobs(KeepGoing, MakeTarget, Info, InitialTargets,
+        0, NumChildJobs, !PF, !IO),
+    ( NumChildJobs < length(InitialTargets) ->
+        Success0 = no
     ;
-        MaybeExcp = no
+        Success0 = yes
+    ),
+    do_parallel_foldl2_parent_loop(KeepGoing, MakeTarget, Info,
+        NumChildJobs, LaterTargets, Success0, Success, !PF, !IO).
+
+:- pred start_initial_child_jobs(bool::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    Info::in, list(T)::in, int::in, int::out,
+    PF::in, PF::out, io::di, io::uo) is det <= par_fold(PF).
+
+start_initial_child_jobs(_KeepGoing, _MakeTarget, _Info,
+        [], !NumChildJobs, !PF, !IO).
+start_initial_child_jobs(KeepGoing, MakeTarget, Info,
+        [Target | Targets], !NumChildJobs, !PF, !IO) :-
+    run_in_child(MakeTarget, Info, Target, Success, !PF, !IO),
+    (
+        Success = yes,
+        start_initial_child_jobs(KeepGoing, MakeTarget, Info, Targets,
+            !.NumChildJobs + 1, !:NumChildJobs, !PF, !IO)
+    ;
+        Success = no,
+        KeepGoing = yes,
+        start_initial_child_jobs(KeepGoing, MakeTarget, Info, Targets,
+            !NumChildJobs, !PF, !IO)
+    ;
+        Success = no,
+        KeepGoing = no
     ).
 
-:- pred parent_loop(child_exits::in, bool::in, 
+:- pred do_parallel_foldl2_parent_loop(bool::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, int::in, list(T)::in, bool::in, bool::out,
-    maybe(univ)::in, maybe(univ)::out, io::di, io::uo) is det.
+    Info::in, int::in, list(T)::in, bool::in, bool::out, PF::in, PF::out,
+    io::di, io::uo) is det <= par_fold(PF).
 
-parent_loop(ChildExits, KeepGoing, MakeTarget, Info, ChildrenRunning0, Targets,
-        !Success, !MaybeExcp, !IO) :-
+do_parallel_foldl2_parent_loop(KeepGoing, MakeTarget, Info, NumChildJobs0,
+        Targets, !Success, !PF, !IO) :-
     (
         % We are done once all running children have terminated and there are
         % no more targets to make.
-        ChildrenRunning0 = 0,
+        NumChildJobs0 = 0,
         Targets = []
     ->
         true
     ;
         % Wait for a running child to indicate that it is finished.
-        channel.take(ChildExits, Exit, !IO),
+        wait_for_child_exit(Exit, !PF, !IO),
         (
             Exit = child_succeeded,
             NewSuccess = yes
         ;
             Exit = child_failed,
-            NewSuccess = no
-        ;
-            Exit = child_exception(Excp),
-            (
-                !.MaybeExcp = no,
-                !:MaybeExcp = yes(Excp)
-            ;
-                !.MaybeExcp = yes(_)
-            ),
             NewSuccess = no
         ),
         (
@@ -458,27 +502,154 @@ parent_loop(ChildExits, KeepGoing, MakeTarget, Info, ChildrenRunning0, Targets,
             (
                 Targets = [],
                 MoreTargets = [],
-                ChildrenRunning = ChildrenRunning0 - 1
+                NumChildJobs = NumChildJobs0 - 1
             ;
                 Targets = [NextTarget | MoreTargets],
-                run_in_child(ChildExits, MakeTarget, Info, NextTarget, !IO),
-                ChildrenRunning = ChildrenRunning0
+                run_in_child(MakeTarget, Info, NextTarget, ChildStarted,
+                    !PF, !IO),
+                (
+                    ChildStarted = yes,
+                    NumChildJobs = NumChildJobs0
+                ;
+                    ChildStarted = no,
+                    NumChildJobs = NumChildJobs0 - 1,
+                    !:Success = no
+                )
             ),
-            parent_loop(ChildExits, KeepGoing, MakeTarget, Info,
-                ChildrenRunning, MoreTargets, !Success, !MaybeExcp, !IO)
+            do_parallel_foldl2_parent_loop(KeepGoing, MakeTarget, Info,
+                NumChildJobs, MoreTargets, !Success, !PF, !IO)
         ;
             % Wait for the other running children to terminate before
             % returning.
             !:Success = no,
-            wait_for_running_children(ChildExits, ChildrenRunning0 - 1, !IO)
+            wait_for_child_exits(NumChildJobs0 - 1, !PF, !IO)
         )
     ).
 
-:- pred run_in_child(child_exits::in,
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, T::in, io::di, io::uo) is det.
+:- pred wait_for_child_exits(int::in,
+    PF::in, PF::out, io::di, io::uo) is det <= par_fold(PF).
 
-run_in_child(ChildExits, P, Info, T, !IO) :-
+wait_for_child_exits(Num, !PF, !IO) :-
+    ( Num > 0 ->
+        wait_for_child_exit(_, !PF, !IO),
+        wait_for_child_exits(Num - 1, !PF, !IO)
+    ;
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Parallel fold using processes
+%
+
+:- type fork_par_fold
+    --->    fork_par_fold(
+                fpf_children :: set(pid)
+            ).
+
+:- instance par_fold(fork_par_fold) where [
+    pred(run_in_child/8) is run_in_child_process,
+    pred(wait_for_child_exit/5) is wait_for_child_process_exit
+].
+
+:- pred foldl2_maybe_stop_at_error_parallel_processes(bool::in, int::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, bool::out, Info::in, io::di, io::uo) is det.
+
+foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
+        Targets, Success, Info, !IO) :-
+    PF0 = fork_par_fold(set.init),
+    do_parallel_foldl2(KeepGoing, Jobs, MakeTarget, Info, Targets,
+        Success, PF0, _PF, !IO).
+
+:- pred run_in_child_process(
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    Info::in, T::in, bool::out, fork_par_fold::in, fork_par_fold::out,
+    io::di, io::uo) is det.
+
+run_in_child_process(P, Info, T, ChildStarted, PF0, PF, !IO) :-
+    start_in_forked_process(
+        (pred(Success::out, !.IO::di, !:IO::uo) is det :-
+            P(T, Success, Info, _Info, !IO)
+        ), MaybePid, !IO),
+    (
+        MaybePid = yes(Pid),
+        ChildStarted = yes,
+        PF0 = fork_par_fold(Set0),
+        set.insert(Set0, Pid, Set),
+        PF = fork_par_fold(Set)
+    ;
+        MaybePid = no,
+        ChildStarted = no,
+        PF = PF0
+    ).
+
+:- pred wait_for_child_process_exit(child_exit::out(child_succeeded_or_failed),
+    fork_par_fold::in, fork_par_fold::out, io::di, io::uo) is det.
+
+wait_for_child_process_exit(ChildExit, PF0, PF, !IO) :-
+    wait_any(DeadPid, ChildStatus, !IO),
+    fork_par_fold(Pids0) = PF0,
+    ( set.remove(Pids0, DeadPid, Pids) ->
+        ( ChildStatus = ok(exited(0)) ->
+            ChildExit = child_succeeded
+        ;
+            ChildExit = child_failed
+        ),
+        PF = fork_par_fold(Pids)
+    ;
+        % Not a child of ours, maybe a grand child.  Ignore it.
+        wait_for_child_process_exit(ChildExit, PF0, PF, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Parallel fold using threads
+%
+
+:- type thread_par_fold
+    --->    thread_par_fold(
+                tpf_channel     :: channel(child_exit),
+                                % A channel to communicate between the children
+                                % and the parent.
+
+                tpf_maybe_excp  :: maybe(univ)
+                                % Remember the first of any exceptions thrown
+                                % by child threads.
+            ).
+
+:- instance par_fold(thread_par_fold) where [
+    pred(run_in_child/8) is run_in_child_thread,
+    pred(wait_for_child_exit/5) is wait_for_child_thread_exit
+].
+
+:- pred foldl2_maybe_stop_at_error_parallel_threads(bool::in, int::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, bool::out, Info::in, io::di, io::uo) is det.
+
+foldl2_maybe_stop_at_error_parallel_threads(KeepGoing, Jobs, MakeTarget,
+        Targets, Success, Info, !IO) :-
+    channel.init(Channel, !IO),
+    PF0 = thread_par_fold(Channel, no),
+    do_parallel_foldl2(KeepGoing, Jobs, MakeTarget, Info, Targets, Success,
+        PF0, PF, !IO),
+    %
+    % Rethrow the first of any exceptions which terminated a child thread.
+    %
+    MaybeExcp = PF ^ tpf_maybe_excp,
+    (
+        MaybeExcp = yes(Excp),
+        rethrow(exception(Excp) : exception_result(unit))
+    ;
+        MaybeExcp = no
+    ).
+
+:- pred run_in_child_thread(
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    Info::in, T::in, bool::out, thread_par_fold::in, thread_par_fold::out,
+    io::di, io::uo) is det.
+
+run_in_child_thread(P, Info, T, ChildStarted, PF, PF, !IO) :-
     promise_equivalent_solutions [!:IO] (
         spawn((pred(!.IO::di, !:IO::uo) is cc_multi :-
             try_io((pred(Succ::out, !.IO::di, !:IO::uo) is det :-
@@ -494,21 +665,34 @@ run_in_child(ChildExits, P, Info, T, !IO) :-
                 Result = exception(Excp),
                 Exit = child_exception(Excp)
             ),
-            channel.put(ChildExits, Exit, !IO)
+            channel.put(PF ^ tpf_channel, Exit, !IO)
         ), !IO)
-    ).
+    ),
+    ChildStarted = yes.
 
-:- pred wait_for_running_children(child_exits::in, int::in, io::di, io::uo)
-    is det.
+:- pred wait_for_child_thread_exit(child_exit::out(child_succeeded_or_failed),
+    thread_par_fold::in, thread_par_fold::out, io::di, io::uo) is det.
 
-wait_for_running_children(ChildExits, Num, !IO) :-
-    ( Num > 0 ->
-        channel.take(ChildExits, _Exit, !IO),
-        wait_for_running_children(ChildExits, Num-1, !IO)
+wait_for_child_thread_exit(ChildExit, !PF, !IO) :-
+    channel.take(!.PF ^ tpf_channel, ChildExit0, !IO),
+    (
+        ( ChildExit0 = child_succeeded
+        ; ChildExit0 = child_failed
+        ),
+        ChildExit = ChildExit0
     ;
-        true
+        ChildExit0 = child_exception(Excp),
+        ChildExit = child_failed,
+        MaybeExcp0 = !.PF ^ tpf_maybe_excp,
+        (
+            MaybeExcp0 = no,
+            !PF ^ tpf_maybe_excp := yes(Excp)
+        ;
+            MaybeExcp0 = yes(_)
+        )
     ).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 build_with_module_options_and_output_redirect(ModuleName, ExtraOptions,

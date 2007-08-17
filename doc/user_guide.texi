@@ -8652,8 +8652,9 @@ possible even if an error is detected.
 @findex --jobs
 With @samp{--make}, attempt to perform up to @samp{<n>} jobs
 concurrently for some tasks.
-For the option to take effect, the compiler must be built in a parallel
-grade.  In low-level C grades the number of threads is also limited by
+
+In low-level C grades with parallelism support,
+the number of threads is also limited by
 the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable
 (see @ref{Environment}).
 

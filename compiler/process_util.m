@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 University of Melbourne.
+% Copyright (C) 2002-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 
 :- import_module bool.
 :- import_module io.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -55,6 +56,8 @@
 :- type io_pred == pred(bool, io, io).
 :- inst io_pred == (pred(out, di, uo) is det).
 
+:- type pid == int.
+
     % Does fork() work on the current platform.
     %
 :- pred can_fork is semidet.
@@ -79,6 +82,26 @@
     %
 :- pred call_in_forked_process(io_pred::in(io_pred), bool::out,
     io::di, io::uo) is det.
+
+    % start_in_forked_process(P, Succeeded, !IO)
+    %
+    % Start executing `P' in a child process.  Returns immediately, i.e. does
+    % not wait for `P' to finish.  This predicate should only be called if
+    % fork() is available.
+    %
+    % The child process's exit code will be 0 if `P' returns a success value of
+    % `yes', or 1 if the success value is `no'.
+    %
+:- pred start_in_forked_process(io_pred::in(io_pred), maybe(pid)::out,
+    io::di, io::uo) is det.
+
+    % wait_any(Pid, ExitCode, !IO)
+    %
+    % Block until a child process has exited. Return the process ID
+    % of the child and its exit code.
+    %
+:- pred wait_any(pid::out, io.res(io.system_result)::out, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -275,12 +298,15 @@ call_in_forked_process(P, Success, !IO) :-
 
 call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
     ( can_fork ->
-        do_call_in_forked_process(P, ForkStatus, CallStatus, !IO),
-        ( ForkStatus = 1 ->
-            Success = no
-        ;
+        start_in_forked_process(P, MaybePid, !IO),
+        (
+            MaybePid = yes(Pid),
+            do_wait(Pid, _, CallStatus, !IO),
             Status = io.handle_system_command_exit_status(CallStatus),
             Success = (Status = ok(exited(0)) -> yes ; no)
+        ;
+            MaybePid = no,
+            Success = no
         )
     ;
         AltP(Success, !IO)
@@ -308,34 +334,72 @@ can_fork :- semidet_fail.
 #endif
 ").
 
-:- pred do_call_in_forked_process(io_pred::in(io_pred), int::out, int::out,
+start_in_forked_process(P, MaybePid, !IO) :-
+    start_in_forked_process_2(P, Pid, !IO),
+    ( Pid = 0 ->
+        MaybePid = no
+    ;
+        MaybePid = yes(Pid)
+    ).
+
+:- pred start_in_forked_process_2(io_pred::in(io_pred), pid::out,
     io::di, io::uo) is det.
 
-do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
-    unexpected(this_file, "do_call_in_forked_process").
+start_in_forked_process_2(_, _, !IO) :-
+    sorry(this_file, "start_in_forked_process_2").
 
 :- pragma foreign_proc("C",
-    do_call_in_forked_process(Pred::in(io_pred), ForkStatus::out, Status::out,
+    start_in_forked_process_2(Pred::in(io_pred), Pid::out,
         IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io],
-"{
+"
 #ifdef MC_CAN_FORK
-    pid_t   child_pid;
 
     IO = IO0;
-    ForkStatus = 0;
-    Status = 0;
 
-    child_pid = fork();
-    if (child_pid == -1) {                  /* error */
+    Pid = fork();
+    if (Pid == -1) {                        /* error */
         MR_perror(""error in fork()"");
-        ForkStatus = 1;
-    } else if (child_pid == 0) {            /* child */
+    } else if (Pid == 0) {                  /* child */
         MR_Integer exit_status;
 
         MC_call_child_process_io_pred(Pred, &exit_status);
         exit(exit_status);
     } else {                                /* parent */
+    }
+
+#else /* ! MC_CAN_FORK */
+    IO = IO0;
+    Pid = 0;
+#endif /* ! MC_CAN_FORK */
+").
+    % call_child_process_io_pred(P, ExitStatus).
+    %
+:- pred call_child_process_io_pred(io_pred::in(io_pred), int::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_export("C",
+    call_child_process_io_pred(in(io_pred), out, di, uo),
+    "MC_call_child_process_io_pred").
+
+call_child_process_io_pred(P, Status, !IO) :-
+    setup_child_signal_handlers(!IO),
+    P(Success, !IO),
+    Status = ( Success = yes -> 0 ; 1 ).
+
+    % do_wait(Pid, WaitedPid, Status, !IO)
+    %
+    % Wait until Pid exits and return its status.
+    % If Pid is -1 then wait for any child process to exit.
+    %
+:- pred do_wait(pid::in, pid::out, int::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_wait(Pid::in, WaitedPid::out, Status::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+#ifdef MC_CAN_FORK
+    {
         int     child_status;
         pid_t   wait_status;
 
@@ -354,7 +418,8 @@ do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 
         while (1) {
             wait_status = wait(&child_status);
-            if (wait_status == child_pid) {
+            if (Pid == -1 || wait_status == Pid) {
+                WaitedPid = wait_status;
                 Status = child_status;
                 break;
             } else if (wait_status == -1) {
@@ -368,7 +433,9 @@ do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
                         ** to system() which would cause SIGINT
                         ** to be ignored on some systems (e.g. Linux).
                         */
-                        kill(child_pid, SIGTERM);
+                        if (Pid != -1) {
+                            kill(Pid, SIGTERM);
+                        }
                         break;
                     }
                 } else {
@@ -376,7 +443,6 @@ do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
                     ** This should never happen.
                     */
                     MR_perror(""error in wait(): "");
-                    ForkStatus = 1;
                     Status = 1;
                     break;
                 }
@@ -394,28 +460,18 @@ do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 #ifdef SIGQUIT
         MR_signal_should_restart(SIGQUIT, MR_TRUE);
 #endif
-
     }
+
 #else /* ! MC_CAN_FORK */
+    MR_perror(""cannot wait() when fork() is unavailable: "");
     IO = IO0;
-    ForkStatus = 1;
     Status = 1;
 #endif /* ! MC_CAN_FORK */
-}").
+").
 
-    % call_child_process_io_pred(P, ExitStatus).
-    %
-:- pred call_child_process_io_pred(io_pred::in(io_pred), int::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_export("C",
-    call_child_process_io_pred(in(io_pred), out, di, uo),
-    "MC_call_child_process_io_pred").
-
-call_child_process_io_pred(P, Status, !IO) :-
-    setup_child_signal_handlers(!IO),
-    P(Success, !IO),
-    Status = ( Success = yes -> 0 ; 1 ).
+wait_any(Pid, Status, !IO) :-
+    do_wait(-1, Pid, Status0, !IO),
+    Status = io.handle_system_command_exit_status(Status0).
 
 %-----------------------------------------------------------------------------%
 
