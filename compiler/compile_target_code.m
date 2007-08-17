@@ -1337,7 +1337,7 @@ maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile, Compile,
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     (
         MaybeInitTargetFile = yes(InitTargetFileName),
-        file_as_new_as(InitTargetFileName, InitObjFileName, UpToDate, !IO),
+        file_as_new_as(InitObjFileName, InitTargetFileName, UpToDate, !IO),
         (
             ( MustCompile = yes
             ; UpToDate = no
@@ -1362,6 +1362,11 @@ maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile, Compile,
         Result = no
     ).
 
+    % file_as_new_as(FileNameA, FileNameB, IsAsNew, !IO)
+    %
+    % IsAsNew is `yes' iff file A has a timestamp at least as new as the
+    % timestamp of file B.
+    %
 :- pred file_as_new_as(file_name::in, file_name::in, bool::out,
     io::di, io::uo) is det.
 
