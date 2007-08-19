@@ -147,11 +147,22 @@ extern	void	*MR_realloc(void *old, size_t n);
 **
 ** MR_GC_free(ptr):
 **	Deallocates the memory.
+**
+** MR_GC_register_finalizer(ptr, finalize_func, data):
+**	When ptr is garbage collected invoke (*finalize_func)(ptr, data).
+**	ptr must have be a pointer to space allocated by the garbage collector.
+**	data is a pointer to some user-defined data.
+**	XXX currently this only works with the Boehm collector, i.e. in .gc
+**          grades, it is a non .gc grades.
+**
+**      XXX this interface is subject to change.
 */
 
 extern	void	*MR_GC_malloc(size_t num_bytes);
 extern	void	*MR_GC_malloc_uncollectable(size_t num_bytes);
 extern	void	*MR_GC_realloc(void *ptr, size_t num_bytes);
+
+typedef void 	(*MR_GC_finalizer)(void *ptr, void *data);
 
 #define MR_GC_NEW(type) \
 	((type *) MR_GC_malloc(sizeof(type)))
@@ -169,6 +180,13 @@ extern	void	*MR_GC_realloc(void *ptr, size_t num_bytes);
   #define MR_GC_free(ptr) GC_FREE(ptr)
 #else
   #define MR_GC_free(ptr) free(ptr)
+#endif
+
+#if defined(MR_CONSERVATIVE_GC) && defined(MR_BOEHM_GC)
+  #define MR_GC_register_finalizer(ptr, finalizer, data) \
+  	GC_REGISTER_FINALIZER((ptr), (finalizer), (data), 0, 0)
+#else
+  #define MR_GC_register_finalizer(ptr, finalizer, data)
 #endif
 
 /*---------------------------------------------------------------------------*/
