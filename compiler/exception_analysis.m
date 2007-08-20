@@ -889,6 +889,14 @@ check_type_2(ModuleInfo, Type, type_cat_enum) =
     ;
         type_will_not_throw
     ).
+check_type_2(ModuleInfo, Type, type_cat_foreign_enum) = 
+    ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UnifyCompare) ->
+        % XXX This is very conservative.
+        type_may_throw
+    ;
+        type_will_not_throw
+    ).
+
 check_type_2(ModuleInfo, Type, type_cat_user_ctor) =
     check_user_type(ModuleInfo, Type).
 

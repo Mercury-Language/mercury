@@ -525,6 +525,26 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             type_ctor_functor_number_map),
         Defns = EnumFunctorDescs ++ [ByValueDefn, ByNameDefn, NumberMapDefn]
     ;
+        TypeCtorDetails = foreign_enum(_, ForeignEnumFunctors,
+            ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
+        ForeignEnumFunctorDescs = list.map(
+            gen_foreign_enum_functor_desc(ModuleInfo, RttiTypeCtor),
+            ForeignEnumFunctors),
+        ByOrdinalDefn = gen_foreign_enum_ordinal_ordered_table(ModuleInfo,
+            RttiTypeCtor, ForeignEnumByOrdinal),
+        ByNameDefn = gen_foreign_enum_name_ordered_table(ModuleInfo,
+            RttiTypeCtor, ForeignEnumByName),
+        NumberMapDefn = gen_functor_number_map(RttiTypeCtor,
+            FunctorNumberMap),
+        LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_foreign_enum_ordinal_ordered_table),
+        FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_foreign_enum_name_ordered_table),
+        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map),
+        Defns = ForeignEnumFunctorDescs ++
+            [ByOrdinalDefn, ByNameDefn, NumberMapDefn]
+    ;
         TypeCtorDetails = du(_, DuFunctors, DuByPtag,
             DuByName, FunctorNumberMap),
         DuFunctorDefnLists = list.map(
@@ -616,6 +636,21 @@ gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor) = MLDS_Defn :-
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
 
+:- func gen_foreign_enum_functor_desc(module_info, rtti_type_ctor,
+    foreign_enum_functor) = mlds_defn.
+
+gen_foreign_enum_functor_desc(_ModuleInfo, RttiTypeCtor, ForeignEnumFunctor) 
+        = MLDS_Defn :-
+    ForeignEnumFunctor = foreign_enum_functor(FunctorName, Ordinal, Value),
+    RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
+    RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        gen_init_string(FunctorName),
+        gen_init_int(Ordinal),
+        gen_init_foreign(Value)
+    ]),
+    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
+            
 :- func gen_notag_functor_desc(module_info, rtti_type_ctor, notag_functor)
     = list(mlds_defn).
 
@@ -898,6 +933,32 @@ gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor, EnumByName)
     Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_enum_name_ordered_table,
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+
+:- func gen_foreign_enum_ordinal_ordered_table(module_info, rtti_type_ctor,
+    map(int, foreign_enum_functor)) = mlds_defn.
+
+gen_foreign_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor,
+        ForeignEnumByOrdinal) = MLDS_Defn :-
+    map.values(ForeignEnumByOrdinal, Functors),
+    module_info_get_name(ModuleInfo, ModuleName),
+    FunctorRttiNames = list.map(foreign_enum_functor_rtti_name, Functors),
+    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+        FunctorRttiNames),
+    RttiName = type_ctor_foreign_enum_ordinal_ordered_table,
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+
+:- func gen_foreign_enum_name_ordered_table(module_info, rtti_type_ctor,
+    map(string, foreign_enum_functor)) = mlds_defn.
+
+gen_foreign_enum_name_ordered_table(ModuleInfo, RttiTypeCtor,
+        ForeignEnumByName) = MLDS_Defn :-
+    map.values(ForeignEnumByName, Functors),
+    module_info_get_name(ModuleInfo, ModuleName),
+    FunctorRttiNames = list.map(foreign_enum_functor_rtti_name, Functors),
+    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+        FunctorRttiNames),
+    RttiName = type_ctor_foreign_enum_name_ordered_table,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
 
 :- func gen_du_ptag_ordered_table(module_info, rtti_type_ctor,

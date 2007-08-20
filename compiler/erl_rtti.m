@@ -136,6 +136,8 @@ erlang_type_ctor_details_2(enum(_, Functors, _, _, IsDummy, _)) =
     ;
         erlang_du(list.map(convert_enum_functor, Functors))
     ).
+erlang_type_ctor_details_2(foreign_enum(_, _, _, _, _)) =
+    sorry(this_file, "NYI foreign enumerations for Erlang.").
 erlang_type_ctor_details_2(du(_, Functors, _, _, _)) =
     erlang_du(list.map(convert_du_functor, Functors)).
 erlang_type_ctor_details_2(reserved(_, _, _, _, _, _)) =

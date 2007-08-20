@@ -3289,6 +3289,10 @@ write_type_body(Indent, TVarSet, hlds_du_type(Ctors, Tags, EnumDummy,
         write_indent(Indent, !IO),
         io.write_string("/* enumeration */\n", !IO)
     ;
+        EnumDummy = is_foreign_enum,
+        write_indent(Indent, !IO),
+        io.write_string("/* foreign enumeration */\n", !IO)
+    ;
         EnumDummy = is_dummy,
         write_indent(Indent, !IO),
         io.write_string("/* dummy */\n", !IO)

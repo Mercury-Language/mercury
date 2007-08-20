@@ -556,6 +556,7 @@ rename_rval(self(Type)) = self(Type).
 rename_const(mlconst_true) = mlconst_true.
 rename_const(mlconst_false) = mlconst_false.
 rename_const(mlconst_int(I)) = mlconst_int(I).
+rename_const(mlconst_foreign(F, T)) = mlconst_foreign(F, T).
 rename_const(mlconst_float(F)) = mlconst_float(F).
 rename_const(mlconst_string(S)) = mlconst_string(S).
 rename_const(mlconst_multi_string(S)) = mlconst_multi_string(S).
@@ -2383,6 +2384,9 @@ load(const(Const), Instrs, !Info) :-
         Const = mlconst_int(Int),
         Instrs = instr_node(ldc(int32, i(Int)))
     ;
+        Const = mlconst_foreign(_F, _T),
+        sorry(this_file, "NYI IL backend and foreign tags.")
+    ;
         Const = mlconst_float(Float),
         Instrs = instr_node(ldc(float64, f(Float)))
     ;
@@ -3193,6 +3197,8 @@ mlds_mercury_type_to_ilds_type(_, _, type_cat_higher_order) =
     il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_tuple) = il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_enum) =  il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_foreign_enum) = 
+    il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_dummy) =  il_generic_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_variable) = il_generic_type.
 mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_type_info) =
@@ -3709,6 +3715,8 @@ rval_const_to_type(mlconst_code_addr(_))
 rval_const_to_type(mlconst_int(_))
         = mercury_type(IntType, type_cat_int, non_foreign_type(IntType)) :-
     IntType = builtin_type(builtin_type_int).
+rval_const_to_type(mlconst_foreign(_, _))
+        = sorry(this_file, "IL backend and foreign tag."). 
 rval_const_to_type(mlconst_float(_))
         = mercury_type(FloatType, type_cat_float,
             non_foreign_type(FloatType)) :-

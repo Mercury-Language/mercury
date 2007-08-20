@@ -250,8 +250,8 @@ get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         MaybeTypeInfoList, Names) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
-            FunctorName, Arity, TypeInfoList, Names)
+        erlang_rtti_implementation.get_functor_with_names(TypeDesc,
+            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
     ;
         rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
             FunctorName, Arity, TypeInfoList, Names)
@@ -389,6 +389,12 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
             Ordinal = construct_info.functor_info.
                 enum_functor_desc->MR_enum_functor_ordinal;
             break;
+        
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+            Ordinal = construct_info.functor_info.
+                foreign_enum_functor_desc->MR_foreign_enum_functor_ordinal;
+            break;
 
         case MR_TYPECTOR_REP_DUMMY:
         case MR_TYPECTOR_REP_NOTAG:
@@ -522,6 +528,12 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             new_data = construct_info.functor_info.enum_functor_desc->
                 MR_enum_functor_ordinal;
+            break;
+        
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+            new_data = construct_info.functor_info.foreign_enum_functor_desc->
+                MR_foreign_enum_functor_value;
             break;
 
         case MR_TYPECTOR_REP_NOTAG:

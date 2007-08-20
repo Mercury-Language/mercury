@@ -298,6 +298,8 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_ARRAY:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
         case MR_TYPECTOR_REP_UNKNOWN:
             return MR_FALSE;
     }

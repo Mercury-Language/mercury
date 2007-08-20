@@ -2327,7 +2327,9 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         unexpected(this_file,
             "tuple type in find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = type_cat_enum,
+        ( TypeCategory = type_cat_enum
+        ; TypeCategory = type_cat_foreign_enum
+        ),
         construct_type(type_ctor(unqualified("int"), 0), [], EqvType),
         NeedIntCast = yes
     ;

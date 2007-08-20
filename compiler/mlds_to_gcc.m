@@ -1923,6 +1923,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 	;
 		{ TypeCategory = type_cat_enum
 		; TypeCategory = type_cat_dummy
+		; TypeCategory = type_cat_foreign_enum
 		},
 		% Note that the MLDS -> C back-end uses 'MR_Word' here,
 		% unless --high-level-data is enabled.  But 'MR_Integer'
@@ -2039,6 +2040,8 @@ build_rtti_type_name(type_ctor_enum_functor_desc(_), GCC_Type, !IO) :-
 		['MR_ConstString'	- "MR_enum_functor_name",
 		 'MR_int_least32_t'	- "MR_enum_functor_ordinal"],
 		GCC_Type, !IO).
+build_rtti_type_name(type_ctor_foreign_enum_functor_desc(_), _, _, _) :-
+	sorry(this_file, "NYI foreign enums and asm backend.").
 build_rtti_type_name(type_ctor_notag_functor_desc, GCC_Type, !IO) :-
 	% typedef struct {
 	%     MR_ConstString      MR_notag_functor_name;
@@ -2094,6 +2097,10 @@ build_rtti_type_name(type_ctor_enum_name_ordered_table, gcc__ptr_type_node,
 		!IO).
 build_rtti_type_name(type_ctor_enum_value_ordered_table, gcc__ptr_type_node,
 		!IO).
+build_rtti_type_name(type_ctor_foreign_enum_name_ordered_table, 
+		gcc__ptr_type_node, !IO).
+build_rtti_type_name(type_ctor_foreign_enum_ordinal_ordered_table,
+		gcc__ptr_type_node, !IO).
 build_rtti_type_name(type_ctor_du_name_ordered_table, gcc__ptr_type_node, !IO).
 build_rtti_type_name(type_ctor_du_stag_ordered_table(_), gcc__ptr_type_node,
 		!IO).
@@ -3662,6 +3669,9 @@ build_rval_const(mlconst_false, _, Expr) -->
 	gcc__build_int(0, Expr).
 build_rval_const(mlconst_int(N), _, Expr) -->
 	gcc__build_int(N, Expr).
+build_rval_const(mlconst_foreign(_Value, _Type), _, _) -->
+	{ sorry(this_file,
+		"foreign tags not yet supported with `--target asm'") }.
 build_rval_const(mlconst_float(FloatVal), _, Expr) -->
 	gcc__build_float(FloatVal, Expr).
 build_rval_const(mlconst_string(String), _, Expr) -->

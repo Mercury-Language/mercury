@@ -608,6 +608,8 @@ transform_rval(!RegMap, const(llconst_false), Op, no) :-
     Op = yes(operand_label("<<llconst_false>>")).
 transform_rval(!RegMap, const(llconst_int(Val)), Op, no) :-
     Op = yes(operand_imm(imm32(int32(Val)))).
+transform_rval(!RegMap, const(llconst_foreign(_, _)), _, _) :-
+    sorry(this_file, "x86_64 backend and foreign tags.").
 transform_rval(!RegMap, const(llconst_float(_)), Op, no) :-
     Op = yes(operand_label("<<llconst_float>>")).
 transform_rval(!RegMap, const(llconst_string(String)), no, yes(Op)) :-

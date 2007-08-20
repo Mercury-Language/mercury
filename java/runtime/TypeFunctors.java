@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2003 The University of Melbourne.
+// Copyright (C) 2001-2003, 2007 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -21,6 +21,9 @@ public class TypeFunctors {
 	}
 	public mercury.runtime.EnumFunctorDesc[] functors_enum() {
 		return (mercury.runtime.EnumFunctorDesc[]) functors_init;
+	}
+	public mercury.runtime.ForeignFunctorDesc[] functors_foreign_enum() {
+		return (mercury.runtime.ForeignEnumFunctorDesc[]) functors_init;
 	}
 	public mercury.runtime.NotagFunctorDesc functors_notag() {
 		return (mercury.runtime.NotagFunctorDesc) functors_init;

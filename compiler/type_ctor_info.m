@@ -374,6 +374,10 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 make_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
+                EnumDummy = is_foreign_enum,
+                make_foreign_enum_details(Ctors, ConsTagMap, ReservedTag,
+                    EqualityAxioms, Details)
+            ;
                 EnumDummy = is_dummy,
                 make_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
@@ -601,7 +605,7 @@ make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
     int::in, cons_tag_values::in, list(enum_functor)::out) is det.
 
 make_enum_functors([], _, _, []).
-make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
+make_enum_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         [EnumFunctor | EnumFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, _Context),
     expect(unify(ExistTvars, []), this_file,
@@ -613,11 +617,11 @@ make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
         "functor in enum has nonzero arity"),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    expect(unify(ConsTag, int_tag(NextOrdinal0)), this_file,
+    expect(unify(ConsTag, int_tag(NextOrdinal)), this_file,
         "mismatch on constant assigned to functor in enum"),
     FunctorName = unqualify_name(SymName),
-    EnumFunctor = enum_functor(FunctorName, NextOrdinal0),
-    make_enum_functors(Functors, NextOrdinal0 + 1, ConsTagMap, EnumFunctors).
+    EnumFunctor = enum_functor(FunctorName, NextOrdinal),
+    make_enum_functors(Functors, NextOrdinal + 1, ConsTagMap, EnumFunctors).
 
 :- pred make_enum_maps(enum_functor::in,
     map(int, enum_functor)::in, map(int, enum_functor)::out,
@@ -627,6 +631,76 @@ make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     EnumFunctor = enum_functor(FunctorName, Ordinal),
     svmap.det_insert(Ordinal, EnumFunctor, !ValueMap),
     svmap.det_insert(FunctorName, EnumFunctor, !NameMap).
+
+%---------------------------------------------------------------------------%
+    
+    % Make the functor and layout tables for a foreign enum type.
+    %
+:- pred make_foreign_enum_details(list(constructor)::in, cons_tag_values::in,
+    bool::in, equality_axioms::in, type_ctor_details::out) is det.
+
+make_foreign_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
+        Details) :-
+    (
+        ReserveTag = yes,
+        unexpected(this_file, "foreign enum with reserved tag")
+    ;
+        ReserveTag = no
+    ),
+    make_foreign_enum_functors(Ctors, 0, ConsTagMap, ForeignEnumFunctors),
+    OrdinalMap0 = map.init,
+    NameMap0 = map.init,
+    list.foldl2(make_foreign_enum_maps, ForeignEnumFunctors,
+        OrdinalMap0, OrdinalMap, NameMap0, NameMap),
+    FunctorNumberMap = make_functor_number_map(Ctors),
+    Details = foreign_enum(EqualityAxioms, ForeignEnumFunctors,
+        OrdinalMap, NameMap, FunctorNumberMap).
+    
+    % Create a foreign_enum_functor structure for each functor in an enum type.
+    % The functors are given to us in ordinal order (since that's how the HLDS
+    % stored them), and that is how we return the list of rtti names of the
+    % foreign_enum_functor_desc structures; that way, it is directly usable in
+    % the type layout structure. We also return a structure that allows our
+    % caller to sort this list on functor name, which is how the type functors
+    % structure is constructed.
+    %
+:- pred make_foreign_enum_functors(list(constructor)::in,
+    int::in, cons_tag_values::in, list(foreign_enum_functor)::out) is det.
+
+make_foreign_enum_functors([], _, _, []).
+make_foreign_enum_functors([Functor | Functors], NextOrdinal, ConsTagMap,
+        [ForeignEnumFunctor | ForeignEnumFunctors]) :-
+    Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, _Context),
+    expect(unify(ExistTvars, []), this_file,
+        "existential arguments in functor in foreign enum"),
+    expect(unify(Constraints, []), this_file,
+        "class constraints on functor in foreign enum"),
+    list.length(FunctorArgs, Arity),
+    expect(unify(Arity, 0), this_file,
+        "functor in foreign enum has nonzero arity"),
+    ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
+    map.lookup(ConsTagMap, ConsId, ConsTag),
+    ( ConsTag = foreign_tag(ForeignTagValue0) ->
+        ForeignTagValue = ForeignTagValue0
+    ;
+        unexpected(this_file, "non foreign tag for foreign enum functor")
+    ),
+    FunctorName = unqualify_name(SymName),
+    ForeignEnumFunctor = foreign_enum_functor(FunctorName, NextOrdinal,
+        ForeignTagValue),
+    make_foreign_enum_functors(Functors, NextOrdinal + 1, ConsTagMap,
+        ForeignEnumFunctors).
+
+:- pred make_foreign_enum_maps(foreign_enum_functor::in,
+    map(int, foreign_enum_functor)::in,
+    map(int, foreign_enum_functor)::out,
+    map(string, foreign_enum_functor)::in,
+    map(string, foreign_enum_functor)::out) is det.
+
+make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
+    ForeignEnumFunctor = foreign_enum_functor(FunctorName, FunctorOrdinal, _),
+    svmap.det_insert(FunctorOrdinal, ForeignEnumFunctor, !OrdinalMap),
+    svmap.det_insert(FunctorName, ForeignEnumFunctor, !NameMap).
 
 %---------------------------------------------------------------------------%
 
@@ -763,6 +837,7 @@ process_cons_tag(ConsTag, ConsRep) :-
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
+        ; ConsTag = foreign_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = pred_closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
@@ -951,6 +1026,7 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
 
     % Construct the array mapping ordinal constructor numbers
     % to lexicographic constructor numbers.
+    %
 :- func make_functor_number_map(list(constructor)) = list(int).
 
 make_functor_number_map(Ctors) = Map :-

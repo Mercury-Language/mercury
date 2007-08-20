@@ -117,6 +117,9 @@
     % A type is a dummy type in one of two cases: either it is a builtin
     % dummy type, or it has only a single function symbol of arity zero.
     %
+    % Note that types that are the subject of a foreign_enum pragma cannot
+    % be dummy types.
+    %
 :- pred is_dummy_argument_type(module_info::in, mer_type::in) is semidet.
 
     % A test for types that are defined in Mercury, but whose definitions
@@ -354,6 +357,7 @@ type_category_is_atomic(type_cat_float) = yes.
 type_category_is_atomic(type_cat_higher_order) = no.
 type_category_is_atomic(type_cat_tuple) = no.
 type_category_is_atomic(type_cat_enum) = yes.
+type_category_is_atomic(type_cat_foreign_enum) = yes.
 type_category_is_atomic(type_cat_dummy) = yes.
 type_category_is_atomic(type_cat_variable) = no.
 type_category_is_atomic(type_cat_type_info) = no.
@@ -551,6 +555,8 @@ is_dummy_argument_type(ModuleInfo, Type) :-
             get_type_defn_body(TypeDefn, TypeBody),
             Ctors = TypeBody ^ du_type_ctors,
             UserEqCmp = TypeBody ^ du_type_usereq,
+            EnumOrDummy = TypeBody ^ du_type_is_enum,
+            EnumOrDummy \= is_foreign_enum,
             constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
         )
     ;
@@ -631,6 +637,8 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
             TypeCategory = type_cat_tuple
         ; type_ctor_is_enumeration(TypeCtor, ModuleInfo) ->
             TypeCategory = type_cat_enum
+        ; type_ctor_is_foreign_enumeration(TypeCtor, ModuleInfo) ->
+            TypeCategory = type_cat_foreign_enum
         ;
             TypeCategory = type_cat_user_ctor
         )
@@ -645,6 +653,17 @@ type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
     map.search(TypeDefnTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody ^ du_type_is_enum = is_enum.
+
+%-----------------------------------------------------------------------------%
+
+:- pred type_ctor_is_foreign_enumeration(type_ctor::in, module_info::in)
+    is semidet.
+
+type_ctor_is_foreign_enumeration(TypeCtor, ModuleInfo) :-
+    module_info_get_type_table(ModuleInfo, TypeDefnTable),
+    map.search(TypeDefnTable, TypeCtor, TypeDefn),
+    get_type_defn_body(TypeDefn, TypeBody),
+    TypeBody ^ du_type_is_enum = is_foreign_enum.
 
 %-----------------------------------------------------------------------------%
 
@@ -663,6 +682,7 @@ type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
         ( TypeCategory = type_cat_int
         ; TypeCategory = type_cat_char
         ; TypeCategory = type_cat_enum
+        ; TypeCategory = type_cat_foreign_enum
         ; TypeCategory = type_cat_dummy
         ; TypeCategory = type_cat_type_ctor_info
         ),

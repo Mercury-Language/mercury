@@ -1164,6 +1164,11 @@ qualify_pragma(X, Y, !Info, !Specs) :-
     Y = pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
         Overrides).
 qualify_pragma(X, Y, !Info, !Specs) :-
+    X = pragma_foreign_enum(Lang, TypeName0, TypeArity0, Values),
+    qualify_type_ctor(type_ctor(TypeName0, TypeArity0),
+        type_ctor(TypeName, TypeArity), !Info, !Specs),
+    Y = pragma_foreign_enum(Lang, TypeName, TypeArity, Values).
+qualify_pragma(X, Y, !Info, !Specs) :-
     X = pragma_foreign_proc(Attrs0, Name, PredOrFunc, Vars0, Varset,
         InstVarset, Impl),
     qualify_pragma_vars(Vars0, Vars, !Info, !Specs),

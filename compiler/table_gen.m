@@ -2350,7 +2350,9 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type,
         native_if_possible),
     (
-        TypeCat = type_cat_enum,
+        ( TypeCat = type_cat_enum
+        ; TypeCat = type_cat_foreign_enum
+        ),
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeDefnTable),
         map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
@@ -3431,6 +3433,7 @@ builtin_type(type_cat_typeclass_info) = yes.
 builtin_type(type_cat_base_typeclass_info) = yes.
 builtin_type(type_cat_higher_order) = no.
 builtin_type(type_cat_enum) = no.
+builtin_type(type_cat_foreign_enum) = no.
 builtin_type(type_cat_dummy) = no.
 builtin_type(type_cat_variable) = no.
 builtin_type(type_cat_tuple) = no.
@@ -3440,10 +3443,11 @@ builtin_type(type_cat_user_ctor) = no.
     % we need to use for values of types belonging the type category given by
     % the first argument. The returned value replaces CAT in
     % table_save_CAT_answer and table_restore_CAT_answer.
-
+    %
 :- pred type_save_category(type_category::in, string::out) is det.
 
 type_save_category(type_cat_enum,         "enum").
+type_save_category(type_cat_foreign_enum, "enum").
 type_save_category(type_cat_int,          "int").
 type_save_category(type_cat_char,         "char").
 type_save_category(type_cat_string,       "string").

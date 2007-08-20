@@ -2675,6 +2675,7 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
 get_category_name(type_cat_int) = yes("int").
 get_category_name(type_cat_char) = yes("int").
 get_category_name(type_cat_enum) = no.
+get_category_name(type_cat_foreign_enum) = no.
 get_category_name(type_cat_dummy) = no.
 get_category_name(type_cat_float) = yes("float").
 get_category_name(type_cat_string) = yes("string").

@@ -1238,19 +1238,28 @@ mlds_output_export_enum(_Indent, ExportedEnum, !IO) :-
 
 mlds_output_exported_enum_constant(NameAndTag, !IO) :-
     NameAndTag = Name - Tag,
-    ( 
-        Tag = mlds_data(mlds_native_int_type, Initializer, gc_no_stmt),
-        Initializer = init_obj(const(mlconst_int(Value)))
-    ->
-        io.write_string("#define ", !IO),
-        io.write_string(Name, !IO),
-        io.write_string(" ", !IO),
-        io.write_int(Value, !IO),
-        io.nl(!IO)
+    io.write_string("#define ", !IO),
+    io.write_string(Name, !IO),
+    io.write_string(" ", !IO),
+    ( Tag = mlds_data(mlds_native_int_type, Initializer, gc_no_stmt) ->
+        (
+            Initializer = init_obj(const(mlconst_int(Value)))
+        ->
+            io.write_int(Value, !IO)
+        ;
+            Initializer = init_obj(const(mlconst_foreign(Value,
+                mlds_native_int_type)))
+        ->
+            io.write_string(Value, !IO)
+        ;
+            unexpected(this_file,
+                "tag for export enumeration is not integer or foreign")
+        ) 
     ;
         unexpected(this_file,
-            "bad mlds_entity_defn for exported enumeration value.")
-    ).
+            "exported enumeration contstant is not mlds_data")
+    ),
+    io.nl(!IO).
     
 %-----------------------------------------------------------------------------%
 %
@@ -2289,13 +2298,11 @@ mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
             io.write_string("MR_Word", !IO)
         )
     ;
-        TypeCategory = type_cat_enum,
-        mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
-    ;
-        TypeCategory = type_cat_dummy,
-        mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
-    ;
-        TypeCategory = type_cat_user_ctor,
+        ( TypeCategory = type_cat_enum
+        ; TypeCategory = type_cat_dummy
+        ; TypeCategory = type_cat_foreign_enum
+        ; TypeCategory = type_cat_user_ctor
+        ),
         mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
     ).
 
@@ -3789,6 +3796,12 @@ mlds_output_rval_const(mlconst_int(N), !IO) :-
     % when `Integer' is 64 bits but `int' is 32 bits.
     io.write_string("(MR_Integer) ", !IO),
     io.write_int(N, !IO).
+mlds_output_rval_const(mlconst_foreign(Value, Type), !IO) :-
+    io.write_string("((", !IO),
+    mlds_output_type(Type, !IO),
+    io.write_string(") ", !IO),
+    io.write_string(Value, !IO),
+    io.write_string(")", !IO).
 mlds_output_rval_const(mlconst_float(FloatVal), !IO) :-
     % The cast to (MR_Float) here lets the C compiler do arithmetic in `float'
     % rather than `double' if `MR_Float' is `float' not `double'.

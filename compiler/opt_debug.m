@@ -308,6 +308,7 @@ dump_const(_, llconst_true) = "true".
 dump_const(_, llconst_false) = "false".
 dump_const(_, llconst_int(I)) =
     int_to_string(I).
+dump_const(_, llconst_foreign(F, _)) = F.
 dump_const(_, llconst_float(F)) =
     float_to_string(F).
 dump_const(_, llconst_string(S)) =
@@ -370,6 +371,8 @@ dump_rtti_name(type_ctor_res_addrs) = "res_addrs".
 dump_rtti_name(type_ctor_res_addr_functors) = "res_addr_functors".
 dump_rtti_name(type_ctor_enum_functor_desc(Ordinal)) =
     "enum_functor_desc_" ++ int_to_string(Ordinal).
+dump_rtti_name(type_ctor_foreign_enum_functor_desc(Ordinal)) = 
+    "foreign_enum_functor_desc_" ++ int_to_string(Ordinal).
 dump_rtti_name(type_ctor_notag_functor_desc) = "notag_functor_desc_".
 dump_rtti_name(type_ctor_du_functor_desc(Ordinal)) =
     "du_functor_desc_" ++ int_to_string(Ordinal).
@@ -378,6 +381,10 @@ dump_rtti_name(type_ctor_res_functor_desc(Ordinal)) =
 dump_rtti_name(type_ctor_enum_name_ordered_table) = "enum_name_ordered_table".
 dump_rtti_name(type_ctor_enum_value_ordered_table) =
     "enum_value_ordered_table".
+dump_rtti_name(type_ctor_foreign_enum_name_ordered_table) =
+    "foreign_enum_name_ordered_table".
+dump_rtti_name(type_ctor_foreign_enum_ordinal_ordered_table) =
+    "foreign_enum_ordinal_ordered_table".
 dump_rtti_name(type_ctor_du_name_ordered_table) = "du_name_ordered_table".
 dump_rtti_name(type_ctor_du_stag_ordered_table(Ptag)) =
     "du_stag_ordered_table_" ++ int_to_string(Ptag).

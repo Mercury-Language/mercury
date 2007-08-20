@@ -1604,6 +1604,7 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         set.union(NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
             AllNecessaryTypeCtors),
         strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImplItems),
+        strip_local_foreign_enum_pragmas(!.IntTypesMap, !ImplItems),
         (
             !.ImplItems = [],
             Items = IntItems
@@ -2140,6 +2141,34 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
           )
         ),
         get_modules_from_constraint_arg_types(Args, !Modules)
+    ).  
+
+    % Retain only those foreign_enum pragmas that correspond to types
+    % defined in the interface of a module.
+    %
+:- pred strip_local_foreign_enum_pragmas(type_defn_map::in,
+    item_list::in, item_list::out) is det.
+
+strip_local_foreign_enum_pragmas(IntTypeMap, !ImplItems) :-
+    list.filter(foreign_enum_is_local(IntTypeMap), !ImplItems).
+
+:- pred foreign_enum_is_local(type_defn_map::in, item_and_context::in)
+    is semidet.
+
+foreign_enum_is_local(TypeDefnMap, ItemAndContext) :-
+    ItemAndContext = item_and_context(Item, _Context),
+    (
+        Item = item_pragma(_, PragmaItem),
+        PragmaItem = pragma_foreign_enum(_Lang, TypeName, TypeArity, _Values)
+    ->
+        % We only add a pragma foreign_enum pragma to the interface file
+        % if it corresponds to a type _definition_ in the interface of the
+        % module.
+        TypeCtor = type_ctor(TypeName, TypeArity),
+        map.search(TypeDefnMap, TypeCtor, Defns),
+        Defns \= [parse_tree_abstract_type(_) - _]
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2218,10 +2247,10 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
     ).
 
 % pragma `obsolete', `terminates', `does_not_terminate'
-% `termination_info', `check_termination', and `reserve_tag' pragma
-% declarations are supposed to go in the interface, but all other pragma
-% declarations are implementation details only, and should go in the
-% implementation.
+% `termination_info', `check_termination', `reserve_tag' and
+% `foreign_enum' pragma declarations are supposed to go in the
+% interface, but all other pragma declarations are implementation details
+% only, and should go in the implementation.
 
 % XXX we should allow c_header_code;
 % but if we do allow it, we should put it in the generated
@@ -2231,6 +2260,7 @@ pragma_allowed_in_interface(pragma_foreign_code(_, _), no).
 pragma_allowed_in_interface(pragma_foreign_decl(_, _, _), no).
 pragma_allowed_in_interface(pragma_foreign_export(_, _, _, _, _), no).
 pragma_allowed_in_interface(pragma_foreign_export_enum(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_foreign_enum(_, _, _, _), yes).
 pragma_allowed_in_interface(pragma_foreign_import_module(_, _), yes).
 pragma_allowed_in_interface(pragma_foreign_proc(_, _, _, _, _, _, _), no).
 pragma_allowed_in_interface(pragma_inline(_, _), no).
@@ -2352,7 +2382,8 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
             % Read in the previous version of the file.
             read_mod_ignore_errors(ModuleName, Suffix,
                 "Reading old interface for module", yes, no,
-                OldItemAndContexts, OldError, _OldIntFileName, _OldTimestamp, !IO),
+                OldItemAndContexts, OldError, _OldIntFileName, _OldTimestamp,
+                !IO),
             ( OldError = no_module_errors ->
                 MaybeOldItemAndContexts = yes(OldItemAndContexts)
             ;
@@ -7622,6 +7653,9 @@ item_needs_foreign_imports(item_pragma(_,
         get_foreign_language(Attrs)).
 item_needs_foreign_imports(item_mutable(_, _, _, _, _, _), Lang) :-
     foreign_language(Lang).
+item_needs_foreign_imports(item_pragma(_, pragma_foreign_enum(Lang, _, _, _)),
+        Lang) :-
+    foreign_language(Lang).
 
 :- pred include_in_int_file_implementation(item::in) is semidet.
 
@@ -7637,6 +7671,8 @@ include_in_int_file_implementation(item_module_defn(_, Defn)) :-
 include_in_int_file_implementation(item_typeclass(_, _, _, _, _, _)).
 include_in_int_file_implementation(item_pragma(_,
     pragma_foreign_import_module(_, _))).
+include_in_int_file_implementation(Item) :-
+    Item = item_pragma(_, pragma_foreign_enum(_, _, _, _)).
 
 :- pred make_abstract_defn(item::in, short_interface_kind::in, item::out)
     is semidet.
@@ -7925,6 +7961,7 @@ reorderable_item(item_pragma(_, Pragma)) = Reorderable :-
     ; Pragma = pragma_mm_tabling_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_foreign_export(_, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_foreign_export_enum(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_foreign_enum(_, _, _, _), Reorderable = yes
     ; Pragma = pragma_fact_table(_, _, _), Reorderable = no
     ; Pragma = pragma_foreign_code(_, _), Reorderable = no
     ; Pragma = pragma_foreign_decl(_, _, _), Reorderable = no
@@ -8013,6 +8050,7 @@ chunkable_item(item_pragma(_, Pragma)) = Reorderable :-
     ; Pragma = pragma_foreign_import_module(_, _), Reorderable = no
     ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
     ; Pragma = pragma_foreign_export_enum(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_foreign_enum(_, _, _, _), Reorderable = yes
     ; Pragma = pragma_import(_, _, _, _, _), Reorderable = no
     ; Pragma = pragma_inline(_, _), Reorderable = yes
     ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes

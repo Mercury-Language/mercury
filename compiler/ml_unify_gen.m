@@ -296,6 +296,7 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
     ;
         % Constants.
         ( Tag = int_tag(_)
+        ; Tag = foreign_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = reserved_address_tag(_)
@@ -409,6 +410,8 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
 
 ml_gen_constant(string_tag(String), _, const(mlconst_string(String)), !Info).
 ml_gen_constant(int_tag(Int), _, const(mlconst_int(Int)), !Info).
+ml_gen_constant(foreign_tag(ForeignTag), _, Rval, !Info) :-
+    Rval = const(mlconst_foreign(ForeignTag, mlds_native_int_type)).
 ml_gen_constant(float_tag(Float), _, const(mlconst_float(Float)), !Info).
 ml_gen_constant(shared_local_tag(Bits1, Num1), VarType, Rval, !Info) :-
     ml_gen_type(!.Info, VarType, MLDS_Type),
@@ -1309,6 +1312,7 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
     (
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
+        ; Tag = foreign_tag(_)
         ; Tag = float_tag(_Float)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1385,6 +1389,7 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
     ;
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
+        ; Tag = foreign_tag(_)
         ; Tag = float_tag(_Float)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1668,6 +1673,8 @@ ml_gen_tag_test_rval(float_tag(Float), _, _, Rval) =
     binop(float_eq, Rval, const(mlconst_float(Float))).
 ml_gen_tag_test_rval(int_tag(Int), _, _, Rval) =
     binop(eq, Rval, const(mlconst_int(Int))).
+ml_gen_tag_test_rval(foreign_tag(ForeignVal), _, _, Rval) =
+    binop(eq, Rval, const(mlconst_foreign(ForeignVal, mlds_native_int_type))).
 ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _, _Rval) = _TestRval :-
     % This should never happen, since the error will be detected
     % during mode checking.

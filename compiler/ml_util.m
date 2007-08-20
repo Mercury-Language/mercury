@@ -180,6 +180,8 @@
 
 :- func gen_init_string(string) = mlds_initializer.
 
+:- func gen_init_foreign(string) = mlds_initializer.
+
 :- func gen_init_int(int) = mlds_initializer.
 
 :- func gen_init_bool(bool) = mlds_initializer.
@@ -702,6 +704,9 @@ gen_init_null_pointer(Type) = init_obj(const(mlconst_null(Type))).
 gen_init_string(String) = init_obj(const(mlconst_string(String))).
 
 gen_init_int(Int) = init_obj(const(mlconst_int(Int))).
+
+gen_init_foreign(String) =
+    init_obj(const(mlconst_foreign(String, mlds_native_int_type))).
 
 gen_init_bool(no) = init_obj(const(mlconst_false)).
 gen_init_bool(yes) = init_obj(const(mlconst_true)).

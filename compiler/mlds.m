@@ -1572,6 +1572,7 @@
     --->    mlconst_true
     ;       mlconst_false
     ;       mlconst_int(int)
+    ;       mlconst_foreign(string, mlds_type)
     ;       mlconst_float(float)
     ;       mlconst_string(string)
     ;       mlconst_multi_string(list(string))
@@ -1651,9 +1652,11 @@
 % just for them.)
 
     % A tag should be a small non-negative integer.
+    %
 :- type mlds_tag == int.
 
-    % see runtime/mercury_trail.h
+    % See runtime/mercury_trail.h.
+    %
 :- type mlds_reset_trail_reason
     --->    undo
     ;       commit
@@ -1681,6 +1684,7 @@
     % When these are different, as for specialised versions of predicates
     % from `.opt' files, the defining module's name is added as a
     % qualifier to the pred name.
+    %
 :- type mlds_pred_label
     --->    mlds_user_pred_label(
                 pred_or_func,       % predicate/function
@@ -1723,10 +1727,12 @@
 
 :- type mlds_exported_enum
     --->    mlds_exported_enum(
-                foreign_language,       % For sanity checking.
+                foreign_language,       % For sanity checking only.
                 prog_context,
                 mlds_type,              % Type of the constants (hard coded as
-                                        % mlds_native_int_type in ml_type_gen.m.)
+                                        % mlds_native_int_type in
+                                        % ml_type_gen.m.)
+                
                 assoc_list(string, mlds_entity_defn)
                 % The name of each constant
                 % plus a value to initialize it to.

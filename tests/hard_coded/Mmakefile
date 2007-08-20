@@ -77,6 +77,7 @@ ORDINARY_PROGS=	\
 	existential_types_test \
 	expand \
 	export_test \
+	exported_foreign_enum \
 	external_unification_pred \
 	failure_unify \
 	field_syntax \
@@ -86,6 +87,9 @@ ORDINARY_PROGS=	\
 	float_reg \
 	float_rounding_bug \
 	foreign_and_mercury \
+	foreign_enum_dummy \
+	foreign_enum_mod1 \
+	foreign_enum_rtti \
 	foreign_import_module \
 	foreign_name_mutable \
 	foreign_type \

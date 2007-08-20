@@ -27,6 +27,7 @@
 
     % When adding an item to the HLDS we need to know both its
     % import_status and whether uses of it must be module qualified.
+    %
 :- type item_status
     ---> item_status(import_status, need_qualifier).
 
@@ -1069,6 +1070,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
             Attributes, Overrides),
         add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
             Overrides, !.Status, Context, !ModuleInfo, !Specs)
+    ;
+        Pragma = pragma_foreign_enum(Lang, TypeName, TypeArity, TagValues),
+        add_pragma_foreign_enum(Lang, TypeName, TypeArity, TagValues,
+            !.Status, Context, !ModuleInfo, !Specs)
     ;
         Pragma = pragma_foreign_export(Lang, Name, PredOrFunc, Modes,
             C_Function),

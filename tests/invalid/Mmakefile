@@ -84,6 +84,8 @@ SINGLEMODULE= \
 	external \
 	extra_info_prompt \
 	field_syntax_error \
+	foreign_enum_import \
+	foreign_enum_invalid \
 	foreign_purity_mismatch \
 	foreign_singleton \
 	foreign_type_2 \

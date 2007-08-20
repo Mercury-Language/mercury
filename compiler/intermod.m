@@ -16,8 +16,8 @@
 %   - The pred/mode declarations for local predicates that the
 %     above clauses use.
 %   - Non-exported types, insts and modes used by the above
-%   - Pragma reserve_tag or foreign_type declarations for any types
-%     output due to the line above
+%   - Pragma reserve_tag, foreign_enum, or foreign_type declarations for
+%     any types output due to the line above
 %   - :- import_module declarations to import stuff used by the above.
 %   - pragma declarations for the exported preds.
 %   - pragma foreign_header declarations if any pragma_foreign_code
@@ -1356,7 +1356,58 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             Context, !IO)
     ;
         true
+    ),
+    (
+        Body = hlds_du_type(_, ConsTagVals, EnumOrDummy, _, _, _),
+        EnumOrDummy = is_foreign_enum
+    ->
+        % XXX This language information should be attached to the type.
+        % It doesn't actually matter too much while we don't support
+        % foreign_enum pragmas for languages other than the target languages.
+        globals.io_get_target(TargetLanguage, !IO),
+        (
+            TargetLanguage = target_c,
+            Lang = lang_c
+        ;
+            TargetLanguage = target_il,
+            Lang = lang_il
+        ;
+            TargetLanguage = target_erlang,
+            Lang = lang_erlang
+        ;
+            TargetLanguage = target_java,
+            Lang = lang_java
+        ;
+            ( TargetLanguage = target_asm
+            ; TargetLanguage = target_x86_64
+            ),
+            sorry(this_file, "foreign enum and target_{asm,x86_64}")
+        ),
+        map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [], 
+            ForeignEnumVals),
+        Pragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
+        Item = item_pragma(user, Pragma),
+        mercury_output_item(Item, Context, !IO)
+    ;
+        true
     ).
+
+:- pred gather_foreign_enum_value_pair(cons_id::in, cons_tag::in,
+    assoc_list(sym_name, string)::in, assoc_list(sym_name, string)::out)
+    is det.
+
+gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
+    ( ConsId = cons(SymName0, 0) ->
+        SymName = SymName0
+    ;
+        unexpected(this_file, "expected enumeration constant")
+    ),
+    ( ConsTag = foreign_tag(ForeignTag0) ->
+        ForeignTag = ForeignTag0
+    ;
+        unexpected(this_file, "exepcted foreign tag")
+    ),
+    !:Values = [SymName - ForeignTag | !.Values].
 
 :- pred write_modes(module_info::in, io::di, io::uo) is det.
 

@@ -181,6 +181,14 @@
                 enum_functor_number_mapping
                                     :: list(int)
             )
+    ;       foreign_enum(
+                foreign_enum_axioms        :: equality_axioms,
+                foreign_enum_functors      :: list(foreign_enum_functor),
+                foreign_enum_ordinal_table :: map(int, foreign_enum_functor),
+                foreign_enum_name_table    :: map(string, foreign_enum_functor),
+                foreign_enum_functor_number_mapping
+                                           :: list(int)
+            )
     ;       du(
                 du_axioms           :: equality_axioms,
                 du_functors         :: list(du_functor),
@@ -231,6 +239,17 @@
     --->    enum_functor(
                 enum_name           :: string,
                 enum_ordinal        :: int
+            ).
+
+    % Descriptor for a functor in a foreign enum type.
+    %
+    % This type corresponds to the C Type MR_ForeignEnumFunctorDesc.
+    %
+:- type foreign_enum_functor
+    --->    foreign_enum_functor(
+                foreign_enum_name    :: string,
+                foreign_enum_ordinal :: int,
+                foreign_enum_value   :: string
             ).
 
     % Descriptor for a functor in a notag type.
@@ -608,11 +627,14 @@
     ;       type_ctor_res_addrs
     ;       type_ctor_res_addr_functors
     ;       type_ctor_enum_functor_desc(int)            % functor ordinal
+    ;       type_ctor_foreign_enum_functor_desc(int)    % functor ordinal
     ;       type_ctor_notag_functor_desc
     ;       type_ctor_du_functor_desc(int)              % functor ordinal
     ;       type_ctor_res_functor_desc(int)             % functor ordinal
     ;       type_ctor_enum_name_ordered_table
     ;       type_ctor_enum_value_ordered_table
+    ;       type_ctor_foreign_enum_name_ordered_table
+    ;       type_ctor_foreign_enum_ordinal_ordered_table
     ;       type_ctor_du_name_ordered_table
     ;       type_ctor_du_stag_ordered_table(int)        % primary tag
     ;       type_ctor_du_ptag_ordered_table
@@ -769,6 +791,7 @@
     % functor descriptor.
     %
 :- func enum_functor_rtti_name(enum_functor) = ctor_rtti_name.
+:- func foreign_enum_functor_rtti_name(foreign_enum_functor) = ctor_rtti_name.
 :- func du_functor_rtti_name(du_functor) = ctor_rtti_name.
 :- func res_functor_rtti_name(reserved_functor) = ctor_rtti_name.
 :- func maybe_res_functor_rtti_name(maybe_reserved_functor) = ctor_rtti_name.
@@ -1064,11 +1087,14 @@ ctor_rtti_name_is_exported(type_ctor_field_types(_))              = no.
 ctor_rtti_name_is_exported(type_ctor_res_addrs)                   = no.
 ctor_rtti_name_is_exported(type_ctor_res_addr_functors)           = no.
 ctor_rtti_name_is_exported(type_ctor_enum_functor_desc(_))        = no.
+ctor_rtti_name_is_exported(type_ctor_foreign_enum_functor_desc(_)) = no.
 ctor_rtti_name_is_exported(type_ctor_notag_functor_desc)          = no.
 ctor_rtti_name_is_exported(type_ctor_du_functor_desc(_))          = no.
 ctor_rtti_name_is_exported(type_ctor_res_functor_desc(_))         = no.
 ctor_rtti_name_is_exported(type_ctor_enum_name_ordered_table)     = no.
 ctor_rtti_name_is_exported(type_ctor_enum_value_ordered_table)    = no.
+ctor_rtti_name_is_exported(type_ctor_foreign_enum_name_ordered_table) = no.
+ctor_rtti_name_is_exported(type_ctor_foreign_enum_ordinal_ordered_table) = no.
 ctor_rtti_name_is_exported(type_ctor_du_name_ordered_table)       = no.
 ctor_rtti_name_is_exported(type_ctor_du_stag_ordered_table(_))    = no.
 ctor_rtti_name_is_exported(type_ctor_du_ptag_ordered_table)       = no.
@@ -1170,6 +1196,11 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         string.append_list([ModuleName, "__enum_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
+        RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__foreign_enum_functor_desc_",
+            TypeName, "_", A_str, "_", O_str], Str)
+    ;
         RttiName = type_ctor_notag_functor_desc,
         string.append_list([ModuleName, "__notag_functor_desc_",
             TypeName, "_", A_str], Str)
@@ -1190,6 +1221,14 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
     ;
         RttiName = type_ctor_enum_value_ordered_table,
         string.append_list([ModuleName, "__enum_value_ordered_",
+            TypeName, "_", A_str], Str)
+    ;
+        RttiName = type_ctor_foreign_enum_name_ordered_table,
+        string.append_list([ModuleName, "__foreign_enum_name_ordered_",
+            TypeName, "_", A_str], Str)
+    ;
+        RttiName = type_ctor_foreign_enum_ordinal_ordered_table,
+        string.append_list([ModuleName, "__foreign_enum_ordinal_ordered_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_du_name_ordered_table,
@@ -1503,6 +1542,15 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             )
         )
     ;
+        TypeCtorDetails = foreign_enum(TypeCtorUserEq, _, _, _, _),
+        (
+            TypeCtorUserEq = standard,
+            RepStr = "MR_TYPECTOR_REP_FOREIGN_ENUM"
+        ;
+            TypeCtorUserEq = user_defined,
+            RepStr = "MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ"
+        )
+    ;
         TypeCtorDetails = du(TypeCtorUserEq, _, _, _, _),
         (
             TypeCtorUserEq = standard,
@@ -1637,6 +1685,7 @@ maybe_pseudo_type_info_or_self_to_rtti_data(self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
 type_ctor_details_num_ptags(enum(_, _, _, _, _, _)) = -1.
+type_ctor_details_num_ptags(foreign_enum(_, _, _, _, _)) = -1.
 type_ctor_details_num_ptags(du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
     map.keys(PtagMap, Ptags),
     list.last_det(Ptags, LastPtag).
@@ -1658,6 +1707,8 @@ type_ctor_details_num_ptags(foreign(_)) = -1.
 
 type_ctor_details_num_functors(enum(_, Functors, _, _, _, _)) =
     list.length(Functors).
+type_ctor_details_num_functors(foreign_enum(_, Functors, _, _, _)) = 
+    list.length(Functors).
 type_ctor_details_num_functors(du(_, Functors, _, _, _)) =
     list.length(Functors).
 type_ctor_details_num_functors(reserved(_, Functors, _, _, _, _)) =
@@ -1676,6 +1727,9 @@ project_yes(yes(X)) = X.
 
 enum_functor_rtti_name(EnumFunctor) =
     type_ctor_enum_functor_desc(EnumFunctor ^ enum_ordinal).
+
+foreign_enum_functor_rtti_name(EnumFunctor) = 
+    type_ctor_foreign_enum_functor_desc(EnumFunctor ^ foreign_enum_ordinal).
 
 du_functor_rtti_name(DuFunctor) =
     type_ctor_du_functor_desc(DuFunctor ^ du_ordinal).
@@ -1718,11 +1772,14 @@ ctor_rtti_name_code_addr(type_ctor_field_types(_)) =                no.
 ctor_rtti_name_code_addr(type_ctor_res_addrs) =                     no.
 ctor_rtti_name_code_addr(type_ctor_res_addr_functors) =             no.
 ctor_rtti_name_code_addr(type_ctor_enum_functor_desc(_)) =          no.
+ctor_rtti_name_code_addr(type_ctor_foreign_enum_functor_desc(_)) =  no.
 ctor_rtti_name_code_addr(type_ctor_notag_functor_desc) =            no.
 ctor_rtti_name_code_addr(type_ctor_du_functor_desc(_)) =            no.
 ctor_rtti_name_code_addr(type_ctor_res_functor_desc(_)) =           no.
 ctor_rtti_name_code_addr(type_ctor_enum_name_ordered_table) =       no.
 ctor_rtti_name_code_addr(type_ctor_enum_value_ordered_table) =      no.
+ctor_rtti_name_code_addr(type_ctor_foreign_enum_name_ordered_table) = no.
+ctor_rtti_name_code_addr(type_ctor_foreign_enum_ordinal_ordered_table) = no.
 ctor_rtti_name_code_addr(type_ctor_du_name_ordered_table) =         no.
 ctor_rtti_name_code_addr(type_ctor_du_stag_ordered_table(_)) =      no.
 ctor_rtti_name_code_addr(type_ctor_du_ptag_ordered_table) =         no.
@@ -1902,6 +1959,8 @@ ctor_rtti_name_type(type_ctor_res_addr_functors,
         "ReservedAddrFunctorDescPtr", yes).
 ctor_rtti_name_type(type_ctor_enum_functor_desc(_),
         "EnumFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_foreign_enum_functor_desc(_),
+        "ForeignEnumFunctorDesc", no).
 ctor_rtti_name_type(type_ctor_notag_functor_desc,
         "NotagFunctorDesc", no).
 ctor_rtti_name_type(type_ctor_du_functor_desc(_),
@@ -1912,6 +1971,10 @@ ctor_rtti_name_type(type_ctor_enum_name_ordered_table,
         "EnumFunctorDescPtr", yes).
 ctor_rtti_name_type(type_ctor_enum_value_ordered_table,
         "EnumFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_foreign_enum_name_ordered_table,
+        "ForeignEnumFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_foreign_enum_ordinal_ordered_table,
+        "ForeignEnumFunctorDescPtr", yes).
 ctor_rtti_name_type(type_ctor_du_name_ordered_table,
         "DuFunctorDescPtr", yes).
 ctor_rtti_name_type(type_ctor_du_stag_ordered_table(_),

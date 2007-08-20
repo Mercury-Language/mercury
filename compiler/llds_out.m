@@ -5167,13 +5167,18 @@ output_rval_const(llconst_true, !IO) :-
 output_rval_const(llconst_false, !IO) :-
     io.write_string("MR_FALSE", !IO).
 output_rval_const(llconst_int(N), !IO) :-
-    % We need to cast to (Integer) to ensure things like 1 << 32 work
-    % when `Integer' is 64 bits but `int' is 32 bits.
+    % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
+    % when `MR_Integer' is 64 bits but `int' is 32 bits.
     output_llds_type_cast(integer, !IO),
     io.write_int(N, !IO).
+output_rval_const(llconst_foreign(Value, Type), !IO) :-
+    io.write_char('(', !IO),
+    output_llds_type_cast(Type, !IO),
+    io.write_string(Value, !IO),
+    io.write_char(')', !IO).
 output_rval_const(llconst_float(FloatVal), !IO) :-
-    % The cast to (Float) here lets the C compiler do arithmetic in `float'
-    % rather than `double' if `Float' is `float' not `double'.
+    % The cast to (MR_Float) here lets the C compiler do arithmetic in `float'
+    % rather than `double' if `MR_Float' is `float' not `double'.
     output_llds_type_cast(float, !IO),
     c_util.output_float_literal(FloatVal, !IO).
 output_rval_const(llconst_string(String), !IO) :-

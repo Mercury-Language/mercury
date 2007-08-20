@@ -441,6 +441,7 @@ start_label:
         case MR_TYPECTOR_REP_BITMAP:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
 
             /*
             ** In deep profiling grades, the caller of builtin.unify or
@@ -584,9 +585,11 @@ start_label:
 
 #ifdef  include_compare_rep_code
         case MR_TYPECTOR_REP_ENUM_USEREQ:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
             /* fall through */
 #endif
         case MR_TYPECTOR_REP_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_CHAR:
 

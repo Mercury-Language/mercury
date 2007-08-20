@@ -441,6 +441,13 @@
                 export_enum_attributes :: export_enum_attributes,
                 export_enum_overrides  :: assoc_list(sym_name, string)
             )
+    ;
+            pragma_foreign_enum(
+                foreign_enum_language   :: foreign_language,
+                foreign_enum_type_name  :: sym_name,
+                foreign_enum_type_arity :: arity,
+                foreign_enum_values     :: assoc_list(sym_name, string)
+            )
     %
     % Optimization pragmas
     %

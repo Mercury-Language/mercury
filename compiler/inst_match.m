@@ -2051,6 +2051,7 @@ type_may_contain_solver_type_2(type_cat_float) = no.
 type_may_contain_solver_type_2(type_cat_higher_order) = no.
 type_may_contain_solver_type_2(type_cat_tuple) = yes.
 type_may_contain_solver_type_2(type_cat_enum) = no.
+type_may_contain_solver_type_2(type_cat_foreign_enum) = no.
 type_may_contain_solver_type_2(type_cat_dummy) = no.
 type_may_contain_solver_type_2(type_cat_variable) = yes.
 type_may_contain_solver_type_2(type_cat_type_info) = no.

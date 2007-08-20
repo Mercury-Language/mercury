@@ -6179,6 +6179,9 @@ fair search rule; and so forth.
 * Using Mercury enumerations in foreign code:: How to use an enumeration type
                                                defined in Mercury in a
                                                different programming language.
+* Using foreign enumerations in Mercury code:: How to use an enumeration type
+                                                defined in a foreign language
+                                                in Mercury code.
 * Data passing conventions::	       How Mercury types are passed to
 				       different languages.
 * Adding foreign declarations::        How to add declarations of
@@ -6930,7 +6933,7 @@ bodies of @samp{foreign_proc} and @samp{foreign_code} pragmas via
 a declaration of the form:
 
 @example
-:- pragma foreign_export_enum(@var{Lang}, @var{MercuryType},
+:- pragma foreign_export_enum("@var{Lang}", @var{MercuryType},
         @var{Attributes}, @var{Overrides}).
 @end example
 
@@ -6999,6 +7002,56 @@ implementation section of a module.
 
 @c -----------------------------------------------------------------------
 
+@node Using foreign enumerations in Mercury code
+@section Using foreign enumerations in Mercury code
+
+The values used to represent a Mercury enumeration type in a foreign
+language may be explicitly assigned by the programmer using a declaration
+of the form:
+
+@example
+:- pragma foreign_enum("@var{Lang}", @var{MercuryType}, @var{CtorValues}).
+@end example
+
+@var{CtorValues} is a list of pairs of the form:
+
+@example
+[
+    ctor_0 - "ForeignValue_0",
+    ctor_1 - "ForeignValue_1",
+    ...
+    ctor_N - "ForeignValue_N"
+]
+@end example
+
+The first element of each pair is a constructor of the type @var{MercuryType},
+and the second is a value in the language @var{Lang} that will be used
+to represent that constructor.
+The mapping defined by this list of pairs must form a bijection.
+
+Mercury implementations may impose further foreign language-specific 
+restrictions on the form that values used to represent enumeration
+constructors may take.
+See the language specific information below for details.
+
+The Mercury implementation is not required to check the validity of
+foreign enumeration values.
+
+A @samp{pragma foreign_enum} declaration must occur in the implementation
+section of the module that defines the type @var{MercuryType}.
+It is an error if the type @var{MercuryType} is the subject of more than
+one @samp{pragma foreign_enum} declaration for a given foreign language.
+
+Note that the default comparison for types that are the subject of a
+@samp{pragma foreign_enum} declaration will be defined by the foreign
+values, rather than the order of the constructors in the
+type declaration (as is usually the case).
+
+@c XXX we need to specify a behaviour when there are multiple supported
+@c foreign languages.  
+
+@c -----------------------------------------------------------------------
+
 @node Adding foreign declarations
 @section Adding foreign declarations
 
@@ -7019,8 +7072,8 @@ language, if appropriate).
 
 Entities declared in @samp{pragma foreign_decl} declarations are
 visible in @samp{pragma foreign_code}, @samp{pragma foreign_type},
-and @samp{pragma foreign_proc} declarations that specify the same foreign
-language and occur in the same Mercury module.
+@samp{pragma foreign_proc}, and @samp{pragma foreign_enum} declarations
+that specify the same foreign language and occur in the same Mercury module.
 
 By default, the contents of @samp{pragma foreign_decl} declarations
 are also visible in the same kinds of declarations in other modules
@@ -7161,6 +7214,8 @@ Use the string @code{"Erlang"} to set the foreign language to Erlang.
 @menu
 * Using pragma foreign_type for C 	 :: Declaring C types in Mercury
 * Using pragma foreign_export_enum for C :: Using Mercury enumerations in C
+* Using pragma foreign_enum for C        :: Assigning Mercury enumerations
+                                            values in C
 * Using pragma foreign_proc for C 	 :: Calling C code from Mercury
 * Using pragma foreign_export for C      :: Calling Mercury code from C
 * Using pragma foreign_decl for C 	 :: Including C declarations in Mercury
@@ -7235,6 +7290,13 @@ the Mercury constructor @samp{foo} would be @code{foo}.
 
 @c It would be useful if there were some documented way of mapping
 @c these things into [0, N - 1], e.g. for array lookups.
+
+@node Using pragma foreign_enum for C
+@subsubsection Using pragma foreign_enum for C
+
+Foreign enumeration values in C must be constants of type @samp{MR_Integer}.
+They may be specified as either integer literals or via preprocessor macros
+that expand to integer literals.
 
 @node Using pragma foreign_proc for C
 @subsubsection Using pragma foreign_proc for C
@@ -7484,7 +7546,7 @@ set @code{SUCCESS_INDICATOR} to false.
 @node Using pragma foreign_export for C#
 @subsubsection Using pragma foreign_export for C#
 
-@samp{pramga foreign_export} is not currently supported for C#.
+@samp{pragma foreign_export} is not currently supported for C#.
 
 @node Using pragma foreign_decl for C#
 @subsubsection Using pragma foreign_decl for C#
@@ -9506,7 +9568,7 @@ One example is an operation that takes so long that
 users may think the program has gone into an infinite loop:
 periodically printing a progress message can give them reassurance.
 Another example is a program that is
-too long-running for its behavior to be analyzed via debuggers
+too long-running for its behaviour to be analyzed via debuggers
 and too complex for analysis via profilers;
 a programmable logging facility generating data
 for analysis by a specially-written program may be the best option.

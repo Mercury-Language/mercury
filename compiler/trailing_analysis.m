@@ -777,6 +777,8 @@ check_type_2(ModuleInfo, Type, type_cat_tuple) =
     check_user_type(ModuleInfo, Type).
 check_type_2(ModuleInfo, Type, type_cat_enum) =
     check_user_type(ModuleInfo, Type).
+check_type_2(ModuleInfo, Type, type_cat_foreign_enum) =
+    check_user_type(ModuleInfo, Type).
 check_type_2(ModuleInfo, Type, type_cat_user_ctor) =
     check_user_type(ModuleInfo, Type).
 

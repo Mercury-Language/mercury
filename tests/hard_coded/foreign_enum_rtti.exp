@@ -1,0 +1,38 @@
+Checking io.write for foreign enum ...
+foo
+bar
+baz
+Checking deep copy for foreign enum ...
+[foo, bar, baz]
+Number of functors of foo/0: 3
+Checking construct.get_functor for foreign_enum ...
+functor_number_lex = 0
+    name  = bar
+    arity = 0
+    no arguments
+functor_number_lex = 1
+    name  = baz
+    arity = 0
+    no arguments
+functor_number_lex = 2
+    name  = foo
+    arity = 0
+    no arguments
+Checking construct.get_functor_ordinal for foreign_enum ...
+    lex = 0, ordinal = 1
+    lex = 1, ordinal = 2
+    lex = 2, ordinal = 0
+Checking construct.construct for foreign_enum ...
+    univ_cons(bar)
+    univ_cons(baz)
+    univ_cons(foo)
+Checking deconstruct.deconstruct for foreign_enum ...
+    name = foo
+    arity = 0
+    no args
+    name = bar
+    arity = 0
+    no args
+    name = baz
+    arity = 0
+    no args

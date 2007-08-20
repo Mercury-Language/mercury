@@ -1,9 +1,15 @@
 *.dep
 *.d
+*.date
 *.dv
 *.c *.out *.res
+*.int
+*.int2
 *.err
 *.mh
+*.mih
+*.opt
+*.optdate
 *.res1
 *.gz
 *.c_date
@@ -41,11 +47,15 @@ existential_bound_tvar
 existential_reordering
 expand
 export_test
+exported_foreign_enum
 factt
 factt_non
 float_map
 float_reg
 float_rounding_bug
+foreign_enum_dummy
+foreign_enum_mod1
+foreign_enum_rtti
 free_free_mode
 func_and_pred
 func_ctor_ambig

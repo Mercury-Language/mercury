@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002, 2005 The University of Melbourne.
+** Copyright (C) 2002, 2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,7 @@
 
 union MR_Construct_Functor_Union {
 	const MR_EnumFunctorDesc		*enum_functor_desc;
+	const MR_ForeignEnumFunctorDesc		*foreign_enum_functor_desc;
 	const MR_NotagFunctorDesc		*notag_functor_desc;
 	const MR_DuFunctorDesc			*du_functor_desc;
 };

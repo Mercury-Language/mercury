@@ -316,6 +316,61 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             return;
 
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+            if (noncanon == MR_NONCANON_ABORT) {
+                /* XXX should throw an exception */
+                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                    ": attempt to deconstruct noncanonical term");
+                return;
+            } else if (noncanon == MR_NONCANON_ALLOW) {
+                handle_noncanonical_name(type_ctor_info);
+                handle_zero_arity_args();
+                return;
+            }
+            /* else fall through */
+        
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+            {
+                /*
+                ** For foreign enumerations we cannot use the value as
+                ** an index into the type layout, so we just have to do a
+                ** linear search.
+                */
+                int                 i;
+                int                 num_functors;
+                MR_ConstString      functor_name = NULL;
+                MR_int_least32_t    functor_ordinal = -1;
+                MR_int_least32_t    functor_value;
+
+                num_functors = MR_type_ctor_num_functors(type_ctor_info);
+
+                for (i = 0; i < num_functors; i++) {
+                    functor_value = MR_type_ctor_layout(type_ctor_info).
+                      MR_layout_foreign_enum[i]->MR_foreign_enum_functor_value;
+                  
+                    if (functor_value == *data_word_ptr) {
+                        
+                        functor_name = MR_type_ctor_layout(type_ctor_info).
+                            MR_layout_foreign_enum[i]->
+                                MR_foreign_enum_functor_name;
+                    
+                        functor_ordinal = MR_type_ctor_layout(type_ctor_info).
+                            MR_layout_foreign_enum[i]->
+                                MR_foreign_enum_functor_ordinal;
+                        
+                        break;
+                    }
+                }
+
+                MR_assert(functor_name != NULL);
+                MR_assert(functor_ordinal != -1);
+
+                handle_functor_name(functor_name);
+                handle_type_functor_number(type_ctor_info, functor_ordinal);
+                handle_zero_arity_args();
+            }
+            return;
+
         case MR_TYPECTOR_REP_DUMMY:
             /*
             ** We must not refer to the "value" we are asked to deconstruct,

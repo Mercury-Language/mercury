@@ -156,6 +156,7 @@
     % An `hlds_type_body' holds the body of a type definition:
     % du = discriminated union, eqv_type = equivalence type (a type defined
     % to be equivalent to some other type), and solver_type.
+    %
 :- type hlds_type_body
     --->    hlds_du_type(
                 % The ctors for this type.
@@ -185,6 +186,7 @@
 :- type enum_or_dummy
     --->    is_enum
     ;       is_dummy
+    ;       is_foreign_enum
     ;       not_enum_or_dummy.
 
 :- type foreign_type_body
@@ -199,6 +201,7 @@
 
     % Foreign types may have user-defined equality and comparison
     % preds, but not solver_type_details.
+    %
 :- type foreign_type_lang_data(T)
     --->    foreign_type_lang_data(
                 T,
@@ -210,12 +213,14 @@
     % union type is represented. For each functor in the d.u. type, it gives
     % a cons_tag which specifies how that functor and its arguments are
     % represented.
+    %
 :- type cons_tag_values == map(cons_id, cons_tag).
 
     % A `cons_tag' specifies how a functor and its arguments (if any) are
     % represented. Currently all values are represented as a single word;
     % values which do not fit into a word are represented by a (possibly
     % tagged) pointer to memory on the heap.
+    %
 :- type cons_tag
     --->    string_tag(string)
             % Strings are represented using the MR_string_const() macro;
@@ -231,6 +236,12 @@
             % This means the constant is represented just as a word containing
             % the specified integer value. This is used for enumerations and
             % character constants as well as for int constants.
+    
+    ;       foreign_tag(string)
+            % This means the constant is represented by the string which is
+            % embedded directly in the target language.  This is used for
+            % foreign enumerations, i.e. those enumeration types that are the
+            % subject of a foreign_enum pragma.
 
     ;       pred_closure_tag(pred_id, proc_id, lambda_eval_method)
             % Higher-order pred closures tags. These are represented as
@@ -376,6 +387,7 @@
 get_primary_tag(string_tag(_)) = no.
 get_primary_tag(float_tag(_)) = no.
 get_primary_tag(int_tag(_)) = no.
+get_primary_tag(foreign_tag(_)) = no.
 get_primary_tag(pred_closure_tag(_, _, _)) = no.
 get_primary_tag(type_ctor_info_tag(_, _, _)) = no.
 get_primary_tag(base_typeclass_info_tag(_, _, _)) = no.
@@ -384,8 +396,8 @@ get_primary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
 get_primary_tag(table_io_decl_tag(_, _)) = no.
 get_primary_tag(single_functor_tag) = yes(0).
 get_primary_tag(unshared_tag(PrimaryTag)) = yes(PrimaryTag).
-get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag)) =
-        yes(PrimaryTag).
+get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag))
+        = yes(PrimaryTag).
 get_primary_tag(shared_local_tag(PrimaryTag, _)) = yes(PrimaryTag).
 get_primary_tag(no_tag) = no.
 get_primary_tag(reserved_address_tag(_)) = no.
@@ -395,6 +407,7 @@ get_primary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
 get_secondary_tag(string_tag(_)) = no.
 get_secondary_tag(float_tag(_)) = no.
 get_secondary_tag(int_tag(_)) = no.
+get_secondary_tag(foreign_tag(_)) = no.
 get_secondary_tag(pred_closure_tag(_, _, _)) = no.
 get_secondary_tag(type_ctor_info_tag(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_tag(_, _, _)) = no.
@@ -403,8 +416,8 @@ get_secondary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
 get_secondary_tag(table_io_decl_tag(_, _)) = no.
 get_secondary_tag(single_functor_tag) = no.
 get_secondary_tag(unshared_tag(_)) = no.
-get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag)) =
-        yes(SecondaryTag).
+get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag))
+        = yes(SecondaryTag).
 get_secondary_tag(shared_local_tag(_, _)) = no.
 get_secondary_tag(no_tag) = no.
 get_secondary_tag(reserved_address_tag(_)) = no.
@@ -514,7 +527,7 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
     % An `hlds_inst_defn' holds the information we need to store
     % about inst definitions such as
     %   :- inst list_skel(I) = bound([] ; [I | list_skel(I)].
-
+    %
 :- type hlds_inst_defn
     --->    hlds_inst_defn(
                 inst_varset     :: inst_varset,

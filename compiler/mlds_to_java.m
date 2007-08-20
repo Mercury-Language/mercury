@@ -202,6 +202,7 @@ type_category_is_object(type_cat_float) = no.
 type_category_is_object(type_cat_higher_order) = no.
 type_category_is_object(type_cat_tuple) = no.
 type_category_is_object(type_cat_enum) = yes.
+type_category_is_object(type_cat_foreign_enum) = yes.
 type_category_is_object(type_cat_dummy) = yes.
 type_category_is_object(type_cat_variable) = yes.
 type_category_is_object(type_cat_type_info) = yes.
@@ -1444,6 +1445,7 @@ get_java_type_initializer(mercury_type(_, type_cat_base_typeclass_info, _))
 get_java_type_initializer(mercury_type(_, type_cat_higher_order, _)) = "null".
 get_java_type_initializer(mercury_type(_, type_cat_tuple, _)) = "null".
 get_java_type_initializer(mercury_type(_, type_cat_enum, _)) = "null".
+get_java_type_initializer(mercury_type(_, type_cat_foreign_enum, _)) = "null".
 get_java_type_initializer(mercury_type(_, type_cat_dummy, _)) = "null".
 get_java_type_initializer(mercury_type(_, type_cat_variable, _)) = "null".
 get_java_type_initializer(mercury_type(_, type_cat_user_ctor, _)) = "null".
@@ -1961,6 +1963,9 @@ output_mercury_type(Type, TypeCategory, !IO) :-
         TypeCategory = type_cat_enum,
         output_mercury_user_type(Type, TypeCategory, !IO)
     ;
+        TypeCategory = type_cat_foreign_enum,
+        output_mercury_user_type(Type, TypeCategory, !IO)
+    ;
         TypeCategory = type_cat_dummy,
         output_mercury_user_type(Type, TypeCategory, !IO)
     ;
@@ -2012,6 +2017,7 @@ type_category_is_array(type_cat_float) = no.
 type_category_is_array(type_cat_higher_order) = yes.
 type_category_is_array(type_cat_tuple) = yes.
 type_category_is_array(type_cat_enum) = no.
+type_category_is_array(type_cat_foreign_enum) = no.
 type_category_is_array(type_cat_dummy) = no.
 type_category_is_array(type_cat_variable) = no.
 type_category_is_array(type_cat_type_info) = no.
@@ -3284,6 +3290,11 @@ output_rval_const(mlconst_false, !IO) :-
 
 output_rval_const(mlconst_int(N), !IO) :-
     io.write_int(N, !IO).
+
+    % XXX Should we parenthesize this?
+    %
+output_rval_const(mlconst_foreign(Value, _Type), !IO) :-
+    io.write_string(Value, !IO).
 
 output_rval_const(mlconst_float(FloatVal), !IO) :-
     c_util.output_float_literal(FloatVal, !IO).

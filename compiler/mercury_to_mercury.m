@@ -605,6 +605,10 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
         mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity, 
             Attributes, Overrides, !IO)
     ;
+        Pragma = pragma_foreign_enum(Lang, TypeName, TypeArity, Values),
+        mercury_format_pragma_foreign_enum(Lang, TypeName, TypeArity,
+            Values, !IO)
+    ;
         Pragma = pragma_obsolete(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate, "obsolete", no,
             !IO)
@@ -3627,7 +3631,7 @@ mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity,
     add_string(", ", !U),
     mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U),
     add_string(", ", !U),
-    mercury_format_pragma_foreign_export_enum_overrides(Overrides, !U),
+    mercury_format_sym_name_string_assoc_list(Overrides, !U),
     add_string(").\n", !U).
 
 :- pred mercury_format_pragma_foreign_export_enum_attributes(
@@ -3646,23 +3650,44 @@ mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U) :-
     ),
     add_string("]", !U).
 
-:- pred mercury_format_pragma_foreign_export_enum_overrides(
+    % Output an association list of sym_names and strings, as used
+    % by both foreign_enum and foreign_export_enum pragmas.
+    % The strings will be quoted in the output.
+    %
+:- pred mercury_format_sym_name_string_assoc_list(
     assoc_list(sym_name, string)::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_pragma_foreign_export_enum_overrides(Overrides, !U) :-
+mercury_format_sym_name_string_assoc_list(AssocList, !U) :-
     add_char('[', !U),
-    add_list(Overrides, ",",
-        mercury_format_pragma_foreign_export_enum_override, !U),
+    add_list(AssocList, ",",
+        mercury_format_sym_name_string_pair, !U),
     add_char(']', !U).
 
-:- pred mercury_format_pragma_foreign_export_enum_override(
+:- pred mercury_format_sym_name_string_pair(
     pair(sym_name, string)::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_pragma_foreign_export_enum_override(CtorName - ForeignName,
-        !U) :-
-    mercury_format_bracketed_sym_name(CtorName, next_to_graphic_token, !U),
+mercury_format_sym_name_string_pair(SymName - String, !U) :-
+    mercury_format_bracketed_sym_name(SymName, next_to_graphic_token, !U),
     add_string(" - ", !U),
-    add_quoted_string(ForeignName, !U).
+    add_quoted_string(String, !U).
+
+%-----------------------------------------------------------------------------%
+       
+:- pred mercury_format_pragma_foreign_enum(foreign_language::in,
+    sym_name::in, arity::in, assoc_list(sym_name, string)::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_foreign_enum(Lang, TypeName, TypeArity,
+        Values, !U) :-
+    add_string(":- pragma foreign_enum(", !U),        
+    mercury_format_foreign_language_string(Lang, !U),
+    add_string(", ", !U),
+    mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token, !U),
+    add_string("/", !U),
+    add_int(TypeArity, !U),
+    add_string(", ", !U),
+    mercury_format_sym_name_string_assoc_list(Values, !U),
+    add_string(").\n", !U).
 
 %-----------------------------------------------------------------------------%
 

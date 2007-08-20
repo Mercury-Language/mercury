@@ -1145,6 +1145,7 @@ remap_rval_const(Remap, Const0) = Const :-
         ( Const0 = llconst_true
         ; Const0 = llconst_false
         ; Const0 = llconst_int(_)
+        ; Const0 = llconst_foreign(_, _)
         ; Const0 = llconst_float(_)
         ; Const0 = llconst_string(_)
         ; Const0 = llconst_multi_string(_)

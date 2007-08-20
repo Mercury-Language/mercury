@@ -101,6 +101,29 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
         }
         return MR_TRUE;
 
+    case MR_TYPECTOR_REP_FOREIGN_ENUM:
+    case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+        {
+            const MR_ForeignEnumFunctorDesc  *functor_desc;
+            
+            if (functor_number < 0 ||
+                functor_number >= MR_type_ctor_num_functors(type_ctor_info))
+            {
+                MR_fatal_error("MR_get_functor_info: "
+                    "foreign enum functor_number out of range");
+            }
+            functor_desc = MR_type_ctor_functors(type_ctor_info).
+                MR_functors_foreign_enum[functor_number];
+            construct_info->functor_info.foreign_enum_functor_desc
+                = functor_desc;
+            construct_info->functor_name =
+                functor_desc->MR_foreign_enum_functor_name;
+            construct_info->arity = 0;
+            construct_info->arg_pseudo_type_infos = NULL;
+            construct_info->arg_names = NULL;
+        }
+        return MR_TRUE;
+
     case MR_TYPECTOR_REP_NOTAG:
     case MR_TYPECTOR_REP_NOTAG_USEREQ:
     case MR_TYPECTOR_REP_NOTAG_GROUND:
@@ -291,6 +314,8 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
         case MR_TYPECTOR_REP_DUMMY:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
             return MR_type_ctor_num_functors(type_ctor_info);
 
         case MR_TYPECTOR_REP_NOTAG:

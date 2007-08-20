@@ -1068,6 +1068,11 @@
     --->    llconst_true
     ;       llconst_false
     ;       llconst_int(int)
+    ;       llconst_foreign(string, llds_type)
+            % A constant in the target language.
+            % It may be a #defined constant in C which is why
+            % it is represented as string.
+            
     ;       llconst_float(float)
     ;       llconst_string(string)
     ;       llconst_multi_string(list(string))
@@ -1398,6 +1403,7 @@ rval_type(mem_addr(_), data_ptr).
 const_type(llconst_true, bool).
 const_type(llconst_false, bool).
 const_type(llconst_int(_), integer).
+const_type(llconst_foreign(_, Type), Type).
 const_type(llconst_float(_), float).
 const_type(llconst_string(_), string).
 const_type(llconst_multi_string(_), string).

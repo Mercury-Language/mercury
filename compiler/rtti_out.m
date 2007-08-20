@@ -667,6 +667,20 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
+        TypeCtorDetails = foreign_enum(_, ForeignEnumFunctors, 
+            ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
+        list.foldl2(output_foreign_enum_functor_defn(RttiTypeCtor),
+            ForeignEnumFunctors, !DeclSet, !IO),
+        output_foreign_enum_ordinal_ordered_table(RttiTypeCtor,
+            ForeignEnumByOrdinal, !DeclSet, !IO),
+        output_foreign_enum_name_ordered_table(RttiTypeCtor, ForeignEnumByName,
+            !DeclSet, !IO),
+        output_functor_number_map(RttiTypeCtor, FunctorNumberMap,
+            !DeclSet, !IO),
+        MaybeLayoutName = yes(type_ctor_foreign_enum_ordinal_ordered_table),
+        MaybeFunctorsName = yes(type_ctor_foreign_enum_name_ordered_table),
+        HaveFunctorNumberMap = yes
+    ;
         TypeCtorDetails = du(_, DuFunctors, DuByRep,
             DuByName, FunctorNumberMap),
         list.foldl2(output_du_functor_defn(RttiTypeCtor), DuFunctors,
@@ -746,6 +760,25 @@ output_enum_functor_defn(RttiTypeCtor, EnumFunctor, !DeclSet, !IO) :-
     c_util.output_quoted_string(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
     io.write_int(Ordinal, !IO),
+    io.write_string("\n};\n", !IO).
+
+:- pred output_foreign_enum_functor_defn(rtti_type_ctor::in,
+    foreign_enum_functor::in, decl_set::in, decl_set::out, io::di, io::uo)
+    is det.
+
+output_foreign_enum_functor_defn(RttiTypeCtor, ForeignEnumFunctor, !DeclSet, 
+        !IO) :-
+    ForeignEnumFunctor = foreign_enum_functor(FunctorName, FunctorOrdinal,
+        FunctorValue),
+    RttiId = ctor_rtti_id(RttiTypeCtor,
+        type_ctor_foreign_enum_functor_desc(FunctorOrdinal)),
+    output_generic_rtti_data_defn_start(RttiId, !DeclSet, !IO),
+    io.write_string(" = {\n\t""", !IO),
+    c_util.output_quoted_string(FunctorName, !IO),
+    io.write_string(""",\n\t", !IO),
+    io.write_int(FunctorOrdinal, !IO),
+    io.write_string(",\n\t", !IO),
+    io.write_string(FunctorValue, !IO),
     io.write_string("\n};\n", !IO).
 
 :- pred output_notag_functor_defn(rtti_type_ctor::in, notag_functor::in,
@@ -1056,6 +1089,36 @@ output_enum_name_ordered_table(RttiTypeCtor, FunctorMap, !DeclSet, !IO) :-
     FunctorRttiNames = list.map(enum_functor_rtti_name, Functors),
     output_generic_rtti_data_defn_start(
         ctor_rtti_id(RttiTypeCtor, type_ctor_enum_name_ordered_table),
+        !DeclSet, !IO),
+    io.write_string(" = {\n", !IO),
+    output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames, !IO),
+    io.write_string("};\n", !IO).
+        
+:- pred output_foreign_enum_ordinal_ordered_table(rtti_type_ctor::in,
+    map(int, foreign_enum_functor)::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+output_foreign_enum_ordinal_ordered_table(RttiTypeCtor, FunctorMap,
+        !DeclSet, !IO) :-
+    Functors = map.values(FunctorMap),
+    FunctorRttiNames = list.map(foreign_enum_functor_rtti_name, Functors),
+    RttiId = ctor_rtti_id(RttiTypeCtor,
+        type_ctor_foreign_enum_ordinal_ordered_table),
+    output_generic_rtti_data_defn_start(RttiId, !DeclSet, !IO),
+    io.write_string(" = {\n", !IO),
+    output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames, !IO),
+    io.write_string("};\n", !IO).
+        
+:- pred output_foreign_enum_name_ordered_table(rtti_type_ctor::in,
+    map(string, foreign_enum_functor)::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+output_foreign_enum_name_ordered_table(RttiTypeCtor, FunctorMap, !DeclSet,
+        !IO) :-
+    Functors = map.values(FunctorMap),
+    FunctorRttiNames = list.map(foreign_enum_functor_rtti_name, Functors),
+    output_generic_rtti_data_defn_start(
+        ctor_rtti_id(RttiTypeCtor, type_ctor_foreign_enum_name_ordered_table),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
     output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames, !IO),

@@ -3,8 +3,10 @@ NEWS since Mercury 0.13.1
 
 Changes to the Mercury language:
 
+* A new pragma, foreign_enum, allows the constructors of Mercury 
+  enumeration types to be assigned values from foreign language code.
 * A new pragma, foreign_export_enum, allows the constructors of Mercury
-  enumeration types, to be referred to in foreign language code.
+  enumeration types to be referred to in foreign language code.
 * Some of the restrictions on typeclass instances have been relaxed, allowing
   support for polymorphic instances with functional dependencies.
 * We now support trace goals, which can be used to print progress messages or
@@ -242,6 +244,27 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* The new pragma, foreign_enum, can be used to establish a 
+  mapping between values in a foreign language and the constructors
+  of a Mercury enumeration type.  This can be useful when writing
+  Mercury bindings to foreign code libraries.
+
+  For example, 
+
+  	:- type matrix_mode
+		--->	texture
+		;	modelview
+		;	projection.
+
+	:- pragma foreign_enum("C", matrix_mode/0, [
+		texture    - "GL_TEXTURE" 
+		modelview  - "GL_MODELVIEW"
+		projection - "GL_PROJECTION"
+	]).
+  
+  When passed to C foreign clauses, values of type matrix_mode/0 will have
+  the corresponding C value specified by the foreign_enum pragma.
 
 * The new pragma, foreign_export_enum, can be used to establish a
   mapping between the constructors of a Mercury enumeration type and

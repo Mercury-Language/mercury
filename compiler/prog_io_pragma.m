@@ -285,7 +285,7 @@ parse_export_enum_type(TypeTerm, Result) :-
         Result = ok2(Name, Arity)
     ;
         Msg = "expected name/arity for type in " ++
-            "`pragma foreign_expor_enum' declaration",
+            "`pragma foreign_export_enum' declaration",
         Result = error2([Msg - TypeTerm])
     ).
                 
@@ -294,25 +294,27 @@ parse_export_enum_type(TypeTerm, Result) :-
 
 maybe_parse_export_enum_overrides(no, ok1([])).
 maybe_parse_export_enum_overrides(yes(OverridesTerm), MaybeOverrides) :-
-    Msg = "not a valid mapping element",
-    convert_maybe_list(OverridesTerm, parse_export_enum_override, Msg, MaybeOverrides).
+    ListMsg = "not a valid mapping element",
+    PairMsg = "exported enumeration override constructor", 
+    convert_maybe_list(OverridesTerm, parse_sym_name_string_pair(PairMsg),
+        ListMsg, MaybeOverrides).
 
-:- pred parse_export_enum_override(term::in,
+:- pred parse_sym_name_string_pair(string::in, term::in,
     maybe1(pair(sym_name, string))::out) is semidet.
 
-parse_export_enum_override(Renaming, MaybeMappingElement) :-
-    Renaming = functor(Functor, Args, _),
+parse_sym_name_string_pair(Msg, PairTerm, MaybePair) :-
+    PairTerm = functor(Functor, Args, _),
     Functor = term.atom("-"),
-    Args = [CtorTerm, ForeignNameTerm],
-    ForeignNameTerm = functor(term.string(ForeignName), _, _), 
-    parse_qualified_term(CtorTerm, CtorTerm, "export enum const",
-        MaybeCtorResult),
+    Args = [SymNameTerm, StringTerm],
+    StringTerm = functor(term.string(String), _, _), 
+    parse_qualified_term(SymNameTerm, SymNameTerm, Msg,
+        MaybeSymNameResult),
     (
-        MaybeCtorResult = ok2(SymName, []),
-        MaybeMappingElement = ok1(SymName - ForeignName)
+        MaybeSymNameResult = ok2(SymName, []),
+        MaybePair = ok1(SymName - String)
     ;
-        MaybeCtorResult = error2(Errs),
-        MaybeMappingElement = error1(Errs)
+        MaybeSymNameResult = error2(Errs),
+        MaybePair = error1(Errs)
     ).
                     
 :- pred maybe_parse_export_enum_attributes(maybe(term)::in,
@@ -389,6 +391,52 @@ parse_export_enum_attr(Term, Result) :-
         Msg = "unrecognised attribute in foreign_export_enum pragma",
         Result = error1([Msg - Term])
     ).
+
+%----------------------------------------------------------------------------%
+%
+% Code for parsing foreign_enum pragmas
+%
+
+parse_pragma_type(_ModuleName, "foreign_enum", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    ( PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] ->
+        ( parse_foreign_language(LangTerm, ForeignLanguage) ->
+            parse_export_enum_type(MercuryTypeTerm, MaybeType),
+            (
+                MaybeType = ok2(TypeName, TypeArity),
+                ListErrMsg = "not a valid mapping element",
+                PairErrMsg = "foreign_enum constructor name",
+                convert_maybe_list(ValuesTerm,
+                    parse_sym_name_string_pair(PairErrMsg),
+                    ListErrMsg, MaybeValues),
+                (
+                    MaybeValues = ok1(Values),
+                    PragmaForeignImportEnum = pragma_foreign_enum(
+                        ForeignLanguage,
+                        TypeName,
+                        TypeArity,
+                        Values
+                    ),
+                    Item = item_pragma(user, PragmaForeignImportEnum),
+                    Result = ok1(Item)
+                ;
+                    MaybeValues = error1(Errors),
+                    Result = error1(Errors)
+                )
+            ;
+                MaybeType = error2(Errors),
+                Result = error1(Errors)
+            )
+        ;
+            Msg = "invalid foreign langauge in " ++
+                "`:- pragma foreign_enum' declaration",
+            Result = error1([Msg - ErrorTerm])
+        )
+    ;
+        Msg = "wrong number of arguments in " ++
+            "`:- pragma foreign_enum' declaration",
+        Result = error1([Msg - ErrorTerm])
+    ).                
 
 %----------------------------------------------------------------------------%
 %
@@ -1263,7 +1311,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
         )
     ->
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-            ( HeaderTerm = term.functor(term.string( HeaderCode), [], _) ->
+            ( HeaderTerm = term.functor(term.string(HeaderCode), [], _) ->
                 DeclCode = pragma_foreign_decl(ForeignLanguage, IsLocal,
                     HeaderCode),
                 Result = ok1(item_pragma(user, DeclCode))

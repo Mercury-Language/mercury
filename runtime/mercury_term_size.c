@@ -229,6 +229,16 @@ try_again:
             }
 #endif
             return 0;
+        
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+#ifdef MR_DEBUG_TERMSIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf("MR_term_size: foreign enum (usereq) %p\n",
+                    (void *) term);
+            }
+#endif
+            return 0;
 
         case MR_TYPECTOR_REP_INT:
 #ifdef MR_DEBUG_TERM_SIZES

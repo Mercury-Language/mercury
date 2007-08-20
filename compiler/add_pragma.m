@@ -42,6 +42,11 @@
     import_status::in, prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+:- pred add_pragma_foreign_enum(foreign_language::in, sym_name::in,
+    arity::in, assoc_list(sym_name, string)::in, import_status::in,
+    prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 :- pred add_pragma_type_spec(pragma_type::in(pragma_type_spec),
     term.context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
@@ -230,6 +235,9 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs) :-
         % types).
         Pragma = pragma_foreign_export_enum(_, _, _, _, _)
     ;
+        % Likewise for pragma foreign_enum. 
+        Pragma = pragma_foreign_enum(_, _, _, _)
+    ;      
         % Handle pragma tabled decls later on (when we process clauses).
         Pragma = pragma_tabled(_, _, _, _, _, _)
     ;
@@ -605,7 +613,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
     ],
     (   
-        % Emit an error message for foreign_export_num pragmas for the
+        % Emit an error message for foreign_export_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
         ( TypeName = unqualified("character")
@@ -631,7 +639,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                 ; TypeBody = hlds_foreign_type(_)
                 ),
                 MaybeSeverity = yes(severity_error),
-                    ErrorPieces = [
+                ErrorPieces = [
                     words("error: "),
                     sym_name_and_arity(TypeName / TypeArity),
                     words("is not an enumeration type"),
@@ -643,6 +651,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                     _MaybeUserEq, _ReservedTag, _IsForeignType),
                 (
                     ( IsEnumOrDummy = is_enum
+                    ; IsEnumOrDummy = is_foreign_enum
                     ; IsEnumOrDummy = is_dummy
                     ),
                     Attributes = export_enum_attributes(MaybePrefix),
@@ -656,9 +665,9 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                         ContextPieces, Overrides, MaybeOverridesMap, !Specs),
                     (
                         MaybeOverridesMap = yes(OverridesMap),
-                        build_export_enum_name_map(ContextPieces, Lang, TypeName,
-                            TypeArity, Context, Prefix, OverridesMap, Ctors,
-                            MaybeMapping, !Specs),
+                        build_export_enum_name_map(ContextPieces, Lang,
+                            TypeName, TypeArity, Context, Prefix,
+                            OverridesMap, Ctors, MaybeMapping, !Specs),
                         (
                             MaybeMapping = yes(Mapping),
                             ExportedEnum = exported_enum_info(Lang, Context,
@@ -774,7 +783,6 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
         Context, Prefix, Overrides0, Ctors, MaybeMapping, !Specs) :-
     ( 
         TypeName = qualified(TypeModuleQual, _)
-
     ;
         % The type name should have been module qualified by now.
         TypeName = unqualified(_),
@@ -877,7 +885,6 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap,
     ( bimap.from_assoc_list(NamesAndForeignNames, _) ->
         MaybeNameMap = yes(NameMap) 
     ;
-        
         MaybeNameMap = no,
         % XXX we should report exactly why it is not bijective.
         ErrorPieces = [
@@ -943,6 +950,325 @@ add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
         list.cons(UnqualSymName, !BadCtors)
     ).
     
+%-----------------------------------------------------------------------------%
+
+add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
+        ImportStatus, Context, !ModuleInfo, !Specs) :-
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    module_info_get_type_table(!.ModuleInfo, TypeTable0),
+    ContextPieces = [
+        words("In"), fixed("`pragma foreign_enum'"),
+        words("declaration for"),
+        sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
+    ],
+    (   
+        % Emit an error message for foreign_enum pragmas for the
+        % builtin atomic types.
+        TypeArity = 0,
+        ( TypeName = unqualified("character")
+        ; TypeName = unqualified("float")
+        ; TypeName = unqualified("int")
+        ; TypeName = unqualified("string")
+        )
+    ->
+        MaybeSeverity = yes(severity_error),
+        ErrorPieces = [
+            words("error: "),
+            sym_name_and_arity(TypeName / TypeArity),
+            words("is an atomic type"),
+            suffix(".")
+        ]
+    ; map.search(TypeTable0, TypeCtor, TypeDefn0) ->
+        get_type_defn_body(TypeDefn0, TypeBody0),
+        (
+            ( TypeBody0 = hlds_eqv_type(_)
+            ; TypeBody0 = hlds_abstract_type(_)
+            ; TypeBody0 = hlds_solver_type(_, _)
+            ; TypeBody0 = hlds_foreign_type(_)
+            ),
+            MaybeSeverity = yes(severity_error),
+            ErrorPieces = [
+                words("error: "),
+                sym_name_and_arity(TypeName / TypeArity),
+                words("is not an enumeration type"),
+                suffix(".")
+            ]
+        ;
+            TypeBody0 = hlds_du_type(Ctors, OldTagValues, IsEnumOrDummy0,
+                    MaybeUserEq, ReservedTag, IsForeignType),
+            %
+            % Work out what language's foreign_enum pragma we should be
+            % looking at for the the current compilation target language.
+            %
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.get_target(Globals, TargetLanguage),
+            LangForForeignEnums =
+                target_lang_to_foreign_enum_lang(TargetLanguage),
+            (
+                ( IsEnumOrDummy0 = is_dummy
+                ; IsEnumOrDummy0 = is_enum
+                ),
+                get_type_defn_status(TypeDefn0, TypeStatus),
+                % Either both the type and the pragma are defined in this
+                % module or they are both imported.  Any other combination
+                % is illegal.
+                IsTypeLocal = status_defined_in_this_module(TypeStatus),
+                ( 
+                    (
+                        IsTypeLocal = yes,
+                        ( ImportStatus = status_local
+                        ; ImportStatus = status_exported_to_submodules
+                        )
+                    ;
+                        IsTypeLocal = no,
+                        status_is_imported(ImportStatus) = yes
+                    )
+                ->
+                    % XXX We should also check that this type is not
+                    %     the subject of a reserved tag pragma.
+                    IsEnumOrDummy = is_foreign_enum,
+                    build_foreign_enum_tag_map(Context, ContextPieces,
+                        TypeName, ForeignTagValues, MaybeForeignTagMap,
+                        !Specs),
+                    (
+                        LangForForeignEnums = Lang,
+                        MaybeForeignTagMap = yes(ForeignTagMap)
+                    ->
+                        map.foldl2(make_foreign_tag(ForeignTagMap),
+                            OldTagValues, map.init, TagValues, [], 
+                            UnmappedCtors),
+                        (
+                            UnmappedCtors = [],
+                            TypeBody = hlds_du_type(Ctors, TagValues,
+                                IsEnumOrDummy, MaybeUserEq, ReservedTag,
+                                IsForeignType),
+                            set_type_defn_body(TypeBody, TypeDefn0,
+                                TypeDefn),
+                            svmap.set(TypeCtor, TypeDefn, TypeTable0,
+                                TypeTable),
+                            module_info_set_type_table(TypeTable,
+                                !ModuleInfo)
+                        ;
+                            UnmappedCtors = [_ | _],
+                            add_foreign_enum_unmapped_ctors_error(Context,
+                                ContextPieces, UnmappedCtors, !Specs)
+                        )          
+                    ;
+                        % If there are no matching foreign_enum pragmas for
+                        % this target language then don't do anything.
+                        true
+                    ),
+                    MaybeSeverity = no,
+                    ErrorPieces = []
+                ;
+                    ImportStatus = status_exported
+                ->
+                    add_foreign_enum_pragma_in_interface_error(Context,
+                        TypeName, TypeArity, !Specs),
+                    MaybeSeverity = no,
+                    ErrorPieces = []
+                ;
+                    MaybeSeverity = yes(severity_error),
+                    ErrorPieces = [
+                        words("error: "),
+                        sym_name_and_arity(TypeName / TypeArity),
+                        words("is not defined in this module.")
+                    ]
+                )
+            ;
+                IsEnumOrDummy0 = is_foreign_enum,
+                ( LangForForeignEnums \= Lang ->
+                     MaybeSeverity = no,
+                     ErrorPieces = []
+                ;
+                     MaybeSeverity = yes(severity_error),
+                     ErrorPieces = [
+                        words("error: "),
+                        sym_name_and_arity(TypeName / TypeArity),
+                        words("has multiple foreign_enum pragmas.")
+                    ]
+                )
+            ;
+                IsEnumOrDummy0 = not_enum_or_dummy,
+                MaybeSeverity = yes(severity_error),
+                ErrorPieces = [
+                    words("error: "),
+                    sym_name_and_arity(TypeName / TypeArity),
+                    words("is not an enumeration type"),
+                    suffix(".")
+                ]
+            )
+        )
+    ;
+        % This else-branch corresponds to an undefined type.  We do not
+        % issue an error message for it here since module qualification
+        % will have already done so.
+        MaybeSeverity = no,
+        ErrorPieces = []
+    ), 
+    (
+        ErrorPieces = []
+    ;
+        ErrorPieces = [_ | _],
+        (
+            MaybeSeverity = yes(Severity)
+        ;
+            MaybeSeverity = no,
+            unexpected(this_file, "add_foreign_enum: no severity")
+        ),
+        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred build_foreign_enum_tag_map(prog_context::in, format_components::in,
+    sym_name::in, assoc_list(sym_name, string)::in,
+    maybe(map(sym_name, string))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
+        MaybeForeignTagMap, !Specs) :-
+    ( sym_name_get_module_name(TypeName, TypeModuleName0) ->
+        TypeModuleName = TypeModuleName0
+    ;
+        unexpected(this_file,
+            "unqualified type name while processing foreign tags.")
+    ),
+    list.map_foldl(fixup_foreign_tag_val_qualification(TypeModuleName),
+        ForeignTagValues0, ForeignTagValues1, [], BadCtors),
+    (
+        BadCtors = [],
+        ( bimap.from_assoc_list(ForeignTagValues1, ForeignTagValues) ->
+            ForeignTagMap = ForeignTagValues ^ forward_map,
+            MaybeForeignTagMap = yes(ForeignTagMap)
+        ;
+            add_foreign_enum_bijection_error(Context, ContextPieces, !Specs),
+            MaybeForeignTagMap = no
+        )
+    ;
+        BadCtors = [_ | _],
+        MaybeForeignTagMap = no
+    ).
+
+    % The constructor names we get from the parse tree may be unqualified
+    % but the ones we match against in the HLDS are not.  Module qualify
+    % them.  
+    %
+    % XXX module_qual.m should really be doing this rather than add_pragma.m.
+    %
+:- pred fixup_foreign_tag_val_qualification(module_name::in,
+    pair(sym_name, string)::in, pair(sym_name, string)::out,
+    list(sym_name)::in, list(sym_name)::out) is det.
+
+fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
+        !BadCtors) :-
+    !.NamesAndTags = CtorSymName0 - ForeignTag,
+    (
+        CtorSymName0 = unqualified(Name),
+        CtorSymName  = qualified(TypeModuleName, Name)
+    ;
+        CtorSymName0 = qualified(CtorModuleName, Name),
+        ( match_sym_name(CtorModuleName, TypeModuleName) ->
+            CtorSymName = qualified(TypeModuleName, Name)
+        ;
+            !:BadCtors = [ CtorSymName0 | !.BadCtors],
+            CtorSymName = CtorSymName0
+        )
+    ),
+    !:NamesAndTags = CtorSymName - ForeignTag.
+
+    % For a given target language work out which language's foreign_enum
+    % pragma we should be looking at.
+    %
+:- func target_lang_to_foreign_enum_lang(compilation_target)
+    = foreign_language.
+
+target_lang_to_foreign_enum_lang(target_c)    = lang_c.
+target_lang_to_foreign_enum_lang(target_il)   = lang_il.
+target_lang_to_foreign_enum_lang(target_java) = lang_java.
+target_lang_to_foreign_enum_lang(target_asm) =
+    sorry(this_file, "pragma foreign_enum and --target `asm'.").
+target_lang_to_foreign_enum_lang(target_x86_64) = 
+    sorry(this_file, "pragma foreign_enum and --target `x86_64'.").
+target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
+
+:- pred make_foreign_tag(map(sym_name, string)::in,
+    cons_id::in, cons_tag::in,
+    cons_tag_values::in, cons_tag_values::out,
+    list(sym_name)::in, list(sym_name)::out) is det.
+
+make_foreign_tag(ForeignTagMap, ConsId, _, !ConsTagValues, !UnmappedCtors) :-
+    ( ConsId = cons(ConsSymName0, 0) ->
+        ConsSymName = ConsSymName0
+    ;
+        unexpected(this_file, "non arity zero enumeration constant.")
+    ),
+    ( map.search(ForeignTagMap, ConsSymName, ForeignTagValue) ->
+        ForeignTag = foreign_tag(ForeignTagValue),
+        svmap.set(ConsId, ForeignTag, !ConsTagValues)
+    ;
+        !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
+    ).
+
+:- pred add_foreign_enum_unmapped_ctors_error(prog_context::in,
+    list(format_component)::in,
+    list(sym_name)::in(non_empty_list),
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, UnmappedCtors0,
+        !Specs) :-
+    ErrorPieces = [
+        words("error: not all constructors have a foreign value.")
+    ],
+    list.sort(UnmappedCtors0, UnmappedCtors),
+    CtorComponents = list.map((func(S) = [sym_name(S)]), UnmappedCtors),
+    CtorList = component_list_to_line_pieces(CtorComponents, [nl]),
+    DoOrDoes = choose_number(UnmappedCtors,
+        "constructor does not have a foreign value",
+        "constructors do not have foreign values"),
+    VerboseErrorPieces = [
+        words("The following"), words(DoOrDoes),
+        nl_indent_delta(2)
+    ] ++ CtorList,
+    Msg = simple_msg(Context,
+        [
+            always(ContextPieces ++ ErrorPieces),
+            verbose_only(VerboseErrorPieces)
+        ]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+        [Msg]),
+    list.cons(Spec, !Specs).
+       
+:- pred add_foreign_enum_bijection_error(prog_context::in,
+    format_components::in, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
+    ErrorPieces = [
+        words("error: "),
+        words("the mapping between Mercury enumeration values and"),
+        words("foreign values does not form a bijection.")
+    ],
+    Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    list.cons(Spec, !Specs).
+                    
+:- pred add_foreign_enum_pragma_in_interface_error(prog_context::in,
+    sym_name::in, arity::in, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
+        !Specs) :-
+    ErrorPieces = [
+        words("Error: "),
+        words("`pragma foreign_enum' declaration for"),
+        sym_name_and_arity(TypeName / TypeArity),
+        words("in module interface.")
+    ],
+    Msg = simple_msg(Context, [always(ErrorPieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    list.cons(Spec, !Specs).
+        
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_unused_args(pred_or_func::in, sym_name::in, arity::in,

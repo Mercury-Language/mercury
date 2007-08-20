@@ -779,7 +779,9 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
         (
             TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
             (
-                EnumDummy = is_enum,
+                ( EnumDummy = is_foreign_enum
+                ; EnumDummy = is_enum
+                ),
                 make_simple_test(X, Y, umc_explicit, [], Goal),
                 quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
             ;
@@ -859,8 +861,11 @@ generate_builtin_unify(TypeCategory, X, Y, Context, Clause, !Info) :-
         TypeCategory = type_cat_enum,
         unexpected(this_file, "generate_builtin_unify: enum")
     ;
+        TypeCategory = type_cat_foreign_enum,
+        unexpected(this_file, "generate_builtin_unify: foreign enum")
+    ;
         TypeCategory = type_cat_dummy,
-        unexpected(this_file, "generate_builtin_unify: enum")
+        unexpected(this_file, "generate_builtin_unify: dummy")
     ;
         TypeCategory = type_cat_variable,
         unexpected(this_file, "generate_builtin_unify: variable type")
@@ -986,7 +991,9 @@ generate_index_proc_body(TypeBody, X, Index, Context, Clause, !Info) :-
                 % an integer comparison, and does not call the type's index
                 % predicate, so do not generate an index predicate for such
                 % types.
-                EnumDummy = is_enum,
+                ( EnumDummy = is_enum
+                ; EnumDummy = is_foreign_enum
+                ),
                 unexpected(this_file,
                     "trying to create index proc for enum type")
             ;
@@ -1044,7 +1051,9 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
         (
             TypeBody = hlds_du_type(Ctors0, _, EnumDummy, _, _, _),
             (
-                EnumDummy = is_enum,
+                ( EnumDummy = is_enum
+                ; EnumDummy = is_foreign_enum
+                ),
                 generate_enum_compare_proc_body(Res, X, Y, Context, Clause,
                     !Info)
             ;
@@ -1179,6 +1188,9 @@ generate_builtin_compare(TypeCategory, Res, X, Y, Context, Clause, !Info) :-
     ;
         TypeCategory = type_cat_enum,
         unexpected(this_file, "generate_builtin_compare: enum type")
+    ;
+        TypeCategory = type_cat_foreign_enum,
+        unexpected(this_file, "generate_builtin_compare: foreign enum type")
     ;
         TypeCategory = type_cat_dummy,
         unexpected(this_file, "generate_builtin_compare: dummy type")

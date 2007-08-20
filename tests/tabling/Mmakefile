@@ -22,6 +22,7 @@ SIMPLE_NONLOOP_PROGS = \
 	mercury_java_parser_dead_proc_elim_bug \
 	mercury_java_parser_dead_proc_elim_bug2 \
 	oota \
+	table_foreign_enum \
 	table_foreign_output \
 	test_enum \
 	unused_args

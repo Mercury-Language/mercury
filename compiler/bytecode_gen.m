@@ -553,6 +553,9 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
         TypeCategory = type_cat_enum,
         TestId = enum_test
     ;
+        TypeCategory = type_cat_foreign_enum,
+        sorry(this_file, "foreign enums with bytecode backend")
+    ;
         TypeCategory = type_cat_higher_order,
         unexpected(this_file, "higher_order_type in simple_test")
     ;
@@ -777,6 +780,8 @@ map_cons_tag(string_tag(_), _) :-
     unexpected(this_file, "string_tag cons tag " ++
         "for non-string_constant cons id").
 map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
+map_cons_tag(foreign_tag(_), _) :-
+    sorry(this_file, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-
     unexpected(this_file, "float_tag cons tag " ++
         "for non-float_constant cons id").

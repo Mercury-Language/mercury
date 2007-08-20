@@ -789,6 +789,7 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
             unexpected(this_file, "d.u. is not an enumeration.")
         ;
             ( IsEnumOrDummy = is_enum
+            ; IsEnumOrDummy = is_foreign_enum
             ; IsEnumOrDummy = is_dummy
             ),
             list.foldl(foreign_const_name_and_tag(NameMapping, TagValues),
@@ -805,23 +806,57 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
         )
     ).
 
-:- pred output_exported_enum_2(module_info::in, pair(string, int)::in,
-    io::di, io::uo) is det.
+    % The tags for exported enumerations will either be integers (for normal
+    % enumerations) or strings (for foreign enumerations.)
+    %
+:- type exported_enum_tag_rep
+    --->    ee_tag_rep_int(int)
+    ;       ee_tag_rep_string(string).
+
+:- pred output_exported_enum_2(module_info::in,
+    pair(string, exported_enum_tag_rep)::in, io::di, io::uo) is det.
 
 output_exported_enum_2(_, ConstName - Tag, !IO) :-
-    io.format("#define %s %d", [s(ConstName), i(Tag)], !IO).
+    (
+        Tag = ee_tag_rep_int(RawIntTag),
+        io.format("#define %s %d", [s(ConstName), i(RawIntTag)], !IO)
+    ;
+        Tag = ee_tag_rep_string(RawStrTag),
+        io.format("#define %s %s", [s(ConstName), s(RawStrTag)], !IO)
+    ).
 
 :- pred foreign_const_name_and_tag(map(sym_name, string)::in,
     cons_tag_values::in, constructor::in,
-    assoc_list(string, int)::in, assoc_list(string, int)::out) is det.
+    assoc_list(string, exported_enum_tag_rep)::in,
+    assoc_list(string, exported_enum_tag_rep)::out) is det.
 
 foreign_const_name_and_tag(Mapping, TagValues, Ctor, !NamesAndTags) :-
     Ctor = ctor(_, _, QualifiedCtorName, Args, _),
     list.length(Args, Arity),
     map.lookup(TagValues, cons(QualifiedCtorName, Arity), TagVal),
-    ( TagVal = int_tag(Tag0) ->
-        Tag = Tag0 
-    ; 
+    (
+        TagVal = int_tag(IntTag),
+        Tag    = ee_tag_rep_int(IntTag)
+    ;
+        TagVal = foreign_tag(ForeignTag),
+        Tag    = ee_tag_rep_string(ForeignTag)
+    ;
+        ( TagVal = string_tag(_)
+        ; TagVal = float_tag(_)
+        ; TagVal = pred_closure_tag(_, _, _)
+        ; TagVal = type_ctor_info_tag(_, _, _)
+        ; TagVal = base_typeclass_info_tag(_, _, _)
+        ; TagVal = tabling_info_tag(_, _)
+        ; TagVal = deep_profiling_proc_layout_tag(_, _)
+        ; TagVal = table_io_decl_tag(_, _)
+        ; TagVal = single_functor_tag
+        ; TagVal = unshared_tag(_)
+        ; TagVal = shared_remote_tag(_, _)
+        ; TagVal = shared_local_tag(_, _)
+        ; TagVal = no_tag
+        ; TagVal = reserved_address_tag(_)
+        ; TagVal = shared_with_reserved_addresses_tag(_, _)
+        ),
         unexpected(this_file, "enum constant requires an int tag")
     ),
     % Sanity check.

@@ -112,6 +112,7 @@
     %
     % The type_ctor_rep needs to be kept up to date with the real
     % definition in runtime/mercury_type_info.h.
+    %
 :- type type_ctor_rep
     --->    tcr_enum
     ;       tcr_enum_usereq
@@ -157,6 +158,8 @@
     ;       tcr_pseudo_type_desc
     ;       tcr_dummy
     ;       tcr_bitmap
+    ;       tcr_foreign_enum
+    ;       tcr_foreign_enum_usereq
     ;       tcr_unknown.
 
     % We keep all the other types abstract.
@@ -946,7 +949,7 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     % There are many cases to implement here, only the ones that were
     % immediately useful (e.g. called by io.write) have been implemented
     % so far.
-
+    %
 deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Arity, Arguments) :-
     (
@@ -961,6 +964,18 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor = enum_functor_name(EnumFunctorDesc),
         Arity = 0,
         Arguments = []
+    ;
+        TypeCtorRep = tcr_foreign_enum,
+        TypeFunctors = type_ctor_functors(TypeCtorInfo),
+        ForeignEnumFunctorDesc = foreign_enum_functor_desc(TypeCtorRep,
+            unsafe_get_foreign_enum_value(Term), TypeFunctors),
+        Functor = foreign_enum_functor_name(ForeignEnumFunctorDesc),
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_foreign_enum_usereq,
+        handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
+            NonCanon, Functor, Arity, Arguments)
     ;
         TypeCtorRep = tcr_dummy,
         TypeFunctors = type_ctor_functors(TypeCtorInfo),
@@ -1256,12 +1271,16 @@ det_dynamic_cast(Term, Actual) :-
 
 same_array_elem_type(_, _).
 
-:- inst usereq == bound(tcr_enum_usereq ; tcr_du_usereq ; tcr_notag_usereq ;
-    tcr_notag_ground_usereq ; tcr_reserved_addr_usereq).
+:- inst usereq
+    --->    tcr_enum_usereq
+    ;       tcr_foreign_enum_usereq
+    ;       tcr_du_usereq
+    ;       tcr_notag_usereq
+    ;       tcr_notag_ground_usereq
+    ;       tcr_reserved_addr_usereq.
 
 :- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
-        noncanon_handling, string, int, list(univ)).
-
+    noncanon_handling, string, int, list(univ)).
 :- mode handle_usereq_type(in, in, in, in(usereq),
     in(do_not_allow), out, out, out) is erroneous.
 :- mode handle_usereq_type(in, in, in, in(usereq),
@@ -1286,6 +1305,9 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
         (
             TypeCtorRep = tcr_enum_usereq,
             BaseTypeCtorRep = tcr_enum
+        ;
+            TypeCtorRep = tcr_foreign_enum_usereq,
+            BaseTypeCtorRep = tcr_foreign_enum
         ;
             TypeCtorRep = tcr_du_usereq,
             BaseTypeCtorRep = tcr_du
@@ -2329,6 +2351,10 @@ unsafe_cast(_) = _ :-
 :- pragma foreign_type("Java", enum_functor_desc,
     "mercury.runtime.EnumFunctorDesc").
 
+:- type foreign_enum_functor_desc ---> foreign_enum_functor_desc(c_pointer).
+:- pragma foreign_type("Java", foreign_enum_functor_desc,
+    "mercury.runtime.ForeignEnumFunctorDesc").
+
 :- type notag_functor_desc ---> notag_functor_desc(c_pointer).
 :- pragma foreign_type("Java", notag_functor_desc,
     "mercury.runtime.NotagFunctorDesc").
@@ -2336,6 +2362,7 @@ unsafe_cast(_) = _ :-
 :- inst du == bound(tcr_du ; tcr_du_usereq ; tcr_reserved_addr ;
     tcr_reserved_addr_usereq).
 :- inst enum == bound(tcr_enum ; tcr_enum_usereq ; tcr_dummy).
+:- inst foreign_enum == bound(tcr_foreign_enum ; tcr_foreign_enum_usereq).
 :- inst notag == bound(tcr_notag ; tcr_notag_usereq ;
     tcr_notag_ground ; tcr_notag_ground_usereq).
 
@@ -2516,6 +2543,35 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
 
  %--------------------------%
 
+:- func foreign_enum_functor_desc(type_ctor_rep, int, type_functors)
+    = foreign_enum_functor_desc.
+:- mode foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
+
+foreign_enum_functor_desc(_, Num, TypeFunctors) = ForeignEnumFunctorDesc :-
+    ForeignEnumFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+
+:- pragma foreign_proc("Java",
+    foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,
+        TypeFunctors::in) = (ForeignEnumFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ForeignEnumFunctorDesc = (TypeFunctors.functors_enum())[X];
+"). 
+
+:- func foreign_enum_functor_name(foreign_enum_functor_desc) = string.
+
+foreign_enum_functor_name(ForeignEnumFunctorDesc) =
+    ForeignEnumFunctorDesc ^ unsafe_index(0).
+
+:- pragma foreign_proc("Java",
+    foreign_enum_functor_name(ForeignEnumFunctorDesc::in) = (Name::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Name = ForeignEnumFunctorDesc.enum_functor_name;
+").
+ 
+ %--------------------------%
+
 :- func notag_functor_desc(type_ctor_rep, int, type_functors)
     = notag_functor_desc.
 
@@ -2668,4 +2724,18 @@ unsafe_get_enum_value(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("rtti_implementation.unsafe_get_enum_value/1").
 
+%-----------------------------------------------------------------------------%
+
+:- func unsafe_get_foreign_enum_value(T) = int.
+
+% XXX We cannot provide a Java version of this until mlds_to_java.m is
+%     updated to support foreign enumerations.
+
+unsafe_get_foreign_enum_value(_) = _ :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    private_builtin.sorry(
+        "rtti_implementation.unsafe_get_foreign_enum_value/1").
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

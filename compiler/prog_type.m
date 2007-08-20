@@ -276,6 +276,7 @@
     ;       type_cat_higher_order
     ;       type_cat_tuple
     ;       type_cat_enum
+    ;       type_cat_foreign_enum
     ;       type_cat_dummy
     ;       type_cat_variable
     ;       type_cat_type_info
@@ -826,6 +827,7 @@ is_introduced_type_info_type_category(type_cat_float) = no.
 is_introduced_type_info_type_category(type_cat_higher_order) = no.
 is_introduced_type_info_type_category(type_cat_tuple) = no.
 is_introduced_type_info_type_category(type_cat_enum) = no.
+is_introduced_type_info_type_category(type_cat_foreign_enum) = no.
 is_introduced_type_info_type_category(type_cat_dummy) = no.
 is_introduced_type_info_type_category(type_cat_variable) = no.
 is_introduced_type_info_type_category(type_cat_type_info) = yes.

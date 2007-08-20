@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -252,6 +252,7 @@ next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 %
 
 type_cat_to_switch_cat(type_cat_enum) = atomic_switch.
+type_cat_to_switch_cat(type_cat_foreign_enum) = atomic_switch.
 type_cat_to_switch_cat(type_cat_dummy) = _ :-
     % You can't have a switch without at least two arms.
     unexpected(this_file, "type_cat_to_switch_cat: dummy").
@@ -276,6 +277,7 @@ type_cat_to_switch_cat(type_cat_base_typeclass_info) = _ :-
 
 switch_priority(no_tag) = 0.       % should never occur
 switch_priority(int_tag(_)) = 1.
+switch_priority(foreign_tag(_)) = 1.
 switch_priority(reserved_address_tag(_)) = 1.
 switch_priority(shared_local_tag(_, _)) = 1.
 switch_priority(single_functor_tag) = 2.
@@ -390,6 +392,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
+        ; Tag = foreign_tag(_)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -456,6 +459,7 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
+        ; Tag = foreign_tag(_)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)

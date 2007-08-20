@@ -644,6 +644,8 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_PSEUDOTYPEDESC),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_DUMMY),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_BITMAP),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FOREIGN_ENUM),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -715,6 +717,8 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "PSEUDO_TYPE_DESC",                         \
     "DUMMY",                                    \
     "BITMAP",                                   \
+    "FOREIGN_ENUM",                             \
+    "FOREIGN_ENUM_USEREQ",                      \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];
@@ -923,6 +927,16 @@ typedef const MR_EnumFunctorDesc            *MR_EnumFunctorDescPtr;
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
+    MR_ConstString      MR_foreign_enum_functor_name;
+    MR_int_least32_t    MR_foreign_enum_functor_ordinal;
+    MR_int_least32_t    MR_foreign_enum_functor_value;
+} MR_ForeignEnumFunctorDesc;
+
+typedef const MR_ForeignEnumFunctorDesc     *MR_ForeignEnumFunctorDescPtr;
+
+/*---------------------------------------------------------------------------*/
+
+typedef struct {
     MR_ConstString      MR_notag_functor_name;
     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
     MR_ConstString      MR_notag_functor_arg_name;
@@ -981,9 +995,28 @@ typedef const MR_DuPtagLayout *MR_DuTypeLayout;
 **
 ** The intention is that if you have a word in an enum type that you want to
 ** interpret, you index into the array with the word.
+**
 */
 
 typedef MR_EnumFunctorDesc  **MR_EnumTypeLayout;
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** This type describes the function symbols in a foreign enum type.
+**
+** An MR_ForeignEnumLayout points to an array of pointers to functor
+** descriptors.  There is one pointer for each of the function symbols, and
+** thus the size of the array is given by the num_functors field of the
+** type_ctor_info.  The array is ordered by declaration order.
+**
+** NOTE: it is not possible to order this array by the integer value by
+**       which the functor is represented since for foreign enums these
+**       may be #defined constants and their actual value will not be known
+**       at the time the ForeignEnumLayout structures are generated.
+*/
+
+typedef MR_ForeignEnumFunctorDesc **MR_ForeignEnumTypeLayout;
 
 /*---------------------------------------------------------------------------*/
 
@@ -1068,7 +1101,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
 
 /*
 ** This type describes the layout in any kind of discriminated union
-** type: du, enum, notag, or reserved_addr.
+** type: du, enum, foreign_enum, notag, or reserved_addr.
 ** In an equivalence type, it gives the identity of the equivalent-to type.
 **
 ** The layout_init alternative is used only for static initializers,
@@ -1081,6 +1114,7 @@ typedef union {
     const void                  *MR_layout_init;
     MR_DuTypeLayout             MR_layout_du;
     MR_EnumTypeLayout           MR_layout_enum;
+    MR_ForeignEnumTypeLayout    MR_layout_foreign_enum;
     MR_NotagTypeLayout          MR_layout_notag;
     MR_ReservedAddrTypeLayout   MR_layout_reserved_addr;
     MR_EquivLayout              MR_layout_equiv;
@@ -1105,13 +1139,13 @@ typedef struct {
 
 /*
 ** This type describes the function symbols in any kind of discriminated union
-** type: du, reserved_addr, enum and notag.
+** type: du, reserved_addr, enum, foreign_enum, and notag.
 **
 ** The pointer in the union points to either an array of pointers to functor
-** descriptors (for du and enum types), to an array of functor descriptors
-** (for reserved_addr types) or to a single functor descriptor (for notag
-** types). There is one functor descriptor for each function symbol, and thus
-** the size of the array is given by the num_functors field of the
+** descriptors (for du, enum and foreign enum types), to an array of functor
+** descriptors (for reserved_addr types) or to a single functor descriptor
+** (for notag types). There is one functor descriptor for each function symbol,
+** and thus the size of the array is given by the num_functors field of the
 ** type_ctor_info. Arrays are ordered on the name of the function symbol,
 ** and then on arity.
 **
@@ -1127,6 +1161,7 @@ typedef union {
     MR_DuFunctorDesc            **MR_functors_du;
     MR_MaybeResAddrFunctorDesc  *MR_functors_res;
     MR_EnumFunctorDesc          **MR_functors_enum;
+    MR_ForeignEnumFunctorDesc   **MR_functors_foreign_enum;
     MR_NotagFunctorDesc         *MR_functors_notag;
 } MR_TypeFunctors;
 

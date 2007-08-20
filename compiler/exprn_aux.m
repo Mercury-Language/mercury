@@ -146,6 +146,7 @@ init_exprn_opts(Options, ExprnOpts) :-
 const_is_constant(llconst_true, _, yes).
 const_is_constant(llconst_false, _, yes).
 const_is_constant(llconst_int(_), _, yes).
+const_is_constant(llconst_foreign(_, _), _, yes).
 const_is_constant(llconst_float(_), ExprnOpts, IsConst) :-
     ExprnOpts = nlg_asm_sgt_ubf(_NLG, _ASM, StaticGroundTerms, UnboxedFloat),
     (

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -344,6 +344,7 @@ zero_size_type_category(type_cat_base_typeclass_info, yes).
 zero_size_type_category(type_cat_higher_order, yes).
 zero_size_type_category(type_cat_tuple, no).
 zero_size_type_category(type_cat_enum, yes).
+zero_size_type_category(type_cat_foreign_enum, yes).
 zero_size_type_category(type_cat_dummy, yes).
 zero_size_type_category(type_cat_variable, no).
 zero_size_type_category(type_cat_user_ctor, no).

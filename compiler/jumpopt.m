@@ -1037,6 +1037,7 @@ jumpopt.short_labels_rval(_, mem_addr(MemRef), mem_addr(MemRef)).
 jumpopt.short_labels_const(_, llconst_true, llconst_true).
 jumpopt.short_labels_const(_, llconst_false, llconst_false).
 jumpopt.short_labels_const(_, llconst_int(I), llconst_int(I)).
+jumpopt.short_labels_const(_, llconst_foreign(V, T), llconst_foreign(V, T)).
 jumpopt.short_labels_const(_, llconst_float(F), llconst_float(F)).
 jumpopt.short_labels_const(_, llconst_string(S), llconst_string(S)).
 jumpopt.short_labels_const(_, llconst_multi_string(S),

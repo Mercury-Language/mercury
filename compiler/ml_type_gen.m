@@ -159,7 +159,9 @@ ml_gen_type_2(hlds_du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
     % XXX we probably shouldn't ignore _ReservedTag
     ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
     (
-        EnumDummy = is_enum,
+        ( EnumDummy = is_foreign_enum
+        ; EnumDummy = is_enum
+        ),
         ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
             MaybeEqualityMembers, !Defns)
     ;
@@ -1051,10 +1053,30 @@ generate_foreign_enum_constant(Mapping, TagValues, Ctor, !NamesAndTags) :-
     Ctor = ctor(_, _, QualName, Args, _),
     list.length(Args, Arity),
     map.lookup(TagValues, cons(QualName, Arity), TagVal),
-    ( TagVal = int_tag(Int) ->
+    (
+        TagVal = int_tag(Int),
         ConstValue = const(mlconst_int(Int))
     ; 
-        unexpected(this_file, "enum constant requires an int tag")
+        TagVal = foreign_tag(String),
+        ConstValue = const(mlconst_foreign(String, mlds_native_int_type))
+    ;
+        ( TagVal = string_tag(_)
+        ; TagVal = float_tag(_)
+        ; TagVal = pred_closure_tag(_, _, _)
+        ; TagVal = type_ctor_info_tag(_, _, _)
+        ; TagVal = base_typeclass_info_tag(_, _, _)
+        ; TagVal = tabling_info_tag(_, _)
+        ; TagVal = deep_profiling_proc_layout_tag(_, _)
+        ; TagVal = table_io_decl_tag(_, _)
+        ; TagVal = single_functor_tag
+        ; TagVal = unshared_tag(_)
+        ; TagVal = shared_remote_tag(_, _)
+        ; TagVal = shared_local_tag(_, _)
+        ; TagVal = no_tag
+        ; TagVal = reserved_address_tag(_)
+        ; TagVal = shared_with_reserved_addresses_tag(_, _)
+        ),
+        unexpected(this_file, "enum constant requires an int or foreign tag")
     ),
     % Sanity check.
     expect(unify(Arity, 0), this_file, "enum constant arity != 0"),

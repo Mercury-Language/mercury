@@ -103,6 +103,8 @@ try_again:
 
     case MR_TYPECTOR_REP_ENUM:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
+    case MR_TYPECTOR_REP_FOREIGN_ENUM:
+    case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
         return data;    /* just a copy of the actual item */
 
     case MR_TYPECTOR_REP_DUMMY:
