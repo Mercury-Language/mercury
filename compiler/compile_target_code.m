@@ -1337,10 +1337,11 @@ maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile, Compile,
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     (
         MaybeInitTargetFile = yes(InitTargetFileName),
-        file_as_new_as(InitObjFileName, InitTargetFileName, UpToDate, !IO),
+        file_as_new_as(InitObjFileName, Rel, InitTargetFileName, !IO),
         (
             ( MustCompile = yes
-            ; UpToDate = no
+            ; Rel = is_not_as_new_as
+            ; Rel = missing_timestamp
             )
         ->
             maybe_write_string(Verbose,
@@ -1362,26 +1363,33 @@ maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile, Compile,
         Result = no
     ).
 
-    % file_as_new_as(FileNameA, FileNameB, IsAsNew, !IO)
+    % file_as_new_as(FileNameA, Rel, FileNameB, !IO)
     %
-    % IsAsNew is `yes' iff file A has a timestamp at least as new as the
-    % timestamp of file B.
+    % Check if file A has a timestamp at least as new as the timestamp of
+    % file B.  Rel is `missing_timestamp' iff either timestamp could not
+    % be retrieved.
     %
-:- pred file_as_new_as(file_name::in, file_name::in, bool::out,
+:- pred file_as_new_as(file_name::in, is_as_new_as::out, file_name::in,
     io::di, io::uo) is det.
 
-file_as_new_as(FileNameA, FileNameB, IsAsNew, !IO) :-
+:- type is_as_new_as
+    --->    is_as_new_as
+    ;       is_not_as_new_as
+    ;       missing_timestamp.
+
+file_as_new_as(FileNameA, Rel, FileNameB, !IO) :-
     compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
     (
         ( MaybeCompare = yes(=)
         ; MaybeCompare = yes(>)
         ),
-        IsAsNew = yes
+        Rel = is_as_new_as 
     ;
-        ( MaybeCompare = yes(<)
-        ; MaybeCompare = no
-        ),
-        IsAsNew = no
+        MaybeCompare = yes(<),
+        Rel = is_not_as_new_as
+    ;
+        MaybeCompare = no,
+        Rel = missing_timestamp
     ).
 
 :- pred compare_file_timestamps(file_name::in, file_name::in,
