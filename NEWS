@@ -200,8 +200,7 @@ Changes to the Mercury compiler:
 * The compiler now issues a warning when an inst declaration is not
   consistent with any of the types in scope.
 
-* We have introduced some support for simultaneous execution of jobs
-  with `mmc --make'.
+* We have added support for simultaneous execution of jobs with `mmc --make'.
 
 * We have made it easier to use single-precision floats, which do not need
   to be boxed on 32-bit machines.
