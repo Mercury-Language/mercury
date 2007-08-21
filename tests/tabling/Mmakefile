@@ -22,10 +22,14 @@ SIMPLE_NONLOOP_PROGS = \
 	mercury_java_parser_dead_proc_elim_bug \
 	mercury_java_parser_dead_proc_elim_bug2 \
 	oota \
-	table_foreign_enum \
 	table_foreign_output \
 	test_enum \
 	unused_args
+
+# The following test is currently disabled because tabling and 
+# foreign enumerations are not yet supported.
+#
+# table_foreign_enum 
 
 # Tabling of nondet predicates and deep profiling are (currently)
 # incompatible.

@@ -2350,9 +2350,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type,
         native_if_possible),
     (
-        ( TypeCat = type_cat_enum
-        ; TypeCat = type_cat_foreign_enum
-        ),
+        TypeCat = type_cat_enum,
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeDefnTable),
         map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
@@ -2376,6 +2374,9 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
             DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
             cur_table_node_name ++ ", " ++ int_to_string(EnumRange) ++
             ", " ++ ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+    ;
+        TypeCat = type_cat_foreign_enum,
+        sorry(this_file, "tabling and foreign enumerations NYI.")
     ;
         (
             TypeCat = type_cat_int,
@@ -3447,7 +3448,8 @@ builtin_type(type_cat_user_ctor) = no.
 :- pred type_save_category(type_category::in, string::out) is det.
 
 type_save_category(type_cat_enum,         "enum").
-type_save_category(type_cat_foreign_enum, "enum").
+type_save_category(type_cat_foreign_enum, _) :-
+    sorry(this_file, "tabling and foreign enumerations NYI.").
 type_save_category(type_cat_int,          "int").
 type_save_category(type_cat_char,         "char").
 type_save_category(type_cat_string,       "string").
