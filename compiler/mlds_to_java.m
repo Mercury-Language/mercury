@@ -702,7 +702,7 @@ method_ptrs_in_switch_default(default_case(Statement), !CodeAddrs) :-
 
 method_ptrs_in_switch_cases([], !CodeAddrs).
 method_ptrs_in_switch_cases([Case | Cases], !CodeAddrs) :-
-    Case = _Conditions - Statement,
+    Case = mlds_switch_case(_Conditions, Statement),
     method_ptrs_in_statement(Statement, !CodeAddrs),
     method_ptrs_in_switch_cases(Cases, !CodeAddrs).
 
@@ -2697,7 +2697,7 @@ output_switch_cases(Indent, ModuleInfo, FuncInfo, Context, [Case | Cases],
 
 output_switch_case(Indent, ModuleInfo, FuncInfo, Context, Case, ExitMethods,
         !IO) :-
-    Case = (Conds - Statement),
+    Case = mlds_switch_case(Conds, Statement),
     ModuleName = FuncInfo ^ func_info_name ^ mod_name,
     list.foldl(output_case_cond(Indent, ModuleInfo, ModuleName, Context),
         Conds, !IO),

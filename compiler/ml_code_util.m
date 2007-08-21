@@ -2256,8 +2256,10 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
 :- pred fixup_newobj_in_case(mlds_switch_case::in, mlds_switch_case::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
-fixup_newobj_in_case(Conds - Statement0, Conds - Statement, !Fixup) :-
-    fixup_newobj_in_statement(Statement0, Statement, !Fixup).
+fixup_newobj_in_case(Case0, Case, !Fixup) :-
+    Case0 = mlds_switch_case(Conds, Statement0),
+    fixup_newobj_in_statement(Statement0, Statement, !Fixup),
+    Case  = mlds_switch_case(Conds, Statement).
 
 :- pred fixup_newobj_in_maybe_statement(maybe(statement)::in,
     maybe(statement)::out,
@@ -2646,9 +2648,13 @@ ml_base_typeclass_info_method_offset = 4.
 %
 
 get_copy_out_option(Globals, CodeModel) = CopyOut :-
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         globals.lookup_bool_option(Globals, nondet_copy_out, CopyOut)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         globals.lookup_bool_option(Globals, det_copy_out, CopyOut)
     ).
 

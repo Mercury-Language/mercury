@@ -25,6 +25,8 @@
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes,
     %   HowToConstruct, Context, Decls, Statements):
     %

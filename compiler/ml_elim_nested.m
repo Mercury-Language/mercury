@@ -450,7 +450,6 @@
 :- import_module counter.
 :- import_module int.
 :- import_module list.
-:- import_module pair.
 :- import_module maybe.
 :- import_module set.
 :- import_module solutions.
@@ -1456,9 +1455,11 @@ flatten_stmt(Stmt0, Stmt, !Info) :-
 :- pred flatten_case(mlds_switch_case::in, mlds_switch_case::out,
     elim_info::in, elim_info::out) is det.
 
-flatten_case(Conds0 - Statement0, Conds - Statement, !Info) :-
+flatten_case(Case0, Case, !Info) :-
+    Case0 = mlds_switch_case(Conds0, Statement0),
     list.map_foldl(fixup_case_cond, Conds0, Conds, !Info),
-    flatten_statement(Statement0, Statement, !Info).
+    flatten_statement(Statement0, Statement, !Info),
+    Case = mlds_switch_case(Conds, Statement).
 
 :- pred flatten_default(mlds_switch_default::in, mlds_switch_default::out,
     elim_info::in, elim_info::out) is det.
@@ -2137,7 +2138,7 @@ stmt_contains_defn(Stmt, Defn) :-
 
 cases_contains_defn(Cases, Defn) :-
     list.member(Case, Cases),
-    Case = _MatchConds - Statement,
+    Case = mlds_switch_case(_MatchConds, Statement),
     statement_contains_defn(Statement, Defn).
 
 :- pred default_contains_defn(mlds_switch_default::in, mlds_defn::out)
@@ -2259,9 +2260,11 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
 :- pred add_unchain_stack_to_case(mlds_switch_case::in,
     mlds_switch_case::out, elim_info::in, elim_info::out) is det.
 
-add_unchain_stack_to_case(Conds0 - Statement0, Conds - Statement, !Info) :-
+add_unchain_stack_to_case(Case0, Case, !Info) :-
+    Case0 = mlds_switch_case(Conds0, Statement0),
     list.map_foldl(fixup_case_cond, Conds0, Conds, !Info),
-    add_unchain_stack_to_statement(Statement0, Statement, !Info).
+    add_unchain_stack_to_statement(Statement0, Statement, !Info),
+    Case = mlds_switch_case(Conds, Statement).
 
 :- pred add_unchain_stack_to_default(mlds_switch_default::in,
     mlds_switch_default::out, elim_info::in, elim_info::out) is det.

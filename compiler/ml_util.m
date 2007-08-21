@@ -201,9 +201,6 @@
 :- import_module ml_backend.ml_unify_gen.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
-:- import_module list.
-:- import_module pair.
 :- import_module solutions.
 
 %-----------------------------------------------------------------------------%
@@ -319,7 +316,7 @@ stmt_contains_statement(Stmt, SubStatement) :-
 
 cases_contains_statement(Cases, SubStatement) :-
     list.member(Case, Cases),
-    Case = _MatchCond - Statement,
+    Case = mlds_switch_case(_MatchCond, Statement),
     statement_contains_statement(Statement, SubStatement).
 
 :- pred default_contains_statement(mlds_switch_default::in,
@@ -419,7 +416,7 @@ stmt_contains_var(Stmt, Name) :-
 
 cases_contains_var(Cases, Name) :-
     list.member(Case, Cases),
-    Case = _MatchConds - Statement,
+    Case = mlds_switch_case(_MatchConds, Statement),
     statement_contains_var(Statement, Name).
 
 :- pred default_contains_var(mlds_switch_default::in, mlds_data::in)

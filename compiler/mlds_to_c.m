@@ -2952,7 +2952,7 @@ mlds_output_computed_goto_label(Context, Indent, Label, Count0, Count, !IO) :-
     mlds_switch_case::in, io::di, io::uo) is det.
 
 mlds_output_switch_case(Indent, FuncInfo, Context, Case, !IO) :-
-    Case = (Conds - Statement),
+    Case = mlds_switch_case(Conds, Statement),
     list.foldl(mlds_output_case_cond(Indent, Context), Conds, !IO),
     mlds_output_statement(Indent + 1, FuncInfo, Statement, !IO),
     mlds_indent(Context, Indent + 1, !IO),

@@ -515,8 +515,11 @@ rename_statement(statement(ml_stmt_atomic(Stmt), Context))
 
 :- func rename_switch_case(mlds_switch_case) = mlds_switch_case.
 
-rename_switch_case(Conds - Stmt)
-    = list.map(rename_cond, Conds) - rename_statement(Stmt).
+rename_switch_case(Case0) = Case :-
+    Case0 = mlds_switch_case(Conds0, Stmt0),
+    Conds = list.map(rename_cond, Conds0),
+    Stmt = rename_statement(Stmt0),
+    Case = mlds_switch_case(Conds, Stmt).
 
 :- func rename_cond(mlds_case_match_cond) = mlds_case_match_cond.
 

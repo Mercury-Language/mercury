@@ -349,7 +349,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -1120,7 +1119,8 @@
     % Unlike C, cases do NOT fall through; if you want to achieve that
     % effect, you need to use an explicit goto.
 :- type mlds_switch_cases == list(mlds_switch_case).
-:- type mlds_switch_case == pair(mlds_case_match_conds, statement).
+:- type mlds_switch_case 
+    --->    mlds_switch_case(mlds_case_match_conds, statement).
 
     % Case_match_conds should be a _non-empty_ list of conditions;
     % if _any_ of the conditions match, this case will be selected.

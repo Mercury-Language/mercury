@@ -258,7 +258,8 @@ gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
             MLDS_Context),
         CaseStatement = statement(ml_stmt_block([], [Comment, GoalStatement]),
             MLDS_Context),
-        MLDS_Cases = [[match_value(const(mlconst_int(Slot)))] - CaseStatement]
+        MLDS_Cases = [mlds_switch_case([match_value(const(mlconst_int(Slot)))],
+            CaseStatement)]
     ;
         StringRval = const(mlconst_null(ml_string_type)),
         NextSlotRval = const(mlconst_int(-2)),

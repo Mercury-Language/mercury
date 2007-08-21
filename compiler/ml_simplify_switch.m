@@ -49,7 +49,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -109,7 +108,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         Cases = [SingleCase],
         Default = default_is_unreachable
     ->
-        SingleCase = _MatchCondition - CaseStatement,
+        SingleCase = mlds_switch_case(_MatchCondition, CaseStatement),
         Statement = CaseStatement
     ;
         Stmt = Stmt0,
@@ -217,7 +216,7 @@ find_first_and_last_case(Cases, Min, Max) :-
     int::in, int::out, int::in, int::out) is det.
 
 find_first_and_last_case_2(Case, !Min, !Max) :-
-    Case = CaseConds - _CaseStatement,
+    Case = mlds_switch_case(CaseConds, _CaseStatement),
     list.foldl2(find_first_and_last_case_3, CaseConds, !Min, !Max).
 
 :- pred find_first_and_last_case_3(mlds_case_match_cond::in,
@@ -343,7 +342,7 @@ generate_cases([Case | Cases], EndLabel, CaseLabelsMap0,
 
 generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
         Decls, Statements, !Info) :-
-    Case = MatchCondition - CaseStatement,
+    Case = mlds_switch_case(MatchCondition, CaseStatement),
     ml_gen_new_label(ThisLabel, !Info),
     insert_cases_into_map(MatchCondition, ThisLabel,
         CaseLabelsMap0, CaseLabelsMap),
@@ -449,7 +448,7 @@ ml_switch_to_if_else_chain([], Default, _Rval, MLDS_Context) = Statement :-
     ).
 ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
         Statement :-
-    Case = MatchConditions - CaseStatement,
+    Case = mlds_switch_case(MatchConditions, CaseStatement),
     (
         Cases = [],
         Default = default_is_unreachable

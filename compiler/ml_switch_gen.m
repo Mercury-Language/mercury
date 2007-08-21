@@ -445,7 +445,7 @@ ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case, !Info) :-
         unexpected(this_file, "ml_switch_gen.m: invalid tag type")
     ),
     ml_gen_goal(CodeModel, Goal, Statement, !Info),
-    MLDS_Case = [match_value(Rval)] - Statement.
+    MLDS_Case = mlds_switch_case([match_value(Rval)], Statement).
 
     % Generate an appropriate default for a switch.
     %

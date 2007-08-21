@@ -2938,7 +2938,7 @@ gen_cases(DefnInfo, Cases) -->
 
 :- pred gen_case(defn_info::in, mlds_switch_case::in,
 		io__state::di, io__state::uo) is det.
-gen_case(DefnInfo, MatchConds - Code) -->
+gen_case(DefnInfo, mlds_switch_case(MatchConds, Code)) -->
 	list__foldl(gen_case_label(DefnInfo), MatchConds),
 	gen_statement(DefnInfo, Code),
 	gcc__gen_break.

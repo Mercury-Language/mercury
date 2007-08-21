@@ -86,7 +86,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module solutions.
 
 %-----------------------------------------------------------------------------%
@@ -323,9 +322,10 @@ mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) = [Case | Cases] :-
 :- func mark_tailcalls_in_case(mlds_switch_case, at_tail, locals) =
     mlds_switch_case.
 
-mark_tailcalls_in_case(Cond - Statement0, AtTail, Locals) =
-        Cond - Statement :-
-    Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
+mark_tailcalls_in_case(Case0, AtTail, Locals) = Case :-
+    Case0 = mlds_switch_case(Cond, Statement0),
+    Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals),
+    Case = mlds_switch_case(Cond, Statement).
 
 :- func mark_tailcalls_in_default(mlds_switch_default, at_tail, locals) =
     mlds_switch_default.

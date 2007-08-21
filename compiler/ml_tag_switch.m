@@ -156,7 +156,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
         )
     ),
     PrimaryTagRval = const(mlconst_int(PrimaryTag)),
-    MLDS_Case = [match_value(PrimaryTagRval)] - Statement.
+    MLDS_Case = mlds_switch_case([match_value(PrimaryTagRval)], Statement).
 
 :- pred gen_stag_switch(stag_goal_list::in, int::in, sectag_locn::in,
     prog_var::in, code_model::in, can_fail::in, prog_context::in,
@@ -208,7 +208,7 @@ gen_stag_case(Case, CodeModel, MLDS_Case, !Info) :-
     Case = Stag - stag_goal(_ConsId, Goal),
     StagRval = const(mlconst_int(Stag)),
     ml_gen_goal(CodeModel, Goal, Statement, !Info),
-    MLDS_Case = [match_value(StagRval)] - Statement.
+    MLDS_Case = mlds_switch_case([match_value(StagRval)], Statement).
 
 %-----------------------------------------------------------------------------%
 
