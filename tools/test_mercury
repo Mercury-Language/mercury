@@ -11,8 +11,8 @@
 echo "test_mercury starting at `date`" 1>&2
 
 case $# in
-	5)	HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5 ;;
-	*)	echo "Usage: $0 host arch fullarch branch c_compiler" 1>&2; exit 1 ;;
+	6)	HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE=$6 ;;
+	*)	echo "Usage: $0 host arch fullarch branch c_compiler use_mmc_make" 1>&2; exit 1 ;;
 esac
 
 if [ -d /home/mercury/public/. ]; then
@@ -385,6 +385,10 @@ case $HOST in
 					asm_fast.gc	\
 					asm_fast.gc.tr	\
 					asm_fast.gc.tr.debug"
+		# The erlang grade requires mmc --make.
+		if test "$USE_MMC_MAKE" != ""; then
+			INSTALL_LIBGRADES="$INSTALL_LIBGRADES erlang"
+		fi
 		;;
 	saturn)
 		CONFIG_OPTS="--disable-dotnet-grades"
@@ -663,16 +667,18 @@ case "$C_COMPILER" in
 esac
 export CC
 
+MMAKE="mmake $USE_MMC_MAKE"
+
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
-mmake $target_opts depend $PARALLEL || { false; exit 1; }
-mmake $target_opts realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
+$MMAKE $target_opts depend $PARALLEL || { false; exit 1; }
+$MMAKE $target_opts realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
-mmake $target_opts depend $PARALLEL || { false; exit 1; }
-version=`mmake $target_opts version` || { false; exit 1; }
-fullarch=`mmake $target_opts fullarch` || { false; exit 1; }
-tools/bootcheck $use_cp_opt $target_opts \
+$MMAKE $target_opts depend $PARALLEL || { false; exit 1; }
+version=`$MMAKE $target_opts version` || { false; exit 1; }
+fullarch=`$MMAKE $target_opts fullarch` || { false; exit 1; }
+tools/bootcheck $USE_MMC_MAKE $use_cp_opt $target_opts \
 	--keep-objs --copy-runtime \
 	--no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
@@ -719,9 +725,9 @@ case $status in 0)
     # Note that we don't pass $target_opts when doing `mmake install_grades';
     # that wouldn't work, since many of the grades can only be built with
     # `--target c'.
-    mmake $target_opts install_main MMAKEFLAGS=$PARALLEL || \
+    $MMAKE $target_opts install_main MMAKEFLAGS=$PARALLEL || \
     		set_status "install_main"
-    mmake install_grades MMAKEFLAGS=$PARALLEL || \
+    $MMAKE install_grades MMAKEFLAGS=$PARALLEL || \
     		set_status "install_grades"
 
     case $install_anyway_stage1 in
@@ -759,7 +765,7 @@ unset MERCURY_COMPILER
 
 PATH="$INSTALL_DIR/bin:$PATH"
 
-GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
+GRADES="`(cd $DIR/mercury && $MMAKE echo_libgrades)`"
 
 #-----------------------------------------------------------------------------#
 
@@ -774,9 +780,9 @@ case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
 	# compilation time for `--intermodule-optimization' is probably not
 	# acceptable for the source distribution.
 	{ cd $DIR/mercury &&
-	mmake realclean MMAKEFLAGS=$PARALLEL &&
+	$MMAKE realclean MMAKEFLAGS=$PARALLEL &&
 	(cd $DIR/tests &&
-	mmake realclean MMAKEFLAGS=$PARALLEL) &&
+	$MMAKE realclean MMAKEFLAGS=$PARALLEL) &&
 	: > Mmake.params &&
 	rm -f so_locations &&
 	autoconf &&
@@ -784,7 +790,7 @@ case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
-	mmake MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
+	$MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
 	cd .. &&
 	rm -f $UNSTABLE/* &&
 	cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
@@ -834,7 +840,7 @@ do
 	    *)
 #	        echo "testing grade $grade, MCFLAGS=$TEST_MCFLAGS" \
 #			>> $TEST_ERROR_FILE
-		mmake GRADE="$grade" \
+		$MMAKE GRADE="$grade" \
 			EXTRA_MCFLAGS="$TEST_MCFLAGS" \
 			EXTRA_CFLAGS="$TEST_CFLAGS" \
 			EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
@@ -853,8 +859,8 @@ do
 			# for profiling on DEC Alpha
 			(cd benchmarks &&
 			touch poly.m &&
-			mmake poly.depend &&
-			mmake poly \
+			$MMAKE poly.depend &&
+			$MMAKE poly \
 				GRADE="$grade" \
 				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
 				EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
@@ -991,7 +997,7 @@ esac
 
 {
 	cd $DIR/mercury &&
-	mmake bindist &&
+	$MMAKE bindist &&
 	cd .. &&
 	{ [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
 	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&

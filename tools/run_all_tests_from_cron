@@ -24,11 +24,14 @@ ulimit -c 0
 
 C_COMPILER=gcc
 BRANCH=
+USE_MMC_MAKE=""
 case $# in
 	1)	HOST=$1 ;;
 	2)	HOST=$1; C_COMPILER=$2 ;;
 	3)	HOST=$1; C_COMPILER=$2; BRANCH=$3 ;;
-	*)	echo "Usage: $0 host [c-compiler] [branch]" 1>&2; exit 1 ;;
+	4)	HOST=$1; C_COMPILER=$2; BRANCH=$3; USE_MMC_MAKE=$4 ;;
+	*)	echo "Usage: $0 host [c-compiler] [branch] [use_mmc_make]" 1>&2
+		exit 1 ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -155,7 +158,9 @@ mv -f $tm_dir/logs/$logname.out.errs $tm_dir/logs/old 2>/dev/null
 mv -f $tm_dir/logs/$logname.test_errs $tm_dir/logs/old 2>/dev/null
 logfile="$tm_dir/logs/$logname.out"
 
-if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
+if
+	nice -5 sh $tmpscript \
+		$HOST $ARCH $FULLARCH $BRANCH $C_COMPILER $USE_MMC_MAKE \
 		> $logfile 2>&1
 then
 	test_status="succeeded"
