@@ -323,7 +323,7 @@ tcl_status_ok(tcl_ok).
 
 :- pragma foreign_proc("C",
     delete_command(Interp::in, Name::in, Result::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure], 
+    [may_call_mercury, promise_pure], 
 "
     int err;
     err = Tcl_DeleteCommand(Interp, Name);
@@ -346,13 +346,13 @@ tcl_status_ok(tcl_ok).
 
 void *malloc(size_t s)
 {
-    return GC_MALLOC(s);
+    return GC_MALLOC_UNCOLLECTABLE(s);
 }
 
 void *calloc(size_t s, size_t n)
 {
     void *t;
-    t = GC_MALLOC(s*n);
+    t = GC_MALLOC_UNCOLLECTABLE(s*n);
     memset(t, 0, s*n);
     return t;
 }

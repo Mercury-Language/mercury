@@ -520,7 +520,7 @@
 :- pred destroy(tcl_interp, widget, io__state, io__state).
 :- mode destroy(in, in, di, uo) is det.
 
-:- type event	--->	event(list(event_modifier), event_type).
+:- type (event)	--->	event(list(event_modifier), event_type).
 
 :- type event_modifier
 	--->	control
