@@ -1787,7 +1787,7 @@ ml_gen_wrap_goal(model_non, model_semi, Context, !Statements, !Info) :-
     %
     ml_gen_test_success(!.Info, Succeeded),
     ml_gen_call_current_success_cont(Context, CallCont, !Info),
-    IfStmt = if_then_else(Succeeded, CallCont, no),
+    IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no),
     IfStatement = statement(IfStmt, mlds_make_context(Context)),
     !:Statements = !.Statements ++ [IfStatement].
 
@@ -1870,9 +1870,9 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             [i(CommitLabelNum)]), no),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
-        DoCommitStmt = do_commit(lval(CommitRefLval)),
+        DoCommitStmt = ml_stmt_do_commit(lval(CommitRefLval)),
         DoCommitStatement = statement(DoCommitStmt, MLDS_Context),
-        % pop nesting level
+        % Pop nesting level.
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
             DoCommitStatement, SuccessFunc),
 
@@ -1890,7 +1890,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             SetSuccessFalse),
         ml_gen_set_success(!.Info, const(mlconst_true), Context,
             SetSuccessTrue),
-        TryCommitStmt = try_commit(CommitRefLval,
+        TryCommitStmt = ml_stmt_try_commit(CommitRefLval,
             ml_gen_block([], [GoalStatement, SetSuccessFalse], Context),
             ml_gen_block([], list.append(CopyLocalsToOutputArgs,
                 [SetSuccessTrue]), Context)),
@@ -1949,7 +1949,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             string.format("commit_%d", [i(CommitLabelNum)]), no),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
-        DoCommitStmt = do_commit(lval(CommitRefLval)),
+        DoCommitStmt = ml_stmt_do_commit(lval(CommitRefLval)),
         DoCommitStatement = statement(DoCommitStmt, MLDS_Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
@@ -1966,7 +1966,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             GoalContext),
         ml_gen_info_pop_success_cont(!Info),
 
-        TryCommitStmt = try_commit(CommitRefLval, GoalStatement,
+        TryCommitStmt = ml_stmt_try_commit(CommitRefLval, GoalStatement,
             ml_gen_block([], CopyLocalsToOutputArgs, Context)),
         TryCommitStatement = statement(TryCommitStmt, MLDS_Context),
         CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc | GoalStaticDecls],
@@ -2046,8 +2046,8 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
         RetTypes = [],
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         CallKind = ordinary_call,
-        CallStmt = mlcall(Signature, CommitFuncLabelRval, no, ArgRvals, [],
-            CallKind),
+        CallStmt = ml_stmt_call(Signature, CommitFuncLabelRval, no, ArgRvals,
+            [], CallKind),
         CallStatement = statement(CallStmt, mlds_make_context(Context)),
         % Package it all up.
         Statements = [CallStatement],
@@ -2445,10 +2445,10 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
     ],
     Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
     Starting_C_Code_Statement = statement(
-        atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
+        ml_stmt_atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
     Ending_C_Code_Stmt = inline_target_code(ml_target_c, Ending_C_Code),
     Ending_C_Code_Statement = statement(
-        atomic(Ending_C_Code_Stmt), mlds_make_context(Context)),
+        ml_stmt_atomic(Ending_C_Code_Stmt), mlds_make_context(Context)),
     Statements = list.condense([
         [Starting_C_Code_Statement],
         ConvStatements,
@@ -2467,7 +2467,8 @@ ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Decls, Statements,
     MLDSContext = mlds_make_context(Context),
     ml_success_lval(!.Info, SuccessLval),
     ml_generate_runtime_cond_code(TraceRuntimeCond, CondRval, !Info),
-    Statement = statement(atomic(assign(SuccessLval, CondRval)), MLDSContext),
+    Statement = statement(ml_stmt_atomic(assign(SuccessLval, CondRval)),
+        MLDSContext),
     Statements = [Statement].
 
 :- pred ml_generate_runtime_cond_code(trace_expr(trace_runtime)::in,
@@ -2595,7 +2596,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
     ]),
     Java_Code_Stmt = inline_target_code(ml_target_java, Java_Code),
     Java_Code_Statement = statement(
-        atomic(Java_Code_Stmt),
+        ml_stmt_atomic(Java_Code_Stmt),
         mlds_make_context(Context)),
     Statements = list.condense([
         [Java_Code_Statement],
@@ -2665,7 +2666,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
     ),
 
     Statements = [
-        statement(atomic(OutlineStmt), MLDSContext) |
+        statement(ml_stmt_atomic(OutlineStmt), MLDSContext) |
         SuccessIndicatorStatements
         ],
     Decls = SuccessVarLocals.
@@ -2771,8 +2772,8 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
                 get_extra_attributes(Attributes)))
         ]),
 
-    ILCodeFragment = statement(atomic(OutlineStmt), MLDSContext),
-    Statements = [statement(block(VarLocals,
+    ILCodeFragment = statement(ml_stmt_atomic(OutlineStmt), MLDSContext),
+    Statements = [statement(ml_stmt_block(VarLocals,
         [ILCodeFragment] ++ ByRefAssignStatements ++ CopiedOutputStatements),
         mlds_make_context(Context))],
     Decls = [].
@@ -3029,8 +3030,8 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
     Ending_C_Code_Stmt = inline_target_code(ml_target_c, Ending_C_Code),
     Starting_C_Code_Statement = statement(
-        atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
-    Ending_C_Code_Statement = statement(atomic(Ending_C_Code_Stmt),
+        ml_stmt_atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
+    Ending_C_Code_Statement = statement(ml_stmt_atomic(Ending_C_Code_Stmt),
         mlds_make_context(Context)),
     Statements = list.condense([
         [Starting_C_Code_Statement],
@@ -3514,7 +3515,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_test_success(!.Info, Succeeded),
         ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
         ml_gen_goal(CodeModel, Else, ElseStatement, !Info),
-        IfStmt = if_then_else(Succeeded, ThenStatement, yes(ElseStatement)),
+        IfStmt = ml_stmt_if_then_else(Succeeded, ThenStatement,
+            yes(ElseStatement)),
         IfStatement = statement(IfStmt, mlds_make_context(Context)),
         Decls = CondDecls,
         Statements = CondStatements ++ [IfStatement]
@@ -3579,7 +3581,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
         ml_gen_goal(CodeModel, Else, ElseStatement, !Info),
-        IfStmt = if_then_else(unop(std_unop(logical_not), CondSucceeded),
+        IfStmt = ml_stmt_if_then_else(
+            unop(std_unop(logical_not), CondSucceeded),
             ElseStatement, no),
         IfStatement = statement(IfStmt, MLDS_Context),
 
@@ -3756,8 +3759,8 @@ ml_gen_disj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
             ml_gen_disj(Rest, CodeModel, Context,
                 RestDecls, RestStatements, !Info),
             RestStatement = ml_gen_block(RestDecls, RestStatements, Context),
-            IfStmt = if_then_else(unop(std_unop(logical_not), Succeeded),
-                RestStatement, no),
+            IfStmt = ml_stmt_if_then_else(
+                unop(std_unop(logical_not), Succeeded), RestStatement, no),
             IfStatement = statement(IfStmt, mlds_make_context(Context)),
             Decls = FirstDecls,
             Statements = FirstStatements ++ [IfStatement]

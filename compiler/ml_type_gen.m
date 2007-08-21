@@ -794,7 +794,7 @@ gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
         InitMembers = InitMembers0
     ),
 
-    Stmt = statement(block([], InitMembers), Context),
+    Stmt = statement(ml_stmt_block([], InitMembers), Context),
     Attributes = [],
     EnvVarNames = set.init,
     Ctor = mlds_function(no, mlds_func_params(Args, ReturnValues),
@@ -861,7 +861,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
             % But doing so breaks the IL back-end, because then the hack in
             % fixup_class_qualifiers doesn't work.
         Type, BaseClassId),
-    Statement = statement(atomic(assign(Field, Param)), Context).
+    Statement = statement(ml_stmt_atomic(assign(Field, Param)), Context).
 
     % Generate "this->data_tag = <TagVal>;".
     %
@@ -884,7 +884,7 @@ gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
         named_field(qual(TagClassQualifier, type_qual, Name),
             mlds_ptr_type(SecondaryTagClassId)),
         Type, ClassType),
-    Statement = statement(atomic(assign(Field, Val)), Context).
+    Statement = statement(ml_stmt_atomic(assign(Field, Val)), Context).
 
 :- pred ml_gen_typeclass_info_member(module_info::in, prog_context::in,
     prog_constraint::in, mlds_defn::out, int::in, int::out) is det.

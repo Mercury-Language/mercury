@@ -60,8 +60,8 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         % unless the target prefers switches.
 
         % Is this an int switch?
-        Stmt0 = switch(Type, Rval, Range, Cases, Default),
-        is_integral_type(Type),
+        Stmt0 = ml_stmt_switch(Type, Rval, Range, Cases, Default),
+        is_integral_type(Type) = yes,
 
         % Does the target want us to convert dense int switches
         % into computed gotos?
@@ -86,14 +86,14 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         generate_dense_switch(Cases, Default, FirstVal, LastVal,
             NeedRangeCheck, Type, Rval, MLDS_Context,
             Decls, Statements, !Info),
-        Stmt = block(Decls, Statements),
+        Stmt = ml_stmt_block(Decls, Statements),
         Statement = statement(Stmt, MLDS_Context)
     ;
         % Convert the remaining (sparse) int switches into if-then-else chains,
         % unless the target prefers switches.
 
-        Stmt0 = switch(Type, Rval, _Range, Cases, Default),
-        is_integral_type(Type),
+        Stmt0 = ml_stmt_switch(Type, Rval, _Range, Cases, Default),
+        is_integral_type(Type) = yes,
         \+ (
             target_supports_int_switch(Globals),
             globals.lookup_bool_option(Globals, prefer_switch, yes)
@@ -105,7 +105,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         % Optimize away trivial switches (these can occur e.g. with
         % --tags none, where the tag test always has only one reachable case)
 
-        Stmt0 = switch(_Type, _Rval, _Range, Cases, Default),
+        Stmt0 = ml_stmt_switch(_Type, _Rval, _Range, Cases, Default),
         Cases = [SingleCase],
         Default = default_is_unreachable
     ->
@@ -116,13 +116,45 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         Statement = statement(Stmt, MLDS_Context)
     ).
 
-:- pred is_integral_type(mlds_type::in) is semidet.
+:- func is_integral_type(mlds_type) = bool.
 
-is_integral_type(mlds_native_int_type).
-is_integral_type(mlds_native_char_type).
-is_integral_type(mercury_type(_, type_cat_int, _)).
-is_integral_type(mercury_type(_, type_cat_char, _)).
-is_integral_type(mercury_type(_, type_cat_enum, _)).
+is_integral_type(mlds_mercury_array_type(_)) = no.
+is_integral_type(mlds_cont_type(_)) = no.
+is_integral_type(mlds_commit_type) = no.
+is_integral_type(mlds_native_bool_type) = no.
+is_integral_type(mlds_native_int_type)  = yes.
+is_integral_type(mlds_native_char_type) = yes.
+is_integral_type(mlds_native_float_type) = no.
+is_integral_type(mercury_type(_, type_cat_int, _)) = yes.
+is_integral_type(mercury_type(_, type_cat_char, _)) = yes.
+is_integral_type(mercury_type(_, type_cat_string, _)) = no.
+is_integral_type(mercury_type(_, type_cat_float, _)) = no.
+is_integral_type(mercury_type(_, type_cat_higher_order, _)) = no.
+is_integral_type(mercury_type(_, type_cat_tuple, _)) = no.
+is_integral_type(mercury_type(_, type_cat_enum, _)) = yes.
+% XXX we are able to switch on foreign enumerations in C; this
+% may not be the case for the other target languages.
+is_integral_type(mercury_type(_, type_cat_foreign_enum, _)) = yes.
+is_integral_type(mercury_type(_, type_cat_dummy, _)) = no.
+is_integral_type(mercury_type(_, type_cat_variable, _)) = no.
+is_integral_type(mercury_type(_, type_cat_type_info, _)) = no.
+is_integral_type(mercury_type(_, type_cat_type_ctor_info, _)) = no.
+is_integral_type(mercury_type(_, type_cat_typeclass_info, _)) = no.
+is_integral_type(mercury_type(_, type_cat_base_typeclass_info, _)) = no.
+is_integral_type(mercury_type(_, type_cat_void, _)) = no.
+is_integral_type(mercury_type(_, type_cat_user_ctor, _)) = no.
+is_integral_type(mlds_foreign_type(_)) = no.
+is_integral_type(mlds_class_type(_, _, _)) = no.
+is_integral_type(mlds_ptr_type(_)) = no.
+is_integral_type(mlds_func_type(_)) = no.
+is_integral_type(mlds_type_info_type) = no.
+is_integral_type(mlds_generic_type) = no.
+is_integral_type(mlds_generic_env_ptr_type) = no.
+is_integral_type(mlds_array_type(_)) = no.
+is_integral_type(mlds_pseudo_type_info_type) = no.
+is_integral_type(mlds_rtti_type(_)) = no.
+is_integral_type(mlds_tabling_type(_)) = no.
+is_integral_type(mlds_unknown_type) = no.
 
 :- pred is_dense_switch(list(mlds_switch_case)::in, int::in) is semidet.
 
@@ -240,7 +272,8 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ml_gen_new_label(DefaultLabel, !Info),
     CaseLabels = get_case_labels(FirstVal, LastVal,
         CaseLabelsMap, DefaultLabel),
-    DefaultLabelStatement = statement(label(DefaultLabel), MLDS_Context),
+    DefaultLabelStatement = statement(ml_stmt_label(DefaultLabel),
+        MLDS_Context),
     (
         Default = default_is_unreachable,
         % We still need the label, in case we inserted references to it
@@ -255,11 +288,11 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ),
 
     StartComment = statement(
-        atomic(comment("switch (using dense jump table)")),
+        ml_stmt_atomic(comment("switch (using dense jump table)")),
         MLDS_Context),
-    DoJump = statement(computed_goto(Index, CaseLabels), MLDS_Context),
-    EndLabelStatement = statement(label(EndLabel), MLDS_Context),
-    EndComment = statement(atomic(comment("End of dense switch")),
+    DoJump = statement(ml_stmt_computed_goto(Index, CaseLabels), MLDS_Context),
+    EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),
+    EndComment = statement(ml_stmt_atomic(comment("End of dense switch")),
         MLDS_Context),
 
     % We may need to check that the value of the variable lies within the
@@ -268,11 +301,11 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
         NeedRangeCheck = yes,
         Difference = LastVal - FirstVal,
         InRange = binop(unsigned_le, Index, const(mlconst_int(Difference))),
-        Else = yes(statement(block([], DefaultStatements),
+        Else = yes(statement(ml_stmt_block([], DefaultStatements),
             MLDS_Context)),
-        SwitchBody = statement(block([], [DoJump | CasesCode]),
+        SwitchBody = statement(ml_stmt_block([], [DoJump | CasesCode]),
             MLDS_Context),
-        DoSwitch = statement(if_then_else(InRange, SwitchBody, Else),
+        DoSwitch = statement(ml_stmt_if_then_else(InRange, SwitchBody, Else),
             MLDS_Context),
         Statements = [StartComment, DoSwitch] ++
             [EndLabelStatement, EndComment]
@@ -315,13 +348,13 @@ generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
     insert_cases_into_map(MatchCondition, ThisLabel,
         CaseLabelsMap0, CaseLabelsMap),
     CaseStatement = statement(_, MLDS_Context),
-    LabelComment = statement(atomic(comment("case of dense switch")),
+    LabelComment = statement(ml_stmt_atomic(comment("case of dense switch")),
         MLDS_Context),
-    LabelCode = statement(label(ThisLabel), MLDS_Context),
+    LabelCode = statement(ml_stmt_label(ThisLabel), MLDS_Context),
     JumpComment = statement(
-        atomic(comment("branch to end of dense switch")),
+        ml_stmt_atomic(comment("branch to end of dense switch")),
         MLDS_Context),
-    JumpCode = statement(goto(label(EndLabel)), MLDS_Context),
+    JumpCode = statement(ml_stmt_goto(label(EndLabel)), MLDS_Context),
     Decls = [],
     Statements = [LabelComment, LabelCode, CaseStatement,
         JumpComment, JumpCode].
@@ -407,10 +440,10 @@ get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
 ml_switch_to_if_else_chain([], Default, _Rval, MLDS_Context) = Statement :-
     (
         Default = default_do_nothing,
-        Statement = statement(block([],[]), MLDS_Context)
+        Statement = statement(ml_stmt_block([], []), MLDS_Context)
     ;
         Default = default_is_unreachable,
-        Statement = statement(block([],[]), MLDS_Context)
+        Statement = statement(ml_stmt_block([], []), MLDS_Context)
     ;
         Default = default_case(Statement)
     ).
@@ -426,7 +459,7 @@ ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
         CaseMatchedRval = ml_gen_case_match_conds(MatchConditions, SwitchRval),
         RestStatement = ml_switch_to_if_else_chain(Cases, Default, SwitchRval,
             MLDS_Context),
-        IfStmt = if_then_else(CaseMatchedRval, CaseStatement,
+        IfStmt = ml_stmt_if_then_else(CaseMatchedRval, CaseStatement,
             yes(RestStatement)),
         Statement = statement(IfStmt, MLDS_Context)
     ).

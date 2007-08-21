@@ -457,19 +457,20 @@ rename_gc_statement(gc_initialiser(Stmt))
 
 :- func rename_statement(statement) = statement.
 
-rename_statement(statement(block(Defns, Stmts), Context))
-    = statement(block(list.map(rename_defn, Defns),
+rename_statement(statement(ml_stmt_block(Defns, Stmts), Context))
+    = statement(ml_stmt_block(list.map(rename_defn, Defns),
         list.map(rename_statement, Stmts)), Context).
-rename_statement(statement(while(Rval, Loop, IterateOnce), Context))
-    = statement(while(rename_rval(Rval),
+rename_statement(statement(ml_stmt_while(Rval, Loop, IterateOnce), Context))
+    = statement(ml_stmt_while(rename_rval(Rval),
         rename_statement(Loop), IterateOnce), Context).
-rename_statement(statement(if_then_else(Rval, Then, MaybeElse), Context))
-    = statement(if_then_else(rename_rval(Rval),
+rename_statement(statement(ml_stmt_if_then_else(Rval, Then, MaybeElse),
+        Context)) =
+    statement(ml_stmt_if_then_else(rename_rval(Rval),
         rename_statement(Then),
         rename_maybe_statement(MaybeElse)), Context).
-rename_statement(statement(switch(Type, Rval, Range, Cases, Default0),
+rename_statement(statement(ml_stmt_switch(Type, Rval, Range, Cases, Default0),
         Context))
-    = statement(switch(Type, rename_rval(Rval), Range,
+    = statement(ml_stmt_switch(Type, rename_rval(Rval), Range,
         list.map(rename_switch_case, Cases), Default), Context) :-
     (
         Default0 = default_is_unreachable,
@@ -481,17 +482,17 @@ rename_statement(statement(switch(Type, Rval, Range, Cases, Default0),
         Default0 = default_case(Stmt),
         Default = default_case(rename_statement(Stmt))
     ).
-rename_statement(statement(label(Label), Context))
-    = statement(label(Label), Context).
-rename_statement(statement(goto(Label), Context))
-    = statement(goto(Label), Context).
-rename_statement(statement(computed_goto(Rval, Labels), Context))
-    = statement(computed_goto(rename_rval(Rval), Labels), Context).
+rename_statement(statement(ml_stmt_label(Label), Context))
+    = statement(ml_stmt_label(Label), Context).
+rename_statement(statement(ml_stmt_goto(Label), Context))
+    = statement(ml_stmt_goto(Label), Context).
+rename_statement(statement(ml_stmt_computed_goto(Rval, Labels), Context))
+    = statement(ml_stmt_computed_goto(rename_rval(Rval), Labels), Context).
 
 rename_statement(statement(
-        mlcall(Signature, Rval, MaybeThis0, Args, Results, TailCall),
+        ml_stmt_call(Signature, Rval, MaybeThis0, Args, Results, TailCall),
         Context))
-    = statement(mlcall(Signature, rename_rval(Rval),
+    = statement(ml_stmt_call(Signature, rename_rval(Rval),
         MaybeThis, list.map(rename_rval, Args),
         list.map(rename_lval, Results), TailCall), Context) :-
     (
@@ -502,15 +503,15 @@ rename_statement(statement(
         MaybeThis = no
     ).
 
-rename_statement(statement(return(Vals), Context))
-    = statement(return(Vals), Context).
-rename_statement(statement(try_commit(Lval, Try, Handler), Context))
-    = statement(try_commit(rename_lval(Lval), rename_statement(Try),
+rename_statement(statement(ml_stmt_return(Vals), Context))
+    = statement(ml_stmt_return(Vals), Context).
+rename_statement(statement(ml_stmt_try_commit(Lval, Try, Handler), Context))
+    = statement(ml_stmt_try_commit(rename_lval(Lval), rename_statement(Try),
         rename_statement(Handler)), Context).
-rename_statement(statement(do_commit(Rval), Context))
-    = statement(do_commit(rename_rval(Rval)), Context).
-rename_statement(statement(atomic(Stmt), Context))
-    = statement(atomic(rename_atomic(Stmt)), Context).
+rename_statement(statement(ml_stmt_do_commit(Rval), Context))
+    = statement(ml_stmt_do_commit(rename_rval(Rval)), Context).
+rename_statement(statement(ml_stmt_atomic(Stmt), Context))
+    = statement(ml_stmt_atomic(rename_atomic(Stmt)), Context).
 
 :- func rename_switch_case(mlds_switch_case) = mlds_switch_case.
 
@@ -712,7 +713,7 @@ maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
         Ctors0 = []
     ->
         % Generate an empty block for the body of the constructor.
-        Stmt = statement(block([], []), Context),
+        Stmt = statement(ml_stmt_block([], []), Context),
 
         Attributes = [],
         EnvVarNames = set.init,
@@ -1437,11 +1438,11 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
 
     % XXX Should we look for tail calls?
     CallStatement = statement(
-        mlcall(Signature, CodeRval, no, ArgRvals, ReturnLvals,
+        ml_stmt_call(Signature, CodeRval, no, ArgRvals, ReturnLvals,
             ordinary_call), Context),
-    ReturnStatement = statement(return(ReturnRvals), Context),
+    ReturnStatement = statement(ml_stmt_return(ReturnRvals), Context),
 
-    Statement = statement(block(ReturnVarDecls,
+    Statement = statement(ml_stmt_block(ReturnVarDecls,
         ( ReturnRvals = [] ->
             [CallStatement]
         ;
@@ -1639,7 +1640,8 @@ statements_to_il([HeadStmt | TailStmts], tree(HeadCode, TailCode), !Info) :-
 :- pred statement_to_il(statement::in, instr_tree::out,
     il_info::in, il_info::out) is det.
 
-statement_to_il(statement(block(Defns, Statements), Context), Instrs, !Info) :-
+statement_to_il(statement(BlockStmt, Context), Instrs, !Info) :-
+    BlockStmt = ml_stmt_block(Defns, Statements),
     il_info_get_module_name(!.Info, ModuleName),
     il_info_get_next_block_id(BlockId, !Info),
     list.map(defn_to_local(ModuleName), Defns, Locals),
@@ -1661,13 +1663,12 @@ statement_to_il(statement(block(Defns, Statements), Context), Instrs, !Info) :-
     ]),
     il_info_remove_locals(Locals, !Info).
 
-statement_to_il(statement(atomic(Atomic), Context), Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_atomic(Atomic), Context), Instrs, !Info) :-
     atomic_statement_to_il(Atomic, AtomicInstrs, !Info),
     Instrs = tree(context_node(Context), AtomicInstrs).
 
-statement_to_il(statement(
-        mlcall(Sig, Function, _This, Args, Returns, CallKind), Context),
-        Instrs, !Info) :-
+statement_to_il(statement(CallStmt, Context), Instrs, !Info) :-
+    CallStmt = ml_stmt_call(Sig, Function, _This, Args, Returns, CallKind),
     VerifiableCode = !.Info ^ verifiable_code,
     ByRefTailCalls = !.Info ^ il_byref_tailcalls,
     MsCLR = !.Info ^ support_ms_clr,
@@ -1757,8 +1758,8 @@ statement_to_il(statement(
         ReturnsStoredInstrs
     ]).
 
-statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase),
-        Context), Instrs, !Info) :-
+statement_to_il(statement(IfThenElseStmt, Context), Instrs, !Info) :-
+    IfThenElseStmt = ml_stmt_if_then_else(Condition, ThenCase, ElseCase), 
     generate_condition(Condition, ConditionInstrs, ElseLabel, !Info),
     il_info_make_next_label(DoneLabel, !Info),
     statement_to_il(ThenCase, ThenInstrs, !Info),
@@ -1777,15 +1778,15 @@ statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase),
         instr_node(label(DoneLabel))
     ]).
 
-statement_to_il(statement(switch(_Type, _Val, _Range, _Cases, _Default),
-        _Context), _Instrs, !Info) :-
+statement_to_il(statement(SwitchStmt, _Context), _Instrs, !Info) :-
+    SwitchStmt = ml_stmt_switch(_Type, _Val, _Range, _Cases, _Default),
     % The IL back-end only supports computed_gotos and if-then-else chains;
     % the MLDS code generator should either avoid generating MLDS switches,
     % or should transform them into computed_gotos or if-then-else chains.
     unexpected(this_file, "`switch' not supported").
 
-statement_to_il(statement(while(Condition, Body, AtLeastOnce),
-        Context), Instrs, !Info) :-
+statement_to_il(statement(WhileStmt, Context), Instrs, !Info) :-
+    WhileStmt = ml_stmt_while(Condition, Body, AtLeastOnce),
     generate_condition(Condition, ConditionInstrs, EndLabel, !Info),
     il_info_make_next_label(StartLabel, !Info),
     statement_to_il(Body, BodyInstrs, !Info),
@@ -1814,7 +1815,7 @@ statement_to_il(statement(while(Condition, Body, AtLeastOnce),
         ])
     ).
 
-statement_to_il(statement(return(Rvals), Context), Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_return(Rvals), Context), Instrs, !Info) :-
     (
         Rvals = [],
         unexpected(this_file, "empty list of return values")
@@ -1832,7 +1833,7 @@ statement_to_il(statement(return(Rvals), Context), Instrs, !Info) :-
         sorry(this_file, "multiple return values")
     ).
 
-statement_to_il(statement(label(Label), Context), Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_label(Label), Context), Instrs, !Info) :-
     string.format("label %s", [s(Label)], Comment),
     Instrs = node([
         comment(Comment),
@@ -1840,7 +1841,8 @@ statement_to_il(statement(label(Label), Context), Instrs, !Info) :-
         label(Label)
     ]).
 
-statement_to_il(statement(goto(label(Label)), Context), Instrs, !Info) :-
+statement_to_il(statement(GotoLabelStmt, Context), Instrs, !Info) :-
+    GotoLabelStmt = ml_stmt_goto(label(Label)),
     string.format("goto %s", [s(Label)], Comment),
     Instrs = node([
         comment(Comment),
@@ -1848,13 +1850,15 @@ statement_to_il(statement(goto(label(Label)), Context), Instrs, !Info) :-
         br(label_target(Label))
     ]).
 
-statement_to_il(statement(goto(break), _Context), _Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_goto(break), _Context), _Instrs, !Info) :-
     sorry(this_file, "break").
 
-statement_to_il(statement(goto(continue), _Context), _Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_goto(continue), _Context), _Instrs, !Info) :-
     sorry(this_file, "continue").
 
-statement_to_il(statement(do_commit(_Ref), Context), Instrs, !Info) :-
+statement_to_il(statement(DoCommitStmt, Context), Instrs, !Info) :-
+    DoCommitStmt = ml_stmt_do_commit(_Ref),
+
     % For commits, we use exception handling.
     %
     % For a do_commit instruction, we generate code equivalent
@@ -1867,7 +1871,7 @@ statement_to_il(statement(do_commit(_Ref), Context), Instrs, !Info) :-
     %   newobj  instance void
     %       ['mercury']'mercury'.'runtime'.'Commit'::.ctor()
     %   throw
-
+    %
     NewObjInstr = newobj_constructor(il_commit_class_name, []),
     Instrs = tree_list([
         context_node(Context),
@@ -1876,8 +1880,9 @@ statement_to_il(statement(do_commit(_Ref), Context), Instrs, !Info) :-
         instr_node(throw)
     ]).
 
-statement_to_il(statement(try_commit(_Ref, GoalToTry, CommitHandlerGoal),
-        Context), Instrs, !Info) :-
+statement_to_il(statement(TryCommitStmt, Context), Instrs, !Info) :-
+    TryCommitStmt = ml_stmt_try_commit(_Ref, GoalToTry, CommitHandlerGoal),
+    
     % For commits, we use exception handling.
     %
     % For try_commit instructions, we generate IL code
@@ -1892,7 +1897,7 @@ statement_to_il(statement(try_commit(_Ref, GoalToTry, CommitHandlerGoal),
     %       leave label1
     %   }
     %   label1:
-
+    %
     il_info_get_next_block_id(TryBlockId, !Info),
     statement_to_il(GoalToTry, GoalInstrsTree, !Info),
     il_info_get_next_block_id(CatchBlockId, !Info),
@@ -1918,8 +1923,8 @@ statement_to_il(statement(try_commit(_Ref, GoalToTry, CommitHandlerGoal),
         instr_node(label(DoneLabel))
     ]).
 
-statement_to_il(statement(computed_goto(Rval, MLDSLabels), Context),
-        Instrs, !Info) :-
+statement_to_il(statement(ComputedGotoStmt, Context), Instrs, !Info) :-
+    ComputedGotoStmt = ml_stmt_computed_goto(Rval, MLDSLabels),
     load(Rval, RvalLoadInstrs, !Info),
     Targets = list.map(func(L) = label_target(L), MLDSLabels),
     Instrs = tree_list([

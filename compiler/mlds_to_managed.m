@@ -274,8 +274,8 @@ generate_method_code(Defn, !IO) :-
 write_statement(Args, statement(Statement, Context), !IO) :-
     (
         % XXX petdr
-        Statement = atomic(outline_foreign_proc(lang_csharp, OutlineArgs,
-            _Lvals, Code))
+        Statement = ml_stmt_atomic(ForeignProc),
+        ForeignProc = outline_foreign_proc(lang_csharp, OutlineArgs, _, Code)
     ->
         list.foldl(write_outline_arg_init, OutlineArgs, !IO),
         output_context(mlds_get_prog_context(Context), !IO),
@@ -284,14 +284,14 @@ write_statement(Args, statement(Statement, Context), !IO) :-
         output_reset_context(!IO),
         list.foldl(write_outline_arg_final, OutlineArgs, !IO)
     ;
-        Statement = block(Defns, Statements)
+        Statement = ml_stmt_block(Defns, Statements)
     ->
         io.write_list(Defns, "", write_defn_decl, !IO),
         io.write_string("{\n", !IO),
         io.write_list(Statements, "", write_statement(Args), !IO),
         io.write_string("\n}\n", !IO)
     ;
-        Statement = return(Rvals)
+        Statement = ml_stmt_return(Rvals)
     ->
         ( Rvals = [Rval] ->
             io.write_string("return ", !IO),
@@ -301,7 +301,7 @@ write_statement(Args, statement(Statement, Context), !IO) :-
             sorry(this_file, "multiple return values")
         )
     ;
-        Statement = atomic(assign(LVal, RVal))
+        Statement = ml_stmt_atomic(assign(LVal, RVal))
     ->
         write_lval(LVal, !IO),
         io.write_string(" = ", !IO),

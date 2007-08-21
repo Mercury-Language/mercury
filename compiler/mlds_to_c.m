@@ -2584,7 +2584,8 @@ mlds_output_statement(Indent, FuncInfo, statement(Statement, Context),
 :- pred mlds_output_stmt(indent::in, func_info::in, mlds_stmt::in,
     mlds_context::in, io::di, io::uo) is det.
 
-mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context, !IO) :-
+mlds_output_stmt(Indent, FuncInfo, ml_stmt_block(Defns, Statements), Context,
+        !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("{\n", !IO),
     (
@@ -2612,14 +2613,15 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context, !IO) :-
     mlds_indent(Context, Indent, !IO),
     io.write_string("}\n", !IO).
 
-mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _, !IO) :-
+mlds_output_stmt(Indent, FuncInfo, ml_stmt_while(Cond, Statement, no), _,
+        !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("while (", !IO),
     mlds_output_rval(Cond, !IO),
     io.write_string(")\n", !IO),
     mlds_output_statement(Indent + 1, FuncInfo, Statement, !IO).
-mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, yes), Context,
-        !IO) :-
+mlds_output_stmt(Indent, FuncInfo, ml_stmt_while(Cond, Statement, yes),
+        Context, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("do\n", !IO),
     mlds_output_statement(Indent + 1, FuncInfo, Statement, !IO),
@@ -2628,8 +2630,8 @@ mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, yes), Context,
     mlds_output_rval(Cond, !IO),
     io.write_string(");\n", !IO).
 
-mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
-        Context, !IO) :-
+mlds_output_stmt(Indent, FuncInfo, IfThenElseStmt, Context, !IO) :-
+    IfThenElseStmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
     % We need to take care to avoid problems caused by the dangling else
     % ambiguity.
     (
@@ -2646,9 +2648,9 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
         % `if' rather than the outer `if'.
 
         MaybeElse = yes(_),
-        Then0 = statement(if_then_else(_, _, no), ThenContext)
+        Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
     ->
-        Then = statement(block([], [Then0]), ThenContext)
+        Then = statement(ml_stmt_block([], [Then0]), ThenContext)
     ;
         % For examples of the form
         %
@@ -2663,9 +2665,9 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
         % a warning from gcc.
 
         MaybeElse = no,
-        Then0 = statement(if_then_else(_, _, yes(_)), ThenContext)
+        Then0 = statement(ml_stmt_if_then_else(_, _, yes(_)), ThenContext)
     ->
-        Then = statement(block([], [Then0]), ThenContext)
+        Then = statement(ml_stmt_block([], [Then0]), ThenContext)
     ;
         Then = Then0
     ),
@@ -2683,8 +2685,8 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
     ;
         MaybeElse = no
     ).
-mlds_output_stmt(Indent, FuncInfo, switch(_Type, Val, _Range, Cases, Default),
-        Context, !IO) :-
+mlds_output_stmt(Indent, FuncInfo,
+        ml_stmt_switch(_Type, Val, _Range, Cases, Default), Context, !IO) :-
     mlds_indent(Context, Indent, !IO),
     io.write_string("switch (", !IO),
     mlds_output_rval(Val, !IO),
@@ -2697,7 +2699,7 @@ mlds_output_stmt(Indent, FuncInfo, switch(_Type, Val, _Range, Cases, Default),
     mlds_indent(Context, Indent, !IO),
     io.write_string("}\n", !IO).
 
-mlds_output_stmt(Indent, _FuncInfo, label(LabelName), _, !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_label(LabelName), _, !IO) :-
     % Note: MLDS allows labels at the end of blocks. C doesn't. Hence we need
     % to insert a semi-colon after the colon to ensure that there is a
     % statement to attach the label to.
@@ -2705,19 +2707,19 @@ mlds_output_stmt(Indent, _FuncInfo, label(LabelName), _, !IO) :-
     mlds_indent(Indent - 1, !IO),
     mlds_output_label_name(LabelName, !IO),
     io.write_string(":;\n", !IO).
-mlds_output_stmt(Indent, _FuncInfo, goto(label(LabelName)), _, !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_goto(label(LabelName)), _, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("goto ", !IO),
     mlds_output_label_name(LabelName, !IO),
     io.write_string(";\n", !IO).
-mlds_output_stmt(Indent, _FuncInfo, goto(break), _, !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_goto(break), _, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("break;\n", !IO).
-mlds_output_stmt(Indent, _FuncInfo, goto(continue), _, !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_goto(continue), _, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("continue;\n", !IO).
-mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context,
-        !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_computed_goto(Expr, Labels),
+        Context, !IO) :-
     % XXX For GNU C, we could output potentially more efficient code
     % by using an array of labels; this would tell the compiler that
     % it didn't need to do any range check.
@@ -2733,7 +2735,7 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context,
     io.write_string("}\n", !IO).
 
 mlds_output_stmt(Indent, CallerFuncInfo, Call, Context, !IO) :-
-    Call = mlcall(Signature, FuncRval, MaybeObject, CallArgs,
+    Call = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
         Results, IsTailCall),
     CallerFuncInfo = func_info(CallerName, CallerSignature),
 
@@ -2814,7 +2816,7 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("}\n", !IO).
 
-mlds_output_stmt(Indent, _FuncInfo, return(Results), _, !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_return(Results), _, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("return", !IO),
     (
@@ -2829,7 +2831,7 @@ mlds_output_stmt(Indent, _FuncInfo, return(Results), _, !IO) :-
     ),
     io.write_string(";\n", !IO).
 
-mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref), _, !IO) :-
+mlds_output_stmt(Indent, _FuncInfo, ml_stmt_do_commit(Ref), _, !IO) :-
     mlds_indent(Indent, !IO),
     globals.io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels, !IO),
     (
@@ -2848,8 +2850,8 @@ mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref), _, !IO) :-
         io.write_string(", 1)", !IO)
     ),
     io.write_string(";\n", !IO).
-mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context,
-        !IO) :-
+mlds_output_stmt(Indent, FuncInfo, TryCommitStmt, Context, !IO) :-
+    TryCommitStmt = ml_stmt_try_commit(Ref, Stmt0, Handler),
     globals.io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels, !IO),
     (
         GCC_LocalLabels = yes,
@@ -2909,8 +2911,8 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context,
 
         % We need to take care to avoid problems caused by the dangling else
         % ambiguity.
-        ( Stmt0 = statement(if_then_else(_, _, no), Context) ->
-            Stmt = statement(block([], [Stmt0]), Context)
+        ( Stmt0 = statement(ml_stmt_if_then_else(_, _, no), Context) ->
+            Stmt = statement(ml_stmt_block([], [Stmt0]), Context)
         ;
             Stmt = Stmt0
         ),
@@ -3072,7 +3074,8 @@ mlds_maybe_output_time_profile_instr(Context, Indent, Name, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-mlds_output_stmt(Indent, FuncInfo, atomic(AtomicStatement), Context, !IO) :-
+mlds_output_stmt(Indent, FuncInfo, ml_stmt_atomic(AtomicStatement), Context,
+        !IO) :-
     mlds_output_atomic_stmt(Indent, FuncInfo, AtomicStatement, Context, !IO).
 
 :- pred mlds_output_label_name(mlds_label::in, io::di, io::uo) is det.

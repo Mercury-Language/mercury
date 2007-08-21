@@ -771,7 +771,7 @@
 
 ml_gen_assign(Lval, Rval, Context) = Statement :-
     Assign = assign(Lval, Rval),
-    Stmt = atomic(Assign),
+    Stmt = ml_stmt_atomic(Assign),
     Statement = statement(Stmt, mlds_make_context(Context)).
 
 ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
@@ -782,7 +782,7 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
         ml_gen_test_success(Info, Succeeded),
         CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
             CopiedOutputVarLvals),
-        ReturnStmt = return([Succeeded | CopiedOutputVarRvals]),
+        ReturnStmt = ml_stmt_return([Succeeded | CopiedOutputVarRvals]),
         ReturnStatement = statement(ReturnStmt,
             mlds_make_context(Context)),
         !:Statements = !.Statements ++ [ReturnStatement]
@@ -792,7 +792,7 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
     ->
         CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
             CopiedOutputVarLvals),
-        ReturnStmt = return(CopiedOutputVarRvals),
+        ReturnStmt = ml_stmt_return(CopiedOutputVarRvals),
         ReturnStatement = statement(ReturnStmt,
             mlds_make_context(Context)),
         !:Statements = !.Statements ++ [ReturnStatement]
@@ -807,7 +807,7 @@ ml_gen_block(VarDecls, Statements, Context) =
     ->
         SingleStatement
     ;
-        statement(block(VarDecls, Statements),
+        statement(ml_stmt_block(VarDecls, Statements),
             mlds_make_context(Context))
     ).
 
@@ -860,7 +860,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         ml_gen_test_success(!.Info, Succeeded),
         DoGenRest(RestDecls, RestStatements, !Info),
         IfBody = ml_gen_block([], RestStatements, Context),
-        IfStmt = if_then_else(Succeeded, IfBody, no),
+        IfStmt = ml_stmt_if_then_else(Succeeded, IfBody, no),
         IfStatement = statement(IfStmt, mlds_make_context(Context)),
         Decls = FirstDecls ++ RestDecls,
         Statements = FirstStatements ++ [IfStatement]
@@ -1751,7 +1751,7 @@ ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     ObjectRval = no,
     RetLvals = [],
     CallKind = ordinary_call,
-    Stmt = mlcall(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
+    Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
         CallKind),
     Statement = statement(Stmt, mlds_make_context(Context)).
 
@@ -1819,7 +1819,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
         PassedContVarName), InnerFuncArgType)),
     InnerFuncParams = mlds_func_params([PassedContArg | InnerArgs0], Rets),
 
-    InnerStmt = mlcall(Signature, InnerFuncRval, ObjectRval,
+    InnerStmt = ml_stmt_call(Signature, InnerFuncRval, ObjectRval,
         InnerArgRvals, RetLvals, CallKind),
     InnerStatement = statement(InnerStmt, MLDS_Context),
 
@@ -1841,10 +1841,10 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
             code_addr_internal(QualProcLabel, SeqNum, ProxySignature))),
 
         % Put it inside a block where we call it.
-        Stmt = mlcall(ProxySignature, ProxyFuncRval, ObjectRval,
+        Stmt = ml_stmt_call(ProxySignature, ProxyFuncRval, ObjectRval,
             ProxyArgRvals, RetLvals, CallKind),
-        Statement = statement(
-            block([Defn], [statement(Stmt, MLDS_Context)]), MLDS_Context)
+        BlockStmt = ml_stmt_block([Defn], [statement(Stmt, MLDS_Context)]),
+        Statement = statement(BlockStmt, MLDS_Context)
     ;
         unexpected(this_file,
             "success continuation generated was not a function")
@@ -2126,7 +2126,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
     CastVarAddr = unop(cast(CPointerType), mem_addr(VarLval)),
     TraceStatement = statement(
-        mlcall(Signature, FuncAddr, no,
+        ml_stmt_call(Signature, FuncAddr, no,
             [TypeInfoRval, CastVarAddr], [], ordinary_call
         ), mlds_make_context(Context)).
 
@@ -2207,49 +2207,49 @@ fixup_newobj_in_statement(Statement0, Statement, !Info) :-
 
 fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
     (
-        Stmt0 = block(Defns, Statements0),
+        Stmt0 = ml_stmt_block(Defns, Statements0),
         list.map_foldl(fixup_newobj_in_statement,
             Statements0, Statements, !Fixup),
-        Stmt = block(Defns, Statements)
+        Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = while(Rval, Statement0, Once),
+        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
         fixup_newobj_in_statement(Statement0, Statement, !Fixup),
-        Stmt = while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
-        Stmt0 = if_then_else(Cond, Then0, MaybeElse0),
+        Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
         fixup_newobj_in_statement(Then0, Then, !Fixup),
         fixup_newobj_in_maybe_statement(MaybeElse0, MaybeElse, !Fixup),
-        Stmt = if_then_else(Cond, Then, MaybeElse)
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
-        Stmt0 = switch(Type, Val, Range, Cases0, Default0),
+        Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
         list.map_foldl(fixup_newobj_in_case, Cases0, Cases, !Fixup),
         fixup_newobj_in_default(Default0, Default, !Fixup),
-        Stmt = switch(Type, Val, Range, Cases, Default)
+        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = label(_),
+        Stmt0 = ml_stmt_label(_),
         Stmt = Stmt0
     ;
-        Stmt0 = goto(_),
+        Stmt0 = ml_stmt_goto(_),
         Stmt = Stmt0
     ;
-        Stmt0 = computed_goto(Rval, Labels),
-        Stmt = computed_goto(Rval, Labels)
+        Stmt0 = ml_stmt_computed_goto(Rval, Labels),
+        Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
-        Stmt0 = mlcall(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
         Stmt = Stmt0
     ;
-        Stmt0 = return(_Rvals),
+        Stmt0 = ml_stmt_return(_Rvals),
         Stmt = Stmt0
     ;
-        Stmt0 = do_commit(_Ref),
+        Stmt0 = ml_stmt_do_commit(_Ref),
         Stmt = Stmt0
     ;
-        Stmt0 = try_commit(Ref, Statement0, Handler0),
+        Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
         fixup_newobj_in_statement(Statement0, Statement, !Fixup),
         fixup_newobj_in_statement(Handler0, Handler, !Fixup),
-        Stmt = try_commit(Ref, Statement, Handler)
+        Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
-        Stmt0 = atomic(AtomicStmt0),
+        Stmt0 = ml_stmt_atomic(AtomicStmt0),
         fixup_newobj_in_atomic_statement(AtomicStmt0, Stmt, !Fixup)
     ).
 
@@ -2327,11 +2327,11 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % Generate code to assign the address of the new local variable
         % to the Lval.
         TaggedPtrRval = maybe_tag_rval(MaybeTag, PointerType, PtrRval),
-        AssignStmt = atomic(assign(Lval, TaggedPtrRval)),
+        AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval)),
         AssignStatement = statement(AssignStmt, Context),
-        Stmt = block([], ArgInitStatements ++ [AssignStatement])
+        Stmt = ml_stmt_block([], ArgInitStatements ++ [AssignStatement])
     ;
-        Stmt = atomic(AtomicStatement0)
+        Stmt = ml_stmt_atomic(AtomicStatement0)
     ).
 
 :- pred init_field_n(mlds_type::in, mlds_rval::in, mlds_context::in,
@@ -2344,7 +2344,7 @@ init_field_n(PointerType, PointerRval, Context, ArgRval, Statement,
     FieldType = mlds_generic_type,
     MaybeTag = yes(0),
     Field = field(MaybeTag, PointerRval, FieldId, FieldType, PointerType),
-    AssignStmt = atomic(assign(Field, ArgRval)),
+    AssignStmt = ml_stmt_atomic(assign(Field, ArgRval)),
     Statement = statement(AssignStmt, Context).
 
 :- func maybe_tag_rval(maybe(mlds_tag), mlds_type, mlds_rval) = mlds_rval.

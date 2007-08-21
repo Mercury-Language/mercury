@@ -142,52 +142,53 @@ optimize_in_statement(OptInfo, statement(Stmt, Context)) =
 
 optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
     (
-        Stmt0 = mlcall(_, _, _, _, _, _),
+        Stmt0 = ml_stmt_call(_, _, _, _, _, _),
         Stmt = optimize_in_call_stmt(OptInfo, Stmt0)
     ;
-        Stmt0 = block(Defns0, Statements0),
+        Stmt0 = ml_stmt_block(Defns0, Statements0),
         maybe_convert_assignments_into_initializers(OptInfo,
             Defns0, Defns1, Statements0, Statements1),
         maybe_eliminate_locals(OptInfo, Defns1, Defns,
             Statements1, Statements2),
         maybe_flatten_block(Statements2, Statements3),
         Statements = optimize_in_statements(OptInfo, Statements3),
-        Stmt = block(Defns, Statements)
+        Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = while(Rval, Statement0, Once),
-        Stmt = while(Rval, optimize_in_statement(OptInfo, Statement0), Once)
+        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
+        Statement = optimize_in_statement(OptInfo, Statement0),
+        Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
-        Stmt0 = if_then_else(Rval, Then, MaybeElse),
-        Stmt = if_then_else(Rval,
+        Stmt0 = ml_stmt_if_then_else(Rval, Then, MaybeElse),
+        Stmt = ml_stmt_if_then_else(Rval,
             optimize_in_statement(OptInfo, Then),
             map_maybe(optimize_in_statement(OptInfo), MaybeElse))
     ;
-        Stmt0 = switch(Type, Rval, Range, Cases0, Default0),
-        Stmt = switch(Type, Rval, Range,
+        Stmt0 = ml_stmt_switch(Type, Rval, Range, Cases0, Default0),
+        Stmt = ml_stmt_switch(Type, Rval, Range,
             list.map(optimize_in_case(OptInfo), Cases0),
             optimize_in_default(OptInfo, Default0))
     ;
-        Stmt0 = do_commit(_),
+        Stmt0 = ml_stmt_do_commit(_),
         Stmt = Stmt0
     ;
-        Stmt0 = return(_),
+        Stmt0 = ml_stmt_return(_),
         Stmt = Stmt0
     ;
-        Stmt0 = try_commit(Ref, TryGoal, HandlerGoal),
-        Stmt = try_commit(Ref,
-            optimize_in_statement(OptInfo, TryGoal),
-            optimize_in_statement(OptInfo, HandlerGoal))
+        Stmt0 = ml_stmt_try_commit(Ref, TryGoal0, HandlerGoal0),
+        TryGoal = optimize_in_statement(OptInfo, TryGoal0),
+        HandlerGoal = optimize_in_statement(OptInfo, HandlerGoal0),
+        Stmt = ml_stmt_try_commit(Ref, TryGoal, HandlerGoal)
     ;
-        Stmt0 = label(_Label),
+        Stmt0 = ml_stmt_label(_Label),
         Stmt = Stmt0
     ;
-        Stmt0 = goto(_Label),
+        Stmt0 = ml_stmt_goto(_Label),
         Stmt = Stmt0
     ;
-        Stmt0 = computed_goto(_Rval, _Label),
+        Stmt0 = ml_stmt_computed_goto(_Rval, _Label),
         Stmt = Stmt0
     ;
-        Stmt0 = atomic(_Atomic),
+        Stmt0 = ml_stmt_atomic(_Atomic),
         Stmt = Stmt0
     ).
 
@@ -207,14 +208,14 @@ optimize_in_default(OptInfo, default_case(Statement0)) =
 
 %-----------------------------------------------------------------------------%
 
-:- inst g == ground.
-:- inst mlcall ---> ml_backend.mlds.mlcall(g, g, g, g, g, g).
+:- inst mlcall
+    --->    ml_stmt_call(ground, ground, ground, ground, ground, ground).
 
 :- func optimize_in_call_stmt(opt_info::in, mlds_stmt::in(mlcall))
     = (mlds_stmt::out) is det.
 
 optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
-    Stmt0 = mlcall(_Signature, FuncRval, _MaybeObject, CallArgs,
+    Stmt0 = ml_stmt_call(_Signature, FuncRval, _MaybeObject, CallArgs,
         _Results, _IsTailCall),
         % If we have a self-tailcall, assign to the arguments and
         % then goto the top of the tailcall loop.
@@ -225,15 +226,15 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
             OptInfo ^ entity_name), Stmt0)
     ->
         CommentStatement = statement(
-            atomic(comment("direct tailcall eliminated")),
+            ml_stmt_atomic(comment("direct tailcall eliminated")),
             OptInfo ^ context),
         GotoStatement = statement(
-            goto(tailcall_loop_top(OptInfo ^ globals)),
+            ml_stmt_goto(tailcall_loop_top(OptInfo ^ globals)),
             OptInfo ^ context),
         OptInfo ^ func_params = mlds_func_params(FuncArgs, _RetTypes),
         generate_assign_args(OptInfo, FuncArgs, CallArgs,
             AssignStatements, AssignDefns),
-        AssignVarsStatement = statement(block(AssignDefns,
+        AssignVarsStatement = statement(ml_stmt_block(AssignDefns,
             AssignStatements), OptInfo ^ context),
 
         CallReplaceStatements = [
@@ -241,7 +242,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
             AssignVarsStatement,
             GotoStatement
             ],
-        Stmt = block([], CallReplaceStatements)
+        Stmt = ml_stmt_block([], CallReplaceStatements)
     ;
         % Convert calls to `mark_hp' and `restore_hp' to the
         % corresponding MLDS instructions.  This ensures that
@@ -272,7 +273,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
         PrivateBuiltin = mercury_private_builtin_module,
         ModName = mercury_module_name_to_mlds(PrivateBuiltin)
     ->
-        Stmt = atomic(AtomicStmt)
+        Stmt = ml_stmt_atomic(AtomicStmt)
     ;
         Stmt = Stmt0
     ).
@@ -360,10 +361,10 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             TempDefn = ml_gen_mlds_var_decl_init(var(TempName), Type,
                 Initializer, GCStatement, OptInfo ^ context),
             TempInitStatement = statement(
-                atomic(assign(var(QualTempName, Type), ArgRval)),
+                ml_stmt_atomic(assign(var(QualTempName, Type), ArgRval)),
                 OptInfo ^ context),
             AssignStatement = statement(
-                atomic(assign(
+                ml_stmt_atomic(assign(
                     var(QualVarName, Type),
                     lval(var(QualTempName, Type)))),
                 OptInfo ^ context),
@@ -401,7 +402,7 @@ optimize_func_stmt(OptInfo, statement(Stmt0, Context)) =
             qual(OptInfo ^ module_name, module_qual, OptInfo ^ entity_name),
             CallStmt)
     ->
-        Comment = atomic(comment("tailcall optimized into a loop")),
+        Comment = ml_stmt_atomic(comment("tailcall optimized into a loop")),
         CommentStmt = statement(Comment, Context),
         % The loop can be defined either using while, break, and continue,
         % or using a label and goto.  We prefer to use the former, if possible,
@@ -416,11 +417,11 @@ optimize_func_stmt(OptInfo, statement(Stmt0, Context)) =
             %   }
             % Any tail calls in the function body will have
             % been replaced with `continue' statements.
-            Stmt = while(const(mlconst_true),
-                statement(block([],
+            Stmt = ml_stmt_while(const(mlconst_true),
+                statement(ml_stmt_block([],
                     [CommentStmt,
                     statement(Stmt0, Context),
-                    statement(goto(break), Context)]),
+                    statement(ml_stmt_goto(break), Context)]),
                 Context), no)
         ;
             % Add a loop_top label at the start of the function
@@ -432,8 +433,8 @@ optimize_func_stmt(OptInfo, statement(Stmt0, Context)) =
             %   }
             % Any tail calls in the function body will have
             % been replaced with `goto loop_top' statements.
-            Label = label(tailcall_loop_label_name),
-            Stmt = block([], [CommentStmt,
+            Label = ml_stmt_label(tailcall_loop_label_name),
+            Stmt = ml_stmt_block([], [CommentStmt,
                 statement(Label, Context),
                 statement(Stmt0, Context)])
         )
@@ -475,7 +476,7 @@ maybe_flatten_block(!Stmts) :-
 :- func flatten_block(statement) = statements.
 
 flatten_block(Statement) =
-    ( Statement = statement(block([], BlockStatements), _) ->
+    ( Statement = statement(ml_stmt_block([], BlockStatements), _) ->
         BlockStatements
     ;
         [Statement]
@@ -590,7 +591,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
         % Check if the first statement in the block is an assignment to one
         % of the variables declared in the block.
         !.Statements = [AssignStatement | !:Statements],
-        AssignStatement = statement(atomic(assign(LHS, RHS)), _),
+        AssignStatement = statement(ml_stmt_atomic(assign(LHS, RHS)), _),
         LHS = var(ThisVar, _ThisType),
         ThisVar = qual(Qualifier, QualKind, VarName),
         ThisData = qual(Qualifier, QualKind, var(VarName)),
@@ -823,7 +824,7 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
         Statements) :-
     ( find_initial_val_in_statement(VarName, Rval1, Statement0, Statement1) ->
         Rval = Rval1,
-        ( Statement1 = statement(block([], []), _) ->
+        ( Statement1 = statement(ml_stmt_block([], []), _) ->
             Statements = Statements0
         ;
             Statements = [Statement1 | Statements0]
@@ -839,7 +840,7 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
         \+ statement_contains_var(Statement0, DataName),
         \+ (
             statement_contains_statement(Statement0, Label),
-            Label = statement(label(_), _)
+            Label = statement(ml_stmt_label(_), _)
         ),
         find_initial_val_in_statements(VarName, Rval,
             Statements0, Statements1),
@@ -852,17 +853,17 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
 find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
     Statement0 = statement(Stmt0, Context),
     Statement = statement(Stmt, Context),
-    ( Stmt0 = atomic(assign(var(Var, _Type), Rval0)) ->
+    ( Stmt0 = ml_stmt_atomic(assign(var(Var, _Type), Rval0)) ->
         Rval = Rval0,
         % Delete the assignment, by replacing it with an empty block.
-        Stmt = block([], [])
-    ; Stmt0 = block(Defns0, SubStatements0) ->
+        Stmt = ml_stmt_block([], [])
+    ; Stmt0 = ml_stmt_block(Defns0, SubStatements0) ->
         Var = qual(Mod, QualKind, UnqualVarName),
         Data = qual(Mod, QualKind, var(UnqualVarName)),
         \+ defns_contains_var(Defns0, Data),
         find_initial_val_in_statements(Var, Rval,
             SubStatements0, SubStatements),
-        Stmt = block(Defns0, SubStatements)
+        Stmt = ml_stmt_block(Defns0, SubStatements)
     ;
         fail
     ).
@@ -1074,63 +1075,62 @@ eliminate_var_in_statement(Statement0, Statement, !VarElimInfo) :-
 
 eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
     (
-        Stmt0 = block(Defns0, Statements0),
+        Stmt0 = ml_stmt_block(Defns0, Statements0),
         eliminate_var_in_block(Defns0, Defns, Statements0, Statements,
             !VarElimInfo),
-        Stmt = block(Defns, Statements)
+        Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = while(Rval0, Statement0, Once),
+        Stmt0 = ml_stmt_while(Rval0, Statement0, Once),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
-        Stmt = while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
-        Stmt0 = if_then_else(Cond0, Then0, MaybeElse0),
+        Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0),
         eliminate_var_in_rval(Cond0, Cond, !VarElimInfo),
         eliminate_var_in_statement(Then0, Then, !VarElimInfo),
         eliminate_var_in_maybe_statement(MaybeElse0, MaybeElse, !VarElimInfo),
-        Stmt = if_then_else(Cond, Then, MaybeElse)
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
-        Stmt0 = switch(Type, Val0, Range, Cases0, Default0),
+        Stmt0 = ml_stmt_switch(Type, Val0, Range, Cases0, Default0),
         eliminate_var_in_rval(Val0, Val, !VarElimInfo),
         list.map_foldl(eliminate_var_in_case, Cases0, Cases, !VarElimInfo),
         eliminate_var_in_default(Default0, Default, !VarElimInfo),
-        Stmt = switch(Type, Val, Range, Cases, Default)
+        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = label(_),
+        Stmt0 = ml_stmt_label(_),
         Stmt = Stmt0
     ;
-        Stmt0 = goto(_),
+        Stmt0 = ml_stmt_goto(_),
         Stmt = Stmt0
     ;
-        Stmt0 = computed_goto(Rval0, Labels),
+        Stmt0 = ml_stmt_computed_goto(Rval0, Labels),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
-        Stmt = computed_goto(Rval, Labels)
+        Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
-        Stmt0 = mlcall(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
+        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
         eliminate_var_in_rval(Func0, Func, !VarElimInfo),
         eliminate_var_in_maybe_rval(Obj0, Obj, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
         eliminate_var_in_lvals(RetLvals0, RetLvals, !VarElimInfo),
-        Stmt = mlcall(Sig, Func, Obj, Args, RetLvals, TailCall)
+        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall)
     ;
-        Stmt0 = return(Rvals0),
+        Stmt0 = ml_stmt_return(Rvals0),
         eliminate_var_in_rvals(Rvals0, Rvals, !VarElimInfo),
-        Stmt = return(Rvals)
+        Stmt = ml_stmt_return(Rvals)
     ;
-        Stmt0 = do_commit(Ref0),
+        Stmt0 = ml_stmt_do_commit(Ref0),
         eliminate_var_in_rval(Ref0, Ref, !VarElimInfo),
-        Stmt = do_commit(Ref)
+        Stmt = ml_stmt_do_commit(Ref)
     ;
-        Stmt0 = try_commit(Ref0, Statement0, Handler0),
+        Stmt0 = ml_stmt_try_commit(Ref0, Statement0, Handler0),
         eliminate_var_in_lval(Ref0, Ref, !VarElimInfo),
         eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
         eliminate_var_in_statement(Handler0, Handler, !VarElimInfo),
-        Stmt = try_commit(Ref, Statement, Handler)
+        Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
-        Stmt0 = atomic(AtomicStmt0),
-        eliminate_var_in_atomic_stmt(AtomicStmt0, AtomicStmt,
-            !VarElimInfo),
-        Stmt = atomic(AtomicStmt)
+        Stmt0 = ml_stmt_atomic(AtomicStmt0),
+        eliminate_var_in_atomic_stmt(AtomicStmt0, AtomicStmt, !VarElimInfo),
+        Stmt = ml_stmt_atomic(AtomicStmt)
     ).
 
 :- pred eliminate_var_in_case(mlds_switch_case::in, mlds_switch_case::out,

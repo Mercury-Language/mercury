@@ -969,11 +969,11 @@
 :- type mlds_stmt
     % Sequence.
 
-    --->    block(mlds_defns, list(statement))
+    --->    ml_stmt_block(mlds_defns, list(statement))
 
     % Iteration.
 
-    ;       while(mlds_rval, statement, bool)
+    ;       ml_stmt_while(mlds_rval, statement, bool)
             % The `bool' is true iff the loop is guaranteed to iterate at
             % least once -- in that case, the compiler can generate a
             % `do...while' loop rather than a `while...' loop.
@@ -981,9 +981,9 @@
 
     % Selection (see also computed_goto).
 
-    ;       if_then_else(mlds_rval, statement, maybe(statement))
+    ;       ml_stmt_if_then_else(mlds_rval, statement, maybe(statement))
 
-    ;       switch(
+    ;       ml_stmt_switch(
                 % This representation for switches is very general:
                 % it allows switching on any type, and cases can match
                 % on ranges as well as on values.
@@ -1015,21 +1015,21 @@
 
     % Transfer of control.
 
-    ;       label(mlds_label)
+    ;       ml_stmt_label(mlds_label)
             % Defines a label that can be used as the target of calls,
             % gotos, etc.
 
-    ;       goto(mlds_goto_target)
+    ;       ml_stmt_goto(mlds_goto_target)
             % goto(Target): Branch to the specified address.
 
-    ;       computed_goto(mlds_rval, list(mlds_label))
+    ;       ml_stmt_computed_goto(mlds_rval, list(mlds_label))
             % Evaluate rval, which should be an integer, and jump to the
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C.
 
     % Function call/return.
 
-    ;       mlcall(
+    ;       ml_stmt_call(
                 mlds_func_signature,    % Signature of the function.
                 mlds_rval,              % The function to call.
                 maybe(mlds_rval),       % For method calls, this field
@@ -1041,13 +1041,13 @@
                                         % tail call.
             )
 
-    ;       return(list(mlds_rval))     % Some targets will not support
-                                        % returning more than one value.
+    ;       ml_stmt_return(list(mlds_rval))  % Some targets will not support
+                                             % returning more than one value.
 
     % Commits (a specialized form of exception handling).
 
-    ;       try_commit(mlds_lval, statement, statement)
-    ;       do_commit(mlds_rval)
+    ;       ml_stmt_try_commit(mlds_lval, statement, statement)
+    ;       ml_stmt_do_commit(mlds_rval)
             % try_commit(Ref, GoalToTry, CommitHandlerGoal):
             %   Execute GoalToTry.  If GoalToTry exits via a
             %   `commit(Ref)' instruction, then execute
@@ -1085,14 +1085,14 @@
     % It might not be a good choice for different target languages.
     % XXX Full exception handling support is not yet implemented.
 
-%   ;       throw(mlds_type, mlds_rval)
+%   ;       ml_stmt_throw(mlds_type, mlds_rval)
 %           % Throw the specified exception.
 
-%   ;       rethrow
+%   ;       ml_stmt_rethrow
 %           % Rethrow the current exception
 %           % (only valid inside an exception handler).
 
-%   ;       try_catch(
+%   ;       ml_stmt_try_catch(
 %               statement,
 %               list(mlds_exception_handler)
 %           )
@@ -1102,7 +1102,7 @@
 
     % Atomic statements.
 
-    ;       atomic(mlds_atomic_statement).
+    ;       ml_stmt_atomic(mlds_atomic_statement).
 
 %-----------------------------------------------------------------------------%
 %

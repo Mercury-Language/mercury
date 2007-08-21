@@ -484,7 +484,7 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     ;
         CallKind = ordinary_call
     ),
-    Stmt = mlcall(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
+    Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
         CallKind),
     Statement = statement(Stmt, mlds_make_context(Context)),
     Statements = [Statement].

@@ -215,7 +215,7 @@ defns_contain_main(Defns) :-
     FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _).
 
 can_optimize_tailcall(Name, Call) :-
-    Call = mlcall(_Signature, FuncRval, MaybeObject, _CallArgs,
+    Call = ml_stmt_call(_Signature, FuncRval, MaybeObject, _CallArgs,
         _Results, CallKind),
     % Check if this call can be optimized as a tail call.
     ( CallKind = tail_call ; CallKind = no_return_call ),
@@ -271,46 +271,46 @@ statement_contains_statement(Statement, SubStatement) :-
 
 stmt_contains_statement(Stmt, SubStatement) :-
     (
-        Stmt = block(_Defns, Statements),
+        Stmt = ml_stmt_block(_Defns, Statements),
         statements_contains_statement(Statements, SubStatement)
     ;
-        Stmt = while(_Rval, Statement, _Once),
+        Stmt = ml_stmt_while(_Rval, Statement, _Once),
         statement_contains_statement(Statement, SubStatement)
     ;
-        Stmt = if_then_else(_Cond, Then, MaybeElse),
+        Stmt = ml_stmt_if_then_else(_Cond, Then, MaybeElse),
         ( statement_contains_statement(Then, SubStatement)
         ; maybe_statement_contains_statement(MaybeElse, SubStatement)
         )
     ;
-        Stmt = switch(_Type, _Val, _Range, Cases, Default),
+        Stmt = ml_stmt_switch(_Type, _Val, _Range, Cases, Default),
         ( cases_contains_statement(Cases, SubStatement)
         ; default_contains_statement(Default, SubStatement)
         )
     ;
-        Stmt = label(_Label),
+        Stmt = ml_stmt_label(_Label),
         fail
     ;
-        Stmt = goto(_),
+        Stmt = ml_stmt_goto(_),
         fail
     ;
-        Stmt = computed_goto(_Rval, _Labels),
+        Stmt = ml_stmt_computed_goto(_Rval, _Labels),
         fail
     ;
-        Stmt = mlcall(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+        Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
         fail
     ;
-        Stmt = return(_Rvals),
+        Stmt = ml_stmt_return(_Rvals),
         fail
     ;
-        Stmt = do_commit(_Ref),
+        Stmt = ml_stmt_do_commit(_Ref),
         fail
     ;
-        Stmt = try_commit(_Ref, Statement, Handler),
+        Stmt = ml_stmt_try_commit(_Ref, Statement, Handler),
         ( statement_contains_statement(Statement, SubStatement)
         ; statement_contains_statement(Handler, SubStatement)
         )
     ;
-        Stmt = atomic(_AtomicStmt),
+        Stmt = ml_stmt_atomic(_AtomicStmt),
         fail
     ).
 
@@ -360,57 +360,57 @@ statement_contains_var(Statement, Name) :-
 
 stmt_contains_var(Stmt, Name) :-
     (
-        Stmt = block(Defns, Statements),
+        Stmt = ml_stmt_block(Defns, Statements),
         ( defns_contains_var(Defns, Name)
         ; statements_contains_var(Statements, Name)
         )
     ;
-        Stmt = while(Rval, Statement, _Once),
+        Stmt = ml_stmt_while(Rval, Statement, _Once),
         ( rval_contains_var(Rval, Name)
         ; statement_contains_var(Statement, Name)
         )
     ;
-        Stmt = if_then_else(Cond, Then, MaybeElse),
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse),
         ( rval_contains_var(Cond, Name)
         ; statement_contains_var(Then, Name)
         ; maybe_statement_contains_var(MaybeElse, Name)
         )
     ;
-        Stmt = switch(_Type, Val, _Range, Cases, Default),
+        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
         ( rval_contains_var(Val, Name)
         ; cases_contains_var(Cases, Name)
         ; default_contains_var(Default, Name)
         )
     ;
-        Stmt = label(_Label),
+        Stmt = ml_stmt_label(_Label),
         fail
     ;
-        Stmt = goto(_),
+        Stmt = ml_stmt_goto(_),
         fail
     ;
-        Stmt = computed_goto(Rval, _Labels),
+        Stmt = ml_stmt_computed_goto(Rval, _Labels),
         rval_contains_var(Rval, Name)
     ;
-        Stmt = mlcall(_Sig, Func, Obj, Args, RetLvals, _TailCall),
+        Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
         ( rval_contains_var(Func, Name)
         ; maybe_rval_contains_var(Obj, Name)
         ; rvals_contains_var(Args, Name)
         ; lvals_contains_var(RetLvals, Name)
         )
     ;
-        Stmt = return(Rvals),
+        Stmt = ml_stmt_return(Rvals),
         rvals_contains_var(Rvals, Name)
     ;
-        Stmt = do_commit(Ref),
+        Stmt = ml_stmt_do_commit(Ref),
         rval_contains_var(Ref, Name)
     ;
-        Stmt = try_commit(Ref, Statement, Handler),
+        Stmt = ml_stmt_try_commit(Ref, Statement, Handler),
         ( lval_contains_var(Ref, Name)
         ; statement_contains_var(Statement, Name)
         ; statement_contains_var(Handler, Name)
         )
     ;
-        Stmt = atomic(AtomicStmt),
+        Stmt = ml_stmt_atomic(AtomicStmt),
         atomic_stmt_contains_var(AtomicStmt, Name)
     ).
 
@@ -487,7 +487,7 @@ target_code_component_contains_var(name(EntityName), DataName) :-
 has_foreign_languages(Statement, Langs) :-
     GetTargetCode = (pred(Lang::out) is nondet :-
         statement_contains_statement(Statement, SubStatement),
-        SubStatement = statement(atomic(
+        SubStatement = statement(ml_stmt_atomic(
             outline_foreign_proc(Lang, _, _, _)), _)
         ),
     solutions.solutions(GetTargetCode, Langs).
@@ -503,10 +503,10 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     (
-        Stmt = atomic(inline_target_code(TargetLang, _)),
+        Stmt = ml_stmt_atomic(inline_target_code(TargetLang, _)),
         TargetLang \= NativeTargetLang
     ;
-        Stmt = atomic(outline_foreign_proc(_, _, _, _))
+        Stmt = ml_stmt_atomic(outline_foreign_proc(_, _, _, _))
     ).
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
@@ -514,7 +514,7 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
     Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
-    Stmt = atomic(outline_foreign_proc(ForeignLang, _, _, _)).
+    Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _)).
 
 defn_is_type(Defn) :-
     Defn = mlds_defn(Name, _Context, _Flags, _Body),

@@ -202,7 +202,7 @@ mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
         FirstAtTail = AtTail
     ;
         Rest = [FirstRest | _],
-        ( FirstRest = statement(return(ReturnVals), _) ->
+        ( FirstRest = statement(ml_stmt_return(ReturnVals), _) ->
             FirstAtTail = yes(ReturnVals)
         ;
             FirstAtTail = no
@@ -228,44 +228,44 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         % of currently visible local declarations before processing the
         % statements in that block. The statement list will be in a tail
         % position iff the block is in a tail position.
-        Stmt0 = block(Defns0, Statements0),
+        Stmt0 = ml_stmt_block(Defns0, Statements0),
         Defns = mark_tailcalls_in_defns(Defns0),
         NewLocals = [defns(Defns) | Locals],
         Statements = mark_tailcalls_in_statements(Statements0,
             AtTail, NewLocals),
-        Stmt = block(Defns, Statements)
+        Stmt = ml_stmt_block(Defns, Statements)
     ;
         % The statement in the body of a while loop is never in a tail
         % position.
-        Stmt0 = while(Rval, Statement0, Once),
+        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
         Statement = mark_tailcalls_in_statement(Statement0, no, Locals),
-        Stmt = while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
         % Both the `then' and the `else' parts of an if-then-else are in a
         % tail position iff the if-then-else is in a tail position.
-        Stmt0 = if_then_else(Cond, Then0, MaybeElse0),
+        Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
         Then = mark_tailcalls_in_statement(Then0, AtTail, Locals),
         MaybeElse = mark_tailcalls_in_maybe_statement(MaybeElse0,
             AtTail, Locals),
-        Stmt = if_then_else(Cond, Then, MaybeElse)
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
         % All of the cases of a switch (including the default) are in a
         % tail position iff the switch is in a tail position.
-        Stmt0 = switch(Type, Val, Range, Cases0, Default0),
+        Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
         Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals),
         Default = mark_tailcalls_in_default(Default0, AtTail, Locals),
-        Stmt = switch(Type, Val, Range, Cases, Default)
+        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = label(_),
+        Stmt0 = ml_stmt_label(_),
         Stmt = Stmt0
     ;
-        Stmt0 = goto(_),
+        Stmt0 = ml_stmt_goto(_),
         Stmt = Stmt0
     ;
-        Stmt0 = computed_goto(_, _),
+        Stmt0 = ml_stmt_computed_goto(_, _),
         Stmt = Stmt0
     ;
-        Stmt0 = mlcall(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
+        Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
 
         % Check if we can mark this call as a tail call.
         (
@@ -288,27 +288,27 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         ->
             % Mark this call as a tail call.
             CallKind = tail_call,
-            Stmt = mlcall(Sig, Func, Obj, Args, ReturnLvals, CallKind)
+            Stmt = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind)
         ;
             % Leave this call unchanged.
             Stmt = Stmt0
         )
     ;
-        Stmt0 = return(_Rvals),
+        Stmt0 = ml_stmt_return(_Rvals),
         Stmt = Stmt0
     ;
-        Stmt0 = do_commit(_Ref),
+        Stmt0 = ml_stmt_do_commit(_Ref),
         Stmt = Stmt0
     ;
-        Stmt0 = try_commit(Ref, Statement0, Handler0),
+        Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
         % Both the statement inside a `try_commit' and the handler are in
         % tail call position iff the `try_commit' statement is in a tail call
         % position.
         Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals),
         Handler = mark_tailcalls_in_statement(Handler0, AtTail, Locals),
-        Stmt = try_commit(Ref, Statement, Handler)
+        Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
-        Stmt0 = atomic(_),
+        Stmt0 = ml_stmt_atomic(_),
         Stmt = Stmt0
     ).
 
@@ -564,7 +564,7 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
     % Nondeterministically find a non-tail call.
     statement_contains_statement(Statement, SubStatement),
     SubStatement = statement(SubStmt, Context),
-    SubStmt = mlcall(_CallSig, Func, _This, _Args, _RetVals, CallKind),
+    SubStmt = ml_stmt_call(_CallSig, Func, _This, _Args, _RetVals, CallKind),
     CallKind = ordinary_call,
     % Check if this call is a directly recursive call.
     Func = const(mlconst_code_addr(CodeAddr)),

@@ -624,13 +624,13 @@ method_ptrs_in_statement(statement(Stmt, _Context), !CodeAddrs) :-
 :- pred method_ptrs_in_stmt(mlds_stmt::in,
     list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
 
-method_ptrs_in_stmt(block(Defns, Statements), !CodeAddrs) :-
+method_ptrs_in_stmt(ml_stmt_block(Defns, Statements), !CodeAddrs) :-
     method_ptrs_in_defns(Defns, !CodeAddrs),
     method_ptrs_in_statements(Statements, !CodeAddrs).
-method_ptrs_in_stmt(while(Rval, Statement, _Bool), !CodeAddrs) :-
+method_ptrs_in_stmt(ml_stmt_while(Rval, Statement, _Bool), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs),
     method_ptrs_in_statement(Statement, !CodeAddrs).
-method_ptrs_in_stmt(if_then_else(Rval, StatementThen,
+method_ptrs_in_stmt(ml_stmt_if_then_else(Rval, StatementThen,
         MaybeStatementElse), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs),
     method_ptrs_in_statement(StatementThen, !CodeAddrs),
@@ -640,39 +640,40 @@ method_ptrs_in_stmt(if_then_else(Rval, StatementThen,
     ;
         MaybeStatementElse = no
     ).
-method_ptrs_in_stmt(switch(_Type, Rval, _Range, Cases, Default),
+method_ptrs_in_stmt(ml_stmt_switch(_Type, Rval, _Range, Cases, Default),
         !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs),
     method_ptrs_in_switch_cases(Cases, !CodeAddrs),
     method_ptrs_in_switch_default(Default, !CodeAddrs).
-method_ptrs_in_stmt(label(_), _, _) :-
+method_ptrs_in_stmt(ml_stmt_label(_), _, _) :-
     unexpected(this_file,
         "method_ptrs_in_stmt: labels not supported in Java.").
-method_ptrs_in_stmt(goto(break), !CodeAddrs).
-method_ptrs_in_stmt(goto(continue), !CodeAddrs).
-method_ptrs_in_stmt(goto(label(_)), _, _) :-
+method_ptrs_in_stmt(ml_stmt_goto(break), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_goto(continue), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_goto(label(_)), _, _) :-
     unexpected(this_file,
         "method_ptrs_in_stmt: goto label not supported in Java.").
-method_ptrs_in_stmt(computed_goto(_, _), _, _) :-
+method_ptrs_in_stmt(ml_stmt_computed_goto(_, _), _, _) :-
     unexpected(this_file,
         "method_ptrs_in_stmt: computed gotos not supported in Java.").
-method_ptrs_in_stmt(try_commit(_Lval, StatementGoal,
+method_ptrs_in_stmt(ml_stmt_try_commit(_Lval, StatementGoal,
         StatementHandler), !CodeAddrs) :-
     % We don't check "_Lval" here as we expect it to be a local variable
     % of type mlds_commit_type.
     method_ptrs_in_statement(StatementGoal, !CodeAddrs),
     method_ptrs_in_statement(StatementHandler, !CodeAddrs).
-method_ptrs_in_stmt(do_commit(_Rval), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_do_commit(_Rval), !CodeAddrs).
     % We don't check "_Rval" here as we expect it to be a local variable
     % of type mlds_commit_type.
-method_ptrs_in_stmt(return(Rvals), !CodeAddrs) :-
+method_ptrs_in_stmt(ml_stmt_return(Rvals), !CodeAddrs) :-
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
-method_ptrs_in_stmt(mlcall(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
-        _IsTailCall), !CodeAddrs) :-
+method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
+    CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars, 
+        _IsTailCall),
     % We don't check "_Rval" - it may be a code address but is a
     % standard call rather than a function pointer use.
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
-method_ptrs_in_stmt(atomic(AtomicStatement), !CodeAddrs) :-
+method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
     (
         AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
             _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic)
@@ -936,17 +937,17 @@ generate_call_method(CodeAddr, MethodDefn) :-
         OrigRetTypes = [_ | _],
         CallRetLvals = [ReturnLval]
     ),
-    Call = mlcall(OrigFuncSignature, CallRval, no, CallArgs,
+    Call = ml_stmt_call(OrigFuncSignature, CallRval, no, CallArgs,
         CallRetLvals, ordinary_call),
     CallStatement = statement(Call, Context),
 
     % Create a return statement that returns the result of the call to the
     % original method, boxed as a java.lang.Object.
     ReturnRval = unop(box(ReturnVarType), lval(ReturnLval)),
-    Return = return([ReturnRval]),
+    Return = ml_stmt_return([ReturnRval]),
     ReturnStatement = statement(Return, Context),
 
-    Block = block(MethodDefns, [CallStatement, ReturnStatement]),
+    Block = ml_stmt_block(MethodDefns, [CallStatement, ReturnStatement]),
     Statements = statement(Block, Context),
 
     % Put it all together.
@@ -2176,8 +2177,8 @@ output_statement(Indent, ModuleInfo, FuncInfo,
 
     % sequence
     %
-output_stmt(Indent, ModuleInfo, FuncInfo, block(Defns, Statements), Context,
-        ExitMethods, !IO) :-
+output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_block(Defns, Statements),
+        Context, ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
     (
@@ -2196,7 +2197,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, block(Defns, Statements), Context,
 
     % iteration
     %
-output_stmt(Indent, ModuleInfo, FuncInfo, while(Cond, Statement, no),
+output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_while(Cond, Statement, no),
         _, ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("while (", !IO),
@@ -2214,8 +2215,8 @@ output_stmt(Indent, ModuleInfo, FuncInfo, while(Cond, Statement, no),
             StmtExitMethods, !IO),
         ExitMethods = while_exit_methods(Cond, StmtExitMethods)
     ).
-output_stmt(Indent, ModuleInfo, FuncInfo, while(Cond, Statement, yes), Context,
-        ExitMethods, !IO) :-
+output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_while(Cond, Statement, yes),
+        Context, ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("do\n", !IO),
     output_statement(Indent + 1, ModuleInfo, FuncInfo, Statement,
@@ -2228,7 +2229,8 @@ output_stmt(Indent, ModuleInfo, FuncInfo, while(Cond, Statement, yes), Context,
 
     % selection (if-then-else)
     %
-output_stmt(Indent, ModuleInfo, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
+output_stmt(Indent, ModuleInfo, FuncInfo,
+        ml_stmt_if_then_else(Cond, Then0, MaybeElse),
         Context, ExitMethods, !IO) :-
     % We need to take care to avoid problems caused by the dangling else
     % ambiguity.
@@ -2246,9 +2248,9 @@ output_stmt(Indent, ModuleInfo, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
         % inner `if' rather than the outer `if'.
 
         MaybeElse = yes(_),
-        Then0 = statement(if_then_else(_, _, no), ThenContext)
+        Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
     ->
-        Then = statement(block([], [Then0]), ThenContext)
+        Then = statement(ml_stmt_block([], [Then0]), ThenContext)
     ;
         Then = Then0
     ),
@@ -2279,7 +2281,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
     % selection (switch)
     %
 output_stmt(Indent, ModuleInfo, FuncInfo,
-        switch(_Type, Val, _Range, Cases, Default),
+        ml_stmt_switch(_Type, Val, _Range, Cases, Default),
         Context, ExitMethods, !IO) :-
     indent_line(Context, Indent, !IO),
     io.write_string("switch (", !IO),
@@ -2293,20 +2295,21 @@ output_stmt(Indent, ModuleInfo, FuncInfo,
 
     % transfer of control
     %
-output_stmt(_, _, _, label(_), _, _, _, _)  :-
+output_stmt(_, _, _, ml_stmt_label(_), _, _, _, _)  :-
     unexpected(this_file, "output_stmt: labels not supported in Java.").
-output_stmt(_, _, _, goto(label(_)), _, _, _, _) :-
+output_stmt(_, _, _, ml_stmt_goto(label(_)), _, _, _, _) :-
     unexpected(this_file, "output_stmt: gotos not supported in Java.").
-output_stmt(Indent, _, _FuncInfo, goto(break), _Context, ExitMethods, !IO) :-
+output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(break), _Context,
+        ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("break;\n", !IO),
     ExitMethods = set.make_singleton_set(can_break).
-output_stmt(Indent, _, _FuncInfo, goto(continue), _Context, ExitMethods,
-        !IO) :-
+output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(continue), _Context,
+        ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("continue;\n", !IO),
     ExitMethods = set.make_singleton_set(can_continue).
-output_stmt(_, _, _, computed_goto(_, _), _, _, _, _) :-
+output_stmt(_, _, _, ml_stmt_computed_goto(_, _), _, _, _, _) :-
     unexpected(this_file,
         "output_stmt: computed gotos not supported in Java.").
 
@@ -2314,7 +2317,7 @@ output_stmt(_, _, _, computed_goto(_, _), _, _, _, _) :-
     %
 output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
         !IO) :-
-    Call = mlcall(Signature, FuncRval, MaybeObject, CallArgs, Results,
+    Call = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs, Results,
         _IsTailCall),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     ModuleName = CallerFuncInfo ^ func_info_name ^ mod_name,
@@ -2439,8 +2442,8 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
     io.write_string("}\n", !IO),
     ExitMethods = set.make_singleton_set(can_fall_through).
 
-output_stmt(Indent, ModuleInfo, FuncInfo, return(Results0), _, ExitMethods,
-        !IO) :-
+output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_return(Results0), _,
+        ExitMethods, !IO) :-
     %
     % XXX It's not right to just remove the dummy variables like this, but
     % currently they do not seem to be included in the ReturnTypes of
@@ -2484,8 +2487,9 @@ output_stmt(Indent, ModuleInfo, FuncInfo, return(Results0), _, ExitMethods,
     ),
     ExitMethods = set.make_singleton_set(can_return).
 
-output_stmt(Indent, ModuleInfo, FuncInfo, do_commit(Ref), _, ExitMethods,
+output_stmt(Indent, ModuleInfo, FuncInfo, DoCommitStmt, _, ExitMethods,
         !IO) :-
+    DoCommitStmt = ml_stmt_do_commit(Ref),
     indent_line(Indent, !IO),
     output_rval(ModuleInfo, Ref, FuncInfo ^ func_info_name ^ mod_name, !IO),
     io.write_string(" = new mercury.runtime.Commit();\n", !IO),
@@ -2495,8 +2499,9 @@ output_stmt(Indent, ModuleInfo, FuncInfo, do_commit(Ref), _, ExitMethods,
     io.write_string(";\n", !IO),
     ExitMethods = set.make_singleton_set(can_throw).
 
-output_stmt(Indent, ModuleInfo, FuncInfo, try_commit(_Ref, Stmt, Handler), _,
-        ExitMethods, !IO) :-
+output_stmt(Indent, ModuleInfo, FuncInfo, TryCommitStmt, _, ExitMethods,
+        !IO) :-
+    TryCommitStmt = ml_stmt_try_commit(_Ref, Stmt, Handler),
     indent_line(Indent, !IO),
     io.write_string("try\n", !IO),
     indent_line(Indent, !IO),
@@ -2524,8 +2529,9 @@ output_stmt(Indent, ModuleInfo, FuncInfo, try_commit(_Ref, Stmt, Handler), _,
 
     % atomic statements
     %
-output_stmt(Indent, ModuleInfo, FuncInfo, atomic(AtomicStatement), Context,
-        ExitMethods, !IO) :-
+output_stmt(Indent, ModuleInfo, FuncInfo, AtomicStmt, Context, ExitMethods,
+        !IO) :-
+    AtomicStmt = ml_stmt_atomic(AtomicStatement),
     output_atomic_stmt(Indent, ModuleInfo, FuncInfo, AtomicStatement, Context,
         !IO),
     ExitMethods = set.make_singleton_set(can_fall_through).

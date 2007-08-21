@@ -210,7 +210,7 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         % this is safe.
         CanCGC = can_cgc,
         ml_gen_var(!.Info, Var, VarLval),
-        Stmt = atomic(delete_object(VarLval)),
+        Stmt = ml_stmt_atomic(delete_object(VarLval)),
         CGC_Statements = [statement(Stmt, mlds_make_context(Context)) ]
     ;
         CanCGC = cannot_cgc,
@@ -659,7 +659,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag, MLDS_Type,
             yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes,
             MayUseAtomic),
-        Stmt = atomic(MakeNewObject),
+        Stmt = ml_stmt_atomic(MakeNewObject),
         Statement = statement(Stmt, mlds_make_context(Context)),
 
         ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
@@ -1629,7 +1629,7 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
         Statements = TagTestStatements ++ [SetTagTestResult]
     ;
         GetArgs = ml_gen_block(GetArgsDecls, GetArgsStatements, Context),
-        IfStmt = if_then_else(SucceededExpression, GetArgs, no),
+        IfStmt = ml_stmt_if_then_else(SucceededExpression, GetArgs, no),
         IfStatement = statement(IfStmt, mlds_make_context(Context)),
         Decls = TagTestDecls,
         Statements = TagTestStatements ++ [SetTagTestResult, IfStatement]

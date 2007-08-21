@@ -80,8 +80,8 @@ generate(Cases, Var, CodeModel, CanFail, Context, Decls, Statements, !Info) :-
 
     % Package up the results into a switch statement.
     Range = range(0, MaxPrimary),
-    SwitchStmt0 = switch(mlds_native_int_type, PTagRval, Range, MLDS_Cases,
-        Default),
+    SwitchStmt0 = ml_stmt_switch(mlds_native_int_type, PTagRval, Range,
+        MLDS_Cases, Default),
     MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
     Decls = [],
@@ -187,8 +187,8 @@ gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,
 
     % Package up the results into a switch statement.
     Range = range_unknown, % XXX could do better
-    SwitchStmt = switch(mlds_native_int_type, STagRval, Range, MLDS_Cases,
-        Default),
+    SwitchStmt = ml_stmt_switch(mlds_native_int_type, STagRval, Range,
+        MLDS_Cases, Default),
     MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt, MLDS_Context, Statement, !Info).
 
