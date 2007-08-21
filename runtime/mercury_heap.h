@@ -409,7 +409,9 @@
         do {                                                                \
             MR_CHECK_EXPR_TYPE((value), T);                                 \
             MR_CHECK_EXPR_TYPE((box), MR_Box);                              \
-            if (sizeof(T) > sizeof(MR_Box)) {                               \
+            if (sizeof(T) == sizeof(MR_Box)) {                              \
+                (box) = * (MR_Box *) &(value);                              \
+            } else if (sizeof(T) > sizeof(MR_Box)) {                        \
                 MR_Word     box_word;                                       \
                 size_t size_in_words =                                      \
                     (sizeof(T) + sizeof(MR_Word) - 1) / sizeof(MR_Word);    \
@@ -456,7 +458,11 @@
                 /* since it might be a global register. */                  \
                 /* Hence we need to use a temporary copy. */                \
                 MR_Box box_copy = (box);                                    \
-                MR_memcpy(&(value), &box_copy, sizeof(T));                  \
+                if (sizeof(T) == sizeof(MR_Box)) {                          \
+                    (value) = * (T *) &box_copy;                            \
+                } else {                                                    \
+                    MR_memcpy(&(value), &box_copy, sizeof(T));              \
+                }                                                           \
             }                                                               \
         } while (0)
 
