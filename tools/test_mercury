@@ -12,6 +12,7 @@ echo "test_mercury starting at `date`" 1>&2
 
 case $# in
 	6)	HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE=$6 ;;
+	5)      HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE="" ;;
 	*)	echo "Usage: $0 host arch fullarch branch c_compiler use_mmc_make" 1>&2; exit 1 ;;
 esac
 
