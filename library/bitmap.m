@@ -1549,7 +1549,8 @@ public class MercuryBitmap {
 }
 ").
 
-:- pragma foreign_type("C", bitmap, "MR_BitmapPtr") 
+:- pragma foreign_type("C", bitmap, "MR_BitmapPtr",
+        [can_pass_as_mercury_type]) 
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("Java", bitmap, "mercury.bitmap.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
