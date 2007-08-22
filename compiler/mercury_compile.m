@@ -4772,7 +4772,7 @@ compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
 :- pred mlds_backend(module_info::in, module_info::out, mlds::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
+mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -4805,16 +4805,16 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 499, "final", !DumpInfo, !IO),
 
     maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n", !IO),
-    ml_code_gen(!.HLDS, MLDS0, !IO),
+    ml_code_gen(!.HLDS, !:MLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS0, 0, "initial", !IO),
+    maybe_dump_mlds(!.MLDS, 0, "initial", !IO),
 
     maybe_write_string(Verbose, "% Generating RTTI data...\n", !IO),
-    mlds_gen_rtti_data(!.HLDS, MLDS0, MLDS10),
+    mlds_gen_rtti_data(!.HLDS, !MLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS10, 10, "rtti", !IO),
+    maybe_dump_mlds(!.MLDS, 10, "rtti", !IO),
 
     % Detection of tail calls needs to occur before the
     % chain_gc_stack_frame pass of ml_elim_nested, because we need to
@@ -4823,14 +4823,13 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     (
         OptimizeTailCalls = yes,
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
-        ml_mark_tailcalls(MLDS10, MLDS20, !IO),
+        ml_mark_tailcalls(!MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        OptimizeTailCalls = no,
-        MLDS10 = MLDS20
+        OptimizeTailCalls = no
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS20, 20, "tailcalls", !IO),
+    maybe_dump_mlds(!.MLDS, 20, "tailcalls", !IO),
 
     % Warning about non-tail calls must come after detection of tail calls.
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
@@ -4841,7 +4840,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     ->
         maybe_write_string(Verbose,
             "% Warning about non-tail recursive calls...\n", !IO),
-        ml_warn_tailcalls(Globals, MLDS20, !IO),
+        ml_warn_tailcalls(Globals, !.MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true
@@ -4863,17 +4862,16 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
             OptimizeInitializations),
         globals.io_set_option(optimize_initializations, bool(no), !IO),
         maybe_write_string(Verbose, "% Optimizing MLDS...\n", !IO),
-        ml_optimize.optimize(MLDS20, MLDS25, !IO),
+        ml_optimize.optimize(!MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
 
         globals.io_set_option(optimize_initializations,
             bool(OptimizeInitializations), !IO)
     ;
-        Optimize = no,
-        MLDS25 = MLDS20
+        Optimize = no
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS25, 25, "optimize1", !IO),
+    maybe_dump_mlds(!.MLDS, 25, "optimize1", !IO),
 
     % Note that we call ml_elim_nested twice -- the first time to chain
     % the stack frames together, for accurate GC, and the second time to
@@ -4883,52 +4881,55 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     % can't handle the env_ptr references that the other pass generates.
 
     globals.get_gc_method(Globals, GC),
-    ( GC = gc_accurate ->
+    (
+        GC = gc_accurate,
         maybe_write_string(Verbose,
             "% Threading GC stack frames...\n", !IO),
-        ml_elim_nested(chain_gc_stack_frames, MLDS25, MLDS30, !IO),
+        ml_elim_nested(chain_gc_stack_frames, !MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        MLDS30 = MLDS25
+        ( GC = gc_automatic
+        ; GC = gc_none
+        ; GC = gc_boehm
+        ; GC = gc_boehm_debug
+        ; GC = gc_mps
+        )
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS30, 30, "gc_frames", !IO),
+    maybe_dump_mlds(!.MLDS, 30, "gc_frames", !IO),
 
     globals.lookup_bool_option(Globals, gcc_nested_functions, NestedFuncs),
     (
         NestedFuncs = no,
         maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
-        ml_elim_nested(hoist_nested_funcs, MLDS30, MLDS35, !IO),
+        ml_elim_nested(hoist_nested_funcs, !MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        NestedFuncs = yes,
-        MLDS35 = MLDS30
+        NestedFuncs = yes
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS35, 35, "nested_funcs", !IO),
+    maybe_dump_mlds(!.MLDS, 35, "nested_funcs", !IO),
 
-    % run the ml_optimize pass again after ml_elim_nested,
+    % Run the ml_optimize pass again after ml_elim_nested,
     % to do optimize_initializations.  (It may also help pick
     % up some additional optimization opportunities for the
     % other optimizations in this pass.)
     (
         Optimize = yes,
         maybe_write_string(Verbose, "% Optimizing MLDS again...\n", !IO),
-        ml_optimize.optimize(MLDS35, MLDS40, !IO),
+        ml_optimize.optimize(!MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        Optimize = no,
-        MLDS40 = MLDS35
+        Optimize = no
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(MLDS40, 40, "optimize2", !IO),
+    maybe_dump_mlds(!.MLDS, 40, "optimize2", !IO),
 
-    MLDS = MLDS40,
-    maybe_dump_mlds(MLDS, 99, "final", !IO).
+    maybe_dump_mlds(!.MLDS, 99, "final", !IO).
 
 :- pred mlds_gen_rtti_data(module_info::in, mlds::in, mlds::out) is det.
 
-mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
+mlds_gen_rtti_data(HLDS, !MLDS) :-
     type_ctor_info.generate_rtti(HLDS, TypeCtorRtti),
     generate_base_typeclass_info_rtti(HLDS, TypeClassInfoRtti),
 
@@ -4940,10 +4941,10 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     list.condense([TypeCtorRtti, TypeClassInfoRtti,
         NewTypeClassInfoRttiData], RttiData),
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
+    !.MLDS = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
         FinalPreds, ExportedEnums),
     list.append(RttiDefns, Defns0, Defns),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
+    !:MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
         FinalPreds, ExportedEnums).
 
 %-----------------------------------------------------------------------------%
