@@ -2587,11 +2587,15 @@ list_to_doc(Xs) = indent(" ", [str("["), list_to_doc_2(Xs), str("]")]).
 list_to_doc_2([]) = str("").
 
 list_to_doc_2([X | Xs]) =
-    docs([
-        format_arg(format(X)),
-        ( if Xs = [] then str("") else group([str(", "), nl]) ),
-        format_susp((func) = list_to_doc_2(Xs))
-    ]).
+    ( if Xs = [] then
+        format_arg(format(X))
+      else
+        docs([
+            format_arg(format(X)),
+            group([str(", "), nl]),
+            format_susp((func) = list_to_doc_2(Xs))
+        ])
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

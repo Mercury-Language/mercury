@@ -184,6 +184,7 @@
 :- import_module stream.
 :- import_module stream.string_writer.
 :- import_module string.
+:- import_module term_io.
 :- import_module term_to_xml.
 :- import_module type_desc.
 
@@ -1688,10 +1689,56 @@ browser_mode_to_string(unbound) = "Unbound".
     % of arguments, and if the synthetic term is a function application, then
     % the result of that function application.
     %
+    % The functor name has to be treated specially because '.'s therein
+    % usually denote separators in a module qualified name; the
+    % default pretty_printer formatter does not know this and will quote
+    % such names.
+    %
 :- func synthetic_term_to_doc(string, list(univ), maybe(univ)) = doc.
 
-synthetic_term_to_doc(Functor, Args, no) = format_term(Functor, Args).
-synthetic_term_to_doc(Functor, Args, yes(Return)) =
-    docs([format_term(Functor, Args), str(" = "), format_univ(Return)]).
+synthetic_term_to_doc(Functor0, Args, MaybeReturn) = Doc :-
+    ( if
+        (   Functor0 = "!."
+        ;   Functor0 = "."
+        ;   Functor0 = ".."
+        ;   Functor0 = "=.."
+        ;   not string.contains_char(Functor0, ('.'))
+        )
+      then
+        Doc0 = format_term(Functor0, Args)
+      else
+        FunctorDoc =
+            qualified_functor_to_doc(string.split_at_char(('.'), Functor0)),
+        (
+            Args = [],
+            Doc0 = FunctorDoc
+        ;
+            Args = [_ | _],
+            Doc0 = indent([
+                FunctorDoc, str("("),
+                    format_list(Args, group([str(", "), nl])),
+                str(")")
+            ])
+        )
+    ),
+    (
+        MaybeReturn = no,
+        Doc = Doc0
+    ;
+        MaybeReturn = yes(Return),
+        Doc = docs([Doc0, str(" = "), format_arg(format_univ(Return))])
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func qualified_functor_to_doc(list(string)) = doc.
+
+qualified_functor_to_doc([]) = str("").
+
+qualified_functor_to_doc([Part]) = str(term_io.quoted_atom(Part)).
+
+qualified_functor_to_doc([PartA, PartB | Parts]) =
+    docs([str(term_io.quoted_atom(PartA)), str("."),
+        qualified_functor_to_doc([PartB | Parts])]).
 
 %---------------------------------------------------------------------------%

@@ -753,7 +753,11 @@ expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
             group([
                 pp_internal(set_op_priority(adjust_priority(OpPri, AssocA))),
                 format_univ(ArgA),
-                str(" "), str(Op), str(" "),
+                ( if Op = "." then
+                    str(Op)
+                  else
+                    docs([str(" "), str(Op), str(" ")])
+                ),
                 indent([
                     nl,
                     pp_internal(set_op_priority(adjust_priority(OpPri,

@@ -1,10 +1,4 @@
       E1:     C1 CALL pred browser_test.main/2-0 (det) browser_test.m:16
-Goal path printing is now on.
-Registering debuggable procedures... done.
-There is one debuggable module, with 7 procedures.
-mdb: there is no such procedure.
-mdb: xml_browser_cmd: usage error -- type `help xml_browser_cmd' for help.
-Trusting the Mercury standard library
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -21,10 +15,7 @@ mdb> dump 1 browser_test.save.1
 mdb> format raw_pretty
 mdb> print *
        Data (arg 1)           	
-big(
-  big(big(small, 1, small), 2, small), 
-  3, 
-  big(big(small, 4, big(small, 5, small)), 6, small))
+big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> format -A verbose
 mdb> print *
        Data (arg 1)           	
@@ -33,14 +24,6 @@ big
 | 1-big
 | | 1-small
 | | 2-1
-| | 3-small
-| 2-2
-| 3-small
-2-3
-3-big
-  1-big/3
-  2-6
-  3-small
 
 mdb> browse 1; ls; quit
 big(
@@ -49,11 +32,10 @@ big(
   big(big(small, 4, big(small, 5, small)), 6, small))
 mdb> format -AP flat
 mdb> print -f 1
-       Data (arg 1)           	big(big(big(small, 1, small), 2, small), 3, big(big/3, 6, small))
+       Data (arg 1)           	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> print -p 1
        Data (arg 1)           	
-big(big(big(small, 1, small), 2, small), 3, 
-  big(big(small, 4, big(small, 5, small)), 6, small))
+big(big(..., ...), 3, ...)
 mdb> print -v 1
        Data (arg 1)           	
 big
@@ -66,7 +48,10 @@ big
 | 3-small
 2-3
 3-big
-  1-big/3
+  1-big
+  | 1-small
+  | 2-4
+  | 3-big/3
   2-6
   3-small
 
@@ -266,11 +251,7 @@ seq(
 mdb> finish
       E7:     C4 EXIT func browser_test.a_func/1-0 (det) browser_test.m:112 (browser_test.m:31)
 mdb> print -p
-a_func(
-  big(big(big(small, 1, small), 2, small), 3, 
-    big(big(small, 4, big(small, 5, small)), 6, small))) = big(
-  big(big(small, 1, small), 2, small), 3, 
-  big(big(small, 4, big(small, 5, small)), 6, small))
+a_func(big(..., ...)) = big(..., ...)
 mdb> print -r
 a_func(
   big(
@@ -285,15 +266,24 @@ mdb> print -v
 a_func
 1-big
 | 1-big
-| | 1-big
-| | | 1-small
-| | | 2-1
-| | | 3-small
+| | 1-big/3
 | | 2-2
 | | 3-small
 | 2-3
-| 3-big/3
-2-big/3
+| 3-big
+|   1-big/3
+|   2-6
+|   3-small
+2-big
+  1-big
+  | 1-big/3
+  | 2-2
+  | 3-small
+  2-3
+  3-big
+    1-big/3
+    2-6
+    3-small
 
 mdb> print -f
 a_func(big(big(big/3, 2, small), 3, big(big/3, 6, small))) = big(big(big/3, 2, small), 3, big(big/3, 6, small))
