@@ -482,15 +482,14 @@ ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
 
     % Blocks the thread from being rescheduled.
     %
-%:- impure pred stm_block_thread(stm::ui) is det.
 :- pragma foreign_proc("C",
     stm_block_thread(_STM::ui),
     [will_not_call_mercury, thread_safe],
 "
-#if defined(MR_HIGHLEVEL_CODE)
+#if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
     pthread_yield();
 #else
-    MR_TRACE_STM(""Yeilding to thread"");
+    ML_TRACE_STM(""Yielding to thread"");
 #endif
 ").
 

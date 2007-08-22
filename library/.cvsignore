@@ -43,3 +43,4 @@ libmer_std.dylib
 *.jar
 LIB_FLAGS
 config.log
+erlang_conf.hrl

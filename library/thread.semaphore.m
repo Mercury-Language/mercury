@@ -86,15 +86,15 @@ public class ML_Semaphore {
 };
 ").
 
-:- pragma foreign_type("C",  semaphore, "ML_Semaphore *").
+:- pragma foreign_type("C",  semaphore, "ML_Semaphore *",
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type("IL", semaphore,
     "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
 :- pragma foreign_type("Erlang", semaphore, "").
 
 :- pragma foreign_decl("C", "
-#ifdef MR_CONSERVATIVE_GC
-  void ML_finalize_semaphore(void *obj, void *cd);
-#endif
+extern void
+ML_finalize_semaphore(void *obj, void *cd);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -103,7 +103,7 @@ public class ML_Semaphore {
     new(Semaphore::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    MR_Word sem_mem;
+    MR_Word         sem_mem;
     ML_Semaphore    *sem;
 
     MR_incr_hp(sem_mem,
@@ -126,9 +126,7 @@ public class ML_Semaphore {
     ** The condvar and the mutex will need to be destroyed
     ** when the semaphore is garbage collected.
     */
-#ifdef MR_CONSERVATIVE_GC
-    GC_REGISTER_FINALIZER(sem, ML_finalize_semaphore, NULL, NULL, NULL);
-#endif
+    MR_GC_register_finalizer(sem, ML_finalize_semaphore, NULL);
 
     Semaphore = sem;
     IO = IO0;
@@ -143,24 +141,21 @@ public class ML_Semaphore {
 ").
 
 :- pragma foreign_code("C", "
-#ifdef MR_CONSERVATIVE_GC
-  void
-  ML_finalize_semaphore(void *obj, void *cd)
-  {
+
+void
+ML_finalize_semaphore(void *obj, void *cd)
+{
     ML_Semaphore    *sem;
 
     sem = (ML_Semaphore *) obj;
 
-  #ifdef MR_THREAD_SAFE
-    #ifdef MR_HIGHLEVEL_CODE
-    pthread_cond_destroy(&(sem->cond));
+    #if defined(MR_THREAD_SAFE)
+        #if defined(MR_HIGHLEVEL_CODE)
+            pthread_cond_destroy(&(sem->cond));
+        #endif
+        pthread_mutex_destroy(&(sem->lock));
     #endif
-    pthread_mutex_destroy(&(sem->lock));
-  #endif
-
-    return;
-  }
-#endif
+}
 ").
 
     % semaphore.signal causes the calling context to resume in semaphore.nop,
