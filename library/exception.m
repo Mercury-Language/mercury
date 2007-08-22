@@ -211,6 +211,23 @@
 
 :- implementation.
 
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+:- import_module stm_builtin.
+
+
+:- pred try_stm(pred(A, stm, stm), exception_result(A), stm, stm).
+:- mode try_stm(in(pred(out, di, uo) is det), 
+    out(cannot_fail), di, uo) is cc_multi.
+:- mode try_stm(in(pred(out, di, uo) is cc_multi), 
+    out(cannot_fail), di, uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module solutions.
 :- import_module string.
 :- import_module unit.
@@ -669,6 +686,64 @@ very_unsafe_perform_io(Goal, Result) :-
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
 
 wrap_exception(Exception, exception(Exception)).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma promise_equivalent_clauses(try_stm/4).
+
+try_stm(TransactionGoal::in(pred(out, di, uo) is det), 
+        Result::out(cannot_fail), STM0::di, STM::uo) :-
+    get_determinism_2(TransactionGoal, Detism),
+    try_stm_det(Detism, TransactionGoal, Result, STM0, STM).
+
+try_stm(TransactionGoal::in(pred(out, di, uo) is cc_multi), 
+        Result::out(cannot_fail), STM0::di, STM::uo) :-
+    get_determinism_2(TransactionGoal, Detism),
+    try_stm_cc_multi(Detism, TransactionGoal, Result, STM0, STM).
+
+
+:- pred try_stm_det(exp_determinism, pred(T, stm, stm),
+    exception_result(T), stm, stm).
+:- mode try_stm_det(in(bound(exp_detism_det)),
+    pred(out, di, uo) is det, out(cannot_fail), di, uo) is cc_multi.
+
+try_stm_det(exp_detism_det, TransactionGoal, Result, !STM) :-
+    Goal = (pred({R, S}::out) is det :-
+        unsafe_promise_unique(!.STM, S0),
+        TransactionGoal(R, S0, S)
+    ),
+    try_det(exp_detism_det, Goal, Result0),
+    handle_stm_result(Result0, Result, !STM).
+
+
+:- pred try_stm_cc_multi(exp_determinism, pred(T, stm, stm),
+    exception_result(T), stm, stm).
+:- mode try_stm_cc_multi(in(bound(exp_detism_cc_multi)),
+    pred(out, di, uo) is cc_multi, out(cannot_fail), di, uo) is cc_multi.
+
+try_stm_cc_multi(exp_detism_cc_multi, TransactionGoal, Result, !STM) :-
+    Goal = (pred({R, S}::out) is cc_multi :-
+        unsafe_promise_unique(!.STM, S0),
+        TransactionGoal(R, S0, S)
+    ),
+    try_det(exp_detism_cc_multi, Goal, Result0),
+    handle_stm_result(Result0, Result, !STM).
+
+
+:- pred handle_stm_result(exception_result({T, stm})::in(cannot_fail),
+    exception_result(T)::out(cannot_fail), stm::in, stm::uo) is det.
+
+handle_stm_result(Result0, Result, !STM) :-
+    (
+        Result0 = succeeded({Res, NewSTM}),
+        Result = succeeded(Res),
+        unsafe_promise_unique(NewSTM, !:STM)
+    ;
+        Result0 = exception(E0),
+        copy(E0, E),
+        Result = exception(E),
+        unsafe_promise_unique(!STM)
+    ).
 
 %-----------------------------------------------------------------------------%
 

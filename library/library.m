@@ -153,6 +153,7 @@
 :- import_module profiling_builtin.
 :- import_module region_builtin.
 :- import_module rtti_implementation.
+:- import_module stm_builtin.
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
 
@@ -284,6 +285,7 @@ mercury_std_library_module("solutions").
 mercury_std_library_module("sparse_bitset").
 mercury_std_library_module("stack").
 mercury_std_library_module("std_util").
+mercury_std_library_module("stm_builtin").
 mercury_std_library_module("store").
 mercury_std_library_module("stream").
 mercury_std_library_module("stream.string_writer").
