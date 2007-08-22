@@ -270,6 +270,14 @@ ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
 
 :- pragma foreign_type("C", stm, "ML_Stm_TLog *", [can_pass_as_mercury_type]).
 
+    % Definitions for use with the other backends.
+    %
+:- type tvar(T)
+    --->    tvar(c_pointer).
+
+:- type stm
+    --->    stm(c_pointer).
+
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C",
