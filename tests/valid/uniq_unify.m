@@ -21,6 +21,13 @@
 :- pred r2(fg::di, fg::uo) is det.
 :- external(r2/2).
 
+:- pragma foreign_code("Erlang", "
+q_2_p_0(_) -> void.
+q2_2_p_0(_) -> void.
+r_2_p_0(_) -> void.
+r2_2_p_0(_) -> void.
+").
+
 % This is a regression test: a previous version of the compiler
 % reported a spurious mode error because after `F0 = f(_)' it
 % inferred `F0 -> unique(f(ground))' rather than `F0 -> unique(f(unique))'.

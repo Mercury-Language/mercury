@@ -31,3 +31,4 @@ nasty(_) :-
 
 :- pred e(list(T)::in) is erroneous.
 :- external(e/1).
+:- pragma foreign_code("Erlang", "e_1_p_0(_, _) -> void.").

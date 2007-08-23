@@ -7,4 +7,5 @@
 
 :- implementation.
 :- external(tricky_assert2__local/0).
+:- pragma foreign_code("Erlang", "local_0_p_0() -> void.").
 

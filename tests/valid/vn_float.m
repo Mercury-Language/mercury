@@ -133,3 +133,13 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
 :- func matmult(mat3, mat3) = mat3.
 
 :- external(matmult/2).
+
+:- pragma foreign_code("Erlang", "
+    move_vertices_to_plane_5_p_0(_, _, _, _) -> void.
+    unit_1_f_0(_) -> void.
+    cross_2_f_0(_, _) -> void.
+    '-_2_f_0'(_, _) -> void.
+    '-_1_f_0'(_) -> void.
+    mag_1_f_0(_) -> void.
+    matmult_2_f_0(_, _) -> void.
+").

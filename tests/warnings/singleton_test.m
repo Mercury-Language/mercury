@@ -37,6 +37,10 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 	[promise_pure, will_not_call_mercury], "
 	Z = 2 * X;
 ").
+:- pragma foreign_proc("Erlang", my_c_pred(X::in, Y::in, Z::out),
+	[promise_pure, will_not_call_mercury], "
+	Z = 2 * X
+").
 
 :- pragma c_code(my_c_func(X::in, Y::in) = (Z::out), will_not_call_mercury, "
 	Z = 2 * Y;
@@ -48,6 +52,10 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 :- pragma foreign_proc("Java", my_c_func(X::in, Y::in) = (Z::out),
 	[promise_pure, will_not_call_mercury], "
 	Z = 2 * Y;
+").
+:- pragma foreign_proc("Erlang", my_c_func(X::in, Y::in) = (Z::out),
+	[promise_pure, will_not_call_mercury], "
+	Z = 2 * Y
 ").
 
 :- pragma c_header_code("#include <stdio.h>").
@@ -66,4 +74,9 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 		[promise_pure, will_not_call_mercury], "
 	System.out.println(""Hello, world"");
 	IO = IO0;
+").
+:- pragma foreign_proc("Erlang", c_hello_world(Msg::in, IO0::di, IO::uo),
+		[promise_pure, will_not_call_mercury], "
+	io:format(""Hello, world""),
+	IO = IO0
 ").

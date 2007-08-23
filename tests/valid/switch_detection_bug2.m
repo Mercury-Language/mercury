@@ -63,6 +63,9 @@ display_diff_side_by_side_2(Prev, SBS, [Edit | Diff]) -->
 
 :- pred first_mentioned_positions(edit :: in, pos :: out, pos :: out) is det.
 :- external(first_mentioned_positions/3).
+:- pragma foreign_code("Erlang", "
+first_mentioned_positions_3_p_0(_) -> void.
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

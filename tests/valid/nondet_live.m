@@ -63,3 +63,8 @@ a3(X, _, Y) :-
 :- external(c/2).
 :- external(d/2).
 
+:- pragma foreign_code("Erlang", "
+b_2_p_0(_, _) -> void.
+c_2_p_0(_, _) -> void.
+d_2_p_0(_, _) -> void.
+").

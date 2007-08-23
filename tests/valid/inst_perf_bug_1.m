@@ -45,3 +45,4 @@
 :- implementation.
 
 :- external(p/1).
+:- pragma foreign_code("Erlang", "p_1_p_0(_) -> void.").

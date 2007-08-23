@@ -20,11 +20,14 @@
 :- mode occurs(in, in, mdi, muo) is semidet.
 
 :- external(occurs/4).
+:- pragma foreign_code("Erlang", "occurs_4_p_0(_, _, _) -> void.").
 
 :- pred tr_store_set_mutvar(store_mutvar(T, S), T, store(S), store(S)).
 :- mode tr_store_set_mutvar(in, in, mdi, muo) is det.
 
 :- external(tr_store_set_mutvar/4).
+:- pragma foreign_code("Erlang",
+    "tr_store_set_mutvar_4_p_0(_, _, _, _) -> void.").
 
 unify(T1, free, _T2, functor(Name2, Arity2, Args2)) -->
         \+ occurs(T1, Args2),

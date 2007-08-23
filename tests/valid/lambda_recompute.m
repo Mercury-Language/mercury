@@ -63,6 +63,7 @@ element(E, DL, [E|DL]).
 
 :- func pos(int, int) = pos.
 :- external(pos/2).
+:- pragma foreign_code("Erlang", "pos_2_f_0(_, _) -> void.").
 
 
 :- type map_i_know 

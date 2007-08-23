@@ -20,3 +20,8 @@ q :- p1(X, Y), p2(X, Y).
 
 :- external(p1/2).
 :- external(p2/2).
+
+:- pragma foreign_code("Erlang", "
+p1_2_p_0(_) -> void.
+p2_2_p_0(_, _) -> void.
+").

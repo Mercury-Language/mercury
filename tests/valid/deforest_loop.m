@@ -62,18 +62,23 @@ shade(Scene, Ray, Intersection, Attributes, Colour) :-
 :- mode shade_from_light(in(scene), in, in, in, in, out) is det.
 
 :- external(shade_from_light/6).
+:- pragma foreign_code("Erlang",
+    "shade_from_light_6_p_0(_, _, _, _, _) -> void.").
 
 :- func colour(attributes) = colour. 
 :- external(colour/1).
+:- pragma foreign_code("Erlang", "colour_1_f_0(_) -> void.").
 
 :- func scale(float, colour) = colour.
 scale(F, rgb(R, G, B)) = rgb(range(F * R), range(F * G), range(F * B)).
 
 :- func ambient(scene::in(scene)) = (float::out) is det.
 :- external(ambient/1).
+:- pragma foreign_code("Erlang", "ambient_1_f_0(_) -> void.").
 
 :- func lights(scene::in(scene)) = (list(light)::out) is det.
 :- external(lights/1).
+:- pragma foreign_code("Erlang", "lights_1_f_0(_) -> void.").
 
 :- pred add_colours(colour::in, colour::in, colour::out) is det.
 add_colours(C0, C1, C0 + C1).
@@ -84,4 +89,5 @@ rgb(Ra, Ga, Ba) + rgb(Rb, Gb, Bb) =
 
 :- func range(float) = float.
 :- external(range/1).
+:- pragma foreign_code("Erlang", "range_1_f_0(_) -> void.").
 
