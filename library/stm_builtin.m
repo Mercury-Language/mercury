@@ -304,6 +304,9 @@ ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
     #endif
 ").
 
+% For non-C backends.
+ml_initialise_stm.
+
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
