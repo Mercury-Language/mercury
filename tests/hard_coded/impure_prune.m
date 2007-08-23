@@ -57,3 +57,18 @@ bump_counter :-
 ").
 :- pragma foreign_proc("C#", set_counter(X::in), [], "counter = X;").
 
+:- pragma foreign_proc("Erlang",
+	get_counter(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	X = case get(counter) of
+	    undefined -> 0;
+	    C -> C
+	end
+").
+:- pragma foreign_proc("Erlang",
+	set_counter(X::in),
+	[will_not_call_mercury],
+"
+	put(counter, X)
+").

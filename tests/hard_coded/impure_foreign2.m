@@ -55,6 +55,12 @@ incr(_::out) :- error("incr/1 called for language other than C").
 			"counter++; Val = counter;").
 :- pragma foreign_proc("C#", incr(Val::out), [will_not_call_mercury],
 			"counter++; Val = counter;").
+:- pragma foreign_proc("Erlang", incr(Val::out), [will_not_call_mercury],
+			"case get(counter) of
+			    undefined -> Val = 2;
+			    C -> Val = C + 1
+			 end,
+			 put(counter, Val)").
 
 :- semipure pred get(int::out) is det.
 
@@ -66,6 +72,12 @@ get(_::out) :- error("get/1 called for language other than C").
 :- pragma foreign_proc("C#", get(Val::out),
 		[will_not_call_mercury, promise_semipure],
 		"Val = counter;").
+:- pragma foreign_proc("Erlang", get(Val::out),
+		[will_not_call_mercury, promise_semipure],
+		"Val = case get(counter) of
+		    undefined -> 1;
+		    C -> C
+		end").
 	
 :- pred unsafe_get(int::out) is det.
 :- pragma promise_pure(unsafe_get/1).

@@ -45,3 +45,16 @@ fib(N, F) :-
 "
     alarm(Seconds);
 ").
+
+:- pragma foreign_proc("Erlang",
+    alarm(Seconds::in),
+    [will_not_call_mercury, thread_safe],
+"
+    F = fun() ->
+	receive
+	after Seconds * 1000 ->
+	    throw(alarm)
+	end
+    end,
+    spawn_link(F)
+").
