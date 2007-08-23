@@ -196,6 +196,12 @@
     % RBMM is enabled.
     %
 :- func mercury_region_builtin_module = sym_name.
+    
+    % Returns the name of the module containing builtins for software
+    % transactional memory.
+    % This module is automatically imported iff STM is used in a module.
+    % 
+:- func mercury_stm_builtin_module = sym_name.
 
     % Returns the name of the module containing builtins for tabling;
     % originally these were in "private_builtin", but were then moved into
@@ -306,6 +312,7 @@ all_builtin_modules = [
         mercury_public_builtin_module,
         mercury_private_builtin_module,
         mercury_region_builtin_module,
+        mercury_stm_builtin_module,
         mercury_table_builtin_module,
         mercury_profiling_builtin_module,
         mercury_term_size_prof_builtin_module,
@@ -318,6 +325,7 @@ all_builtin_modules = [
 mercury_public_builtin_module = unqualified("builtin").
 mercury_private_builtin_module = unqualified("private_builtin").
 mercury_region_builtin_module = unqualified("region_builtin").
+mercury_stm_builtin_module = unqualified("stm_builtin").
 mercury_table_builtin_module = unqualified("table_builtin").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
