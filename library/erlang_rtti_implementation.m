@@ -556,11 +556,28 @@ matches_du_functor(Term, Functor) :-
 :- pred check_functor(T::in, erlang_atom::in, int::out) is semidet.
 :- pragma foreign_proc("Erlang", check_functor(Term::in, Atom::in, Size::out),
         [will_not_call_mercury, promise_pure, thread_safe], "
-    %io:format(""check_functor(~p, ~p)~n"", [Term, Atom]),
-    Functor = element(1, Term),
-    Size = size(Term),
-    %io:format(""check_functor(~p, ~p, ~p)~n"", [Term, Atom, Size]),
-    SUCCESS_INDICATOR = Functor =:= Atom
+    case Atom of
+        % This case must come before the next to handle existential types using
+        % the '[|]' constructor.  In that case the Erlang term will be a tuple
+        % and not a list.
+        _ when is_tuple(Term) ->
+            Functor = element(1, Term),
+            Size = size(Term),
+            SUCCESS_INDICATOR = Functor =:= Atom;
+
+        '[|]' ->
+            case Term of
+                [_ | _] ->
+                    SUCCESS_INDICATOR = true;
+                _ ->
+                    SUCCESS_INDICATOR = false
+            end,
+            Size = 3;
+
+        '[]' ->
+            SUCCESS_INDICATOR = Term =:= [],
+            Size = 1
+    end
 ").
 check_functor(_, _, 0) :-
     semidet_unimplemented("check_functor/3").
@@ -1090,11 +1107,18 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 "
     % TypeInfo_for_U to avoid compiler warning
 
-    %io:format(""get_subterm(~p, ~p, ~p, ~p)~n"",
-    %    [TypeInfo, Term, Index, ExtraArgs]),
-
     TypeInfo_for_T = TypeInfo,
-    Arg = element(Index + ExtraArgs, Term)
+    case Term of
+        % If there are any extra arguments then we would not use the list
+        % syntax.
+        [A | _] when Index =:= 1 ->
+            Arg = A;
+        [_ | B] when Index =:= 2 ->
+            Arg = B;
+
+        _ when is_tuple(Term) ->
+            Arg = element(Index + ExtraArgs, Term)
+    end
 ").
 
 :- func unsafe_cast(T) = U.
