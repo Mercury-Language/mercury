@@ -379,8 +379,9 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
         ( is_dummy_argument_type(ModuleInfo, DestType) ->
             Statement = expr_or_void(MaybeSuccessExpr)
         ;
-            % XXX this doesn't do anything yet
-            Assign = elds_eq(expr_from_var(DestVar), expr_from_var(SrcVar)),
+            erl_gen_info_get_var_types(!.Info, VarTypes),
+            SrcVarExpr = var_to_expr_or_false(ModuleInfo, VarTypes, SrcVar),
+            Assign = elds_eq(expr_from_var(DestVar), SrcVarExpr),
             Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
         )
     ;
