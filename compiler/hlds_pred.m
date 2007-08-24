@@ -261,6 +261,8 @@
     %
     % NOTE: this returns `no' for :- external procedures.
     %
+    % See also `procedure_is_exported'.
+    %
 :- func status_is_exported(import_status) = bool.
 
     % Returns yes if the status indicates that the item was exported

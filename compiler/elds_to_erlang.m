@@ -179,17 +179,9 @@ output_do_no_edit_comment(SourceFileName, !IO) :-
 
 output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
     Defn = elds_defn(PredProcId, _, Body, _),
-    PredProcId = proc(PredId, _ProcId),
+    PredProcId = proc(PredId, ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ( ImportStatus = status_external(ExternalImportStatus) ->
-        % status_is_exported returns `no' for :- external procedures.
-        IsExported = status_is_exported(ExternalImportStatus)
-    ;
-        IsExported = status_is_exported(ImportStatus)
-    ),
-    (
-        IsExported = yes,
+    ( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
         maybe_write_comma(!.NeedComma, !IO),
         nl_indent_line(1, !IO),
         output_pred_proc_id(ModuleInfo, PredProcId, !IO),
@@ -197,7 +189,7 @@ output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
         io.write_int(elds_body_arity(Body), !IO),
         !:NeedComma = yes
     ;
-        IsExported = no
+        true
     ).
 
 :- pred output_foreign_export_ann(elds_foreign_export_defn::in,
