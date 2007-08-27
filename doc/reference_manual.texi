@@ -6621,6 +6621,11 @@ Mercury variables of a type for which there is a C @samp{pragma foreign_type}
 declaration (@pxref{Using foreign types from Mercury}) will be passed as
 the corresponding C type.
 
+Mercury tuple types are passed as @samp{MR_Tuple}, which in the current
+implementation is a typedef for a pointer of type @samp{void *} if
+@samp{--high-level-code} is enabled, and a typedef for @samp{MR_Word}
+otherwise.
+
 Mercury variables of any other type
 are passed as a @samp{MR_Word}, which in the current implementation
 is a typedef for an unsigned type whose size is the same size as a pointer.
