@@ -65,7 +65,7 @@
     ;       down.
 
 :- type call_weight_info
-    == pair(termination_error_contexts, call_weight_graph).
+    --->    call_weight_info(termination_error_contexts, call_weight_graph).
 
     % The maximum non-infinite weight from proc to proc and which context
     % it occurs at.
@@ -102,7 +102,7 @@ prove_termination_in_scc(SCC, PassInfo, SingleArgs, Termination,
             % the failure of the main analysis.
             \+ (
                 list.member(Error, Errors),
-                Error = _ - imported_pred
+                Error = termination_error_context(imported_pred, _)
             )
         ->
             prove_termination_in_scc_single_arg(SCC, PassInfo,
@@ -310,7 +310,7 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
         InitRecSuppliers, Result, !ModuleInfo, !IO),
     (
         Result = ok(CallInfo, _),
-        CallInfo = InfCalls - CallWeights,
+        CallInfo = call_weight_info(InfCalls, CallWeights),
         (
             InfCalls \= []
         ->
@@ -342,7 +342,7 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
         RecSupplierMap0, Result, !ModuleInfo, !IO) :-
     map.init(NewRecSupplierMap0),
     map.init(CallWeightGraph0),
-    CallInfo0 = [] - CallWeightGraph0,
+    CallInfo0 = call_weight_info([], CallWeightGraph0),
     prove_termination_in_scc_pass(SCC, FixDir, PassInfo,
         RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1, !ModuleInfo,
         !IO),
@@ -478,21 +478,23 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
 add_call_arcs([], _RecInputSuppliers, !CallInfo).
 add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
     Path = path_info(PPId, CallSite, GammaConst, GammaVars, ActiveVars),
-    ( CallSite = yes(CallPPIdPrime - ContextPrime) ->
+    (
+        CallSite = yes(CallPPIdPrime - ContextPrime),
         CallPPId = CallPPIdPrime,
         Context = ContextPrime
     ;
+        CallSite = no,
         unexpected(this_file,
             "add_call_arcs/4: no call site in path in stage 2.")
     ),
     (
         GammaVars = []
     ;
-        GammaVars = [_|_],
+        GammaVars = [_ | _],
         unexpected(this_file,
             "add_call_arc/4: gamma variables in path in stage 2.")
     ),
-    !.CallInfo = InfCalls0 - CallWeights0,
+    !.CallInfo = call_weight_info(InfCalls0, CallWeights0),
     ( bag.is_subbag(ActiveVars, RecInputSuppliers) ->
         ( map.search(CallWeights0, PPId, NeighbourMap0) ->
             ( map.search(NeighbourMap0, CallPPId, OldEdgeInfo) ->
@@ -517,10 +519,11 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
             map.det_insert(CallWeights0, PPId, NeighbourMap,
                 CallWeights1)
         ),
-        !:CallInfo = InfCalls0 - CallWeights1
+        !:CallInfo = call_weight_info(InfCalls0, CallWeights1)
     ;
-        InfCalls1 = [Context - inf_call(PPId, CallPPId) | InfCalls0],
-        !:CallInfo = InfCalls1 - CallWeights0
+        InfCall = termination_error_context(inf_call(PPId, CallPPId), Context),
+        InfCalls1 = [InfCall | InfCalls0],
+        !:CallInfo = call_weight_info(InfCalls1, CallWeights0)
     ),
     add_call_arcs(Paths, RecInputSuppliers, !CallInfo).
 
@@ -597,7 +600,10 @@ zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
         ( WeightSoFar1 >= 0 ->
             FinalVisitedCalls = [CurPPId - Context | VisitedCalls],
             list.reverse(FinalVisitedCalls, RevFinalVisitedCalls),
-            Cycles = [ProcContext - cycle(LookforPPId, RevFinalVisitedCalls)]
+            CycleError = cycle(LookforPPId, RevFinalVisitedCalls),
+            CycleErrorContext = termination_error_context(CycleError,
+                ProcContext),
+            Cycles = [CycleErrorContext]
         ;
             Cycles = []
         )

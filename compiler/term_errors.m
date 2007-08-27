@@ -23,9 +23,9 @@
 
 :- import_module assoc_list.
 :- import_module bag.
+:- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -139,7 +139,8 @@
             % code is assumed to be non-terminating.
 
 :- type termination_error_contexts == list(termination_error_context).
-:- type termination_error_context == pair(prog_context, termination_error).
+:- type termination_error_context
+    --->    termination_error_context(termination_error, prog_context).
 
 :- pred report_term_errors(list(pred_proc_id)::in,
     list(termination_error_context)::in, module_info::in, io::di, io::uo)
@@ -152,7 +153,11 @@
     % and in the second case, the piece of code that the programmer *can* do
     % something about is not this piece.
     %
-:- pred indirect_error(termination_error::in) is semidet.
+:- func is_indirect_error(termination_error) = bool.
+   
+    % A fatal error is one that prevents pass 2 from proving termination.
+    %
+:- func is_fatal_error(termination_error) = bool.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -168,19 +173,55 @@
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
+:- import_module pair.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-indirect_error(horder_call).
-indirect_error(method_call).
-indirect_error(pragma_foreign_code).
-indirect_error(imported_pred).
-indirect_error(can_loop_proc_called(_, _)).
-indirect_error(horder_args(_, _)).
-indirect_error(does_not_term_pragma(_)).
+% XXX Some of the following (and in is_fatal_error/1 as well) look wrong.
+% Some of them should probably be calling unexpected/2 - juliensf.
+
+is_indirect_error(horder_call) = yes.
+is_indirect_error(method_call) = yes.
+is_indirect_error(pragma_foreign_code) = yes.
+is_indirect_error(imported_pred) = yes.
+is_indirect_error(can_loop_proc_called(_, _)) = yes.
+is_indirect_error(horder_args(_, _)) = yes.
+is_indirect_error(does_not_term_pragma(_)) = yes.
+is_indirect_error(cycle(_, _)) = no.
+is_indirect_error(does_not_term_foreign(_)) = no.
+is_indirect_error(ho_inf_termination_const(_, _)) = no.
+is_indirect_error(inf_call(_, _)) = no.
+is_indirect_error(inf_termination_const(_, _)) = no.
+is_indirect_error(is_builtin(_)) = no.
+is_indirect_error(no_eqns) = no.
+is_indirect_error(not_subset(_, _, _)) = no.
+is_indirect_error(solver_failed) = no.
+is_indirect_error(too_many_paths) = no.
+is_indirect_error(inconsistent_annotations) = no.
+
+is_fatal_error(horder_call) = yes.
+is_fatal_error(horder_args(_, _)) = yes.
+is_fatal_error(imported_pred) = yes.
+is_fatal_error(method_call) = yes.
+is_fatal_error(pragma_foreign_code) = no.
+is_fatal_error(can_loop_proc_called(_, _)) = no.
+is_fatal_error(does_not_term_pragma(_)) = no.
+is_fatal_error(cycle(_, _)) = no.
+is_fatal_error(does_not_term_foreign(_)) = no.
+is_fatal_error(ho_inf_termination_const(_, _)) = no.
+is_fatal_error(inf_call(_, _)) = no.
+is_fatal_error(inf_termination_const(_, _)) = no.
+is_fatal_error(is_builtin(_)) = no.
+is_fatal_error(no_eqns) = no.
+is_fatal_error(not_subset(_, _, _)) = no.
+is_fatal_error(solver_failed) = no.
+is_fatal_error(too_many_paths) = no.
+is_fatal_error(inconsistent_annotations) = no.
+
+%-----------------------------------------------------------------------------%
 
 report_term_errors(SCC, Errors, Module, !IO) :-
     get_context_from_scc(SCC, Module, Context),
@@ -262,17 +303,21 @@ output_term_errors([Error | Errors], Single, ErrNum0, Indent, Module, !IO) :-
     maybe(pred_proc_id)::in, maybe(int)::in, int::in, module_info::in,
     io::di, io::uo) is det.
 
-output_term_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :-
+output_term_error(TermErrorContext, Single, ErrorNum, Indent, Module, !IO) :-
+    TermErrorContext = termination_error_context(Error, Context),
     description(Error, Single, Module, Pieces0, Reason),
-    ( ErrorNum = yes(N) ->
+    (
+        ErrorNum = yes(N),
         string.int_to_string(N, Nstr),
         string.append_list(["Reason ", Nstr, ":"], Preamble),
         Pieces = [fixed(Preamble) | Pieces0]
     ;
+        ErrorNum = no,
         Pieces = Pieces0
     ),
     write_error_pieces(Context, Indent, Pieces, !IO),
-    ( Reason = yes(InfArgSizePPId) ->
+    (
+        Reason = yes(InfArgSizePPId),
         lookup_proc_arg_size_info(Module, InfArgSizePPId, ArgSize),
         ( ArgSize = yes(infinite(ArgSizeErrors)) ->
             % XXX the next line is cheating
@@ -283,7 +328,7 @@ output_term_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :-
                 "inf arg size procedure does not have inf arg size")
         )
     ;
-        true
+        Reason = no 
     ).
 
 :- pred description(termination_error::in,

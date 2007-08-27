@@ -24,12 +24,13 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
 
-:- type stored_goal == pair(hlds_goal, instmap).
+:- type stored_goal
+    --->    stored_goal(hlds_goal, instmap).
+
 :- type goal_store(T).
 
 :- pred goal_store_init(goal_store(T)::out) is det.
@@ -115,8 +116,10 @@ direct_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict)
 
 direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
         EarlierId) :-
-    goal_store_lookup(GoalStore, StartId, LaterGoal - LaterInstMap),
-    goal_store_member(GoalStore, EarlierId, EarlierGoal - EarlierInstMap),
+    goal_store_lookup(GoalStore, StartId,
+        stored_goal(LaterGoal, LaterInstMap)),
+    goal_store_member(GoalStore, EarlierId,
+        stored_goal(EarlierGoal, EarlierInstMap)),
     compare((<), EarlierId, StartId),
     not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
         EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal).

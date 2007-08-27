@@ -666,7 +666,7 @@ instmap_merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         (
             ErrorList = [FirstError | _],
-            FirstError = Var - _,
+            FirstError = merge_error(Var, _),
             set.singleton_set(WaitingVars, Var),
             mode_info_error(WaitingVars,
                 mode_error_disj(MergeContext, ErrorList), !ModeInfo)
@@ -726,7 +726,7 @@ merge_2([Var | Vars], InstMapList, VarTypes, !InstMapping,
     merge_var(InstList, Var, VarType, !ModuleInfo, MaybeInst),
     (
         MaybeInst = no,
-        !:ErrorList = [Var - InstList | !.ErrorList],
+        !:ErrorList = [merge_error(Var, InstList) | !.ErrorList],
         svmap.set(Var, not_reached, !InstMapping)
     ;
         MaybeInst = yes(Inst),
@@ -920,7 +920,7 @@ instmap_unify(NonLocals, InstMapList, !ModeInfo) :-
         % of possible errors in the mode_info.
         (
             ErrorList = [FirstError | _],
-            FirstError = Var - _,
+            FirstError = merge_error(Var, _),
             set.singleton_set(WaitingVars, Var),
             mode_info_error(WaitingVars,
                 mode_error_par_conj(ErrorList), !ModeInfo)
@@ -956,7 +956,7 @@ unify_2([Var|Vars], InitialInstMap, InstMapList,
         !ModuleInfo, no, Error),
     (
         Error = yes,
-        ErrorList = [Var - Insts | ErrorListTail]
+        ErrorList = [ merge_error(Var, Insts) | ErrorListTail]
     ;
         Error = no,
         ErrorList = ErrorListTail

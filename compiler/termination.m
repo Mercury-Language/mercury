@@ -172,7 +172,8 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                     TermStatus = yes(cannot_loop(unit)),
                     proc_info_set_maybe_termination_info(TermStatus, !ProcInfo)
                 ;
-                    TermErr = Context - does_not_term_foreign(PPId),
+                    TermErr = termination_error_context(
+                        does_not_term_foreign(PPId), Context),
                     TermStatus = yes(can_loop([TermErr])),
                     proc_info_set_maybe_termination_info(TermStatus, !ProcInfo)
                 )
@@ -182,7 +183,8 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                 % contradict this.
                 MaybeTermination = yes(cannot_loop(_)),
                 ( get_terminates(Attributes) = proc_does_not_terminate ->
-                    TermErr = Context - inconsistent_annotations,
+                    TermErr = termination_error_context(
+                        inconsistent_annotations, Context),
                     TermStatus = yes(can_loop([TermErr])),
                     % XXX intermod
                     proc_info_set_maybe_termination_info(TermStatus, !ProcInfo),
@@ -206,7 +208,8 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                 % does not contradict this.
                 MaybeTermination = yes(can_loop(TermErrs0)),
                 ( get_terminates(Attributes) = proc_terminates ->
-                    TermErr = Context - inconsistent_annotations,
+                    TermErr = termination_error_context(
+                        inconsistent_annotations, Context),
                     TermErrs = [TermErr | TermErrs0 ],
                     TermStatus =  yes(can_loop(TermErrs)),
                     % XXX intermod
@@ -296,7 +299,8 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !IO) :-
             %
             get_context_from_scc(SCCTerminationKnown, !.ModuleInfo,
                 Context),
-            NewTermStatus = can_loop([Context - inconsistent_annotations]),
+            NewTermStatus = can_loop([termination_error_context(
+                inconsistent_annotations, Context)]),
             set_termination_infos(SCC, NewTermStatus, !ModuleInfo),
 
             PredIds = list.map((func(proc(PredId, _)) = PredId),
@@ -384,18 +388,15 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
         % report errors here as well.
         SCCTerminationUnknown = []
     ;
-        SCCTerminationUnknown = [_|_],
-        IsFatal = (pred(ContextError::in) is semidet :-
-            ContextError = _Context - Error,
-            ( Error = horder_call
-            ; Error = horder_args(_, _)
-            ; Error = imported_pred
-            )
+        SCCTerminationUnknown = [_ | _],
+        IsFatal = (pred(ErrorAndContext::in) is semidet :-
+            ErrorAndContext = termination_error_context(Error, _), 
+            is_fatal_error(Error) = yes
         ),
         list.filter(IsFatal, ArgSizeErrors, FatalErrors),
         BothErrors = TermErrors ++ FatalErrors,
         (
-            BothErrors = [_|_],
+            BothErrors = [_ | _],
             % These errors prevent pass 2 from proving termination
             % in any case, so we may as well not prove it quickly.
             PassInfo = pass_info(_, MaxErrors, _),
@@ -534,8 +535,8 @@ report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
             PrintErrors = Errors
         ; NormalErrors = yes ->
             IsNonSimple = (pred(ContextError::in) is semidet :-
-                ContextError = _Context - Error,
-                \+ indirect_error(Error)
+                ContextError = termination_error_context(Error, _Context),
+                is_indirect_error(Error) = no
             ),
             list.filter(IsNonSimple, Errors, PrintErrors0),
             % If there were no direct errors then use the indirect errors.
@@ -586,7 +587,8 @@ is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
 
 check_preds([], !ModuleInfo, !IO).
 check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
-    write_pred_progress_message("% Checking termination of ", PredId, !.ModuleInfo, !IO),
+    write_pred_progress_message("% Checking termination of ", PredId,
+        !.ModuleInfo, !IO),
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, !IO),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -635,18 +637,20 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
             change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
                 ProcTable0, ProcTable1)
         ;
-            TerminationError = Context - imported_pred,
+            TerminationError = termination_error_context(imported_pred,
+                Context),
             TerminationInfo = can_loop([TerminationError]),
             change_procs_termination_info(ProcIds, no, TerminationInfo,
                 ProcTable0, ProcTable1)
         ),
-        ArgSizeError = imported_pred,
-        ArgSizeInfo = infinite([Context - ArgSizeError]),
+        ArgSizeError = termination_error_context(imported_pred, Context),
+        ArgSizeInfo = infinite([ArgSizeError]),
         change_procs_arg_size_info(ProcIds, no, ArgSizeInfo,
             ProcTable1, ProcTable2)
     ),
     ( check_marker(Markers, marker_does_not_terminate) ->
-        RequestError = Context - does_not_term_pragma(PredId),
+        RequestError = termination_error_context(
+            does_not_term_pragma(PredId), Context),
         RequestTerminationInfo = can_loop([RequestError]),
         change_procs_termination_info(ProcIds, yes,
             RequestTerminationInfo, ProcTable2, ProcTable)
@@ -768,7 +772,8 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     ;
         pred_info_get_context(PredInfo, Context),
         Error = is_builtin(PredId),
-        ArgSizeInfo = yes(infinite([Context - Error]))
+        ArgSizeError = termination_error_context(Error, Context),
+        ArgSizeInfo = yes(infinite([ArgSizeError]))
     ),
     % XXX intermod
     proc_info_set_maybe_arg_size_info(ArgSizeInfo, ProcInfo0, ProcInfo1),

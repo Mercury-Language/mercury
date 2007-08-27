@@ -364,12 +364,12 @@ add_context_to_termination_info(no, _, no).
 add_context_to_termination_info(yes(cannot_loop(_)), _,
     yes(cannot_loop(unit))).
 add_context_to_termination_info(yes(can_loop(_)), Context,
-    yes(can_loop([Context - imported_pred]))).
+    yes(can_loop([termination_error_context(imported_pred, Context)]))).
 
 add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
 add_context_to_arg_size_info(yes(infinite(_)), Context,
-        yes(infinite([Context - imported_pred]))).
+        yes(infinite([termination_error_context(imported_pred, Context)]))).
 
 %-----------------------------------------------------------------------------%
 

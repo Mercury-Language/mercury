@@ -241,10 +241,11 @@ create_arg_size_constraint(SubstMap, eq(Terms0, Constant), Constraint) :-
     list.map(create_lp_term(SubstMap), Terms0, Terms),
     Constraint = constraint(Terms, (=), Constant).
 
-:- pred create_lp_term(map(int, var)::in, pair(int, rat)::in, lp_term::out)
+:- pred create_lp_term(map(int, var)::in, arg_size_term::in, lp_term::out)
     is det.
 
-create_lp_term(SubstMap, VarId - Coefficient, Var - Coefficient) :-
+create_lp_term(SubstMap, ArgSizeTerm, Var - Coefficient) :-
+    ArgSizeTerm = arg_size_term(VarId, Coefficient),
     Var = SubstMap ^ det_elem(VarId).
 
 %----------------------------------------------------------------------------%

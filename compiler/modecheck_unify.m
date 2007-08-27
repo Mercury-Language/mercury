@@ -1126,7 +1126,8 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     ->
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_instvarset(!.ModeInfo, InstVarSet),
-        unify_proc.request_unify(TypeCtor - UniMode, InstVarSet,
+        UnifyProcId = unify_proc_id(TypeCtor, UniMode),
+        unify_proc.request_unify(UnifyProcId, InstVarSet,
             Det, Context, ModuleInfo3, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;

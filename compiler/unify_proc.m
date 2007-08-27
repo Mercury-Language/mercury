@@ -64,13 +64,13 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
 :- type proc_requests.
 
-:- type unify_proc_id == pair(type_ctor, uni_mode).
+:- type unify_proc_id
+    --->    unify_proc_id(type_ctor, uni_mode).
 
     % Initialize the proc_requests table.
     %
@@ -170,6 +170,7 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module queue.
 :- import_module set.
 :- import_module string.
@@ -261,13 +262,13 @@ search_mode_num(ModuleInfo, TypeCtor, UniMode, Determinism, ProcId) :-
     ;
         module_info_get_proc_requests(ModuleInfo, Requests),
         get_unify_req_map(Requests, UnifyReqMap),
-        map.search(UnifyReqMap, TypeCtor - UniMode, ProcId)
+        map.search(UnifyReqMap, unify_proc_id(TypeCtor, UniMode), ProcId)
     ).
 
 %-----------------------------------------------------------------------------%
 
 request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
-    UnifyId = TypeCtor - UnifyMode,
+    UnifyId = unify_proc_id(TypeCtor, UnifyMode),
 
     % Generating a unification procedure for a type uses its body.
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),

@@ -2640,13 +2640,13 @@ parse_arg_size_constraint(Term, Constr) :-
         Constr = eq(LPTerms, Constant)
     ).
 
-:- pred parse_lp_term(term::in, pair(int, rat)::out) is semidet.
+:- pred parse_lp_term(term::in, arg_size_term::out) is semidet.
 
 parse_lp_term(Term, LpTerm) :-
     Term = term.functor(term.atom("term"), [VarIdTerm, CoeffTerm], _),
     VarIdTerm = term.functor(term.integer(VarId), [], _),
     parse_rational(CoeffTerm, Coeff),
-    LpTerm = VarId - Coeff.
+    LpTerm = arg_size_term(VarId, Coeff).
 
 :- pred parse_rational(term::in, rat::out) is semidet.
 

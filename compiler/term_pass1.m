@@ -99,16 +99,17 @@ find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo, !IO) :-
     (
         Result = ok(Paths, OutputSupplierMap, SubsetErrors),
         (
-            SubsetErrors = [_|_],
+            SubsetErrors = [_ | _],
             ArgSize = error(SubsetErrors)
         ;
             SubsetErrors = [],
             (
                 Paths = [],
                 get_context_from_scc(SCC, !.ModuleInfo, Context),
-                ArgSize = error([Context - no_eqns])
+                ArgSizeError = termination_error_context(no_eqns, Context),
+                ArgSize = error([ArgSizeError])
             ;
-                Paths = [_|_],
+                Paths = [_ | _],
                 solve_equations(Paths, SCC, MaybeSolution, !IO),
                 (
                     MaybeSolution = yes(Solution),
@@ -116,7 +117,9 @@ find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo, !IO) :-
                 ;
                     MaybeSolution = no,
                     get_context_from_scc(SCC, !.ModuleInfo, Context),
-                    ArgSize = error([Context - solver_failed])
+                    ArgSizeError = termination_error_context(solver_failed,
+                        Context),
+                    ArgSize = error([ArgSizeError])
                 )
             )
         )
@@ -243,8 +246,7 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
         Info = ok(Paths, TermErrors),
         set.to_sorted_list(Paths, PathList),
         upper_bound_active_vars(PathList, AllActiveVars),
-        map.lookup(OutputSupplierMap0, PPId,
-            OutputSuppliers0),
+        map.lookup(OutputSupplierMap0, PPId, OutputSuppliers0),
         update_output_suppliers(Args, AllActiveVars,
             OutputSuppliers0, OutputSuppliers),
         map.det_update(OutputSupplierMap0, PPId,
@@ -252,7 +254,10 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
         ( bag.is_subbag(AllActiveVars, InVars) ->
             SubsetErrors = []
         ;
-            SubsetErrors = [Context - not_subset(PPId, AllActiveVars, InVars)]
+            SubsetError = not_subset(PPId, AllActiveVars, InVars),
+            SubsetErrorContext = termination_error_context(SubsetError,
+                Context),
+            SubsetErrors = [SubsetErrorContext]
         ),
         Result = ok(PathList, OutputSupplierMap, SubsetErrors)
     ;
@@ -261,7 +266,7 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
     ).
 
 :- pred update_output_suppliers(list(prog_var)::in, bag(prog_var)::in,
-        list(bool)::in, list(bool)::out) is det.
+    list(bool)::in, list(bool)::out) is det.
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-
@@ -337,16 +342,19 @@ check_goal_expr_non_term_calls(PPId, VarTypes, Goal, GoalInfo,
     Context = goal_info_get_context(GoalInfo),
     (
         TerminationInfo = yes(can_loop(_)),
-        TermError = Context - can_loop_proc_called(PPId, CallPPId),
-        list.cons(TermError, !Errors)
+        CanLoopError = can_loop_proc_called(PPId, CallPPId),
+        CanLoopErrorContext = termination_error_context(CanLoopError, Context),
+        list.cons(CanLoopErrorContext, !Errors)
     ;
         ( TerminationInfo = yes(cannot_loop(_))
         ; TerminationInfo = no
         )
     ),
     ( horder_vars(Args, VarTypes) ->
-        HigherOrderError = Context - horder_args(PPId, CallPPId),
-        list.cons(HigherOrderError, !Errors)
+        HigherOrderError = horder_args(PPId, CallPPId),
+        HigherOrderErrorContext = termination_error_context(HigherOrderError,
+            Context),
+        list.cons(HigherOrderErrorContext, !Errors)
     ;
         true
     ).
@@ -355,7 +363,8 @@ check_goal_expr_non_term_calls(_, _, Goal, GoalInfo, !Errors, !ModuleInfo,
     % XXX Use closure analysis results here.
     Goal = generic_call(_, _, _, _),
     Context = goal_info_get_context(GoalInfo),
-    list.cons(Context - horder_call, !Errors).
+    Error = termination_error_context(horder_call, Context),
+    list.cons(Error, !Errors).
 check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
         !IO) :-
     Goal = switch(_, _, Cases),
@@ -392,8 +401,7 @@ check_goal_expr_non_term_calls(_, _, shorthand(_), _, _, _, _, _, _, _) :-
 
 check_cases_non_term_calls(PPId, VarTypes, case(_, Goal), !Errors,
         !ModuleInfo, !IO) :-
-    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors,
-        !ModuleInfo, !IO).
+    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 %

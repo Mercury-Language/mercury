@@ -408,23 +408,23 @@ add_path(Path, ok(Paths0, CanLoop), ok(Paths, CanLoop)) :-
 
 add_error(Context, Error, Params, error(Errors0, CanLoop),
         error(Errors, CanLoop)) :-
-    Errors1 = [Context - Error | Errors0],
+    Errors1 = [termination_error_context(Error, Context) | Errors0],
     params_get_max_errors(Params, MaxErrors),
     list.take_upto(MaxErrors, Errors1, Errors).
 add_error(Context, Error, _, ok(_, CanLoop),
-        error([Context - Error], CanLoop)).
+        error([termination_error_context(Error, Context)], CanLoop)).
 
 :- pred called_can_loop(prog_context::in, termination_error::in,
     traversal_params::in, traversal_info::in, traversal_info::out) is det.
 
 called_can_loop(Context, Error, Params, error(Errors, CanLoop0),
         error(Errors, CanLoop)) :-
-    CanLoop1 = [Context - Error | CanLoop0],
+    CanLoop1 = [termination_error_context(Error, Context) | CanLoop0],
     params_get_max_errors(Params, MaxErrors),
     list.take_upto(MaxErrors, CanLoop1, CanLoop).
 called_can_loop(Context, Error, Params, ok(Paths, CanLoop0),
         ok(Paths, CanLoop)) :-
-    CanLoop1 = [Context - Error | CanLoop0],
+    CanLoop1 = [termination_error_context(Error, Context) | CanLoop0],
     params_get_max_errors(Params, MaxErrors),
     list.take_upto(MaxErrors, CanLoop1, CanLoop).
 
@@ -464,7 +464,8 @@ combine_paths(ok(Paths1, CanLoop1), ok(Paths2, CanLoop2), Params,
         Info = ok(Paths, CanLoop)
     ;
         params_get_context(Params, Context),
-        Info = error([Context - too_many_paths], CanLoop)
+        Info = error([termination_error_context(too_many_paths, Context)],
+            CanLoop)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -577,7 +578,7 @@ error_if_intersect(OutVars, Context, ErrorMsg, ok(Paths, CanLoop), Info) :-
         set.to_sorted_list(Paths, PathList),
         some_active_vars_in_bag(PathList, OutVars)
     ->
-        Info = error([Context - ErrorMsg], CanLoop)
+        Info = error([termination_error_context(ErrorMsg, Context)], CanLoop)
     ;
         Info = ok(Paths, CanLoop)
     ).

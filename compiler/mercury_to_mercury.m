@@ -4576,7 +4576,8 @@ write_arg_size_constr(Constraint, !IO) :-
 
 :- pred write_arg_size_term(arg_size_term::in, io::di, io::uo) is det.
 
-write_arg_size_term(VarId - Coefficient, !IO) :-
+write_arg_size_term(ArgSizeTerm, !IO) :-
+    ArgSizeTerm = arg_size_term(VarId, Coefficient),
     io.write_string("term(", !IO),
     io.write_int(VarId, !IO),
     io.write_string(", ", !IO),

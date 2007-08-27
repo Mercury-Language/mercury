@@ -30,7 +30,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -39,7 +38,9 @@
     --->    disj
     ;       if_then_else.
 
-:- type merge_error  == pair(prog_var, list(mer_inst)).
+:- type merge_error
+    --->    merge_error(prog_var, list(mer_inst)).
+
 :- type merge_errors == list(merge_error).
 
 :- type delayed_goal
@@ -245,6 +246,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -526,7 +528,8 @@ mode_error_par_conj_to_spec(ModeInfo, ErrorList) = Spec :-
 
 :- func merge_error_to_pieces(mode_info, merge_error) = list(format_component).
 
-merge_error_to_pieces(ModeInfo, Var - Insts) = Pieces :-
+merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
+    MergeError = merge_error(Var, Insts),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [words(add_quotes(mercury_var_to_string(VarSet, no, Var))),
         fixed("::"),

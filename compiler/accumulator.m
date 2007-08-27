@@ -563,8 +563,7 @@ store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(IM0, InstMapDelta, IM),
-
-    goal_store_det_insert(Identifier - N, Goal - IM0, GS0, GS).
+    goal_store_det_insert(Identifier - N, stored_goal(Goal, IM0), GS0, GS).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -578,7 +577,7 @@ store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
 
 identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     P = (pred(Key::out) is nondet :-
-        goal_store_member(GoalStore, Key, Goal - _InstMap),
+        goal_store_member(GoalStore, Key, stored_goal(Goal, _InstMap)),
         Key = rec - _,
         Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
     ),
@@ -779,10 +778,10 @@ set_upto(N, K) = Set :-
 
 before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, stored_goal(LaterGoal, LaterInstMap)),
     (
         member_lessthan_goalid(GoalStore, N - I, N - J,
-            EarlierGoal - EarlierInstMap),
+            stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
@@ -801,12 +800,12 @@ before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 
 assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, stored_goal(LaterGoal, LaterInstMap)),
     LaterGoal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _),
     is_associative(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
-            EarlierGoal - EarlierInstMap),
+            stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
@@ -825,12 +824,12 @@ assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 
 construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, stored_goal(LaterGoal, LaterInstMap)),
     LaterGoal = hlds_goal(unify(_, _, _, Unify, _), _GoalInfo),
     Unify = construct(_, _, _, _, _, _, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
-            EarlierGoal - EarlierInstMap),
+            stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
@@ -854,7 +853,7 @@ construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
 
 construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
         _, _, _), FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, stored_goal(LaterGoal, LaterInstMap)),
     LaterGoal = hlds_goal(unify(_, _, _, Unify, _), _GoalInfo),
     Unify = construct(_, ConsId, _, _, _, _, _),
 
@@ -862,13 +861,14 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
         FullyStrict, Ancestors),
 
     set.singleton_set(Assoc `intersect` Ancestors, AssocId),
-    goal_store_lookup(GoalStore, AssocId, AssocGoal - _AssocInstMap),
+    goal_store_lookup(GoalStore, AssocId,
+        stored_goal(AssocGoal, _AssocInstMap)),
     AssocGoal = hlds_goal(plain_call(PredId, _, _, _, _, _), _),
 
     is_associative_construction(ConsId, PredId, ModuleInfo),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
-            EarlierGoal - EarlierInstMap),
+            stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
@@ -888,12 +888,12 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 
 update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, stored_goal(LaterGoal, LaterInstMap)),
     LaterGoal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _),
     is_update(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
-            EarlierGoal - EarlierInstMap),
+            stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
@@ -1082,7 +1082,7 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
     After = Assoc `union` ConstructAssoc `union` Construct,
 
     P = (pred(Id::in, Set0::in, Set::out) is det :-
-        goal_store_lookup(GoalStore, Id, Goal - _InstMap),
+        goal_store_lookup(GoalStore, Id, stored_goal(Goal, _InstMap)),
         Goal = hlds_goal(_GoalExpr, GoalInfo),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         Set = NonLocals `union` Set0
@@ -1171,7 +1171,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
     !.Substs = substs(AccVarSubst, RecCallSubst0, AssocCallSubst0,
         UpdateSubst),
 
-    lookup_call(GS, Id, Goal - InstMap),
+    lookup_call(GS, Id, stored_goal(Goal, InstMap)),
 
     Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), GoalInfo),
     is_associative(PredId, ModuleInfo, Args, AssocInfo),
@@ -1194,7 +1194,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
     % associative and not commutative.
     (
         IsCommutative = yes,
-        CSGoal = Goal - InstMap,
+        CSGoal = stored_goal(Goal, InstMap),
         Warning = []
     ;
         IsCommutative = no,
@@ -1221,9 +1221,9 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
         ),
         % Swap the arguments.
         [A, B] = set.to_sorted_list(Vars),
-        map.from_assoc_list([A-B, B-A], Subst),
+        map.from_assoc_list([A - B, B - A], Subst),
         rename_some_vars_in_goal(Subst, Goal, SwappedGoal),
-        CSGoal = SwappedGoal - InstMap
+        CSGoal = stored_goal(SwappedGoal, InstMap)
     ),
 
     process_assoc_set(Ids, GS, OutPrime, ModuleInfo, !Substs,
@@ -1262,7 +1262,7 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
         !VarSet, !VarTypes, StateOutputVars, Accs, BasePairs) :-
     !.Substs = substs(AccVarSubst0, RecCallSubst0, AssocCallSubst,
         UpdateSubst0),
-    lookup_call(GS, Id, Goal - _InstMap),
+    lookup_call(GS, Id, stored_goal(Goal, _InstMap)),
 
     Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _GoalInfo),
     is_update(PredId, ModuleInfo, Args, StateVarA - StateVarB),
@@ -1349,7 +1349,7 @@ divide_base_case(UpdateOut, Out, C, VarTypes, ModuleInfo,
 related(GS, VarTypes, ModuleInfo, Var, Related) :-
     solutions.solutions(
         (pred(Key::out) is nondet :-
-            goal_store_member(GS, Key, Goal - InstMap0),
+            goal_store_member(GS, Key, stored_goal(Goal, InstMap0)),
             Key = base - _,
             Goal = hlds_goal(_GoalExpr, GoalInfo),
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
@@ -1374,15 +1374,15 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 :- inst hlds_plain_call
     --->    hlds_goal(plain_call, ground).
 :- inst plain_call_goal
-    --->    hlds_plain_call - ground.
+    --->    stored_goal(hlds_plain_call, ground).
 
     % Do a goal_store_lookup where the result is known to be a call.
     %
 :- pred lookup_call(goal_store::in, goal_id::in,
     stored_goal::out(plain_call_goal)) is det.
 
-lookup_call(GoalStore, Id, Call - InstMap) :-
-    goal_store_lookup(GoalStore, Id, Goal - InstMap),
+lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
+    goal_store_lookup(GoalStore, Id, stored_goal(Goal, InstMap)),
     ( Goal = hlds_goal(plain_call(_, _, _, _, _, _), _) ->
         Call = Goal
     ;
@@ -1529,7 +1529,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
 create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
         HeadToCallSubst, CallToHeadSubst, BaseIds, BasePairs,
         Sets, C, CS, OrigBaseGoal, OrigRecGoal, AccBaseGoal, AccRecGoal) :-
-    lookup_call(C, RecCallId, OrigCall - _InstMap),
+    lookup_call(C, RecCallId, stored_goal(OrigCall, _InstMap)),
     Call = create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName),
     create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
         BaseIds, Sets, C, OrigBaseGoal, OrigRecGoal),
@@ -1794,9 +1794,9 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal, !ModuleInfo) :-
 rename(Ids, Subst, From, Initial) = Final :-
     list.foldl(
         (pred(Id::in, GS0::in, GS::out) is det :-
-            goal_store_lookup(From, Id, Goal0 - InstMap),
+            goal_store_lookup(From, Id, stored_goal(Goal0, InstMap)),
             rename_some_vars_in_goal(Subst, Goal0, Goal),
-            goal_store_det_insert(Id, Goal - InstMap, GS0, GS)
+            goal_store_det_insert(Id, stored_goal(Goal, InstMap), GS0, GS)
         ), Ids, Initial, Final).
 
     % Return all the goal_ids which belong in the base case.
@@ -1822,7 +1822,7 @@ base_case_ids_set(GS) = set.list_to_set(base_case_ids(GS)).
 goal_list(Ids, GS) = Goals :-
     list.map(
         (pred(Key::in, G::out) is det :-
-            goal_store_lookup(GS, Key, G - _)
+            goal_store_lookup(GS, Key, stored_goal(G, _))
         ), Ids, Goals).
 
 %-----------------------------------------------------------------------------%
