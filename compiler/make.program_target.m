@@ -597,20 +597,20 @@ make_misc_target(MainModuleName - TargetType, Succeeded, !Info, !IO) :-
 
 make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
         !Info, !IO) :-
-    % Don't rebuild dependencies when cleaning up.
-    RebuildDeps = !.Info ^ rebuild_dependencies,
+    % Don't rebuild .module_dep files when cleaning up.
+    RebuildModuleDeps = !.Info ^ rebuild_module_deps,
     (
         ( TargetType = misc_target_clean
         ; TargetType = misc_target_realclean
         )
     ->
-        !:Info = !.Info ^ rebuild_dependencies := no
+        !:Info = !.Info ^ rebuild_module_deps := do_not_rebuild_module_deps
     ;
         true
     ),
     find_reachable_local_modules(MainModuleName, Succeeded0, AllModulesSet,
         !Info, !IO),
-    !:Info = !.Info ^ rebuild_dependencies := RebuildDeps,
+    !:Info = !.Info ^ rebuild_module_deps := RebuildModuleDeps,
     AllModules = set.to_sorted_list(AllModulesSet),
     (
         TargetType = misc_target_clean,

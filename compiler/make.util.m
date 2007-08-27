@@ -64,8 +64,9 @@
     % concurrently, in any order, and multiple times.
     %
 :- pred foldl2_maybe_stop_at_error_maybe_parallel(bool::in,
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    list(T)::in, bool::out, Info::in, Info::out, io::di, io::uo) is det.
+    foldl2_pred_with_status(T, make_info, io)::in(foldl2_pred_with_status),
+    list(T)::in, bool::out, make_info::in, make_info::out, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -305,9 +306,11 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module bool.
 :- import_module char.
 :- import_module dir.
 :- import_module exception.
+:- import_module getopt_io.
 :- import_module set.
 :- import_module thread.
 :- import_module thread.channel.
@@ -420,8 +423,13 @@ foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
     % Second pass (sequential).
     (
         Success0 = yes,
+        % Disable the `--rebuild' option during the sequential pass otherwise
+        % all the targets will be built a second time.
+        globals.io_lookup_bool_option(rebuild, Rebuild, !IO),
+        globals.io_set_option(rebuild, bool(no), !IO),
         foldl2_maybe_stop_at_error(KeepGoing, MakeTarget, Targets, Success,
-            !Info, !IO)
+            !Info, !IO),
+        globals.io_set_option(rebuild, bool(Rebuild), !IO)
     ;
         Success0 = no,
         Success = no

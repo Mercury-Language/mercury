@@ -57,9 +57,9 @@
 %-----------------------------------------------------------------------------%
 
 get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
-    RebuildDeps = !.Info ^ rebuild_dependencies,
+    RebuildModuleDeps = !.Info ^ rebuild_module_deps,
     ( ModuleName = unqualified(_) ->
-        maybe_get_module_dependencies(RebuildDeps, ModuleName,
+        maybe_get_module_dependencies(RebuildModuleDeps, ModuleName,
             MaybeImports, !Info, !IO)
     ; map.search(!.Info ^ module_dependencies, ModuleName, MaybeImports0) ->
         MaybeImports = MaybeImports0
@@ -73,7 +73,7 @@ get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
         % dependencies.
         %
         Ancestors = get_ancestors(ModuleName),
-        list.foldl3(generate_ancestor_dependencies(RebuildDeps),
+        list.foldl3(generate_ancestor_dependencies(RebuildModuleDeps),
             Ancestors, no, Error, !Info, !IO),
         (
             Error = yes,
@@ -82,20 +82,20 @@ get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
                 ^ elem(ModuleName) := MaybeImports
         ;
             Error = no,
-            maybe_get_module_dependencies(RebuildDeps,
+            maybe_get_module_dependencies(RebuildModuleDeps,
                 ModuleName, MaybeImports, !Info, !IO)
         )
     ).
 
-:- pred generate_ancestor_dependencies(bool::in, module_name::in,
-    bool::in, bool::out, make_info::in, make_info::out,
+:- pred generate_ancestor_dependencies(rebuild_module_deps::in,
+    module_name::in, bool::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 generate_ancestor_dependencies(_, ModuleName, yes, yes, Info,
         Info ^ module_dependencies ^ elem(ModuleName) := no, !IO).
-generate_ancestor_dependencies(RebuildDeps, ModuleName, no, Error,
+generate_ancestor_dependencies(RebuildModuleDeps, ModuleName, no, Error,
         !Info, !IO) :-
-    maybe_get_module_dependencies(RebuildDeps, ModuleName, MaybeImports,
+    maybe_get_module_dependencies(RebuildModuleDeps, ModuleName, MaybeImports,
         !Info, !IO),
     (
         MaybeImports = yes(_),
@@ -105,25 +105,25 @@ generate_ancestor_dependencies(RebuildDeps, ModuleName, no, Error,
         Error = yes
     ).
 
-:- pred maybe_get_module_dependencies(bool::in, module_name::in,
-    maybe(module_imports)::out, make_info::in, make_info::out,
+:- pred maybe_get_module_dependencies(rebuild_module_deps::in,
+    module_name::in, maybe(module_imports)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-maybe_get_module_dependencies(RebuildDeps, ModuleName, MaybeImports,
+maybe_get_module_dependencies(RebuildModuleDeps, ModuleName, MaybeImports,
         !Info, !IO) :-
     ( map.search(!.Info ^ module_dependencies, ModuleName, MaybeImports0) ->
         MaybeImports = MaybeImports0
     ;
-        do_get_module_dependencies(RebuildDeps, ModuleName,
+        do_get_module_dependencies(RebuildModuleDeps, ModuleName,
             MaybeImports, !Info, !IO)
     ).
 
-:- pred do_get_module_dependencies(bool::in, module_name::in,
+:- pred do_get_module_dependencies(rebuild_module_deps::in, module_name::in,
     maybe(module_imports)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
-        !IO) :-
+do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
+        !Info, !IO) :-
     % We can't just use
     %   `get_target_timestamp(ModuleName - source, ..)'
     % because that could recursively call get_module_dependencies,
@@ -143,14 +143,14 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
         MaybeSourceFileTimestamp = ok(SourceFileTimestamp),
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
         (
-            ( RebuildDeps = no
+            ( RebuildModuleDeps = do_not_rebuild_module_deps
             ; compare((>), DepFileTimestamp, SourceFileTimestamp)
             )
         ->
             % Since the source file was found in this directory, don't
             % use module_dep files which might be for installed copies
             % of the module.
-            read_module_dependencies_no_search(RebuildDeps, ModuleName,
+            read_module_dependencies_no_search(RebuildModuleDeps, ModuleName,
                 !Info, !IO)
         ;
             make_module_dependencies(ModuleName, !Info, !IO)
@@ -158,7 +158,8 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
     ;
         MaybeSourceFileTimestamp = error(_),
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
-        read_module_dependencies_search(RebuildDeps, ModuleName, !Info, !IO),
+        read_module_dependencies_search(RebuildModuleDeps, ModuleName, !Info,
+            !IO),
 
         %
         % Check for the case where the module name doesn't match the
@@ -177,7 +178,7 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
             (
                 MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
                 (
-                    ( RebuildDeps = no
+                    ( RebuildModuleDeps = do_not_rebuild_module_deps
                     ; compare((>), DepFileTimestamp, SourceFileTimestamp1)
                     )
                 ->
@@ -208,10 +209,10 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
         % source file is in another directory.
         %
         (
-            RebuildDeps = yes,
+            RebuildModuleDeps = do_rebuild_module_deps,
             make_module_dependencies(ModuleName, !Info, !IO)
         ;
-            RebuildDeps = no,
+            RebuildModuleDeps = do_not_rebuild_module_deps,
             !:Info = !.Info ^ module_dependencies ^ elem(ModuleName) := no
         )
     ),
@@ -308,25 +309,28 @@ do_write_module_dep_file(Imports, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred read_module_dependencies_search(bool::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-read_module_dependencies_search(RebuildDeps, ModuleName, !Info, !IO) :-
-    globals.io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
-    read_module_dependencies_2(RebuildDeps, SearchDirs, ModuleName,
-        !Info, !IO).
-
-:- pred read_module_dependencies_no_search(bool::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-read_module_dependencies_no_search(RebuildDeps, ModuleName, !Info, !IO) :-
-    read_module_dependencies_2(RebuildDeps, [dir.this_directory], ModuleName,
-        !Info, !IO).
-
-:- pred read_module_dependencies_2(bool::in, list(dir_name)::in,
+:- pred read_module_dependencies_search(rebuild_module_deps::in,
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_2(RebuildDeps, SearchDirs, ModuleName, !Info, !IO) :-
+read_module_dependencies_search(RebuildModuleDeps, ModuleName, !Info, !IO) :-
+    globals.io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
+    read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName,
+        !Info, !IO).
+
+:- pred read_module_dependencies_no_search(rebuild_module_deps::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
+
+read_module_dependencies_no_search(RebuildModuleDeps, ModuleName, !Info,
+        !IO) :-
+    read_module_dependencies_2(RebuildModuleDeps, [dir.this_directory],
+        ModuleName, !Info, !IO).
+
+:- pred read_module_dependencies_2(rebuild_module_deps::in,
+    list(dir_name)::in, module_name::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
+        !IO) :-
     module_name_to_search_file_name(ModuleName, make_module_dep_file_extension,
         ModuleDepFile, !IO),
     io.input_stream(OldInputStream, !IO),
@@ -451,8 +455,9 @@ read_module_dependencies_2(RebuildDeps, SearchDirs, ModuleName, !Info, !IO) :-
             % (make_module_dependencies expects to be given the top-level
             % module in the source file).
             %
-            SubRebuildDeps = no,
-            list.foldl2(read_module_dependencies_2(SubRebuildDeps, SearchDirs),
+            SubRebuildModuleDeps = do_not_rebuild_module_deps,
+            list.foldl2(
+                read_module_dependencies_2(SubRebuildModuleDeps, SearchDirs),
                 NestedChildren, !Info, !IO),
             (
                 list.member(NestedChild, NestedChildren),
@@ -465,33 +470,35 @@ read_module_dependencies_2(RebuildDeps, SearchDirs, ModuleName, !Info, !IO) :-
                     true
                 )
             ->
-                read_module_dependencies_remake(RebuildDeps, ModuleName,
+                read_module_dependencies_remake(RebuildModuleDeps, ModuleName,
                     "error in nested sub-modules", !Info, !IO)
             ;
                 true
             )
         ;
-            read_module_dependencies_remake(RebuildDeps, ModuleName,
+            read_module_dependencies_remake(RebuildModuleDeps, ModuleName,
                 "parse error", !Info, !IO)
         )
     ;
         SearchResult = error(_),
         % XXX should use the error message.
-        read_module_dependencies_remake(RebuildDeps, ModuleName,
+        read_module_dependencies_remake(RebuildModuleDeps, ModuleName,
             "couldn't find `.module_dep' file", !Info, !IO)
     ).
 
     % Something went wrong reading the dependencies, so just rebuild them.
-:- pred read_module_dependencies_remake(bool::in, module_name::in, string::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred read_module_dependencies_remake(rebuild_module_deps::in,
+    module_name::in, string::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-read_module_dependencies_remake(RebuildDeps, ModuleName, Msg, !Info, !IO) :-
+read_module_dependencies_remake(RebuildModuleDeps, ModuleName, Msg, !Info,
+        !IO) :-
     (
-        RebuildDeps = yes,
+        RebuildModuleDeps = do_rebuild_module_deps,
         debug_msg(read_module_dependencies_remake_msg(ModuleName, Msg), !IO),
         make_module_dependencies(ModuleName, !Info, !IO)
     ;
-        RebuildDeps = no
+        RebuildModuleDeps = do_not_rebuild_module_deps
     ).
 
 :- pred read_module_dependencies_remake_msg(module_name::in, string::in,

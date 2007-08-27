@@ -45,6 +45,10 @@
 
 :- type make_info.
 
+:- type rebuild_module_deps
+    --->    do_rebuild_module_deps
+    ;       do_not_rebuild_module_deps.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -116,7 +120,7 @@
 
                 % Should the `.module_dep' files be rebuilt.
                 % Set to `no' for `mmc --make clean'.
-                rebuild_dependencies    :: bool,
+                rebuild_module_deps     :: rebuild_module_deps,
 
                 keep_going              :: bool,
 
@@ -298,13 +302,13 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         list.map(classify_target(Globals), NonDependTargets,
             ClassifiedTargets),
 
-        ShouldRebuildDeps = yes,
+        ShouldRebuildModuleDeps = do_rebuild_module_deps,
         globals.io_lookup_int_option(analysis_repeat, AnalysisRepeat, !IO),
         MakeInfo0 = make_info(map.init, map.init, OptionArgs, Variables,
             map.init,
             init_cached_direct_imports,
             init_cached_transitive_dependencies,
-            ShouldRebuildDeps, KeepGoing,
+            ShouldRebuildModuleDeps, KeepGoing,
             set.init, no, set.list_to_set(ClassifiedTargets),
             AnalysisRepeat),
 
