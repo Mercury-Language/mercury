@@ -1080,10 +1080,17 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         erl_bind_unbound_vars(!.Info, ThenVars, Else, InstMap0,
             ElseStatement0, ElseStatement),
 
-        IfStatement0 = elds_case_expr(CondStatement, [TrueCase, FalseCase]),
-        TrueCase  = elds_case(CondVarsTerm, ThenStatement),
-        FalseCase = elds_case(elds_anon_var, ElseStatement),
-        maybe_simplify_nested_cases(IfStatement0, IfStatement),
+        CondDeterminism = goal_info_get_determinism(CondGoalInfo),
+        ( CondDeterminism = detism_failure ->
+            % If the condition cannot succeed then just concatenate the
+            % condition and the else branch.
+            IfStatement = join_exprs(CondStatement, ElseStatement)
+        ;
+            CaseExpr = elds_case_expr(CondStatement, [TrueCase, FalseCase]),
+            TrueCase = elds_case(CondVarsTerm, ThenStatement),
+            FalseCase = elds_case(elds_anon_var, ElseStatement),
+            maybe_simplify_nested_cases(CaseExpr, IfStatement)
+        ),
         Statement = maybe_join_exprs1(MaybeMakeClosure, IfStatement)
     ;
         CondCodeModel = model_non,
