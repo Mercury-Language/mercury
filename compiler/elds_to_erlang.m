@@ -76,8 +76,11 @@ output_elds(ModuleInfo, ELDS, !IO) :-
     module_name_to_file_name(Name, ".hrl", yes, HeaderFileName, !IO),
     output_to_file(SourceFileName, output_erl_file(ModuleInfo, ELDS,
         SourceFileName), !IO),
-    output_to_file(HeaderFileName, output_hrl_file(Name, ELDS,
-        SourceFileName), !IO).
+    % Avoid updating the timestamp on the `.hrl' file if it hasn't changed.
+    TmpHeaderFileName = HeaderFileName ++ ".tmp",
+    output_to_file(TmpHeaderFileName, output_hrl_file(Name, ELDS,
+        SourceFileName), !IO),
+    update_interface(HeaderFileName, !IO).
 
 :- pred output_erl_file(module_info::in, elds::in, string::in,
     io::di, io::uo) is det.

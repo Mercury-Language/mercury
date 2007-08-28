@@ -255,6 +255,9 @@
 
 :- pred write_dependency_file(dependency_file::in, io::di, io::uo) is det.
 
+:- pred write_dependency_file_list(list(dependency_file)::in, io::di, io::uo)
+    is det.
+
 :- pred write_target_file(target_file::in, io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
@@ -1297,6 +1300,10 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
     % can be modified in the process of analysing _another_ module.
     % The timestamp is only updated after actually analysing the module that
     % the `.analysis' file corresponds to.
+    %
+    % Header files share a timestamp file with their corresponding target code
+    % files.
+    %
 timestamp_extension(_, module_target_errors) = ".err_date".
 timestamp_extension(_, module_target_private_interface) = ".date0".
 timestamp_extension(_, module_target_long_interface) = ".date".
@@ -1313,6 +1320,8 @@ timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
 timestamp_extension(_, module_target_il_code) = ".il_date".
 timestamp_extension(_, module_target_java_code) = ".java_date".
 timestamp_extension(_, module_target_erlang_code) = ".erl_date".
+timestamp_extension(Globals, module_target_erlang_header) =
+    timestamp_extension(Globals, module_target_erlang_code).
 timestamp_extension(_, module_target_asm_code(non_pic)) = ".s_date".
 timestamp_extension(_, module_target_asm_code(pic)) = ".pic_s_date".
 
@@ -1361,7 +1370,6 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_short_interface
         ; Target = module_target_unqualified_short_interface
         ; Target = module_target_c_header(header_mh)
-        ; Target = module_target_erlang_header
         ; Target = module_target_xml_doc
         ),
         IsDependent = no
@@ -1375,6 +1383,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_java_code
         ; Target = module_target_erlang_code
         ; Target = module_target_erlang_beam_code
+        ; Target = module_target_erlang_header
         ; Target = module_target_asm_code(_)
         ; Target = module_target_object_code(_)
         ; Target = module_target_foreign_object(_, _)
@@ -1415,6 +1424,13 @@ write_dependency_file(dep_target(TargetFile), !IO) :-
     write_target_file(TargetFile, !IO).
 write_dependency_file(dep_file(FileName, _), !IO) :-
     io.write_string(FileName, !IO).
+
+write_dependency_file_list([], !IO).
+write_dependency_file_list([DepFile | DepFiles], !IO) :-
+    io.write_string("\t", !IO),
+    write_dependency_file(DepFile, !IO),
+    io.nl(!IO),
+    write_dependency_file_list(DepFiles, !IO).
 
 write_target_file(TargetFile, !IO) :-
     TargetFile = target_file(ModuleName, FileType),

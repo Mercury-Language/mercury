@@ -163,9 +163,7 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                    (pred(!.IO::di, !:IO::uo) is det :-
                         write_target_file(TargetFile, !IO),
                         io.write_string(": dependencies:\n", !IO),
-                        io.write_list(DepFiles, ", ", write_dependency_file,
-                            !IO),
-                        io.nl(!IO)
+                        write_dependency_file_list(DepFiles, !IO)
                 ), !IO),
 
                 globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -845,9 +843,14 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         ;
             ( CompilationTarget = target_il
             ; CompilationTarget = target_java
-            ; CompilationTarget = target_erlang
             ),
             HeaderTargets0 = []
+        ;
+            CompilationTarget = target_erlang,
+            % When compiling to Erlang we always generate a header file.
+            HeaderModuleNames = SourceFileModuleNames,
+            HeaderTargets0 = make_target_file_list(HeaderModuleNames,
+                module_target_erlang_header)
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "NYI mmc --make and target x86_64")
@@ -856,13 +859,16 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         (
             ( CompilationTarget = target_c
             ; CompilationTarget = target_asm
-            )
-        ->
+            ),
             Names = SourceFileModuleNames,
             HeaderTargets =
                 make_target_file_list(Names, module_target_c_header(header_mh))
                 ++ HeaderTargets0
         ;
+            ( CompilationTarget = target_il
+            ; CompilationTarget = target_java
+            ; CompilationTarget = target_erlang
+            ),
             HeaderTargets = HeaderTargets0
         ),
 

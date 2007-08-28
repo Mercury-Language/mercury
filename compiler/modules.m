@@ -943,6 +943,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ( Ext = ".mih"
             ; Ext = ".mih.tmp"
             ; Ext = ".hrl"
+            ; Ext = ".hrl.tmp"
             )
         )
     ->

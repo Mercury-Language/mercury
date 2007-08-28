@@ -1056,7 +1056,7 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             compare((>), DepTimestamp, Timestamp)
         ->
             debug_newer_dependencies(TargetFileName, MaybeTimestamp,
-                DepFiles, WriteDepFile, DepTimestamps, !IO),
+                DepFiles, DepTimestamps, !IO),
             DepsResult = deps_out_of_date
         ;
             DepsResult = deps_up_to_date
@@ -1064,26 +1064,26 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     ).
 
 :- pred debug_newer_dependencies(string::in, maybe_error(timestamp)::in,
-    list(T)::in, pred(T, io, io)::(pred(in, di, uo) is det),
-    list(maybe_error(timestamp))::in, io::di, io::uo) is det.
+    list(T)::in, list(maybe_error(timestamp))::in, io::di, io::uo) is det.
 
 debug_newer_dependencies(TargetFileName, MaybeTimestamp,
-        DepFiles, WriteDepFile, DepTimestamps, !IO) :-
+        DepFiles, DepTimestamps, !IO) :-
     debug_msg(debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
-        DepFiles, WriteDepFile, DepTimestamps), !IO).
+        DepFiles, DepTimestamps), !IO).
 
 :- pred debug_newer_dependencies_2(string::in, maybe_error(timestamp)::in,
-    list(T)::in, pred(T, io, io)::(pred(in, di, uo) is det),
-    list(maybe_error(timestamp))::in, io::di, io::uo) is det.
+    list(T)::in, list(maybe_error(timestamp))::in, io::di, io::uo) is det.
 
 debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
-        DepFiles, WriteDepFile, DepTimestamps, !IO) :-
+        DepFiles, DepTimestamps, !IO) :-
     io.write_string(TargetFileName, !IO),
-    io.write_string(": newer dependencies: ", !IO),
+    io.write_string(" [", !IO),
+    io.write(MaybeTimestamp, !IO),
+    io.write_string("]: newer dependencies:\n", !IO),
     assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
     solutions(
-        (pred(DepFile::out) is nondet :-
+        (pred({DepFile, MaybeDepTimestamp}::out) is nondet :-
             list.member(DepFile - MaybeDepTimestamp, DepTimestampAL),
             (
                 MaybeDepTimestamp = error(_)
@@ -1093,8 +1093,20 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
                 compare((>), DepTimestamp, Timestamp)
             )
         ), NewerDeps),
-    io.write_list(NewerDeps, ",\n\t", WriteDepFile, !IO),
-    io.nl(!IO).
+    write_dependency_file_and_timestamp_list(NewerDeps, !IO).
+
+:- pred write_dependency_file_and_timestamp_list(
+    list({T, maybe_error(timestamp)})::in, io::di, io::uo) is det.
+
+write_dependency_file_and_timestamp_list([], !IO).
+write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
+    Head = {DepFile, MaybeTimestamp},
+    io.write_char('\t', !IO),
+    io.write(DepFile, !IO),
+    io.write_char(' ', !IO),
+    io.write(MaybeTimestamp, !IO),
+    io.nl(!IO),
+    write_dependency_file_and_timestamp_list(Tail, !IO).
 
 dependency_status(dep_file(FileName, _) @ Dep, Status, !Info, !IO) :-
     (
