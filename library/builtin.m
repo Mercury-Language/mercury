@@ -23,8 +23,9 @@
 
 %-----------------------------------------------------------------------------%
 %
-% TYPES.
+% Types
 %
+
 % The types `character', `int', `float', and `string',
 % and tuple types `{}', `{T}', `{T1, T2}', ...
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
@@ -33,14 +34,19 @@
 % type-checker.  (XXX TODO: report an error for attempts to redefine
 % these types.)
 
-% The type c_pointer can be used by predicates which use the C interface.
-%
+    % The type c_pointer can be used by predicates that use the
+    % C interface.
+    %
+    % NOTE: we strongly recommend using a `foreign_type' pragma instead
+    %       of using this type. 
+    %
 :- type c_pointer.
 
 %-----------------------------------------------------------------------------%
 %
-% INSTS.
+% Insts
 %
+
 % The standard insts `free', `ground', and `bound(...)' are builtin
 % and are implemented using special code in the parser and mode-checker.
 %
@@ -67,9 +73,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% MODES.
+% Standard modes
 %
-% The standard modes.
 
 :- mode unused == free >> free.
 :- mode output == free >> ground.
@@ -83,7 +88,12 @@
 :- mode di(Inst)  == Inst >> clobbered.
 :- mode mdi(Inst) == Inst >> mostly_clobbered.
 
-% Unique modes.  These are still not fully implemented.
+%-----------------------------------------------------------------------------%
+%
+% Unique modes
+%
+
+% XXX These are still not fully implemented.
 
     % unique output
     %
@@ -97,8 +107,12 @@
     %
 :- mode di == unique >> clobbered.
 
-% "Mostly" unique modes (unique except that that may be referenced
-% again on backtracking).
+%-----------------------------------------------------------------------------%
+%
+% "Mostly" unique modes
+%
+
+% Unique except that that may be referenced again on backtracking.
 
     % mostly unique output
     %
@@ -112,6 +126,11 @@
     %
 :- mode mdi == mostly_unique >> mostly_clobbered.
 
+%-----------------------------------------------------------------------------%
+%
+% Dynamic modes
+%
+    
     % Solver type modes.
     %
 :- mode ia == any >> any.
@@ -125,28 +144,28 @@
 
 %-----------------------------------------------------------------------------%
 %
-% PREDICATES.
+% Predicates
 %
-% Most of these probably ought to be moved to another
-% module in the standard library such as std_util.m.
 
-    % copy/2 makes a deep copy of a data structure.  The resulting copy is
-    % a `unique' value, so you can use destructive update on it.
+    % copy/2 makes a deep copy of a data structure.
+    % The resulting copy is a `unique' value, so you can use
+    % destructive update on it.
     %
 :- pred copy(T, T).
 :- mode copy(ui, uo) is det.
 :- mode copy(in, uo) is det.
 
-    % unsafe_promise_unique/2 is used to promise the compiler that you have
-    % a `unique' copy of a data structure, so that you can use destructive
-    % update.  It is used to work around limitations in the current support
-    % for unique modes.  `unsafe_promise_unique(X, Y)' is the same as `Y =
-    % X' except that the compiler will assume that `Y' is unique.
+    % unsafe_promise_unique/2 is used to promise the compiler that you
+    % have a `unique' copy of a data structure, so that you can use
+    % destructive update.  It is used to work around limitations in
+    % the current support for unique modes.
+    % `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
+    % the compiler will assume that `Y' is unique.
     %
     % Note that misuse of this predicate may lead to unsound results: if
     % there is more than one reference to the data in question, i.e. it is
-    % not `unique', then the behaviour is undefined.  (If you lie to the
-    % compiler, the compiler will get its revenge!)
+    % not `unique', then the behaviour is undefined.
+    % (If you lie to the compiler, the compiler will get its revenge!)
     %
 :- func unsafe_promise_unique(T::in) = (T::uo) is det.
 :- pred unsafe_promise_unique(T::in, T::uo) is det.
@@ -159,11 +178,12 @@
 %-----------------------------------------------------------------------------%
 
     % This function is useful for converting polymorphic non-solver type
-    % values with inst any to inst ground (the compiler recognises that inst
-    % any is equivalent to ground for non-polymorphic non-solver type values.)
+    % values with inst any to inst ground (the compiler recognises that
+    % inst any is equivalent to ground for non-polymorphic non-solver
+    % type values.)
     %
-    % Do not call this on solver type values unless you are absolutely sure
-    % they are semantically ground.
+    % Do not call this on solver type values unless you are absolutely
+    % sure that they are semantically ground.
     %
 :- func unsafe_cast_any_to_ground(T::ia) = (T::out) is det.
 
@@ -182,6 +202,9 @@
     % Note that misuse of this function may lead to unsound results: if the
     % assumption is not satisfied, the behaviour is undefined.  (If you lie
     % to the compiler, the compiler will get its revenge!)
+    %
+    % NOTE: we recommend using the a `promise_equivalent_solutions' goal
+    %       instead of this function.
     %
 :- func promise_only_solution(pred(T)) = T.
 :- mode promise_only_solution(pred(out) is cc_multi) = out is det.
@@ -202,6 +225,9 @@
     % Note that misuse of this predicate may lead to unsound results: if
     % the assumption is not satisfied, the behaviour is undefined.  (If you
     % lie to the compiler, the compiler will get its revenge!)
+    %
+    % NOTE: we recommend using a `promise_equivalent_solutions' goal
+    %       instead of this predicate.
     %
 :- pred promise_only_solution_io(
     pred(T, IO, IO)::in(pred(out, di, uo) is cc_multi), T::out,
@@ -373,6 +399,14 @@
 :- semipure pred semipure_true is det.
 
 %-----------------------------------------------------------------------------%
+    
+    % dynamic_cast(X, Y) succeeds with Y = X iff X has the same ground type
+    % as Y (so this may succeed if Y is of type list(int), say, but not if
+    % Y is of type list(T)).
+    %
+:- pred dynamic_cast(T1::in, T2::out) is semidet.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -387,14 +421,6 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-    
-    % dynamic_cast(X, Y) succeeds with Y = X iff X has the same ground type
-    % as Y (so this may succeed if Y is of type list(int), say, but not if
-    % Y is of type list(T)).
-    %
-:- pred dynamic_cast(T1::in, T2::out) is semidet.
-
-%-----------------------------------------------------------------------------%
     
     % `get_one_solution' and `get_one_solution_io' are impure alternatives
     % to `promise_one_solution' and `promise_one_solution_io', respectively.
