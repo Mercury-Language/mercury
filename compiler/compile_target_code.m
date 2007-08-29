@@ -889,12 +889,22 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
     globals.io_lookup_string_option(erlang_compiler, ErlangCompiler, !IO),
     globals.io_lookup_accumulating_option(erlang_flags, ErlangFlagsList0, !IO),
     globals.io_lookup_bool_option(erlang_native_code, ErlangNativeCode, !IO),
+    globals.io_lookup_bool_option(erlang_inhibit_trivial_warnings,
+        ErlangInhibitTrivialWarnings, !IO),
     (
         ErlangNativeCode = yes,
-        ErlangFlagsList = ["+native" | ErlangFlagsList0]
+        ErlangFlagsList1 = ["+native" | ErlangFlagsList0]
     ;
         ErlangNativeCode = no,
-        ErlangFlagsList = ErlangFlagsList0
+        ErlangFlagsList1 = ErlangFlagsList0
+    ),
+    (
+        ErlangInhibitTrivialWarnings = yes,
+        ErlangFlagsList = ["+nowarn_unused_vars", "+nowarn_unused_function"
+            | ErlangFlagsList1]
+    ;
+        ErlangInhibitTrivialWarnings = no,
+        ErlangFlagsList = ErlangFlagsList1
     ),
     ERLANGFLAGS = string.join_list(" ", ErlangFlagsList),
 

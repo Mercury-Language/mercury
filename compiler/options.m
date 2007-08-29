@@ -725,6 +725,7 @@
     ;       erlang_include_directory
     ;       erlang_object_file_extension
     ;       erlang_native_code
+    ;       erlang_inhibit_trivial_warnings
 
     % Link options
     ;       output_file_name
@@ -1497,7 +1498,8 @@ option_defaults_2(target_code_compilation_option, [
     quoted_erlang_flag                  -   string_special,
     erlang_include_directory            -   accumulating([]),
     erlang_object_file_extension        -   string(".beam"),
-    erlang_native_code                  -   bool(no)
+    erlang_native_code                  -   bool(no),
+    erlang_inhibit_trivial_warnings     -   bool(yes)
 ]).
 option_defaults_2(link_option, [
     % Link Options
@@ -2324,6 +2326,8 @@ long_option("erlang-include-directory", erlang_include_directory).
 long_option("erlang-include-dir",       erlang_include_directory).
 long_option("erlang-object-file-extension", erlang_object_file_extension).
 long_option("erlang-native-code",   erlang_native_code).
+long_option("erlang-inhibit-trivial-warnings",
+                                    erlang_inhibit_trivial_warnings).
 
 % link options
 long_option("output-file",          output_file_name).
@@ -4735,10 +4739,13 @@ options_help_target_code_compilation -->
         "\tAppend <dir> to the list of directories to be searched for",
         "\tErlang header files (.hrl).",
         "--erlang-native-code",
-        "\tAdd `+native' to the start of flags passed to the Erlang compiler.",
+        "\tAdd `+native' to the list of flags passed to the Erlang compiler.",
         "\tCancelled out by `--no-erlang-native-code' so it's useful when you",
         "\twish to enable native code generation for all modules except for",
-        "\ta select few."
+        "\ta select few.",
+        "--no-erlang-inhibit-trivial-warnings",
+        "\tDo not add `+nowarn_unused_vars +nowarn_unused_function' to the",
+        "\tlist of flags passed to the Erlang compiler."
 
         % --erlang-object-file-extension is deliberately not documented.
         % It is not fully implemented and not very useful.

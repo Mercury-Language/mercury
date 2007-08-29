@@ -8998,6 +8998,13 @@ Cancelled out by @samp{--no-erlang-native-code} so it's useful when you
 wish to enable native code generation for all modules except for
 a select few.
 
+@sp 1
+@item --no-erlang-inhibit-trivial-warnings
+@findex --no-erlang-inhibit-trivial-warnings
+@cindex Erlang compiler options
+Do not add @samp{+nowarn_unused_vars +nowarn_unused_function} to the
+list of flags passed to the Erlang compiler.
+
 @c This option is not fully implemented and not very useful.
 @c @sp 1
 @c @item --erlang-object-file-extension @var{extension}
