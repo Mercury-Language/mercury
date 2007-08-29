@@ -13,6 +13,7 @@ ORDINARY_PROGS=	\
 	array_test \
 	backquoted_qualified_ops \
 	bag_various \
+	big_array_from_list \
 	bidirectional \
 	boyer \
 	brace \

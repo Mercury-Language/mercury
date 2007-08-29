@@ -19,6 +19,7 @@ export_test.h pragma_import.h
 address_of_builtins
 agg
 bidirectional
+big_array_from_list
 bigtest
 boyer
 c_write_string

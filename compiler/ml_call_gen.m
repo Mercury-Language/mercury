@@ -779,7 +779,10 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
         ;
             type_ctor_is_array(DestTypeCtor),
             DestTypeArgs = [type_variable(_, _)]
-        )
+        ),
+        % Don't insert redundant casts if the types are the same, since
+        % the extra assignments introduced can inhibit tail call optimisation.
+        SourceType \= DestType
     ->
         ml_gen_type(!.Info, DestType, MLDS_DestType),
         ArgRval = unop(cast(MLDS_DestType), VarRval)
