@@ -372,6 +372,13 @@ is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
     PseudoTypeDesc = TypeDesc;
 ").
 
+:- pragma foreign_proc("Erlang",
+    type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    PseudoTypeDesc = TypeDesc
+").
+
 type_desc_to_pseudo_type_desc(_TypeDesc) = _PseudoTypeDesc :-
     % The backends in which we use this definition of this predicate
     % don't yet support pseudo_type_descs.
@@ -894,11 +901,10 @@ get_type_info_for_type_info = TypeDesc :-
 
 :- pragma foreign_code("Erlang", "
     '__Unify____type_desc_0_0'(X0, Y0) ->
-        X = eval_if_function(X0),
-        Y = eval_if_function(Y0),
-        case X =:= Y of
-            true -> {};
-            false -> fail
+        Res = mercury__erlang_rtti_implementation:compare_type_infos_3_p_0(X0, Y0),
+        case Res of
+            { '=' } -> {};
+            _ -> fail
         end.
 
     '__Unify____type_ctor_desc_0_0'(X0, Y0) ->
@@ -913,13 +919,7 @@ get_type_info_for_type_info = TypeDesc :-
         throw(""foreign code for unifying pseudo_type_desc"").
 
     '__Compare____type_desc_0_0'(X0, Y0) ->
-        X = eval_if_function(X0),
-        Y = eval_if_function(Y0),
-        if
-            X =:= Y -> {'='};
-            X  <  Y -> {'<'};
-            true    -> {'>'}
-        end.
+        mercury__erlang_rtti_implementation:compare_type_infos_3_p_0(X0, Y0).
 
     '__Compare____type_ctor_desc_0_0'(X0, Y0) ->
         X = eval_if_function(X0),

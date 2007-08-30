@@ -82,6 +82,11 @@
 :- pred get_functor_lex(type_desc.type_desc::in, int::in, int::out)
     is semidet.
 
+:- func construct(type_desc::in, int::in, list(univ)::in) = (univ::out)
+    is semidet.
+
+:- func construct_tuple_2(list(univ), list(type_desc), int) = univ.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -338,9 +343,87 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-compare_type_infos(Res, _, _) :-
-    Res = (=),
-    det_unimplemented("compare_type_infos/3").
+compare_type_infos(Res, TypeInfoA, TypeInfoB) :-
+    TA = collapse_equivalences(TypeInfoA),
+    TB = collapse_equivalences(TypeInfoB),
+
+    TCA = TA ^ type_ctor_info_evaled,
+    TCB = TB ^ type_ctor_info_evaled,
+
+    compare(NameRes, TCA ^ type_ctor_type_name, TCB ^ type_ctor_type_name),
+    ( NameRes = (=) ->
+        compare(ModuleRes,
+            TCA ^ type_ctor_module_name, TCB ^ type_ctor_module_name),
+        ( ModuleRes = (=) ->
+            (
+                type_ctor_is_variable_arity(TCA)
+            ->
+                ArityA = TA ^ var_arity_type_info_arity,
+                ArityB = TB ^ var_arity_type_info_arity,
+                compare(ArityRes, ArityA, ArityB),
+                ( ArityRes = (=) ->
+                    compare_var_arity_typeinfos(1, ArityA, Res, TA, TB)
+                ;
+                    Res = ArityRes
+                )
+            ;
+                ArityA = TCA ^ type_ctor_arity,
+                ArityB = TCA ^ type_ctor_arity,
+                compare(ArityRes, ArityA, ArityB),
+                ( ArityRes = (=) ->
+                    compare_sub_typeinfos(1, ArityA, Res, TA, TB)
+                ;
+                    Res = ArityRes
+                )
+            )
+        ;
+            Res = ModuleRes
+        )
+    ;
+        Res = NameRes
+    ).
+
+:- pred compare_sub_typeinfos(int::in, int::in,
+    comparison_result::out, type_info::in, type_info::in) is det.
+
+compare_sub_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+    ( Loc > Arity ->
+        Result = (=)
+    ;
+        SubTypeInfoA = TypeInfoA ^ type_info_index(Loc),
+        SubTypeInfoB = TypeInfoB ^ type_info_index(Loc),
+
+        compare_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
+        ( SubResult = (=) ->
+            compare_var_arity_typeinfos(Loc + 1, Arity, Result,
+                TypeInfoA, TypeInfoB)
+        ;
+            Result = SubResult
+        )
+    ).
+
+:- pred compare_var_arity_typeinfos(int::in, int::in,
+    comparison_result::out, type_info::in, type_info::in) is det.
+
+compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+    ( Loc > Arity ->
+        Result = (=)
+    ;
+        SubTypeInfoA = TypeInfoA ^ var_arity_type_info_index(Loc),
+        SubTypeInfoB = TypeInfoB ^ var_arity_type_info_index(Loc),
+
+        compare_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
+        ( SubResult = (=) ->
+            compare_var_arity_typeinfos(Loc + 1, Arity, Result,
+                TypeInfoA, TypeInfoB)
+        ;
+            Result = SubResult
+        )
+    ).
+
+
+
+
     
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1166,6 +1249,202 @@ matching_du_functor_number([F | Fs], FunctorNum, Functor) :-
     ;
         matching_du_functor_number(Fs, FunctorNum, Functor)
     ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+construct(TypeDesc, Index, Args) = Term :-
+    TypeInfo = collapse_equivalences(unsafe_cast(TypeDesc)),
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+
+    ( 
+        TypeCtorRep = etcr_du,
+        Result = get_functor_with_names(TypeInfo, Index),
+        Result = yes({FunctorName, _FunctorArity, ArgTypes, _ArgNames}),
+        check_arg_types(Args, ArgTypes),
+        Term = construct_univ(TypeInfo, FunctorName, Args)
+    ;
+        TypeCtorRep = etcr_dummy,
+        Term = construct_univ(TypeInfo, "false", [])
+    ;
+        TypeCtorRep = etcr_list,
+        ( Index = 1, Args = [Head, Tail] ->
+            compare_type_infos((=),
+                univ_type_info(Head), TypeInfo ^ type_info_index(1)),
+            compare_type_infos((=), univ_type_info(Tail), TypeInfo),
+            Term = construct_list_cons_univ(TypeInfo, Head, Tail)
+        ;
+            Index = 0,
+            Args = [],
+            Term = construct_empty_list_univ(TypeInfo)
+        )
+    ;
+        TypeCtorRep = etcr_tuple,
+        Arity = TypeInfo ^ var_arity_type_info_arity,
+        check_tuple_arg_types(TypeInfo, 1 .. Arity, Args),
+        Term = construct_tuple_univ(TypeInfo, Args)
+    ;
+        ( TypeCtorRep = etcr_array
+        ; TypeCtorRep = etcr_eqv
+        ; TypeCtorRep = etcr_int
+        ; TypeCtorRep = etcr_float
+        ; TypeCtorRep = etcr_char
+        ; TypeCtorRep = etcr_string
+        ; TypeCtorRep = etcr_void
+        ; TypeCtorRep = etcr_stable_c_pointer
+        ; TypeCtorRep = etcr_c_pointer
+        ; TypeCtorRep = etcr_pred
+        ; TypeCtorRep = etcr_func
+        ; TypeCtorRep = etcr_ref
+        ; TypeCtorRep = etcr_type_desc
+        ; TypeCtorRep = etcr_pseudo_type_desc
+        ; TypeCtorRep = etcr_type_ctor_desc
+        ; TypeCtorRep = etcr_type_info
+        ; TypeCtorRep = etcr_type_ctor_info
+        ; TypeCtorRep = etcr_typeclass_info
+        ; TypeCtorRep = etcr_base_typeclass_info
+        ; TypeCtorRep = etcr_foreign
+        ; TypeCtorRep = etcr_hp
+        ; TypeCtorRep = etcr_subgoal
+        ; TypeCtorRep = etcr_ticket
+        ),
+        error("construct: unable to construct something of type " ++
+                string(TypeCtorRep))
+    ).
+
+:- pred check_arg_types(list(univ)::in, list(type_info)::in) is semidet.
+
+check_arg_types([], []).
+check_arg_types([U | Us], [TI | TIs]) :-
+    compare_type_infos((=), univ_type_info(U), TI),
+    check_arg_types(Us, TIs).
+
+:- pred check_tuple_arg_types(type_info::in,
+    list(int)::in, list(univ)::in) is semidet.
+
+check_tuple_arg_types(_, [], []).
+check_tuple_arg_types(TypeInfo, [I | Is], [U | Us]) :-
+    compare_type_infos((=),
+        TypeInfo ^ var_arity_type_info_index(I), univ_type_info(U)),
+    check_tuple_arg_types(TypeInfo, Is, Us).
+
+:- func univ_type_info(univ) = type_info.
+
+:- pragma foreign_proc(erlang,
+        univ_type_info(Univ::in) = (TypeInfo::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    {univ_cons, TypeInfo, _} = Univ
+").
+
+univ_type_info(_) = _ :-
+    private_builtin.sorry("univ_type_info").
+
+
+    %
+    % Construct a du type and store it in a univ.
+    %
+:- func construct_univ(type_info, string, list(univ)) = univ.
+
+:- pragma foreign_proc(erlang,
+        construct_univ(TypeInfo::in, Functor::in, Args::in) = (Univ::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    if
+        is_binary(Functor) ->
+            List = binary_to_list(Functor);
+        true ->
+            List = Functor
+    end,
+    Univ = {univ_cons, TypeInfo, list_to_tuple(
+            [list_to_atom(List) | lists:map(fun univ_to_value/1, Args)])}
+").
+
+construct_univ(_, _, _) = _ :-
+    private_builtin.sorry("construct_univ").
+
+    %
+    % Construct a tuple and store it in a univ.
+    %
+:- func construct_tuple_univ(type_info, list(univ)) = univ.
+
+:- pragma foreign_proc(erlang,
+        construct_tuple_univ(TypeInfo::in, Args::in) = (Univ::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    Univ = {univ_cons, TypeInfo,
+        list_to_tuple(lists:map(fun univ_to_value/1, Args))}
+").
+
+construct_tuple_univ(_, _) = _ :-
+    private_builtin.sorry("construct_tuple_univ").
+
+    %
+    % Construct a empty list and store it in a univ.
+    %
+:- func construct_empty_list_univ(type_info) = univ.
+
+:- pragma foreign_proc(erlang,
+        construct_empty_list_univ(TypeInfo::in) = (Univ::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    Univ = {univ_cons, TypeInfo, []}
+").
+
+construct_empty_list_univ(_) = _ :-
+    private_builtin.sorry("construct_empty_list_univ").
+
+    %
+    % Construct a cons cell and store it in a univ.
+    %
+:- func construct_list_cons_univ(type_info, univ, univ) = univ.
+
+:- pragma foreign_proc(erlang,
+        construct_list_cons_univ(TypeInfo::in, H::in, T::in) = (Univ::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+    Univ = {univ_cons, TypeInfo, [univ_to_value(H) | univ_to_value(T)]}
+").
+
+construct_list_cons_univ(_, _, _) = _ :-
+    private_builtin.sorry("construct_list_cons_univ").
+
+:- pragma foreign_code(erlang, "
+    %
+    % Get the value out of the univ
+    % Note we assume that we've checked that the value is consistent
+    % with another type_info elsewhere,
+    % for example in check_arg_types and check_tuple_arg_types
+    %
+univ_to_value(Univ) ->
+    {univ_cons, _UnivTypeInfo, Value} = Univ,
+    Value.
+    
+").
+    
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+construct_tuple_2(Args, ArgTypes, Arity) = Tuple :-
+    TypeInfo = unsafe_cast(type_of(_ : {})),
+    Tuple = construct_tuple_3(TypeInfo, Arity, ArgTypes, Args).
+
+:- func construct_tuple_3(type_info, int, list(type_desc), list(univ)) = univ.
+
+:- pragma foreign_proc(erlang,
+        construct_tuple_3(TI::in,
+                Arity::in, ArgTypes::in, Args::in) = (Term::out),
+        [will_not_call_mercury, thread_safe, promise_pure], "
+
+        % Get the type_ctor_info from the empty tuple type_info
+        % and use that to create the correct var_arity type_info
+    TCI = element(?ML_ti_type_ctor_info, TI),
+    TupleTypeInfo = list_to_tuple([TCI, Arity | ArgTypes]),
+
+    Tuple = list_to_tuple(lists:map(fun univ_to_value/1, Args)),
+
+    Term = {univ_cons, TupleTypeInfo, Tuple}
+").
+
+construct_tuple_3(_, _, _, _) = _ :-
+    private_builtin.sorry("construct_tuple_3").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

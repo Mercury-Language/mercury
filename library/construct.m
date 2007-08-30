@@ -358,6 +358,14 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     succeeded = (S == null);
 ").
 
+:- pragma foreign_proc("Erlang",
+    null(_S::in),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+        % There are no null pointers in erlang
+    SUCCESS_INDICATOR = false
+").
+
 get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).
 
@@ -929,6 +937,9 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
     SUCCESS_INDICATOR = success;
 }").
 
+construct(TypeDesc, Index, Args) =
+    erlang_rtti_implementation.construct(TypeDesc, Index, Args).
+
 construct_tuple(Args) =
     construct_tuple_2(Args, list.map(univ_type, Args), list.length(Args)).
 
@@ -982,3 +993,6 @@ construct_tuple(Args) =
     */
     MR_new_univ_on_hp(Term, type_info, new_data);
 }").
+
+construct_tuple_2(Args, ArgTypes, Arity) =
+    erlang_rtti_implementation.construct_tuple_2(Args, ArgTypes, Arity).
