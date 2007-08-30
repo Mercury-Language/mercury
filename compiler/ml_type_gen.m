@@ -75,7 +75,6 @@
     %
 :- pred ml_tag_uses_base_class(cons_tag::in) is semidet.
 
-
     % Exported enumeration info in the HLDS is converted into an MLDS
     % specific representation.  The target specific code generators may
     % further transform it.
@@ -247,11 +246,32 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
     list.length(Args, Arity),
     map.lookup(ConsTagValues, cons(Name, Arity), TagVal),
-    ( TagVal = int_tag(Int) ->
+    (
+        TagVal = int_tag(Int),
         ConstValue = const(mlconst_int(Int))
     ;
+        TagVal = foreign_tag(ForeignTagValue),
+        ConstValue = const(mlconst_foreign(ForeignTagValue,
+            mlds_native_int_type))
+    ;
+        ( TagVal = string_tag(_)
+        ; TagVal = float_tag(_)
+        ; TagVal = pred_closure_tag(_, _, _)
+        ; TagVal = type_ctor_info_tag(_, _, _)
+        ; TagVal = base_typeclass_info_tag(_, _, _)
+        ; TagVal = tabling_info_tag(_, _)
+        ; TagVal = deep_profiling_proc_layout_tag(_, _)
+        ; TagVal = table_io_decl_tag(_, _)
+        ; TagVal = single_functor_tag
+        ; TagVal = unshared_tag(_)
+        ; TagVal = shared_remote_tag(_, _)
+        ; TagVal = shared_local_tag(_, _)
+        ; TagVal = no_tag
+        ; TagVal = reserved_address_tag(_)
+        ; TagVal = shared_with_reserved_addresses_tag(_, _)
+        ),
         unexpected(this_file,
-            "ml_gen_enum_constant: enum constant needs int tag")
+            "ml_gen_enum_constant: enum constant needs int or foreign tag")
     ),
     % Sanity check.
     expect(unify(Arity, 0), this_file,

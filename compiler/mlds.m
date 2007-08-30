@@ -694,9 +694,6 @@
                             % Contains these members.
             ).
 
-    % Note: the definition of the `mlds_type' type is subject to change.
-    % In particular, we might add new alternatives here, so try to avoid
-    % switching on this type.
 :- type mlds_type
     --->    mercury_type(
                 % Mercury data types

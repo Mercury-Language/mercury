@@ -1257,7 +1257,7 @@ mlds_output_exported_enum_constant(NameAndTag, !IO) :-
         ) 
     ;
         unexpected(this_file,
-            "exported enumeration contstant is not mlds_data")
+            "exported enumeration constant is not mlds_data")
     ),
     io.nl(!IO).
     
@@ -1496,7 +1496,7 @@ mlds_output_gc_statement(Indent, Name, GCStatement, MaybeNewLine,
     mlds_class_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_decl(_Indent, Name, ClassDefn, !IO) :-
-    ( ClassDefn^kind = mlds_enum ->
+    ( ClassDefn ^ kind = mlds_enum ->
         io.write_string("enum ", !IO),
         mlds_output_fully_qualified_name(Name, !IO),
         io.write_string("_e", !IO)
@@ -1573,10 +1573,16 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
 
     mlds_output_class_decl(Indent, Name, ClassDefn, !IO),
     io.write_string(" {\n", !IO),
-    ( Kind = mlds_enum ->
+    (
+        Kind = mlds_enum,
         mlds_output_enum_constants(Indent + 1, ClassModuleName,
             BasesAndMembers, !IO)
     ;
+        ( Kind = mlds_class
+        ; Kind = mlds_package
+        ; Kind = mlds_interface
+        ; Kind = mlds_struct
+        ),
         mlds_output_defns(Indent + 1, no, ClassModuleName,
             BasesAndMembers, !IO)
     ),
@@ -2171,7 +2177,8 @@ mlds_output_type_prefix(mlds_foreign_type(_ForeignType), !IO) :-
     % use of the C type name
     io.write_string("MR_Box", !IO).
 mlds_output_type_prefix(mlds_class_type(Name, Arity, ClassKind), !IO) :-
-    ( ClassKind = mlds_enum ->
+    (
+        ClassKind = mlds_enum,
         % We can't just use the enumeration type, since the enumeration type's
         % definition is not guaranteed to be in scope at this point. (Fixing
         % that would be somewhat complicated; it would require writing enum
@@ -2179,12 +2186,16 @@ mlds_output_type_prefix(mlds_class_type(Name, Arity, ClassKind), !IO) :-
         % not be word-sized, which would cause problems for e.g.
         % `std_util.arg/2'. So we just use `MR_Integer', and output the
         % actual enumeration type as a comment.
-
         io.write_string("MR_Integer /* actually `enum ", !IO),
         mlds_output_fully_qualified(Name, mlds_output_mangled_name, !IO),
         io.format("_%d_e", [i(Arity)], !IO),
         io.write_string("' */", !IO)
     ;
+        ( ClassKind = mlds_class
+        ; ClassKind = mlds_package
+        ; ClassKind = mlds_interface
+        ; ClassKind = mlds_struct
+        ),
         % For struct types it's OK to output an incomplete type,
         % since don't use these types directly, we only use pointers to them.
         io.write_string("struct ", !IO),
@@ -2329,9 +2340,27 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
 
 mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO) :-
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    ( TypeCategory = type_cat_enum ->
+    (
+        ( TypeCategory = type_cat_enum 
+        ; TypeCategory = type_cat_foreign_enum
+        ),
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
     ;
+        ( TypeCategory = type_cat_int
+        ; TypeCategory = type_cat_char
+        ; TypeCategory = type_cat_string
+        ; TypeCategory = type_cat_float
+        ; TypeCategory = type_cat_higher_order
+        ; TypeCategory = type_cat_tuple
+        ; TypeCategory = type_cat_dummy
+        ; TypeCategory = type_cat_variable
+        ; TypeCategory = type_cat_type_info
+        ; TypeCategory = type_cat_type_ctor_info
+        ; TypeCategory = type_cat_typeclass_info
+        ; TypeCategory = type_cat_base_typeclass_info
+        ; TypeCategory = type_cat_void
+        ; TypeCategory = type_cat_user_ctor
+        ),
         MLDS_Type = mlds_ptr_type(
             mlds_class_type(ClassName, ClassArity, mlds_class))
     ),
