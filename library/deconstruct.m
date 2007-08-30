@@ -598,6 +598,8 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 
 functor_number(Term::in, FunctorNumber::out, Arity::out) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
+        % XXX should fail for non-du types
+        semidet_succeed,
         erlang_rtti_implementation.deconstruct(Term, do_not_allow,
             _Functor, FunctorNumber, Arity, _Args)
     ;
@@ -606,6 +608,8 @@ functor_number(Term::in, FunctorNumber::out, Arity::out) :-
 
 functor_number_cc(Term::in, FunctorNumber::out, Arity::out) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
+        % XXX should fail for non-du types
+        semidet_succeed,
         erlang_rtti_implementation.deconstruct(Term, include_details_cc,
             _Functor, FunctorNumber, Arity, _Args)
     ;
