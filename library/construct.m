@@ -361,6 +361,14 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).
 
+get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.get_functor_ordinal(TypeDesc, FunctorNumber,
+            Ordinal)
+    ;
+        private_builtin.sorry("get_functor_ordinal/3")
+    ).
+
 :- pragma foreign_proc("C",
     get_functor_ordinal(TypeDesc::in, FunctorNumber::in, Ordinal::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -452,6 +460,14 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     }
     SUCCESS_INDICATOR = success;
 }").
+
+get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.get_functor_lex(TypeDesc, Ordinal,
+            FunctorNumber)
+    ;
+        private_builtin.sorry("get_functor_lex/3")
+    ).
 
 :- pragma foreign_proc("C",
     get_functor_lex(TypeDesc::in, Ordinal::in) = (FunctorNumber::out),

@@ -126,29 +126,37 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
 :- func erlang_type_ctor_details_2(type_ctor_details) =
     erlang_type_ctor_details.
 
-erlang_type_ctor_details_2(enum(_, Functors, _, _, IsDummy, _)) =
+erlang_type_ctor_details_2(enum(_, Functors, _, _, IsDummy, FunctorNums))
+        = Details :-
     ( IsDummy = yes ->
         ( Functors = [F] ->
-            erlang_dummy(F ^ enum_name)
+            Details = erlang_dummy(F ^ enum_name)
         ;
             unexpected(this_file, "dummy type with more than one functor")
         )
     ;
-        erlang_du(list.map(convert_enum_functor, Functors))
+        list.map_corresponding(convert_enum_functor, Functors, FunctorNums,
+            ErlFunctors),
+        Details = erlang_du(ErlFunctors)
     ).
 erlang_type_ctor_details_2(foreign_enum(_, _, _, _, _)) =
     sorry(this_file, "NYI foreign enumerations for Erlang.").
-erlang_type_ctor_details_2(du(_, Functors, _, _, _)) =
-    erlang_du(list.map(convert_du_functor, Functors)).
+erlang_type_ctor_details_2(du(_, Functors, _, _, FunctorNums)) = Details :-
+    list.map_corresponding(convert_du_functor, Functors, FunctorNums,
+        ErlangFunctors),
+    Details = erlang_du(ErlangFunctors).
 erlang_type_ctor_details_2(reserved(_, _, _, _, _, _)) =
         % Reserved types are not supported on the Erlang backend.
     unexpected(this_file, "erlang_type_ctor_details: reserved").
 erlang_type_ctor_details_2(notag(_, NoTagFunctor)) = Details :-
     NoTagFunctor = notag_functor(Name, TypeInfo, ArgName),
+    OrigArity = 1,
+    Ordinal = 0,
+    FunctorNum = 0,
     ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
     ArgInfos = [du_arg_info(ArgName, ArgTypeInfo)],
-    DUFunctor =
-        erlang_du_functor(Name, 1, 1, erlang_atom_raw(Name), ArgInfos, no),
+    DUFunctor = erlang_du_functor(Name, OrigArity, Ordinal, FunctorNum,
+        erlang_atom_raw(Name), ArgInfos, no),
     Details = erlang_du([DUFunctor]).
 erlang_type_ctor_details_2(eqv(Type)) = erlang_eqv(Type).
 erlang_type_ctor_details_2(builtin(Builtin)) = erlang_builtin(Builtin).
@@ -159,19 +167,24 @@ erlang_type_ctor_details_2(foreign(_)) = erlang_foreign.
     %
     % Convert an enum_functor into the equivalent erlang_du_functor
     %
-:- func convert_enum_functor(enum_functor) = erlang_du_functor.
+:- pred convert_enum_functor(enum_functor::in, int::in, erlang_du_functor::out)
+    is det.
 
-convert_enum_functor(enum_functor(Name, Ordinal)) =
-    erlang_du_functor(Name, 0, Ordinal, erlang_atom_raw(Name), [], no).
+convert_enum_functor(EnumFunctor, FunctorNum, ErlangFunctor) :-
+    EnumFunctor = enum_functor(Name, Ordinal),
+    ErlangFunctor = erlang_du_functor(Name, 0, Ordinal, FunctorNum,
+        erlang_atom_raw(Name), [], no).
 
     %
     % Convert a du_functor into the equivalent erlang_du_functor
     %
-:- func convert_du_functor(du_functor) = erlang_du_functor.
+:- pred convert_du_functor(du_functor::in, int::in, erlang_du_functor::out)
+    is det.
 
-convert_du_functor(du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist)) =
-    erlang_du_functor(Name, Arity,
-        Ordinal, erlang_atom_raw(Name), ArgInfos, Exist).
+convert_du_functor(Functor, FunctorNum, ErlangFunctor) :-
+    Functor = du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist),
+    ErlangFunctor = erlang_du_functor(Name, Arity, Ordinal, FunctorNum,
+        erlang_atom_raw(Name), ArgInfos, Exist).
 
 :- func convert_to_rtti_maybe_pseudo_type_info_or_self(
     rtti_maybe_pseudo_type_info) = rtti_maybe_pseudo_type_info_or_self.

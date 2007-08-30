@@ -29,6 +29,8 @@
 
 :- type no_tag		---> 	qwerty(qwerty_field :: int).
 
+:- type dummy		--->	dummy.
+
 :- type exist_type	--->	some [T] xyzzy(f21name :: T).
 
 %----------------------------------------------------------------------------%
@@ -284,6 +286,9 @@ test_builtins -->
 		% test tuples
 	test_all({1, "a", 'a', {4, 'd'}}), newline,
 
+		% test lists
+	test_all([1, 2, 3, 4]), newline,
+
 	newline.
 
 	% Note: testing abstract types is always going to have results
@@ -307,6 +312,9 @@ test_other -->
 
 		% a no tag type 
 	test_all(qwerty(4)), newline,
+
+		% a dummy type
+	test_all(dummy), newline,
 
 		% an existential type:
 	{ ExistVal = 'new xyzzy'(8) },

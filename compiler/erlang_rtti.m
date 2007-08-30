@@ -113,6 +113,9 @@
                     % The declaration order of the functor.
                 edu_ordinal         :: int,
 
+                    % The lexicographic order of the functor.
+                edu_lex             :: int,
+
                     % erlang atom which represents the functor
                     % currently encoded version of name
                     % in the future maybe name_arity

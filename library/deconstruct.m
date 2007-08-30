@@ -432,6 +432,21 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     ).
 
 deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.deconstruct(Term, NonCanon, _Functor,
+            FunctorNumber, Arity, Arguments)
+    ;
+        deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments)
+    ).
+
+:- pred deconstruct_du_2(T, noncanon_handling, functor_number_lex,
+    int, list(univ)).
+:- mode deconstruct_du_2(in, in(do_not_allow), out, out, out) is semidet.
+:- mode deconstruct_du_2(in, in(include_details_cc), out, out, out)
+    is cc_nondet.
+:- mode deconstruct_du_2(in, in, out, out, out) is cc_nondet.
+
+deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
     ( _ = construct.num_functors(type_of(Term)) ->
         (
             NonCanon = do_not_allow,
@@ -581,10 +596,21 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 SUCCESS_INDICATOR = (FunctorNumber >= 0);
 }").
 
-functor_number(_Term::in, _FunctorNumber::out, _Arity::out) :-
-    private_builtin.sorry("deconstruct.functor_number").
-functor_number_cc(_Term::in, _FunctorNumber::out, _Arity::out) :-
-    private_builtin.sorry("deconstruct.functor_number_cc").
+functor_number(Term::in, FunctorNumber::out, Arity::out) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.deconstruct(Term, do_not_allow,
+            _Functor, FunctorNumber, Arity, _Args)
+    ;
+        private_builtin.sorry("deconstruct.functor_number")
+    ).
+
+functor_number_cc(Term::in, FunctorNumber::out, Arity::out) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.deconstruct(Term, include_details_cc,
+            _Functor, FunctorNumber, Arity, _Args)
+    ;
+        private_builtin.sorry("deconstruct.functor_number_cc")
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1017,7 +1043,7 @@ limited_deconstruct_idcc(Term::in, _MaxArity::in,
 
 local_deconstruct(T, H, F, A, As) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.deconstruct(T, H, F, A, As)
+        erlang_rtti_implementation.deconstruct(T, H, F, _FN, A, As)
     ;
         rtti_implementation.deconstruct(T, H, F, A, As)
     ).

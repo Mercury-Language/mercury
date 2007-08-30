@@ -150,6 +150,11 @@ no functors in this type
 0 - {}/4 [_, _, _, _] ordinal: 0 lex: 0
 
 
+2 functors in this type
+1 - [|]/2 [_, _] ordinal: 1 lex: 1
+0 - []/0 [] ordinal: 0 lex: 0
+
+
 
 TESTING OTHER TYPES
 1 functors in this type
@@ -173,6 +178,10 @@ TESTING OTHER TYPES
 
 1 functors in this type
 0 - qwerty/1 [qwerty_field] ordinal: 0 lex: 0
+
+
+1 functors in this type
+0 - dummy/0 [] ordinal: 0 lex: 0
 
 
 1 functors in this type

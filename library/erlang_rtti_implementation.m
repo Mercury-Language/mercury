@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: erlang_rtti_implementation.m.
-% Main author: petdr.
+% Main author: petdr, wangp.
 % Stability: low.
 %
 % This file is intended to provide the RTTI implementation for the Erlang
@@ -42,17 +42,26 @@
 :- pred compare_type_infos(comparison_result::out,
     type_info::in, type_info::in) is det.
 
-:- pred type_ctor_and_args(type_info::in, type_ctor_info_evaled::out,
+:- pred type_ctor_info_and_args(type_info::in, type_ctor_info_evaled::out,
     list(type_info)::out) is det.
 
-:- pred type_ctor_name_and_arity(type_ctor_info_evaled::in,
+:- pred type_ctor_desc(type_desc::in, type_ctor_desc::out) is det.
+
+:- pred type_ctor_desc_and_args(type_desc::in, type_ctor_desc::out,
+    list(type_desc)::out) is det.
+
+:- pred make_type_desc(type_ctor_desc::in, list(type_desc)::in,
+    type_desc::out) is semidet.
+
+:- pred type_ctor_desc_name_and_arity(type_ctor_desc::in,
     string::out, string::out, int::out) is det.
 
-:- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
-:- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
-:- mode deconstruct(in, in(canonicalize), out, out, out) is det.
-:- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
-:- mode deconstruct(in, in, out, out, out) is cc_multi.
+:- pred deconstruct(T, noncanon_handling, string, int, int, list(univ)).
+:- mode deconstruct(in, in(do_not_allow), out, out, out, out) is det.
+:- mode deconstruct(in, in(canonicalize), out, out, out, out) is det.
+:- mode deconstruct(in, in(include_details_cc), out, out, out, out)
+    is cc_multi.
+:- mode deconstruct(in, in, out, out, out, out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %
@@ -65,6 +74,12 @@
 
 :- pred get_functor_with_names(type_desc.type_desc::in, int::in, string::out,
     int::out, list(type_desc.type_desc)::out, list(string)::out)
+    is semidet.
+
+:- pred get_functor_ordinal(type_desc.type_desc::in, int::in, int::out)
+    is semidet.
+
+:- pred get_functor_lex(type_desc.type_desc::in, int::in, int::out)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -143,6 +158,18 @@
     ;       etcr_subgoal
     ;       etcr_ticket
     .
+
+    % Values of type `type_desc' are represented the same way as values of
+    % type `type_info'.
+    %
+    % Values of type `type_ctor_desc' are NOT represented the same way as
+    % values of type `type_ctor_info'.  The representations *are* in fact
+    % identical for fixed arity types, but they differ for higher order and
+    % tuple types. In that case they are one of the following:
+    %
+    %   {pred, Arity},
+    %   {func, Arity},
+    %   {tuple, Arity}
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -318,18 +345,15 @@ compare_type_infos(Res, _, _) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-type_ctor_and_args(TypeInfo0, TypeCtorInfo, Args) :-
+type_ctor_info_and_args(TypeInfo0, TypeCtorInfo, Args) :-
     TypeInfo = collapse_equivalences(TypeInfo0),
     TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
     ( type_ctor_is_variable_arity(TypeCtorInfo) ->
-        Arity = TypeInfo ^ var_arity_type_info_arity,
-        Args = list.map(
-            func(L) = TypeInfo ^ var_arity_type_info_index(L), 1 .. Arity)
+        Args = get_var_arity_arg_type_infos(TypeInfo)
     ;
-        Arity = TypeCtorInfo ^ type_ctor_arity,
-        Args = list.map(func(L) = TypeInfo ^ type_info_index(L), 1 .. Arity)
+        Args = get_fixed_arity_arg_type_infos(TypeInfo)
     ).
-    
+
 :- pred type_ctor_is_variable_arity(type_ctor_info_evaled::in) is semidet.
 
 type_ctor_is_variable_arity(TypeCtorInfo) :-
@@ -339,11 +363,203 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
     ; TypeCtorRep = etcr_func
     ).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+type_ctor_desc(TypeDesc, TypeCtorDesc) :-
+    type_ctor_desc_and_args(TypeDesc, TypeCtorDesc, _Args).
+
+type_ctor_desc_and_args(TypeDesc, TypeCtorDesc, ArgsDescs) :-
+    TypeInfo0 = type_info_from_type_desc(TypeDesc),
+    TypeInfo = collapse_equivalences(TypeInfo0),
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    % Handle variable arity types.
+    ( TypeCtorRep = etcr_pred ->
+        Arity = TypeInfo ^ var_arity_type_info_arity,
+        TypeCtorDesc = make_pred_type_ctor_desc(Arity),
+        ArgInfos = get_var_arity_arg_type_infos(TypeInfo)
+
+    ; TypeCtorRep = etcr_func ->
+        Arity = TypeInfo ^ var_arity_type_info_arity,
+        TypeCtorDesc = make_func_type_ctor_desc(Arity),
+        ArgInfos = get_var_arity_arg_type_infos(TypeInfo)
+
+    ; TypeCtorRep = etcr_tuple ->
+        Arity = TypeInfo ^ var_arity_type_info_arity,
+        TypeCtorDesc = make_tuple_type_ctor_desc(Arity),
+        ArgInfos = get_var_arity_arg_type_infos(TypeInfo)
+    ;
+        % Handle fixed arity types.
+        TypeCtorDesc = make_fixed_arity_type_ctor_desc(TypeCtorInfo),
+        ArgInfos = get_fixed_arity_arg_type_infos(TypeInfo)
+    ),
+    ArgsDescs = type_descs_from_type_infos(ArgInfos).
+
+:- func make_pred_type_ctor_desc(int) = type_ctor_desc.
+
+:- pragma foreign_proc("Erlang",
+    make_pred_type_ctor_desc(Arity::in) = (TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorDesc = {pred, Arity}
+").
+
+make_pred_type_ctor_desc(_) = _ :-
+    private_builtin.sorry("make_pred_type_ctor_desc").
+
+:- func make_func_type_ctor_desc(int) = type_ctor_desc.
+
+:- pragma foreign_proc("Erlang",
+    make_func_type_ctor_desc(Arity::in) = (TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorDesc = {func, Arity}
+").
+
+make_func_type_ctor_desc(_) = _ :-
+    private_builtin.sorry("make_func_type_ctor_desc").
+
+:- func make_tuple_type_ctor_desc(int) = type_ctor_desc.
+
+:- pragma foreign_proc("Erlang",
+    make_tuple_type_ctor_desc(Arity::in) = (TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorDesc = {tuple, Arity}
+").
+
+make_tuple_type_ctor_desc(_) = _ :-
+    private_builtin.sorry("make_tuple_type_ctor_desc").
+
+:- func make_fixed_arity_type_ctor_desc(type_ctor_info_evaled)
+    = type_ctor_desc.
+
+make_fixed_arity_type_ctor_desc(TypeCtorInfo) = TypeCtorDesc :-
+    % Fixed arity types have the same representations.
+    TypeCtorDesc = unsafe_cast(TypeCtorInfo).
+
+:- func type_info_from_type_desc(type_desc) = type_info.
+
+type_info_from_type_desc(TypeDesc) = TypeInfo :-
+    % They have the same representation.
+    TypeInfo = unsafe_cast(TypeDesc).
+
+:- func type_descs_from_type_infos(list(type_info)) = list(type_desc).
+
+type_descs_from_type_infos(TypeInfos) = TypeDescs :-
+    % They have the same representation.
+    TypeDescs = unsafe_cast(TypeInfos).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
+:- pragma foreign_proc("Erlang",
+    make_type_desc(TypeCtorDesc::in, ArgTypeDescs::in, TypeDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MakeVarArityTypeDesc =
+        (fun(TypeCtorInfo, Arity, ArgTypeInfos) ->
+            case Arity =:= length(ArgTypeInfos) of
+                true ->
+                    TypeInfo = 
+                        list_to_tuple([TypeCtorInfo, Arity | ArgTypeDescs]),
+                    {true, TypeInfo};
+                false ->
+                    {false, null}
+            end
+        end),
+
+    case TypeCtorDesc of
+        % Handle the variable arity types.
+        {pred, Arity} ->
+            TCI = fun mercury__builtin:builtin__type_ctor_info_pred_0/0,
+            {SUCCESS_INDICATOR, TypeDesc} = MakeVarArityTypeDesc(TCI, Arity,
+                ArgTypeDescs);
+
+        {func, Arity} ->
+            TCI = fun mercury__builtin:builtin__type_ctor_info_func_0/0,
+            {SUCCESS_INDICATOR, TypeDesc} = MakeVarArityTypeDesc(TCI, Arity,
+                ArgTypeDescs);
+
+        {tuple, Arity} ->
+            TCI = fun mercury__builtin:builtin__type_ctor_info_tuple_0/0,
+            {SUCCESS_INDICATOR, TypeDesc} = MakeVarArityTypeDesc(TCI, Arity,
+                ArgTypeDescs);
+
+        % Handle fixed arity types.
+        TypeCtorInfo ->
+            ArgTypeInfos = ArgTypeDescs,
+            case
+                mercury__erlang_rtti_implementation:
+                    'ML_make_fixed_arity_type_info'(TypeCtorInfo, ArgTypeInfos)
+            of
+                {TypeInfo} ->
+                    SUCCESS_INDICATOR = true,
+                    % type_desc and type_info have same representation.
+                    TypeDesc = TypeInfo;
+                fail ->
+                    SUCCESS_INDICATOR = false,
+                    TypeDesc = null
+            end
+    end
+").
+
+make_type_desc(_, _, _) :-
+    private_builtin.sorry("make_type_desc/3").
+
+:- pred make_fixed_arity_type_info(type_ctor_info_evaled::in,
+    list(type_info)::in, type_info::out) is semidet.
+
+:- pragma foreign_export("Erlang", make_fixed_arity_type_info(in, in, out),
+    "ML_make_fixed_arity_type_info").
+
+make_fixed_arity_type_info(TypeCtorInfo, ArgTypeInfos, TypeInfo) :-
+    TypeCtorInfo ^ type_ctor_arity = list.length(ArgTypeInfos),
+    TypeInfo = create_type_info(TypeCtorInfo, ArgTypeInfos).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("Erlang",
+    type_ctor_desc_name_and_arity(TypeCtorDesc::in, ModuleName::out, Name::out,
+        Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case TypeCtorDesc of
+        {pred, Arity} ->
+            ModuleName = <<""builtin"">>,
+            Name = <<""pred"">>,
+            Arity = Arity;
+
+        {func, Arity} ->
+            ModuleName = <<""builtin"">>,
+            Name = <<""func"">>,
+            Arity = Arity;
+
+        {tuple, Arity} ->
+            ModuleName = <<""builtin"">>,
+            Name = <<""{}"">>,
+            Arity = Arity;
+
+        TypeCtorInfo ->
+            {ModuleName, Name, Arity} =
+                mercury__erlang_rtti_implementation:
+                    'ML_type_ctor_info_name_and_arity'(TypeCtorInfo)
+    end
+").
+
+type_ctor_desc_name_and_arity(_, _, _, _) :-
+    private_builtin.sorry("type_ctor_desc_name_and_arity/4").
+
+:- pred type_ctor_info_name_and_arity(type_ctor_info_evaled::in,
+    string::out, string::out, int::out) is det.
+
+:- pragma foreign_export("Erlang",
+    type_ctor_info_name_and_arity(in, out, out, out),
+    "ML_type_ctor_info_name_and_arity").
+
+type_ctor_info_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
     ModuleName = TypeCtorInfo ^ type_ctor_module_name,
     Name = TypeCtorInfo ^ type_ctor_type_name,
     Arity = TypeCtorInfo ^ type_ctor_arity.
@@ -351,27 +567,29 @@ type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
+deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     TypeInfo = Term ^ type_info,
     TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        Functor, Arity, Arguments).
+        Functor, FunctorNumber, Arity, Arguments).
 
 :- pred deconstruct_2(T, type_info, type_ctor_info_evaled,
-    erlang_type_ctor_rep, noncanon_handling, string, int, list(univ)).
-:- mode deconstruct_2(in, in, in, in, in(do_not_allow), out, out, out) is det.
-:- mode deconstruct_2(in, in, in, in, in(canonicalize), out, out, out) is det.
+    erlang_type_ctor_rep, noncanon_handling, string, int, int, list(univ)).
+:- mode deconstruct_2(in, in, in, in, in(do_not_allow), out, out, out, out)
+    is det.
+:- mode deconstruct_2(in, in, in, in, in(canonicalize), out, out, out, out)
+    is det.
 :- mode deconstruct_2(in, in, in, in,
-    in(include_details_cc), out, out, out) is cc_multi.
-:- mode deconstruct_2(in, in, in, in, in, out, out, out) is cc_multi.
+    in(include_details_cc), out, out, out, out) is cc_multi.
+:- mode deconstruct_2(in, in, in, in, in, out, out, out, out) is cc_multi.
 
 deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        Functor, Arity, Arguments) :-
+        Functor, FunctorNumber, Arity, Arguments) :-
     (
         TypeCtorRep = etcr_du,
         FunctorReps = TypeCtorInfo ^ type_ctor_functors,
-        FunctorRep = matching_du_functor(FunctorReps, Term),
+        matching_du_functor(FunctorReps, 0, Term, FunctorRep, FunctorNumber),
         Functor = string.from_char_list(FunctorRep ^ edu_name),
         Arity = FunctorRep ^ edu_orig_arity,
         Arguments = list.map(
@@ -379,6 +597,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = etcr_dummy,
         Functor = TypeCtorInfo ^ type_ctor_dummy_functor_name,
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
@@ -386,10 +605,12 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ArgTypeInfo = TypeInfo ^ type_info_index(1),
         ( is_non_empty_list(TypeInfo, ArgTypeInfo, Term, H, T) ->
             Functor = "[|]",
+            FunctorNumber = 1,
             Arity = 2,
             Arguments = [univ(H), univ(T)]
         ;
             Functor = "[]",
+            FunctorNumber = 0,
             Arity = 0,
             Arguments = []
         )
@@ -408,6 +629,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         det_dynamic_cast(Term, Array),
 
         Functor = "<<array>>",
+        FunctorNumber = 0,
         Arity = array.size(Array),
         Arguments = array.foldr(
             (func(Elem, List) = [univ(Elem) | List]),
@@ -418,34 +640,39 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         EqvTypeCtorInfo = EqvTypeInfo ^ type_ctor_info_evaled,
         EqvTypeCtorRep = EqvTypeCtorInfo ^ type_ctor_rep,
         deconstruct_2(Term, EqvTypeInfo, EqvTypeCtorInfo, EqvTypeCtorRep,
-            NonCanon, Functor, Arity, Arguments)
+            NonCanon, Functor, FunctorNumber, Arity, Arguments)
     ;
         TypeCtorRep = etcr_tuple,
         Arity = TypeInfo ^ var_arity_type_info_arity,
         Functor = "{}",
+        FunctorNumber = 0,
         Arguments = list.map(get_tuple_arg(TypeInfo, Term), 1 .. Arity)
     ;
         TypeCtorRep = etcr_int,
         det_dynamic_cast(Term, Int),
         Functor = string.int_to_string(Int),
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = etcr_float,
         det_dynamic_cast(Term, Float),
         Functor = float_to_string(Float),
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = etcr_char,
         det_dynamic_cast(Term, Char),
         Functor = term_io.quoted_char(Char),
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = etcr_string,
         det_dynamic_cast(Term, String),
         Functor = term_io.quoted_string(String),
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
@@ -457,12 +684,14 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         TypeCtorRep = etcr_stable_c_pointer,
         det_dynamic_cast(Term, CPtr),
         Functor = "stable_" ++ string.c_pointer_to_string(CPtr),
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = etcr_c_pointer,
         det_dynamic_cast(Term, CPtr),
         Functor = string.c_pointer_to_string(CPtr),
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
@@ -493,18 +722,21 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ;
             NonCanon = canonicalize,
             Functor = Name,
+            FunctorNumber = 0,
             Arity = 0,
             Arguments = []
         ;
                 % XXX this needs to be fixed
             NonCanon = include_details_cc,
             Functor = Name,
+            FunctorNumber = 0,
             Arity = 0,
             Arguments = []
         )
     ;
         TypeCtorRep = etcr_foreign,
         Functor = "<<foreign>>",
+        FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
@@ -521,19 +753,22 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ).
 
     %
-    % matching_du_functor(Functors, Term)
+    % matching_du_functor(FunctorReps, Index, Term, FunctorRep, FunctorNumber)
     %
     % finds the erlang_du_functor in the list Functors which describes
     % the given Term.
     %
-:- func matching_du_functor(list(erlang_du_functor), T) = erlang_du_functor.
+:- pred matching_du_functor(list(erlang_du_functor)::in, int::in, T::in,
+    erlang_du_functor::out, int::out) is det.
 
-matching_du_functor([], _) = func_error(this_file ++ " matching_du_functor/2").
-matching_du_functor([F | Fs], T) =
+matching_du_functor([], _, _, _, _) :-
+    error(this_file ++ " matching_du_functor/2").
+matching_du_functor([F | Fs], Index, T, Functor, FunctorNumber) :-
     ( matches_du_functor(T, F) ->
-        F
+        Functor = F,
+        FunctorNumber = Index
     ;
-        matching_du_functor(Fs, T)
+        matching_du_functor(Fs, Index + 1, T, Functor, FunctorNumber)
     ).
 
     %
@@ -685,7 +920,8 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
 %-----------------------------------------------------------------------------%
 
 num_functors(TypeDesc) = NumFunctors :-
-    num_functors(unsafe_cast(TypeDesc), yes(NumFunctors)).
+    TypeInfo = type_info_from_type_desc(TypeDesc),
+    num_functors(TypeInfo, yes(NumFunctors)).
 
 :- pred num_functors(type_info::in, maybe(int)::out) is det.
 
@@ -740,10 +976,12 @@ num_functors(TypeInfo, MaybeNumFunctors) :-
 get_functor(TypeDesc, FunctorNum, Name, Arity, ArgTypes) :-
     get_functor_with_names(TypeDesc, FunctorNum, Name, Arity, ArgTypes, _).
 
-get_functor_with_names(TypeDesc, FunctorNum, Name, Arity, ArgTypes, ArgNames) :-
-    MaybeResult = get_functor_with_names(unsafe_cast(TypeDesc), FunctorNum),
+get_functor_with_names(TypeDesc, FunctorNum, Name, Arity, ArgTypeDescs,
+        ArgNames) :-
+    TypeInfo = type_info_from_type_desc(TypeDesc),
+    MaybeResult = get_functor_with_names(TypeInfo, FunctorNum),
     MaybeResult = yes({Name, Arity, ArgTypeInfos, ArgNames}),
-    ArgTypes = list.map(unsafe_cast, ArgTypeInfos).
+    ArgTypeDescs = type_descs_from_type_infos(ArgTypeInfos).
 
 :- func get_functor_with_names(type_info, int) =
     maybe({string, int, list(type_info), list(string)}).
@@ -754,7 +992,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
     (
         TypeCtorRep = etcr_du,
         FunctorReps = TypeCtorInfo ^ type_ctor_functors,
-        ( list.index0(FunctorReps, NumFunctor, FunctorRep) ->
+        ( matching_du_functor_number(FunctorReps, NumFunctor, FunctorRep) ->
             MaybeExistInfo = FunctorRep ^ edu_exist_info,
             (
                 MaybeExistInfo = yes(_),
@@ -763,12 +1001,11 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
                 MaybeExistInfo = no,
                 ArgInfos = FunctorRep ^ edu_arg_infos,
 
-                list.foldl2(
-                    (pred(ArgInfo::in, T0::in, T::out, N0::in, N::out) is det :-
+                list.map2(
+                    (pred(ArgInfo::in, ArgTypeInfo::out, ArgName::out) is det :-
                         MaybePTI = ArgInfo ^ du_arg_type,
                         Info = yes({TypeInfo, no : pti_info(int)}),
                         ArgTypeInfo = type_info(Info, MaybePTI),
-                        T = [ArgTypeInfo | T0],
                         
                         MaybeArgName = ArgInfo ^ du_arg_name,
                         (
@@ -777,14 +1014,11 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
                         ;
                             MaybeArgName = no,
                             ArgName = ""
-                        ),
-                        N = [ArgName | N0]
-                    ), ArgInfos, [], RevArgTypes, [], RevArgNames),
+                        )
+                    ), ArgInfos, ArgTypes, ArgNames),
 
                 Name = string.from_char_list(FunctorRep ^ edu_name),
                 Arity = FunctorRep ^ edu_orig_arity,
-                ArgTypes = list.reverse(RevArgTypes),
-                ArgNames = list.reverse(RevArgNames),
                 Result = yes({Name, Arity, ArgTypes, ArgNames})
             )
         ;
@@ -799,21 +1033,21 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         Result = yes({Name, Arity, ArgTypes, ArgNames})
     ;
         TypeCtorRep = etcr_tuple,
-        type_ctor_and_args(TypeInfo, _TypeCtorInfo, ArgTypes),
+        type_ctor_info_and_args(TypeInfo, _TypeCtorInfo, ArgTypes),
         Name = "{}",
         Arity = list.length(ArgTypes),
         ArgNames = list.duplicate(Arity, ""),
         Result = yes({Name, Arity, ArgTypes, ArgNames})
     ;
         TypeCtorRep = etcr_list,
-        ( NumFunctor = 1 ->
+        ( NumFunctor = 0 ->
             Name = "[]",
             Arity = 0,
             ArgTypes = [],
             ArgNames = [],
             Result = yes({Name, Arity, ArgTypes, ArgNames})
 
-        ; NumFunctor = 2 ->
+        ; NumFunctor = 1 ->
             ArgTypeInfo = TypeInfo ^ type_info_index(1),
 
             Name = "[|]",
@@ -855,10 +1089,83 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         error("num_functors: type_ctor_rep not handled")
     ).
 
+get_functor_ordinal(TypeDesc, FunctorNum, Ordinal) :-
+    TypeInfo = type_info_from_type_desc(TypeDesc),
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    (
+        TypeCtorRep = etcr_du,
+        FunctorReps = TypeCtorInfo ^ type_ctor_functors,
+        matching_du_functor_number(FunctorReps, FunctorNum, FunctorRep),
+        Ordinal = FunctorRep ^ edu_ordinal
+    ;
+        TypeCtorRep = etcr_dummy,
+        FunctorNum = 0,
+        Ordinal = 0
+    ;
+        TypeCtorRep = etcr_list,
+        (
+            Ordinal = 0,
+            FunctorNum = 0
+        ;
+            Ordinal = 1,
+            FunctorNum = 1
+        )
+    ;
+        TypeCtorRep = etcr_tuple,
+        FunctorNum = 0,
+        Ordinal = 0
+    ).
 
+get_functor_lex(TypeDesc, Ordinal, FunctorNum) :-
+    TypeInfo = type_info_from_type_desc(TypeDesc),
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    (
+        TypeCtorRep = etcr_du,
+        FunctorReps = TypeCtorInfo ^ type_ctor_functors,
+        matching_du_ordinal(FunctorReps, Ordinal, FunctorRep),
+        FunctorNum = FunctorRep ^ edu_lex
+    ;
+        TypeCtorRep = etcr_dummy,
+        FunctorNum = 0,
+        Ordinal = 0
+    ;
+        TypeCtorRep = etcr_list,
+        (
+            Ordinal = 0,
+            FunctorNum = 0
+        ;
+            Ordinal = 1,
+            FunctorNum = 1
+        )
+    ;
+        TypeCtorRep = etcr_tuple,
+        Ordinal = 0,
+        FunctorNum = 0
+    ).
 
+:- pred matching_du_ordinal(list(erlang_du_functor)::in, int::in,
+    erlang_du_functor::out) is semidet.
 
+matching_du_ordinal(Fs, Ordinal, Functor) :-
+    list.index0(Fs, Ordinal, Functor),
+    % Sanity check.
+    ( Functor ^ edu_ordinal = Ordinal ->
+        true
+    ;
+        error(this_file ++ " matching_du_ordinal/3")
+    ).
 
+:- pred matching_du_functor_number(list(erlang_du_functor)::in, int::in,
+    erlang_du_functor::out) is semidet.
+
+matching_du_functor_number([F | Fs], FunctorNum, Functor) :-
+    ( F ^ edu_lex = FunctorNum ->
+        Functor = F
+    ;
+        matching_du_functor_number(Fs, FunctorNum, Functor)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -911,7 +1218,7 @@ type_info(_) = type_info :-
         % We evaluate the thunk to get the actual type_ctor_info data.
         %
     if
-        is_function(TypeInfo) ->
+        is_function(TypeInfo, 0) ->
             TypeCtorInfo = TypeInfo();
         true ->
             FirstElement = element(?ML_ti_type_ctor_info, TypeInfo),
@@ -969,6 +1276,35 @@ var_arity_type_info_index(I, TI) = TI ^ unsafe_type_info_index(I + 2).
 
 unsafe_type_info_index(_, _) = type_info :-
     det_unimplemented("unsafe_type_info_index").
+
+:- func get_fixed_arity_arg_type_infos(type_info) = list(type_info).
+
+:- pragma foreign_proc("Erlang",
+    get_fixed_arity_arg_type_infos(TypeInfo::in) = (Args::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if
+        is_tuple(TypeInfo) ->
+            [_TypeCtorInfo | Args] = tuple_to_list(TypeInfo);
+        is_function(TypeInfo, 0) ->
+            Args = []   % zero arity type_info
+    end
+").
+
+get_fixed_arity_arg_type_infos(_) = _ :-
+    private_builtin.sorry("get_fixed_arity_arg_type_infos").
+
+:- func get_var_arity_arg_type_infos(type_info) = list(type_info).
+
+:- pragma foreign_proc("Erlang",
+    get_var_arity_arg_type_infos(TypeInfo::in) = (Args::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Args = lists:nthtail(?ML_ti_var_arity, tuple_to_list(TypeInfo))
+").
+
+get_var_arity_arg_type_infos(_) = _ :-
+    private_builtin.sorry("get_var_arity_arg_type_infos").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1339,6 +1675,7 @@ det_dynamic_cast(Term, Actual) :-
                 edu_name            :: list(char),
                 edu_orig_arity      :: int,
                 edu_ordinal         :: int,
+                edu_lex             :: int,
                 edu_rep             :: erlang_atom,
                 edu_arg_infos       :: list(du_arg_info),
                 edu_exist_info      :: maybe(exist_info)

@@ -209,6 +209,7 @@
 :- import_module require.
 :- import_module string.
 
+:- use_module    erlang_rtti_implementation. 
 :- use_module    rtti_implementation.
 
 :- pragma foreign_decl("C", "
@@ -580,6 +581,13 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
     TypeCtor = (MR_Word) MR_make_type_ctor_desc(type_info, type_ctor_info);
 }").
 
+type_ctor(TypeDesc) = TypeCtorDesc :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.type_ctor_desc(TypeDesc, TypeCtorDesc)
+    ;
+        private_builtin.sorry("type_ctor/1")
+    ).
+
 :- pragma foreign_proc("C",
     pseudo_type_ctor(PseudoTypeInfo::in) = (TypeCtor::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
@@ -641,20 +649,17 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
-    [may_call_mercury, thread_safe, promise_pure, terminates],
-"
-    {TypeCtorDesc, ArgTypes} =
-        mercury__erlang_rtti_implementation:type_ctor_and_args_3_p_0(TypeDesc)
-").
-
 type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
-    rtti_implementation.type_ctor_and_args(
-        rtti_implementation.unsafe_cast(TypeDesc),
-        TypeCtorDesc0, ArgTypes0),
-    TypeCtorDesc = rtti_implementation.unsafe_cast(TypeCtorDesc0),
-    ArgTypes = rtti_implementation.unsafe_cast(ArgTypes0).
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.type_ctor_desc_and_args(TypeDesc,
+            TypeCtorDesc, ArgTypes)
+    ;
+        rtti_implementation.type_ctor_and_args(
+            rtti_implementation.unsafe_cast(TypeDesc),
+            TypeCtorDesc0, ArgTypes0),
+        TypeCtorDesc = rtti_implementation.unsafe_cast(TypeCtorDesc0),
+        ArgTypes = rtti_implementation.unsafe_cast(ArgTypes0)
+    ).
 
 :- pragma foreign_proc("C",
     pseudo_type_ctor_and_args(PseudoTypeDesc::in, TypeCtorDesc::out,
@@ -741,6 +746,17 @@ pseudo_type_ctor_and_args(_, _, _) :-
     MR_restore_transient_registers();
 }").
 
+make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
+            TypeDesc)
+    ;
+        private_builtin.sorry("make_type/2")
+    ).
+
+make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
+    private_builtin.sorry("make_type/2").
+
 :- pragma foreign_proc("C",
     type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
         TypeCtorName::out, TypeCtorArity::out),
@@ -789,27 +805,16 @@ pseudo_type_ctor_and_args(_, _, _) :-
     TypeCtorArity = ((java.lang.Integer) result[2]).intValue();
 ").
 
-:- pragma foreign_proc("Erlang",
-    type_ctor_name_and_arity(TypeCtorDesc0::in, TypeCtorModuleName::out,
-        TypeCtorName::out, TypeCtorArity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    if
-        is_function(TypeCtorDesc0) ->
-            TypeCtorDesc = TypeCtorDesc0();
-        true ->
-            TypeCtorDesc = TypeCtorDesc0
-    end,
-    {TypeCtorModuleName, TypeCtorName, TypeCtorArity} =
-        mercury__erlang_rtti_implementation:
-            type_ctor_name_and_arity_4_p_0(TypeCtorDesc)
-").
-
 type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
         TypeCtorName::out, TypeCtorArity::out) :-
-    rtti_implementation.type_ctor_name_and_arity(
-        rtti_implementation.unsafe_cast(TypeCtorDesc),
-        ModuleName, TypeCtorName, TypeCtorArity).
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.type_ctor_desc_name_and_arity(TypeCtorDesc,
+            ModuleName, TypeCtorName, TypeCtorArity)
+    ;
+        rtti_implementation.type_ctor_name_and_arity(
+            rtti_implementation.unsafe_cast(TypeCtorDesc),
+            ModuleName, TypeCtorName, TypeCtorArity)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -911,24 +916,24 @@ get_type_info_for_type_info = TypeDesc :-
         X = eval_if_function(X0),
         Y = eval_if_function(Y0),
         if
-            X =:= Y -> {{'='}};
-            X  <  Y -> {{'<'}};
-            true    -> {{'>'}}
+            X =:= Y -> {'='};
+            X  <  Y -> {'<'};
+            true    -> {'>'}
         end.
 
     '__Compare____type_ctor_desc_0_0'(X0, Y0) ->
         X = eval_if_function(X0),
         Y = eval_if_function(Y0),
         if
-            X =:= Y -> {{'='}};
-            X  <  Y -> {{'<'}};
-            true    -> {{'>'}}
+            X =:= Y -> {'='};
+            X  <  Y -> {'<'};
+            true    -> {'>'}
         end.
 
     '__Compare____pseudo_type_desc_0_0'(_, _) ->
         throw(""foreign code for comparing pseudo_type_desc"").
 
-    eval_if_function(X) when is_function(X) -> X();
+    eval_if_function(X) when is_function(X, 0) -> X();
     eval_if_function(X) when is_tuple(X) ->
         list_to_tuple([eval_if_function(E) || E <- tuple_to_list(X)]);
     eval_if_function(X) -> X.
