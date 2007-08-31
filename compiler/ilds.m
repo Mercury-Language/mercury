@@ -147,23 +147,23 @@
     % The name of a member (method, field, event or property).
     %
 :- type member_name
-    --->    ctor            % constructor (initializes instances
-                            % of this class)
+    --->    ctor            % Constructor (initializes instances
+                            % of this class).
 
-    ;       cctor           % class constructor (initializes
+    ;       cctor           % Class constructor (initializes
                             % non-instance fields).
 
-    ;       id(ilds.id).   % ordinary method or field name
+    ;       id(ilds.id).    % Ordinary method or field name.
 
     % Calling conventions.
     % 
 :- type call_conv
     --->    call_conv(
-                bool,       % is this an instance method call?
-                call_kind   % what kind of call is it
+                bool,          % Is this an instance method call?
+                il_call_kind   % What kind of call is it?
             ).
 
-:- type call_kind
+:- type il_call_kind
     --->    default
     ;       vararg
     ;       unmanaged_cdecl

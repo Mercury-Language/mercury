@@ -1042,7 +1042,7 @@
                 list(mlds_rval),        % Ordinary function arguments.
                 list(mlds_lval),        % Places to store the function return
                                         % value(s).
-                call_kind               % Indicates whether this call is a
+                ml_call_kind            % Indicates whether this call is a
                                         % tail call.
             )
 
@@ -1182,7 +1182,7 @@
 % Extra info for calls
 %
 
-    % The `call_kind' type indicates whether a call is a tail call
+    % The `ml_call_kind' type indicates whether a call is a tail call
     % and whether the call is know to never return.
     %
     % Marking a call as a tail_call is intended as a hint to
@@ -1195,7 +1195,7 @@
     % stack frame and/or which falls through to the following
     % statement.
     %
-:- type call_kind
+:- type ml_call_kind
     --->    no_return_call  % A call that never returns
                             % (this is a special case of a tail call)
     ;       tail_call       % A tail call.

@@ -2230,7 +2230,7 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info) :-
     ).
 
 :- pred add_unchain_stack_to_call(mlds_stmt::in, list(mlds_lval)::in,
-    call_kind::in, mlds_context::in, mlds_stmt::out,
+    ml_call_kind::in, mlds_context::in, mlds_stmt::out,
     elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
