@@ -204,7 +204,7 @@
                                     % .cctor init instructions
                 class_members       :: list(class_member),
                                     % class methods and fields
-                has_main            :: bool,
+                has_main            :: has_main,
                                     % class contains main
                 class_foreign_langs :: set(foreign_language),
                                     % class foreign code
@@ -1173,7 +1173,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             model_det, no)
     ->
         EntryPoint = [entrypoint],
-        !:Info = !.Info ^ has_main := yes,
+        !:Info = !.Info ^ has_main := has_main,
 
         il_info_get_next_block_id(InnerTryBlockId, !Info),
         il_info_get_next_block_id(OuterTryBlockId, !Info),
@@ -4433,7 +4433,7 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
         DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR) =
     il_info(ModuleName, AssemblyName, Imports, set.init, ILDataRep,
         DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR,
-        empty, empty, [], no, set.init, set.init,
+        empty, empty, [], no_main, set.init, set.init,
         map.init, empty, counter.init(1), counter.init(1), no,
         Args, MethodName, CSharpMethodName, DefaultSignature) :-
     Args = [],
@@ -4453,7 +4453,7 @@ il_info_new_class(ClassDefn, !Info) :-
     !:Info = !.Info ^ alloc_instrs := empty,
     !:Info = !.Info ^ init_instrs := empty,
     !:Info = !.Info ^ class_members := [],
-    !:Info = !.Info ^ has_main := no,
+    !:Info = !.Info ^ has_main := no_main,
     !:Info = !.Info ^ class_foreign_langs := set.init,
     !:Info = !.Info ^ field_names := set.list_to_set(FieldNames).
 

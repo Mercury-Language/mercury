@@ -335,10 +335,6 @@
     --->    contains_foreign_export
     ;       no_foreign_export.
 
-:- type has_main
-    --->    has_main
-    ;       no_main.
-
     % When doing smart recompilation record for each module the suffix of
     % the file that was read and the modification time of the file.
     %

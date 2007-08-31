@@ -73,6 +73,7 @@
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.process_util.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
