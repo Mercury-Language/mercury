@@ -707,7 +707,7 @@ output_name_signature_and_call_conv(signature(CallConv, ReturnType, ArgTypes),
     ;
         ArgTypes = [_ | _],
         io.write_string("(\n\t\t", !IO),
-        ilasm.write_list(ArgTypes, ",\n\t\t", output_param, !Info, !IO),
+        ilasm.write_list(ArgTypes, ",\n\t\t", output_method_param, !Info, !IO),
         io.write_string("\n\t)", !IO)
     ).
 
@@ -741,15 +741,20 @@ output_local(Id - Type, !Info, !IO) :-
     io.write_string(" ", !IO),
     output_id(Id, !IO).
 
-:- pred output_param(pair(il_type, maybe(ilds.id))::in,
-    ilasm_info::in, ilasm_info::out, io::di, io::uo) is det.
+:- pred output_method_param(il_method_param::in,
+    ilasm_info::in, ilasm_info::out,
+    io::di, io::uo) is det.
 
-output_param(Type - no, !Info, !IO) :-
-    output_type(Type, !Info, !IO).
-output_param(Type - yes(Id), !Info, !IO) :-
+output_method_param(MethodParam, !Info, !IO) :-
+    MethodParam = il_method_param(Type, MaybeId),
     output_type(Type, !Info, !IO),
-    io.write_string(" ", !IO),
-    output_id(Id, !IO).
+    (
+        MaybeId = no
+    ;
+        MaybeId = yes(Id),
+        io.write_string(" ", !IO),
+        output_id(Id, !IO)
+    ).
 
 :- pred output_type(il_type::in, ilasm_info::in, ilasm_info::out,
     io::di, io::uo) is det.

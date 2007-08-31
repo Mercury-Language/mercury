@@ -29,7 +29,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -39,18 +38,21 @@
 
     % A method parameter.
     %
-:- type param == pair(
-            il_type,       % Type of the parameter.
-            maybe(ilds.id) % Name of the parameter (if any).
-        ).
-
+:- type il_method_param
+    --->    il_method_param(
+                ilmp_type     :: il_type,
+                              % The type of the parameter.
+                ilmp_maybe_id :: maybe(ilds.id)
+                              % The name of the parameter (if any).
+            ).
+    
     % A method signature.
     % 
 :- type signature
     --->    signature(
                 call_conv,  % calling convention
                 ret_type,   % return type
-                list(param) % parameters
+                list(il_method_param) % parameters
             ).
 
     % A method reference.

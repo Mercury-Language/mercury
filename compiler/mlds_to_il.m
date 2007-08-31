@@ -1137,8 +1137,8 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         ClassName = mlds_module_name_to_class_name(NewModuleName),
 
         ILSignature = signature(_, ILRetType, ILParams),
+        TypeParams = il_method_params_to_il_types(ILParams),
 
-        assoc_list.keys(ILParams, TypeParams),
         list.map_foldl(
             (pred(_::in, Instr::out, Num::in, Num+1::out) is det :-
                 Instr = ldarg(index(Num))
@@ -1743,9 +1743,10 @@ statement_to_il(statement(CallStmt, Context), Instrs, !Info) :-
             ReturnParam, MemberName, TypeParams))]
     ;
         load(Function, FunctionLoadInstrs, !Info),
-        list.length(TypeParams, Length),
-        list.duplicate(Length, no, NoList),
-        assoc_list.from_corresponding_lists(TypeParams, NoList, ParamsList),
+        MakeMethodParam = (func(MethodType) = MethodParam :-
+            MethodParam = il_method_param(MethodType, no)
+        ),
+        ParamsList = list.map(MakeMethodParam, TypeParams),
         Instrs0 = [calli(signature(call_conv(no, default),
             ReturnParam, ParamsList))]
     ),
@@ -1981,7 +1982,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
             sorry(this_file, "multiple return values")
         ),
         MethodName = !.Info ^ csharp_method_name,
-        assoc_list.keys(Params, TypeParams),
+        TypeParams = il_method_params_to_il_types(Params),
         list.map_foldl((pred(_::in, Instr::out,
             Num::in, Num + 1::out) is det :-
                 Instr = ldarg(index(Num))),
@@ -3083,12 +3084,13 @@ params_to_il_signature(DataRep, ModuleName, FuncParams) = ILSignature :-
     ILSignature = signature(call_conv(no, default), Param, ILInputTypes).
 
 :- func input_param_to_ilds_type(il_data_rep, mlds_module_name, mlds_argument)
-    = ilds.param.
+    = il_method_param.
 
-input_param_to_ilds_type(DataRep, _ModuleName, Arg) = ILType - yes(Id) :-
+input_param_to_ilds_type(DataRep, _ModuleName, Arg) = MethodParam :-
     Arg = mlds_argument(EntityName, MldsType, _GCStatement),
     mangle_entity_name(EntityName, Id),
-    ILType = mlds_type_to_ilds_type(DataRep, MldsType).
+    ILType = mlds_type_to_ilds_type(DataRep, MldsType),
+    MethodParam = il_method_param(ILType, yes(Id)).
 
 :- func mlds_type_to_ilds_simple_type(il_data_rep, mlds_type)
     = ilds.simple_type.
@@ -4639,6 +4641,13 @@ instr_node(I) = node([I]).
 maybe_map_fold(_, no, !V, !U).
 maybe_map_fold(P, yes(T), _, !:V, !U) :-
     P(T, !:V, !U).
+
+:- func il_method_params_to_il_types(list(il_method_param)) = list(il_type).
+
+il_method_params_to_il_types([]) = [].
+il_method_params_to_il_types([ il_method_param(Type, _) | Params]) = 
+        [ Type | Types ] :-
+    Types = il_method_params_to_il_types(Params).
 
 %-----------------------------------------------------------------------------%
 
