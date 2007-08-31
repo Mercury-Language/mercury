@@ -804,9 +804,11 @@ output_simple_type(refany, !Info, !IO) :-
     io.write_string("refany", !IO).
 output_simple_type(class(Name), !Info, !IO) :-
     ( name_to_simple_type(Name, Type) ->
-        ( Type = reference(SimpleType) ->
+        (
+            Type = reference(SimpleType),
             output_simple_type(SimpleType, !Info, !IO)
         ;
+            Type = value(_),
             % If it is a value type then we are refering
             % to the boxed version of the value type.
             io.write_string("class ", !IO),
@@ -818,9 +820,11 @@ output_simple_type(class(Name), !Info, !IO) :-
     ).
 output_simple_type(valuetype(Name), !Info, !IO) :-
     ( name_to_simple_type(Name, Type) ->
-        ( Type = value(SimpleType) ->
+        (
+            Type = value(SimpleType),
             output_simple_type(SimpleType, !Info, !IO)
         ;
+            Type = reference(_),
             unexpected(this_file, "builtin reference type")
         )
     ;

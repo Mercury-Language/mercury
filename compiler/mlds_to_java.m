@@ -1241,9 +1241,15 @@ output_class(Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     ),
     ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, Implements,
         Ctors, AllMembers),
-    ( Kind = mlds_interface ->
+    (
+        Kind = mlds_interface,
         io.write_string("interface ", !IO)
     ;
+        ( Kind = mlds_class
+        ; Kind = mlds_package
+        ; Kind = mlds_enum
+        ; Kind = mlds_struct
+        ),
         io.write_string("class ", !IO)
     ),
     output_class_name_and_arity(ClassName, Arity, !IO),

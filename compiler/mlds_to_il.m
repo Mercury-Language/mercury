@@ -3281,13 +3281,15 @@ get_ilds_type_class_name(ILType) = ClassName :-
 %
 % Name mangling.
 
-:- type il_mangle_name --->
-    mangle_for_il
-        % Names that are to be used only in IL are able to include spaces,
-        % punctuation and other special characters, because they are in quotes.
-    ; mangle_for_csharp.
-        % Names that are to be used in C# (typically because they are foreign
-        % procedures) must be mangled in the same way as for C.
+:- type il_mangle_name
+    --->    mangle_for_il
+            % Names that are to be used only in IL are able to include
+            % spaces, punctuation and other special characters, because they
+            % are in quotes.
+    
+    ;       mangle_for_csharp.
+            % Names that are to be used in C# (typically because they are
+            % foreign procedures) must be mangled in the same way as for C.
 
     % Create a mangled predicate identifier, suitable for use in IL.
     %

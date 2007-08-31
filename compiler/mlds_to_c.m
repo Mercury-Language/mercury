@@ -1496,11 +1496,18 @@ mlds_output_gc_statement(Indent, Name, GCStatement, MaybeNewLine,
     mlds_class_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_decl(_Indent, Name, ClassDefn, !IO) :-
-    ( ClassDefn ^ kind = mlds_enum ->
+    ClassKind = ClassDefn ^ kind,
+    (
+        ClassKind = mlds_enum,
         io.write_string("enum ", !IO),
         mlds_output_fully_qualified_name(Name, !IO),
         io.write_string("_e", !IO)
     ;
+        ( ClassKind = mlds_class
+        ; ClassKind = mlds_package
+        ; ClassKind = mlds_interface
+        ; ClassKind = mlds_struct
+        ),
         io.write_string("struct ", !IO),
         mlds_output_fully_qualified_name(Name, !IO),
         io.write_string("_s", !IO)
@@ -1540,10 +1547,16 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
 
     AllMembers = Ctors ++ Members,
 
-    ( Kind = mlds_enum ->
+    (
+        Kind = mlds_enum,
         StaticMembers = [],
         StructMembers = AllMembers
     ;
+        ( Kind = mlds_class
+        ; Kind = mlds_package
+        ; Kind = mlds_interface
+        ; Kind = mlds_struct
+        ),
         list.filter(is_static_member, AllMembers,
             StaticMembers, NonStaticMembers),
         StructMembers = NonStaticMembers
