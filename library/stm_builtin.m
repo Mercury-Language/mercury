@@ -135,15 +135,24 @@
 
 :- import_module exception.
 
-
 :- pragma foreign_decl("C", "
-#if defined(MR_HIGHLEVEL_CODE)
-    #include <pthread.h>
 
-    typedef pthread_t   ML_ThreadId;
-#else
+#if defined(MR_HIGHLEVEL_CODE)
+
+    #if defined(MR_THREAD_SAFE)
+        #include <pthread.h>
+
+        typedef pthread_t   ML_ThreadId;
+    #else
+        typedef MR_Integer  ML_ThreadId;
+       
+    #endif /* !MR_THREAD_SAFE */
+
+#else /* !MR_HIGHLEVEL_CODE */
+    
     typedef MR_Context  *ML_ThreadId;
-#endif
+
+#endif /* !MR_HIGHLEVEL_CODE */
 
 typedef struct ML_Stm_Wait_List_Struct {
     ML_ThreadId thread;
@@ -382,11 +391,15 @@ ml_initialise_stm :-
     STM = MR_GC_NEW(ML_Stm_TLog);
     STM->entrylist = NULL;
 
-#if defined(MR_HIGHLEVEL_CODE)
-    STM->thread = pthread_self();
-#else
-    STM->thread = NULL;         /* current context */
-#endif
+    #if defined(MR_HIGHLEVEL_CODE)
+        #if defined(MR_THREAD_SAFE)
+            STM->thread = pthread_self();
+        #else
+            STM->thread = 0;
+        #endif
+    #else
+        STM->thread = NULL;         /* current context */
+    #endif
 ").
 
 :- pragma foreign_proc("C", stm_drop_state(X::di),
