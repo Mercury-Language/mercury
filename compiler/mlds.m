@@ -418,9 +418,11 @@
     --->    il_assembly_name(mlds_module_name).
 
     % An mlds_module_name specifies the name of an mlds package or class.
+    %
 :- type mlds_module_name.
 
     % An mlds_package_name specifies the name of an mlds package.
+    %
 :- type mlds_package_name == mlds_module_name.
 
     % Given the name of a Mercury module, return the name of the corresponding
@@ -516,6 +518,7 @@
     % For the Java back-end, we need to distinguish between module qualifiers
     % and type qualifiers, because type names get the case of their initial
     % letter inverted (i.e. lowercase => uppercase).
+    %
 :- type mlds_qual_kind
     --->    module_qual
     ;       type_qual.
@@ -558,6 +561,7 @@
     %       interface (abstract class, no data members)
     %       struct (value class)
     %       enum
+    %
 :- type mlds_entity_defn
     --->    mlds_data(
                 % Represents a constant or variable.
@@ -596,6 +600,7 @@
     % 'gc_initialiser' indicates that the variable is a compiler-generated
     % variable that needs to be initialised before tracing the other
     % variables for the predicate (used when generating closures).
+    %
 :- type mlds_gc_statement
     ---> gc_trace_code(statement)
     ;    gc_initialiser(statement)
@@ -605,6 +610,7 @@
     % (i.e. the original Mercury procedure was declared `:- external').
     % (If you want to generate an abstract body consider adding another
     % alternative here).
+    %
 :- type mlds_function_body
     --->    body_defined_here(statement)
     ;       body_external.
@@ -613,6 +619,7 @@
     % (the GCC back-end relies on this).
     % XXX Currently we only record the type for structs.
     %     We should do the same for objects and arrays.
+    %
 :- type mlds_initializer
     --->    init_obj(mlds_rval)
     ;       init_struct(mlds_type, list(mlds_initializer))
@@ -642,6 +649,7 @@
     % An mlds_func_signature is like an mlds_func_params
     % except that it only includes the function's type, not
     % the parameter names.
+    %
 :- type mlds_func_signature
     --->    mlds_func_signature(
                 mlds_arg_types,    % argument types
@@ -675,6 +683,7 @@
     % so when targetting C, it is the MLDS code generator's
     % responsibility to ensure that each generated MLDS class
     % has at least one base class or non-static data member.
+    %
 :- type mlds_class_defn
     --->    mlds_class_defn(
                 kind        :: mlds_class_kind,
@@ -1147,7 +1156,7 @@
             % after the switch.
 
     ;       default_case(statement).
-            % % The default is to execute the specified statement.
+            % The default is to execute the specified statement.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1156,7 +1165,7 @@
 :- type mlds_label == string.
 
 :- type mlds_goto_target
-    --->    label(mlds_label)  % Branch to the specified label.
+    --->    label(mlds_label)   % Branch to the specified label.
 
     ;       break               % Branch to just after the end of the
                                 % immediately enclosing loop or switch,
@@ -1171,6 +1180,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Extra info for calls
+%
 
     % The `call_kind' type indicates whether a call is a tail call
     % and whether the call is know to never return.
@@ -1184,6 +1194,7 @@
     % hint and generate code which does not remove the caller's
     % stack frame and/or which falls through to the following
     % statement.
+    %
 :- type call_kind
     --->    no_return_call  % A call that never returns
                             % (this is a special case of a tail call)
@@ -1193,10 +1204,12 @@
 %-----------------------------------------------------------------------------%
 %
 % Extra info for exception handling
+%
 
     % XXX This is tentative -- the current definition may be
     % a bit too specific to C++-style exceptions.
     % It might not be a good choice for different target languages.
+    %
 :- type mlds_exception_handler
     --->    handler(
                 maybe(mlds_type),
@@ -1340,6 +1353,7 @@
             ).
 
     % Stores information about each argument to an outline_foreign_proc.
+    %
 :- type outline_arg
     --->    in(
                 mlds_type,      % The type of the argument.
@@ -1405,6 +1419,7 @@
             % of stack items.
 
     % Constructor id.
+    %
 :- type ctor_name == mlds_qualified_ctor_id.
 :- type mlds_ctor_id ---> ctor_id(mlds_class_name, arity).
 :- type mlds_qualified_ctor_id == mlds_fully_qualified_name(mlds_ctor_id).
@@ -1424,6 +1439,7 @@
 %-----------------------------------------------------------------------------%
 
     % An mlds_field_id represents some data within an object.
+    %
 :- type mlds_field_id
     --->    offset(mlds_rval)
             % offset(N) represents the field at offset N Words.
@@ -1441,6 +1457,7 @@
 :- type mlds_field_name == string.
 
     % An mlds_var represents a variable or constant.
+    %
 :- type mlds_var == mlds_fully_qualified_name(mlds_var_name).
 :- type mlds_var_name
     --->    mlds_var_name(string, maybe(int)).
@@ -1449,6 +1466,7 @@
 
     % An lval represents a data location or variable that can be used
     % as the target of an assignment.
+    %
 :- type mlds_lval
 
     % Values on the heap or fields of a structure.
@@ -1520,8 +1538,10 @@
 %-----------------------------------------------------------------------------%
 %
 % Expressions
+%
 
     % An rval is an expression that represents a value.
+    %
 :- type mlds_rval
     --->    lval(mlds_lval)
             % The value of an `lval' rval is just the value stored in
@@ -1981,6 +2001,7 @@ flip_initial_case(S0) = S :-
 
     % We represent the set of declaration flags as a bunch of bit-fields packed
     % into a single int.
+    %
 :- type mlds_decl_flags == int.
 
 % Here we define which bits are used to store each bitfield.
