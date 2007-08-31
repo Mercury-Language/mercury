@@ -730,8 +730,7 @@ is_nan_or_inf(Float) :-
 	float.max = (Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-    % XXX NYI
-    Max = 100000000.0
+    Max = 1.797693E+308
 ").
 
 :- pragma foreign_proc("C",

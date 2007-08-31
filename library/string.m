@@ -3299,7 +3299,7 @@ max_precision = min_precision + 2.
     string.lowlevel_float_to_string(FloatVal::in, FloatString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    List = io_lib:format(""~.12f"", [FloatVal]),
+    List = io_lib:format(""~.17g"", [FloatVal]),
     FloatString = list_to_binary(List)
 ").
 
