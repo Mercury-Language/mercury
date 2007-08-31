@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -335,77 +335,38 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 %-----------------------------------------------------------------------------%
 
-glut.get(State, Value, !IO) :-
-    glut.get_2(state_to_int(State), Value, !IO).
+:- pragma foreign_enum("C", glut.state/0,
+[
+    screen_width      - "GLUT_SCREEN_WIDTH",
+    screen_height     - "GLUT_SCREEN_HEIGHT",
+    screen_width_mm   - "GLUT_SCREEN_WIDTH_MM",
+    screen_height_mm  - "GLUT_SCREEN_HEIGHT_MM",
+    init_window_x     - "GLUT_INIT_WINDOW_X",
+    init_window_y     - "GLUT_INIT_WINDOW_Y"
+]).
 
-:- pred glut.get_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    glut.get_2(State::in, Value::out, IO0::di, IO::uo),
+    glut.get(State::in, Value::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Value = (MR_Integer) glutGet((GLenum) State);
     IO = IO0;
 ").
 
-:- func state_to_int(glut.state) = int.
-
-state_to_int(screen_width) = glut_screen_width.
-state_to_int(screen_height) = glut_screen_height.
-state_to_int(screen_width_mm) = glut_screen_width_mm.
-state_to_int(screen_height_mm) = glut_screen_height_mm.
-state_to_int(init_window_x) = glut_init_window_x.
-state_to_int(init_window_y) = glut_init_window_y.
-
-:- func glut_screen_width = int.
-:- pragma foreign_proc("C", glut_screen_width = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_SCREEN_WIDTH;
-").
-
-:- func glut_screen_height = int.
-:- pragma foreign_proc("C", glut_screen_height = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_SCREEN_HEIGHT;
-").
-
-:- func glut_screen_width_mm = int.
-:- pragma foreign_proc("C", glut_screen_width_mm = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_SCREEN_WIDTH_MM;
-").
-
-:- func glut_screen_height_mm = int.
-:- pragma foreign_proc("C", glut_screen_height_mm = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_SCREEN_HEIGHT_MM;
-").
-
-:- func glut_init_window_x = int.
-:- pragma foreign_proc("C", glut_init_window_x = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_INIT_WINDOW_X;
-").
-
-:- func glut_init_window_y = int.
-:- pragma foreign_proc("C", glut_init_window_y = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_INIT_WINDOW_Y;
-").
-
 %-----------------------------------------------------------------------------%
+    
+:- pragma foreign_enum("C", glut.device/0, 
+[
+    keyboard            - "GLUT_HAS_KEYBOARD",
+    mouse               - "GLUT_HAS_MOUSE",
+    spaceball           - "GLUT_HAS_SPACEBALL",
+    dial_and_button_box - "GLUT_HAS_DIAL_AND_BUTTON_BOX",
+    tablet              - "GLUT_HAS_TABLET",
+    joystick            - "GLUT_HAS_JOYSTICK"
+]).
 
-glut.has_device(Device, Result, !IO) :-
-    glut.has_device_2(device_to_int(Device), Result, !IO).
-
-:- pred glut.has_device_2(int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    glut.has_device_2(Device::in, Res::out, IO0::di, IO::uo),
+    glut.has_device(Device::in, Res::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     if(glutDeviceGet((GLenum) Device)) {
@@ -414,59 +375,6 @@ glut.has_device(Device, Result, !IO) :-
         Res = MR_NO;
     }
     IO = IO0;
-").
-
-:- func device_to_int(device) = int.
-
-device_to_int(keyboard)  = glut_has_keyboard.
-device_to_int(mouse)     = glut_has_mouse.
-device_to_int(spaceball) = glut_has_spaceball.
-device_to_int(dial_and_button_box) = glut_has_dial_and_button_box.
-device_to_int(tablet)    = glut_has_tablet.
-device_to_int(joystick)  = glut_has_joystick.
-
-:- func glut_has_keyboard = int.
-:- pragma foreign_proc("C", glut_has_keyboard = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_HAS_KEYBOARD;
-").
-
-:- func glut_has_mouse = int.
-:- pragma foreign_proc("C", glut_has_mouse = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_HAS_MOUSE;
-").
-
-:- func glut_has_spaceball = int.
-:- pragma foreign_proc("C", glut_has_spaceball = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_HAS_SPACEBALL;
-").
-
-:- func glut_has_dial_and_button_box = int.
-:- pragma foreign_proc("C", glut_has_dial_and_button_box = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_HAS_DIAL_AND_BUTTON_BOX;
-").
-
-:- func glut_has_tablet = int.
-:- pragma foreign_proc("C",
-    glut_has_tablet = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_HAS_TABLET;
-").
-
-:- func glut_has_joystick = int.
-:- pragma foreign_proc("C",
-    glut_has_joystick = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_HAS_JOYSTICK;
 ").
 
 %-----------------------------------------------------------------------------%

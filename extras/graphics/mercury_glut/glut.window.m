@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -430,6 +430,9 @@ window.id(MaybeWindow, !IO) :-
     IO = IO0;
 ").
 
+    % NOTE: we don't use a foreign enumeration for this type because we
+    %       may eventually support user-defined cursors.
+    %
 :- func cursor_to_int(cursor) = int.
 
 cursor_to_int(right_arrow) = glut_cursor_right_arrow.
@@ -689,165 +692,34 @@ window.set_cursor(Cursor, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func window_state_to_int(window.state) = int.
-
-window_state_to_int(x)                = glut_window_x.              
-window_state_to_int(y)                = glut_window_y.                 
-window_state_to_int(window_width)     = glut_window_width.      
-window_state_to_int(window_height)    = glut_window_height.     
-window_state_to_int(buffer_size)      = glut_window_buffer_size.      
-window_state_to_int(stencil_size)     = glut_window_stencil_size.      
-window_state_to_int(depth_size)       = glut_window_depth_size.       
-window_state_to_int(red_size)         = glut_window_red_size.
-window_state_to_int(green_size)       = glut_window_green_size.
-window_state_to_int(blue_size)        = glut_window_blue_size.
-window_state_to_int(alpha_size)       = glut_window_alpha_size.
-window_state_to_int(accum_red_size)   = glut_window_accum_red_size.
-window_state_to_int(accum_green_size) = glut_window_accum_green_size.
-window_state_to_int(accum_blue_size)  = glut_window_accum_blue_size.
-window_state_to_int(accum_alpha_size) = glut_window_accum_alpha_size.
-window_state_to_int(colormap_size)    = glut_window_colormap_size.
-window_state_to_int(number_samples)   = glut_window_num_samples.
-window_state_to_int(format_id)        = glut_window_format_id.
-
-window.get(State, Value, !IO) :-
-    window.get_2(window_state_to_int(State), Value, !IO).
-
-:- pred window.get_2(int::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_enum("C", window.state/0,
+[
+    x                   - "GLUT_WINDOW_X",
+    y                   - "GLUT_WINDOW_Y",
+    window_width        - "GLUT_WINDOW_WIDTH",
+    window_height       - "GLUT_WINDOW_HEIGHT",
+    buffer_size         - "GLUT_WINDOW_BUFFER_SIZE",
+    stencil_size        - "GLUT_WINDOW_STENCIL_SIZE",
+    depth_size          - "GLUT_WINDOW_DEPTH_SIZE",
+    red_size            - "GLUT_WINDOW_RED_SIZE",
+    green_size          - "GLUT_WINDOW_GREEN_SIZE",
+    blue_size           - "GLUT_WINDOW_BLUE_SIZE",
+    alpha_size          - "GLUT_WINDOW_ALPHA_SIZE",
+    accum_red_size      - "GLUT_WINDOW_ACCUM_RED_SIZE",
+    accum_green_size    - "GLUT_WINDOW_ACCUM_GREEN_SIZE",
+    accum_blue_size     - "GLUT_WINDOW_ACCUM_BLUE_SIZE",
+    accum_alpha_size    - "GLUT_WINDOW_ACCUM_ALPHA_SIZE",
+    colormap_size       - "GLUT_WINDOW_COLORMAP_SIZE",
+    number_samples      - "GLUT_WINDOW_NUM_SAMPLES",
+    format_id           - "GLUT_WINDOW_FORMAT_ID"
+]).
+ 
 :- pragma foreign_proc("C",
-    window.get_2(State::in, Value::out, IO0::di, IO::uo),
+    window.get(State::in, Value::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Value = (MR_Integer) glutGet((GLenum) State);
     IO = IO0;
-").
-
-%-----------------------------------------------------------------------------%
-
-:- func glut_window_x = int.
-:- pragma foreign_proc("C", glut_window_x = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_X;
-").
-
-:- func glut_window_y = int.
-:- pragma foreign_proc("C", glut_window_y = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_Y;
-").
-
-:- func glut_window_width = int.
-:- pragma foreign_proc("C", glut_window_width = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_WIDTH;
-").
-
-:- func glut_window_height = int.
-:- pragma foreign_proc("C", glut_window_height = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_HEIGHT;
-").
-
-:- func glut_window_buffer_size = int.
-:- pragma foreign_proc("C", glut_window_buffer_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_BUFFER_SIZE;
-").
-
-:- func glut_window_stencil_size = int.
-:- pragma foreign_proc("C", glut_window_stencil_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_STENCIL_SIZE;
-").
-
-:- func glut_window_depth_size = int.
-:- pragma foreign_proc("C", glut_window_depth_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_DEPTH_SIZE;
-").
-
-:- func glut_window_red_size = int.
-:- pragma foreign_proc("C", glut_window_red_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_RED_SIZE;
-").
-
-:- func glut_window_green_size = int.
-:- pragma foreign_proc("C", glut_window_green_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_GREEN_SIZE;
-").
-
-:- func glut_window_blue_size = int.
-:- pragma foreign_proc("C", glut_window_blue_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_BLUE_SIZE;
-").
-
-:- func glut_window_alpha_size = int.
-:- pragma foreign_proc("C", glut_window_alpha_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_ALPHA_SIZE;
-").
-
-:- func glut_window_accum_red_size = int.
-:- pragma foreign_proc("C", glut_window_accum_red_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_ACCUM_RED_SIZE;
-").
-
-:- func glut_window_accum_green_size = int.
-:- pragma foreign_proc("C", glut_window_accum_green_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_ACCUM_GREEN_SIZE;
-").
-
-:- func glut_window_accum_blue_size = int.
-:- pragma foreign_proc("C", glut_window_accum_blue_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_ACCUM_BLUE_SIZE;
-").
-
-:- func glut_window_accum_alpha_size = int.
-:- pragma foreign_proc("C", glut_window_accum_alpha_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_ACCUM_ALPHA_SIZE;
-").
-
-:- func glut_window_colormap_size = int.
-:- pragma foreign_proc("C", glut_window_colormap_size = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_COLORMAP_SIZE;
-").
-
-:- func glut_window_num_samples = int.
-:- pragma foreign_proc("C", glut_window_num_samples = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_NUM_SAMPLES;
-").
-
-:- func glut_window_format_id = int.
-:- pragma foreign_proc("C", glut_window_format_id = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_WINDOW_FORMAT_ID;
 ").
 
 %-----------------------------------------------------------------------------%

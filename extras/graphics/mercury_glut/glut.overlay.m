@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,26 +105,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func glut_normal = int.
-:- pragma foreign_proc("C",
-    glut_normal = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_NORMAL;
-").
-
-:- func glut_overlay = int.
-:- pragma foreign_proc("C",
-    glut_overlay = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_OVERLAY;
-").
-
-:- func layer_to_int(layer) = int.
-
-layer_to_int(normal) = glut_normal.
-layer_to_int(overlay) = glut_overlay.
+:- pragma foreign_enum("C", layer/0,
+[
+    normal  - "GLUT_NORMAL",
+    overlay - "GLUT_OVERLAY"
+]).
 
 %-----------------------------------------------------------------------------%
 
@@ -201,13 +186,13 @@ overlay.establish(Result, !IO) :-
 %-----------------------------------------------------------------------------%
 
 overlay.use_layer(Layer, Result, !IO) :-
-    overlay.use_layer_2(layer_to_int(Layer), Result0, !IO),
+    overlay.use_layer_2(Layer, Result0, !IO),
     ( Result0 = 1 -> Result = ok
     ; Result0 = 0 -> Result = error("Unable to change layer.")
     ; error("Unknown result from layer change.")
     ).
 
-:- pred overlay.use_layer_2(int::in, int::out, io::di, io::uo) is det.
+:- pred overlay.use_layer_2(layer::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     overlay.use_layer_2(Layer::in, Result::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
@@ -228,16 +213,8 @@ overlay.use_layer(Layer, Result, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-overlay.layer_in_use(Layer, !IO) :-
-    overlay.layer_in_use_2(Layer0, !IO),
-    ( Layer0 = glut_normal -> Layer = normal
-    ; Layer0 = glut_overlay -> Layer = overlay
-    ; error("Unable to determine which layer is in use.")
-    ).
-
-:- pred overlay.layer_in_use_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    overlay.layer_in_use_2(Layer::out, IO0::di, IO::uo),
+    overlay.layer_in_use(Layer::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Layer = (MR_Integer) glutLayerGet(GLUT_LAYER_IN_USE);

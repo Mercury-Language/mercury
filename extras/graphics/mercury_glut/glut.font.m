@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,7 +87,7 @@
 ").
 
 :- type font_ptr.
-:- pragma foreign_type("C", font_ptr, "void *").
+:- pragma foreign_type("C", font_ptr, "void *", [can_pass_as_mercury_type]).
 
 %----------------------------------------------------------------------------%
 %

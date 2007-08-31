@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,9 +56,14 @@
     %
 :- pred callback.disable_keyboard_func(io::di, io::uo) is det.
 
-:- type button ---> left ; middle ; right.
+:- type button
+    --->    left
+    ;       middle
+    ;       right.
 
-:- type button_state ---> up ; down.
+:- type button_state
+    --->    up
+    ;       down.
 
     % Registers the mouse callback for the current window.
     % This is called whenever the state of one of the mouse buttons
@@ -100,7 +105,9 @@
     %
 :- pred callback.disable_passive_motion_func(io::di, io::uo) is det.
 
-:- type entry_state ---> left ; entered.
+:- type entry_state
+    --->    left
+    ;       entered.
 
     % Registers the entry callback for the current window.
     % This is called whenever the mouse pointer enters/leaves the
@@ -113,7 +120,9 @@
     %
 :- pred callback.disable_entry_func(io::di, io::uo) is det.
 
-:- type visibility ---> visible ; not_visible.
+:- type visibility
+    --->    visible
+    ;       not_visible.
 
     % Register the visibility callback for the current window.
     % This visibility callback is whenever the visibility of a
@@ -433,54 +442,30 @@ void MGLUT_mouse_callback(int button, int state, int x, int y)
         in, in, in, in, di, uo),
     "MGLUT_do_mouse_callback").
 :- pred do_mouse_callback(pred(button, button_state, int, int, io, io), 
-        int, int, int, int, io, io).
+        button, button_state, int, int, io, io).
 :- mode do_mouse_callback(pred(in, in, in, in, di, uo) is det, in, in, in, 
         in, di, uo) is det.
 
-do_mouse_callback(MouseFunc, Button0, State0, X, Y, !IO) :-
-    (      if Button0 = glut_left_button    then Button = left
-      else if Button0 = glut_middle_button  then Button = middle
-      else if Button0 = glut_right_button   then Button = right
-      else error("Unknown mouse button.")
-    ),
-    (      if State0 = glut_up   then State = up
-      else if State0 = glut_down then State = down
-      else error("Unknown mouse button state.")
-    ),
-    MouseFunc(Button, State, X, Y, !IO).
+do_mouse_callback(MouseFunc, Button, ButtonState, X, Y, !IO) :-
+    MouseFunc(Button, ButtonState, X, Y, !IO).
 
-:- func glut_left_button = int.
-:- pragma foreign_proc("C", glut_left_button = (V::out),
-    [will_not_call_mercury, promise_pure, thread_safe], "
-    V = (MR_Integer) GLUT_LEFT_BUTTON;
-").
+:- pragma foreign_enum("C", button/0,
+[
+    left    - "GLUT_LEFT_BUTTON",
+    middle  - "GLUT_MIDDLE_BUTTON",
+    right   - "GLUT_RIGHT_BUTTON"
+]).
 
-:- func glut_middle_button = int.
-:- pragma foreign_proc("C", glut_middle_button = (V::out),
-    [will_not_call_mercury, promise_pure, thread_safe], "
-    V = (MR_Integer) GLUT_MIDDLE_BUTTON;
-").
+:- pragma foreign_enum("C", button_state/0,
+[
+    up   - "GLUT_UP",
+    down - "GLUT_DOWN"
+]).
 
-:- func glut_right_button = int.
-:- pragma foreign_proc("C", glut_right_button = (V::out),
-    [will_not_call_mercury, promise_pure, thread_safe], "
-    V = (MR_Integer) GLUT_RIGHT_BUTTON;
-").
-
-:- func glut_up = int.
-:- pragma foreign_proc("C", glut_up = (V::out),
-    [will_not_call_mercury, promise_pure, thread_safe], "
-    V = (MR_Integer) GLUT_UP;
-").
-
-:- func glut_down = int.
-:- pragma foreign_proc("C", glut_down = (V::out),
-    [will_not_call_mercury, promise_pure, thread_safe], "
-    V = (MR_Integer) GLUT_DOWN;
-").
-
-:- pragma foreign_proc("C", disable_mouse_func(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure], "
+:- pragma foreign_proc("C",
+    disable_mouse_func(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
     glutMouseFunc(NULL);
     IO = IO0;
 ").
@@ -585,15 +570,11 @@ void MGLUT_entry_callback(int state)
 :- pragma foreign_export("C",
     do_entry_callback(pred(in, di, uo) is det, in, di, uo), 
     "MGLUT_do_entry_callback").
-:- pred do_entry_callback(pred(entry_state, io, io), int, io, io).
+:- pred do_entry_callback(pred(entry_state, io, io), entry_state, io, io).
 :- mode do_entry_callback(pred(in, di, uo) is det, in, di, uo) is det.
 
-do_entry_callback(EntryFunc, State0, !IO) :-
-    (      if State0 = glut_left    then State = left
-      else if State0 = glut_entered then State = entered
-      else error("Unable to determine entry state.")
-    ),
-    EntryFunc(State, !IO).
+do_entry_callback(EntryFunc, EntryState, !IO) :-
+    EntryFunc(EntryState, !IO).
 
 :- pragma foreign_proc("C", 
     disable_entry_func(IO0::di, IO::uo),
@@ -603,26 +584,18 @@ do_entry_callback(EntryFunc, State0, !IO) :-
     IO = IO0;
 ").
 
-:- func glut_left = int.
-:- pragma foreign_proc("C", glut_left = (Value::out), 
-    [will_not_call_mercury, promise_pure],
-"
-    Value = (MR_Integer) GLUT_LEFT;
-").
-
-:- func glut_entered = int.
-:- pragma foreign_proc("C", glut_entered = (Value::out),
-    [will_not_call_mercury, promise_pure],
-"
-    Value = (MR_Integer) GLUT_ENTERED;
-").
+:- pragma foreign_enum("C", entry_state/0,
+[
+    left    - "GLUT_LEFT",
+    entered - "GLUT_ENTERED"
+]).
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     visibility_func(VisibilityFunc::pred(in, di, uo) is det, IO0::di, 
         IO::uo),
-    [will_not_call_mercury, tabled_for_io,  promise_pure],
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     mglut_visibility_callback = VisibilityFunc;
     glutVisibilityFunc(MGLUT_visibility_callback);
@@ -638,37 +611,25 @@ void MGLUT_visibility_callback(int state)
 :- pragma foreign_export("C",
     do_visibility_callback(pred(in, di, uo) is det, in, di, uo),
     "MGLUT_do_visibility_callback").
-:- pred do_visibility_callback(pred(visibility, io, io), int, io, io).
+:- pred do_visibility_callback(pred(visibility, io, io), visibility, io, io).
 :- mode do_visibility_callback(pred(in, di, uo) is det, in, di, uo) is det.
 
-do_visibility_callback(VisibilityFunc, State0, !IO) :-
-    (      if State0 = glut_visible     then State = visible
-      else if State0 = glut_not_visible then State = not_visible
-      else    error("Unable to determine visibility.")
-    ),
-    VisibilityFunc(State, !IO).
+do_visibility_callback(VisibilityFunc, Visibility, !IO) :-
+    VisibilityFunc(Visibility, !IO).
 
 :- pragma foreign_proc("C",
     disable_visibility_func(IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure],
+    [will_not_call_mercury, tabled_for_io, promise_pure, tabled_for_io],
 "
     glutVisibilityFunc(NULL);
     IO = IO0;
 ").
 
-:- func glut_visible = int.
-:- pragma foreign_proc("C", glut_visible = (Value::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_VISIBLE;
-").
-
-:- func glut_not_visible = int.
-:- pragma foreign_proc("C", glut_not_visible = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Value = (MR_Integer) GLUT_NOT_VISIBLE;
-").
+:- pragma foreign_enum("C", visibility/0,
+[
+    visible     - "GLUT_VISIBLE",
+    not_visible - "GLUT_NOT_VISIBLE"
+]).
 
 %-----------------------------------------------------------------------------%
 %
@@ -677,7 +638,7 @@ do_visibility_callback(VisibilityFunc, State0, !IO) :-
 
 :- pragma foreign_proc("C",
     idle_func(Closure::pred(di, uo) is det, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure],
+    [will_not_call_mercury, tabled_for_io, promise_pure, tabled_for_io],
 "
     mglut_idle_callback = Closure;
     glutIdleFunc(MGLUT_idle_callback);  
@@ -700,7 +661,7 @@ do_idle_callback(IdleFunc, !IO) :- IdleFunc(!IO).
 
 :- pragma foreign_proc("C",
     disable_idle_func(IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure],
+    [will_not_call_mercury, tabled_for_io, promise_pure, tabled_for_io],
 "
     glutIdleFunc(NULL);
     IO = IO0;
@@ -813,12 +774,12 @@ void MGLUT_special_callback(int key, int x, int y)
         in, in, in, di, uo),
     "MGLUT_do_special_callback").
 :- pred do_special_callback(pred(special_key, int, int, io, io), 
-    int, int, int, io, io).
-:- mode do_special_callback(pred(in,in,in,di,uo) is det, in, in, in, di, uo) 
-    is det.
+    special_key, int, int, io, io).
+:- mode do_special_callback(pred(in, in, in, di, uo) is det,
+    in, in, in, di, uo) is det.
 
 do_special_callback(Special, Key, X, Y, !IO) :-
-    Special(int_to_special_key(Key), X, Y, !IO).
+    Special(Key, X, Y, !IO).
 
 :- pragma foreign_proc("C",
     callback.disable_special_func(IO0::di, IO::uo),
@@ -855,12 +816,12 @@ void MGLUT_special_up_callback(int key, int x, int y)
         in, in, in, di, uo),
     "MGLUT_do_special_up_callback").
 :- pred do_special_up_callback(pred(special_key, int, int, io, io), 
-        int, int, int, io, io).
+        special_key, int, int, io, io).
 :- mode do_special_up_callback(pred(in,in,in,di,uo) is det, in, in, in, di, uo) 
         is det.
 
 do_special_up_callback(SpecialUpFunc, Key, X, Y, !IO) :-
-    SpecialUpFunc(int_to_special_key(Key), X, Y, !IO).
+    SpecialUpFunc(Key, X, Y, !IO).
 
 :- pragma foreign_proc("C",
     callback.disable_special_up_func(IO0::di, IO::uo),
@@ -871,184 +832,31 @@ do_special_up_callback(SpecialUpFunc, Key, X, Y, !IO) :-
 ").
 
 %-----------------------------------------------------------------------------%
-%
-% Constants for special keyboard callbacks
-%
 
-:- func int_to_special_key(int) = special_key.
-
-int_to_special_key(KeyCode) = Key :-
-    (      if KeyCode = glut_key_f1        then Key = f1
-      else if KeyCode = glut_key_f2        then Key = f2
-      else if KeyCode = glut_key_f3        then Key = f3
-      else if KeyCode = glut_key_f4        then Key = f4
-      else if KeyCode = glut_key_f5        then Key = f5
-      else if KeyCode = glut_key_f6        then Key = f6
-      else if KeyCode = glut_key_f7        then Key = f7
-      else if KeyCode = glut_key_f8        then Key = f8
-      else if KeyCode = glut_key_f9        then Key = f9
-      else if KeyCode = glut_key_f10       then Key = f10
-      else if KeyCode = glut_key_f11       then Key = f11 
-      else if KeyCode = glut_key_f12       then Key = f12 
-      else if KeyCode = glut_key_left      then Key = left 
-      else if KeyCode = glut_key_up        then Key = up 
-      else if KeyCode = glut_key_right     then Key = right 
-      else if KeyCode = glut_key_down      then Key = down 
-      else if KeyCode = glut_key_page_up   then Key = page_up 
-      else if KeyCode = glut_key_page_down then Key = page_down 
-      else if KeyCode = glut_key_home      then Key = home 
-      else if KeyCode = glut_key_end       then Key = end 
-      else if KeyCode = glut_key_insert    then Key = insert 
-      
-      else error("Unknown special key encountered.")
-    ).
-
-:- func glut_key_f1 = int.
-:- pragma foreign_proc("C", glut_key_f1 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F1;
-").
-
-:- func glut_key_f2 = int.
-:- pragma foreign_proc("C", glut_key_f2 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F2;
-").
-
-:- func glut_key_f3 = int.
-:- pragma foreign_proc("C", glut_key_f3 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F3;
-").
-
-:- func glut_key_f4 = int.
-:- pragma foreign_proc("C", glut_key_f4 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F4;
-").
-
-:- func glut_key_f5 = int.
-:- pragma foreign_proc("C", glut_key_f5 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F5;
-").
-
-:- func glut_key_f6 = int.
-:- pragma foreign_proc("C", glut_key_f6 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F6;
-").
-
-:- func glut_key_f7 = int.
-:- pragma foreign_proc("C", glut_key_f7 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F7;
-").
-
-:- func glut_key_f8 = int.
-:- pragma foreign_proc("C", glut_key_f8 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-" 
-    V = (MR_Integer) GLUT_KEY_F8;
-").
-
-:- func glut_key_f9 = int.
-:- pragma foreign_proc("C", glut_key_f9 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F9;
-").
-
-:- func glut_key_f10 = int.
-:- pragma foreign_proc("C", glut_key_f10 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F10;
-").
-
-:- func glut_key_f11 = int.
-:- pragma foreign_proc("C", glut_key_f11 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F11;
-").
-
-:- func glut_key_f12 = int.
-:- pragma foreign_proc("C", glut_key_f12 = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_F12;
-").
-
-:- func glut_key_left = int.
-:- pragma foreign_proc("C", glut_key_left = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_LEFT;
-").
-
-:- func glut_key_up = int.
-:- pragma foreign_proc("C", glut_key_up = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_UP;
-").
-
-:- func glut_key_right = int.
-:- pragma foreign_proc("C", glut_key_right = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_RIGHT;
-").
-
-:- func glut_key_down = int.
-:- pragma foreign_proc("C", glut_key_down = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_DOWN;
-").
-
-:- func glut_key_page_up = int.
-:- pragma foreign_proc("C", glut_key_page_up = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_PAGE_UP;
-").
-
-:- func glut_key_page_down = int.
-:- pragma foreign_proc("C", glut_key_page_down = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_PAGE_DOWN;
-").
-
-:- func glut_key_home = int.
-:- pragma foreign_proc("C", glut_key_home = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_HOME;
-").
-
-:- func glut_key_end = int.
-:- pragma foreign_proc("C", glut_key_end = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_END;
-").
-
-:- func glut_key_insert = int.
-:- pragma foreign_proc("C", glut_key_insert = (V::out), 
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    V = (MR_Integer) GLUT_KEY_INSERT;
-").
+:- pragma foreign_enum("C", special_key/0,
+[
+    f1          - "GLUT_KEY_F1",
+    f2          - "GLUT_KEY_F2",
+    f3          - "GLUT_KEY_F3",
+    f4          - "GLUT_KEY_F4",
+    f5          - "GLUT_KEY_F5",
+    f6          - "GLUT_KEY_F6",
+    f7          - "GLUT_KEY_F7",
+    f8          - "GLUT_KEY_F8",
+    f9          - "GLUT_KEY_F9",
+    f10         - "GLUT_KEY_F10",
+    f11         - "GLUT_KEY_F11",
+    f12         - "GLUT_KEY_F12",
+    left        - "GLUT_KEY_LEFT",
+    up          - "GLUT_KEY_UP",
+    right       - "GLUT_KEY_RIGHT",
+    down        - "GLUT_KEY_DOWN",
+    page_up     - "GLUT_KEY_PAGE_UP",
+    page_down   - "GLUT_KEY_PAGE_DOWN",
+    home        - "GLUT_KEY_HOME",
+    end         - "GLUT_KEY_END",
+    insert      - "GLUT_KEY_INSERT"
+]).
 
 %-----------------------------------------------------------------------------%
 :- end_module glut.callback.
