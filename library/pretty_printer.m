@@ -684,7 +684,6 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
         formatting_limit::in, formatting_limit::out, ops.priority::in) is det.
 
 expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
-    decrement_limit(!Limit),
     ( if Args = [] then
         Doc0 = str(term_io.quoted_atom(Name))
       else if limit_overrun(!.Limit) then
@@ -701,6 +700,7 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
             str("("), indent([format_list(Args, str(", "))]), str(")")
         ])
     ),
+    decrement_limit(!Limit),
     Doc = set_formatting_limit_correctly(!.Limit, Doc0).
 
 %-----------------------------------------------------------------------------%

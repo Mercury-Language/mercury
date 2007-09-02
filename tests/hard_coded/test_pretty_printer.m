@@ -219,6 +219,8 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
     ;   Limit = linear(10)
     ;   Limit = triangular(100)
     ;   Limit = triangular(10)
+    ;   Limit = linear(1)
+    ;   Limit = triangular(1)
     ),
     (   MaxLines = 10
     ;   MaxLines = 3

@@ -60,7 +60,7 @@ big(
 browser> width 79
 browser> depth 3
 browser> ls
-big(big(..., ...), [..., ...], ...)
+big(big(big(...), ...), [..., ...], ...)
 browser> format raw_pretty
 browser> lines 4
 browser> width 40

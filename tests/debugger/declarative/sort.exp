@@ -35,7 +35,7 @@ write_string(...)
 write_string(...)
 Valid? depth io 10
 dd> print io 9
-read_line_as_string_2(<<foreign>>, yes, 0, "rafe
+read_line_as_string_2('<<foreign>>', yes, 0, "rafe
 ")
 dd> depth io 1
 dd> no
