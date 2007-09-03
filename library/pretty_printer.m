@@ -42,7 +42,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module pretty_printer.
-
 :- interface.
 
 :- import_module list.
@@ -52,7 +51,7 @@
 :- import_module type_desc.
 :- import_module univ.
 
-
+%-----------------------------------------------------------------------------%
 
 :- type doc
     --->    str(string)
@@ -242,7 +241,7 @@
 :- import_module term_io.
 :- import_module tree234.               % For tree234_to_doc.
 
-
+%-----------------------------------------------------------------------------%
 
 :- type formatter_map == map(string, map(string, map(int, formatter))).
 
