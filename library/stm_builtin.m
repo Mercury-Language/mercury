@@ -121,14 +121,6 @@
 :- impure pred stm_block_thread(stm::ui) is det.
 
 %-----------------------------------------------------------------------------%
-
-    % Debugging predicates.  XXX Only temp.
-    %
-:- pred very_unsafe_write_tvar(tvar(T)::in, T::in, stm::di, stm::uo) is det.
-:- pred stm_debug_sleep(int::in, stm::di, stm::uo) is det.
-:- pred stm_debug_sleep_IO(int::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -519,38 +511,6 @@ ml_initialise_stm :-
 ").
 
 %-----------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    very_unsafe_write_tvar(TVar::in, Val::in, STM0::di, STM::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ML_TRACE_STM(""WARNING: very_unsafe_write_tvar predicate called"");
-
-    TVar->tvar_val = Val;
-    STM = STM0;
-").
-
-%:- pred stm_debug_sleep(int::in, stm::di, stm::uo) is det.
-:- pragma foreign_proc("C",
-    stm_debug_sleep(Amt::in, STM0::di, STM::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ML_TRACE_STM(""Putting thread to sleep"");
-    sleep(Amt);
-
-    STM = STM0;
-").
-
-%:- pred stm_debug_sleep_IO(int::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C",
-    stm_debug_sleep_IO(Amt::in, IO0::di, IO::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ML_TRACE_STM(""Putting thread to sleep"");
-    sleep(Amt);
-    IO = IO0;
-").
-%----------------------------------------------------------------------------%
 
 /* To Implement:
 **
