@@ -483,13 +483,12 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             typecheck_info_init(!.ModuleInfo, PredId, IsFieldAccessFunction,
                 TypeVarSet0, VarSet, ExplicitVarTypes0, !.HeadTypeParams,
                 Constraints, Status, PredMarkers, StartingSpecs, !:Info),
-            OrigTypeAssignSet = !.Info ^ tc_info_type_assign_set,
             get_clause_list(ClausesRep1, Clauses1),
             typecheck_clause_list(HeadVars, ArgTypes0, Clauses1, Clauses,
                 !Info),
             % We need to perform a final pass of context reduction at the end,
             % before checking the typeclass constraints.
-            perform_context_reduction(OrigTypeAssignSet, !Info),
+            perform_context_reduction(!Info),
             typecheck_check_for_ambiguity(whole_pred, HeadVars, !Info),
             typecheck_info_get_final_info(!.Info, !.HeadTypeParams,
                 ExistQVars0, ExplicitVarTypes0, TypeVarSet,
@@ -1227,11 +1226,10 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         % correctly compute the HeadTypeParams that result from existentially
         % typed foreign_procs. (We could probably do that more efficiently
         % than the way it is done below, though.)
-        OrigTypeAssignSet = !.Info ^ tc_info_type_assign_set,
         ArgVars = list.map(foreign_arg_var, Args),
         GoalPath = goal_info_get_goal_path(GoalInfo),
         typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info),
-        perform_context_reduction(OrigTypeAssignSet, !Info),
+        perform_context_reduction(!Info),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(ShorthandGoal0),
@@ -1371,8 +1369,6 @@ typecheck_event_call(EventName, Args, !Info) :-
     is det.
 
 typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info) :-
-    OrigTypeAssignSet = !.Info ^ tc_info_type_assign_set,
-
     % Look up the called predicate's arg types.
     ModuleInfo = !.Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -1406,7 +1402,7 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info) :-
         % See the paper: "Type classes: an exploration of the design space",
         % S. Peyton-Jones, M. Jones 1997, for a discussion of some of the
         % issues.
-        perform_context_reduction(OrigTypeAssignSet, !Info)
+        perform_context_reduction(!Info)
     ;
         PredId = invalid_pred_id,
         Spec = report_pred_call_error(!.Info, CallId),
@@ -1761,9 +1757,8 @@ typecheck_unification(X, rhs_var(Y), rhs_var(Y), _, !Info) :-
     typecheck_unify_var_var(X, Y, !Info).
 typecheck_unification(X, rhs_functor(Functor, ExistConstraints, Args),
         rhs_functor(Functor, ExistConstraints, Args), GoalPath, !Info) :-
-    OrigTypeAssignSet = !.Info ^ tc_info_type_assign_set,
     typecheck_unify_var_functor(X, Functor, Args, GoalPath, !Info),
-    perform_context_reduction(OrigTypeAssignSet, !Info).
+    perform_context_reduction(!Info).
 typecheck_unification(X,
         rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal0),

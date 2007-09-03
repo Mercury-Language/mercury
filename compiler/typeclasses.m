@@ -26,12 +26,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % perform_context_reduction(OrigTypeAssignSet, !Info) is true
+    % perform_context_reduction(!Info) is true
     % iff either
     % (a) !:Info is the typecheck_info that results from performing
     % context reduction on the type_assigns in !.Info, or
-    % (b) if there is no valid context reduction, then !:Info is !.Info
-    % with the type assign set replaced by OrigTypeAssignSet (see below).
+    % (b) if there is no valid context reduction, then an appropriate
+    % error message is given.  To avoid reporting the same error at
+    % subsequent calls, !:Info is !.Info with all unproven constraints
+    % removed from the type assign set.
     %
     % Context reduction is the process of eliminating redundant constraints
     % from the constraints in the type_assign and adding the proof of the
@@ -64,15 +66,8 @@
     % the constraint has its top level functor bound, but there is no
     % instance declaration for that type.
     %
-    % If all type_assigns from the typecheck_info are rejected, than an
-    % appropriate error message is given, the type_assign_set is
-    % restored to the original one given by OrigTypeAssignSet,
-    % but without any typeclass constraints.
-    % The reason for this is to avoid reporting the same error at
-    % subsequent calls to perform_context_reduction.
-    %
-:- pred perform_context_reduction(type_assign_set::in,
-    typecheck_info::in, typecheck_info::out) is det.
+:- pred perform_context_reduction(typecheck_info::in, typecheck_info::out)
+    is det.
 
     % Apply context reduction to the list of class constraints by applying
     % the instance rules or superclass rules, building up proofs for
@@ -107,7 +102,9 @@
 
 %-----------------------------------------------------------------------------%
 
-perform_context_reduction(OrigTypeAssignSet, !Info) :-
+:- import_module io.
+
+perform_context_reduction(!Info) :-
     trace [io(!IO)] (
         type_checkpoint("before context reduction", !.Info, !IO)
     ),
@@ -117,13 +114,16 @@ perform_context_reduction(OrigTypeAssignSet, !Info) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     list.filter_map(
         reduce_type_assign_context(ClassTable, InstanceTable),
-        TypeAssignSet0, TypeAssignSet),
+        TypeAssignSet0, TypeAssignSet1),
     (
         % Check that this context reduction hasn't eliminated
         % all the type assignments.
         TypeAssignSet0 = [_ | _],
-        TypeAssignSet = []
+        TypeAssignSet1 = []
     ->
+        trace [io(!IO)] (
+            io.write_string("HERE\n", !IO)
+        ),
         Spec = report_unsatisfiable_constraints(!.Info, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info),
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
@@ -136,11 +136,11 @@ perform_context_reduction(OrigTypeAssignSet, !Info) :-
                 Constraints0 ^ assumed, Constraints),
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
-        list.map(DeleteConstraints, OrigTypeAssignSet, NewTypeAssignSet),
-        !:Info = !.Info ^ tc_info_type_assign_set := NewTypeAssignSet
+        list.map(DeleteConstraints, TypeAssignSet0, TypeAssignSet)
     ;
-        !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
-    ).
+        TypeAssignSet = TypeAssignSet1
+    ),
+    !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet.
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,
     type_assign::in, type_assign::out) is semidet.

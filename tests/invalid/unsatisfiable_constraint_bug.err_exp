@@ -6,4 +6,4 @@ unsatisfiable_constraint_bug.m:025:   unsatisfiable typeclass constraint:
 unsatisfiable_constraint_bug.m:025:   `stream.reader(S, float, B, E)'.
 unsatisfiable_constraint_bug.m:026: In clause for predicate `test_stream'/5:
 unsatisfiable_constraint_bug.m:026:   unsatisfiable typeclass constraint:
-unsatisfiable_constraint_bug.m:026:   `stream.reader(S, float, State, E)'.
+unsatisfiable_constraint_bug.m:026:   `stream.reader(S, float, B, E)'.

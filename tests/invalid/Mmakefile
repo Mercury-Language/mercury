@@ -198,6 +198,7 @@ SINGLEMODULE= \
 	typeclass_test_10 \
 	typeclass_test_11 \
 	typeclass_test_12 \
+	typeclass_test_13 \
 	typeclass_test_2 \
 	typeclass_test_3 \
 	typeclass_test_4 \

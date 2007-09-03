@@ -1,0 +1,8 @@
+typeclass_test_13.m:034: In clause for predicate
+typeclass_test_13.m:034:   `mercury_format_pragma_foreign_export_enum_override'/3:
+typeclass_test_13.m:034:   unsatisfiable typeclass constraint:
+typeclass_test_13.m:034:   `typeclass_test_13.output(U)'.
+typeclass_test_13.m:035: In clause for predicate
+typeclass_test_13.m:035:   `mercury_format_pragma_foreign_export_enum_override'/3:
+typeclass_test_13.m:035:   unsatisfiable typeclass constraint:
+typeclass_test_13.m:035:   `typeclass_test_13.output(U)'.
