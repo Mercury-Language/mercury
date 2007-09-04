@@ -686,7 +686,12 @@ functor_number_cc(Term, FunctorNumber, Arity) :-
     is_du_type(TypeCtorRep),
     NonCanon = canonicalize,
     deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        _Functor, FunctorNumber, Arity, _Arguments).
+        _Functor, FunctorNumber, Arity0, _Arguments),
+    % XXX force cc_multi as required by the interface for functor_number_cc.
+    % It seems wrong since deconstruct(canonicalize) is det.
+    ( Arity = Arity0
+    ; Arity = Arity0
+    ).
 
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = Term ^ type_info,
