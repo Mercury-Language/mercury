@@ -121,9 +121,6 @@ perform_context_reduction(!Info) :-
         TypeAssignSet0 = [_ | _],
         TypeAssignSet1 = []
     ->
-        trace [io(!IO)] (
-            io.write_string("HERE\n", !IO)
-        ),
         Spec = report_unsatisfiable_constraints(!.Info, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info),
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
