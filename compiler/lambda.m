@@ -395,19 +395,31 @@ lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         Call_CodeModel = proc_info_interface_code_model(Call_ProcInfo),
         determinism_to_code_model(Detism, CodeModel),
         module_info_get_globals(ModuleInfo0, Globals),
+        globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
-            HighLevelCode = no,
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_java
+            ; Target = target_asm
+            ; Target = target_x86_64
+            ),
             (
-                CodeModel = Call_CodeModel
+                HighLevelCode = no,
+                (
+                    CodeModel = Call_CodeModel
+                ;
+                    CodeModel = model_non,
+                    Call_CodeModel = model_det
+                )
             ;
-                CodeModel = model_non,
-                Call_CodeModel = model_det
+                HighLevelCode = yes,
+                Call_PredOrFunc = pred_info_is_pred_or_func(Call_PredInfo),
+                PredOrFunc = Call_PredOrFunc,
+                CodeModel = Call_CodeModel
             )
         ;
-            HighLevelCode = yes,
-            Call_PredOrFunc = pred_info_is_pred_or_func(Call_PredInfo),
-            PredOrFunc = Call_PredOrFunc,
+            Target = target_erlang,
             CodeModel = Call_CodeModel
         ),
 

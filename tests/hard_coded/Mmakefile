@@ -154,6 +154,7 @@ ORDINARY_PROGS=	\
 	nonascii \
 	nondet_copy_out \
 	nondet_ctrl_vn \
+	nondet_lambda \
 	nullary_ho_func \
 	one_member \
 	opt_dup_bug \
