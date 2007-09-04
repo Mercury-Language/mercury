@@ -19,10 +19,13 @@
 :- module erlang_rtti_implementation.
 :- interface.
 
+:- import_module construct.
 :- import_module deconstruct.
 :- import_module list.
 :- import_module type_desc.
 :- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- type type_info.
 :- type type_ctor_info.
@@ -56,34 +59,51 @@
 :- pred type_ctor_desc_name_and_arity(type_ctor_desc::in,
     string::out, string::out, int::out) is det.
 
-:- pred deconstruct(T, noncanon_handling, string, int, int, list(univ)).
-:- mode deconstruct(in, in(do_not_allow), out, out, out, out) is det.
-:- mode deconstruct(in, in(canonicalize), out, out, out, out) is det.
-:- mode deconstruct(in, in(include_details_cc), out, out, out, out)
+%-----------------------------------------------------------------------------%
+%
+% Implementations for use from deconstruct
+%
+
+:- pred functor_number(T::in, functor_number_lex::out, int::out) is semidet.
+
+:- pred functor_number_cc(T::in, functor_number_lex::out,
+    int::out) is cc_nondet. 
+
+:- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
+:- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
+:- mode deconstruct(in, in(canonicalize), out, out, out) is det.
+:- mode deconstruct(in, in(include_details_cc), out, out, out)
     is cc_multi.
-:- mode deconstruct(in, in, out, out, out, out) is cc_multi.
+:- mode deconstruct(in, in, out, out, out) is cc_multi.
+
+:- pred deconstruct_du(T, noncanon_handling, functor_number_lex,
+    int, list(univ)).
+:- mode deconstruct_du(in, in(do_not_allow), out, out, out) is semidet.
+:- mode deconstruct_du(in, in(include_details_cc), out, out, out) is cc_nondet.
+:- mode deconstruct_du(in, in, out, out, out) is cc_nondet.
 
 %-----------------------------------------------------------------------------%
 %
-% Implementations for use from construct.
+% Implementations for use from construct
+%
 
 :- func num_functors(type_desc.type_desc) = int is semidet.
 
-:- pred get_functor(type_desc.type_desc::in, int::in, string::out, int::out,
-    list(type_desc.type_desc)::out) is semidet.
+:- pred get_functor(type_desc.type_desc::in, functor_number_lex::in,
+    string::out, int::out, list(type_desc.type_desc)::out) is semidet.
 
-:- pred get_functor_with_names(type_desc.type_desc::in, int::in, string::out,
-    int::out, list(type_desc.type_desc)::out, list(string)::out)
+:- pred get_functor_with_names(type_desc.type_desc::in, functor_number_lex::in,
+    string::out, int::out, list(type_desc.type_desc)::out, list(string)::out)
     is semidet.
 
-:- pred get_functor_ordinal(type_desc.type_desc::in, int::in, int::out)
-    is semidet.
+:- pred get_functor_ordinal(type_desc.type_desc::in, functor_number_lex::in,
+    functor_number_ordinal::out) is semidet.
 
-:- pred get_functor_lex(type_desc.type_desc::in, int::in, int::out)
-    is semidet.
+:- pred get_functor_lex(type_desc.type_desc::in, functor_number_ordinal::in,
+    functor_number_lex::out) is semidet.
 
-:- func construct(type_desc::in, int::in, list(univ)::in) = (univ::out)
-    is semidet.
+:- func construct(type_desc::in, functor_number_lex::in, list(univ)::in)
+    = (univ::out) is semidet.
 
 :- func construct_tuple_2(list(univ), list(type_desc), int) = univ.
 
@@ -650,12 +670,45 @@ type_ctor_info_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
+functor_number(Term, FunctorNumber, Arity) :-
+    TypeInfo = Term ^ type_info,
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    is_du_type(TypeCtorRep),
+    NonCanon = do_not_allow,
+    deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        _Functor, FunctorNumber, Arity, _Arguments).
+
+functor_number_cc(Term, FunctorNumber, Arity) :-
+    TypeInfo = Term ^ type_info,
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    is_du_type(TypeCtorRep),
+    NonCanon = canonicalize,
+    deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        _Functor, FunctorNumber, Arity, _Arguments).
+
+deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = Term ^ type_info,
     TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        Functor, FunctorNumber, Arity, Arguments).
+        Functor, _FunctorNumber, Arity, Arguments).
+
+deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
+    TypeInfo = Term ^ type_info,
+    TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    is_du_type(TypeCtorRep),
+    deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        _Functor, FunctorNumber, Arity, Arguments).
+
+:- pred is_du_type(erlang_type_ctor_rep::in) is semidet.
+
+is_du_type(etcr_du).
+is_du_type(etcr_dummy).
+is_du_type(etcr_list).
+is_du_type(etcr_tuple).
 
 :- pred deconstruct_2(T, type_info, type_ctor_info_evaled,
     erlang_type_ctor_rep, noncanon_handling, string, int, int, list(univ)).
@@ -672,8 +725,9 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     (
         TypeCtorRep = etcr_du,
         FunctorReps = TypeCtorInfo ^ type_ctor_functors,
-        matching_du_functor(FunctorReps, 0, Term, FunctorRep, FunctorNumber),
+        matching_du_functor(FunctorReps, Term, FunctorRep),
         Functor = string.from_char_list(FunctorRep ^ edu_name),
+        FunctorNumber = FunctorRep ^ edu_lex,
         Arity = FunctorRep ^ edu_orig_arity,
         Arguments = list.map(
             get_du_functor_arg(TypeInfo, FunctorRep, Term), 1 .. Arity)
@@ -754,7 +808,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = etcr_string,
         det_dynamic_cast(Term, String),
-        Functor = term_io.quoted_string(String),
+        Functor = "\"" ++ String ++ "\"",
         FunctorNumber = 0,
         Arity = 0,
         Arguments = []
@@ -836,22 +890,21 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ).
 
     %
-    % matching_du_functor(FunctorReps, Index, Term, FunctorRep, FunctorNumber)
+    % matching_du_functor(FunctorReps, Term, FunctorRep)
     %
     % finds the erlang_du_functor in the list Functors which describes
     % the given Term.
     %
-:- pred matching_du_functor(list(erlang_du_functor)::in, int::in, T::in,
-    erlang_du_functor::out, int::out) is det.
+:- pred matching_du_functor(list(erlang_du_functor)::in, T::in,
+    erlang_du_functor::out) is det.
 
-matching_du_functor([], _, _, _, _) :-
+matching_du_functor([], _, _) :-
     error(this_file ++ " matching_du_functor/2").
-matching_du_functor([F | Fs], Index, T, Functor, FunctorNumber) :-
+matching_du_functor([F | Fs], T, Functor) :-
     ( matches_du_functor(T, F) ->
-        Functor = F,
-        FunctorNumber = Index
+        Functor = F
     ;
-        matching_du_functor(Fs, Index + 1, T, Functor, FunctorNumber)
+        matching_du_functor(Fs, T, Functor)
     ).
 
     %
@@ -1228,8 +1281,8 @@ get_functor_lex(TypeDesc, Ordinal, FunctorNum) :-
         FunctorNum = 0
     ).
 
-:- pred matching_du_ordinal(list(erlang_du_functor)::in, int::in,
-    erlang_du_functor::out) is semidet.
+:- pred matching_du_ordinal(list(erlang_du_functor)::in,
+    functor_number_ordinal::in, erlang_du_functor::out) is semidet.
 
 matching_du_ordinal(Fs, Ordinal, Functor) :-
     list.index0(Fs, Ordinal, Functor),
@@ -1240,8 +1293,8 @@ matching_du_ordinal(Fs, Ordinal, Functor) :-
         error(this_file ++ " matching_du_ordinal/3")
     ).
 
-:- pred matching_du_functor_number(list(erlang_du_functor)::in, int::in,
-    erlang_du_functor::out) is semidet.
+:- pred matching_du_functor_number(list(erlang_du_functor)::in,
+    functor_number_lex::in, erlang_du_functor::out) is semidet.
 
 matching_du_functor_number([F | Fs], FunctorNum, Functor) :-
     ( F ^ edu_lex = FunctorNum ->

@@ -433,7 +433,7 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
 
 deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.deconstruct(Term, NonCanon, _Functor,
+        erlang_rtti_implementation.deconstruct_du(Term, NonCanon,
             FunctorNumber, Arity, Arguments)
     ;
         deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments)
@@ -598,20 +598,15 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 
 functor_number(Term::in, FunctorNumber::out, Arity::out) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        % XXX should fail for non-du types
-        semidet_succeed,
-        erlang_rtti_implementation.deconstruct(Term, do_not_allow,
-            _Functor, FunctorNumber, Arity, _Args)
+        erlang_rtti_implementation.functor_number(Term, FunctorNumber, Arity)
     ;
         private_builtin.sorry("deconstruct.functor_number")
     ).
 
 functor_number_cc(Term::in, FunctorNumber::out, Arity::out) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        % XXX should fail for non-du types
-        semidet_succeed,
-        erlang_rtti_implementation.deconstruct(Term, include_details_cc,
-            _Functor, FunctorNumber, Arity, _Args)
+        erlang_rtti_implementation.functor_number_cc(Term, FunctorNumber,
+            Arity)
     ;
         private_builtin.sorry("deconstruct.functor_number_cc")
     ).
@@ -1047,7 +1042,7 @@ limited_deconstruct_idcc(Term::in, _MaxArity::in,
 
 local_deconstruct(T, H, F, A, As) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.deconstruct(T, H, F, _FN, A, As)
+        erlang_rtti_implementation.deconstruct(T, H, F, A, As)
     ;
         rtti_implementation.deconstruct(T, H, F, A, As)
     ).
