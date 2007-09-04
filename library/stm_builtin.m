@@ -1,18 +1,18 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 % 
 % File: stm_builtin.m.
-% Main author: lm.
+% Main author: lmika.
 % Stability: low.
 % 
-% This file is automatically imported into every module.
-% It contains the builtin datatypes and runtime support for
-% the Software Memory Transactional system.
+% This file is automatically imported into every module that uses software
+% transactional memory (STM).  It defines the data types and predicates
+% use to implement STM.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -20,41 +20,52 @@
 :- module stm_builtin.
 :- interface.
 
-:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
+%
+% Transaction state
+%
 
-    % The Software Transactional Memory state. This is created for each
-    % transaction when execution reaches a new atomic goal.
-    % 
+    % The STM transaction state type is used to store a log of (tentative)
+    % updates to stm_vars (defined below) within an atomic block.
+    % Within an atomic block each call that reads or writes an stm_var has
+    % a pair of arguments of this type threaded through it.
+    % These arguments are unique so that read or writes to stm_vars cannot
+    % be backtracked over.
+    %
+    % Values of this type are implicitly created by the compiler at the
+    % beginning of an atomic block and passed to the goal within that block.
+    % User program should not create values of this type.
+    %
 :- type stm.
 
-    % A Transaction Variable of type T. This is available to all Memory
-    % Transactions.  XXX Name, should be transaction_var?
-    %
-:- type tvar(T). 
-
 %----------------------------------------------------------------------------%
-
-    % Defines a new transaction variable. The type and initial value of
-    % the transaction variable is determined by the first argument to
-    % this predicate.
-    % 
-:- pred new_tvar(T::in, tvar(T)::out, io::di, io::uo) is det.
-
-    % Adds a STM log entry indicating a write to a transaction variable.
-    %
-:- pred write_tvar(tvar(T)::in, T::in, stm::di, stm::uo) is det.
-
-    % Adds a STM log entry indicating a read from a transaction variable.
-    % 
-:- pred read_tvar(tvar(T)::in, T::out, stm::di, stm::uo) is det.
-
-%   % Blocks the execution of a transaction.
-%   %
-%:- pred atomic(stm::di) is failure.
 %
+% Transaction variables
+%
+    
+    % A transaction variable may contain a value of type T.
+    % It may only be accessed from within an atomic scope.
+    %
+:- type stm_var(T).
+
+    % new_stm_var(Value, TVar, !IO):
+    %
+    % Create a new transaction variable with initial value `Value'.
+    %
+    % XXX we need a version that works within atomic blocks as well.
+    %
+:- pred new_stm_var(T::in, stm_var(T)::out, io::di, io::uo) is det.
+
+    % Update the value stored in a transaction variable.
+    %
+:- pred write_stm_var(stm_var(T)::in, T::in, stm::di, stm::uo) is det.
+
+    % Read the current value stored in a transaction variable.
+    %
+:- pred read_stm_var(stm_var(T)::in, T::out, stm::di, stm::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -64,59 +75,69 @@
 
 :- interface.
 
-    % Type that is thrown when a rollback is required.  Currently, the
-    % exception handling routines are being used to handle the unravelling
-    % of stack frames.  An exception of this type indicates that the
-    % current transaction is invalid and needs to be discarded (and retried).
+% The remainder of this file contains the builtin predicates that the compiler
+% generates calls to when implementing software transactional memory.
+% These predicates should not be called by user programs directly.
+% This module also defines some types that are used by those predicates.
+
+    % We throw exceptions of this type to indicate that a transaction is
+    % being rolled back.
     %
 :- type rollback_exception
     --->    rollback_exception.
 
-    % Creates a new stm state which will contain a transaction log
-    % along with other information that is deemed important for
-    % STM transactions.
+    % Create a new transaction log.
     %
 :- impure pred stm_create_state(stm::uo) is det.
 
-    % Drops an stm state (simply used to assist the GC).
+    % Discard a transaction log.
     %
 :- impure pred stm_drop_state(stm::di) is det.
 
-    % Locks the stm global mutex.
+    % Lock the STM global mutex.
     %
 :- impure pred stm_lock is det.
 
-    % Unlocks the stm global mutex.
+    % Unlock the STM global mutex.
     %
 :- impure pred stm_unlock is det.
 
-%----------------------------------------------------------------------------%
-% NOTE: The following predicates may only be called by a thread if it
-% has aquired the global stm lock.
-%----------------------------------------------------------------------------%
-
-    % Determines whether or not a transaction is consistent with other
-    % concurrently running transaction.
+    % Values of this type are returned by stm_validate/2 and indicate
+    % whether a given transaction log is valid.
     %
-:- impure pred stm_validate(stm::ui, bool::out) is det.
+:- type stm_validation_result
+    --->    stm_transaction_valid
+    ;       stm_transaction_invalid.
 
-    % Commits the changes made to a log to memory.
+    % Record whether the (partial) transaction recorded in the given
+    % transaction log is valid or not.
+    %
+:- impure pred stm_validate(stm::ui, stm_validation_result::out) is det.
+
+    % Write the changes in the given log to memory.
+    % 
+    % NOTE: this predicate must *only* be called while the STM global mutex
+    %       is locked.
     %
 :- impure pred stm_commit(stm::ui) is det.
 
-%-----------------------------------------------------------------------------%
-
-    % Adds the thread ID to the wait list of all transaction variables
-    % listed in the transaction log.
+    % Add this thread's identity to the wait list of the transaction
+    % variables referenced by the given log.
+    %
+    % NOTE: this predicate must *only* be called while the STM global mutex
+    %       is locked.
     %
 :- impure pred stm_wait(stm::ui) is det.
 
-    % Removes the thread ID to the wait list of all transaction variables
-    % listed in the transaction log.
+    % Remove the current thread identity to the wait list of the transaction
+    % variables referenced by the given log.
+    %
+    % NOTE: this predicate must *only* be called while the STM global mutex
+    %       is locked.
     %
 :- impure pred stm_unwait(stm::ui) is det.
 
-    % Blocks the thread from being rescheduled.
+    % Cause the current thread to block.
     %
 :- impure pred stm_block_thread(stm::ui) is det.
 
@@ -145,6 +166,9 @@
     typedef MR_Context  *ML_ThreadId;
 
 #endif /* !MR_HIGHLEVEL_CODE */
+
+#define ML_STM_TRANSACTION_VALID 0
+#define ML_STM_TRANSACTION_INVALID 1
 
 typedef struct ML_Stm_Wait_List_Struct {
     ML_ThreadId thread;
@@ -266,14 +290,14 @@ ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
 
 %----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", tvar(T), "ML_Stm_TVar *", 
+:- pragma foreign_type("C", stm_var(T), "ML_Stm_TVar *", 
     [stable, can_pass_as_mercury_type]).
 
 :- pragma foreign_type("C", stm, "ML_Stm_TLog *", [can_pass_as_mercury_type]).
 
     % Definitions for use with the other backends.
     %
-:- type tvar(T)
+:- type stm_var(T)
     --->    tvar(c_pointer).
 
 :- type stm
@@ -312,7 +336,7 @@ ml_initialise_stm :-
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    new_tvar(T::in, TVar::out, IO0::di, IO::uo),
+    new_stm_var(T::in, TVar::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     TVar = MR_GC_NEW(ML_Stm_TVar);
@@ -322,7 +346,7 @@ ml_initialise_stm :-
 ").
 
 :- pragma foreign_proc("C",
-    write_tvar(TVar::in, Value::in, STM0::di, STM::uo),
+    write_stm_var(TVar::in, Value::in, STM0::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     ML_Stm_TLog_Entry  *current_entry;
@@ -348,7 +372,7 @@ ml_initialise_stm :-
 ").
 
 :- pragma foreign_proc("C",
-    read_tvar(TVar::in, Value::out, STM0::di, STM::uo),
+    read_stm_var(TVar::in, Value::out, STM0::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     ML_Stm_TLog_Entry  *current_entry;
@@ -375,7 +399,8 @@ ml_initialise_stm :-
     STM = STM0;
 ").
 
-:- pragma foreign_proc("C", stm_create_state(STM::uo),
+:- pragma foreign_proc("C",
+    stm_create_state(STM::uo),
     [will_not_call_mercury, thread_safe],
 "
     ML_TRACE_STM(""Allocating new STM Log --- New Ver"");
@@ -394,14 +419,16 @@ ml_initialise_stm :-
     #endif
 ").
 
-:- pragma foreign_proc("C", stm_drop_state(X::di),
+:- pragma foreign_proc("C",
+    stm_drop_state(X::di),
     [will_not_call_mercury, thread_safe],
 "
     ML_TRACE_STM(""Dropping STM Log"");
     X = NULL; 
 ").
 
-:- pragma foreign_proc("C", stm_lock,
+:- pragma foreign_proc("C",
+    stm_lock,
     [will_not_call_mercury, thread_safe],
 "
     ML_TRACE_STM(""Locking STM Global Lock"");
@@ -410,7 +437,8 @@ ml_initialise_stm :-
     #endif
 ").
 
-:- pragma foreign_proc("C", stm_unlock,
+:- pragma foreign_proc("C",
+    stm_unlock,
     [will_not_call_mercury, thread_safe],
 "
     ML_TRACE_STM(""Unlocking STM Global Lock"");
@@ -426,14 +454,14 @@ ml_initialise_stm :-
     ML_Stm_TLog_Entry  *current_entry;
     ML_TRACE_STM(""Validating STM log"");
 
-    Res = MR_YES;
+    Res = ML_STM_TRANSACTION_VALID;
 
     for (current_entry = STM->entrylist; current_entry != NULL;
             current_entry = current_entry->next) {
         if (current_entry->tvar->tvar_val != current_entry->old_value) {
             ML_TRACE_STM(""STM LOG INVALID!"");
 
-            Res = MR_NO;
+            Res = ML_STM_TRANSACTION_INVALID;
             break;
         }
     }
@@ -466,10 +494,9 @@ ml_initialise_stm :-
 
     ML_TRACE_STM(""Waiting on thread"");
 
-    /* Go through each transaction log and add this thread to thir wait 
-    ** list 
+    /*
+    ** Add this thread id to each transaction var referenced by the log.
     */
-
     for (current_entry = STM->entrylist; current_entry != NULL;
             current_entry = current_entry->next) {
         ML_stm_add_new_wait_entry(current_entry->tvar, STM->thread);
@@ -487,10 +514,9 @@ ml_initialise_stm :-
     
     ML_TRACE_STM(""Un-waiting on thread"");
 
-    /* Go through each transaction log and add this thread to thir wait 
-    ** list 
+    /*
+    ** Remove this thread id to each transaction var referenced by the log.
     */
-
     for (current_entry = STM->entrylist; current_entry != NULL;
             current_entry = current_entry->next) {
         ML_stm_remove_wait_entry(current_entry->tvar, STM->thread);
@@ -547,16 +573,10 @@ ml_initialise_stm :-
 ** 
 **  Need to implement:
 **
-**  :- impure pred stm_wait(stm::ui) is det.
-**      % Adds the current thread to the wait list of all TVars in the
-**      % STM log so far.
-**
-**  :- impure pred stm_unwait(stm::ui) is det.
-**      % Removes the current thread from the wait list of all TVars.
-**
 **  :- impure pred block_thread(stm::ui) is det.
 **      % Blocks the current thread until another transaction is committed.
 **      % XXX: What to do when there is only one thread?
+*       % XXX: this needs to be fixed - juliensf.
 */
 
 %----------------------------------------------------------------------------%
