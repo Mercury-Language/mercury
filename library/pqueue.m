@@ -46,6 +46,7 @@
     is det.
 
     % Remove the smallest item from the priority queue.
+    % Fails if the priority queue is empty.
     %
 :- pred pqueue.remove(pqueue(K, V)::in, K::out, V::out, pqueue(K, V)::out)
     is semidet.
