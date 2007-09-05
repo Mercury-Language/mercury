@@ -239,7 +239,6 @@ ORDINARY_PROGS=	\
 	transitive_inst_type \
 	trigraphs \
 	tuple_test \
-	tuple_test \
 	type_ctor_desc \
 	type_ctor_desc_manip \
 	type_info_order \
@@ -328,7 +327,6 @@ endif
 ifeq "$(filter il% java%,$(GRADE))" ""
 	TRACE_GOAL_ENV_PROGS= \
 		trace_goal_env_1 \
-		trace_goal_env_2 \
 		trace_goal_env_2 \
 		trace_goal_env_3
 else

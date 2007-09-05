@@ -82,8 +82,7 @@ MERCURY_MAIN_MODULES =
 # Files which should be built using `mmc --make' rather than `make'
 # when `--use-mmc-make' is passed on the mmake command line.
 #
-ALL_MC_BUILD_FILES =	$(MERCURY_MAIN_MODULES) \
-			$(MERCURY_MAIN_MODULES:%=%$(EXT_FOR_EXE)) \
+ALL_MC_BUILD_FILES0 =	$(MERCURY_MAIN_MODULES) \
 			$(MERCURY_MAIN_MODULES:%=lib%.$A) \
 			$(MERCURY_MAIN_MODULES:%=lib%.so) \
 			$(MERCURY_MAIN_MODULES:%=%.clean) \
@@ -92,6 +91,13 @@ ALL_MC_BUILD_FILES =	$(MERCURY_MAIN_MODULES) \
 			$(MERCURY_MAIN_MODULES:%=lib%.install) \
 			$(MC_BUILD_FILES)
 MC_BUILD_FILES =
+
+ifdef EXT_FOR_EXE
+ALL_MC_BUILD_FILES =	$(ALL_MC_BUILD_FILES0) \
+			$(MERCURY_MAIN_MODULES:%=%$(EXT_FOR_EXE))
+else
+ALL_MC_BUILD_FILES =	$(ALL_MC_BUILD_FILES0)
+endif
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
