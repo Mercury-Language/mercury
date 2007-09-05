@@ -193,8 +193,6 @@ A. The following language features are not supported and will not be:
 
 	benchmarking
 	bit_buffer
-	construct
-	deconstruct
 	dir
 	thread
 	thread.semaphore
