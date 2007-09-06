@@ -236,6 +236,11 @@
     %
 :- func cons_id_adjusted_arity(module_info, mer_type, cons_id) = int.
 
+    % Check if (values/program terms of) the type is NOT allocated in a
+    % region in region-based memory management.
+    %
+:- pred type_not_stored_in_region(mer_type::in, module_info::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
     % If possible, get the argument types for the cons_id. We need to pass in
@@ -971,6 +976,16 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
         AdjustedArity = ConsArity + NumTypeClassInfos + NumTypeInfos
     ;
         AdjustedArity = ConsArity
+    ).
+
+%-----------------------------------------------------------------------------%
+
+type_not_stored_in_region(Type, ModuleInfo) :-
+    ( type_is_atomic(ModuleInfo, Type)
+    ; is_dummy_argument_type(ModuleInfo, Type)
+    ; Type = type_info_type
+    ; Type = type_ctor_info_type
+    ; type_is_var(Type)
     ).
 
 %-----------------------------------------------------------------------------%

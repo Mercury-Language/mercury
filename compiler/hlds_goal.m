@@ -882,6 +882,8 @@
                 used_regions            :: set(prog_var)
             ).
 
+:- func rbmm_info_init = rbmm_goal_info.
+
 :- type mode_constr_goal_info
     --->    mode_constr_goal_info(
                 % Inst_graph nodes that are reachable from variables
@@ -1683,6 +1685,9 @@ hlds_goal_extra_info_init(Context) = ExtraInfo :-
 :- func ctgc_goal_info_init = ctgc_goal_info.
 
 ctgc_goal_info_init = ctgc_goal_info(set.init, set.init, no_reuse_info).
+
+rbmm_info_init = rbmm_goal_info(set.init, set.init, set.init, set.init,
+    set.init).
 
 goal_info_get_determinism(GoalInfo) = GoalInfo ^ gi_determinism.
 goal_info_get_instmap_delta(GoalInfo) = GoalInfo ^ gi_instmap_delta.

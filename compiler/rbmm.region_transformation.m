@@ -59,7 +59,7 @@
     %
 :- pred region_transform(rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_pair_region_list_table::in,
+    proc_pp_actual_region_args_table::in,
     renaming_table::in, renaming_table::in, region_instruction_table::in,
     renaming_annotation_table::in, renaming_annotation_table::in,
     name_to_prog_var_table::in, name_to_prog_var_table::out,
@@ -174,7 +174,7 @@ annotate_pred(DeadRTable, BornRTable, PPId, ConstantR, !Processed,
     %
 :- pred region_transform_pred(rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_pair_region_list_table::in,
+    proc_pp_actual_region_args_table::in,
     renaming_table::in, renaming_table::in, region_instruction_table::in,
     renaming_annotation_table::in, renaming_annotation_table::in,
     pred_id::in, name_to_prog_var_table::in, name_to_prog_var_table::out,
@@ -208,7 +208,7 @@ region_transform_pred(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     %
 :- pred region_transform_proc(rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_pair_region_list_table::in,
+    proc_pp_actual_region_args_table::in,
     renaming_table::in, renaming_table::in, region_instruction_table::in,
     renaming_annotation_table::in, renaming_annotation_table::in,
     pred_id::in, proc_id::in, name_to_prog_var_table::in,
@@ -268,7 +268,7 @@ region_transform_proc(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     %
 :- pred annotate_proc(module_info::in, pred_info::in, rpt_graph::in,
     region_set::in, region_set::in, region_set::in,
-    pp_pair_region_list_table::in, renaming_proc::in, renaming_proc::in,
+    pp_actual_region_args_table::in, renaming_proc::in, renaming_proc::in,
     region_instruction_proc::in, renaming_annotation_proc::in,
     renaming_annotation_proc::in, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, list(prog_var)::in, list(prog_var)::out,
@@ -348,7 +348,7 @@ annotate_proc(ModuleInfo, PredInfo, Graph, ConstantR, DeadR, BornR,
     % caused by renaming and annotations needed for resurrection problem.
     %
 :- pred region_transform_goal(module_info::in, rpt_graph::in,
-    renaming_proc::in, renaming_proc::in, pp_pair_region_list_table::in,
+    renaming_proc::in, renaming_proc::in, pp_actual_region_args_table::in,
     region_instruction_proc::in, renaming_annotation_proc::in,
     renaming_annotation_proc::in, hlds_goal::in, hlds_goal::out,
     name_to_prog_var::in, name_to_prog_var::out,
@@ -415,7 +415,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
     ).
 
 :- pred region_transform_goal_expr(module_info::in, rpt_graph::in,
-    renaming::in, renaming::in, pp_pair_region_list_table::in,
+    renaming::in, renaming::in, pp_actual_region_args_table::in,
     program_point::in, hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, name_to_prog_var::in,
     name_to_prog_var::out, prog_varset::in, prog_varset::out,
@@ -433,10 +433,10 @@ region_transform_goal_expr(_, Graph, ResurRenaming, IteRenaming,
     ( map.search(ActualRegionArgProc, ProgPoint, ActualNodes0) ->
         ActualNodes = ActualNodes0
     ;
-        ActualNodes = pair([],[])
+        ActualNodes = actual_region_args([], [], [])
     ),
-    ActualNodes = Ins - Outs,
-    AllNodes = Ins ++ Outs,
+    ActualNodes = actual_region_args(Constants, Ins, Outs),
+    AllNodes = Constants ++ Ins ++ Outs,
     list.map_foldl3(
         node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming),
         AllNodes, ActualRegionArgs, !NameToVar, !VarSet, !VarTypes),
@@ -488,7 +488,7 @@ region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
     % Because an atomic goal is turned into a conjunction, we need to
     % flatten its compounding conjunction if it is in one.
 :- pred region_transform_compound_goal(module_info::in, rpt_graph::in,
-    renaming_proc::in, renaming_proc::in, pp_pair_region_list_table::in,
+    renaming_proc::in, renaming_proc::in, pp_actual_region_args_table::in,
     region_instruction_proc::in, renaming_annotation_proc::in,
     renaming_annotation_proc::in, hlds_goal::in, hlds_goal::out,
     name_to_prog_var::in, name_to_prog_var::out,
@@ -584,11 +584,7 @@ annotate_constructions_unification(ModuleInfo, Graph, ResurRenaming,
         IsUnique, SubInfo),
     get_node_by_variable(Graph, Var, Node),
     NodeType = rptg_lookup_node_type(Graph, Node),
-    (
-        ( type_is_atomic(ModuleInfo, NodeType)
-        ; is_dummy_argument_type(ModuleInfo, NodeType)
-        )
-    ->
+    ( type_not_stored_in_region(NodeType, ModuleInfo) ->
         true
     ;
         Name = rptg_lookup_region_name(Graph, Node),
@@ -623,7 +619,7 @@ annotate_constructions_unification(_, _, _, _, !Unification, !VarSet,
     % Finally, we try to flatten this new conjunction.
     %
 :- pred region_transform_case(module_info::in, rpt_graph::in,
-    renaming_proc::in, renaming_proc::in, pp_pair_region_list_table::in,
+    renaming_proc::in, renaming_proc::in, pp_actual_region_args_table::in,
     region_instruction_proc::in, renaming_annotation_proc::in,
     renaming_annotation_proc::in, hlds_goal::in, case::in, case::out,
     name_to_prog_var::in, name_to_prog_var::out,

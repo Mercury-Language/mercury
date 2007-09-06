@@ -69,6 +69,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
@@ -590,11 +591,7 @@ eliminate_primitive_regions(ModuleInfo, RptaInfoTable, PPId, RegionSet0,
 
 retain_non_primitive_regions(ModuleInfo, Graph, Region, !RegionSet) :-
     NodeType = rptg_lookup_node_type(Graph, Region),
-    (
-        ( type_is_atomic(ModuleInfo, NodeType)
-        ; is_dummy_argument_type(ModuleInfo, NodeType)
-        )
-    ->
+    ( type_not_stored_in_region(NodeType, ModuleInfo) ->
         true
     ;
         svset.insert(Region, !RegionSet)

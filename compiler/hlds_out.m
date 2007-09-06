@@ -1354,6 +1354,37 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
+    ( string.contains_char(Verbose, 'e') ->
+        MaybeRbmmInfo = goal_info_get_maybe_rbmm(GoalInfo),
+        (
+            MaybeRbmmInfo = yes(RbmmInfo),
+            RbmmInfo = rbmm_goal_info(Created, Removed, Carried, Alloc, Used),
+            write_indent(Indent, !IO),
+            io.write_string("% Created regions: ", !IO),
+            io.write_list(set.to_sorted_list(Created), ", ", io.write, !IO),
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("% Removed regions: ", !IO),
+            io.write_list(set.to_sorted_list(Removed), ", ", io.write, !IO),
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("% Carried regions: ", !IO),
+            io.write_list(set.to_sorted_list(Carried), ", ", io.write, !IO),
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("% Allocated into regions: ", !IO),
+            io.write_list(set.to_sorted_list(Alloc), ", ", io.write, !IO),
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("% Used regions: ", !IO),
+            io.write_list(set.to_sorted_list(Used), ", ", io.write, !IO),
+            io.nl(!IO)
+        ;
+            MaybeRbmmInfo = no
+        )
+    ;
+        true
+    ),
     ( string.contains_char(Verbose, 'z') ->
         Purity = goal_info_get_purity(GoalInfo),
         (

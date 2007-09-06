@@ -25,6 +25,7 @@
 :- include_module points_to_analysis.
 :- include_module points_to_graph.
 :- include_module points_to_info.
+:- include_module add_rbmm_goal_infos.
 :- include_module region_instruction.
 :- include_module region_liveness_info.
 :- include_module region_resurrection_renaming.
@@ -51,6 +52,7 @@
 :- import_module transform_hlds.rbmm.live_region_analysis.
 :- import_module transform_hlds.rbmm.live_variable_analysis.
 :- import_module transform_hlds.rbmm.points_to_analysis.
+:- import_module transform_hlds.rbmm.add_rbmm_goal_infos.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 :- import_module transform_hlds.rbmm.region_transformation.
@@ -115,8 +117,12 @@ do_region_analysis(!ModuleInfo, !IO) :-
     region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
         ActualRegionArgumentTable, ResurRenamingTable, IteRenamingTable,
         RegionInstructionTable, ResurRenamingAnnoTable,
-        IteRenamingAnnoTable, map.init, _NameToVarTable, !ModuleInfo).
+        IteRenamingAnnoTable, map.init, NameToVarTable, !ModuleInfo),
+    
+    collect_rbmm_goal_info(RptaInfoTable, ActualRegionArgumentTable,
+        ResurRenamingTable, IteRenamingTable, NameToVarTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.
 %-----------------------------------------------------------------------------%
+
