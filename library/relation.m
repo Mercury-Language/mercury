@@ -10,11 +10,8 @@
 % Main author: bromage, petdr.
 % Stability: low.
 % 
-% This module defines a data type for binary relations over reflexive
-% domains.
+% This module defines a data type for binary relations over a given domain.
 %
-% In fact, this is exactly equivalent to a graph/1 type.
-% 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -27,6 +24,11 @@
 :- import_module set.
 :- import_module sparse_bitset.
 
+%------------------------------------------------------------------------------%
+% The relation module is deprecated.  Use digraph instead.
+%------------------------------------------------------------------------------%
+:- pragma obsolete(relation.init/0).
+:- pragma obsolete(relation.init/1).
 %------------------------------------------------------------------------------%
 
 :- type relation(T).
@@ -338,7 +340,15 @@
 
 %------------------------------------------------------------------------------%
 
-relation.init(relation(relation_key(0), ElMap, FwdMap, BwdMap)) :-
+relation.init = R :-
+    relation.init_internal(R).
+
+relation.init(R) :-
+    relation.init_internal(R).
+
+:- pred relation.init_internal(relation(T)::out) is det.
+
+relation.init_internal(relation(relation_key(0), ElMap, FwdMap, BwdMap)) :-
     bimap.init(ElMap),
     map.init(FwdMap),
     map.init(BwdMap).
@@ -553,10 +563,11 @@ accumulate_with_key(RelKey, U, !AL) :-
     % relation.from_assoc_list turns a list of pairs of
     % elements into a relation.
 relation.from_assoc_list(AL, Rel) :-
+    relation.init_internal(Rel0),
     Rel = list.foldl(
-        (func(U - V, Rel0) = Rel1 :-
-            relation.add_values(Rel0, U, V, Rel1)
-        ), AL, relation.init).
+        (func(U - V, R0) = R :-
+            relation.add_values(R0, U, V, R)
+        ), AL, Rel0).
 
 %------------------------------------------------------------------------------%
 
@@ -579,7 +590,7 @@ relation.inverse(Rel, InvRel) :-
 %------------------------------------------------------------------------------%
 
 relation.compose(R1, R2, !:Compose) :-
-    !:Compose = relation.init,
+    relation.init_internal(!:Compose),
 
     % Find the set of elements which occur in both the
     % range of R1 and the domain of R2.
@@ -823,7 +834,7 @@ relation.cliques_2([H | T0], RelInv, Visit0, Cliques0, Cliques) :-
 relation.reduced(Rel, Red) :-
     relation.cliques(Rel, Cliques),
     set.to_sorted_list(Cliques, CliqList),
-    relation.init(Red0),
+    relation.init_internal(Red0),
     map.init(CliqMap0),
     relation.make_clique_map(Rel, CliqList, CliqMap0, CliqMap, Red0, Red1),
     relation.to_key_assoc_list(Rel, RelAL),
@@ -1062,9 +1073,6 @@ relation.traverse_children([ChildKey | Children], Parent,
 %------------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 %   Function forms added.
-
-relation.init = R :-
-    relation.init(R).
 
 relation.lookup_element(R, X) = K :-
     relation.lookup_element(R, X, K).

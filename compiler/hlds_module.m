@@ -39,12 +39,12 @@
 :- import_module recompilation.
 
 :- import_module bool.
+:- import_module digraph.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 
 :- implementation.
@@ -1376,8 +1376,9 @@ predicate_arity(ModuleInfo, PredId) = Arity :-
 :- type dependency_ordering(T)  == list(list(T)).
 :- type dependency_ordering     == dependency_ordering(pred_proc_id).
 
-:- type dependency_graph(T)     == relation(T).
+:- type dependency_graph(T)     == digraph(T).
 :- type dependency_graph        == dependency_graph(pred_proc_id).
+:- type dependency_graph_key    == digraph_key(pred_proc_id).
 :- type dependency_info(T).
 :- type dependency_info         == dependency_info(pred_proc_id).
 
@@ -1408,9 +1409,9 @@ predicate_arity(ModuleInfo, PredId) = Arity :-
             ).
 
 hlds_dependency_info_init(DepInfo) :-
-    relation.init(DepRel),
+    digraph.init(DepGraph),
     DepOrd = [],
-    DepInfo = dependency_info(DepRel, DepOrd).
+    DepInfo = dependency_info(DepGraph, DepOrd).
 
 hlds_dependency_info_get_dependency_graph(DepInfo, DepInfo ^ dep_graph).
 hlds_dependency_info_get_dependency_ordering(DepInfo, DepInfo ^ dep_ord).

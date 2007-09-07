@@ -63,8 +63,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module digraph.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module solutions.
 :- import_module stack.
@@ -434,28 +434,28 @@ mode_order_conj(Goals0, Goals) :-
             set.to_sorted_list(G ^ hlds_goal_info ^ make_visible_vars), MVM0)
         ), GoalMap, map.init),
 
-    Relation = map.foldl((func(I, G, R0) = R :-
+    Graph = map.foldl((func(I, G, !.R) = !:R :-
         GI = G ^ hlds_goal_info,
-        relation.add_element(R0, I, Key0, R1),
-        R2 = list.foldl((func(V, R10) = R12 :-
+        digraph.add_vertex(I, Key0, !R),
+        !:R = list.foldl((func(V, !.R1) = !:R1 :-
                 ( Index1 = map.search(ProdMap, V) ->
-                    relation.add_element(R10, Index1, Key1, R11),
-                    relation.add(R11, Key1, Key0, R12)
+                    digraph.add_vertex(Index1, Key1, !R1),
+                    digraph.add_edge(Key1, Key0, !R1)
                 ;
-                    R12 = R10
+                    true
                 )
-            ), set.to_sorted_list(GI ^ consuming_vars), R1),
-        R = list.foldl((func(V, R20) = R22 :-
+            ), set.to_sorted_list(GI ^ consuming_vars), !.R),
+        !:R = list.foldl((func(V, !.R2) = !:R2 :-
                 ( Index2 = map.search(MakeVisMap, V) ->
-                    relation.add_element(R20, Index2, Key2, R21),
-                    relation.add(R21, Key2, Key0, R22)
+                    digraph.add_vertex(Index2, Key2, !R2),
+                    digraph.add_edge(Key2, Key0, !R2)
                 ;
-                    R22 = R20
+                    true
                 )
-            ), set.to_sorted_list(GI ^ need_visible_vars), R2)
-        ), GoalMap, relation.init),
+            ), set.to_sorted_list(GI ^ need_visible_vars), !.R)
+        ), GoalMap, digraph.init),
 
-    ( relation.tsort(Relation, TSort) ->
+    ( digraph.tsort(Graph, TSort) ->
         Goals = map.apply_to_list(TSort, GoalMap)
     ;
         % XXX Report a mode error for this.

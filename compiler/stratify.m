@@ -69,10 +69,10 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module digraph.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module string.
 
@@ -81,7 +81,7 @@ check_stratification(!ModuleInfo, !IO) :-
     module_info_dependency_info(!.ModuleInfo, DepInfo),
 
     hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph0),
-    relation.atsort(DepGraph0, FOSCCs1),
+    digraph.atsort(DepGraph0, FOSCCs1),
     dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
     globals.io_lookup_bool_option(warn_non_stratification, Warn, !IO),
     module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
@@ -93,7 +93,7 @@ check_stratification(!ModuleInfo, !IO) :-
     % higher order proc is hidden in some complex data structure
     %
     % gen_conservative_graph(!ModuleInfo, DepGraph0, DepGraph, HOInfo),
-    % relation.atsort(DepGraph, HOSCCs1),
+    % digraph.atsort(DepGraph, HOSCCs1),
     % dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
     % higher_order_check_sccs(HOSCCs, HOInfo, !ModuleInfo, !IO).
 
@@ -584,20 +584,20 @@ add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
     ( set.member(Caller, CallsHO) ->
         CallerInfo = info(PossibleCallees0, _),
         set.to_sorted_list(PossibleCallees0, PossibleCallees),
-        relation.lookup_element(!.DepGraph, Caller, CallerKey),
+        digraph.lookup_key(!.DepGraph, Caller, CallerKey),
         add_new_arcs2(PossibleCallees, CallerKey, !DepGraph)
     ;
         true
     ),
     add_new_arcs(Cs, CallsHO, !DepGraph).
 
-:- pred add_new_arcs2(list(pred_proc_id)::in, relation_key::in,
+:- pred add_new_arcs2(list(pred_proc_id)::in, dependency_graph_key::in,
     dependency_graph::in, dependency_graph::out) is det.
 
 add_new_arcs2([], _, !DepGraph).
 add_new_arcs2([Callee | Cs], CallerKey, !DepGraph) :-
-    relation.lookup_element(!.DepGraph, Callee, CalleeKey),
-    relation.add(!.DepGraph, CallerKey, CalleeKey, !:DepGraph),
+    digraph.lookup_key(!.DepGraph, Callee, CalleeKey),
+    digraph.add_edge(CallerKey, CalleeKey, !DepGraph),
     add_new_arcs2(Cs, CallerKey, !DepGraph).
 
     % For each given pred id, pass all non imported procs onto the

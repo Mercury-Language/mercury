@@ -10,13 +10,13 @@
 % Main authors: bromage, conway, stayl.
 %
 % The dependency_graph records which procedures depend on which other
-% procedures. It is defined as a relation (see hlds_module.m) R where xRy
-% means that the definition of x depends on the definition of y.
+% procedures. It is defined as a digraph (see hlds_module.m) R where
+% edge x -> y means that the definition of x depends on the definition of y.
 % Note that imported procedures are not included in the dependency_graph
 % (although opt_imported procedures are included).
 %
 % The other important structure is the dependency_ordering which is
-% a list of the cliques (strongly-connected components) of this relation,
+% a list of the cliques (strongly-connected components) of this graph,
 % in topological order. This is very handy for doing fixpoint iterations.
 %
 %-----------------------------------------------------------------------------%
@@ -122,14 +122,15 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module digraph.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module std_util.
+:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -167,12 +168,12 @@ build_pred_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo) :-
     <= dependency_node(T).
 
 build_dependency_graph(ModuleInfo, PredIds, Imported, !:DepInfo) :-
-    relation.init(DepGraph0),
+    digraph.init(DepGraph0),
     add_dependency_nodes(PredIds, ModuleInfo, Imported, DepGraph0, DepGraph1),
     add_dependency_arcs(PredIds, ModuleInfo, Imported, DepGraph1, DepGraph),
     hlds_dependency_info_init(!:DepInfo),
     hlds_dependency_info_set_dependency_graph(DepGraph, !DepInfo),
-    relation.atsort(DepGraph, DepOrd0),
+    digraph.atsort(DepGraph, DepOrd0),
     sets_to_lists(DepOrd0, [], DepOrd),
     hlds_dependency_info_set_dependency_ordering(DepOrd, !DepInfo).
 
@@ -238,7 +239,7 @@ add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
 
 add_proc_nodes([], _PredId, _ModuleInfo, !DepGraph).
 add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo, !DepGraph) :-
-    relation.add_element(!.DepGraph, proc(PredId, ProcId), _, !:DepGraph),
+    digraph.add_vertex(proc(PredId, ProcId), _, !DepGraph),
     add_proc_nodes(ProcIds, PredId, ModuleInfo, !DepGraph).
 
 %-----------------------------------------------------------------------------%
@@ -259,7 +260,7 @@ add_pred_nodes([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
     ->
         true
     ;
-        relation.add_element(!.DepGraph, PredId, _, !:DepGraph)
+        digraph.add_vertex(PredId, _, !DepGraph)
     ),
     add_pred_nodes(PredIds, ModuleInfo, IncludeImported, !DepGraph).
 
@@ -299,7 +300,7 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
         IncludeImported = do_not_include_imported,
         proc_info_get_goal(ProcInfo0, Goal),
 
-        relation.lookup_element(!.DepGraph, proc(PredId, ProcId), Caller),
+        digraph.lookup_key(!.DepGraph, proc(PredId, ProcId), Caller),
         add_dependency_arcs_in_goal(Goal, Caller, !DepGraph)
     ;
         IncludeImported = include_imported,
@@ -310,7 +311,7 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
         ;
             Imported = no,
             proc_info_get_goal(ProcInfo0, Goal),
-            relation.lookup_element(!.DepGraph, proc(PredId, ProcId), Caller),
+            digraph.lookup_key(!.DepGraph, proc(PredId, ProcId), Caller),
             add_dependency_arcs_in_goal(Goal, Caller, !DepGraph)
         )
     ),
@@ -335,7 +336,7 @@ add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
         clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
         get_clause_list_any_order(ClausesRep, Clauses),
         Goals = list.map(func(clause(_, Goal, _, _)) = Goal, Clauses),
-        relation.lookup_element(!.DepGraph, PredId, Caller),
+        digraph.lookup_key(!.DepGraph, PredId, Caller),
         add_dependency_arcs_in_list(Goals, Caller, !DepGraph)
     ),
     add_pred_arcs(PredIds, ModuleInfo, IncludeImported, !DepGraph).
@@ -350,7 +351,7 @@ pred_proc_id_get_pred_id(proc(PredId, _)) = PredId.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_goal(hlds_goal::in, relation_key::in,
+:- pred add_dependency_arcs_in_goal(hlds_goal::in, digraph_key(T)::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
@@ -381,12 +382,12 @@ add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
             true
         ;
             (
-                % If the node isn't in the relation, then we didn't insert it
+                % If the node isn't in the graph, then we didn't insert it
                 % because is was imported, and we don't consider it.
-                relation.search_element(!.DepGraph,
+                digraph.search_key(!.DepGraph,
                     dependency_node(proc(PredId, ProcId)), Callee)
             ->
-                relation.add(!.DepGraph, Caller, Callee, !:DepGraph)
+                digraph.add_edge(Caller, Callee, !DepGraph)
             ;
                 true
             )
@@ -416,8 +417,8 @@ add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_list(list(hlds_goal)::in,
-    relation_key::in, dependency_graph(T)::in, dependency_graph(T)::out) is det
+:- pred add_dependency_arcs_in_list(list(hlds_goal)::in, digraph_key(T)::in,
+    dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
 add_dependency_arcs_in_list([], _Caller, !DepGraph).
@@ -427,7 +428,7 @@ add_dependency_arcs_in_list([Goal|Goals], Caller, !DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_cases(list(case)::in, relation_key::in,
+:- pred add_dependency_arcs_in_cases(list(case)::in, digraph_key(T)::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
@@ -439,7 +440,7 @@ add_dependency_arcs_in_cases([case(Cons, Goal) | Goals], Caller, !DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_cons(cons_id::in, relation_key::in,
+:- pred add_dependency_arcs_in_cons(cons_id::in, digraph_key(T)::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
@@ -451,12 +452,11 @@ add_dependency_arcs_in_cons(pred_const(ShroudedPredProcId, _), Caller,
         !DepGraph) :-
     PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
     (
-        % If the node isn't in the relation, then we didn't insert it
+        % If the node isn't in the graph, then we didn't insert it
         % because it was imported, and we don't consider it.
-        relation.search_element(!.DepGraph, dependency_node(PredProcId),
-            Callee)
+        digraph.search_key(!.DepGraph, dependency_node(PredProcId), Callee)
     ->
-        relation.add(!.DepGraph, Caller, Callee, !:DepGraph)
+        digraph.add_edge(Caller, Callee, !DepGraph)
     ;
         true
     ).
@@ -564,27 +564,27 @@ write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
 
 write_graph(DepInfo, WriteNode, WriteLink, !IO) :-
     hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
-    relation.domain(DepGraph, DomSet),
+    digraph.vertices(DepGraph, DomSet),
     set.to_sorted_list(DomSet, DomList),
     write_graph_nodes(DomList, DepGraph, WriteNode, WriteLink, !IO).
 
 write_graph_nodes([], _Graph, _WriteNode, _WriteLink, !IO).
 write_graph_nodes([Node | Nodes], Graph, WriteNode, WriteLink, !IO) :-
     WriteNode(Node, !IO),
-    relation.lookup_element(Graph, Node, NodeKey),
-    relation.lookup_from(Graph, NodeKey, ChildrenSet),
+    digraph.lookup_key(Graph, Node, NodeKey),
+    digraph.lookup_from(Graph, NodeKey, ChildrenSet),
     set.to_sorted_list(ChildrenSet, Children),
     write_graph_children(Children, Node, Graph, WriteLink, !IO),
     write_graph_nodes(Nodes, Graph, WriteNode, WriteLink, !IO).
 
-:- pred write_graph_children(list(relation_key)::in, pred_proc_id::in,
+:- pred write_graph_children(list(dependency_graph_key)::in, pred_proc_id::in,
     dependency_graph::in,
     pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
     io::di, io::uo) is det.
 
 write_graph_children([], _Parent, _Graph, _WriteLink, !IO).
 write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
-    relation.lookup_key(Graph, ChildKey, Child),
+    digraph.lookup_vertex(Graph, ChildKey, Child),
     WriteLink(Parent, Child, !IO),
     write_graph_children(Children, Parent, Graph, WriteLink, !IO).
 
@@ -618,10 +618,10 @@ is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
         module_info_dependency_info(ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
 
-        relation.lookup_element(DepGraph, PredProcId, PredProcIdKey),
-        relation.lookup_to(DepGraph, PredProcIdKey, CallingKeys),
+        digraph.lookup_key(DepGraph, PredProcId, PredProcIdKey),
+        digraph.lookup_to(DepGraph, PredProcIdKey, CallingKeys),
         set.member(CallingKey, CallingKeys),
-        relation.lookup_key(DepGraph, CallingKey, CallingPred),
+        digraph.lookup_vertex(DepGraph, CallingKey, CallingPred),
         list.member(HigherSCC, HigherSCCs),
         list.member(CallingPred, HigherSCC)
     ).
@@ -630,14 +630,14 @@ is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 
     % Find the SCCs called from a given SCC.
     %
-:- pred get_called_scc_ids(scc_id::in, relation(scc_id)::in, set(scc_id)::out)
+:- pred get_called_scc_ids(scc_id::in, digraph(scc_id)::in, set(scc_id)::out)
     is det.
 
 get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
-    relation.lookup_element(SCCRel, SCCid, SCCidKey),
-    relation.lookup_from(SCCRel, SCCidKey, CalledSCCKeys),
+    digraph.lookup_key(SCCRel, SCCid, SCCidKey),
+    digraph.lookup_from(SCCRel, SCCidKey, CalledSCCKeys),
     set.to_sorted_list(CalledSCCKeys, CalledSCCKeyList),
-    list.map(relation.lookup_key(SCCRel), CalledSCCKeyList, CalledSCCs),
+    list.map(digraph.lookup_vertex(SCCRel), CalledSCCKeyList, CalledSCCs),
     set.list_to_set(CalledSCCs, CalledSCCSet).
 
 %-----------------------------------------------------------------------------%
@@ -655,41 +655,41 @@ get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
     %
 :- pred handle_higher_order_args(list(prog_var)::in, bool::in, scc_id::in,
     multi_map(prog_var, pred_proc_id)::in, map(pred_proc_id, scc_id)::in,
-    relation(scc_id)::in, relation(scc_id)::out,
+    digraph(scc_id)::in, digraph(scc_id)::out,
     set(scc_id)::in, set(scc_id)::out) is det.
 
 handle_higher_order_args([], _, _, _, _, !SCCRel, !NoMerge).
 handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC,
-        !SCCRel, !NoMerge) :-
+        !SCCGraph, !NoMerge) :-
     ( multi_map.search(Map, Arg, PredProcIds) ->
         list.foldl2(handle_higher_order_arg(PredSCC, IsAgg, SCCid),
-            PredProcIds, !SCCRel, !NoMerge)
+            PredProcIds, !SCCGraph, !NoMerge)
     ;
         true
     ),
     handle_higher_order_args(Args, IsAgg, SCCid, Map, PredSCC,
-        !SCCRel, !NoMerge).
+        !SCCGraph, !NoMerge).
 
 :- pred handle_higher_order_arg(map(pred_proc_id, scc_id)::in, bool::in,
     scc_id::in, pred_proc_id::in,
-    relation(scc_id)::in, relation(scc_id)::out,
+    digraph(scc_id)::in, digraph(scc_id)::out,
     set(scc_id)::in, set(scc_id)::out) is det.
 
 handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
-        !SCCRel, !NoMerge) :-
+        !SCCGraph, !NoMerge) :-
     ( map.search(PredSCC, PredProcId, CalledSCCid) ->
         % Make sure anything called through an aggregate
         % is not merged into the current sub-module.
         (
             IsAgg = yes,
-            set.insert(!.NoMerge, CalledSCCid, !:NoMerge)
+            svset.insert(CalledSCCid, !NoMerge)
         ;
             IsAgg = no
         ),
         ( CalledSCCid = SCCid ->
             true
         ;
-            relation.add_values(!.SCCRel, SCCid, CalledSCCid, !:SCCRel)
+            digraph.add_vertices_and_edge(SCCid, CalledSCCid, !SCCGraph)
         )
     ;
         true

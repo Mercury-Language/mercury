@@ -23,8 +23,14 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
-* An improved pretty printer module, pretty_printer.m has been added.  This
-  supercedes pprint.m in that it is more economical, produces better
+* A module for handling directed graphs, digraph.m, has been added.  This
+  supersedes relation.m and svrelation.m in that has a more consistent
+  interface (which supports state variable notation), provides more type
+  safety by using phantom types, and has a number of efficiency improvements.
+  Further use of relation.m and svrelation.m is deprecated.
+
+* An improved pretty printer module, pretty_printer.m, has been added.  This
+  supersedes pprint.m in that it is more economical, produces better
   quality output (line overruns are completely avoided wherever possible),
   has better control over the amount of output produced, and supports
   user-specifiable formatting for arbitrary types.  Further use of pprint is

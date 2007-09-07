@@ -26,11 +26,11 @@
 :- import_module prof_info.
 
 :- import_module io.
-:- import_module relation.
+:- import_module digraph.
 
 %-----------------------------------------------------------------------------%
 
-:- pred propagate_counts(relation(string)::in, prof::in, prof::out,
+:- pred propagate_counts(digraph(string)::in, prof::in, prof::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -84,29 +84,29 @@ propagate_counts(CallGraph, !Prof, !IO) :-
     % multimap which associates with each cycle number a list of preds.
     % Also approximate topologically sorts the call graph.
     %
-:- pred identify_cycles(relation(string)::in, list(string)::out,
+:- pred identify_cycles(digraph(string)::in, list(string)::out,
     cycle_info::out) is det.
 
-identify_cycles(Rel, ATSort, cycle_info(PredToCycleMap, CycleToPredsMap)) :-
-    relation.dfsrev(Rel, DfsRev),
-    relation.inverse(Rel, RelInv),
-    identify_cycles_2(DfsRev, 1, RelInv, sparse_bitset.init,
+identify_cycles(G, ATSort, cycle_info(PredToCycleMap, CycleToPredsMap)) :-
+    digraph.dfsrev(G, DfsRev),
+    digraph.inverse(G, InvG),
+    identify_cycles_2(DfsRev, 1, InvG, sparse_bitset.init,
         [], ATSort, map.init, PredToCycleMap, multi_map.init, CycleToPredsMap).
 
-:- pred identify_cycles_2(list(relation_key)::in, int::in,
-    relation(string)::in, relation_key_set::in,
+:- pred identify_cycles_2(list(digraph_key(string))::in, int::in,
+    digraph(string)::in, digraph_key_set(string)::in,
     list(string)::in, list(string)::out,
     pred_to_cycle_map::in, pred_to_cycle_map::out,
     cycle_to_preds_map::in, cycle_to_preds_map::out) is det.
 
 identify_cycles_2([], _, _, _, !ATSort, !PredToCycleMap, !CycleToPredsMap).
-identify_cycles_2([Key | Keys0], CycleNum0, RelInv, Visit0, !ATSort,
+identify_cycles_2([Key | Keys0], CycleNum0, InvG, Visit0, !ATSort,
         !PredToCycleMap, !CycleToPredsMap) :-
-    % Do a depth-first search on R'. The nodes we can get to and have not
+    % Do a depth-first search on G'. The nodes we can get to and have not
     % already visited before are one cycle in the call graph.
 
-    relation.dfsrev(RelInv, Key, Visit0, Visit, DfsRev0),
-    list.map(relation.lookup_key(RelInv), DfsRev0, DfsRev),
+    digraph.dfsrev(InvG, Key, Visit0, Visit, DfsRev0),
+    list.map(digraph.lookup_vertex(InvG), DfsRev0, DfsRev),
 
     (
         DfsRev = [],
@@ -125,7 +125,7 @@ identify_cycles_2([Key | Keys0], CycleNum0, RelInv, Visit0, !ATSort,
     % Delete all visited elements from Keys0 as they have already been
     % identified as part of a cycle.
     list.delete_elems(Keys0, DfsRev0, Keys),
-    identify_cycles_2(Keys, CycleNum, RelInv, Visit, !ATSort,
+    identify_cycles_2(Keys, CycleNum, InvG, Visit, !ATSort,
         !PredToCycleMap, !CycleToPredsMap).
 
     % add_to_cycle_map(Preds, CycleNum, !PredToCycleMap, !CycleToPredsMap):

@@ -68,16 +68,15 @@
 :- import_module assoc_list.
 :- import_module bimap.
 :- import_module bool.
+:- import_module digraph.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module string.
 :- import_module svbimap.
 :- import_module svmap.
-:- import_module svrelation.
 :- import_module svset.
 :- import_module term.
 
@@ -347,7 +346,7 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     %
     % Stage 1 is done by build_plain_type_map. This records the types of all
     % of the ordinary and synthesized attributes in AttrTypeMap0, builds up
-    % KeyMap, which maps each attribute name to its relation_key in DepRel0,
+    % KeyMap, which maps each attribute name to its digraph_key in DepRel0,
     % and builds DepRel0, which at the end of stage 1 just contains one key
     % for each attribute with no relationships between them.
     %
@@ -363,19 +362,19 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     build_plain_type_map(EventName, FileName, EventLineNumber, AttrTerms,
         0, map.init, _AttrNumMap, map.init, AttrNameMap,
         map.init, AttrTypeMap0, bimap.init, KeyMap,
-        relation.init, DepRel0, !ErrorSpecs),
+        digraph.init, DepRel0, !ErrorSpecs),
     build_dep_map(EventName, FileName, AttrNameMap, KeyMap, AttrTerms,
         AttrTypeMap0, AttrTypeMap, DepRel0, DepRel, !ErrorSpecs),
     convert_terms_to_attrs(EventName, FileName, AttrNameMap,
         AttrTypeMap, 0, AttrTerms, [], RevAttrs, !ErrorSpecs),
-    ( relation.tsort(DepRel, AllAttrNameOrder) ->
+    ( digraph.tsort(DepRel, AllAttrNameOrder) ->
         % There is an order for computing the synthesized attributes.
         keep_only_synth_attr_nums(AttrNameMap, AllAttrNameOrder,
             SynthAttrNumOrder)
     ;
         % It would be nice to print a list of the attributes involved in the
-        % (one or more) circular dependencies detected by relation.tsort,
-        % but at present relation.m does not have any predicates that can
+        % (one or more) circular dependencies detected by digraph.tsort,
+        % but at present digraph.m does not have any predicates that can
         % report the information we would need for that.
         Pieces = [words("Circular dependency among"),
             words("the synthesized attributes of event"),
@@ -443,8 +442,9 @@ keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
     %
     % The attr_key_map maps the name of each attribute to its key in
     % attr_dep_rel.
-:- type attr_dep_rel == relation(string).
-:- type attr_key_map == bimap(string, relation_key).
+:- type attr_dep_rel == digraph(string).
+:- type attr_key == digraph_key(string).
+:- type attr_key_map == bimap(string, attr_key).
 
     % See the big comment in convert_term_to_spec_map for the documentation
     % of this predicate.
@@ -464,7 +464,7 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
     AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
     AttrInfo = attr_info(AttrNum, AttrName, AttrLineNumber, AttrTypeTerm),
     svmap.det_insert(AttrNum, AttrInfo, !AttrNumMap),
-    svrelation.add_element(AttrName, AttrKey, !DepRel),
+    digraph.add_vertex(AttrName, AttrKey, !DepRel),
     ( svbimap.insert(AttrName, AttrKey, !KeyMap) ->
         svmap.det_insert(AttrName, AttrInfo, !AttrNameMap)
     ;
@@ -586,7 +586,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
         !AttrTypeMap, !DepRel, !ErrorSpecs).
 
 :- pred record_arg_dependencies(string::in, string::in, int::in,
-    attr_key_map::in, string::in, relation_key::in,
+    attr_key_map::in, string::in, attr_key::in,
     list(string)::in, attr_dep_rel::in, attr_dep_rel::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -595,7 +595,7 @@ record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
         SynthAttrName, SynthAttrKey, [AttrName | AttrNames],
         !DepRel, !ErrorSpecs) :-
     ( bimap.search(KeyMap, AttrName, AttrKey) ->
-        svrelation.add(AttrKey, SynthAttrKey, !DepRel)
+        digraph.add_edge(AttrKey, SynthAttrKey, !DepRel)
     ;
         Pieces = [words("Attribute"), quote(SynthAttrName),
             words("of event"), quote(EventName),

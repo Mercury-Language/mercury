@@ -127,6 +127,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
+:- import_module digraph.
 :- import_module float.
 :- import_module int.
 :- import_module list.
@@ -134,7 +135,6 @@
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -309,8 +309,8 @@ scc_has_local_callers(CalleeProcs, DepGraph) :-
     is semidet.
 
 proc_has_local_callers(CalleeProc, DepGraph) :-
-    relation.lookup_element(DepGraph, CalleeProc, CalleeKey),
-    relation.lookup_to(DepGraph, CalleeKey, CallingKeys),
+    digraph.lookup_key(DepGraph, CalleeProc, CalleeKey),
+    digraph.lookup_to(DepGraph, CalleeKey, CallingKeys),
     not set.empty(CallingKeys).
 
 %-----------------------------------------------------------------------------%

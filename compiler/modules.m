@@ -51,12 +51,12 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module digraph.
 :- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -637,8 +637,8 @@
     % LookupModuleImports function.
     %
 :- pred add_module_relations(lookup_module_imports::lookup_module_imports,
-    module_name::in, relation(module_name)::in, relation(module_name)::out,
-    relation(module_name)::in, relation(module_name)::out) is det.
+    module_name::in, digraph(module_name)::in, digraph(module_name)::out,
+    digraph(module_name)::in, digraph(module_name)::out) is det.
 
 :- type lookup_module_imports == (func(module_name) = module_imports).
 :- mode lookup_module_imports == in(func(in) = out is det).
@@ -836,7 +836,6 @@
 :- import_module sparse_bitset.
 :- import_module string.
 :- import_module svmap.
-:- import_module svrelation.
 :- import_module svset.
 :- import_module term.
 :- import_module unit.
@@ -4174,15 +4173,16 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         ),
 
         %
-        % Compute the interface deps relation and the implementation deps
-        % relation from the deps map.
+        % Compute the interface deps graph and the implementation deps
+        % graph from the deps map.
         %
-        relation.init(IntDepsRel0),
-        relation.init(ImplDepsRel0),
+        digraph.init(IntDepsGraph0),
+        digraph.init(ImplDepsGraph0),
         map.values(DepsMap, DepsList),
-        deps_list_to_deps_rel(DepsList, DepsMap,
-            IntDepsRel0, IntDepsRel, ImplDepsRel0, ImplDepsRel),
-        maybe_output_imports_graph(ModuleName, IntDepsRel, ImplDepsRel, !IO),
+        deps_list_to_deps_graph(DepsList, DepsMap, IntDepsGraph0, IntDepsGraph,
+            ImplDepsGraph0, ImplDepsGraph),
+        maybe_output_imports_graph(ModuleName, IntDepsGraph, ImplDepsGraph,
+            !IO),
 
         %
         % Compute the trans-opt deps ordering, by doing an approximate
@@ -4190,7 +4190,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         % the subset of those for which of those we have (or can make)
         % trans-opt files.
         %
-        relation.atsort(ImplDepsRel, ImplDepsOrdering0),
+        digraph.atsort(ImplDepsGraph, ImplDepsOrdering0),
         maybe_output_module_order(ModuleName, ImplDepsOrdering0, !IO),
         list.map(set.to_sorted_list, ImplDepsOrdering0, ImplDepsOrdering),
         list.condense(ImplDepsOrdering, TransOptDepsOrdering0),
@@ -4199,7 +4199,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         get_opt_deps(yes, TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
             TransOptDepsOrdering, !IO),
 
-        % relation.to_assoc_list(ImplDepsRel, ImplDepsAL),
+        % digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
         % print("ImplDepsAL:\n", !IO),
         % write_list(ImplDepsAL, "\n", print, !IO), nl(!IO),
 
@@ -4210,8 +4210,8 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         % of the interface dependencies, but we now include implementation
         % details in the interface files).
         %
-        relation.tc(ImplDepsRel, TransImplDepsRel),
-        relation.compose(ImplDepsRel, TransImplDepsRel, IndirectDepsRel),
+        digraph.tc(ImplDepsGraph, TransImplDepsGraph),
+        digraph.compose(ImplDepsGraph, TransImplDepsGraph, IndirectDepsGraph),
 
         %
         % Compute the indirect optimization dependencies: indirect
@@ -4223,7 +4223,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         % of that module's implementation dependencies; in actual fact,
         % it will be some subset of that.
         %
-        relation.tc(ImplDepsRel, IndirectOptDepsRel),
+        digraph.tc(ImplDepsGraph, IndirectOptDepsGraph),
 
         (
             Mode = output_d_file_only,
@@ -4232,8 +4232,8 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
             Mode = output_all_dependencies,
             DFilesToWrite = DepsList
         ),
-        generate_dependencies_write_d_files(DFilesToWrite,
-            IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
+        generate_dependencies_write_d_files(DFilesToWrite, IntDepsGraph,
+            ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
             TransOptDepsOrdering, DepsMap, !IO)
     ),
     %
@@ -4254,10 +4254,10 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
     ).
 
 :- pred maybe_output_imports_graph(module_name::in,
-    relation(sym_name)::in, relation(sym_name)::in,
+    digraph(sym_name)::in, digraph(sym_name)::in,
     io::di, io::uo) is det.
 
-maybe_output_imports_graph(Module, IntDepsRel, ImplDepsRel, !IO) :-
+maybe_output_imports_graph(Module, IntDepsGraph, ImplDepsGraph, !IO) :-
     globals.io_lookup_bool_option(imports_graph, ImportsGraph, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     (
@@ -4270,12 +4270,12 @@ maybe_output_imports_graph(Module, IntDepsRel, ImplDepsRel, !IO) :-
         (
             ImpResult = ok(ImpStream),
 
-            Rel0 = list.foldl(filter_imports_relation,
-                relation.to_assoc_list(IntDepsRel), relation.init),
-            Rel = list.foldl(filter_imports_relation,
-                relation.to_assoc_list(ImplDepsRel), Rel0),
+            Deps0 = list.foldl(filter_imports_graph,
+                digraph.to_assoc_list(IntDepsGraph), digraph.init),
+            Deps = list.foldl(filter_imports_graph,
+                digraph.to_assoc_list(ImplDepsGraph), Deps0),
 
-            write_relation(ImpStream, "imports", sym_name_to_node_id, Rel, !IO),
+            write_graph(ImpStream, "imports", sym_name_to_node_id, Deps, !IO),
 
             io.close_output(ImpStream, !IO),
             maybe_write_string(Verbose, " done.\n", !IO)
@@ -4292,18 +4292,16 @@ maybe_output_imports_graph(Module, IntDepsRel, ImplDepsRel, !IO) :-
         ImportsGraph = no
     ).
 
-:- func filter_imports_relation(pair(sym_name, sym_name),
-    relation(sym_name)) = relation(sym_name).
+:- func filter_imports_graph(pair(sym_name, sym_name), digraph(sym_name)) =
+    digraph(sym_name).
 
-filter_imports_relation(A - B, Relation) =
+filter_imports_graph(A - B, DepsGraph) =
     (
         %
-        % Don't keep the relation if it points to a builtin-module
-        % or if the relationship is between two standard library
-        % modules
+        % Don't keep the edge if it points to a builtin-module or if the
+        % relationship is between two standard library modules.
         % XXX it would be better to change this to be only keep those
-        % relations for which the left-hand side is in the current
-        % directory.
+        % edges for which the left-hand side is in the current directory.
         %
         (
             any_mercury_builtin_module(B)
@@ -4312,21 +4310,21 @@ filter_imports_relation(A - B, Relation) =
             is_std_lib_module_name(B, _)
         )
     ->
-        Relation
+        DepsGraph
     ;
-        relation.add_values(Relation, A, B)
+        digraph.add_vertices_and_edge(A, B, DepsGraph)
     ).
 
 :- type gen_node_name(T) == (func(T) = string).
 
-:- pred write_relation(io.output_stream::in, string::in,
-    gen_node_name(T)::in, relation(T)::in, io::di, io::uo) is det.
+:- pred write_graph(io.output_stream::in, string::in,
+    gen_node_name(T)::in, digraph(T)::in, io::di, io::uo) is det.
  
-write_relation(Stream, Name, GenNodeName, Relation, !IO) :-
+write_graph(Stream, Name, GenNodeName, Graph, !IO) :-
     io.write_string(Stream, "digraph " ++ Name ++ " {\n", !IO),
     io.write_string(Stream, "label=\"" ++ Name ++ "\";\n", !IO),
     io.write_string(Stream, "center=true;\n", !IO),
-    relation.traverse(Relation, write_node(Stream, GenNodeName),
+    digraph.traverse(Graph, write_node(Stream, GenNodeName),
         write_edge(Stream, GenNodeName), !IO),
     io.write_string(Stream, "}\n", !IO).
  
@@ -4396,34 +4394,34 @@ write_module_scc(Stream, SCC0, !IO) :-
     %
     % This predicate writes out the .d files for all the modules in the
     % Modules list.
-    % IntDepsRel gives the interface dependency relation.
-    % ImplDepsRel gives the implementation dependency relation
-    % IndirectDepsRel gives the indirect dependency relation
+    % IntDepsGraph gives the interface dependency graph.
+    % ImplDepsGraph gives the implementation dependency graph.
+    % IndirectDepsGraph gives the indirect dependency graph
     % (this includes dependencies on `*.int2' files).
-    % IndirectOptDepsRel gives the indirect optimization dependencies
+    % IndirectOptDepsGraph gives the indirect optimization dependencies
     % (this includes dependencies via `.opt' and `.trans_opt' files).
     % These are all computed from the DepsMap.
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
     %
 :- pred generate_dependencies_write_d_files(list(deps)::in,
-    deps_rel::in, deps_rel::in, deps_rel::in, deps_rel::in,
+    deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
     list(module_name)::in, deps_map::in, io::di, io::uo) is det.
 
 generate_dependencies_write_d_files([], _, _, _, _, _, _, !IO).
 generate_dependencies_write_d_files([Dep | Deps],
-        IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
+        IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, DepsMap, !IO) :-
     some [!Module] (
         Dep = deps(_, !:Module),
 
         %
         % Look up the interface/implementation/indirect dependencies
-        % for this module from the respective dependency relations,
+        % for this module from the respective dependency graphs,
         % and save them in the module_imports structure.
         %
         module_imports_get_module_name(!.Module, ModuleName),
-        get_dependencies_from_relation(IndirectOptDepsRel, ModuleName,
+        get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
             IndirectOptDeps),
         globals.io_lookup_bool_option(intermodule_optimization, Intermod,
             !IO),
@@ -4437,9 +4435,9 @@ generate_dependencies_write_d_files([Dep | Deps],
             IndirectDeps = IndirectOptDeps
         ;
             Intermod = no,
-            get_dependencies_from_relation(IntDepsRel, ModuleName, IntDeps),
-            get_dependencies_from_relation(ImplDepsRel, ModuleName, ImplDeps),
-            get_dependencies_from_relation(IndirectDepsRel, ModuleName,
+            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
+            get_dependencies_from_graph(ImplDepsGraph, ModuleName, ImplDeps),
+            get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
                 IndirectDeps)
         ),
 
@@ -4489,19 +4487,20 @@ generate_dependencies_write_d_files([Dep | Deps],
         ;
             true
         ),
-        generate_dependencies_write_d_files(Deps, IntDepsRel, ImplDepsRel,
-            IndirectDepsRel, IndirectOptDepsRel, TransOptOrder, DepsMap, !IO)
+        generate_dependencies_write_d_files(Deps, IntDepsGraph, ImplDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph, TransOptOrder, DepsMap,
+            !IO)
     ).
 
-:- pred get_dependencies_from_relation(deps_rel::in, module_name::in,
+:- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
     list(module_name)::out) is det.
 
-get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
-    svrelation.add_element(ModuleName, ModuleKey, DepsRel0, DepsRel),
-    relation.lookup_key_set_from(DepsRel, ModuleKey, DepsKeysSet),
+get_dependencies_from_graph(DepsGraph0, ModuleName, Deps) :-
+    digraph.add_vertex(ModuleName, ModuleKey, DepsGraph0, DepsGraph),
+    digraph.lookup_key_set_from(DepsGraph, ModuleKey, DepsKeysSet),
     sparse_bitset.foldl(
         (pred(Key::in, Deps0::in, [Dep | Deps0]::out) is det :-
-            relation.lookup_key(DepsRel, Key, Dep)
+            digraph.lookup_vertex(DepsGraph, Key, Dep)
         ), DepsKeysSet, [], Deps).
 
 % This is the data structure we use to record the dependencies.
@@ -4514,8 +4513,9 @@ get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
                 module_imports
             ).
 
-    % (Module1 deps_rel Module2) means Module1 is imported by Module2.
-:- type deps_rel == relation(module_name).
+    % (Module1 -> Module2) means Module1 is imported by Module2.
+:- type deps_graph == digraph(module_name).
+:- type deps_graph_key == digraph_key(module_name).
 
 :- pred generate_deps_map(set(module_name)::in, bool::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
@@ -4561,42 +4561,44 @@ generate_deps_map(!.Modules, Search, !DepsMap, !IO) :-
         true
     ).
 
-    % Construct a pair of dependency relations (the interface dependencies
+    % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
     %
-:- pred deps_list_to_deps_rel(list(deps)::in, deps_map::in,
-    deps_rel::in, deps_rel::out, deps_rel::in, deps_rel::out) is det.
+:- pred deps_list_to_deps_graph(list(deps)::in, deps_map::in,
+    deps_graph::in, deps_graph::out, deps_graph::in, deps_graph::out) is det.
 
-deps_list_to_deps_rel([], _, !IntRel, !ImplRel).
-deps_list_to_deps_rel([Deps | DepsList], DepsMap, !IntRel, !ImplRel) :-
+deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
+deps_list_to_deps_graph([Deps | DepsList], DepsMap, !IntDepsGraph,
+        !ImplDepsGraph) :-
     Deps = deps(_, ModuleImports),
     ModuleError = ModuleImports ^ error,
     ( ModuleError \= fatal_module_errors ->
-        module_imports_to_deps_rel(ModuleImports,
-            lookup_module_imports(DepsMap), !IntRel, !ImplRel)
+        module_imports_to_deps_graph(ModuleImports,
+            lookup_module_imports(DepsMap), !IntDepsGraph, !ImplDepsGraph)
     ;
         true
     ),
-    deps_list_to_deps_rel(DepsList, DepsMap, !IntRel, !ImplRel).
+    deps_list_to_deps_graph(DepsList, DepsMap, !IntDepsGraph, !ImplDepsGraph).
 
 :- func lookup_module_imports(deps_map, module_name) = module_imports.
 
 lookup_module_imports(DepsMap, ModuleName) = ModuleImports :-
     map.lookup(DepsMap, ModuleName, deps(_, ModuleImports)).
 
-add_module_relations(LookupModuleImports, ModuleName, !IntRel, !ImplRel) :-
+add_module_relations(LookupModuleImports, ModuleName, !IntDepsGraph,
+        !ImplDepsGraph) :-
     ModuleImports = LookupModuleImports(ModuleName),
-    module_imports_to_deps_rel(ModuleImports, LookupModuleImports,
-        !IntRel, !ImplRel).
+    module_imports_to_deps_graph(ModuleImports, LookupModuleImports,
+        !IntDepsGraph, !ImplDepsGraph).
 
-:- pred module_imports_to_deps_rel(module_imports::in,
+:- pred module_imports_to_deps_graph(module_imports::in,
     lookup_module_imports::lookup_module_imports,
-    deps_rel::in, deps_rel::out, deps_rel::in, deps_rel::out) is det.
+    deps_graph::in, deps_graph::out, deps_graph::in, deps_graph::out) is det.
 
-module_imports_to_deps_rel(ModuleImports, LookupModuleImports,
-        !IntRel, !ImplRel) :-
+module_imports_to_deps_graph(ModuleImports, LookupModuleImports,
+        !IntDepsGraph, !ImplDepsGraph) :-
     %
-    % Add interface dependencies to the interface deps relation.
+    % Add interface dependencies to the interface deps graph.
     %
     % Note that we need to do this both for the interface imports
     % of this module and for the *implementation* imports of
@@ -4614,13 +4616,13 @@ module_imports_to_deps_rel(ModuleImports, LookupModuleImports,
     %
     ModuleName = ModuleImports ^ module_name,
     ParentDeps = ModuleImports ^ parent_deps,
-    svrelation.add_element(ModuleName, IntModuleKey, !IntRel),
-    add_int_deps(IntModuleKey, ModuleImports, !IntRel),
+    digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
+    add_int_deps(IntModuleKey, ModuleImports, !IntDepsGraph),
     add_parent_impl_deps_list(LookupModuleImports, IntModuleKey, ParentDeps,
-        !IntRel),
+        !IntDepsGraph),
 
     %
-    % Add implementation dependencies to the impl. deps relation.
+    % Add implementation dependencies to the impl. deps graph.
     % (The implementation dependencies are a superset of the
     % interface dependencies.)
     %
@@ -4629,61 +4631,63 @@ module_imports_to_deps_rel(ModuleImports, LookupModuleImports,
     % because this module may depend on things imported
     % only by its parents.
     %
-    svrelation.add_element(ModuleName, ImplModuleKey, !ImplRel),
-    add_impl_deps(ImplModuleKey, ModuleImports, !ImplRel),
+    digraph.add_vertex(ModuleName, ImplModuleKey, !ImplDepsGraph),
+    add_impl_deps(ImplModuleKey, ModuleImports, !ImplDepsGraph),
     add_parent_impl_deps_list(LookupModuleImports, ImplModuleKey, ParentDeps,
-        !ImplRel).
+        !ImplDepsGraph).
 
-    % Add interface dependencies to the interface deps relation.
+    % Add interface dependencies to the interface deps graph.
     %
-:- pred add_int_deps(relation_key::in, module_imports::in,
-    deps_rel::in, deps_rel::out) is det.
+:- pred add_int_deps(deps_graph_key::in, module_imports::in,
+    deps_graph::in, deps_graph::out) is det.
 
-add_int_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
+add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     AddDep = add_dep(ModuleKey),
-    list.foldl(AddDep, ModuleImports ^ parent_deps, Rel0, Rel1),
-    list.foldl(AddDep, ModuleImports ^ int_deps, Rel1, Rel).
+    list.foldl(AddDep, ModuleImports ^ parent_deps, !DepsGraph),
+    list.foldl(AddDep, ModuleImports ^ int_deps, !DepsGraph).
 
     % Add direct implementation dependencies for a module to the
-    % implementation deps relation.
+    % implementation deps graph.
     %
-:- pred add_impl_deps(relation_key::in, module_imports::in,
-    deps_rel::in, deps_rel::out) is det.
+:- pred add_impl_deps(deps_graph_key::in, module_imports::in,
+    deps_graph::in, deps_graph::out) is det.
 
-add_impl_deps(ModuleKey, ModuleImports, !Rel) :-
+add_impl_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     % The implementation dependencies are a superset of the
     % interface dependencies, so first we add the interface deps.
-    add_int_deps(ModuleKey, ModuleImports, !Rel),
+    add_int_deps(ModuleKey, ModuleImports, !DepsGraph),
     % then we add the impl deps
     module_imports_get_impl_deps(ModuleImports, ImplDeps),
-    list.foldl(add_dep(ModuleKey), ImplDeps, !Rel).
+    list.foldl(add_dep(ModuleKey), ImplDeps, !DepsGraph).
 
     % Add parent implementation dependencies for the given Parent module
-    % to the impl. deps relation values for the given ModuleKey.
+    % to the impl. deps graph values for the given ModuleKey.
     %
 :- pred add_parent_impl_deps(lookup_module_imports::lookup_module_imports,
-    relation_key::in, module_name::in, deps_rel::in, deps_rel::out) is det.
+    deps_graph_key::in, module_name::in, deps_graph::in, deps_graph::out)
+    is det.
 
-add_parent_impl_deps(LookupModuleImports, ModuleKey, Parent, !Rel) :-
+add_parent_impl_deps(LookupModuleImports, ModuleKey, Parent, !DepsGraph) :-
     ParentModuleImports = LookupModuleImports(Parent),
-    add_impl_deps(ModuleKey, ParentModuleImports, !Rel).
+    add_impl_deps(ModuleKey, ParentModuleImports, !DepsGraph).
 
 :- pred add_parent_impl_deps_list(lookup_module_imports::lookup_module_imports,
-    relation_key::in, list(module_name)::in, deps_rel::in, deps_rel::out)
+    deps_graph_key::in, list(module_name)::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_impl_deps_list(LookupModuleImports, ModuleKey, Parents, !Rel) :-
+add_parent_impl_deps_list(LookupModuleImports, ModuleKey, Parents,
+        !DepsGraph) :-
     list.foldl(add_parent_impl_deps(LookupModuleImports, ModuleKey), Parents,
-        !Rel).
+        !DepsGraph).
 
-    % Add a single dependency to a relation.
+    % Add a single dependency to a graph.
     %
-:- pred add_dep(relation_key::in, T::in, relation(T)::in, relation(T)::out)
+:- pred add_dep(digraph_key(T)::in, T::in, digraph(T)::in, digraph(T)::out)
     is det.
 
-add_dep(ModuleRelKey, Dep, !Rel) :-
-    svrelation.add_element(Dep, DepRelKey, !Rel),
-    svrelation.add(ModuleRelKey, DepRelKey, !Rel).
+add_dep(ModuleKey, Dep, !DepsGraph) :-
+    digraph.add_vertex(Dep, DepKey, !DepsGraph),
+    digraph.add_edge(ModuleKey, DepKey, !DepsGraph).
 
 :- type submodule_kind
     --->    toplevel

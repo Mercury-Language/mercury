@@ -18,15 +18,15 @@
 :- module call_graph.
 :- interface.
 
+:- import_module digraph.
 :- import_module io.
 :- import_module list.
-:- import_module relation.
 
 %-----------------------------------------------------------------------------%
 
 
 :- pred build_call_graph(list(string)::in,
-    relation(string)::in, relation(string)::out, io::di, io::uo) is det.
+    digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,6 @@
 
 :- import_module bool.
 :- import_module maybe.
-:- import_module svrelation.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,7 +62,7 @@ build_call_graph(Args, !StaticCallGraph, !IO) :-
     % Builds the static call graph located in the *.prof files.
     %
 :- pred build_static_call_graph(list(string)::in, bool::in,
-    relation(string)::in, relation(string)::out, io::di, io::uo) is det.
+    digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
 build_static_call_graph(Files, VeryVerbose, !StaticCallGraph, !IO) :-
     list.foldl2(process_prof_file(VeryVerbose), Files, !StaticCallGraph, !IO).
@@ -71,10 +70,10 @@ build_static_call_graph(Files, VeryVerbose, !StaticCallGraph, !IO) :-
     % process_prof_file:
     %
     % Puts all the Caller and Callee label pairs from File into the
-    % static call graph relation.
+    % static call graph.
     %
 :- pred process_prof_file(bool::in, string::in,
-    relation(string)::in, relation(string)::out, io::di, io::uo) is det.
+    digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
 process_prof_file(VeryVerbose, File, !StaticCallGraph, !IO) :-
     maybe_write_string(VeryVerbose, "\n\tProcessing ", !IO),
@@ -94,16 +93,16 @@ process_prof_file(VeryVerbose, File, !StaticCallGraph, !IO) :-
     ),
     maybe_write_string(VeryVerbose, " done", !IO).
 
-:- pred process_prof_file_2(relation(string)::in, relation(string)::out,
+:- pred process_prof_file_2(digraph(string)::in, digraph(string)::out,
     io::di, io::uo) is det.
 
 process_prof_file_2(!StaticCallGraph, !IO) :-
     maybe_read_label_name(MaybeLabelName, !IO),
     ( MaybeLabelName = yes(CallerLabel) ->
         read_label_name(CalleeLabel, !IO),
-        relation.lookup_element(!.StaticCallGraph, CallerLabel, CallerKey),
-        relation.lookup_element(!.StaticCallGraph, CalleeLabel, CalleeKey),
-        svrelation.add(CallerKey, CalleeKey, !StaticCallGraph),
+        digraph.lookup_key(!.StaticCallGraph, CallerLabel, CallerKey),
+        digraph.lookup_key(!.StaticCallGraph, CalleeLabel, CalleeKey),
+        digraph.add_edge(CallerKey, CalleeKey, !StaticCallGraph),
         process_prof_file_2(!StaticCallGraph, !IO)
     ;
         true

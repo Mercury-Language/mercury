@@ -21,12 +21,12 @@
 
 :- import_module prof_info.
 
+:- import_module digraph.
 :- import_module io.
-:- import_module relation.
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_profiling_data_files(prof::out, relation(string)::out,
+:- pred process_profiling_data_files(prof::out, digraph(string)::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -46,7 +46,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module svmap.
-:- import_module svrelation.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -229,7 +228,7 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
     % times a predicate is called.
     %
 :- pred process_addr_pair(prof_node_map::in, prof_node_map::out,
-    addrdecl::in, addrdecl::out, relation(string)::out, io::di, io::uo)
+    addrdecl::in, addrdecl::out, digraph(string)::out, io::di, io::uo)
     is det.
 
 process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO) :-
@@ -238,7 +237,7 @@ process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO) :-
     io.see(PairFile, Result, !IO),
     (
         Result = ok,
-        process_addr_pair_2(Dynamic, relation.init, DynamicCallGraph,
+        process_addr_pair_2(Dynamic, digraph.init, DynamicCallGraph,
             !ProfNodeMap, !AddrDecl, !IO),
         io.seen(!IO)
     ;
@@ -249,7 +248,7 @@ process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO) :-
     ).
 
 :- pred process_addr_pair_2(bool::in,
-    relation(string)::in, relation(string)::out,
+    digraph(string)::in, digraph(string)::out,
     prof_node_map::in, prof_node_map::out,
     addrdecl::in, addrdecl::out, io::di, io::uo) is det.
 
@@ -290,9 +289,9 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         % Add edge to call graph if generating dynamic call graph.
         (
             Dynamic = yes,
-            svrelation.add_element(CallerName, CallerKey, !DynamicCallGraph),
-            svrelation.add_element(CalleeName, CalleeKey, !DynamicCallGraph),
-            svrelation.add(CallerKey, CalleeKey, !DynamicCallGraph)
+            digraph.add_vertex(CallerName, CallerKey, !DynamicCallGraph),
+            digraph.add_vertex(CalleeName, CalleeKey, !DynamicCallGraph),
+            digraph.add_edge(CallerKey, CalleeKey, !DynamicCallGraph)
         ;
             Dynamic = no
         ),

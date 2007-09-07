@@ -63,6 +63,7 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module deconstruct.
+:- import_module digraph.
 :- import_module dir.
 :- import_module enum.
 :- import_module eqvclass.

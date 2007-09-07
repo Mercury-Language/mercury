@@ -49,9 +49,9 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module digraph.
 :- import_module dir.
 :- import_module getopt_io.
-:- import_module relation.
 
 %-----------------------------------------------------------------------------%
 
@@ -798,8 +798,8 @@ build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
 
 reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.foldl2(add_module_relations(lookup_module_imports(ModuleDeps)),
-        Modules0, relation.init, _IntRel, relation.init, ImplRel),
-    relation.atsort(ImplRel, Order0),
+        Modules0, digraph.init, _IntDepsGraph, digraph.init, ImplDepsGraph),
+    digraph.atsort(ImplDepsGraph, Order0),
     list.reverse(Order0, Order1),
     list.map(set.to_sorted_list, Order1, Order2),
     list.condense(Order2, Modules).
