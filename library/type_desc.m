@@ -336,10 +336,8 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
     }
 ").
 
-is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
-    % The backends in which we use this definition of this predicate
-    % don't yet support pseudo_type_descs.
-    semidet_fail.
+is_univ_pseudo_type_desc(PTD, N) :-
+    erlang_rtti_implementation.is_univ_pseudo_type_desc(PTD, N).
 
 :- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
 
@@ -360,10 +358,8 @@ is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
     }
 ").
 
-is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
-    % The backends in which we use this definition of this predicate
-    % don't yet support pseudo_type_descs.
-    semidet_fail.
+is_exist_pseudo_type_desc(PTD, N) :-
+    erlang_rtti_implementation.is_exist_pseudo_type_desc(PTD, N).
 
 :- pragma foreign_proc("C",
     type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
@@ -686,9 +682,8 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
     SUCCESS_INDICATOR = success;
 }").
 
-pseudo_type_ctor_and_args(_, _, _) :-
-    % The non-C backends can't (yet) handle pseudo_type_infos.
-    private_builtin.sorry("pseudo_type_ctor_and_args").
+pseudo_type_ctor_and_args(PTD, TC, Args) :-
+    erlang_rtti_implementation.pseudo_type_ctor_and_args(PTD, TC, Args).
 
 % This is the forwards mode of make_type/2: given a type constructor and
 % a list of argument types, check that the length of the argument types

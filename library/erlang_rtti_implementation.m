@@ -83,6 +83,16 @@
 :- mode deconstruct_du(in, in, out, out, out) is cc_nondet.
 
 %-----------------------------------------------------------------------------%
+% Implementation to do with pseudo type descriptions
+
+:- pred pseudo_type_ctor_and_args(pseudo_type_desc::in,
+    type_ctor_desc::out, list(pseudo_type_desc)::out) is semidet.
+
+:- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
+
+:- pred is_univ_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
+
+%-----------------------------------------------------------------------------%
 %
 % Implementations for use from construct
 %
@@ -1060,6 +1070,78 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, Args) :-
+        % XXX Still need to handle equivalence types.
+    EvalPTI = pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc),
+    EvalPTI = pseudo_type_info(PTI),
+
+    TI = unsafe_cast(PTI),
+
+    TypeCtorInfo = TI ^ type_ctor_info_evaled,
+    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+
+    ( TypeCtorRep = etcr_pred ->
+        Arity = TI ^ var_arity_type_info_arity,
+        TypeCtorDesc = make_pred_type_ctor_desc(Arity),
+        ArgInfos = get_var_arity_arg_type_infos(TI)
+
+    ; TypeCtorRep = etcr_func ->
+        Arity = TI ^ var_arity_type_info_arity,
+        TypeCtorDesc = make_func_type_ctor_desc(Arity),
+        ArgInfos = get_var_arity_arg_type_infos(TI)
+
+    ; TypeCtorRep = etcr_tuple ->
+        Arity = TI ^ var_arity_type_info_arity,
+        TypeCtorDesc = make_tuple_type_ctor_desc(Arity),
+        ArgInfos = get_var_arity_arg_type_infos(TI)
+
+    ;
+        % Handle fixed arity types.
+        TypeCtorDesc = make_fixed_arity_type_ctor_desc(TypeCtorInfo),
+        ( TypeCtorInfo ^ type_ctor_arity = 0 ->
+            ArgInfos = []
+        ;
+            ArgInfos = get_fixed_arity_arg_type_infos(TI)
+        )
+    ),
+    Args = pseudo_type_descs_from_type_infos(ArgInfos).
+
+%-----------------------------------------------------------------------------%
+
+is_exist_pseudo_type_desc(PseudoTypeDesc, Int) :-
+    EvalPTI = pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc),
+    EvalPTI = existential_type_info(Int).
+
+%-----------------------------------------------------------------------------%
+
+is_univ_pseudo_type_desc(PseudoTypeDesc, Int) :-
+    EvalPTI = pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc),
+    EvalPTI = universal_type_info(Int).
+
+%-----------------------------------------------------------------------------%
+
+:- func pseudo_type_desc_to_pseudo_type_info(
+    pseudo_type_desc) = evaluated_pseudo_type_info_thunk.
+
+pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc) =
+    eval_pseudo_type_info_thunk(unsafe_cast(PseudoTypeDesc)).
+
+:- func type_ctor_info_from_pseudo_type_info(pseudo_type_info) =
+    type_ctor_info_evaled.
+
+type_ctor_info_from_pseudo_type_info(PTI) =
+    unsafe_cast(PTI) ^ type_ctor_info_evaled.
+    
+:- func pseudo_type_descs_from_type_infos(list(type_info)) =
+    list(pseudo_type_desc).
+
+pseudo_type_descs_from_type_infos(TypeInfos) = PseudoTypeDescs :-
+    % They have the same representation.
+    PseudoTypeDescs = unsafe_cast(TypeInfos).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 num_functors(TypeDesc) = NumFunctors :-
     TypeInfo = type_info_from_type_desc(TypeDesc),
     num_functors(TypeInfo, yes(NumFunctors)).
@@ -1549,6 +1631,7 @@ type_info(_) = type_info :-
     type_ctor_info_evaled(TypeInfo::in) = (TypeCtorInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    %io:format(""~nTypeInfo: ~p~n"", [TypeInfo]),
         % 
         % If the type_info is for a type with arity 0,
         % then the type_info is already the type_ctor info.
@@ -1559,8 +1642,15 @@ type_info(_) = type_info :-
             TypeCtorInfo = TypeInfo();
         true ->
             FirstElement = element(?ML_ti_type_ctor_info, TypeInfo),
-            TypeCtorInfo = FirstElement()
-    end
+            if 
+                is_integer(FirstElement) ->
+                    TypeCtorInfo = TypeInfo;
+                true ->
+                    TypeCtorInfo = FirstElement()
+            end
+    end,
+    % io:format(""TypeInfo: ~p~nTypeCtorInfo: ~p~n"", [TypeInfo, TypeCtorInfo]),
+    void
 ").
 
 type_ctor_info_evaled(_) = type_ctor_info_evaled :-
@@ -2311,7 +2401,12 @@ unsafe_pseudo_type_info_index(_, _) = pseudo(pseudo_type_info_thunk) :-
 :- pragma foreign_proc("Erlang",
         eval_pseudo_type_info_thunk(Thunk::in) = (TypeInfo::out),
         [will_not_call_mercury, thread_safe, promise_pure], "
-    MaybeTypeInfo = Thunk(),
+    if
+        is_function(Thunk, 0) ->
+            MaybeTypeInfo = Thunk();
+        true ->
+            MaybeTypeInfo = Thunk
+    end,
     TypeInfo =
         if 
             is_integer(MaybeTypeInfo), MaybeTypeInfo < 512 ->
