@@ -2466,6 +2466,8 @@ long_option("compound-compare-builtins-2007-07-09",
 % but "no-no-" will be recognised.
 long_option("no-det-warning-compound-compare-2007-07-17",
                                     compiler_sufficiently_recent).
+long_option("foreign-enum-switch-fix",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("feedback-file",        feedback_file).
 

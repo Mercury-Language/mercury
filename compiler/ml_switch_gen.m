@@ -437,11 +437,31 @@ ml_switch_generate_mlds_cases([Case | Cases], CodeModel,
 
 ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case, !Info) :-
     Case = extended_case(_Priority, Tag, _ConsId, Goal),
-    ( Tag = int_tag(Int) ->
+    (
+        Tag = int_tag(Int),
         Rval = const(mlconst_int(Int))
-    ; Tag = string_tag(String) ->
+    ;
+        Tag = string_tag(String),
         Rval = const(mlconst_string(String))
     ;
+        Tag = foreign_tag(ForeignTag),
+        Rval = const(mlconst_foreign(ForeignTag, mlds_native_int_type))
+    ;
+        ( Tag = float_tag(_)
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = single_functor_tag
+        ; Tag = unshared_tag(_)
+        ; Tag = shared_remote_tag(_, _)
+        ; Tag = shared_local_tag(_, _)
+        ; Tag = no_tag
+        ; Tag = reserved_address_tag(_)
+        ; Tag = shared_with_reserved_addresses_tag(_, _)
+        ),
         unexpected(this_file, "ml_switch_gen.m: invalid tag type")
     ),
     ml_gen_goal(CodeModel, Goal, Statement, !Info),

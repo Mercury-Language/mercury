@@ -92,6 +92,7 @@ ORDINARY_PROGS=	\
 	foreign_enum_dummy \
 	foreign_enum_mod1 \
 	foreign_enum_rtti \
+	foreign_enum_switch \
 	foreign_import_module \
 	foreign_name_mutable \
 	foreign_type \
