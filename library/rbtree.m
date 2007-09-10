@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1995-2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: rbtree.m.
 % Main author: petdr.
 % Stability: medium.
-% 
+%
 % Contains an implementation of red black trees.
 %
 % *** Exit conditions of main predicates ***
@@ -36,7 +36,7 @@
 %   Aborts program if key looked up doesn't exist.
 % search:
 %   Fails if key looked up doesn't exist.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
