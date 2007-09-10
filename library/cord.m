@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,18 +9,18 @@
 % File: cord.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 % Stability: medium.
-% 
-% A cord is a sequence type supporting O(1) consing and
-% concatenation.  A cord is essentially a tree structure with data stored
-% in the leaf nodes.  Joining two cords together to construct a new cord
-% is therefore an O(1) operation.
+%
+% A cord is a sequence type supporting O(1) consing and concatenation.
+% A cord is essentially a tree structure with data stored in the leaf nodes.
+% Joining two cords together to construct a new cord is therefore an O(1)
+% operation.
 %
 % This data type is intended for situations where efficient, linearised
 % collection of data is required.
 %
 % While this data type presents a list-like interface, calls to list/1 and
 % head_tail/3 in particular are O(n) in the size of the cord.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -176,10 +176,8 @@ CA ++ CB = (      if CA = nil then CB
 %-----------------------------------------------------------------------------%
 
 head_tail(leaf(X),          X, nil ).
-
 head_tail(leaves([X | Xs]), X, C   ) :-
     C = ( if Xs = [] then nil else leaves(Xs) ).
-
 head_tail(branch(CA0, CB),  X, C   ) :-
     head_tail(CA0, X, CA),
     C = CA ++ CB.
@@ -191,13 +189,10 @@ length(C) = foldl(func(_, N) = N + 1, C, 0).
 %-----------------------------------------------------------------------------%
 
 member(X, leaf(X)).
-
 member(X, leaves(Xs)) :-
     member(X, Xs).
-
 member(X, branch(CA, _)) :-
     member(X, CA).
-
 member(X, branch(_, CB)) :-
     member(X, CB).
 
