@@ -231,6 +231,7 @@ mercury_std_library_module("construct").
 mercury_std_library_module("cord").
 mercury_std_library_module("counter").
 mercury_std_library_module("deconstruct").
+mercury_std_library_module("digraph").
 mercury_std_library_module("dir").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
