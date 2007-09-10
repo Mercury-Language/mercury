@@ -636,9 +636,9 @@
     % of String that are delimited by Separator. For example,
     %
     % string.split_at_string("|||", "|||fld2|||fld3") = ["", "fld2", [fld3"]
-    % 
+    %
     % Always the first match of Separator is used to break the String, for
-    % example: string.split_at_string("aa", "xaaayaaaz") = ["x", "ay", "az"] 
+    % example: string.split_at_string("aa", "xaaayaaaz") = ["x", "ay", "az"]
     %
 :- func string.split_at_string(string, string) = list(string).
 
@@ -1060,7 +1060,6 @@ string.remove_suffix_if_present(Suffix, String) = Out :-
     ;
         Out = String
     ).
-
 
 :- pragma promise_equivalent_clauses(string.prefix/2).
 
@@ -3427,7 +3426,6 @@ trim_float_string(FloatStr0) = FloatStr :-
     N = count_extra_trailing_zeroes(FloatStr0, L - 1, 0),
     FloatStr = string.left(FloatStr0, L - N).
 
-
 :- func count_extra_trailing_zeroes(string, int, int) = int.
 
 count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
@@ -4026,8 +4024,12 @@ strchars(I, End, Str) =
         MR_make_aligned_string(SubString, """");
     } else {
         len = strlen(Str);
-        if (Start > len) Start = len;
-        if (Count > len - Start) Count = len - Start;
+        if (Start > len) {
+            Start = len;
+        }
+        if (Count > len - Start) {
+            Count = len - Start;
+        }
         MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
         MR_memcpy(SubString, Str + Start, Count);
         SubString[Count] = '\\0';

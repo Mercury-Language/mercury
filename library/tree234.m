@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: tree234.m.
 % Main author: conway.
 % Stability: medium.
-% 
+%
 % This module implements a map (dictionary) using 2-3-4 trees - see
 % map.m for futher documentation.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2808,11 +2808,9 @@ tree234_to_doc(T) =
         str("])")
     ]).
 
-
 :- func tree234_to_doc_2(lazy_list(K, V)) = doc.
 
 tree234_to_doc_2(empty) = str("").
-
 tree234_to_doc_2(lazy_cons(K, V, Susp)) = Doc :-
     LL = apply(Susp),
     (
@@ -2832,22 +2830,22 @@ tree234_to_doc_2(lazy_cons(K, V, Susp)) = Doc :-
     --->    empty
     ;       lazy_cons(K, V, (func) = lazy_list(K, V)).
 
-
 :- func tree234_to_lazy_list(tree234(K, V), lazy_list(K, V)) = lazy_list(K, V).
 
 tree234_to_lazy_list(empty, LL) = LL.
-
 tree234_to_lazy_list(two(K1, V1, T1, T2), LL) =
-    tree234_to_lazy_list(T1, lazy_cons(K1, V1,
-        (func) = tree234_to_lazy_list(T2, LL))).
-
+    tree234_to_lazy_list(T1,
+        lazy_cons(K1, V1,
+            (func) = tree234_to_lazy_list(T2, LL))).
 tree234_to_lazy_list(three(K1, V1, K2, V2, T1, T2, T3), LL) =
-    tree234_to_lazy_list(T1, lazy_cons(K1, V1,
-        (func) = tree234_to_lazy_list(two(K2, V2, T2, T3), LL))).
-
+    tree234_to_lazy_list(T1,
+        lazy_cons(K1, V1,
+            (func) = tree234_to_lazy_list(two(K2, V2, T2, T3), LL))).
 tree234_to_lazy_list(four(K1, V1, K2, V2, K3, V3, T1, T2, T3, T4), LL) =
-    tree234_to_lazy_list(T1, lazy_cons(K1, V1,
-        (func) = tree234_to_lazy_list(three(K2, V2, K3, V3, T2, T3, T4), LL))).
+    tree234_to_lazy_list(T1,
+        lazy_cons(K1, V1,
+            (func) = tree234_to_lazy_list(
+                three(K2, V2, K3, V3, T2, T3, T4), LL))).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
