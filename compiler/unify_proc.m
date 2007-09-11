@@ -780,7 +780,7 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
         (
             TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
             (
-                ( EnumDummy = is_foreign_enum
+                ( EnumDummy = is_foreign_enum(_)
                 ; EnumDummy = is_enum
                 ),
                 make_simple_test(X, Y, umc_explicit, [], Goal),
@@ -992,11 +992,13 @@ generate_index_proc_body(TypeBody, X, Index, Context, Clause, !Info) :-
                 % an integer comparison, and does not call the type's index
                 % predicate, so do not generate an index predicate for such
                 % types.
-                ( EnumDummy = is_enum
-                ; EnumDummy = is_foreign_enum
-                ),
+                EnumDummy = is_enum,
                 unexpected(this_file,
                     "trying to create index proc for enum type")
+            ;
+                EnumDummy = is_foreign_enum(_),
+                unexpected(this_file,
+                    "trying to create index proc for foreign enum type")
             ;
                 EnumDummy = is_dummy,
                 unexpected(this_file,
@@ -1053,7 +1055,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             TypeBody = hlds_du_type(Ctors0, _, EnumDummy, _, _, _),
             (
                 ( EnumDummy = is_enum
-                ; EnumDummy = is_foreign_enum
+                ; EnumDummy = is_foreign_enum(_)
                 ),
                 generate_enum_compare_proc_body(Res, X, Y, Context, Clause,
                     !Info)

@@ -444,8 +444,9 @@ ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case, !Info) :-
         Tag = string_tag(String),
         Rval = const(mlconst_string(String))
     ;
-        Tag = foreign_tag(ForeignTag),
-        Rval = const(mlconst_foreign(ForeignTag, mlds_native_int_type))
+        Tag = foreign_tag(ForeignLang, ForeignTag),
+        Rval = const(mlconst_foreign(ForeignLang, ForeignTag,
+            mlds_native_int_type))
     ;
         ( Tag = float_tag(_)
         ; Tag = pred_closure_tag(_, _, _)

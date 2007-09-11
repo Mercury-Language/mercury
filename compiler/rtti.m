@@ -30,6 +30,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -182,6 +183,7 @@
                                     :: list(int)
             )
     ;       foreign_enum(
+                foreign_enum_language      :: foreign_language,
                 foreign_enum_axioms        :: equality_axioms,
                 foreign_enum_functors      :: list(foreign_enum_functor),
                 foreign_enum_ordinal_table :: map(int, foreign_enum_functor),
@@ -1542,7 +1544,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             )
         )
     ;
-        TypeCtorDetails = foreign_enum(TypeCtorUserEq, _, _, _, _),
+        TypeCtorDetails = foreign_enum(_, TypeCtorUserEq, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_FOREIGN_ENUM"
@@ -1685,7 +1687,7 @@ maybe_pseudo_type_info_or_self_to_rtti_data(self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
 type_ctor_details_num_ptags(enum(_, _, _, _, _, _)) = -1.
-type_ctor_details_num_ptags(foreign_enum(_, _, _, _, _)) = -1.
+type_ctor_details_num_ptags(foreign_enum(_, _, _, _, _, _)) = -1.
 type_ctor_details_num_ptags(du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
     map.keys(PtagMap, Ptags),
     list.last_det(Ptags, LastPtag).
@@ -1707,7 +1709,7 @@ type_ctor_details_num_ptags(foreign(_)) = -1.
 
 type_ctor_details_num_functors(enum(_, Functors, _, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(foreign_enum(_, Functors, _, _, _)) = 
+type_ctor_details_num_functors(foreign_enum(_, _, Functors, _, _, _)) = 
     list.length(Functors).
 type_ctor_details_num_functors(du(_, Functors, _, _, _)) =
     list.length(Functors).

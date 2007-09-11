@@ -1590,7 +1590,7 @@
     --->    mlconst_true
     ;       mlconst_false
     ;       mlconst_int(int)
-    ;       mlconst_foreign(string, mlds_type)
+    ;       mlconst_foreign(foreign_language, string, mlds_type)
     ;       mlconst_float(float)
     ;       mlconst_string(string)
     ;       mlconst_multi_string(list(string))

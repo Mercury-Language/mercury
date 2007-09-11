@@ -61,6 +61,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
@@ -525,10 +526,11 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             type_ctor_functor_number_map),
         Defns = EnumFunctorDescs ++ [ByValueDefn, ByNameDefn, NumberMapDefn]
     ;
-        TypeCtorDetails = foreign_enum(_, ForeignEnumFunctors,
+        TypeCtorDetails = foreign_enum(ForeignEnumLang, _, ForeignEnumFunctors,
             ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
         ForeignEnumFunctorDescs = list.map(
-            gen_foreign_enum_functor_desc(ModuleInfo, RttiTypeCtor),
+            gen_foreign_enum_functor_desc(ModuleInfo, ForeignEnumLang,
+                RttiTypeCtor),
             ForeignEnumFunctors),
         ByOrdinalDefn = gen_foreign_enum_ordinal_ordered_table(ModuleInfo,
             RttiTypeCtor, ForeignEnumByOrdinal),
@@ -636,18 +638,18 @@ gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor) = MLDS_Defn :-
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
 
-:- func gen_foreign_enum_functor_desc(module_info, rtti_type_ctor,
-    foreign_enum_functor) = mlds_defn.
+:- func gen_foreign_enum_functor_desc(module_info, foreign_language,
+    rtti_type_ctor, foreign_enum_functor) = mlds_defn.
 
-gen_foreign_enum_functor_desc(_ModuleInfo, RttiTypeCtor, ForeignEnumFunctor) 
-        = MLDS_Defn :-
+gen_foreign_enum_functor_desc(_ModuleInfo, Lang,
+        RttiTypeCtor, ForeignEnumFunctor) = MLDS_Defn :-
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, Ordinal, Value),
     RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         gen_init_int(Ordinal),
-        gen_init_foreign(Value)
+        gen_init_foreign(Lang, Value)
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
             

@@ -780,7 +780,7 @@ map_cons_tag(string_tag(_), _) :-
     unexpected(this_file, "string_tag cons tag " ++
         "for non-string_constant cons id").
 map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
-map_cons_tag(foreign_tag(_), _) :-
+map_cons_tag(foreign_tag(_, _), _) :-
     sorry(this_file, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-
     unexpected(this_file, "float_tag cons tag " ++

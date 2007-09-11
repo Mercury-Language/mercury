@@ -1359,30 +1359,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     ),
     (
         Body = hlds_du_type(_, ConsTagVals, EnumOrDummy, _, _, _),
-        EnumOrDummy = is_foreign_enum
+        EnumOrDummy = is_foreign_enum(Lang)
     ->
-        % XXX This language information should be attached to the type.
-        % It doesn't actually matter too much while we don't support
-        % foreign_enum pragmas for languages other than the target languages.
-        globals.io_get_target(TargetLanguage, !IO),
-        (
-            TargetLanguage = target_c,
-            Lang = lang_c
-        ;
-            TargetLanguage = target_il,
-            Lang = lang_il
-        ;
-            TargetLanguage = target_erlang,
-            Lang = lang_erlang
-        ;
-            TargetLanguage = target_java,
-            Lang = lang_java
-        ;
-            ( TargetLanguage = target_asm
-            ; TargetLanguage = target_x86_64
-            ),
-            sorry(this_file, "foreign enum and target_{asm,x86_64}")
-        ),
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [], 
             ForeignEnumVals),
         Pragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
@@ -1402,10 +1380,10 @@ gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
     ;
         unexpected(this_file, "expected enumeration constant")
     ),
-    ( ConsTag = foreign_tag(ForeignTag0) ->
+    ( ConsTag = foreign_tag(_ForeignLang, ForeignTag0) ->
         ForeignTag = ForeignTag0
     ;
-        unexpected(this_file, "exepcted foreign tag")
+        unexpected(this_file, "expected foreign tag")
     ),
     !:Values = [SymName - ForeignTag | !.Values].
 

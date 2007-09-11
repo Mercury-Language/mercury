@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module hlds.hlds_pred.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
@@ -186,7 +187,7 @@
 :- type enum_or_dummy
     --->    is_enum
     ;       is_dummy
-    ;       is_foreign_enum
+    ;       is_foreign_enum(foreign_language)
     ;       not_enum_or_dummy.
 
 :- type foreign_type_body
@@ -237,7 +238,7 @@
             % the specified integer value. This is used for enumerations and
             % character constants as well as for int constants.
     
-    ;       foreign_tag(string)
+    ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
             % embedded directly in the target language.  This is used for
             % foreign enumerations, i.e. those enumeration types that are the
@@ -387,7 +388,7 @@
 get_primary_tag(string_tag(_)) = no.
 get_primary_tag(float_tag(_)) = no.
 get_primary_tag(int_tag(_)) = no.
-get_primary_tag(foreign_tag(_)) = no.
+get_primary_tag(foreign_tag(_, _)) = no.
 get_primary_tag(pred_closure_tag(_, _, _)) = no.
 get_primary_tag(type_ctor_info_tag(_, _, _)) = no.
 get_primary_tag(base_typeclass_info_tag(_, _, _)) = no.
@@ -407,7 +408,7 @@ get_primary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
 get_secondary_tag(string_tag(_)) = no.
 get_secondary_tag(float_tag(_)) = no.
 get_secondary_tag(int_tag(_)) = no.
-get_secondary_tag(foreign_tag(_)) = no.
+get_secondary_tag(foreign_tag(_, _)) = no.
 get_secondary_tag(pred_closure_tag(_, _, _)) = no.
 get_secondary_tag(type_ctor_info_tag(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_tag(_, _, _)) = no.

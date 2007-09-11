@@ -667,8 +667,10 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = foreign_enum(_, ForeignEnumFunctors, 
+        TypeCtorDetails = foreign_enum(Lang, _, ForeignEnumFunctors, 
             ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
+        expect(unify(Lang, lang_c), this_file,
+            "language other than C for foreign enumeration"),
         list.foldl2(output_foreign_enum_functor_defn(RttiTypeCtor),
             ForeignEnumFunctors, !DeclSet, !IO),
         output_foreign_enum_ordinal_ordered_table(RttiTypeCtor,

@@ -468,8 +468,8 @@ write_rval_const(mlconst_false, !IO) :-
     io.write_string("0", !IO).
 write_rval_const(mlconst_int(I), !IO) :-
     io.write_int(I, !IO).
-write_rval_const(mlconst_foreign(Value, _Type), !IO) :-
-    io.write_string(Value, !IO).
+write_rval_const(mlconst_foreign(_Lang, _Value, _Type), !IO) :-
+    sorry(this_file, "mlconst_foreign for managed languages").
 write_rval_const(mlconst_float(F), !IO) :-
     io.write_float(F, !IO).
     % XXX We don't quote this correctly.

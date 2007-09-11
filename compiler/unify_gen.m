@@ -280,7 +280,9 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         ConsTag = int_tag(Int),
         TestRval = binop(eq, Rval, const(llconst_int(Int)))
     ;
-        ConsTag = foreign_tag(ForeignVal),
+        ConsTag = foreign_tag(ForeignLang, ForeignVal),
+        expect(unify(ForeignLang, lang_c), this_file,
+            "foreign tag for language other than C"),
         TestRval = binop(eq, Rval, const(llconst_foreign(ForeignVal, integer)))
     ;
         ConsTag = pred_closure_tag(_, _, _),
@@ -390,7 +392,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         code_info.assign_const_to_var(Var, const(llconst_int(Int)), !CI),
         Code = empty
     ;
-        ConsTag = foreign_tag(Val),
+        ConsTag = foreign_tag(Lang, Val),
+        expect(unify(Lang, lang_c), this_file,
+            "foreign_tag for language other than C"),
         ForeignConst = const(llconst_foreign(Val, integer)),
         code_info.assign_const_to_var(Var, ForeignConst, !CI),
         Code = empty
@@ -945,7 +949,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     (
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
-        ; Tag = foreign_tag(_)
+        ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)

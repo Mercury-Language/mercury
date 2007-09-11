@@ -374,8 +374,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 make_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
-                EnumDummy = is_foreign_enum,
-                make_foreign_enum_details(Ctors, ConsTagMap, ReservedTag,
+                EnumDummy = is_foreign_enum(Lang),
+                make_foreign_enum_details(Lang, Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
                 EnumDummy = is_dummy,
@@ -636,10 +636,11 @@ make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     
     % Make the functor and layout tables for a foreign enum type.
     %
-:- pred make_foreign_enum_details(list(constructor)::in, cons_tag_values::in,
-    bool::in, equality_axioms::in, type_ctor_details::out) is det.
+:- pred make_foreign_enum_details(foreign_language::in, list(constructor)::in,
+    cons_tag_values::in, bool::in, equality_axioms::in,
+    type_ctor_details::out) is det.
 
-make_foreign_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
+make_foreign_enum_details(Lang, Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
         Details) :-
     (
         ReserveTag = yes,
@@ -647,13 +648,14 @@ make_foreign_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
     ;
         ReserveTag = no
     ),
-    make_foreign_enum_functors(Ctors, 0, ConsTagMap, ForeignEnumFunctors),
+    make_foreign_enum_functors(Lang, Ctors, 0, ConsTagMap,
+        ForeignEnumFunctors),
     OrdinalMap0 = map.init,
     NameMap0 = map.init,
     list.foldl2(make_foreign_enum_maps, ForeignEnumFunctors,
         OrdinalMap0, OrdinalMap, NameMap0, NameMap),
     FunctorNumberMap = make_functor_number_map(Ctors),
-    Details = foreign_enum(EqualityAxioms, ForeignEnumFunctors,
+    Details = foreign_enum(Lang, EqualityAxioms, ForeignEnumFunctors,
         OrdinalMap, NameMap, FunctorNumberMap).
     
     % Create a foreign_enum_functor structure for each functor in an enum type.
@@ -664,12 +666,12 @@ make_foreign_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
     % caller to sort this list on functor name, which is how the type functors
     % structure is constructed.
     %
-:- pred make_foreign_enum_functors(list(constructor)::in,
+:- pred make_foreign_enum_functors(foreign_language::in, list(constructor)::in,
     int::in, cons_tag_values::in, list(foreign_enum_functor)::out) is det.
 
-make_foreign_enum_functors([], _, _, []).
-make_foreign_enum_functors([Functor | Functors], NextOrdinal, ConsTagMap,
-        [ForeignEnumFunctor | ForeignEnumFunctors]) :-
+make_foreign_enum_functors(_, [], _, _, []).
+make_foreign_enum_functors(Lang, [Functor | Functors], NextOrdinal,
+        ConsTagMap, [ForeignEnumFunctor | ForeignEnumFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, _Context),
     expect(unify(ExistTvars, []), this_file,
         "existential arguments in functor in foreign enum"),
@@ -680,7 +682,9 @@ make_foreign_enum_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         "functor in foreign enum has nonzero arity"),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    ( ConsTag = foreign_tag(ForeignTagValue0) ->
+    ( ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0) ->
+        expect(unify(Lang, ForeignTagLang), this_file, 
+            "language mismatch between foreign tag and foreign enum."),
         ForeignTagValue = ForeignTagValue0
     ;
         unexpected(this_file, "non foreign tag for foreign enum functor")
@@ -688,7 +692,7 @@ make_foreign_enum_functors([Functor | Functors], NextOrdinal, ConsTagMap,
     FunctorName = unqualify_name(SymName),
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, NextOrdinal,
         ForeignTagValue),
-    make_foreign_enum_functors(Functors, NextOrdinal + 1, ConsTagMap,
+    make_foreign_enum_functors(Lang, Functors, NextOrdinal + 1, ConsTagMap,
         ForeignEnumFunctors).
 
 :- pred make_foreign_enum_maps(foreign_enum_functor::in,
@@ -837,7 +841,7 @@ process_cons_tag(ConsTag, ConsRep) :-
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
-        ; ConsTag = foreign_tag(_)
+        ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = pred_closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)

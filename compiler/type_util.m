@@ -561,7 +561,7 @@ is_dummy_argument_type(ModuleInfo, Type) :-
             Ctors = TypeBody ^ du_type_ctors,
             UserEqCmp = TypeBody ^ du_type_usereq,
             EnumOrDummy = TypeBody ^ du_type_is_enum,
-            EnumOrDummy \= is_foreign_enum,
+            EnumOrDummy \= is_foreign_enum(_),
             constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
         )
     ;
@@ -668,7 +668,7 @@ type_ctor_is_foreign_enumeration(TypeCtor, ModuleInfo) :-
     module_info_get_type_table(ModuleInfo, TypeDefnTable),
     map.search(TypeDefnTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody ^ du_type_is_enum = is_foreign_enum.
+    TypeBody ^ du_type_is_enum = is_foreign_enum(_).
 
 %-----------------------------------------------------------------------------%
 

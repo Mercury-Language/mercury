@@ -789,7 +789,7 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
             unexpected(this_file, "d.u. is not an enumeration.")
         ;
             ( IsEnumOrDummy = is_enum
-            ; IsEnumOrDummy = is_foreign_enum
+            ; IsEnumOrDummy = is_foreign_enum(_)
             ; IsEnumOrDummy = is_dummy
             ),
             list.foldl(foreign_const_name_and_tag(NameMapping, TagValues),
@@ -838,7 +838,7 @@ foreign_const_name_and_tag(Mapping, TagValues, Ctor, !NamesAndTags) :-
         TagVal = int_tag(IntTag),
         Tag    = ee_tag_rep_int(IntTag)
     ;
-        TagVal = foreign_tag(ForeignTag),
+        TagVal = foreign_tag(_ForeignLang, ForeignTag),
         Tag    = ee_tag_rep_string(ForeignTag)
     ;
         ( TagVal = string_tag(_)

@@ -158,7 +158,7 @@ ml_gen_type_2(hlds_du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
     % XXX we probably shouldn't ignore _ReservedTag
     ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
     (
-        ( EnumDummy = is_foreign_enum
+        ( EnumDummy = is_foreign_enum(_)
         ; EnumDummy = is_enum
         ),
         ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
@@ -250,8 +250,8 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
         TagVal = int_tag(Int),
         ConstValue = const(mlconst_int(Int))
     ;
-        TagVal = foreign_tag(ForeignTagValue),
-        ConstValue = const(mlconst_foreign(ForeignTagValue,
+        TagVal = foreign_tag(ForeignLang, ForeignTagValue),
+        ConstValue = const(mlconst_foreign(ForeignLang, ForeignTagValue,
             mlds_native_int_type))
     ;
         ( TagVal = string_tag(_)
@@ -1077,8 +1077,8 @@ generate_foreign_enum_constant(Mapping, TagValues, Ctor, !NamesAndTags) :-
         TagVal = int_tag(Int),
         ConstValue = const(mlconst_int(Int))
     ; 
-        TagVal = foreign_tag(String),
-        ConstValue = const(mlconst_foreign(String, mlds_native_int_type))
+        TagVal = foreign_tag(Lang, String),
+        ConstValue = const(mlconst_foreign(Lang, String, mlds_native_int_type))
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)

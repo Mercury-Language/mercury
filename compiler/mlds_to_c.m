@@ -1247,9 +1247,11 @@ mlds_output_exported_enum_constant(NameAndTag, !IO) :-
         ->
             io.write_int(Value, !IO)
         ;
-            Initializer = init_obj(const(mlconst_foreign(Value,
+            Initializer = init_obj(const(mlconst_foreign(Lang, Value,
                 mlds_native_int_type)))
         ->
+            expect(unify(Lang, lang_c), this_file,
+                "mlconst_foreign for language other than C."),
             io.write_string(Value, !IO)
         ;
             unexpected(this_file,
@@ -3841,7 +3843,9 @@ mlds_output_rval_const(mlconst_int(N), !IO) :-
     % when `Integer' is 64 bits but `int' is 32 bits.
     io.write_string("(MR_Integer) ", !IO),
     io.write_int(N, !IO).
-mlds_output_rval_const(mlconst_foreign(Value, Type), !IO) :-
+mlds_output_rval_const(mlconst_foreign(Lang, Value, Type), !IO) :-
+    expect(unify(Lang, lang_c), this_file,
+        "output_rval_const - mlconst_foreign for language other than C."),
     io.write_string("((", !IO),
     mlds_output_type(Type, !IO),
     io.write_string(") ", !IO),

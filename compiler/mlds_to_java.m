@@ -3305,7 +3305,9 @@ output_rval_const(mlconst_int(N), !IO) :-
 
     % XXX Should we parenthesize this?
     %
-output_rval_const(mlconst_foreign(Value, _Type), !IO) :-
+output_rval_const(mlconst_foreign(Lang, Value, _Type), !IO) :-
+    expect(unify(Lang, lang_java), this_file, 
+        "output_rval_const - mlconst_foreign for language other than Java."),
     io.write_string(Value, !IO).
 
 output_rval_const(mlconst_float(FloatVal), !IO) :-

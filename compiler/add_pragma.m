@@ -651,7 +651,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                     _MaybeUserEq, _ReservedTag, _IsForeignType),
                 (
                     ( IsEnumOrDummy = is_enum
-                    ; IsEnumOrDummy = is_foreign_enum
+                    ; IsEnumOrDummy = is_foreign_enum(_)
                     ; IsEnumOrDummy = is_dummy
                     ),
                     Attributes = export_enum_attributes(MaybePrefix),
@@ -1026,7 +1026,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                 ->
                     % XXX We should also check that this type is not
                     %     the subject of a reserved tag pragma.
-                    IsEnumOrDummy = is_foreign_enum,
+                    IsEnumOrDummy = is_foreign_enum(Lang),
                     build_foreign_enum_tag_map(Context, ContextPieces,
                         TypeName, ForeignTagValues, MaybeForeignTagMap,
                         !Specs),
@@ -1034,7 +1034,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                         LangForForeignEnums = Lang,
                         MaybeForeignTagMap = yes(ForeignTagMap)
                     ->
-                        map.foldl2(make_foreign_tag(ForeignTagMap),
+                        map.foldl2(make_foreign_tag(Lang, ForeignTagMap),
                             OldTagValues, map.init, TagValues, [], 
                             UnmappedCtors),
                         (
@@ -1076,7 +1076,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                     ]
                 )
             ;
-                IsEnumOrDummy0 = is_foreign_enum,
+                IsEnumOrDummy0 = is_foreign_enum(_),
                 ( LangForForeignEnums \= Lang ->
                      MaybeSeverity = no,
                      ErrorPieces = []
@@ -1192,19 +1192,20 @@ target_lang_to_foreign_enum_lang(target_x86_64) =
     sorry(this_file, "pragma foreign_enum and --target `x86_64'.").
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
-:- pred make_foreign_tag(map(sym_name, string)::in,
+:- pred make_foreign_tag(foreign_language::in, map(sym_name, string)::in,
     cons_id::in, cons_tag::in,
     cons_tag_values::in, cons_tag_values::out,
     list(sym_name)::in, list(sym_name)::out) is det.
 
-make_foreign_tag(ForeignTagMap, ConsId, _, !ConsTagValues, !UnmappedCtors) :-
+make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
+        !UnmappedCtors) :-
     ( ConsId = cons(ConsSymName0, 0) ->
         ConsSymName = ConsSymName0
     ;
         unexpected(this_file, "non arity zero enumeration constant.")
     ),
     ( map.search(ForeignTagMap, ConsSymName, ForeignTagValue) ->
-        ForeignTag = foreign_tag(ForeignTagValue),
+        ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
         svmap.set(ConsId, ForeignTag, !ConsTagValues)
     ;
         !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]

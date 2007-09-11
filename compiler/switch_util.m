@@ -277,7 +277,7 @@ type_cat_to_switch_cat(type_cat_base_typeclass_info) = _ :-
 
 switch_priority(no_tag) = 0.       % should never occur
 switch_priority(int_tag(_)) = 1.
-switch_priority(foreign_tag(_)) = 1.
+switch_priority(foreign_tag(_, _)) = 1.
 switch_priority(reserved_address_tag(_)) = 1.
 switch_priority(shared_local_tag(_, _)) = 1.
 switch_priority(single_functor_tag) = 2.
@@ -392,7 +392,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
-        ; Tag = foreign_tag(_)
+        ; Tag = foreign_tag(_, _)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -459,7 +459,7 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
-        ; Tag = foreign_tag(_)
+        ; Tag = foreign_tag(_, _)
         ; Tag = pred_closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
