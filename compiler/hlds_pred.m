@@ -1669,7 +1669,7 @@ attribute_list_to_attributes(Attributes, Attributes).
             ).
 
 :- type hlds_proc_static
-    --->    hlds_proc_static(   % defines part of MR_ProcStatic
+    --->    hlds_proc_static(           % defines part of MR_ProcStatic
                 proc_static_file_name   :: string,
                 proc_static_line_number :: int,
                 proc_is_in_interface    :: bool,
