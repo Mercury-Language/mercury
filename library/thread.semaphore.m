@@ -374,7 +374,22 @@ INIT mercury_sys_init_semaphore_modules
 
     MR_define_entry(mercury__thread__semaphore__nop);
     {
+      #ifdef MR_DEEP_PROFILING
+
+        /*
+        ** Perform the actions that would have been taken if we had resumed
+        ** back in semaphore.signal and semaphore.wait and left the procedure
+        ** normally.
+        */
+        MR_succip_word = MR_sv(2);
+        MR_decr_sp(2);
+        MR_np_tailcall_ent(profiling_builtin__det_exit_port_code_sr_3_0);
+
+      #else  /* !MR_DEEP_PROFILING */
+
         MR_proceed();
+
+      #endif /* !MR_DEEP_PROFILING */ 
     }
     MR_END_MODULE
 
