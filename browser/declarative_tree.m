@@ -715,33 +715,28 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 
 :- type dependency_chain_start(R)
     --->    chain_start(
+                % The argument number of the selected position in the full list
+                % of arguments, including the compiler-generated ones.
                 start_loc(R),
-                        % The argument number of the selected
-                        % position in the full list of
-                        % arguments, including the
-                        % compiler-generated ones.
+
+                % The total number of arguments including the compiler
+                % generated ones.
+                int,
 
                 int,
-                        % The total number of arguments
-                        % including the compiler generated
-                        % ones.
 
-                int,
-                R,      % The id of the node preceding the exit
-                        % node, if start_loc is cur_goal
-                        % and the id of the node preceding the
-                        % call node if start_loc is
-                        % parent_goal.
+                % The id of the node preceding the exit node if start_loc
+                % is cur_goal, and the id of the node preceding the call node
+                % if start_loc is parent_goal.
+                R,
 
+                % No if start_loc is cur_goal; and yes wrapped around the
+                % goal path of the call in the parent procedure if start_loc
+                % is parent_goal.
                 maybe(goal_path),
-                        % No if start_loc is cur_goal;
-                        % and yes wrapped around the goal path
-                        % of the call in the parent procedure
-                        % if start_loc is parent_goal.
 
-                maybe(proc_rep)
-                        % The body of the procedure indicated
-                        % by start_loc.
+                % The body of the procedure indicated by start_loc.
+                maybe(proc_defn_rep)
             )
 
     ;       require_explicit_subtree.
@@ -791,21 +786,21 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
     find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
     (
         ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, NodeId,
-            StartPath, MaybeProcRep),
+            StartPath, MaybeProcDefnRep),
         Mode = start_loc_to_subterm_mode(StartLoc),
         (
-            MaybeProcRep = no,
+            MaybeProcDefnRep = no,
             Origin = origin_not_found
         ;
-            MaybeProcRep = yes(ProcRep),
+            MaybeProcDefnRep = yes(ProcDefnRep),
             (
-                trace_dependency_special_case(Store, ProcRep, Ref,
+                trace_dependency_special_case(Store, ProcDefnRep, Ref,
                     StartLoc, ArgNum, TermPath, NodeId, Origin0)
             ->
                 Origin = Origin0
             ;
-                trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
-                    TotalArgs, NodeId, StartPath, ProcRep, Origin)
+                trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc,
+                    ArgNum, TotalArgs, NodeId, StartPath, ProcDefnRep, Origin)
             )
         )
     ;
@@ -819,16 +814,16 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
     % by the usual subterm dependency tracking algorithm. At the moment
     % it handles tracking of subterms through catch_impl.
     %
-:- pred trace_dependency_special_case(S::in, proc_rep::in, R::in,
+:- pred trace_dependency_special_case(S::in, proc_defn_rep::in, R::in,
     start_loc(R)::in, int::in, term_path::in, R::in,
     subterm_origin(edt_node(R))::out) is semidet <= annotated_trace(S, R).
 
-trace_dependency_special_case(Store, ProcRep, Ref, StartLoc, ArgNum, TermPath,
-        NodeId, Origin) :-
+trace_dependency_special_case(Store, ProcDefnRep, Ref, StartLoc,
+        ArgNum, TermPath, NodeId, Origin) :-
     % Catch_impl's body is a single call to builtin_catch. Builtin_catch
     % doesn't generate any events, so we need to handle catch_impl specially.
 
-    proc_rep_is_catch_impl(ProcRep),
+    proc_defn_rep_is_catch_impl(ProcDefnRep),
     (
         StartLoc = parent_goal(_, _),
         % The subterm being tracked is an input to builtin_catch so we know
@@ -862,12 +857,13 @@ trace_dependency_special_case(Store, ProcRep, Ref, StartLoc, ArgNum, TermPath,
         )
     ).
 
-:- pred trace_dependency_in_proc_rep(S::in, term_path::in, start_loc(R)::in,
-    int::in, int::in, R::in, maybe(goal_path)::in, proc_rep::in,
-    subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
+:- pred trace_dependency_in_proc_defn_rep(S::in, term_path::in,
+    start_loc(R)::in, int::in, int::in, R::in, maybe(goal_path)::in,
+    proc_defn_rep::in, subterm_origin(edt_node(R))::out) is det
+    <= annotated_trace(S, R).
 
-trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
-        TotalArgs, NodeId, StartPath, ProcRep, Origin) :-
+trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
+        TotalArgs, NodeId, StartPath, ProcDefnRep, Origin) :-
     det_trace_node_from_id(Store, NodeId, Node),
     materialize_contour(Store, NodeId, Node, [], Contour0),
     (
@@ -877,7 +873,7 @@ trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
         StartLoc = cur_goal,
         Contour = Contour0
     ),
-    ProcRep = proc_rep(HeadVars, GoalRep),
+    ProcDefnRep = proc_defn_rep(HeadVars, GoalRep),
     is_traced_grade(AllTraced),
     MaybePrims = make_primitive_list(Store, [goal_and_path(GoalRep, [])],
         Contour, StartPath, ArgNum, TotalArgs, HeadVars, AllTraced, []),
@@ -899,22 +895,24 @@ trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
             MaybeClosure = no,
             AdjustedTermPath = TermPath
         ),
-        traverse_primitives(Primitives, Var, AdjustedTermPath, Store, ProcRep,
-            Origin)
+        traverse_primitives(Primitives, Var, AdjustedTermPath, Store,
+            ProcDefnRep, Origin)
     ;
         MaybePrims = no,
         Origin = origin_not_found
     ).
 
-    % proc_rep_is_catch_impl(ProcRep) is true if ProcRep is a representation
-    % of exception.catch_impl (the converse is true assuming
-    % exception.builtin_catch is only called from exception.catch_impl).
+    % proc_defn_rep_is_catch_impl(ProcDefnRep) is true if ProcDefnRep
+    % is a representation of exception.catch_impl (the converse is true
+    % assuming exception.builtin_catch is only called from
+    % exception.catch_impl).
     %
-:- pred proc_rep_is_catch_impl(proc_rep::in) is semidet.
+:- pred proc_defn_rep_is_catch_impl(proc_defn_rep::in) is semidet.
 
-proc_rep_is_catch_impl(ProcRep) :-
-    ProcRep = proc_rep([A, B, C, D], atomic_goal_rep(_, "exception.m", _,
-        [D], plain_call_rep("exception", "builtin_catch", [A, B, C, D]))).
+proc_defn_rep_is_catch_impl(ProcDefnRep) :-
+    ProcDefnRep = proc_defn_rep([A, B, C, D],
+        atomic_goal_rep(_, "exception.m", _, [D],
+            plain_call_rep("exception", "builtin_catch", [A, B, C, D]))).
 
 :- pred find_chain_start(S::in, R::in, arg_pos::in, term_path::in,
     dependency_chain_start(R)::out) is det <= annotated_trace(S, R).
@@ -954,9 +952,9 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
         Node = node_excp(_, CallId, _, _, _, _, _),
         call_node_from_id(Store, CallId, CallNode),
         CallAtom = get_trace_call_atom(CallNode),
-        %
+
         % XXX We don't yet handle tracking of the exception value.
-        %
+
         ( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
@@ -980,7 +978,7 @@ find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
     TotalArgs = length(CallAtom ^ atom_args),
     StartId = CallPrecId,
     StartPath = yes(CallPath),
-    parent_proc_rep(Store, CallId, StartRep),
+    parent_proc_defn_rep(Store, CallId, StartRep),
     ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, StartId,
         StartPath, StartRep).
 
@@ -995,20 +993,20 @@ find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
     TotalArgs = length(ExitAtom ^ atom_args),
     StartId = ExitNode ^ exit_preceding,
     StartPath = no,
-    call_node_maybe_proc_rep(CallNode, StartRep),
+    call_node_maybe_proc_defn_rep(CallNode, StartRep),
     ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, StartId,
         StartPath, StartRep).
 
-:- pred parent_proc_rep(S::in, R::in, maybe(proc_rep)::out)
+:- pred parent_proc_defn_rep(S::in, R::in, maybe(proc_defn_rep)::out)
     is det <= annotated_trace(S, R).
 
-parent_proc_rep(Store, CallId, ProcRep) :-
+parent_proc_defn_rep(Store, CallId, ProcDefnRep) :-
     call_node_from_id(Store, CallId, Call),
     CallPrecId = Call ^ call_preceding,
     ( step_left_to_call(Store, CallPrecId, ParentCallNode) ->
-        call_node_maybe_proc_rep(ParentCallNode, ProcRep)
+        call_node_maybe_proc_defn_rep(ParentCallNode, ProcDefnRep)
     ;
-        ProcRep = no
+        ProcDefnRep = no
     ).
 
     % Finds the call node of the parent of the given node.  Fails if
@@ -1257,7 +1255,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 "mismatch on disj"))
         )
     ;
-        Goal = switch_rep(Arms),
+        Goal = switch_rep(_SwitchVar, Cases),
         (
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_switch(_, Label),
@@ -1266,7 +1264,8 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             list.append(Path, PathTail, ArmPath),
             PathTail = [step_switch(N, _)]
         ->
-            list.index1_det(Arms, N, Arm),
+            list.index1_det(Cases, N, Case),
+            Case = case_rep(_ConsId, _ConsIdArity, Arm),
             ArmAndPath = goal_and_path(Arm, ArmPath),
             MaybePrims = make_primitive_list(Store, [ArmAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1526,14 +1525,15 @@ find_variable_in_args(Args, ArgNum, TotalArgs, Var) :-
     ).
 
 :- pred traverse_primitives(list(annotated_primitive(R))::in,
-    var_rep::in, term_path::in, S::in, proc_rep::in,
+    var_rep::in, term_path::in, S::in, proc_defn_rep::in,
     subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
 
-traverse_primitives([], Var0, TermPath0, _, ProcRep, Origin) :-
-    ProcRep = proc_rep(HeadVars, _),
+traverse_primitives([], Var0, TermPath0, _, ProcDefnRep, Origin) :-
+    ProcDefnRep = proc_defn_rep(HeadVars, _),
     ArgPos = find_arg_pos(HeadVars, Var0),
     Origin = origin_input(ArgPos, TermPath0).
-traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
+traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
+        Origin) :-
     Prim = primitive(File, Line, BoundVars, AtomicGoal, _GoalPath,
         MaybeNodeId),
     (
@@ -1545,23 +1545,25 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
             ;
                 TermPath0 = [TermPathStep0 | TermPath],
                 list.index1_det(FieldVars, TermPathStep0, Var),
-                traverse_primitives(Prims, Var, TermPath, Store, ProcRep,
+                traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep,
                     Origin)
             )
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = unify_deconstruct_rep(CellVar, _Cons, FieldVars),
         ( list.member(Var0, BoundVars) ->
             ( list.nth_member_search(FieldVars, Var0, Pos) ->
                 traverse_primitives(Prims, CellVar, [Pos | TermPath0],
-                    Store, ProcRep, Origin)
+                    Store, ProcDefnRep, Origin)
             ;
                 throw(internal_error("traverse_primitives", "bad deconstruct"))
             )
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = partial_deconstruct_rep(_, _, MaybeFieldVars),
@@ -1574,17 +1576,18 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
                 MaybeVar = yes(Var),
                 % This partial deconstruction bound the TermPathStep0'th
                 % argument of Var0.
-                traverse_primitives(Prims, Var, TermPath, Store, ProcRep,
+                traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep,
                     Origin)
             ;
                 MaybeVar = no,
                 % This partial deconstruction did not bind the TermPathStep0'th
                 % argument, so continue looking for the unification which did.
-                traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep,
+                traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                     Origin)
             )
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = partial_construct_rep(_, _, MaybeFieldVars),
@@ -1601,8 +1604,8 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
                     MaybeVar = yes(Var),
                     % The partial construction bound the TermPathStep0'th
                     % argument of Var0.
-                    traverse_primitives(Prims, Var, TermPath, Store, ProcRep,
-                        Origin)
+                    traverse_primitives(Prims, Var, TermPath, Store,
+                        ProcDefnRep, Origin)
                 ;
                     MaybeVar = no,
                     % We got to the construction which bound the outermost
@@ -1614,7 +1617,8 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
                 )
             )
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = unify_assign_rep(ToVar, FromVar),
@@ -1622,10 +1626,11 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
         ( list.member(Var0, BoundVars) ->
             decl_require(unify(Var0, ToVar), "traverse_primitives",
                 "bad assign"),
-            traverse_primitives(Prims, FromVar, TermPath0, Store, ProcRep,
+            traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
                 Origin)
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = cast_rep(ToVar, FromVar),
@@ -1633,58 +1638,63 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
         ( list.member(Var0, BoundVars) ->
             decl_require(unify(Var0, ToVar), "traverse_primitives",
                 "bad unsafe_cast"),
-            traverse_primitives(Prims, FromVar, TermPath0, Store, ProcRep,
+            traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
                 Origin)
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = pragma_foreign_code_rep(_Args),
         ( list.member(Var0, BoundVars) ->
             Origin = origin_primitive_op(File, Line, primop_foreign_proc)
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = unify_simple_test_rep(_LVar, _RVar),
         ( list.member(Var0, BoundVars) ->
             throw(internal_error("traverse_primitives", "bad test"))
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = higher_order_call_rep(_, Args),
         traverse_call(BoundVars, File, Line, Args, MaybeNodeId, Prims,
-            Var0, TermPath0, Store, ProcRep, Origin)
+            Var0, TermPath0, Store, ProcDefnRep, Origin)
     ;
         AtomicGoal = method_call_rep(_, _, Args),
         traverse_call(BoundVars, File, Line, Args, MaybeNodeId, Prims,
-            Var0, TermPath0, Store, ProcRep, Origin)
+            Var0, TermPath0, Store, ProcDefnRep, Origin)
     ;
         AtomicGoal = plain_call_rep(Module, Name, Args),
         (
             list.member(Var0, BoundVars),
             plain_call_is_special_case(Module, Name, Args, NewVar)
         ->
-            traverse_primitives(Prims, NewVar, TermPath0, Store, ProcRep,
+            traverse_primitives(Prims, NewVar, TermPath0, Store, ProcDefnRep,
                 Origin)
         ;
             traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
-                Prims, Var0, TermPath0, Store, ProcRep, Origin)
+                Prims, Var0, TermPath0, Store, ProcDefnRep, Origin)
         )
     ;
         AtomicGoal = builtin_call_rep(_, _, _),
         ( list.member(Var0, BoundVars) ->
             Origin = origin_primitive_op(File, Line, primop_builtin_call)
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ;
         AtomicGoal = event_call_rep(_, _),
         ( list.member(Var0, BoundVars) ->
             throw(internal_error("traverse_primitives", "bad event"))
         ;
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
+                Origin)
         )
     ).
 
@@ -1713,11 +1723,11 @@ plain_call_is_special_case(Module, Name, Args, NewVar) :-
 
 :- pred traverse_call(list(var_rep)::in, string::in, int::in,
     list(var_rep)::in, maybe(R)::in, list(annotated_primitive(R))::in,
-    var_rep::in, term_path::in, S::in, proc_rep::in,
+    var_rep::in, term_path::in, S::in, proc_defn_rep::in,
     subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
-        Prims, Var, TermPath, Store, ProcRep, Origin) :-
+        Prims, Var, TermPath, Store, ProcDefnRep, Origin) :-
     ( list.member(Var, BoundVars) ->
         Pos = find_arg_pos(Args, Var),
         (
@@ -1728,7 +1738,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
             Origin = origin_primitive_op(File, Line, primop_untraced_call)
         )
     ;
-        traverse_primitives(Prims, Var, TermPath, Store, ProcRep, Origin)
+        traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep, Origin)
     ).
 
 %-----------------------------------------------------------------------------%

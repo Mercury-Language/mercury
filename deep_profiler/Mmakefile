@@ -4,11 +4,23 @@
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Mmake - this is Mmake file for building the Mercury deep profiler
+# This is the Mmakefile for building the Mercury deep profiler.
 
 MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
+
+#----------------------------------------------------------------------------#
+
+# Override some settings from ../Mmake.workspace so that in debugging grades
+# we do not include mer_mdbcomp.init when creating the _init.c files in
+# this directory. We copy the mdbcomp modules into this directory so if we
+# do include mer_mdbcomp.init we will end up with duplicate entries in the
+# _init.c files.
+
+C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
+
+#----------------------------------------------------------------------------#
 
 -include Mmake.deep.params
 
@@ -20,7 +32,14 @@ Mmake.deep.params:
 # can be found by `mmc --make'.
 include Mercury.options
 
-ALL_DEEP_MODULES=mdprof_cgi mdprof_test mdprof_dump mdprof_feedback
+MAIN_TARGET = all
+
+ALL_DEEP_MODULES = \
+	mdprof_cgi \
+	mdprof_test \
+	mdprof_dump \
+	mdprof_feedback \
+	mdprof_procrep
 
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 	MAIN_TARGET=all
@@ -38,13 +57,24 @@ else
 	INSTALL=nothing
 endif
 
-# Avoid trying to make this file with `mmc --make' if it doesn't exist.
-Mmake.deep.params: ;
+VPATH = $(LIBRARY_DIR)
+
+#-----------------------------------------------------------------------------#
+
+MDBCOMP_MODULES = \
+	mdbcomp.m \
+	prim_data.m \
+	program_representation.m \
+	rtti_access.m \
+	slice_and_dice.m \
+	trace_counts.m
+
+MDBCOMP_ORIG_MODULES = $(patsubst %,$(MDBCOMP_DIR)/%,$(MDBCOMP_MODULES))
 
 #-----------------------------------------------------------------------------#
 
 MLFLAGS += --shared
-MCFLAGS      += --flags DEEP_FLAGS $(CONFIG_OVERRIDE)
+MCFLAGS += --flags DEEP_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
@@ -52,12 +82,24 @@ MCFLAGS      += --flags DEEP_FLAGS $(CONFIG_OVERRIDE)
 nothing:
 
 .PHONY: depend
-depend:	$(DEPEND)
+depend:	$(MDBCOMP_MODULES) $(DEPEND)
 
 $(DEPEND): DEEP_FLAGS 
 
 .PHONY: all
-all:	$(ALL_DEEP_MODULES) $(TAGS_FILE_EXISTS)
+all:	$(MDBCOMP_MODULES) $(ALL_DEEP_MODULES) $(TAGS_FILE_EXISTS)
+
+# We need to start by turning write permission on for each copied file
+# in case some exist, but we need to ignore errors in case some don't exist.
+# The exit 0 is to prevent make itself from printing a message about the
+# (ignored) failure of an action.
+#
+# We could modify the action here to copy only the changed files.
+
+$(MDBCOMP_MODULES): $(MDBCOMP_ORIG_MODULES)
+	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
+	cp $(MDBCOMP_ORIG_MODULES) .
+	@chmod a-w $(MDBCOMP_MODULES)
 
 #-----------------------------------------------------------------------------#
 
@@ -65,12 +107,12 @@ all:	$(ALL_DEEP_MODULES) $(TAGS_FILE_EXISTS)
 # profiler if one of the libraries changes.
 
 ifeq ("$(filter il% java% erlang%,$(GRADE))","")
-mdprof_cgi:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_cgi:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_test:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_test:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_dump:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_dump:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdprof_cgi:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdprof_cgi:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdprof_test:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdprof_test:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdprof_dump:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdprof_dump:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mdprof_feedback:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mdprof_feedback:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
@@ -80,7 +122,7 @@ endif
 $(cs_subdir)mdprof_cgi_init.c:		$(UTIL_DIR)/mkinit
 $(cs_subdir)mdprof_test_init.c:		$(UTIL_DIR)/mkinit
 $(cs_subdir)mdprof_dump_init.c:		$(UTIL_DIR)/mkinit
-$(cs_subdir)mdprof_feedback_init.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mdprof_feedback_init.c: 	$(UTIL_DIR)/mkinit
 
 #-----------------------------------------------------------------------------#
 
@@ -92,25 +134,29 @@ ints:	DEPEND=$(patsubst %,%.ints,$(ALL_DEEP_MODULES))
 
 #-----------------------------------------------------------------------------#
 
-# We need the shenanigans with .deep.tags to avoid situations in which an
+# We need the shenanigans with .deep_tags to avoid situations in which an
 # "mmake tags" in this directory does nothing even in the absence of a tags
 # file in this directory, because mmake uses VPATH to find ../library/tags
 # and believes it to be the tags file we are asking for.
 
 .PHONY: tags
-tags:	.deep.tags
+tags:	.deep_tags
 
-DEEP_MS = $(mdprof_cgi.ms) $(mdprof_test.ms) $(mdprof_dump.ms) $(mdprof_feedback.ms)
+DEEP_MS = \
+	$(mdprof_cgi.ms) \
+	$(mdprof_test.ms) \
+	$(mdprof_dump.ms) \
+	$(mdprof_feedback.ms)
 
-.deep.tags: $(MTAGS) $(DEEP_MS) $(LIBRARY_DIR)/*.m
-	$(MTAGS) $(DEEP_MS) $(LIBRARY_DIR)/*.m
-	touch .deep.tags
+.deep_tags: $(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m
+	touch .deep_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $(DEEP_MS) $(LIBRARY_DIR)/*.m; \
-	touch .deep.tags; fi
+	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m; \
+	touch .deep_tags; fi
 
 #-----------------------------------------------------------------------------#
 
@@ -134,7 +180,8 @@ cs: $(mdprof_feedback.cs) $(cs_subdir)mdprof_feedback_init.c
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f tags DEEP_FLAGS DEEP_FLAGS.date
+	rm -f .deep_tags tags DEEP_FLAGS DEEP_FLAGS.date \
+		$(MDBCOMP_MODULES) mdbcomp.*.err
 
 #-----------------------------------------------------------------------------#
 

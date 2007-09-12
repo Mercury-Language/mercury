@@ -554,12 +554,13 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 problem = "current procedure has no body bytecodes";
             } else {
                 MR_TRACE_CALL_MERCURY(
-                    MR_MDBCOMP_trace_read_rep(entry->MR_sle_body_bytes,
+                    MR_MDBCOMP_trace_read_proc_defn_rep(
+                        entry->MR_sle_body_bytes,
                         event_info->MR_event_sll, &rep);
                 );
 
                 browser_term = MR_type_value_to_browser_term(
-                    (MR_TypeInfo) ML_proc_rep_type(), rep);
+                    (MR_TypeInfo) ML_proc_defn_rep_type(), rep);
             }
         } else {
             MR_VarSpec  var_spec;
@@ -766,11 +767,11 @@ MR_trace_browse_proc_body(MR_EventInfo *event_info, MR_Browser browser,
     }
 
     MR_TRACE_CALL_MERCURY(
-        MR_MDBCOMP_trace_read_rep(entry->MR_sle_body_bytes,
+        MR_MDBCOMP_trace_read_proc_defn_rep(entry->MR_sle_body_bytes,
             event_info->MR_event_sll, &rep);
     );
 
-    (*browser)(ML_proc_rep_type(), rep, caller, format);
+    (*browser)(ML_proc_defn_rep_type(), rep, caller, format);
     return (const char *) NULL;
 }
 

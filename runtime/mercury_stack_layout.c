@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2005-2006 The University of Melbourne.
+** Copyright (C) 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,12 +20,14 @@
 MR_ConstString
 MR_hlds_var_name(const MR_ProcLayout *entry, int hlds_var_num)
 {
-    const char  *string_table;
-    MR_Integer  string_table_size;
-    int         offset;
+    const MR_ModuleCommonLayout *module_common;
+    const char                  *string_table;
+    MR_Integer                  string_table_size;
+    int                         offset;
 
-    string_table = entry->MR_sle_module_layout->MR_ml_string_table;
-    string_table_size = entry->MR_sle_module_layout->MR_ml_string_table_size;
+    module_common = entry->MR_sle_module_common_layout;
+    string_table = module_common->MR_mlc_string_table;
+    string_table_size = module_common->MR_mlc_string_table_size;
 
     if (hlds_var_num == 0) {
         /* this value is not a variable */

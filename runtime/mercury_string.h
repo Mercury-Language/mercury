@@ -52,14 +52,14 @@
 
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
-/* 
+/*
 ** void MR_make_aligned_string(MR_String ptr, const char *string):
 **	Given a C string `string', set `ptr' to be a Mercury string
 **	with the same contents.  (`ptr' must be an lvalue.)
 **	If the resulting Mercury string is to be used by Mercury code,
 **	then the string pointed to by `string' should have been either
 **	statically allocated or allocated on the Mercury heap.
-**	
+**
 ** BEWARE: this may modify `MR_hp', so it must only be called from
 ** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
@@ -228,7 +228,7 @@ MR_Integer	MR_hash_string(MR_ConstString);
 	})
 #endif
 
-/* 
+/*
 ** If we're not using gcc, the actual definition of MR_hash_string is in
 ** runtime/mercury_misc.c;
 ** it uses the macro MR_HASH_STRING_FUNC_BODY below.

@@ -44,7 +44,7 @@
     %
 :- type var_num_map == map(prog_var, pair(int, string)).
 
-:- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in, 
+:- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in,
     instmap::in, vartypes::in, var_num_map::in, module_info::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
@@ -62,6 +62,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module maybe.
@@ -119,11 +120,11 @@ max_var_num(_, VarNum1 - _, VarNum2) = Max :-
 
 goal_to_byte_list(hlds_goal(GoalExpr, GoalInfo), InstMap0, Info,
         !StackInfo, Bytes) :-
-    goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, !StackInfo, 
+    goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, !StackInfo,
         Bytes).
 
-:- pred goal_expr_to_byte_list(hlds_goal_expr::in, hlds_goal_info::in, 
-    instmap::in, prog_rep_info::in, 
+:- pred goal_expr_to_byte_list(hlds_goal_expr::in, hlds_goal_info::in,
+    instmap::in, prog_rep_info::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 goal_expr_to_byte_list(conj(ConjType, Goals), _, InstMap0, Info, !StackInfo,
@@ -142,7 +143,7 @@ goal_expr_to_byte_list(negation(Goal), _GoalInfo, InstMap0, Info, !StackInfo,
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
     Bytes = [goal_type_to_byte(goal_neg)] ++ GoalBytes.
 goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
-        !StackInfo, Bytes) :- 
+        !StackInfo, Bytes) :-
     Cond = hlds_goal(_, CondGoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(CondGoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
@@ -151,9 +152,9 @@ goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
     goal_to_byte_list(Else, InstMap0, Info, !StackInfo, ElseBytes),
     Bytes = [goal_type_to_byte(goal_ite)] ++
         CondBytes ++ ThenBytes ++ ElseBytes.
-goal_expr_to_byte_list(unify(_, _, _, Uni, _), GoalInfo, InstMap0, Info, 
+goal_expr_to_byte_list(unify(_, _, _, Uni, _), GoalInfo, InstMap0, Info,
         !StackInfo, Bytes) :-
-    atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, 
+    atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,
         AtomicBytes, BoundVars),
     (
         Uni = assign(Target, Source),
@@ -205,12 +206,13 @@ goal_expr_to_byte_list(unify(_, _, _, Uni, _), GoalInfo, InstMap0, Info,
         Uni = complicated_unify(_, _, _),
         unexpected(this_file, "goal_expr_to_byte_list: complicated_unify")
     ).
-goal_expr_to_byte_list(switch(_, _, Cases), _, InstMap0, Info, !StackInfo, 
-        Bytes) :-
+goal_expr_to_byte_list(switch(SwitchVar, _, Cases), _, InstMap0, Info,
+        !StackInfo, Bytes) :-
     cases_to_byte_list(Cases, InstMap0, Info, !StackInfo, CasesBytes),
     Bytes = [goal_type_to_byte(goal_switch)] ++
+        var_to_byte_list(Info, SwitchVar) ++
         length_to_byte_list(Cases) ++ CasesBytes.
-goal_expr_to_byte_list(scope(_, Goal), GoalInfo, InstMap0, Info, !StackInfo, 
+goal_expr_to_byte_list(scope(_, Goal), GoalInfo, InstMap0, Info, !StackInfo,
         Bytes) :-
     Goal = hlds_goal(_, InnerGoalInfo),
     OuterDetism = goal_info_get_determinism(GoalInfo),
@@ -225,7 +227,7 @@ goal_expr_to_byte_list(scope(_, Goal), GoalInfo, InstMap0, Info, !StackInfo,
         [MaybeCut] ++ GoalBytes.
 goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
         GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
-    atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, 
+    atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,
         AtomicBytes, _),
     (
         GenericCall = higher_order(PredVar, _, _, _),
@@ -271,7 +273,7 @@ goal_expr_to_byte_list(plain_call(PredId, _, Args, Builtin, _, _),
     ( Builtin = not_builtin ->
         Bytes = [goal_type_to_byte(goal_plain_call)] ++
             ModuleNameBytes ++
-            PredNameBytes ++ 
+            PredNameBytes ++
             vars_to_byte_list(Info, Args) ++
             AtomicBytes
     ;
@@ -302,7 +304,7 @@ lhs_final_is_ground(Info, (_ - _) -> (LHSFinalInst - _)) :-
 rhs_is_input(Info, (_ - RHSInitialInst) -> (_ - RHSFinalInst)) :-
     mode_is_input(Info ^ module_info, RHSInitialInst -> RHSFinalInst).
 
-:- pred filter_input_args(prog_rep_info::in, list(uni_mode)::in, 
+:- pred filter_input_args(prog_rep_info::in, list(uni_mode)::in,
     list(prog_var)::in, list(maybe(prog_var))::out) is det.
 
 filter_input_args(_, [], [], []).
@@ -321,8 +323,8 @@ filter_input_args(_, [_ | _], [], _) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred atomic_goal_info_to_byte_list(hlds_goal_info::in, instmap::in, 
-    prog_rep_info::in, stack_layout_info::in, stack_layout_info::out, 
+:- pred atomic_goal_info_to_byte_list(hlds_goal_info::in, instmap::in,
+    prog_rep_info::in, stack_layout_info::in, stack_layout_info::out,
     list(int)::out, list(prog_var)::out) is det.
 
 atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
@@ -347,7 +349,7 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
         lineno_to_byte_list(LineNo) ++
         vars_to_byte_list(Info, BoundVars).
 
-:- pred cons_id_to_byte_list(cons_id::in, 
+:- pred cons_id_to_byte_list(cons_id::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 cons_id_to_byte_list(SymName, !StackInfo, Bytes) :-
@@ -406,14 +408,20 @@ disj_to_byte_list([Goal | Goals], InstMap0, Info, !StackInfo, Bytes) :-
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 cases_to_byte_list([], _, _, !StackInfo, []).
-cases_to_byte_list([case(_ConsId, Goal) | Cases], InstMap0, Info, !StackInfo,
+cases_to_byte_list([case(ConsId, Goal) | Cases], InstMap0, Info, !StackInfo,
         Bytes) :-
+    cons_id_to_byte_list(ConsId, !StackInfo, ConsIdBytes),
+    MaybeArity = cons_id_maybe_arity(ConsId),
+    (
+        MaybeArity = yes(Arity)
+    ;
+        MaybeArity = no,
+        Arity = 0
+    ),
+    short_to_byte_list(Arity, ArityBytes),
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
-    cases_to_byte_list(Cases, InstMap0, Info, !StackInfo, GoalsBytes),
-    % XXX
-    % Bytes = cons_id_and_arity_to_byte_list(ConsId)
-    %   ++ GoalBytes ++ GoalsBytes.
-    Bytes = GoalBytes ++ GoalsBytes.
+    cases_to_byte_list(Cases, InstMap0, Info, !StackInfo, CasesBytes),
+    Bytes = ConsIdBytes ++ ArityBytes ++ GoalBytes ++ CasesBytes.
 
 %---------------------------------------------------------------------------%
 
@@ -428,7 +436,7 @@ cases_to_byte_list([case(_ConsId, Goal) | Cases], InstMap0, Info, !StackInfo,
 % but we here use them to represent unsigned quantities. This effectively
 % halves their range.
 
-:- pred string_to_byte_list(string::in, 
+:- pred string_to_byte_list(string::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 string_to_byte_list(String, !StackInfo, Bytes) :-
@@ -441,7 +449,7 @@ vars_to_byte_list(Info, Vars) =
     length_to_byte_list(Vars) ++
     list.condense(list.map(var_to_byte_list(Info), Vars)).
 
-:- func maybe_vars_to_byte_list(prog_rep_info, list(maybe(prog_var))) = 
+:- func maybe_vars_to_byte_list(prog_rep_info, list(maybe(prog_var))) =
     list(int).
 
 maybe_vars_to_byte_list(Info, Vars) =

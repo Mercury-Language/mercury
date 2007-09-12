@@ -297,8 +297,8 @@
 :- pred get_pred_attributes(proc_label::in, module_name::out, string::out,
     int::out, pred_or_func::out) is det.
 
-:- pred call_node_maybe_proc_rep(trace_node(R)::in(trace_node_call),
-    maybe(proc_rep)::out) is det.
+:- pred call_node_maybe_proc_defn_rep(trace_node(R)::in(trace_node_call),
+    maybe(proc_defn_rep)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -490,21 +490,27 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(call_node_maybe_proc_rep/2).
-
-call_node_maybe_proc_rep(CallNode, MaybeProcRep) :-
+call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
     Label = CallNode ^ call_label,
     ( call_node_bytecode_layout(Label, ProcLayout) ->
-        ( semipure have_cached_proc_rep(ProcLayout, ProcRep) ->
-            MaybeProcRep = yes(ProcRep)
-        ;
-            lookup_proc_bytecode(ProcLayout, ByteCode),
-            read_proc_rep(ByteCode, Label, ProcRep),
-            impure cache_proc_rep(ProcLayout, ProcRep),
-            MaybeProcRep = yes(ProcRep)
+        promise_pure (
+            ( semipure have_cached_proc_defn_rep(ProcLayout, ProcDefnRep) ->
+                MaybeProcDefnRep = yes(ProcDefnRep)
+            ;
+                ByteCodeBytes = proc_bytecode_bytes(ProcLayout),
+                (
+                    trace_read_proc_defn_rep(ByteCodeBytes, Label, ProcDefnRep)
+                ->
+                    impure cache_proc_defn_rep(ProcLayout, ProcDefnRep),
+                    MaybeProcDefnRep = yes(ProcDefnRep)
+                ;
+                    throw(internal_error("call_node_maybe_proc_defn_rep",
+                        "cannot interpret proc bytecode"))
+                )
+            )
         )
     ;
-        MaybeProcRep = no
+        MaybeProcDefnRep = no
     ).
 
 :- pred call_node_bytecode_layout(label_layout::in, proc_layout::out)
@@ -532,61 +538,44 @@ call_node_bytecode_layout(_, _) :-
     }
 ").
 
-:- pred lookup_proc_bytecode(proc_layout::in, bytecode::out) is det.
-
-    % Default version for non-C backends.
-lookup_proc_bytecode(_, dummy_bytecode).
-
-:- pragma foreign_proc("C",
-    lookup_proc_bytecode(ProcLayout::in, ByteCode::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ByteCode = ProcLayout->MR_sle_body_bytes;
-#ifdef MR_DEBUG_PROC_REP
-    printf(""lookup_proc_bytecode: %p %p\\n"", ProcLayout, ByteCode);
-#endif
-").
-
-:- semipure pred have_cached_proc_rep(proc_layout::in, proc_rep::out)
+:- semipure pred have_cached_proc_defn_rep(proc_layout::in, proc_defn_rep::out)
     is semidet.
 
     % Default version for non-C backends.
-have_cached_proc_rep(_, _) :-
+have_cached_proc_defn_rep(_, _) :-
     semidet_fail.
 
 :- pragma foreign_proc("C",
-    have_cached_proc_rep(ProcLayout::in, ProcRep::out),
+    have_cached_proc_defn_rep(ProcLayout::in, ProcDefnRep::out),
     [will_not_call_mercury, thread_safe, promise_semipure],
 "
-    ProcRep = MR_lookup_proc_rep(ProcLayout);
-    if (ProcRep != 0) {
+    ProcDefnRep = MR_lookup_proc_defn_rep(ProcLayout);
+    if (ProcDefnRep != 0) {
 #ifdef MR_DEBUG_PROC_REP
-        printf(""have_cached_proc_rep: %p success\\n"",
-            ProcLayout);
+        printf(""have_cached_proc_defn_rep: %p success\\n"", ProcLayout);
 #endif
         SUCCESS_INDICATOR = MR_TRUE;
     } else {
 #ifdef MR_DEBUG_PROC_REP
-        printf(""have_cached_proc_rep: %p failure\\n"",
-            ProcLayout);
+        printf(""have_cached_proc_defn_rep: %p failure\\n"", ProcLayout);
 #endif
         SUCCESS_INDICATOR = MR_FALSE;
     }
 ").
 
-:- impure pred cache_proc_rep(proc_layout::in, proc_rep::in) is det.
+:- impure pred cache_proc_defn_rep(proc_layout::in, proc_defn_rep::in) is det.
 
     % Default version for non-C backends.
-cache_proc_rep(_, _).
+cache_proc_defn_rep(_, _).
 
 :- pragma foreign_proc("C",
-    cache_proc_rep(ProcLayout::in, ProcRep::in),
+    cache_proc_defn_rep(ProcLayout::in, ProcDefnRep::in),
     [will_not_call_mercury, thread_safe],
 "
 #ifdef MR_DEBUG_PROC_REP
-    printf(""cache_proc_rep: %p %x\\n"", ProcLayout, ProcRep);
+    printf(""cache_proc_defn_rep: %p %x\\n"", ProcLayout, ProcDefnRep);
 #endif
-    MR_insert_proc_rep(ProcLayout, ProcRep);
+    MR_insert_proc_defn_rep(ProcLayout, ProcDefnRep);
 ").
 
 %-----------------------------------------------------------------------------%

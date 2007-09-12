@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,6 +53,9 @@
 
 :- import_module array_util.
 :- import_module measurements.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module array.
 :- import_module bool.
@@ -414,22 +417,23 @@ dump_proc_static_call_sites(Slot, CSSPtr, !IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- func dump_proc_id(proc_id) = string.
+:- func dump_proc_id(string_proc_label) = string.
 
 dump_proc_id(Proc) = Str :-
-    Proc = user_defined(PredOrFunc, _DeclModule, _DefnModule, Name,
+    Proc = str_ordinary_proc_label(PredOrFunc, _DeclModule, _DefnModule, Name,
         Arity, Mode),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Suffix = ""
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Suffix = "+1"
     ),
     string.format("%s/%d-%d%s", [s(Name), i(Arity), i(Mode), s(Suffix)],
         Str).
 dump_proc_id(Proc) = Str :-
-    Proc = uci_pred(Type, _TypeModule, _DefModule, Name, _Arity, _Mode),
+    Proc = str_special_proc_label(Type, _TypeModule, _DefModule, Name,
+        _Arity, _Mode),
     string.format("%s predicate for type `%s'", [s(Name), s(Type)], Str).
 
 %----------------------------------------------------------------------------%

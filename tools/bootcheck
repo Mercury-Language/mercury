@@ -1,5 +1,5 @@
 #!/bin/sh
-# vim: ts=4 sw=4 wm=0 tw=0 et
+# vim: ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -547,6 +547,15 @@ else
     export MERCURY_OPTIONS
 fi
 
+# In deep profiling grades, we want to test the code for writing out the
+# profiling tree, but there is no point in testing it on every single
+# invocation of the compiler, and doing so leads to *very* slow bootchecks.
+# We therefore enable it only for every 25th invocation, on average.
+#
+# When the profiling data is written out, however, we also want to test
+# writing out the program representation.
+MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-random-write=25 --deep-procrep-file"
+
 if $trace_count
 then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-if-exec=mercury_compile"
@@ -864,6 +873,9 @@ then
         # Use the new mmake to build stage 2
         MMAKE=$MMAKE_DIR/mmake
         mmake_opts="$mmake_opts $target_opt"
+
+        MERCURY_MKINIT="$root/util/mkinit"
+        export MERCURY_MKINIT
 
         if (cd $stage2dir && $MMAKE $mmake_opts $jfactor runtime)
         then

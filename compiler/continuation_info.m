@@ -122,9 +122,12 @@
                 pli_proc_body           :: hlds_goal,
                 % The body of the procedure.
 
-                pli_needs_body_rep      :: bool,
-                % Do we need to include a representation of the procedure body
-                % in the exec trace layout?
+                pli_trace_body_rep      :: trace_needs_body_rep,
+                % Does the level of execution tracing of this procedure require
+                % a representation of the procedure body in the layout
+                % structures? Note that even if this field is set to
+                % trace_does_not_need_body_rep, other options (such as deep
+                % profiling) may still ask for the body to be included.
 
                 pli_initial_instmap     :: instmap,
                 % The instmap at the start of the procedure body.
@@ -159,6 +162,10 @@
     ;       proc_table_struct(
                 proc_table_struct_info
             ).
+
+:- type trace_needs_body_rep
+    --->    trace_needs_body_rep
+    ;       trace_does_not_need_body_rep.
 
     % Information about the labels internal to a procedure.
     %

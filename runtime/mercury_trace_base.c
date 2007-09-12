@@ -1306,63 +1306,68 @@ MR_io_tabling_stats(FILE *fp)
 ** declarative debugger is in fact invoked.
 */
 
-#define PROC_REP_TABLE_SIZE (1 << 16)   /* 64k */
+#define PROC_DEFN_REP_TABLE_SIZE (1 << 16)   /* 64k */
 
 typedef struct {
     const MR_ProcLayout     *plr_layout;
     MR_Word                 plr_rep;
-} MR_ProcLayout_Rep;
+} MR_ProcLayoutRep;
 
-static  void                MR_do_init_proc_rep_table(void);
-static  const void          *proc_layout_rep_key(const void *proc_layout);
-static  int                 hash_proc_layout_addr(const void *addr);
-static  MR_bool             equal_proc_layouts(const void *addr1,
+static  void                MR_do_init_proc_defn_rep_table(void);
+static  const void          *MR_proc_layout_rep_key(const void *proc_layout);
+static  int                 MR_hash_proc_layout_addr(const void *addr);
+static  MR_bool             MR_equal_proc_layouts(const void *addr1,
                                 const void *addr2);
 
-static  MR_Hash_Table       proc_rep_table = { PROC_REP_TABLE_SIZE, NULL,
-                                proc_layout_rep_key, hash_proc_layout_addr,
-                                equal_proc_layouts };
+static  MR_Hash_Table       proc_defn_rep_table = {
+                                PROC_DEFN_REP_TABLE_SIZE,
+                                NULL,
+                                MR_proc_layout_rep_key,
+                                MR_hash_proc_layout_addr,
+                                MR_equal_proc_layouts
+                            };
 
 static void
-MR_do_init_proc_rep_table(void)
+MR_do_init_proc_defn_rep_table(void)
 {
     static  MR_bool done = MR_FALSE;
 
     if (!done) {
-        MR_init_hash_table(proc_rep_table);
+        MR_init_hash_table(proc_defn_rep_table);
         done = MR_TRUE;
     }
 }
 
 void
-MR_insert_proc_rep(const MR_ProcLayout *proc_layout, MR_Word proc_rep)
+MR_insert_proc_defn_rep(const MR_ProcLayout *proc_layout,
+    MR_Word proc_defn_rep)
 {
-    MR_ProcLayout_Rep  *layout_rep;
+    MR_ProcLayoutRep    *layout_rep;
 
-    MR_do_init_proc_rep_table();
+    MR_do_init_proc_defn_rep_table();
 
-    layout_rep = MR_GC_NEW(MR_ProcLayout_Rep);
+    layout_rep = MR_GC_NEW(MR_ProcLayoutRep);
     layout_rep->plr_layout = proc_layout;
-    layout_rep->plr_rep = proc_rep;
+    layout_rep->plr_rep = proc_defn_rep;
 
-    (void) MR_insert_hash_table(proc_rep_table, layout_rep);
+    (void) MR_insert_hash_table(proc_defn_rep_table, layout_rep);
 
 #ifdef  MR_DEBUG_PROC_REP
     if (MR_progdebug) {
         printf("insert: layout %p, rep %x, pair %p\n",
-            proc_layout, proc_rep, layout_rep);
+            proc_layout, proc_defn_rep, layout_rep);
     }
 #endif
 }
 
 MR_Word
-MR_lookup_proc_rep(const MR_ProcLayout *proc_layout)
+MR_lookup_proc_defn_rep(const MR_ProcLayout *proc_layout)
 {
-    const MR_ProcLayout_Rep  *layout_rep;
+    const MR_ProcLayoutRep  *layout_rep;
 
-    MR_do_init_proc_rep_table();
+    MR_do_init_proc_defn_rep_table();
 
-    layout_rep = MR_lookup_hash_table(proc_rep_table, proc_layout);
+    layout_rep = MR_lookup_hash_table(proc_defn_rep_table, proc_layout);
     if (layout_rep == NULL) {
 #ifdef  MR_DEBUG_PROC_REP
         if (MR_progdebug) {
@@ -1384,11 +1389,11 @@ MR_lookup_proc_rep(const MR_ProcLayout *proc_layout)
 }
 
 static const void *
-proc_layout_rep_key(const void *pair)
+MR_proc_layout_rep_key(const void *pair)
 {
-    MR_ProcLayout_Rep   *proc_layout_rep;
+    MR_ProcLayoutRep    *proc_layout_rep;
 
-    proc_layout_rep = (MR_ProcLayout_Rep *) pair;
+    proc_layout_rep = (MR_ProcLayoutRep *) pair;
     if (proc_layout_rep == NULL) {
         return NULL;
     } else {
@@ -1397,13 +1402,13 @@ proc_layout_rep_key(const void *pair)
 }
 
 static int
-hash_proc_layout_addr(const void *addr)
+MR_hash_proc_layout_addr(const void *addr)
 {
-    return (((MR_Unsigned) addr) >> 5) % PROC_REP_TABLE_SIZE;
+    return (((MR_Unsigned) addr) >> 5) % PROC_DEFN_REP_TABLE_SIZE;
 }
 
 static MR_bool
-equal_proc_layouts(const void *addr1, const void *addr2)
+MR_equal_proc_layouts(const void *addr1, const void *addr2)
 {
     return ((const MR_ProcLayout *) addr1) == ((const MR_ProcLayout *) addr2);
 }

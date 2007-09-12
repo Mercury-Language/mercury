@@ -119,8 +119,8 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
     globals.lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
-    globals.lookup_bool_option(Globals, procid_stack_layout,
-        ProcIdLayout),
+    globals.lookup_bool_option(Globals, procid_stack_layout, ProcIdLayout),
+    globals.lookup_bool_option(Globals, profile_deep, DeepProfiling),
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.have_static_code_addresses(Globals, StaticCodeAddr),
@@ -138,7 +138,8 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
     lookup_string_in_table("<too many variables>", _,
         LayoutInfo1, LayoutInfo2),
-    list.foldl(construct_layouts, ProcLayoutList, LayoutInfo2, LayoutInfo),
+    list.foldl(construct_layouts(DeepProfiling), ProcLayoutList,
+        LayoutInfo2, LayoutInfo),
     LabelsCounter = LayoutInfo ^ label_counter,
     counter.allocate(NumLabels, LabelsCounter, _),
     TableIoDecls = LayoutInfo ^ table_infos,
@@ -184,12 +185,24 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
                 EventArgTypeInfoMap),
             MaybeEventSet = yes(EventSetLayoutData)
         ),
+        ModuleCommonLayout = module_layout_common_data(ModuleName,
+            StringOffset, ConcatStrings),
+        ModuleCommonLayoutName = module_common_layout(ModuleName),
         ModuleLayout = module_layout_data(ModuleName,
-            StringOffset, ConcatStrings, ProcLayoutNames, SourceFileLayouts,
+            ModuleCommonLayoutName, ProcLayoutNames, SourceFileLayouts,
             TraceLevel, SuppressedEvents, NumLabels, MaybeEventSet),
-        Layouts = [ModuleLayout | Layouts0]
+        Layouts = [ModuleCommonLayout, ModuleLayout | Layouts0]
     ;
         TraceLayout = no,
+        DeepProfiling = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        ModuleCommonLayout = module_layout_common_data(ModuleName,
+            StringOffset, ConcatStrings),
+        Layouts = [ModuleCommonLayout | Layouts0],
+        StaticCellInfo = StaticCellInfo1
+    ;
+        TraceLayout = no,
+        DeepProfiling = no,
         Layouts = Layouts0,
         StaticCellInfo = StaticCellInfo1
     ),
@@ -280,10 +293,10 @@ add_line_no(LineNo, LineInfo, RevList0, RevList) :-
     % layout and the layouts of the labels inside that procedure. Also update
     % the module-wide label table with the labels defined in this procedure.
     %
-:- pred construct_layouts(proc_layout_info::in,
+:- pred construct_layouts(bool::in, proc_layout_info::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
-construct_layouts(ProcLayoutInfo, !Info) :-
+construct_layouts(DeepProfiling, ProcLayoutInfo, !Info) :-
     ProcLayoutInfo = proc_layout_info(RttiProcLabel,
         EntryLabel,
         _Detism,
@@ -339,7 +352,7 @@ construct_layouts(ProcLayoutInfo, !Info) :-
         LabelTables0, LabelTables),
     set_label_tables(LabelTables, !Info),
     construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
-        !Info).
+        DeepProfiling, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -491,10 +504,10 @@ construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
     %
 :- pred construct_proc_layout(proc_layout_info::in,
     list(internal_label_info)::in, proc_layout_kind::in, var_num_map::in,
-    stack_layout_info::in, stack_layout_info::out) is det.
+    bool::in, stack_layout_info::in, stack_layout_info::out) is det.
 
 construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
-        !Info) :-
+        DeepProfiling, !Info) :-
     ProcLayoutInfo = proc_layout_info(RttiProcLabel,
         EntryLabel,
         Detism,
@@ -521,7 +534,7 @@ construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
         SuccipLoc, Traversal, !Info),
     (
         Kind = proc_layout_traversal,
-        More = no_proc_id
+        More = no_proc_id_and_more
     ;
         Kind = proc_layout_proc_id(_),
         get_trace_stack_layout(!.Info, TraceStackLayout),
@@ -538,16 +551,21 @@ construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
         ;
             MaybeExecTrace = no
         ),
+        ModuleInfo = !.Info ^ module_info,
         (
-            NeedGoalRep = no,
-            ProcBytes = []
-        ;
-            NeedGoalRep = yes,
-            ModuleInfo = !.Info ^ module_info,
+            ( NeedGoalRep = trace_needs_body_rep
+            ; DeepProfiling = yes
+            )
+        ->
             represent_proc_as_bytecodes(HeadVars, Goal, InstMap, VarTypes,
                 VarNumMap, ModuleInfo, !Info, ProcBytes)
+        ;
+            ProcBytes = []
         ),
-        More = proc_id(MaybeProcStatic, MaybeExecTrace, ProcBytes)
+        module_info_get_name(ModuleInfo, ModuleName),
+        ModuleCommonLayout = module_common_layout(ModuleName),
+        More = proc_id_and_more(MaybeProcStatic, MaybeExecTrace,
+            ProcBytes, ModuleCommonLayout)
     ),
     ProcLayout = proc_layout_data(RttiProcLabel, Traversal, More),
     LayoutName = proc_layout(RttiProcLabel, Kind),

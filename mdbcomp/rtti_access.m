@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,6 +39,8 @@
 :- pred get_context_from_label_layout(label_layout::in, string::out, int::out)
     is semidet.
 
+%-----------------------------------------------------------------------------%
+
 :- type proc_layout.
 
 :- func get_proc_label_from_layout(proc_layout) = proc_label.
@@ -46,6 +48,7 @@
 :- func get_proc_name(proc_label) = string.
 
     % find_initial_version_arg_num(Proc, OutputArgNum, InputArgNum).
+    %
     % Given a procedure and an output argument number of that procedure,
     % find an input argument which has the same name as the output argument,
     % expect for a numerical suffix and possibly an underscore.  The output
@@ -57,24 +60,123 @@
     % heuristic is used by the subterm dependency tracking algorithm to help
     % speed up the search.
     % Argument numbers start at one.
-    % This procedure is implemented in C to avoid having to allocate
-    % memory to import non word-aligned strings into Mercury code.
+    % This procedure is implemented in C to avoid having to allocate memory
+    % to import non-word-aligned strings into Mercury code.
     %
 :- pred find_initial_version_arg_num(proc_layout::in, int::in, int::out)
     is semidet.
 
 :- func get_all_modes_for_layout(proc_layout) = list(proc_layout).
 
+:- func containing_proc_layout(label_layout) = proc_layout.
+
+:- func proc_bytecode_bytes(proc_layout) = bytecode_bytes.
+
 %-----------------------------------------------------------------------------%
+
+:- type string_table
+    --->    string_table(
+                string_table_chars,
+                            % The characters of the string table, which
+                            % may include null characters.
+                int         % The number of characters in the string table.
+            ).
+
+:- type module_common_layout.
+:- type string_table_chars.
+
+:- pred containing_module_common_layout(proc_layout::in,
+    module_common_layout::out) is semidet.
+
+:- func module_common_string_table(module_common_layout) = string_table.
+
+:- func lookup_string_table(string_table, int) = string.
+
+%-----------------------------------------------------------------------------%
+
+:- type bytecode
+    --->    bytecode(
+                bytecode_bytes,     % The bytes of the bytecode.`
+                int                 % The number of bytes in the bytecode.
+            ).
+
+:- type bytecode_bytes
+    --->    dummy_bytecode_bytes.
+
+:- pragma foreign_type("C", bytecode_bytes, "const MR_uint_least8_t *",
+    [can_pass_as_mercury_type, stable]).
+:- pragma foreign_type("Java", bytecode_bytes, "java.lang.Object", []).
+    % stub only
+
+    % read_byte(ByteCode, Byte, !Pos):
+    %
+    % Read a single byte.
+    %
+:- pred read_byte(bytecode::in, int::out, int::in, int::out) is semidet.
+
+    % read_short(ByteCode, Short, !Pos):
+    %
+    % Read a short that is represented by two bytes.
+    %
+:- pred read_short(bytecode::in, int::out, int::in, int::out) is semidet.
+
+    % read_int32(ByteCode, Int, !Pos):
+    %
+    % Read four byte integer.
+    %
+:- pred read_int32(bytecode::in, int::out, int::in, int::out) is semidet.
+
+    % read_num(ByteCode, Num, !Pos):
+    %
+    % Read an integer encoded using the deep profiler's variable length
+    % encoding scheme.
+    %
+:- pred read_num(bytecode::in, int::out, int::in, int::out) is semidet.
+
+    % read_string_via_offset(ByteCode, StringTable, String, !Pos):
+    %
+    % Read a string represented as a four-byte integer giving an offset
+    % in the string table.
+    %
+:- pred read_string_via_offset(bytecode::in, string_table::in, string::out,
+    int::in, int::out) is semidet.
+
+    % read_line(ByteCode, Line, !Pos):
+    %
+    % Read a sequence of characters ending in a newline.
+    %
+:- pred read_line(bytecode::in, string::out, int::in, int::out) is semidet.
+
+    % read_len_string(ByteCode, String, !Pos):
+    %
+    % Read a string represented as a <length, characters> sequence, in which
+    % the length is encoded using the deep profiler's variable length
+    % encoding scheme.
+    %
+:- pred read_len_string(bytecode::in, string::out, int::in, int::out)
+    is semidet.
+
+    % read_string_table(ByteCode, StringTable, !Pos):
+    %
+    % Given that ByteCode contains a string table starting at the position
+    % given by !.Pos, return that string table and set !:Pos to point to
+    % the first byte after it.
+    %
+:- pred read_string_table(bytecode::in, string_table::out,
+    int::in, int::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module char.
+:- import_module int.
 :- import_module require.
+:- import_module string.
 
 :- pragma foreign_type("C", label_layout, "const MR_LabelLayout *",
     [can_pass_as_mercury_type, stable]).
-    % stubs only
+    % The Java and Erlang definitions are only stubs.
 :- pragma foreign_type("Java", label_layout, "java.lang.Object", []).
 :- pragma foreign_type("Erlang", label_layout, "").
 
@@ -127,10 +229,12 @@ get_path_port_from_label_layout(Label) = PathPort :-
     ),
     PathPort = make_path_port(GoalPath, Port).
 
+%-----------------------------------------------------------------------------%
+
 :- pragma foreign_type("C", proc_layout, "const MR_ProcLayout *",
     [can_pass_as_mercury_type, stable]).
-    % stubs only
-:- pragma foreign_type("Java", proc_layout, "java.lang.Object", []). %stub only
+    % The Java and Erlang definitions are only stubs.
+:- pragma foreign_type("Java", proc_layout, "java.lang.Object", []).
 :- pragma foreign_type("Erlang", proc_layout, "").
 
 get_proc_label_from_layout(Layout) = ProcLabel :-
@@ -427,6 +531,220 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     }
 
     Layouts = list;
+").
+
+:- pragma foreign_proc("C",
+    containing_proc_layout(LabelLayout::in) = (ProcLayout::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    ProcLayout = LabelLayout->MR_sll_entry;
+").
+
+:- pragma foreign_proc("C",
+    proc_bytecode_bytes(ProcLayout::in) = (ByteCodeBytes::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    ByteCodeBytes = ProcLayout->MR_sle_body_bytes;
+#ifdef MR_DEBUG_PROC_REP
+    printf(""lookup_proc_bytecode: %p %p\\n"", ProcLayout, ByteCodeBytes);
+#endif
+").
+
+    % Default version for non-C backends.
+proc_bytecode_bytes(_) = dummy_bytecode_bytes.
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_type("C", module_common_layout,
+    "const MR_ModuleCommonLayout *",
+    [can_pass_as_mercury_type, stable]).
+    % The Java and Erlang definitions are only stubs.
+:- pragma foreign_type("Java", module_common_layout, "java.lang.Object", []).
+:- pragma foreign_type("Erlang", module_common_layout, "").
+
+:- pragma foreign_type("C", string_table_chars, "MR_ConstString",
+    [can_pass_as_mercury_type, stable]).
+    % The Java and Erlang definitions are only stubs.
+:- pragma foreign_type("Java", string_table_chars, "java.lang.Object", []).
+:- pragma foreign_type("Erlang", string_table_chars, "").
+
+:- pragma foreign_proc("C",
+    containing_module_common_layout(ProcLayout::in, ModuleCommonLayout::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    if (MR_PROC_LAYOUT_HAS_THIRD_GROUP(ProcLayout)) {
+        ModuleCommonLayout = ProcLayout->MR_sle_module_common_layout;
+        SUCCESS_INDICATOR = MR_TRUE;
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+    }
+").
+
+module_common_string_table(ModuleCommonLayout) = StringTable :-
+    module_string_table_components(ModuleCommonLayout, StringTableChars, Size),
+    StringTable = string_table(StringTableChars, Size).
+
+:- pred module_string_table_components(module_common_layout::in,
+    string_table_chars::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+    module_string_table_components(ModuleCommonLayout::in,
+        StringTableChars::out, Size::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    StringTableChars = ModuleCommonLayout->MR_mlc_string_table;
+    Size = ModuleCommonLayout->MR_mlc_string_table_size;
+").
+
+lookup_string_table(StringTable, StartOffset) = Str :-
+    StringTable = string_table(StringTableChars, Size),
+    (
+        0 =< StartOffset,
+        StartOffset < Size
+    ->
+        Str = lookup_string_table_2(StringTableChars, StartOffset)
+    ;
+        error("lookup_string_table: bounds violation")
+    ).
+
+:- func lookup_string_table_2(string_table_chars, int) = string.
+
+:- pragma foreign_proc("C",
+    lookup_string_table_2(StringTableChars::in, StartOffset::in) = (Str::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    MR_make_aligned_string(Str, StringTableChars + StartOffset);
+").
+
+%-----------------------------------------------------------------------------%
+
+read_byte(ByteCode, Value, !Pos) :-
+    ByteCode = bytecode(Bytes, Size),
+    !.Pos + 1 =< Size,
+    read_byte_2(Bytes, Value, !Pos).
+
+:- pred read_byte_2(bytecode_bytes::in, int::out, int::in, int::out) is det.
+
+:- pragma foreign_proc("C",
+    read_byte_2(ByteCode::in, Value::out, Pos0::in, Pos::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Value = ByteCode[Pos0];
+    Pos = Pos0 + 1;
+").
+
+read_short(ByteCode, Value, !Pos) :-
+    ByteCode = bytecode(Bytes, Size),
+    !.Pos + 2 =< Size,
+    read_short_2(Bytes, Value, !Pos).
+
+:- pred read_short_2(bytecode_bytes::in, int::out, int::in, int::out) is det.
+
+:- pragma foreign_proc("C",
+    read_short_2(ByteCode::in, Value::out, Pos0::in, Pos::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Value = (ByteCode[Pos0] << 8) + ByteCode[Pos0+1];
+    Pos = Pos0 + 2;
+").
+
+read_int32(ByteCode, Value, !Pos) :-
+    ByteCode = bytecode(Bytes, Size),
+    !.Pos + 4 =< Size,
+    read_int32_2(Bytes, Value, !Pos).
+
+:- pred read_int32_2(bytecode_bytes::in, int::out, int::in, int::out) is det.
+
+:- pragma foreign_proc("C",
+    read_int32_2(ByteCode::in, Value::out, Pos0::in, Pos::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Value = (ByteCode[Pos0] << 24) + (ByteCode[Pos0+1] << 16) +
+        (ByteCode[Pos0+2] << 8) + ByteCode[Pos0+3];
+    Pos = Pos0 + 4;
+").
+
+read_num(ByteCode, Num, !Pos) :-
+    read_num_2(ByteCode, 0, Num, !Pos).
+
+:- pred read_num_2(bytecode::in, int::in, int::out, int::in, int::out)
+    is semidet.
+
+read_num_2(ByteCode, Num0, Num, !Pos) :-
+    read_byte(ByteCode, Byte, !Pos),
+    Num1 = (Num0 << 7) \/ (Byte /\ 0x7F),
+    ( Byte /\ 0x80 \= 0 ->
+        read_num_2(ByteCode, Num1, Num, !Pos)
+    ;
+        Num = Num1
+    ).
+
+read_string_via_offset(ByteCode, StringTable, String, !Pos) :-
+    read_int32(ByteCode, Offset, !Pos),
+    String = lookup_string_table(StringTable, Offset).
+
+read_line(ByteCode, Line, !Pos) :-
+    read_line_2(ByteCode, [], RevChars, !Pos),
+    string.from_rev_char_list(RevChars, Line).
+
+:- pred read_line_2(bytecode::in, list(char)::in, list(char)::out,
+    int::in, int::out) is semidet.
+
+read_line_2(ByteCode, !RevChars, !Pos) :-
+    read_byte(ByteCode, Byte, !Pos),
+    char.from_int(Byte, Char),
+    ( Char = '\n' ->
+        !:RevChars = [Char | !.RevChars]
+    ;
+        !:RevChars = [Char | !.RevChars],
+        read_line_2(ByteCode, !RevChars, !Pos)
+    ).
+
+read_len_string(ByteCode, String, !Pos) :-
+    read_num(ByteCode, Length, !Pos),
+    read_len_string_2(ByteCode, Length, [], RevChars, !Pos),
+    string.from_rev_char_list(RevChars, String).
+
+:- pred read_len_string_2(bytecode::in, int::in,
+    list(char)::in, list(char)::out, int::in, int::out) is semidet.
+
+read_len_string_2(ByteCode, N, !RevChars, !Pos) :-
+    ( N =< 0 ->
+        true
+    ;
+        read_byte(ByteCode, Byte, !Pos),
+        char.from_int(Byte, Char),
+        !:RevChars = [Char | !.RevChars],
+        read_len_string_2(ByteCode, N - 1, !RevChars, !Pos)
+    ).
+
+read_string_table(ByteCode, StringTable, !Pos) :-
+    read_num(ByteCode, Size, !Pos),
+    ByteCode = bytecode(Bytes, NumBytes),
+    !.Pos + Size =< NumBytes,
+    bytecode_string_table_2(Bytes, !.Pos, Size, StringTableChars),
+    !:Pos = !.Pos + Size,
+    StringTable = string_table(StringTableChars, Size).
+
+:- pred bytecode_string_table_2(bytecode_bytes::in, Offset::in, Size::in,
+    string_table_chars::out) is det.
+
+:- pragma foreign_proc("C",
+    bytecode_string_table_2(Bytes::in, Offset::in, Size::in,
+        StringTableChars::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    char    *buf;
+    char    *table;
+    int     i;
+
+    MR_allocate_aligned_string_msg(buf, Size, MR_PROC_LABEL);
+    table = ((char *) Bytes) + Offset;
+    for (i = 0; i < Size; i++) {
+        buf[i] = table[i];
+    }
+
+    StringTableChars = (MR_ConstString) buf;
 ").
 
 %-----------------------------------------------------------------------------%

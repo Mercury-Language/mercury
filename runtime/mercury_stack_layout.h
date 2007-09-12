@@ -270,7 +270,7 @@ typedef enum {
 ** attr_locns[i] gives the location where we can find the value of the
 ** i'th attribute (the first attribute is attribute zero). This is
 ** meaningful only if the attribute is not a synthesized attribute.
-** 
+**
 ** attr_var_nums[i] gives the variable number of the i'th attribute;
 ** if it contains zero, that means the attribute is synthesized. This field
 ** is used by the debugger to display the associated value just once
@@ -314,7 +314,7 @@ struct MR_UserEvent_Struct {
 ** If the i'th attribute is not synthesized, synth_attrs[i] and depend_attrs[i]
 ** will both be NULL. (For now, depend_attrs[i] will not be filled in for
 ** synthesized attributes either.)
-** 
+**
 ** The synth_attr_order field points to an array of attribute numbers that
 ** gives the order in which the values of the synthesized attributes should be
 ** evaluated. The array is ended by -1 as a sentinel.
@@ -842,10 +842,6 @@ typedef struct MR_StackTraversal_Struct {
 ** are where on entry, so it can reexecute the procedure if asked to do so
 ** and if the values of the required variables are still available.
 **
-** The module_layout field points to the module info structure of the module
-** containing the procedure. This allows the debugger access to the string table
-** stored there, as well the table associating source-file contexts with labels.
-**
 ** The labels field contains a pointer to an array of pointers to label layout
 ** structures; the size of the array is given by the num_labels field. The
 ** initial part of the array will contain a pointer to the label layout
@@ -998,19 +994,30 @@ typedef	struct MR_ExecTrace_Struct {
 **   one for user-defined procedures and one for procedures of the compiler
 **   generated Unify, Index and Compare predicates.
 **
-** - The third group is the MR_ExecTrace and MR_ProcStatic structures, which
-**   contain information specifically intended for the debugger and the deep
-**   profiler respectively. The MR_ExecTrace structure will be generated
-**   only if the module is compiled with execution tracing, while the
-**   MR_ProcStatic structure will be generated only if the module is compiled
-**   in a deep profiling grade.
+** - The third group is everything else. Currently, this consists of
+**   information that is of interest to the debugger, to the deep profiler,
+**   or both.
 **
-**   The body_bytes field also belongs to this group. If this is NULL, 
-**   it means that no representation of the procedure body is available.
-**   If non-NULL, it contains a pointer to an array of bytecodes that
-**   represents the body of the procedure. The bytecode array should be
-**   interpreted by read_proc_rep in browser/declarative_execution.m
-**   (it starts with an encoded form of the array's length).
+**   The information that is of interest to the debugger only is stored in
+**   the MR_ExecTrace structure, which will be generated only if the module
+**   is compiled with execution tracing. The information that is of interest to
+**   the deep profiler is stored in the MR_ProcStatic structure, which will be
+**   generated only if the module is compiled in a deep profiling grade. The
+**   other fields in the group are of interest to both the debugger and the
+**   deep profiler, and will be generated if either execution tracing or deep
+**   profiling is enabled.
+**
+**   If the body_bytes field is NULL, it means that no representation of the
+**   procedure body is available. If non-NULL, it contains a pointer to anz
+**   array of bytecodes that represents the body of the procedure. The
+**   bytecode array should be interpreted by the read_proc_rep predicate in
+**   browser/declarative_execution.m (it starts with an encoded form of the
+**   array's length).
+**
+**   The module_common_layout field points to the part of the module layout
+**   structure of the module containing the procedure that is common to the
+**   debugger and the deep profiler. Amongst other things, it gives access to
+**   the string table that the body_bytes fields refers to.
 **
 ** The runtime system considers all proc layout structures to be of type
 ** MR_ProcLayout, but must use the macros defined below to check for the
@@ -1024,9 +1031,10 @@ typedef	struct MR_ExecTrace_Struct {
 ** If the options with which a module is compiled do not require execution
 ** tracing, then the MR_ExecTrace substructure will not present, and if the
 ** options do not require procedure identification, then the MR_ProcId
-** substructure will not be present either. The body_bytes field cannot be
-** non-NULL unless at least one of exec trace and proc static substructures
-** is present, but it is otherwise independent of those substructures.
+** substructure will not be present either. The body_bytes and module_layout
+** fields cannot be non-NULL unless at least one of exec trace and proc static
+** substructures is present, but they are otherwise independent of those
+** substructures.
 **
 ** The compiler itself generates proc layout structures using the following
 ** three types.
@@ -1045,6 +1053,7 @@ struct MR_ProcLayout_Struct {
 	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
 	const MR_uint_least8_t			*MR_sle_body_bytes;
+	const MR_ModuleCommonLayout		*MR_sle_module_common_layout;
 };
 
 typedef	struct MR_ProcLayoutUser_Struct {
@@ -1053,6 +1062,7 @@ typedef	struct MR_ProcLayoutUser_Struct {
 	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
 	const MR_uint_least8_t			*MR_sle_body_bytes;
+	const MR_ModuleCommonLayout		*MR_sle_module_common_layout;
 } MR_ProcLayoutUser;
 
 typedef	struct MR_ProcLayoutUCI_Struct {
@@ -1061,6 +1071,7 @@ typedef	struct MR_ProcLayoutUCI_Struct {
 	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
 	const MR_uint_least8_t			*MR_sle_body_bytes;
+	const MR_ModuleCommonLayout		*MR_sle_module_common_layout;
 } MR_ProcLayoutUCI;
 
 typedef	struct MR_ProcLayout_Traversal_Struct {
@@ -1072,8 +1083,17 @@ typedef	struct MR_ProcLayout_Traversal_Struct {
 		(MR_PROC_ID_EXISTS(entry->MR_sle_proc_id))
 
 #define	MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)			\
-		(MR_PROC_LAYOUT_HAS_PROC_ID(entry)		\
-		&& entry->MR_sle_exec_trace != NULL)
+		(MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&		\
+		entry->MR_sle_exec_trace != NULL)
+
+#define	MR_PROC_LAYOUT_HAS_PROC_STATIC(entry)			\
+		(MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&		\
+		entry->MR_sle_proc_static != NULL)
+
+#define	MR_PROC_LAYOUT_HAS_THIRD_GROUP(entry)			\
+		(MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&		\
+		( entry->MR_sle_exec_trace != NULL		\
+		|| entry->MR_sle_proc_static != NULL))
 
 #define	MR_sle_code_addr	MR_sle_traversal.MR_trav_code_addr
 #define	MR_sle_succip_locn	MR_sle_traversal.MR_trav_succip_locn
@@ -1383,16 +1403,21 @@ typedef struct MR_ModuleFileLayout_Struct {
 ** compiler/layout_out.m.
 */
 
-#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__SYNTH_ATTR
+#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__COMMON
 #define	MR_LAYOUT_VERSION__USER_DEFINED	1
 #define	MR_LAYOUT_VERSION__EVENTSETNAME	2
 #define	MR_LAYOUT_VERSION__SYNTH_ATTR	3
+#define	MR_LAYOUT_VERSION__COMMON	4
+
+struct MR_ModuleCommonLayout_Struct {
+	MR_uint_least8_t                MR_mlc_version_number;
+	MR_ConstString			MR_mlc_name;
+	MR_Integer			MR_mlc_string_table_size;
+	const char			*MR_mlc_string_table;
+};
 
 struct MR_ModuleLayout_Struct {
-	MR_uint_least8_t                MR_ml_version_number;
-	MR_ConstString			MR_ml_name;
-	MR_Integer			MR_ml_string_table_size;
-	const char			*MR_ml_string_table;
+	const MR_ModuleCommonLayout	*MR_ml_common;
 	MR_Integer			MR_ml_proc_count;
 	const MR_ProcLayout		**MR_ml_procs;
 	MR_Integer			MR_ml_filename_count;
@@ -1407,6 +1432,11 @@ struct MR_ModuleLayout_Struct {
 	MR_int_least16_t		MR_ml_num_user_event_specs;
 	MR_UserEventSpec		*MR_ml_user_event_specs;
 };
+
+#define	MR_ml_version_number	MR_ml_common->MR_mlc_version_number
+#define	MR_ml_name		MR_ml_common->MR_mlc_name
+#define	MR_ml_string_table_size	MR_ml_common->MR_mlc_string_table_size
+#define	MR_ml_string_table	MR_ml_common->MR_mlc_string_table
 
 /*-------------------------------------------------------------------------*/
 /*

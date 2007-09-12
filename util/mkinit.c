@@ -20,7 +20,7 @@
 ** list of intialization directives on stdout.  This mode of operation is
 ** is used when building .init files for libraries.
 **
-** If invoked with the -s option, this program produces a standalone 
+** If invoked with the -s option, this program produces a standalone
 ** runtime interface on stdout.  This mode of operation is used when
 ** using Mercury libraries from applications written in foreign languages.
 **
@@ -29,7 +29,7 @@
 **
 **      - scripts/c2init.in
 **      - compiler/compile_target_code.m
-**          in particular the predicates make_init_obj/7 and 
+**          in particular the predicates make_init_obj/7 and
 **          make_standalone_interface/3.
 **      - util/mkinit_erl.c
 **
@@ -78,7 +78,7 @@ typedef enum
     TASK_OUTPUT_LIB_INIT  = 1,
     TASK_OUTPUT_STANDALONE_INIT = 2
 } Task;
-    
+
 typedef enum
 {
     PURPOSE_INIT = 0,
@@ -162,7 +162,7 @@ const char  *main_func_arg_defn[] =
     "void",
     "void",
     "void",
-    "FILE *fp",
+    "FILE *deep_fp, FILE *procrep_fp",
     "void",
     "void"
 };
@@ -173,7 +173,7 @@ const char  *main_func_arg_decl[] =
     "void",
     "void",
     "void",
-    "FILE *",
+    "FILE *, FILE *",
     "void",
     "void"
 };
@@ -184,7 +184,7 @@ const char  *main_func_arg[] =
     "",
     "",
     "",
-    "fp",
+    "deep_fp, procrep_fp",
     "",
     ""
 };
@@ -387,7 +387,8 @@ static const char mercury_funcs2[] =
     "   MR_address_of_init_modules_type_tables = init_modules_type_tables;\n"
     "   MR_address_of_init_modules_debugger = init_modules_debugger;\n"
     "#ifdef MR_RECORD_TERM_SIZES\n"
-    "   MR_address_of_init_modules_complexity = init_modules_complexity_procs;\n"
+    "   MR_address_of_init_modules_complexity =\n"
+    "       init_modules_complexity_procs;\n"
     "#endif\n"
     "#ifdef MR_DEEP_PROFILING\n"
     "   MR_address_of_write_out_proc_statics =\n"
@@ -472,8 +473,8 @@ static const char mercury_funcs4[] =
     "}\n"
     "\n"
     ;
-    
-static const char mercury_call_main_func[] =  
+
+static const char mercury_call_main_func[] =
     "void\n"
     "mercury_call_main(void)\n"
     "{\n"
@@ -481,8 +482,8 @@ static const char mercury_call_main_func[] =
     "}\n"
     "\n"
     ;
-    
-static const char mercury_terminate_func[] =    
+
+static const char mercury_terminate_func[] =
     "int\n"
     "mercury_terminate(void)\n"
     "{\n"
@@ -491,7 +492,7 @@ static const char mercury_terminate_func[] =
     "\n"
     ;
 
-static const char mercury_main_func[] = 
+static const char mercury_main_func[] =
     "int\n"
     "mercury_main(int argc, char **argv)\n"
     "{\n"
@@ -569,21 +570,21 @@ main(int argc, char **argv)
             /* Output a .init file */
             exit_status = output_lib_init_file();
             break;
-        
+
         case TASK_OUTPUT_STANDALONE_INIT:
         case TASK_OUTPUT_INIT_PROG:
             /*
-            ** Output a _init.c file or a standalone initialisation 
+            ** Output a _init.c file or a standalone initialisation
             ** interface.
             */
             exit_status = output_init_program();
             break;
-        
+
         default:
             fprintf(stderr, "mkinit: unknown task\n");
             exit(EXIT_FAILURE);
     }
-    
+
     return exit_status;
 }
 
@@ -830,10 +831,10 @@ parse_options(int argc, char *argv[])
     }
 
     if (seen_f_option) {
-        /* 
+        /*
         ** -f could be made compatible if we copied the filenames
         ** from argv into files.
-        ** 
+        **
         */
         if ((argc - optind) > 0) {
             fprintf(stderr,
@@ -1018,7 +1019,7 @@ output_main(void)
     if (output_task == TASK_OUTPUT_STANDALONE_INIT) {
         hl_entry_point = entry_point = "MR_dummy_main";
     }
-    
+
     printf(mercury_funcs1, hl_entry_point, entry_point);
     printf(mercury_funcs2, num_experimental_complexity_procs,
         hl_entry_point, entry_point);
@@ -1060,19 +1061,19 @@ output_main(void)
     }
 
     fputs(mercury_funcs4, stdout);
-    
+
     if (output_task == TASK_OUTPUT_INIT_PROG) {
         fputs(mercury_call_main_func, stdout);
     }
-        
+
     fputs(mercury_terminate_func, stdout);
-    
+
     if (output_task == TASK_OUTPUT_INIT_PROG) {
         fputs(mercury_main_func, stdout);
-    } 
-        
+    }
+
     fputs(mercury_grade_var, stdout);
-    
+
     if (output_main_func) {
         fputs(main_func, stdout);
     }

@@ -1657,7 +1657,8 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 void mercury_sys_init_exceptions_init(void);
 void mercury_sys_init_exceptions_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp);
 #endif
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -2615,21 +2616,22 @@ mercury_sys_init_exceptions_init_type_tables(void)
 
 #ifdef  MR_DEEP_PROFILING
 void
-mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp)
+mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp)
 {
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_catch, 3, 0));
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_catch, 3, 1));
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_catch, 3, 2));
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_catch, 3, 3));
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_catch, 3, 4));
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_catch, 3, 5));
-    MR_write_out_user_proc_static(fp,
+    MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(exception, builtin_throw, 1, 0));
 }
 #endif

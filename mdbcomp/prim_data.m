@@ -72,6 +72,10 @@
     % from `.opt' files, the defining module's name may need to be added
     % as a qualifier to the label.
     %
+    % The type string_proc_label in program_representation.m parallels this
+    % type, but differs from it in being used not inside the compiler by
+    % outside, which means it needs to use different types for many fields.
+    %
 :- type proc_label
     --->    ordinary_proc_label(
                 ord_defining_module     :: module_name,

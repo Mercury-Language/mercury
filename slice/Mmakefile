@@ -72,6 +72,7 @@ $(DEPENDS): SLICE_FLAGS
 all:	$(MDBCOMP_MODULES) $(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
 
 #-----------------------------------------------------------------------------#
+#
 # We need to start by turning write permission on for each copied file
 # in case some exist, but we need to ignore errors in case some don't exist.
 # The exit 0 is to prevent make itself from printing a message about the
@@ -128,7 +129,7 @@ ints:	$(INTS)
 tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
 		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
 	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
-		$(mtc_diff.ms) $($(LIBRARY_DIR)/*.m
+		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:
@@ -161,8 +162,8 @@ ils:	$(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mcov.ils) $(mtc_diff.ils)
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f tags SLICE_FLAGS SLICE_FLAGS.date mdbcomp.*.err \
-		$(MDBCOMP_MODULES)
+	rm -f tags SLICE_FLAGS SLICE_FLAGS.date \
+		$(MDBCOMP_MODULES) mdbcomp.*.err
 
 #-----------------------------------------------------------------------------#
 

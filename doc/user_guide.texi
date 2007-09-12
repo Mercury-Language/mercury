@@ -9699,6 +9699,26 @@ The default maximum value of @var{N} is 20.
 @c The intended use is to override the installed version of mtc_union
 @c with the version in a specific workspace, which may be more recent.
 
+@c @sp 1
+@c @item --deep-procrep-file
+@c #findex --deep-procrep-file
+@c This option, which is meaningful only in deep profiling grades,
+@c asks that every Deep.data file being generated should be accompanied by
+@c a Deep.procrep file that contains a representation of the program that
+@c generated it.
+@c This documentation is commented out
+@c because procedure representations are not yet used.
+
+@c @sp 1
+@c @item --deep-random-write=@var{N}
+@c #findex --deep-random-write=@var{N}
+@c This option, which is meaningful only in deep profiling grades,
+@c asks that Deep.data files (and Deep.procrep files) should be generated
+@c only if by processes whose process id is evenly divisible by @var{N}.
+@c This documentation is commented out because it is only for use by the
+@c bootcheck script (to reduce the time taken for a bootcheck while still
+@c testing the code writing out deep profiling data).
+
 @end table
 
 @sp 1

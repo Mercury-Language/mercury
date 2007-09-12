@@ -410,7 +410,8 @@ output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas,
     io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
     io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io.write_string("write_out_proc_statics(FILE *fp);\n", !IO),
+    io.write_string(
+        "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp);\n", !IO),
     io.write_string("#endif\n", !IO),
 
     io.write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
@@ -500,9 +501,15 @@ output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas,
     output_write_proc_static_list_decls(LayoutDatas, !DeclSet, !IO),
     io.write_string("\nvoid ", !IO),
     output_init_name(ModuleName, !IO),
-    io.write_string("write_out_proc_statics(FILE *fp)\n", !IO),
+    io.write_string(
+        "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp)\n", !IO),
     io.write_string("{\n", !IO),
+    ModuleCommonLayoutName = module_common_layout(ModuleName),
+    io.write_string("\tMR_write_out_module_proc_reps_start(procrep_fp, &", !IO),
+    output_layout_name(ModuleCommonLayoutName, !IO),
+    io.write_string(");\n", !IO),
     output_write_proc_static_list(LayoutDatas, !IO),
+    io.write_string("\tMR_write_out_module_proc_reps_end(procrep_fp);\n", !IO),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
 
@@ -625,7 +632,7 @@ output_type_tables_init_list([Data | Datas], !IO) :-
 
 output_debugger_init_list_decls([], !DeclSet, !IO).
 output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
-    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _, _) ->
+    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
         output_data_addr_decls(layout_addr(module_layout(ModuleName)),
             !DeclSet, !IO)
     ;
@@ -642,7 +649,7 @@ output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
 
 output_debugger_init_list([], !IO).
 output_debugger_init_list([Data | Datas], !IO) :-
-    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _, _) ->
+    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
         io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
         io.write_string("\t\t(*MR_register_module_layout)(", !IO),
         io.write_string("\n\t\t\t&", !IO),
@@ -660,7 +667,7 @@ output_write_proc_static_list_decls([], !DeclSet, !IO).
 output_write_proc_static_list_decls([Data | Datas], !DeclSet, !IO) :-
     (
         Data = proc_layout_data(_, _, MaybeRest),
-        MaybeRest = proc_id(yes(_), _, _)
+        MaybeRest = proc_id_and_more(yes(_), _, _, _)
     ->
         output_maybe_layout_data_decl(Data, !DeclSet, !IO)
     ;
@@ -675,17 +682,21 @@ output_write_proc_static_list([], !IO).
 output_write_proc_static_list([Data | Datas], !IO) :-
     (
         Data = proc_layout_data(RttiProcLabel, _, MaybeRest),
-        MaybeRest = proc_id(yes(_), _, _)
+        MaybeRest = proc_id_and_more(yes(_), _, _, _)
     ->
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         UserOrUCI = proc_label_user_or_uci(ProcLabel),
         Kind = proc_layout_proc_id(UserOrUCI),
         (
             UserOrUCI = user,
-            io.write_string("\tMR_write_out_user_proc_static(fp,\n\t\t&", !IO)
+            io.write_string(
+                "\tMR_write_out_user_proc_static(deep_fp, procrep_fp,\n\t\t&",
+                !IO)
         ;
             UserOrUCI = uci,
-            io.write_string("\tMR_write_out_uci_proc_static(fp,\n\t\t&", !IO)
+            io.write_string(
+                "\tMR_write_out_uci_proc_static(deep_fp, procrep_fp,\n\t\t&",
+                !IO)
         ),
         output_layout_name(proc_layout(RttiProcLabel, Kind), !IO),
         io.write_string(");\n", !IO)

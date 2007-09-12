@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2004, 2006 The University of Melbourne.
+** Copyright (C) 2001-2004, 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,12 +19,12 @@
 #include <stdio.h>
 
 typedef enum {
-	MR_normal_call,
-	MR_special_call,
-	MR_higher_order_call,
-	MR_method_call,
-	MR_callback
-} MR_CallSite_Kind;
+	MR_callsite_normal_call,
+	MR_callsite_special_call,
+	MR_callsite_higher_order_call,
+	MR_callsite_method_call,
+	MR_callsite_callback
+} MR_CallSiteKind;
 
 struct MR_ProfilingMetrics_Struct {
 #ifdef MR_DEEP_PROFILING_PORT_COUNTS
@@ -56,7 +56,7 @@ struct MR_ProfilingMetrics_Struct {
 };
 
 struct MR_CallSiteStatic_Struct {
-    	MR_CallSite_Kind			MR_css_kind;
+    	MR_CallSiteKind				MR_css_kind;
 	MR_ProcLayout				*MR_css_callee_ptr_if_known;
 	MR_ConstString				MR_css_type_subst_if_known;
 	MR_ConstString				MR_css_file_name;
@@ -97,20 +97,28 @@ struct MR_CallSiteDynList_Struct {
 };
 
 typedef enum {
-	MR_deep_token_end = 0,
-	MR_deep_token_call_site_static,
-	MR_deep_token_call_site_dynamic,
-	MR_deep_token_proc_static,
-	MR_deep_token_proc_dynamic,
-	MR_deep_token_normal_call,
-	MR_deep_token_special_call,
-	MR_deep_token_higher_order_call,
-	MR_deep_token_method_call,
-	MR_deep_token_callback,
-	MR_deep_token_isa_predicate,
-	MR_deep_token_isa_function,
-	MR_deep_token_isa_uci_pred
-} MR_Profile_Encoding_Token;
+	MR_deep_item_end = 0,
+	MR_deep_item_call_site_static,
+	MR_deep_item_call_site_dynamic,
+	MR_deep_item_proc_static,
+	MR_deep_item_proc_dynamic
+} MR_DeepProfNextItem;
+
+typedef enum {
+	MR_no_more_modules,
+	MR_next_module
+} MR_MoreModules;
+
+typedef enum {
+	MR_no_more_procs,
+	MR_next_proc
+} MR_MoreProcs;
+
+typedef enum {
+	MR_proclabel_user_predicate,
+	MR_proclabel_user_function,
+	MR_proclabel_special
+} MR_ProcLabelToken;
 
 #define	MR_enter_instrumentation()					\
 	do { MR_inside_deep_profiling_code = MR_TRUE; } while (0)
@@ -363,11 +371,18 @@ extern	void	MR_deep_assert_failed(const MR_CallSiteDynamic *csd,
 			const char *cond, const char *filename,
 			int linenumber);
 extern	void	MR_setup_callback(void *entry);
-extern	void	MR_write_out_user_proc_static(FILE *fp,
-			const MR_ProcLayoutUser *ptr);
-extern	void	MR_write_out_uci_proc_static(FILE *fp,
-			const MR_ProcLayoutUCI *ptr);
-extern	void	MR_write_out_proc_static(FILE *fp, const MR_ProcLayout *ptr);
+
+extern	void	MR_write_out_str_proc_label(FILE *deep_fp,
+			const MR_ProcId *procid);
+extern	void	MR_write_out_user_proc_static(FILE *deep_fp, FILE *procrep_fp,
+			const MR_ProcLayoutUser *proc_layout);
+extern	void	MR_write_out_uci_proc_static(FILE *deep_fp, FILE *procrep_fp,
+			const MR_ProcLayoutUCI *proc_layout);
+extern	void	MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
+			const MR_ProcLayout *proc_layout);
+extern	void	MR_write_out_module_proc_reps_start(FILE *procrep_fp,
+			const MR_ModuleCommonLayout *module_common);
+extern	void	MR_write_out_module_proc_reps_end(FILE *procrep_fp);
 extern	void	MR_write_out_profiling_tree(void);
 
 extern	void	MR_deep_prof_init(void);

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,6 +33,9 @@
 :- import_module array_util.
 :- import_module io_combinator.
 :- import_module measurements.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module array.
 :- import_module bool.
@@ -58,7 +61,7 @@ read_call_graph(FileName, Res, !IO) :-
     io.see_binary(FileName, Res0, !IO),
     (
         Res0 = ok,
-        read_id_string(Res1, !IO),
+        read_deep_id_string(Res1, !IO),
         (
             Res1 = ok(_),
             io_combinator.maybe_error_sequence_11(
@@ -110,15 +113,15 @@ read_call_graph(FileName, Res, !IO) :-
         Res = error(Msg)
     ).
 
-:- pred read_id_string(maybe_error(string)::out,
+:- pred read_deep_id_string(maybe_error(string)::out,
     io::di, io::uo) is det.
 
-read_id_string(Res, !IO) :-
-    read_n_byte_string(string.length(id_string), Res0, !IO),
+read_deep_id_string(Res, !IO) :-
+    read_n_byte_string(string.length(deep_id_string), Res0, !IO),
     (
         Res0 = ok(String),
-        ( String = id_string ->
-            Res = ok(id_string)
+        ( String = deep_id_string ->
+            Res = ok(deep_id_string)
         ;
             Res = error("not a deep profiling data file")
         )
@@ -127,12 +130,12 @@ read_id_string(Res, !IO) :-
         Res = error(Err)
     ).
 
-:- func id_string = string.
+:- func deep_id_string = string.
 
-% This must the same string as the one written by MR_write_out_id_string
+% This must the same string as the one written by MR_write_out_deep_id_string
 % in runtime/mercury_deep_profiling.c.
 
-id_string = "Mercury deep profiler data version 3\n".
+deep_id_string = "Mercury deep profiler data version 4\n".
 
 :- func init_deep(int, int, int, int, int, int, int, int, int, int, int)
     = initial_deep.
@@ -174,53 +177,62 @@ read_nodes(InitDeep0, Res, !IO) :-
     read_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
-        ( Byte = token_call_site_dynamic ->
-            read_call_site_dynamic(Res1, !IO),
+        ( is_next_item_token(Byte, NextItem) ->
             (
-                Res1 = ok2(CallSiteDynamic, CSDI),
-                deep_insert(InitDeep0 ^ init_call_site_dynamics,
-                    CSDI, CallSiteDynamic, CSDs),
-                InitDeep1 = InitDeep0 ^ init_call_site_dynamics := CSDs,
-                read_nodes(InitDeep1, Res, !IO)
+                NextItem = deep_item_call_site_dynamic,
+                read_call_site_dynamic(Res1, !IO),
+                (
+                    Res1 = ok2(CallSiteDynamic, CSDI),
+                    deep_insert(InitDeep0 ^ init_call_site_dynamics,
+                        CSDI, CallSiteDynamic, CSDs),
+                    InitDeep1 = InitDeep0 ^ init_call_site_dynamics := CSDs,
+                    read_nodes(InitDeep1, Res, !IO)
+                ;
+                    Res1 = error2(Err),
+                    Res = error(Err)
+                )
             ;
-                Res1 = error2(Err),
-                Res = error(Err)
-            )
-        ; Byte = token_proc_dynamic ->
-            read_proc_dynamic(Res1, !IO),
-            (
-                Res1 = ok2(ProcDynamic, PDI),
-                deep_insert(InitDeep0 ^ init_proc_dynamics,
-                    PDI, ProcDynamic, PDs),
-                InitDeep1 = InitDeep0 ^ init_proc_dynamics := PDs,
-                read_nodes(InitDeep1, Res, !IO)
+                NextItem = deep_item_proc_dynamic,
+                read_proc_dynamic(Res1, !IO),
+                (
+                    Res1 = ok2(ProcDynamic, PDI),
+                    deep_insert(InitDeep0 ^ init_proc_dynamics,
+                        PDI, ProcDynamic, PDs),
+                    InitDeep1 = InitDeep0 ^ init_proc_dynamics := PDs,
+                    read_nodes(InitDeep1, Res, !IO)
+                ;
+                    Res1 = error2(Err),
+                    Res = error(Err)
+                )
             ;
-                Res1 = error2(Err),
-                Res = error(Err)
-            )
-        ; Byte = token_call_site_static ->
-            read_call_site_static(Res1, !IO),
-            (
-                Res1 = ok2(CallSiteStatic, CSSI),
-                deep_insert(InitDeep0 ^ init_call_site_statics,
-                    CSSI, CallSiteStatic, CSSs),
-                InitDeep1 = InitDeep0 ^ init_call_site_statics := CSSs,
-                read_nodes(InitDeep1, Res, !IO)
+                NextItem = deep_item_call_site_static,
+                read_call_site_static(Res1, !IO),
+                (
+                    Res1 = ok2(CallSiteStatic, CSSI),
+                    deep_insert(InitDeep0 ^ init_call_site_statics,
+                        CSSI, CallSiteStatic, CSSs),
+                    InitDeep1 = InitDeep0 ^ init_call_site_statics := CSSs,
+                    read_nodes(InitDeep1, Res, !IO)
+                ;
+                    Res1 = error2(Err),
+                    Res = error(Err)
+                )
             ;
-                Res1 = error2(Err),
-                Res = error(Err)
-            )
-        ; Byte = token_proc_static ->
-            read_proc_static(Res1, !IO),
-            (
-                Res1 = ok2(ProcStatic, PSI),
-                deep_insert(InitDeep0 ^ init_proc_statics,
-                    PSI, ProcStatic, PSs),
-                InitDeep1 = InitDeep0 ^ init_proc_statics := PSs,
-                read_nodes(InitDeep1, Res, !IO)
+                NextItem = deep_item_proc_static,
+                read_proc_static(Res1, !IO),
+                (
+                    Res1 = ok2(ProcStatic, PSI),
+                    deep_insert(InitDeep0 ^ init_proc_statics,
+                        PSI, ProcStatic, PSs),
+                    InitDeep1 = InitDeep0 ^ init_proc_statics := PSs,
+                    read_nodes(InitDeep1, Res, !IO)
+                ;
+                    Res1 = error2(Err),
+                    Res = error(Err)
+                )
             ;
-                Res1 = error2(Err),
-                Res = error(Err)
+                NextItem = deep_item_end,
+                Res = ok(InitDeep0)
             )
         ;
             format("unexpected token %d", [i(Byte)], Msg),
@@ -271,7 +283,6 @@ read_call_site_static(Res, !IO) :-
         Res = error2(Err)
     ).
 
-
 :- pred read_proc_static(maybe_error2(proc_static, int)::out,
     io::di, io::uo) is det.
 
@@ -300,15 +311,14 @@ read_proc_static(Res, !IO) :-
             DeclModule = decl_module(Id),
             RefinedStr = refined_proc_id_to_string(Id),
             RawStr = raw_proc_id_to_string(Id),
-            % The `not_zeroed' for whether the procedure's
-            % proc_static is ever zeroed is the default. The
-            % startup phase will set it to `zeroed' in the
-            % proc_statics which are ever zeroed.
             ( Interface = 0 ->
                 IsInInterface = no
             ;
                 IsInInterface = yes
             ),
+            % The `not_zeroed' for whether the procedure's proc_static
+            % is ever zeroed is the default. The startup phase will set it
+            % to `zeroed' in the proc_statics which are ever zeroed.
             ProcStatic = proc_static(Id, DeclModule,
                 RefinedStr, RawStr, FileName, LineNumber,
                 IsInInterface, array(CSSPtrs), not_zeroed),
@@ -329,20 +339,26 @@ read_proc_static(Res, !IO) :-
         Res = error2(Err)
     ).
 
-:- pred read_proc_id(maybe_error(proc_id)::out, io::di, io::uo) is det.
+:- pred read_proc_id(maybe_error(string_proc_label)::out, io::di, io::uo)
+    is det.
 
 read_proc_id(Res, !IO) :-
     read_deep_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
-        ( Byte = token_isa_uci_pred ->
-            read_proc_id_uci_pred(Res, !IO)
-        ; Byte = token_isa_predicate ->
-            read_proc_id_user_defined(predicate, Res, !IO)
-        ; Byte = token_isa_function ->
-            read_proc_id_user_defined(function, Res, !IO)
+        ( is_proclabel_kind(Byte, ProcLabelKind) ->
+            (
+                ProcLabelKind = proclabel_special,
+                read_proc_id_uci_pred(Res, !IO)
+            ;
+                ProcLabelKind = proclabel_user_predicate,
+                read_proc_id_user_defined(pf_predicate, Res, !IO)
+            ;
+                ProcLabelKind = proclabel_user_function,
+                read_proc_id_user_defined(pf_function, Res, !IO)
+            )
         ;
-            format("unexpected proc_id_kind %d", [i(Byte)], Msg),
+            format("unexpected proclabel_kind %d", [i(Byte)], Msg),
             Res = error(Msg)
         )
     ;
@@ -350,8 +366,8 @@ read_proc_id(Res, !IO) :-
         Res = error(Err)
     ).
 
-:- pred read_proc_id_uci_pred(maybe_error(proc_id)::out, io::di, io::uo)
-    is det.
+:- pred read_proc_id_uci_pred(maybe_error(string_proc_label)::out,
+    io::di, io::uo) is det.
 
 read_proc_id_uci_pred(Res, !IO) :-
     io_combinator.maybe_error_sequence_6(
@@ -364,13 +380,13 @@ read_proc_id_uci_pred(Res, !IO) :-
         (pred(TypeName::in, TypeModule::in, DefModule::in,
                 PredName::in, Arity::in, Mode::in, ProcId::out)
                 is det :-
-            ProcId = ok(uci_pred(TypeName, TypeModule,
+            ProcId = ok(str_special_proc_label(TypeName, TypeModule,
                 DefModule, PredName, Arity, Mode))
         ),
         Res, !IO).
 
-:- pred read_proc_id_user_defined(pred_or_func::in, maybe_error(proc_id)::out,
-    io::di, io::uo) is det.
+:- pred read_proc_id_user_defined(pred_or_func::in,
+    maybe_error(string_proc_label)::out, io::di, io::uo) is det.
 
 read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
     io_combinator.maybe_error_sequence_5(
@@ -380,32 +396,31 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
         read_num,
         read_num,
         (pred(DeclModule::in, DefModule::in, Name::in,
-                Arity::in, Mode::in, ProcId::out)
-                is det :-
-            ProcId = ok(user_defined(PredOrFunc, DeclModule,
+                Arity::in, Mode::in, ProcId::out) is det :-
+            ProcId = ok(str_ordinary_proc_label(PredOrFunc, DeclModule,
                 DefModule, Name, Arity, Mode))
         ),
         Res, !IO).
 
-:- func raw_proc_id_to_string(proc_id) = string.
+:- func raw_proc_id_to_string(string_proc_label) = string.
 
-raw_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
+raw_proc_id_to_string(str_special_proc_label(TypeName, TypeModule, _DefModule,
         PredName, Arity, Mode)) =
     string.append_list(
         [PredName, " for ", TypeModule, ".", TypeName,
         "/", string.int_to_string(Arity),
         " mode ", string.int_to_string(Mode)]).
-raw_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
-        Name, Arity, Mode)) =
+raw_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
+        _DefModule, Name, Arity, Mode)) =
     string.append_list([DeclModule, ".", Name,
         "/", string.int_to_string(Arity),
-        ( PredOrFunc = function -> "+1" ; "" ),
+        ( PredOrFunc = pf_function -> "+1" ; "" ),
         "-", string.int_to_string(Mode)]).
 
-:- func refined_proc_id_to_string(proc_id) = string.
+:- func refined_proc_id_to_string(string_proc_label) = string.
 
-refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
-        RawPredName, Arity, Mode)) = Name :-
+refined_proc_id_to_string(str_special_proc_label(TypeName, TypeModule,
+        _DefModule, RawPredName, Arity, Mode)) = Name :-
     ( RawPredName = "__Unify__" ->
         PredName = "Unify"
     ; RawPredName = "__Compare__" ->
@@ -427,8 +442,8 @@ refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
     ;
         Name = string.append_list([Name0, " mode ", int_to_string(Mode)])
     ).
-refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
-        ProcName, Arity, Mode)) = Name :-
+refined_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
+        _DefModule, ProcName, Arity, Mode)) = Name :-
     (
         string.append("TypeSpecOf__", ProcName1, ProcName),
         ( string.append("pred__", ProcName2A, ProcName1) ->
@@ -446,7 +461,7 @@ refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         RefinedProcName = string.from_char_list(ProcNameChars),
         Name = string.append_list([DeclModule, ".", RefinedProcName,
             "/", string.int_to_string(Arity),
-            ( PredOrFunc = function -> "+1" ; "" ),
+            ( PredOrFunc = pf_function -> "+1" ; "" ),
             "-", string.int_to_string(Mode),
             " [", SpecInfo, "]"])
     ;
@@ -468,11 +483,11 @@ refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         Name = string.append_list([DeclModule, ".", ContainingName,
             " lambda line ", LineNumber,
             "/", string.int_to_string(Arity),
-            ( PredOrFunc = function -> "+1" ; "" )])
+            ( PredOrFunc = pf_function -> "+1" ; "" )])
     ;
         Name = string.append_list([DeclModule, ".", ProcName,
             "/", string.int_to_string(Arity),
-            ( PredOrFunc = function -> "+1" ; "" ),
+            ( PredOrFunc = pf_function -> "+1" ; "" ),
             "-", string.int_to_string(Mode)])
     ).
 
@@ -786,19 +801,10 @@ read_call_site_kind(Res, !IO) :-
     read_deep_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
-        ( Byte = token_normal_call ->
-            Res = ok(normal_call)
-        ; Byte = token_special_call ->
-            Res = ok(special_call)
-        ; Byte = token_higher_order_call ->
-            Res = ok(higher_order_call)
-        ; Byte = token_method_call ->
-            Res = ok(method_call)
-        ; Byte = token_callback ->
-            Res = ok(callback)
+        ( is_call_site_kind(Byte, CallSiteKind) ->
+            Res = ok(CallSiteKind)
         ;
-            format("unexpected call_site_kind %d",
-                [i(Byte)], Msg),
+            format("unexpected call_site_kind %d", [i(Byte)], Msg),
             Res = error(Msg)
         ),
         trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
@@ -819,31 +825,38 @@ read_call_site_kind_and_callee(Res, !IO) :-
     read_deep_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
-        ( Byte = token_normal_call ->
-            read_num(Res1, !IO),
+        ( is_call_site_kind(Byte, CallSiteKind) ->
             (
-                Res1 = ok(CalleeProcStatic),
-                read_string(Res2, !IO),
+                CallSiteKind = normal_call,
+                read_num(Res1, !IO),
                 (
-                    Res2 = ok(TypeSubst),
-                    Res = ok(normal_call_and_callee(
-                        proc_static_ptr(CalleeProcStatic), TypeSubst))
+                    Res1 = ok(CalleeProcStatic),
+                    read_string(Res2, !IO),
+                    (
+                        Res2 = ok(TypeSubst),
+                        Res = ok(normal_call_and_callee(
+                            proc_static_ptr(CalleeProcStatic), TypeSubst))
+                    ;
+                        Res2 = error(Err),
+                        Res = error(Err)
+                    )
                 ;
-                    Res2 = error(Err),
+                    Res1 = error(Err),
                     Res = error(Err)
                 )
             ;
-                Res1 = error(Err),
-                Res = error(Err)
+                CallSiteKind = special_call,
+                Res = ok(special_call_and_no_callee)
+            ;
+                CallSiteKind = higher_order_call,
+                Res = ok(higher_order_call_and_no_callee)
+            ;
+                CallSiteKind = method_call,
+                Res = ok(method_call_and_no_callee)
+            ;
+                CallSiteKind = callback,
+                Res = ok(callback_and_no_callee)
             )
-        ; Byte = token_special_call ->
-            Res = ok(special_call_and_no_callee)
-        ; Byte = token_higher_order_call ->
-            Res = ok(higher_order_call_and_no_callee)
-        ; Byte = token_method_call ->
-            Res = ok(method_call_and_no_callee)
-        ; Byte = token_callback ->
-            Res = ok(callback_and_no_callee)
         ;
             format("unexpected call_site_kind %d", [i(Byte)], Msg),
             Res = error(Msg)
@@ -1105,100 +1118,42 @@ make_dummy_psptr = proc_static_ptr(-1).
 
 :- pragma foreign_decl("C", "#include ""mercury_deep_profiling.h""").
 
-:- func token_call_site_static = int.
-:- pragma foreign_proc("C",
-    token_call_site_static = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_call_site_static;
-").
+:- type next_deep_item
+    --->    deep_item_end
+    ;       deep_item_call_site_static
+    ;       deep_item_call_site_dynamic
+    ;       deep_item_proc_static
+    ;       deep_item_proc_dynamic.
 
-:- func token_call_site_dynamic = int.
-:- pragma foreign_proc("C",
-    token_call_site_dynamic = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_call_site_dynamic;
-").
+:- pragma foreign_enum("C", next_deep_item/0, [
+    deep_item_end                - "MR_deep_item_end",
+    deep_item_call_site_static   - "MR_deep_item_call_site_static",
+    deep_item_call_site_dynamic  - "MR_deep_item_call_site_dynamic",
+    deep_item_proc_static        - "MR_deep_item_proc_static",
+    deep_item_proc_dynamic       - "MR_deep_item_proc_dynamic"
+]).
 
-:- func token_proc_static = int.
-:- pragma foreign_proc("C",
-    token_proc_static = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_proc_static;
-").
+:- pred is_next_item_token(int::in, next_deep_item::out) is semidet.
 
-:- func token_proc_dynamic = int.
 :- pragma foreign_proc("C",
-    token_proc_dynamic = (X::out),
+    is_next_item_token(Int::in, NextItem::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    X = MR_deep_token_proc_dynamic;
-").
+    NextItem = (MR_DeepProfNextItem) Int;
 
-:- func token_normal_call = int.
-:- pragma foreign_proc("C",
-    token_normal_call = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_normal_call;
-").
+    switch (NextItem) {
+        case MR_deep_item_end:
+        case MR_deep_item_call_site_static:
+        case MR_deep_item_call_site_dynamic:
+        case MR_deep_item_proc_static:
+        case MR_deep_item_proc_dynamic:
+            SUCCESS_INDICATOR = MR_TRUE;
+            break;
 
-:- func token_special_call = int.
-:- pragma foreign_proc("C",
-    token_special_call = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_special_call;
-").
-
-:- func token_higher_order_call = int.
-:- pragma foreign_proc("C",
-    token_higher_order_call = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_higher_order_call;
-").
-
-:- func token_method_call = int.
-:- pragma foreign_proc("C",
-    token_method_call = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_method_call;
-").
-
-:- func token_callback = int.
-:- pragma foreign_proc("C",
-    token_callback = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_callback;
-").
-
-:- func token_isa_predicate = int.
-:- pragma foreign_proc("C",
-    token_isa_predicate = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_isa_predicate;
-").
-
-:- func token_isa_function = int.
-:- pragma foreign_proc("C",
-    token_isa_function = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_isa_function;
-").
-
-:- func token_isa_uci_pred = int.
-:- pragma foreign_proc("C",
-    token_isa_uci_pred = (X::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    X = MR_deep_token_isa_uci_pred;
+        default:
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+    }
 ").
 
 %------------------------------------------------------------------------------%

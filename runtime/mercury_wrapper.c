@@ -302,8 +302,10 @@ int                 mercury_exit_status = 0;
 
 MR_bool             MR_profiling = MR_TRUE;
 MR_bool             MR_print_deep_profiling_statistics = MR_FALSE;
-MR_bool             MR_deep_profiling_save_results = MR_TRUE;
-MR_bool             MR_complexity_save_results = MR_TRUE;
+MR_bool             MR_output_deep_procrep_file;
+static  unsigned    MR_deep_prof_random_write = 0;
+static  MR_bool     MR_deep_profiling_save_results = MR_TRUE;
+static  MR_bool     MR_complexity_save_results = MR_TRUE;
 
 #ifdef  MR_TYPE_CTOR_STATS
 
@@ -366,7 +368,8 @@ void    (*MR_address_of_init_modules_debugger)(void);
 void    (*MR_address_of_init_modules_complexity)(void);
 #endif
 #ifdef  MR_DEEP_PROFILING
-void    (*MR_address_of_write_out_proc_statics)(FILE *fp);
+void    (*MR_address_of_write_out_proc_statics)(FILE *deep_fp,
+            FILE *procrep_fp);
 #endif
 void    (*MR_address_of_init_modules_required)(void);
 void    (*MR_address_of_final_modules_required)(void);
@@ -441,7 +444,7 @@ int                 MR_num_complexity_procs;
 #ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
 #define SAFETY_BUFFER_SIZE  1024    /* size of stack safety buffer */
-#define MAGIC_MARKER_2      142 /* a random character */
+#define MAGIC_MARKER_2      142     /* a random character */
 
 #endif
 
@@ -1090,6 +1093,8 @@ enum MR_long_option {
     MR_NUM_OUTPUT_ARGS,
     MR_DEBUG_THREADS_OPT,
     MR_DEEP_PROF_DEBUG_FILE_OPT,
+    MR_DEEP_PROF_PROCREP_FILE_OPT,
+    MR_DEEP_PROF_RANDOM_WRITE,
     MR_DEEP_PROF_LOG_FILE_OPT,
     MR_DEEP_PROF_LOG_PROG_OPT,
     MR_TABLING_STATISTICS_OPT,
@@ -1178,6 +1183,12 @@ struct MR_option MR_long_opts[] = {
     { "num-output-args",                1, 0, MR_NUM_OUTPUT_ARGS },
     { "debug-threads",                  0, 0, MR_DEBUG_THREADS_OPT },
     { "deep-debug-file",                0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
+    { "deep-procrep-file",              0, 0, MR_DEEP_PROF_PROCREP_FILE_OPT },
+    /*
+    ** The --deep-random-write option is only for use by tools/bootcheck.
+    ** It is deliberately not documented.
+    */
+    { "deep-random-write",              1, 0, MR_DEEP_PROF_RANDOM_WRITE },
     { "deep-log-file",                  1, 0, MR_DEEP_PROF_LOG_FILE_OPT },
     { "deep-log-prog",                  1, 0, MR_DEEP_PROF_LOG_PROG_OPT },
     { "tabling-statistics",             0, 0, MR_TABLING_STATISTICS_OPT },
@@ -1608,6 +1619,16 @@ MR_process_options(int argc, char **argv)
 
             case MR_DEEP_PROF_DEBUG_FILE_OPT:
                 MR_deep_prof_debug_file_flag = MR_TRUE;
+                break;
+
+            case MR_DEEP_PROF_PROCREP_FILE_OPT:
+                MR_output_deep_procrep_file = MR_TRUE;
+                break;
+
+            case MR_DEEP_PROF_RANDOM_WRITE:
+                if (sscanf(MR_optarg, "%u", &MR_deep_prof_random_write) != 1) {
+                    MR_usage();
+                }
                 break;
 
             case MR_DEEP_PROF_LOG_FILE_OPT:
@@ -2590,7 +2611,21 @@ mercury_runtime_terminate(void)
 #ifdef MR_DEEP_PROFILING
     MR_deep_prof_turn_off_time_profiling();
     if (MR_deep_profiling_save_results) {
-        MR_write_out_profiling_tree();
+        if (MR_deep_prof_random_write == 0) {
+            /*
+            ** If MR_deep_prof_random_write is not set, always write out
+            ** the results of deep profiling.
+            */
+            MR_write_out_profiling_tree();
+        } else {
+            /*
+            ** If MR_deep_prof_random_write is set to N, write out the results
+            ** of deep profiling only on every Nth program run (on average).
+            */
+            if ((getpid() % MR_deep_prof_random_write) == 0) {
+                MR_write_out_profiling_tree();
+            }
+        }
     }
   #ifdef MR_DEEP_PROFILING_LOG
     (void) fclose(MR_deep_prof_log_file);

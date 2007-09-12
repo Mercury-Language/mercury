@@ -513,6 +513,8 @@ dump_layout_name(module_layout_event_synth_attr_order(ModuleName,
 dump_layout_name(module_layout_event_synth_order(ModuleName, EventNum)) =
     "module_layout_event_synth_order(" ++ sym_name_mangle(ModuleName) ++
         ", " ++ int_to_string(EventNum) ++ ")".
+dump_layout_name(module_common_layout(ModuleName)) =
+    "module_common_layout(" ++ sym_name_mangle(ModuleName) ++ ")".
 dump_layout_name(module_layout(ModuleName)) =
     "module_layout(" ++ sym_name_mangle(ModuleName) ++ ")".
 dump_layout_name(proc_static(RttiProcLabel)) =

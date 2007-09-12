@@ -834,11 +834,11 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, dummy, 0)
 
     #define MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, m, n, a)                   \
       do {                                                                  \
-          MR_write_out_uci_proc_static(fp,                                  \
+          MR_write_out_uci_proc_static(fp, NULL,                            \
             &MR_proc_layout_uci_name(m, __Unify__, n, a, 0));               \
-          MR_write_out_uci_proc_static(fp,                                  \
+          MR_write_out_uci_proc_static(fp, NULL,                            \
             &MR_proc_layout_uci_name(m, __Compare__, n, a, 0));             \
-          MR_write_out_uci_proc_static(fp,                                  \
+          MR_write_out_uci_proc_static(fp, NULL,                            \
             &MR_proc_layout_uci_name(m, __CompareRep__, n, a, 0));          \
       } while (0)
 
@@ -1591,7 +1591,8 @@ ENDINIT
 void mercury_sys_init_mercury_builtin_types_init(void);
 void mercury_sys_init_mercury_builtin_types_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_mercury_builtin_types_write_out_proc_statics(
+    FILE *deep_fp, FILE *procrep_fp);
 #endif
 
 void
@@ -1696,37 +1697,41 @@ mercury_sys_init_mercury_builtin_types_init_type_tables(void)
 
 #ifdef  MR_DEEP_PROFILING
 void
-mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
+mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp)
 {
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, int, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, string, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, float, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, character, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, void, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, c_pointer, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, pred, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, func, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, tuple, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, succip, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, hp, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, curfr, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, maxfr, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, redofr, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, redoip, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, trailptr, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, ticket, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, heap_pointer, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, ref, 1);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, type_ctor_info, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, type_info, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, int, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, string, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, float, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, character, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, void, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, c_pointer, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, pred, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, func, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, tuple, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, succip, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, hp, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, curfr, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, maxfr, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, redofr, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, redoip, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, trailptr, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, ticket, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, private_builtin,
+        heap_pointer, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, private_builtin, ref, 1);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, private_builtin,
+        type_ctor_info, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, private_builtin, type_info, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, private_builtin,
         base_typeclass_info, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, typeclass_info, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_ctor_desc, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, pseudo_type_desc, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_desc, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, user_by_rtti, 0); 
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, dummy, 0); 
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, private_builtin,
+        typeclass_info, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, type_desc, type_ctor_desc, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, type_desc, pseudo_type_desc, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, type_desc, type_desc, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, user_by_rtti, 0); 
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, dummy, 0); 
 }
 #endif /* MR_DEEP_PROFILING */
 

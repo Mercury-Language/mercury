@@ -146,11 +146,16 @@ output_layout_data_defn(Data, !DeclSet, !IO) :-
             ModuleName, FileName, LineNumber, PredOrigin, GoalPath,
             !DeclSet, !IO)
     ;
-        Data = module_layout_data(ModuleName, StringTableSize,
-            StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
+        Data = module_layout_common_data(ModuleName,
+            StringTableSize, StringTable),
+        output_module_common_layout_data_defn(ModuleName, StringTableSize,
+            StringTable, !DeclSet, !IO)
+    ;
+        Data = module_layout_data(ModuleName, ModuleCommonLayoutName,
+            ProcLayoutNames, FileLayouts, TraceLevel,
             SuppressedEvents, NumLabels, MaybeEventSet),
-        output_module_layout_data_defn(ModuleName, StringTableSize,
-            StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
+        output_module_layout_data_defn(ModuleName, ModuleCommonLayoutName,
+            ProcLayoutNames, FileLayouts, TraceLevel,
             SuppressedEvents, NumLabels, MaybeEventSet, !DeclSet, !IO)
     ;
         Data = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
@@ -201,7 +206,10 @@ extract_layout_name(Data, LayoutName) :-
             _, _, _, _, _),
         LayoutName = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)
     ;
-        Data = module_layout_data(ModuleName, _, _, _, _, _, _, _, _),
+        Data = module_layout_common_data(ModuleName, _, _),
+        LayoutName = module_common_layout(ModuleName)
+    ;
+        Data = module_layout_data(ModuleName, _, _, _, _, _, _, _),
         LayoutName = module_layout(ModuleName)
     ;
         Data = table_io_decl_data(RttiProcLabel, _, _, _, _),
@@ -406,6 +414,12 @@ output_layout_name(Data, !IO) :-
         ModuleNameStr = sym_name_mangle(ModuleName),
         io.write_string(ModuleNameStr, !IO)
     ;
+        Data = module_common_layout(ModuleName),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_common_layout__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO)
+    ;
         Data = module_layout(ModuleName),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_module_layout__", !IO),
@@ -580,6 +594,10 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
         output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
+        Name = module_common_layout(_ModuleName),
+        io.write_string("static const MR_ModuleCommonLayout ", !IO),
+        output_layout_name(Name, !IO)
+    ;
         Name = module_layout(_ModuleName),
         io.write_string("static const MR_ModuleLayout ", !IO),
         output_layout_name(Name, !IO)
@@ -627,6 +645,7 @@ layout_name_would_include_code_addr(
 layout_name_would_include_code_addr(module_layout_event_synth_order(_, _))
     = no.
 layout_name_would_include_code_addr(module_layout_event_specs(_)) = no.
+layout_name_would_include_code_addr(module_common_layout(_)) = no.
 layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_call_sites(_)) = no.
@@ -861,13 +880,14 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     Kind = maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel),
     (
-        MaybeRest = no_proc_id,
+        MaybeRest = no_proc_id_and_more,
         output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal,
             !IO),
         output_layout_no_proc_id_group(!IO),
         output_proc_layout_data_defn_end(!IO)
     ;
-        MaybeRest = proc_id(MaybeProcStatic, MaybeExecTrace, ProcBodyBytes),
+        MaybeRest = proc_id_and_more(MaybeProcStatic, MaybeExecTrace,
+            ProcBodyBytes, ModuleCommonLayout),
         (
             MaybeProcStatic = yes(ProcStatic),
             output_proc_static_data_defn(RttiProcLabel, ProcStatic, !DeclSet,
@@ -902,6 +922,8 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
             io.write_string("};\n\n", !IO)
         ),
 
+        output_layout_decl(ModuleCommonLayout, !DeclSet, !IO),
+
         output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal,
             !IO),
         Origin = RttiProcLabel ^ pred_info_origin,
@@ -926,12 +948,14 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
         ),
         (
             ProcBodyBytes = [],
-            io.write_string("NULL\n", !IO)
+            io.write_string("NULL,\n", !IO)
         ;
             ProcBodyBytes = [_ | _],
             output_layout_name(proc_layout_body_bytecode(RttiProcLabel), !IO),
-            io.write_string("\n", !IO)
+            io.write_string(",\n", !IO)
         ),
+        io.write_string("&", !IO),
+        output_layout_name(ModuleCommonLayout, !IO),
         output_proc_layout_data_defn_end(!IO)
     ),
     DeclId = decl_data_addr(layout_addr(proc_layout(RttiProcLabel, Kind))),
@@ -942,10 +966,10 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
 
 maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel) = Kind :-
     (
-        MaybeRest = no_proc_id,
+        MaybeRest = no_proc_id_and_more,
         Kind = proc_layout_traversal
     ;
-        MaybeRest = proc_id(_, _, _),
+        MaybeRest = proc_id_and_more(_, _, _, _),
         Kind = proc_layout_proc_id(proc_label_user_or_uci(ProcLabel))
     ).
 
@@ -1460,18 +1484,42 @@ subst_to_name(TVar - Type) =
     %
 :- func layout_version_number = int.
 
-layout_version_number = 3.
+layout_version_number = 4.
 
-:- pred output_module_layout_data_defn(module_name::in, int::in,
-    string_with_0s::in, list(layout_name)::in, list(file_layout_data)::in,
+:- pred output_module_common_layout_data_defn(module_name::in, int::in,
+    string_with_0s::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_module_common_layout_data_defn(ModuleName, StringTableSize, StringTable,
+        !DeclSet, !IO) :-
+    output_module_string_table(ModuleName, StringTableSize, StringTable,
+        !DeclSet, !IO),
+
+    ModuleCommonLayoutName = module_common_layout(ModuleName),
+    io.write_string("\n", !IO),
+    output_layout_name_storage_type_name(ModuleCommonLayoutName, yes, !IO),
+    io.write_string(" = {\n", !IO),
+    io.write_int(layout_version_number, !IO),
+    io.write_string(",\n", !IO),
+    quote_and_write_string(sym_name_to_string(ModuleName), !IO),
+    io.write_string(",\n", !IO),
+    io.write_int(StringTableSize, !IO),
+    io.write_string(",\n", !IO),
+    ModuleStringTableName = module_layout_string_table(ModuleName),
+    output_layout_name(ModuleStringTableName, !IO),
+    io.write_string("\n};\n", !IO),
+
+    decl_set_insert(decl_data_addr(layout_addr(ModuleCommonLayoutName)),
+        !DeclSet).
+
+:- pred output_module_layout_data_defn(module_name::in, layout_name::in,
+    list(layout_name)::in, list(file_layout_data)::in,
     trace_level::in, int::in, int::in, maybe(event_set_layout_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
+output_module_layout_data_defn(ModuleName, ModuleCommonLayoutName,
         ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
         NumLabels, MaybeEventSetLayout, !DeclSet, !IO) :-
-    output_module_string_table(ModuleName, StringTableSize, StringTable,
-        !DeclSet, !IO),
+    output_layout_decl(module_common_layout(ModuleName), !DeclSet, !IO),
     output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
         ProcVectorName, !DeclSet, !IO),
     output_file_layout_data_defns(ModuleName, 0, FileLayouts,
@@ -1503,14 +1551,8 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(ModuleLayoutName, yes, !IO),
     io.write_string(" = {\n", !IO),
-    io.write_int(layout_version_number, !IO),
-    io.write_string(",\n", !IO),
-    quote_and_write_string(sym_name_to_string(ModuleName), !IO),
-    io.write_string(",\n", !IO),
-    io.write_int(StringTableSize, !IO),
-    io.write_string(",\n", !IO),
-    ModuleStringTableName = module_layout_string_table(ModuleName),
-    output_layout_name(ModuleStringTableName, !IO),
+    io.write_string("&", !IO),
+    output_layout_name(ModuleCommonLayoutName, !IO),
     io.write_string(",\n", !IO),
     list.length(ProcLayoutNames, ProcLayoutVectorLength),
     io.write_int(ProcLayoutVectorLength, !IO),
@@ -2114,7 +2156,7 @@ output_call_site_static(CallSiteStatic, Index, Index + 1, !IO) :-
     (
         CallSiteStatic = normal_call(Callee, TypeSubst, FileName, LineNumber,
             GoalPath),
-        io.write_string("MR_normal_call, (MR_ProcLayout *)\n&", !IO),
+        io.write_string("MR_callsite_normal_call, (MR_ProcLayout *)\n&", !IO),
         CalleeProcLabel = make_proc_label_from_rtti(Callee),
         CalleeUserOrUci = proc_label_user_or_uci(CalleeProcLabel),
         output_layout_name(proc_layout(Callee,
@@ -2128,16 +2170,16 @@ output_call_site_static(CallSiteStatic, Index, Index + 1, !IO) :-
         )
     ;
         CallSiteStatic = special_call(FileName, LineNumber, GoalPath),
-        io.write_string("MR_special_call, NULL, NULL, ", !IO)
+        io.write_string("MR_callsite_special_call, NULL, NULL, ", !IO)
     ;
         CallSiteStatic = higher_order_call(FileName, LineNumber, GoalPath),
-        io.write_string("MR_higher_order_call, NULL, NULL, ", !IO)
+        io.write_string("MR_callsite_higher_order_call, NULL, NULL, ", !IO)
     ;
         CallSiteStatic = method_call(FileName, LineNumber, GoalPath),
-        io.write_string("MR_method_call, NULL, NULL, ", !IO)
+        io.write_string("MR_callsite_method_call, NULL, NULL, ", !IO)
     ;
         CallSiteStatic = callback(FileName, LineNumber, GoalPath),
-        io.write_string("MR_callback, NULL, NULL, ", !IO)
+        io.write_string("MR_callsite_callback, NULL, NULL, ", !IO)
     ),
     io.write_string("""", !IO),
     io.write_string(FileName, !IO),

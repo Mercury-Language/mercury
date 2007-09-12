@@ -17,12 +17,15 @@
 % at index 0; their first real element is at index 1. The arrays in
 % proc_static and proc_dynamic structures, being reflections of arrays created
 % in C code, start at index 0.
+%
 %-----------------------------------------------------------------------------%
 
 :- module profile.
 :- interface.
 
 :- import_module measurements.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 
 :- import_module array.
 :- import_module bool.
@@ -159,7 +162,7 @@
 
 :- type proc_static
     --->    proc_static(
-                ps_id           :: proc_id,     % procedure ID
+                ps_id           :: string_proc_label, % procedure ID
                 ps_decl_module  :: string,      % declaring module
                 ps_refined_id   :: string,      % refined procedure id
                 ps_raw_id       :: string,      % raw procedure id
@@ -189,28 +192,6 @@
             ).
 
 %-----------------------------------------------------------------------------%
-
-:- type pred_or_func
-    --->    predicate
-    ;       function.
-
-:- type proc_id
-    --->    user_defined(
-                user_pred_or_func :: pred_or_func,
-                user_decl_module  :: string,
-                user_def_module   :: string,
-                user_name         :: string,
-                user_arity        :: int,
-                user_mode         :: int
-            )
-    ;       uci_pred(
-                uci_type_name   :: string,
-                uci_type_module :: string,
-                uci_def_module  :: string,
-                uci_pred_name   :: string,
-                uci_arity       :: int,
-                uci_mode        :: int
-            ).
 
 :- type call_site_array_slot
     --->    slot_normal(call_site_dynamic_ptr)
@@ -244,12 +225,14 @@
                 call_site_static_ptr
             ).
 
+:- pred is_call_site_kind(int::in, call_site_kind::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
-:- func decl_module(proc_id) = string.
+:- func decl_module(string_proc_label) = string.
 
-:- func dummy_proc_id = proc_id.
-:- func main_parent_proc_id = proc_id.
+:- func dummy_proc_id = string_proc_label.
+:- func main_parent_proc_id = string_proc_label.
 
 :- func dummy_proc_dynamic_ptr = proc_dynamic_ptr.
 :- func dummy_proc_static_ptr = proc_static_ptr.
@@ -448,6 +431,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.prim_data.
 :- import_module array_util.
 
 :- import_module int.
@@ -455,17 +439,50 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_decl("C", "#include ""mercury_deep_profiling.h""").
+
+:- pragma foreign_enum("C", call_site_kind/0, [
+    normal_call         - "MR_callsite_normal_call",
+    special_call        - "MR_callsite_special_call",
+    higher_order_call   - "MR_callsite_higher_order_call",
+    method_call         - "MR_callsite_method_call",
+    callback            - "MR_callsite_callback"
+]).
+
+:- pragma foreign_proc("C",
+    is_call_site_kind(Int::in, CallSite::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    CallSite = (MR_CallSiteKind) Int;
+
+    switch (CallSite) {
+        case MR_callsite_normal_call:
+        case MR_callsite_special_call:
+        case MR_callsite_higher_order_call:
+        case MR_callsite_method_call:
+        case MR_callsite_callback:
+            SUCCESS_INDICATOR = MR_TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+    }
+").
+
+%-----------------------------------------------------------------------------%
+
 decl_module(ProcId) = DeclModule :-
     (
-        ProcId = user_defined(_, DeclModule, _, _, _, _)
+        ProcId = str_ordinary_proc_label(_, DeclModule, _, _, _, _)
     ;
-        ProcId = uci_pred(_, DeclModule, _, _, _, _)
+        ProcId = str_special_proc_label(_, DeclModule, _, _, _, _)
     ).
 
-dummy_proc_id =
-    user_defined(predicate, "unknown", "unknown", "unknown", -1, -1).
+dummy_proc_id = str_ordinary_proc_label(pf_predicate, "unknown",
+    "unknown", "unknown", -1, -1).
 
-main_parent_proc_id = user_defined(predicate, "mercury_runtime",
+main_parent_proc_id = str_ordinary_proc_label(pf_predicate, "mercury_runtime",
     "mercury_runtime", "main_parent", 0, 0).
 
 %-----------------------------------------------------------------------------%

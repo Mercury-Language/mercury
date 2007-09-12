@@ -411,9 +411,9 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
             eff_trace_needs_proc_body_reps(ModuleInfo, PredInfo, ProcInfo,
                 TraceLevel, TraceSuppress) = yes
         ->
-            NeedGoalRep = yes
+            NeedGoalRep = trace_needs_body_rep
         ;
-            NeedGoalRep = no
+            NeedGoalRep = trace_does_not_need_body_rep
         ),
         NeedsAllNames = eff_trace_needs_all_var_names(ModuleInfo, PredInfo,
             ProcInfo, TraceLevel, TraceSuppress),
@@ -421,8 +421,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
             MaybeHLDSDeepInfo),
         (
             MaybeHLDSDeepInfo = yes(HLDSDeepInfo),
-            DeepProfInfo = generate_deep_prof_info(ProcInfo,
-                HLDSDeepInfo),
+            DeepProfInfo = generate_deep_prof_info(ProcInfo, HLDSDeepInfo),
             MaybeDeepProfInfo = yes(DeepProfInfo)
         ;
             MaybeHLDSDeepInfo = no,

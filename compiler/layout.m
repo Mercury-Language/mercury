@@ -80,10 +80,14 @@
                 proc_layout_trav        :: proc_layout_stack_traversal,
                 proc_layout_more        :: maybe_proc_id_and_more
             )
+    ;       module_layout_common_data(  % defines MR_ModuleCommonLayout
+                module_common_name      :: module_name,
+                string_table_size       :: int,
+                string_table            :: string_with_0s
+            )
     ;       module_layout_data(         % defines MR_ModuleLayout
                 module_name             :: module_name,
-                string_table_size       :: int,
-                string_table            :: string_with_0s,
+                module_common           :: layout_name,
                 proc_layout_names       :: list(layout_name),
                 file_layouts            :: list(file_layout_data),
                 trace_level             :: trace_level,
@@ -159,13 +163,16 @@
             ).
 
 :- type maybe_proc_id_and_more
-    --->    no_proc_id
-    ;       proc_id(
+    --->    no_proc_id_and_more
+    ;       proc_id_and_more(
                 maybe_proc_static       :: maybe(proc_layout_proc_static),
                 maybe_exec_trace        :: maybe(proc_layout_exec_trace),
-                proc_body_bytes         :: list(int)
+                proc_body_bytes         :: list(int),
                                         % The procedure body represented as
                                         % a list of bytecodes.
+                proc_module_common      :: layout_name
+                                        % The name of the module_common_layout
+                                        % structure.
             ).
 
 :- type proc_layout_exec_trace          % defines MR_ExecTrace
@@ -243,6 +250,7 @@
     ;       module_layout_event_synth_attr_order(module_name, int, int)
     ;       module_layout_event_synth_order(module_name, int)
     ;       module_layout_event_specs(module_name)
+    ;       module_common_layout(module_name)
     ;       module_layout(module_name)
     ;       proc_static(rtti_proc_label)
     ;       proc_static_call_sites(rtti_proc_label).

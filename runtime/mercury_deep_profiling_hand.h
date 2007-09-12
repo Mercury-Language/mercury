@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001, 2004, 2006 The University of Melbourne.
+** Copyright (C) 2001, 2004, 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -100,7 +100,7 @@
 		cmodule, cname, carity, cmode, line)			\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_uci_name(module, name, type, arity, mode)[] = {	\
-		{ MR_normal_call, (MR_ProcLayout *)			\
+		{ MR_callsite_normal_call, (MR_ProcLayout *)		\
 		&MR_proc_layout_user_name(cmodule, cname, carity, cmode),\
 		NULL, "", line, "" }					\
 	}
@@ -108,7 +108,7 @@
 #define	MR_call_sites_user_one_ho(module, name, arity, mode, line)	\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_user_name(module, name, arity, mode)[] = {	\
-		{ MR_higher_order_call, NULL,				\
+		{ MR_callsite_higher_order_call, NULL,			\
 		NULL, "", line, "" }					\
 	}
 
