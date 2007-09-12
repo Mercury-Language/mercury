@@ -28,3 +28,9 @@ DEEP_FLAGS
 *.opt
 *.optdate
 config.log
+mdbcomp.m
+prim_data.m
+program_representation.m
+rtti_access.m
+slice_and_dice.m
+trace_counts.m
