@@ -10151,11 +10151,11 @@ This is the only implementation allowed for minimal model tabling,
 but for predicates tabled with the @samp{loop_check} and @samp{memo} pragmas,
 programmers can also choose some other tabling methods.
 
-The @samp{fast_loose_memo} attribute asks the compiler to generate code
+The @samp{fast_loose} attribute asks the compiler to generate code
 that looks up only the @emph{address} of each input argument in the memo table,
 which means that the time required
 is linear only in the @emph{number} of input arguments, not their @emph{size}.
-The tradeoff is that @samp{fast_loose_memo} does not recognize
+The tradeoff is that @samp{fast_loose} does not recognize
 calls as duplicates if they involve input arguments that are logically equal
 but are stored at different locations in memory.
 The following declaration calls for this variant of tabling.
