@@ -217,11 +217,27 @@
 
 :- import_module stm_builtin.
 
-
+    % XXX Once STM is stable this predicate should be moved into the
+    % documented interface of this module.
+    %
 :- pred try_stm(pred(A, stm, stm), exception_result(A), stm, stm).
-:- mode try_stm(in(pred(out, di, uo) is det), 
+:- mode try_stm(in(pred(out, di, uo) is det),
     out(cannot_fail), di, uo) is cc_multi.
-:- mode try_stm(in(pred(out, di, uo) is cc_multi), 
+:- mode try_stm(in(pred(out, di, uo) is cc_multi),
+    out(cannot_fail), di, uo) is cc_multi.
+
+    % This is the version is called by code introduced by the source-to-source
+    % transformation for atomic scopes.  This predicate should not be called
+    % by user code.
+    %
+    % It is unsafe in the sense that it does not guarantee that rollback
+    % exceptions are always rethrown.
+    %
+:- pred unsafe_try_stm(pred(A, stm, stm),
+    exception_result(A), stm, stm).
+:- mode unsafe_try_stm(in(pred(out, di, uo) is det), 
+    out(cannot_fail), di, uo) is cc_multi.
+:- mode unsafe_try_stm(in(pred(out, di, uo) is cc_multi), 
     out(cannot_fail), di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
@@ -689,18 +705,34 @@ wrap_exception(Exception, exception(Exception)).
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(try_stm/4).
+try_stm(Goal, Result, !STM) :-
+    unsafe_try_stm(Goal, Result0, !STM),
+    (
+        Result0 = succeeded(_),
+        Result = Result0
+    ;
+        Result0 = exception(Exception),
+        % If the exception is an STM rollback exception rethrow it since
+        % the handler at the beginning of the atomic scope should deal with
+        % it; otherwise let the user deal with it.
+        ( Exception = univ(stm_builtin.rollback_exception) ->
+            rethrow(Result0)
+        ;
+            Result = Result0
+        )
+    ).
 
-try_stm(TransactionGoal::in(pred(out, di, uo) is det), 
+:- pragma promise_equivalent_clauses(unsafe_try_stm/4).
+
+unsafe_try_stm(TransactionGoal::in(pred(out, di, uo) is det), 
         Result::out(cannot_fail), STM0::di, STM::uo) :-
     get_determinism_2(TransactionGoal, Detism),
     try_stm_det(Detism, TransactionGoal, Result, STM0, STM).
 
-try_stm(TransactionGoal::in(pred(out, di, uo) is cc_multi), 
+unsafe_try_stm(TransactionGoal::in(pred(out, di, uo) is cc_multi), 
         Result::out(cannot_fail), STM0::di, STM::uo) :-
     get_determinism_2(TransactionGoal, Detism),
     try_stm_cc_multi(Detism, TransactionGoal, Result, STM0, STM).
-
 
 :- pred try_stm_det(exp_determinism, pred(T, stm, stm),
     exception_result(T), stm, stm).
@@ -715,7 +747,6 @@ try_stm_det(exp_detism_det, TransactionGoal, Result, !STM) :-
     try_det(exp_detism_det, Goal, Result0),
     handle_stm_result(Result0, Result, !STM).
 
-
 :- pred try_stm_cc_multi(exp_determinism, pred(T, stm, stm),
     exception_result(T), stm, stm).
 :- mode try_stm_cc_multi(in(bound(exp_detism_cc_multi)),
@@ -728,7 +759,6 @@ try_stm_cc_multi(exp_detism_cc_multi, TransactionGoal, Result, !STM) :-
     ),
     try_det(exp_detism_cc_multi, Goal, Result0),
     handle_stm_result(Result0, Result, !STM).
-
 
 :- pred handle_stm_result(exception_result({T, stm})::in(cannot_fail),
     exception_result(T)::out(cannot_fail), stm::in, stm::uo) is det.

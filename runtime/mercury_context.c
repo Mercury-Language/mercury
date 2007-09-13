@@ -18,6 +18,7 @@ ENDINIT
 #include <stdio.h>
 #ifdef MR_THREAD_SAFE
   #include "mercury_thread.h"
+  #include "mercury_stm.h"
 #endif
 #ifdef MR_CAN_DO_PENDING_IO
   #include <sys/types.h>	/* for fd_set */
@@ -84,6 +85,7 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&free_context_list_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
+    pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
   #ifndef MR_THREAD_LOCAL_STORAGE
     MR_KEY_CREATE(&MR_engine_base_key, NULL);
   #endif

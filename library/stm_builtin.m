@@ -104,7 +104,10 @@
 
     % Values of this type are returned by stm_validate/2 and indicate
     % whether a given transaction log is valid.
+    % NOTE: The definition of this type must be kept consistent with the
+    % constants defined in runtime/mercury_stm.h.
     %
+    % 
 :- type stm_validation_result
     --->    stm_transaction_valid
     ;       stm_transaction_invalid.
@@ -141,6 +144,13 @@
     %
 :- impure pred stm_block_thread(stm::ui) is det.
 
+    % This type is used in the case where an atomic_scope has no outputs
+    % since the call to try_stm/3 introduced by the expansion of atomic 
+    % scopes needs to return at least one value.
+    % 
+:- type stm_dummy_output
+    --->    stm_dummy_output.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -148,152 +158,13 @@
 
 :- import_module exception.
 
-:- pragma foreign_decl("C", "
+:- pragma foreign_decl("C", "#include \"mercury_stm.h\"").
 
-#if defined(MR_HIGHLEVEL_CODE)
-
-    #if defined(MR_THREAD_SAFE)
-        #include <pthread.h>
-
-        typedef pthread_t   ML_ThreadId;
-    #else
-        typedef MR_Integer  ML_ThreadId;
-       
-    #endif /* !MR_THREAD_SAFE */
-
-#else /* !MR_HIGHLEVEL_CODE */
-    
-    typedef MR_Context  *ML_ThreadId;
-
-#endif /* !MR_HIGHLEVEL_CODE */
-
-#define ML_STM_TRANSACTION_VALID 0
-#define ML_STM_TRANSACTION_INVALID 1
-
-typedef struct ML_Stm_Wait_List_Struct {
-    ML_ThreadId thread;
-    struct ML_Stm_Wait_List_Struct *next;
-} ML_Stm_Wait_List;
-
-typedef struct {
-    MR_Word tvar_val;
-    ML_Stm_Wait_List *wait_list;
-} ML_Stm_TVar;
-
-typedef struct ML_Stm_TLog_Entry_Struct {
-    ML_Stm_TVar    *tvar;           /* Transaction variable in question */
-    MR_Word     old_value;       /* Old value of the transaction variable */
-    MR_Word     new_value;       /* New value of the transaction variable */
-    struct ML_Stm_TLog_Entry_Struct *next;     /* Next log entry */
-} ML_Stm_TLog_Entry;
-
-typedef struct {
-    ML_Stm_TLog_Entry  *entrylist;     /* Log of transaction */
-    ML_ThreadId        thread;         /* Current thread */
-} ML_Stm_TLog;
-
-
-/* ------------------------------------------------------------------------- */
-
-
-extern void
-ML_stm_add_new_log_entry(ML_Stm_TLog *slog, ML_Stm_TVar *tvar, 
-        MR_Word old_value, MR_Word new_value);
-
-extern void
-ML_stm_add_new_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread);
-
-extern void
-ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread);
-
-/* ------------------------------------------------------------------------- */
-
-#define     ML_TRACE_STM(s)    \
-    do {printf(\"STM: %s\\n\", (s)); fflush(stdout);} while (0)
-").
-
-    % Local C functions.
-    %
-:- pragma foreign_code("C", "
-/*
-** Adds a new log entry into a transaction log.
-*/
-
-void
-ML_stm_add_new_log_entry(ML_Stm_TLog *slog, ML_Stm_TVar *tvar, 
-        MR_Word old_value, MR_Word new_value) {
-    ML_Stm_TLog_Entry  *new_entry;
-
-    new_entry = MR_GC_NEW(ML_Stm_TLog_Entry);
-
-    new_entry->tvar = tvar;
-    new_entry->old_value = old_value;
-    new_entry->new_value = new_value;
-    
-    new_entry->next = slog->entrylist;
-    slog->entrylist = new_entry;
-}
-
-
-/*
-** Adds a new wait entry to a transaction variable.
-*/
-
-void
-ML_stm_add_new_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
-    ML_Stm_Wait_List *wait_list;
-
-    wait_list = MR_GC_NEW(ML_Stm_Wait_List);
-
-    wait_list->thread = thread;
-    wait_list->next = NULL;
-
-    if (tvar->wait_list == NULL) {
-        tvar->wait_list = wait_list;
-    } else {
-        tvar->wait_list->next = wait_list;
-    }
-}
-
-
-/*
-** Remove a wait entry from a transaction variable.
-*/
-
-void
-ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
-    ML_Stm_Wait_List *wait_list;
-    ML_Stm_Wait_List *prev;
-
-    prev = NULL;
-
-    for (wait_list = tvar->wait_list; wait_list != NULL; 
-            wait_list = wait_list->next) {
-        if (wait_list->thread == thread) {
-            if (prev == NULL) {
-                tvar->wait_list = wait_list->next;
-            } else {
-                prev->next = wait_list->next;
-            }
-            break;
-        }
-        prev = wait_list;
-    }
-
-    /* If wait_list == NULL, the entry is being removed */
-
-    if (wait_list != NULL) {
-        wait_list = NULL;
-    }
-}
-").
-
-%----------------------------------------------------------------------------%
-
-:- pragma foreign_type("C", stm_var(T), "ML_Stm_TVar *", 
+:- pragma foreign_type("C", stm_var(T), "MR_STM_Var *", 
     [stable, can_pass_as_mercury_type]).
 
-:- pragma foreign_type("C", stm, "ML_Stm_TLog *", [can_pass_as_mercury_type]).
+:- pragma foreign_type("C", stm, "MR_STM_TransLog *",
+    [can_pass_as_mercury_type]).
 
     % Definitions for use with the other backends.
     %
@@ -305,43 +176,11 @@ ML_stm_remove_wait_entry(ML_Stm_TVar *tvar, ML_ThreadId thread) {
 
 %----------------------------------------------------------------------------%
 
-:- pragma foreign_decl("C",
-"
-    #ifdef MR_THREAD_SAFE
-        extern MercuryLock  ML_STM_global_lock;
-    #endif
-").
-
-:- pragma foreign_code("C",
-"
-    #ifdef MR_THREAD_SAFE
-        MercuryLock ML_STM_global_lock;
-    #endif
-").
-
-:- initialise ml_initialise_stm/0.
-
-:- impure pred ml_initialise_stm is det.
-:- pragma foreign_proc("C", ml_initialise_stm, [will_not_call_mercury],
-"
-    #ifdef MR_THREAD_SAFE
-        pthread_mutex_init(&ML_STM_global_lock, MR_MUTEX_ATTR);
-    #endif
-").
-
-% For non-C backends.
-ml_initialise_stm :-
-    impure impure_true.
-
-%----------------------------------------------------------------------------%
-
 :- pragma foreign_proc("C",
     new_stm_var(T::in, TVar::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    TVar = MR_GC_NEW(ML_Stm_TVar);
-    TVar->tvar_val = T;
-    TVar->wait_list = NULL;
+    MR_STM_new_stm_var(T, TVar);
     IO = IO0;
 ").
 
@@ -349,25 +188,7 @@ ml_initialise_stm :-
     write_stm_var(TVar::in, Value::in, STM0::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    ML_Stm_TLog_Entry  *current_entry;
-    MR_bool         found_entry = MR_FALSE;
-
-    /* Looks for entry for TVar and UPDATES it */
-    for (current_entry = STM0->entrylist; current_entry != NULL;
-            current_entry = current_entry->next) {
-        if (current_entry->tvar == TVar) {
-            /* Found write entry for tvar. */
-            found_entry = MR_TRUE;
-            current_entry->new_value = Value;
-            break;
-        }
-    }
-
-    /* Adds an entry if no record of the TVar is present */
-    if (found_entry == MR_FALSE) {
-        ML_stm_add_new_log_entry(STM0, TVar, TVar->tvar_val, Value);
-    }
-        
+    MR_STM_write_var(TVar, Value, STM0);
     STM = STM0;
 ").
 
@@ -375,27 +196,7 @@ ml_initialise_stm :-
     read_stm_var(TVar::in, Value::out, STM0::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    ML_Stm_TLog_Entry  *current_entry;
-    MR_bool         found_entry = MR_FALSE;
-
-    /* Looks for entry for TVar and READS it */
-    for (current_entry = STM0->entrylist; current_entry != NULL;
-            current_entry = current_entry->next) {
-        if (current_entry->tvar == TVar) {
-            /* Found write entry for tvar. */
-            found_entry = MR_TRUE;
-            Value = current_entry->new_value;
-            break;
-        }
-    }
-
-    /* Add a default entry to indicate a read has been found */
-    if (found_entry == MR_FALSE)
-    {
-        ML_stm_add_new_log_entry(STM0, TVar, TVar->tvar_val, TVar->tvar_val);
-        Value = TVar->tvar_val;
-    }
-        
+    Value = MR_STM_read_var(TVar, STM0);
     STM = STM0;
 ").
 
@@ -403,37 +204,22 @@ ml_initialise_stm :-
     stm_create_state(STM::uo),
     [will_not_call_mercury, thread_safe],
 "
-    ML_TRACE_STM(""Allocating new STM Log --- New Ver"");
-
-    STM = MR_GC_NEW(ML_Stm_TLog);
-    STM->entrylist = NULL;
-
-    #if defined(MR_HIGHLEVEL_CODE)
-        #if defined(MR_THREAD_SAFE)
-            STM->thread = pthread_self();
-        #else
-            STM->thread = 0;
-        #endif
-    #else
-        STM->thread = NULL;         /* current context */
-    #endif
+    MR_STM_create_log(STM);
 ").
 
 :- pragma foreign_proc("C",
-    stm_drop_state(X::di),
+    stm_drop_state(STM::di),
     [will_not_call_mercury, thread_safe],
 "
-    ML_TRACE_STM(""Dropping STM Log"");
-    X = NULL; 
+    MR_STM_discard_log(STM);
 ").
 
 :- pragma foreign_proc("C",
     stm_lock,
     [will_not_call_mercury, thread_safe],
 "
-    ML_TRACE_STM(""Locking STM Global Lock"");
     #ifdef MR_THREAD_SAFE
-        MR_LOCK(&ML_STM_global_lock, \"stm_lock/0\");
+        MR_LOCK(&MR_STM_lock, \"stm_lock/0\");
     #endif
 ").
 
@@ -441,44 +227,23 @@ ml_initialise_stm :-
     stm_unlock,
     [will_not_call_mercury, thread_safe],
 "
-    ML_TRACE_STM(""Unlocking STM Global Lock"");
     #ifdef MR_THREAD_SAFE
-        MR_UNLOCK(&ML_STM_global_lock, \"stm_unlock/0\");
+        MR_UNLOCK(&MR_STM_lock, \"stm_unlock/0\");
     #endif
 ").
 
 :- pragma foreign_proc("C",
-    stm_validate(STM::ui, Res::out),
+    stm_validate(STM::ui, IsValid::out),
     [will_not_call_mercury, thread_safe],
 "
-    ML_Stm_TLog_Entry  *current_entry;
-    ML_TRACE_STM(""Validating STM log"");
-
-    Res = ML_STM_TRANSACTION_VALID;
-
-    for (current_entry = STM->entrylist; current_entry != NULL;
-            current_entry = current_entry->next) {
-        if (current_entry->tvar->tvar_val != current_entry->old_value) {
-            ML_TRACE_STM(""STM LOG INVALID!"");
-
-            Res = ML_STM_TRANSACTION_INVALID;
-            break;
-        }
-    }
-
+    IsValid = MR_STM_validate(STM);
 ").
 
 :- pragma foreign_proc("C",
     stm_commit(STM::ui),
     [will_not_call_mercury, thread_safe],
 "
-    ML_Stm_TLog_Entry  *current_entry;
-    ML_TRACE_STM(""Committing STM log"");
-
-    for (current_entry = STM->entrylist; current_entry != NULL;
-            current_entry = current_entry->next) {
-        current_entry->tvar->tvar_val = current_entry->new_value;
-    }
+    MR_STM_commit(STM);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -490,17 +255,7 @@ ml_initialise_stm :-
     stm_wait(STM::ui),
     [will_not_call_mercury, thread_safe],
 "
-    ML_Stm_TLog_Entry  *current_entry;
-
-    ML_TRACE_STM(""Waiting on thread"");
-
-    /*
-    ** Add this thread id to each transaction var referenced by the log.
-    */
-    for (current_entry = STM->entrylist; current_entry != NULL;
-            current_entry = current_entry->next) {
-        ML_stm_add_new_wait_entry(current_entry->tvar, STM->thread);
-    }
+    MR_STM_wait(STM);
 ").
 
     % Removes the thread ID to the wait list of all transaction variables
@@ -510,17 +265,7 @@ ml_initialise_stm :-
     stm_unwait(STM::ui),
     [will_not_call_mercury, thread_safe],
 "
-    ML_Stm_TLog_Entry  *current_entry;
-    
-    ML_TRACE_STM(""Un-waiting on thread"");
-
-    /*
-    ** Remove this thread id to each transaction var referenced by the log.
-    */
-    for (current_entry = STM->entrylist; current_entry != NULL;
-            current_entry = current_entry->next) {
-        ML_stm_remove_wait_entry(current_entry->tvar, STM->thread);
-    }
+    MR_STM_unwait(STM);
 ").
 
     % Blocks the thread from being rescheduled.
@@ -529,11 +274,6 @@ ml_initialise_stm :-
     stm_block_thread(_STM::ui),
     [will_not_call_mercury, thread_safe],
 "
-#if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
-    pthread_yield();
-#else
-    ML_TRACE_STM(""Yielding to thread"");
-#endif
 ").
 
 %-----------------------------------------------------------------------------%

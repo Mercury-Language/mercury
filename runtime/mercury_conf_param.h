@@ -302,6 +302,10 @@
 **	Enables the -i and --integrity options on mdb's forward movement
 **	commands, which cause the debugger to check the integrity of the
 **	representations of all the terms reachable from the stack.
+**
+** MR_STM_DEBUG
+**	Enabled low-level debugging messages from the code that implements
+**	transactions used by software transactional memory.
 */
 
 /*

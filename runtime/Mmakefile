@@ -81,6 +81,7 @@ HDRS		=	\
 			mercury_stacks.h	\
 			mercury_stack_trace.h	\
 			mercury_std.h		\
+			mercury_stm.h		\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
@@ -184,6 +185,7 @@ CFILES		= 	\
 			mercury_stacks.c	\
 			mercury_stack_layout.c	\
 			mercury_stack_trace.c	\
+			mercury_stm.c		\
 			mercury_string.c	\
 			mercury_tabling.c	\
 			mercury_term_size.c	\
