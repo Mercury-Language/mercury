@@ -36,15 +36,11 @@
 #	   If you want to install a different set of grades, read the
 #	   "Finetuning" section below.
 #
-#	   The output from running configure will be automatically saved
-#	   in the file `configure.log'.  Some debugging output is also
-#	   saved to the file `config.log'.
+#	   Some debugging output from running configure is automatically
+#	   save to the file `config.log'.
 #
 # Step 2.  Run `make'.
 #	   This step will take a long time.
-#
-#	   The output from this stage will be automatically saved in the
-#	   file `make.log'.
 #
 #      NOTE: If you have problems installing a new version
 #      of the compiler, you may find it helpful to either
@@ -57,16 +53,11 @@
 # Step 3.  Run `make install'.
 #	   This step will also take a long time.
 #
-#	   The output from this stage will be automatically saved in the
-#	   file `make_install.log'.
-#
 #	   BEWARE: if something goes wrong in this step, e.g. running
 #	   out of disk space, and the installation has already gotten
 #	   past installing the documentation, and started installing
-#	   the different grades of the libraries (in particular if
-#	   `grep install_text make_install.log' prints out something
-#	   like `# install_text install_ps') then in general it is NOT
-#	   sufficient to simply rerun `make install'.  Instead you
+#	   the different grades of the libraries then in general it is
+#	   NOT sufficient to simply rerun `make install'.  Instead you
 #	   may need to start from scratch again.
 #
 # Step 4.  Check the permissions on the installed files.
@@ -182,7 +173,7 @@ make install
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
 #	   register variables.  Currently these are supported for
-#	   mips, hppa, sparc, alpha, rs6000, and i386 architectures
+#	   mips, hppa, sparc, alpha, rs6000, i386 and x86_64 architectures
 #	   (see runtime/regs.h and runtime/machdeps/*).
 #	   If you want to use Mercury on some other CPU, contact us and
 #	   we'll add support for gcc global registers for that CPU.
