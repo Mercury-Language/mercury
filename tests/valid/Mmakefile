@@ -75,6 +75,7 @@ OTHER_PROGS= \
 	deforest_rerun_det \
 	det_condition \
 	det_inference \
+	det_string_switch \
 	det_switch \
 	double_vn \
 	easy_nondet_test \

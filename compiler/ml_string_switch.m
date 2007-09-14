@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,7 +103,21 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     switch_util.calc_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
 
     % Generate the code for when the hash lookup fails.
-    ml_gen_failure(CodeModel, Context, FailStatements, !Info),
+    (
+        CodeModel = model_det,
+        FailComment =
+            statement(ml_stmt_atomic(comment("switch cannot fail")),
+                MLDS_Context),
+        FailStatements = []
+    ;
+        ( CodeModel = model_semi
+        ; CodeModel = model_non
+        ),
+        FailComment =
+            statement(ml_stmt_atomic(comment("no match, so fail")),
+                MLDS_Context),
+        ml_gen_failure(CodeModel, Context, FailStatements, !Info)
+    ),
 
     % Generate the code etc. for the hash table.
     gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
@@ -196,9 +210,6 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
                 yes), % This is a do...while loop.
             MLDS_Context)
         ],
-    FailComment =
-        statement(ml_stmt_atomic(comment("no match, so fail")),
-            MLDS_Context),
     EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),
     EndComment =
         statement(ml_stmt_atomic(comment("end of hashed string switch")),
