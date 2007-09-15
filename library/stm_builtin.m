@@ -67,6 +67,30 @@
 :- pred read_stm_var(stm_var(T)::in, T::out, stm::di, stm::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Retry
+%
+
+    % Abort the current transaction and restart it from the beginning.
+    % Operationally this casuses the calling thread to block until the value
+    % of at least one transaction variable read during the attempted
+    % transaction is written by another thread.
+    %
+    % XXX the implementation of this predicate is incomplete.  Calling it
+    % will currently cause the program to abort execution.
+    %
+:- pred retry(stm::di) is erroneous.
+
+%-----------------------------------------------------------------------------%
+%
+% Atomic transactions
+%
+
+:- pred atomic_transaction(pred(T, stm, stm), T, io, io).
+:- mode atomic_transaction(in(pred(out, di, uo) is det), out, di, uo)
+    is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -157,6 +181,9 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "#include \"mercury_stm.h\"").
 
@@ -277,47 +304,86 @@
 ").
 
 %-----------------------------------------------------------------------------%
+%
+% Retry
+%
 
-/* To Implement:
-**
-**  retry(STM) :-
-**      stm_lock,
-**      stm_validate(STM, Valid),
-**      (
-**          Valid = yes,
-**          stm_wait(STM),        % Add wait variables to TVars
-**          stm_unlock,          
-**          block_and_wait(STM)
-**      ;   
-**          Valid = no,
-**          stm_unlock,
-**          throw(RollbackException)
-**      ).
-**
-**  :- pred block_and_wait(stm::di) is failure.
-**
-**  block_and_wait(STM) :-
-**      block_thread(STM),      ***
-**      stm_lock,
-**      stm_validate(STM, Valid),
-**      (
-**          Valid = yes,
-**          stm_unlock,
-**          block_and_wait,
-**      ;
-**          Valid = no,
-**          stm_unwait(STM),    % Remove wait variables from TVar
-**          stm_unlock
-**          throw(RollbackException)
-**      ).
-** 
-**  Need to implement:
-**
-**  :- impure pred block_thread(stm::ui) is det.
-**      % Blocks the current thread until another transaction is committed.
-**      % XXX: What to do when there is only one thread?
-*       % XXX: this needs to be fixed - juliensf.
-*/
+retry(STM) :-
+    promise_pure (
+        impure retry_impl(STM),
+        throw(rollback_exception)
+    ).
+
+:- impure pred retry_impl(stm::di) is det.
+:- pragma foreign_proc("C",
+    retry_impl(STM::di),
+    [will_not_call_mercury],
+"
+    MR_STM_retry_impl(STM);
+").
+
+    % For the non-C backends.
+    %
+retry_impl(_) :-
+    impure impure_true.
+
+%-----------------------------------------------------------------------------%
+%
+% Atomic transactions
+%
+
+:- pragma promise_pure(atomic_transaction/4).
+atomic_transaction(Goal, Result, !IO) :-
+    impure atomic_transaction_impl(Goal, Result). 
+
+:- impure pred atomic_transaction_impl(pred(T, stm, stm), T).
+:- mode atomic_transaction_impl(in(pred(out, di, uo) is det), out)
+    is det.
+
+atomic_transaction_impl(Goal, Result) :-
+    impure stm_create_state(STM0),
+    promise_equivalent_solutions [Result0, STM] (
+        unsafe_try_stm(call_atomic_goal(Goal), Result0, STM0, STM)
+    ),
+    (
+        Result0 = succeeded(Result)
+    ;
+        Result0 = exception(Excp),
+        ( Excp = univ(rollback_exception) ->
+            impure atomic_transaction_impl(Goal, Result)
+        ;
+            impure stm_lock,
+            impure stm_validate(STM, IsValid),
+            impure stm_unlock,
+            (
+                IsValid = stm_transaction_valid,
+                rethrow(Result0)
+            ;
+                IsValid = stm_transaction_invalid,
+                impure stm_drop_state(STM),
+                impure atomic_transaction_impl(Goal, Result)
+            )
+        )
+    ).
+
+:- pragma promise_pure(call_atomic_goal/4).
+:- pred call_atomic_goal(pred(T, stm, stm), T, stm, stm).
+:- mode call_atomic_goal(in(pred(out, di, uo) is det), out, di, uo)
+    is det.
+
+call_atomic_goal(Goal, Result, !STM) :-
+    Goal(Result, !STM),
+    impure stm_lock,
+    impure stm_validate(!.STM, IsValid),
+    (
+        IsValid = stm_transaction_valid,
+        impure stm_commit(!.STM),
+        impure stm_unlock
+    ;
+        IsValid = stm_transaction_invalid,
+        impure stm_unlock,
+        throw(rollback_exception)
+    ).
 
 %----------------------------------------------------------------------------%
 :- end_module stm_builtin.
