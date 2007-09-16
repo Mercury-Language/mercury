@@ -105,20 +105,20 @@ struct MR_STM_TransLog_Struct {
 /*
 ** Create a new transaction log.
 */
-#define MR_STM_create_log(log)                                          \
+#define MR_STM_create_log(tlog)                                         \
     do {                                                                \
-        (log) = MR_GC_NEW(MR_STM_TransLog);                             \
-        (log)->MR_STM_tl_records = NULL;                                \
-        (log)->MR_STM_tl_thread = MR_THIS_THREAD_ID;                    \
+        (tlog) = MR_GC_NEW(MR_STM_TransLog);                            \
+        (tlog)->MR_STM_tl_records = NULL;                               \
+        (tlog)->MR_STM_tl_thread = MR_THIS_THREAD_ID;                   \
     } while (0)
 
 /*
 ** Discard a transaction log.
 ** XXX we should free the memory in nogc grades.
 */
-#define MR_STM_discard_log(log)                                         \
+#define MR_STM_discard_log(tlog)                                        \
     do {                                                                \
-        (log) = NULL;                                                   \
+        (tlog) = NULL;                                                  \
     } while (0)
 
 /*
@@ -127,7 +127,7 @@ struct MR_STM_TransLog_Struct {
 ** of the transaction variable before and after the change of state.
 */
 extern void
-MR_STM_record_transaction(MR_STM_TransLog *log, MR_STM_Var *var,
+MR_STM_record_transaction(MR_STM_TransLog *tlog, MR_STM_Var *var,
     MR_Word old_value, MR_Word new_value);
 
 /*
@@ -135,14 +135,14 @@ MR_STM_record_transaction(MR_STM_TransLog *log, MR_STM_Var *var,
 ** listed in the log.
 */
 extern void
-MR_STM_wait(MR_STM_TransLog *log);
+MR_STM_wait(MR_STM_TransLog *tlog);
 
 /*
 ** Detach waiters for the current thread from all of the transaction variables
 ** referenced by the given transaction log.
 */
 extern void
-MR_STM_unwait(MR_STM_TransLog *log);
+MR_STM_unwait(MR_STM_TransLog *tlog);
 
 /*
 ** Attach a waiter for thread tid to the transaction variable.
@@ -160,22 +160,22 @@ extern void
 MR_STM_detach_waiter(MR_STM_Var *var, MR_ThreadId tid);
 
 extern MR_Integer
-MR_STM_validate(MR_STM_TransLog *log);
+MR_STM_validate(MR_STM_TransLog *tlog);
 
 /*
 ** Irrevocably write the changes stored in a transaction log to memory.
 */
 extern void
-MR_STM_commit(MR_STM_TransLog *log);
+MR_STM_commit(MR_STM_TransLog *tlog);
 
 extern void
-MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *log);
+MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog);
 
 extern MR_Word
-MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *log);
+MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog);
 
 extern void
-MR_STM_retry_impl(MR_STM_TransLog *log);
+MR_STM_retry_impl(MR_STM_TransLog *tlog);
 
 #if defined(MR_THREAD_SAFE)
     extern MercuryLock  MR_STM_lock;
