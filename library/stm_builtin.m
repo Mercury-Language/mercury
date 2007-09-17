@@ -108,15 +108,22 @@
     % being rolled back.
     %
 :- type rollback_exception
-    --->    rollback_exception.
+    --->    rollback_invalid_transaction
+    ;       rollback_retry.
 
     % Create a new transaction log.
     %
-:- impure pred stm_create_state(stm::uo) is det.
+:- impure pred stm_create_transaction_log(stm::uo) is det. 
 
     % Discard a transaction log.
     %
-:- impure pred stm_drop_state(stm::di) is det.
+:- impure pred stm_discard_transaction_log(stm::di) is det.
+
+    % stm_create_nested_transaction_log(Parent, Child):
+    % `Child' is a new transaction log whose enclosing transaction's
+    % log is given by `Parent'.
+    %
+:- impure pred stm_create_nested_transaction_log(stm::ui, stm::uo) is det.
 
     % Lock the STM global mutex.
     %
@@ -228,14 +235,21 @@
 ").
 
 :- pragma foreign_proc("C",
-    stm_create_state(STM::uo),
+    stm_create_transaction_log(STM::uo),
     [will_not_call_mercury, thread_safe],
 "
-    MR_STM_create_log(STM);
+    MR_STM_create_log(STM, NULL);
 ").
 
 :- pragma foreign_proc("C",
-    stm_drop_state(STM::di),
+    stm_create_nested_transaction_log(Parent::ui, Child::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    MR_STM_create_log(Child, Parent);
+").
+
+:- pragma foreign_proc("C",
+    stm_discard_transaction_log(STM::di),
     [will_not_call_mercury, thread_safe],
 "
     MR_STM_discard_log(STM);
@@ -310,8 +324,18 @@
 
 retry(STM) :-
     promise_pure (
-        impure retry_impl(STM),
-        throw(rollback_exception)
+        impure stm_lock,
+        impure stm_validate(STM, IsValid),
+        (
+            IsValid = stm_transaction_valid,
+            % NOTE: retry_impl is responsible for releasing the STM lock.
+            impure retry_impl(STM),
+            throw(rollback_retry)
+        ;
+            IsValid = stm_transaction_invalid,
+            impure stm_unlock,
+            throw(rollback_invalid_transaction)
+        )
     ).
 
 :- impure pred retry_impl(stm::di) is det.
@@ -341,7 +365,7 @@ atomic_transaction(Goal, Result, !IO) :-
     is det.
 
 atomic_transaction_impl(Goal, Result) :-
-    impure stm_create_state(STM0),
+    impure stm_create_transaction_log(STM0),
     promise_equivalent_solutions [Result0, STM] (
         unsafe_try_stm(call_atomic_goal(Goal), Result0, STM0, STM)
     ),
@@ -349,7 +373,11 @@ atomic_transaction_impl(Goal, Result) :-
         Result0 = succeeded(Result)
     ;
         Result0 = exception(Excp),
-        ( Excp = univ(rollback_exception) ->
+        (
+            ( Excp = univ(rollback_invalid_transaction)
+            ; Excp = univ(rollback_retry)
+            )
+        ->
             impure atomic_transaction_impl(Goal, Result)
         ;
             impure stm_lock,
@@ -360,7 +388,7 @@ atomic_transaction_impl(Goal, Result) :-
                 rethrow(Result0)
             ;
                 IsValid = stm_transaction_invalid,
-                impure stm_drop_state(STM),
+                impure stm_discard_transaction_log(STM),
                 impure atomic_transaction_impl(Goal, Result)
             )
         )
@@ -382,7 +410,7 @@ call_atomic_goal(Goal, Result, !STM) :-
     ;
         IsValid = stm_transaction_invalid,
         impure stm_unlock,
-        throw(rollback_exception)
+        throw(rollback_invalid_transaction)
     ).
 
 %----------------------------------------------------------------------------%

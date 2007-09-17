@@ -90,6 +90,7 @@ struct MR_STM_TransRecord_Struct {
 struct MR_STM_TransLog_Struct {
     MR_STM_TransRecord  *MR_STM_tl_records;
     MR_ThreadId         MR_STM_tl_thread;
+    MR_STM_TransLog     *MR_STM_tl_parent;
 };
 
 /*
@@ -104,12 +105,15 @@ struct MR_STM_TransLog_Struct {
 
 /*
 ** Create a new transaction log.
+** If the log is for a nested transaction then the field `parent' points
+** to the log of the enclosing transaction.  It is NULL otherwise.
 */
-#define MR_STM_create_log(tlog)                                         \
+#define MR_STM_create_log(tlog, parent)                                 \
     do {                                                                \
         (tlog) = MR_GC_NEW(MR_STM_TransLog);                            \
         (tlog)->MR_STM_tl_records = NULL;                               \
         (tlog)->MR_STM_tl_thread = MR_THIS_THREAD_ID;                   \
+        (tlog)->MR_STM_tl_parent = (parent);                            \
     } while (0)
 
 /*

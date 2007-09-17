@@ -715,7 +715,11 @@ try_stm(Goal, Result, !STM) :-
         % If the exception is an STM rollback exception rethrow it since
         % the handler at the beginning of the atomic scope should deal with
         % it; otherwise let the user deal with it.
-        ( Exception = univ(stm_builtin.rollback_exception) ->
+        (
+            ( Exception = univ(stm_builtin.rollback_invalid_transaction)
+            ; Exception = univ(stm_builtin.rollback_retry)
+            )
+        ->
             rethrow(Result0)
         ;
             Result = Result0
