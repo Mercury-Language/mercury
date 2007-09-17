@@ -14,9 +14,11 @@ else
 		tu_test2
 endif
 
+PROGS = $(TRAIL_PROGS)
+
 #-----------------------------------------------------------------------------#
 
-TESTS = $(TRAIL_PROGS)
+TESTS = $(PROGS)
 SUBDIRS = 
 TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
