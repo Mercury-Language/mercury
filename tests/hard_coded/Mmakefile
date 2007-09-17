@@ -8,8 +8,6 @@ ORDINARY_PROGS=	\
 	abstract_eqv \
 	address_of_builtins \
 	agg \
-	any_call_hoist_bug \
-	any_free_unify \
 	array_test \
 	backquoted_qualified_ops \
 	bag_various \
@@ -163,9 +161,7 @@ ORDINARY_PROGS=	\
 	pprint_test \
 	pprint_test2 \
 	pragma_c_code \
-	pragma_export \
 	pragma_foreign_export \
-	pragma_import \
 	pragma_inline \
 	pretty_printing \
 	prince_frameopt \
@@ -194,15 +190,10 @@ ORDINARY_PROGS=	\
 	rtc_bug \
 	rtree_test \
 	rtti_strings \
-	runtime_opt \
 	seek_test \
 	setjmp_test \
 	shift_test \
 	solve_quadratic \
-	solver_build_call \
-	solver_construction_init_test \
-	solver_disj_inits \
-	solver_ite_inits \
 	space \
 	stable_sort \
 	stream_format \
@@ -308,6 +299,19 @@ JAVA_PASS_PROGS= \
 	target_mlobjs \
 	time_test
 
+# Solver types only work in C grades
+ifeq "$(filter il% java% erlang%,$(GRADE))" ""
+	SOLVER_PROGS = \
+		any_call_hoist_bug \
+		any_free_unify \
+		solver_build_call \
+		solver_construction_init_test \
+		solver_disj_inits \
+		solver_ite_inits
+else
+	SOLVER_PROGS =
+endif
+
 # Some tests only link in trailing grades.
 ifeq "$(filter tr%,$(GRADE))" ""
 	TRAILED_PROGS =
@@ -355,12 +359,17 @@ endif
 # Fact tables currently work only in the C grades.
 # The foreign_type_assertion test is currently meaningful only in C grades.
 # The lookup_disj test case uses C foreign_proc code to print progress reports.
+# Tests of the C foreign language interface only work in C grades.
+# Runtime options are specific to the C backend.
 ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS= \
 		factt \
 		factt_sort_test \
 		foreign_type_assertion \
-		lookup_disj
+		lookup_disj \
+		pragma_export \
+		pragma_import \
+		runtime_opt
 else
 	C_ONLY_PROGS=
 endif
@@ -575,8 +584,8 @@ else
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
-		$(DOTNET_PROGS) $(JAVA_PROGS) $(TRAILED_PROGS) \
-		$(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS)
+		$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
+		$(TRAILED_PROGS) $(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS)
 endif
 
 #-----------------------------------------------------------------------------#

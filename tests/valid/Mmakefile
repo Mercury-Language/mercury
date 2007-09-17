@@ -124,7 +124,6 @@ OTHER_PROGS= \
 	intermod_nested_module \
 	intermod_nested_module_bug \
 	intermod_nested_uniq \
-	intermod_pragma_import \
 	intermod_quote \
 	intermod_record \
 	intermod_test \
@@ -192,10 +191,7 @@ OTHER_PROGS= \
 	simplify_bug2 \
 	size_prof_ho_bug \
 	soln_context \
-	solv \
 	solver_type_bug \
-	solver_type_bug_2 \
-	solver_type_mutable_bug \
 	some_switch \
 	spurious_purity_warning \
 	stack_alloc \
@@ -227,6 +223,14 @@ OTHER_PROGS= \
 	unused_args_test2 \
 	vn_float \
 	zero_arity
+
+C_INTERFACE_PROGS = \
+	intermod_pragma_import
+
+SOLVER_PROGS = \
+	solv \
+	solver_type_bug_2 \
+	solver_type_mutable_bug
 
 DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
@@ -311,7 +315,7 @@ endif
 
 ifneq "$(filter java% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	# We currently don't do any testing in grade java on this directory.
-	ifneq "$(findstring java,$(GRADE))$" ""
+	ifneq "$(findstring java,$(GRADE))" ""
 		PROGS3 =
 	else
 		PROGS3 = $(PROGS2)
@@ -321,7 +325,8 @@ else
 endif
 
 ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
-	PROGS4 = $(PROGS3) $(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
+	PROGS4 = $(PROGS3) $(C_INTERFACE_PROGS) $(SOLVER_PROGS) \
+		$(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
 else
 	PROGS4 = $(PROGS3)
 endif

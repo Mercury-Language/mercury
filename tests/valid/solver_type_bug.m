@@ -10,6 +10,7 @@
 :- pragma foreign_type("C", foo1, "int").
 :- pragma foreign_type("IL", foo1, "int32").
 :- pragma foreign_type("Java", foo1, "int").
+:- pragma foreign_type("Erlang", foo1, "").
 
 :- type foo2 ---> foo2(foo1).
 
@@ -32,3 +33,8 @@ p2(X) :- q2(X).
 :- pred q2(foo2).
 :- mode q2(in(any)) is nondet.
 :- external(q2/1).
+
+:- pragma foreign_code("Erlang", "
+q1_1_p_0(_, _) -> void.
+q2_1_p_0(_, _) -> void.
+").

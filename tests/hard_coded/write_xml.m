@@ -44,11 +44,18 @@
 :- pred make_ftype(ftype::out) is det.
 
 :- pragma foreign_type("C", ftype, "int").
+:- pragma foreign_type("Erlang", ftype, "").
 
 :- pragma foreign_proc("C", make_ftype(F::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	F = 1;
+").
+
+:- pragma foreign_proc("Erlang", make_ftype(F::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	F = 1
 ").
 
 :- pred make_pointer(c_pointer::out) is det.
@@ -57,6 +64,12 @@
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	P = (MR_Word) NULL;
+").
+
+:- pragma foreign_proc("Erlang", make_pointer(P::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	P = null
 ").
 
 :- pred p(int::in, int::in, mytype::in, int::out) is det.
