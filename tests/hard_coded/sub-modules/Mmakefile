@@ -30,14 +30,21 @@ SUB_MODULE_PROGS= \
 	parent \
 	parent2 \
 	sm_exp_bug \
-	ts \
 	use_submodule
+
+# Solver types only work in C grades
+ifeq "$(filter il% java% erlang%,$(GRADE))" ""
+	SOLVER_PROGS = \
+		ts
+else
+	SOLVER_PROGS =
+endif
 
 # We currently don't do any testing in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""
 	PROGS=
 else
-	PROGS=$(SUB_MODULE_PROGS)
+	PROGS=$(SUB_MODULE_PROGS) $(SOLVER_PROGS)
 endif
 
 TESTS = $(PROGS)
