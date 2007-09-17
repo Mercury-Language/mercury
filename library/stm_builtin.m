@@ -155,25 +155,14 @@
     %
 :- impure pred stm_commit(stm::ui) is det.
 
-    % Add this thread's identity to the wait list of the transaction
-    % variables referenced by the given log.
+    % Add this thread to the wait queues of the transaction variables referred
+    % to by the given log and then block until another thread makes a commit
+    % that involves one of those transaction variables.
     %
     % NOTE: this predicate must *only* be called while the STM global mutex
     %       is locked.
     %
-:- impure pred stm_wait(stm::ui) is det.
-
-    % Remove the current thread identity to the wait list of the transaction
-    % variables referenced by the given log.
-    %
-    % NOTE: this predicate must *only* be called while the STM global mutex
-    %       is locked.
-    %
-:- impure pred stm_unwait(stm::ui) is det.
-
-    % Cause the current thread to block.
-    %
-:- impure pred stm_block_thread(stm::ui) is det.
+:- impure pred stm_block(stm::ui) is det.
 
     % This type is used in the case where an atomic_scope has no outputs
     % since the call to try_stm/3 introduced by the expansion of atomic 
@@ -289,30 +278,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Adds the thread ID to the wait list of all transaction variables
-    % listed in the transaction log.
-    %
 :- pragma foreign_proc("C",
-    stm_wait(STM::ui),
-    [will_not_call_mercury, thread_safe],
-"
-    MR_STM_wait(STM);
-").
-
-    % Removes the thread ID to the wait list of all transaction variables
-    % listed in the transaction log.
-    %
-:- pragma foreign_proc("C",
-    stm_unwait(STM::ui),
-    [will_not_call_mercury, thread_safe],
-"
-    MR_STM_unwait(STM);
-").
-
-    % Blocks the thread from being rescheduled.
-    %
-:- pragma foreign_proc("C",
-    stm_block_thread(_STM::ui),
+    stm_block(_STM::ui),
     [will_not_call_mercury, thread_safe],
 "
 ").
@@ -322,34 +289,8 @@
 % Retry
 %
 
-retry(STM) :-
-    promise_pure (
-        impure stm_lock,
-        impure stm_validate(STM, IsValid),
-        (
-            IsValid = stm_transaction_valid,
-            % NOTE: retry_impl is responsible for releasing the STM lock.
-            impure retry_impl(STM),
-            throw(rollback_retry)
-        ;
-            IsValid = stm_transaction_invalid,
-            impure stm_unlock,
-            throw(rollback_invalid_transaction)
-        )
-    ).
-
-:- impure pred retry_impl(stm::di) is det.
-:- pragma foreign_proc("C",
-    retry_impl(STM::di),
-    [will_not_call_mercury],
-"
-    MR_STM_retry_impl(STM);
-").
-
-    % For the non-C backends.
-    %
-retry_impl(_) :-
-    impure impure_true.
+retry(_) :-
+    throw(rollback_retry).
 
 %-----------------------------------------------------------------------------%
 %
@@ -373,11 +314,21 @@ atomic_transaction_impl(Goal, Result) :-
         Result0 = succeeded(Result)
     ;
         Result0 = exception(Excp),
-        (
-            ( Excp = univ(rollback_invalid_transaction)
-            ; Excp = univ(rollback_retry)
-            )
-        ->
+        ( Excp = univ(rollback_invalid_transaction) ->
+            impure stm_discard_transaction_log(STM),
+            impure atomic_transaction_impl(Goal, Result)
+        ; Excp = univ(rollback_retry) ->
+            impure stm_lock,
+            impure stm_validate(STM, IsValid),
+            (
+                IsValid = stm_transaction_valid,
+                % NOTE: stm_block is responsible for releasing the STM lock.
+                impure stm_block(STM)
+            ;
+                IsValid = stm_transaction_invalid,
+                impure stm_unlock
+            ),
+            impure stm_discard_transaction_log(STM),
             impure atomic_transaction_impl(Goal, Result)
         ;
             impure stm_lock,

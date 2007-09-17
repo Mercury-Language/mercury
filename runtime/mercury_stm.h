@@ -178,9 +178,6 @@ MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog);
 extern MR_Word
 MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog);
 
-extern void
-MR_STM_retry_impl(MR_STM_TransLog *tlog);
-
 #if defined(MR_THREAD_SAFE)
     extern MercuryLock  MR_STM_lock;
 #endif

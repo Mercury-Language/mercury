@@ -159,9 +159,3 @@ MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog)
 
     return var->MR_STM_var_value;
 }
-
-void
-MR_STM_retry_impl(MR_STM_TransLog *tlog)
-{
-    MR_fatal_error("Sorry, STM retry not yet implemented.");
-}    
