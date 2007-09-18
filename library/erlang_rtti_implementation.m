@@ -1406,6 +1406,7 @@ construct(TypeDesc, Index, Args) = Term :-
         Term = construct_univ(TypeInfo, FunctorName, Args)
     ;
         TypeCtorRep = etcr_dummy,
+        Index = 0,
         Term = construct_univ(TypeInfo, "false", [])
     ;
         TypeCtorRep = etcr_list,
