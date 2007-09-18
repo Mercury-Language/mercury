@@ -200,6 +200,13 @@
 %:- mode array.semidet_lookup(array_ui, in, out) is semidet.
 :- mode array.semidet_lookup(in, in, out) is semidet.
 
+    % array.unsafe_lookup returns the Nth element of an array.
+    % It is an error if the index is out of bounds.
+    %
+:- pred array.unsafe_lookup(array(T), int, T).
+%:- mode array.unsafe_lookup(array_ui, in, out) is det.
+:- mode array.unsafe_lookup(in, in, out) is det.
+
     % array.set sets the nth element of an array, and returns the
     % resulting array (good opportunity for destructive update ;-).
     % Throws an exception if the index is out of bounds.
@@ -215,6 +222,12 @@
     %
 :- pred array.semidet_set(array(T), int, T, array(T)).
 :- mode array.semidet_set(array_di, in, in, array_uo) is semidet.
+
+    % array.unsafe_set sets the nth element of an array, and returns the
+    % resulting array.  It is an error if the index is out of bounds.
+    %
+:- pred array.unsafe_set(array(T), int, T, array(T)).
+:- mode array.unsafe_set(array_di, in, in, array_uo) is det.
 
     % array.slow_set sets the nth element of an array, and returns the
     % resulting array. The initial array is not required to be unique,
@@ -818,10 +831,6 @@ array.lookup(Array, Index, Item) :-
         array.unsafe_lookup(Array, Index, Item)
     ).
 
-:- pred array.unsafe_lookup(array(T), int, T).
-%:- mode array.unsafe_lookup(array_ui, in, out) is det.
-:- mode array.unsafe_lookup(in, in, out) is det.
-
 :- pragma foreign_proc("C",
     array.unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -859,9 +868,6 @@ array.set(Array0, Index, Item, Array) :-
     ;
         array.unsafe_set(Array0, Index, Item, Array)
     ).
-
-:- pred array.unsafe_set(array(T), int, T, array(T)).
-:- mode array.unsafe_set(array_di, in, in, array_uo) is det.
 
 :- pragma foreign_proc("C",
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
@@ -1207,18 +1213,17 @@ array.from_list(List, Array) :-
     List = [Head | Tail],
     list.length(List, Len),
     array.init(Len, Head, Array0),
-    array.insert_items(Tail, 1, Array0, Array).
+    array.unsafe_insert_items(Tail, 1, Array0, Array).
 
 %-----------------------------------------------------------------------------%
 
-:- pred array.insert_items(list(T)::in, int::in,
+:- pred array.unsafe_insert_items(list(T)::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-array.insert_items([], _N, Array, Array).
-array.insert_items([Head|Tail], N, Array0, Array) :-
-    array.set(Array0, N, Head, Array1),
-    N1 = N + 1,
-    array.insert_items(Tail, N1, Array1, Array).
+array.unsafe_insert_items([], _N, Array, Array).
+array.unsafe_insert_items([Head|Tail], N, Array0, Array) :-
+    array.unsafe_set(Array0, N, Head, Array1),
+    array.unsafe_insert_items(Tail, N + 1, Array1, Array).
 
 %-----------------------------------------------------------------------------%
 
