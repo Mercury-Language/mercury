@@ -425,7 +425,7 @@ compare_sub_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
 
         compare_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
         ( SubResult = (=) ->
-            compare_var_arity_typeinfos(Loc + 1, Arity, Result,
+            compare_sub_typeinfos(Loc + 1, Arity, Result,
                 TypeInfoA, TypeInfoB)
         ;
             Result = SubResult
