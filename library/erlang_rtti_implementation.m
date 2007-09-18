@@ -1259,7 +1259,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         type_ctor_info_and_args(TypeInfo, _TypeCtorInfo, ArgTypes),
         Name = "{}",
         Arity = list.length(ArgTypes),
-        ArgNames = [],
+        ArgNames = list.duplicate(Arity, ""),
         Result = yes({Name, Arity, ArgTypes, ArgNames})
     ;
         TypeCtorRep = etcr_list,
@@ -1276,7 +1276,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
             Name = "[|]",
             Arity = 2,
             ArgTypes = [ArgTypeInfo, TypeInfo],
-            ArgNames = [],
+            ArgNames = ["", ""],
             Result = yes({Name, Arity, ArgTypes, ArgNames})
         ;
             Result = no
