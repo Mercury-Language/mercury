@@ -1164,8 +1164,11 @@ num_functors(TypeInfo, MaybeNumFunctors) :-
         TypeCtorRep = etcr_list,
         MaybeNumFunctors = yes(2)
     ;
+        TypeCtorRep = etcr_eqv,
+        EqvTypeInfo = collapse_equivalences(TypeInfo),
+        num_functors(EqvTypeInfo, MaybeNumFunctors)
+    ;
         ( TypeCtorRep = etcr_array
-        ; TypeCtorRep = etcr_eqv
         ; TypeCtorRep = etcr_int
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
@@ -1275,8 +1278,11 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
             Result = no
         )
     ;
+        TypeCtorRep = etcr_eqv,
+        EqvTypeInfo = collapse_equivalences(TypeInfo),
+        Result = get_functor_with_names(EqvTypeInfo, NumFunctor)
+    ;
         ( TypeCtorRep = etcr_array
-        ; TypeCtorRep = etcr_eqv
         ; TypeCtorRep = etcr_int
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
