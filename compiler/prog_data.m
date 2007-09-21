@@ -318,7 +318,11 @@
     --->    le(list(arg_size_term), rat)
     ;       eq(list(arg_size_term), rat).
 
-:- type arg_size_term == pair(int, rat).
+:- type arg_size_term
+    --->    arg_size_term(
+                as_term_var   :: int,
+                as_term_coeff :: rat
+            ).
 
 :- type pragma_constr_arg_size_info == list(arg_size_constr).
 
