@@ -1027,7 +1027,7 @@ get_du_functor_arg(TypeInfo, Functor, Term, Loc) = Univ :-
 
     MaybePTI = ArgInfo ^ du_arg_type,
     Info = yes({TypeInfo, yes({Functor, Term})}),
-    ArgTypeInfo = type_info(Info, MaybePTI),
+    ArgTypeInfo = concrete_type_info(Info, MaybePTI),
 
     SubTerm = get_subterm(ArgTypeInfo, Term, Loc, extra_args(Functor) + 1),
     Univ = univ(SubTerm).
@@ -1061,7 +1061,7 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
         PtiInfo = no : pti_info(int),
         TiInfo = yes({TypeInfo0, PtiInfo}),
         EqvType = TypeCtorInfo0 ^ type_ctor_eqv_type,
-        TypeInfo1 = type_info(TiInfo, EqvType),
+        TypeInfo1 = concrete_type_info(TiInfo, EqvType),
         TypeInfo = collapse_equivalences(TypeInfo1)
     ;
         TypeInfo = TypeInfo0
@@ -1216,34 +1216,27 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         TypeCtorRep = etcr_du,
         FunctorReps = TypeCtorInfo ^ type_ctor_functors,
         ( matching_du_functor_number(FunctorReps, NumFunctor, FunctorRep) ->
-            MaybeExistInfo = FunctorRep ^ edu_exist_info,
-            (
-                MaybeExistInfo = yes(_),
-                Result = no
-            ;
-                MaybeExistInfo = no,
-                ArgInfos = FunctorRep ^ edu_arg_infos,
+            ArgInfos = FunctorRep ^ edu_arg_infos,
 
-                list.map2(
-                    (pred(ArgInfo::in, ArgTypeInfo::out, ArgName::out) is det :-
-                        MaybePTI = ArgInfo ^ du_arg_type,
-                        Info = yes({TypeInfo, no : pti_info(int)}),
-                        ArgTypeInfo = type_info(Info, MaybePTI),
-                        
-                        MaybeArgName = ArgInfo ^ du_arg_name,
-                        (
-                            MaybeArgName = yes(ArgName0),
-                            ArgName = string.from_char_list(ArgName0)
-                        ;
-                            MaybeArgName = no,
-                            ArgName = ""
-                        )
-                    ), ArgInfos, ArgTypes, ArgNames),
+            list.map2(
+                (pred(ArgInfo::in, ArgTypeInfo::out, ArgName::out) is det :-
+                    MaybePTI = ArgInfo ^ du_arg_type,
+                    Info = yes({TypeInfo, no : pti_info(int)}),
+                    ArgTypeInfo = concrete_type_info(Info, MaybePTI),
 
-                Name = string.from_char_list(FunctorRep ^ edu_name),
-                Arity = FunctorRep ^ edu_orig_arity,
-                Result = yes({Name, Arity, ArgTypes, ArgNames})
-            )
+                    MaybeArgName = ArgInfo ^ du_arg_name,
+                    (
+                        MaybeArgName = yes(ArgName0),
+                        ArgName = string.from_char_list(ArgName0)
+                    ;
+                        MaybeArgName = no,
+                        ArgName = ""
+                    )
+                ), ArgInfos, ArgTypes, ArgNames),
+
+            Name = string.from_char_list(FunctorRep ^ edu_name),
+            Arity = FunctorRep ^ edu_orig_arity,
+            Result = yes({Name, Arity, ArgTypes, ArgNames})
         ;
             Result = no
         )
@@ -2172,9 +2165,9 @@ det_dynamic_cast(Term, Actual) :-
     % Given a plain or pseudo type_info, return the concrete type_info
     % which represents the type.
     %
-:- func type_info(ti_info(T), maybe_pseudo_type_info) = type_info.
+:- func concrete_type_info(ti_info(T), maybe_pseudo_type_info) = type_info.
 
-type_info(Info, MaybePTI) = TypeInfo :-
+concrete_type_info(Info, MaybePTI) = TypeInfo :-
     (
         MaybePTI = pseudo(PseudoThunk),
         (
@@ -2205,7 +2198,9 @@ eval_pseudo_type_info(ParentTypeInfo, MaybeFunctorAndTerm, Thunk) = TypeInfo :-
             TypeInfo = exist_type_info(ParentTypeInfo, Functor, Term, N)
         ;
             MaybeFunctorAndTerm = no,
-            error("eval_pseudo_type_info requires a functor rep")
+            % If we don't have the term available then leave the existential
+            % type variables in place, e.g. for get_functor_with_names.
+            TypeInfo = unsafe_cast(N)
         )
     ;
         EvalResult = pseudo_type_info(PseudoTypeInfo),
@@ -2219,7 +2214,8 @@ exist_type_info(TypeInfo, Functor, Term, N) = ArgTypeInfo :-
     MaybeExist = Functor ^ edu_exist_info,
     (
         MaybeExist = yes(ExistInfo),
-        ExistLocn = list.index1_det(ExistInfo ^ exist_typeinfo_locns, N),
+        % The first existential type variable is numbered 512.
+        ExistLocn = list.index1_det(ExistInfo ^ exist_typeinfo_locns, N - 512),
         (
             ExistLocn = plain_typeinfo(X),
 
@@ -2280,13 +2276,13 @@ eval_type_info(I, TI) = TypeInfo :-
 
 var_arity_arg_type_info(Info, TypeInfo, Index) = ArgTypeInfo :-
     MaybePTI = TypeInfo ^ var_arity_pseudo_type_info_index(Index),
-    ArgTypeInfo = type_info(Info, MaybePTI).
+    ArgTypeInfo = concrete_type_info(Info, MaybePTI).
 
 :- func arg_type_info(ti_info(T), TypeInfo, int) = type_info.
 
 arg_type_info(Info, TypeInfo, Index) = ArgTypeInfo :-
     MaybePTI = TypeInfo ^ pseudo_type_info_index(Index),
-    ArgTypeInfo = type_info(Info, MaybePTI).
+    ArgTypeInfo = concrete_type_info(Info, MaybePTI).
 
 %-----------------------------------------------------------------------------%
 
@@ -2413,7 +2409,9 @@ unsafe_pseudo_type_info_index(_, _) = pseudo(pseudo_type_info_thunk) :-
             is_integer(MaybeTypeInfo), MaybeTypeInfo < 512 ->
                 { universal_type_info, MaybeTypeInfo };
             is_integer(MaybeTypeInfo) ->
-                { existential_type_info, MaybeTypeInfo - 512 };
+                % We don't subtract 512 here so that the test output will be
+                % the same as for the C backends.
+                { existential_type_info, MaybeTypeInfo };
             true ->
                 { pseudo_type_info, MaybeTypeInfo }
         end,
