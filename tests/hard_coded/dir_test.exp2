@@ -128,6 +128,7 @@ dir__path_name_is_root_directory("foo/bar") failed
 "foo/"/"bar/baz" = "foo/bar/baz".
 checking whether `unwritable' is readable...ok
 unwritable file found to be unwritable
+current_directory succeeded: hard_coded
 make_directory succeeded
 make_directory succeeded
 dir.make_single_directory with non-existent parent failed as expected.

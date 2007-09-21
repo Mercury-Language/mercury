@@ -195,6 +195,8 @@ Changes to the Mercury standard library:
 * We have added a predicate io.remove_file_recursively/4
   which can remove non-empty directories.
 
+* We have added the predicate `dir.current_directory'.
+
 Changes to the Mercury compiler:
 
 * Support for the reserve tag grades has been removed.

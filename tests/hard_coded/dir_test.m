@@ -60,6 +60,19 @@ main -->
 		"unwritable file found to be unwritable\n")
 	),
 
+	dir__current_directory(CwdResult),
+	(
+	    { CwdResult = ok(Cwd) },
+	    io__write_string("current_directory succeeded: "),
+	    io__write_string(dir__det_basename(Cwd)),
+	    io__nl
+	;
+	    { CwdResult = error(Error) },
+	    io__write_string("current_directory failed: "),
+	    io__write_string(io__error_message(Error)),
+	    io__nl
+	),
+
 	{ Dir1 = "test_dir"/"d1" },
 	test0("make_directory", dir__make_directory(Dir1)),
 	% Test making a directory that already exists.

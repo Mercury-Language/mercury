@@ -164,6 +164,13 @@
 
 %-----------------------------------------------------------------------------%
 
+    % io.current_directory(Result)
+    % Return the current working directory.
+    %
+:- pred dir.current_directory(io.res(string)::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
     % Make the given directory, and all parent directories.
     % This will also succeed if the directory already exists
     % and is readable and writable by the current user.
@@ -817,6 +824,55 @@ DirName0/FileName0 = PathName :-
             string.char_to_string(dir.directory_separator),
             FileName])
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    dir.current_directory(Res::out, IO0::di, IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+"   
+    /*
+    ** Marked thread_safe because ML_make_io_res_1_error_string will acquire
+    ** the global lock.
+    */
+
+    size_t      size = 256; 
+    char        *buf;
+    MR_String   str;
+
+    while (1) {
+        buf = MR_GC_NEW_ARRAY(char, size);
+        if (getcwd(buf, size)) {
+            MR_make_aligned_string(str, buf);
+            Res = ML_make_io_res_1_ok_string(str);
+            break;
+        }
+        if (errno != ERANGE) {
+            ML_make_io_res_1_error_string(errno,
+                MR_make_string_const(""dir.current_directory failed: ""),
+                &Res);
+            break;
+        }
+        /* Buffer too small.  Resize and try again. */
+        size *= 1.5;
+    }
+
+    IO = IO0;
+").
+
+:- pragma foreign_proc("Erlang",
+    dir.current_directory(Res::out, _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+"
+    case file:get_cwd() of
+        {ok, Cwd} ->
+            Res = mercury__io:'ML_make_io_res_1_ok_string'(
+                list_to_binary(Cwd));
+        {error, Reason} ->
+            Res = mercury__io:'ML_make_io_res_1_error_string'(Reason,
+                ""dir.current_directory failed: "")
+    end
+").
 
 %-----------------------------------------------------------------------------%
 

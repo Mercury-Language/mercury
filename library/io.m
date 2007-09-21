@@ -3568,6 +3568,26 @@ make_io_res_1_ok_file_type(FileType) = ok(FileType).
 make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     io.make_err_msg(Error, Msg0, Msg, !IO).
 
+:- func make_io_res_1_ok_string(string) = io.res(string).
+:- pragma foreign_export("C", (make_io_res_1_ok_string(in) = out),
+    "ML_make_io_res_1_ok_string").
+:- pragma foreign_export("Erlang", (make_io_res_1_ok_string(in) = out),
+    "ML_make_io_res_1_ok_string").
+
+make_io_res_1_ok_string(String) = ok(String).
+
+:- pred make_io_res_1_error_string(io.system_error::in,
+    string::in, io.res(string)::out, io::di, io::uo) is det.
+:- pragma foreign_export("C",
+    make_io_res_1_error_string(in, in, out, di, uo),
+    "ML_make_io_res_1_error_string").
+:- pragma foreign_export("Erlang",
+    make_io_res_1_error_string(in, in, out, di, uo),
+    "ML_make_io_res_1_error_string").
+
+make_io_res_1_error_string(Error, Msg0, error(make_io_error(Msg)), !IO) :-
+    io.make_err_msg(Error, Msg0, Msg, !IO).
+
 %-----------------------------------------------------------------------------%
 
 :- type file_id ---> file_id.
