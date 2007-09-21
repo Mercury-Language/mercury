@@ -49,14 +49,22 @@ MR_STM_validate(MR_STM_TransLog *tlog)
 {
     MR_STM_TransRecord  *current;
 
-    current = tlog->MR_STM_tl_records;
-    while (current != NULL) {
-        if (current->MR_STM_tr_var->MR_STM_var_value !=
-            current->MR_STM_tr_old_value)
-        {
-            return MR_STM_TRANSACTION_INVALID;
+    MR_assert(tlog != NULL);
+
+    while (tlog != NULL) {
+
+        current = tlog->MR_STM_tl_records;
+        
+        while (current != NULL) {
+            if (current->MR_STM_tr_var->MR_STM_var_value !=
+                current->MR_STM_tr_old_value)
+            {
+                return MR_STM_TRANSACTION_INVALID;
+            }
+            current = current->MR_STM_tr_next;
         }
-        current = current->MR_STM_tr_next;
+
+        tlog = tlog->MR_STM_tl_parent;
     }
 
     return MR_STM_TRANSACTION_VALID;
@@ -137,20 +145,29 @@ MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog)
 MR_Word
 MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog)
 {
+    MR_STM_TransLog     *current_tlog;
     MR_STM_TransRecord  *current;
 
-    current = tlog->MR_STM_tl_records;
-    while (current != NULL) {
-        if (current->MR_STM_tr_var == var) {
-            return current->MR_STM_tr_new_value;
+    current_tlog = tlog;
+
+    while (current_tlog != NULL) {
+    
+        current = tlog->MR_STM_tl_records;
+        while (current != NULL) {
+            if (current->MR_STM_tr_var == var) {
+                return current->MR_STM_tr_new_value;
+            }
+            current = current->MR_STM_tr_next;
         }
-        current = current->MR_STM_tr_next;
+
+        current_tlog = current_tlog->MR_STM_tl_parent;
     }
 
     /*
     ** We will only get to this point if the transaction variable does not
-    ** currently have a record in the log, i.e. if this is the first time
-    ** that its value has been read during this transaction.
+    ** currently have a record in the log or one of the enclosing logs,
+    ** i.e. if this is the first time that its value has been read during
+    ** this atomic scope.
     ** Add an entry that indicates that it has been read and then return
     ** the value that is stored in the transaction variable.
     */
