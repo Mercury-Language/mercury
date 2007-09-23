@@ -679,7 +679,7 @@ read_file_as_bytecode(FileName, Result, !IO) :-
     ).
 
 :- pragma foreign_decl("C", "
-#ifdef MR_HAVE_SYS_STAT
+#ifdef MR_HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
 ").
@@ -692,7 +692,10 @@ read_file_as_bytecode(FileName, Result, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-#if defined(MR_HAVE_SYS_STAT) && defined(MR_HAVE_STAT) && defined(MR_HAVE_OPEN)
+#if defined(MR_HAVE_SYS_STAT_H) && \
+    defined(MR_HAVE_STAT) && \
+    defined(MR_HAVE_OPEN)
+    
     struct  stat statbuf;
 
     if (stat(FileName, &statbuf) != 0) {
