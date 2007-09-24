@@ -407,9 +407,9 @@ foldl3_maybe_stop_at_error_2(KeepGoing, P, [T | Ts],
 
 foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
         Success, !Info, !IO) :-
-    % First pass.
     globals.io_lookup_int_option(jobs, Jobs, !IO),
     ( Jobs > 1 ->
+        % First pass.
         % fork() is disabled on threaded grades.
         ( process_util.can_fork ->
             foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
@@ -419,23 +419,24 @@ foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
                 MakeTarget, Targets, Success0, !.Info, !IO)
         ;
             Success0 = yes
+        ),
+        % Second pass (sequential).
+        (
+            Success0 = yes,
+            % Disable the `--rebuild' option during the sequential pass
+            % otherwise all the targets will be built a second time.
+            globals.io_lookup_bool_option(rebuild, Rebuild, !IO),
+            globals.io_set_option(rebuild, bool(no), !IO),
+            foldl2_maybe_stop_at_error(KeepGoing, MakeTarget, Targets, Success,
+                !Info, !IO),
+            globals.io_set_option(rebuild, bool(Rebuild), !IO)
+        ;
+            Success0 = no,
+            Success = no
         )
     ;
-        Success0 = yes
-    ),
-    % Second pass (sequential).
-    (
-        Success0 = yes,
-        % Disable the `--rebuild' option during the sequential pass otherwise
-        % all the targets will be built a second time.
-        globals.io_lookup_bool_option(rebuild, Rebuild, !IO),
-        globals.io_set_option(rebuild, bool(no), !IO),
         foldl2_maybe_stop_at_error(KeepGoing, MakeTarget, Targets, Success,
-            !Info, !IO),
-        globals.io_set_option(rebuild, bool(Rebuild), !IO)
-    ;
-        Success0 = no,
-        Success = no
+            !Info, !IO)
     ).
 
 :- pred do_parallel_foldl2(bool::in, int::in,
