@@ -191,9 +191,7 @@ A. The following language features are not supported and will not be:
 
    The following standard library modules are completely unimplemented:
 
-	benchmarking
 	bit_buffer
-	dir
 	thread
 	thread.semaphore
 	time
