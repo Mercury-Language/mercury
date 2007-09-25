@@ -197,6 +197,10 @@ Changes to the Mercury standard library:
 
 * We have added the predicate `dir.current_directory'.
 
+* We have added two predicates that are useful for custom term construction:
+	construct.find_functor/5
+	type_desc.same_type/2 
+
 Changes to the Mercury compiler:
 
 * Support for the reserve tag grades has been removed.
