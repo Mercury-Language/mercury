@@ -92,6 +92,15 @@
 :- func get_functor_lex(type_desc, functor_number_ordinal) =
     functor_number_lex is semidet.
 
+    % find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes).
+    %
+    % Given a type descriptor, a functor name and arity, finds the functor
+    % number and the types of its arguments. It thus serves as the converse 
+    % to get_functor/5.
+    %
+:- pred find_functor(type_desc::in, string::in, int::in,
+    functor_number_lex::out, list(type_desc)::out) is semidet.
+
     % construct(Type, I, Args) = Term.
     %
     % Returns a term of the type specified by Type whose functor
@@ -115,6 +124,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module require.
 
 % For use by the Erlang backends.
@@ -513,6 +523,24 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
         SUCCESS_INDICATOR = MR_TRUE; 
     }
 }").
+
+find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
+    N = construct.num_functors(Type),
+    find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
+
+:- pred find_functor_2(type_desc::in, string::in, int::in,
+    int::in, int::out, list(type_desc)::out) is semidet.
+
+find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
+    Num0 >= 0,
+    Num = Num0 - 1,
+    ( get_functor(TypeInfo, Num, Functor, Arity, ArgPseudoTypes) ->
+        ArgTypes = list.map(ground_pseudo_type_desc_to_type_desc_det,
+            ArgPseudoTypes),
+        FunctorNumber = Num
+    ;
+        find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes)
+    ).
 
 :- pragma no_inline(construct/3).
 :- pragma foreign_proc("C",

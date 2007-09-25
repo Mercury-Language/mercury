@@ -89,6 +89,10 @@
     %
 :- some [T] pred has_type(T::unused, type_desc::in) is det.
 
+    % The predicate same_type/2 ensures type identity of the two arguments.
+    %
+:- pred same_type(T::unused, T::unused) is det.
+
     % type_name(Type) returns the name of the specified type
     % (e.g. type_name(type_of([2,3])) = "list.list(int)").
     % Any equivalence types will be fully expanded.
@@ -464,6 +468,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
     TypeInfo_for_T = TypeInfo
 ").
 
+same_type(_, _).
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
 :- pragma foreign_export("C", type_name(in) = out, "ML_type_name").

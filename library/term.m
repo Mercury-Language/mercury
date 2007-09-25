@@ -647,27 +647,6 @@ term_list_to_univ_list([ArgTerm | ArgTerms],
         Result = error(Error)
     ).
 
-:- pred find_functor(type_desc::in, string::in, int::in,
-    int::out, list(type_desc.type_desc)::out) is semidet.
-
-find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
-    N = construct.num_functors(Type),
-    find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
-
-:- pred find_functor_2(type_desc::in, string::in, int::in,
-    int::in, int::out, list(type_desc)::out) is semidet.
-
-find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
-    Num >= 0,
-    Num1 = Num - 1,
-    ( get_functor(TypeInfo, Num1, Functor, Arity, ArgPseudoTypes) ->
-        ArgTypes = list.map(ground_pseudo_type_desc_to_type_desc_det,
-            ArgPseudoTypes),
-        FunctorNumber = Num1
-    ;
-        find_functor_2(TypeInfo, Functor, Arity, Num1, FunctorNumber, ArgTypes)
-    ).
-
 det_term_to_type(Term, X) :-
     ( term_to_type(Term, X1) ->
         X = X1
@@ -751,10 +730,6 @@ univ_to_term_special_case("array", "array", [ElemType], Univ, Context, Term) :-
     det_univ_to_type(Univ, Array),
     array.to_list(Array, List),
     type_to_term(List, ArgsTerm).
-
-:- pred same_type(T::unused, T::unused) is det.
-
-same_type(_, _).
 
 :- pred univ_list_to_term_list(list(univ)::in, list(term(T))::out) is det.
 
