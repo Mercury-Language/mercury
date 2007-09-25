@@ -540,8 +540,8 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         MakeUnamedField = (func(ArgType) = ctor_arg(no, ArgType, Context)),
         CtorArgs = list.map(MakeUnamedField, TupleArgTypes),
 
-        Ctor = ctor(ExistQVars,
-                ClassConstraints, CtorSymName, CtorArgs, Context),
+        Ctor = ctor(ExistQVars, ClassConstraints, CtorSymName, CtorArgs,
+            Context),
 
         CtorSymName = unqualified("{}"),
         ConsId = cons(CtorSymName, TupleArity),
@@ -549,10 +549,11 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         UnifyPred = no,
         IsEnum = not_enum_or_dummy,
         IsForeign = no,
-        ReservedTag = no,
+        ReservedTag = does_not_use_reserved_tag,
+        ReservedAddr = does_not_use_reserved_address,
         IsForeign = no,
         TypeBody = hlds_du_type([Ctor], ConsTagValues, IsEnum, UnifyPred,
-            ReservedTag, IsForeign),
+            ReservedTag, ReservedAddr, IsForeign),
         construct_type(TypeCtor, TupleArgTypes, Type),
 
         term.context_init(Context)
@@ -778,10 +779,10 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
             Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _, _),
             (
-                ( EnumDummy = is_foreign_enum(_)
-                ; EnumDummy = is_enum
+                ( EnumDummy = is_mercury_enum
+                ; EnumDummy = is_foreign_enum(_)
                 ),
                 make_simple_test(X, Y, umc_explicit, [], Goal),
                 quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
@@ -986,13 +987,13 @@ generate_index_proc_body(TypeBody, X, Index, Context, Clause, !Info) :-
             "trying to create index proc for non-canonical type")
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _, _),
             (
                 % For enum types, the generated comparison predicate performs
                 % an integer comparison, and does not call the type's index
                 % predicate, so do not generate an index predicate for such
                 % types.
-                EnumDummy = is_enum,
+                EnumDummy = is_mercury_enum,
                 unexpected(this_file,
                     "trying to create index proc for enum type")
             ;
@@ -1052,9 +1053,9 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             Res, X, Y, Context, Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors0, _, EnumDummy, _, _, _),
+            TypeBody = hlds_du_type(Ctors0, _, EnumDummy, _, _, _, _),
             (
-                ( EnumDummy = is_enum
+                ( EnumDummy = is_mercury_enum
                 ; EnumDummy = is_foreign_enum(_)
                 ),
                 generate_enum_compare_proc_body(Res, X, Y, Context, Clause,

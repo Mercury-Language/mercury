@@ -1272,6 +1272,14 @@
     %
 :- type existq_tvars    ==  list(tvar).
 
+:- type uses_reserved_tag
+    --->    uses_reserved_tag
+    ;       does_not_use_reserved_tag.
+
+:- type uses_reserved_address
+    --->    uses_reserved_address
+    ;       does_not_use_reserved_address.
+
     % Types may have arbitrary assertions associated with them
     % (e.g. you can define a type which represents sorted lists).
     % Similarly, pred declarations can have assertions attached.

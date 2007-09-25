@@ -972,11 +972,10 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
             TypeBody0 = hlds_du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
-                ReservedTag, MaybeForeign0),
+                ReservedTag, ReservedAddr, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
-            %
             % Note that we don't resolve overloading for the definitions
             % which won't be used on this back-end, because their unification
             % and comparison predicates have not been typechecked. They are
@@ -984,7 +983,9 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
             % against a workspace for the other definitions to be present
             % (e.g. when testing compiling a module to IL when the workspace
             % was compiled to C).
-            %
+            % XXX The above sentence doesn't make sense, and never did
+            % (even in the first CVS version in which it appears).
+
             (
                 MaybeForeign0 = yes(ForeignTypeBody0),
                 have_foreign_type_for_backend(Target, ForeignTypeBody0, yes)
@@ -1002,7 +1003,7 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
                 MaybeForeign = MaybeForeign0
             ),
             TypeBody = hlds_du_type(Ctors, Tags, Enum, MaybeUserEqComp,
-                ReservedTag, MaybeForeign),
+                ReservedTag, ReservedAddr, MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
@@ -1267,7 +1268,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     TypeCtor = type_ctor(Name, Arity),
     (
-        Body = hlds_du_type(Ctors, _, _, MaybeUserEqComp, _, _),
+        Body = hlds_du_type(Ctors, _, _, MaybeUserEqComp, _, _, _),
         TypeBody = parse_tree_du_type(Ctors, MaybeUserEqComp)
     ;
         Body = hlds_eqv_type(EqvType),
@@ -1349,7 +1350,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     ),
     (
         ReservedTag = Body ^ du_type_reserved_tag,
-        ReservedTag = yes
+        ReservedTag = uses_reserved_tag
     ->
         % The pragma_origin doesn't matter here.
         mercury_output_item(item_pragma(user, pragma_reserve_tag(Name, Arity)),
@@ -1358,7 +1359,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         true
     ),
     (
-        Body = hlds_du_type(_, ConsTagVals, EnumOrDummy, _, _, _),
+        Body = hlds_du_type(_, ConsTagVals, EnumOrDummy, _, _, _, _),
         EnumOrDummy = is_foreign_enum(Lang)
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [], 

@@ -3313,10 +3313,10 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
     io::di, io::uo) is det.
 
 write_type_body(Indent, TVarSet, hlds_du_type(Ctors, Tags, EnumDummy,
-        MaybeUserEqComp, ReservedTag, Foreign), !IO) :-
+        MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign), !IO) :-
     io.write_string(" --->\n", !IO),
     (
-        EnumDummy = is_enum,
+        EnumDummy = is_mercury_enum,
         write_indent(Indent, !IO),
         io.write_string("/* enumeration */\n", !IO)
     ;
@@ -3333,11 +3333,18 @@ write_type_body(Indent, TVarSet, hlds_du_type(Ctors, Tags, EnumDummy,
         EnumDummy = not_enum_or_dummy
     ),
     (
-        ReservedTag = yes,
+        ReservedTag = uses_reserved_tag,
         write_indent(Indent, !IO),
         io.write_string("/* reserved_tag */\n", !IO)
     ;
-        ReservedTag = no
+        ReservedTag = does_not_use_reserved_tag
+    ),
+    (
+        ReservedAddr = uses_reserved_address,
+        write_indent(Indent, !IO),
+        io.write_string("/* reserved_address */\n", !IO)
+    ;
+        ReservedAddr = does_not_use_reserved_address
     ),
     write_constructors(Indent, TVarSet, Ctors, Tags, !IO),
     mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),

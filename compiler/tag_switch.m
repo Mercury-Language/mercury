@@ -576,10 +576,10 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
         string.int_to_string(LowRangeEnd, LowEndStr),
         string.int_to_string(HighRangeStart, HighStartStr),
         string.int_to_string(MaxPtag, HighEndStr),
-        string.append_list(["fallthrough for ptags ",
-            LowStartStr, " to ", LowEndStr], IfComment),
-        string.append_list(["code for ptags ", HighStartStr,
-            " to ", HighEndStr], LabelComment),
+        IfComment = "fallthrough for ptags " ++ LowStartStr ++
+            " to " ++ LowEndStr,
+        LabelComment = "code for ptags " ++ HighStartStr ++
+            " to " ++ HighEndStr,
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, PtagRval, LowRangeEndConst),
         IfCode = node([

@@ -1297,7 +1297,7 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
 check_ctor_constraints(TypeTable, TypeCtor, !ModuleInfo, !Specs) :-
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, Body),
-    ( Body = hlds_du_type(Ctors, _, _, _, _, _) ->
+    ( Body = hlds_du_type(Ctors, _, _, _, _, _, _) ->
         list.foldl2(check_ctor_type_ambiguities(TypeCtor, TypeDefn), Ctors,
             !ModuleInfo, !Specs)
     ;

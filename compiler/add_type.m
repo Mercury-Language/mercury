@@ -89,7 +89,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         (
             Body0 = hlds_abstract_type(_)
         ;
-            Body0 = hlds_du_type(_, _, _, _, _, _),
+            Body0 = hlds_du_type(_, _, _, _, _, _, _),
             string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then
             % we need to treat it as abstract.  The constructors
@@ -364,7 +364,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
     get_type_defn_need_qualifier(TypeDefn, NeedQual),
     module_info_get_globals(!.ModuleInfo, Globals),
     (
-        Body = hlds_du_type(ConsList, _, _, UserEqCmp, ReservedTag, _),
+        Body = hlds_du_type(ConsList, _, _, UserEqCmp, ReservedTag, _, _),
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
@@ -493,7 +493,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
         Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
     ).
 merge_foreign_type_bodies(Target, MakeOptInterface,
-        Body0 @ hlds_du_type(_, _, _, _, _, _),
+        Body0 @ hlds_du_type(_, _, _, _, _, _, _),
         Body1 @ hlds_foreign_type(_), Body) :-
     merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
 merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
@@ -608,13 +608,13 @@ convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
     % `:- pragma reserve_tag' declaration for this type.
     % (If it turns out that there was one, then we will recompute the
     % constructor tags by calling assign_constructor_tags again,
-    % with ReservedTagPragma = yes, when processing the pragma.)
-    ReservedTagPragma = no,
+    % with ReservedTagPragma = uses_reserved_tag, when processing the pragma.)
+    ReservedTagPragma = does_not_use_reserved_tag,
     assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor, ReservedTagPragma,
-        Globals, CtorTags, IsEnum),
+        Globals, CtorTags, ReservedAddr, IsEnum),
     IsForeign = no,
     HLDSBody = hlds_du_type(Body, CtorTags, IsEnum, MaybeUserEqComp,
-        ReservedTagPragma, IsForeign).
+        ReservedTagPragma, ReservedAddr, IsForeign).
 convert_type_defn(parse_tree_eqv_type(Body), _, _, hlds_eqv_type(Body)).
 convert_type_defn(parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         _, _, hlds_solver_type(SolverTypeDetails, MaybeUserEqComp)).

@@ -68,6 +68,7 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.tree.
@@ -78,9 +79,11 @@
 :- import_module ll_backend.tag_switch.
 :- import_module ll_backend.trace_gen.
 :- import_module ll_backend.unify_gen.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 
@@ -91,78 +94,95 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     % CanFail says whether the switch covers all cases.
 
     goal_info_get_store_map(GoalInfo, StoreMap),
-    SwitchCategory = determine_switch_category(!.CI, CaseVar),
     code_info.get_next_label(EndLabel, !CI),
     lookup_tags(!.CI, Cases, CaseVar, TaggedCases0),
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
     code_info.get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, smart_indexing, Indexing),
+
+    CaseVarType = code_info.variable_type(!.CI, CaseVar),
+    type_to_ctor_det(CaseVarType, CaseVarTypeCtor),
+    code_info.get_module_info(!.CI, ModuleInfo),
+    TypeCategory = classify_type(ModuleInfo, CaseVarType),
+    SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory),
     (
-        % Check for a switch on a type whose representation
-        % uses reserved addresses.
-        list.member(Case, TaggedCases),
-        Case = extended_case(_Priority, Tag, _ConsId, _Goal),
         (
-            Tag = reserved_address_tag(_)
+            Indexing = no
         ;
-            Tag = shared_with_reserved_addresses_tag(_, _)
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            % The search will fail for builtin types.
+            map.search(TypeTable, CaseVarTypeCtor, CaseVarTypeDefn),
+            hlds_data.get_type_defn_body(CaseVarTypeDefn, CaseVarTypeBody),
+            CaseVarTypeBody ^ du_type_reserved_addr = uses_reserved_address
         )
     ->
-        % XXX This may be be inefficient in some cases.
+        % XXX If the type uses reserved addresses, we should try to generate
+        % code that uses the other indexing mechanisms *after* testing for the
+        % reserved addresses.
         generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail, GoalInfo,
             EndLabel, no, MaybeEnd, Code, !CI)
     ;
-        Indexing = yes,
-        SwitchCategory = atomic_switch,
-        code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
-        MaybeTraceInfo = no,
-        list.length(TaggedCases, NumCases),
-        globals.lookup_int_option(Globals, lookup_switch_size, LookupSize),
-        NumCases >= LookupSize,
-        globals.lookup_int_option(Globals, lookup_switch_req_density,
-            ReqDensity),
-        is_lookup_switch(CaseVar, TaggedCases, GoalInfo, CanFail, ReqDensity,
-            StoreMap, no, MaybeEndPrime, CodeModel, LookupSwitchInfo, !CI)
-    ->
-        MaybeEnd = MaybeEndPrime,
-        generate_lookup_switch(CaseVar, StoreMap, no, LookupSwitchInfo, Code,
-            !CI)
-    ;
-        Indexing = yes,
-        SwitchCategory = atomic_switch,
-        list.length(TaggedCases, NumCases),
-        globals.lookup_int_option(Globals, dense_switch_size, DenseSize),
-        NumCases >= DenseSize,
-        globals.lookup_int_option(Globals, dense_switch_req_density,
-            ReqDensity),
-        cases_list_is_dense_switch(!.CI, CaseVar, TaggedCases, CanFail,
-            ReqDensity, FirstVal, LastVal, CanFail1)
-    ->
-        generate_dense_switch(TaggedCases, FirstVal, LastVal, CaseVar,
-            CodeModel, CanFail1, GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
-    ;
-        Indexing = yes,
-        SwitchCategory = string_switch,
-        list.length(TaggedCases, NumCases),
-        globals.lookup_int_option(Globals, string_switch_size, StringSize),
-        NumCases >= StringSize
-    ->
-        generate_string_switch(TaggedCases, CaseVar, CodeModel, CanFail,
-            GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
-    ;
-        Indexing = yes,
-        SwitchCategory = tag_switch,
-        list.length(TaggedCases, NumCases),
-        globals.lookup_int_option(Globals, tag_switch_size, TagSize),
-        NumCases >= TagSize
-    ->
-        generate_tag_switch(TaggedCases, CaseVar, CodeModel, CanFail,
-            GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
-    ;
-        % To generate a switch, first we flush the variable on whose tag
-        % we are going to switch, then we generate the cases for the switch.
-        generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail, GoalInfo,
-            EndLabel, no, MaybeEnd, Code, !CI)
+        (
+            SwitchCategory = atomic_switch,
+            list.length(TaggedCases, NumCases),
+            (
+                code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+                MaybeTraceInfo = no,
+                globals.lookup_int_option(Globals, lookup_switch_size,
+                    LookupSize),
+                NumCases >= LookupSize,
+                globals.lookup_int_option(Globals, lookup_switch_req_density,
+                    ReqDensity),
+                is_lookup_switch(CaseVar, TaggedCases, GoalInfo, CanFail,
+                    ReqDensity, StoreMap, no, MaybeEndPrime, CodeModel,
+                    LookupSwitchInfo, !CI)
+            ->
+                MaybeEnd = MaybeEndPrime,
+                generate_lookup_switch(CaseVar, StoreMap, no, LookupSwitchInfo,
+                    Code, !CI)
+            ;
+                globals.lookup_int_option(Globals, dense_switch_size,
+                    DenseSize),
+                NumCases >= DenseSize,
+                globals.lookup_int_option(Globals, dense_switch_req_density,
+                    ReqDensity),
+                cases_list_is_dense_switch(!.CI, CaseVar, TaggedCases, CanFail,
+                    ReqDensity, FirstVal, LastVal, CanFail1)
+            ->
+                generate_dense_switch(TaggedCases, FirstVal, LastVal, CaseVar,
+                    CodeModel, CanFail1, GoalInfo, EndLabel, no, MaybeEnd,
+                    Code, !CI)
+            ;
+                generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail,
+                    GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
+            )
+        ;
+            SwitchCategory = string_switch,
+            list.length(TaggedCases, NumCases),
+            globals.lookup_int_option(Globals, string_switch_size, StringSize),
+            ( NumCases >= StringSize ->
+                generate_string_switch(TaggedCases, CaseVar, CodeModel,
+                    CanFail, GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
+            ;
+                generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail,
+                    GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
+            )
+        ;
+            SwitchCategory = tag_switch,
+            list.length(TaggedCases, NumCases),
+            globals.lookup_int_option(Globals, tag_switch_size, TagSize),
+            ( NumCases >= TagSize ->
+                generate_tag_switch(TaggedCases, CaseVar, CodeModel, CanFail,
+                    GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
+            ;
+                generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail,
+                    GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
+            )
+        ;
+            SwitchCategory = other_switch,
+            generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail,
+                GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
+        )
     ),
     code_info.after_all_branches(StoreMap, MaybeEnd, !CI).
 

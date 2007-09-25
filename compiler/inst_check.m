@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -291,7 +291,7 @@ strip_qualifiers(qualified(_, Name)) = unqualified(Name).
 get_du_functors_for_type_def(TypeDef) = Functors :-
     get_type_defn_body(TypeDef, TypeDefBody),
     (
-        TypeDefBody = hlds_du_type(Constructors, _, _, _, _, _),
+        TypeDefBody = hlds_du_type(Constructors, _, _, _, _, _, _),
         Functors = list.map(constructor_to_sym_name_and_arity, Constructors)
     ;
         ( TypeDefBody = hlds_eqv_type(_)

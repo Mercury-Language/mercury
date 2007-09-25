@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,14 +114,7 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
     ->
         Tag = single_functor_tag
     ;
-        % Use the type to determine the type_ctor.
-        ( type_to_ctor_and_args(Type, TypeCtor0, _) ->
-            TypeCtor = TypeCtor0
-        ;
-            % The type-checker should ensure that this never happens.
-            unexpected(this_file, "cons_id_to_tag: invalid type")
-        ),
-
+        type_to_ctor_det(Type, TypeCtor),
         % Given the type_ctor, lookup up the constructor tag table
         % for that type.
         module_info_get_type_table(ModuleInfo, TypeTable),

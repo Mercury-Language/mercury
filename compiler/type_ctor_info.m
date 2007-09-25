@@ -361,7 +361,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             Details = eqv(MaybePseudoTypeInfo)
         ;
             TypeBody = hlds_du_type(Ctors, ConsTagMap, EnumDummy,
-                MaybeUserEqComp, ReservedTag, _),
+                MaybeUserEqComp, ReservedTag, ReservedAddr, _),
             (
                 MaybeUserEqComp = yes(_),
                 EqualityAxioms = user_defined
@@ -370,8 +370,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 EqualityAxioms = standard
             ),
             (
-                EnumDummy = is_enum,
-                make_enum_details(Ctors, ConsTagMap, ReservedTag,
+                EnumDummy = is_mercury_enum,
+                make_mercury_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
                 EnumDummy = is_foreign_enum(Lang),
@@ -379,7 +379,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                     EqualityAxioms, Details)
             ;
                 EnumDummy = is_dummy,
-                make_enum_details(Ctors, ConsTagMap, ReservedTag,
+                make_mercury_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
                 EnumDummy = not_enum_or_dummy,
@@ -392,19 +392,20 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                         EqualityAxioms, Details)
                 ;
                     make_du_details(Ctors, ConsTagMap, TypeArity,
-                        EqualityAxioms, ModuleInfo, Details)
+                        EqualityAxioms, ReservedAddr, ModuleInfo, Details)
                 )
             )
         )
     ),
     some [!Flags] (
         !:Flags = set.init,
-        ( TypeBody = hlds_du_type(_, _, _, _, _, _) ->
+        ( TypeBody = hlds_du_type(_, _, _, _, BodyReservedTag, _, _) ->
             svset.insert(kind_of_du_flag, !Flags),
-            ( TypeBody ^ du_type_reserved_tag = yes -> 
+            (
+                BodyReservedTag = uses_reserved_tag,
                 svset.insert(reserve_tag_flag, !Flags)
             ;
-                true
+                BodyReservedTag = does_not_use_reserved_tag
             )
         ;
             true
@@ -569,15 +570,16 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
 
     % Make the functor and layout tables for an enum type.
     %
-:- pred make_enum_details(list(constructor)::in, cons_tag_values::in, bool::in,
-    equality_axioms::in, type_ctor_details::out) is det.
+:- pred make_mercury_enum_details(list(constructor)::in, cons_tag_values::in,
+    uses_reserved_tag::in, equality_axioms::in, type_ctor_details::out) is det.
 
-make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
+make_mercury_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
+        Details) :-
     (
-        ReserveTag = yes,
+        ReserveTag = uses_reserved_tag,
         unexpected(this_file, "enum with reserved tag")
     ;
-        ReserveTag = no
+        ReserveTag = does_not_use_reserved_tag
     ),
     make_enum_functors(Ctors, 0, ConsTagMap, EnumFunctors),
     ValueMap0 = map.init,
@@ -591,7 +593,7 @@ make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
     ),
     FunctorNumberMap = make_functor_number_map(Ctors),
     Details = enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap, IsDummy,
-                    FunctorNumberMap).
+        FunctorNumberMap).
 
     % Create an enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
@@ -637,16 +639,16 @@ make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     % Make the functor and layout tables for a foreign enum type.
     %
 :- pred make_foreign_enum_details(foreign_language::in, list(constructor)::in,
-    cons_tag_values::in, bool::in, equality_axioms::in,
+    cons_tag_values::in, uses_reserved_tag::in, equality_axioms::in,
     type_ctor_details::out) is det.
 
 make_foreign_enum_details(Lang, Ctors, ConsTagMap, ReserveTag, EqualityAxioms,
         Details) :-
     (
-        ReserveTag = yes,
+        ReserveTag = uses_reserved_tag,
         unexpected(this_file, "foreign enum with reserved tag")
     ;
-        ReserveTag = no
+        ReserveTag = does_not_use_reserved_tag
     ),
     make_foreign_enum_functors(Lang, Ctors, 0, ConsTagMap,
         ForeignEnumFunctors),
@@ -729,10 +731,11 @@ is_reserved_functor(res_func(ResFunctor)) = ResFunctor.
     % (including reserved_addr types).
     %
 :- pred make_du_details(list(constructor)::in, cons_tag_values::in, int::in,
-    equality_axioms::in, module_info::in, type_ctor_details::out) is det.
+    equality_axioms::in, uses_reserved_address::in, module_info::in,
+    type_ctor_details::out) is det.
 
-make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ModuleInfo,
-        Details) :-
+make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ReservedAddr,
+        ModuleInfo, Details) :-
     make_maybe_res_functors(Ctors, 0, ConsTagMap, TypeArity, ModuleInfo,
         MaybeResFunctors),
     DuFunctors = list.filter_map(is_du_functor, MaybeResFunctors),
@@ -742,12 +745,16 @@ make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ModuleInfo,
     FunctorNumberMap = make_functor_number_map(Ctors),
     (
         ResFunctors = [],
+        expect(unify(ReservedAddr, does_not_use_reserved_address), this_file,
+            "make_du_details: ReservedAddr is not does_not_use_reserved_addr"),
         list.foldl(make_du_name_ordered_table, DuFunctors,
             map.init, DuNameOrderedMap),
         Details = du(EqualityAxioms, DuFunctors, DuPtagTable, DuNameOrderedMap,
-                        FunctorNumberMap)
+            FunctorNumberMap)
     ;
         ResFunctors = [_ | _],
+        expect(unify(ReservedAddr, uses_reserved_address), this_file,
+            "make_du_details: ReservedAddr is not uses_reserved_addr"),
         list.foldl(make_res_name_ordered_table, MaybeResFunctors,
             map.init, ResNameOrderedMap),
         Details = reserved(EqualityAxioms, MaybeResFunctors,

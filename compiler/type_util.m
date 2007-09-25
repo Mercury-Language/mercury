@@ -389,7 +389,7 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -451,7 +451,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -575,7 +575,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     ; Name = "typeclass_info"
     ; Name = "base_typeclass_info"
     ),
-    \+ ( Body = hlds_du_type(_, _, _, _, _, yes(_))
+    \+ ( Body = hlds_du_type(_, _, _, _, _, _, yes(_))
        ; Body = hlds_foreign_type(_)
        ; Body = hlds_solver_type(_, _)
        ).
@@ -640,35 +640,19 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
             TypeCategory = type_cat_higher_order
         ; type_ctor_is_tuple(TypeCtor) ->
             TypeCategory = type_cat_tuple
-        ; type_ctor_is_enumeration(TypeCtor, ModuleInfo) ->
-            TypeCategory = type_cat_enum
-        ; type_ctor_is_foreign_enumeration(TypeCtor, ModuleInfo) ->
-            TypeCategory = type_cat_foreign_enum
         ;
-            TypeCategory = type_cat_user_ctor
+            module_info_get_type_table(ModuleInfo, TypeDefnTable),
+            map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            ( TypeBody ^ du_type_is_enum = is_mercury_enum ->
+                TypeCategory = type_cat_enum
+            ; TypeBody ^ du_type_is_enum = is_foreign_enum(_) ->
+                TypeCategory = type_cat_foreign_enum
+            ;
+                TypeCategory = type_cat_user_ctor
+            )
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_ctor_is_enumeration(type_ctor::in, module_info::in) is semidet.
-
-type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
-    module_info_get_type_table(ModuleInfo, TypeDefnTable),
-    map.search(TypeDefnTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody ^ du_type_is_enum = is_enum.
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_ctor_is_foreign_enumeration(type_ctor::in, module_info::in)
-    is semidet.
-
-type_ctor_is_foreign_enumeration(TypeCtor, ModuleInfo) :-
-    module_info_get_type_table(ModuleInfo, TypeDefnTable),
-    map.search(TypeDefnTable, TypeCtor, TypeDefn),
-    get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody ^ du_type_is_enum = is_foreign_enum(_).
 
 %-----------------------------------------------------------------------------%
 

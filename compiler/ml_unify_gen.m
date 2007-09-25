@@ -1793,7 +1793,9 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     TypeDefn = map.lookup(TypeTable, TypeCtor),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    ( TypeDefnBody = hlds_du_type(Ctors, TagValues, _, _, _ReservedTag, _) ->
+    (
+        TypeDefnBody = hlds_du_type(Ctors, TagValues, _, _, _ReservedTag, _, _)
+    ->
         % XXX we probably shouldn't ignore ReservedTag here
         (
             some [Ctor] (

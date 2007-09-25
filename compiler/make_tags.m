@@ -63,7 +63,6 @@
 :- import_module libs.globals.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 
@@ -71,13 +70,15 @@
     %   ReservedTagPragma, Globals, TagValues, IsEnum):
     %
     % Assign a constructor tag to each constructor for a discriminated union
-    % type, and determine whether the type is an enumeration type or not.
+    % type, and determine whether (a) the type representation uses reserved
+    % addresses, and (b) the type is an enumeration or dummy type.
     % (`Globals' is passed because exact way in which this is done is
     % dependent on a compilation option.)
     %
 :- pred assign_constructor_tags(list(constructor)::in,
-    maybe(unify_compare)::in, type_ctor::in, bool::in,
-    globals::in, cons_tag_values::out, enum_or_dummy::out) is det.
+    maybe(unify_compare)::in, type_ctor::in, uses_reserved_tag::in,
+    globals::in, cons_tag_values::out,
+    uses_reserved_address::out, enum_or_dummy::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -90,6 +91,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module svmap.
@@ -97,7 +99,7 @@
 %-----------------------------------------------------------------------------%
 
 assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
-        CtorTags, EnumDummy) :-
+        CtorTags, ReservedAddr, EnumDummy) :-
 
     % Work out how many tag bits and reserved addresses we've got to play with.
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
@@ -110,10 +112,10 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
     % Determine if we need to reserve a tag for use by HAL's Herbrand
     % constraint solver. (This also disables enumerations and no_tag types.)
     (
-        ReservedTagPragma = yes,
+        ReservedTagPragma = uses_reserved_tag,
         InitTag = 1
     ;
-        ReservedTagPragma = no,
+        ReservedTagPragma = does_not_use_reserved_tag,
         InitTag = 0
     ),
 
@@ -124,14 +126,15 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         % must be constant, and we must be allowed to make unboxed enums.
         globals.lookup_bool_option(Globals, unboxed_enums, yes),
         ctors_are_all_constants(Ctors),
-        ReservedTagPragma = no
+        ReservedTagPragma = does_not_use_reserved_tag
     ->
         ( Ctors = [_] ->
             EnumDummy = is_dummy
         ;
-            EnumDummy = is_enum
+            EnumDummy = is_mercury_enum
         ),
-        assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags)
+        assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags),
+        ReservedAddr = does_not_use_reserved_address
     ;
         EnumDummy = not_enum_or_dummy,
         (
@@ -141,33 +144,37 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         ->
             SingleConsId = make_cons_id_from_qualified_sym_name(SingleFunc,
                 [SingleArg]),
-            map.set(CtorTags0, SingleConsId, no_tag, CtorTags)
+            map.set(CtorTags0, SingleConsId, no_tag, CtorTags),
+            ReservedAddr = does_not_use_reserved_address
         ;
             NumTagBits = 0
         ->
             (
-                ReservedTagPragma = yes,
+                ReservedTagPragma = uses_reserved_tag,
                 % XXX Need to fix this.
                 % This occurs for the .NET and Java backends.
                 sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
             ;
-                ReservedTagPragma = no
+                ReservedTagPragma = does_not_use_reserved_tag
             ),
             % Assign reserved addresses to the constants, if possible.
             separate_out_constants(Ctors, Constants, Functors),
             assign_reserved_numeric_addresses(Constants, LeftOverConstants0,
-                CtorTags0, CtorTags1, 0, NumReservedAddresses),
+                CtorTags0, CtorTags1, 0, NumReservedAddresses,
+                does_not_use_reserved_address, ReservedAddr1),
             (
                 HighLevelCode = yes,
                 assign_reserved_symbolic_addresses(
                     LeftOverConstants0, LeftOverConstants, TypeCtor,
-                    CtorTags1, CtorTags2, 0, NumReservedObjects)
+                    CtorTags1, CtorTags2, 0, NumReservedObjects,
+                    ReservedAddr1, ReservedAddr)
             ;
                 HighLevelCode = no,
                 % Reserved symbolic addresses are not supported for the
                 % LLDS back-end.
                 LeftOverConstants = LeftOverConstants0,
-                CtorTags2 = CtorTags1
+                CtorTags2 = CtorTags1,
+                ReservedAddr = ReservedAddr1
             ),
             % Assign shared_with_reserved_address(...) representations
             % for the remaining constructors.
@@ -183,7 +190,8 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
             assign_constant_tags(Constants, CtorTags0, CtorTags1,
                 InitTag, NextTag),
             assign_unshared_tags(Functors, NextTag, MaxTag, [],
-                CtorTags1, CtorTags)
+                CtorTags1, CtorTags),
+            ReservedAddr = does_not_use_reserved_address
         )
     ).
 
@@ -204,11 +212,12 @@ assign_enum_constants([Ctor | Rest], Val, !CtorTags) :-
     %
 :- pred assign_reserved_numeric_addresses(
     list(constructor)::in, list(constructor)::out,
-    cons_tag_values::in, cons_tag_values::out, int::in, int::in) is det.
+    cons_tag_values::in, cons_tag_values::out, int::in, int::in,
+    uses_reserved_address::in, uses_reserved_address::out) is det.
 
-assign_reserved_numeric_addresses([], [], !CtorTags, _, _).
+assign_reserved_numeric_addresses([], [], !CtorTags, _, _, !ReservedAddr).
 assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
-        !CtorTags, Address, NumReservedAddresses) :-
+        !CtorTags, Address, NumReservedAddresses, !ReservedAddr) :-
     ( Address >= NumReservedAddresses ->
         LeftOverConstants = [Ctor | Rest]
     ;
@@ -220,8 +229,9 @@ assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
             Tag = reserved_address_tag(small_pointer(Address))
         ),
         svmap.set(ConsId, Tag, !CtorTags),
+        !:ReservedAddr = uses_reserved_address,
         assign_reserved_numeric_addresses(Rest, LeftOverConstants,
-            !CtorTags, Address + 1, NumReservedAddresses)
+            !CtorTags, Address + 1, NumReservedAddresses, !ReservedAddr)
     ).
 
     % Assign reserved_object(CtorName, CtorArity) representations
@@ -229,11 +239,12 @@ assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
     %
 :- pred assign_reserved_symbolic_addresses(
     list(constructor)::in, list(constructor)::out, type_ctor::in,
-    cons_tag_values::in, cons_tag_values::out, int::in, int::in) is det.
+    cons_tag_values::in, cons_tag_values::out, int::in, int::in,
+    uses_reserved_address::in, uses_reserved_address::out) is det.
 
-assign_reserved_symbolic_addresses([], [], _, !CtorTags, _, _).
+assign_reserved_symbolic_addresses([], [], _, !CtorTags, _, _, !ReservedAddr).
 assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
-        !CtorTags, Num, Max) :-
+        !CtorTags, Num, Max, !ReservedAddr) :-
     ( Num >= Max ->
         LeftOverConstants = [Ctor | Ctors]
     ;
@@ -242,8 +253,9 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
         Tag = reserved_address_tag(reserved_object(TypeCtor, Name, Arity)),
         ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
         svmap.set(ConsId, Tag, !CtorTags),
+        !:ReservedAddr = uses_reserved_address,
         assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
-            TypeCtor, !CtorTags, Num + 1, Max)
+            TypeCtor, !CtorTags, Num + 1, Max, !ReservedAddr)
     ).
 
 :- pred assign_constant_tags(list(constructor)::in, cons_tag_values::in,

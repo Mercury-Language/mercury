@@ -173,7 +173,10 @@
                 du_type_usereq          :: maybe(unify_compare),
 
                 % Is there a `:- pragma reserve_tag' pragma for this type?
-                du_type_reserved_tag    :: bool,
+                du_type_reserved_tag    :: uses_reserved_tag,
+
+                % Does the type representation use a reserved address?
+                du_type_reserved_addr   :: uses_reserved_address,
 
                 % Are there `:- pragma foreign' type declarations for
                 % this type?
@@ -185,9 +188,9 @@
     ;       hlds_abstract_type(is_solver_type).
 
 :- type enum_or_dummy
-    --->    is_enum
-    ;       is_dummy
+    --->    is_mercury_enum
     ;       is_foreign_enum(foreign_language)
+    ;       is_dummy
     ;       not_enum_or_dummy.
 
 :- type foreign_type_body

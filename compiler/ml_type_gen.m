@@ -154,12 +154,12 @@ ml_gen_type_2(hlds_eqv_type(_EqvType), _, _, _, !Defns).
     % For a description of the problems with equivalence types,
     % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
 ml_gen_type_2(hlds_du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
-        _ReservedTag, _), ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
+        _ReservedTag, _, _), ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     % XXX we probably shouldn't ignore _ReservedTag
     ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
     (
-        ( EnumDummy = is_foreign_enum(_)
-        ; EnumDummy = is_enum
+        ( EnumDummy = is_mercury_enum
+        ; EnumDummy = is_foreign_enum(_)
         ),
         ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
             MaybeEqualityMembers, !Defns)
@@ -1057,7 +1057,7 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         unexpected(this_file, "ml_gen_exported_enum - invalid type (2).")
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _IsEnumOrDummy, _MaybeUserEq,
-            _ReservedTag, _IsForeignType),
+            _ReservedTag, _ReservedAddr, _IsForeignType),
         list.foldl(generate_foreign_enum_constant(Mapping, TagValues),
             Ctors, [], NamesAndTags),
         MLDS_ExportedEnum = mlds_exported_enum(Lang, Context,

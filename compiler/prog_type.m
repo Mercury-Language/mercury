@@ -378,8 +378,8 @@
     % reserving a tag, or if it is one of the dummy types).
     %
 :- pred type_with_constructors_should_be_no_tag(globals::in, type_ctor::in,
-    bool::in, list(constructor)::in, maybe(unify_compare)::in, sym_name::out,
-    mer_type::out, maybe(string)::out) is semidet.
+    uses_reserved_tag::in, list(constructor)::in, maybe(unify_compare)::in,
+    sym_name::out, mer_type::out, maybe(string)::out) is semidet.
 
     % Unify (with occurs check) two types with respect to a type substitution
     % and update the type bindings. The third argument is a list of type
@@ -1033,7 +1033,7 @@ type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
     type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg,
         MaybeArgName),
     (
-        ReserveTagPragma = no,
+        ReserveTagPragma = does_not_use_reserved_tag,
         globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes)
     ;
         % Dummy types always need to be treated as no-tag types as the

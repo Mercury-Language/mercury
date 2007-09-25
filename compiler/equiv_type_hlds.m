@@ -143,7 +143,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     equiv_type.maybe_record_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, _, _, _, _, _),
+        Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _),
         equiv_type.replace_in_ctors(EqvMap, Ctors0, Ctors,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = Body0 ^ du_type_ctors := Ctors

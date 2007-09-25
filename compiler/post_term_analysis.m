@@ -211,7 +211,7 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
     unify_compare::out) is semidet.
 
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
-    TypeBody = hlds_du_type(_, _, _, yes(UnifyCompare), _, _).
+    TypeBody = hlds_du_type(_, _, _, yes(UnifyCompare), _, _, _).
 get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
     TypeBody = hlds_foreign_type(ForeignTypeBody),
     foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
