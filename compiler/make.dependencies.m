@@ -209,6 +209,7 @@ target_dependencies(_, module_target_erlang_beam_code) =
         module_target_erlang_code `of` self,
         % The `.erl' file will -include the header files of imported modules.
         module_target_erlang_header `of` direct_imports,
+        module_target_erlang_header `of` indirect_imports,
         module_target_erlang_header `of` intermod_imports
     ]).
 target_dependencies(Globals, module_target_asm_code(_)) =
