@@ -141,16 +141,16 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         sorry(this_file, "nondet parallel conjunction not implemented")
     ),
 
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
     globals.lookup_int_option(Globals, sync_term_size, STSize),
 
     % When entering a parallel conjunctions at the shallowest level in
     % the procedure, we have to set the parent_sp register to the value
     % of the sp register, and restore it when the parallel conjunction
     % finishes.
-    code_info.get_par_conj_depth(!.CI, Depth),
+    get_par_conj_depth(!.CI, Depth),
     ( Depth = 0 ->
-        code_info.acquire_temp_slot(slot_lval(parent_sp),
+        acquire_temp_slot(slot_lval(parent_sp),
             non_persistent_temp_slot, ParentSpSlot, !CI),
         MaybeSetParentSpCode = node([
             llds_instr(assign(ParentSpSlot, lval(parent_sp)),
@@ -169,21 +169,20 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         MaybeReleaseParentSpSlot = no
     ),
 
-    code_info.get_known_variables(!.CI, Vars),
-    code_info.save_variables_on_stack(Vars, SaveCode, !CI),
+    get_known_variables(!.CI, Vars),
+    save_variables_on_stack(Vars, SaveCode, !CI),
 
     Nonlocals = goal_info_get_code_gen_nonlocals(GoalInfo),
     set.to_sorted_list(Nonlocals, Variables),
-    code_info.get_instmap(!.CI, Initial),
+    get_instmap(!.CI, Initial),
     Delta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(Initial, Delta, Final),
-    code_info.get_module_info(!.CI, ModuleInfo),
+    get_module_info(!.CI, ModuleInfo),
     find_outputs(Variables, Initial, Final, ModuleInfo, [], Outputs),
 
     list.length(Goals, NumGoals),
-    code_info.acquire_reg(reg_r, RegLval, !CI),
-    code_info.acquire_temp_slot(slot_sync_term, persistent_temp_slot, SyncSlot,
-        !CI),
+    acquire_reg(reg_r, RegLval, !CI),
+    acquire_temp_slot(slot_sync_term, persistent_temp_slot, SyncSlot, !CI),
     ( SyncSlot = stackvar(SlotNum) ->
         ParentSyncSlot = parent_stackvar(SlotNum)
     ;
@@ -200,14 +199,14 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         llds_instr(assign(SyncSlot, lval(RegLval)),
             "store the sync term on the stack")
     ]),
-    code_info.release_reg(RegLval, !CI),
+    release_reg(RegLval, !CI),
 
-    code_info.set_par_conj_depth(Depth+1, !CI),
-    code_info.get_next_label(EndLabel, !CI),
-    code_info.clear_all_registers(no, !CI),
+    set_par_conj_depth(Depth+1, !CI),
+    get_next_label(EndLabel, !CI),
+    clear_all_registers(no, !CI),
     generate_det_par_conj_2(Goals, ParentSyncSlot, EndLabel, Initial, no,
         GoalCode, !CI),
-    code_info.set_par_conj_depth(Depth, !CI),
+    set_par_conj_depth(Depth, !CI),
 
     EndLabelCode = node([
         llds_instr(label(EndLabel), "end of parallel conjunction")
@@ -240,18 +239,17 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % XXX release sync slots of nested parallel conjunctions
     %
     ( Depth = 0 ->
-        code_info.release_temp_slot(SyncSlot, persistent_temp_slot, !CI)
+        release_temp_slot(SyncSlot, persistent_temp_slot, !CI)
     ;
         true
     ),
     (
         MaybeReleaseParentSpSlot = yes(ParentSpSlot1),
-        code_info.release_temp_slot(ParentSpSlot1, non_persistent_temp_slot,
-            !CI)
+        release_temp_slot(ParentSpSlot1, non_persistent_temp_slot, !CI)
     ;
         MaybeReleaseParentSpSlot = no
     ),
-    code_info.clear_all_registers(no, !CI),
+    clear_all_registers(no, !CI),
     place_all_outputs(Outputs, !CI).
 
 :- pred generate_det_par_conj_2(list(hlds_goal)::in,
@@ -262,23 +260,22 @@ generate_det_par_conj_2([], _ParentSyncTerm, _EndLabel,
         _Initial, _, empty, !CI).
 generate_det_par_conj_2([Goal | Goals], ParentSyncTerm, EndLabel,
         Initial, MaybeEnd0, Code, !CI) :-
-    code_info.remember_position(!.CI, StartPos),
+    remember_position(!.CI, StartPos),
     code_gen.generate_goal(model_det, Goal, ThisGoalCode0, !CI),
     replace_stack_vars_by_parent_sv(ThisGoalCode0, ThisGoalCode),
 
-    code_info.get_stack_slots(!.CI, AllSlots),
-    code_info.get_known_variables(!.CI, Variables),
+    get_stack_slots(!.CI, AllSlots),
+    get_known_variables(!.CI, Variables),
     set.list_to_set(Variables, LiveVars),
     map.select(AllSlots, LiveVars, StoreMap0),
     StoreMap = map.map_values(key_stack_slot_to_abs_locn, StoreMap0),
-    code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-        SaveCode0, !CI),
+    generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode0, !CI),
     replace_stack_vars_by_parent_sv(SaveCode0, SaveCode),
 
     (
         Goals = [_ | _],
-        code_info.get_next_label(NextConjunct, !CI),
-        code_info.reset_to_position(StartPos, !CI),
+        get_next_label(NextConjunct, !CI),
+        reset_to_position(StartPos, !CI),
         ForkCode = node([
             llds_instr(fork(NextConjunct), "fork off a child")
         ]),
@@ -394,15 +391,15 @@ find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
 
 place_all_outputs([], !CI).
 place_all_outputs([Var | Vars], !CI) :-
-    code_info.variable_locations(!.CI, VarLocations),
-    code_info.get_variable_slot(!.CI, Var, Slot),
+    variable_locations(!.CI, VarLocations),
+    get_variable_slot(!.CI, Var, Slot),
     (
         map.search(VarLocations, Var, Locations),
         set.member(Slot, Locations)
     ->
         true
     ;
-        code_info.set_var_location(Var, Slot, !CI)
+        set_var_location(Var, Slot, !CI)
     ),
     place_all_outputs(Vars, !CI).
 

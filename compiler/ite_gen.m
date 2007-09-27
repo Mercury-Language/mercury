@@ -100,12 +100,12 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     % Make sure that the variables whose values will be needed on backtracking
     % to the else part are materialized into registers or stack slots.
     % Their locations are recorded in ResumeMap.
-    code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
     % Maybe save the heap state current before the condition.
-    % This is after code_info.produce_vars since code that
-    % flushes the cache may allocate memory we must not "recover".
-    code_info.get_globals(!.CI, Globals),
+    % This is after produce_vars since code that flushes the cache
+    % may allocate memory we must not "recover".
+    get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
         ReclaimOption),
     (
@@ -116,11 +116,11 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     ;
         ReclaimHeap = no
     ),
-    code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+    maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
     % Maybe save the current trail state before the condition.
-    % NOTE: This code should be kept up-to-date with the corresponding
-    % code for the MLDS backend in add_trail_ops.m.
+    % NOTE: This code should be kept up-to-date with the corresponding code
+    % for the MLDS backend in add_trail_ops.m.
     AddTrailOps = should_add_trail_ops(!.CI, IteGoalInfo),
     (
         AddTrailOps = do_not_add_trail_ops,
@@ -138,8 +138,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
             IteTrailOps = add_trail_ops
         )
     ),
-    code_info.maybe_save_ticket(IteTrailOps, SaveTicketCode, MaybeTicketSlot,
-        !CI),
+    maybe_save_ticket(IteTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
 
     % XXX Consider optimizing IteRegionOps like IteTrailOps.
     AddRegionOps = should_add_region_ops(!.CI, IteGoalInfo),
@@ -148,26 +147,23 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     maybe_create_ite_region_frame(IteRegionOps, CondInfo, ElseGoals,
         RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars, !CI),
 
-    code_info.remember_position(!.CI, BranchStart),
+    remember_position(!.CI, BranchStart),
 
-    code_info.prepare_for_ite_hijack(EffCodeModel, HijackInfo,
-        PrepareHijackCode, !CI),
+    prepare_for_ite_hijack(EffCodeModel, HijackInfo, PrepareHijackCode, !CI),
 
-    code_info.make_resume_point(ResumeVars, ResumeLocs, ResumeMap,
-        ResumePoint, !CI),
-    code_info.effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode,
-        !CI),
+    make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
+    effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode, !CI),
 
     % Generate the condition.
     maybe_generate_internal_event_code(CondGoal, IteGoalInfo, CondTraceCode,
         !CI),
-    code_gen.generate_goal(CondCodeModel, CondGoal, CondCode, !CI),
+    generate_goal(CondCodeModel, CondGoal, CondCode, !CI),
 
-    code_info.ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
+    ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
 
     % Kill again any variables that have become zombies.
-    code_info.pickup_zombies(Zombies, !CI),
-    code_info.make_vars_forward_dead(Zombies, !CI),
+    pickup_zombies(Zombies, !CI),
+    make_vars_forward_dead(Zombies, !CI),
 
     % Discard hp and prune trail ticket if the condition succeeded.
     (
@@ -179,56 +175,53 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         % since then which have not yet been pruned.
         %
         % We also cannot release RegionStackVars.
-        code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_solve,
+        maybe_reset_ticket(MaybeTicketSlot, reset_reason_solve,
             ResetTicketCode)
     ;
         ( CondCodeModel = model_det
         ; CondCodeModel = model_semi
         ),
-        code_info.maybe_release_hp(MaybeHpSlot, !CI),
-        code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+        maybe_release_hp(MaybeHpSlot, !CI),
+        maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
             reset_reason_commit, ResetTicketCode, !CI),
 
-        code_info.release_several_temp_slots(RegionStackVars,
-            non_persistent_temp_slot, !CI)
+        release_several_temp_slots(RegionStackVars, non_persistent_temp_slot,
+            !CI)
     ),
 
     goal_info_get_store_map(IteGoalInfo, StoreMap),
-    code_info.get_instmap(!.CI, EndCondInstMap),
+    get_instmap(!.CI, EndCondInstMap),
     ( instmap.is_unreachable(EndCondInstMap) ->
         % If the instmap indicates we cannot reach the then part,
         % do not attempt to generate it (may cause aborts).
         ThenTraceCode = empty,
         ThenCode = empty,
         map.init(EmptyStoreMap),
-        code_info.generate_branch_end(EmptyStoreMap, no,
-            MaybeEnd0, ThenSaveCode, !CI)
+        generate_branch_end(EmptyStoreMap, no, MaybeEnd0, ThenSaveCode, !CI)
     ;
         % Generate the then branch.
         maybe_generate_internal_event_code(ThenGoal, IteGoalInfo,
             ThenTraceCode, !CI),
         code_gen.generate_goal(CodeModel, ThenGoal, ThenCode, !CI),
-        code_info.generate_branch_end(StoreMap, no,
-            MaybeEnd0, ThenSaveCode, !CI)
+        generate_branch_end(StoreMap, no, MaybeEnd0, ThenSaveCode, !CI)
     ),
 
     % Generate the entry to the else branch.
-    code_info.reset_to_position(BranchStart, !CI),
-    code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
+    reset_to_position(BranchStart, !CI),
+    generate_resume_point(ResumePoint, ResumeCode, !CI),
 
     % Restore the heap pointer and solver state if necessary.
-    code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+    maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
+    maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
         reset_reason_undo, RestoreTicketCode, !CI),
 
     % Generate the else branch.
     maybe_generate_internal_event_code(ElseGoal, IteGoalInfo, ElseTraceCode,
         !CI),
     code_gen.generate_goal(CodeModel, ElseGoal, ElseCode, !CI),
-    code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-        ElseSaveCode, !CI),
+    generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, ElseSaveCode, !CI),
 
-    code_info.get_next_label(EndLabel, !CI),
+    get_next_label(EndLabel, !CI),
     JumpToEndCode = node([
         llds_instr(goto(code_label(EndLabel)),
             "Jump to the end of if-then-else")
@@ -266,7 +259,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         ElseCode,
         ElseSaveCode,
         EndLabelCode]),
-    code_info.after_all_branches(StoreMap, MaybeEnd, !CI).
+    after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -300,18 +293,18 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
     (
         CodeModel = model_semi,
         GoalExpr = unify(_, _, _, simple_test(L, R), _),
-        code_info.failure_is_direct_branch(!.CI, CodeAddr),
-        code_info.get_globals(!.CI, Globals),
+        failure_is_direct_branch(!.CI, CodeAddr),
+        get_globals(!.CI, Globals),
         globals.lookup_bool_option(Globals, simple_neg, yes)
     ->
         % Because we are generating the negated goal ourselves, we need to
         % apply the pre- and post-goal updates that would normally be applied
         % by code_gen.generate_goal.
 
-        code_info.enter_simple_neg(ResumeVars, GoalInfo, SimpleNeg, !CI),
-        code_info.produce_variable(L, CodeL, ValL, !CI),
-        code_info.produce_variable(R, CodeR, ValR, !CI),
-        Type = code_info.variable_type(!.CI, L),
+        enter_simple_neg(ResumeVars, GoalInfo, SimpleNeg, !CI),
+        produce_variable(L, CodeL, ValL, !CI),
+        produce_variable(R, CodeR, ValR, !CI),
+        Type = variable_type(!.CI, L),
         ( Type = builtin_type(builtin_type_string) ->
             Op = str_eq
         ; Type = builtin_type(builtin_type_float) ->
@@ -323,7 +316,7 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
             llds_instr(if_val(binop(Op, ValL, ValR), CodeAddr),
                 "test inequality")
         ]),
-        code_info.leave_simple_neg(GoalInfo, SimpleNeg, !CI),
+        leave_simple_neg(GoalInfo, SimpleNeg, !CI),
         Code = tree_list([
             CodeL,
             CodeR,
@@ -343,13 +336,13 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
 
 generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         Code, !CI) :-
-    code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
     % Maybe save the heap state current before the condition; this ought to be
     % after we make the failure continuation because that causes the cache to
     % get flushed.
 
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
         ReclaimHeapOnFailure),
     (
@@ -360,12 +353,11 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     ;
         ReclaimHeap = no
     ),
-    code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+    maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
     % XXX Consider optimizing AddTrailOps as for if-then-elses.
     AddTrailOps = should_add_trail_ops(!.CI, NotGoalInfo),
-    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
-        !CI),
+    maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
 
     % XXX Consider optimizing IteRegionOps like IteTrailOps.
     AddRegionOps = should_add_region_ops(!.CI, NotGoalInfo),
@@ -374,26 +366,23 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     maybe_create_ite_region_frame(IteRegionOps, GoalInfo, [],
         RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars, !CI),
 
-    code_info.prepare_for_ite_hijack(CodeModel, HijackInfo, PrepareHijackCode,
-        !CI),
+    prepare_for_ite_hijack(CodeModel, HijackInfo, PrepareHijackCode, !CI),
 
-    code_info.make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint,
-        !CI),
-    code_info.effect_resume_point(ResumePoint, CodeModel, EffectResumeCode,
-        !CI),
+    make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
+    effect_resume_point(ResumePoint, CodeModel, EffectResumeCode, !CI),
 
     % Generate the negated goal as a semi-deterministic goal; it cannot be
     % nondet, since mode correctness requires it to have no output vars.
     maybe_generate_internal_event_code(Goal, NotGoalInfo, EnterTraceCode, !CI),
     code_gen.generate_goal(model_semi, Goal, GoalCode, !CI),
 
-    code_info.ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
+    ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
 
     % Kill again any variables that have become zombies.
-    code_info.pickup_zombies(Zombies, !CI),
-    code_info.make_vars_forward_dead(Zombies, !CI),
+    pickup_zombies(Zombies, !CI),
+    make_vars_forward_dead(Zombies, !CI),
 
-    code_info.get_forward_live_vars(!.CI, LiveVars),
+    get_forward_live_vars(!.CI, LiveVars),
 
     (
         CodeModel = model_det,
@@ -405,31 +394,31 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         ( CodeModel = model_semi
         ; CodeModel = model_non
         ),
-        code_info.remember_position(!.CI, AfterNegatedGoal),
+        remember_position(!.CI, AfterNegatedGoal),
         % The call to reset_ticket(..., commit) here is necessary
         % in order to properly detect floundering.
-        code_info.maybe_release_hp(MaybeHpSlot, !CI),
-        code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+        maybe_release_hp(MaybeHpSlot, !CI),
+        maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
             reset_reason_commit, PruneTicketCode, !CI),
         maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_failure,
             FailTraceCode, !CI),
-        code_info.generate_failure(FailCode, !CI),
+        generate_failure(FailCode, !CI),
         % We want liveness after not(G) to be the same as after G.
         % Information about what variables are where will be set
-        % by code_info.generate_resume_point.
-        code_info.reset_to_position(AfterNegatedGoal, !CI)
+        % by generate_resume_point.
+        reset_to_position(AfterNegatedGoal, !CI)
     ),
 
     % Generate the entry to the else branch.
-    code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
+    generate_resume_point(ResumePoint, ResumeCode, !CI),
 
-    code_info.set_forward_live_vars(LiveVars, !CI),
+    set_forward_live_vars(LiveVars, !CI),
 
     % Restore the heap pointer and solver state if necessary.
-    code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+    maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
+    maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
         reset_reason_undo, RestoreTicketCode, !CI),
-    code_info.release_several_temp_slots(RegionStackVars,
+    release_several_temp_slots(RegionStackVars,
         non_persistent_temp_slot, !CI),
     maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_success,
         SuccessTraceCode, !CI),
@@ -557,7 +546,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         StackVars = []
     ;
         IteRegionOps = add_region_ops,
-        code_info.get_forward_live_vars(!.CI, ForwardLiveVars),
+        get_forward_live_vars(!.CI, ForwardLiveVars),
         LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
 
         CondNonLocals = goal_info_get_nonlocals(CondGoalInfo),
@@ -576,7 +565,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         CondRemovedRegionVars = CondNonlocalRegionVars,
         CondAllocRegionVars = CondNonlocalRegionVars,
 
-        code_info.get_module_info(!.CI, ModuleInfo),
+        get_module_info(!.CI, ModuleInfo),
         find_regions_removed_at_start_of_else(ElseGoals, ModuleInfo,
             set.init, RemovedAtStartOfElse),
 
@@ -604,7 +593,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         list.length(ProtectRegionVarList, NumProtectRegionVars),
         list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
 
-        code_info.get_globals(!.CI, Globals),
+        get_globals(!.CI, Globals),
         globals.lookup_int_option(Globals, size_region_ite_fixed,
             FixedSize),
         globals.lookup_int_option(Globals, size_region_ite_protect,

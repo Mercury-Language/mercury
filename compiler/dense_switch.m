@@ -85,8 +85,8 @@ cases_list_is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
         % is in range before we index into the jump table. However, if the
         % range of the type is sufficiently small, we can make the jump table
         % large enough to hold all of the values for the type.
-        Type = code_info.variable_type(CI, CaseVar),
-        code_info.get_module_info(CI, ModuleInfo),
+        Type = variable_type(CI, CaseVar),
+        get_module_info(CI, ModuleInfo),
         classify_type(ModuleInfo, Type) = TypeCategory,
         (
             dense_switch.type_range(CI, TypeCategory, Type, TypeRange),
@@ -114,7 +114,7 @@ cases_list_is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
     % (e.g. int).
     %
 type_range(CI, TypeCategory, Type, Range) :-
-    code_info.get_module_info(CI, ModuleInfo),
+    get_module_info(CI, ModuleInfo),
     switch_util.type_range(TypeCategory, Type, ModuleInfo, Min, Max),
     Range = Max - Min + 1.
 
@@ -123,7 +123,7 @@ type_range(CI, TypeCategory, Type, Range) :-
 generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd, Code, !CI) :-
     % Evaluate the variable which we are going to be switching on.
-    code_info.produce_variable(Var, VarCode, Rval, !CI),
+    produce_variable(Var, VarCode, Rval, !CI),
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
     ( StartVal = 0 ->
@@ -136,7 +136,7 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
     (
         CanFail = can_fail,
         Difference = EndVal - StartVal,
-        code_info.fail_if_rval_is_false(
+        fail_if_rval_is_false(
             binop(unsigned_le, Index, const(llconst_int(Difference))),
             RangeCheck, !CI)
     ;
@@ -170,7 +170,7 @@ generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
             llds_instr(label(EndLabel), "End of dense switch")
         ])
     ;
-        code_info.get_next_label(ThisLabel, !CI),
+        get_next_label(ThisLabel, !CI),
         generate_case(Cases0, Cases1, NextVal, CodeModel,
             SwitchGoalInfo, !MaybeEnd, ThisCode, Comment, !CI),
         LabelCode = node([
@@ -203,19 +203,19 @@ generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
         Comment = "case of dense switch",
         % We need to save the expression cache, etc.,
         % and restore them when we've finished.
-        code_info.remember_position(!.CI, BranchStart),
+        remember_position(!.CI, BranchStart),
         maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
             !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         Code = tree_list([TraceCode, GoalCode, SaveCode]),
-        code_info.reset_to_position(BranchStart, !CI)
+        reset_to_position(BranchStart, !CI)
     ;
         % This case didn't occur in the original case list
         % - just generate a `fail' for it.
         Comment = "compiler-introduced `fail' case of dense switch",
-        code_info.generate_failure(Code, !CI)
+        generate_failure(Code, !CI)
     ).
 
 %----------------------------------------------------------------------------%

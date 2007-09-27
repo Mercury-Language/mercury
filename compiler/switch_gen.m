@@ -94,15 +94,15 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     % CanFail says whether the switch covers all cases.
 
     goal_info_get_store_map(GoalInfo, StoreMap),
-    code_info.get_next_label(EndLabel, !CI),
+    get_next_label(EndLabel, !CI),
     lookup_tags(!.CI, Cases, CaseVar, TaggedCases0),
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, smart_indexing, Indexing),
 
-    CaseVarType = code_info.variable_type(!.CI, CaseVar),
+    CaseVarType = variable_type(!.CI, CaseVar),
     type_to_ctor_det(CaseVarType, CaseVarTypeCtor),
-    code_info.get_module_info(!.CI, ModuleInfo),
+    get_module_info(!.CI, ModuleInfo),
     TypeCategory = classify_type(ModuleInfo, CaseVarType),
     SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory),
     (
@@ -126,7 +126,7 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
             SwitchCategory = atomic_switch,
             list.length(TaggedCases, NumCases),
             (
-                code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+                get_maybe_trace_info(!.CI, MaybeTraceInfo),
                 MaybeTraceInfo = no,
                 globals.lookup_int_option(Globals, lookup_switch_size,
                     LookupSize),
@@ -184,7 +184,7 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
                 GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
         )
     ),
-    code_info.after_all_branches(StoreMap, MaybeEnd, !CI).
+    after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %-----------------------------------------------------------------------------%
 
@@ -194,8 +194,8 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
 :- func determine_switch_category(code_info, prog_var) = switch_category.
 
 determine_switch_category(CI, CaseVar) = SwitchCategory :-
-    Type = code_info.variable_type(CI, CaseVar),
-    code_info.get_module_info(CI, ModuleInfo),
+    Type = variable_type(CI, CaseVar),
+    get_module_info(CI, ModuleInfo),
     classify_type(ModuleInfo, Type) = TypeCategory,
     SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory).
 
@@ -225,8 +225,7 @@ lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     %
     %   a tag test, jumping to the next case if it fails
     %   the goal for that case
-    %   code to move variables to where the store map says they
-    %       ought to be
+    %   code to move variables to where the store map says they ought to be
     %   a branch to the end of the switch.
     %
     % For the last case, if the switch covers all cases that can occur,
@@ -248,7 +247,7 @@ lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
 
 generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo, EndLabel,
         !MaybeEnd, Code, !CI) :-
-    code_info.produce_variable(Var, VarCode, _Rval, !CI),
+    produce_variable(Var, VarCode, _Rval, !CI),
     (
         CodeModel = model_det,
         CanFail = cannot_fail,
@@ -256,8 +255,8 @@ generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo, EndLabel,
         Case1 = extended_case(_, _, _, Goal1),
         Case2 = extended_case(_, _, _, Goal2)
     ->
-        code_info.get_pred_id(!.CI, PredId),
-        code_info.get_proc_id(!.CI, ProcId),
+        get_pred_id(!.CI, PredId),
+        get_proc_id(!.CI, ProcId),
         count_recursive_calls(Goal1, PredId, ProcId, Min1, Max1),
         count_recursive_calls(Goal2, PredId, ProcId, Min2, Max2),
         (
@@ -292,7 +291,7 @@ generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo, EndLabel, !MaybeEnd,
         % At the end of a locally semidet switch, we fail because we came
         % across a tag which was not covered by one of the cases. It is
         % followed by the end of switch label to which the cases branch.
-        code_info.generate_failure(FailCode, !CI)
+        generate_failure(FailCode, !CI)
     ;
         CanFail = cannot_fail,
         FailCode = empty
@@ -302,7 +301,7 @@ generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo, EndLabel, !MaybeEnd,
 
 generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
         CanFail, SwitchGoalInfo, EndLabel, !MaybeEnd, CasesCode, !CI) :-
-    code_info.remember_position(!.CI, BranchStart),
+    remember_position(!.CI, BranchStart),
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     (
         ( Cases = [_|_]
@@ -314,7 +313,7 @@ generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
         maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
             !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ElseCode = node([
             llds_instr(goto(code_label(EndLabel)),
                 "skip to the end of the switch"),
@@ -326,10 +325,10 @@ generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
         maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
             !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ThisCaseCode = tree_list([TraceCode, GoalCode, SaveCode])
     ),
-    code_info.reset_to_position(BranchStart, !CI),
+    reset_to_position(BranchStart, !CI),
     generate_cases(Cases, Var, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, OtherCasesCode, !CI),
     CasesCode = tree(ThisCaseCode, OtherCasesCode).

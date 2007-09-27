@@ -54,12 +54,12 @@
 
 generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
         EndLabel, !MaybeEnd, Code, !CI) :-
-    code_info.produce_variable(Var, VarCode, VarRval, !CI),
-    code_info.acquire_reg(reg_r, SlotReg, !CI),
-    code_info.acquire_reg(reg_r, StringReg, !CI),
-    code_info.get_next_label(LoopLabel, !CI),
-    code_info.get_next_label(FailLabel, !CI),
-    code_info.get_next_label(JumpLabel, !CI),
+    produce_variable(Var, VarCode, VarRval, !CI),
+    acquire_reg(reg_r, SlotReg, !CI),
+    acquire_reg(reg_r, StringReg, !CI),
+    get_next_label(LoopLabel, !CI),
+    get_next_label(FailLabel, !CI),
+    get_next_label(JumpLabel, !CI),
 
     % Determine how big to make the hash table. Currently we round the number
     % of cases up to the nearest power of two, and then double it.
@@ -82,13 +82,13 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
     % registers), and because that code is generated manually (below)
     % so we don't need the reg info to be valid when we generate it.
 
-    code_info.release_reg(SlotReg, !CI),
-    code_info.release_reg(StringReg, !CI),
+    release_reg(SlotReg, !CI),
+    release_reg(StringReg, !CI),
 
     % Generate the code for when the hash lookup fails. This must be done
     % before gen_hash_slots, since we want to use the exprn_info corresponding
     % to the start of the switch, not to the end of the last case.
-    code_info.generate_failure(FailCode, !CI),
+    generate_failure(FailCode, !CI),
 
     % Generate the code etc. for the hash table.
     gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel, SwitchGoalInfo,
@@ -181,19 +181,19 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
             unexpected(this_file, "gen_hash_slots: string expected")
         ),
         StringRval = const(llconst_string(String)),
-        code_info.get_next_label(Label, !CI),
+        get_next_label(Label, !CI),
         string.append_list(["case """, String, """"], Comment),
         LabelCode = node([llds_instr(label(Label), Comment)]),
-        code_info.remember_position(!.CI, BranchStart),
+        remember_position(!.CI, BranchStart),
         maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
             !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ( this_is_last_case(Slot, TblSize, HashSlotMap) ->
             true
         ;
-            code_info.reset_to_position(BranchStart, !CI)
+            reset_to_position(BranchStart, !CI)
         ),
         FinishCode = node([
             llds_instr(goto(code_label(EndLabel)), "jump to end of switch")

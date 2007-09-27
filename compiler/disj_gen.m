@@ -63,7 +63,7 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
         Goals = [],
         (
             CodeModel = model_semi,
-            code_info.generate_failure(Code, !CI)
+            generate_failure(Code, !CI)
         ;
             ( CodeModel = model_det
             ; CodeModel = model_non
@@ -128,11 +128,11 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
 
 is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
         LookupDisjInfo, !CI) :-
-    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     MaybeTraceInfo = no,
 
     % Lookup disjunctions rely on static ground terms to work.
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, static_ground_terms, yes),
 
     % XXX The code to generate lookup disjunctions hasn't yet been updated
@@ -150,28 +150,26 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
     VarTypes = get_var_types(!.CI),
     list.map(map.lookup(VarTypes), OutVars, OutTypes),
 
-    code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
     % We cannot release this stack slot anywhere within the disjunction,
     % since it will be needed after backtracking to later disjuncts.
     % However, if we are inside an outer branched control structure
     % (disjunction, switch, if-then-else), it may be released (implicitly)
     % when we get into the next branch of that outer control structure.
-    code_info.acquire_temp_slot(slot_lookup_disj_cur, non_persistent_temp_slot,
-        CurSlot, !CI),
-    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
+    acquire_temp_slot(slot_lookup_disj_cur, non_persistent_temp_slot, CurSlot,
         !CI),
-    code_info.get_globals(!.CI, Globals),
+    maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
+    get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
         ReclaimHeap),
-    code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
-    code_info.prepare_for_disj_hijack(model_non, HijackInfo, PrepareHijackCode,
-        !CI),
+    maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+    prepare_for_disj_hijack(model_non, HijackInfo, PrepareHijackCode, !CI),
 
     % Every update to the code_info that needs to persist beyond the
     % disjunction as a whole (e.g. the reservations of the stack slots required
     % to implement the hijack) must be done before we remember this position.
-    code_info.remember_position(!.CI, CurPos),
+    remember_position(!.CI, CurPos),
 
     goal_info_get_store_map(DisjGoalInfo, StoreMap),
     generate_constants_for_disjuncts(Goals, OutVars, StoreMap, Solns,
@@ -182,9 +180,9 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
         MaybeLiveness = no,
         unexpected(this_file, "is_lookup_disj: no liveness")
     ),
-    code_info.reset_to_position(CurPos, !CI),
+    reset_to_position(CurPos, !CI),
 
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxFloat),
     find_general_llds_types(UnboxFloat, OutTypes, Solns, LLDSTypes),
     LookupDisjInfo = lookup_disj_info(OutVars, StoreMap, MaybeEnd, Liveness,
@@ -204,15 +202,15 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     list.length(Solns, NumSolns),
     list.length(OutVars, NumOutVars),
 
-    code_info.add_vector_static_cell(LLDSTypes, Solns, SolnVectorAddr, !CI),
+    add_vector_static_cell(LLDSTypes, Solns, SolnVectorAddr, !CI),
     SolnVectorAddrRval = const(llconst_data_addr(SolnVectorAddr, no)),
 
-    code_info.get_next_label(EndLabel, !CI),
+    get_next_label(EndLabel, !CI),
 
     % Since we release BaseReg only after the calls to generate_branch_end
     % (invoked through set_liveness_and_end_branch) we must ensure that
     % generate_branch_end won't want to overwrite BaseReg.
-    code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
 
     BaseRegInitCode = node([
         llds_instr(assign(BaseReg,
@@ -224,41 +222,39 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
             "Setup current slot in the solution array")
     ]),
 
-    code_info.remember_position(!.CI, DisjEntry),
+    remember_position(!.CI, DisjEntry),
 
-    code_info.make_resume_point(ResumeVars, resume_locs_stack_only,
+    make_resume_point(ResumeVars, resume_locs_stack_only,
         ResumeMap, ResumePoint, !CI),
-    code_info.effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
-        !CI),
+    effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CI),
     generate_offset_assigns(OutVars, 0, BaseReg, !CI),
-    code_info.flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),
+    flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),
 
     % Forget the variables that are needed only at the resumption point at
     % the start of the next disjunct, so that we don't generate exceptions
     % when their storage is clobbered by the movement of the live variables
     % to the places indicated in the store map.
-    code_info.pop_resume_point(!CI),
-    code_info.pickup_zombies(FirstZombies, !CI),
-    code_info.make_vars_forward_dead(FirstZombies, !CI),
+    pop_resume_point(!CI),
+    pickup_zombies(FirstZombies, !CI),
+    make_vars_forward_dead(FirstZombies, !CI),
 
     set_liveness_and_end_branch(StoreMap, MaybeEnd, Liveness,
         FirstBranchEndCode, !CI),
-    code_info.release_reg(BaseReg, !CI),
+    release_reg(BaseReg, !CI),
 
     GotoEndCode = node([
         llds_instr(goto(code_label(EndLabel)), "goto end of lookup disj")
     ]),
 
-    code_info.reset_to_position(DisjEntry, !CI),
-    code_info.generate_resume_point(ResumePoint, ResumePointCode, !CI),
+    reset_to_position(DisjEntry, !CI),
+    generate_resume_point(ResumePoint, ResumePointCode, !CI),
 
-    code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
-        RestoreTicketCode),
-    code_info.maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
+    maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo, RestoreTicketCode),
+    maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
 
-    code_info.acquire_reg_not_in_storemap(StoreMap, LaterBaseReg, !CI),
-    code_info.get_next_label(UndoLabel, !CI),
-    code_info.get_next_label(AfterUndoLabel, !CI),
+    acquire_reg_not_in_storemap(StoreMap, LaterBaseReg, !CI),
+    get_next_label(UndoLabel, !CI),
+    get_next_label(AfterUndoLabel, !CI),
     MaxSlot = (NumSolns - 1) * NumOutVars,
     TestMoreSolnsCode = node([
         llds_instr(assign(LaterBaseReg, lval(CurSlot)),
@@ -275,7 +271,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
         llds_instr(label(UndoLabel),
             "Undo hijack code")
     ]),
-    code_info.undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
+    undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
     AfterUndoLabelCode = node([
         llds_instr(label(AfterUndoLabel),
             "Return later answer code"),
@@ -288,24 +284,23 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     % onto the failure continuation stack, so pop_resume_point can pop
     % it off. However, since the redoip already points there, we don't need
     % to execute _LaterUpdateRedoipCode.
-    code_info.effect_resume_point(ResumePoint, model_non,
-        _LaterUpdateRedoipCode, !CI),
+    effect_resume_point(ResumePoint, model_non, _LaterUpdateRedoipCode, !CI),
 
     generate_offset_assigns(OutVars, 0, LaterBaseReg, !CI),
-    code_info.flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CI),
+    flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CI),
 
     % Forget the variables that are needed only at the resumption point at
     % the start of the next disjunct, so that we don't generate exceptions
     % when their storage is clobbered by the movement of the live variables
     % to the places indicated in the store map.
-    code_info.pop_resume_point(!CI),
-    code_info.pickup_zombies(LaterZombies, !CI),
-    code_info.make_vars_forward_dead(LaterZombies, !CI),
+    pop_resume_point(!CI),
+    pickup_zombies(LaterZombies, !CI),
+    make_vars_forward_dead(LaterZombies, !CI),
 
     set_liveness_and_end_branch(StoreMap, MaybeEnd, Liveness,
         LaterBranchEndCode, !CI),
 
-    code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
+    after_all_branches(StoreMap, MaybeEnd, !CI),
 
     EndLabelCode = node([llds_instr(label(EndLabel), "end of lookup disj")]),
     Comment = node([llds_instr(comment("lookup disj"), "")]),
@@ -344,15 +339,15 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
     % Make sure that the variables whose values will be needed on backtracking
     % to any disjunct are materialized into registers or stack slots. Their
     % locations are recorded in ResumeMap.
-    code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
     % If we are using a trail, save the current trail state before the
     % first disjunct.
     % XXX We should use a scheme such as the one we use for heap recovery
     % for semi and det disjunctions, and delay saving the ticket until
     % necessary.
-    code_info.get_globals(!.CI, Globals),
-    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
+    get_globals(!.CI, Globals),
+    maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
 
     % If we are using a grade in which we can recover memory by saving
@@ -365,7 +360,7 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         % disjunct N-1.
         globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
             ReclaimHeap),
-        code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+        maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
         maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
             FirstRegionCode, LaterRegionCode, LastRegionCode,
@@ -406,24 +401,23 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
 
     % Save the values of any stack slots we may hijack, and if necessary,
     % set the redofr slot of the top frame to point to this frame.
-    code_info.prepare_for_disj_hijack(CodeModel, HijackInfo, PrepareHijackCode,
-        !CI),
+    prepare_for_disj_hijack(CodeModel, HijackInfo, PrepareHijackCode, !CI),
 
-    code_info.get_next_label(EndLabel, !CI),
+    get_next_label(EndLabel, !CI),
 
-    code_info.remember_position(!.CI, BranchStart),
+    remember_position(!.CI, BranchStart),
     generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
         DisjGoalInfo, EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
         LaterRegionCode, LastRegionCode, BranchStart, no, MaybeEnd, GoalsCode,
         !CI),
 
     goal_info_get_store_map(DisjGoalInfo, StoreMap),
-    code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
-    code_info.release_several_temp_slots(RegionStackVarsToRelease,
+    after_all_branches(StoreMap, MaybeEnd, !CI),
+    release_several_temp_slots(RegionStackVarsToRelease,
         non_persistent_temp_slot, !CI),
     (
         CodeModel = model_non,
-        code_info.set_resume_point_to_unknown(!CI)
+        set_resume_point_to_unknown(!CI)
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
@@ -454,14 +448,13 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeHpSlot0, MaybeTicketSlot, LaterRegionCode, LastRegionCode,
         BranchStart0, MaybeEnd0, MaybeEnd, Code, !CI) :-
 
-    code_info.reset_to_position(BranchStart0, !CI),
+    reset_to_position(BranchStart0, !CI),
 
     % If this is not the first disjunct, generate the resume point by which
     % we arrive at this disjunct.
     (
         MaybeEntryResumePoint = yes(EntryResumePoint),
-        code_info.generate_resume_point(EntryResumePoint, EntryResumePointCode,
-            !CI)
+        generate_resume_point(EntryResumePoint, EntryResumePointCode, !CI)
     ;
         MaybeEntryResumePoint = no,
         EntryResumePointCode = empty
@@ -478,10 +471,10 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             MaybeEntryResumePoint = yes(_),
             % Reset the heap pointer to recover memory allocated by the
             % previous disjunct(s), if necessary.
-            code_info.maybe_restore_hp(MaybeHpSlot0, RestoreHpCode),
+            maybe_restore_hp(MaybeHpSlot0, RestoreHpCode),
 
             % Reset the solver state if necessary.
-            code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
+            maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
                 RestoreTicketCode)
         ;
             MaybeEntryResumePoint = no,
@@ -500,7 +493,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             goal_may_allocate_heap(Goal),
             MaybeHpSlot0 = no
         ->
-            code_info.save_hp(SaveHpCode, HpSlot, !CI),
+            save_hp(SaveHpCode, HpSlot, !CI),
             MaybeHpSlot = yes(HpSlot),
 
             % This method of updating BranchStart0 is ugly. The best
@@ -509,8 +502,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             % iffy because we have already created the resumption point for
             % entry into this disjunction, which overwrites part of the
             % location-dependent state originally in BranchStart0.
-            %
-            code_info.save_hp_in_branch(BranchSaveHpCode, BranchHpSlot,
+
+            save_hp_in_branch(BranchSaveHpCode, BranchHpSlot,
                 BranchStart0, BranchStart),
             tree.flatten(SaveHpCode, HpCodeList),
             tree.flatten(BranchSaveHpCode, BranchHpCodeList),
@@ -524,10 +517,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             BranchStart = BranchStart0
         ),
 
-        code_info.make_resume_point(ResumeVars, ResumeLocs, FullResumeMap,
+        make_resume_point(ResumeVars, ResumeLocs, FullResumeMap,
             NextResumePoint, !CI),
-        code_info.effect_resume_point(NextResumePoint, CodeModel, ModContCode,
-            !CI),
+        effect_resume_point(NextResumePoint, CodeModel, ModContCode, !CI),
 
         maybe_generate_internal_event_code(Goal, DisjGoalInfo, TraceCode, !CI),
         GoalCodeModel = goal_info_get_code_model(GoalInfo),
@@ -538,7 +530,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
             % We can backtrack to the next disjunct from outside, so we make
             % sure every variable in the resume set is in its stack slot.
-            code_info.flush_resume_vars_to_stack(ResumeVarsCode, !CI),
+            flush_resume_vars_to_stack(ResumeVarsCode, !CI),
 
             % We hang onto any temporary slots holding saved heap pointers
             % and/or tickets, thus ensuring that they will still be reserved
@@ -551,28 +543,27 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
             ResumeVarsCode = empty,
 
-            code_info.maybe_release_hp(MaybeHpSlot, !CI),
+            maybe_release_hp(MaybeHpSlot, !CI),
             % We're committing to this disjunct if it succeeds.
-            code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+            maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
                 reset_reason_commit, PruneTicketCode, !CI),
 
-            code_info.reset_resume_known(BranchStart, !CI)
+            reset_resume_known(BranchStart, !CI)
         ),
 
         % Forget the variables that are needed only at the resumption point at
         % the start of the next disjunct, so that we don't generate exceptions
         % when their storage is clobbered by the movement of the live
         % variables to the places indicated in the store map.
-        code_info.pop_resume_point(!CI),
-        code_info.pickup_zombies(Zombies, !CI),
-        code_info.make_vars_forward_dead(Zombies, !CI),
+        pop_resume_point(!CI),
+        pickup_zombies(Zombies, !CI),
+        make_vars_forward_dead(Zombies, !CI),
 
         % Put every variable whose value is needed after the disjunction to
         % the place indicated by StoreMap, and accumulate information about
         % the code_info state at the ends of the branches so far.
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
-        code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1, SaveCode,
-            !CI),
+        generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1, SaveCode, !CI),
 
         BranchCode = node([
             llds_instr(goto(code_label(EndLabel)),
@@ -606,19 +597,17 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         % Emit code for the last disjunct.
 
         % Restore the heap pointer and solver state if necessary.
-        code_info.maybe_restore_and_release_hp(MaybeHpSlot0, RestoreHpCode,
-            !CI),
-        code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+        maybe_restore_and_release_hp(MaybeHpSlot0, RestoreHpCode, !CI),
+        maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
             reset_reason_undo, RestoreTicketCode, !CI),
 
-        code_info.undo_disj_hijack(HijackInfo, UndoCode, !CI),
+        undo_disj_hijack(HijackInfo, UndoCode, !CI),
 
         maybe_generate_internal_event_code(Goal0, DisjGoalInfo, TraceCode,
             !CI),
         code_gen.generate_goal(CodeModel, Goal0, GoalCode, !CI),
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
-        code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode,
-            !CI),
+        generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode, !CI),
 
         EndCode = node([
             llds_instr(label(EndLabel), "End of nondet disj")
@@ -652,7 +641,7 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
         StackVars = []
     ;
         DisjRegionOps = add_region_ops,
-        code_info.get_forward_live_vars(!.CI, ForwardLiveVars),
+        get_forward_live_vars(!.CI, ForwardLiveVars),
         LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
 
         % XXX In computing both ProtectRegionVars and SnapshotRegionVars,
@@ -674,7 +663,7 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
         list.length(ProtectRegionVarList, NumProtectRegionVars),
         list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
 
-        code_info.get_globals(!.CI, Globals),
+        get_globals(!.CI, Globals),
         globals.lookup_int_option(Globals, size_region_disj_fixed,
             FixedSize),
         globals.lookup_int_option(Globals, size_region_disj_protect,

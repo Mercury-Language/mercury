@@ -81,10 +81,10 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
                 "generate_commit: semidet model in det context")
         ;
             InnerCodeModel = model_non,
-            code_info.prepare_for_det_commit(AddTrailOps, AddRegionOps,
+            prepare_for_det_commit(AddTrailOps, AddRegionOps,
                 ForwardLiveVarsBeforeGoal, CommitInfo, PreCommit, !CI),
             code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
-            code_info.generate_det_commit(CommitInfo, Commit, !CI),
+            generate_det_commit(CommitInfo, Commit, !CI),
             Code = tree_list([PreCommit, GoalCode, Commit])
         )
     ;
@@ -97,10 +97,10 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
             code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
         ;
             InnerCodeModel = model_non,
-            code_info.prepare_for_semi_commit(AddTrailOps, AddRegionOps,
+            prepare_for_semi_commit(AddTrailOps, AddRegionOps,
                 ForwardLiveVarsBeforeGoal, CommitInfo, PreCommit, !CI),
             code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
-            code_info.generate_semi_commit(CommitInfo, Commit, !CI),
+            generate_semi_commit(CommitInfo, Commit, !CI),
             Code = tree_list([PreCommit, GoalCode, Commit])
         )
     ;
