@@ -40,6 +40,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module exception.
+:- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -384,35 +385,58 @@ generate_menu_page(Cmd, Pref, Deep) = HTML :-
         ( ShouldDisplayTimes = yes ->
             "<li>\n" ++
             menu_item(Deep, Pref,
-                deep_cmd_top_procs(threshold(0.1), cost_time, self, overall),
+                deep_cmd_top_procs(threshold_percent(0.1), cost_time, self, 
+                    overall),
                 "Procedures above 0.1% threshold: time, self.") ++
             "<li>\n" ++
             menu_item(Deep, Pref,
-                deep_cmd_top_procs(threshold(1.0), cost_time, self_and_desc,
-                    overall),
-                "Procedures above 1% threshold: time, self+descendants.")
+                deep_cmd_top_procs(threshold_percent(1.0), cost_time, 
+                    self_and_desc, overall),
+                "Procedures above 1% threshold: time, self+descendants.") ++
+            "<li>\n" ++
+            menu_item(Deep, Pref,
+                deep_cmd_top_procs(threshold_value(100.0), cost_time, 
+                    self_and_desc, overall),
+                "Procedures above 1 second threshold: " ++ 
+                    "time, self+descendants.")
         ;
             ""
         ) ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold(0.1), cost_callseqs, self, overall),
+            deep_cmd_top_procs(threshold_percent(0.1), cost_callseqs, self, 
+                overall),
             "Procedures above 0.1% threshold: callseqs, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold(1.0), cost_callseqs, self_and_desc,
-                overall),
+            deep_cmd_top_procs(threshold_percent(1.0), cost_callseqs, 
+                self_and_desc, overall),
             "Procedures above 1% threshold: callseqs, self+descendants.")
             ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold(0.1), cost_words, self, overall),
+            deep_cmd_top_procs(threshold_value(1000000.0), cost_callseqs, 
+                self_and_desc, overall),
+            "Procedures above 1,000,000 callseqs threshold: callseqs, " ++
+                "self+descendants.")
+            ++
+        "<li>\n" ++
+        menu_item(Deep, Pref,
+            deep_cmd_top_procs(threshold_percent(0.1), cost_words, self, 
+                overall),
             "Procedures above 0.1% threshold: words, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold(1.0), cost_words, self_and_desc,
-                overall),
+            deep_cmd_top_procs(threshold_percent(1.0), cost_words, 
+                self_and_desc, overall),
             "Procedures above 1% threshold: words, self+descendants.")
+            ++
+        "<li>\n" ++
+        % 2M words is chosen arbitrary because it is 8MB on ia32
+        menu_item(Deep, Pref,
+            deep_cmd_top_procs(threshold_value(float(1024 * 1024 * 2)), 
+                cost_words, self_and_desc, overall),
+            "Procedures above 2M words threshold: words, self+descendants.")
             ++
         "</ul>\n" ++
         "<p>\n" ++

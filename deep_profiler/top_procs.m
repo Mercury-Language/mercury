@@ -93,8 +93,23 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
                 MaybeTopPSIs = ok([])
             )
         ;
-            Limit = threshold(Threshold),
-            find_threshold_predicate(Sort, InclDesc,
+            Limit = threshold_percent(Threshold),
+            find_threshold_percent_predicate(Sort, InclDesc,
+                ThresholdCompatible, RawThresholdPred),
+            (
+                ThresholdCompatible = no,
+                MaybeTopPSIs = error("bad threshold specification")
+            ;
+                ThresholdCompatible = yes,
+                ThresholdPred = (pred(PSI::in) is semidet :-
+                    RawThresholdPred(Deep, Threshold, PSI)
+                ),
+                list.takewhile(ThresholdPred, DescendingPSIs, TopPSIs, _),
+                MaybeTopPSIs = ok(TopPSIs)
+            )
+        ;
+            Limit = threshold_value(Threshold),
+            find_threshold_value_predicate(Sort, InclDesc,
                 ThresholdCompatible, RawThresholdPred),
             (
                 ThresholdCompatible = no,
@@ -198,39 +213,73 @@ find_top_sort_predicate(cost_words,  self_and_desc, overall,  yes,
 find_top_sort_predicate(cost_words,  self_and_desc, per_call, yes,
     compare_ps_words_both_percall,  filter_ps_words_both).
 
-:- pred find_threshold_predicate(cost_kind::in, include_descendants::in,
+:- pred find_threshold_percent_predicate(cost_kind::in, include_descendants::in,
     bool::out, pred(deep, float, int)::out(pred(in, in, in) is semidet))
     is det.
 
-find_threshold_predicate(cost_calls,  self,          no,
-    threshold_ps_time_self).
-find_threshold_predicate(cost_calls,  self_and_desc, no,
-    threshold_ps_time_self).
+find_threshold_percent_predicate(cost_calls,  self,          no,
+    threshold_percent_ps_time_self).
+find_threshold_percent_predicate(cost_calls,  self_and_desc, no,
+    threshold_percent_ps_time_self).
 
-find_threshold_predicate(cost_redos,  self,          no,
-    threshold_ps_time_self).
-find_threshold_predicate(cost_redos,  self_and_desc, no,
-    threshold_ps_time_self).
+find_threshold_percent_predicate(cost_redos,  self,          no,
+    threshold_percent_ps_time_self).
+find_threshold_percent_predicate(cost_redos,  self_and_desc, no,
+    threshold_percent_ps_time_self).
 
-find_threshold_predicate(cost_time,   self,          yes,
-    threshold_ps_time_self).
-find_threshold_predicate(cost_time,   self_and_desc, yes,
-    threshold_ps_time_both).
+find_threshold_percent_predicate(cost_time,   self,          yes,
+    threshold_percent_ps_time_self).
+find_threshold_percent_predicate(cost_time,   self_and_desc, yes,
+    threshold_percent_ps_time_both).
 
-find_threshold_predicate(cost_callseqs, self,          yes,
-    threshold_ps_callseqs_self).
-find_threshold_predicate(cost_callseqs, self_and_desc, yes,
-    threshold_ps_callseqs_both).
+find_threshold_percent_predicate(cost_callseqs, self,          yes,
+    threshold_percent_ps_callseqs_self).
+find_threshold_percent_predicate(cost_callseqs, self_and_desc, yes,
+    threshold_percent_ps_callseqs_both).
 
-find_threshold_predicate(cost_allocs, self,          yes,
-    threshold_ps_allocs_self).
-find_threshold_predicate(cost_allocs, self_and_desc, yes,
-    threshold_ps_allocs_both).
+find_threshold_percent_predicate(cost_allocs, self,          yes,
+    threshold_percent_ps_allocs_self).
+find_threshold_percent_predicate(cost_allocs, self_and_desc, yes,
+    threshold_percent_ps_allocs_both).
 
-find_threshold_predicate(cost_words,  self,          yes,
-    threshold_ps_words_self).
-find_threshold_predicate(cost_words,  self_and_desc, yes,
-    threshold_ps_words_both).
+find_threshold_percent_predicate(cost_words,  self,          yes,
+    threshold_percent_ps_words_self).
+find_threshold_percent_predicate(cost_words,  self_and_desc, yes,
+    threshold_percent_ps_words_both).
+
+:- pred find_threshold_value_predicate(cost_kind::in, include_descendants::in,
+    bool::out, pred(deep, float, int)::out(pred(in, in, in) is semidet))
+    is det.
+
+find_threshold_value_predicate(cost_calls,  self,          no,
+    threshold_value_ps_time_self).
+find_threshold_value_predicate(cost_calls,  self_and_desc, no,
+    threshold_value_ps_time_self).
+
+find_threshold_value_predicate(cost_redos,  self,          no,
+    threshold_value_ps_time_self).
+find_threshold_value_predicate(cost_redos,  self_and_desc, no,
+    threshold_value_ps_time_self).
+
+find_threshold_value_predicate(cost_time,   self,          yes,
+    threshold_value_ps_time_self).
+find_threshold_value_predicate(cost_time,   self_and_desc, yes,
+    threshold_value_ps_time_both).
+
+find_threshold_value_predicate(cost_callseqs, self,          yes,
+    threshold_value_ps_callseqs_self).
+find_threshold_value_predicate(cost_callseqs, self_and_desc, yes,
+    threshold_value_ps_callseqs_both).
+
+find_threshold_value_predicate(cost_allocs, self,          yes,
+    threshold_value_ps_allocs_self).
+find_threshold_value_predicate(cost_allocs, self_and_desc, yes,
+    threshold_value_ps_allocs_both).
+
+find_threshold_value_predicate(cost_words,  self,          yes,
+    threshold_value_ps_words_self).
+find_threshold_value_predicate(cost_words,  self_and_desc, yes,
+    threshold_value_ps_words_both).
 
 %-----------------------------------------------------------------------------%
 
@@ -602,9 +651,93 @@ filter_ps_words_both(Deep, PSI1) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred threshold_ps_time_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_value_ps_time_self(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_time_self(Deep, Threshold, PSI) :-
+threshold_value_ps_time_self(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI, Own),
+    OwnQuanta = quanta(Own),
+    float(OwnQuanta) > Threshold.
+
+:- pred threshold_value_ps_time_both(deep::in, float::in, int::in) is semidet.
+
+threshold_value_ps_time_both(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
+    OwnQuanta = quanta(Own),
+    DescQuanta = inherit_quanta(Desc),
+    TotalQuanta = OwnQuanta + DescQuanta,
+    float(TotalQuanta) > Threshold.
+
+:- pred threshold_value_ps_callseqs_self(deep::in, float::in, int::in) 
+    is semidet.
+
+threshold_value_ps_callseqs_self(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI, Own),
+    OwnCallSeqs = callseqs(Own),
+    float(OwnCallSeqs) > Threshold.
+
+:- pred threshold_value_ps_callseqs_both(deep::in, float::in, int::in) 
+    is semidet.
+
+threshold_value_ps_callseqs_both(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
+    OwnCallSeqs = callseqs(Own),
+    DescCallSeqs = inherit_callseqs(Desc),
+    TotalCallSeqs = OwnCallSeqs + DescCallSeqs,
+    float(TotalCallSeqs) > Threshold.
+
+:- pred threshold_value_ps_allocs_self(deep::in, float::in, int::in) is semidet.
+
+threshold_value_ps_allocs_self(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI, Own),
+    OwnAlloc = allocs(Own),
+    float(OwnAlloc) > Threshold.
+
+:- pred threshold_value_ps_allocs_both(deep::in, float::in, int::in) is semidet.
+
+threshold_value_ps_allocs_both(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
+    OwnAlloc = allocs(Own),
+    DescAlloc = inherit_allocs(Desc),
+    TotalAlloc = OwnAlloc + DescAlloc,
+    float(TotalAlloc) > Threshold.
+
+:- pred threshold_value_ps_words_self(deep::in, float::in, int::in) is semidet.
+
+threshold_value_ps_words_self(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI, Own),
+    OwnWords = words(Own),
+    float(OwnWords) > Threshold.
+
+:- pred threshold_value_ps_words_both(deep::in, float::in, int::in) is semidet.
+
+threshold_value_ps_words_both(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
+    OwnWords = words(Own),
+    DescWords = inherit_words(Desc),
+    TotalWords = OwnWords + DescWords,
+    float(TotalWords) > Threshold.
+
+%-----------------------------------------------------------------------------%
+
+:- pred threshold_percent_ps_time_self(deep::in, float::in, int::in) is semidet.
+
+threshold_percent_ps_time_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
@@ -615,9 +748,9 @@ threshold_ps_time_self(Deep, Threshold, PSI) :-
     RootTotalQuanta = RootOwnQuanta + RootDescQuanta,
     100.0 * float(OwnQuanta) > Threshold * float(RootTotalQuanta).
 
-:- pred threshold_ps_time_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_time_both(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_time_both(Deep, Threshold, PSI) :-
+threshold_percent_ps_time_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
     array.lookup(PSOwn, PSI, Own),
@@ -632,9 +765,9 @@ threshold_ps_time_both(Deep, Threshold, PSI) :-
     RootTotalQuanta = RootOwnQuanta + RootDescQuanta,
     100.0 * float(TotalQuanta) > Threshold * float(RootTotalQuanta).
 
-:- pred threshold_ps_callseqs_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_callseqs_self(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_callseqs_self(Deep, Threshold, PSI) :-
+threshold_percent_ps_callseqs_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
@@ -645,9 +778,9 @@ threshold_ps_callseqs_self(Deep, Threshold, PSI) :-
     RootTotalCallSeqs = RootOwnCallSeqs + RootDescCallSeqs,
     100.0 * float(OwnCallSeqs) > Threshold * float(RootTotalCallSeqs).
 
-:- pred threshold_ps_callseqs_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_callseqs_both(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_callseqs_both(Deep, Threshold, PSI) :-
+threshold_percent_ps_callseqs_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
     array.lookup(PSOwn, PSI, Own),
@@ -662,9 +795,9 @@ threshold_ps_callseqs_both(Deep, Threshold, PSI) :-
     RootTotalCallSeqs = RootOwnCallSeqs + RootDescCallSeqs,
     100.0 * float(TotalCallSeqs) > Threshold * float(RootTotalCallSeqs).
 
-:- pred threshold_ps_allocs_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_allocs_self(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_allocs_self(Deep, Threshold, PSI) :-
+threshold_percent_ps_allocs_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
@@ -675,9 +808,9 @@ threshold_ps_allocs_self(Deep, Threshold, PSI) :-
     RootTotalAlloc = RootOwnAlloc + RootDescAlloc,
     100.0 * float(OwnAlloc) > Threshold * float(RootTotalAlloc).
 
-:- pred threshold_ps_allocs_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_allocs_both(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_allocs_both(Deep, Threshold, PSI) :-
+threshold_percent_ps_allocs_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
     array.lookup(PSOwn, PSI, Own),
@@ -692,9 +825,9 @@ threshold_ps_allocs_both(Deep, Threshold, PSI) :-
     RootTotalAlloc = RootOwnAlloc + RootDescAlloc,
     100.0 * float(TotalAlloc) > Threshold * float(RootTotalAlloc).
 
-:- pred threshold_ps_words_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_words_self(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_words_self(Deep, Threshold, PSI) :-
+threshold_percent_ps_words_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
@@ -705,9 +838,9 @@ threshold_ps_words_self(Deep, Threshold, PSI) :-
     RootTotalWords = RootOwnWords + RootDescWords,
     100.0 * float(OwnWords) > Threshold * float(RootTotalWords).
 
-:- pred threshold_ps_words_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_words_both(deep::in, float::in, int::in) is semidet.
 
-threshold_ps_words_both(Deep, Threshold, PSI) :-
+threshold_percent_ps_words_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
     array.lookup(PSOwn, PSI, Own),

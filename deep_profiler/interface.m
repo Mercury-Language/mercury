@@ -167,9 +167,13 @@
             % rank_range(M, N): display procedures with rank M to N,
             % both inclusive.
 
-    ;       threshold(float).
+    ;       threshold_percent(float)
             % threshold(Percent): display procedures whose cost is at least
             % Percent% of the whole program's cost.
+    
+    ;       threshold_value(float).
+            % threshold_value(Value): display procedures whose cost is at least
+            % this value.
 
 :- type preferences_indication
     --->    given_pref(preferences)
@@ -969,8 +973,10 @@ string_to_incl_desc("both", self_and_desc).
 
 limit_to_string(rank_range(Lo, Hi)) =
     string.format("%d%c%d", [i(Lo), c(limit_separator_char), i(Hi)]).
-limit_to_string(threshold(Threshold)) =
-    string.format("%g", [f(Threshold)]).
+limit_to_string(threshold_percent(Threshold)) =
+    string.format("p%g", [f(Threshold)]).
+limit_to_string(threshold_value(Value)) =
+    string.format("v%g", [f(Value)]).
 
 :- pred string_to_limit(string::in, display_limit::out) is semidet.
 
@@ -983,9 +989,15 @@ string_to_limit(LimitStr, Limit) :-
     ->
         Limit = rank_range(First, Last)
     ;
-        string.to_float(LimitStr, Threshold)
+        string.append("p", PercentStr, LimitStr),
+        string.to_float(PercentStr, Threshold)
     ->
-        Limit = threshold(Threshold)
+        Limit = threshold_percent(Threshold)
+    ;
+        string.append("v", ValueStr, LimitStr),
+        string.to_float(ValueStr, Value)
+    ->
+        Limit = threshold_value(Value)
     ;
         fail
     ).
