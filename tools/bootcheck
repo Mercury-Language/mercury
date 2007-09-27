@@ -1610,7 +1610,7 @@ then
                 then
                     cd $root/${tests_prefix}tests/$specified_test_dir
                     mmake $target_opt $jfactor $test_grade_opt \
-                        SPECIFIED_TESTS="$specified_test_base" runtests
+                        SPECIFIED_TESTS="$specified_test_base" runtests_local
                     if test "$?" -ne "0"
                     then
                         test_status=$?
