@@ -729,7 +729,7 @@ ML_report_full_memory_stats() {
     TimeSecs = Time / 1000.0,
     TimeSinceLastCallSecs = TimeSinceLastCall / 1000.0, 
 
-    {value, {total, Bytes}} = lists:keysearch(total, 1, erlang:memory()),
+    Bytes = erlang:memory(total),
     KBytes = Bytes / 1024.0,
 
     io:format(""[Time: ~.3fs, +~.3fs, Total used: ~.3fk]~n"",
