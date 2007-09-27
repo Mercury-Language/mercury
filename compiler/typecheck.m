@@ -1664,8 +1664,7 @@ typecheck_var_has_type_list([Var | Vars], [Type | Types], ArgNum, !Info) :-
 
 typecheck_var_has_type(Var, Type, !Info) :-
     TypeAssignSet0 = !.Info ^ tc_info_type_assign_set,
-    typecheck_var_has_type_2(TypeAssignSet0, Var, Type, [],
-        TypeAssignSet),
+    typecheck_var_has_type_2(TypeAssignSet0, Var, Type, [], TypeAssignSet),
     (
         TypeAssignSet = [],
         TypeAssignSet0 = [_ | _]
