@@ -45,6 +45,7 @@ NONRETRY_PROGS = \
 	poly_io_retry2			\
 	polymorphic_output		\
 	print_goal			\
+	print_io_actions		\
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
@@ -455,6 +456,12 @@ polymorphic_output.out: polymorphic_output polymorphic_output.inp
 
 print_goal.out: print_goal print_goal.inp
 	$(MDB_STD) ./print_goal < print_goal.inp > print_goal.out 2>&1
+
+print_io_actions.out: print_io_actions print_io_actions.inp \
+		print_io_actions.data
+	$(MDB_STD) ./print_io_actions < print_io_actions.inp | \
+		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		> print_io_actions.out 2>&1
 
 print_table.out: print_table print_table.inp
 	$(MDB_STD) ./print_table < print_table.inp > print_table.out 2>&1

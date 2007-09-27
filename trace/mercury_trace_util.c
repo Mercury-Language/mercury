@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2002, 2004-2006 The University of Melbourne.
+** Copyright (C) 2000-2002, 2004-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 }
 
 MR_bool
-MR_trace_is_natural_number(const char *word, int *value)
+MR_trace_is_natural_number(const char *word, MR_Unsigned *value)
 {
     if (word != NULL && MR_isdigit(*word)) {
         *value = *word - '0';
@@ -41,6 +41,39 @@ MR_trace_is_natural_number(const char *word, int *value)
 
         if (*word == '\0') {
             return MR_TRUE;
+        }
+    }
+
+    return MR_FALSE;
+}
+
+MR_bool
+MR_trace_is_natural_number_pair(const char *word,
+    MR_Unsigned *value1, MR_Unsigned *value2)
+{
+    if (word != NULL && MR_isdigit(*word)) {
+        *value1 = *word - '0';
+        word++;
+        while (MR_isdigit(*word)) {
+            *value1 = (*value1 * 10) + *word - '0';
+            word++;
+        }
+
+        if (*word == '-') {
+            word++;
+
+            if (MR_isdigit(*word)) {
+                *value2 = *word - '0';
+                word++;
+                while (MR_isdigit(*word)) {
+                    *value2 = (*value2 * 10) + *word - '0';
+                    word++;
+                }
+
+                if (*word == '\0') {
+                    return MR_TRUE;
+                }
+            }
         }
     }
 

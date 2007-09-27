@@ -15,6 +15,7 @@ MCFLAGS-io_tab_goto = --trace-table-io-all
 MCFLAGS-no_inline_builtins = --no-inline-builtins
 MCFLAGS-poly_io_retry = --trace-table-io-all
 MCFLAGS-poly_io_retry2 = --trace-table-io-all
+MCFLAGS-print_io_actions = --trace-table-io-all
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-scripts = --trace rep
 MCFLAGS-shallow = --trace shallow

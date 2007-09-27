@@ -291,7 +291,7 @@ typedef MR_Word MR_TraceNode;
 
 /*
 ** The following two macros decide when to display progress.
-** We define two version: one for when we are materializing nodes and one
+** We define two versions: one for when we are materializing nodes and one
 ** for when we are in an implicit subtree, since execution is much faster in
 ** implicit subtrees.
 ** In the implicit tree version we don't need to check if the event is the
@@ -306,7 +306,7 @@ typedef MR_Word MR_TraceNode;
 #define     MR_DECL_MAYBE_UPDATE_PROGRESS(event_number)                       \
     do {                                                                      \
         if (MR_mdb_decl_print_progress) {                                     \
-            if(MR_edt_building_supertree) {                                   \
+            if (MR_edt_building_supertree) {                                  \
                 if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0) {    \
                     MR_trace_show_progress_supertree(event_number);           \
                 }                                                             \

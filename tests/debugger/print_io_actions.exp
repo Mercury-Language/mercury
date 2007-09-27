@@ -1,0 +1,91 @@
+      E1:     C1 CALL pred print_io_actions.main/2-0 (det) print_io_actions.m:20
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> b fake_read_n_chars
+ 0: + stop  interface pred print_io_actions.fake_read_n_chars/5-0 (det)
+mdb> c
+      E2:     C2 CALL pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:23)
+mdb> f -n -S
+      E3:     C2 EXIT pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:23)
+mdb> print io
+action 0: fake_open_input("print_io_actions.data", 0, c_pointer(0xXXXX))
+action 1: fake_read_char_code(c_pointer(0xXXXX), 42)
+action 2: fake_read_char_code(c_pointer(0xXXXX), 67)
+action 3: fake_read_char_code(c_pointer(0xXXXX), 111)
+action 4: fake_read_char_code(c_pointer(0xXXXX), 110)
+action 5: fake_read_char_code(c_pointer(0xXXXX), 116)
+action 6: fake_read_char_code(c_pointer(0xXXXX), 114)
+action 7: fake_read_char_code(c_pointer(0xXXXX), 97)
+action 8: fake_read_char_code(c_pointer(0xXXXX), 99)
+action 9: fake_read_char_code(c_pointer(0xXXXX), 116)
+action 10: fake_read_char_code(c_pointer(0xXXXX), 111)
+action 11: fake_read_char_code(c_pointer(0xXXXX), 114)
+action 12: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 13: fake_read_char_code(c_pointer(0xXXXX), 45)
+action 14: fake_read_char_code(c_pointer(0xXXXX), 42)
+action 15: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 16: fake_read_char_code(c_pointer(0xXXXX), 65)
+action 17: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 18: fake_read_char_code(c_pointer(0xXXXX), 103)
+action 19: fake_read_char_code(c_pointer(0xXXXX), 97)
+action 20: fake_read_char_code(c_pointer(0xXXXX), 109)
+there are more actions, up to action 40
+mdb> print io
+action 21: fake_read_char_code(c_pointer(0xXXXX), 98)
+action 22: fake_read_char_code(c_pointer(0xXXXX), 108)
+action 23: fake_read_char_code(c_pointer(0xXXXX), 101)
+action 24: fake_read_char_code(c_pointer(0xXXXX), 114)
+action 25: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 26: fake_read_char_code(c_pointer(0xXXXX), 119)
+action 27: fake_read_char_code(c_pointer(0xXXXX), 104)
+action 28: fake_read_char_code(c_pointer(0xXXXX), 111)
+action 29: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 30: fake_read_char_code(c_pointer(0xXXXX), 110)
+action 31: fake_read_char_code(c_pointer(0xXXXX), 101)
+action 32: fake_read_char_code(c_pointer(0xXXXX), 118)
+action 33: fake_read_char_code(c_pointer(0xXXXX), 101)
+action 34: fake_read_char_code(c_pointer(0xXXXX), 114)
+action 35: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 36: fake_read_char_code(c_pointer(0xXXXX), 103)
+action 37: fake_read_char_code(c_pointer(0xXXXX), 101)
+action 38: fake_read_char_code(c_pointer(0xXXXX), 116)
+action 39: fake_read_char_code(c_pointer(0xXXXX), 115)
+action 40: fake_read_char_code(c_pointer(0xXXXX), 32)
+there are no more actions (yet)
+mdb> s
+      E4:     C3 CALL pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:24)
+mdb> f -n -S
+      E5:     C3 EXIT pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:24)
+mdb> p io 0
+fake_open_input("print_io_actions.data", 0, c_pointer(0xXXXX))
+mdb> p io
+action 1: fake_read_char_code(c_pointer(0xXXXX), 42)
+action 2: fake_read_char_code(c_pointer(0xXXXX), 67)
+action 3: fake_read_char_code(c_pointer(0xXXXX), 111)
+action 4: fake_read_char_code(c_pointer(0xXXXX), 110)
+action 5: fake_read_char_code(c_pointer(0xXXXX), 116)
+action 6: fake_read_char_code(c_pointer(0xXXXX), 114)
+action 7: fake_read_char_code(c_pointer(0xXXXX), 97)
+action 8: fake_read_char_code(c_pointer(0xXXXX), 99)
+action 9: fake_read_char_code(c_pointer(0xXXXX), 116)
+action 10: fake_read_char_code(c_pointer(0xXXXX), 111)
+action 11: fake_read_char_code(c_pointer(0xXXXX), 114)
+action 12: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 13: fake_read_char_code(c_pointer(0xXXXX), 45)
+action 14: fake_read_char_code(c_pointer(0xXXXX), 42)
+action 15: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 16: fake_read_char_code(c_pointer(0xXXXX), 65)
+action 17: fake_read_char_code(c_pointer(0xXXXX), 32)
+action 18: fake_read_char_code(c_pointer(0xXXXX), 103)
+action 19: fake_read_char_code(c_pointer(0xXXXX), 97)
+action 20: fake_read_char_code(c_pointer(0xXXXX), 109)
+action 21: fake_read_char_code(c_pointer(0xXXXX), 98)
+there are more actions, up to action 80
+mdb> c
+*Contractor -* A gambler who never gets to shuffle, cut or deal.
+
+*Bid Opening -

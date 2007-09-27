@@ -273,7 +273,8 @@ trace_topmost_node(wrap(Store), dynamic(Ref)) :-
     ;
         Node = node_excp(_, CallId, _, _, _, _, _)
     ),
-    % The node is topmost of the call sequence number is 1.
+    % XXX This is buggy: see the io_read_bug test case.
+    % The node is topmost if the call sequence number is 1.
     call_node_from_id(Store, CallId, node_call(_, _, _, 1, _, _, _, _, _, _)).
 
 :- pred trace_children(wrap(S)::in, edt_node(R)::in, list(edt_node(R))::out)

@@ -179,13 +179,20 @@ MR_trace_cmd_held_vars(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
+#define MR_MAX_NUM_IO_ACTIONS_TO_PRINT  20
+
 MR_Next
 MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_BrowseFormat    format;
+    MR_BrowseFormat     format;
     MR_bool             xml;
-    int                 n;
+    const char          *problem;
+    MR_Unsigned         action;
+    MR_Unsigned         lo_action;
+    MR_Unsigned         hi_action;
+    static MR_bool      have_next_io_action = MR_FALSE;
+    static MR_Unsigned  next_io_action = 0;
 
     if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
         ; /* the usage message has already been printed */
@@ -193,8 +200,6 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
         /* the --xml option is not valid for print */
         MR_trace_usage_cur_cmd();
     } else if (word_count == 1) {
-        const char  *problem;
-
         problem = MR_trace_browse_one_goal(MR_mdb_out,
             MR_trace_browse_goal_internal, MR_BROWSE_CALLER_PRINT, format);
 
@@ -203,8 +208,6 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
             fprintf(MR_mdb_err, "mdb: %s.\n", problem);
         }
     } else if (word_count == 2) {
-        const char  *problem;
-
         if (MR_streq(words[1], "*")) {
             problem = MR_trace_browse_all(MR_mdb_out,
                 MR_trace_browse_internal, format);
@@ -217,6 +220,76 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
         } else if (MR_streq(words[1], "proc_body")) {
             problem = MR_trace_browse_proc_body(event_info,
                 MR_trace_browse_internal, MR_BROWSE_CALLER_PRINT, format);
+        } else if ((MR_streq(words[1], "io") || MR_streq(words[1], "action")))
+        {
+            MR_Unsigned num_printed_actions;
+
+            if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err,
+                    "mdb: I/O tabling has not yet started.\n",
+                    MR_io_tabling_start, MR_io_tabling_counter_hwm);
+                return KEEP_INTERACTING;
+            }
+
+            if (MR_io_tabling_counter_hwm == 0) {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err,
+                    "mdb: There are no tabled I/O actions yet.\n",
+                    MR_io_tabling_start, MR_io_tabling_counter_hwm);
+                return KEEP_INTERACTING;
+            }
+
+            if (have_next_io_action && (!
+                (MR_io_tabling_start <= next_io_action
+                && next_io_action < MR_io_tabling_counter_hwm)))
+            {
+                have_next_io_action = MR_FALSE;
+            }
+
+            if (have_next_io_action) {
+                lo_action = next_io_action;
+            } else {
+                lo_action = MR_io_tabling_start;
+            }
+
+            hi_action = lo_action + MR_MAX_NUM_IO_ACTIONS_TO_PRINT;
+            if (hi_action >= MR_io_tabling_counter_hwm) {
+                hi_action = MR_io_tabling_counter_hwm - 1;
+            }
+
+            num_printed_actions = hi_action - lo_action + 1;
+            if (num_printed_actions <= 0) {
+                fprintf(MR_mdb_out, "There are no I/O actions to print\n");
+                have_next_io_action = MR_FALSE;
+            } else {
+                for (action = lo_action; action <= hi_action; action++) { 
+                    fprintf(MR_mdb_out,
+                        "action %" MR_INTEGER_LENGTH_MODIFIER "u: ", action);
+                    problem = MR_trace_browse_action(MR_mdb_out, action,
+                        MR_trace_browse_goal_internal,
+                        MR_BROWSE_CALLER_PRINT, format);
+
+                    if (problem != NULL) {
+                        fflush(MR_mdb_out);
+                        fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+                        return KEEP_INTERACTING;
+                    }
+                }
+
+                if (hi_action == MR_io_tabling_counter_hwm - 1) {
+                    fprintf(MR_mdb_out,
+                        "there are no more actions (yet)\n");
+                } else {
+                    fprintf(MR_mdb_out,
+                        "there are more actions, up to action "
+                        "%" MR_INTEGER_LENGTH_MODIFIER "u\n",
+                        MR_io_tabling_counter_hwm - 1);
+                }
+
+                next_io_action = hi_action + 1;
+                have_next_io_action = MR_TRUE;
+            }
         } else {
             problem = MR_trace_parse_browse_one(MR_mdb_out, MR_TRUE, words[1],
                 MR_trace_browse_internal, MR_BROWSE_CALLER_PRINT, format,
@@ -227,18 +300,88 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: %s.\n", problem);
         }
-    } else if (word_count == 3 && MR_streq(words[1], "action")
-        && MR_trace_is_natural_number(words[2], &n))
+    } else if (word_count == 3 &&
+        (MR_streq(words[1], "io") || MR_streq(words[1], "action")))
     {
-        const char  *problem;
-
-        problem = MR_trace_browse_action(MR_mdb_out, n,
-            MR_trace_browse_goal_internal,
-            MR_BROWSE_CALLER_PRINT, format);
-
-        if (problem != NULL) {
+        if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+            fprintf(MR_mdb_err,
+                "mdb: I/O tabling has not yet started.\n",
+                MR_io_tabling_start, MR_io_tabling_counter_hwm);
+            return KEEP_INTERACTING;
+        }
+
+        if (MR_io_tabling_counter_hwm == 0) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err,
+                "mdb: There are no tabled I/O actions yet.\n",
+                MR_io_tabling_start, MR_io_tabling_counter_hwm);
+            return KEEP_INTERACTING;
+        }
+
+        if (MR_streq(words[2], "limits")) {
+            fprintf(MR_mdb_out,
+                "I/O tabling has recorded actions "
+                "%" MR_INTEGER_LENGTH_MODIFIER "u to "
+                "%" MR_INTEGER_LENGTH_MODIFIER "u.\n",
+                MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
+            fflush(MR_mdb_out);
+        } else if (MR_trace_is_natural_number(words[2], &action)) {
+            problem = MR_trace_browse_action(MR_mdb_out, action,
+                MR_trace_browse_goal_internal,
+                MR_BROWSE_CALLER_PRINT, format);
+
+            if (problem != NULL) {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+                have_next_io_action = MR_FALSE;
+            }
+
+            next_io_action = action + 1;
+            have_next_io_action = MR_TRUE;
+        } else if (MR_trace_is_natural_number_pair(words[2],
+            &lo_action, &hi_action))
+        {
+            if (lo_action >= hi_action) {
+                /* swap lo_action and hi_action */
+                MR_Unsigned tmp;
+
+                tmp = lo_action;
+                lo_action = hi_action;
+                hi_action = tmp;
+            }
+
+            if (! (MR_io_tabling_start <= lo_action
+                && hi_action < MR_io_tabling_counter_hwm))
+            {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err,
+                    "I/O tabling has only recorded actions "
+                    "%" MR_INTEGER_LENGTH_MODIFIER "u to "
+                    "%" MR_INTEGER_LENGTH_MODIFIER "u.\n",
+                    MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
+                have_next_io_action = MR_FALSE;
+                return KEEP_INTERACTING;
+            }
+
+            for (action = lo_action; action <= hi_action; action++) { 
+                fprintf(MR_mdb_out,
+                    "action %" MR_INTEGER_LENGTH_MODIFIER "u: ", action);
+                problem = MR_trace_browse_action(MR_mdb_out, action,
+                    MR_trace_browse_goal_internal,
+                    MR_BROWSE_CALLER_PRINT, format);
+
+                if (problem != NULL) {
+                    fflush(MR_mdb_out);
+                    fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+                    return KEEP_INTERACTING;
+                }
+            }
+
+            next_io_action = hi_action + 1;
+            have_next_io_action = MR_TRUE;
+        } else {
+            MR_trace_usage_cur_cmd();
         }
     } else {
         MR_trace_usage_cur_cmd();
@@ -253,9 +396,10 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_BrowseFormat     format;
     MR_bool             xml;
-    int                 n;
+    int                 action;
     MR_GoalBrowser      goal_browser;
     MR_Browser          browser;
+    const char          *problem;
 
     if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
         ; /* the usage message has already been printed */
@@ -269,8 +413,6 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
         }
 
         if (word_count == 1) {
-            const char  *problem;
-
             problem = MR_trace_browse_one_goal(MR_mdb_out, goal_browser,
                 MR_BROWSE_CALLER_BROWSE, format);
 
@@ -279,8 +421,6 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 fprintf(MR_mdb_err, "mdb: %s.\n", problem);
             }
         } else if (word_count == 2) {
-            const char  *problem;
-
             if (MR_streq(words[1], "goal")) {
                 problem = MR_trace_browse_one_goal(MR_mdb_out, goal_browser,
                     MR_BROWSE_CALLER_BROWSE, format);
@@ -300,12 +440,11 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err, "mdb: %s.\n", problem);
             }
-        } else if (word_count == 3 && MR_streq(words[1], "action")
-            && MR_trace_is_natural_number(words[2], &n))
+        } else if (word_count == 3 &&
+            (MR_streq(words[1], "io") || MR_streq(words[1], "action"))
+            && MR_trace_is_natural_number(words[2], &action))
         {
-            const char  *problem;
-
-            problem = MR_trace_browse_action(MR_mdb_out, n, goal_browser,
+            problem = MR_trace_browse_action(MR_mdb_out, action, goal_browser,
                 MR_BROWSE_CALLER_BROWSE, format);
 
             if (problem != NULL) {

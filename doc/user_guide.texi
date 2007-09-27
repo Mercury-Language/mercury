@@ -4826,6 +4826,14 @@ Print the @var{n}th IO action.
 @item print io @var{n}-@var{m}
 Print the @var{n}th to @var{m}th IO actions (inclusive).
 @sp 1
+@item print io limits
+Print the values for which @samp{print @var{n}} makes sense.
+@sp 1
+@item print io
+Print some I/O actions,
+starting just after the last action printed (if there was one)
+or at the first available action (if there was not).
+@sp 1
 @item format @var{format}
 Set the default format to @var{format},
 which should be one of @samp{flat}, @samp{verbose} and @samp{pretty}.

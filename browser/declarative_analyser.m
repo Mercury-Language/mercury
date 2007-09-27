@@ -10,9 +10,9 @@
 % Authors: Mark Brown, Ian MacLarty
 %
 % This module implements some analysis algorithms that search for bugs in
-% Evaluation Dependency Trees (EDTs).  The search algorithms use information
+% Evaluation Dependency Trees (EDTs). The search algorithms use information
 % provided by the search_space data type which acts as a layer on top of the
-% EDT, storing information relevant to the bug search.  Throughout this module
+% EDT, storing information relevant to the bug search. Throughout this module
 % the type variables T and S refer to the types of nodes in the EDT and the
 % store of EDT nodes respectively.
 %
@@ -49,8 +49,8 @@
             % to be made explicit.
 
     ;       analyser_response_require_explicit_supertree(T)
-            % The analyser requires an explicit tree above the
-            % root of an existing explicit tree.
+            % The analyser requires an explicit tree above the root
+            % of an existing explicit tree.
 
     ;       analyser_response_revise(decl_question(T)).
             % The analyser would like the oracle to re-ask the user
@@ -83,18 +83,16 @@
 
 :- type analysis_type(T)
     --->    new_tree(T)
-            % Use the given tree to do analysis.  The tree will be
-            % a new explicitly generated portion of the annotated
-            % trace.  start_or_resume_analysis should be called
-            % with this type of analysis when a new declarative
-            % debugging session has been started or a requested
-            % subtree or supertree has been generated.
+            % Use the given tree to do analysis. The tree will be
+            % a new explicitly generated portion of the annotated trace.
+            % start_or_resume_analysis should be called with this type
+            % of analysis when a new declarative debugging session has been
+            % started or a requested subtree or supertree has been generated.
 
     ;       resume_previous.
-            % Continue the previous analysis.  This will happen
-            % when the user suspends a declarative debugging
-            % session with a `pd' or `abort' command and now wants
-            % to continue the suspended session.
+            % Continue the previous analysis. This will happen when the user
+            % suspends a declarative debugging session with a `pd' or `abort'
+            % command and now wants to continue the suspended session.
 
     % Perform analysis on the given EDT, which may be a new tree
     % to diagnose, or a sub-tree that was required to be made explicit.
@@ -127,7 +125,7 @@
 :- pred show_info(S::in, io.output_stream::in, analyser_state(T)::in,
     io::di, io::uo) is det <= mercury_edt(S, T).
 
-    % Revise the current analysis.  This is done when a bug determined
+    % Revise the current analysis. This is done when a bug determined
     % by the analyser has been overruled by the oracle.
     %
 :- pred revise_analysis(S::in, analyser_response(T)::out,
@@ -171,7 +169,7 @@
 :- type search_mode
     --->    analyser_top_down
             % Look for the first unknown suspect in a top-down fashion,
-            % starting at the root.  If no unknown suspects are found then
+            % starting at the root. If no unknown suspects are found then
             % choose a skipped suspect to requery.
 
     ;       analyser_follow_subterm_end(
@@ -179,7 +177,7 @@
                 % until it can't be followed any further (for example
                 % when there is a call to a module with no tracing),
                 % and ask a question about the nearest unknown suspect
-                % on the subterm dependency chain.  Then proceed to do
+                % on the subterm dependency chain. Then proceed to do
                 % a binary search between this node and the root of the
                 % search space (the binary search will only come into
                 % effect if the oracle asserts the suspect is correct
@@ -299,12 +297,11 @@ top_down_search_mode = analyser_top_down.
     %
 :- type analyser_state(T)
     --->    analyser(
-                % Information about the EDT nodes relevant to
-                % the bug search.
+                % Information about the EDT nodes relevant to the bug search.
                 search_space            :: search_space(T),
 
                 % This is set to yes when an explicit tree needs to be
-                % generated.  The maybe argument says what type of explicit
+                % generated. The maybe argument says what type of explicit
                 % tree needs to be generated.
                 require_explicit        :: maybe(explicit_tree_type),
 
@@ -318,17 +315,16 @@ top_down_search_mode = analyser_top_down.
                 % be used as the fallback search mode.
                 fallback_search_mode    :: search_mode,
 
-                % Everytime a search finds a suspect to ask the oracle
-                % about it is put in this field before asking the oracle,
-                % so the analyser knows how to modify the search space when
-                % it gets an answer.
+                % Everytime a search finds a suspect to ask the oracle about,
+                % it is put in this field before asking the oracle, so the
+                % analyser knows how to modify the search space when it gets
+                % an answer.
                 last_search_question    :: maybe(suspect_and_reason),
 
-                % This field is present only to make it easier
-                % to debug the dependency tracking algorithm;
-                % if bound to yes, it records the result of
-                % the invocation of that algorithm on the last
-                % analysis step.
+                % This field is present only to make it easier to debug
+                % the dependency tracking algorithm; if bound to yes, it
+                % records the result of the invocation of that algorithm
+                % on the last analysis step.
                 debug_origin            :: maybe(subterm_origin(T))
         ).
 
@@ -336,7 +332,6 @@ top_down_search_mode = analyser_top_down.
     --->    suspect_and_reason(suspect_id, reason_for_question).
 
 :- type explicit_tree_type
-
     --->    explicit_subtree(suspect_id)
             % Generate an explicit subtree for the implicit root
             % referenced by the suspect_id.
@@ -389,10 +384,10 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
             decide_analyser_response(Store, Oracle, Response, !Analyser)
         ;
             MaybeRequireExplicit = no,
-            %
-            % An explicit subtree was not requested, so this is the
-            % start of a new declarative debugging session.
-            %
+
+            % An explicit subtree was not requested, so this is the start
+            % of a new declarative debugging session.
+
             reset_analyser(!Analyser),
             MaybeWeighting = get_maybe_weighting_from_search_mode(
                 !.Analyser ^ search_mode),
@@ -474,57 +469,62 @@ change_search_mode(Store, Oracle, UserMode, !Analyser, Response) :-
 :- pred process_answer(S::in, decl_answer(T)::in, suspect_id::in,
     analyser_state(T)::in, analyser_state(T)::out) is det <= mercury_edt(S, T).
 
-process_answer(_, skip(_), SuspectId, !Analyser) :-
-    skip_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
-    !:Analyser = !.Analyser ^ search_space := SearchSpace.
-
-process_answer(Store, ignore(_), SuspectId, !Analyser) :-
-    ignore_suspect(Store, SuspectId, !.Analyser ^ search_space, SearchSpace),
-    !:Analyser = !.Analyser ^ search_space := SearchSpace.
-
-process_answer(_, truth_value(_, truth_correct), SuspectId, !Analyser) :-
-    assert_suspect_is_correct(SuspectId, !.Analyser ^ search_space,
-        SearchSpace),
-    !:Analyser = !.Analyser ^ search_space := SearchSpace.
-
-process_answer(_, truth_value(_, truth_inadmissible), SuspectId, !Analyser) :-
-    assert_suspect_is_inadmissible(SuspectId, !.Analyser ^ search_space,
-        SearchSpace),
-    !:Analyser = !.Analyser ^ search_space := SearchSpace.
-
-process_answer(_, truth_value(_, truth_erroneous), SuspectId, !Analyser) :-
-    assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space,
-        SearchSpace),
-    !:Analyser = !.Analyser ^ search_space := SearchSpace.
-
-process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
-        ShouldAssertInvalid), SuspectId, !Analyser) :-
-    %
-    % XXX The following 2 lines just done so that debugging info can be
-    % printed for tests run when declarative_analyser.m not compiled with
-    % tracing (so can't use dd_dd command in mdb).  Should be removed when
-    % edt_dependency becomes stable enough.
-    %
-    edt_dependency(Store, Node, ArgPos, TermPath, _, DebugOrigin),
-    !:Analyser = !.Analyser ^ debug_origin := yes(DebugOrigin),
+process_answer(Store, Answer, SuspectId, !Analyser) :-
     (
-        ShouldAssertInvalid = assert_invalid,
-        edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
-        (
-            Mode = subterm_in,
-            assert_suspect_is_inadmissible(SuspectId,
-                !.Analyser ^ search_space, SearchSpace)
-        ;
-            Mode = subterm_out,
-            assert_suspect_is_erroneous(SuspectId,
-                !.Analyser ^ search_space, SearchSpace)
-        ),
+        Answer = skip(_),
+        skip_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
         !:Analyser = !.Analyser ^ search_space := SearchSpace
     ;
-        ShouldAssertInvalid = no_assert_invalid
-    ),
-    !:Analyser = !.Analyser ^ search_mode :=
-        analyser_follow_subterm_end(SuspectId, ArgPos, TermPath, no, HowTrack).
+        Answer = ignore(_),
+        ignore_suspect(Store, SuspectId, !.Analyser ^ search_space,
+            SearchSpace),
+        !:Analyser = !.Analyser ^ search_space := SearchSpace
+    ;
+        Answer = truth_value(_, truth_correct),
+        assert_suspect_is_correct(SuspectId, !.Analyser ^ search_space,
+            SearchSpace),
+        !:Analyser = !.Analyser ^ search_space := SearchSpace
+    ;
+        Answer = truth_value(_, truth_inadmissible),
+        assert_suspect_is_inadmissible(SuspectId, !.Analyser ^ search_space,
+            SearchSpace),
+        !:Analyser = !.Analyser ^ search_space := SearchSpace
+    ;
+        Answer = truth_value(_, truth_erroneous),
+        assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space,
+            SearchSpace),
+        !:Analyser = !.Analyser ^ search_space := SearchSpace
+    ;
+        Answer = suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
+            ShouldAssertInvalid),
+
+        % XXX The following 2 lines just done so that debugging info can be
+        % printed for tests run when declarative_analyser.m not compiled with
+        % tracing (so can't use dd_dd command in mdb). Should be removed when
+        % edt_dependency becomes stable enough.
+
+        edt_dependency(Store, Node, ArgPos, TermPath, _, DebugOrigin),
+        !:Analyser = !.Analyser ^ debug_origin := yes(DebugOrigin),
+        (
+            ShouldAssertInvalid = assert_invalid,
+            edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
+            (
+                Mode = subterm_in,
+                assert_suspect_is_inadmissible(SuspectId,
+                    !.Analyser ^ search_space, SearchSpace)
+            ;
+                Mode = subterm_out,
+                assert_suspect_is_erroneous(SuspectId,
+                    !.Analyser ^ search_space, SearchSpace)
+            ),
+            !:Analyser = !.Analyser ^ search_space := SearchSpace
+        ;
+            ShouldAssertInvalid = no_assert_invalid
+        ),
+        !:Analyser = !.Analyser ^ search_mode :=
+            analyser_follow_subterm_end(SuspectId, ArgPos, TermPath, no,
+                HowTrack)
+    ).
 
 revise_analysis(Store, Response, !Analyser) :-
     SearchSpace = !.Analyser ^ search_space,
@@ -553,8 +553,9 @@ decide_analyser_response(Store, Oracle, Response, !Analyser) :-
         "Start of decide_analyser_response"),
     some [!SearchSpace] (
         !:SearchSpace = !.Analyser ^ search_space,
-        search(Store, Oracle, !SearchSpace, !.Analyser ^ search_mode,
-            !.Analyser ^ fallback_search_mode, NewMode, SearchResponse),
+        search_for_question(Store, Oracle, !SearchSpace,
+            !.Analyser ^ search_mode, !.Analyser ^ fallback_search_mode,
+            NewMode, SearchResponse),
         !:Analyser = !.Analyser ^ search_space := !.SearchSpace,
         !:Analyser = !.Analyser ^ search_mode := NewMode,
         handle_search_response(Store, SearchResponse, !Analyser, Response)
@@ -566,64 +567,67 @@ decide_analyser_response(Store, Oracle, Response, !Analyser) :-
     analyser_state(T)::in, analyser_state(T)::out,
     analyser_response(T)::out) is det <= mercury_edt(S, T).
 
-handle_search_response(Store, search_response_question(SuspectId, Reason),
-        !Analyser, Response) :-
-    SearchSpace = !.Analyser ^ search_space,
-    Node = get_edt_node(SearchSpace, SuspectId),
-    edt_question(Store, Node, OracleQuestion),
+handle_search_response(Store, SearchResponse, !Analyser, AnalyserResponse) :-
     (
+        SearchResponse = search_response_question(SuspectId, Reason),
+        SearchSpace = !.Analyser ^ search_space,
+        Node = get_edt_node(SearchSpace, SuspectId),
+        edt_question(Store, Node, OracleQuestion),
         (
-            suspect_unknown(SearchSpace, SuspectId)
+            (
+                suspect_unknown(SearchSpace, SuspectId)
+            ;
+                suspect_skipped(SearchSpace, SuspectId)
+            )
+        ->
+            AnalyserResponse =
+                analyser_response_oracle_question(OracleQuestion)
         ;
-            suspect_skipped(SearchSpace, SuspectId)
-        )
-    ->
-        Response = analyser_response_oracle_question(OracleQuestion)
+            suspect_ignored(SearchSpace, SuspectId)
+        ->
+            % Searches should not respond with questions about suspects we
+            % already know to be trusted.
+            throw(internal_error("handle_search_response",
+                "search responded with query about ignored suspect"))
+        ;
+            % We already known something about this suspect, but the search
+            % wants the oracle to be requeried. This may happen if the
+            % search thinks the user might have answered the question
+            % incorrectly before.
+            AnalyserResponse = analyser_response_revise(OracleQuestion)
+        ),
+        !:Analyser = !.Analyser ^ last_search_question :=
+            yes(suspect_and_reason(SuspectId, Reason))
     ;
-        suspect_ignored(SearchSpace, SuspectId)
-    ->
-        % Searches should not respond with questions about suspects we
-        % already know to be trusted.
-        throw(internal_error("handle_search_response",
-            "search responded with query about ignored suspect"))
+        SearchResponse = search_response_require_explicit_subtree(SuspectId),
+        !:Analyser = !.Analyser ^ require_explicit := yes(explicit_subtree(
+            SuspectId)),
+        Node = get_edt_node(!.Analyser ^ search_space, SuspectId),
+        AnalyserResponse = analyser_response_require_explicit_subtree(Node)
     ;
-        % We already known something about this suspect, but the search
-        % wants the oracle to be requeried.  This may happen if the
-        % search thinks the user might have answered the question
-        % incorrectly before.
-        Response = analyser_response_revise(OracleQuestion)
-    ),
-    !:Analyser = !.Analyser ^ last_search_question :=
-        yes(suspect_and_reason(SuspectId, Reason)).
+        SearchResponse = search_response_require_explicit_supertree,
+        !:Analyser = !.Analyser ^ require_explicit := yes(explicit_supertree),
+        SearchSpace = !.Analyser ^ search_space,
+        topmost_det(SearchSpace, TopMostId),
+        TopMost = get_edt_node(SearchSpace, TopMostId),
+        AnalyserResponse =
+            analyser_response_require_explicit_supertree(TopMost)
+    ;
+        SearchResponse = search_response_no_suspects,
+        AnalyserResponse = analyser_response_no_suspects
+    ;
+        SearchResponse = search_response_found_bug(BugId, CorrectDescendants,
+            InadmissibleChildren),
+        bug_response(Store, !.Analyser ^ search_space, BugId,
+            [BugId | CorrectDescendants], InadmissibleChildren,
+            AnalyserResponse)
+    ).
 
-handle_search_response(_, search_response_require_explicit_subtree(SuspectId),
-        !Analyser, Response) :-
-    !:Analyser = !.Analyser ^ require_explicit := yes(explicit_subtree(
-        SuspectId)),
-    Node = get_edt_node(!.Analyser ^ search_space, SuspectId),
-    Response = analyser_response_require_explicit_subtree(Node).
-
-handle_search_response(_, search_response_require_explicit_supertree,
-        !Analyser, Response) :-
-    !:Analyser = !.Analyser ^ require_explicit := yes(explicit_supertree),
-    SearchSpace = !.Analyser ^ search_space,
-    topmost_det(SearchSpace, TopMostId),
-    TopMost = get_edt_node(SearchSpace, TopMostId),
-    Response = analyser_response_require_explicit_supertree(TopMost).
-
-handle_search_response(_, search_response_no_suspects, !Analyser,
-        analyser_response_no_suspects).
-
-handle_search_response(Store,
-        search_response_found_bug(BugId, CorrectDescendents,
-        InadmissibleChildren), !Analyser, Response) :-
-    bug_response(Store, !.Analyser ^ search_space, BugId,
-        [BugId | CorrectDescendents], InadmissibleChildren, Response).
-
-    % bug_response(Store, SearchSpace, BugId, Evidence,
-    %   InadmissibleChildren, Response)
-    % Create a bug analyser-response using the given Evidence.  If
-    % InadmissibleChildren isn't empty then an i_bug will be created,
+    % bug_response(Store, SearchSpace, BugId, Evidence, InadmissibleChildren,
+    %   Response):
+    %
+    % Create a bug analyser-response using the given Evidence.
+    % If InadmissibleChildren isn't empty then an i_bug will be created,
     % otherwise an e_bug will be created.
     %
 :- pred bug_response(S::in, search_space(T)::in,
@@ -650,91 +654,87 @@ bug_response(Store, SearchSpace, BugId, Evidence, InadmissibleChildren,
 
 %-----------------------------------------------------------------------------%
 
-    % Search the search space for a question for the oracle.  The search
+    % Search the search space for a question for the oracle. The search
     % should respond with a question about a suspect, or a request for an
-    % explicit subtree to be generated.  A new search mode is returned so
+    % explicit subtree to be generated. A new search mode is returned so
     % that the search algorithm being used can remember its current state
     % next time round.
     %
-:- pred search(S::in, oracle_state::in,
+:- pred search_for_question(S::in, oracle_state::in,
     search_space(T)::in, search_space(T)::out,
     search_mode::in, search_mode::in,
     search_mode::out, search_response::out) is det <= mercury_edt(S, T).
 
-search(Store, Oracle, !SearchSpace, analyser_top_down, FallBackSearchMode,
+search_for_question(Store, Oracle, !SearchSpace, OldMode, FallBackSearchMode,
         NewMode, Response) :-
-    top_down_search(Store, Oracle, !SearchSpace, Response),
-    % We always go back to the fallback search mode after a top-down
-    % search, because some fallback searches (such as divide and query)
-    % use top-down as a fail safe and we want the fallback search to
-    % resume after the top-down search.
-    NewMode = FallBackSearchMode.
-
-search(Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode,
-        NewMode, Response) :-
-    SearchMode = analyser_follow_subterm_end(SuspectId, ArgPos, TermPath,
-        LastUnknown, HowTrack),
-    follow_subterm_end_search(Store, Oracle, !SearchSpace, HowTrack,
-        LastUnknown, SuspectId, ArgPos, TermPath, FallBackSearchMode,
-        NewMode, Response).
-
-search(Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode, NewMode,
-        Response) :-
-    SearchMode = analyser_binary(PathArray, Top - Bottom, LastTested),
-    binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
-        !SearchSpace, FallBackSearchMode, NewMode, Response).
-
-search(Store, Oracle, !SearchSpace, analyser_divide_and_query(Weighting), _,
-        NewMode, Response) :-
-    divide_and_query_search(Store, Oracle, Weighting, !SearchSpace,
-        Response, NewMode).
+    (
+        OldMode = analyser_top_down,
+        top_down_search(Store, Oracle, !SearchSpace, Response),
+        % We always go back to the fallback search mode after a top-down
+        % search, because some fallback searches (such as divide and query)
+        % use top-down as a fail safe and we want the fallback search to
+        % resume after the top-down search.
+        NewMode = FallBackSearchMode
+    ;
+        OldMode = analyser_follow_subterm_end(SuspectId, ArgPos, TermPath,
+            LastUnknown, HowTrack),
+        follow_subterm_end_search(Store, Oracle, !SearchSpace, HowTrack,
+            LastUnknown, SuspectId, ArgPos, TermPath, FallBackSearchMode,
+            NewMode, Response)
+    ;
+        OldMode = analyser_binary(PathArray, Top - Bottom, LastTested),
+        binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
+            !SearchSpace, FallBackSearchMode, NewMode, Response)
+    ;
+        OldMode = analyser_divide_and_query(Weighting),
+        divide_and_query_search(Store, Oracle, Weighting, !SearchSpace,
+            Response, NewMode)
+    ).
 
 :- pred top_down_search(S::in, oracle_state::in,
     search_space(T)::in, search_space(T)::out,
     search_response::out) is det <= mercury_edt(S, T).
 
 top_down_search(Store, Oracle, !SearchSpace, Response) :-
-    %
     % If there's no root yet (because the oracle hasn't asserted any nodes
     % are erroneous yet) then use the topmost suspect as a starting point.
-    %
+
     ( root(!.SearchSpace, RootId) ->
         Start = RootId
     ;
         topmost_det(!.SearchSpace, Start)
     ),
-    first_unknown_descendent(Store, Oracle, Start, !SearchSpace,
-        MaybeUnknownDescendent),
+    first_unknown_descendant(Store, Oracle, Start, !SearchSpace,
+        MaybeUnknownDescendant),
     (
-        MaybeUnknownDescendent = found(Unknown),
+        MaybeUnknownDescendant = found(Unknown),
         Response = search_response_question(Unknown, ques_reason_top_down)
     ;
-        MaybeUnknownDescendent = not_found,
+        MaybeUnknownDescendant = not_found,
         (
             choose_skipped_suspect(!.SearchSpace, SkippedSuspect)
         ->
             Response = search_response_question(SkippedSuspect,
                 ques_reason_skipped)
         ;
-            % Since the are no skipped suspects and no unknown
-            % suspects in the search space, if there is a root
-            % (i.e. an erroneous suspect), then it must be a bug.
-            % Note that only top down search actually checks if a
-            % bug was found.  This is okay, since all the other
-            % search algorithms call top down search if they can't
-            % find an unknown suspect.
+            % Since the are no skipped suspects and no unknown suspects
+            % in the search space, if there is a root (i.e. an erroneous
+            % suspect), then it must be a bug. Note that only top down search
+            % actually checks if a bug was found. This is okay, since all the
+            % other search algorithms call top down search if they can't find
+            % an unknown suspect.
             root(!.SearchSpace, BugId)
         ->
             (
                 children(Store, Oracle, BugId, !SearchSpace, BugChildren),
-                non_ignored_descendents(Store, Oracle, BugChildren,
-                    !SearchSpace, NonIgnoredDescendents),
+                non_ignored_descendants(Store, Oracle, BugChildren,
+                    !SearchSpace, NonIgnoredDescendants),
                 list.filter(suspect_correct_or_inadmissible(!.SearchSpace),
-                    NonIgnoredDescendents, CorrectDescendents, [])
+                    NonIgnoredDescendants, CorrectDescendants, [])
             ->
                 list.filter(suspect_inadmissible(!.SearchSpace), BugChildren,
                     InadmissibleChildren),
-                Response = search_response_found_bug(BugId, CorrectDescendents,
+                Response = search_response_found_bug(BugId, CorrectDescendants,
                     InadmissibleChildren)
             ;
                 throw(internal_error("top_down_search",
@@ -762,7 +762,7 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
             )
         )
     ;
-        MaybeUnknownDescendent = require_explicit_subtree(RequireExplicitId),
+        MaybeUnknownDescendant = require_explicit_subtree(RequireExplicitId),
         Response = search_response_require_explicit_subtree(RequireExplicitId)
     ).
 
@@ -798,25 +798,24 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             BindingSuspectId),
         (
             Output = yes,
-            % BindingSuspectId = SuspectId since the
-            % subterm is an output of SuspectId.
+            % BindingSuspectId = SuspectId since the subterm is an output
+            % of SuspectId.
             BindingNode = get_edt_node(!.SearchSpace, SuspectId),
             ArgNum = edt_arg_pos_to_user_arg_num(Store, BindingNode, ArgPos),
             MaybePath = yes([ArgNum | TermPath])
         ;
             Output = no,
-            % Since the subterm is not an output of the
-            % binding node, it will not appear in any of the
-            % arguments of the binding node (it can't be an
-            % input, because then it would have been bound outside
-            % the node).
+            % Since the subterm is not an output of the binding node,
+            % it will not appear in any of the arguments of the binding node
+            % (it can't be an input, because then it would have been bound
+            % outside the node).
             MaybePath = no
         ),
         (
-            % We ask about the binding node even if it was
-            % previously skipped, since this behaviour is
-            % more predictable from the user's perspective.
-            %
+            % We ask about the binding node even if it was previously skipped,
+            % since this behaviour is more predictable from the user's
+            % perspective.
+
             ( suspect_unknown(!.SearchSpace, BindingSuspectId)
             ; suspect_skipped(!.SearchSpace, BindingSuspectId)
             )
@@ -835,8 +834,9 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
                 SearchResponse = search_response_question(Unknown, Reason),
                 NewMode = FallBackSearchMode
             ;
-                search(Store, Oracle, !SearchSpace, FallBackSearchMode,
-                    FallBackSearchMode, NewMode, SearchResponse)
+                search_for_question(Store, Oracle, !SearchSpace,
+                    FallBackSearchMode, FallBackSearchMode, NewMode,
+                    SearchResponse)
             )
         )
     ;
@@ -849,18 +849,16 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
                 ques_reason_subterm_no_proc_rep),
             NewMode = FallBackSearchMode
         ;
-            search(Store, Oracle, !SearchSpace,
+            search_for_question(Store, Oracle, !SearchSpace,
                 FallBackSearchMode, FallBackSearchMode,
                 NewMode, SearchResponse)
         )
     ;
         FindOriginResponse = require_explicit_subtree,
         SearchResponse = search_response_require_explicit_subtree(SuspectId),
-        %
-        % Record the current position of the search so
-        % we can continue where we left off once the explicit
-        % subtree has been generated.
-        %
+
+        % Record the current position of the search so we can continue
+        % where we left off once the explicit subtree has been generated.
         NewMode = analyser_follow_subterm_end(SuspectId, ArgPos, TermPath,
             LastUnknown, HowTrack)
     ;
@@ -879,13 +877,12 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             NewLastUnknown = LastUnknown
         ),
         (
-            %
             % Check if it's worth continuing tracking the sub-term.
-            % We want to stop if we enter a portion of the search
-            % space known not to contain the bug from which we
-            % can't return (for example if we come across an
-            % erroneous node where the sub-term is an input).
-            %
+            % We want to stop if we enter a portion of the search space
+            % known not to contain the bug from which we can't return
+            % (for example if we come across an erroneous node where
+            % the sub-term is an input).
+
             give_up_subterm_tracking(!.SearchSpace, OriginId, SubtermMode)
         ->
             (
@@ -896,19 +893,17 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
                     ques_reason_binding_node_eliminated),
                 NewMode = FallBackSearchMode
             ;
-                search(Store, Oracle, !SearchSpace,
+                search_for_question(Store, Oracle, !SearchSpace,
                     FallBackSearchMode, FallBackSearchMode,
                     NewMode, SearchResponse)
             )
         ;
-            %
             % This recursive call will not lead to an infinite loop
             % because eventually either the sub-term will be bound
-            % (and find_subterm_origin will respond with
-            % primitive_op/3) or there will be insufficient tracing
-            % information to continue (and find_subterm_origin will
-            % respond with not_found).
-            %
+            % (and find_subterm_origin will respond with primitive_op/3)
+            % or there will be insufficient tracing information to continue
+            % (and find_subterm_origin will respond with not_found).
+
             follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
                 !TriedShortcutProcs, NewLastUnknown, OriginId,
                 OriginArgPos, OriginTermPath,
@@ -916,11 +911,12 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
         )
     ).
 
-    % setup_binary_search(SearchSpace, SuspectId, SearchMode).
+    % setup_binary_search(SearchSpace, SuspectId, SearchMode):
+    %
     % Sets up the search mode to do a binary search between SuspectId
-    % and either the root of the search space if a suspect has
-    % previously been marked erroneous, or the topmost node if no suspect
-    % has yet been marked erroneous.
+    % and either the root of the search space if a suspect has previously been
+    % marked erroneous, or the topmost node if no suspect has yet been marked
+    % erroneous.
     %
 :- pred setup_binary_search(search_space(T)::in, suspect_id::in,
     search_mode::out) is det.
@@ -950,10 +946,9 @@ setup_binary_search(SearchSpace, SuspectId, SearchMode) :-
 binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
         !SearchSpace, FallBackSearchMode, NewMode, Response) :-
     SuspectId = PathArray ^ elem(LastTested),
-    %
+
     % Check what the result of the query about LastTested was and adjust
     % the range appropriately.
-    %
     (
         % The oracle answered `erroneous'.
         suspect_in_excluded_complement(!.SearchSpace, SuspectId)
@@ -975,7 +970,7 @@ binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
         NewTop > NewBottom
     ->
         % Revert to the fallback search mode when binary search is over.
-        search(Store, Oracle, !SearchSpace,
+        search_for_question(Store, Oracle, !SearchSpace,
             FallBackSearchMode, FallBackSearchMode, NewMode, Response)
     ;
         (
@@ -988,9 +983,9 @@ binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
                 PathArray ^ elem(UnknownClosestToMiddle),
                 ques_reason_binary(NewBottom, NewTop, UnknownClosestToMiddle))
         ;
-            % No unknown suspects on the path, so revert to
-            % the fallback search mode.
-            search(Store, Oracle, !SearchSpace,
+            % No unknown suspects on the path, so revert to the fallback
+            % search mode.
+            search_for_question(Store, Oracle, !SearchSpace,
                 FallBackSearchMode, FallBackSearchMode, NewMode, Response)
         )
     ).
@@ -1000,7 +995,7 @@ binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
     %
     % Unknown is the position in PathArray of the suspect which has status
     % unknown and is closest to halfway between From and To which are
-    % also indexes into PathArray.  Fails if there are no unknown suspects
+    % also indexes into PathArray. Fails if there are no unknown suspects
     % between From and To (inclusive).
     %
 :- pred find_unknown_closest_to_middle(search_space(T)::in,
@@ -1083,12 +1078,13 @@ find_middle_weight_if_children(Store, Oracle, Weighting, SuspectId, TopId,
     ).
 
     % find_middle_weight(Store, Oracle, Weighting, SuspectIds,
-    %   TopId, MaybeLastUnknown, !SearchSpace, Response).
+    %   TopId, MaybeLastUnknown, !SearchSpace, Response):
+    %
     % Find the unknown suspect whose weight is closest to half the weight
     % of TopId, considering only the heaviest suspect in SuspectIds, the
     % heaviest child of the heaviest suspect in SuspectIds and so on.
-    % MaybeLastUnknown is the last node that was unknown in the search (if
-    % any).
+    % MaybeLastUnknown is the last node that was unknown in the search
+    % (if any).
     %
 :- pred find_middle_weight(S::in, oracle_state::in,
     weighting_heuristic::in, list(suspect_id)::in, suspect_id::in,
@@ -1106,18 +1102,16 @@ find_middle_weight(Store, Oracle, Weighting, [], TopId,
                 get_weight(!.SearchSpace, TopId),
                 get_weight(!.SearchSpace, LastUnknown)))
     ;
-        % This could happen when there were no unknown suspects
-        % encountered during the search, in which case we revert
-        % to top-down search.
+        % This could happen when there were no unknown suspects encountered
+        % during the search, in which case we revert to top-down search.
         top_down_search(Store, Oracle, !SearchSpace, Response)
     ).
 find_middle_weight(Store, Oracle, Weighting, [SuspectId | SuspectIds], TopId,
         MaybeLastUnknown, !SearchSpace, Response) :-
     TopWeight = get_weight(!.SearchSpace, TopId),
     Target = TopWeight // 2,
-    %
-    % Find the heaviest suspect:
-    %
+
+    % Find the heaviest suspect.
     Weight = get_weight(!.SearchSpace, SuspectId),
     list.foldl2(max_weight(!.SearchSpace), SuspectIds,
         Weight, MaxWeight, SuspectId, Heaviest),
@@ -1136,10 +1130,9 @@ find_middle_weight(Store, Oracle, Weighting, [SuspectId | SuspectIds], TopId,
                 suspect_still_unknown(!.SearchSpace, LastUnknown)
             ->
                 LastUnknownWeight = get_weight(!.SearchSpace, LastUnknown),
-                %
-                % If the last unknown suspect was closer to
-                % the target weight then ask about it.
-                %
+
+                % If the last unknown suspect was closer to the target weight,
+                % then ask about it.
                 ( LastUnknownWeight - Target < Target - MaxWeight ->
                     Response = search_response_question(LastUnknown,
                         ques_reason_divide_and_query(Weighting, TopWeight,
@@ -1164,7 +1157,7 @@ find_middle_weight(Store, Oracle, Weighting, [SuspectId | SuspectIds], TopId,
                     ques_reason_divide_and_query(Weighting, TopWeight,
                         LastUnknownWeight))
             ;
-                % Look deeper until we find an unknown:
+                % Look deeper until we find an unknown.
                 find_middle_weight_if_children(Store, Oracle, Weighting,
                     Heaviest, TopId, no, !SearchSpace, Response)
             )
@@ -1187,7 +1180,7 @@ max_weight(SearchSpace, SuspectId, PrevMax, NewMax,
 
 %-----------------------------------------------------------------------------%
 
-    % Check that a suspect is still unknown.  This is called by the search
+    % Check that a suspect is still unknown. This is called by the search
     % algorithms to make double sure that a suspect is still unknown (it
     % might not be unknown if, for example, an erroneous suspect was added
     % to the search space during the search).
@@ -1201,7 +1194,6 @@ suspect_still_unknown(SearchSpace, SuspectId) :-
 
 reason_to_string(ques_reason_start) =
     "this is the node where the `dd' command was issued.".
-
 reason_to_string(ques_reason_binding_node(PrimOpType, FileName, LineNo,
         MaybePath, ProcLabel, Eliminated)) = Str :-
     PrimOpStr = primitive_op_type_to_string(PrimOpType),
@@ -1238,18 +1230,14 @@ reason_to_string(ques_reason_binding_node(PrimOpType, FileName, LineNo,
         " " ++ Module ++ "." ++ Name ++ "/" ++ ArityStr ++
         " (" ++ FileName ++ ":" ++ LineNoStr ++ "). " ++
         PathSent ++ EliminatedSent.
-
 reason_to_string(ques_reason_top_down) =
     "this is the next node in the top-down search.".
-
 reason_to_string(ques_reason_subterm_no_proc_rep) =
     "tracking of the marked subterm had to be aborted here, because of "
     ++ "missing tracing information.".
-
 reason_to_string(ques_reason_binding_node_eliminated) =
     "tracking of the marked subterm was stopped here, because the binding "
     ++ "node lies in a portion of the tree which has been eliminated.".
-
 reason_to_string(ques_reason_binary(Bottom, Top, Split)) = Str :-
     PathLengthStr = int_to_string_thousands(Bottom - Top + 1),
     SubPath1LengthStr = int_to_string_thousands(Bottom - Split),
@@ -1257,15 +1245,12 @@ reason_to_string(ques_reason_binary(Bottom, Top, Split)) = Str :-
     Str = "this node divides a path of length " ++ PathLengthStr
         ++ " into two paths of length " ++
         SubPath1LengthStr ++ " and " ++ SubPath2LengthStr ++ ".".
-
 reason_to_string(ques_reason_divide_and_query(Weighting, OldWeight,
         SubtreeWeight)) =
     weighting_to_reason_string(Weighting, OldWeight - SubtreeWeight,
         SubtreeWeight).
-
 reason_to_string(ques_reason_skipped) =
     "there are no more non-skipped questions left.".
-
 reason_to_string(ques_reason_revise) =
     "this question is being revisited, because of "
     ++ "an unsuccessful previous bug search.".
@@ -1277,7 +1262,6 @@ weighting_to_reason_string(number_of_events, Weight1, Weight2) = Str :-
     Weight2Str = int_to_string_thousands(Weight2),
     Str = "this node divides the suspect area into two regions of "
         ++ Weight1Str ++ " and " ++ Weight2Str ++ " events each.".
-
 weighting_to_reason_string(suspicion, Weight1, Weight2) = Str :-
     Weight1Str = int_to_string_thousands(Weight1),
     Weight2Str = int_to_string_thousands(Weight2),
@@ -1290,9 +1274,8 @@ show_info(Store, OutStream, Analyser, !IO) :-
     some [!FieldNames, !Data] (
         !:FieldNames = [],
         !:Data = [],
-        %
+
         % Get the context of the current question.
-        %
         (
             Analyser ^ last_search_question =
                 yes(suspect_and_reason(LastId, Reason)),
@@ -1320,10 +1303,8 @@ show_info(Store, OutStream, Analyser, !IO) :-
             throw(internal_error("show_info", "no last question"))
         ),
 
-        list.append(!.FieldNames, ["Search mode"],
-            !:FieldNames),
-        list.append(!.Data, [search_mode_to_string(
-            Analyser ^ search_mode)], !:Data),
+        !:FieldNames = !.FieldNames ++ ["Search mode"],
+        !:Data = !.Data ++ [search_mode_to_string(Analyser ^ search_mode)],
 
         MaybeWeighting = get_current_maybe_weighting(SearchSpace),
         ( MaybeWeighting = yes(number_of_events) ->
@@ -1337,18 +1318,16 @@ show_info(Store, OutStream, Analyser, !IO) :-
                 Analyser ^ search_mode =
                     analyser_divide_and_query(number_of_events)
             ->
-                list.append(!.FieldNames, ["Estimated questions remaining"],
-                    !:FieldNames),
+                !:FieldNames = !.FieldNames ++
+                    ["Estimated questions remaining"],
                 EstimatedQuestions = float.ceiling_to_int(
                     math.log2(float(Weight))),
-                list.append(!.Data, [int_to_string(EstimatedQuestions)],
-                    !:Data)
+                !:Data = !.Data ++ [int_to_string(EstimatedQuestions)]
             ;
                 true
             ),
-            list.append(!.FieldNames, ["Number of suspect events"],
-                !:FieldNames),
-            list.append(!.Data, [int_to_string_thousands(Weight)], !:Data)
+            !:FieldNames = !.FieldNames ++ ["Number of suspect events"],
+            !:Data = !.Data ++ [int_to_string_thousands(Weight)]
         ;
             true
         ),

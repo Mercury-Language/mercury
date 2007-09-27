@@ -32,6 +32,13 @@ y
 n
 y
 y
+print io limits
+print io
+print io 8
+print action 10-12
+browse io 9
+p
+quit
 break tabled_read_decl.part_3
 c
 break tabled_read_decl.fake_io

@@ -1,0 +1,9 @@
+table_io allow
+table_io start
+break -A io.read
+c
+f
+5.
+dd
+abort
+quit -y

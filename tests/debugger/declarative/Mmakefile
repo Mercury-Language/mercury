@@ -98,6 +98,7 @@ NONDECLDEBUG_DECLARATIVE_PROGS=	\
 	shallow
 
 NONWORKING_DECLARATIVE_PROGS=	\
+	io_read_bug
 
 # Some of the test cases require a different input in debug or decldebug
 # grades, so we set DEBUG_INP and DECLDEBUG_INP to the appropriate extension to
@@ -385,6 +386,10 @@ info.out: info info.inp
 input_term_dep.out: input_term_dep input_term_dep.inp
 	$(MDB_STD) ./input_term_dep < input_term_dep.inp \
 		> input_term_dep.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+io_read_bug.out: io_read_bug io_read_bug.inp
+	$(MDB_STD) ./io_read_bug < io_read_bug.inp > io_read_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 io_stream_test.out: io_stream_test io_stream_test.inp

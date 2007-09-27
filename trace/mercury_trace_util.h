@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998,2000-2002, 2004-2006 The University of Melbourne.
+** Copyright (C) 1998,2000-2002, 2004-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,6 +38,9 @@ extern  void    MR_c_file_to_mercury_file(FILE *c_file,
 ** number, i.e. a sequence of digits. If yes, it puts the value of the number
 ** in *value (an int) and returns MR_TRUE, otherwise it returns MR_FALSE.
 **
+** MR_trace_is_natural_number_pair looks for a pair of natural numbers
+** separated by a '-' character.
+**
 ** MR_trace_is_unsigned is similar, but puts the value of the number in a
 ** location of type MR_Unsigned.
 **
@@ -52,7 +55,11 @@ extern  void    MR_c_file_to_mercury_file(FILE *c_file,
 ** type. MR_trace_is_integer doesn't even work for MININT.
 */
 
-extern  MR_bool MR_trace_is_natural_number(const char *word, int *value);
+extern  MR_bool MR_trace_is_natural_number(const char *word,
+                    MR_Unsigned *value);
+
+extern  MR_bool MR_trace_is_natural_number_pair(const char *word,
+                    MR_Unsigned *value1, MR_Unsigned *value2);
 
 extern  MR_bool MR_trace_is_unsigned(const char *word, MR_Unsigned *value);
 

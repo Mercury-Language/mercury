@@ -1,0 +1,14 @@
+echo on
+register --quiet
+table_io allow
+table_io start
+b fake_read_n_chars
+c
+f -n -S
+print io
+print io
+s
+f -n -S
+p io 0
+p io
+c

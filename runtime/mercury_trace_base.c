@@ -1052,6 +1052,9 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
 /**************************************************************************/
 /*
 ** This section of this file deals with switching debugging on and off.
+**
+** XXX The code here is very similar to MR_TRACE_CALL_MERCURY in the header
+** file. Look into merging the two pieces of code.
 */
 
 void
@@ -1075,10 +1078,14 @@ MR_turn_off_debug(MR_SavedDebugState *saved_state,
     saved_state->MR_sds_trace_call_seqno = MR_trace_call_seqno;
     saved_state->MR_sds_trace_call_depth = MR_trace_call_depth;
     saved_state->MR_sds_trace_event_number = MR_trace_event_number;
+
+#if defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
+    MR_disable_deep_profiling_in_debugger = MR_TRUE;
+#endif
 }
 
 void
-MR_turn_debug_back_on(MR_SavedDebugState *saved_state)
+MR_turn_debug_back_on(const MR_SavedDebugState *saved_state)
 {
     int i;
 
@@ -1086,7 +1093,7 @@ MR_turn_debug_back_on(MR_SavedDebugState *saved_state)
     MR_update_trace_func_enabled();
     MR_io_tabling_enabled = saved_state->MR_sds_io_tabling_enabled;
 
-    for (i = 0; i < MR_MAXFLAG ; i++) {
+    for (i = 0; i < MR_MAXFLAG; i++) {
         MR_debugflag[i] = saved_state->MR_sds_debugflags[i];
     }
 
@@ -1095,6 +1102,10 @@ MR_turn_debug_back_on(MR_SavedDebugState *saved_state)
         MR_trace_call_depth = saved_state->MR_sds_trace_call_depth;
         MR_trace_event_number = saved_state->MR_sds_trace_event_number;
     }
+
+#if defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
+    MR_disable_deep_profiling_in_debugger = MR_FALSE;
+#endif
 }
 
 /**************************************************************************/

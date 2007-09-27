@@ -545,7 +545,7 @@ typedef struct {
 
 extern	void	MR_turn_off_debug(MR_SavedDebugState *saved_state,
 			MR_bool include_counter_vars);
-extern	void	MR_turn_debug_back_on(MR_SavedDebugState *saved_state);
+extern	void	MR_turn_debug_back_on(const MR_SavedDebugState *saved_state);
 
 /*
 ** These functions allow library/exceptions.m to tell the debuggers
@@ -665,15 +665,38 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 ** to call save_registers() and restore_registers() around it.
 ** That in turn needs to be preceded/followed by
 ** restore/save_transient_registers() if it is in a C function.
+**
+** We also need to ensure that Mercury code called from the debugger
+** doesn't screw up the data structures belonging to the program being
+** debugged.
+**
+** XXX The code here is very similar to MR_turn_off_debug/MR_turn_debug_back_on
+** in the source file. Look into merging the two pieces of code.
 */
 
-#define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
+#if defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
+  #define MR_TRACE_CALL_MERCURY_DEEP_BEGIN				\
+	do {								\
+		MR_disable_deep_profiling_in_debugger = MR_TRUE;	\
+	} while (0)
+  #define MR_TRACE_CALL_MERCURY_DEEP_END				\
+	do {								\
+		MR_disable_deep_profiling_in_debugger = MR_FALSE;	\
+	} while (0)
+#else
+  #define MR_TRACE_CALL_MERCURY_DEEP_BEGIN	((void) 0)
+  #define MR_TRACE_CALL_MERCURY_DEEP_END	((void) 0)
+#endif
+
+#define MR_TRACE_CALL_MERCURY(STATEMENTS) 				\
+	do {								\
 		MR_bool		saved_debug_enabled;			\
 		MR_bool		saved_io_enabled;			\
 		MR_Unsigned     saved_trace_call_seqno;			\
 		MR_Unsigned     saved_trace_call_depth;			\
 		MR_Unsigned     saved_trace_event_number;		\
 									\
+		MR_TRACE_CALL_MERCURY_DEEP_BEGIN;			\
 		saved_debug_enabled = MR_debug_enabled;			\
 		saved_io_enabled = MR_io_tabling_enabled;		\
 		saved_trace_call_seqno = MR_trace_call_seqno;		\
@@ -693,6 +716,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 		MR_trace_call_seqno = saved_trace_call_seqno;		\
 		MR_trace_call_depth = saved_trace_call_depth;		\
 		MR_trace_event_number = saved_trace_event_number;	\
+		MR_TRACE_CALL_MERCURY_DEEP_END;				\
 	} while (0)
 
 #endif /* MERCURY_TRACE_BASE_H */

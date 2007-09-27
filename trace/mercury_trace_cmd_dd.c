@@ -87,12 +87,14 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
             decl_mode = MR_DECL_NODUMP;
             filename = (const char *) NULL;
         }
+
         if (MR_trace_have_unhid_events) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err,
                 "mdb: dd doesn't work after `unhide_events on'.\n");
             return KEEP_INTERACTING;
         }
+
         if (search_mode_requires_trace_counts && (
             pass_trace_counts_file == NULL || fail_trace_counts_file == NULL))
         {
@@ -102,6 +104,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 "files\nbefore using the specified search mode.\n");
             return KEEP_INTERACTING;
         }
+
         if (pass_trace_counts_file != NULL && fail_trace_counts_file != NULL) {
             if (! MR_trace_decl_init_suspicion_table(pass_trace_counts_file,
                 fail_trace_counts_file, &problem))
