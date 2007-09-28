@@ -2684,8 +2684,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
         ;
             renaming_transitive_closure(Subn1, Subn),
             list.reverse(RevGoals, Goals1),
-            MustSub = no,
-            rename_vars_in_goals(MustSub, Subn, Goals1, Goals),
+            rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
             map.keys(Subn0, RemovedVars),
             varset.delete_vars(VarSet0, RemovedVars, VarSet),
             simplify_info_set_varset(VarSet, !Info),

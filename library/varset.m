@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1993-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -141,35 +141,54 @@
 :- pred varset.lookup_vars(varset(T)::in, substitution(T)::out) is det.
 
     % Combine two different varsets, renaming apart:
-    % varset.merge(VarSet0, NewVarSet, VarSet, Subst) is
-    % true iff VarSet is the varset that results from joining
-    % a suitably renamed version of NewVarSet to VarSet0.
-    % (Any bindings in NewVarSet are ignored.)
-    % Subst is a substitution which maps the variables in NewVarSet
-    % into the corresponding fresh variable in VarSet.
+    % varset.merge_renaming(VarSet0, NewVarSet, VarSet, Subst) is true
+    % iff VarSet is the varset that results from joining a suitably renamed
+    % version of NewVarSet to VarSet0. (Any bindings in NewVarSet are ignored.)
+    % Renaming map the variables in NewVarSet into the corresponding
+    % fresh variable in VarSet.
+    %
+:- pred varset.merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,
+    map(var(T), var(T))::out) is det.
+
+    % Does the same job as varset.merge_renaming, but returns the renaming
+    % as a general substitution in which all the terms in the range happen
+    % to be variables.
+    %
+    % Consider using varset.merge_renaming instead.
     %
 :- pred varset.merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
     substitution(T)::out) is det.
 
     % varset.merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
-    % As varset.merge_subst, except instead of returning the substitution,
+    %
+    % As varset.merge_renaming, except instead of returning the renaming,
     % this predicate applies it to the given list of terms.
     %
 :- pred varset.merge(varset(T)::in, varset(T)::in, list(term(T))::in,
     varset(T)::out, list(term(T))::out) is det.
 
+    % Same as varset.merge_renaming, except that the names of variables
+    % in NewVarSet are not included in the final varset.
+    % This is useful if varset.create_name_var_map needs to be used
+    % on the resulting varset.
+    %
+:- pred varset.merge_renaming_without_names(varset(T)::in,
+    varset(T)::in, varset(T)::out, map(var(T), var(T))::out) is det.
+
     % Same as varset.merge_subst, except that the names of variables
     % in NewVarSet are not included in the final varset.
-    % This is useful if varset.create_name_var_map needs
-    % to be used on the resulting varset.
+    % This is useful if varset.create_name_var_map needs to be used
+    % on the resulting varset.
+    %
+    % Consider using varset.merge_renaming_without_names instead.
     %
 :- pred varset.merge_subst_without_names(varset(T)::in,
     varset(T)::in, varset(T)::out, substitution(T)::out) is det.
 
     % Same as varset.merge, except that the names of variables
     % in NewVarSet are not included in the final varset.
-    % This is useful if varset.create_name_var_map needs
-    % to be used on the resulting varset.
+    % This is useful if varset.create_name_var_map needs to be used
+    % on the resulting varset.
     %
 :- pred varset.merge_without_names(varset(T)::in, varset(T)::in,
     list(term(T))::in, varset(T)::out, list(term(T))::out) is det.
@@ -449,38 +468,92 @@ varset.set_bindings(VarSet, Values, VarSet ^ var_values := Values).
 
 varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     IncludeNames = yes,
-    varset.merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
+    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
     term.apply_substitution_to_list(TermList0, Subst, TermList).
 
 varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     IncludeNames = no,
-    varset.merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
+    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
     term.apply_substitution_to_list(TermList0, Subst, TermList).
+
+%-----------------------------------------------------------------------------%
+%
+% The structure of this code is identical to the structure of the code
+% in the next block.
+
+varset.merge_renaming(VarSetA, VarSetB, VarSet, Subst) :-
+    IncludeNames = yes,
+    varset.merge_renaming_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
+
+varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Subst) :-
+    IncludeNames = no,
+    varset.merge_renaming_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
+
+:- pred varset.merge_renaming_inc(bool::in, varset(T)::in, varset(T)::in,
+    varset(T)::out, map(var(T), var(T))::out) is det.
+
+varset.merge_renaming_inc(IncludeNames, VarSetA, VarSetB, VarSet, Renaming) :-
+    VarSetB = varset(MaxId, Names, Values),
+    term.init_var_supply(N),
+    map.init(Renaming0),
+    varset.merge_renaming_inc_2(IncludeNames, N, MaxId, Names, Values,
+        VarSetA, VarSet, Renaming0, Renaming).
+
+:- pred varset.merge_renaming_inc_2(bool::in, var_supply(T)::in,
+    var_supply(T)::in, map(var(T), string)::in,
+    map(var(T), term(T))::in, varset(T)::in, varset(T)::out,
+    map(var(T), var(T))::in, map(var(T), var(T))::out) is det.
+
+varset.merge_renaming_inc_2(IncludeNames, N, Max, Names, Values, !VarSet,
+        !Renaming) :-
+    ( N = Max ->
+        true
+    ;
+        varset.new_var(!.VarSet, VarId, !:VarSet),
+        term.create_var(N, VarN, N1),
+        (
+            IncludeNames = yes,
+            map.search(Names, VarN, Name)
+        ->
+            varset.name_var(!.VarSet, VarId, Name, !:VarSet)
+        ;
+            true
+        ),
+        map.set(!.Renaming, VarN, VarId, !:Renaming),
+        varset.merge_renaming_inc_2(IncludeNames, N1, Max, Names, Values,
+            !VarSet, !Renaming)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% The structure of this code is identical to the structure of the code
+% in the previous block.
 
 varset.merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
     IncludeNames = yes,
-    varset.merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
+    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
 
 varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
     IncludeNames = no,
-    varset.merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
+    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
 
-:- pred varset.merge_subst(bool::in, varset(T)::in, varset(T)::in,
+:- pred varset.merge_subst_inc(bool::in, varset(T)::in, varset(T)::in,
     varset(T)::out, substitution(T)::out) is det.
 
-varset.merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst) :-
+varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst) :-
     VarSetB = varset(MaxId, Names, Values),
     term.init_var_supply(N),
     map.init(Subst0),
-    varset.merge_subst_2(IncludeNames, N, MaxId, Names, Values,
+    varset.merge_subst_inc_2(IncludeNames, N, MaxId, Names, Values,
         VarSetA, VarSet, Subst0, Subst).
 
-:- pred varset.merge_subst_2(bool::in, var_supply(T)::in,
+:- pred varset.merge_subst_inc_2(bool::in, var_supply(T)::in,
     var_supply(T)::in, map(var(T), string)::in,
     map(var(T), term(T))::in, varset(T)::in, varset(T)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-varset.merge_subst_2(IncludeNames, N, Max, Names, Values, !VarSet, !Subst) :-
+varset.merge_subst_inc_2(IncludeNames, N, Max, Names, Values, !VarSet,
+        !Subst) :-
     ( N = Max ->
         true
     ;
@@ -495,7 +568,7 @@ varset.merge_subst_2(IncludeNames, N, Max, Names, Values, !VarSet, !Subst) :-
             true
         ),
         map.set(!.Subst, VarN, term.variable(VarId, context_init), !:Subst),
-        varset.merge_subst_2(IncludeNames, N1, Max, Names, Values,
+        varset.merge_subst_inc_2(IncludeNames, N1, Max, Names, Values,
             !VarSet, !Subst)
     ).
 

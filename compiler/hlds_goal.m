@@ -1262,31 +1262,20 @@
 % the structure of hlds_goal_infos, which makes accidentally forgetting to
 % update that predicate after modifying the hlds_goal_info type much harder.
 
-:- type prog_var_renaming == map(prog_var, prog_var).
-
 :- pred rename_some_vars_in_goal(prog_var_renaming::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 :- pred must_rename_vars_in_goal(prog_var_renaming::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-:- pred rename_vars_in_goals(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_goals(must_rename::in, prog_var_renaming::in,
     hlds_goals::in, hlds_goals::out) is det.
 
-:- pred rename_vars_in_goal_expr(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_goal_expr(must_rename::in, prog_var_renaming::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is det.
 
-:- pred rename_vars_in_goal_info(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_goal_info(must_rename::in, prog_var_renaming::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-
-:- pred rename_vars_in_var_set(bool::in, prog_var_renaming::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
-
-:- pred rename_var_list(bool::in, map(var(T), var(T))::in,
-    list(var(T))::in, list(var(T))::out) is det.
-
-:- pred rename_var(bool::in, map(var(V), var(V))::in,
-    var(V)::in, var(V)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2066,12 +2055,12 @@ goal_has_feature(hlds_goal(_GoalExpr, GoalInfo), Feature) :-
 %
 
 rename_some_vars_in_goal(Subn, Goal0, Goal) :-
-    rename_vars_in_goal(no, Subn, Goal0, Goal).
+    rename_vars_in_goal(need_not_rename, Subn, Goal0, Goal).
 
 must_rename_vars_in_goal(Subn, Goal0, Goal) :-
-    rename_vars_in_goal(yes, Subn, Goal0, Goal).
+    rename_vars_in_goal(must_rename, Subn, Goal0, Goal).
 
-:- pred rename_vars_in_goal(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_goal(must_rename::in, prog_var_renaming::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 rename_vars_in_goal(Must, Subn, Goal0, Goal) :-
@@ -2170,7 +2159,7 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         Expr = shorthand(ShorthandGoal)
     ).
 
-:- pred rename_vars_in_shorthand(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_shorthand(must_rename::in, prog_var_renaming::in,
     shorthand_goal_expr::in, shorthand_goal_expr::out) is det.
 
 rename_vars_in_shorthand(Must, Subn,
@@ -2178,7 +2167,7 @@ rename_vars_in_shorthand(Must, Subn,
     rename_vars_in_goal(Must, Subn, LHS0, LHS),
     rename_vars_in_goal(Must, Subn, RHS0, RHS).
 
-:- pred rename_arg_list(bool::in, prog_var_renaming::in,
+:- pred rename_arg_list(must_rename::in, prog_var_renaming::in,
     list(foreign_arg)::in, list(foreign_arg)::out) is det.
 
 rename_arg_list(_Must, _Subn, [], []).
@@ -2186,7 +2175,7 @@ rename_arg_list(Must, Subn, [Arg0 | Args0], [Arg | Args]) :-
     rename_arg(Must, Subn, Arg0, Arg),
     rename_arg_list(Must, Subn, Args0, Args).
 
-:- pred rename_arg(bool::in, prog_var_renaming::in,
+:- pred rename_arg(must_rename::in, prog_var_renaming::in,
     foreign_arg::in, foreign_arg::out) is det.
 
 rename_arg(Must, Subn, Arg0, Arg) :-
@@ -2194,7 +2183,7 @@ rename_arg(Must, Subn, Arg0, Arg) :-
     rename_var(Must, Subn, Var0, Var),
     Arg = foreign_arg(Var, B, C, D).
 
-:- pred rename_vars_in_cases(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_cases(must_rename::in, prog_var_renaming::in,
     list(case)::in, list(case)::out) is det.
 
 rename_vars_in_cases(_Must, _Subn, [], []).
@@ -2203,7 +2192,7 @@ rename_vars_in_cases(Must, Subn,
     rename_vars_in_goal(Must, Subn, G0, G),
     rename_vars_in_cases(Must, Subn, Gs0, Gs).
 
-:- pred rename_unify_rhs(bool::in, prog_var_renaming::in,
+:- pred rename_unify_rhs(must_rename::in, prog_var_renaming::in,
     unify_rhs::in, unify_rhs::out) is det.
 
 rename_unify_rhs(Must, Subn, rhs_var(Var0), rhs_var(Var)) :-
@@ -2220,7 +2209,7 @@ rename_unify_rhs(Must, Subn,
     rename_var_list(Must, Subn, Vars0, Vars),
     rename_vars_in_goal(Must, Subn, Goal0, Goal).
 
-:- pred rename_unify(bool::in, prog_var_renaming::in,
+:- pred rename_unify(must_rename::in, prog_var_renaming::in,
     unification::in, unification::out) is det.
 
 rename_unify(Must, Subn, Unify0, Unify) :-
@@ -2287,7 +2276,7 @@ rename_unify(Must, Subn, Unify0, Unify) :-
         Unify = complicated_unify(Modes, Cat, TypeInfoVars)
     ).
 
-:- pred rename_generic_call(bool::in, prog_var_renaming::in,
+:- pred rename_generic_call(must_rename::in, prog_var_renaming::in,
     generic_call::in, generic_call::out) is det.
 
 rename_generic_call(Must, Subn, Call0, Call) :-
@@ -2386,7 +2375,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
     !:GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
         Features, GoalPath, CodeGenInfo, ExtraInfo).
 
-:- pred rename_vars_in_short_reuse_desc(bool::in, prog_var_renaming::in,
+:- pred rename_vars_in_short_reuse_desc(must_rename::in, prog_var_renaming::in,
     short_reuse_description::in, short_reuse_description::out) is det.
 
 rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
@@ -2403,7 +2392,7 @@ rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
             FieldNeedUpdates)
     ).
 
-:- pred rename_var_maps(bool::in, prog_var_renaming::in,
+:- pred rename_var_maps(must_rename::in, prog_var_renaming::in,
     map(prog_var, T)::in, map(prog_var, T)::out) is det.
 
 rename_var_maps(Must, Subn, Map0, Map) :-
@@ -2411,7 +2400,7 @@ rename_var_maps(Must, Subn, Map0, Map) :-
     rename_var_maps_2(Must, Subn, AssocList0, AssocList),
     map.from_assoc_list(AssocList, Map).
 
-:- pred rename_var_maps_2(bool::in, map(var(V), var(V))::in,
+:- pred rename_var_maps_2(must_rename::in, map(var(V), var(V))::in,
     assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
 
 rename_var_maps_2(_Must, _Subn, [], []).
@@ -2419,39 +2408,13 @@ rename_var_maps_2(Must, Subn, [V - L | Vs], [N - L | Ns]) :-
     rename_var(Must, Subn, V, N),
     rename_var_maps_2(Must, Subn, Vs, Ns).
 
-rename_vars_in_var_set(Must, Subn, Vars0, Vars) :-
-    set.to_sorted_list(Vars0, VarsList0),
-    rename_var_list(Must, Subn, VarsList0, VarsList),
-    set.list_to_set(VarsList, Vars).
-
-:- pred rename_var_pair_list(bool::in, prog_var_renaming::in,
+:- pred rename_var_pair_list(must_rename::in, prog_var_renaming::in,
     assoc_list(prog_var, T)::in, list(pair(prog_var, T))::out) is det.
 
 rename_var_pair_list(_Must, _Subn, [], []).
 rename_var_pair_list(Must, Subn, [V - D | VDs], [N - D | NDs]) :-
     rename_var(Must, Subn, V, N),
     rename_var_pair_list(Must, Subn, VDs, NDs).
-
-rename_var_list(_Must, _Subn, [], []).
-rename_var_list(Must, Subn, [V | Vs], [N | Ns]) :-
-    rename_var(Must, Subn, V, N),
-    rename_var_list(Must, Subn, Vs, Ns).
-
-rename_var(Must, Subn, V, N) :-
-    ( map.search(Subn, V, N0) ->
-        N = N0
-    ;
-        (
-            Must = no,
-            N = V
-        ;
-            Must = yes,
-            term.var_to_int(V, VInt),
-            string.format("rename_var: no substitute for var %i", [i(VInt)],
-                Msg),
-            unexpected(this_file, Msg)
-        )
-    ).
 
 %-----------------------------------------------------------------------------%
 %

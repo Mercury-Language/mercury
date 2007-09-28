@@ -446,8 +446,7 @@ create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
     VarTypes0 = !.DelayInfo ^ dpi_vartypes,
     create_variables(OrigVars, VarSet0, VarTypes0,
         VarSet0, VarSet, VarTypes0, VarTypes, map.init, Subn),
-    MustRename = yes,
-    rename_var_list(MustRename, Subn, OrigVars, CanonVars),
+    rename_var_list(must_rename, Subn, OrigVars, CanonVars),
     !DelayInfo ^ dpi_varset := VarSet,
     !DelayInfo ^ dpi_vartypes := VarTypes.
 

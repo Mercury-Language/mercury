@@ -256,13 +256,15 @@
 
 %-----------------------------------------------------------------------------%
 
-    % rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details):
-    % Renames all the variables in Details0 according to the substitution
-    % Subn, yielding Details. If Must is yes, then require every variable
-    % in Details0 to be in the domain of Subn. If Must is no, then leave
-    % variables not in the domain of Subn unchanged.
+    % rename_vars_in_llds_code_gen_info(Must, Rename, Details0, Details):
     %
-:- pred rename_vars_in_llds_code_gen_info(bool::in,
+    % Rename all the variables in Details0 according to the substitution
+    % Rename, yielding Details. If Must is must_rename, then require every
+    % variable in Details0 to be in the domain of Rename. If Must is
+    % need_not_rename, then leave variables not in the domain of Rename
+    % unchanged.
+    %
+:- pred rename_vars_in_llds_code_gen_info(must_rename::in,
     map(prog_var, prog_var)::in,
     llds_code_gen_details::in, llds_code_gen_details::out) is det.
 
@@ -687,7 +689,8 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
         PreDeaths, PostDeaths, MaybeFollowVars, StoreMap,
         ResumePoint, MaybeNeed).
 
-:- pred rename_vars_in_var_locn_map(bool::in, map(prog_var, prog_var)::in,
+:- pred rename_vars_in_var_locn_map(must_rename::in,
+    map(prog_var, prog_var)::in,
     map(prog_var, abs_locn)::in, map(prog_var, abs_locn)::out) is det.
 
 rename_vars_in_var_locn_map(Must, Subn, VarLocnMap0, VarLocnMap) :-
@@ -695,9 +698,10 @@ rename_vars_in_var_locn_map(Must, Subn, VarLocnMap0, VarLocnMap) :-
     rename_vars_in_var_locn_list(Must, Subn, VarLocnList0, VarLocnList),
     map.from_assoc_list(VarLocnList, VarLocnMap).
 
-:- pred rename_vars_in_var_locn_list(bool::in, map(prog_var, prog_var)::in,
-    assoc_list(prog_var, abs_locn)::in,
-    assoc_list(prog_var, abs_locn)::out) is det.
+:- pred rename_vars_in_var_locn_list(must_rename::in,
+    map(prog_var, prog_var)::in,
+    assoc_list(prog_var, abs_locn)::in, assoc_list(prog_var, abs_locn)::out)
+    is det.
 
 rename_vars_in_var_locn_list(_Must, _Subn, [], []).
 rename_vars_in_var_locn_list(Must, Subn,

@@ -885,7 +885,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         GoalExpr0 = switch(Var0, Det, Cases0),
         record_decisions_in_cases(Cases0, Cases, !VarInfo, !.VarRename,
             InsertMap, MaybeFeature),
-        rename_var(no, !.VarRename, Var0, Var),
+        rename_var(need_not_rename, !.VarRename, Var0, Var),
         Goal1 = hlds_goal(switch(Var, Det, Cases), GoalInfo0),
         construct_anchors(branch_switch, Goal0, _StartAnchor, EndAnchor),
         lookup_inserts(InsertMap, EndAnchor, Inserts),
@@ -904,7 +904,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
     ;
         GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
         construct_anchors(branch_ite, Goal0, StartAnchor, EndAnchor),
-        rename_var_list(no, !.VarRename, Vars0, Vars),
+        rename_var_list(need_not_rename, !.VarRename, Vars0, Vars),
         record_decisions_in_goal(Cond0, Cond, !VarInfo, !VarRename, InsertMap,
             MaybeFeature),
         record_decisions_in_goal(Then0, Then, !VarInfo, !.VarRename, _,
@@ -925,7 +925,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         GoalExpr0 = scope(Reason0, SubGoal0),
         (
             Reason0 = exist_quant(Vars0),
-            rename_var_list(no, !.VarRename, Vars0, Vars),
+            rename_var_list(need_not_rename, !.VarRename, Vars0, Vars),
             Reason = exist_quant(Vars)
         ;
             Reason0 = promise_purity(_, _),
@@ -941,7 +941,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             Reason = Reason0
         ;
             Reason0 = from_ground_term(Var0),
-            rename_var(no, !.VarRename, Var0, Var),
+            rename_var(need_not_rename, !.VarRename, Var0, Var),
             Reason = from_ground_term(Var)
         ;
             Reason0 = trace_goal(_, _, _, _, _),

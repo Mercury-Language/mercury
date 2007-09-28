@@ -1516,7 +1516,7 @@ fixup_goal_expr(hlds_goal(GoalExpr0, GoalInfo0), Goal, !Info, Changed) :-
             ExtraArgs0, ExtraArgs, Subst1, Subst, !Info, ArgsChanged, Changed),
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, Impl),
-        rename_vars_in_goal_info(no, Subst, GoalInfo0, GoalInfo),
+        rename_vars_in_goal_info(need_not_rename, Subst, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = shorthand(_),

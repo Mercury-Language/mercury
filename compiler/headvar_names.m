@@ -78,7 +78,8 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
                 VarSet0, VarSet, map.init, Subst, [], RevConj),
 
             NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-            rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
+            rename_vars_in_var_set(need_not_rename, Subst,
+                NonLocals0, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
             conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
 

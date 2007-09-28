@@ -16,7 +16,6 @@
 :- module transform_hlds.ctgc.util.
 :- interface.
 
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
@@ -109,11 +108,11 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, _TVarSet) =
 
     (
         type_list_subsumes(FormalTypes, ActualTypes, TypeSubstitution0)
-    -> 
+    ->
         TypeSubstitution = TypeSubstitution0
-    ; 
+    ;
         % XXX Sharing analysis of compiler generated procedures fails due
-        % to the fact that type_list_subsumes fails; I assume that the 
+        % to the fact that type_list_subsumes fails; I assume that the
         % same reasoning as in inlining.get_type_substitution/5 is applicable
         % here: "The head types should always be unifiable with the actual
         % argument types, otherwise it is a type error that should have

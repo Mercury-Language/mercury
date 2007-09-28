@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_util.
 % Main author: fjh.
-% 
+%
 % Various utility predicates acting on the parse tree data structure defined
 % in prog_data.m and prog_item.m
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_util.
@@ -150,7 +150,7 @@
     ;       newpred_type_subst(tvarset, type_subst)
     ;       newpred_unused_args(list(int))
     ;       newpred_parallel_args(list(int))
-    ;       newpred_distance_granularity(int).          % Distance       
+    ;       newpred_distance_granularity(int).          % Distance
 
 %-----------------------------------------------------------------------------%
 
@@ -258,14 +258,6 @@
 :- pred get_new_tvars(list(tvar)::in, tvarset::in, tvarset::in, tvarset::out,
     tvar_name_map::in, tvar_name_map::out,
     tvar_renaming::in, tvar_renaming::out) is det.
-
-    % substitute_vars(Vars0, Subst, Vars):
-    %
-    % Apply substitution `Subst' (which must only rename vars) to `Vars0',
-    % and return the result in `Vars'.
-    %
-:- pred substitute_vars(list(var(T))::in, substitution(T)::in,
-    list(var(T))::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -785,21 +777,6 @@ get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
         )
     ),
     get_new_tvars(TVars, VarSet, !TVarSet, !TVarNameMap, !TVarRenaming).
-
-%-----------------------------------------------------------------------------%
-
-substitute_vars(Vars0, Subst, Vars) :-
-    Vars = list.map(substitute_var(Subst), Vars0).
-
-:- func substitute_var(substitution(T), var(T)) = var(T).
-
-substitute_var(Subst, Var0) = Var :-
-    term.apply_substitution(term.variable(Var0, context_init), Subst, Term),
-    ( Term = term.variable(Var1, _) ->
-        Var = Var1
-    ;
-        unexpected(this_file, "substitute_var: invalid substitution")
-    ).
 
 %-----------------------------------------------------------------------------%
 

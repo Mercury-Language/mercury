@@ -974,12 +974,32 @@
 :- type prog_var    ==  var(prog_var_type).
 :- type prog_varset ==  varset(prog_var_type).
 :- type prog_substitution ==    substitution(prog_var_type).
+:- type prog_var_renaming == map(prog_var, prog_var).
 :- type prog_term   ==  term(prog_var_type).
 :- type prog_vars   ==  list(prog_var).
 
     % A prog_context is just a term.context.
     %
 :- type prog_context    ==  term.context.
+
+:- type must_rename
+    --->    must_rename
+    ;       need_not_rename.
+
+:- pred rename_vars_in_term(must_rename::in, map(var(V), var(V))::in,
+    term(V)::in, term(V)::out) is det.
+
+:- pred rename_vars_in_term_list(must_rename::in, map(var(V), var(V))::in,
+    list(term(V))::in, list(term(V))::out) is det.
+
+:- pred rename_vars_in_var_set(must_rename::in, prog_var_renaming::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+:- pred rename_var_list(must_rename::in, map(var(T), var(T))::in,
+    list(var(T))::in, list(var(T))::out) is det.
+
+:- pred rename_var(must_rename::in, map(var(V), var(V))::in,
+    var(V)::in, var(V)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1989,6 +2009,56 @@ extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =
     "max_stack_size(" ++ string.int_to_string(Size) ++ ")".
+
+%-----------------------------------------------------------------------------%
+%
+% Renaming
+%
+% The predicates here are similar to the "apply_variable_renaming" family of
+% predicates in library/term.m, but they allow the caller to specify that all
+% variables in the data structure being updated must appear in the renaming.
+
+rename_vars_in_term(Must, Renaming, Term0, Term) :-
+    (
+        Term0 = variable(Var0, Context),
+        rename_var(Must, Renaming, Var0, Var),
+        Term = variable(Var, Context)
+    ;
+        Term0 = functor(ConsId, Args0, Context),
+        rename_vars_in_term_list(Must, Renaming, Args0, Args),
+        Term = functor(ConsId, Args, Context)
+    ).
+
+rename_vars_in_term_list(_Must, _Renaming, [], []).
+rename_vars_in_term_list(Must, Renaming, [Term0 | Terms0], [Term | Terms]) :-
+    rename_vars_in_term(Must, Renaming, Term0, Term),
+    rename_vars_in_term_list(Must, Renaming, Terms0, Terms).
+
+rename_vars_in_var_set(Must, Renaming, Vars0, Vars) :-
+    set.to_sorted_list(Vars0, VarsList0),
+    rename_var_list(Must, Renaming, VarsList0, VarsList),
+    set.list_to_set(VarsList, Vars).
+
+rename_var_list(_Must, _Renaming, [], []).
+rename_var_list(Must, Renaming, [Var0 | Vars0], [Var | Vars]) :-
+    rename_var(Must, Renaming, Var0, Var),
+    rename_var_list(Must, Renaming, Vars0, Vars).
+
+rename_var(Must, Renaming, Var0, Var) :-
+    ( map.search(Renaming, Var0, VarPrime) ->
+        Var = VarPrime
+    ;
+        (
+            Must = need_not_rename,
+            Var = Var0
+        ;
+            Must = must_rename,
+            term.var_to_int(Var0, Var0Int),
+            string.format("rename_var: no substitute for var %i", [i(Var0Int)],
+                Msg),
+            unexpected(this_file, Msg)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %

@@ -859,8 +859,8 @@ replace_in_goal_expr(EqvMap, GoalExpr0 @ unify(Var, _, _, _, _), GoalExpr,
         !:Info = !.Info ^ module_info := ModuleInfo,
         !:Info = !.Info ^ tvarset := TVarSet,
 
-        rename_vars_in_goals(no, map.from_assoc_list([TypeInfoVar - Var]),
-            Goals0, Goals),
+        rename_vars_in_goals(need_not_rename,
+            map.from_assoc_list([TypeInfoVar - Var]), Goals0, Goals),
         ( Goals = [hlds_goal(GoalExpr1, _)] ->
             GoalExpr = GoalExpr1
         ;

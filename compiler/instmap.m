@@ -27,7 +27,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module set.
@@ -280,16 +279,17 @@
 
 %-----------------------------------------------------------------------------%
 
-    % `instmap_delta_apply_sub(Must, Sub, InstmapDelta0, InstmapDelta)'
-    % the variable substitution Sub to InstmapDelta0 to get the new
-    % instmap_delta InstmapDelta.  If there is a variable in
-    % InstmapDelta0 which does not appear in Sub, it is ignored if
-    % Must is set to no, otherwise it is an error.
+    % instmap_delta_apply_sub(Must, Renaming, InstmapDelta0, InstmapDelta):
     %
-:- pred instmap_delta_apply_sub(bool::in, map(prog_var, prog_var)::in,
+    % Apply the variable renaming Renaming to InstmapDelta0 to get the new
+    % instmap_delta InstmapDelta.  If there is a variable in InstmapDelta0
+    % which does not appear in Renaming, it is ignored if Must is set to
+    % need_not_rename, otherwise it is an error.
+    %
+:- pred instmap_delta_apply_sub(must_rename::in, map(prog_var, prog_var)::in,
     instmap_delta::in, instmap_delta::out) is det.
 
-:- pred apply_sub(bool::in, map(prog_var, prog_var)::in,
+:- pred apply_sub(must_rename::in, map(prog_var, prog_var)::in,
     instmap::in, instmap::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -335,6 +335,7 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -1196,38 +1197,30 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap_delta_apply_sub(_Must, _Sub, unreachable, unreachable).
-instmap_delta_apply_sub(Must, Sub,
+instmap_delta_apply_sub(_Must, _Renaming, unreachable, unreachable).
+instmap_delta_apply_sub(Must, Renaming,
         reachable(OldInstMapping), reachable(InstMapping)) :-
     map.to_assoc_list(OldInstMapping, InstMappingAL),
-    instmap_delta_apply_sub_2(InstMappingAL, Must, Sub,
+    instmap_delta_apply_sub_2(InstMappingAL, Must, Renaming,
         map.init, InstMapping).
 
-apply_sub(Must, Sub, InstMap0, InstMap) :-
-    instmap_delta_apply_sub(Must, Sub, InstMap0, InstMap).
+apply_sub(Must, Renaming, InstMap0, InstMap) :-
+    instmap_delta_apply_sub(Must, Renaming, InstMap0, InstMap).
 
-:- pred instmap_delta_apply_sub_2(assoc_list(prog_var, mer_inst)::in, bool::in,
-    map(prog_var, prog_var)::in, instmapping::in, instmapping::out) is det.
+:- pred instmap_delta_apply_sub_2(assoc_list(prog_var, mer_inst)::in,
+    must_rename::in, map(prog_var, prog_var)::in,
+    instmapping::in, instmapping::out) is det.
 
-instmap_delta_apply_sub_2([], _Must, _Sub, IM, IM).
-instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
-    ( map.search(Sub, V, N0) ->
-        N = N0
-    ;
-        (
-            Must = no,
-            N = V
-        ;
-            Must = yes,
-            unexpected(this_file, "instmap_delta_apply_sub_2: no substitute")
-        )
-    ),
+instmap_delta_apply_sub_2([], _Must, _Renaming, !Instmapping).
+instmap_delta_apply_sub_2([Var0 - Inst | VarInsts0], Must, Renaming,
+        !Instmapping) :-
+    rename_var(Must, Renaming, Var0, Var),
     % XXX temporary hack alert XXX
-    % This should be a call to to map.det_insert, rather than a call
-    % to map.set. However, if we do that, then the compiler breaks,
-    % due to a problem with excess.m not preserving super-homogenous form.
-    map.set(IM0, N, I, IM1),
-    instmap_delta_apply_sub_2(AL, Must, Sub, IM1, IM).
+    % This should be a call to map.det_insert, rather than to map.set.
+    % However, if we do that, then the compiler breaks, due to a problem
+    % with excess.m not preserving super-homogenous form.
+    map.set(!.Instmapping, Var, Inst, !:Instmapping),
+    instmap_delta_apply_sub_2(VarInsts0, Must, Renaming, !Instmapping).
 
 %-----------------------------------------------------------------------------%
 

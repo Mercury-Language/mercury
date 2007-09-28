@@ -375,10 +375,11 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
         Context = goal_info_get_context(GoalInfo0),
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
-        rename_var_list(no, RenameMap, Vars0, Vars),
+        rename_var_list(need_not_rename, RenameMap, Vars0, Vars),
         (
             Reason1 = promise_solutions(PromiseVars0, Kind),
-            rename_var_list(no, RenameMap, PromiseVars0, PromiseVars),
+            rename_var_list(need_not_rename, RenameMap,
+                PromiseVars0, PromiseVars),
             Reason = promise_solutions(PromiseVars, Kind)
         ;
             Reason1 = exist_quant(_),
@@ -472,7 +473,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Cond0, Cond1, !Info),
         rename_some_vars_in_goal(RenameMap, Then0, Then1),
-        rename_var_list(no, RenameMap, Vars0, Vars)
+        rename_var_list(need_not_rename, RenameMap, Vars0, Vars)
     ),
     insert_list(QuantVars, Vars, QuantVars1),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
@@ -752,7 +753,7 @@ implicitly_quantify_unify_rhs(_, GoalInfo0, !RHS, !Unification, !Info) :-
 
     union(RenameVars0, RenameVars1, RenameVars),
     rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
-    rename_var_list(no, RenameMap, LambdaVars0, LambdaVars),
+    rename_var_list(need_not_rename, RenameMap, LambdaVars0, LambdaVars),
 
     % Quantified variables cannot be pushed inside a lambda goal,
     % so we insert the quantified vars into the outside vars set,
