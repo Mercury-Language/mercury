@@ -1392,11 +1392,11 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         ;
             Purity = purity_semipure,
             write_indent(Indent, !IO),
-            io.write_string("% semipure\n ", !IO)
+            io.write_string("% semipure\n", !IO)
         ;
             Purity = purity_impure,
             write_indent(Indent, !IO),
-            io.write_string("% impure\n ", !IO)
+            io.write_string("% impure\n", !IO)
         )
     ;
         true
@@ -2434,7 +2434,7 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
     ;
         ConstructHow = construct_in_region(RegVar),
         write_indent(Indent, !IO),
-        io.write_string(" construct in region: ", !IO),
+        io.write_string("% construct in region: ", !IO),
         mercury_output_var(ProgVarSet, AppendVarNums, RegVar, !IO),
         io.write_string("\n", !IO)
     ).
