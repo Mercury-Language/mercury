@@ -3473,8 +3473,12 @@ options_help_semantics -->
         "\tthat reordering is unavoidable.",
         "--no-reorder-disj",
         "\tExecute disjunctions strictly left-to-right.",
-        "--fully-strict",
-        "\tDon't optimize away loops or calls to error/1.",
+        "--no-fully-strict",
+        "\tAllow mmc to optimize away infinite loops or calls to error/1.",
+        "\tAlso allow mmc to replace (semi)pure det goals that have no " ++
+            "outputs with",
+        "\t`true' and replace (semi)pure goals that will always fail " ++
+            "with `fail'.",
         "--allow-stubs",
         "\tAllow procedures to have no clauses.  Any calls to",
         "\tsuch procedures will raise an exception at run-time.",

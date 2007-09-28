@@ -6135,14 +6135,14 @@ advantage of parallelism can define different semantic models.
 Programmers who care about efficiency more than portability can write
 code for these implementation-defined semantic models.  Programmers who
 care about efficiency @emph{and} portability can achieve this by writing
-code for the commutative semantics.
+code for the strict commutative semantics.
 Of course, this is not
 quite as easy as using the strict sequential semantics, since it is
 in general not sufficient to test your programs on just one
 implementation if you are to be sure that it will be able to use the
 maximally efficient operational semantics on any implementation.
 However, if you do write code which works for all possible executions
-under commutative semantics (i.e.@: for all possible orderings of
+under the strict commutative semantics (i.e.@: for all possible orderings of
 conjunctions and disjunctions), then you can be guaranteed that it
 will work correctly on every implementation, under every possible
 implementation-defined semantics.
@@ -6150,12 +6150,14 @@ implementation-defined semantics.
 The University of Melbourne Mercury implementation offers eight
 different semantics, which can be selected with different
 combinations of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
-and @samp{--fully-strict} options.  (The @samp{--fully-strict} option
-prevents the compiler from improving completeness by optimizing away infinite
-loops or calls to @code{require.error/1} or @code{exception.throw/1}.)
-The default semantics are the commutative semantics.  Enabling all of these
-options gives you the strict sequential semantics.  Enabling just some
-of them gives you a semantics somewhere in between.
+and @samp{--no-fully-strict} options.
+(The @samp{--no-fully-strict} option allows the compiler to improve
+completeness by optimizing away infinite loops,
+calls to @code{require.error/1} or @code{exception.throw/1} and
+(semi)pure goals that are declaratively equivalent to true or false.)
+The default semantics are the strict commutative semantics.
+Enabling @samp{--no-reorder-conj} and @samp{--no-reorder-disj} gives the
+strict sequencial semantics.
 
 Future implementations of Mercury may wish to offer other operational semantics.
 For example, they may wish to provide semantics in which function

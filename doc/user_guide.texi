@@ -6904,9 +6904,13 @@ that reordering is unavoidable.
 Execute disjunctions strictly left-to-right.
 
 @sp 1
-@item --fully-strict
-@findex --fully-strict
-Don't optimize away loops or calls to @code{error/1}.
+@item --no-fully-strict
+@findex --no-fully-strict
+Allow the compiler to optimize away infinite loops or calls to
+@code{error/1} or @code{throw/1}.
+Also allow the compiler to replace det (semi)pure goals that have no outputs
+with @samp{true}
+and (semi)pure goals that will always fail with @samp{fail}.
 
 @sp 1
 @item --allow-stubs
