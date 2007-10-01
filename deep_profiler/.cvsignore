@@ -22,6 +22,7 @@ mdprof_cgi
 mdprof_server
 mdprof_dump
 mdprof_feedback
+mdprof_procrep
 Mercury
 .deep.tags
 DEEP_FLAGS
@@ -34,3 +35,5 @@ program_representation.m
 rtti_access.m
 slice_and_dice.m
 trace_counts.m
+mdbcomp.int0
+mdbcomp.date0
