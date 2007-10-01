@@ -158,5 +158,5 @@ Files in test_dir (recursive, not following symlinks):
 test_dir/d1, test_dir/d1/bar, test_dir/d1/baz, test_dir/d1/foo, test_dir/d1/parent, test_dir/d2, test_dir/d2/d2, test_dir/d3, test_dir/quark, test_dir/queeg
 dir__recursive_foldl2 (symlinks) succeeded
 Files in test_dir (recursive, following symlinks:
-test_dir/d1, test_dir/d1/bar, test_dir/d1/baz, test_dir/d1/foo, test_dir/d1/parent, test_dir/d2, test_dir/d2/d2, test_dir/d3, test_dir/quark, test_dir/queeg
+test_dir/d1, test_dir/d1/bar, test_dir/d1/baz, test_dir/d1/foo, test_dir/d1/parent, test_dir/d2, test_dir/d2/d2, test_dir/d3, test_dir/d3/bar, test_dir/d3/baz, test_dir/d3/foo, test_dir/d3/parent, test_dir/quark, test_dir/queeg
 dir.recursive_foldl2(list_files, "dir_test.m", ...) failed as expected.

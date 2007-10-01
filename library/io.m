@@ -1373,6 +1373,7 @@
     % in `AccessTypes' on `FileName'.
     % XXX When using the .NET CLI, this predicate will sometimes report
     % that a directory is writable when in fact it is not.
+    % XXX When using the Erlang backend, `execute' access is not checked.
     %
 :- pred io.check_file_accessibility(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
@@ -3144,6 +3145,9 @@ file_type_implemented :- semidet_fail.
                 regular ->
                     Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
                         mercury__io:'ML_file_type_regular'());
+                symlink ->
+                    Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
+                        mercury__io:'ML_file_type_symbolic_link'());
                 other ->
                     Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
                         mercury__io:'ML_file_type_unknown'())
@@ -3205,6 +3209,8 @@ file_type_unknown = unknown.
 :- pragma foreign_export("C", file_type_symbolic_link = out,
     "ML_file_type_symbolic_link").
 :- pragma foreign_export("IL", file_type_symbolic_link = out,
+    "ML_file_type_symbolic_link").
+:- pragma foreign_export("Erlang", file_type_symbolic_link = out,
     "ML_file_type_symbolic_link").
 :- pragma foreign_export("C", file_type_regular = out,
     "ML_file_type_regular").
@@ -3331,6 +3337,51 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     catch (java.lang.Exception e) {
         Result = make_io_res_0_error_msg_1_f_0(e.getMessage());
     }
+").
+
+:- pragma foreign_proc("Erlang",
+    io.check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        does_not_affect_liveness],
+"
+    FileNameStr = binary_to_list(FileName),
+    case file:read_file_info(FileNameStr) of
+        {ok, FileInfo} ->
+            Access = FileInfo#file_info.access,
+            case mercury__io:'ML_access_types_includes_read'(AccessTypes) of
+                {} ->
+                    Ok0 = lists:member(Access, [read, read_write]);
+                fail ->
+                    Ok0 = true
+            end,
+            case Ok0 of
+                true ->
+                    case
+                        mercury__io:'ML_access_types_includes_write'(
+                            AccessTypes)
+                    of
+                        {} ->
+                            Ok = lists:member(Access, [write, read_write]);
+                        fail ->
+                            Ok = true
+                    end;
+                false ->
+                    Ok = Ok0
+            end,
+            % XXX test execute access somehow
+            case Ok of
+                true ->
+                    Result = mercury__io:'ML_make_io_res_0_ok'();
+                false ->
+                    Result = mercury__io:'ML_make_io_res_0_error'(eacces,
+                        <<""file not accessible: "">>)
+            end
+    ;
+        {error, Reason} ->
+            Result = mercury__io:'ML_make_io_res_0_error'(Reason,
+                <<""file not accessible: "">>)
+    end
 ").
 
 :- pred io.check_file_accessibility_dotnet(string::in, list(access_type)::in,
@@ -3522,6 +3573,8 @@ access_types_includes_execute(Access) :-
     "ML_make_io_res_0_ok").
 :- pragma foreign_export("IL", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
+:- pragma foreign_export("Erlang", (make_io_res_0_ok = out),
+    "ML_make_io_res_0_ok").
 
 make_io_res_0_ok = ok.
 
@@ -3530,6 +3583,8 @@ make_io_res_0_ok = ok.
 :- pragma foreign_export("C", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
 :- pragma foreign_export("IL", make_io_res_0_error(in, in, out, di, uo),
+    "ML_make_io_res_0_error").
+:- pragma foreign_export("Erlang", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
 
 make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
@@ -3593,6 +3648,8 @@ make_io_res_1_error_string(Error, Msg0, error(make_io_error(Msg)), !IO) :-
 :- type file_id ---> file_id.
 :- pragma foreign_type("C", file_id, "ML_File_Id")
     where comparison is compare_file_id.
+:- pragma foreign_type("Erlang", file_id, "")
+    where comparison is compare_file_id.
 
 :- pragma foreign_decl("C",
 "
@@ -3631,7 +3688,8 @@ compare_file_id(Result, FileId1, FileId2) :-
 
 :- pragma foreign_proc("C",
     compare_file_id_2(Res::out, FileId1::in, FileId2::in),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
     int device_cmp;
     int inode_cmp;
@@ -3652,9 +3710,9 @@ compare_file_id(Result, FileId1, FileId2) :-
     } else {
         inode_cmp = memcmp(&(FileId1.inode), &(FileId2.inode),
             sizeof(ML_ino_t));
-        if (device_cmp < 0) {
+        if (inode_cmp < 0) {
             Res = -1;
-        } else if (device_cmp > 0) {
+        } else if (inode_cmp > 0) {
             Res = 1;
         } else {
             Res = 0;
@@ -3668,6 +3726,21 @@ compare_file_id(Result, FileId1, FileId2) :-
 "
     throw new java.lang.RuntimeException(
         ""File IDs are not supported by Java."");
+").
+
+:- pragma foreign_proc("Erlang",
+    compare_file_id_2(Res::out, FileId1::in, FileId2::in),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
+"
+    if
+        FileId1 =:= FileId2 ->
+            Res = 0;
+        FileId1  <  FileId2 ->
+            Res = -1;
+        true ->
+            Res = 1
+    end
 ").
 
 io.file_id(FileName, Result, !IO) :-
@@ -3724,6 +3797,26 @@ io.file_id(FileName, Result, !IO) :-
     }
 ").
 
+:- pragma foreign_proc("Erlang",
+    io.file_id_2(FileName::in, Status::out, Msg::out,
+        FileId::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    FileNameStr = binary_to_list(FileName),
+    case file:read_file_info(FileNameStr) of
+        {ok, FileInfo} ->
+            MajorDevice = FileInfo#file_info.major_device,
+            Inode = FileInfo#file_info.inode,
+            FileId = {MajorDevice, Inode},
+            Msg = <<>>,
+            Status = 1;
+        {error, Reason} ->
+            FileId = null,
+            Msg = list_to_binary(file:format_error(Reason)),
+            Status = 0
+    end
+").
+
 % Can we retrieve inode numbers on this system.
 have_file_ids :- semidet_fail.
 :- pragma foreign_proc("C",
@@ -3737,6 +3830,14 @@ have_file_ids :- semidet_fail.
 #else
     SUCCESS_INDICATOR = MR_TRUE;
 #endif
+").
+
+:- pragma foreign_proc("Erlang",
+    have_file_ids,
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    SUCCESS_INDICATOR = true
 ").
 
 %-----------------------------------------------------------------------------%
@@ -10352,9 +10453,10 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
     LinkFileNameStr = binary_to_list(LinkFileName),
     case file:make_symlink(FileNameStr, LinkFileNameStr) of
         ok ->
-            Status = 0;
-        {error, _Reason} ->
-            Status = -1
+            Status = 1;
+        {error, Reason} ->
+            put('MR_io_exception', Reason),
+            Status = 0
     end
 ").
 
