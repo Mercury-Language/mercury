@@ -56,7 +56,7 @@ extern  void    MR_c_file_to_mercury_file(FILE *c_file,
 */
 
 extern  MR_bool MR_trace_is_natural_number(const char *word,
-                    MR_Unsigned *value);
+                    int *value);
 
 extern  MR_bool MR_trace_is_natural_number_pair(const char *word,
                     MR_Unsigned *value1, MR_Unsigned *value2);

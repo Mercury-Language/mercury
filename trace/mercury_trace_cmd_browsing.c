@@ -227,16 +227,14 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
             if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err,
-                    "mdb: I/O tabling has not yet started.\n",
-                    MR_io_tabling_start, MR_io_tabling_counter_hwm);
+                    "mdb: I/O tabling has not yet started.\n");
                 return KEEP_INTERACTING;
             }
 
             if (MR_io_tabling_counter_hwm == 0) {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err,
-                    "mdb: There are no tabled I/O actions yet.\n",
-                    MR_io_tabling_start, MR_io_tabling_counter_hwm);
+                    "mdb: There are no tabled I/O actions yet.\n");
                 return KEEP_INTERACTING;
             }
 
@@ -306,16 +304,14 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
         if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err,
-                "mdb: I/O tabling has not yet started.\n",
-                MR_io_tabling_start, MR_io_tabling_counter_hwm);
+                "mdb: I/O tabling has not yet started.\n");
             return KEEP_INTERACTING;
         }
 
         if (MR_io_tabling_counter_hwm == 0) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err,
-                "mdb: There are no tabled I/O actions yet.\n",
-                MR_io_tabling_start, MR_io_tabling_counter_hwm);
+                "mdb: There are no tabled I/O actions yet.\n");
             return KEEP_INTERACTING;
         }
 
@@ -326,7 +322,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 "%" MR_INTEGER_LENGTH_MODIFIER "u.\n",
                 MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
             fflush(MR_mdb_out);
-        } else if (MR_trace_is_natural_number(words[2], &action)) {
+        } else if (MR_trace_is_unsigned(words[2], &action)) {
             problem = MR_trace_browse_action(MR_mdb_out, action,
                 MR_trace_browse_goal_internal,
                 MR_BROWSE_CALLER_PRINT, format);
