@@ -339,6 +339,8 @@
     ;       slot_region_ite
     ;       slot_region_disj
     ;       slot_region_commit
+    ;       slot_success_record     % A record of whether a piece of code
+                                    % has ever succeeded.
     ;       slot_lval(lval).
 
     % Call maybe_process_proc_llds on the code of every procedure in the list.
@@ -925,6 +927,7 @@ live_value_type(slot_lval(parent_stackvar(_)), live_value_unwanted).
 live_value_type(slot_lval(framevar(_)), live_value_unwanted).
 live_value_type(slot_lval(mem_ref(_)), live_value_unwanted). % XXX
 live_value_type(slot_lval(global_var_ref(_)), live_value_unwanted).
+live_value_type(slot_success_record, live_value_unwanted).
 live_value_type(slot_ticket, live_value_unwanted).
     % XXX we may need to modify this, if the GC is going to garbage-collect
     % the trail.

@@ -145,11 +145,13 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     IteRegionOps = AddRegionOps,
     goal_to_conj_list(ElseGoal, ElseGoals),
     maybe_create_ite_region_frame(IteRegionOps, CondInfo, ElseGoals,
-        RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars, !CI),
+        RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars,
+        MaybeEmbeddedStackFrameId, !CI),
 
     remember_position(!.CI, BranchStart),
 
-    prepare_for_ite_hijack(EffCodeModel, HijackInfo, PrepareHijackCode, !CI),
+    prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedStackFrameId,
+        HijackInfo, PrepareHijackCode, !CI),
 
     make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
     effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode, !CI),
@@ -159,7 +161,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         !CI),
     generate_goal(CondCodeModel, CondGoal, CondCode, !CI),
 
-    ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
+    ite_enter_then(HijackInfo, ResumePoint, ThenNeckCode, ElseNeckCode, !CI),
 
     % Kill again any variables that have become zombies.
     pickup_zombies(Zombies, !CI),
@@ -364,9 +366,15 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     IteRegionOps = AddRegionOps,
     Goal = hlds_goal(_, GoalInfo),
     maybe_create_ite_region_frame(IteRegionOps, GoalInfo, [],
-        RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars, !CI),
+        RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars,
+        MaybeRegionSuccRecordSlot, !CI),
+    % MaybeRegionSuccRecordSlot should be yes only for nondet conditions,
+    % and a negated goal can't be nondet.
+    expect(unify(MaybeRegionSuccRecordSlot, no), this_file,
+        "generate_negation_general: MaybeRegionSuccRecordSlot = yes(_)"),
 
-    prepare_for_ite_hijack(CodeModel, HijackInfo, PrepareHijackCode, !CI),
+    prepare_for_ite_hijack(CodeModel, MaybeRegionSuccRecordSlot, HijackInfo,
+        PrepareHijackCode, !CI),
 
     make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
     effect_resume_point(ResumePoint, CodeModel, EffectResumeCode, !CI),
@@ -376,7 +384,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     maybe_generate_internal_event_code(Goal, NotGoalInfo, EnterTraceCode, !CI),
     code_gen.generate_goal(model_semi, Goal, GoalCode, !CI),
 
-    ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
+    ite_enter_then(HijackInfo, ResumePoint, ThenNeckCode, ElseNeckCode, !CI),
 
     % Kill again any variables that have become zombies.
     pickup_zombies(Zombies, !CI),
@@ -534,16 +542,18 @@ wrap_transient(Code) =
 :- pred maybe_create_ite_region_frame(add_region_ops::in,
     hlds_goal_info::in, list(hlds_goal)::in,
     code_tree::out, code_tree::out, code_tree::out, list(lval)::out,
-    code_info::in, code_info::out) is det.
+    maybe(embedded_stack_frame_id)::out, code_info::in, code_info::out) is det.
 
 maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
-        CondCode, ThenCode, ElseCode, StackVars, !CI) :-
+        CondCode, ThenCode, ElseCode, StackVars, MaybeEmbeddedStackFrameId,
+        !CI) :-
     (
         IteRegionOps = do_not_add_region_ops,
         CondCode = empty,
         ThenCode = empty,
         ElseCode = empty,
-        StackVars = []
+        StackVars = [],
+        MaybeEmbeddedStackFrameId = no
     ;
         IteRegionOps = add_region_ops,
         get_forward_live_vars(!.CI, ForwardLiveVars),
@@ -607,16 +617,16 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         Items = list.duplicate(FrameSize, slot_region_ite),
         acquire_several_temp_slots(Items, non_persistent_temp_slot,
             StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
-        EmbeddedStackFrame = embedded_stack_frame_id(MainStackId,
+        EmbeddedStackFrameId = embedded_stack_frame_id(MainStackId,
             FirstSlotNum, LastSlotNum),
         FirstNonFixedAddr =
-            first_nonfixed_embedded_slot_addr(EmbeddedStackFrame, FixedSize),
+            first_nonfixed_embedded_slot_addr(EmbeddedStackFrameId, FixedSize),
         acquire_reg(reg_r, ProtectNumRegLval, !CI),
         acquire_reg(reg_r, SnapshotNumRegLval, !CI),
         acquire_reg(reg_r, AddrRegLval, !CI),
         PushInitCode = node([
             llds_instr(
-                push_region_frame(region_stack_ite, EmbeddedStackFrame),
+                push_region_frame(region_stack_ite, EmbeddedStackFrameId),
                 "Save stack pointer of embedded region ite stack"),
             llds_instr(
                 assign(ProtectNumRegLval, const(llconst_int(0))),
@@ -629,18 +639,19 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
                 "Initialize pointer to nonfixed part of embedded frame")
         ]),
         ite_protect_regions(ProtectNumRegLval, AddrRegLval,
-            EmbeddedStackFrame, ProtectRegionVarList, ProtectRegionCode, !CI),
+            EmbeddedStackFrameId, ProtectRegionVarList, ProtectRegionCode,
+            !CI),
         ite_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
-            EmbeddedStackFrame, RemovedAtStartOfElse, SnapshotRegionVarList,
+            EmbeddedStackFrameId, RemovedAtStartOfElse, SnapshotRegionVarList,
             SnapshotRegionCode, !CI),
         SetCode = node([
             llds_instr(
                 region_set_fixed_slot(region_set_ite_num_protects,
-                    EmbeddedStackFrame, lval(ProtectNumRegLval)),
+                    EmbeddedStackFrameId, lval(ProtectNumRegLval)),
                 "Store the number of protect_infos"),
             llds_instr(
                 region_set_fixed_slot(region_set_ite_num_snapshots,
-                    EmbeddedStackFrame, lval(SnapshotNumRegLval)),
+                    EmbeddedStackFrameId, lval(SnapshotNumRegLval)),
                 "Store the number of snapshot_infos")
         ]),
         release_reg(ProtectNumRegLval, !CI),
@@ -650,10 +661,12 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         CondCodeModel = goal_info_get_code_model(CondGoalInfo),
         (
             CondCodeModel = model_non,
-            CondKind = region_ite_nondet_cond
+            CondKind = region_ite_nondet_cond,
+            MaybeEmbeddedStackFrameId = yes(EmbeddedStackFrameId)
         ;
             CondCodeModel = model_semi,
-            CondKind = region_ite_semidet_cond
+            CondKind = region_ite_semidet_cond,
+            MaybeEmbeddedStackFrameId = no
         ;
             CondCodeModel = model_det,
             unexpected(this_file, "maybe_create_ite_region_frame: det cond")
@@ -668,13 +681,13 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         ThenCode = node([
             llds_instr(
                 use_and_maybe_pop_region_frame(region_ite_then(CondKind),
-                    EmbeddedStackFrame),
+                    EmbeddedStackFrameId),
                 "region enter then")
         ]),
         ElseCode = node([
             llds_instr(
                 use_and_maybe_pop_region_frame(region_ite_else(CondKind),
-                    EmbeddedStackFrame),
+                    EmbeddedStackFrameId),
                 "region enter else")
         ])
 
@@ -712,17 +725,17 @@ find_regions_removed_at_start_of_else([Goal | Goals], ModuleInfo, !Removed) :-
     list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
 
 ite_protect_regions(_, _, _, [], empty, !CI).
-ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
+ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
     SaveCode = node([
         llds_instr(
             region_fill_frame(region_fill_ite_protect,
-                EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
+                EmbeddedStackFrameId, RegionVarRval, NumLval, AddrLval),
             "ite protect the region if needed")
     ]),
     Code = tree(ProduceVarCode, SaveCode),
-    ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
+    ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RegionVars, Codes, !CI).
 
 :- pred ite_alloc_snapshot_regions(lval::in, lval::in,
@@ -730,7 +743,7 @@ ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
     list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
 
 ite_alloc_snapshot_regions(_, _, _, _, [], empty, !CI).
-ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
+ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RemovedVars, [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
     ( set.member(RegionVar, RemovedVars) ->
@@ -741,11 +754,11 @@ ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
     SaveCode = node([
         llds_instr(
             region_fill_frame(region_fill_ite_snapshot(RemovedAtStartOfElse),
-                EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
+                EmbeddedStackFrameId, RegionVarRval, NumLval, AddrLval),
             "take alloc snapshot of the region")
     ]),
     Code = tree(ProduceVarCode, SaveCode),
-    ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
+    ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RemovedVars, RegionVars, Codes, !CI).
 
 %-----------------------------------------------------------------------------%

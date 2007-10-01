@@ -61,6 +61,7 @@
 :- implementation.
 
 :- import_module backend_libs.proc_label.
+:- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_code_util.
@@ -1296,8 +1297,11 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % slot of the top frame to point to this frame. Our caller
     % will then override the redoip slot to point to the start of
     % the else part before generating the code of the condition.
+    % The maybe(lval) argument, if set to `yes', specifies the slot
+    % holding the success record to use in deciding whether to execute
+    % a region_ite_nondet_cond_fail operation at the start of the else branch.
     %
-    % `ite_enter_then', which should be called generating code for
+    % `ite_enter_then', which should be called after generating code for
     % the condition, sets up the failure state of the code generator
     % for generating the then-part, and returns the code sequences
     % to be used at the starts of the then-part and the else-part
@@ -1305,10 +1309,11 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     %
 :- type ite_hijack_info.
 
-:- pred prepare_for_ite_hijack(code_model::in, ite_hijack_info::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred prepare_for_ite_hijack(code_model::in,
+    maybe(embedded_stack_frame_id)::in, ite_hijack_info::out, code_tree::out,
+    code_info::in, code_info::out) is det.
 
-:- pred ite_enter_then(ite_hijack_info::in,
+:- pred ite_enter_then(ite_hijack_info::in, resume_point_info::in,
     code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
 
     % `enter_simple_neg' and `leave_simple_neg' should be called before
@@ -1317,8 +1322,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % specially, because it occurs frequently and should not require
     % a flushing of the expression cache, whereas the general way of
     % handling negations does require a flush. These two predicates
-    % handle all aspects of the negation except for the unification
-    % itself.
+    % handle all aspects of the negation except for the unification itself.
     %
 :- type simple_neg_info.
 
@@ -1330,7 +1334,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 
     % `prepare_for_det_commit' and `generate_det_commit' should be
     % called before and after generating the code for the multi goal
-    % being cut across. If the goal succeeds, the commit will cut
+    % being cut across. If the goal succeeds, the commit will cut away
     % any choice points generated in the goal.
     %
     % The set(prog_var) should be the set of variables live before
@@ -1470,8 +1474,9 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % in the positions expected by the label.
     %
     % The only time when a code_addr in a resume_point info is not a label
-    % is when the code_addr is do_fail, which indicates that the resumption
-    % point is not in (this invocation of) this procedure.
+    % is when the code_addr is do_redo or do_fail, which indicate that
+    % the resumption point is either unknown or not in (this invocation of)
+    % this procedure.
     %
 :- type resume_point_info
     --->    orig_only(resume_map, code_addr)
@@ -1654,11 +1659,23 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
+    % For model_non if-then-elses, we need to clean up the embedded stack frame
+    % we create for the if-then-else when the condition fails after succeeding.
+    % For such if-then-elses, we record the id of the embedded frame we need to
+    % clean up, and the id of the slot that is initialized to false, and set to
+    % true each time the condition succeeds.
+:- type ite_region_info
+    --->    ite_region_info(
+                embedded_stack_frame_id,
+                lval
+            ).
+
 :- type ite_hijack_info
     --->    ite_info(
                 resume_point_known,
                 condition_env,
-                ite_hijack_type
+                ite_hijack_type,
+                maybe(ite_region_info)
             ).
 
 :- type ite_hijack_type
@@ -1681,97 +1698,171 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
                             % the value of maxfr.
             ).
 
-prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
+prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
+        !CI) :-
     get_fail_info(!.CI, FailInfo),
     FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow),
     (
-        EffCodeModel \= model_non
-    ->
+        % It is possible for a negated goal (which is the "Condition" of the
+        % equivalent if-then-else) to be det, if it is also impure.
+        ( CondCodeModel = model_det
+        ; CondCodeModel = model_semi
+        ),
+        expect(unify(MaybeEmbeddedFrameId, no), this_file,
+            "prepare_for_ite_hijack: MaybeEmbeddedFrameId in model_semi"),
         HijackType = ite_no_hijack,
         Code = node([
             llds_instr(comment("ite no hijack"), "")
-        ])
-    ;
-        ( Allow = not_allowed ; CondEnv = inside_non_condition )
-    ->
-        acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
-            MaxfrSlot, !CI),
-        HijackType = ite_temp_frame(MaxfrSlot),
-        create_temp_frame(do_fail, "prepare for ite", TempFrameCode, !CI),
-        MaxfrCode = node([
-            llds_instr(assign(MaxfrSlot, lval(maxfr)), "prepare for ite")
         ]),
-        Code = tree(TempFrameCode, MaxfrCode)
+        MaybeRegionInfo = no
     ;
-        CurfrMaxfr = must_be_equal,
-        ResumeKnown = resume_point_known(_)
-    ->
-        HijackType = ite_quarter_hijack,
-        Code = node([
-            llds_instr(comment("ite quarter hijack"), "")
-        ])
-    ;
-        CurfrMaxfr = must_be_equal
-    ->
-        % Here ResumeKnown must be resume_point_unknown.
-        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
-            non_persistent_temp_slot, RedoipSlot, !CI),
-        HijackType = ite_half_hijack(RedoipSlot),
-        Code = node([
-            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
-                "prepare for half ite hijack")
-        ])
-    ;
-        % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
-            non_persistent_temp_slot, RedoipSlot, !CI),
-        acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
-            non_persistent_temp_slot, RedofrSlot, !CI),
-        acquire_temp_slot(slot_lval(maxfr),
-            non_persistent_temp_slot, MaxfrSlot, !CI),
-        HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
-        Code = node([
-            llds_instr(assign(MaxfrSlot, lval(maxfr)),
-                "prepare for full ite hijack"),
-            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
-                "prepare for full ite hijack"),
-            llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
-                "prepare for full ite hijack"),
-            llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
-                "prepare for full ite hijack")
-        ])
-    ),
-    HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType),
-    ( EffCodeModel = model_non ->
+        CondCodeModel = model_non,
+        (
+            ( Allow = not_allowed
+            ; CondEnv = inside_non_condition
+            ; MaybeEmbeddedFrameId = yes(_)
+            )
+        ->
+            acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
+                MaxfrSlot, !CI),
+            HijackType = ite_temp_frame(MaxfrSlot),
+            create_temp_frame(do_fail, "prepare for ite", TempFrameCode, !CI),
+            MaxfrCode = node([
+                llds_instr(assign(MaxfrSlot, lval(maxfr)), "prepare for ite")
+            ]),
+            (
+                MaybeEmbeddedFrameId = yes(EmbeddedFrameId),
+                % Note that this slot is intentionally not released anywhere.
+                acquire_temp_slot(slot_success_record, persistent_temp_slot,
+                    SuccessRecordSlot, !CI),
+                InitSuccessCode = node([
+                    llds_instr(
+                        assign(SuccessRecordSlot, const(llconst_false)),
+                        "record no success of the condition yes")
+                ]),
+                MaybeRegionInfo =
+                    yes(ite_region_info(EmbeddedFrameId, SuccessRecordSlot))
+            ;
+                MaybeEmbeddedFrameId = no,
+                InitSuccessCode = empty,
+                MaybeRegionInfo = no
+            ),
+            Code = tree_list([
+                TempFrameCode,
+                MaxfrCode,
+                InitSuccessCode
+            ])
+        ;
+            (
+                CurfrMaxfr = must_be_equal,
+                (
+                    ResumeKnown = resume_point_known(_),
+                    HijackType = ite_quarter_hijack,
+                    Code = node([
+                        llds_instr(comment("ite quarter hijack"), "")
+                    ])
+                ;
+                    ResumeKnown = resume_point_unknown,
+                    acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
+                        non_persistent_temp_slot, RedoipSlot, !CI),
+                    HijackType = ite_half_hijack(RedoipSlot),
+                    Code = node([
+                        llds_instr(
+                            assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
+                            "prepare for half ite hijack")
+                    ])
+                )
+            ;
+                CurfrMaxfr = may_be_different,
+                acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
+                    non_persistent_temp_slot, RedoipSlot, !CI),
+                acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
+                    non_persistent_temp_slot, RedofrSlot, !CI),
+                acquire_temp_slot(slot_lval(maxfr),
+                    non_persistent_temp_slot, MaxfrSlot, !CI),
+                HijackType = ite_full_hijack(RedoipSlot, RedofrSlot,
+                    MaxfrSlot),
+                Code = node([
+                    llds_instr(
+                        assign(MaxfrSlot, lval(maxfr)),
+                        "prepare for full ite hijack"),
+                    llds_instr(
+                        assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
+                        "prepare for full ite hijack"),
+                    llds_instr(
+                        assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
+                        "prepare for full ite hijack"),
+                    llds_instr(
+                        assign(redofr_slot(lval(maxfr)), lval(curfr)),
+                        "prepare for full ite hijack")
+                ])
+            ),
+            MaybeRegionInfo = no
+        ),
         inside_non_condition(!CI)
-    ;
-        true
-    ).
+    ),
+    HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType, MaybeRegionInfo).
 
-ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
+ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr, _, Allow),
     stack.pop_det(ResumePoints0, _, ResumePoints),
-    HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType),
+    HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType, 
+        MaybeRegionInfo),
     (
         HijackType = ite_no_hijack,
+        expect(unify(MaybeRegionInfo, no), this_file,
+            "ite_enter_then: MaybeRegionInfo ite_no_hijack"),
         ThenCode = empty,
-        ElseCode = ThenCode
+        ElseCode = empty
     ;
         HijackType = ite_temp_frame(MaxfrSlot),
-        ThenCode = node([
-            % We can't remove the frame, it may not be on top.
-            llds_instr(assign(redoip_slot(lval(MaxfrSlot)),
-                const(llconst_code_addr(do_fail))),
-                "soft cut for temp frame ite")
-        ]),
-        ElseCode = node([
-            % XXX search for assignments to maxfr
-            llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
-                "restore maxfr for temp frame ite")
-        ])
+        (
+            MaybeRegionInfo = no,
+            ThenCode = node([
+                % We can't remove the frame, it may not be on top.
+                llds_instr(assign(redoip_slot(lval(MaxfrSlot)),
+                    const(llconst_code_addr(do_fail))),
+                    "soft cut for temp frame ite")
+            ]),
+            ElseCode = node([
+                % XXX search for assignments to maxfr
+                llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
+                    "restore maxfr for temp frame ite")
+            ])
+        ;
+            MaybeRegionInfo = yes(RegionInfo),
+            RegionInfo = ite_region_info(EmbeddedStackFrameId,
+                SuccessRecordSlot),
+            % XXX replace do_fail with ref to ResumePoint stack label
+            resume_point_stack_addr(ITEResumePoint, ITEStackResumeCodeAddr),
+            ThenCode = node([
+                llds_instr(assign(SuccessRecordSlot, const(llconst_true)),
+                    "record success of the condition"),
+                llds_instr(assign(redoip_slot(lval(MaxfrSlot)),
+                    const(llconst_code_addr(ITEStackResumeCodeAddr))),
+                    "redirect to cut for temp frame ite")
+            ]),
+            get_next_label(AfterRegionOp, !CI),
+            ElseCode = node([
+                llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
+                    "restore maxfr for temp frame ite"),
+                llds_instr(if_val(unop(logical_not, lval(SuccessRecordSlot)),
+                    code_label(AfterRegionOp)),
+                    "jump around if the condition never succeeded"),
+                llds_instr(use_and_maybe_pop_region_frame(
+                    region_ite_nondet_cond_fail, EmbeddedStackFrameId),
+                    "cleanup after the post-success failure of the condition"),
+                llds_instr(goto(do_fail),
+                    "the condition succeeded, so don't execute else branch"),
+                llds_instr(label(AfterRegionOp),
+                    "after region op")
+            ])
+        )
     ;
         HijackType = ite_quarter_hijack,
+        expect(unify(MaybeRegionInfo, no), this_file,
+            "ite_enter_then: MaybeRegionInfo ite_quarter_hijack"),
         stack.top_det(ResumePoints, ResumePoint),
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(llconst_code_addr(StackLabel)),
@@ -1786,6 +1877,8 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         ElseCode = ThenCode
     ;
         HijackType = ite_half_hijack(RedoipSlot),
+        expect(unify(MaybeRegionInfo, no), this_file,
+            "ite_enter_then: MaybeRegionInfo ite_half_hijack"),
         ThenCode = node([
             llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
                 "restore redoip for half ite hijack")
@@ -1793,6 +1886,8 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         ElseCode = ThenCode
     ;
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
+        expect(unify(MaybeRegionInfo, no), this_file,
+            "ite_enter_then: MaybeRegionInfo ite_full_hijack"),
         ThenCode = node([
             llds_instr(assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot)),
                 "restore redoip for full ite hijack"),
