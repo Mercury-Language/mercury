@@ -114,6 +114,7 @@ SINGLEMODULE= \
 	invalid_event \
 	invalid_export_detism \
 	invalid_import_detism \
+	invalid_instance_declarations \
 	invalid_main \
 	invalid_mllibs \
 	invalid_new \

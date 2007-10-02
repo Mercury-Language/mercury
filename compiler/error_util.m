@@ -265,6 +265,11 @@
     ;       int_fixed(int)  % Convert the integer to a string, then treat
                             % as fixed.
 
+    ;       nth_fixed(int)  % Convert the integer to a string, such as
+                            % "first", "second", "third", "4th", "5th" and
+                            % then treat as fixed.
+                            % 
+
     ;       prefix(string)  % This string should appear in the output
                             % in one piece, as it is, inserted directly
                             % before the next format_component, without
@@ -958,6 +963,9 @@ error_pieces_to_string([Component | Components]) = Str :-
         Component = int_fixed(Int),
         Str = join_string_and_tail(int_to_string(Int), Components, TailStr)
     ;
+        Component = nth_fixed(Int),
+        Str = join_string_and_tail(nth_fixed_str(Int), Components, TailStr)
+    ;
         Component = prefix(Word),
         Str = Word ++ TailStr
     ;
@@ -1002,6 +1010,19 @@ error_pieces_to_string([Component | Components]) = Str :-
     ;
         Component = blank_line,
         Str = "\n\n" ++ TailStr
+    ).
+
+:- func nth_fixed_str(int) = string.
+
+nth_fixed_str(N) =
+    ( N = 1 ->
+        "first"
+    ; N = 2 ->
+        "second"
+    ; N = 3 ->
+        "third"
+    ;
+        int_to_string(N) ++ "th"
     ).
 
 :- func join_string_and_tail(string, list(format_component), string) = string.
@@ -1055,6 +1076,9 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
     ;
         Component = int_fixed(Int),
         RevWords1 = [plain_word(int_to_string(Int)) | RevWords0]
+    ;
+        Component = nth_fixed(Int),
+        RevWords1 = [plain_word(nth_fixed_str(Int)) | RevWords0]
     ;
         Component = prefix(Word),
         RevWords1 = [prefix_word(Word) | RevWords0]

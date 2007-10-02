@@ -598,67 +598,10 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
     maybe1(item)::out) is det.
 
 parse_underived_instance_2(_, _, error1(Errors), _, _, error1(Errors)).
-parse_underived_instance_2(ErrorTerm, ClassName, ok1(Types), TVarSet,
+parse_underived_instance_2(_, ClassName, ok1(Types), TVarSet,
         ModuleName, Result) :-
-    (
-        % Check that each type in the arguments of the instance decl
-        % is a functor with vars as args...
-        all [Type] (
-            list.member(Type, Types)
-        =>
-            type_is_functor_and_vars(Type)
-        ),
-        % ...and that the vars are distinct across the entire arg list.
-        type_vars_are_distinct(Types)
-    ->
-        Result = ok1(item_instance([], ClassName, Types,
-            instance_body_abstract, TVarSet, ModuleName))
-    ;
-        Msg = "types in instance declarations must be functors " ++
-            "with distinct variables as arguments",
-        Result = error1([Msg - ErrorTerm])
-    ).
-
-:- pred type_is_functor_and_vars(mer_type::in) is semidet.
-
-type_is_functor_and_vars(defined_type(_, Args, _)) :-
-    functor_args_are_variables(Args).
-type_is_functor_and_vars(builtin_type(_)).
-type_is_functor_and_vars(higher_order_type(Args, MaybeRet, Purity,
-        EvalMethod)) :-
-    % XXX We currently allow pred types to be instance arguments, but not
-    % func types. Even then, the pred type must be pure and have a
-    % lambda_eval_method of normal. We keep this behaviour basically
-    % for backwards compatibility -- there is little point fixing this
-    % now without fixing the more general problem of having these
-    % restrictions in the first place.
-    MaybeRet = no,
-    Purity = purity_pure,
-    EvalMethod = lambda_normal,
-    functor_args_are_variables(Args).
-type_is_functor_and_vars(tuple_type(Args, _)) :-
-    functor_args_are_variables(Args).
-type_is_functor_and_vars(kinded_type(Type, _)) :-
-    type_is_functor_and_vars(Type).
-
-:- pred functor_args_are_variables(list(mer_type)::in) is semidet.
-
-functor_args_are_variables(Args) :-
-    all [Arg] (
-        list.member(Arg, Args)
-    =>
-        type_is_var(Arg)
-    ).
-
-:- pred type_vars_are_distinct(list(mer_type)::in) is semidet.
-
-type_vars_are_distinct(Types) :-
-    promise_equivalent_solutions [NumVars, VarsWithoutDups] (
-        solutions.unsorted_solutions(type_list_contains_var(Types), Vars),
-        list.length(Vars, NumVars),
-        list.sort_and_remove_dups(Vars, VarsWithoutDups)
-    ),
-    list.length(VarsWithoutDups, NumVars).
+    Result = ok1(item_instance([], ClassName, Types,
+        instance_body_abstract, TVarSet, ModuleName)).
 
 :- pred parse_non_empty_instance(module_name::in, term::in, term::in,
     varset::in, tvarset::in, maybe1(item)::out) is det.

@@ -187,7 +187,7 @@
 :- pred get_cons_id_non_existential_arg_types(module_info::in,
     mer_type::in, cons_id::in, list(mer_type)::out) is semidet.
 
-    % The same as gget_cons_id_arg_types except that the cons_id is output
+    % The same as get_cons_id_arg_types except that the cons_id is output
     % non-deterministically. The cons_id is not module-qualified.
     %
 :- pred cons_id_arg_types(module_info::in, mer_type::in,

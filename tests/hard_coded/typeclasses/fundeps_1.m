@@ -7,7 +7,7 @@
 
 main(!S) :-
 	(
-		test([0], 1)
+		test(intcoll([0]), 1)
 	->
 		write_string("yes\n", !S)
 	;
@@ -20,13 +20,13 @@ main(!S) :-
 	pred m(E::in, C::in) is semidet
 ].
 
-:- type intcoll == list(int).
+:- type intcoll ---> intcoll(list(int)).
 
 :- instance coll(intcoll, int) where [
-	(e = []),
-	(i(Ns, N) = [N | Ns]),
-	m(N, [N | _]),
-	m(N, [_ | Ns]) :- m(N, Ns)
+	(e = intcoll([])),
+	(i(intcoll(Ns), N) = intcoll([N | Ns])),
+	m(N, intcoll([N | _])),
+	m(N, intcoll([_ | Ns])) :- m(N, intcoll(Ns))
 ].
 
 :- pred test(C, E) <= coll(C, E).
