@@ -29,7 +29,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 }
 
 MR_bool
-MR_trace_is_natural_number(const char *word, int *value)
+MR_trace_is_natural_number(const char *word, MR_Unsigned *value)
 {
     if (word != NULL && MR_isdigit(*word)) {
         *value = *word - '0';
@@ -81,7 +81,7 @@ MR_trace_is_natural_number_pair(const char *word,
 }
 
 MR_bool
-MR_trace_is_unsigned(const char *word, MR_Unsigned *value)
+MR_trace_is_nonneg_int(const char *word, int *value)
 {
     if (word != NULL && MR_isdigit(*word)) {
         *value = *word - '0';

@@ -201,8 +201,8 @@ extern  const MR_ProcLayout     *MR_search_for_matching_procedure(
 
 typedef struct {
     const MR_ProcLayout     **match_procs;
-    int                     match_proc_max;
-    int                     match_proc_next;
+    MR_Unsigned             match_proc_max;
+    MR_Unsigned             match_proc_next;
 } MR_MatchesInfo;
 
 extern  MR_MatchesInfo MR_search_for_matching_procedures(MR_ProcSpec *spec);

@@ -75,7 +75,7 @@ typedef enum {
 
 typedef struct {
     MR_VarSpecKind      MR_var_spec_kind;
-    int                 MR_var_spec_number; /* valid if NUMBER */
+    MR_Unsigned         MR_var_spec_number; /* valid if NUMBER */
     const char          *MR_var_spec_name;  /* valid if NAME, HELD_NAME */
                                             /* or ATTRIBUTE */
 } MR_VarSpec;
@@ -183,7 +183,8 @@ extern  const char  *MR_trace_browse_one_goal(FILE *out,
 ** XXX Actually, the "out" parameter is currently ignored.
 */
 
-extern  const char  *MR_trace_browse_action(FILE *out, int action_number,
+extern  const char  *MR_trace_browse_action(FILE *out,
+                        MR_IoActionNum action_number,
                         MR_GoalBrowser browser, MR_BrowseCallerType caller,
                         MR_BrowseFormat format);
 

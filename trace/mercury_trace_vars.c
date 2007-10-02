@@ -1097,7 +1097,7 @@ MR_static_type_info_arity_0(MR_unbound_typeinfo_struct, &unbound_ctor_name);
 void
 MR_convert_arg_to_var_spec(const char *word_spec, MR_VarSpec *var_spec)
 {
-    int n;
+    MR_Unsigned n;
 
     if (MR_trace_is_natural_number(word_spec, &n)) {
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
@@ -1273,8 +1273,8 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
 }
 
 const char *
-MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
-    MR_BrowseCallerType caller, MR_BrowseFormat format)
+MR_trace_browse_action(FILE *out, MR_IoActionNum action_number,
+    MR_GoalBrowser browser, MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MR_ConstString  proc_name;
     MR_Word         is_func;

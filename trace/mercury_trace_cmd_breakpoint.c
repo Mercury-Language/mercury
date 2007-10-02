@@ -49,7 +49,8 @@ static  MR_bool     MR_parse_source_locn(char *word, const char **file,
 
 static  MR_bool     MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
                         MR_SpyAction *action, MR_MultiMatch *multi_match,
-                        MR_SpyIgnore_When *ignore_when, int *ignore_count,
+                        MR_SpyIgnore_When *ignore_when,
+                        MR_IgnoreCount *ignore_count,
                         MR_SpyPrintList *print_list,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_condition(int *break_num,
@@ -57,7 +58,8 @@ static  MR_bool     MR_trace_options_condition(int *break_num,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_ignore_count(
                         MR_SpyIgnore_When *ignore_when,
-                        int *ignore_count, char ***words, int *word_count);
+                        MR_IgnoreCount *ignore_count, char ***words,
+                        int *word_count);
 static  MR_bool     MR_trace_options_break_print(int *break_num,
                         MR_BrowseFormat *format, MR_bool *at_start,
                         MR_bool *warn, char ***words, int *word_count);
@@ -76,11 +78,11 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_SpyAction            action;
     MR_MultiMatch           multi_match;
     MR_SpyIgnore_When       ignore_when;
-    int                     ignore_count;
+    MR_IgnoreCount          ignore_count;
     MR_SpyPrintList         print_list;
     const char              *file;
     int                     line;
-    int                     breakline;
+    MR_Unsigned             breakline;
     const char              *problem;
 
     layout = event_info->MR_event_sll;
@@ -312,9 +314,9 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_maybe_print_spy_point(slot, problem);
             }
         } else {
-            char    buf[80];
-            int     i;
-            char    *line2;
+            char        buf[80];
+            MR_Unsigned i;
+            char        *line2;
 
             fprintf(MR_mdb_out,
                 "Ambiguous procedure specification. The matches are:\n");
@@ -369,7 +371,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         const MR_LabelLayout    **matching_labels;
         int                     matching_port_count;
         int                     slot;
-        int                     i;
+        MR_Unsigned             i;
 
         if (multi_match == MR_MULTIMATCH_ALL) {
             fprintf(MR_mdb_err, "Warning: "
@@ -689,9 +691,9 @@ MR_Next
 MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int                 n;
+    MR_Unsigned         n;
     MR_SpyIgnore_When   ignore_when;
-    int                 ignore_count;
+    MR_Unsigned         ignore_count;
     const char          *problem;
 
     ignore_when = MR_SPY_IGNORE_ENTRY;
@@ -817,7 +819,7 @@ MR_Next
 MR_trace_cmd_enable(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         if (0 <= n && n < MR_spy_point_next &&
@@ -867,7 +869,7 @@ MR_Next
 MR_trace_cmd_disable(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         if (0 <= n && n < MR_spy_point_next &&
@@ -918,7 +920,7 @@ MR_Next
 MR_trace_cmd_delete(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         if (0 <= n && n < MR_spy_point_next &&
@@ -1170,7 +1172,7 @@ static struct MR_option MR_trace_when_action_multi_ignore_opts[] =
 static MR_bool
 MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
     MR_SpyAction *action, MR_MultiMatch *multi_match,
-    MR_SpyIgnore_When *ignore_when, int *ignore_count,
+    MR_SpyIgnore_When *ignore_when, MR_Unsigned *ignore_count,
     MR_SpyPrintList *print_list, char ***words, int *word_count)
 {
     int             c;
@@ -1277,8 +1279,8 @@ static MR_bool
 MR_trace_options_condition(int *break_num, MR_bool *require_var,
     MR_bool *require_path, char ***words, int *word_count)
 {
-    int c;
-    int n;
+    int         c;
+    MR_Unsigned n;
 
     MR_optind = 0;
     while ((c = MR_getopt_long(*word_count, *words, "b:vp",
@@ -1329,7 +1331,7 @@ static struct MR_option MR_trace_ignore_count_opts[] =
 
 static MR_bool
 MR_trace_options_ignore_count(MR_SpyIgnore_When *ignore_when,
-    int *ignore_count, char ***words, int *word_count)
+    MR_Unsigned *ignore_count, char ***words, int *word_count)
 {
     int c;
 
@@ -1390,8 +1392,8 @@ static MR_bool
 MR_trace_options_break_print(int *break_num, MR_BrowseFormat *format,
     MR_bool *at_start, MR_bool *warn, char ***words, int *word_count)
 {
-    int c;
-    int n;
+    int         c;
+    MR_Unsigned n;
 
     *break_num = MR_most_recent_spy_point;
     *format = MR_BROWSE_FORMAT_FLAT;

@@ -171,9 +171,9 @@ MR_trace_cmd_trust(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 fprintf(MR_mdb_out, "Trusting ");
                 MR_print_pred_id_and_nl(MR_mdb_out, matches.match_procs[0]);
             } else {
-                int     i;
-                char    buf[80];
-                char    *line2;
+                MR_Unsigned i;
+                char        buf[80];
+                char        *line2;
 
                 fprintf(MR_mdb_out, "Ambiguous predicate or function"
                     " specification. The matches are:\n");
@@ -234,7 +234,7 @@ MR_Next
 MR_trace_cmd_untrust(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int i;
+    MR_Unsigned i;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &i)) {
         if (!MR_decl_remove_trusted(i)) {
@@ -308,7 +308,7 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 break;
 
             case 'd':
-                if (! MR_trace_is_unsigned(MR_optarg, default_depth)) {
+                if (! MR_trace_is_natural_number(MR_optarg, default_depth)) {
                     MR_trace_usage_cur_cmd();
                     return MR_FALSE;
                 }
@@ -319,7 +319,7 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 break;
 
             case 'n':
-                if (! MR_trace_is_unsigned(MR_optarg, num_nodes)) {
+                if (! MR_trace_is_natural_number(MR_optarg, num_nodes)) {
                     MR_trace_usage_cur_cmd();
                     return MR_FALSE;
                 }

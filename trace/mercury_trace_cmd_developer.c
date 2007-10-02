@@ -38,7 +38,8 @@
 /****************************************************************************/
 
 static  void        MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info,
-                        MR_bool detailed, int frame_limit, int line_limit);
+                        MR_bool detailed, MR_FrameLimit frame_limit,
+                        MR_SpecLineLimit line_limit);
 
 static  const MR_ProcLayout
                     *MR_find_single_matching_proc(MR_ProcSpec *spec,
@@ -227,7 +228,8 @@ static  void        MR_print_pseudo_type_info(FILE *fp,
 /****************************************************************************/
 
 static  MR_bool     MR_trace_options_nondet_stack(MR_bool *detailed,
-                        int *frame_limit, char ***words, int *word_count);
+                        MR_FrameLimit *frame_limit, char ***words,
+                        int *word_count);
 static  MR_bool     MR_trace_options_stats(char **filename, char ***words,
                         int *word_count);
 static  MR_bool     MR_trace_options_type_ctor(MR_bool *print_rep,
@@ -562,10 +564,10 @@ MR_Next
 MR_trace_cmd_nondet_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_bool     detailed;
-    int         frame_limit = 0;
-    int         line_limit = MR_stack_default_line_limit;
-    int         spec_line_limit;
+    MR_bool             detailed;
+    MR_FrameLimit       frame_limit = 0;
+    int                 line_limit = MR_stack_default_line_limit;
+    MR_SpecLineLimit    spec_line_limit;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_nondet_stack(&detailed, &frame_limit,
@@ -1049,7 +1051,7 @@ MR_trace_cmd_type_ctor(char **words, int word_count,
 {
     const char      *module_name;
     const char      *name;
-    int             arity;
+    MR_Unsigned     arity;
     MR_bool         print_rep;
     MR_bool         print_functors;
     MR_TypeCtorInfo type_ctor_info;
@@ -1087,7 +1089,7 @@ MR_trace_cmd_class_decl(char **words, int word_count,
 {
     const char              *module_name;
     const char              *name;
-    int                     arity;
+    MR_Unsigned             arity;
     MR_bool                 print_methods;
     MR_bool                 print_instances;
     MR_TypeClassDeclInfo    *type_class_decl_info;
@@ -1344,7 +1346,7 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
 
 static void
 MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info, MR_bool detailed,
-    int frame_limit, int line_limit)
+    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit)
 {
     const MR_LabelLayout    *layout;
     MR_Word                 *saved_regs;
@@ -1371,7 +1373,7 @@ static const MR_ProcLayout *
 MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
 {
     MR_MatchesInfo      matches;
-    int                 n;
+    MR_Unsigned         n;
     int                 i;
 
     MR_register_all_modules_and_procs(MR_mdb_out, verbose);
@@ -1397,23 +1399,18 @@ MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
         sprintf(buf, "\nWhich procedure's table do you want to print (0-%d)? ",
             matches.match_proc_next - 1);
         line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
-        n = -1;
         if (line2 == NULL || !MR_trace_is_natural_number(line2, &n)) {
-            n = -1;
             fprintf(MR_mdb_out, "none of them\n");
-        } else if (n < 0 || n >= matches.match_proc_next) {
-            n = -1;
-            fprintf(MR_mdb_out, "invalid choice\n");
-        }
-
-        if (line2 != NULL) {
-            MR_free(line2);
-        }
-
-        if (n >= 0) {
-            return matches.match_procs[n];
-        } else {
             return NULL;
+        } else if (n >= matches.match_proc_next) {
+            fprintf(MR_mdb_out, "invalid choice\n");
+            return NULL;
+        } else {
+        
+            if (line2 != NULL) {
+                MR_free(line2);
+            }
+            return matches.match_procs[n];
         }
     }
 }
@@ -2044,7 +2041,7 @@ static struct MR_option MR_trace_nondet_stack_opts[] =
 };
 
 static MR_bool
-MR_trace_options_nondet_stack(MR_bool *detailed, int *frame_limit,
+MR_trace_options_nondet_stack(MR_bool *detailed, MR_FrameLimit *frame_limit,
     char ***words, int *word_count)
 {
     int c;

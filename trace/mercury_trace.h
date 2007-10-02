@@ -25,9 +25,15 @@
 #define MERCURY_TRACE_H
 
 #include "mercury_memory_zones.h"   /* for MR_MAX_FAKE_REG */
-#include "mercury_types.h"      /* for MR_Unsigned etc */
-#include "mercury_trace_base.h"     /* for MR_TracePort   */
-#include "mercury_std.h"        /* for MR_bool            */
+#include "mercury_types.h"          /* for MR_Unsigned etc */
+#include "mercury_trace_base.h"     /* for MR_TracePort    */
+#include "mercury_std.h"            /* for MR_bool         */
+
+
+typedef MR_Unsigned MR_AncestorLevel;
+typedef MR_Unsigned MR_FrameLimit;
+typedef MR_Unsigned MR_SpecLineLimit;
+typedef MR_Unsigned MR_IgnoreCount;
 
 /*
 ** MR_EventInfo is used to hold the information for a trace event.  One
@@ -141,7 +147,8 @@ typedef enum {
 } MR_RetryResult;
 
 extern  MR_RetryResult  MR_trace_retry(MR_EventInfo *event_info,
-                            int ancestor_level, MR_RetryAcrossIo across_io,
+                            MR_AncestorLevel ancestor_level,
+                            MR_RetryAcrossIo across_io,
                             MR_bool assume_all_io_is_tabled,
                             const char *retry_interactive_message,
                             MR_bool *unsafe_retry, const char **problem,

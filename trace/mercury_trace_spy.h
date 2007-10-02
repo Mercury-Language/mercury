@@ -95,7 +95,7 @@ struct MR_SpyPoint_Struct {
     MR_SpyWhen              MR_spy_when;
     MR_SpyAction            MR_spy_action;
     MR_SpyIgnore_When       MR_spy_ignore_when;
-    int                     MR_spy_ignore_count;
+    MR_IgnoreCount          MR_spy_ignore_count;
     MR_SpyCond              *MR_spy_cond;
     MR_SpyPrintList         MR_spy_print_list;
     const MR_ProcLayout     *MR_spy_proc;           /* if not LINENO */
@@ -141,7 +141,8 @@ extern  MR_bool         MR_event_matches_spy_point(
 
 extern  int             MR_add_proc_spy_point(MR_SpyWhen when,
                             MR_SpyAction action, MR_SpyIgnore_When ignore_when,
-                            int ignore_count, const MR_ProcLayout *entry,
+                            MR_IgnoreCount ignore_count,
+                            const MR_ProcLayout *entry,
                             const MR_LabelLayout *label,
                             MR_SpyPrintList print_list, const char **problem);
 
@@ -152,7 +153,8 @@ extern  int             MR_add_proc_spy_point(MR_SpyWhen when,
 */
 
 extern  int             MR_add_line_spy_point(MR_SpyAction action,
-                            MR_SpyIgnore_When ignore_when, int ignore_count,
+                            MR_SpyIgnore_When ignore_when,
+                            MR_IgnoreCount ignore_count,
                             const char *filename, int linenumber,
                             MR_SpyPrintList print_list, const char **problem);
 
@@ -163,7 +165,8 @@ extern  int             MR_add_line_spy_point(MR_SpyAction action,
 */
 
 extern  int             MR_add_user_event_spy_point(MR_SpyAction action,
-                            MR_SpyIgnore_When ignore_when, int ignore_count,
+                            MR_SpyIgnore_When ignore_when,
+                            MR_IgnoreCount ignore_count,
                             const char *user_event_set,
                             const char *user_event_name,
                             MR_SpyPrintList print_list, const char **problem);
@@ -191,7 +194,8 @@ extern  void            MR_clear_spy_point_print_list(int point_slot);
 */
 
 extern  const char      *MR_ignore_spy_point(int point_slot,
-                            MR_SpyIgnore_When ignore_when, int ignore_count);
+                            MR_SpyIgnore_When ignore_when,
+                            MR_IgnoreCount ignore_count);
 
 /*
 ** Delete a spy point from the table.

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,8 +44,8 @@ char                    *MR_mmc_options = NULL;
 MR_TracePrintLevel      MR_default_print_level = MR_PRINT_LEVEL_SOME;
 
 MR_bool                 MR_scroll_control = MR_TRUE;
-int                     MR_scroll_limit = 24;
-int                     MR_scroll_next = 0;
+MR_Unsigned             MR_scroll_limit = 24;
+MR_Unsigned             MR_scroll_next = 0;
 
 int                     MR_stack_default_line_limit = 0;
 
@@ -64,7 +64,7 @@ MR_bool                 MR_print_goal_paths = MR_TRUE;
 
 MR_Word                 MR_listing_path;
 
-int                     MR_num_context_lines = 2;
+MR_Unsigned             MR_num_context_lines = 2;
 
 MR_SpyWhen              MR_default_breakpoint_scope = MR_SPY_INTERFACE;
 
@@ -158,7 +158,7 @@ MR_Next
 MR_trace_cmd_scroll(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     if (word_count == 2) {
         if (MR_streq(words[1], "off")) {
@@ -199,7 +199,7 @@ MR_Next
 MR_trace_cmd_stack_default_limit(char **words, int word_count,
     MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     if (word_count == 2) {
         if (MR_trace_is_natural_number(words[1], &n)) {
@@ -479,7 +479,7 @@ MR_Next
 MR_trace_cmd_list_context_lines(char **words, int word_count,
     MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int                 n;
+    MR_Unsigned n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         MR_num_context_lines = n;
@@ -640,7 +640,7 @@ MR_Next
 MR_trace_cmd_max_io_actions(char **words, int word_count,
     MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int num_io_actions;
+    MR_Unsigned num_io_actions;
 
     if (word_count == 2 &&
             MR_trace_is_natural_number(words[1], &num_io_actions)) {
@@ -792,7 +792,7 @@ MR_trace_cmd_format_param(char **words, int word_count,
     MR_Word             raw_pretty;
     MR_Word             verbose;
     MR_Word             pretty;
-    int                 n;
+    MR_Unsigned         n;
 
     if (! MR_trace_options_cmd_format_param(&print, &browse, &print_all,
         &flat, &raw_pretty, &verbose, &pretty, &words, &word_count))

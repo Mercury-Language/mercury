@@ -40,7 +40,7 @@ MR_Next
 MR_trace_cmd_step(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     cmd->MR_trace_strict = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -73,7 +73,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
-    } else if (word_count == 2 && MR_trace_is_unsigned(words[1], &n)) {
+    } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         generator_name = NULL;
         if (MR_trace_event_number < n
             || !MR_cur_generator_is_named(generator_name))
@@ -88,7 +88,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
             fprintf(MR_mdb_err, "The debugger cannot go to a past event.\n");
         }
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-    } else if (word_count == 3 && MR_trace_is_unsigned(words[1], &n)) {
+    } else if (word_count == 3 && MR_trace_is_natural_number(words[1], &n)) {
         generator_name = words[2];
         if (MR_trace_event_number < n
             || !MR_cur_generator_is_named(generator_name))
@@ -118,9 +118,9 @@ MR_Next
 MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Unsigned depth;
-    int         stop_depth;
-    int         n;
+    MR_Unsigned     depth;
+    MR_Unsigned     stop_depth;
+    MR_Unsigned     n;
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
@@ -154,8 +154,8 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Unsigned depth;
-    int         stop_depth;
-    int         n;
+    MR_Unsigned stop_depth;
+    MR_Unsigned n;
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
@@ -190,8 +190,8 @@ MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_Determinism  detism;
     MR_Unsigned     depth;
-    int             stop_depth;
-    int             n;
+    MR_Unsigned     stop_depth;
+    MR_Unsigned     n;
 
     detism = event_info->MR_event_sll->MR_sll_entry->MR_sle_detism;
     depth = event_info->MR_call_depth;
@@ -334,7 +334,7 @@ MR_Next
 MR_trace_cmd_mindepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int newdepth;
+    MR_Unsigned newdepth;
 
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -358,7 +358,7 @@ MR_Next
 MR_trace_cmd_maxdepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int newdepth;
+    MR_Unsigned newdepth;
 
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;

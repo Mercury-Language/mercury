@@ -57,7 +57,8 @@ static  void        MR_trace_browse_goal_xml(MR_ConstString name,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
 
 static  void        MR_trace_cmd_stack_2(MR_EventInfo *event_info,
-                        MR_bool detailed, int frame_limit, int line_limit);
+                        MR_bool detailed, MR_FrameLimit frame_limit,
+                        int line_limit);
 
 static  const char  *MR_trace_new_source_window(const char *window_cmd,
                         const char *server_cmd, const char *server_name,
@@ -67,16 +68,17 @@ static  const char  *MR_trace_new_source_window(const char *window_cmd,
 static  MR_bool     MR_trace_options_detailed(MR_bool *detailed, char ***words,
                         int *word_count);
 static  MR_bool     MR_trace_options_stack_trace(MR_bool *detailed,
-                        int *frame_limit, char ***words, int *word_count);
+                        MR_FrameLimit *frame_limit, char ***words,
+                        int *word_count);
 static  MR_bool     MR_trace_options_format(MR_BrowseFormat *format,
                         MR_bool *xml, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         const char **server_cmd, const char **server_name,
-                        int *timeout, MR_bool *force, MR_bool *verbose,
+                        MR_Unsigned *timeout, MR_bool *force, MR_bool *verbose,
                         MR_bool *split, MR_bool *close_window, char ***words,
                         int *word_count);
-static  MR_bool     MR_trace_options_diff(int *start, int *max,
-                        char ***words, int *word_count);
+static  MR_bool     MR_trace_options_diff(MR_Unsigned *start,
+                        MR_Unsigned *max, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_dump(MR_bool *xml,
                         char ***words, int *word_count);
 
@@ -86,8 +88,8 @@ MR_Next
 MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
-    MR_bool detailed;
+    MR_Unsigned n;
+    MR_bool     detailed;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
@@ -105,8 +107,8 @@ MR_Next
 MR_trace_cmd_up(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int     n;
-    MR_bool detailed;
+    MR_Unsigned n;
+    MR_bool     detailed;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
@@ -128,8 +130,8 @@ MR_Next
 MR_trace_cmd_down(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int     n;
-    MR_bool detailed;
+    MR_Unsigned n;
+    MR_bool     detailed;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
@@ -322,7 +324,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 "%" MR_INTEGER_LENGTH_MODIFIER "u.\n",
                 MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
             fflush(MR_mdb_out);
-        } else if (MR_trace_is_unsigned(words[2], &action)) {
+        } else if (MR_trace_is_natural_number(words[2], &action)) {
             problem = MR_trace_browse_action(MR_mdb_out, action,
                 MR_trace_browse_goal_internal,
                 MR_BROWSE_CALLER_PRINT, format);
@@ -392,7 +394,7 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_BrowseFormat     format;
     MR_bool             xml;
-    int                 action;
+    MR_IoActionNum      action;
     MR_GoalBrowser      goal_browser;
     MR_Browser          browser;
     const char          *problem;
@@ -459,10 +461,10 @@ MR_Next
 MR_trace_cmd_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_bool     detailed;
-    int         frame_limit = 0;
-    int         line_limit = MR_stack_default_line_limit;
-    int         spec_line_limit;
+    MR_bool             detailed;
+    MR_FrameLimit       frame_limit = 0;
+    int                 line_limit = MR_stack_default_line_limit;
+    MR_SpecLineLimit    spec_line_limit;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_stack_trace(&detailed, &frame_limit,
@@ -503,7 +505,7 @@ MR_trace_cmd_view(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char      *window_cmd = NULL;
     const char      *server_cmd = NULL;
     const char      *server_name = NULL;
-    int             timeout = 8;    /* seconds */
+    MR_Unsigned     timeout = 8;    /* seconds */
     MR_bool         force = MR_FALSE;
     MR_bool         verbose = MR_FALSE;
     MR_bool         split = MR_FALSE;
@@ -589,8 +591,8 @@ MR_Next
 MR_trace_cmd_diff(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int         start;
-    int         max;
+    MR_Unsigned start;
+    MR_Unsigned max;
     char        *name1;
     char        *name2;
     MR_TypeInfo type_info1;
@@ -748,7 +750,7 @@ MR_trace_cmd_list(char **words, int word_count,
     int                     lineno;
     MR_Word                 *base_sp_ptr;
     MR_Word                 *base_curfr_ptr;
-    MR_bool                 num = MR_num_context_lines;
+    MR_Unsigned             num = MR_num_context_lines;
     MR_String               aligned_filename;
 
     if (word_count > 2) {
@@ -934,7 +936,7 @@ MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
 
 static void
 MR_trace_cmd_stack_2(MR_EventInfo *event_info, MR_bool detailed,
-    int frame_limit, int line_limit)
+    MR_FrameLimit frame_limit, int line_limit)
 {
     const MR_LabelLayout    *layout;
     MR_Word                 *saved_regs;
@@ -1132,7 +1134,7 @@ MR_trace_options_detailed(MR_bool *detailed, char ***words, int *word_count)
 }
 
 static MR_bool
-MR_trace_options_stack_trace(MR_bool *detailed, int *frame_limit,
+MR_trace_options_stack_trace(MR_bool *detailed, MR_FrameLimit *frame_limit,
     char ***words, int *word_count)
 {
     int c;
@@ -1235,7 +1237,7 @@ static struct MR_option MR_trace_view_opts[] =
 
 static MR_bool
 MR_trace_options_view(const char **window_cmd, const char **server_cmd,
-    const char **server_name, int *timeout, MR_bool *force,
+    const char **server_name, MR_Unsigned *timeout, MR_bool *force,
     MR_bool *verbose, MR_bool *split, MR_bool *close_window,
     char ***words, int *word_count)
 {
@@ -1345,7 +1347,8 @@ static struct MR_option MR_trace_diff_opts[] =
 };
 
 static MR_bool
-MR_trace_options_diff(int *start, int *max, char ***words, int *word_count)
+MR_trace_options_diff(MR_Unsigned *start, MR_Unsigned *max,
+    char ***words, int *word_count)
 {
     int c;
 

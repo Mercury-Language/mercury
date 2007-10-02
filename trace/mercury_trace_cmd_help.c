@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,7 +50,7 @@ MR_trace_cmd_document_category(char **words, int word_count,
     help_text = MR_trace_read_help_text();
     if (word_count != 3) {
         MR_trace_usage_cur_cmd();
-    } else if (! MR_trace_is_natural_number(words[1], &slot)) {
+    } else if (! MR_trace_is_nonneg_int(words[1], &slot)) {
         MR_trace_usage_cur_cmd();
     } else {
         msg = MR_trace_add_cat(words[2], slot, help_text);
@@ -75,7 +75,7 @@ MR_trace_cmd_document(char **words, int word_count, MR_TraceCmdInfo *cmd,
     help_text = MR_trace_read_help_text();
     if (word_count != 4) {
         MR_trace_usage_cur_cmd();
-    } else if (! MR_trace_is_natural_number(words[2], &slot)) {
+    } else if (! MR_trace_is_nonneg_int(words[2], &slot)) {
         MR_trace_usage_cur_cmd();
     } else {
         msg = MR_trace_add_item(words[1], words[3], slot, help_text);

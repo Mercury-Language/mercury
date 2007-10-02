@@ -986,7 +986,7 @@ MR_trace_report_raw(int fd)
 */
 
 MR_bool
-MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
+MR_trace_get_action(MR_IoActionNum action_number, MR_ConstString *proc_name_ptr,
     MR_Word *is_func_ptr, MR_Word *arg_list_ptr)
 {
     const MR_TableIoDecl    *table_io_decl;

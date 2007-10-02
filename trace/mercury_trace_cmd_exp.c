@@ -47,8 +47,8 @@ static  void        MR_trace_print_dice(char *pass_trace_counts_file,
 
 static  MR_bool     MR_trace_options_dice(char **pass_trace_counts_file,
                         char **fail_trace_count_file, char **sort_str,
-                        int *number_of_lines, char **out_file, char **module,
-                        char ***words, int *word_count);
+                        MR_Unsigned *number_of_lines, char **out_file,
+                        char **module, char ***words, int *word_count);
 
 /****************************************************************************/
 
@@ -158,12 +158,12 @@ MR_Next
 MR_trace_cmd_dice(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    char    *pass_trace_counts_file;
-    char    *fail_trace_counts_file;
-    char    *sort_str;
-    char    *out_file;
-    char    *module;
-    int     number_of_lines;
+    char        *pass_trace_counts_file;
+    char        *fail_trace_counts_file;
+    char        *sort_str;
+    char        *out_file;
+    char        *module;
+    MR_Unsigned number_of_lines;
 
     sort_str = NULL;
     out_file = NULL;
@@ -295,8 +295,8 @@ static struct MR_option MR_trace_dice_opts[] =
 
 static MR_bool
 MR_trace_options_dice(char **pass_trace_counts_file,
-    char **fail_trace_counts_file, char **sort_str, int *n, char **out_file,
-    char **module, char ***words, int *word_count)
+    char **fail_trace_counts_file, char **sort_str, MR_Unsigned *n,
+    char **out_file, char **module, char ***words, int *word_count)
 {
     int c;
 

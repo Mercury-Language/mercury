@@ -520,7 +520,7 @@ extern	void	MR_tracing_not_enabled(void);
 ** function will return MR_FALSE, otherwise it will return MR_TRUE.
 */
 
-extern	MR_bool	MR_trace_get_action(int action_number,
+extern	MR_bool	MR_trace_get_action(MR_IoActionNum action_number,
 			MR_ConstString *proc_name_ptr, MR_Word *is_func_ptr,
 			MR_Word *arg_list_ptr);
 

@@ -678,7 +678,7 @@ MR_add_spy_point(MR_bool reuse, MR_SpyPoint *point)
 
 int
 MR_add_proc_spy_point(MR_SpyWhen when, MR_SpyAction action,
-    MR_SpyIgnore_When ignore_when, int ignore_count,
+    MR_SpyIgnore_When ignore_when, MR_IgnoreCount ignore_count,
     const MR_ProcLayout *entry, const MR_LabelLayout *label,
     MR_SpyPrintList print_list, const char **problem)
 {
@@ -727,7 +727,7 @@ static char MR_error_msg_buf[MR_ERROR_MSG_BUF_SIZE];
 
 int
 MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
-    int ignore_count, const char *orig_filename, int linenumber,
+    MR_IgnoreCount ignore_count, const char *orig_filename, int linenumber,
     MR_SpyPrintList print_list, const char **problem)
 {
     MR_SpyPoint     *point;
@@ -826,7 +826,7 @@ MR_compare_spied_labels(const void *l1, const void *l2)
 
 int
 MR_add_user_event_spy_point(MR_SpyAction action,
-    MR_SpyIgnore_When ignore_when, int ignore_count,
+    MR_SpyIgnore_When ignore_when, MR_IgnoreCount ignore_count,
     const char *user_event_set, const char *user_event_name,
     MR_SpyPrintList print_list, const char **problem)
 {
@@ -956,7 +956,7 @@ MR_clear_spy_point_print_list(int point_slot)
 
 const char *
 MR_ignore_spy_point(int point_slot, MR_SpyIgnore_When ignore_when,
-    int ignore_count)
+    MR_IgnoreCount ignore_count)
 {
     switch (MR_spy_points[point_slot]->MR_spy_when) {
         case MR_SPY_ENTRY:

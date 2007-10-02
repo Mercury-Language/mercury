@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2000,2002-2003, 2005-2006 The University of Melbourne.
+** Copyright (C) 1998-2000,2002-2003, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -193,7 +193,7 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
     int         alias_word_count;
     int         alias_copy_start;
     int         i;
-    int         n;
+    MR_Unsigned n;
 
     if (*word_count == 0) {
         alias_key = "EMPTY";

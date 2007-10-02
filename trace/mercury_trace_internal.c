@@ -293,7 +293,7 @@ MR_trace_internal_ensure_init(void)
 
     if (! MR_trace_internal_initialized) {
         char        *env;
-        int         n;
+        MR_Unsigned n;
         int         i;
 
         if (MR_mdb_benchmark_silent) {
@@ -971,7 +971,7 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
     int         raw_word_count;
     static char count_buf[MR_NUMBER_LEN + 1];
     char        *s;
-    int         i;
+    MR_Unsigned i;
     const char  *problem;
 
     /*

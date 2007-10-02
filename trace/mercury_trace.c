@@ -642,7 +642,7 @@ MR_trace_real_decl_implicit_subtree(const MR_LabelLayout *layout)
 
 MR_RetryResult
 MR_trace_retry(MR_EventInfo *event_info,
-    int ancestor_level, MR_RetryAcrossIo across_io,
+    MR_AncestorLevel ancestor_level, MR_RetryAcrossIo across_io,
     MR_bool assume_all_io_is_tabled, const char *retry_interactive_message,
     MR_bool *unsafe_retry, const char **problem,
     FILE *in_fp, FILE *out_fp, MR_Code **jumpaddr)

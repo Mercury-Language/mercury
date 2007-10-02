@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,8 +35,8 @@ extern  MR_TracePrintLevel MR_default_print_level;
 */
 
 extern  MR_bool             MR_scroll_control;
-extern  int                 MR_scroll_limit;
-extern  int                 MR_scroll_next;
+extern  MR_Unsigned         MR_scroll_limit;
+extern  MR_Unsigned         MR_scroll_next;
 
 /*
 ** This variable controls the number of stack frame lines printed by the stack
@@ -108,7 +108,7 @@ extern  void                MR_trace_listing_path_ensure_init(void);
 ** printed before and after the current callee/caller's file context.
 */
 
-extern  int                 MR_num_context_lines;
+extern  MR_Unsigned         MR_num_context_lines;
 
 extern  MR_SpyWhen          MR_default_breakpoint_scope;
 

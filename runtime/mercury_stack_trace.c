@@ -369,7 +369,7 @@ MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int frame_limit,
 
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
-    int frame_limit, int line_limit,
+    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
     MR_Word *base_maxfr, const MR_LabelLayout *top_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
