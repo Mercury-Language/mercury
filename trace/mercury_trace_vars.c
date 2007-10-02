@@ -1123,7 +1123,8 @@ MR_print_var_spec(FILE *fp, MR_VarSpec *var_spec)
 {
     switch (var_spec->MR_var_spec_kind) {
         case MR_VAR_SPEC_NUMBER:
-            fprintf(fp, "%d", var_spec->MR_var_spec_number);
+            fprintf(fp, "%" MR_INTEGER_LENGTH_MODIFIER "u",
+                var_spec->MR_var_spec_number);
             break;
 
         case MR_VAR_SPEC_NAME:
@@ -1610,7 +1611,8 @@ MR_trace_bad_path_in_var(MR_VarSpec *var_spec, const char *path)
     {
         switch (var_spec->MR_var_spec_kind) {
             case MR_VAR_SPEC_NUMBER:
-                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s%d",
+                sprintf(MR_trace_bad_path_in_var_buffer,
+                "%s%s%" MR_INTEGER_LENGTH_MODIFIER "u",
                     path_msg, BAD_VAR_PATH_MSG_MIDDLE,
                     var_spec->MR_var_spec_number);
                 break;

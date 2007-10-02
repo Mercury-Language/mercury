@@ -1396,7 +1396,9 @@ MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
             MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
         }
 
-        sprintf(buf, "\nWhich procedure's table do you want to print (0-%d)? ",
+        sprintf(buf,
+            "\nWhich procedure's table do you want to print (0-%"
+            MR_INTEGER_LENGTH_MODIFIER "d)? ",
             matches.match_proc_next - 1);
         line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
         if (line2 == NULL || !MR_trace_is_natural_number(line2, &n)) {

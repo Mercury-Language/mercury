@@ -51,8 +51,8 @@ MR_Next
 MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_AncestorLevel    n;
-    MR_AncestorLevel    ancestor_level;
+    MR_Level            n;
+    MR_Level            ancestor_level;
     MR_RetryAcrossIo    across_io;
     const char          *problem;
     MR_RetryResult      result;

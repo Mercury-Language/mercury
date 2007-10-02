@@ -26,13 +26,11 @@
 
 #include "mercury_memory_zones.h"   /* for MR_MAX_FAKE_REG */
 #include "mercury_types.h"          /* for MR_Unsigned etc */
+#include "mercury_stack_trace.h"    /* for MR_Level etc    */
 #include "mercury_trace_base.h"     /* for MR_TracePort    */
 #include "mercury_std.h"            /* for MR_bool         */
 
 
-typedef MR_Unsigned MR_AncestorLevel;
-typedef MR_Unsigned MR_FrameLimit;
-typedef MR_Unsigned MR_SpecLineLimit;
 typedef MR_Unsigned MR_IgnoreCount;
 
 /*
@@ -147,7 +145,7 @@ typedef enum {
 } MR_RetryResult;
 
 extern  MR_RetryResult  MR_trace_retry(MR_EventInfo *event_info,
-                            MR_AncestorLevel ancestor_level,
+                            MR_Level ancestor_level,
                             MR_RetryAcrossIo across_io,
                             MR_bool assume_all_io_is_tabled,
                             const char *retry_interactive_message,

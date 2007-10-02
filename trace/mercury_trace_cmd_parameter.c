@@ -175,7 +175,8 @@ MR_trace_cmd_scroll(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_scroll_limit = n;
             if (MR_trace_internal_interacting) {
                 fprintf(MR_mdb_out,
-                    "Scroll window size set to %d.\n", MR_scroll_limit);
+                    "Scroll window size set to %" MR_INTEGER_LENGTH_MODIFIER
+                    "u.\n", MR_scroll_limit);
             }
         } else {
             MR_trace_usage_cur_cmd();
@@ -187,7 +188,9 @@ MR_trace_cmd_scroll(char **words, int word_count, MR_TraceCmdInfo *cmd,
         } else {
             fprintf(MR_mdb_out, "off");
         }
-        fprintf(MR_mdb_out, ", scroll window size is %d.\n", MR_scroll_limit);
+        fprintf(MR_mdb_out,
+            ", scroll window size is %" MR_INTEGER_LENGTH_MODIFIER "u.\n",
+            MR_scroll_limit);
     } else {
         MR_trace_usage_cur_cmd();
     }
@@ -485,7 +488,8 @@ MR_trace_cmd_list_context_lines(char **words, int word_count,
         MR_num_context_lines = n;
     } else if (word_count == 1) {
         fprintf(MR_mdb_out,
-            "Printing %d lines around each context listing\n",
+            "Printing %" MR_INTEGER_LENGTH_MODIFIER
+            "u lines around each context listing\n",
             MR_num_context_lines);
     } else {
         MR_trace_usage_cur_cmd();
@@ -665,7 +669,8 @@ MR_trace_cmd_max_io_actions(char **words, int word_count,
         num_io_actions = (int) n;
 
         fprintf(MR_mdb_out,
-            "The maximum number of I/O actions printed is %d\n",
+            "The maximum number of I/O actions printed is %"
+            MR_INTEGER_LENGTH_MODIFIER "u\n",
             num_io_actions);
     } else {
         MR_trace_usage_cur_cmd();

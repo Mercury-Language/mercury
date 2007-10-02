@@ -16,6 +16,11 @@
 **	Definitions for use by the stack tracing.
 */
 
+typedef MR_Unsigned MR_FrameLimit;
+typedef MR_Unsigned MR_SpecLineLimit;
+typedef MR_Unsigned MR_Level;
+
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -63,7 +68,7 @@ extern	void	MR_dump_stack(MR_Code *success_pointer,
 
 typedef	void		(*MR_PrintStackRecord)(FILE *fp,
 				const MR_ProcLayout *proc_layout,
-				int count, int level,
+				int count, MR_Level level,
 				MR_Word *base_sp, MR_Word * base_curfr,
 				const char *filename, int linenumber,
 				const char *goal_path,
@@ -75,7 +80,8 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				MR_Word *current_frame,
 				MR_bool include_trace_data,
 				MR_bool include_contexts,
-				int frame_limit, int line_limit,
+				MR_FrameLimit frame_limit,
+				MR_SpecLineLimit line_limit,
 				MR_PrintStackRecord print_stack_record);
 
 /*
@@ -88,7 +94,8 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 */
 
 extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
-			int frame_limit, int line_limit, MR_Word *maxfr);
+			MR_FrameLimit frame_limit,
+			MR_SpecLineLimit line_limit, MR_Word *maxfr);
 
 /*
 ** MR_dump_nondet_stack_from_layout
@@ -100,8 +107,9 @@ extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
 */
 
 extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
-			MR_Word *limit_addr, int frame_limit, int line_limit,
-			MR_Word *maxfr, const MR_LabelLayout *label_layout,
+			MR_Word *limit_addr, MR_FrameLimit frame_limit,
+			MR_SpecLineLimit line_limit, MR_Word *maxfr,
+			const MR_LabelLayout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
@@ -139,7 +147,7 @@ extern	void	MR_traverse_nondet_stack_from_layout(
 
 extern	const MR_LabelLayout *MR_find_nth_ancestor(
 			const MR_LabelLayout *label_layout,
-			int ancestor_level, MR_Word **stack_trace_sp,
+			MR_Level ancestor_level, MR_Word **stack_trace_sp,
 			MR_Word **stack_trace_curfr, const char **problem);
 
 /*
@@ -312,7 +320,7 @@ extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
 
 extern	void	MR_dump_stack_record_print(FILE *fp,
 			const MR_ProcLayout *proc_layout, int count,
-			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
+			MR_Level start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
 			const char *goal_path, MR_bool context_mismatch);
 

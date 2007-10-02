@@ -149,7 +149,8 @@ const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
     MR_Word *det_stack_pointer, MR_Word *current_frame,
     MR_bool include_trace_data, MR_bool include_contexts,
-    int frame_limit, int line_limit, MR_PrintStackRecord print_stack_record)
+    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
+    MR_PrintStackRecord print_stack_record)
 {
     MR_StackWalkStepResult          result;
     const MR_ProcLayout             *proc_layout;
@@ -217,18 +218,13 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
 }
 
 const MR_LabelLayout *
-MR_find_nth_ancestor(const MR_LabelLayout *label_layout, int ancestor_level,
-    MR_Word **stack_trace_sp, MR_Word **stack_trace_curfr,
-    const char **problem)
+MR_find_nth_ancestor(const MR_LabelLayout *label_layout,
+    MR_Level ancestor_level, MR_Word **stack_trace_sp,
+    MR_Word **stack_trace_curfr, const char **problem)
 {
     MR_StackWalkStepResult  result;
     const MR_LabelLayout    *return_label_layout;
-    int                     i;
-
-    if (ancestor_level < 0) {
-        *problem = "no such stack frame";
-        return NULL;
-    }
+    MR_Unsigned             i;
 
     MR_do_init_modules();
     *problem = NULL;
@@ -350,8 +346,8 @@ MR_stack_walk_succip_layout(MR_Code *success,
 /**************************************************************************/
 
 void
-MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int frame_limit,
-    int line_limit, MR_Word *base_maxfr)
+MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, MR_FrameLimit frame_limit,
+    MR_SpecLineLimit line_limit, MR_Word *base_maxfr)
 {
 #ifndef MR_HIGHLEVEL_CODE
 
@@ -445,7 +441,7 @@ static int                      MR_nondet_branch_info_max = 0;
 
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
-    int frame_limit, int line_limit, MR_Word *base_maxfr,
+    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit, MR_Word *base_maxfr,
     const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
     int                     frame_size;
@@ -1137,11 +1133,11 @@ MR_dump_stack_record_flush(FILE *fp, MR_PrintStackRecord print_stack_record)
 
 void
 MR_dump_stack_record_print(FILE *fp, const MR_ProcLayout *proc_layout,
-    int count, int start_level, MR_Word *base_sp, MR_Word *base_curfr,
+    int count, MR_Level start_level, MR_Word *base_sp, MR_Word *base_curfr,
     const char *filename, int linenumber, const char *goal_path,
     MR_bool context_mismatch)
 {
-    fprintf(fp, "%4d ", start_level);
+    fprintf(fp, "%4" MR_INTEGER_LENGTH_MODIFIER "d ", start_level);
 
     if (count > 1) {
         fprintf(fp, " %3d* ", count);

@@ -231,7 +231,7 @@ static void     MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
                     const char *extra, MR_Word *base_sp, MR_Word *base_curfr);
 static void     MR_dump_stack_record_print_to_socket(FILE *fp,
                     const MR_ProcLayout *entry_layout, int count,
-                    int start_level, MR_Word *base_sp, MR_Word *base_curfr,
+                    MR_Level start_level, MR_Word *base_sp, MR_Word *base_curfr,
                     const char *filename, int linenumber,
                     const char *goal_path, MR_bool context_mismatch);
 static void     MR_get_list_modules_to_import(MR_Word debugger_request,
@@ -1265,12 +1265,13 @@ MR_get_var_number(MR_Word debugger_request)
 
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp,
-    const MR_ProcLayout *entry_layout, int count, int start_level,
+    const MR_ProcLayout *entry_layout, int count, MR_Level start_level,
     MR_Word *base_sp, MR_Word *base_curfr,
     const char *filename, int linenumber,
     const char *goal_path, MR_bool context_mismatch)
 {
-    MR_send_message_to_socket_format("level(%d).\n", start_level);
+    MR_send_message_to_socket_format(
+        "level(%" MR_INTEGER_LENGTH_MODIFIER "u).\n", start_level);
     MR_print_proc_id_to_socket(entry_layout, NULL, base_sp, base_curfr);
 }
 

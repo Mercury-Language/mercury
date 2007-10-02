@@ -178,12 +178,14 @@ MR_trace_cmd_trust(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 fprintf(MR_mdb_out, "Ambiguous predicate or function"
                     " specification. The matches are:\n");
                 for (i = 0; i < matches.match_proc_next; i++) {
-                    fprintf(MR_mdb_out, "%d: ", i);
+                    fprintf(MR_mdb_out, "%" MR_INTEGER_LENGTH_MODIFIER "u: ",
+                        i);
                     MR_print_pred_id_and_nl(MR_mdb_out,
                         matches.match_procs[i]);
                 }
                 sprintf(buf, "\nWhich predicate or function "
-                    "do you want to trust (0-%d or *)? ",
+                    "do you want to trust (0-%" MR_INTEGER_LENGTH_MODIFIER
+                    "u or *)? ",
                     matches.match_proc_next - 1);
                 line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
                 if (line2 == NULL) {

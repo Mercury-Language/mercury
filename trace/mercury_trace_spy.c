@@ -1139,7 +1139,9 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
     }
 
     if (point->MR_spy_ignore_count > 1) {
-        fprintf(fp, "\n%12s(ignore next %d %s events)\n",
+        fprintf(fp,
+            "\n%12s(ignore next %" MR_INTEGER_LENGTH_MODIFIER
+            "u %s events)\n",
             "", point->MR_spy_ignore_count,
             MR_ignore_when_to_string(point->MR_spy_ignore_when));
     } else if (point->MR_spy_ignore_count > 0) {
@@ -1224,7 +1226,8 @@ MR_print_spy_cond(FILE *fp, MR_SpyCond *cond)
 {
     switch (cond->MR_cond_var_spec.MR_var_spec_kind) {
         case MR_VAR_SPEC_NUMBER:
-            fprintf(fp, "%d", cond->MR_cond_var_spec.MR_var_spec_number);
+            fprintf(fp, "%" MR_INTEGER_LENGTH_MODIFIER "u",
+                cond->MR_cond_var_spec.MR_var_spec_number);
             break;
 
         case MR_VAR_SPEC_NAME:
@@ -1308,11 +1311,13 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
         if (point->MR_spy_ignore_count > 0) {
             switch (point->MR_spy_ignore_when) {
                 case MR_SPY_IGNORE_INTERFACE:
-                    fprintf(fp, " -I%d", point->MR_spy_ignore_count);
+                    fprintf(fp, " -I%" MR_INTEGER_LENGTH_MODIFIER "u",
+                        point->MR_spy_ignore_count);
                     break;
 
                 case MR_SPY_IGNORE_ENTRY:
-                    fprintf(fp, " -E%d", point->MR_spy_ignore_count);
+                    fprintf(fp, " -E%" MR_INTEGER_LENGTH_MODIFIER "u",
+                        point->MR_spy_ignore_count);
                     break;
 
                 default:

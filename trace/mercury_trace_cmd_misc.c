@@ -116,7 +116,8 @@ MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
             fprintf(fp, "scroll off\n");
         }
 
-        fprintf(fp, "scroll %d\n", MR_scroll_limit);
+        fprintf(fp, "scroll %" MR_INTEGER_LENGTH_MODIFIER "u\n",
+            MR_scroll_limit);
         fprintf(fp, "stack_default_limit %d\n", MR_stack_default_line_limit);
 
         switch (MR_context_position) {
@@ -181,7 +182,8 @@ MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_dice_pass_trace_counts_file);
         }
 
-        fprintf(fp, "list_context_lines %d\n", MR_num_context_lines);
+        fprintf(fp, "list_context_lines %" MR_INTEGER_LENGTH_MODIFIER "u\n",
+            MR_num_context_lines);
         MR_TRACE_CALL_MERCURY(
             path_list = ML_LISTING_get_list_path(MR_listing_path);
             if (! MR_list_is_empty(path_list)) {

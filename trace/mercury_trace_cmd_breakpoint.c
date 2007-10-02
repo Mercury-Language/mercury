@@ -322,7 +322,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 "Ambiguous procedure specification. The matches are:\n");
 
             for (i = 0; i < matches.match_proc_next; i++) {
-                fprintf(MR_mdb_out, "%d: ", i);
+                fprintf(MR_mdb_out, "%" MR_INTEGER_LENGTH_MODIFIER "u: ", i);
                 MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
             }
 
@@ -331,7 +331,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             }
 
             sprintf(buf, "\nWhich do you want to put "
-                "a breakpoint on (0-%d or *)? ",
+                "a breakpoint on (0-%" MR_INTEGER_LENGTH_MODIFIER "u or *)? ",
                 matches.match_proc_next - 1);
             line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
             if (line2 == NULL) {
@@ -394,7 +394,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 "Ambiguous procedure specification. The matches are:\n");
 
             for (i = 0; i < matches.match_proc_next; i++) {
-                fprintf(MR_mdb_out, "%d: ", i);
+                fprintf(MR_mdb_out, "%" MR_INTEGER_LENGTH_MODIFIER "u: ", i);
                 MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
             }
 
@@ -402,7 +402,8 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 return KEEP_INTERACTING;
             }
 
-            sprintf(buf, "\nWhich do you want to put a breakpoint on (0-%d)? ",
+            sprintf(buf, "\nWhich do you want to put a breakpoint on (0-%"
+                MR_INTEGER_LENGTH_MODIFIER "u)? ",
                 matches.match_proc_next - 1);
             line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
             if (line2 == NULL) {
@@ -459,7 +460,8 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 const MR_LabelLayout    *this_label;
 
                 this_label = matching_labels[i];
-                fprintf(MR_mdb_out, "%d: %4s %s\n",
+                fprintf(MR_mdb_out, "%" MR_INTEGER_LENGTH_MODIFIER
+                    "u: %4s %s\n",
                     i,
                     MR_simplified_port_names[this_label->MR_sll_port],
                     MR_label_goal_path(this_label));
@@ -710,7 +712,9 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_maybe_print_spy_point(n, problem);
         } else {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: break point #%d does not exist.\n", n);
+            fprintf(MR_mdb_err,
+                "mdb: break point #%"
+                MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
         int i;
@@ -829,7 +833,9 @@ MR_trace_cmd_enable(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_print_spy_point(MR_mdb_out, n, MR_FALSE);
         } else {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: break point #%d does not exist.\n", n);
+            fprintf(MR_mdb_err,
+                "mdb: break point #%"
+                MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
         int i;
@@ -879,7 +885,9 @@ MR_trace_cmd_disable(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_print_spy_point(MR_mdb_out, n, MR_FALSE);
         } else {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: break point #%d does not exist.\n", n);
+            fprintf(MR_mdb_err,
+                "mdb: break point #%"
+                MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
         int i;
@@ -932,7 +940,9 @@ MR_trace_cmd_delete(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_delete_spy_point(n);
         } else {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: break point #%d does not exist.\n", n);
+            fprintf(MR_mdb_err,
+                "mdb: break point #%"
+                MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
         int i;
