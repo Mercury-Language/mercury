@@ -22,6 +22,7 @@
 #include "mercury_trace_base.h"     /* for MR_TracePort etc  */
 #include "mercury_trace_browse.h"   /* for MR_BrowseFormat */
 #include "mercury_trace_vars.h"     /* for MR_VarSpec */
+#include "mercury_trace.h"          /* for MR_IgnoreCount */
 
 typedef enum {
     MR_SPY_PRINT, MR_SPY_STOP
