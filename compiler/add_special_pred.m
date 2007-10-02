@@ -54,6 +54,12 @@
     hlds_type_body::in, prog_context::in, import_status::in,
     module_info::in, module_info::out) is det.
 
+    % XXX should be used only for a temporary workaround in make_hlds_passes.m
+    %
+:- pred eagerly_add_special_preds(tvarset::in, mer_type::in, type_ctor::in,
+    hlds_type_body::in, prog_context::in, import_status::in,
+    module_info::in, module_info::out) is det.
+
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
@@ -123,6 +129,13 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
     ->
         true
     ;
+        eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context,
+            Status, !ModuleInfo)
+    ).
+
+eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
+        !ModuleInfo) :-
+    (
         can_generate_special_pred_clauses_for_type(!.ModuleInfo, TypeCtor,
             Body)
     ->

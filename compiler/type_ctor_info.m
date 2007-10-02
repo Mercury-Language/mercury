@@ -146,7 +146,7 @@ gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
         )
     ;
         SymName = unqualified(TypeName),
-        Msg = "unqualified type " ++ TypeName ++ "found in type_ctor_info",
+        Msg = "unqualified type " ++ TypeName ++ " found in type_ctor_info",
         unexpected(this_file, Msg)
     ).
 
