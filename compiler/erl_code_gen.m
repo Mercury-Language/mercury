@@ -1042,10 +1042,9 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         CondCodeModel = model_semi,
 
         % Find the non-local variables bound in the condition.
-        % The instmap before Then should really be
-        % InstMap0 + instmap_delta(Cond) but this is okay.
         erl_bound_nonlocals_in_goal(!.Info, InstMap0, Cond, CondVars),
-        erl_bound_nonlocals_in_goal(!.Info, InstMap0, Then, ThenVars),
+        update_instmap(Cond, InstMap0, InstMap0PostCond),
+        erl_bound_nonlocals_in_goal(!.Info, InstMap0PostCond, Then, ThenVars),
         erl_bound_nonlocals_in_goal(!.Info, InstMap0, Else, ElseVars),
         CondVarsList = set.to_sorted_list(CondVars),
 
