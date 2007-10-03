@@ -32,6 +32,7 @@ SUBDIRS = \
 		trace \
 		mdbcomp \
 		browser \
+		ssdb \
 		analysis \
 		compiler \
 		doc \
@@ -62,6 +63,7 @@ TRACE_LIB_NAME = mer_trace
 EVENTSPEC_LIB_NAME = mer_eventspec
 MDBCOMP_LIB_NAME = mer_mdbcomp
 BROWSER_LIB_NAME = mer_browser
+SSDB_LIB_NAME = mer_ssdb
 ANALYSIS_LIB_NAME = mer_analysis
 
 #-----------------------------------------------------------------------------#
@@ -71,7 +73,7 @@ ANALYSIS_LIB_NAME = mer_analysis
 
 .PHONY: dep
 dep: dep_library dep_mdbcomp dep_browser dep_analysis dep_compiler \
-		dep_slice dep_profiler dep_deep_profiler
+		dep_slice dep_profiler dep_deep_profiler dep_ssdb
 
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)$(STD_LIB_NAME).dep
@@ -104,6 +106,13 @@ browser/$(deps_subdir)browse_test.dep:
 
 browser/$(deps_subdir)declarative_test.dep:
 	+cd browser && $(SUBDIR_MMAKE) declarative_test.depend
+
+.PHONY: dep_ssdb
+dep_ssdb: \
+	ssdb/$(deps_subdir)$(SSDB_LIB_NAME).dep
+
+ssdb/$(deps_subdir)$(SSDB_LIB_NAME).dep:
+	+cd ssdb && $(SUBDIR_MMAKE) $(SSDB_LIB_NAME).depend
 
 .PHONY: dep_analysis
 dep_analysis: analysis/$(deps_subdir)$(ANALYSIS_LIB_NAME).dep
@@ -158,7 +167,7 @@ deep_profiler/$(deps_subdir)mdprof_feedback.dep: \
 # depend_library MUST be done before depend_compiler and depend_profiler
 
 .PHONY: depend
-depend: depend_library depend_mdbcomp depend_browser \
+depend: depend_library depend_mdbcomp depend_browser depend_ssdb \
 		depend_analysis depend_compiler \
 		depend_slice depend_profiler depend_deep_profiler
 
@@ -173,6 +182,10 @@ depend_mdbcomp:
 .PHONY: depend_browser
 depend_browser:
 	+cd browser && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_ssdb
+depend_ssdb:
+	+cd ssdb && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_analysis
 depend_analysis:
@@ -232,9 +245,13 @@ mdbcomp: dep_mdbcomp scripts util boehm_gc runtime library
 browser: dep_browser scripts util boehm_gc runtime library mdbcomp
 	+cd browser && $(SUBDIR_MMAKE)
 
+.PHONY: ssdb
+ssdb: scripts boehm_gc runtime library mdbcomp browser
+	+cd ssdb && $(SUBDIR_MMAKE)
+
 .PHONY: analysis
 analysis: dep_analysis scripts util boehm_gc runtime library mdbcomp browser \
-		trace
+		trace ssdb
 	+cd analysis && $(SUBDIR_MMAKE)
 
 .PHONY: runtime
@@ -243,12 +260,12 @@ trace: scripts boehm_gc runtime library mdbcomp browser
 
 .PHONY: compiler
 compiler: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace analysis
+		mdbcomp browser trace ssdb analysis
 	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: libmmc
 libmmc: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace analysis
+		mdbcomp browser trace ssdb analysis
 	+cd compiler && $(SUBDIR_MMAKE) libmmc
 
 .PHONY: doc
@@ -257,24 +274,24 @@ doc: scripts util
 
 .PHONY: slice
 slice: dep_slice scripts util boehm_gc runtime library \
-		mdbcomp browser trace
+		mdbcomp browser trace ssdb
 	+cd slice && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
 profiler: dep_profiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace
+		mdbcomp browser trace ssdb
 	+cd profiler && $(SUBDIR_MMAKE)
 
 .PHONY: deep_profiler
 deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace
+		mdbcomp browser trace ssdb
 	+cd deep_profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
 tags: tags_compiler tags_library tags_mdbcomp tags_browser tags_analysis \
-		tags_slice tags_profiler tags_deep_profiler
+		tags_slice tags_profiler tags_deep_profiler tags_ssdb
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -308,12 +325,16 @@ tags_profiler:
 tags_deep_profiler:
 	+cd deep_profiler && $(SUBDIR_MMAKE) tags
 
+.PHONY: tags_ssdb
+tags_ssdb:
+	+cd ssdb && $(SUBDIR_MMAKE) tags
+
 #-----------------------------------------------------------------------------#
 
 # Remove from each of the listed directories mmc-generated files that don't
 # belong there.
 cleanint:
-	for dir in library mdbcomp browser analysis compiler \
+	for dir in library mdbcomp browser ssdb analysis compiler \
 		slice profiler deep_profiler; \
 	do \
 		echo Looking for inappropriate files in the $$dir directory: ; \
@@ -388,6 +409,9 @@ tar: $(GENERATED_DOCS)
 	+cd browser && $(SUBDIR_MMAKE) depend
 	+cd browser && $(SUBDIR_MMAKE) all-ints cs \
 		$(BROWSER_LIB_NAME).init tags
+	+cd ssdb && $(SUBDIR_MMAKE) depend
+	+cd ssdb && $(SUBDIR_MMAKE) all-ints cs \
+		$(SSDB_LIB_NAME).init tags
 	+cd trace && $(SUBDIR_MMAKE) cs
 	+cd analysis && $(SUBDIR_MMAKE) depend
 	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
@@ -494,7 +518,7 @@ install: install_main install_grades
 install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
 		install_library install_mdbcomp install_browser install_trace \
-		install_compiler install_slice install_profiler \
+		install_compiler install_slice install_profiler install_ssdb \
 		install_deep_profiler install_doc install_config
 
 .PHONY: install_scripts
@@ -535,6 +559,10 @@ install_mdbcomp: dep_mdbcomp mdbcomp
 .PHONY: install_browser
 install_browser: dep_browser browser
 	+cd browser && $(SUBDIR_MMAKE) install
+
+.PHONY: install_ssdb
+install_ssdb: dep_ssdb ssdb
+	+cd ssdb && $(SUBDIR_MMAKE) install
 
 .PHONY: install_compiler
 install_compiler: dep_compiler compiler
@@ -597,6 +625,11 @@ install_grades: all
 			depend &&					\
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
 			install_library ) &&				\
+		( cd tmp_dir/ssdb &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			depend &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			install_library ) &&				\
 		( cd tmp_dir/trace &&					\
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
 			install_lib ) &&				\
@@ -633,6 +666,10 @@ touch_files:
 	touch analysis/*.date*
 	chmod +w analysis/*.dep
 	touch analysis/*.dep
+	touch ssdb/*.date*
+	touch ssdb/*.optdate
+	chmod +w ssdb/*.dep
+	touch ssdb/*.dep
 	touch compiler/*.date*
 	chmod +w compiler/*.dep
 	touch compiler/*.dep
@@ -652,6 +689,7 @@ touch_files:
 	touch library/*.c
 	touch mdbcomp/*.c
 	touch browser/*.c
+	touch ssdb/*.c
 	touch trace/*.c
 	touch compiler/*.c
 	touch slice/*.c
@@ -685,7 +723,7 @@ clean: clean_subdirs clean_tests
 .PHONY: clean_subdirs
 clean_subdirs:
 	rm -rf runtime/tmp_dir library/tmp_dir mdbcomp/tmp_dir \
-		browser/tmp_dir trace/tmp_dir
+		browser/tmp_dir ssdb/tmp_dir trace/tmp_dir
 	+for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \

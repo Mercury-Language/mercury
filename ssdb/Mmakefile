@@ -1,12 +1,12 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2007 The University of Melbourne.
+# Copyright (C) 2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# browser/Mmakefile - this is the Mmakefile for building the Mercury
-# browser library, which also includes other functionality needed
-# by Mercury debuggers.
+# ssdb/Mmakefile - this is the Mmakefile for building the Mercury
+# ssdb library, which also includes other functionality needed
+# by the source to source Mercury debugger.
 
 # Since the code in this directory is intended to be invoked only from
 # the trace library, which turns off tracing in the Mercury code it calls,
@@ -19,8 +19,8 @@
 # prefixes are allowed.
 
 CHECK_HDRS  =
-CHECK_MHDRS = $(mer_browser.mhs)
-CHECK_OBJS  = $(mer_browser.os)
+CHECK_MHDRS = $(mer_ssdb.mhs)
+CHECK_OBJS  = $(mer_ssdb.os)
 ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=yes
 ALLOW_MDBCOMP_PREFIX=yes
@@ -29,11 +29,11 @@ ALLOW_SSDB_PREFIX=yes
 MERCURY_DIR=..
 LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
--include Mmake.browser.params
+-include Mmake.ssdb.params
 
 # Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
 # create a missing optional params file.
-Mmake.browser.params:
+Mmake.ssdb.params:
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
@@ -41,10 +41,10 @@ include Mercury.options
 
 MAIN_TARGET=main
 
-MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME)
-MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES) browse_test declarative_test
+MERCURY_MAIN_LIB_MODULES=$(SSDB_LIB_NAME)
+MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES)
 
-VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR)
+VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR) $(BROWSER_DIR)
 
 DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 INTS_TARGETS =	$(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
@@ -56,7 +56,7 @@ CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
 
 # Specify which compilers to use to compile the library.
 # Don't change these without good reason - if you want to do a temporary
-# change, change ../Mmake.params, or create Mmake.browser.params.
+# change, change ../Mmake.params, or create Mmake.ssdb.params.
 
 CFLAGS	     += $(DLL_CFLAGS)
 ifeq ($(INSTALLABLE_PREFIX),yes)
@@ -68,7 +68,7 @@ endif
 MLLIBS 	     += $(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY) \
 		$(READLINE_LIBRARIES)
 
-MCFLAGS      += --flags MDB_FLAGS $(CONFIG_OVERRIDE)
+MCFLAGS      += --flags SSDB_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
@@ -84,8 +84,8 @@ MCFLAGS      += --flags MDB_FLAGS $(CONFIG_OVERRIDE)
 # linker, so we disable the mmc option which causes the -install_name option
 # to be passed in the .dep files.
 
-LD_LIBFLAGS-libmer_browser.dylib = -install_name \
-	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_browser.dylib
+LD_LIBFLAGS-libmer_ssdb.dylib = -install_name \
+	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_ssdb.dylib
 
 #-----------------------------------------------------------------------------#
 
@@ -112,7 +112,7 @@ endif
 ifeq ($(USE_DLLS),yes)
 
 # XXX what do we need here for MDBCOMP_LIB_NAME?
-DLL_CFLAGS = -Dlib$(BROWSER_LIB_NAME)_DEFINE_DLL
+DLL_CFLAGS = -Dlib$(SSDB_LIB_NAME)_DEFINE_DLL
 
 include $(MERCURY_DIR)/Makefile.DLLs
 
@@ -137,42 +137,42 @@ all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
 library: $(LIBS)
 
 .PHONY: depend
-depend:	MDB_FLAGS $(DEPENDS)
+depend:	SSDB_FLAGS $(DEPENDS)
 $(DEPENDS): Mercury.modules
 
 .NOTPARALLEL:
 
-# $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
+# $(SSDB_LIB_NAME).dep $(SSDB_LIB_NAME).depend:
 # 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 
 # The need for these dependencies should be obviated by the fact that the
 # mdbcomp directory is brought up-to-date first.
 
-# lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
-# lib$(BROWSER_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
-# lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
-# lib$(BROWSER_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
-# lib$(BROWSER_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
-# lib$(BROWSER_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
-# lib$(BROWSER_LIB_NAME).ss: lib$(MDBCOMP_LIB_NAME).ss
-# lib$(BROWSER_LIB_NAME).ils: lib$(MDBCOMP_LIB_NAME).ils
-# lib$(BROWSER_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
-# lib$(BROWSER_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
-# $($(BROWSER_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
-# $($(BROWSER_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
-# $($(BROWSER_LIB_NAME).ss): $($(MDBCOMP_LIB_NAME).ss)
-# $($(BROWSER_LIB_NAME).ils): $($(MDBCOMP_LIB_NAME).ils)
-# $($(BROWSER_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
-# $($(BROWSER_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
-# $($(BROWSER_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
-# $($(BROWSER_LIB_NAME).il_dates): $($(MDBCOMP_LIB_NAME).il_dates)
-# $($(BROWSER_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
+# lib$(SSDB_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
+# lib$(SSDB_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
+# lib$(SSDB_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
+# lib$(SSDB_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
+# lib$(SSDB_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
+# lib$(SSDB_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
+# lib$(SSDB_LIB_NAME).ss: lib$(MDBCOMP_LIB_NAME).ss
+# lib$(SSDB_LIB_NAME).ils: lib$(MDBCOMP_LIB_NAME).ils
+# lib$(SSDB_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
+# lib$(SSDB_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
+# $($(SSDB_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
+# $($(SSDB_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
+# $($(SSDB_LIB_NAME).ss): $($(MDBCOMP_LIB_NAME).ss)
+# $($(SSDB_LIB_NAME).ils): $($(MDBCOMP_LIB_NAME).ils)
+# $($(SSDB_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
+# $($(SSDB_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
+# $($(SSDB_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
+# $($(SSDB_LIB_NAME).il_dates): $($(MDBCOMP_LIB_NAME).il_dates)
+# $($(SSDB_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
-Mercury.modules: MDB_FLAGS
+Mercury.modules: SSDB_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: check
@@ -189,24 +189,24 @@ int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $($(BROWSER_LIB_NAME).ms)
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m
+tags:	$(MTAGS) $($(SSDB_LIB_NAME).ms)
+	$(MTAGS) $($(SSDB_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m ; fi
+	$(MTAGS) $($(SSDB_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m ; fi
 
-$(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
-		$($(BROWSER_LIB_NAME).ms)
+$(SSDB_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
+		$($(SSDB_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
-		`vpath_find $($(BROWSER_LIB_NAME).ms)` > $@
+		`vpath_find $($(SSDB_LIB_NAME).ms)` > $@
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates:
-	touch $($(BROWSER_LIB_NAME).dates)
+	touch $($(SSDB_LIB_NAME).dates)
 
 #-----------------------------------------------------------------------------#
 
@@ -225,9 +225,9 @@ mdb/%.java: mdb.%.java
 	[ -d mdb ] || mkdir mdb
 	cp $< $@
 
-RENAMED_JAVAS = $($(BROWSER_LIB_NAME).javas:mdb.%.java=mdb/%.java)
+RENAMED_JAVAS = $($(SSDB_LIB_NAME).javas:mdb.%.java=mdb/%.java)
 
-RENAMED_CLASSES = $($(BROWSER_LIB_NAME).classes:mdb.%.class=mdb/%.class)
+RENAMED_CLASSES = $($(SSDB_LIB_NAME).classes:mdb.%.class=mdb/%.class)
 
 .PHONY: javas
 javas: $(RENAMED_JAVAS)
@@ -240,15 +240,15 @@ classes: $(RENAMED_JAVAS)
 
 .PHONY: os cs ss ils
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-os: $($(BROWSER_LIB_NAME).os)
-cs: $($(BROWSER_LIB_NAME).cs)
-ss: $($(BROWSER_LIB_NAME).ss)
-ils: $($(BROWSER_LIB_NAME).ils)
+os: $($(SSDB_LIB_NAME).os)
+cs: $($(SSDB_LIB_NAME).cs)
+ss: $($(SSDB_LIB_NAME).ss)
+ils: $($(SSDB_LIB_NAME).ils)
 else
-os: $(BROWSER_LIB_NAME).os
-cs: $(BROWSER_LIB_NAME).cs
-ss: $(BROWSER_LIB_NAME).ss
-ils: $(BROWSER_LIB_NAME).ils
+os: $(SSDB_LIB_NAME).os
+cs: $(SSDB_LIB_NAME).cs
+ss: $(SSDB_LIB_NAME).ss
+ils: $(SSDB_LIB_NAME).ils
 endif
 
 #-----------------------------------------------------------------------------#
@@ -261,7 +261,7 @@ $(os_subdir)mdb.pic_o \
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f Mercury.modules tags MDB_FLAGS MDB_FLAGS.date
+	rm -f Mercury.modules tags SSDB_FLAGS SSDB_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 
@@ -279,7 +279,7 @@ install_dirs:
 
 ifneq ("$(filter il% java% erlang%,$(GRADE))","")
 
-# there is no browser in the .NET, Java, Erlang backends
+# there is no ssdb (YET!) in the .NET, Java, Erlang backends
 
 .PHONY: install_init
 install_init: 
@@ -290,16 +290,16 @@ install_library:
 else 
 
 .PHONY: install_init
-install_init: $(BROWSER_LIB_NAME).init install_dirs
-	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
+install_init: $(SSDB_LIB_NAME).init install_dirs
+	cp `vpath_find $(SSDB_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
 
 .PHONY: install_library
-install_library: lib$(BROWSER_LIB_NAME) \
+install_library: lib$(SSDB_LIB_NAME) \
 		install_init \
 		install_dirs
-	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
-		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+	cp `vpath_find lib$(SSDB_LIB_NAME).$A \
+		lib$(SSDB_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
-	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(BROWSER_LIB_NAME).$A
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(SSDB_LIB_NAME).$A
 
 endif

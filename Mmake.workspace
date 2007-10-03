@@ -51,6 +51,7 @@ LIBRARY_DIR = $(WORKSPACE)/library
 TRACE_DIR = $(WORKSPACE)/trace
 MDBCOMP_DIR = $(WORKSPACE)/mdbcomp
 BROWSER_DIR = $(WORKSPACE)/browser
+SSDB_DIR = $(WORKSPACE)/ssdb
 BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
 MPS_GC_DIR = $(WORKSPACE)/mps_gc/code
 COMPILER_DIR = $(WORKSPACE)/compiler
@@ -82,6 +83,7 @@ STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
 EVENTSPEC_LIB_NAME = mer_eventspec
 BROWSER_LIB_NAME = mer_browser
+SSDB_LIB_NAME = mer_ssdb
 MDBCOMP_LIB_NAME = mer_mdbcomp
 ANALYSIS_LIB_NAME = mer_analysis
 

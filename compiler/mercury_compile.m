@@ -2563,6 +2563,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination2", !DumpInfo, !IO),
 
+    maybe_ssdb(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 123, "ssdb", !DumpInfo, !IO),
+
     maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !DumpInfo, !IO),
 
@@ -3174,6 +3177,26 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
     ;
         true
     ).
+
+:- pred maybe_ssdb(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
+    globals.io_lookup_bool_option(source_to_source_debug, SSDB, !IO),
+    (
+        SSDB = yes,
+        maybe_write_string(Verbose,
+            "% Apply debugging source to source transformation ...\n", !IO),
+        /* XXX for the moment we do nothing.
+        process_all_nonimported_procs(
+            update_module_io(ssdebug.process_proc), !HLDS, !IO),
+        */
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        SSDB = no
+    ).
+
 :- pred maybe_analyse_trail_usage(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 

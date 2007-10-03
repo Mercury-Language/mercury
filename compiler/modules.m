@@ -2974,6 +2974,13 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         !:UseDeps = [MercuryRegionBuiltin | !.UseDeps]
     ;
         UseRegions = no
+    ),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
+    (
+        SSDB = yes,
+        !:UseDeps = [mercury_ssdb_builtin_module | !.UseDeps]
+    ;
+        SSDB = no
     ).
 
 :- pred contains_tabling_pragma(item_list::in) is semidet.

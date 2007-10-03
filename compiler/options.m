@@ -312,6 +312,7 @@
     ;       extend_stacks_when_needed
     ;       stack_segments
     ;       use_regions
+    ;       source_to_source_debug
 
     % Data representation compilation model options
     ;       tags
@@ -1119,6 +1120,7 @@ option_defaults_2(compilation_model_option, [
     minimal_model_debug                 -   bool(no),
     single_prec_float                   -   bool(no),
     type_layout                         -   bool(yes),
+    source_to_source_debug              -   bool(no),
 
     % Data representation compilation model options
     pic_reg                             -   bool(no),
@@ -1903,6 +1905,8 @@ long_option("maybe-thread-safe",    maybe_thread_safe_opt).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
 long_option("stack-segments",       stack_segments).
 long_option("use-regions",          use_regions).
+long_option("ssdb",                 source_to_source_debug).
+long_option("source-to-source-debug", source_to_source_debug).
 % Data representation options
 long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).

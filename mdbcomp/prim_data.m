@@ -231,6 +231,11 @@
     %
 :- func mercury_par_builtin_module = sym_name.
 
+    % Returns the name of the module containing the builtins for the
+    % source-to-source debugger.
+    %
+:- func mercury_ssdb_builtin_module = sym_name.
+
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
@@ -320,7 +325,8 @@ all_builtin_modules = [
         mercury_table_builtin_module,
         mercury_profiling_builtin_module,
         mercury_term_size_prof_builtin_module,
-        mercury_par_builtin_module].
+        mercury_par_builtin_module,
+        mercury_ssdb_builtin_module].
 
 % We may eventually want to put the standard library into a package "std":
 % mercury_public_builtin_module = qualified(unqualified("std"), "builtin").
@@ -334,6 +340,7 @@ mercury_table_builtin_module = unqualified("table_builtin").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
+mercury_ssdb_builtin_module = unqualified("ssdb_builtin").
 mercury_std_lib_module_name(Name) = Name.
 
 is_std_lib_module_name(SymName, Name) :-
@@ -348,6 +355,7 @@ any_mercury_builtin_module(Module) :-
     ; Module = mercury_profiling_builtin_module
     ; Module = mercury_term_size_prof_builtin_module
     ; Module = mercury_par_builtin_module
+    ; Module = mercury_ssdb_builtin_module
     ).
 
 non_traced_mercury_builtin_module(Module) :-
@@ -355,4 +363,5 @@ non_traced_mercury_builtin_module(Module) :-
     ; Module = mercury_profiling_builtin_module
     ; Module = mercury_term_size_prof_builtin_module
     ; Module = mercury_par_builtin_module
+    ; Module = mercury_ssdb_builtin_module
     ).

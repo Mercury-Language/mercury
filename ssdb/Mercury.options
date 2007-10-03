@@ -1,0 +1,17 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2007 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# Mercury.options - module-specific flags for Mmake and `mmc --make'.
+#-----------------------------------------------------------------------------#
+
+MCFLAGS-mer_ssdb = --no-warn-nothing-exported --no-warn-unused-imports
+
+# XXX This line is needed so that `mmake --use-mmc-make libmer_ssdb'
+# passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
+EXTRA_LIBRARIES-libmer_ssdb = mer_mdbcomp
+
+# Whereas these lines are needed for plain `mmake'.
+EXTRA_LIBRARIES-libmer_ssdb.so = mer_mdbcomp
+EXTRA_LIBRARIES-libmer_ssdb.dylib = mer_mdbcomp

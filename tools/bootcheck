@@ -85,7 +85,7 @@ Options:
         check to have left a working stage 2 directory.
     --no-check-namespace
         Don't build the check_namespace targets in the runtime,
-        trace, browser, mdbcomp and library directories.
+        trace, browser, ssdb, mdbcomp and library directories.
     -t-, --no-test-suite
         By default, bootcheck will also run the test quite.
         This option prevents that.
@@ -236,6 +236,7 @@ RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
+SSDB_LIB_NAME=mer_ssdb
 MDBCOMP_LIB_NAME=mer_mdbcomp
 ANALYSIS_LIB_NAME=mer_analysis
 
@@ -686,6 +687,15 @@ then
         $LN_S $root/browser/$BROWSER_LIB_NAME.init .
         $LN_S $root/browser/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
+        mkdir ssdb
+        cd ssdb
+        $LN_S $root/ssdb/*.m .
+        cp $root/ssdb/Mmake* $root/ssdb/Mercury.options .
+        cp $root/ssdb/*_FLAGS.in .
+        cp $root/ssdb/.mgnu* .
+        $LN_S $root/ssdb/$SSDB_LIB_NAME.init .
+        $LN_S $root/ssdb/RESERVED_MACRO_NAMES .
+        cd $root/$stage2dir
         mkdir analysis
         cd analysis
         $LN_S $root/analysis/*.m .
@@ -831,6 +841,11 @@ then
             /bin/rm -f browser/Mmake.browser.params
             cp $root/Mmake.stage.browser.params browser/Mmake.browser.params
         fi
+        if test -f $root/Mmake.stage.ssdb.params
+        then
+            /bin/rm -f ssdb/Mmake.ssdb.params
+            cp $root/Mmake.stage.ssdb.params ssdb/Mmake.ssdb.params
+        fi
         if test -f $root/Mmake.stage.deep.params
         then
             /bin/rm -f deep_profiler/Mmake.deep.params
@@ -904,7 +919,7 @@ then
 
         if (cd $stage2dir && \
             $MMAKE $mmake_opts dep_library dep_mdbcomp \
-            dep_browser dep_analysis dep_compiler \
+            dep_browser dep_ssdb dep_analysis dep_compiler \
             dep_profiler dep_deep_profiler)
         then
             echo "building of stage 2 dependencies successful"
@@ -937,6 +952,15 @@ then
             echo "building of stage 2 browser successful"
         else
             echo "building of stage 2 browser not successful"
+            exit 1
+        fi
+
+        if (cd $stage2dir/ssdb && \
+            $MMAKE $mmake_opts $jfactor library)
+        then
+            echo "building of stage 2 ssdb successful"
+        else
+            echo "building of stage 2 ssdb not successful"
             exit 1
         fi
 
@@ -1046,6 +1070,11 @@ then
             echo '** mmake check_namespace failed in browser!'
             check_namespace_status=1
         }
+        cd $root/$stage2dir/ssdb
+        mmake $mmake_opts check_namespace || {
+            echo '** mmake check_namespace failed in ssdb!'
+            check_namespace_status=1
+        }
         cd $root
     fi
 
@@ -1061,7 +1090,7 @@ then
     then
         true
     else
-        libdirs="library mdbcomp browser"
+        libdirs="library mdbcomp browser ssdb"
         if $copy_slice
         then
             slicedirs="slice"
@@ -1088,7 +1117,7 @@ then
             /bin/rm -f *.o *.pic_o
         done
 
-        for cleandir in runtime trace library mdbcomp browser
+        for cleandir in runtime trace library mdbcomp browser ssdb
         do
             cd $root/$stage2dir/$cleandir
             mmake clean_check
@@ -1164,6 +1193,14 @@ then
     cp $root/browser/.mgnu* .
     $LN_S $root/browser/$BROWSER_LIB_NAME.init .
     cd $root/$stage3dir
+    mkdir ssdb
+    cd ssdb
+    $LN_S $root/ssdb/*.m .
+    cp $root/ssdb/Mmake* $root/ssdb/Mercury.options .
+    cp $root/ssdb/*_FLAGS.in .
+    cp $root/ssdb/.mgnu* .
+    $LN_S $root/ssdb/$SSDB_LIB_NAME.init .
+    cd $root/$stage3dir
     mkdir analysis
     cd analysis
     $LN_S $root/analysis/*.m .
@@ -1222,7 +1259,7 @@ then
     fi
 
     if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
-        dep_browser_all dep_analysis dep_compiler)
+        dep_browser_all dep_ssdb dep_analysis dep_compiler)
     then
         echo "building of stage 3 dependencies successful"
     else
@@ -1302,6 +1339,25 @@ then
         fi
     fi
 
+    if (cd $stage3dir/ssdb &&
+        $MMAKE $mmake_opts $jfactor all-ints &&
+        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 ssdb successful"
+    else
+        echo "building of stage 3 ssdb initially not successful"
+        df .
+        # try again, in case the failure cause was transient
+        if (cd $stage3dir/ssdb && \
+            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        then
+            echo "building of stage 3 ssdb successful"
+        else
+            echo "building of stage 3 ssdb not successful"
+            exit 1
+        fi
+    fi
+
     if (cd $stage3dir/analysis &&
         $MMAKE $mmake_opts $jfactor all-ints &&
         $MMAKE $mmake_opts $jfactor ${target_ext}s)
@@ -1355,7 +1411,7 @@ then
         exec > "$outfile"   # redirect stdout to $outfile
     fi
 
-    for dir in library mdbcomp browser analysis compiler; do
+    for dir in library mdbcomp browser ssdb analysis compiler; do
         # `mmake cs' in the compiler directory doesn't build
         # `top_level_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.
@@ -1415,6 +1471,7 @@ then
                     gzip $root/$stage2dir/library/*.c
                     gzip $root/$stage2dir/mdbcomp/*.c
                     gzip $root/$stage2dir/browser/*.c
+                    gzip $root/$stage2dir/ssdb/*.c
                     gzip $root/$stage2dir/compiler/*.c
                     ;;
             esac

@@ -4602,6 +4602,7 @@ compiler/COMP_FLAGS
 library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS
 browser/MDB_FLAGS
+ssdb/SSDB_FLAGS
 analysis/ANALYSIS_FLAGS
 slice/SLICE_FLAGS
 profiler/PROF_FLAGS
