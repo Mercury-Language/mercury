@@ -1,0 +1,4 @@
+.cvsignore
+.mgnuc_copts
+.mgnuc_opts
+SSDB_FLAGS.in
