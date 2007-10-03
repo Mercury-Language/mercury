@@ -43,6 +43,8 @@
    :- include_module term_norm.
    :- include_module term_util.
 
+:- include_module ssdebug.
+
 :- include_module transform_hlds.ctgc.
 
 :- include_module transform_hlds.rbmm.

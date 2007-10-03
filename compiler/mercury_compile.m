@@ -73,6 +73,7 @@
 :- import_module transform_hlds.lambda.
 :- import_module transform_hlds.closure_analysis.
 :- import_module transform_hlds.termination.
+:- import_module transform_hlds.ssdebug.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.trailing_analysis.
@@ -3187,10 +3188,8 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         SSDB = yes,
         maybe_write_string(Verbose,
             "% Apply debugging source to source transformation ...\n", !IO),
-        /* XXX for the moment we do nothing.
         process_all_nonimported_procs(
             update_module_io(ssdebug.process_proc), !HLDS, !IO),
-        */
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

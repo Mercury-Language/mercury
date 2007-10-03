@@ -340,7 +340,7 @@ mercury_table_builtin_module = unqualified("table_builtin").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
-mercury_ssdb_builtin_module = unqualified("ssdb_builtin").
+mercury_ssdb_builtin_module = unqualified("ssdb").
 mercury_std_lib_module_name(Name) = Name.
 
 is_std_lib_module_name(SymName, Name) :-

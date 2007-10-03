@@ -33,7 +33,7 @@ MAIN_TARGET=all
 
 MERCURY_MAIN_MODULES = top_level mlds_to_gcc
 
-VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR) $(BROWSER_DIR) $(ANALYSIS_DIR)
+VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR) $(BROWSER_DIR) $(SSDB_DIR) $(ANALYSIS_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -60,7 +60,8 @@ $(GCC_MAIN_LIBS): force
 
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
 MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A \
-		../trace/lib$(EVENTSPEC_LIB_NAME).$A $(MLOBJS)
+		../trace/lib$(EVENTSPEC_LIB_NAME).$A \
+		../ssdb/lib$(SSDB_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
 C2INITARGS   += $(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
