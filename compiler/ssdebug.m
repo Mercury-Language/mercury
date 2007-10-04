@@ -11,7 +11,7 @@
 %
 % The ssdebug module does a source to source tranformation on each procedure
 % which allows the procedure to be debugged.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 :- module transform_hlds.ssdebug.
@@ -56,12 +56,19 @@
 
 %-----------------------------------------------------------------------------%
 
-process_proc(_PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+process_proc(PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
 
     some [!Varset, !Vartypes] (
         proc_info_get_varset(!.ProcInfo, !:Varset),
         proc_info_get_vartypes(!.ProcInfo, !:Vartypes),
+
+            %
+            % Make the ssdb_proc_id.
+            %
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        make_proc_id_construction(PredInfo, !.ProcInfo, ProcIdGoals, ProcIdVar,
+            !Varset, !Vartypes),
             
             %
             % Build the following two goals
@@ -76,7 +83,8 @@ process_proc(_PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         InstMapSrc = [],
         Context = term.context_init,
         goal_util.generate_simple_call(SSDBModule, "handle_event",		
-            pf_predicate, only_mode, detism_det, purity_impure, [CallVar],
+            pf_predicate, only_mode, detism_det, purity_impure,
+            [ProcIdVar, CallVar],
             Features, InstMapSrc, !.ModuleInfo, Context, HandleCallEventGoal),		
             %
             % Build the following two goals
@@ -87,13 +95,14 @@ process_proc(_PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             ExitConstructor, ExitVar, !Varset, !Vartypes),
 
         goal_util.generate_simple_call(SSDBModule, "handle_event",		
-            pf_predicate, only_mode, detism_det, purity_impure, [ExitVar],
+            pf_predicate, only_mode, detism_det, purity_impure,
+            [ProcIdVar, ExitVar],
             Features, InstMapSrc, !.ModuleInfo, Context, HandleExitEventGoal),		
             %
             % Place the call and exit events around the initial goal.
             % XXX we still need to extend this to handle the other event types
             %
-        ConjGoals = [CallConstructor, HandleCallEventGoal,
+        ConjGoals = ProcIdGoals ++ [CallConstructor, HandleCallEventGoal,
             Goal0, ExitConstructor, HandleExitEventGoal],
 
         goal_info_init(GoalInfo),
@@ -108,6 +117,40 @@ process_proc(_PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     requantify_proc(!ProcInfo),
     recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo).
 
+%-----------------------------------------------------------------------------%
+
+    %
+    % make_proc_id_construction(PredInfo, ProcInfo,
+    %   Goals, Var, !Varset, !Vartypes)
+    %
+    % returns a set of goals, Goals, which build the ssdb_proc_id structure
+    % for the given pred and proc infos.  The var returned holds the
+    % ssdb_proc_id.
+    %
+:- pred make_proc_id_construction(pred_info::in, proc_info::in,
+    hlds_goals::out, prog_var::out,
+    prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
+
+make_proc_id_construction(PredInfo,
+        _ProcInfo, Goals, ProcIdVar, !Varset, !Vartypes) :-
+    Name = pred_info_name(PredInfo),
+
+	make_string_const_construction_alloc(Name, yes("Name"),
+	    ConstructPredName, PredNameVar, !Varset, !Vartypes),
+
+    SSDBModule = mercury_ssdb_builtin_module,
+    TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_proc_id"), 0),
+
+    svvarset.new_named_var("ProcId", ProcIdVar, !Varset), 
+    ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 1),
+    construct_type(TypeCtor, [], ProcIdType),	
+    svmap.det_insert(ProcIdVar, ProcIdType, !Vartypes),
+    construct_functor(ProcIdVar, ConsId, [PredNameVar], ConstructProcIdGoal),
+
+    Goals = [ConstructPredName, ConstructProcIdGoal].
+    
+    
 %-----------------------------------------------------------------------------%
 
     %

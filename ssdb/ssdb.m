@@ -22,6 +22,11 @@
 :- interface.
 
 
+:- type ssdb_proc_id
+    --->    ssdb_proc_id(
+                proc_name   :: string
+            ).
+
 :- type ssdb_event_type
     --->    ssdb_call
     ;       ssdb_exit
@@ -32,7 +37,7 @@
     %
     % This routine is called at each event that occurs
     %
-:- impure pred handle_event(ssdb_event_type::in) is det.
+:- impure pred handle_event(ssdb_proc_id::in, ssdb_event_type::in) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -52,10 +57,12 @@
     % For the moment we just write the event out.
     % Later this will be extended.
     %
-handle_event(Event) :-
+handle_event(ProcId, Event) :-
     promise_impure (
     trace [io(!IO)] (
         io.write(Event, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(ProcId ^ proc_name, !IO),
         io.nl(!IO)
     )
     ).
