@@ -12,6 +12,119 @@
 % The ssdebug module does a source to source tranformation on each procedure
 % which allows the procedure to be debugged.
 %
+% Here is the transformation (note currently we don't do all of this)
+% 
+% original:
+% 
+%    p(...) :-
+%        <original body>
+% 
+% model_det transformed:
+% 
+%    p(...) :-
+%        promise_<original_purity> (
+%            CallVarDescs = [ ... ],
+%            impure call_port(ProcId, CallVarDescs),
+%            <original body>,    % renaming outputs
+%            ExitVarDescs = [ ... | CallVarDescs ],
+%            impure exit_port(ProcId, ExitVarDescs, DoRetry),
+%            (
+%                DoRetry = do_retry,
+%                p(...)
+%            ;
+%                DoRetry = do_not_retry,
+%                % bind outputs
+%            )
+%        ).
+% 
+% model_semi transformed:
+% 
+%    p(...) :-
+%        promise_<original_purity> (
+%            CallVarDescs = [ ... ],
+%            (
+%                impure call_port(ProcId, CallVarDescs),
+%                <original body>    % renaming outputs
+%            ->
+%                ExitVarDescs = [ ... | CallVarDescs ],
+%                impure exit_port(ProcId, ExitVarDescs, DoRetryA),
+%                (
+%                    DoRetryA = do_retry,
+%                    p(...)
+%                ;
+%                    DoRetryA = do_not_retry,
+%                    % bind outputs
+%                )
+%            ;
+%                impure fail_port(ProcId, CallVarDescs, DoRetryB),
+%                (
+%                    DoRetryB = do_retry,
+%                    p(...)
+%                ;
+%                    DoRetryB = do_not_retry,
+%                    fail
+%                )
+%            )
+%        ).
+% 
+% model_non transformed:
+% 
+%    p(...) :-
+%        promise_<original_purity> (
+%            (
+%                CallVarDescs = [ ... ],
+%                impure call_port(ProcId, CallVarDescs),
+%                <original body>,    % renaming outputs
+%                ExitVarDescs = [ ... | CallVarDescs ],
+%                (
+%                    impure exit_port(ProcId, ExitVarDescs, DoRetryA),
+%                    (
+%                        DoRetryA = do_retry,
+%                        p(...)
+%                        % Will give same result as long as p is pure or
+%                        % semipure.  Retry of impure procedures should probably
+%                        % be disallowed anyway.
+%                    ;
+%                        DoRetryB = do_not_retry,
+%                        % bind outputs
+%                    )
+%                ;
+%                    % preserve_backtrack_into,
+%                    impure redo_port(ProcId, ExitVarDescs),
+%                    fail
+%                )
+%            ;
+%                % preserve_backtrack_into
+%                impure fail_port(ProcId, CallVarDescs, DoRetryB),
+%                (
+%                    DoRetryB = do_retry,
+%                    p(...)
+%                ;
+%                    DoRetryB = do_not_retry,
+%                    fail
+%                )
+%            )
+%        ).
+% 
+% where CallVarDescs, ExitVarDescs are lists of var_value
+% 
+%    :- type var_value
+%        --->    unbound_head_var(var_name, pos)
+%        ;       some [T] bound_head_var(var_name, pos, T)
+%        ;       some [T] bound_other_var(var_name, T).
+% 
+%    :- type var_name == string.
+% 
+%    :- type pos == int.
+% 
+% Output head variables may appear twice in a variable description list --
+% initially unbound, then overridden by a bound_head_var functor.  Then the
+% ExitVarDescs can add output variable bindings to the CallVarDescs list, instead
+% of building new lists.  The pos fields give the argument numbers of head
+% variables.
+%
+% The ProcId is of type ssdb.ssdb_proc_id.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 :- module transform_hlds.ssdebug.
