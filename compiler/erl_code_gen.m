@@ -473,6 +473,13 @@ erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr0, Code, !Info) :-
             % aborted before binding them).
             MaybeSuccessExpr = no
         ;
+            Determinism = detism_failure
+        ->
+            % This goal can't succeed.  As above we don't want to pass a
+            % success expression, but we must pass something to maintain the
+            % invariant that a model_semi goal has a success expression.
+            MaybeSuccessExpr = yes(elds_term(elds_fail))
+        ;
             MaybeSuccessExpr = MaybeSuccessExpr0
         ),
         erl_gen_goal_expr(GoalExpr, GoalCodeModel, Determinism, InstMap,

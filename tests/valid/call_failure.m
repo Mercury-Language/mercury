@@ -1,0 +1,24 @@
+:- module call_failure.
+:- interface.
+
+:- pred foo(int::in, int::out) is failure.
+
+:- implementation.
+
+:- import_module int.
+:- import_module require.
+
+foo(X, Y) :-
+    ( X = 42 ->
+        bar(X, Y0),
+        Y = Y0 + 1
+    ;
+        error("foo")
+    ).
+
+:- pred bar(int, int).
+:- mode bar(in(bound(42)), out) is failure.
+:- pragma no_inline(bar/2).
+
+bar(42, _) :-
+    fail.
