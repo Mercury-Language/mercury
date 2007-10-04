@@ -850,7 +850,8 @@ output_pred_proc_id(ModuleInfo, PredProcId, !IO) :-
     ;
         MaybeExtModule = no
     ),
-    output_atom(Name, !IO).
+    ShortName = shorten_long_atom_name(Name),
+    output_atom(ShortName, !IO).
 
 :- pred output_rtti_id(module_info::in, elds_rtti_id::in, io::di, io::uo)
     is det.
@@ -911,7 +912,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
     ),
     output_atom(Atom, !IO).
 
-    % Some RTTI function names can be longer than the character limit on
+    % Some function names can be longer than the character limit on
     % atom names.  To shorten long names, we take the left and right parts
     % of the string and stick the hash of the string in the middle.
     %

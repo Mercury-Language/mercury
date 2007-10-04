@@ -144,6 +144,7 @@ OTHER_PROGS= \
 	lazy_list \
 	liveness_nonlocals \
 	livevals_seq \
+	long_name \
 	loop \
 	loop_in_disj \
 	loop_inv_bug \
