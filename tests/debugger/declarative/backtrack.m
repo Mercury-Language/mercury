@@ -1,24 +1,28 @@
 :- module backtrack.
 :- interface.
+
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+
+:- pred main(io::di, io::uo) is det.
+
 :- implementation.
+
 :- import_module bool.
 :- import_module library_forwarding.
 
-main -->
-	{ p(1, R) },
-	io__write(R),
-	io__nl.
+main(!IO) :-
+	p(1, R),
+	io.write(R, !IO),
+	io.nl(!IO).
 
 :- pred p(int::in, bool::out) is det.
 
 p(N, R) :-
 	(
-%		some [M] (
+		some [M] (
 			M > 5,
 			q(N, M)
-%		)
+		)
 	->
 		R = yes
 	;
@@ -33,4 +37,3 @@ q(1, 2).
 q(1, 3).
 q(2, 2).
 q(2, 4).
-
