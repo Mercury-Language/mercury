@@ -13,7 +13,8 @@ include $(MERCURY_DIR)/Mmake.common
 # Override the settings in ../Mmake.workspace so that in debugging grades we
 # do not include mer_mdbcomp.init twice in the list of files passed to mkinit.
 #
-C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
+C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
+	--trace-init-file $(SSDB_DIR)/$(SSDB_LIB_NAME).init
 
 -include Mmake.compiler.params
 
