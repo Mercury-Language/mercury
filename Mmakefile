@@ -246,7 +246,7 @@ browser: dep_browser scripts util boehm_gc runtime library mdbcomp
 	+cd browser && $(SUBDIR_MMAKE)
 
 .PHONY: ssdb
-ssdb: scripts boehm_gc runtime library mdbcomp browser
+ssdb: dep_ssdb scripts boehm_gc runtime library mdbcomp browser
 	+cd ssdb && $(SUBDIR_MMAKE)
 
 .PHONY: analysis
