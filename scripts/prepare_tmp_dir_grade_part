@@ -70,5 +70,5 @@ cp ssdb/Mmake* tmp_dir/sdb
 cp ssdb/Mercury.* tmp_dir/ssdb
 cp ssdb/.mgnuc* tmp_dir/ssdb
 cp ssdb/*FLAGS* tmp_dir/ssdb
-cp sddb/*.m tmp_dir/ssdb
+cp ssdb/*.m tmp_dir/ssdb
 exit 0
