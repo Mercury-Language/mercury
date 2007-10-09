@@ -24,6 +24,7 @@
 
 :- type ssdb_proc_id
     --->    ssdb_proc_id(
+                module_name :: string,
                 proc_name   :: string
             ).
 
@@ -35,7 +36,7 @@
     .
 
     %
-    % This routine is called at each event that occurs
+    % This routine is called at each event that occurs.
     %
 :- impure pred handle_event(ssdb_proc_id::in, ssdb_event_type::in) is det.
 
@@ -49,6 +50,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
+:- import_module set.
 :- import_module stack.
 :- import_module string.
 
@@ -56,55 +58,68 @@
 
 :- type debugger_state
     --->    state(
-                % Current event number
+                % Current event number.
                 ssdb_event_number   :: int,                 
 
-                % Call Sequence Number
+                % Call Sequence Number.
                 ssdb_csn            :: int,                 
 
-                % Depth of the function
+                % Depth of the function.
                 ssdb_call_depth     :: int,                 
 
-                % Where the program should stop next time
+                % Where the program should stop next time.
                 ssdb_next_stop      :: next_stop,           
 
-                % The shadow stack
-                ssdb_stack          :: stack(stack_elem)    
+                % The shadow stack.
+                ssdb_stack          :: stack(stack_elem),
+
+                % The set of breakpoint added.
+                ssdb_breakpoints    :: set(breakpoint)
             ).
 
 
 :- type stack_elem
     --->    elem(
-                proc_id         :: ssdb_proc_id,
-                initial_state   :: debugger_state
-                    % The debugger state at the call port.
+                se_proc_id         :: ssdb_proc_id,
+                
+                % The debugger state at the call port.
+                se_initial_state   :: debugger_state
             ).
 
     %
-    % Type filled by the prompt function to configure the next step in the
-    % handle_event function 
+    % Type used by the prompt predicate to configure the next step in the
+    % handle_event predicate.
     %
 :- type what_next
-    --->    what_next_step
-    ;       what_next_next
-    ;       what_next_finish(int).
+    --->    wn_step
+    ;       wn_next
+    ;       wn_continue
+    ;       wn_finish(int).
 
 
     %
-    % Type filled by the handle_event function to determine the next stop of
-    % the prompt function
+    % Type used by the handle_event predicate to determine the next stop of
+    % the prompt predicate.
     %
 :- type next_stop
-    --->    step
-    ;       next(int)
-    ;       final_port(int).
+    --->    ns_step
+    ;       ns_next(int)
+    ;       ns_continue
+    ;       ns_final_port(int).
+
+
+:- type breakpoint
+    --->    breakpoint(
+                bp_module_name  :: string,
+                bp_pred_name    :: string
+	    ).
 
 
 %----------------------------------------------------------------------------%
 
     %
-    % Initialize the debugger state
-    % XXX Will be extended
+    % Initialize the debugger state.
+    % XXX Will be extended.
     %
 :- func init_debugger_state = debugger_state.
 
@@ -112,9 +127,10 @@ init_debugger_state = DbgState :-
     EventNum = 0,
     CSN = 0,
     Depth = 0,
-    NextStop = step,
+    NextStop = ns_step,
     Stack = stack.init,
-    DbgState = state(EventNum, CSN, Depth, NextStop, Stack).
+    Breakpoints = set.init,
+    DbgState = state(EventNum, CSN, Depth, NextStop, Stack, Breakpoints).
 
 :- mutable(debugger_state, debugger_state, init_debugger_state, ground, 
     [untrailed, attach_to_io_state]).
@@ -123,26 +139,26 @@ init_debugger_state = DbgState :-
 
 
     %
-    % Write the event out and call the prompt
-    % XXX Not yet implemented : redo, fail
+    % Write the event out and call the prompt.
+    % XXX Not yet implemented : redo, fail.
     %
 handle_event(ProcId, Event) :-
     impure get_event_num_inc(EventNum),
     impure update_depth(Event, PrintDepth),
 
-    (
-        Event = ssdb_call,
+    ( 
+	Event = ssdb_call,
         impure get_csn_inc(_),
 
         semipure get_debugger_state(InitialState),
-        E = elem(ProcId, InitialState),
-        stack.push(InitialState ^ ssdb_stack, E, FinalStack),
+        StackFrame = elem(ProcId, InitialState),
+        stack.push(InitialState ^ ssdb_stack, StackFrame, FinalStack),
         StateEv = InitialState ^ ssdb_stack := FinalStack,
         impure set_debugger_state(StateEv)
     ;
         Event = ssdb_exit,
         semipure get_debugger_state(InitialState),
-        stack.pop_det(InitialState ^ ssdb_stack, E, FinalStack),
+        stack.pop_det(InitialState ^ ssdb_stack, StackFrame, FinalStack),
         StateEv = InitialState ^ ssdb_stack := FinalStack,
         impure set_debugger_state(StateEv)
     ;
@@ -155,20 +171,29 @@ handle_event(ProcId, Event) :-
  
     semipure get_debugger_state(State0),
 
-    PrintCSN = E ^ initial_state ^ ssdb_csn,
+    CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
     NextStop0 = State0 ^ ssdb_next_stop,
     (
-        NextStop0 = step,
+        NextStop0 = ns_step,
         Stop = yes
     ;
-        NextStop0 = next(StopCSN),
-        is_same_event(StopCSN, PrintCSN, Stop)
+        NextStop0 = ns_next(StopCSN),
+        is_same_event(StopCSN, CSN, Stop)
     ;
-        NextStop0 = final_port(StopCSN),
+        NextStop0 = ns_continue,
+        ( set.contains(State0 ^ ssdb_breakpoints, 
+            breakpoint(ProcId ^ module_name, ProcId ^ proc_name)) 
+	->
+            Stop = yes
+        ;
+            Stop = no
+        )
+    ;
+        NextStop0 = ns_final_port(StopCSN),
         (
             Event = ssdb_exit,
-            is_same_event(StopCSN, PrintCSN, Stop)
+            is_same_event(StopCSN, CSN, Stop)
         ;
             Event = ssdb_call,
             Stop = no
@@ -183,13 +208,15 @@ handle_event(ProcId, Event) :-
             io.write_string("       ", !IO),
             io.write_int(EventNum, !IO),
             io.write_string("\t", !IO),
+            io.write_string(ProcId ^ module_name, !IO),
+            io.write_string(".", !IO),
             io.write_string(ProcId ^ proc_name, !IO),
             io.write_string(".", !IO),
             io.write(Event, !IO),
             io.write_string("\t\t| DEPTH = ", !IO),
             io.write_int(PrintDepth, !IO),
             io.write_string("\t| CSN = ", !IO),
-            io.write_int(PrintCSN, !IO),
+            io.write_int(CSN, !IO),
             io.nl(!IO),
         
             semipure get_shadow_stack(ShadowStack),
@@ -198,17 +225,20 @@ handle_event(ProcId, Event) :-
             impure consume_io(!.IO),
         
             (
-                WhatNext = what_next_step,
-                NextStop = step
+                WhatNext = wn_step,
+                NextStop = ns_step
             ;
-                WhatNext = what_next_next,
-                NextStop = next(PrintCSN)
+                WhatNext = wn_next,
+                NextStop = ns_next(CSN)
             ;
-                WhatNext = what_next_finish(EndCSN),
-                NextStop = final_port(EndCSN)
+                WhatNext = wn_continue,
+                NextStop = ns_continue
+            ;
+                WhatNext = wn_finish(EndCSN),
+                NextStop = ns_final_port(EndCSN)
             ),
 
-% XXX do not forget get the latest modification (like new breakpoint)
+            % Set the last update :  breakpoints.
             semipure get_debugger_state(State1),
             State = State1 ^ ssdb_next_stop := NextStop,
             impure set_debugger_state(State)
@@ -217,18 +247,27 @@ handle_event(ProcId, Event) :-
         Stop = no
     ).
 
-
     %
-    % Determine if two CSN are equals and if yes, do a stop
+    % IsSame is 'yes' iff the two call sequence numbers are equal, 
+    % 'no' otherwise.
     %
 :- pred is_same_event(int::in, int::in, bool::out) is det.
 
 is_same_event(CSNA, CSNB, IsSame) :-
     IsSame = (CSNA = CSNB -> yes ; no).
+    
+    %
+    % Return the current event number.
+    %
+:- semipure pred get_event_num(int::out) is det.
+
+get_event_num(EventNum) :-
+    semipure get_debugger_state(State0),
+    EventNum = State0 ^ ssdb_event_number.
 
     %
-    % Increment and return the event number
-    % Update the state with the new event number
+    % Increment the current event number in the debugger state, 
+    % returning the new event number.
     %
 :- impure pred get_event_num_inc(int::out) is det.
 
@@ -240,12 +279,12 @@ get_event_num_inc(EventNum) :-
     impure set_debugger_state(State).
 
     %
-    % For the given event type, update the depth in the debugger state
-    % and return the depth for the given event.
+    % For a given event type, update the depth in the debugger state,
+    % returning the updated depth.
     %
 :- impure pred update_depth(ssdb_event_type::in, int::out) is det.
 
-update_depth(Event, PrintDepth) :-
+update_depth(Event, ReturnDepth) :-
     semipure get_debugger_state(State0),
     Depth0 = State0 ^ ssdb_call_depth,
     (
@@ -253,20 +292,20 @@ update_depth(Event, PrintDepth) :-
         ; Event = ssdb_redo
         ),
         Depth = Depth0 + 1,
-        PrintDepth = Depth0
+        ReturnDepth = Depth0
     ;
         ( Event = ssdb_exit
         ; Event = ssdb_fail
         ),
         Depth = Depth0 - 1,
-        PrintDepth = Depth
+        ReturnDepth = Depth
     ),
     State = State0 ^ ssdb_call_depth := Depth,
     impure set_debugger_state(State).
 
     %
-    % Increment and return the call sequence number
-    % Update the state with this new call sequence number
+    % Increment the current call sequence number in the debugger state,
+    % returning the new call seuqence number.
     %
 :- impure pred get_csn_inc(int::out) is det.
 
@@ -278,16 +317,7 @@ get_csn_inc(CSN) :-
     impure set_debugger_state(State).
 
     %
-    % Return the current event number
-    %
-:- semipure pred get_event_num(int::out) is det.
-
-get_event_num(EventNum) :-
-    semipure get_debugger_state(State0),
-    EventNum = State0 ^ ssdb_event_number.
-
-    %
-    % Return the current call sequence number
+    % Return the current call sequence number.
     %
 :- semipure pred get_csn(int::out) is det.
 
@@ -296,7 +326,7 @@ get_csn(CSN) :-
     CSN = State0 ^ ssdb_csn.
     
     %
-    % Return the current shadow stack
+    % Return the current shadow stack.
     %
 :- semipure pred get_shadow_stack(stack(stack_elem)::out) is det.
 
@@ -313,6 +343,8 @@ get_shadow_stack(ShadowStack) :-
     % f     :: finish (go to the next exit or fail of the current call)
     % n     :: next
     % s | _ :: next step
+    % c     :: continue
+    % b X Y :: breakpoint X = module_name Y = predicate_name
     %
 
 :- impure pred prompt(stack(stack_elem)::in, int::in, what_next::out, 
@@ -320,41 +352,61 @@ get_shadow_stack(ShadowStack) :-
 
 prompt(ShadowStack, Depth, WhatNext, !IO) :-
     io.write_string("ssdb> ", !IO),
-        %read a string in input and return a string
+    % Read a string in input and return a string.
     io.read_line_as_string(Result, !IO), 
     (
         Result = ok(String0),
-            %string minus any single trailing newline character
-        String = string.chomp(String0), 
+        % String minus any single trailing newline character.
+        String = string.chomp(String0),
+	Words = string.words(String), 
 
-        ( 
-            String = "h" ->
+        ( Words = ["h"] ->
             io.nl(!IO),
-            io.write_string("s   :: step", !IO),
+            io.write_string("s      :: step", !IO),
             io.nl(!IO),
-            io.write_string("n   :: next", !IO),
+            io.write_string("n      :: next", !IO),
             io.nl(!IO),
-            io.write_string("f   :: finish", !IO),
+            io.write_string("b X Y  :: insert breakpoint where :", !IO),
+            io.write_string(" X = module name", !IO),
+            io.write_string(" and Y = predicate name", !IO),
+            io.nl(!IO),
+            io.write_string("c      :: next", !IO),
+            io.nl(!IO),
+            io.write_string("f      :: finish", !IO),
             io.nl(!IO),
             io.nl(!IO),
             impure prompt(ShadowStack, Depth, WhatNext, !IO)
         
-        ; 
-            String = "n" ->
-            WhatNext = what_next_next
+        ; Words = ["n"] ->
+            WhatNext = wn_next
+
         ;
-            (
-                String = "s"
-            ;
-                String = ""
+            ( Words = ["s"]
+            ; list.is_empty(Words)
             )
-            ->
-                WhatNext = what_next_step
-        ;
-            String = "f" ->
+        ->
+                WhatNext = wn_step
+
+        ; Words = ["c"] ->
+            WhatNext = wn_continue
+
+        ; 
+            Words = ["b", ModuleName, ProcedureName] 
+        ->
+            semipure get_debugger_state(State0),
+            Breakpoints0 = State0 ^ ssdb_breakpoints,
+            Breakpoints = set.insert(Breakpoints0, breakpoint(ModuleName, 
+                ProcedureName)),
+            State = State0 ^ ssdb_breakpoints := Breakpoints,
+            io.print(Breakpoints, !IO),nl(!IO),
+            impure set_debugger_state(State),
+            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+
+        ; Words = ["f"] ->
             stack.top_det(ShadowStack, FrameStack),
-            CSN = FrameStack ^  initial_state ^ ssdb_csn,
-            WhatNext = what_next_finish(CSN)
+            CSN = FrameStack ^  se_initial_state ^ ssdb_csn,
+            WhatNext = wn_finish(CSN)
+
         ;
             io.write_string("huh?\n", !IO),
             impure prompt(ShadowStack, Depth, WhatNext, !IO)

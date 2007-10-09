@@ -119,9 +119,9 @@
 % 
 % Output head variables may appear twice in a variable description list --
 % initially unbound, then overridden by a bound_head_var functor.  Then the
-% ExitVarDescs can add output variable bindings to the CallVarDescs list, instead
-% of building new lists.  The pos fields give the argument numbers of head
-% variables.
+% ExitVarDescs can add output variable bindings to the CallVarDescs list, 
+% instead of building new lists.  The pos fields give the argument numbers 
+% of head variables.
 %
 % The ProcId is of type ssdb.ssdb_proc_id.
 %
@@ -195,10 +195,10 @@ process_proc(PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         Features = [],
         InstMapSrc = [],
         Context = term.context_init,
-        goal_util.generate_simple_call(SSDBModule, "handle_event",		
+        goal_util.generate_simple_call(SSDBModule, "handle_event",              
             pf_predicate, only_mode, detism_det, purity_impure,
             [ProcIdVar, CallVar],
-            Features, InstMapSrc, !.ModuleInfo, Context, HandleCallEventGoal),		
+            Features, InstMapSrc, !.ModuleInfo, Context, HandleCallEventGoal),
             %
             % Build the following two goals
             %   ExitVar = ssdb_exit,
@@ -207,10 +207,10 @@ process_proc(PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         make_ssdb_event_type_construction(ssdb_exit,
             ExitConstructor, ExitVar, !Varset, !Vartypes),
 
-        goal_util.generate_simple_call(SSDBModule, "handle_event",		
+        goal_util.generate_simple_call(SSDBModule, "handle_event",              
             pf_predicate, only_mode, detism_det, purity_impure,
             [ProcIdVar, ExitVar],
-            Features, InstMapSrc, !.ModuleInfo, Context, HandleExitEventGoal),		
+            Features, InstMapSrc, !.ModuleInfo, Context, HandleExitEventGoal),
             %
             % Place the call and exit events around the initial goal.
             % XXX we still need to extend this to handle the other event types
@@ -247,21 +247,27 @@ process_proc(PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 
 make_proc_id_construction(PredInfo,
         _ProcInfo, Goals, ProcIdVar, !Varset, !Vartypes) :-
-    Name = pred_info_name(PredInfo),
+    SymModuleName = pred_info_module(PredInfo),
+    ModuleName = sym_name_to_string(SymModuleName),
+    PredName = pred_info_name(PredInfo),
 
-	make_string_const_construction_alloc(Name, yes("Name"),
-	    ConstructPredName, PredNameVar, !Varset, !Vartypes),
+    make_string_const_construction_alloc(ModuleName, yes("ModuleName"),
+        ConstructModuleName, ModuleNameVar, !Varset, !Vartypes),
+
+    make_string_const_construction_alloc(PredName, yes("PredName"),
+        ConstructPredName, PredNameVar, !Varset, !Vartypes),
 
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_proc_id"), 0),
 
     svvarset.new_named_var("ProcId", ProcIdVar, !Varset), 
-    ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 1),
-    construct_type(TypeCtor, [], ProcIdType),	
+    ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2),
+    construct_type(TypeCtor, [], ProcIdType),   
     svmap.det_insert(ProcIdVar, ProcIdType, !Vartypes),
-    construct_functor(ProcIdVar, ConsId, [PredNameVar], ConstructProcIdGoal),
+    construct_functor(ProcIdVar, ConsId, [ModuleNameVar, PredNameVar], 
+        ConstructProcIdGoal),
 
-    Goals = [ConstructPredName, ConstructProcIdGoal].
+    Goals = [ConstructModuleName, ConstructPredName, ConstructProcIdGoal].
     
     
 %-----------------------------------------------------------------------------%
@@ -292,13 +298,13 @@ make_ssdb_event_type_construction(Event, Goal, EventVar, !Varset, !Vartypes) :-
         Event = ssdb_fail,
         SSDB_Event = "ssdb_fail"
     ),
-	
+        
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_event_type"), 0),
 
     svvarset.new_named_var(SSDB_Event, EventVar, !Varset), 
     ConsId = cons(qualified(SSDBModule, SSDB_Event), 0),
-    construct_type(TypeCtor, [], EventVarType),	
+    construct_type(TypeCtor, [], EventVarType), 
     svmap.det_insert(EventVar, EventVarType, !Vartypes),
     construct_functor(EventVar, ConsId, [], Goal).
 
