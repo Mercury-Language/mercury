@@ -559,144 +559,164 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
         get_forward_live_vars(!.CI, ForwardLiveVars),
         LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
 
-        CondNonLocals = goal_info_get_nonlocals(CondGoalInfo),
-        CondNonlocalRegionVars = filter_region_vars(!.CI, CondNonLocals),
-
-        % XXX CondRemovedRegionVars should be the set of region vars whose
-        % regions are removed in the condition, and CondAllocRegionVars should
-        % be the set of region vars whose regions may be allocated into in the
-        % condition. However, this information is not yet available in the
-        % HLDS, and there is no simple way here to reconstruct it.
-        % (For example, the set of region vars live after the condition
-        % is *not* sufficient to compute CondRemovedRegionVars, since
-        % a region variable can become dead (in the absence of further
-        % references to the region in this procedure) even if the associated
-        % region hasn't been removed.
-        CondRemovedRegionVars = CondNonlocalRegionVars,
-        CondAllocRegionVars = CondNonlocalRegionVars,
-
-        get_module_info(!.CI, ModuleInfo),
-        find_regions_removed_at_start_of_else(ElseGoals, ModuleInfo,
-            set.init, RemovedAtStartOfElse),
-
-        % XXX We want to compute UnprotectedRemovedAtStartOfElse as the
-        % intersection of RemovedAtStartOfElse and the set of region variables
-        % whose regions are statically known to be unprotected at this point in
-        % the code. However, in the absence of the required program analysis,
-        % we can't know of any statically unprotected regions.
-        UnprotectedRemovedAtStartOfElse = set.init,
-
-        ProtectRegionVars = set.intersect(LiveRegionVars,
-            CondRemovedRegionVars),
-        SnapshotRegionVars0 = set.intersect(LiveRegionVars,
-            CondAllocRegionVars),
-        ( set.empty(UnprotectedRemovedAtStartOfElse) ->
-            SnapshotRegionVars = SnapshotRegionVars0
-        ;
-            SnapshotRegionVars = set.difference(SnapshotRegionVars0,
-                UnprotectedRemovedAtStartOfElse)
-        ),
-
-        ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
-        SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
-
-        list.length(ProtectRegionVarList, NumProtectRegionVars),
-        list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
-
-        get_globals(!.CI, Globals),
-        globals.lookup_int_option(Globals, size_region_ite_fixed,
-            FixedSize),
-        globals.lookup_int_option(Globals, size_region_ite_protect,
-            ProtectSize),
-        globals.lookup_int_option(Globals, size_region_ite_snapshot,
-            SnapshotSize),
-        FrameSize = FixedSize
-            + ProtectSize * NumProtectRegionVars
-            + SnapshotSize * NumSnapshotRegionVars,
-
-        Items = list.duplicate(FrameSize, slot_region_ite),
-        acquire_several_temp_slots(Items, non_persistent_temp_slot,
-            StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
-        EmbeddedStackFrameId = embedded_stack_frame_id(MainStackId,
-            FirstSlotNum, LastSlotNum),
-        FirstNonFixedAddr =
-            first_nonfixed_embedded_slot_addr(EmbeddedStackFrameId, FixedSize),
-        acquire_reg(reg_r, ProtectNumRegLval, !CI),
-        acquire_reg(reg_r, SnapshotNumRegLval, !CI),
-        acquire_reg(reg_r, AddrRegLval, !CI),
-        PushInitCode = node([
-            llds_instr(
-                push_region_frame(region_stack_ite, EmbeddedStackFrameId),
-                "Save stack pointer of embedded region ite stack"),
-            llds_instr(
-                assign(ProtectNumRegLval, const(llconst_int(0))),
-                "Initialize number of protect_infos"),
-            llds_instr(
-                assign(SnapshotNumRegLval, const(llconst_int(0))),
-                "Initialize number of snapshot_infos"),
-            llds_instr(
-                assign(AddrRegLval, FirstNonFixedAddr),
-                "Initialize pointer to nonfixed part of embedded frame")
-        ]),
-        ite_protect_regions(ProtectNumRegLval, AddrRegLval,
-            EmbeddedStackFrameId, ProtectRegionVarList, ProtectRegionCode,
-            !CI),
-        ite_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
-            EmbeddedStackFrameId, RemovedAtStartOfElse, SnapshotRegionVarList,
-            SnapshotRegionCode, !CI),
-        SetCode = node([
-            llds_instr(
-                region_set_fixed_slot(region_set_ite_num_protects,
-                    EmbeddedStackFrameId, lval(ProtectNumRegLval)),
-                "Store the number of protect_infos"),
-            llds_instr(
-                region_set_fixed_slot(region_set_ite_num_snapshots,
-                    EmbeddedStackFrameId, lval(SnapshotNumRegLval)),
-                "Store the number of snapshot_infos")
-        ]),
-        release_reg(ProtectNumRegLval, !CI),
-        release_reg(SnapshotNumRegLval, !CI),
-        release_reg(AddrRegLval, !CI),
-
-        CondCodeModel = goal_info_get_code_model(CondGoalInfo),
+        MaybeRbmmInfo = goal_info_get_maybe_rbmm(CondGoalInfo),
         (
-            CondCodeModel = model_non,
-            CondKind = region_ite_nondet_cond,
-            MaybeEmbeddedStackFrameId = yes(EmbeddedStackFrameId)
-        ;
-            CondCodeModel = model_semi,
-            CondKind = region_ite_semidet_cond,
+            MaybeRbmmInfo = no,
+            CondCode = empty,
+            ThenCode = empty,
+            ElseCode = empty,
+            StackVars = [],
             MaybeEmbeddedStackFrameId = no
         ;
-            CondCodeModel = model_det,
-            unexpected(this_file, "maybe_create_ite_region_frame: det cond")
-        ),
+            MaybeRbmmInfo = yes(RbmmInfo),
+            RbmmInfo = rbmm_goal_info(CondCreatedRegionVars,
+                CondRemovedRegionVars, CondCarriedRegionVars, 
+                CondAllocRegionVars, _CondUsedRegionVars),
+            (
+                set.empty(CondCreatedRegionVars),
+                set.empty(CondRemovedRegionVars),
+                set.empty(CondAllocRegionVars)
+            ->
+                % When no region-related operations occur in the
+                % condition we do not need the backtracking support code.
+                CondCode = empty,
+                ThenCode = empty,
+                ElseCode = empty,
+                StackVars = [],
+                MaybeEmbeddedStackFrameId = no
+            ;
+                code_info.get_module_info(!.CI, ModuleInfo),
+                find_regions_removed_at_start_of_else(ElseGoals, ModuleInfo,
+                    set.init, RemovedAtStartOfElse),
 
-        CondCode = tree_list([
-            PushInitCode,
-            ProtectRegionCode,
-            SnapshotRegionCode,
-            SetCode
-        ]),
-        ThenCode = node([
-            llds_instr(
-                use_and_maybe_pop_region_frame(region_ite_then(CondKind),
-                    EmbeddedStackFrameId),
-                "region enter then")
-        ]),
-        ElseCode = node([
-            llds_instr(
-                use_and_maybe_pop_region_frame(region_ite_else(CondKind),
-                    EmbeddedStackFrameId),
-                "region enter else")
-        ])
+                % The UnprotectedRemovedAtStartOfElse is the
+                % intersection of RemovedAtStartOfElse and the set of region
+                % variables whose regions are statically known to be
+                % unprotected at this point in the code. These are actually
+                % carried regions because carried region are statically known
+                % to be not protected by the condition.
+                UnprotectedRemovedAtStartOfElse = set.intersect(
+                    RemovedAtStartOfElse, CondCarriedRegionVars),
 
-        % XXX A model_non condition can succeed more than once, so the
-        % region_ite_then(region_ite_nondet_cond) operation cannot pop
-        % the ite stack frame. We need to pop this frame when the condition
-        % fails *after* succeeding at least once. This requires modifying the
-        % failure continuation and/or the resume point. This has not yet been
-        % implemented.
+                ProtectRegionVars = set.intersect(LiveRegionVars,
+                    CondRemovedRegionVars),
+                SnapshotRegionVars0 = set.intersect(LiveRegionVars,
+                    CondAllocRegionVars),
+                ( set.empty(UnprotectedRemovedAtStartOfElse) ->
+                    SnapshotRegionVars = SnapshotRegionVars0
+                ;
+                    SnapshotRegionVars = set.difference(SnapshotRegionVars0,
+                        UnprotectedRemovedAtStartOfElse)
+                ),
+
+                ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
+                SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
+
+                list.length(ProtectRegionVarList, NumProtectRegionVars),
+                list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
+
+                code_info.get_globals(!.CI, Globals),
+                globals.lookup_int_option(Globals, size_region_ite_fixed,
+                    FixedSize),
+                globals.lookup_int_option(Globals, size_region_ite_protect,
+                    ProtectSize),
+                globals.lookup_int_option(Globals,
+                    size_region_ite_snapshot, SnapshotSize),
+                FrameSize = FixedSize
+                    + ProtectSize * NumProtectRegionVars
+                    + SnapshotSize * NumSnapshotRegionVars,
+
+                Items = list.duplicate(FrameSize, slot_region_ite),
+                acquire_several_temp_slots(Items, non_persistent_temp_slot,
+                    StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
+                EmbeddedStackFrameId = embedded_stack_frame_id(MainStackId,
+                    FirstSlotNum, LastSlotNum),
+                FirstNonFixedAddr = first_nonfixed_embedded_slot_addr(
+                    EmbeddedStackFrameId, FixedSize),
+                acquire_reg(reg_r, ProtectNumRegLval, !CI),
+                acquire_reg(reg_r, SnapshotNumRegLval, !CI),
+                acquire_reg(reg_r, AddrRegLval, !CI),
+                PushInitCode = node([
+                    llds_instr(
+                        push_region_frame(region_stack_ite,
+                            EmbeddedStackFrameId),
+                        "Save stack pointer of embedded region ite stack"),
+                    llds_instr(
+                        assign(ProtectNumRegLval, const(llconst_int(0))),
+                        "Initialize number of protect_infos"),
+                    llds_instr(
+                        assign(SnapshotNumRegLval, const(llconst_int(0))),
+                        "Initialize number of snapshot_infos"),
+                    llds_instr(
+                        assign(AddrRegLval, FirstNonFixedAddr),
+                        "Initialize pointer to nonfixed part of" ++
+                        " embedded frame")
+                ]),
+                ite_protect_regions(ProtectNumRegLval, AddrRegLval,
+                    EmbeddedStackFrameId, ProtectRegionVarList,
+                    ProtectRegionCode, !CI),
+                ite_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
+                    EmbeddedStackFrameId, RemovedAtStartOfElse,
+                    SnapshotRegionVarList, SnapshotRegionCode, !CI),
+                SetCode = node([
+                    llds_instr(
+                        region_set_fixed_slot(region_set_ite_num_protects,
+                            EmbeddedStackFrameId, lval(ProtectNumRegLval)),
+                        "Store the number of protect_infos"),
+                    llds_instr(
+                        region_set_fixed_slot(region_set_ite_num_snapshots,
+                            EmbeddedStackFrameId, lval(SnapshotNumRegLval)),
+                        "Store the number of snapshot_infos")
+                ]),
+                release_reg(ProtectNumRegLval, !CI),
+                release_reg(SnapshotNumRegLval, !CI),
+                release_reg(AddrRegLval, !CI),
+
+                CondCodeModel = goal_info_get_code_model(CondGoalInfo),
+                (
+                    CondCodeModel = model_non,
+                    CondKind = region_ite_nondet_cond,
+                    MaybeEmbeddedStackFrameId = yes(EmbeddedStackFrameId)
+                ;
+                    CondCodeModel = model_semi,
+                    CondKind = region_ite_semidet_cond,
+                    MaybeEmbeddedStackFrameId = no
+                ;
+                    CondCodeModel = model_det,
+                    unexpected(this_file,
+                        "maybe_create_ite_region_frame: det cond")
+                ),
+
+                CondCode = tree_list([
+                    PushInitCode,
+                    ProtectRegionCode,
+                    SnapshotRegionCode,
+                    SetCode
+                ]),
+                ThenCode = node([
+                    llds_instr(
+                        use_and_maybe_pop_region_frame(
+                            region_ite_then(CondKind),
+                            EmbeddedStackFrameId),
+                        "region enter then")
+                ]),
+                ElseCode = node([
+                    llds_instr(
+                        use_and_maybe_pop_region_frame(
+                            region_ite_else(CondKind),
+                            EmbeddedStackFrameId),
+                        "region enter else")
+                ])
+
+                % XXX A model_non condition can succeed more than once, so
+                % the region_ite_then(region_ite_nondet_cond) operation
+                % cannot pop the ite stack frame. We need to pop this
+                % frame when the condition fails *after* succeeding at
+                % least once. This requires modifying the failure
+                % continuation and/or the resume point. This has not yet
+                % been implemented.
+            )
+        )
     ).
 
     % Given the list of goals in the else branch, accumulate the region

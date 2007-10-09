@@ -383,19 +383,35 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         SaveHpCode = empty,
         MaybeHpSlot = no,
 
-        % XXX The condition should succeed only if some disjunct performs
-        % some region operations (allocation or removal). The HLDS does not yet
-        % contain the information we need to decide whether this is the case.
-        ( semidet_succeed ->
-            maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
-                FirstRegionCode, LaterRegionCode, LastRegionCode,
-                RegionStackVars, !CI),
-            RegionStackVarsToRelease = RegionStackVars
-        ;
+        MaybeRbmmInfo = goal_info_get_maybe_rbmm(DisjGoalInfo),
+        (
+            MaybeRbmmInfo = no,
             FirstRegionCode = empty,
             LaterRegionCode = empty,
             LastRegionCode = empty,
             RegionStackVarsToRelease = []
+        ;
+            MaybeRbmmInfo = yes(RbmmInfo),
+            RbmmInfo = rbmm_goal_info(DisjCreatedRegionVars,
+                DisjRemovedRegionVars, _DisjCarriedRegionVars,
+                DisjAllocRegionVars, _DisjUsedRegionVars),
+            (
+                set.empty(DisjCreatedRegionVars),
+                set.empty(DisjRemovedRegionVars),
+                set.empty(DisjAllocRegionVars)
+            ->
+                FirstRegionCode = empty,
+                LaterRegionCode = empty,
+                LastRegionCode = empty,
+                RegionStackVarsToRelease = []
+            ;
+                % We only need region support for backtracking if some disjunct
+                % performs some region operations (allocation or removal).
+                maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
+                    FirstRegionCode, LaterRegionCode, LastRegionCode,
+                    RegionStackVars, !CI),
+                RegionStackVarsToRelease = RegionStackVars
+            )
         )
     ),
 
@@ -475,11 +491,13 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
             % Reset the solver state if necessary.
             maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
-                RestoreTicketCode)
+                RestoreTicketCode),
+            ThisDisjunctRegionCode = LaterRegionCode
         ;
             MaybeEntryResumePoint = no,
             RestoreHpCode = empty,
-            RestoreTicketCode = empty
+            RestoreTicketCode = empty,
+            ThisDisjunctRegionCode = empty
         ),
 
         % The pre_goal_update sanity check insists on no_resume_point, to make
@@ -581,7 +599,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             RestoreHpCode,
             RestoreTicketCode,
             SaveHpCode,
-            LaterRegionCode,
+            ThisDisjunctRegionCode,
             ModContCode,
             TraceCode,
             GoalCode,

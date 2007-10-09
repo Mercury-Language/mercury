@@ -73,6 +73,7 @@ HDRS		=	\
 			mercury_prof_mem.h	\
 			mercury_prof_time.h	\
 			mercury_profiling_builtin.h	\
+			mercury_region.h	\
 			mercury_regs.h		\
 			mercury_reg_workarounds.h	\
 			mercury_runtime_util.h	\
@@ -178,6 +179,7 @@ CFILES		= 	\
 			mercury_profiling_builtin.c	\
 			mercury_prof_mem.c	\
 			mercury_prof_time.c	\
+			mercury_region.c	\
 			mercury_regs.c		\
 			mercury_reg_workarounds.c	\
 			mercury_runtime_util.c	\

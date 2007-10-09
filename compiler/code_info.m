@@ -535,7 +535,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     ),
     globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
     globals.lookup_bool_option(Globals, optimize_region_ops, OptRegionOps),
-    globals.lookup_bool_option(Globals, use_regions, UseRegions),
+    globals.lookup_bool_option(Globals, region_analysis, UseRegions),
     (
         UseRegions = yes,
         EmitRegionOps = add_region_ops
@@ -1343,8 +1343,8 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 :- type det_commit_info.
 
 :- pred prepare_for_det_commit(add_trail_ops::in, add_region_ops::in,
-    set(prog_var)::in, det_commit_info::out, code_tree::out,
-    code_info::in, code_info::out) is det.
+    set(prog_var)::in, hlds_goal_info::in, det_commit_info::out,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred generate_det_commit(det_commit_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
@@ -1360,8 +1360,8 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 :- type semi_commit_info.
 
 :- pred prepare_for_semi_commit(add_trail_ops::in, add_region_ops::in,
-    set(prog_var)::in, semi_commit_info::out, code_tree::out,
-    code_info::in, code_info::out) is det.
+    set(prog_var)::in, hlds_goal_info::in, semi_commit_info::out,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred generate_semi_commit(semi_commit_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
@@ -1976,7 +1976,7 @@ make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
             ).
 
 prepare_for_det_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
-        DetCommitInfo, Code, !CI) :-
+        CommitGoalInfo, DetCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _),
     (
@@ -1994,7 +1994,8 @@ prepare_for_det_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
     ),
     maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
     maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
-        MaybeRegionCommitFrameInfo, SaveRegionCommitFrameCode, !CI),
+        CommitGoalInfo, MaybeRegionCommitFrameInfo, SaveRegionCommitFrameCode,
+        !CI),
     DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots,
         MaybeRegionCommitFrameInfo),
     Code = tree_list([
@@ -2063,7 +2064,7 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
             ).
 
 prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
-        SemiCommitInfo, Code, !CI) :-
+        CommitGoalInfo, SemiCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr, CondEnv,
         Allow),
@@ -2170,7 +2171,8 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
     ),
     maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
     maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
-        MaybeRegionCommitFrameInfo, SaveRegionCommitFrameCode, !CI),
+        CommitGoalInfo, MaybeRegionCommitFrameInfo, SaveRegionCommitFrameCode,
+        !CI),
     SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
         HijackInfo, MaybeTrailSlots, MaybeRegionCommitFrameInfo),
     Code = tree_list([
@@ -2296,75 +2298,78 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_save_region_commit_frame(add_region_ops::in, set(prog_var)::in,
-    maybe(region_commit_stack_frame)::out, code_tree::out,
+    hlds_goal_info::in, maybe(region_commit_stack_frame)::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
-        MaybeRegionCommitFrameInfo, Code, !CI) :-
+maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
+        CommitGoalInfo, MaybeRegionCommitFrameInfo, Code, !CI) :-
     (
         AddRegionOps = do_not_add_region_ops,
         MaybeRegionCommitFrameInfo = no,
         Code = empty
     ;
         AddRegionOps = add_region_ops,
-        RegionVars = filter_region_vars(!.CI, ForwardLiveVarsBeforeGoal),
+        MaybeRbmmInfo = goal_info_get_maybe_rbmm(CommitGoalInfo),
+        (
+            MaybeRbmmInfo = no,
+            MaybeRegionCommitFrameInfo = no,
+            Code = empty
+        ;
+            MaybeRbmmInfo = yes(RbmmInfo),
+            RbmmInfo = rbmm_goal_info(_, CommitRemovedRegionVars, _, _, _),
 
-        % XXX RemovedRegionVars should be the set of region vars whose
-        % regions are removed in the scope. However, this information
-        % is not yet available in the HLDS, and there is no simple way here
-        % to reconstruct it.
-        RemovedRegionVars = RegionVars,
+            RemovedRegionVarList = set.to_sorted_list(CommitRemovedRegionVars),
 
-        RemovedRegionVarList = set.to_sorted_list(RemovedRegionVars),
+            NumRemovedRegionVars = list.length(RemovedRegionVarList),
 
-        NumRemovedRegionVars = list.length(RemovedRegionVarList),
+            code_info.get_globals(!.CI, Globals),
+            globals.lookup_int_option(Globals, size_region_commit_fixed,
+                FixedSize),
+            globals.lookup_int_option(Globals, size_region_commit_entry,
+                EntrySize),
+            FrameSize = FixedSize + EntrySize * NumRemovedRegionVars,
+            Items = list.duplicate(FrameSize, slot_region_commit),
+            acquire_several_temp_slots(Items, non_persistent_temp_slot,
+                StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
+            EmbeddedStackFrame = embedded_stack_frame_id(MainStackId,
+                FirstSlotNum, LastSlotNum),
+            FirstSavedRegionAddr = first_nonfixed_embedded_slot_addr(
+                EmbeddedStackFrame, FixedSize),
+            acquire_reg(reg_r, NumRegLval, !CI),
+            acquire_reg(reg_r, AddrRegLval, !CI),
+            PushInitCode = node([
+                llds_instr(
+                    push_region_frame(region_stack_commit, EmbeddedStackFrame),
+                    "Save stack pointer of embedded region commit stack"),
+                llds_instr(
+                    assign(NumRegLval, const(llconst_int(0))),
+                    "Initialize number of unprotected live regions"),
+                llds_instr(
+                    assign(AddrRegLval, FirstSavedRegionAddr),
+                    "Initialize pointer to the next unprotected live" ++
+                    " region slot")
+            ]),
+            save_unprotected_live_regions(NumRegLval, AddrRegLval,
+                EmbeddedStackFrame, RemovedRegionVarList, FillCode, !CI),
+            SetCode = node([
+                llds_instr(
+                    region_set_fixed_slot(region_set_commit_num_entries,
+                        EmbeddedStackFrame, lval(NumRegLval)),
+                    "Store the number of unprotected live regions")
+            ]),
+            release_reg(NumRegLval, !CI),
+            release_reg(AddrRegLval, !CI),
 
-        code_info.get_globals(!.CI, Globals),
-        globals.lookup_int_option(Globals, size_region_commit_fixed,
-            FixedSize),
-        globals.lookup_int_option(Globals, size_region_commit_entry,
-            EntrySize),
-        FrameSize = FixedSize + EntrySize * NumRemovedRegionVars,
-        Items = list.duplicate(FrameSize, slot_region_commit),
-        acquire_several_temp_slots(Items, non_persistent_temp_slot,
-            StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
-        EmbeddedStackFrame = embedded_stack_frame_id(MainStackId,
-            FirstSlotNum, LastSlotNum),
-        FirstSavedRegionAddr =
-            first_nonfixed_embedded_slot_addr(EmbeddedStackFrame, FixedSize),
-        acquire_reg(reg_r, NumRegLval, !CI),
-        acquire_reg(reg_r, AddrRegLval, !CI),
-        PushInitCode = node([
-            llds_instr(
-                push_region_frame(region_stack_commit, EmbeddedStackFrame),
-                "Save stack pointer of embedded region commit stack"),
-            llds_instr(
-                assign(NumRegLval, const(llconst_int(0))),
-                "Initialize number of unprotected live regions"),
-            llds_instr(
-                assign(AddrRegLval, FirstSavedRegionAddr),
-                "Initialize pointer to the next unprotected live region slot")
-        ]),
-        save_unprotected_live_regions(NumRegLval, AddrRegLval,
-            EmbeddedStackFrame, RemovedRegionVarList, FillCode, !CI),
-        SetCode = node([
-            llds_instr(
-                region_set_fixed_slot(region_set_commit_num_entries,
-                    EmbeddedStackFrame, lval(NumRegLval)),
-                "Store the number of unprotected live regions")
-        ]),
-        release_reg(NumRegLval, !CI),
-        release_reg(AddrRegLval, !CI),
+            RegionCommitFrameInfo =
+                region_commit_stack_frame(EmbeddedStackFrame, StackVars),
+            MaybeRegionCommitFrameInfo = yes(RegionCommitFrameInfo),
 
-        RegionCommitFrameInfo = region_commit_stack_frame(EmbeddedStackFrame,
-            StackVars),
-        MaybeRegionCommitFrameInfo = yes(RegionCommitFrameInfo),
-
-        Code = tree_list([
-            PushInitCode,
-            FillCode,
-            SetCode
-        ])
+            Code = tree_list([
+                PushInitCode,
+                FillCode,
+                SetCode
+            ])
+        )
     ).
 
 :- pred save_unprotected_live_regions(lval::in, lval::in,

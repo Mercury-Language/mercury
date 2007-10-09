@@ -304,8 +304,16 @@
 **	representations of all the terms reachable from the stack.
 **
 ** MR_STM_DEBUG
-**	Enabled low-level debugging messages from the code that implements
+**	Enables low-level debugging messages from the code that implements
 **	transactions used by software transactional memory.
+**
+** MR_RBMM_DEBUG
+**	Enables low-level debugging messages from the code that implements
+**	region-based memory management.
+**
+** MR_RBMM_PROFILING
+**	Enables low-level profiling messages from the code that implements
+**	region-based memory management.
 */
 
 /*

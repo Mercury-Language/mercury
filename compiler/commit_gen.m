@@ -82,7 +82,8 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
         ;
             InnerCodeModel = model_non,
             prepare_for_det_commit(AddTrailOps, AddRegionOps,
-                ForwardLiveVarsBeforeGoal, CommitInfo, PreCommit, !CI),
+                ForwardLiveVarsBeforeGoal, InnerGoalInfo, CommitInfo,
+                PreCommit, !CI),
             code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
             generate_det_commit(CommitInfo, Commit, !CI),
             Code = tree_list([PreCommit, GoalCode, Commit])
@@ -98,7 +99,8 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
         ;
             InnerCodeModel = model_non,
             prepare_for_semi_commit(AddTrailOps, AddRegionOps,
-                ForwardLiveVarsBeforeGoal, CommitInfo, PreCommit, !CI),
+                ForwardLiveVarsBeforeGoal, InnerGoalInfo, CommitInfo,
+                PreCommit, !CI),
             code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
             generate_semi_commit(CommitInfo, Commit, !CI),
             Code = tree_list([PreCommit, GoalCode, Commit])

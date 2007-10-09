@@ -130,7 +130,8 @@ ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) \
 ALL_MINIMAL_PROGS = $(MINIMAL_NONLOOP_PROGS)
 
 ifneq "$(findstring .gc,$(GRADE))" ""
-	ifneq "$(findstring mm,$(GRADE))" ""
+	# The substitution is there to avoid unwanted "mm" matches from "rbmm".
+	ifneq "$(findstring mm,$(subst rbmm,x,$(GRADE)))" ""
 		PROGS0=$(ALL_SIMPLE_PROGS) $(ALL_MINIMAL_PROGS)
 		NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS) \
 				$(MINIMAL_NONLOOP_PROGS)
@@ -142,8 +143,9 @@ else
 	PROGS0=
 endif
 
-# Tabling is buggy in the lowlevel .par grades so it's
-# disabled for now.
+# Tabling is buggy in the lowlevel .par grades so it's disabled for now.
+# XXX What is the bug? If it is lack of synchronization on table updates,
+# why are these tests enabled for hlc par grades?
 ifeq "$(findstring .par,$(GRADE))" ""
 	PROGS=$(PROGS0)
 else

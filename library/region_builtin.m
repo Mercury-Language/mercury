@@ -24,6 +24,8 @@
 :- module region_builtin.
 :- interface.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
     % A pointer to a memory region.
@@ -38,30 +40,49 @@
     %
 :- impure pred remove_region(region::in) is det.
 
+:- pred print_rbmm_profiling_info(io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-% XXX the following definitions are just placeholders.  When runtime
-% support for RBMM is introduced they will be changed.
+:- pragma foreign_decl("C", "#include ""mercury_region.h""").
 
-:- type region == c_pointer.
+:- pragma foreign_type("C", region, "MR_Region *",
+    [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     create_region(Region::out),
     [will_not_call_mercury],
 "
-    /* Region */
-    MR_fatal_error(\"region_builtin.create_region/1 NYI.\");
+#ifdef MR_USE_REGIONS
+    Region = MR_region_create_region();
+#else
+    MR_fatal_error(""create_region: non-rbmm grade"");
+#endif
 ").
 
 :- pragma foreign_proc("C",
     remove_region(Region::in),
     [will_not_call_mercury],
 "
-    /* Region */
-    MR_fatal_error(\"region_builtin.remove_region/1 NYI.\");
+#ifdef MR_USE_REGIONS
+    MR_region_remove_region(Region);
+#else
+    MR_fatal_error(""remove_region: non-rbmm grade"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+    print_rbmm_profiling_info(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+#ifdef MR_USE_REGIONS
+    MR_region_print_profiling_info();
+#else
+    MR_fatal_error(""print_rbmm_profiling_info: non-rbmm grade"");
+#endif
 ").
 
 %-----------------------------------------------------------------------------%
