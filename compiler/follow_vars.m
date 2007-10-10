@@ -246,9 +246,12 @@ find_follow_vars_in_goal_expr(
         plain_call(PredId, ProcId, Args, State, UC, Name),
         plain_call(PredId, ProcId, Args, State, UC, Name), GoalInfo, GoalInfo,
         _, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
-    ( State = inline_builtin ->
-        true
+    (
+        State = inline_builtin 
     ;
+        ( State = out_of_line_builtin
+        ; State = not_builtin
+        ),
         find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
             !:FollowVarsMap, !:NextNonReserved)
     ).

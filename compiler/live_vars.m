@@ -339,9 +339,14 @@ build_live_sets_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
 build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
     Goal = generic_call(GenericCall, ArgVars, Modes, _Det),
-    ( GenericCall = cast(_) ->
+    (
+        GenericCall = cast(_),
         GoalInfo = GoalInfo0
     ;
+        ( GenericCall = higher_order(_, _, _, _)
+        ; GenericCall = class_method(_, _, _, _)
+        ; GenericCall = event_call(_)
+        ),
         ProcInfo = AllocData ^ proc_info,
         proc_info_get_vartypes(ProcInfo, VarTypes),
         map.apply_to_list(ArgVars, VarTypes, Types),
@@ -361,9 +366,13 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
         ArgVars, _InVars, OutVars, _UnusedVars),
-    ( Builtin = inline_builtin ->
+    (
+        Builtin = inline_builtin,
         GoalInfo = GoalInfo0
     ;
+        ( Builtin = out_of_line_builtin
+        ; Builtin = not_builtin
+        ),
         build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
             ResumeVars0, AllocData, !StackAlloc, !.Liveness, !NondetLiveness,
             !ParStackVars)

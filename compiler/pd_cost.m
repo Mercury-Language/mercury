@@ -76,9 +76,13 @@ goal_expr_cost(if_then_else(_, Cond, Then, Else), _, Cost) :-
     Cost = Cost1 + Cost2 + Cost3.
 
 goal_expr_cost(plain_call(_, _, Args, BuiltinState, _, _), _, Cost) :-
-    ( BuiltinState = inline_builtin ->
+    (
+        BuiltinState = inline_builtin,
         Cost = cost_of_builtin_call
     ;
+        ( BuiltinState = out_of_line_builtin
+        ; BuiltinState = not_builtin
+        ),
         list.length(Args, Arity),
         InputArgs = Arity // 2, % rough
         Cost = cost_of_stack_flush + cost_of_call

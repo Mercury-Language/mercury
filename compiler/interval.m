@@ -310,10 +310,14 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         arg_info.partition_proc_call_args(ProcInfo, VarTypes,
             ModuleInfo, ArgVars, InputArgs, _, _),
         set.to_sorted_list(InputArgs, Inputs),
-        ( Builtin = inline_builtin ->
+        (
+            Builtin = inline_builtin,
             require_in_regs(Inputs, !IntervalInfo),
             require_access(Inputs, !IntervalInfo)
         ;
+            ( Builtin = out_of_line_builtin
+            ; Builtin = not_builtin
+            ),
             goal_info_get_maybe_need_across_call(GoalInfo,
                 MaybeNeedAcrossCall),
             build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
@@ -954,18 +958,27 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
     ;
         GoalExpr0 = generic_call(GenericCall, _, _, _),
         % Casts are generated inline.
-        ( GenericCall = cast(_) ->
+        (
+            GenericCall = cast(_),
             MustHaveMap = no
         ;
+            ( GenericCall = higher_order(_, _, _, _)
+            ; GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ),
             MustHaveMap = yes
         ),
         record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
             MustHaveMap, InsertMap, MaybeFeature)
     ;
         GoalExpr0 = plain_call(_, _, _, Builtin, _, _),
-        ( Builtin = inline_builtin ->
+        (
+            Builtin = inline_builtin,
             MustHaveMap = no
         ;
+            ( Builtin = out_of_line_builtin
+            ; Builtin = not_builtin
+            ),
             MustHaveMap = yes
         ),
         record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,

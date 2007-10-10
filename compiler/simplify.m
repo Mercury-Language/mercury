@@ -3470,9 +3470,13 @@ will_flush(unify(_, _, _, Unify, _), _) = WillFlush :-
         WillFlush = no
     ).
 will_flush(plain_call(_, _, _, BuiltinState, _, _), BeforeAfter) = WillFlush :-
-    ( BuiltinState = inline_builtin ->
+    (
+        BuiltinState = inline_builtin,
         WillFlush = no
     ;
+        ( BuiltinState = out_of_line_builtin
+        ; BuiltinState = not_builtin
+        ),
         (
             BeforeAfter = before,
             WillFlush = no

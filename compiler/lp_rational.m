@@ -1445,7 +1445,8 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
         % Skip the call to fourier_elimination/6 if there are no variables to
         % project - this avoids the transformation to vector form.
         %
-        ( !.Vars \= [] ->
+        (
+            !.Vars = [_ | _],
             Matrix0 = constraints_to_matrix(Constraints1),      
             fourier_elimination(!.Vars, Varset, MaybeThreshold, 0, 
                 Matrix0, FourierResult),
@@ -1463,6 +1464,7 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
             % would mean traversing the matrix, so we wait until the next
             % operation that needs to traverse it anyway or until the
             % next entailment check.
+            !.Vars = [],
             Result = ok(Constraints1)
         ) 
     ).

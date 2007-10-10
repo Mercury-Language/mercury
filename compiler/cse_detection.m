@@ -281,10 +281,12 @@ detect_cse_in_goal_2(conj(ConjType, Goals0), _GoalInfo, InstMap, !CseInfo,
         Redo, conj(ConjType, Goals)) :-
     detect_cse_in_conj(Goals0, ConjType, InstMap, !CseInfo, Redo, Goals).
 detect_cse_in_goal_2(disj(Goals0), GoalInfo, InstMap, !CseInfo, Redo, Goal) :-
-    ( Goals0 = [] ->
+    (
+        Goals0 = [],
         Redo = no,
         Goal = disj([])
     ;
+        Goals0 = [_ | _],
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         set.to_sorted_list(NonLocals, NonLocalsList),
         detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,

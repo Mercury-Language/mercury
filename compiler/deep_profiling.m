@@ -366,10 +366,13 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         ;
             true
         ),
-        ( BuiltinState \= inline_builtin ->
+        ( 
+            ( BuiltinState = out_of_line_builtin
+            ; BuiltinState = not_builtin
+            ),
             !:N = !.N + 1
         ;
-            true
+            BuiltinState = inline_builtin
         )
     ;
         GoalExpr = generic_call(_, _, _, _),
@@ -917,10 +920,14 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
-        ( BuiltinState \= inline_builtin ->
+        (
+            ( BuiltinState = out_of_line_builtin
+            ; BuiltinState = not_builtin
+            ),
             deep_prof_wrap_call(Path, Goal0, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
+            BuiltinState = inline_builtin,
             Goal = Goal0,
             AddedImpurity = no
         )

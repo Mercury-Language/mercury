@@ -1222,10 +1222,14 @@ count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo, CountInfo,
     arg_info.partition_proc_call_args(CalleeProcInfo, VarTypes,
         ModuleInfo, ArgVars, InputArgs, Outputs, _),
     set.to_sorted_list(InputArgs, Inputs),
-    ( Builtin = inline_builtin ->
+    (
+        Builtin = inline_builtin,
         cls_require_in_regs(CountInfo, Inputs, !CountState),
         cls_put_in_regs(set.to_sorted_list(Outputs), !CountState)
-    ;
+    ;   
+        ( Builtin = out_of_line_builtin
+        ; Builtin = not_builtin
+        ),
         goal_info_get_maybe_need_across_call(GoalInfo,
             MaybeNeedAcrossCall),
         count_load_stores_for_call(CountInfo, Inputs, Outputs,

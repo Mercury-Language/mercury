@@ -378,9 +378,12 @@ add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
         GoalExpr = generic_call(_, _, _, _)
     ;
         GoalExpr = plain_call(PredId, ProcId, _, Builtin, _, _),
-        ( Builtin = inline_builtin ->
-            true
+        (
+            Builtin = inline_builtin
         ;
+            ( Builtin = out_of_line_builtin
+            ; Builtin = not_builtin
+            ),
             (
                 % If the node isn't in the graph, then we didn't insert it
                 % because is was imported, and we don't consider it.

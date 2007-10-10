@@ -599,9 +599,13 @@ goal_may_allocate_heap(hlds_goal(GoalExpr, _GoalInfo), May) :-
 
 goal_may_allocate_heap_2(generic_call(_, _, _, _), yes).
 goal_may_allocate_heap_2(plain_call(_, _, _, Builtin, _, _), May) :-
-    ( Builtin = inline_builtin ->
+    (
+        Builtin = inline_builtin, 
         May = no
     ;
+        ( Builtin = out_of_line_builtin
+        ; Builtin = not_builtin
+        ),
         May = yes
     ).
 goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
