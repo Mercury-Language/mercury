@@ -59,6 +59,8 @@ Grade options:
 # --high-level-data is not yet documented because it is not yet implemented
 # --high-level is not yet documented because --high-level-data is
 #		not yet implemented
+# --use-regions-debug and --use-regions-profiling are not yet documented
+#		since they are not yet stable
 
 target=c
 highlevel_code=false
@@ -87,6 +89,8 @@ ll_debug=false
 extend_stacks=false
 stack_segments=false
 use_regions=false
+use_regions_debug=false
+use_regions_profiling=false
 
 case $# in
 	0) set - --grade "$DEFAULT_GRADE" ;;

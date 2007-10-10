@@ -63,6 +63,8 @@
 ** MR_HIGHTAGS
 ** MR_TAGBITS
 ** MR_USE_REGIONS
+** MR_RBMM_DEBUG
+** MR_RBMM_PROFILING
 **	See the documentation for
 **		--high-level-code
 **		--high-level-data
@@ -86,6 +88,8 @@
 **		--tags
 **		--num-tag-bits
 **		--use-regions
+**		--use-regions-debug
+**		--use-regions-profiling
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
 ** MR_PIC
@@ -306,14 +310,6 @@
 ** MR_STM_DEBUG
 **	Enables low-level debugging messages from the code that implements
 **	transactions used by software transactional memory.
-**
-** MR_RBMM_DEBUG
-**	Enables low-level debugging messages from the code that implements
-**	region-based memory management.
-**
-** MR_RBMM_PROFILING
-**	Enables low-level profiling messages from the code that implements
-**	region-based memory management.
 */
 
 /*

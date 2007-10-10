@@ -2509,7 +2509,21 @@ grade_component_table("stseg", comp_stack_extend,
     no, yes).
     
     % Region-based memory managment components
-grade_component_table("rbmm", comp_regions, [use_regions - bool(yes)],
+grade_component_table("rbmm", comp_regions,
+    [use_regions - bool(yes),
+    use_regions_debug - bool(no), use_regions_profiling - bool(no)],
+    no, yes).  
+grade_component_table("rbmmd", comp_regions,
+    [use_regions - bool(yes),
+    use_regions_debug - bool(yes), use_regions_profiling - bool(no)],
+    no, yes).  
+grade_component_table("rbmmp", comp_regions,
+    [use_regions - bool(yes),
+    use_regions_debug - bool(no), use_regions_profiling - bool(yes)],
+    no, yes).  
+grade_component_table("rbmmdp", comp_regions,
+    [use_regions - bool(yes),
+    use_regions_debug - bool(yes), use_regions_profiling - bool(yes)],
     no, yes).  
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.

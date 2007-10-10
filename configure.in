@@ -2918,6 +2918,11 @@ AC_ARG_ENABLE(hlc-low-level-debug-grades,
                   [install a low level debugging version of the high level C grade]),
    enable_hlc_ll_debug_grades="$enableval",enable_hlc_ll_debug_grades=no)
 
+AC_ARG_ENABLE(rbmm-grades,
+   AC_HELP_STRING([--enable-rbmm-grades],
+                  [install experimental region-based memory management versions of the library]),
+   enable_rbmm_grades="$enableval",enable_rbmm_grades=no)
+
 # We don't enable the .NET grades by default because that may lead to
 # installation process breaking on Linux systems that have DotGNU or Mono
 # installed.
@@ -2956,6 +2961,7 @@ if test "$enable_most_grades" = no; then
 	enable_dmm_grades=no
 	enable_hlc_prof_grades=no
 	enable_hlc_ll_debug_grades=no
+	enable_rbmm_grades=no
 	enable_par_grades=no
 	enable_dotnet_grades=no
 	enable_java_grade=no
@@ -3129,6 +3135,17 @@ fi
 # Add low level debug grades
 if test "$enable_hlc_ll_debug_grades" = yes; then
 	LIBGRADES="$LIBGRADES hlc.gcd.ll_debug"
+fi
+
+# Add rbmm grades
+if test "$enable_rbmm_grades" = yes; then
+	# As of Oct 2007, all the users of RBMM grades are implementors
+	# who may need the debugging and profiling versions.
+	LIBGRADES="$LIBGRADES \
+		$BEST_LLDS_BASE_GRADE.gc.rbmm \
+		$BEST_LLDS_BASE_GRADE.gc.rbmmd \
+		$BEST_LLDS_BASE_GRADE.gc.rbmmp \
+		$BEST_LLDS_BASE_GRADE.gc.rbmmdp"
 fi
 
 # Add the .par (thread-safe) grade, if it is supported for this system

@@ -312,6 +312,8 @@
     ;       extend_stacks_when_needed
     ;       stack_segments
     ;       use_regions
+    ;       use_regions_debug
+    ;       use_regions_profiling
     ;       source_to_source_debug
 
     % Data representation compilation model options
@@ -1116,6 +1118,8 @@ option_defaults_2(compilation_model_option, [
     extend_stacks_when_needed           -   bool(no),
     stack_segments                      -   bool(no),
     use_regions                         -   bool(no),
+    use_regions_debug                   -   bool(no),
+    use_regions_profiling               -   bool(no),
     use_minimal_model_stack_copy        -   bool(no),
     use_minimal_model_own_stacks        -   bool(no),
     minimal_model_debug                 -   bool(no),
@@ -1908,6 +1912,8 @@ long_option("maybe-thread-safe",    maybe_thread_safe_opt).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
 long_option("stack-segments",       stack_segments).
 long_option("use-regions",          use_regions).
+long_option("use-regions-debug",    use_regions_debug).
+long_option("use-regions-profiling",use_regions_profiling).
 long_option("ssdb",                 source_to_source_debug).
 long_option("source-to-source-debug", source_to_source_debug).
 % Data representation options
@@ -3816,6 +3822,7 @@ options_help_compilation_model -->
         "\tSpecify that code that increments a stack pointer must allocate",
         "\ta new stack segment when the limit on the old one is reached."
         % RBMM is undocumented since it is still experimental.
+        % should also document rbmmd rbmmp rbmmdp
         %"--use-regions\t\t(grade modifier: `.rbmm')",
         %"\tEnable support for region-based memory managment."
     ]),

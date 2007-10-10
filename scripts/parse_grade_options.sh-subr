@@ -205,6 +205,16 @@
     --no-use-regions)
         use_regions=false ;; 
 
+    --use-regions-debug)
+        use_regions_debug=true;;
+    --no-use-regions-debug)
+        use_regions_debug=false ;; 
+
+    --use-regions-profiling)
+        use_regions_profiling=true;;
+    --no-use-regions-profiling)
+        use_regions_profiling=false ;; 
+
     -s|--grade)
         shift
         grade="$1";
@@ -242,6 +252,8 @@
         extend_stacks=false
         stack_segments=false
         use_regions=false
+        use_regions_debug=false
+        use_regions_profiling=false
 
         grade_pieces=`echo $grade | tr '.' ' '`
         for grade_piece in $grade_pieces
@@ -495,7 +507,28 @@
 
                 rbmm)
                     use_regions=true
+                    use_regions_debug=false
+                    use_regions_profiling=false
                     ;;
+
+                rbmmd)
+                    use_regions=true
+                    use_regions_debug=true
+                    use_regions_profiling=false
+                    ;;
+
+                rbmmp)
+                    use_regions=true
+                    use_regions_debug=false
+                    use_regions_profiling=true
+                    ;;
+
+                rbmmdp)
+                    use_regions=true
+                    use_regions_debug=true
+                    use_regions_profiling=true
+                    ;;
+
                 *)
                     echo "$0: unknown grade component \`$grade_piece'" 1>&2
                     exit 1

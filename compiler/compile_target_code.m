@@ -668,7 +668,24 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     globals.io_lookup_bool_option(use_regions, UseRegions, !IO),
     (
         UseRegions = yes,
-        UseRegionsOpt = "-DMR_USE_REGIONS "
+        UseRegionsOpt0 = "-DMR_USE_REGIONS ",
+        globals.io_lookup_bool_option(use_regions_debug, UseRegionsDebug, !IO),
+        (
+            UseRegionsDebug = yes,
+            UseRegionsOpt1 = UseRegionsOpt0 ++ "-DMR_RBMM_DEBUG "
+        ;
+            UseRegionsDebug = no,
+            UseRegionsOpt1 = UseRegionsOpt0
+        ),
+        globals.io_lookup_bool_option(use_regions_profiling,
+            UseRegionsProfiling, !IO),
+        (
+            UseRegionsProfiling = yes,
+            UseRegionsOpt = UseRegionsOpt1 ++ "-DMR_RBMM_PROFILING "
+        ;
+            UseRegionsProfiling = no,
+            UseRegionsOpt = UseRegionsOpt1
+        )
     ;
         UseRegions = no,
         UseRegionsOpt = ""

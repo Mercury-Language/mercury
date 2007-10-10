@@ -405,8 +405,20 @@ case $stack_segments in
 esac
 
 case $use_regions in
-    true)           REGION_OPTS="-DMR_USE_REGIONS" ;;
-    false)          REGION_OPTS="" ;;
+    true)
+        REGION_OPTS_0="-DMR_USE_REGIONS"
+        case $use_regions_debug in
+            true)   REGION_OPTS_1="$REGION_OPTS_0 -DMR_RBMM_DEBUG" ;;
+            false)  REGION_OPTS_1="$REGION_OPTS_0" ;;
+        esac
+        case $use_regions_profiling in
+            true)   REGION_OPTS="$REGION_OPTS_1 -DMR_RBMM_PROFILING" ;;
+            false)  REGION_OPTS="$REGION_OPTS_1" ;;
+        esac
+        ;;
+    false)
+        REGION_OPTS=""
+        ;;
 esac
 
 GCC_OPTS="$NEST_OPTS $ASM_OPTS $GOTO_OPTS $REG_OPTS"

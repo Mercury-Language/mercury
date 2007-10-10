@@ -412,8 +412,23 @@
 #endif
 
 #if defined(MR_USE_REGIONS)
-  #define MR_GRADE_PART_17	MR_PASTE2(MR_GRADE_PART_16, _rbmm)
-  #define MR_GRADE_OPT_PART_17	MR_GRADE_OPT_PART_16 ".rbmm"
+  #if defined(MR_RBMM_DEBUG)
+    #if defined(MR_RBMM_PROFILING)
+      #define MR_GRADE_PART_17		MR_PASTE2(MR_GRADE_PART_16, _rbmmdp)
+      #define MR_GRADE_OPT_PART_17	MR_GRADE_OPT_PART_16 ".rbmmdp"
+    #else
+      #define MR_GRADE_PART_17		MR_PASTE2(MR_GRADE_PART_16, _rbmmd)
+      #define MR_GRADE_OPT_PART_17	MR_GRADE_OPT_PART_16 ".rbmmd"
+    #endif
+  #else
+    #if defined(MR_RBMM_PROFILING)
+      #define MR_GRADE_PART_17		MR_PASTE2(MR_GRADE_PART_16, _rbmmp)
+      #define MR_GRADE_OPT_PART_17	MR_GRADE_OPT_PART_16 ".rbmmp"
+    #else
+      #define MR_GRADE_PART_17		MR_PASTE2(MR_GRADE_PART_16, _rbmm)
+      #define MR_GRADE_OPT_PART_17	MR_GRADE_OPT_PART_16 ".rbmm"
+    #endif
+  #endif
 #else
   #define MR_GRADE_PART_17	MR_GRADE_PART_16
   #define MR_GRADE_OPT_PART_17	MR_GRADE_OPT_PART_16

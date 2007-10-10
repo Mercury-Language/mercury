@@ -95,4 +95,14 @@ case $highlevel_code in true)
 	;;
 esac
 
+#
+# --use-regions-debug and --use-regions-profiling aren't meaningful
+# without --use-regions
+#
+case $use_regions in false)
+	use_regions_debug=false
+	use_regions_profiling=false
+	;;
+esac
+
 #---------------------------------------------------------------------------#

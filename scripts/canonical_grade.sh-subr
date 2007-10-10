@@ -1,4 +1,6 @@
 #---------------------------------------------------------------------------#
+# vim: ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2000-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -167,7 +169,15 @@ case $extend_stacks,$stack_segments in
 esac
 
 case $use_regions in
-	true)		GRADE="$GRADE.rbmm" ;;
-	false)		;;
+	true)
+		case $use_regions_debug,$use_regions_profiling in
+			false,false)	GRADE="$GRADE.rbmm" ;;
+			false,true)	GRADE="$GRADE.rbmmp" ;;
+			true,false)	GRADE="$GRADE.rbmmd" ;;
+			true,true)	GRADE="$GRADE.rbmmdp" ;;
+		esac
+		;;
+	false)
+		;;
 esac
 
