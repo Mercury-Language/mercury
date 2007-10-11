@@ -241,7 +241,8 @@ detect_liveness_preds_parallel_2(PredIds, HLDS0, !HLDS) :-
         list.split_list(1000, PredIds, HeadPredIds, TailPredIds)
     then
         ( detect_liveness_preds_parallel_3(HeadPredIds, HLDS0, !HLDS)
-        & detect_liveness_preds_parallel_2(TailPredIds, HLDS0, !HLDS)
+        % XXX the following should be a parallel conjunction
+        , detect_liveness_preds_parallel_2(TailPredIds, HLDS0, !HLDS)
         )
     else
         detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS)

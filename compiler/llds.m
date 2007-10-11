@@ -554,16 +554,19 @@
             % by jump optimization.
 
     ;       init_sync_term(lval, int)
-            % Initialize a synchronization term. The first argument contains
-            % the lvalue into which we will store the synchronization term,
-            % and the second argument indicates how many branches we expect
-            % to join at the end of the parallel conjunction. (See the
-            % documentation in par_conj_gen.m and runtime/mercury_context.{c,h}
-            % for further information about synchronisation terms.)
+            % Initialize a synchronization term, which is a continuous number
+            % of slots on the detstack.  The first argument contains the base
+            % address of the synchronization term.  The second argument
+            % indicates how many branches we expect to join at the end of the
+            % parallel conjunction. (See the documentation in par_conj_gen.m
+            % and runtime/mercury_context.{c,h} for further information about
+            % synchronisation terms.)
 
-    ;       fork(label)
-            % Create a new spark. fork(Child) creates spark, to begin execution
-            % at Child. Control continues at the next instruction.
+    ;       fork_new_child(lval, label)
+            % Create a new spark. fork(SyncTerm, Child) creates spark, to begin
+            % execution at Child, where SyncTerm contains the base address of
+            % the synchronisation term. Control continues at the next
+            % instruction.
 
     ;       join_and_continue(lval, label).
             % Signal that this thread of execution has finished in the current

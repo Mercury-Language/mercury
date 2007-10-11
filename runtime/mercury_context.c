@@ -41,16 +41,23 @@ static  void            MR_init_context_maybe_generator(MR_Context *c,
 /*
 ** The run queue and spark queue are protected and signalled with the
 ** same lock and condition variable.
+**
+** The single sync term lock is used to prevent races in MR_join_and_continue.
+** The holder of the sync term lock may acquire the runqueue lock but not vice
+** versa.  (We could also have one sync term lock per context, and make
+** MR_join_and_continue acquire the sync term lock of the context that
+** originated the parallel conjunction, but contention for the single lock
+** doesn't seem to be an issue.)
 */
 MR_Context              *MR_runqueue_head;
 MR_Context              *MR_runqueue_tail;
-#ifndef MR_HIGHLEVEL_CODE
-  MR_Spark              *MR_spark_queue_head;
-  MR_Spark              *MR_spark_queue_tail;
-#endif
 #ifdef  MR_THREAD_SAFE
   MercuryLock           MR_runqueue_lock;
   MercuryCond           MR_runqueue_cond;
+#endif
+#ifdef  MR_LL_PARALLEL_CONJ
+  MR_SparkDeque         MR_spark_queue;
+  MercuryLock           MR_sync_term_lock;
 #endif
 
 MR_PendingContext       *MR_pending_contexts;
@@ -70,8 +77,10 @@ static MR_Context       *free_small_context_list = NULL;
   static MercuryLock    free_context_list_lock;
 #endif
 
+#ifdef  MR_LL_PARALLEL_CONJ
 int MR_num_idle_engines = 0;
 int MR_num_outstanding_contexts_and_sparks = 0;
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -85,6 +94,10 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&free_context_list_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
+  #ifdef MR_LL_PARALLEL_CONJ
+    MR_init_wsdeque(&MR_spark_queue, MR_INITIAL_GLOBAL_SPARK_QUEUE_SIZE);
+    pthread_mutex_init(&MR_sync_term_lock, MR_MUTEX_ATTR);
+  #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
   #ifndef MR_THREAD_LOCAL_STORAGE
     MR_KEY_CREATE(&MR_engine_base_key, NULL);
@@ -107,6 +120,9 @@ MR_finalize_runqueue(void)
     pthread_mutex_destroy(&MR_runqueue_lock);
     pthread_cond_destroy(&MR_runqueue_cond);
     pthread_mutex_destroy(&free_context_list_lock);
+#endif
+#ifdef  MR_LL_PARALLEL_CONJ
+    pthread_mutex_destroy(&MR_sync_term_lock);
 #endif
 }
 
@@ -238,8 +254,11 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     c->MR_ctxt_owner_generator = gen;
   #endif /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
+  #ifdef MR_LL_PARALLEL_CONJ
     c->MR_ctxt_parent_sp = NULL;
-    c->MR_ctxt_spark_stack = NULL;
+    MR_init_wsdeque(&c->MR_ctxt_spark_deque,
+        MR_INITIAL_LOCAL_SPARK_DEQUE_SIZE);
+  #endif /* MR_LL_PARALLEL_CONJ */
 
 #endif /* !MR_HIGHLEVEL_CODE */
 
@@ -285,7 +304,9 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 
     MR_LOCK(&free_context_list_lock, "create_context");
 
+#ifdef MR_LL_PARALLEL_CONJ
     MR_num_outstanding_contexts_and_sparks++;
+#endif
 
     /*
     ** Regular contexts have stacks at least as big as small contexts,
@@ -311,6 +332,9 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
         c->MR_ctxt_detstack_zone = NULL;
         c->MR_ctxt_nondetstack_zone = NULL;
 #endif
+#ifdef MR_LL_PARALLEL_CONJ
+        c->MR_ctxt_spark_deque.MR_sd_active_array = NULL;
+#endif
 #ifdef MR_USE_TRAIL
         c->MR_ctxt_trail_zone = NULL;
 #endif
@@ -328,9 +352,6 @@ MR_destroy_context(MR_Context *c)
 #ifdef MR_THREAD_SAFE
     MR_assert(c->MR_ctxt_saved_owners == NULL);
 #endif
-#ifndef MR_HIGHLEVEL_CODE
-    MR_assert(c->MR_ctxt_spark_stack == NULL);
-#endif
 
     /* XXX not sure if this is an overall win yet */
 #if 0 && defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
@@ -342,7 +363,9 @@ MR_destroy_context(MR_Context *c)
 #endif /* defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE) */
 
     MR_LOCK(&free_context_list_lock, "destroy_context");
+#ifdef MR_LL_PARALLEL_CONJ
     MR_num_outstanding_contexts_and_sparks--;
+#endif
 
     switch (c->MR_ctxt_size) {
         case MR_CONTEXT_SIZE_REGULAR:
@@ -478,26 +501,20 @@ MR_schedule_context(MR_Context *ctxt)
     MR_UNLOCK(&MR_runqueue_lock, "schedule_context");
 }
 
-#ifndef MR_HIGHLEVEL_CODE
-
+#ifdef MR_LL_PARALLEL_CONJ
 void
-MR_schedule_spark_globally(MR_Spark *spark)
+MR_schedule_spark_globally(const MR_Spark *proto_spark)
 {
     MR_LOCK(&MR_runqueue_lock, "schedule_spark_globally");
-    if (MR_spark_queue_tail) {
-        MR_spark_queue_tail->MR_spark_next = spark;
-        MR_spark_queue_tail = spark;
-    } else {
-        MR_spark_queue_head = spark;
-        MR_spark_queue_tail = spark;
-    }
+    MR_wsdeque_push_bottom(&MR_spark_queue, proto_spark);
     MR_num_outstanding_contexts_and_sparks++;
-  #ifdef MR_THREAD_SAFE
     MR_SIGNAL(&MR_runqueue_cond);
-  #endif
     MR_UNLOCK(&MR_runqueue_lock, "schedule_spark_globally");
 }
+#endif /* !MR_LL_PARALLEL_CONJ */
 
+
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_define_extern_entry(MR_do_runnext);
 
@@ -510,7 +527,7 @@ MR_define_entry(MR_do_runnext);
 {
     MR_Context      *tmp;
     MR_Context      *prev;
-    MR_Spark        *spark;
+    MR_Spark        spark;
     unsigned        depth;
     MercuryThread   thd;
 
@@ -518,8 +535,12 @@ MR_define_entry(MR_do_runnext);
     ** If this engine is holding onto a context, the context should not be
     ** in the middle of running some code.
     */
-    assert(MR_ENGINE(MR_eng_this_context) == NULL ||
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_stack == NULL);
+    MR_assert(
+        MR_ENGINE(MR_eng_this_context) == NULL
+    ||
+        MR_wsdeque_is_empty(
+            &MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque)
+    );
 
     depth = MR_ENGINE(MR_eng_c_depth);
     thd = MR_ENGINE(MR_eng_owner_thread);
@@ -562,9 +583,8 @@ MR_define_entry(MR_do_runnext);
             tmp = tmp->MR_ctxt_next;
         }
 
-        /* Check if the spark queue is nonempty. */
-        spark = MR_spark_queue_head;
-        if (spark != NULL) {
+        /* Check if the global spark queue is nonempty. */
+        if (MR_wsdeque_take_top(&MR_spark_queue, &spark)) {
             MR_num_idle_engines--;
             MR_num_outstanding_contexts_and_sparks--;
             goto ReadySpark;
@@ -597,10 +617,6 @@ MR_define_entry(MR_do_runnext);
 
   ReadySpark:
 
-    MR_spark_queue_head = spark->MR_spark_next;
-    if (MR_spark_queue_tail == spark) {
-        MR_spark_queue_tail = NULL;
-    }
     MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iii)");
 
     /* Grab a new context if we haven't got one then begin execution. */
@@ -609,18 +625,13 @@ MR_define_entry(MR_do_runnext);
             MR_CONTEXT_SIZE_SMALL, NULL);
         MR_load_context(MR_ENGINE(MR_eng_this_context));
     }
-    MR_parent_sp = spark->MR_spark_parent_sp;
-    MR_SET_THREAD_LOCAL_MUTABLES(spark->MR_spark_thread_local_mutables);
-    MR_GOTO(spark->MR_spark_resume);
+    MR_parent_sp = spark.MR_spark_parent_sp;
+    MR_assert(MR_parent_sp != MR_sp);
+    MR_SET_THREAD_LOCAL_MUTABLES(spark.MR_spark_thread_local_mutables);
+    MR_GOTO(spark.MR_spark_resume);
 }
 #else /* !MR_THREAD_SAFE */
 {
-    /*
-    ** We don't support actually putting things in the global spark queue
-    ** in these grades.
-    */
-    assert(MR_spark_queue_head == NULL);
-
     if (MR_runqueue_head == NULL && MR_pending_contexts == NULL) {
         MR_fatal_error("empty runqueue!");
     }

@@ -428,7 +428,8 @@ instr_to_x86_64(!RegMap, foreign_proc_code(_, _, _, _, _, _, _, _, _),
     Instr = [x86_64_comment("<<foreign_proc_code>>")].
 instr_to_x86_64(!RegMap, init_sync_term(_, _), Instr) :-
     Instr = [x86_64_comment("<<init_sync_term>>")].
-instr_to_x86_64(!RegMap, fork(_), [x86_64_comment("<<fork>>")]).
+instr_to_x86_64(!RegMap, fork_new_child(_, _), Instr) :-
+    Instr = [x86_64_comment("<<fork_new_child>>")].
 instr_to_x86_64(!RegMap, join_and_continue(_, _), Instr) :-
     Instr = [x86_64_comment("<<join_and_continue>>")].
 

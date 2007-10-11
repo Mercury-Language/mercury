@@ -422,7 +422,7 @@ standardize_instr(Instr0, Instr) :-
         ; Instr0 = incr_sp(_, _, _)
         ; Instr0 = decr_sp(_)
         ; Instr0 = decr_sp_and_return(_)
-        ; Instr0 = fork(_)
+        ; Instr0 = fork_new_child(_, _)
         ; Instr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
         ),
         Instr = Instr0
@@ -791,7 +791,7 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
         ; InstrA = decr_sp(_)
         ; InstrA = decr_sp_and_return(_)
         ; InstrA = foreign_proc_code(_, _, _, _, _, _, _, _, _)
-        ; InstrA = fork(_)
+        ; InstrA = fork_new_child(_, _)
         ; InstrA = init_sync_term(_, _)
         ; InstrA = join_and_continue(_, _)
         ),

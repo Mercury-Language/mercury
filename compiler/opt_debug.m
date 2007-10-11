@@ -895,11 +895,12 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "init_sync_term(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
             ++ int_to_string(N) ++ ")"
     ;
-        Instr = fork(Child),
-        Str = "fork(" ++ dump_label(yes(ProcLabel), Child) ++ ")"
+        Instr = fork_new_child(Lval, Child),
+        Str = "fork_new_child(" ++ dump_lval(yes(ProcLabel), Lval)
+            ++ dump_label(yes(ProcLabel), Child) ++ ", " ++ ")"
     ;
         Instr = join_and_continue(Lval, Label),
-        Str = "join(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
+        Str = "join_and_continue(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
             ++ dump_label(yes(ProcLabel), Label) ++ ")"
     ;
         Instr = foreign_proc_code(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF,

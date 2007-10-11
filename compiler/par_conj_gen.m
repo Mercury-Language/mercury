@@ -74,11 +74,10 @@
 % finished, causes the code following the parallel conjunction to execute in
 % the context that originated the parallel conjunction.  If the originating
 % context can't execute the next conjunct and the parallel conjunction isn't
-% finished, it must suspend and store its address in the sync term.  When a
-% non-originating context later finds that the parallel conjunction _is_
-% finished, it will then cause the originating context to resume execution
-% at the join point.  Please see the implementation of MR_join_and_continue()
-% for the details.
+% finished, it must suspend.  When a non-originating context later finds that
+% the parallel conjunction _is_ finished, it will then cause the originating
+% context to resume execution at the join point.  Please see the
+% implementation of MR_join_and_continue() for the details.
 %
 % The runtime support for parallel conjunction is documented in the runtime
 % directory in mercury_context.{c,h}.
@@ -180,32 +179,33 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
     find_outputs(Variables, Initial, Final, ModuleInfo, [], Outputs),
 
-    list.length(Goals, NumGoals),
-    acquire_reg(reg_r, RegLval, !CI),
-    acquire_temp_slot(slot_sync_term, persistent_temp_slot, SyncSlot, !CI),
-    ( SyncSlot = stackvar(SlotNum) ->
-        ParentSyncSlot = parent_stackvar(SlotNum)
+    % Reserve a contiguous block on the stack to hold the synchronisation term.
+    Contents = list.duplicate(STSize, slot_sync_term),
+    acquire_several_temp_slots(Contents, persistent_temp_slot, SyncTermSlots,
+        StackId, _N, _M, !CI),
+    (
+        % The highest numbered slot has the lowest address.
+        list.last(SyncTermSlots, SyncTermBaseSlotPrime),
+        SyncTermBaseSlotPrime = stackvar(SlotNum),
+        StackId = det_stack
+    ->
+        SyncTermBaseSlot = SyncTermBaseSlotPrime,
+        ParentSyncTermBaseSlot = parent_stackvar(SlotNum)
     ;
         unexpected(this_file, "generate_par_conj")
     ),
 
+    NumGoals = list.length(Goals),
     MakeSyncTermCode = node([
-        % The may_not_use_atomic here is conservative.
-        llds_instr(incr_hp(RegLval, no, no, const(llconst_int(STSize)),
-            "sync term", may_not_use_atomic_alloc, no),
-            "allocate a sync term"),
-        llds_instr(init_sync_term(RegLval, NumGoals),
-            "initialize sync term"),
-        llds_instr(assign(SyncSlot, lval(RegLval)),
-            "store the sync term on the stack")
+        llds_instr(init_sync_term(SyncTermBaseSlot, NumGoals),
+            "initialize sync term")
     ]),
-    release_reg(RegLval, !CI),
 
     set_par_conj_depth(Depth+1, !CI),
     get_next_label(EndLabel, !CI),
     clear_all_registers(no, !CI),
-    generate_det_par_conj_2(Goals, ParentSyncSlot, EndLabel, Initial, no,
-        GoalCode, !CI),
+    generate_det_par_conj_2(Goals, ParentSyncTermBaseSlot, EndLabel, Initial,
+        no, GoalCode, !CI),
     set_par_conj_depth(Depth, !CI),
 
     EndLabelCode = node([
@@ -239,7 +239,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % XXX release sync slots of nested parallel conjunctions
     %
     ( Depth = 0 ->
-        release_temp_slot(SyncSlot, persistent_temp_slot, !CI)
+        release_several_temp_slots(SyncTermSlots, persistent_temp_slot, !CI)
     ;
         true
     ),
@@ -256,9 +256,9 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     lval::in, label::in, instmap::in, branch_end::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-generate_det_par_conj_2([], _ParentSyncTerm, _EndLabel,
+generate_det_par_conj_2([], _ParentSyncTermBaseSlot, _EndLabel,
         _Initial, _, empty, !CI).
-generate_det_par_conj_2([Goal | Goals], ParentSyncTerm, EndLabel,
+generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
         Initial, MaybeEnd0, Code, !CI) :-
     remember_position(!.CI, StartPos),
     code_gen.generate_goal(model_det, Goal, ThisGoalCode0, !CI),
@@ -277,22 +277,26 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTerm, EndLabel,
         get_next_label(NextConjunct, !CI),
         reset_to_position(StartPos, !CI),
         ForkCode = node([
-            llds_instr(fork(NextConjunct), "fork off a child")
+            llds_instr(fork_new_child(ParentSyncTermBaseSlot, NextConjunct),
+                "fork off a child")
         ]),
         JoinCode = node([
-            llds_instr(join_and_continue(ParentSyncTerm, EndLabel), "finish"),
-            llds_instr(label(NextConjunct), "start of the next conjunct")
+            llds_instr(join_and_continue(ParentSyncTermBaseSlot, EndLabel),
+                "finish"),
+            llds_instr(label(NextConjunct),
+                "start of the next conjunct")
         ])
     ;
         Goals = [],
         ForkCode = empty,
         JoinCode = node([
-            llds_instr(join_and_continue(ParentSyncTerm, EndLabel), "finish")
+            llds_instr(join_and_continue(ParentSyncTermBaseSlot, EndLabel),
+                "finish")
         ])
     ),
     ThisCode = tree_list([ForkCode, ThisGoalCode, SaveCode, JoinCode]),
-    generate_det_par_conj_2(Goals, ParentSyncTerm, EndLabel, Initial, MaybeEnd,
-        RestCode, !CI),
+    generate_det_par_conj_2(Goals, ParentSyncTermBaseSlot, EndLabel, Initial,
+        MaybeEnd, RestCode, !CI),
     Code = tree(ThisCode, RestCode).
 
 %-----------------------------------------------------------------------------%

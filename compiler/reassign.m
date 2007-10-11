@@ -316,7 +316,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
     ;
-        Uinstr0 = fork(_),
+        Uinstr0 = fork_new_child(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % Both the parent and the child thread jump to labels specified
         % by the fork instruction, so the value of !:KnownContentsMap doesn't

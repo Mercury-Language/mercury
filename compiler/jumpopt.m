@@ -785,12 +785,12 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         % for the last time.
         unexpected(this_file, "instr_list: block")
     ;
-        Uinstr0 = fork(Child0),
+        Uinstr0 = fork_new_child(SyncTerm, Child0),
         short_label(Instrmap, Child0, Child),
         ( Child = Child0 ->
             NewRemain = usual_case
         ;
-            Uinstr = fork(Child),
+            Uinstr = fork_new_child(SyncTerm, Child),
             Comment = Comment0 ++ " (redirect)",
             Instr = llds_instr(Uinstr, Comment),
             NewRemain = specified([Instr], Instrs0)

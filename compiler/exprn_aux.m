@@ -353,7 +353,7 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         ; Uinstr0 = incr_sp(_, _, _)
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
-        ; Uinstr0 = fork(_)
+        ; Uinstr0 = fork_new_child(_, _)
         ),
         Uinstr = Uinstr0
     ;

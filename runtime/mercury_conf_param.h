@@ -109,7 +109,7 @@
 **	use inline functions rather than macros for a few builtins.
 **
 ** MR_THREAD_SAFE
-**	Enable support for parallelism [not yet working].
+**	Enable support for parallelism.
 **
 ** MR_NO_BACKWARDS_COMPAT
 **	Disable backwards compatibility with C code using obsolete low-level
@@ -690,6 +690,14 @@
 #endif
 #if !defined(MR_USE_GCC_NONLOCAL_GOTOS) || defined(MR_USE_ASM_LABELS)
   #define MR_STATIC_CODE_ADDRESSES
+#endif
+
+/*
+** Whether we are in a grade which supports the low-level parallel
+** conjunction execution mechanism.
+*/
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+  #define MR_LL_PARALLEL_CONJ
 #endif
 
 /* XXX document MR_BYTECODE_CALLABLE */

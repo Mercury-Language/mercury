@@ -318,7 +318,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
     ;
         Uinstr0 = init_sync_term(_, _)
     ;
-        Uinstr0 = fork(_)
+        Uinstr0 = fork_new_child(_, _)
     ;
         Uinstr0 = join_and_continue(_, _)
     ;

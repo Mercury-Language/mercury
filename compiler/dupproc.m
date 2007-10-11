@@ -222,9 +222,9 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         Instr = incr_sp(NumSlots, _, Kind),
         StdInstr = incr_sp(NumSlots, "", Kind)
     ;
-        Instr = fork(Child),
+        Instr = fork_new_child(Lval, Child),
         standardize_label(Child, StdChild, DupProcMap),
-        StdInstr = fork(StdChild)
+        StdInstr = fork_new_child(Lval, StdChild)
     ;
         Instr = join_and_continue(Lval, Label),
         standardize_label(Label, StdLabel, DupProcMap),

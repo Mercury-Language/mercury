@@ -674,7 +674,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
         ; Uinstr0 = init_sync_term(_, _)
-        ; Uinstr0 = fork(_)
+        ; Uinstr0 = fork_new_child(_, _)
         ; Uinstr0 = join_and_continue(_, _)
         ; Uinstr0 = arbitrary_c_code(_, _, _)
         )

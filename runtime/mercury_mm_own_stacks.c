@@ -558,7 +558,11 @@ MR_get_context_for_gen(MR_GeneratorPtr generator)
             generator);
         MR_copy_eng_this_context_fields(ctxt, MR_ENGINE(MR_eng_this_context));
         ctxt->MR_ctxt_next = NULL;
-        ctxt->MR_ctxt_spark_stack = NULL;
+#ifdef MR_LL_PARALLEL_CONJ
+        ctxt->MR_ctxt_spark_deque.MR_sd_active_array = NULL;
+        MR_init_wsdeque(&ctxt->MR_ctxt_spark_deque,
+            MR_INITIAL_LOCAL_SPARK_DEQUE_SIZE);
+#endif
     }
 
     ctxt->MR_ctxt_owner_generator = generator;

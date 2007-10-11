@@ -871,7 +871,9 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = decr_sp_and_return(_)
-        ; Uinstr = fork(_)
+        ; Uinstr = init_sync_term(_, _)
+        ; Uinstr = fork_new_child(_, _)
+        ; Uinstr = join_and_continue(_, _)
         ),
         Refers = yes
     ;
@@ -938,12 +940,6 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
         Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
             Components))
-    ;
-        Uinstr = init_sync_term(Lval, _),
-        Refers = lval_refers_stackvars(Lval)
-    ;
-        Uinstr = join_and_continue(Lval, _),
-        Refers = lval_refers_stackvars(Lval)
     ).
 
 :- func foreign_proc_component_refers_stackvars(foreign_proc_component) = bool.
@@ -1085,7 +1081,7 @@ can_instr_branch_away(incr_sp(_, _, _)) = no.
 can_instr_branch_away(decr_sp(_)) = no.
 can_instr_branch_away(decr_sp_and_return(_)) = yes.
 can_instr_branch_away(init_sync_term(_, _)) = no.
-can_instr_branch_away(fork(_)) = no.
+can_instr_branch_away(fork_new_child(_, _)) = no.
 can_instr_branch_away(join_and_continue(_, _)) = yes.
 can_instr_branch_away(foreign_proc_code(_, Comps, _, _, _, _, _, _, _)) =
     can_components_branch_away(Comps).
@@ -1164,7 +1160,7 @@ can_instr_fall_through(incr_sp(_, _, _)) = yes.
 can_instr_fall_through(decr_sp(_)) = yes.
 can_instr_fall_through(decr_sp_and_return(_)) = no.
 can_instr_fall_through(init_sync_term(_, _)) = yes.
-can_instr_fall_through(fork(_)) = yes.
+can_instr_fall_through(fork_new_child(_, _)) = yes.
 can_instr_fall_through(join_and_continue(_, _)) = no.
 can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _)) = yes.
 
@@ -1215,7 +1211,7 @@ can_use_livevals(incr_sp(_, _, _), no).
 can_use_livevals(decr_sp(_), no).
 can_use_livevals(decr_sp_and_return(_), yes).
 can_use_livevals(init_sync_term(_, _), no).
-can_use_livevals(fork(_), no).
+can_use_livevals(fork_new_child(_, _), no).
 can_use_livevals(join_and_continue(_, _), no).
 can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _), no).
 
@@ -1288,7 +1284,7 @@ instr_labels_2(decr_sp_and_return(_), [], []) :-
     % so late that this predicate should never be invoked on such instructions.
     unexpected(this_file, "instr_labels_2: decr_sp_and_return").
 instr_labels_2(init_sync_term(_, _), [], []).
-instr_labels_2(fork(Child), [Child], []).
+instr_labels_2(fork_new_child(_, Child), [Child], []).
 instr_labels_2(join_and_continue(_, Label), [Label], []).
 instr_labels_2(foreign_proc_code(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
         MaybeOnlyLayoutLabel, MaybeSubLabel, _, _), Labels, []) :-
@@ -1351,7 +1347,7 @@ possible_targets(decr_sp_and_return(_), [], []) :-
     % See the comment in instr_labels_2.
     unexpected(this_file, "possible_targets: decr_sp_and_return").
 possible_targets(init_sync_term(_, _), [], []).
-possible_targets(fork(_Child), [], []).
+possible_targets(fork_new_child(_, _), [], []).
 possible_targets(join_and_continue(_, L), [L], []).
 possible_targets(foreign_proc_code(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
         _, MaybeSubLabel, _, _), Labels, []) :-
@@ -1441,7 +1437,7 @@ instr_rvals_and_lvals(incr_sp(_, _, _), [], []).
 instr_rvals_and_lvals(decr_sp(_), [], []).
 instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
 instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
-instr_rvals_and_lvals(fork(_), [], []).
+instr_rvals_and_lvals(fork_new_child(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _),
         Rvals, Lvals) :-
@@ -1607,7 +1603,8 @@ count_temps_instr(decr_sp(_), !R, !F).
 count_temps_instr(decr_sp_and_return(_), !R, !F).
 count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(fork(_), !R, !F).
+count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
 count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _), !R, !F) :-
@@ -1815,7 +1812,7 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         ; Uinstr = save_maxfr(_)
         ; Uinstr = restore_maxfr(_)
         ; Uinstr = init_sync_term(_, _)     % This is a safe approximation.
-        ; Uinstr = fork(_)                  % This is a safe approximation.
+        ; Uinstr = fork_new_child(_, _)     % This is a safe approximation.
         ; Uinstr = join_and_continue(_, _)  % This is a safe approximation.
         ),
         Touch = yes
@@ -2343,9 +2340,10 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         ),
         Uinstr = init_sync_term(Lval, N)
     ;
-        Uinstr0 = fork(Child0),
+        Uinstr0 = fork_new_child(Lval0, Child0),
+        replace_labels_lval(Lval0, Lval, ReplMap),
         replace_labels_label(Child0, Child, ReplMap),
-        Uinstr = fork(Child)
+        Uinstr = fork_new_child(Lval, Child)
     ;
         Uinstr0 = join_and_continue(Lval0, Label0),
         replace_labels_label(Label0, Label, ReplMap),

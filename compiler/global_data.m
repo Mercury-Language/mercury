@@ -1016,7 +1016,7 @@ remap_instr(Remap, Instr0) = Instr :-
         ; Instr0 = incr_sp(_, _, _)
         ; Instr0 = decr_sp(_)
         ; Instr0 = decr_sp_and_return(_)
-        ; Instr0 = fork(_)
+        ; Instr0 = fork_new_child(_, _)
         ),
         Instr = Instr0
     ).

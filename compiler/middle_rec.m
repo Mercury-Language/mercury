@@ -570,7 +570,8 @@ find_used_registers_instr(foreign_proc_code(_, Components,
     find_used_registers_components(Components, !Used).
 find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(fork(_), !Used).
+find_used_registers_instr(fork_new_child(Lval, _), !Used) :-
+    find_used_registers_lval(Lval, !Used).
 find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).
 

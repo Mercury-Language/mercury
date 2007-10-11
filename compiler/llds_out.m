@@ -1795,7 +1795,7 @@ find_cont_labels([llds_instr(Uinstr, _) | Instrs], !ContLabelSet) :-
     ->
         set_tree234.insert(ContLabel, !ContLabelSet)
     ;
-        Uinstr = fork(Label1)
+        Uinstr = fork_new_child(_, Label1)
     ->
         set_tree234.insert(Label1, !ContLabelSet)
     ;
@@ -2020,8 +2020,9 @@ output_instr_decls(StackLayoutLabels, foreign_proc_code(_, Comps, _, _,
     list.foldl2(output_foreign_proc_component_decls, Comps, !DeclSet, !IO).
 output_instr_decls(_, init_sync_term(Lval, _), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, fork(Child), !DeclSet, !IO) :-
-    output_code_addr_decls(code_label(Child), !DeclSet, !IO).
+output_instr_decls(_, fork_new_child(Lval, Child), !DeclSet, !IO) :-
+    output_code_addr_decls(code_label(Child), !DeclSet, !IO),
+    output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, join_and_continue(Lval, Label), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
     output_code_addr_decls(code_label(Label), !DeclSet, !IO).
@@ -2751,8 +2752,10 @@ output_instruction(init_sync_term(Lval, N), _, !IO) :-
     io.write_int(N, !IO),
     io.write_string(");\n", !IO).
 
-output_instruction(fork(Child), _, !IO) :-
+output_instruction(fork_new_child(Lval, Child), _, !IO) :-
     io.write_string("\tMR_fork_new_child(", !IO),
+    output_lval_as_word(Lval, !IO),
+    io.write_string(", ", !IO),
     output_label_as_code_addr(Child, !IO),
     io.write_string(");\n", !IO).
 

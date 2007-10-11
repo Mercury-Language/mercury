@@ -595,7 +595,7 @@ mercury_runtime_init(int argc, char **argv)
     MR_SET_THREAD_LOCAL_MUTABLES(
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
 
-  #ifdef MR_THREAD_SAFE
+  #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
 
@@ -608,7 +608,7 @@ mercury_runtime_init(int argc, char **argv)
             /* busy wait until the worker threads are ready */
         }
     }
-  #endif /* ! MR_THREAD_SAFE */
+  #endif /* ! MR_LL_PARALLEL_CONJ */
 #endif /* ! 0 */
 
     if (MR_memdebug) {
@@ -2507,8 +2507,8 @@ MR_define_label(global_fail);
 
 MR_define_label(all_done);
     assert(MR_runqueue_head == NULL);
-#ifndef MR_HIGHLEVEL_CODE
-    assert(MR_spark_queue_head == NULL);
+#ifdef MR_LL_PARALLEL_CONJ
+    assert(MR_wsdeque_is_empty(&MR_spark_queue));
 #endif
 
 #ifdef  MR_MPROF_PROFILE_TIME

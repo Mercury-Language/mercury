@@ -25,6 +25,7 @@ HDRS		=	\
 			mercury_accurate_gc.h	\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
+			mercury_atomic_ops.h	\
 			mercury_bootstrap.h	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
@@ -99,7 +100,8 @@ HDRS		=	\
 			mercury_types.h		\
 			mercury_type_tables.h	\
 			mercury_univ.h		\
-			mercury_wrapper.h
+			mercury_wrapper.h	\
+			mercury_wsdeque.h
 
 # The headers in $(BODY_HDRS) contain code schemes included multiple times
 # in one or more source files. Their dependencies must be explicitly listed.
@@ -147,6 +149,7 @@ CFILES		= 	\
 			mercury.c		\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
+			mercury_atomic_ops.c	\
 			mercury_bootstrap.c	\
 			mercury_builtin_types.c	\
 			mercury_bitmap.c	\
@@ -199,7 +202,8 @@ CFILES		= 	\
 			mercury_type_desc.c	\
 			mercury_type_info.c	\
 			mercury_type_tables.c	\
-			mercury_wrapper.c
+			mercury_wrapper.c	\
+			mercury_wsdeque.c
 
 #-----------------------------------------------------------------------------#
 
