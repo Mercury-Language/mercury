@@ -1224,58 +1224,22 @@
 % GL errors
 %
 
-:- func error_to_int(int::in) = (mogl.error::out) is semidet.
+:- pragma foreign_enum("C", mogl.error/0, [
+    no_error          - "GL_NO_ERROR",
+    invalid_enum      - "GL_INVALID_ENUM",
+    invalid_value     - "GL_INVALID_VALUE",
+    invalid_operation - "GL_INVALID_OPERATION",
+    stack_overflow    - "GL_STACK_OVERFLOW",
+    stack_underflow   - "GL_STACK_UNDERFLOW",
+    out_of_memory     - "GL_OUT_OF_MEMORY"
+]).
 
-error_to_int(0) = no_error.
-error_to_int(1) = invalid_enum.
-error_to_int(2) = invalid_value.
-error_to_int(3) = invalid_operation.
-error_to_int(4) = stack_overflow.
-error_to_int(5) = stack_underflow.
-error_to_int(6) = out_of_memory.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum errcodes[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum errcodes[] = {
-        GL_NO_ERROR,
-        GL_INVALID_ENUM,
-        GL_INVALID_VALUE,
-        GL_INVALID_OPERATION,
-        GL_STACK_OVERFLOW,
-        GL_STACK_UNDERFLOW,
-        GL_OUT_OF_MEMORY
-    };
-").
-
-get_error(Err, !IO) :-
-    get_error_2(ErrNo, !IO),
-    ( if    Err0 = error_to_int(ErrNo)
-      then  Err = Err0
-      else  error("GetError returned an unexpected value.")
-    ).
-
-:- pred get_error_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    get_error_2(Err::out, IO0::di, IO::uo), 
+    get_error(Err::out, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    GLenum err;
-    MR_Integer i;
-
-    Err = 0;
-    err = glGetError();
-
-    for (i = 0; i < 7; i++) {
-        if (errcodes[i] == err) {
-            Err = i;
-            break;
-        }
-    }
-    
+    Err = (MR_Integer) glGetError();
     IO = IO0;
 ").
 
@@ -1284,48 +1248,25 @@ get_error(Err, !IO) :-
 % Begin/end objects
 %
 
-:- func block_mode_to_int(block_mode) = int.
+:- pragma foreign_enum("C", block_mode/0, [
+    points         - "GL_POINTS",
+    line_strip     - "GL_LINE_STRIP",
+    line_loop      - "GL_LINE_LOOP",
+    lines          - "GL_LINES",
+    polygon        - "GL_POLYGON",
+    triangle_strip - "GL_TRIANGLE_STRIP",
+    triangle_fan   - "GL_TRIANGLE_FAN",
+    triangles      - "GL_TRIANGLES",
+    quad_strip     - "GL_QUAD_STRIP",
+    quads          - "GL_QUADS"
+]).
 
-block_mode_to_int(points) = 0.
-block_mode_to_int(line_strip) = 1.
-block_mode_to_int(line_loop) = 2.
-block_mode_to_int(lines) = 3.
-block_mode_to_int(polygon) = 4.
-block_mode_to_int(triangle_strip) = 5.
-block_mode_to_int(triangle_fan) = 6.
-block_mode_to_int(triangles) = 7.
-block_mode_to_int(quad_strip) = 8.
-block_mode_to_int(quads) = 9.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum block_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum block_mode_flags[] = {
-        GL_POINTS,
-        GL_LINE_STRIP,
-        GL_LINE_LOOP,
-        GL_LINES,
-        GL_POLYGON,
-        GL_TRIANGLE_STRIP,
-        GL_TRIANGLE_FAN,
-        GL_TRIANGLES,
-        GL_QUAD_STRIP,
-        GL_QUADS
-    };
-").
-
-begin(Blk, !IO) :-
-    begin_2(block_mode_to_int(Blk), !IO).
-
-:- pred begin_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    begin_2(Mode::in, IO0::di, IO::uo), 
+    begin(Mode::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glBegin(block_mode_flags[Mode]);
+    glBegin((GLenum) Mode);
     IO = IO0;
 ").
 
@@ -1550,58 +1491,30 @@ edge_flag(yes, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred matrix_mode_to_int(matrix_mode, int).
-:- mode matrix_mode_to_int(in, out) is det.
-:- mode matrix_mode_to_int(out, in) is semidet.
+:- pragma foreign_enum("C", matrix_mode/0, [
+    texture    - "GL_TEXTURE",
+    modelview  - "GL_MODELVIEW",
+    projection - "GL_PROJECTION"
+]).
 
-matrix_mode_to_int(texture, 0).
-matrix_mode_to_int(modelview, 1).
-matrix_mode_to_int(projection, 2).
-
-:- pragma foreign_decl("C", "
-    extern const GLenum matrix_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum matrix_mode_flags[] = {
-        GL_TEXTURE,
-        GL_MODELVIEW,
-        GL_PROJECTION
-    };
-").
-
-matrix_mode(Mode0, !IO) :-
-    matrix_mode_to_int(Mode0, Mode),
-    matrix_mode_2(Mode, !IO).
-
-:- pred matrix_mode_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    matrix_mode_2(I::in, IO0::di, IO::uo), 
+    matrix_mode(MatrixMode::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glMatrixMode(matrix_mode_flags[I]);
+    glMatrixMode((GLenum) MatrixMode);
     IO = IO0;
 ").
 
-get_matrix_mode(Mode, !IO) :-
-    get_matrix_mode_2(Mode0, !IO),
-    ( matrix_mode_to_int(Mode1, Mode0) ->
-        Mode = Mode1
-    ;
-        error("Cannot convert integer to matrix_mode.")
-    ).
-
-:- pred get_matrix_mode_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_matrix_mode_2(Matrix::out, IO0::di, IO::uo),
+    get_matrix_mode(MatrixMode::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint v;
 
     glGetIntegerv(GL_MATRIX_MODE, &v);
-    Matrix = (MR_Integer) v;
+    MatrixMode = (MR_Integer) v;
     IO = IO0;
 ").
 
@@ -1873,109 +1786,55 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 % Colors and coloring
 %
 
-:- func face_direction_to_int(face_direction) = int.
+:- pragma foreign_enum("C", face_direction/0, [
+    cw  - "GL_CW",
+    ccw - "GL_CCW"
+]).
 
-face_direction_to_int(cw)  = 0.
-face_direction_to_int(ccw) = 1.
+:- pragma foreign_enum("C", face_side/0, [
+    front - "GL_FRONT",
+    back  - "GL_BACK",
+    front_and_back - "GL_FRONT_AND_BACK"
+]).
 
-:- pragma foreign_decl("C", "
-    extern const GLenum face_direction_flags[];
-").
+:- pragma foreign_enum("C", color_material_mode/0, [
+    ambient - "GL_AMBIENT",
+    diffuse - "GL_DIFFUSE",
+    ambient_and_diffuse - "GL_AMBIENT_AND_DIFFUSE",
+    specular - "GL_SPECULAR",
+    emission - "GL_EMISSION"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum face_direction_flags[] = {
-        GL_CW,
-        GL_CCW
-    };
-").
+:- pragma foreign_enum("C", shade_model/0, [
+    smooth - "GL_SMOOTH",
+    flat   - "GL_FLAT"
+]).
 
-:- func face_side_to_int(face_side) = int.
-
-face_side_to_int(front) = 0.
-face_side_to_int(back)  = 1.
-face_side_to_int(front_and_back) = 2.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum face_side_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum face_side_flags[] = {
-        GL_FRONT,
-        GL_BACK,
-        GL_FRONT_AND_BACK
-    };
-").
-
-:- func color_material_mode_to_int(color_material_mode) = int.
-
-color_material_mode_to_int(ambient)     = 0.
-color_material_mode_to_int(diffuse)     = 1.
-color_material_mode_to_int(ambient_and_diffuse) = 2.
-color_material_mode_to_int(specular)        = 3.
-color_material_mode_to_int(emission)        = 4.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum color_material_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum color_material_mode_flags[] = {
-        GL_AMBIENT,
-        GL_DIFFUSE,
-        GL_AMBIENT_AND_DIFFUSE,
-        GL_SPECULAR,
-        GL_EMISSION
-    };
-").
-
-:- pred shade_model_to_int(shade_model, int).
-:- mode shade_model_to_int(in, out) is det.
-:- mode shade_model_to_int(out, in) is semidet.
-
-shade_model_to_int(smooth, 0).
-shade_model_to_int(flat, 1).
-
-:- pragma foreign_decl("C", "
-    extern const GLenum shade_model_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum shade_model_flags[] = {
-        GL_SMOOTH,
-        GL_FLAT
-    };
-").
-
-front_face(Face, !IO) :-
-    front_face2(face_direction_to_int(Face), !IO).
-
-:- pred front_face2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    front_face2(F::in, IO0::di, IO::uo), 
+    front_face(F::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glFrontFace(face_direction_flags[F]);
+    glFrontFace((GLenum) F);
     IO = IO0;
 ").
 
 material(Face, ambient(R, G, B, A), !IO) :-
-    material_ambient(face_side_to_int(Face), R, G, B, A, !IO).
+    material_ambient(Face, R, G, B, A, !IO).
 material(Face, diffuse(R, G, B, A), !IO)  :-
-    material_diffuse(face_side_to_int(Face), R, G, B, A, !IO).
+    material_diffuse(Face, R, G, B, A, !IO).
 material(Face, ambient_and_diffuse(R, G, B, A), !IO) :- 
-    material_ambient_and_diffuse(face_side_to_int(Face), R, G, B, A, !IO).
+    material_ambient_and_diffuse(Face, R, G, B, A, !IO).
 material(Face, specular(R, G, B, A), !IO) :-
-    material_specular(face_side_to_int(Face), R, G, B, A, !IO).
+    material_specular(Face, R, G, B, A, !IO).
 material(Face, emission(R, G, B, A), !IO) :-
-    material_emission(face_side_to_int(Face), R, G, B, A, !IO).
+    material_emission(Face, R, G, B, A, !IO).
 material(Face, shininess(S), !IO) :-
-    material_shininess(face_side_to_int(Face), S, !IO).
+    material_shininess(Face, S, !IO).
 material(Face, color_indexes(R, G, B), !IO) :-
-    material_color_indexes(face_side_to_int(Face), R, G, B, !IO).
+    material_color_indexes(Face, R, G, B, !IO).
 
-:- pred material_ambient(int::in, float::in, float::in, float::in,
+:- pred material_ambient(face_side::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
@@ -1988,12 +1847,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
-    glMaterialfv(face_side_flags[F], GL_AMBIENT, params);
+    glMaterialfv((GLenum) F, GL_AMBIENT, params);
     IO = IO0;
 ").
 
-:- pred material_diffuse(int::in, float::in, float::in, float::in, float::in,
-    io::di, io::uo) is det.
+:- pred material_diffuse(face_side::in, float::in, float::in, float::in,
+    float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
@@ -2005,12 +1864,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
-    glMaterialfv(face_side_flags[F], GL_DIFFUSE, params);
+    glMaterialfv((GLenum) F, GL_DIFFUSE, params);
     IO = IO0;
 ").
 
-:- pred material_ambient_and_diffuse(int::in, float::in, float::in, float::in,
-    float::in, io::di, io::uo) is det.
+:- pred material_ambient_and_diffuse(face_side::in, float::in, float::in,
+    float::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_ambient_and_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di,
         IO::uo), 
@@ -2023,12 +1882,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
-    glMaterialfv(face_side_flags[F], GL_AMBIENT_AND_DIFFUSE, params);
+    glMaterialfv((GLenum) F, GL_AMBIENT_AND_DIFFUSE, params);
     IO = IO0;
 ").
 
-:- pred material_specular(int::in, float::in, float::in, float::in, float::in,
-    io::di, io::uo) is det.
+:- pred material_specular(face_side::in, float::in, float::in, float::in,
+    float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
@@ -2040,12 +1899,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
-    glMaterialfv(face_side_flags[F], GL_SPECULAR, params);
+    glMaterialfv((GLenum) F, GL_SPECULAR, params);
     IO = IO0;
 ").
 
-:- pred material_emission(int::in, float::in, float::in, float::in, float::in,
-    io::di, io::uo) is det.
+:- pred material_emission(face_side::in, float::in, float::in, float::in,
+    float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_emission(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
@@ -2057,21 +1916,21 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
-    glMaterialfv(face_side_flags[F], GL_EMISSION, params);
+    glMaterialfv((GLenum) F, GL_EMISSION, params);
     IO = IO0;
 ").
 
-:- pred material_shininess(int::in, float::in, io::di, io::uo) is det.
+:- pred material_shininess(face_side::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_shininess(F::in, S::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glMaterialf(face_side_flags[F], GL_SHININESS, (GLfloat) S);
+    glMaterialf((GLenum) F, GL_SHININESS, (GLfloat) S);
     IO = IO0;
 ").
 
-:- pred material_color_indexes(int::in, float::in, float::in, float::in,
+:- pred material_color_indexes(face_side::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     material_color_indexes(F::in, R::in, G::in, B::in, IO0::di, IO::uo), 
@@ -2083,7 +1942,7 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[0] = (GLfloat) R;
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
-    glMaterialfv(face_side_flags[F], GL_COLOR_INDEXES, params);
+    glMaterialfv((GLenum) F, GL_COLOR_INDEXES, params);
     IO = IO0;
 ").
 
@@ -2292,45 +2151,26 @@ light_model(light_model_two_side(Bool), !IO) :-
     IO = IO0;
 ").
 
-color_material(Face, Mode, !IO) :-
-    color_material2(face_side_to_int(Face),
-        color_material_mode_to_int(Mode), !IO).
-
-:- pred color_material2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    color_material2(Face::in, Mode::in, IO0::di, IO::uo), 
+    color_material(Face::in, Mode::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glColorMaterial(face_side_flags[Face], color_material_mode_flags[Mode]);
+    glColorMaterial((GLenum) Face, (GLenum) Mode);
     IO = IO0;
 ").
 
-shade_model(Model0, !IO) :-
-    shade_model_to_int(Model0, Model),
-    shade_model_2(Model, !IO).
-
-:- pred shade_model_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    shade_model_2(Model::in, IO0::di, IO::uo), 
+    shade_model(Model::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glShadeModel(shade_model_flags[Model]);
+    glShadeModel((GLenum) Model);
     IO = IO0;
 ").
 
-get_shade_model(Model, !IO) :-
-    get_shade_model_2(Model0, !IO),
-    ( shade_model_to_int(Model1, Model0) ->
-        Model = Model1
-    ;
-        error("Cannot convert integer to shade model.")
-    ).
-
-:- pred get_shade_model_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_shade_model_2(Value::out, IO0::di, IO::uo),
+    get_shade_model(Value::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2383,34 +2223,18 @@ get_shade_model(Model, !IO) :-
 % Polygons
 %
 
-:- func polygon_mode_to_int(polygon_mode) = int.
+:- pragma foreign_enum("C", polygon_mode/0, [
+    point - "GL_POINT",
+    line  - "GL_LINE",
+    fill  - "GL_FILL"
+]).
 
-polygon_mode_to_int(point) = 0.
-polygon_mode_to_int(line)  = 1.
-polygon_mode_to_int(fill)  = 2.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum polygon_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum polygon_mode_flags[] = {
-        GL_POINT,
-        GL_LINE,
-        GL_FILL
-    };
-").
-
-cull_face(Face, !IO) :-
-    cull_face2(face_side_to_int(Face), !IO).
-
-:- pred cull_face2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    cull_face2(F::in, IO0::di, IO::uo),
+    cull_face(F::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glCullFace(face_side_flags[F]);
+    glCullFace((GLenum) F);
     IO = IO0;
 ").
 
@@ -2423,16 +2247,12 @@ cull_face(Face, !IO) :-
     IO = IO0;
 ").
 
-polygon_mode(Face, Mode, !IO) :-
-    polygon_mode2(face_side_to_int(Face), polygon_mode_to_int(Mode), !IO).
-
-:- pred polygon_mode2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    polygon_mode2(Face::in, Mode::in, IO0::di, IO::uo), 
+    polygon_mode(Face::in, Mode::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glPolygonMode(face_side_flags[Face], polygon_mode_flags[Mode]);
+    glPolygonMode((GLenum) Face, (GLenum) Mode);
     IO = IO0;
 ").
 
@@ -2589,37 +2409,20 @@ pixel_transfer(depth_bias(Bias), !IO) :-
     IO = IO0;
 ").
 
-copy_pixels(X, Y, Width, Height, WhatToCopy, !IO) :-
-    copy_pixels_2(X, Y, Width, Height, copy_type_to_int(WhatToCopy),
-        !IO).
+:- pragma foreign_enum("C", copy_type/0, [
+    color   - "GL_COLOR",
+    stencil - "GL_STENCIL",
+    depth   - "GL_DEPTH"
+]).
 
-:- pred copy_pixels_2(int::in, int::in, int::in, int::in, int::in,
-    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    copy_pixels_2(X::in, Y::in, W::in, H::in, WhatFlag::in,
-        IO0::di, IO::uo),
+    copy_pixels(X::in, Y::in, W::in, H::in, WhatFlag::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glCopyPixels((GLint) X, (GLint) Y, (GLsizei) W, (GLsizei) H,
-        copy_type_flags[WhatFlag]);
+        (GLenum) WhatFlag);
     IO = IO0;
-").
-
-:- func copy_type_to_int(copy_type) = int.
-
-copy_type_to_int(color)   = 0.
-copy_type_to_int(stencil) = 1.
-copy_type_to_int(depth)   = 2.
-
-:- pragma foreign_decl("C", "extern const GLenum copy_type_flags[];").
-:- pragma foreign_code("C",
-"
-    const GLenum copy_type_flags[] = {
-        GL_COLOR,
-        GL_STENCIL,
-        GL_DEPTH
-    };
 ").
 
 :- type pixels
@@ -2694,27 +2497,12 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
 % Texture mapping
 %
 
-:- pragma foreign_decl("C", "
-    extern const GLenum texture_target_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum texture_target_flags[] = {
-        GL_TEXTURE_1D,
-        GL_PROXY_TEXTURE_1D,
-        GL_TEXTURE_2D,
-        GL_PROXY_TEXTURE_2D
-    };
-").
-
-:- pred texture_target_to_int(texture_target, int).
-:- mode texture_target_to_int(in, out) is det.
-%:- mode texture_target_to_int(out, in) is det.
-
-texture_target_to_int(texture_1d, 0).
-texture_target_to_int(proxy_texture_1d, 1).
-texture_target_to_int(texture_2d, 2).
-texture_target_to_int(proxy_texture_2d, 3).
+:- pragma foreign_enum("C", texture_target/0, [
+    texture_1d       - "GL_TEXTURE_1D",
+    proxy_texture_1d - "GL_PROXY_TEXTURE_1D",
+    texture_2d       - "GL_TEXTURE_2D",
+    proxy_texture_2d - "GL_PROXY_TEXTURE_2D"
+]).
 
 :- pragma foreign_decl("C", "
     extern const GLenum texture_format_flags[];
@@ -2742,98 +2530,79 @@ texture_target_to_int(proxy_texture_2d, 3).
     };
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum wrap_mode_flags[];
-").
+:- pragma foreign_enum("C", wrap_mode/0, [
+    clamp  - "GL_CLAMP",
+    repeat - "GL_REPEAT"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum wrap_mode_flags[] = {
-        GL_CLAMP,
-        GL_REPEAT
-    };
-").
+:- pragma foreign_enum("C", min_filter_method/0, [
+    nearest - "GL_NEAREST",
+    linear  - "GL_LINEAR",
+    nearest_mipmap_nearest - "GL_NEAREST_MIPMAP_NEAREST",
+    nearest_mipmap_linear  - "GL_NEAREST_MIPMAP_LINEAR",
+    linear_mipmap_nearest  - "GL_LINEAR_MIPMAP_NEAREST",
+    linear_mipmap_linear   - "GL_LINEAR_MIPMAP_LINEAR"
+]).
 
-:- func wrap_mode_to_int(wrap_mode) = int.
-
-wrap_mode_to_int(clamp) = 0.
-wrap_mode_to_int(repeat) = 1.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum filter_method_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum filter_method_flags[] = {
-        GL_NEAREST,
-        GL_LINEAR,
-        GL_NEAREST_MIPMAP_NEAREST,
-        GL_NEAREST_MIPMAP_LINEAR,
-        GL_LINEAR_MIPMAP_NEAREST,
-        GL_LINEAR_MIPMAP_LINEAR
-    };
-").
-
-:- func min_filter_method_to_int(min_filter_method) = int.
-
-min_filter_method_to_int(nearest) = 0.
-min_filter_method_to_int(linear) = 1.
-min_filter_method_to_int(nearest_mipmap_nearest) = 2.
-min_filter_method_to_int(nearest_mipmap_linear) = 3.
-min_filter_method_to_int(linear_mipmap_nearest) = 4.
-min_filter_method_to_int(linear_mipmap_linear) = 5.
-
-:- func mag_filter_method_to_int(mag_filter_method) = int.
-
-mag_filter_method_to_int(nearest) = 0.
-mag_filter_method_to_int(linear) = 1.
-
-tex_parameter(Target0, Param, !IO) :-
-    texture_target_to_int(Target0, Target),
-    tex_parameter_2(Target, Param, !IO).
+:- pragma foreign_enum("C", mag_filter_method/0, [
+    nearest - "GL_NEAREST",
+    linear  - "GL_LINEAR"
+]).
 
     % NOTE: the magic numbers below are indicies into the
     % texture_parameter_flags array.
-:- pred tex_parameter_2(int::in, texture_parameter::in, io::di, io::uo) is det.
-
-tex_parameter_2(Target, wrap_s(WrapMode), !IO) :- 
-    tex_parameter_wrap(Target, 0, wrap_mode_to_int(WrapMode), !IO).
-tex_parameter_2(Target, wrap_t(WrapMode), !IO) :-
-    tex_parameter_wrap(Target, 1, wrap_mode_to_int(WrapMode), !IO).
-tex_parameter_2(Target, min_filter(FilterMethod), !IO) :-
-    tex_parameter_filter(Target, 2, min_filter_method_to_int(FilterMethod),
-        !IO).
-tex_parameter_2(Target, mag_filter(FilterMethod), !IO) :-
-    tex_parameter_filter(Target, 2, mag_filter_method_to_int(FilterMethod),
-        !IO).
-tex_parameter_2(Target, border_color(R, G, B, A), !IO) :-
+    %
+tex_parameter(Target, wrap_s(WrapMode), !IO) :- 
+    tex_parameter_wrap(Target, 0, WrapMode, !IO).
+tex_parameter(Target, wrap_t(WrapMode), !IO) :-
+    tex_parameter_wrap(Target, 1, WrapMode, !IO).
+tex_parameter(Target, min_filter(FilterMethod), !IO) :-
+    tex_parameter_min_filter(Target, 2, FilterMethod, !IO).
+tex_parameter(Target, mag_filter(FilterMethod), !IO) :-
+    tex_parameter_mag_filter(Target, 2, FilterMethod, !IO).
+tex_parameter(Target, border_color(R, G, B, A), !IO) :-
     tex_parameter_border_color(Target, R, G, B, A, !IO).
-tex_parameter_2(Target, priority(Priority), !IO) :-
+tex_parameter(Target, priority(Priority), !IO) :-
     tex_parameter_priority(Target, Priority, !IO).
 
-:- pred tex_parameter_wrap(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pred tex_parameter_wrap(texture_target::in, int::in, wrap_mode::in,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_parameter_wrap(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexParameteri(texture_target_flags[Target],
-        texture_parameter_flags[Pname], wrap_mode_flags[Param]);
+    glTexParameteri((GLenum) Target, texture_parameter_flags[Pname],
+        (GLenum) Param);
     IO = IO0;
 ").
 
-:- pred tex_parameter_filter(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pred tex_parameter_min_filter(texture_target::in, int::in,
+    min_filter_method::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_parameter_filter(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+    tex_parameter_min_filter(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexParameteri(texture_target_flags[Target],
-        texture_parameter_flags[Pname], filter_method_flags[Param]);
+    glTexParameteri((GLenum) Target, texture_parameter_flags[Pname],
+        (GLenum) Param);
     IO = IO0;
 ").
 
-:- pred tex_parameter_border_color(int::in, float::in, float::in, float::in,
-    float::in, io::di, io::uo) is det.
+:- pred tex_parameter_mag_filter(texture_target::in, int::in,
+    mag_filter_method::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    tex_parameter_mag_filter(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
+        does_not_affect_liveness],
+"
+    glTexParameteri((GLenum) Target, texture_parameter_flags[Pname],
+        (GLenum) Param);
+    IO = IO0;
+").
+
+:- pred tex_parameter_border_color(texture_target::in,
+    float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     tex_parameter_border_color(Target::in, Red::in, Blue::in, Green::in,
         Alpha::in, IO0::di, IO::uo),
@@ -2847,43 +2616,38 @@ tex_parameter_2(Target, priority(Priority), !IO) :-
         (GLfloat) Alpha
     };
 
-    glTexParameterfv(texture_target_flags[Target], GL_TEXTURE_BORDER_COLOR,
-        border_color);
+    glTexParameterfv((GLenum) Target, GL_TEXTURE_BORDER_COLOR, border_color);
     IO = IO0;
 ").
 
-:- pred tex_parameter_priority(int::in, float::in, io::di, io::uo) is det.
+:- pred tex_parameter_priority(texture_target::in, float::in,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     tex_parameter_priority(Target::in, Priority::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexParameterf(texture_target_flags[Target], GL_TEXTURE_PRIORITY,
-        (GLfloat) Priority);
+    glTexParameterf((GLenum) Target, GL_TEXTURE_PRIORITY, (GLfloat) Priority);
     IO = IO0;
 ").
 
-bind_texture(Target0, TexName, !IO) :-
-    texture_target_to_int(Target0, Target),
-    bind_texture_2(Target, TexName, !IO).
-
-:- pred bind_texture_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    bind_texture_2(Target::in, TexName::in, IO0::di, IO::uo),
+    bind_texture(Target::in(non_proxy_texture_target), TexName::in,
+        IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glBindTexture(texture_target_flags[Target], (GLuint) TexName);
+    glBindTexture((GLenum) Target, (GLuint) TexName);
     IO = IO0;
 ").
 
 delete_textures([], !IO).
-delete_textures(Textures @ [_|_], !IO) :-
+delete_textures(Textures @ [_ | _], !IO) :-
     list.length(Textures, NumTextures),
     delete_textures_2(Textures, NumTextures, !IO).
 
-:- pred delete_textures_2(list(texture_name)::in, int::in, io::di,
-    io::uo) is det.
+:- pred delete_textures_2(list(texture_name)::in, int::in,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     delete_textures_2(Textures::in, NumTextures::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
@@ -2944,39 +2708,25 @@ delete_textures(Textures @ [_|_], !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum texture_function_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum texture_function_flags[] = {
-        GL_DECAL,
-        GL_REPLACE,
-        GL_MODULATE,
-        GL_BLEND
-    };
-").
-
-:- func texture_function_to_int(texture_function) = int.
-
-texture_function_to_int(decal) = 0.
-texture_function_to_int(replace) = 1.
-texture_function_to_int(modulate) = 2.
-texture_function_to_int(blend) = 3.
+:- pragma foreign_enum("C", texture_function/0, [
+    decal    - "GL_DECAL",
+    replace  - "GL_REPLACE",
+    modulate - "GL_MODULATE",
+    blend    - "GL_BLEND"
+]).
 
 tex_env(_, texture_env_mode(Function), !IO) :-
-    tex_env_mode(texture_function_to_int(Function), !IO).
+    tex_env_mode(Function, !IO).
 tex_env(_, texture_env_color(R, G, B, A), !IO) :-
     tex_env_color(R, G, B, A, !IO).
 
-:- pred tex_env_mode(int::in, io::di, io::uo) is det.
+:- pred tex_env_mode(texture_function::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_env_mode(Param::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure, 
         does_not_affect_liveness], 
 "
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,
-        texture_function_flags[Param]);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, (GLenum) Param);
     IO = IO0;
 ").
 
@@ -2998,65 +2748,40 @@ tex_env(_, texture_env_color(R, G, B, A), !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum texture_coord_flags[];
-").
+:- pragma foreign_enum("C", texture_coord/0, [
+    s - "GL_S",
+    t - "GL_T",
+    r - "GL_R",
+    q - "GL_Q"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum texture_coord_flags[] = {
-        GL_S,
-        GL_T,
-        GL_R,
-        GL_Q
-    };
-").
 
-:- func texture_coord_to_int(texture_coord) = int.
+:- pragma foreign_enum("C", texture_gen_function/0, [
+    object_linear - "GL_OBJECT_LINEAR",
+    eye_linear    - "GL_EYE_LINEAR",
+    sphere_map    - "GL_SPHERE_MAP"
+]).
 
-texture_coord_to_int(s) = 0.
-texture_coord_to_int(t) = 1.
-texture_coord_to_int(r) = 2.
-texture_coord_to_int(q) = 3.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum texture_gen_function_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum texture_gen_function_flags[] = {
-        GL_OBJECT_LINEAR,
-        GL_EYE_LINEAR,
-        GL_SPHERE_MAP
-    };
-").
-
-:- func texture_gen_function_to_int(texture_gen_function) = int.
-
-texture_gen_function_to_int(object_linear) = 0.
-texture_gen_function_to_int(eye_linear) = 1.
-texture_gen_function_to_int(sphere_map) = 2.
-
-tex_gen(Coord, texture_gen_mode(Param), !IO) :-
-    tex_geni(texture_coord_to_int(Coord),
-        texture_gen_function_to_int(Param), !IO).
+tex_gen(Coord, texture_gen_mode(TexGenFunc), !IO) :-
+    tex_geni(Coord, TexGenFunc, !IO).
 tex_gen(Coord, object_plane(X, Y, Z, W), !IO) :-
-    tex_genf_object_plane(texture_coord_to_int(Coord), X, Y, Z, W, !IO).
+    tex_genf_object_plane(Coord, X, Y, Z, W, !IO).
 tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
-    tex_genf_eye_plane(texture_coord_to_int(Coord), X, Y, Z, W, !IO).
+    tex_genf_eye_plane(Coord, X, Y, Z, W, !IO).
 
-:- pred tex_geni(int::in, int::in, io::di, io::uo) is det.
+:- pred tex_geni(texture_coord::in, texture_gen_function::in,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    tex_geni(Coord::in, Param::in, IO0::di, IO::uo),
+    tex_geni(Coord::in, TexGenFunc::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexGeni(texture_coord_flags[Coord], GL_TEXTURE_GEN_MODE,
-        texture_gen_function_flags[Param]);
+    glTexGeni((GLenum) Coord, GL_TEXTURE_GEN_MODE, (GLenum) TexGenFunc);
     IO = IO0;
 ").
 
-:- pred tex_genf_object_plane(int::in, float::in, float::in, float::in,
-    float::in, io::di, io::uo) is det.
+:- pred tex_genf_object_plane(texture_coord::in, float::in, float::in,
+    float::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_genf_object_plane(Coord::in, X::in, Y::in, Z::in, W::in, IO0::di,
         IO::uo), 
@@ -3071,8 +2796,7 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
             (GLfloat) W
         };
 
-        glTexGenfv(texture_coord_flags[Coord], GL_OBJECT_PLANE,
-            coefficients);
+        glTexGenfv((GLenum) Coord, GL_OBJECT_PLANE, coefficients);
     } else {
         GLdouble coefficients[] = {
             (GLdouble) X,
@@ -3081,13 +2805,12 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
             (GLdouble) W
         };
 
-        glTexGendv(texture_coord_flags[Coord], GL_OBJECT_PLANE,
-            coefficients);
+        glTexGendv((GLenum) Coord, GL_OBJECT_PLANE, coefficients);
     }
     IO = IO0;
 ").
 
-:- pred tex_genf_eye_plane(int::in, float::in, float::in, float::in,
+:- pred tex_genf_eye_plane(texture_coord::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_genf_eye_plane(Coord::in, X::in, Y::in, Z::in, W::in, IO0::di,
@@ -3103,8 +2826,7 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
             (GLfloat) W
         };
         
-        glTexGenfv(texture_coord_flags[Coord], GL_EYE_PLANE,
-            coefficients);
+        glTexGenfv((GLenum) Coord, GL_EYE_PLANE, coefficients);
     } else {
         GLdouble coefficients[] = {
             (GLdouble) X,
@@ -3113,21 +2835,19 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
             (GLdouble) W
         };
 
-        glTexGendv(texture_coord_flags[Coord], GL_EYE_PLANE,
-            coefficients);
+        glTexGendv((GLenum) Coord, GL_EYE_PLANE, coefficients);
     }
     IO = IO0;
 ").
 
 tex_image_1d(Target, Level, InternalFormat, Width, Border,
         Format, Type, Pixels, !IO) :-
-    texture_target_to_int(Target, TargetInt),
     texture_format_to_int(InternalFormat, InternalFormatInt),
-    tex_image_1d_2(TargetInt, Level, InternalFormatInt, Width, Border,
+    tex_image_1d_2(Target, Level, InternalFormatInt, Width, Border,
         pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
 
-:- pred tex_image_1d_2(int::in, int::in, int::in, int::in, int::in, int::in,
-    int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
+:- pred tex_image_1d_2(texture_target::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
         Width::in, Border::in, Format::in, Type::in,
@@ -3135,7 +2855,7 @@ tex_image_1d(Target, Level, InternalFormat, Width, Border,
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexImage1D(texture_target_flags[Target], Level,
+    glTexImage1D((GLenum) Target, Level,
         texture_format_flags[InternalFormat], Width, Border,
         pixel_format_flags[Format], pixel_type_flags[Type], Pixels->elements);
     IO = IO0;
@@ -3143,13 +2863,13 @@ tex_image_1d(Target, Level, InternalFormat, Width, Border,
 
 tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
         Format, Type, Pixels, !IO) :-
-    texture_target_to_int(Target, TargetInt),
     texture_format_to_int(InternalFormat, InternalFormatInt),
-    tex_image_2d_2(TargetInt, Level, InternalFormatInt, Width, Height, Border,
+    tex_image_2d_2(Target, Level, InternalFormatInt, Width, Height, Border,
         pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
 
-:- pred tex_image_2d_2(int::in, int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
+:- pred tex_image_2d_2(texture_target::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, int::in, pixel_data::bitmap_ui,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
         Width::in, Height::in, Border::in, Format::in, Type::in,
@@ -3157,7 +2877,7 @@ tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexImage2D(texture_target_flags[Target], Level,
+    glTexImage2D((GLenum) Target, Level,
         texture_format_flags[InternalFormat], Width, Height, Border,
         pixel_format_flags[Format], pixel_type_flags[Type], Pixels->elements);
     IO = IO0;
@@ -3187,40 +2907,38 @@ tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
 % ").
 
 copy_tex_image_1d(Target, Level, InternalFormat, X, Y, Width, Border, !IO) :-
-    texture_target_to_int(Target, TargetInt),
     texture_format_to_int(InternalFormat, InternalFormatInt),
-    copy_tex_image_1d_2(TargetInt, Level, InternalFormatInt, X, Y, Width,
+    copy_tex_image_1d_2(Target, Level, InternalFormatInt, X, Y, Width,
         Border, !IO).
 
-:- pred copy_tex_image_1d_2(int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, io::di, io::uo) is det.
+:- pred copy_tex_image_1d_2(texture_target::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     copy_tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
         X::in, Y::in, Width::in, Border::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glCopyTexImage1D(texture_target_flags[Target], Level,
+    glCopyTexImage1D((GLenum) Target, Level,
         texture_format_flags[InternalFormat], X, Y, Width, Border);
     IO = IO0;
 ").
 
 copy_tex_image_2d(Target, Level, InternalFormat, X, Y, Width, Height, Border,
         !IO) :-
-    texture_target_to_int(Target, TargetInt),
     texture_format_to_int(InternalFormat, InternalFormatInt),
-    copy_tex_image_2d_2(TargetInt, Level, InternalFormatInt, X, Y,
+    copy_tex_image_2d_2(Target, Level, InternalFormatInt, X, Y,
         Width, Height, Border, !IO).
 
-:- pred copy_tex_image_2d_2(int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, io::di, io::uo) is det.
+:- pred copy_tex_image_2d_2(texture_target::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     copy_tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
         X::in, Y::in, Width::in, Height::in, Border::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glCopyTexImage2D(texture_target_flags[Target], Level,
+    glCopyTexImage2D((GLenum) Target, Level,
         texture_format_flags[InternalFormat], X, Y, Width, Height, Border);
     IO = IO0;
 ").
@@ -3230,28 +2948,13 @@ copy_tex_image_2d(Target, Level, InternalFormat, X, Y, Width, Height, Border,
 % Fog
 %
 
-:- pred fog_mode_to_int(fog_mode, int).
-:- mode fog_mode_to_int(in, out) is det.
-:- mode fog_mode_to_int(out, in) is semidet.
+:- pragma foreign_enum("C", fog_mode/0, [
+    linear - "GL_LINEAR",
+    exp    - "GL_EXP",
+    exp2   - "GL_EXP2"
+]).
 
-fog_mode_to_int(linear, 0).
-fog_mode_to_int(exp, 1).
-fog_mode_to_int(exp2, 2).
-
-:- pragma foreign_decl("C", "
-    extern const GLenum fog_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum fog_mode_flags[] = {
-        GL_LINEAR,
-        GL_EXP,
-        GL_EXP2
-    };
-").
-
-fog(fog_mode(Mode0), !IO) :-
-    fog_mode_to_int(Mode0, Mode),
+fog(fog_mode(Mode), !IO) :-
     fog_mode(Mode, !IO).
 fog(fog_density(Density), !IO) :-
     fog_density(Density, !IO).
@@ -3264,13 +2967,13 @@ fog(fog_index(Index), !IO) :-
 fog(fog_color(R, G, B, A), !IO) :-
     fog_color(R, G, B, A, !IO).
 
-:- pred fog_mode(int::in, io::di, io::uo) is det.
+:- pred fog_mode(fog_mode::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     fog_mode(M::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glFogi(GL_FOG_MODE, (GLint) fog_mode_flags[M]);
+    glFogi(GL_FOG_MODE, (GLint) M);
     IO = IO0;
 ").
 
@@ -3327,17 +3030,8 @@ fog(fog_color(R, G, B, A), !IO) :-
     IO = IO0;
 ").
 
-get_fog_mode(Mode, !IO) :-
-    get_fog_mode_2(Mode0, !IO),
-    ( fog_mode_to_int(Mode1, Mode0) ->
-        Mode = Mode1
-    ;
-        error("Cannot convert into to fog_mode.")
-    ).
-
-:- pred get_fog_mode_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    get_fog_mode_2(Mode::out, IO0::di, IO::uo),
+    get_fog_mode(Mode::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3362,111 +3056,60 @@ get_fog_mode(Mode, !IO) :-
     IO = IO0;
 ").
 
-:- func test_func_to_int(test_func) = int.
+:- pragma foreign_enum("C", test_func/0, [
+    never       - "GL_NEVER",
+    always      - "GL_ALWAYS",
+    less        - "GL_LESS",
+    lequal      - "GL_LEQUAL",
+    equal       - "GL_EQUAL",
+    gequal      - "GL_GEQUAL",
+    greater     - "GL_GREATER",
+    not_equal   - "GL_NOTEQUAL"
+]).
 
-test_func_to_int(never)     = 0.
-test_func_to_int(always)    = 1.
-test_func_to_int(less)      = 2.
-test_func_to_int(lequal)    = 3. 
-test_func_to_int(equal)     = 4.
-test_func_to_int(gequal)    = 5.
-test_func_to_int(greater)   = 6.
-test_func_to_int(not_equal) = 7.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum comparison_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum comparison_mode_flags[] = {
-        GL_NEVER,
-        GL_ALWAYS,
-        GL_LESS,
-        GL_LEQUAL,
-        GL_EQUAL,
-        GL_GEQUAL,
-        GL_GREATER,
-        GL_NOTEQUAL
-    };
-").
-
-alpha_func(TestFunc, Ref, !IO) :-
-    alpha_func_2(test_func_to_int(TestFunc), Ref, !IO).
-
-:- pred alpha_func_2(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    alpha_func_2(TestFunc::in, Ref::in, IO0::di, IO::uo),
+    alpha_func(TestFunc::in, Ref::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness], 
 "
-    glAlphaFunc(comparison_mode_flags[TestFunc], (GLclampf)Ref);
+    glAlphaFunc((GLenum) TestFunc, (GLclampf) Ref);
     IO = IO0;
 
 ").
 
-stencil_func(TestFunc, Ref, Mask, !IO) :-
-    stencil_func_2(test_func_to_int(TestFunc), Ref, Mask, !IO).
-
-:- pred stencil_func_2(int::in, float::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    stencil_func_2(TestFunc::in, Ref::in, Mask::in, IO0::di, IO::uo),
+    stencil_func(TestFunc::in, Ref::in, Mask::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness], 
 "
-    glStencilFunc(comparison_mode_flags[TestFunc], (GLint)Ref,
-        (GLuint)Mask);
+    glStencilFunc((GLenum) TestFunc, (GLint) Ref, (GLuint) Mask);
     IO = IO0;
 ").
 
-:- func stencil_op_to_int(stencil_op) = int.
+:- pragma foreign_enum("C", stencil_op/0, [
+    keep        - "GL_KEEP",
+    zero        - "GL_ZERO",
+    replace     - "GL_REPLACE",
+    incr        - "GL_INCR",
+    decr        - "GL_DECR",
+    invert      - "GL_INVERT"
+]).    
 
-stencil_op_to_int(keep)    = 0.
-stencil_op_to_int(zero)    = 1.
-stencil_op_to_int(replace) = 2.
-stencil_op_to_int(incr)    = 3.
-stencil_op_to_int(decr)    = 4. 
-stencil_op_to_int(invert)  = 5.
-    
-:- pragma foreign_decl("C", "
-    extern const GLenum stencil_op_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum stencil_op_mode_flags[] = {
-        GL_KEEP,
-        GL_ZERO,
-        GL_REPLACE,
-        GL_INCR,
-        GL_DECR,
-        GL_INVERT
-    };
-").
-
-stencil_op(Fail, ZFail, ZPass, !IO) :-
-    stencil_op_2(stencil_op_to_int(Fail), stencil_op_to_int(ZFail),
-        stencil_op_to_int(ZPass), !IO).
-
-:- pred stencil_op_2(int::in, int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    stencil_op_2(Fail::in, ZFail::in, ZPass::in, IO0::di, IO::uo),
+    stencil_op(Fail::in, ZFail::in, ZPass::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure, 
         does_not_affect_liveness], 
 "
-    glStencilOp(stencil_op_mode_flags[Fail], stencil_op_mode_flags[ZFail],
-        stencil_op_mode_flags[ZPass]);
+    glStencilOp((GLenum) Fail, (GLenum) ZFail, (GLenum) ZPass);
     IO = IO0;
 ").
 
-depth_func(TestFunc, !IO) :-
-    depth_func_2(test_func_to_int(TestFunc), !IO).
-
-:- pred depth_func_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    depth_func_2(Func::in, IO0::di, IO::uo),
+    depth_func(TestFunc::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness], 
 "
-    glDepthFunc(comparison_mode_flags[Func]);
+    glDepthFunc((GLenum) TestFunc);
     IO = IO0;
 ").
 
@@ -3541,60 +3184,31 @@ blend_func(Src, Dst, !IO) :-
     IO = IO0;
 ").
 
-:- func logic_op_to_int(logic_op) = int.
+:- pragma foreign_enum("C", logic_op/0, [
+    clear         - "GL_CLEAR",
+    (and)         - "GL_AND",
+    and_reverse   - "GL_AND_REVERSE",
+    copy          - "GL_COPY",
+    and_inverted  - "GL_AND_INVERTED",
+    no_op         - "GL_NOOP",
+    xor           - "GL_XOR",
+    (or)          - "GL_OR",
+    nor           - "GL_NOR",
+    equiv         - "GL_EQUIV",
+    invert        - "GL_INVERT",
+    or_reverse    - "GL_OR_REVERSE",
+    copy_inverted - "GL_COPY_INVERTED",
+    or_inverted   - "GL_OR_INVERTED",
+    nand          - "GL_NAND",
+    set           - "GL_SET"
+]).
 
-logic_op_to_int(clear) = 0.
-logic_op_to_int((and)) = 1.
-logic_op_to_int(and_reverse) = 2.
-logic_op_to_int(copy) = 3.
-logic_op_to_int(and_inverted) = 4.
-logic_op_to_int(no_op) = 5.
-logic_op_to_int(xor) = 6.
-logic_op_to_int((or)) = 7.
-logic_op_to_int(nor) = 8.
-logic_op_to_int(equiv) = 9.
-logic_op_to_int(invert) = 10.
-logic_op_to_int(or_reverse) = 11.
-logic_op_to_int(copy_inverted) = 12.
-logic_op_to_int(or_inverted) = 13.
-logic_op_to_int(nand) = 14.
-logic_op_to_int(set) = 15.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum logic_op_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum logic_op_flags[] = {
-        GL_CLEAR,
-        GL_AND,
-        GL_AND_REVERSE,
-        GL_COPY,
-        GL_AND_INVERTED,
-        GL_NOOP,
-        GL_XOR,
-        GL_OR,
-        GL_NOR,
-        GL_EQUIV,
-        GL_INVERT,
-        GL_OR_REVERSE,
-        GL_COPY_INVERTED,
-        GL_OR_INVERTED,
-        GL_NAND,
-        GL_SET
-    };
-").
-
-logic_op(Op, !IO) :-
-    logic_op_2(logic_op_to_int(Op), !IO).
-
-:- pred logic_op_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    logic_op_2(Op::in, IO0::di, IO::uo),
+    logic_op(LogicOp::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure, 
         does_not_affect_liveness], 
 "
-    glLogicOp(logic_op_flags[Op]);
+    glLogicOp((GLenum) LogicOp);
     IO = IO0;
 ").
 
@@ -3786,38 +3400,20 @@ buffer_bit_to_int(accum)   = 3.
     IO = IO0;
 ").
 
-:- func accum_op_to_int(accum_op) = int.
+:- pragma foreign_enum("C", accum_op/0, [
+    accum  - "GL_ACCUM",
+    load   - "GL_LOAD",
+    return - "GL_RETURN",
+    mult   - "GL_MULT",
+    add    - "GL_ADD"
+]).
 
-accum_op_to_int(accum)  = 0.
-accum_op_to_int(load)   = 1.
-accum_op_to_int(return) = 2.
-accum_op_to_int(mult)   = 3.
-accum_op_to_int(add)    = 4.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum accum_op_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum accum_op_flags[] = {
-        GL_ACCUM,
-        GL_LOAD,
-        GL_RETURN,
-        GL_MULT,
-        GL_ADD
-    };
-").
-
-accum(Op, Param, !IO) :-
-    accum2(accum_op_to_int(Op), Param, !IO).
-
-:- pred accum2(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    accum2(Op::in, Param::in, IO0::di, IO::uo), 
+    accum(AccumOp::in, Value::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glAccum(accum_op_flags[Op], Param);
+    glAccum((GLenum) AccumOp, Value);
     IO = IO0;
 ").
 
@@ -3900,7 +3496,8 @@ eval_1d_to_int(texture_coord_4) = 33.
             ).
 
 :- type ctrl_points.
-:- pragma foreign_type("C", ctrl_points, "const GLvoid *"). 
+:- pragma foreign_type("C", ctrl_points, "const GLvoid *",
+    [can_pass_as_mercury_type]). 
 
 make_curve(one(Verticies)) = curve(1, Order, CtrlPts) :-
     Order   = list.length(Verticies),
@@ -4103,49 +3700,27 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     IO = IO0;
 ").
 
-:- func mesh_mode_to_int(mesh_mode) = int.
+:- pragma foreign_enum("C", mesh_mode/0, [
+    point - "GL_POINT",
+    line  - "GL_LINE",
+    fill  - "GL_FILL"
+]).
 
-mesh_mode_to_int(point) = 0.
-mesh_mode_to_int(line)  = 1.
-mesh_mode_to_int(fill)  = 2.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum mesh_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum mesh_mode_flags[] = {
-        GL_POINT,
-        GL_LINE,
-        GL_FILL
-    };
-").
-
-eval_mesh1(Mode, P1, P2, !IO) :-
-    eval_mesh1_2(mesh_mode_to_int(Mode), P1, P2, !IO).
-
-:- pred eval_mesh1_2(int::in, int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    eval_mesh1_2(MeshFlag::in, P1::in, P2::in, IO0::di, IO::uo),
+    eval_mesh1(MeshFlag::in(mesh_mode_1d), P1::in, P2::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glEvalMesh1(mesh_mode_flags[MeshFlag], (GLint) P1, (GLint) P2);
+    glEvalMesh1((GLenum) MeshFlag, (GLint) P1, (GLint) P2);
     IO = IO0;
 ").
 
-eval_mesh2(Mode, P1, P2, Q1, Q2, !IO) :-
-    eval_mesh2_2(mesh_mode_to_int(Mode), P1, P2, Q1, Q2, !IO).
-
-:- pred eval_mesh2_2(int::in, int::in, int::in, int::in, int::in,
-    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    eval_mesh2_2(MeshFlag::in, P1::in, P2::in, Q1::in, Q2::in, 
-        IO0::di, IO::uo),
+    eval_mesh2(MeshFlag::in, P1::in, P2::in, Q1::in, Q2::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glEvalMesh2(mesh_mode_flags[MeshFlag], P1, P2, Q1, Q2);
+    glEvalMesh2((GLenum) MeshFlag, P1, P2, Q1, Q2);
     IO = IO0;
 ").
 
@@ -4249,34 +3824,18 @@ eval_mesh2(Mode, P1, P2, Q1, Q2, !IO) :-
     IO = IO0;
 ").
 
-:- func render_mode_to_int(render_mode) = int.
+:- pragma foreign_enum("C", render_mode/0, [
+    render   - "GL_RENDER",
+    select   - "GL_SELECT",
+    feedback - "GL_FEEDBACK"
+]).
 
-render_mode_to_int(render)   = 0.
-render_mode_to_int(select)   = 1.
-render_mode_to_int(feedback) = 2.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum render_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum render_mode_flags[] = {
-        GL_RENDER,
-        GL_SELECT,
-        GL_FEEDBACK
-    };
-").
-
-render_mode(Mode, Output, !IO) :-
-    render_mode_2(render_mode_to_int(Mode), Output, !IO).
-
-:- pred render_mode_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    render_mode_2(Mode::in, Output::out, IO0::di, IO::uo),
+    render_mode(RenderMode::in, Output::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure, 
         does_not_affect_liveness],
 "
-    Output = (MR_Integer) glRenderMode(render_mode_flags[Mode]);
+    Output = (MR_Integer) glRenderMode((GLenum) RenderMode);
     IO = IO0;
 ").
 
@@ -4285,32 +3844,17 @@ render_mode(Mode, Output, !IO) :-
 % Display lists
 % 
 
-:- func display_list_mode_to_int(display_list_mode) = int.
+:- pragma foreign_enum("C", display_list_mode/0, [
+    compile             - "GL_COMPILE",
+    compile_and_execute - "GL_COMPILE_AND_EXECUTE"
+]).
 
-display_list_mode_to_int(compile) = 0.
-display_list_mode_to_int(compile_and_execute) = 1.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum display_list_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum display_list_mode_flags[] ={
-        GL_COMPILE,
-        GL_COMPILE_AND_EXECUTE
-    };
-").
-
-new_list(Num, Mode, !IO) :-
-    new_list2(Num, display_list_mode_to_int(Mode), !IO).
-
-:- pred new_list2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    new_list2(N::in, M::in, IO0::di, IO::uo), 
+    new_list(N::in, M::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glNewList((GLuint) N, display_list_mode_flags[M]);
+    glNewList((GLuint) N, (GLenum) M);
     IO = IO0;
 ").
 
@@ -4549,81 +4093,37 @@ is_enabled(Flag, IsEnabled, !IO) :-
 % Hints
 %
 
-:- pragma foreign_decl("C", "
-    extern const GLenum hint_target_flags[];
-").
+:- pragma foreign_enum("C", hint_target/0, [
+    perspective_correction - "GL_PERSPECTIVE_CORRECTION_HINT",
+    point_smooth           - "GL_POINT_SMOOTH_HINT",
+    line_smooth            - "GL_LINE_SMOOTH",
+    polygon_smooth         - "GL_POLYGON_SMOOTH",
+    fog                    - "GL_FOG_HINT"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum hint_target_flags[] = {
-        GL_PERSPECTIVE_CORRECTION_HINT,
-        GL_POINT_SMOOTH_HINT,
-        GL_LINE_SMOOTH_HINT,
-        GL_POLYGON_SMOOTH_HINT,
-        GL_FOG_HINT
-    };
-").
-
-:- pragma foreign_decl("C", "
-    extern const GLenum hint_mode_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum hint_mode_flags[] = {
-        GL_FASTEST,
-        GL_NICEST,
-        GL_DONT_CARE
-    };
-").
-
-:- func hint_target_to_int(hint_target) = int.
-
-hint_target_to_int(perspective_correction) = 0.
-hint_target_to_int(point_smooth) = 1.
-hint_target_to_int(line_smooth) = 2.
-hint_target_to_int(polygon_smooth) = 3.
-hint_target_to_int(fog) = 4.
-
-:- pred hint_mode_to_int(hint_mode, int).
-:- mode hint_mode_to_int(in, out) is det.
-:- mode hint_mode_to_int(out, in) is semidet.
-
-hint_mode_to_int(fastest, 0).
-hint_mode_to_int(nicest, 1).
-hint_mode_to_int(do_not_care, 2).
+:- pragma foreign_enum("C", hint_mode/0, [
+    fastest     - "GL_FASTEST",
+    nicest      - "GL_NICEST",
+    do_not_care - "GL_DONT_CARE"
+]).
     
-hint(Target0, Mode0, !IO) :-
-    Target = hint_target_to_int(Target0),
-    hint_mode_to_int(Mode0, Mode),
-    set_hint(Target, Mode, !IO).
-
-:- pred set_hint(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    set_hint(Target::in, Mode::in, IO0::di, IO::uo),
+    hint(HintTarget::in, HintMode::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure, 
         does_not_affect_liveness],
 "
-    glHint(hint_target_flags[Target], hint_mode_flags[Mode]);
+    glHint((GLenum) HintTarget, (GLenum) HintMode);
     IO = IO0;
 ").
 
-get_hint(Target0, Mode, !IO) :-
-    Target = hint_target_to_int(Target0),
-    get_hint_2(Target, Mode0, !IO),
-    ( hint_mode_to_int(Mode1, Mode0) ->
-        Mode = Mode1
-    ;
-        error("Cannot convert int to hint_mode")
-    ).
-
-:- pred get_hint_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_hint_2(Target::in, Mode::out, IO0::di, IO::uo),
+    get_hint(HintTarget::in, HintMode::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint mode;
-    glGetIntegerv(hint_target_flags[Target], &mode);
-    Mode = (MR_Integer) mode;
+    glGetIntegerv((GLenum) HintTarget, &mode);
+    HintMode = (MR_Integer) mode;
     IO = IO0;
 ").
 
@@ -5104,46 +4604,24 @@ get_float(Param, Val0, Val1, Val2, !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum quad_float_state_flags[];
-").
+:- pragma foreign_enum("C", quad_float_state/0, [
+    color_clear_value           - "GL_COLOR_CLEAR_VALUE",
+    current_color               - "GL_CURRENT_COLOR",
+    current_raster_color        - "GL_CURRENT_RASTER_COLOR",
+    current_raster_position     - "GL_CURRENT_RASTER_POSITION",
+    current_texture_coords      - "GL_CURRENT_TEXTURE_COORDS",
+    fog_color                   - "GL_FOG_COLOR",
+    map2_grid_domain            - "GL_MAP2_GRID_DOMAIN"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum quad_float_state_flags[] = {
-        GL_COLOR_CLEAR_VALUE,
-        GL_CURRENT_COLOR,
-        GL_CURRENT_RASTER_COLOR,
-        GL_CURRENT_RASTER_POSITION,
-        GL_CURRENT_TEXTURE_COORDS,
-        GL_FOG_COLOR,
-        GL_MAP2_GRID_DOMAIN
-    };
-").
-
-:- func quad_float_state_to_int(quad_float_state) = int.
-
-quad_float_state_to_int(color_clear_value) = 0.
-quad_float_state_to_int(current_color) = 1.
-quad_float_state_to_int(current_raster_color) = 2.
-quad_float_state_to_int(current_raster_position) = 3.
-quad_float_state_to_int(current_texture_coords) = 4.
-quad_float_state_to_int(fog_color) = 5.
-quad_float_state_to_int(map2_grid_domain) = 6.
-
-get_float(Param, V0, V1, V2, V3, !IO) :-
-    get_float_2(quad_float_state_to_int(Param), V0, V1, V2, V3, !IO).
-
-:- pred get_float_2(int::in, float::out, float::out, float::out, float::out,
-    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_float_2(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di,
-        IO::uo),
+    get_float(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLfloat values[4];
 
-    glGetFloatv(quad_float_state_flags[Param], values);
+    glGetFloatv((GLenum) Param, values);
     V0 = (MR_Float) values[0];
     V1 = (MR_Float) values[1];
     V2 = (MR_Float) values[2];

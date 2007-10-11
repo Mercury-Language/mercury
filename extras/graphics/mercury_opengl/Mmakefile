@@ -1,3 +1,9 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997, 2003-2007 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
 # To build the OpenGL binding, do the following:
 #
 # $ mmake depend
@@ -11,7 +17,7 @@ MAIN_TARGET = libmercury_opengl
 
 # Specify what libraries we need to link against for OpenGL on this system.
 # (The following works on Debian with mesa as the OpenGL implementation).
-GL_LIBS = -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXi -lXt -lICE -lXext -lSM
+GL_LIBS = -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXt -lICE -lXext -lSM
 
 # Don't issue a warning because mercury_opengl doesn't export anything.
 MCFLAGS-mercury_opengl = --no-warn-nothing-exported
