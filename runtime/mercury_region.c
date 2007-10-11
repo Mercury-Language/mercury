@@ -528,9 +528,6 @@ MR_region_destroy_region_msg(MR_Region *region)
 {
     printf("Destroy region ");
     MR_region_region_struct_removal_info_msg(region);
-    printf("ite frame: %d\n", MR_region_ite_sp);
-    printf("disj frame: %d\n", MR_region_disj_sp);
-    printf("commit frame: %d\n", MR_region_commit_sp);
 }
 
 void
@@ -734,6 +731,14 @@ MR_region_commit_frame_msg(MR_Word *commit_frame)
     MR_Word *saved_region;
     int     i;
     int     num_saved_regions;
+
+    printf("Commit frame #%d: %d\n",
+        MR_region_get_frame_number(commit_frame), commit_frame);
+    printf("\tPrevious frame #%d: %d\n",
+        MR_region_get_frame_number((MR_Word *) (*commit_frame)),
+        *commit_frame);
+    printf("\tSequence number at push: %d\n",
+        *(commit_frame + MR_REGION_COMMIT_FRAME_SEQUENCE_NUMBER));
 
     num_saved_regions =
         *(commit_frame + MR_REGION_COMMIT_FRAME_NUMBER_SAVED_REGIONS);

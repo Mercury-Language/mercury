@@ -50,11 +50,12 @@
 #define     MR_REGION_FRAME_NUMBER_PROTECTED_REGIONS        2
 #define     MR_REGION_FRAME_NUMBER_SNAPSHOTS                3
 
-#define     MR_REGION_COMMIT_FRAME_FIXED_SIZE               3
+#define     MR_REGION_COMMIT_FRAME_FIXED_SIZE               4
 #define     MR_REGION_COMMIT_FRAME_PREVIOUS_FRAME           0
 #define     MR_REGION_COMMIT_FRAME_SEQUENCE_NUMBER          1
-#define     MR_REGION_COMMIT_FRAME_NUMBER_SAVED_REGIONS     2
-#define     MR_REGION_COMMIT_FRAME_FIRST_SAVED_REGION       3
+#define     MR_REGION_COMMIT_FRAME_DISJ_FRAME               2
+#define     MR_REGION_COMMIT_FRAME_NUMBER_SAVED_REGIONS     3
+#define     MR_REGION_COMMIT_FRAME_FIRST_SAVED_REGION       4
 
 #define     MR_REGION_SNAPSHOT_SIZE                         4
 #define     MR_REGION_SNAPSHOT_REGION                       0
@@ -245,17 +246,15 @@ extern  MR_Word         *MR_region_alloc(MR_Region *, unsigned int);
                     *((new_disj_sp) + MR_REGION_FRAME_REGION_LIST));        \
                 MR_region_disj_sp = (new_disj_sp);                          \
                 MR_region_debug_push_disj_frame(new_disj_sp);               \
-                if (MR_live_region_list != NULL) {                          \
-                    MR_region_debug_region_struct_removal_info(             \
-                        MR_live_region_list);                               \
-                }                                                           \
             } while (0)
 
 #define     MR_push_region_commit_frame(new_commit_sp)                      \
             do {                                                            \
                 *(new_commit_sp) = (MR_Word) MR_region_commit_sp;           \
                 *(new_commit_sp + MR_REGION_COMMIT_FRAME_SEQUENCE_NUMBER) = \
-                     MR_region_sequence_number;                             \
+                    MR_region_sequence_number;                              \
+                *(new_commit_sp + MR_REGION_COMMIT_FRAME_DISJ_FRAME) =      \
+                    (MR_Word) MR_region_disj_sp;                            \
                 MR_region_commit_sp = (new_commit_sp);                      \
                 MR_region_debug_push_commit_frame(new_commit_sp);           \
             } while (0)
@@ -528,9 +527,25 @@ extern  MR_Word         *MR_region_alloc(MR_Region *, unsigned int);
                     saved_region_seq_number);                               \
                 MR_destroy_marked_old_regions_at_commit(                    \
                     number_of_saved_regions, first_saved_region_slot);      \
+                MR_commit_success_undisjprotect_regions(commit_sp);         \
+                MR_region_disj_sp = ( (MR_Word *)                           \
+                    *((commit_sp) + MR_REGION_COMMIT_FRAME_DISJ_FRAME));    \
                 MR_pop_region_commit_frame(commit_sp);                      \
             } while (0)
 
+#define     MR_commit_success_undisjprotect_regions(commit_sp)              \
+            do {                                                            \
+                MR_Word *saved_disj_frame;                                  \
+                MR_Word *disj_frame;                                        \
+                                                                            \
+                saved_disj_frame = ( (MR_Word *)                            \
+                    *((commit_sp) + MR_REGION_COMMIT_FRAME_DISJ_FRAME));    \
+                disj_frame = MR_region_disj_sp;                             \
+                while (disj_frame != saved_disj_frame) {                    \
+                    MR_region_disj_unprotect_regions(disj_frame);           \
+                    disj_frame = (MR_Word *) *disj_frame;                   \
+                }                                                           \
+            } while (0)
 /*
 ** Commit failure means that the goal in the commit operation has failed.
 ** We reset any changes to the commit-related state of saved regions
@@ -551,7 +566,7 @@ extern  MR_Word         *MR_region_alloc(MR_Region *, unsigned int);
                     (commit_sp) + MR_REGION_COMMIT_FRAME_FIRST_SAVED_REGION;\
                 for (i = 0; i < number_of_saved_regions; i++) {             \
                     region = (MR_Region *)                                  \
-                        (first_saved_region_slot +                          \
+                        *(first_saved_region_slot +                         \
                         i * MR_REGION_COMMIT_ENTRY_SIZE);                   \
                     if (region != NULL) {                                   \
                         region->MR_region_commit_frame = NULL;              \
