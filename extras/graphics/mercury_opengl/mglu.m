@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: mglu.m
 % Main authors: conway, ohutch, juliensf.
-
+%
 % This file provides bindings to the GLU library.
-
+%
 % TODO:
 %   - NURBS
 %   - Tessellators
 %   - object-window coordinate mapping (gluProject() and friends).
 %   - Mipmaps
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module mglu.
@@ -145,61 +145,26 @@
 % Quadrics
 %
 
-:- pragma foreign_type("C", quadric, "GLUquadric *").
+:- pragma foreign_type("C", quadric, "GLUquadric *",
+    [can_pass_as_mercury_type]).
 
-:- func quadric_normals_to_int(quadric_normals) = int.
+:- pragma foreign_enum("C", quadric_normals/0, [
+    smooth - "GLU_SMOOTH",
+    flat   - "GLU_FLAT",
+    none   - "GLU_NONE"
+]).
 
-quadric_normals_to_int(smooth)  = 0.
-quadric_normals_to_int(flat)    = 1.
-quadric_normals_to_int(none)    = 2.
+:- pragma foreign_enum("C", quadric_draw_style/0, [
+    point      - "GLU_POINT",
+    line       - "GLU_LINE",
+    fill       - "GLU_FILL",
+    silhouette - "GLU_SILHOUETTE"
+]).
 
-:- pragma foreign_decl("C", "
-    extern const GLenum quadric_normals_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum quadric_normals_flags[] = {
-        GLU_SMOOTH,
-        GLU_FLAT,
-        GLU_NONE
-    };
-").
-
-:- func quadric_draw_style_to_int(quadric_draw_style) = int.
-
-quadric_draw_style_to_int(point)    = 0.
-quadric_draw_style_to_int(line)     = 1.
-quadric_draw_style_to_int(fill)     = 2.
-quadric_draw_style_to_int(silhouette)   = 3.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum quadric_draw_style_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum quadric_draw_style_flags[] = {
-        GLU_POINT,
-        GLU_LINE,
-        GLU_FILL,
-        GLU_SILHOUETTE
-    };
-").
-
-:- func quadric_orientation_to_int(quadric_orientation) = int.
-
-quadric_orientation_to_int(outside) = 0.
-quadric_orientation_to_int(inside)  = 1.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum quadric_orientation_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum quadric_orientation_flags[] = {
-        GLU_OUTSIDE,
-        GLU_INSIDE
-    };
-").
+:- pragma foreign_enum("C", quadric_orientation/0, [
+    outside - "GLU_OUTSIDE",
+    inside  - "GLU_INSIDE"
+]).
 
 :- func bool_to_int(bool) = int.
 
@@ -236,39 +201,27 @@ void MGLU_quadric_error_callback(GLenum error_code)
     IO = IO0;
 ").
 
-quadric_draw_style(Q, S, !IO) :-
-    quadric_draw_style2(Q, quadric_draw_style_to_int(S), !IO).
-
-:- pred quadric_draw_style2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    quadric_draw_style2(Q::in, S::in, IO0::di, IO::uo), 
+    quadric_draw_style(Q::in, Style::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure], 
 "
-    gluQuadricDrawStyle(Q, quadric_draw_style_flags[S]);
+    gluQuadricDrawStyle(Q, (GLenum) Style);
     IO = IO0;
 ").
 
-quadric_orientation(Q, O, !IO) :-
-    quadric_orientation2(Q, quadric_orientation_to_int(O), !IO).
-
-:- pred quadric_orientation2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    quadric_orientation2(Q::in, O::in, IO0::di, IO::uo),
+    quadric_orientation(Q::in, Orientation::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure], 
 "
-    gluQuadricOrientation(Q, quadric_orientation_flags[O]);
+    gluQuadricOrientation(Q, (GLenum) Orientation);
     IO = IO0;
 ").
 
-quadric_normals(Q, N, !IO) :-
-    quadric_normals2(Q, quadric_normals_to_int(N), !IO).
-    
-:- pred quadric_normals2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    quadric_normals2(Q::in, N::in, IO0::di, IO::uo), 
+    quadric_normals(Q::in, Normals::in, IO0::di, IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure], 
 "
-    gluQuadricNormals(Q, quadric_normals_flags[N]);
+    gluQuadricNormals(Q, (GLenum) Normals);
     IO = IO0;
 ").
 
