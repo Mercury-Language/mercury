@@ -4338,84 +4338,44 @@ get_integer(Param, Value, !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum single_float_state_flags[];
-").
+:- pragma foreign_enum("C", single_float_state/0, [
+    accum_clear_value       - "GL_ACCUM_CLEAR_VALUE",
+    alpha_bias              - "GL_ALPHA_BIAS",
+    alpha_scale             - "GL_ALPHA_SCALE",
+    blue_bias               - "GL_BLUE_BIAS",
+    blue_scale              - "GL_BLUE_SCALE",
+    current_index           - "GL_CURRENT_INDEX",
+    current_raster_distance - "GL_CURRENT_RASTER_DISTANCE",
+    current_raster_index    - "GL_CURRENT_RASTER_INDEX",
+    depth_bias              - "GL_DEPTH_BIAS",
+    depth_scale             - "GL_DEPTH_SCALE",
+    fog_density             - "GL_FOG_DENSITY",
+    fog_end                 - "GL_FOG_END",
+    fog_index               - "GL_FOG_INDEX",
+    fog_start               - "GL_FOG_START",
+    green_bias              - "GL_GREEN_BIAS",
+    green_scale             - "GL_GREEN_SCALE",
+    index_clear_value       - "GL_INDEX_CLEAR_VALUE",
+    line_stipple_repeat     - "GL_LINE_STIPPLE_REPEAT",
+    line_width              - "GL_LINE_WIDTH",
+    map1_grid_segments      - "GL_MAP1_GRID_SEGMENTS",
+    point_size              - "GL_POINT_SIZE",
+    polygon_offset_factor   - "GL_POLYGON_OFFSET_FACTOR",
+    polygon_offset_units    - "GL_POLYGON_OFFSET_UNITS",
+    red_bias                - "GL_RED_BIAS",
+    red_scale               - "GL_RED_SCALE",
+    zoom_x                  - "GL_ZOOM_X",
+    zoom_y                  - "GL_ZOOM_Y"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum single_float_state_flags[] = {
-        GL_ACCUM_CLEAR_VALUE,
-        GL_ALPHA_BIAS,
-        GL_ALPHA_SCALE,
-        GL_BLUE_BIAS,
-        GL_BLUE_SCALE,
-        GL_CURRENT_INDEX,
-        GL_CURRENT_RASTER_DISTANCE,
-        GL_CURRENT_RASTER_INDEX,
-        GL_DEPTH_BIAS,
-        GL_DEPTH_SCALE,
-        GL_FOG_DENSITY,
-        GL_FOG_END,
-        GL_FOG_INDEX,
-        GL_FOG_START,
-        GL_GREEN_BIAS,
-        GL_GREEN_SCALE,
-        GL_INDEX_CLEAR_VALUE,
-        GL_LINE_STIPPLE_REPEAT,
-        GL_LINE_WIDTH,
-        GL_MAP1_GRID_SEGMENTS,
-        GL_POINT_SIZE,
-        GL_POLYGON_OFFSET_FACTOR,
-        GL_POLYGON_OFFSET_UNITS,
-        GL_RED_BIAS,
-        GL_RED_SCALE,
-        GL_ZOOM_X,
-        GL_ZOOM_Y
-    };
-").
-
-:- func single_float_state_to_int(single_float_state) = int.
-
-single_float_state_to_int(accum_clear_value) = 0.
-single_float_state_to_int(alpha_bias) = 1.
-single_float_state_to_int(alpha_scale) = 2.
-single_float_state_to_int(blue_bias) = 3.
-single_float_state_to_int(blue_scale) = 4.
-single_float_state_to_int(current_index) = 5.
-single_float_state_to_int(current_raster_distance) = 6.
-single_float_state_to_int(current_raster_index) = 7.
-single_float_state_to_int(depth_bias) = 8.
-single_float_state_to_int(depth_scale) = 9.
-single_float_state_to_int(fog_density) = 10.
-single_float_state_to_int(fog_end) = 11.
-single_float_state_to_int(fog_index) = 12.
-single_float_state_to_int(fog_start) = 13.
-single_float_state_to_int(green_bias) = 14.
-single_float_state_to_int(green_scale) = 15.
-single_float_state_to_int(index_clear_value) = 16.
-single_float_state_to_int(line_stipple_repeat) = 17.
-single_float_state_to_int(line_width) = 18.
-single_float_state_to_int(map1_grid_segments) = 19.
-single_float_state_to_int(point_size) = 20.
-single_float_state_to_int(polygon_offset_factor) = 21.
-single_float_state_to_int(polygon_offset_units) = 22.
-single_float_state_to_int(red_bias) = 23.
-single_float_state_to_int(red_scale) = 24.
-single_float_state_to_int(zoom_x) = 25.
-single_float_state_to_int(zoom_y) = 26.
-
-get_float(Param, Value, !IO) :-
-    get_float_2(single_float_state_to_int(Param), Value, !IO).
-
-:- pred get_float_2(int::in, float::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_float_2(Param::in, V::out, IO0::di, IO::uo),
+    get_float(Param::in, V::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLfloat value;
 
-    glGetFloatv(single_integer_state_flags[Param], &value);
+    glGetFloatv((GLenum) Param, &value);
     V = (MR_Float) value;
     IO = IO0;
 ").
@@ -4437,70 +4397,38 @@ get_float(Param, Value, !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum double_float_state_flags[];
-").
+:- pragma foreign_enum("C", double_float_state/0, [
+    aliased_point_size_range - "GL_ALIASED_POINT_SIZE_RANGE",
+    depth_range              - "GL_DEPTH_RANGE",
+    map1_grid_domain         - "GL_MAP1_GRID_DOMAIN",
+    map2_grid_segments       - "GL_MAP2_GRID_SEGMENTS"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum double_float_state_flags[] = {
-        GL_ALIASED_POINT_SIZE_RANGE,
-        GL_DEPTH_RANGE,
-        GL_MAP1_GRID_DOMAIN,
-        GL_MAP2_GRID_SEGMENTS
-    };
-").
-
-:- func double_float_state_to_int(double_float_state) = int.
-
-double_float_state_to_int(aliased_point_size_range) = 0.
-double_float_state_to_int(depth_range) = 1.
-double_float_state_to_int(map1_grid_domain) = 2.
-double_float_state_to_int(map2_grid_segments) = 3.
-
-get_float(Param, V0, V1, !IO) :-
-    get_float_2(double_float_state_to_int(Param), V0, V1, !IO).
-
-:- pred get_float_2(int::in, float::out, float::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    get_float_2(Param::in, V0::out, V1::out, IO0::di, IO::uo),
+    get_float(Param::in, V0::out, V1::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLfloat values[2];
 
-    glGetFloatv(double_float_state_flags[Param], values);
+    glGetFloatv((GLenum) Param, values);
     V0 = (MR_Float) values[0];
     V1 = (MR_Float) values[1];
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum triple_float_state_flags[];
-").
+:- pragma foreign_enum("C", triple_float_state/0, [
+    current_normal - "GL_CURRENT_NORMAL"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum triple_float_state_flags[] = {
-        GL_CURRENT_NORMAL   
-    };
-").
-
-:- func triple_float_state_to_int(triple_float_state) = int.
-
-triple_float_state_to_int(current_normal) = 0.
-
-get_float(Param, Val0, Val1, Val2, !IO) :-
-    get_float_2(triple_float_state_to_int(Param), Val0, Val1, Val2, !IO).
-
-:- pred get_float_2(int::in, float::out, float::out, float::out,
-    io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    get_float_2(Param::in, V0::out, V1::out, V2::out, IO0::di, IO::uo),
+    get_float(Param::in, V0::out, V1::out, V2::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLfloat value[3];
     
-    glGetFloatv(triple_float_state_flags[Param], value);
+    glGetFloatv((GLenum) Param, value);
 
     V0 = (MR_Float) value[0];
     V1 = (MR_Float) value[1];
