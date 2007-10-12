@@ -1,4 +1,5 @@
 .INSTALL.in
+.README.in
 .cvsignore
 config.sub
 config.guess
