@@ -3113,74 +3113,35 @@ fog(fog_color(R, G, B, A), !IO) :-
     IO = IO0;
 ").
 
-:- func blend_src_to_int(blend_src) = int.
+:- pragma foreign_enum("C", blend_src/0, [
+    zero                - "GL_ZERO",
+    one                 - "GL_ONE",
+    dst_color           - "GL_DST_COLOR",
+    one_minus_dst_color - "GL_ONE_MINUS_DST_COLOR",
+    src_alpha           - "GL_SRC_ALPHA",
+    one_minus_src_alpha - "GL_ONE_MINUS_SRC_ALPHA",
+    dst_alpha           - "GL_DST_ALPHA",
+    one_minus_dst_alpha - "GL_ONE_MINUS_DST_ALPHA",
+    src_alpha_saturate  - "GL_SRC_ALPHA_SATURATE"
+]).
 
-blend_src_to_int(zero) = 0.
-blend_src_to_int(one)  = 1.
-blend_src_to_int(dst_color) = 2.
-blend_src_to_int(one_minus_dst_color) = 3.
-blend_src_to_int(src_alpha) = 4.
-blend_src_to_int(one_minus_src_alpha) = 5.
-blend_src_to_int(dst_alpha) = 6.
-blend_src_to_int(one_minus_dst_alpha) = 7.
-blend_src_to_int(src_alpha_saturate) = 8.
+:- pragma foreign_enum("C", blend_dst/0, [
+    zero                - "GL_ZERO",
+    one                 - "GL_ONE",
+    src_color           - "GL_SRC_COLOR",
+    one_minus_src_color - "GL_ONE_MINUS_SRC_COLOR",
+    src_alpha           - "GL_SRC_ALPHA",
+    one_minus_src_alpha - "GL_ONE_MINUS_SRC_ALPHA",
+    dst_alpha           - "GL_DST_ALPHA",
+    one_minus_dst_alpha - "GL_ONE_MINUS_DST_ALPHA"
+]).
 
-:- pragma foreign_decl("C", "
-    extern const GLenum blend_src_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum blend_src_flags[] = {
-        GL_ZERO,
-        GL_ONE,
-        GL_DST_COLOR,
-        GL_ONE_MINUS_DST_COLOR,
-        GL_SRC_ALPHA,
-        GL_ONE_MINUS_SRC_ALPHA,
-        GL_DST_ALPHA,
-        GL_ONE_MINUS_DST_ALPHA,
-        GL_SRC_ALPHA_SATURATE
-    };
-").
-
-:- func blend_dst_to_int(blend_dst) = int.
-
-blend_dst_to_int(zero) = 0.
-blend_dst_to_int(one)  = 1.
-blend_dst_to_int(src_color) = 2.
-blend_dst_to_int(one_minus_src_color) = 3.
-blend_dst_to_int(src_alpha) = 4.
-blend_dst_to_int(one_minus_src_alpha) = 5.
-blend_dst_to_int(dst_alpha) = 6.
-blend_dst_to_int(one_minus_dst_alpha) = 7.
-
-:- pragma foreign_decl("C", "
-    extern const GLenum blend_dst_flags[];
-").
-
-:- pragma foreign_code("C", "
-    const GLenum blend_dst_flags[] = {
-        GL_ZERO,
-        GL_ONE,
-        GL_SRC_COLOR,
-        GL_ONE_MINUS_SRC_COLOR,
-        GL_SRC_ALPHA,
-        GL_ONE_MINUS_SRC_ALPHA,
-        GL_DST_ALPHA,
-        GL_ONE_MINUS_DST_ALPHA
-    };
-").
-
-blend_func(Src, Dst, !IO) :-
-    blend_func_2(blend_src_to_int(Src), blend_dst_to_int(Dst), !IO).
-
-:- pred blend_func_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    blend_func_2(Src::in, Dst::in, IO0::di, IO::uo),
+    blend_func(Src::in, Dst::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness], 
 "
-    glBlendFunc(blend_src_flags[Src], blend_dst_flags[Dst]);
+    glBlendFunc((GLenum) Src, (GLenum) Dst);
     IO = IO0;
 ").
 
@@ -4157,60 +4118,32 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum single_boolean_state_flags[];
-").
+:- pragma foreign_enum("C", single_boolean_state/0, [
+    current_raster_position_valid - "GL_CURRENT_RASTER_POSITION_VALID",
+    depth_writemask               - "GL_DEPTH_WRITEMASK",
+    double_buffer                 - "GL_DOUBLEBUFFER",
+    edge_flag                     - "GL_EDGE_FLAG",
+    index_mode                    - "GL_INDEX_MODE",
+    light_model_local_viewer      - "GL_LIGHT_MODEL_LOCAL_VIEWER",
+    light_model_two_side          - "GL_LIGHT_MODEL_TWO_SIDE",
+    map_color                     - "GL_MAP_COLOR",
+    map_stencil                   - "GL_MAP_STENCIL",
+    pack_lsb_first                - "GL_PACK_LSB_FIRST",
+    pack_swap_bytes               - "GL_PACK_SWAP_BYTES",
+    rgba_mode                     - "GL_RGBA_MODE",
+    stereo                        - "GL_STEREO",
+    unpack_lsb_first              - "GL_UNPACK_LSB_FIRST",
+    unpack_swap_bytes             - "GL_UNPACK_SWAP_BYTES"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum single_boolean_state_flags[] = {
-        GL_CURRENT_RASTER_POSITION_VALID,
-        GL_DEPTH_WRITEMASK,
-        GL_DOUBLEBUFFER,
-        GL_EDGE_FLAG,
-        GL_INDEX_MODE,
-        GL_LIGHT_MODEL_LOCAL_VIEWER,
-        GL_LIGHT_MODEL_TWO_SIDE,
-        GL_MAP_COLOR,
-        GL_MAP_STENCIL,
-        GL_PACK_LSB_FIRST,
-        GL_PACK_SWAP_BYTES,
-        GL_RGBA_MODE,
-        GL_STEREO,
-        GL_UNPACK_LSB_FIRST,
-        GL_UNPACK_SWAP_BYTES
-    };
-").
-
-:- func single_boolean_state_to_int(single_boolean_state) = int.
-
-single_boolean_state_to_int(current_raster_position_valid) = 0.
-single_boolean_state_to_int(depth_writemask) = 1.
-single_boolean_state_to_int(double_buffer) = 2.
-single_boolean_state_to_int(edge_flag) = 3.
-single_boolean_state_to_int(index_mode) = 4.
-single_boolean_state_to_int(light_model_local_viewer) = 5.
-single_boolean_state_to_int(light_model_two_side) = 6.
-single_boolean_state_to_int(map_color) = 7.
-single_boolean_state_to_int(map_stencil) = 8.
-single_boolean_state_to_int(pack_lsb_first) = 9.
-single_boolean_state_to_int(pack_swap_bytes) = 10.
-single_boolean_state_to_int(rgba_mode) = 11.
-single_boolean_state_to_int(stereo) = 12.
-single_boolean_state_to_int(unpack_lsb_first) = 13.
-single_boolean_state_to_int(unpack_swap_bytes) = 14.
-
-get_boolean(Param, Value, !IO) :-
-    get_boolean_2(single_boolean_state_to_int(Param), Value, !IO).
-
-:- pred get_boolean_2(int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_boolean_2(Param::in, Value::out, IO0::di, IO::uo),
+    get_boolean(Param::in, Value::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLboolean value;
 
-    glGetBooleanv(single_boolean_state_flags[Param], &value);
+    glGetBooleanv((GLenum) Param, &value);
     
     if (value == GL_TRUE) {
         Value = MR_YES;
@@ -4221,34 +4154,19 @@ get_boolean(Param, Value, !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum quad_boolean_state_flags[];
-").
+:- pragma foreign_enum("C", quad_boolean_state/0, [
+    color_writemask - "GL_COLOR_WRITEMASK"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum quad_boolean_state_flags[] = {
-        GL_COLOR_WRITEMASK
-    };
-").
-
-:- func quad_boolean_state_to_int(quad_boolean_state) = int.
-
-quad_boolean_state_to_int(color_writemask) = 0.
-
-get_boolean(Param, V0, V1, V2, V3, !IO) :-
-    get_boolean_2(quad_boolean_state_to_int(Param), V0, V1, V2, V3, !IO).
-
-:- pred get_boolean_2(int::in, bool::out, bool::out, bool::out, bool::out,
-    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_boolean_2(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di,
-        IO::uo),
+    get_boolean(Param::in, V0::out, V1::out, V2::out, V3::out,
+        IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLboolean values[4];
 
-    glGetBooleanv(quad_boolean_state_flags[Param], values);
+    glGetBooleanv((GLenum) Param, values);
 
     if (values[0] == GL_TRUE) {
         V0 = MR_YES;
@@ -4502,32 +4420,18 @@ get_float(Param, Value, !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum double_integer_state_flags[];
-").
+:- pragma foreign_enum("C", double_integer_state/0, [
+    max_viewport_dims - "GL_MAX_VIEWPORT_DIMS"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum double_integer_state_flags[] = {
-        GL_MAX_VIEWPORT_DIMS    
-    };
-").
-
-:- func double_integer_state_to_int(double_integer_state) = int.
-
-double_integer_state_to_int(max_viewport_dims) = 0.
-
-get_integer(Param, V0, V1, !IO) :-
-    get_integer_2(double_integer_state_to_int(Param), V0, V1, !IO).
-
-:- pred get_integer_2(int::in, int::out, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_integer_2(Param::in, V0::out, V1::out, IO0::di, IO::uo),
+    get_integer(Param::in, V0::out, V1::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint values[2];
 
-    glGetIntegerv(double_integer_state_flags[Param], values);
+    glGetIntegerv((GLenum) Param, values);
     V0 = (MR_Integer) values[0];
     V1 = (MR_Integer) values[1];
     IO = IO0;
@@ -4631,39 +4535,22 @@ get_float(Param, Val0, Val1, Val2, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-:- pragma foreign_decl("C", "
-    extern const GLenum string_name_flags[];
-").
+:- pragma foreign_enum("C", string_name/0, [
+    vendor     - "GL_VENDOR",
+    renderer   - "GL_RENDERER",
+    version    - "GL_VERSION",
+    extensions - "GL_EXTENSIONS"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum string_name_flags[] = {
-        GL_VENDOR,
-        GL_RENDERER,
-        GL_VERSION,
-        GL_EXTENSIONS
-    };
-").
-
-:- func string_name_to_int(string_name) = int.
-
-string_name_to_int(vendor)     = 0.
-string_name_to_int(renderer)   = 1.
-string_name_to_int(version)    = 2.
-string_name_to_int(extensions) = 3.
-
-get_string(StringName, Result, !IO) :-
-    get_string_2(string_name_to_int(StringName), Result, !IO).
-
-:- pred get_string_2(int::in, maybe(string)::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_string_2(StrFlag::in, Result::out, IO0::di, IO::uo),
+    get_string(StrFlag::in, Result::out, IO0::di, IO::uo),
     [may_call_mercury, tabled_for_io, promise_pure, terminates,
         will_not_throw_exception],
 "
     const GLubyte *c_str;
     MR_String mer_str;
 
-    c_str = glGetString(string_name_flags[StrFlag]);
+    c_str = glGetString((GLenum) StrFlag);
 
     if (c_str == NULL) {
         Result = MOGL_get_string_no();
