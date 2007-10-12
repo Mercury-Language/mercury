@@ -51,19 +51,6 @@ License version 2:
 The files in the `samples' directory are either public domain, or
 distributed under the GNU General Public License.
 
-Some of the files in the `extras' subdirectory (which is now distributed
-separately in the `mercury-extras' package) have fairly restrictive
-copyright licences:  
-
-	The `Togl' library in extras/graphics/mtogl/togl.* is copyright by
-	Brian Paul and Ben Bederson; see the file
-	extras/graphics/mtogl/LICENSE.TOGL.
-
-	The Tk files in extras/graphics/mtogl/tk.* are copyright
-	by the Regents of the University of California,
-	Sun Microsystems, Inc., and other parties. 
-	See the file extras/graphics/mtogl/LICENSE.TK.
-
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
 

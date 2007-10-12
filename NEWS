@@ -240,6 +240,9 @@ Changes to the extras distribution:
 * The extras distribution now includes a binding to the Allegro and
   AllegroGL game programming libraries.
 
+* `mtogl', the Mercury binding to the Tk widget `togl' has been removed
+  from the distribution.
+
 Changes to the Mercury debugger:
 
 * A `track' mdb command has been added.

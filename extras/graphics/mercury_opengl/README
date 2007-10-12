@@ -1,51 +1,28 @@
-
 This directory contains the package `mercury_opengl', which is a Mercury
-binding for OpenGL  and the package `mtogl' which is a tk widget for 
-creating and managing OpenGL rendering contexts.
+binding for OpenGL.
 
 For `mercury_opengl', you will need:
 	- the Mercury system
 	- an OpenGL implementation such as Mesa.
 
 In order to use it you will also need some way for your program to
-create and manage rendering contexts (mtogl is one such way).
+create and manage rendering contexts.  The Mercury GLUT binding provides
+one such way and Mercury Allegro binding provides another; both of these
+bindings are available as part of the Mercury extras distribution.
 
-For `mtogl' you will need:
-	- the Mercury system.
-	- Tcl/Tk (Tk 4.0 or later)
-	- the `mercury_tcltk' package
-
-NOTES:
-	- You must link `mtogl' against the same version of Tcl/Tk as the
-	  `mercury_tcltk' package.
-	- mtogl will probably not work versions of Tcl/Tk greater than 8.0.
-
-This directory contains the following modules.
+This directory contains the following files:
 	
 	mglu.m	- provides Mercury bindings to (some of) the GLU library.
 	mogl.m	- provides Mercury bindings to (some of) Open GL 1.1
-	mtogl.m	- provides a Mercury binding to Togl, a
-			  tcl/tk OpenGL widget.
-	
-	togl.c, togl.h  - Togl 1.5
-
-	other .c and .h - Internals of Tk.
-	files
 
 See the file Mmakefile for instructions on how to build the OpenGL binding.
 The file Mmakefile.MacOSX contains instructions on how to build the binding
 on systems with MacOS X.
-The file Mmakefile.mtogl contains instructions on how to build mtogl.
 
 See HOWTO for details on how to link the package in with your own
 Mercury programs.
 
 	The mercury_opengl package is free software, but is Copyright
-	(C) 1997-1998 The University of Melbourne. It is distributed
+	(C) 1997-2007 The University of Melbourne. It is distributed
 	under the terms of the GNU Library General Public License.
 	See the file COPYING.LIB for copying permission.
-
-See LICENSE.TOGL to see the licensing conditions for Togl.
-
-See LICENSE.TK to see the licensing conditions for Tk.
-
