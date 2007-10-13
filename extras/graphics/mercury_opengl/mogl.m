@@ -4195,145 +4195,75 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     IO = IO0;
 ").
 
-:- pragma foreign_decl("C", "
-    extern const GLenum single_integer_state_flags[];
-").
+:- pragma foreign_enum("C", single_integer_state/0, [
+    accum_alpha_bits              - "GL_ACCUM_ALPHA_BITS",   
+    accum_blue_bits               - "GL_ACCUM_BLUE_BITS",
+    accum_green_bits              - "GL_ACCUM_GREEN_BITS",
+    accum_red_bits                - "GL_ACCUM_RED_BITS",
+    alpha_bits                    - "GL_ALPHA_BITS",
+    alpha_test_ref                - "GL_ALPHA_TEST_REF",
+    attrib_stack_depth            - "GL_ATTRIB_STACK_DEPTH",
+    aux_buffers                   - "GL_AUX_BUFFERS",
+    blue_bits                     - "GL_BLUE_BITS",
+    client_attrib_stack_depth     - "GL_CLIENT_ATTRIB_STACK_DEPTH",
+    color_array_size              - "GL_COLOR_ARRAY_SIZE",
+    color_array_stride            - "GL_COLOR_ARRAY_STRIDE",
+    depth_bits                    - "GL_DEPTH_BITS",
+    depth_clear_value             - "GL_DEPTH_CLEAR_VALUE",
+    edge_flag_array_stride        - "GL_EDGE_FLAG_ARRAY_STRIDE",
+    feedback_buffer_size          - "GL_FEEDBACK_BUFFER_SIZE",
+    green_bits                    - "GL_GREEN_BITS",
+    index_array_stride            - "GL_INDEX_ARRAY_STRIDE",
+    index_bits                    - "GL_INDEX_BITS",
+    index_offset                  - "GL_INDEX_OFFSET",
+    index_shift                   - "GL_INDEX_SHIFT",
+    line_stipple_repeat           - "GL_LINE_STIPPLE_REPEAT",
+    list_base                     - "GL_LIST_BASE",
+    list_index                    - "GL_LIST_INDEX",
+    max_attrib_stack_depth        - "GL_MAX_ATTRIB_STACK_DEPTH",
+    max_client_attrib_stack_depth - "GL_MAX_CLIENT_ATTRIB_STACK_DEPTH",
+    max_clip_planes               - "GL_MAX_CLIP_PLANES",
+    max_eval_order                - "GL_MAX_EVAL_ORDER",
+    max_lights                    - "GL_MAX_LIGHTS",
+    max_list_nesting              - "GL_MAX_LIST_NESTING",
+    max_modelview_stack_depth     - "GL_MAX_MODELVIEW_STACK_DEPTH",
+    max_name_stack_depth          - "GL_MAX_NAME_STACK_DEPTH",
+    max_pixel_map_table           - "GL_MAX_PIXEL_MAP_TABLE",
+    max_projection_stack_depth    - "GL_MAX_PROJECTION_STACK_DEPTH",
+    max_texture_size              - "GL_MAX_TEXTURE_SIZE",
+    max_texture_stack_depth       - "GL_MAX_TEXTURE_STACK_DEPTH",
+    modelview_stack_depth         - "GL_MODELVIEW_STACK_DEPTH",
+    name_stack_depth              - "GL_NAME_STACK_DEPTH",
+    normal_array_stride           - "GL_NORMAL_ARRAY_STRIDE",
+    pack_alignment                - "GL_PACK_ALIGNMENT",
+    pack_row_length               - "GL_PACK_ROW_LENGTH",
+    pack_skip_rows                - "GL_PACK_SKIP_ROWS",
+    projection_stack_depth        - "GL_PROJECTION_STACK_DEPTH",
+    red_bits                      - "GL_RED_BITS",
+    selection_buffer_size         - "GL_SELECTION_BUFFER_SIZE",
+    stencil_bits                  - "GL_STENCIL_BITS",
+    stencil_clear_value           - "GL_STENCIL_CLEAR_VALUE",
+    stencil_ref                   - "GL_STENCIL_REF",
+    subpixel_bits                 - "GL_SUBPIXEL_BITS",
+    texture_coord_array_size      - "GL_TEXTURE_COORD_ARRAY_SIZE",
+    texture_coord_array_stride    - "GL_TEXTURE_COORD_ARRAY_STRIDE",
+    texture_stack_depth           - "GL_TEXTURE_STACK_DEPTH",
+    unpack_alignment              - "GL_UNPACK_ALIGNMENT",
+    unpack_row_length             - "GL_UNPACK_ROW_LENGTH",
+    unpack_skip_pixels            - "GL_UNPACK_SKIP_PIXELS",
+    unpack_skip_rows              - "GL_UNPACK_SKIP_ROWS",
+    vertex_array_size             - "GL_VERTEX_ARRAY_SIZE",
+    vertex_array_stride           - "GL_VERTEX_ARRAY_STRIDE"
+]).
 
-:- pragma foreign_code("C", "
-    const GLenum single_integer_state_flags[] = {
-        GL_ACCUM_ALPHA_BITS,
-        GL_ACCUM_BLUE_BITS,
-        GL_ACCUM_GREEN_BITS,
-        GL_ACCUM_RED_BITS,
-        GL_ALPHA_BITS,
-        GL_ALPHA_TEST_REF,
-        GL_ATTRIB_STACK_DEPTH,
-        GL_AUX_BUFFERS,
-        GL_BLUE_BITS,
-        GL_CLIENT_ATTRIB_STACK_DEPTH,
-        GL_COLOR_ARRAY_SIZE,
-        GL_COLOR_ARRAY_STRIDE,
-        GL_DEPTH_BITS,
-        GL_DEPTH_CLEAR_VALUE,
-        GL_EDGE_FLAG_ARRAY_STRIDE,
-        GL_FEEDBACK_BUFFER_SIZE,
-        GL_GREEN_BITS,
-        GL_INDEX_ARRAY_STRIDE,
-        GL_INDEX_BITS,
-        GL_INDEX_OFFSET,
-        GL_INDEX_OFFSET,
-        GL_INDEX_SHIFT,
-        GL_LINE_STIPPLE_REPEAT,
-        GL_LIST_BASE,
-        GL_LIST_INDEX,
-        GL_MAX_ATTRIB_STACK_DEPTH,
-        GL_MAX_CLIENT_ATTRIB_STACK_DEPTH,
-        GL_MAX_CLIP_PLANES,
-        GL_MAX_EVAL_ORDER,
-        GL_MAX_LIGHTS,
-        GL_MAX_LIST_NESTING,
-        GL_MAX_MODELVIEW_STACK_DEPTH,
-        GL_MAX_NAME_STACK_DEPTH,
-        GL_MAX_PIXEL_MAP_TABLE,
-        GL_MAX_PROJECTION_STACK_DEPTH,
-        GL_MAX_TEXTURE_SIZE,
-        GL_MAX_TEXTURE_STACK_DEPTH,
-        GL_NAME_STACK_DEPTH,
-        GL_NORMAL_ARRAY_STRIDE,
-        GL_PACK_ALIGNMENT,
-        GL_PACK_ROW_LENGTH,
-        GL_PACK_SKIP_ROWS,
-        GL_PROJECTION_STACK_DEPTH,
-        GL_RED_BITS,
-        GL_SELECTION_BUFFER_SIZE,
-        GL_STENCIL_BITS,
-        GL_STENCIL_CLEAR_VALUE,
-        GL_STENCIL_REF,
-        GL_SUBPIXEL_BITS,
-        GL_TEXTURE_COORD_ARRAY_SIZE,
-        GL_TEXTURE_COORD_ARRAY_STRIDE,
-        GL_TEXTURE_STACK_DEPTH,
-        GL_UNPACK_ALIGNMENT,
-        GL_UNPACK_SKIP_PIXELS,
-        GL_UNPACK_SKIP_ROWS,
-        GL_VERTEX_ARRAY_SIZE,
-        GL_VERTEX_ARRAY_STRIDE
-    };
-").
-
-:- func single_integer_state_to_int(single_integer_state) = int.
-
-single_integer_state_to_int(accum_alpha_bits) = 0.
-single_integer_state_to_int(accum_blue_bits) = 1.
-single_integer_state_to_int(accum_green_bits) = 2.
-single_integer_state_to_int(accum_red_bits) = 3.
-single_integer_state_to_int(alpha_bits) = 4.
-single_integer_state_to_int(alpha_test_ref) = 5.
-single_integer_state_to_int(attrib_stack_depth) = 6.
-single_integer_state_to_int(aux_buffers) = 7.
-single_integer_state_to_int(blue_bits) = 8.
-single_integer_state_to_int(client_attrib_stack_depth) = 9.
-single_integer_state_to_int(color_array_size) = 10.
-single_integer_state_to_int(color_array_stride) = 11.
-single_integer_state_to_int(depth_bits) = 12.
-single_integer_state_to_int(depth_clear_value) = 13.
-single_integer_state_to_int(edge_flag_array_stride) = 14.
-single_integer_state_to_int(feedback_buffer_size) = 15.
-single_integer_state_to_int(green_bits) = 16.
-single_integer_state_to_int(index_array_stride) = 17.
-single_integer_state_to_int(index_bits) = 18.
-single_integer_state_to_int(index_offset) = 19.
-single_integer_state_to_int(index_shift) = 20.
-single_integer_state_to_int(line_stipple_repeat) = 21.
-single_integer_state_to_int(list_base) = 22.
-single_integer_state_to_int(list_index) = 23.
-single_integer_state_to_int(max_attrib_stack_depth) = 24.
-single_integer_state_to_int(max_client_attrib_stack_depth) = 25.
-single_integer_state_to_int(max_clip_planes) = 26.
-single_integer_state_to_int(max_eval_order) = 27.
-single_integer_state_to_int(max_lights) = 28.
-single_integer_state_to_int(max_list_nesting) = 29.
-single_integer_state_to_int(max_modelview_stack_depth) = 30.
-single_integer_state_to_int(max_name_stack_depth) = 31.
-single_integer_state_to_int(max_pixel_map_table) = 32.
-single_integer_state_to_int(max_projection_stack_depth) = 33.
-single_integer_state_to_int(max_texture_size) = 34.
-single_integer_state_to_int(max_texture_stack_depth) = 35.
-single_integer_state_to_int(modelview_stack_depth) = 36.
-single_integer_state_to_int(name_stack_depth) = 37.
-single_integer_state_to_int(normal_array_stride) = 38.
-single_integer_state_to_int(pack_alignment) = 39.
-single_integer_state_to_int(pack_row_length) = 40.
-single_integer_state_to_int(pack_skip_rows) = 41.
-single_integer_state_to_int(projection_stack_depth) = 42.
-single_integer_state_to_int(red_bits) = 43.
-single_integer_state_to_int(selection_buffer_size) = 44.
-single_integer_state_to_int(stencil_bits) = 45.
-single_integer_state_to_int(stencil_clear_value) = 46.
-single_integer_state_to_int(stencil_ref) = 47.
-single_integer_state_to_int(subpixel_bits) = 48.
-single_integer_state_to_int(texture_coord_array_size) = 49.
-single_integer_state_to_int(texture_coord_array_stride) = 50.
-single_integer_state_to_int(texture_stack_depth) = 51.
-single_integer_state_to_int(unpack_alignment) = 52.
-single_integer_state_to_int(unpack_row_length) = 53.
-single_integer_state_to_int(unpack_skip_pixels) = 54.
-single_integer_state_to_int(unpack_skip_rows) = 55.
-single_integer_state_to_int(vertex_array_size) = 56.
-single_integer_state_to_int(vertex_array_stride) = 57.
-
-get_integer(Param, Value, !IO) :-
-    get_integer_2(single_integer_state_to_int(Param), Value, !IO).
-
-:- pred get_integer_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_integer_2(Param::in, Value::out, IO0::di, IO::uo),
+    get_integer(Param::in, Value::out, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint value;
     
-    glGetIntegerv(single_integer_state_flags[Param], &value);
+    glGetIntegerv((GLenum) Param, &value);
     Value = (MR_Integer) value;
     IO = IO0;
 ").
