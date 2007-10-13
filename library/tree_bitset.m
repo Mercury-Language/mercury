@@ -500,23 +500,21 @@ index_to_enum(Index) = Elem :-
 % here thus guarantees that we never return any malformed tree_bitsets.
 %
 % If you want to use the integrity checking version of wrap_tree_bitset,
-% you'll probably also want to use the integrity checking version of equal,
-% and enable the integrity checking code in expand_range. Search for the
-% keyword CHECK_INTEGRITY.
+% then you will need to compile this module with the following flag:
+%           --trace-flag="tree-bitset-integrity"
 
 :- func wrap_tree_bitset(node_list) = tree_bitset(T).
 :- pragma inline(wrap_tree_bitset/1).
 
 wrap_tree_bitset(NodeList) = Set :-
+    trace [compile_time(flag("tree-bitset-interity"))] (
+        ( integrity(no, NodeList) = no -> 
+            error("wrap_tree_bitset: integrity failed")
+        ;
+            true
+        )
+    ),
     Set = tree_bitset(NodeList).
-
-% CHECK_INTEGRITY
-% wrap_tree_bitset(NodeList) = Set :-
-%     ( integrity(no, NodeList) = no ->
-%         error("wrap_tree_bitset: integrity failed")
-%     ;
-%         Set = tree_bitset(NodeList)
-%     ).
 
 :- func integrity(maybe(pair(int)), node_list) = bool.
 
@@ -683,17 +681,19 @@ range_of_parent_node(NodeOffset, NodeLevel,
 
 expand_range(Index, SubNodes, CurLevel, CurInitOffset, CurLimitOffset,
         TopNode, TopLevel) :-
-% CHECK_INTEGRITY
-%   (
-%       Range = unchecked_left_shift(bits_per_int, CurLevel * bits_per_level),
-%       ( CurLimitOffset - CurInitOffset = Range ->
-%           true
-%       ;
-%           error("tree_bitset.m: expand_range: bad range for level")
-%       )
-%   ;
-%       true
-%   ),
+    trace [compile_time(flag("tree-bitset-integrity"))] (
+        (
+            Range = unchecked_left_shift(bits_per_int,
+                CurLevel * bits_per_level),
+            ( CurLimitOffset - CurInitOffset = Range ->
+                true
+            ;    
+                error("tree_bitset.m: expand_range: bad range for level")
+            )
+        ;
+            true
+        )
+    ),
     CurNode = interior_node(CurInitOffset, CurLimitOffset, SubNodes),
     range_of_parent_node(CurInitOffset, CurLevel,
         ParentInitOffset, ParentLimitOffset),
@@ -830,24 +830,22 @@ init = wrap_tree_bitset(leaf_list([])).
 empty(init).
 
 equal(SetA, SetB) :-
+    trace [compile_time(flag("tree-bitset-interity"))] (
+        (
+            ListA = to_sorted_list(SetA),
+            ListB = to_sorted_list(SetB),
+            (
+                 SetA = SetB
+            <=>
+                 ListA = ListB
+            )
+         ->
+             true
+        ;
+             error("tree_bitset.m: equal: set and list equality differ")
+        )
+    ),
     SetA = SetB.
-
-% CHECK_INTEGRITY
-% equal(SetA, SetB) :-
-%     (
-%         to_sorted_list(SetA, ListA),
-%         to_sorted_list(SetB, ListB),
-%         (
-%             SetA = SetB
-%         <=>
-%             ListA = ListB
-%         )
-%     ->
-%         true
-%     ;
-%         error("tree_bitset.m: equal: set and list equality differ")
-%     )
-%     SetA = SetB.
 
 %-----------------------------------------------------------------------------%
 
