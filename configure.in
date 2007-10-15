@@ -2831,7 +2831,7 @@ if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 	compiler and library will be rebuilt with new grade
 	installation may take a long time")
 		find library compiler browser mdbcomp analysis \
-			profiler deep_profiler \
+			profiler deep_profiler ssdb slice \
 			-name \*.c -o -name \*.c_date | \
 			xargs rm > /dev/null 2>&1
 	fi
