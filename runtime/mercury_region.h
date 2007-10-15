@@ -18,7 +18,7 @@
 #include "mercury_types.h"
 
 #ifdef MR_USE_REGIONS
-#define MR_RBMM_DEBUG
+
 /*
 ** See the documentation of MR_RBMM_DEBUG and MR_RBMM_PROFILING in
 ** mercury_conf_param.h.
