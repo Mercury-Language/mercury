@@ -2563,27 +2563,18 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
     rgba16              - "GL_RGBA16"
 ]).
 
-:- pragma foreign_decl("C", "
-    extern const GLenum texture_parameter_flags[];
-").
+    % NOTE: GL_TEXTURE_BORDER_COLOR, GL_TEXTURE_PRIORITY, GL_MIN_FILTER
+    %       and GL_MAG_FILTER are handled separately, so we do not include
+    %       them here.
+    %
+:- type texture_parameter_flag
+    --->    texture_wrap_s
+    ;       texture_wrap_t.
 
-    % NOTE: if you alter this array make sure that you change 
-    % mogl.tex_parameter/5 accordingly.
-:- pragma foreign_code("C", "
-    const GLenum texture_parameter_flags[] = {
-        GL_TEXTURE_WRAP_S,
-        GL_TEXTURE_WRAP_T,
-        GL_TEXTURE_MIN_FILTER,
-        GL_TEXTURE_MAG_FILTER
-        /*
-        ** NOTE: these two cases are handled separately at
-        ** the moment so we don't use them here.
-        **
-        ** GL_TEXTURE_BORDER_COLOR,
-        ** GL_TEXTURE_PRIORITY
-        */
-    };
-").
+:- pragma foreign_enum("C", texture_parameter_flag/0, [
+    texture_wrap_s     - "GL_TEXTURE_WRAP_S",
+    texture_wrap_t     - "GL_TEXTURE_WRAP_T"
+]).
 
 :- pragma foreign_enum("C", wrap_mode/0, [
     clamp  - "GL_CLAMP",
@@ -2608,51 +2599,48 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
     % texture_parameter_flags array.
     %
 tex_parameter(Target, wrap_s(WrapMode), !IO) :- 
-    tex_parameter_wrap(Target, 0, WrapMode, !IO).
+    tex_parameter_wrap(Target, texture_wrap_s, WrapMode, !IO).
 tex_parameter(Target, wrap_t(WrapMode), !IO) :-
-    tex_parameter_wrap(Target, 1, WrapMode, !IO).
+    tex_parameter_wrap(Target, texture_wrap_t, WrapMode, !IO).
 tex_parameter(Target, min_filter(FilterMethod), !IO) :-
-    tex_parameter_min_filter(Target, 2, FilterMethod, !IO).
+    tex_parameter_min_filter(Target, FilterMethod, !IO).
 tex_parameter(Target, mag_filter(FilterMethod), !IO) :-
-    tex_parameter_mag_filter(Target, 2, FilterMethod, !IO).
+    tex_parameter_mag_filter(Target, FilterMethod, !IO).
 tex_parameter(Target, border_color(R, G, B, A), !IO) :-
     tex_parameter_border_color(Target, R, G, B, A, !IO).
 tex_parameter(Target, priority(Priority), !IO) :-
     tex_parameter_priority(Target, Priority, !IO).
 
-:- pred tex_parameter_wrap(texture_target::in, int::in, wrap_mode::in,
-    io::di, io::uo) is det.
+:- pred tex_parameter_wrap(texture_target::in, texture_parameter_flag::in,
+    wrap_mode::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_parameter_wrap(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexParameteri((GLenum) Target, texture_parameter_flags[Pname],
-        (GLenum) Param);
+    glTexParameteri((GLenum) Target, (GLenum) Pname, (GLenum) Param);
     IO = IO0;
 ").
 
-:- pred tex_parameter_min_filter(texture_target::in, int::in,
-    min_filter_method::in, io::di, io::uo) is det.
+:- pred tex_parameter_min_filter(texture_target::in, min_filter_method::in,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_parameter_min_filter(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+    tex_parameter_min_filter(Target::in, Param::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexParameteri((GLenum) Target, texture_parameter_flags[Pname],
-        (GLenum) Param);
+    glTexParameteri((GLenum) Target, GL_TEXTURE_MIN_FILTER, (GLenum) Param);
     IO = IO0;
 ").
 
-:- pred tex_parameter_mag_filter(texture_target::in, int::in,
-    mag_filter_method::in, io::di, io::uo) is det.
+:- pred tex_parameter_mag_filter(texture_target::in, mag_filter_method::in,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_parameter_mag_filter(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+    tex_parameter_mag_filter(Target::in, Param::in, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glTexParameteri((GLenum) Target, texture_parameter_flags[Pname],
-        (GLenum) Param);
+    glTexParameteri((GLenum) Target, GL_TEXTURE_MAG_FILTER, (GLenum) Param);
     IO = IO0;
 ").
 
