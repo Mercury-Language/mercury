@@ -44,6 +44,7 @@
 :- module pretty_printer.
 :- interface.
 
+:- import_module deconstruct.
 :- import_module list.
 :- import_module io.
 :- import_module stream.
@@ -178,10 +179,13 @@
     %   MaxLines lines, fomatting format_univ(_) docs using specialised
     %   formatters Formatters starting with pretty-printer limits Limit.
     %
-:- pred format(Stream::in, formatter_map::in, int::in, int::in,
-        formatting_limit::in, doc::in, State::di, State::uo)
-        is det
+:- pred write_doc_to_stream(Stream, noncanon_handling, formatter_map, int, int,
+        formatting_limit, doc, State, State)
         <= stream.writer(Stream, string, State).
+:- mode write_doc_to_stream(in, in(canonicalize), in, in, in, in, in,
+        di, uo) is det.
+:- mode write_doc_to_stream(in, in(include_details_cc), in, in, in, in, in,
+        di, uo) is cc_multi.
 
     % Convenience predicates.  A user-configurable set of type-specific
     % formatters and formatting parameters are attached to the I/O state.
@@ -216,13 +220,14 @@
 :- pred get_default_params(pp_params::out, io::di, io::uo) is det.
 :- pred set_default_params(pp_params::in, io::di, io::uo) is det.
 
-    % format(Doc, !IO)
-    % format(FileStream, Doc, !IO)
+    % write_doc(Doc, !IO)
+    % write_doc(FileStream, Doc, !IO)
     %   Format Doc to io.stdout_stream or FileStream respectively, using
-    %   the default formatter_map and pp_params.
+    %   write_doc_to stream, with include_details_cc, the default
+    %   formatter_map, and the default pp_params.
     %
-:- pred format(doc::in, io::di, io::uo) is det.
-:- pred format(io.output_stream::in, doc::in, io::di, io::uo) is det.
+:- pred write_doc(doc::in, io::di, io::uo) is det.
+:- pred write_doc(io.output_stream::in, doc::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -326,12 +331,13 @@ format_arg(Doc) =
 
 %-----------------------------------------------------------------------------%
 
-format(Stream, FMap, LineWidth, MaxLines, Limit, Doc, !IO) :-
+write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, MaxLines, Limit,
+        Doc, !IO) :-
     Pri = ops.max_priority(ops.init_mercury_op_table),
     RemainingWidth = LineWidth,
     Indents = [],
-    format(Stream, FMap, LineWidth, [Doc], RemainingWidth, _, Indents, _,
-        MaxLines, _, Limit, _, Pri, _, !IO).
+    write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc],
+        RemainingWidth, _, Indents, _, MaxLines, _, Limit, _, Pri, _, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -345,17 +351,20 @@ format(Stream, FMap, LineWidth, MaxLines, Limit, Doc, !IO) :-
     %   - tracking current operator priority !Pri.
     %   Assumes that Docs is the output of expand.
     %
-:- pred format(Stream::in, formatter_map::in, int::in,  docs::in,
-        int::in, int::out, indents::in, indents::out, int::in, int::out,
-        formatting_limit::in, formatting_limit::out,
-        ops.priority::in, ops.priority::out, State::di, State::uo)
-        is det
+:- pred write_doc_to_stream(Stream, noncanon_handling, formatter_map, int,
+        docs, int, int, indents, indents, int, int,
+        formatting_limit, formatting_limit,
+        ops.priority, ops.priority, State, State)
         <= stream.writer(Stream, string, State).
+:- mode write_doc_to_stream(in, in(canonicalize), in, in, in,
+        in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode write_doc_to_stream(in, in(include_details_cc), in, in, in,
+        in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
-format(_Stream, _FMap, _LineWidth, [],
+write_doc_to_stream(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
 
-format(Stream, FMap, LineWidth, [Doc | Docs0],
+write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO) :-
     ( if !.RemainingLines =< 0 then
         stream.put(Stream, "...", !IO)
@@ -386,7 +395,7 @@ format(Stream, FMap, LineWidth, [Doc | Docs0],
             Docs = list.(Docs1 ++ Docs0)
         ;
             Doc = format_univ(Univ),
-            expand_pp(FMap, Univ, Doc1, !Limit, !.Pri),
+            expand_pp(Canonicalize, FMap, Univ, Doc1, !Limit, !.Pri),
             Docs = [Doc1 | Docs0]
         ;
             Doc = format_list(Univs, Sep),
@@ -421,11 +430,11 @@ format(Stream, FMap, LineWidth, [Doc | Docs0],
             Doc = pp_internal(open_group),
             OpenGroups = 1,
             CurrentRemainingWidth = !.RemainingWidth,
-            expand_docs(FMap, Docs0, Docs1, OpenGroups, !Limit, !Pri,
-                CurrentRemainingWidth, RemainingWidthAfterGroup),
+            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
+                !Limit, !Pri, CurrentRemainingWidth, RemainingWidthAfterGroup),
             ( if RemainingWidthAfterGroup >= 0 then
-                output_current_group(Stream, OpenGroups, Docs1, Docs,
-                    !RemainingWidth, !IO)
+                output_current_group(Stream, OpenGroups,
+                    Docs1, Docs, !RemainingWidth, !IO)
               else
                 Docs = Docs1
             )
@@ -443,8 +452,8 @@ format(Stream, FMap, LineWidth, [Doc | Docs0],
             !:Pri = NewPri,
             Docs = Docs0
         ),
-        format(Stream, FMap, LineWidth, Docs, !RemainingWidth, !Indents,
-            !RemainingLines, !Limit, !Pri, !IO)
+        write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, Docs,
+            !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -489,23 +498,27 @@ output_current_group(Stream, OpenGroups, [Doc | Docs0], Docs, !RemainingWidth,
 
 %-----------------------------------------------------------------------------%
 
-    % expand_docs(Docs0, Docs, G, !L, !P, !R) expands out any doc(_),
-    % pp_univ(_), format_list(_, _), and pp_term(_) constructors in Docs0 into
-    % Docs, until either Docs0 has been completely expanded, or a nl is
-    % encountered, or the remaining space on the current line has been
+    % expand_docs(Canonicalize, Docs0, Docs, G, !L, !P, !R) expands out any
+    % doc(_), pp_univ(_), format_list(_, _), and pp_term(_) constructors in
+    % Docs0 into Docs, until either Docs0 has been completely expanded, or a nl
+    % is encountered, or the remaining space on the current line has been
     % accounted for.
     % G is used to track nested groups.
     % !L tracks the limits after accounting for expansion.
     % !L tracks the operator priority after accounting for expansion.
     % !R tracks the remaining line width after accounting for expansion.
     %
-:- pred expand_docs(formatter_map::in, docs::in, docs::out, int::in,
-        formatting_limit::in, formatting_limit::out,
-        ops.priority::in, ops.priority::out, int::in, int::out) is det.
+:- pred expand_docs(noncanon_handling, formatter_map, docs, docs, int,
+        formatting_limit, formatting_limit, ops.priority, ops.priority,
+        int, int) is cc_multi.
+:- mode expand_docs(in(canonicalize), in, in, out, in, in, out,
+        in, out, in, out) is det.
+:- mode expand_docs(in(include_details_cc), in, in, out, in, in, out,
+        in, out, in, out) is cc_multi.
 
-expand_docs(_FMap, [], [], _OpenGroups, !Limit, !Pri, !N).
+expand_docs(_Canonicalize, _FMap, [], [], _OpenGroups, !Limit, !Pri, !N).
 
-expand_docs(FMap, [Doc | Docs0], Docs, OpenGroups,
+expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
         !Limit, !Pri, !RemainingWidth) :-
     ( if
         (
@@ -524,7 +537,7 @@ expand_docs(FMap, [Doc | Docs0], Docs, OpenGroups,
             Doc = str(String),
             !:RemainingWidth = !.RemainingWidth - string.length(String),
             Docs = [Doc | Docs1],
-            expand_docs(FMap, Docs0, Docs1, OpenGroups,
+            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = nl,
@@ -532,64 +545,64 @@ expand_docs(FMap, [Doc | Docs0], Docs, OpenGroups,
                 Docs = [Doc | Docs0]
               else
                 Docs = [Doc | Docs1],
-                expand_docs(FMap, Docs0, Docs1, OpenGroups,
+                expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                     !Limit, !Pri, !RemainingWidth)
             )
         ;
             Doc = docs(Docs1),
-            expand_docs(FMap, list.(Docs1 ++ Docs0), Docs, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
+            expand_docs(Canonicalize, FMap, list.(Docs1 ++ Docs0), Docs,
+                OpenGroups, !Limit, !Pri, !RemainingWidth)
         ;
             Doc = format_univ(Univ),
-            expand_pp(FMap, Univ, Doc1, !Limit, !.Pri),
-            expand_docs(FMap, [Doc1 | Docs0], Docs, OpenGroups,
+            expand_pp(Canonicalize, FMap, Univ, Doc1, !Limit, !.Pri),
+            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = format_list(Univs, Sep),
             expand_format_list(Univs, Sep, Doc1, !Limit),
-            expand_docs(FMap, [Doc1 | Docs0], Docs, OpenGroups,
+            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = format_term(Name, Univs),
             expand_format_term(Name, Univs, Doc1, !Limit, !.Pri),
-            expand_docs(FMap, [Doc1 | Docs0], Docs, OpenGroups,
+            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = format_susp(Susp),
             expand_format_susp(Susp, Doc1, !Limit),
-            expand_docs(FMap, [Doc1 | Docs0], Docs, OpenGroups,
+            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = pp_internal(indent(_)),
             Docs = [Doc | Docs1],
-            expand_docs(FMap, Docs0, Docs1, OpenGroups,
+            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = pp_internal(outdent),
             Docs = [Doc | Docs1],
-            expand_docs(FMap, Docs0, Docs1, OpenGroups,
+            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = pp_internal(open_group),
             Docs = [Doc | Docs1],
             OpenGroups1 = OpenGroups + ( if OpenGroups > 0 then 1 else 0 ),
-            expand_docs(FMap, Docs0, Docs1, OpenGroups1,
+            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups1,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = pp_internal(close_group),
             Docs = [Doc | Docs1],
             OpenGroups1 = OpenGroups - ( if OpenGroups > 0 then 1 else 0 ),
-            expand_docs(FMap, Docs0, Docs1, OpenGroups1,
+            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups1,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = pp_internal(set_limit(Lim)),
             !:Limit = Lim,
-            expand_docs(FMap, Docs0, Docs, OpenGroups,
+            expand_docs(Canonicalize, FMap, Docs0, Docs, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
             Doc = pp_internal(set_op_priority(NewPri)),
             !:Pri = NewPri,
-            expand_docs(FMap, Docs0, Docs, OpenGroups,
+            expand_docs(Canonicalize, FMap, Docs0, Docs, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         )
     ).
@@ -625,10 +638,14 @@ output_indentation(Stream, [Indent | Indents], !RemainingWidth, !IO) :-
     % that succeeds, otherwise use the generic pretty- printer.  If the
     % pretty-printer limit has been exhausted then only "..." is produced.
     %
-:- pred expand_pp(formatter_map::in, univ::in, doc::out,
-        formatting_limit::in, formatting_limit::out, ops.priority::in) is det.
+:- pred expand_pp(noncanon_handling, formatter_map, univ, doc,
+        formatting_limit, formatting_limit, ops.priority).
+:- mode expand_pp(in(canonicalize), in, in, out, in, out, in)
+        is det.
+:- mode expand_pp(in(include_details_cc), in, in, out, in, out, in)
+        is cc_multi.
 
-expand_pp(FMap, Univ, Doc, !Limit, CurrentPri) :-
+expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
     ( if
         limit_overrun(!.Limit)
       then
@@ -645,7 +662,7 @@ expand_pp(FMap, Univ, Doc, !Limit, CurrentPri) :-
         Doc = set_formatting_limit_correctly(!.Limit,
             Formatter(Univ, ArgTypeDescs))
       else
-        deconstruct(univ_value(Univ), canonicalize, Name, _Arity, Args),
+        deconstruct(univ_value(Univ), Canonicalize, Name, _Arity, Args),
         expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
     ).
 
@@ -680,7 +697,8 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
     % term syntax.
     %
 :- pred expand_format_term(string::in, list(univ)::in, doc::out,
-        formatting_limit::in, formatting_limit::out, ops.priority::in) is det.
+        formatting_limit::in, formatting_limit::out, ops.priority::in)
+        is det.
 
 expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     ( if Args = [] then
@@ -870,13 +888,16 @@ set_default_params(Params, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-format(Doc, !IO) :-
-    format(io.stdout_stream, Doc, !IO).
+write_doc(Doc, !IO) :-
+    write_doc(io.stdout_stream, Doc, !IO).
 
-format(Stream, Doc, !IO) :-
+write_doc(Stream, Doc, !IO) :-
     get_default_formatter_map(Formatters, !IO),
     get_default_params(pp_params(LineWidth, MaxLines, Limit), !IO),
-    format(Stream, Formatters, LineWidth, MaxLines, Limit, Doc, !IO).
+    promise_equivalent_solutions [!:IO] (
+        write_doc_to_stream(Stream, include_details_cc, Formatters,
+            LineWidth, MaxLines, Limit, Doc, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -1222,7 +1222,10 @@ browser_term_to_string_pretty(S, Term, Width, Lines, Size, Depth, !IO) :-
         Limit = linear(Size)
     ),
 
-    format(S, Formatters, Width, Lines, Limit, Doc, !IO).
+    promise_equivalent_solutions [!:IO] (
+        write_doc_to_stream(S, include_details_cc, Formatters,
+            Width, Lines, Limit, Doc, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

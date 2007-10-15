@@ -52,6 +52,10 @@
     ;       op_tree * op_tree
     ;       op_tree / op_tree.
 
+:- type non_canonical_bool
+    --->    non_canonical_bool(int)
+    where equality is non_canonical_bool_eq.
+
 
 
 main(!IO) :-
@@ -215,6 +219,12 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
                     indent("_4_", [nl, str("four"),
                         indent("_5_", [nl, str("five")])])])])])
     ]),
+    NonCanonTest = docs([
+        format(non_canonical_bool(0)), nl,
+        format(non_canonical_bool(1)), nl,
+        format(non_canonical_bool(42)), nl,
+        format(non_canonical_bool(43)), nl
+    ]),
     (   Limit = linear(100)
     ;   Limit = linear(10)
     ;   Limit = triangular(100)
@@ -236,6 +246,7 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
     ;   Doc = fmt_susp_seq(100)
     ;   Doc = format(Tuple)
     ;   Doc = format(Square)
+    ;   Doc = NonCanonTest
     ;   Doc = IndentTest
     ).
 
@@ -251,6 +262,18 @@ mk_op_tree(N) =
       else if N mod 5 = 3 then mk_op_tree(0 + N/2) * mk_op_tree(2 + N/3)
       else                     mk_op_tree(1 + N/2) / mk_op_tree(0 + N/3)
     ).
+
+
+
+:- pred non_canonical_bool_eq(non_canonical_bool::in, non_canonical_bool::in)
+        is semidet.
+
+non_canonical_bool_eq(A, B) :-
+    promise_equivalent_solutions [AX, BX] (
+        A = non_canonical_bool(AX),
+        B = non_canonical_bool(BX)
+    ),
+    AX /\ 1 = BX /\ 1.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
