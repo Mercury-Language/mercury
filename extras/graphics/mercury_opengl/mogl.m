@@ -29,8 +29,6 @@
 :- module mogl.
 :- interface.
 
-:- include_module mogl.type_tables.
-
 :- import_module bitmap.
 :- import_module bool.
 :- import_module float.
@@ -561,7 +559,7 @@
 %------------------------------------------------------------------------------%
 %
 % Fog
-%
+% 
 
 :- type fog_parameter
     --->    fog_mode(fog_mode)
@@ -1196,8 +1194,6 @@
 
 :- implementation.
 
-:- import_module mogl.type_tables.
-
 :- import_module exception.
 :- import_module require.
 
@@ -1216,8 +1212,6 @@
         #include <GL/gl.h>
     #endif
 ").
-
-:- pragma foreign_import_module("C", mogl.type_tables).
 
 %------------------------------------------------------------------------------%
 %
@@ -2425,6 +2419,30 @@ pixel_transfer(depth_bias(Bias), !IO) :-
     IO = IO0;
 ").
 
+:- pragma foreign_enum("C", pixel_format/0, [
+    color_index      - "GL_COLOR_INDEX",
+    stencil_index    - "GL_STENCIL_INDEX",
+    depth_component  - "GL_DEPTH_COMPONENT",
+    red              - "GL_RED",
+    green            - "GL_GREEN",
+    blue             - "GL_BLUE",
+    alpha            - "GL_ALPHA",
+    rgb              - "GL_RGB",
+    rgba             - "GL_RGBA",
+    luminance        - "GL_LUMINANCE",
+    luminance_alpha  - "GL_LUMINANCE_ALPHA"
+]).
+
+:- pragma foreign_enum("C", pixel_type/0, [
+    unsigned_byte    - "GL_UNSIGNED_BYTE",
+    bitmap           - "GL_BITMAP",
+    byte             - "GL_BYTE",
+    unsigned_short   - "GL_UNSIGNED_SHORT",
+    unsigned_int     - "GL_UNSIGNED_INT",
+    int              - "GL_INT",
+    float            - "GL_FLOAT"
+]).
+
 :- type pixels
     --->    pixels(
                 pixel_format :: int,
@@ -2504,9 +2522,46 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
     proxy_texture_2d - "GL_PROXY_TEXTURE_2D"
 ]).
 
-:- pragma foreign_decl("C", "
-    extern const GLenum texture_format_flags[];
-").
+:- pragma foreign_enum("C", texture_format/0, [
+    alpha               - "GL_ALPHA",
+    luminance           - "GL_LUMINANCE",
+    luminance_alpha     - "GL_LUMINANCE_ALPHA",
+    intensity           - "GL_INTENSITY",
+    rgb                 - "GL_RGB",
+    rgba                - "GL_RGBA",
+    alpha4              - "GL_ALPHA4",
+    alpha8              - "GL_ALPHA8",
+    alpha12             - "GL_ALPHA12",
+    alpha16             - "GL_ALPHA16",
+    luminance4          - "GL_LUMINANCE4",
+    luminance5          - "GL_LUMINANCE5",
+    luminance8          - "GL_LUMINANCE8",
+    luminance12         - "GL_LUMINANCE12",
+    luminance16         - "GL_LUMINANCE16",
+    luminance4_alpha4   - "GL_LUMINANCE4_ALPHA4",
+    luminance6_alpha2   - "GL_LUMINANCE6_ALPHA2",
+    luminance8_alpha8   - "GL_LUMINANCE8_ALPHA8",
+    luminance12_alpha4  - "GL_LUMINANCE12_ALPHA4", 
+    luminance12_alpha12 - "GL_LUMINANCE12_ALPHA12",
+    luminance16_alpha16 - "GL_LUMINANCE16_ALPHA16",
+    intensity4          - "GL_INTENSITY4",
+    intensity8          - "GL_INTENSITY8",
+    intensity12         - "GL_INTENSITY12",
+    intensity16         - "GL_INTENSITY16",
+    r3_g3_b2            - "GL_R3_G3_B2",
+    rgb4                - "GL_RGB4",
+    rgb5                - "GL_RGB5",
+    rgb10               - "GL_RGB10",
+    rgb12               - "GL_RGB12",
+    rgb16               - "GL_RGB16",
+    rgba2               - "GL_RGBA2",
+    rgba4               - "GL_RGBA4",
+    rgb5_a1             - "GL_RGB5_A1",
+    rgba8               - "GL_RGBA8",
+    rgb10_a2            - "GL_RGB10_A2",
+    rgba12              - "GL_RGBA12",
+    rgba16              - "GL_RGBA16"
+]).
 
 :- pragma foreign_decl("C", "
     extern const GLenum texture_parameter_flags[];
@@ -2840,46 +2895,31 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
     IO = IO0;
 ").
 
-tex_image_1d(Target, Level, InternalFormat, Width, Border,
-        Format, Type, Pixels, !IO) :-
-    texture_format_to_int(InternalFormat, InternalFormatInt),
-    tex_image_1d_2(Target, Level, InternalFormatInt, Width, Border,
-        pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
-
-:- pred tex_image_1d_2(texture_target::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
-        Width::in, Border::in, Format::in, Type::in,
+    tex_image_1d(Target::in(texture_1d), Level::in, InternalFormat::in,
+        Width::in, Border::in(border),
+        Format::in(pixel_format_non_stencil_or_depth), Type::in,
         Pixels::bitmap_ui, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexImage1D((GLenum) Target, Level,
-        texture_format_flags[InternalFormat], Width, Border,
-        pixel_format_flags[Format], pixel_type_flags[Type], Pixels->elements);
+        (GLenum) InternalFormat, Width, Border,
+        (GLenum) Format, (GLenum) Type, Pixels->elements);
     IO = IO0;
 ").
 
-tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
-        Format, Type, Pixels, !IO) :-
-    texture_format_to_int(InternalFormat, InternalFormatInt),
-    tex_image_2d_2(Target, Level, InternalFormatInt, Width, Height, Border,
-        pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
-
-:- pred tex_image_2d_2(texture_target::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, int::in, pixel_data::bitmap_ui,
-    io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
-        Width::in, Height::in, Border::in, Format::in, Type::in,
+    tex_image_2d(Target::in(texture_2d), Level::in, InternalFormat::in,
+        Width::in, Height::in, Border::in(border),
+        Format::in(pixel_format_non_stencil_or_depth), Type::in,
         Pixels::bitmap_ui, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexImage2D((GLenum) Target, Level,
-        texture_format_flags[InternalFormat], Width, Height, Border,
-        pixel_format_flags[Format], pixel_type_flags[Type], Pixels->elements);
+        (GLenum) InternalFormat, Width, Height, Border,
+        (GLenum) Format, (GLenum)Type, Pixels->elements);
     IO = IO0;
 ").
 
@@ -2906,40 +2946,27 @@ tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
 %     IO = IO0;
 % ").
 
-copy_tex_image_1d(Target, Level, InternalFormat, X, Y, Width, Border, !IO) :-
-    texture_format_to_int(InternalFormat, InternalFormatInt),
-    copy_tex_image_1d_2(Target, Level, InternalFormatInt, X, Y, Width,
-        Border, !IO).
-
-:- pred copy_tex_image_1d_2(texture_target::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    copy_tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
-        X::in, Y::in, Width::in, Border::in, IO0::di, IO::uo),
+    copy_tex_image_1d(Target::in(bound(texture_1d)), Level::in,
+        InternalFormat::in, X::in, Y::in, Width::in,
+        Border::in(border), IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glCopyTexImage1D((GLenum) Target, Level,
-        texture_format_flags[InternalFormat], X, Y, Width, Border);
+    glCopyTexImage1D((GLenum) Target, Level, (GLenum) InternalFormat,
+        X, Y, Width, Border);
     IO = IO0;
 ").
 
-copy_tex_image_2d(Target, Level, InternalFormat, X, Y, Width, Height, Border,
-        !IO) :-
-    texture_format_to_int(InternalFormat, InternalFormatInt),
-    copy_tex_image_2d_2(Target, Level, InternalFormatInt, X, Y,
-        Width, Height, Border, !IO).
-
-:- pred copy_tex_image_2d_2(texture_target::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    copy_tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
-        X::in, Y::in, Width::in, Height::in, Border::in, IO0::di, IO::uo),
+    copy_tex_image_2d(Target::in(bound(texture_2d)), Level::in,
+        InternalFormat::in, X::in, Y::in, Width::in, Height::in,
+        Border::in(border), IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-    glCopyTexImage2D((GLenum) Target, Level,
-        texture_format_flags[InternalFormat], X, Y, Width, Height, Border);
+    glCopyTexImage2D((GLenum) Target, Level, (GLenum) InternalFormat,
+        X, Y, Width, Height, Border);
     IO = IO0;
 ").
 

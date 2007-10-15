@@ -182,8 +182,6 @@
 
 :- implementation.
 
-:- import_module mogl.type_tables.
-
 :- import_module int.
 :- import_module list.
 
@@ -279,38 +277,36 @@ texture_flag_to_int(alpha_only) = 5.
 
 check_texture_ex(TextureFlags, Bitmap, TextureFormat, CanBeTexture, !IO) :-
     TextureFlagsBits = texture_flags_to_bits(TextureFlags),
-    texture_format_to_int(TextureFormat, TextureFormatInt),
-    check_texture_ex_2(TextureFlagsBits, Bitmap, TextureFormatInt,
+    check_texture_ex_2(TextureFlagsBits, Bitmap, TextureFormat,
         CanBeTexture, !IO).
 
-:- pred check_texture_ex_2(int::in, bitmap::in, int::in, bool::out,
-    io::di, io::uo) is det.
+:- pred check_texture_ex_2(int::in, bitmap::in, mogl.texture_format::in,
+    bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     check_texture_ex_2(TextureFlagsBits::in, Bitmap::in, TextureFormatInt::in,
         CanBeTexture::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     CanBeTexture = allegro_gl_check_texture_ex(TextureFlagsBits, Bitmap,
-        texture_format_flags[TextureFormatInt]) ? MR_YES : MR_NO;
+        (GLenum) TextureFormatInt) ? MR_YES : MR_NO;
     IO = IO0;
 ").
 
 make_texture_ex(TextureFlags, Bitmap, TextureFormat, MaybeTextureName, !IO) :-
     TextureFlagsBits = texture_flags_to_bits(TextureFlags),
-    texture_format_to_int(TextureFormat, TextureFormatInt),
-    make_texture_ex_2(TextureFlagsBits, Bitmap, TextureFormatInt,
+    make_texture_ex_2(TextureFlagsBits, Bitmap, TextureFormat,
         TextureName, !IO),
     MaybeTextureName = (if TextureName = 0 then no else yes(TextureName)).
 
-:- pred make_texture_ex_2(int::in, bitmap::in, int::in,
+:- pred make_texture_ex_2(int::in, bitmap::in, mogl.texture_format::in,
     mogl.texture_name::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    make_texture_ex_2(TextureFlagsBits::in, Bitmap::in, TextureFormatInt::in,
+    make_texture_ex_2(TextureFlagsBits::in, Bitmap::in, TextureFormat::in,
         TextureName::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TextureName = allegro_gl_make_texture_ex(TextureFlagsBits, Bitmap,
-        texture_format_flags[TextureFormatInt]);
+        (GLenum) TextureFormat);
     IO = IO0;
 ").
 
@@ -356,12 +352,11 @@ font_type_to_int(textured)  = 2.
 ").
 
 convert_allegro_font_ex(Fnt, FontType, Scale, Format, MaybeAGLFont, !IO) :-
-    texture_format_to_int(Format, FormatInt),
     convert_allegro_font_ex_2(Fnt, font_type_to_int(FontType), Scale,
-        FormatInt, MaybeAGLFont, !IO).
+        Format, MaybeAGLFont, !IO).
 
 :- pred convert_allegro_font_ex_2(font::in, int::in, float::in,
-    int::in, maybe(agl_font)::out, io::di, io::uo) is det.
+    mogl.texture_format::in, maybe(agl_font)::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     convert_allegro_font_ex_2(Fnt::in, FontType::in, Scale::in, Format::in,
         MaybeAGLFont::out, IO0::di, IO::uo),
@@ -369,7 +364,7 @@ convert_allegro_font_ex(Fnt, FontType, Scale, Format, MaybeAGLFont, !IO) :-
 "
     FONT *AGLFont = allegro_gl_convert_allegro_font_ex(Fnt,
         __magl_font_type_flags[FontType], Scale,
-        texture_format_flags[Format]);
+        (GLenum) Format);
     if (AGLFont) {
         MaybeAGLFont = __magl_yes_agl_font(AGLFont);
     } else {
