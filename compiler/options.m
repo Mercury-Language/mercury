@@ -1208,7 +1208,7 @@ option_defaults_2(internal_use_option, [
     size_region_commit_fixed            -   int(4),
     size_region_ite_protect             -   int(1),
     size_region_ite_snapshot            -   int(4),
-    size_region_disj_protect            -   int(1),
+    size_region_disj_protect            -   int(0),
     size_region_disj_snapshot           -   int(4),
     size_region_commit_entry            -   int(1)
 ]).
