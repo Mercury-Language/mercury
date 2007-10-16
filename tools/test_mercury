@@ -645,11 +645,6 @@ cd mercury || { false; exit 1; }
 		*)	echo "GRADE = $INSTALL_GRADE" >> Mmake.params
 			;;
 	esac
-	case "$INSTALL_LIBGRADES" in
-		"")	;;
-		*)	echo "LIBGRADES = $INSTALL_LIBGRADES" >> Mmake.params
-			;;
-	esac
 # fi
 
 # We allow "asm" as a special value for the C_COMPILER
@@ -669,7 +664,12 @@ esac
 export CC
 
 MMAKE="mmake $USE_MMC_MAKE"
-
+	
+if test "$INSTALL_LIBGRADES" != ""
+then
+	echo "$INSTALL_LIBGRADES" > .enable_lib_grades
+fi
+	
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
