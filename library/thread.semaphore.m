@@ -28,10 +28,15 @@
 
 :- type semaphore.
 
-    % new(Sem, !IO) creates a new semaphore `Sem' with it's counter
+    % new(Sem, !IO) creates a new semaphore `Sem' with its counter
     % initialized to 0.
     %
 :- pred semaphore.new(semaphore::out, io::di, io::uo) is det.
+
+    % new(Count, Sem) creates a new semaphore `Sem' with its counter
+    % initialized to Count.
+    %
+:- func semaphore.new(int::in) = (semaphore::uo) is det.
 
     % wait(Sem, !IO) blocks until the counter associated with `Sem'
     % becomes greater than 0, whereupon it wakes, decrements the
@@ -99,8 +104,11 @@ ML_finalize_semaphore(void *obj, void *cd);
 
 %-----------------------------------------------------------------------------%
 
+new(Semaphore, !IO) :-
+    Semaphore = new(0).
+
 :- pragma foreign_proc("C",
-    new(Semaphore::out, IO0::di, IO::uo),
+    new(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     MR_Word         sem_mem;
@@ -109,7 +117,7 @@ ML_finalize_semaphore(void *obj, void *cd);
     MR_incr_hp(sem_mem,
         MR_round_up(sizeof(ML_Semaphore), sizeof(MR_Word)));
     sem = (ML_Semaphore *) sem_mem;
-    sem->count = 0;
+    sem->count = Count;
 #ifndef MR_HIGHLEVEL_CODE
     sem->suspended_head = NULL;
     sem->suspended_tail = NULL;
@@ -129,15 +137,14 @@ ML_finalize_semaphore(void *obj, void *cd);
     MR_GC_register_finalizer(sem, ML_finalize_semaphore, NULL);
 
     Semaphore = sem;
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
-    new(Semaphore::out, _IO0::di, _IO::uo),
+    new(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Semaphore = new ML_Semaphore();
-    Semaphore.count = 0;
+    Semaphore.count = Count;
 ").
 
 :- pragma foreign_code("C", "
