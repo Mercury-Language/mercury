@@ -177,15 +177,6 @@
 
 %-----------------------------------------------------------------------------%
 
-
-
-    %
-    % Generate code for a deterministic goal
-    %
-:- pred process_proc(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
-
 process_proc(PredId, _ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
 
@@ -489,7 +480,7 @@ make_var_value(InstMap, VarToInspect, VarDesc, VarPos, Goals,
 	% Give a new prog_var to the polymorphic structure.
 	%
 	svvarset.new_named_var("VarType", VarTypo, !VarSet),
-	svmap.det_insert(VarTypo, MerType, !VarTypes)
+	svmap.det_insert(VarTypo, MerType, !VarTypes),
 
         % Constructor of the variable's description.
         svvarset.new_named_var("VarDesc", VarDesc, !VarSet), 
