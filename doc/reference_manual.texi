@@ -290,7 +290,8 @@ A character-code literal is @samp{0'} followed by any single character.
 @item float
 A floating point literal consists of a sequence of decimal digits,
 a decimal point and a sequence of digits (the fraction part), and
-the letter @samp{E} and another sequence of decimal digits (the exponent).
+the letter @samp{E} (or @samp{e}), an optional sign (@samp{+} or @samp{-}),
+and then another sequence of decimal digits (the exponent).
 The fraction part or the exponent (but not both) may be omitted.
 
 @item open_ct
@@ -6157,7 +6158,7 @@ calls to @code{require.error/1} or @code{exception.throw/1} and
 (semi)pure goals that are declaratively equivalent to true or false.)
 The default semantics are the strict commutative semantics.
 Enabling @samp{--no-reorder-conj} and @samp{--no-reorder-disj} gives the
-strict sequencial semantics.
+strict sequential semantics.
 
 Future implementations of Mercury may wish to offer other operational semantics.
 For example, they may wish to provide semantics in which function
