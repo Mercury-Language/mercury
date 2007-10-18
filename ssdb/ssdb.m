@@ -20,7 +20,7 @@
 
 :- module ssdb.
 :- interface.
-
+:- import_module list.
 
 :- type ssdb_proc_id
     --->    ssdb_proc_id(
@@ -36,9 +36,35 @@
     .
 
     %
+    % The list of all variables in use in a procedure.
+    %
+:- type list_var_value == list(var_value).
+
+    %
+    % Record the instantiatedness and value of each variable used in a
+    % procedure.
+    %
+:- type var_value
+    --->    unbound_head_var(var_name, pos)
+    ;       some [T] bound_head_var(var_name, pos, T)
+    ;       some [T] bound_other_var(var_name, T).
+
+    %
+    % Variable name.
+    %
+:- type var_name == string.
+    
+    %
+    % The argument position of the head variable.
+    % Positions are numbered from 0.
+    %
+:- type pos == int.
+
+    %
     % This routine is called at each event that occurs.
     %
-:- impure pred handle_event(ssdb_proc_id::in, ssdb_event_type::in) is det.
+:- impure pred handle_event(ssdb_proc_id::in, ssdb_event_type::in, 
+    list_var_value::in) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -48,7 +74,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module int.
-:- import_module list.
 :- import_module require.
 :- import_module set.
 :- import_module stack.
@@ -74,7 +99,10 @@
                 ssdb_stack          :: stack(stack_elem),
 
                 % The set of breakpoint added.
-                ssdb_breakpoints    :: set(breakpoint)
+                ssdb_breakpoints    :: set(breakpoint),
+
+                % The list of the goal's argument.
+                ssdb_list_var_value :: list(var_value)
             ).
 
 
@@ -112,7 +140,7 @@
     --->    breakpoint(
                 bp_module_name  :: string,
                 bp_pred_name    :: string
-	    ).
+            ).
 
 
 %----------------------------------------------------------------------------%
@@ -130,7 +158,9 @@ init_debugger_state = DbgState :-
     NextStop = ns_step,
     Stack = stack.init,
     Breakpoints = set.init,
-    DbgState = state(EventNum, CSN, Depth, NextStop, Stack, Breakpoints).
+    ListVarValue = [],
+    DbgState = state(EventNum, CSN, Depth, NextStop, Stack, Breakpoints, 
+        ListVarValue).
 
 :- mutable(debugger_state, debugger_state, init_debugger_state, ground, 
     [untrailed, attach_to_io_state]).
@@ -142,25 +172,31 @@ init_debugger_state = DbgState :-
     % Write the event out and call the prompt.
     % XXX Not yet implemented : redo, fail.
     %
-handle_event(ProcId, Event) :-
+handle_event(ProcId, Event, ListVarValue) :-
     impure get_event_num_inc(EventNum),
     impure update_depth(Event, PrintDepth),
 
     ( 
-	Event = ssdb_call,
+        Event = ssdb_call,
+        % set the new CSN.
         impure get_csn_inc(_),
+        % set the list_var_value of the debugger state  with the list received
+        impure set_list_var_value(ListVarValue),
 
+        % Push the new stack frame on top of the shadow stack.
         semipure get_debugger_state(InitialState),
         StackFrame = elem(ProcId, InitialState),
         stack.push(InitialState ^ ssdb_stack, StackFrame, FinalStack),
         StateEv = InitialState ^ ssdb_stack := FinalStack,
         impure set_debugger_state(StateEv)
     ;
+        % Just get the top stack frame. It will be popped at the end of
+        % handle_event. We need to leave the frame in place, e.g. for
+        % printing variables.
         Event = ssdb_exit,
+        impure set_list_var_value_in_stack(ListVarValue),
         semipure get_debugger_state(InitialState),
-        stack.pop_det(InitialState ^ ssdb_stack, StackFrame, FinalStack),
-        StateEv = InitialState ^ ssdb_stack := FinalStack,
-        impure set_debugger_state(StateEv)
+        stack.top_det(InitialState ^ ssdb_stack, StackFrame)
     ;
         Event = ssdb_redo,
         error("ssdb_redo: not yet implemented")
@@ -184,7 +220,7 @@ handle_event(ProcId, Event) :-
         NextStop0 = ns_continue,
         ( set.contains(State0 ^ ssdb_breakpoints, 
             breakpoint(ProcId ^ module_name, ProcId ^ proc_name)) 
-	->
+        ->
             Stop = yes
         ;
             Stop = no
@@ -245,6 +281,24 @@ handle_event(ProcId, Event) :-
         )
     ;
         Stop = no
+    ),
+    
+    ( Event = ssdb_call
+
+    ; Event = ssdb_exit,
+        semipure get_debugger_state(PopState),
+        stack.pop_det(PopState ^ ssdb_stack, _StackFrame1, FinalStack1),
+        StateEv1 = PopState ^ ssdb_stack := FinalStack1,
+        impure set_debugger_state(StateEv1)
+
+    /* XXX currently commented out because above these two cases
+    ** throw an exception above and hence the compiler warns about
+    ** these two cases being redundant
+    ; Event = ssdb_redo
+
+    ; Event = ssdb_fail
+    */
+
     ).
 
     %
@@ -334,6 +388,27 @@ get_shadow_stack(ShadowStack) :-
     semipure get_debugger_state(State0),
     ShadowStack = State0 ^ ssdb_stack.
 
+:- impure pred set_list_var_value(list(var_value)::in) is det.
+
+set_list_var_value(ListVarValue) :-
+    semipure get_debugger_state(State0),
+    State = State0 ^ ssdb_list_var_value := ListVarValue,
+    impure set_debugger_state(State).
+
+:- impure pred set_list_var_value_in_stack(list(var_value)::in) is det.
+
+set_list_var_value_in_stack(ListVarValue) :-
+    semipure get_debugger_state(State0),
+    stack.pop_det(State0 ^ ssdb_stack, StackFrame, PopedStack),
+    ProcId = StackFrame ^ se_proc_id,
+    InitialState = StackFrame ^ se_initial_state,
+    NewState = InitialState ^ ssdb_list_var_value := ListVarValue,
+    Elem = elem(ProcId, NewState),
+    stack.push(PopedStack, Elem, FinalStack),
+    State = State0 ^ ssdb_stack := FinalStack,
+    impure set_debugger_state(State).
+
+
 %----------------------------------------------------------------------------%
 
     %
@@ -345,6 +420,10 @@ get_shadow_stack(ShadowStack) :-
     % s | _ :: next step
     % c     :: continue
     % b X Y :: breakpoint X = module_name Y = predicate_name
+    % p     :: print
+    % dump  :: print stack trace
+    % u     :: up
+    % d     :: down
     %
 
 :- impure pred prompt(stack(stack_elem)::in, int::in, what_next::out, 
@@ -358,7 +437,7 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
         Result = ok(String0),
         % String minus any single trailing newline character.
         String = string.chomp(String0),
-	Words = string.words(String), 
+        Words = string.words(String), 
 
         ( Words = ["h"] ->
             io.nl(!IO),
@@ -370,13 +449,32 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
             io.write_string(" X = module name", !IO),
             io.write_string(" and Y = predicate name", !IO),
             io.nl(!IO),
-            io.write_string("c      :: next", !IO),
+            io.write_string("c      :: continue until next breakpoint", !IO),
             io.nl(!IO),
             io.write_string("f      :: finish", !IO),
             io.nl(!IO),
+            io.write_string("p      :: print goal's argument", !IO),
+            io.nl(!IO),
+            io.write_string("dump   :: print stack trace", !IO),
+            io.nl(!IO),
+            io.write_string("u      :: up", !IO),
+            io.nl(!IO),
+            io.write_string("d      :: down", !IO),
+            io.nl(!IO),
             io.nl(!IO),
             impure prompt(ShadowStack, Depth, WhatNext, !IO)
-        
+
+        ; Words = ["p"] ->
+            CurrentFrame = stack.top_det(ShadowStack),
+            ListVarValue = CurrentFrame ^ se_initial_state  ^ 
+                ssdb_list_var_value,
+            print_vars(ListVarValue, !IO),
+            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+
+        ; Words = ["dump"] ->
+            print_frames_list(ShadowStack, Depth, !IO),
+            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+
         ; Words = ["n"] ->
             WhatNext = wn_next
 
@@ -407,6 +505,28 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
             CSN = FrameStack ^  se_initial_state ^ ssdb_csn,
             WhatNext = wn_finish(CSN)
 
+        ; Words = ["d"] ->
+            (
+                DownDepth = Depth - 1,
+                DownDepth >= 0
+            ->
+                impure prompt(ShadowStack, DownDepth, WhatNext, !IO)
+            ;
+                io.print("Impossible to go down\n", !IO),
+                impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            )
+            
+        ; Words = ["u"] ->
+            (
+                UpDepth = Depth + 1,
+                UpDepth < stack.depth(ShadowStack) 
+            ->
+                impure prompt(ShadowStack, UpDepth, WhatNext, !IO)
+            ;
+                io.print("Impossible to go up\n", !IO),
+                impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            )
+
         ;
             io.write_string("huh?\n", !IO),
             impure prompt(ShadowStack, Depth, WhatNext, !IO)
@@ -421,6 +541,94 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
 
 
 %----------------------------------------------------------------------------%
+
+    %
+    % Print the Stack Trace
+    %
+:- pred print_frames_list(stack(stack_elem)::in, int::in, 
+    io::di, io::uo) is det.
+
+print_frames_list(ShadowStack0, Depth, !IO) :-
+    ( if not stack.is_empty(ShadowStack0) then
+        stack.pop_det(ShadowStack0, PopFrame, ShadowStack),
+        (if Depth = 0 then
+            print_stack_frame(yes, PopFrame, !IO)
+        else
+            print_stack_frame(no, PopFrame, !IO)
+        ),
+        print_frames_list(ShadowStack, Depth - 1, !IO)
+    else
+        true
+    ).
+
+
+:- pred print_stack_frame(bool::in, stack_elem::in, io::di, io::uo) is det.
+
+print_stack_frame(Starred, Frame, !IO) :-
+    Module = Frame ^ se_proc_id ^ module_name ,
+    Procedure = Frame ^ se_proc_id ^ proc_name ,
+
+    (
+        Starred = yes,
+        io.write_char('*', !IO)
+    ;
+        Starred = no,
+        io.write_char(' ', !IO)
+    ),
+    io.format("  %s.%s(\n", [s(Module), s(Procedure)], !IO),
+    ListVarValue = Frame ^ se_initial_state  ^ ssdb_list_var_value,
+    print_vars(ListVarValue, !IO),
+    io.write_string(")\n", !IO).
+
+    %
+    % Print the given list of variables and their values, if bound.
+    % XXX We should treat the io.state better.
+:- pred print_vars(list(var_value)::in, io::di, io::uo) is det.
+
+print_vars(Vars, !IO) :-
+    list.foldl(print_var, Vars, !IO).
+
+:- pred print_var(var_value::in, io::di, io::uo) is det.
+
+print_var(unbound_head_var(Name, Pos), !IO) :-
+    io.write_char('\t', !IO),
+    io.write_string("unbound_head\t", !IO),
+    io.write_string(Name, !IO),
+    io.write_string(":\t", !IO),
+    io.write_int(Pos, !IO),
+    io.write_string("\t=\t", !IO),
+    io.write_string("_", !IO),
+    io.nl(!IO).
+
+print_var(bound_head_var(Name, Pos, T), !IO) :-
+    ( if not string.prefix(Name, "STATE_VARIABLE_IO") then
+        io.write_char('\t', !IO),
+        io.write_string("bound_head\t", !IO),
+        io.write_string(Name, !IO),
+        io.write_string(":\t", !IO),
+        io.write_int(Pos, !IO),
+        io.write_string("\t=\t", !IO),
+        io.print(T, !IO),
+        io.nl(!IO)
+    else
+        io.write_char('\t', !IO),
+        io.write_string("bound_head\t", !IO),
+        io.write_string(Name, !IO),
+        io.nl(!IO)
+    ).
+    
+print_var(bound_other_var(Name, T), !IO) :-
+    io.write_char('\t', !IO),
+    io.write_string("bound_other\t", !IO),
+    io.write_string(Name, !IO),
+    io.write_string(":\t_\t", !IO),
+    io.write_string("=\t", !IO),
+    io.print(T, !IO),
+    io.nl(!IO).
+
+
+%----------------------------------------------------------------------------%
+
 
 :- impure pred invent_io(io::uo) is det.
 
@@ -439,6 +647,7 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
 :- pragma foreign_proc("Java",
     invent_io(_IO::uo),
     [will_not_call_mercury, thread_safe], "").
+
 
 :- impure pred consume_io(io::di) is det.
 
