@@ -41,6 +41,7 @@ SINGLEMODULE= \
 	bad_initialise_decl \
 	bad_instance \
 	bad_mutable \
+	bad_sv_unify_msg \
 	bigtest \
 	bind_in_negated \
 	bind_var_errors \

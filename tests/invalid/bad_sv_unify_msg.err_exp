@@ -1,0 +1,18 @@
+bad_sv_unify_msg.m:017:   Error: !D cannot appear as a unification argument.
+bad_sv_unify_msg.m:017:     You probably meant !.D or !:D.
+bad_sv_unify_msg.m:017: In clause for predicate `bad_sv_unify_msg.x'/2:
+bad_sv_unify_msg.m:017:   warning: variable `STATE_VARIABLE_D_1' occurs only
+bad_sv_unify_msg.m:017:   once in this scope.
+bad_sv_unify_msg.m:018: Warning: reference to uninitialized state variable !.D.
+bad_sv_unify_msg.m:011: In predicate `x'/2:
+bad_sv_unify_msg.m:011:   warning: unresolved polymorphism.
+bad_sv_unify_msg.m:011:   The variable with an unbound type was:
+bad_sv_unify_msg.m:011:     STATE_VARIABLE_D_1: T
+bad_sv_unify_msg.m:011:   The unbound type variable will be implicitly bound to
+bad_sv_unify_msg.m:011:   the builtin type `void'.
+bad_sv_unify_msg.m:017: In clause for `x(di, uo)':
+bad_sv_unify_msg.m:017:   in argument 1 of call to predicate `io.write'/3:
+bad_sv_unify_msg.m:017:   mode error: variable `STATE_VARIABLE_D_1' has
+bad_sv_unify_msg.m:017:   instantiatedness `free',
+bad_sv_unify_msg.m:017:   expected instantiatedness was `ground'.
+For more information, recompile with `-E'.

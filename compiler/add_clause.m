@@ -896,20 +896,20 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
     ).
 transform_goal_2(unify_expr(A0, B0, Purity), Context, Renaming, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+    rename_vars_in_term(need_not_rename, Renaming, A0, A),
+    rename_vars_in_term(need_not_rename, Renaming, B0, B),
     % It is an error for the left or right hand side of a
     % unification to be !X (it may be !.X or !:X, however).
-    ( A0 = functor(atom("!"), [variable(StateVarA, _)], _) ->
+    ( A = functor(atom("!"), [variable(StateVarA, _)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarA, !Specs),
         Goal = true_goal,
         NumAdded = 0
-    ; B0 = functor(atom("!"), [variable(StateVarB, _)], _) ->
+    ; B = functor(atom("!"), [variable(StateVarB, _)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarB, !Specs),
         Goal = true_goal,
         NumAdded = 0
     ;
         prepare_for_call(!SInfo),
-        rename_vars_in_term(need_not_rename, Renaming, A0, A),
-        rename_vars_in_term(need_not_rename, Renaming, B0, B),
         unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
             NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         finish_call(!VarSet, !SInfo)
