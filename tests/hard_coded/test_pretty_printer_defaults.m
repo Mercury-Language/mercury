@@ -39,7 +39,7 @@ main(!IO) :-
     pretty_printer.get_default_formatter_map(FMap, !IO),
     io.print(FMap, !IO),
     io.nl(!IO),
-    pretty_printer.format(
+    pretty_printer.write_doc(
         docs([
             str("list:    "), format(L), nl,
             str("array:   "), format(A), nl,

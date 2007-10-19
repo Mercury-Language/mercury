@@ -79,7 +79,7 @@ run_test_case(TestCase, !IO) :-
         [s(string.string(Limit)), i(MaxLines), i(LineWidth)], !IO),
     Ruler = "\n|" ++ string.duplicate_char(('-'), LineWidth - 2) ++ "|\n",
     io.write_string(Ruler, !IO),
-    pretty_printer.format(Doc, !IO),
+    pretty_printer.write_doc(Doc, !IO),
     io.write_string(Ruler, !IO).
 
 
