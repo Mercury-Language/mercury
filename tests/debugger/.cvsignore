@@ -6,6 +6,7 @@
 *.pic_o
 *.out
 CLEAN
+save_file
 dice.passes
 .mgnuc_copts
 .mgnuc_opts
