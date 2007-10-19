@@ -154,19 +154,19 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     instmap.no_output_vars(InstMap, InstMapDelta, Vars,
-        DetInfo ^ vartypes, ModuleInfo).
+        DetInfo ^ di_vartypes, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- type det_info
     --->    det_info(
-                module_info     :: module_info,
-                vartypes        :: vartypes,
-                pred_id         :: pred_id,     % the id of the proc
-                proc_id         :: proc_id,     % currently processed
-                reorder_conj    :: bool,        % --reorder-conj
-                reorder_disj    :: bool,        % --reorder-disj
-                fully_strict    :: bool         % --fully-strict
+                di_module_info     :: module_info,
+                di_vartypes        :: vartypes,
+                di_pred_id         :: pred_id,     % the id of the proc
+                di_proc_id         :: proc_id,     % currently processed
+                di_reorder_conj    :: bool,        % --reorder-conj
+                di_reorder_disj    :: bool,        % --reorder-disj
+                di_fully_strict    :: bool         % --fully-strict
             ).
 
 det_info_init(ModuleInfo, VarTypes, PredId, ProcId, DetInfo) :-
@@ -177,16 +177,16 @@ det_info_init(ModuleInfo, VarTypes, PredId, ProcId, DetInfo) :-
     DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
         ReorderConj, ReorderDisj, FullyStrict).
 
-det_info_get_module_info(DI, DI ^ module_info).
-det_info_get_pred_id(DI, DI ^ pred_id).
-det_info_get_proc_id(DI, DI ^ proc_id).
-det_info_get_reorder_conj(DI, DI ^ reorder_conj).
-det_info_get_reorder_disj(DI, DI ^ reorder_disj).
-det_info_get_fully_strict(DI, DI ^ fully_strict).
-det_info_get_vartypes(DI, DI ^ vartypes).
+det_info_get_module_info(DI, DI ^ di_module_info).
+det_info_get_pred_id(DI, DI ^ di_pred_id).
+det_info_get_proc_id(DI, DI ^ di_proc_id).
+det_info_get_reorder_conj(DI, DI ^ di_reorder_conj).
+det_info_get_reorder_disj(DI, DI ^ di_reorder_disj).
+det_info_get_fully_strict(DI, DI ^ di_fully_strict).
+det_info_get_vartypes(DI, DI ^ di_vartypes).
 
-det_info_set_module_info(DI, ModuleInfo, DI ^ module_info := ModuleInfo).
-det_info_set_vartypes(DI, VarTypes, DI ^ vartypes := VarTypes).
+det_info_set_module_info(DI, ModuleInfo, DI ^ di_module_info := ModuleInfo).
+det_info_set_vartypes(DI, VarTypes, DI ^ di_vartypes := VarTypes).
 
 %-----------------------------------------------------------------------------%
 
