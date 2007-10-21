@@ -43,7 +43,7 @@
 :- pragma foreign_proc("C",
     get_compiled_sprite(Sprite::in, Planar::in, MaybeCompiled::out,
         IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     COMPILED_SPRITE *Compiled = get_compiled_sprite(Sprite, Planar);
     if (Compiled) {
@@ -56,7 +56,7 @@
 
 :- pragma foreign_proc("C",
     destroy_compiled_sprite(Compiled::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     destroy_compiled_sprite(Compiled);
     IO = IO0;
@@ -65,7 +65,7 @@
 :- pragma foreign_proc("C",
     draw_compiled_sprite(Bitmap::in, Compiled::in, X::in, Y::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     draw_compiled_sprite(Bitmap, Compiled, X, Y);
     IO = IO0;

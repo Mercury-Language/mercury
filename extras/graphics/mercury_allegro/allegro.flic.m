@@ -61,7 +61,7 @@
 
 :- pragma foreign_proc("C",
     play_fli(Filename::in, Bitmap::in, Status::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int StatusInt = play_fli(Filename, Bitmap, FALSE, NULL);
     if (StatusInt == FLI_OK) {
@@ -74,7 +74,7 @@
 
 :- pragma foreign_proc("C",
     play_memory_fli(MemoryFLI::in, Bitmap::in, Status::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int StatusInt = play_memory_fli(MemoryFLI, Bitmap, FALSE, NULL);
     if (StatusInt == FLI_OK) {
@@ -87,7 +87,7 @@
 
 :- pragma foreign_proc("C",
     open_fli(Filename::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (FLI_OK == open_fli(Filename)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -95,7 +95,7 @@
 
 :- pragma foreign_proc("C",
     open_memory_fli(MemoryFLI::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (FLI_OK == open_memory_fli(MemoryFLI)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -103,7 +103,7 @@
 
 :- pragma foreign_proc("C",
     close_fli(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     close_fli();
     IO = IO0;
@@ -111,7 +111,7 @@
 
 :- pragma foreign_proc("C",
     next_fli_frame(Loop::in, Status::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int StatusInt = next_fli_frame(Loop);
     switch (StatusInt) {
@@ -134,7 +134,7 @@
 
 :- pragma foreign_proc("C",
     fli_bitmap(MaybeBitmap::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     BITMAP *Bitmap = fli_bitmap;
     if (Bitmap) {
@@ -147,7 +147,7 @@
 
 :- pragma foreign_proc("C",
     fli_palette(Palette::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Palette = fli_palette;
     IO = IO0;
@@ -155,7 +155,7 @@
 
 :- pragma foreign_proc("C",
     fli_bmp_dirty(From::out, To::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     From = fli_bmp_dirty_from;
     To = fli_bmp_dirty_to;
@@ -164,7 +164,7 @@
 
 :- pragma foreign_proc("C",
     fli_pal_dirty(From::out, To::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     From = fli_pal_dirty_from;
     To = fli_pal_dirty_to;
@@ -173,7 +173,7 @@
 
 :- pragma foreign_proc("C",
     reset_fli_variables(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     reset_fli_variables();
     IO = IO0;
@@ -181,7 +181,7 @@
 
 :- pragma foreign_proc("C",
     fli_frame(Frame::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Frame = fli_frame;
     IO = IO0;
@@ -189,7 +189,7 @@
 
 :- pragma foreign_proc("C",
     fli_timer(Timer::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Timer = fli_timer;
     IO = IO0;

@@ -90,7 +90,7 @@ drawing_mode(trans, !IO) :-
 :- pragma foreign_proc("C",
     drawing_mode_copy_pattern(Pattern::in, XAnchor::in, YAnchor::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     drawing_mode(DRAW_MODE_COPY_PATTERN, Pattern, XAnchor, YAnchor);
     IO = IO0;
@@ -102,7 +102,7 @@ drawing_mode(trans, !IO) :-
 :- pragma foreign_proc("C",
     drawing_mode_masked_pattern(Pattern::in, XAnchor::in, YAnchor::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     drawing_mode(DRAW_MODE_MASKED_PATTERN, Pattern, XAnchor, YAnchor);
     IO = IO0;
@@ -112,7 +112,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     drawing_mode_trans(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     drawing_mode(DRAW_MODE_TRANS, NULL, 0, 0);
     IO = IO0;
@@ -120,7 +120,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     xor_mode(On::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     xor_mode(On);
     IO = IO0;
@@ -128,7 +128,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     solid_mode(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     solid_mode();
     IO = IO0;
@@ -136,7 +136,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     color_map(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = color_map;
     IO = IO0;
@@ -144,7 +144,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_color_map(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     color_map = Set;
     IO = IO0;
@@ -153,7 +153,7 @@ drawing_mode(trans, !IO) :-
 :- pragma foreign_proc("C",
     create_trans_table(Colormap::out, Palette::in, R::in, G::in, B::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Colormap = MR_GC_NEW(COLOR_MAP);
     create_trans_table(Colormap, Palette, R, G, B, NULL);
@@ -163,7 +163,7 @@ drawing_mode(trans, !IO) :-
 :- pragma foreign_proc("C",
     create_light_table(Colormap::out, Palette::in, R::in, G::in, B::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Colormap = MR_GC_NEW(COLOR_MAP);
     create_light_table(Colormap, Palette, R, G, B, NULL);
@@ -172,7 +172,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     create_blender_table(Colormap::out, Palette::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Colormap = MR_GC_NEW(COLOR_MAP);
     create_blender_table(Colormap, Palette, NULL);
@@ -181,7 +181,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_trans_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_trans_blender(R, G, B, A);
     IO = IO0;
@@ -189,7 +189,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_alpha_blender(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_alpha_blender();
     IO = IO0;
@@ -197,7 +197,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_write_alpha_blender(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_write_alpha_blender();
     IO = IO0;
@@ -205,7 +205,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_add_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_add_blender(R, G, B, A);
     IO = IO0;
@@ -213,7 +213,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_burn_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_burn_blender(R, G, B, A);
     IO = IO0;
@@ -221,7 +221,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_color_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_color_blender(R, G, B, A);
     IO = IO0;
@@ -229,7 +229,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_difference_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_difference_blender(R, G, B, A);
     IO = IO0;
@@ -237,7 +237,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_dissolve_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_dissolve_blender(R, G, B, A);
     IO = IO0;
@@ -245,7 +245,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_dodge_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_dodge_blender(R, G, B, A);
     IO = IO0;
@@ -253,7 +253,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_hue_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_hue_blender(R, G, B, A);
     IO = IO0;
@@ -261,7 +261,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_invert_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_invert_blender(R, G, B, A);
     IO = IO0;
@@ -269,7 +269,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_luminance_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_luminance_blender(R, G, B, A);
     IO = IO0;
@@ -277,7 +277,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_multiply_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_multiply_blender(R, G, B, A);
     IO = IO0;
@@ -285,7 +285,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_saturation_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_saturation_blender(R, G, B, A);
     IO = IO0;
@@ -293,7 +293,7 @@ drawing_mode(trans, !IO) :-
 
 :- pragma foreign_proc("C",
     set_screen_blender(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_screen_blender(R, G, B, A);
     IO = IO0;

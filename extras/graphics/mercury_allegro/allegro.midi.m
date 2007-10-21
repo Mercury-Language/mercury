@@ -61,7 +61,7 @@
 
 :- pragma foreign_proc("C",
     load_midi(Filename::in, MaybeMidi::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     MIDI *Midi = load_midi(Filename);
     if (Midi) {
@@ -74,7 +74,7 @@
 
 :- pragma foreign_proc("C",
     destroy_midi(Midi::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     destroy_midi(Midi);
     IO = IO0;
@@ -82,7 +82,7 @@
 
 :- pragma foreign_proc("C",
     play_midi(Midi::in, Loop::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     play_midi(Midi, Loop);
     IO = IO0;
@@ -90,7 +90,7 @@
 
 :- pragma foreign_proc("C",
     play_looped_midi(Midi::in, LoopStart::in, LoopEnd::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     play_looped_midi(Midi, LoopStart, LoopEnd);
     IO = IO0;
@@ -98,7 +98,7 @@
 
 :- pragma foreign_proc("C",
     stop_midi(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     stop_midi();
     IO = IO0;
@@ -106,7 +106,7 @@
 
 :- pragma foreign_proc("C",
     midi_pause(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     midi_pause();
     IO = IO0;
@@ -114,7 +114,7 @@
 
 :- pragma foreign_proc("C",
     midi_resume(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     midi_resume();
     IO = IO0;
@@ -122,7 +122,7 @@
 
 :- pragma foreign_proc("C",
     midi_seek(Target::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     midi_seek(Target);
     IO = IO0;
@@ -130,7 +130,7 @@
 
 :- pragma foreign_proc("C",
     get_midi_length(Midi::in, Time::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Time = get_midi_length(Midi);
     IO = IO0;
@@ -138,7 +138,7 @@
 
 :- pragma foreign_proc("C",
     load_midi_patches(Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = load_midi_patches();
     IO = IO0;
@@ -146,7 +146,7 @@
 
 :- pragma foreign_proc("C",
     midi_pos(MaybePos::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int Pos = midi_pos;
     if (Pos >= 0) {
@@ -159,7 +159,7 @@
 
 :- pragma foreign_proc("C",
     midi_time(Time::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Time = midi_time;
     IO = IO0;
@@ -167,7 +167,7 @@
 
 :- pragma foreign_proc("C",
     midi_loop_start(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = midi_loop_start;
     IO = IO0;
@@ -175,7 +175,7 @@
 
 :- pragma foreign_proc("C",
     set_midi_loop_start(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     midi_loop_start = Set;
     IO = IO0;
@@ -183,7 +183,7 @@
 
 :- pragma foreign_proc("C",
     midi_loop_end(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = midi_loop_end;
     IO = IO0;
@@ -191,7 +191,7 @@
 
 :- pragma foreign_proc("C",
     set_midi_loop_end(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     midi_loop_end = Set;
     IO = IO0;

@@ -84,7 +84,7 @@
 
 :- pragma foreign_proc("C",
     install_mouse(Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int N = install_mouse();
     if (N < 0) {
@@ -99,7 +99,7 @@
 
 :- pragma foreign_proc("C",
     remove_mouse(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     remove_mouse();
     IO = IO0;
@@ -107,7 +107,7 @@
 
 :- pragma foreign_proc("C",
     enable_hardware_cursor(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     enable_hardware_cursor();
     IO = IO0;
@@ -115,46 +115,31 @@
 
 :- pragma foreign_proc("C",
     disable_hardware_cursor(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     disable_hardware_cursor();
     IO = IO0;
 ").
 
-select_mouse_cursor(Cursor, !IO) :-
-    select_mouse_cursor_2(mouse_cursor_to_int(Cursor), !IO).
-
-:- pred select_mouse_cursor_2(int::in, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    select_mouse_cursor_2(Cursor::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    select_mouse_cursor(Cursor::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     select_mouse_cursor(Cursor);
     IO = IO0;
 ").
 
-set_mouse_cursor_bitmap(Cursor, Bitmap, !IO) :-
-    set_mouse_cursor_bitmap_2(mouse_cursor_to_int(Cursor), Bitmap, !IO).
-
-:- pred set_mouse_cursor_bitmap_2(int::in, bitmap::in, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    set_mouse_cursor_bitmap_2(Cursor::in, Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    set_mouse_cursor_bitmap(Cursor::in, Bitmap::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_cursor_bitmap(Cursor, Bitmap);
     IO = IO0;
 ").
 
-set_default_mouse_cursor_bitmap(Cursor, !IO) :-
-    set_default_mouse_cursor_bitmap_2(mouse_cursor_to_int(Cursor), !IO).
-
-:- pred set_default_mouse_cursor_bitmap_2(int::in, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    set_default_mouse_cursor_bitmap_2(Cursor::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    set_default_mouse_cursor_bitmap(Cursor::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_cursor_bitmap(Cursor, NULL);
     IO = IO0;
@@ -162,7 +147,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_x(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Get = mouse_x;
     IO = IO0;
@@ -170,7 +155,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_y(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Get = mouse_y;
     IO = IO0;
@@ -178,7 +163,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_z(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Get = mouse_z;
     IO = IO0;
@@ -186,7 +171,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_b(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Get = mouse_b;
     IO = IO0;
@@ -194,7 +179,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_pos(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Get = mouse_pos;
     IO = IO0;
@@ -202,7 +187,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_sprite(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = mouse_sprite;
     IO = IO0;
@@ -210,7 +195,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_xy_focus(X::out, Y::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     X = mouse_x_focus;
     Y = mouse_y_focus;
@@ -219,7 +204,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     show_mouse(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     show_mouse(Bitmap);
     IO = IO0;
@@ -227,7 +212,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     hide_mouse(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     show_mouse(NULL);
     IO = IO0;
@@ -235,7 +220,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     scare_mouse(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     scare_mouse();
     IO = IO0;
@@ -243,7 +228,7 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     scare_mouse_area(X::in, Y::in, W::in, H::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     scare_mouse_area(X, Y, W, H);
     IO = IO0;
@@ -251,20 +236,15 @@ set_default_mouse_cursor_bitmap(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
     unscare_mouse(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     unscare_mouse();
     IO = IO0;
 ").
 
-show_os_cursor(Cursor, Success, !IO) :-
-    show_os_cursor_2(mouse_cursor_to_int(Cursor), Success, !IO).
-
-:- pred show_os_cursor_2(int::in, bool::out, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    show_os_cursor_2(Cursor::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    show_os_cursor(Cursor::in, Success::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == show_os_cursor(Cursor)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -272,7 +252,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     freeze_mouse_flag(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = freeze_mouse_flag;
     IO = IO0;
@@ -280,7 +260,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_freeze_mouse_flag(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     freeze_mouse_flag = Set ? TRUE : FALSE;
     IO = IO0;
@@ -288,7 +268,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     position_mouse(X::in, Y::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     position_mouse(X, Y);
     IO = IO0;
@@ -296,7 +276,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     position_mouse_z(Z::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     position_mouse_z(Z);
     IO = IO0;
@@ -304,7 +284,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_mouse_range(X1::in, Y1::in, X2::in, Y2::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_range(X1, Y1, X2, Y2);
     IO = IO0;
@@ -312,7 +292,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_mouse_speed(XSpeed::in, YSpeed::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_speed(XSpeed, YSpeed);
     IO = IO0;
@@ -320,7 +300,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_mouse_sprite(Sprite::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_sprite(Sprite);
     IO = IO0;
@@ -328,7 +308,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_default_mouse_sprite(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_sprite(NULL);
     IO = IO0;
@@ -336,7 +316,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_mouse_sprite_focus(X::in, Y::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_mouse_sprite_focus(X, Y);
     IO = IO0;
@@ -344,7 +324,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     get_mouse_mickeys(X::out, Y::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     int X0, Y0;
     get_mouse_mickeys(&X0, &Y0);
@@ -357,7 +337,7 @@ show_os_cursor(Cursor, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     mouse_xy(X::out, Y::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     X = mouse_x;
     Y = mouse_y;
@@ -386,46 +366,14 @@ make_failed_install_mouse_result = failed.
 
 %-----------------------------------------------------------------------------%
 
-:- func mouse_cursor_to_int(mouse_cursor) = int.
-
-mouse_cursor_to_int(mouse_cursor_none) = mouse_cursor_none_int.
-mouse_cursor_to_int(mouse_cursor_allegro) = mouse_cursor_allegro_int.
-mouse_cursor_to_int(mouse_cursor_arrow) = mouse_cursor_arrow_int.
-mouse_cursor_to_int(mouse_cursor_busy) = mouse_cursor_busy_int.
-mouse_cursor_to_int(mouse_cursor_question) = mouse_cursor_question_int.
-mouse_cursor_to_int(mouse_cursor_edit) = mouse_cursor_edit_int.
-
-:- func mouse_cursor_none_int = int.
-:- func mouse_cursor_allegro_int = int.
-:- func mouse_cursor_arrow_int = int.
-:- func mouse_cursor_busy_int = int.
-:- func mouse_cursor_question_int = int.
-:- func mouse_cursor_edit_int = int.
-
-:- pragma foreign_proc("C",
-    mouse_cursor_none_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MOUSE_CURSOR_NONE;").
-:- pragma foreign_proc("C",
-    mouse_cursor_allegro_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MOUSE_CURSOR_ALLEGRO;").
-:- pragma foreign_proc("C",
-    mouse_cursor_arrow_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MOUSE_CURSOR_ARROW;").
-:- pragma foreign_proc("C",
-    mouse_cursor_busy_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MOUSE_CURSOR_BUSY;").
-:- pragma foreign_proc("C",
-    mouse_cursor_question_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MOUSE_CURSOR_QUESTION;").
-:- pragma foreign_proc("C",
-    mouse_cursor_edit_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MOUSE_CURSOR_EDIT;").
+:- pragma foreign_enum("C", mouse_cursor/0, [
+    mouse_cursor_none       - "MOUSE_CURSOR_NONE",
+    mouse_cursor_allegro    - "MOUSE_CURSOR_ALLEGRO",
+    mouse_cursor_arrow      - "MOUSE_CURSOR_ARROW",
+    mouse_cursor_busy       - "MOUSE_CURSOR_BUSY",
+    mouse_cursor_question   - "MOUSE_CURSOR_QUESTION",
+    mouse_cursor_edit       - "MOUSE_CURSOR_EDIT"
+]).
 
 %-----------------------------------------------------------------------------%
 % vi:ts=8:sts=4:sw=4:et

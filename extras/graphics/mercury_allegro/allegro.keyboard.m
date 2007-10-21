@@ -212,7 +212,7 @@
 
 :- pragma foreign_proc("C",
     install_keyboard(Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == install_keyboard()) ? MR_YES : MR_NO;
     IO = IO0;
@@ -220,7 +220,7 @@
 
 :- pragma foreign_proc("C",
     remove_keyboard(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     remove_keyboard();
     IO = IO0;
@@ -241,7 +241,7 @@
 :- pragma no_inline(key/4).
 :- pragma foreign_proc("C",
     key(Scancode::in, IsPressed::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ASSERT(Scancode > 0 && Scancode < KEY_MAX);
     IsPressed = key[Scancode] ? MR_YES : MR_NO;
@@ -250,7 +250,7 @@
 
 :- pragma foreign_proc("C",
     key_shifts(KeyShifts::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     KeyShifts = key_shifts;
     IO = IO0;
@@ -258,7 +258,7 @@
 
 :- pragma foreign_proc("C",
     keypressed(KeyPressed::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     KeyPressed = keypressed() ? MR_YES : MR_NO;
     IO = IO0;
@@ -266,7 +266,7 @@
 
 :- pragma foreign_proc("C",
     readkey(R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = readkey();
     IO = IO0;
@@ -274,7 +274,7 @@
 
 :- pragma foreign_proc("C",
     ureadkey(Unichar::out, Scancode::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     int Scancode0;
     Unichar = ureadkey(&Scancode0);
@@ -284,7 +284,7 @@
 
 :- pragma foreign_proc("C",
     scancode_to_ascii(Scancode::in, Ascii::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Ascii = scancode_to_ascii(Scancode);
     IO = IO0;
@@ -292,7 +292,7 @@
 
 :- pragma foreign_proc("C",
     scancode_to_name(Scancode::in, Name::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Name = (char *) scancode_to_name(Scancode);
     IO = IO0;
@@ -300,7 +300,7 @@
 
 :- pragma foreign_proc("C",
     simulate_keypress(X::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     simulate_keypress(X);
     IO = IO0;
@@ -308,7 +308,7 @@
 
 :- pragma foreign_proc("C",
     simulate_ukeypress(Unichar::in, Scancode::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     simulate_ukeypress(Unichar, Scancode);
     IO = IO0;
@@ -316,7 +316,7 @@
 
 :- pragma foreign_proc("C",
     set_leds(Setting::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_leds(Setting);
     IO = IO0;
@@ -324,7 +324,7 @@
 
 :- pragma foreign_proc("C",
     set_keyboard_rate(Delay::in, Repeat::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_keyboard_rate(Delay, Repeat);
     IO = IO0;
@@ -332,7 +332,7 @@
 
 :- pragma foreign_proc("C",
     clear_keybuf(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     clear_keybuf();
     IO = IO0;
@@ -340,7 +340,7 @@
 
 :- pragma foreign_proc("C",
     set_three_finger_flag(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     three_finger_flag = Set ? TRUE : FALSE;
     IO = IO0;
@@ -348,7 +348,7 @@
 
 :- pragma foreign_proc("C",
     three_finger_flag(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = three_finger_flag ? MR_YES : MR_NO;
     IO = IO0;
@@ -356,7 +356,7 @@
 
 :- pragma foreign_proc("C",
     set_key_led_flag(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     key_led_flag = Set ? TRUE : FALSE;
     IO = IO0;
@@ -364,7 +364,7 @@
 
 :- pragma foreign_proc("C",
     key_led_flag(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = key_led_flag ? MR_YES : MR_NO;
     IO = IO0;

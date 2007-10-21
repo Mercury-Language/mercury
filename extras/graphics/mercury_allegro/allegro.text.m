@@ -51,7 +51,7 @@
 
 :- pragma foreign_proc("C",
     font(Fnt::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Fnt = font;
     IO = IO0;
@@ -59,7 +59,7 @@
 
 :- pragma foreign_proc("C",
     allegro_404_char(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = allegro_404_char;
     IO = IO0;
@@ -67,7 +67,7 @@
 
 :- pragma foreign_proc("C",
     set_allegro_404_char(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     allegro_404_char = Set;
     IO = IO0;
@@ -75,7 +75,7 @@
 
 :- pragma foreign_proc("C",
     text_length(Font::in, Str::in, Len::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Len = text_length(Font, Str);
     IO = IO0;
@@ -83,7 +83,7 @@
 
 :- pragma foreign_proc("C",
     text_height(Font::in, Height::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Height = text_height(Font);
     IO = IO0;
@@ -92,7 +92,7 @@
 :- pragma foreign_proc("C",
     textout_ex(Bitmap::in, Font::in, Str::in, X::in, Y::in, Color::in, Bg::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     textout_ex(Bitmap, Font, Str, X, Y, Color, Bg);
     IO = IO0;
@@ -101,7 +101,7 @@
 :- pragma foreign_proc("C",
     textout_centre_ex(Bitmap::in, Font::in, Str::in, X::in, Y::in, Color::in,
         Bg::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     textout_centre_ex(Bitmap, Font, Str, X, Y, Color, Bg);
     IO = IO0;
@@ -110,7 +110,7 @@
 :- pragma foreign_proc("C",
     textout_right_ex(Bitmap::in, Font::in, Str::in, X::in, Y::in, Color::in,
         Bg::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     textout_right_ex(Bitmap, Font, Str, X, Y, Color, Bg);
     IO = IO0;
@@ -119,7 +119,7 @@
 :- pragma foreign_proc("C",
     textout_justify_ex(Bitmap::in, Font::in, Str::in, X1::in, X2::in, Y::in,
         Diff::in, Color::in, Bg::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     textout_justify_ex(Bitmap, Font, Str, X1, X2, Y, Diff, Color, Bg);
     IO = IO0;

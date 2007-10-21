@@ -78,7 +78,7 @@
 
 :- pragma foreign_proc("C",
     makecol8(R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol8(R, G, B);
     IO = IO0;
@@ -86,7 +86,7 @@
 
 :- pragma foreign_proc("C",
     makecol15(R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol15(R, G, B);
     IO = IO0;
@@ -94,7 +94,7 @@
 
 :- pragma foreign_proc("C",
     makecol16(R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol16(R, G, B);
     IO = IO0;
@@ -102,7 +102,7 @@
 
 :- pragma foreign_proc("C",
     makecol24(R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol24(R, G, B);
     IO = IO0;
@@ -110,7 +110,7 @@
 
 :- pragma foreign_proc("C",
     makecol32(R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol32(R, G, B);
     IO = IO0;
@@ -118,7 +118,7 @@
 
 :- pragma foreign_proc("C",
     makeacol32(R::in, G::in, B::in, A::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makeacol32(R, G, B, A);
     IO = IO0;
@@ -128,7 +128,7 @@
 
 :- pragma foreign_proc("C",
     makecol(R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol(R, G, B);
     IO = IO0;
@@ -136,7 +136,7 @@
 
 :- pragma foreign_proc("C",
     makecol_depth(Depth::in, R::in, G::in, B::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol_depth(Depth, R, G, B);
     IO = IO0;
@@ -146,7 +146,7 @@
 
 :- pragma foreign_proc("C",
     makeacol(R::in, G::in, B::in, A::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makeacol(R, G, B, A);
     IO = IO0;
@@ -155,7 +155,7 @@
 :- pragma foreign_proc("C",
     makeacol_depth(Depth::in, R::in, G::in, B::in, A::in, Color::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makeacol_depth(Depth, R, G, B, A);
     IO = IO0;
@@ -166,7 +166,7 @@
 :- pragma foreign_proc("C",
     makecol15_dither(R::in, G::in, B::in, X::in, Y::in, Color::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol15_dither(R, G, B, X, Y);
     IO = IO0;
@@ -175,7 +175,7 @@
 :- pragma foreign_proc("C",
     makecol16_dither(R::in, G::in, B::in, X::in, Y::in, Color::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = makecol16_dither(R, G, B, X, Y);
     IO = IO0;
@@ -185,7 +185,7 @@
 
 :- pragma foreign_proc("C",
     getr8(Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr8(Color);
     IO = IO0;
@@ -193,7 +193,7 @@
 
 :- pragma foreign_proc("C",
     getg8(Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getg8(Color);
     IO = IO0;
@@ -201,7 +201,7 @@
 
 :- pragma foreign_proc("C",
     getb8(Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getb8(Color);
     IO = IO0;
@@ -211,7 +211,7 @@
 
 :- pragma foreign_proc("C",
     getr15(Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr15(Color);
     IO = IO0;
@@ -219,7 +219,7 @@
 
 :- pragma foreign_proc("C",
     getg15(Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getg15(Color);
     IO = IO0;
@@ -227,7 +227,7 @@
 
 :- pragma foreign_proc("C",
     getb15(Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getb15(Color);
     IO = IO0;
@@ -237,7 +237,7 @@
 
 :- pragma foreign_proc("C",
     getr16(Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr16(Color);
     IO = IO0;
@@ -245,7 +245,7 @@
 
 :- pragma foreign_proc("C",
     getg16(Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getg16(Color);
     IO = IO0;
@@ -253,7 +253,7 @@
 
 :- pragma foreign_proc("C",
     getb16(Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getb16(Color);
     IO = IO0;
@@ -263,7 +263,7 @@
 
 :- pragma foreign_proc("C",
     getr24(Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr24(Color);
     IO = IO0;
@@ -271,7 +271,7 @@
 
 :- pragma foreign_proc("C",
     getg24(Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getg24(Color);
     IO = IO0;
@@ -279,7 +279,7 @@
 
 :- pragma foreign_proc("C",
     getb24(Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getb24(Color);
     IO = IO0;
@@ -289,7 +289,7 @@
 
 :- pragma foreign_proc("C",
     getr32(Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr32(Color);
     IO = IO0;
@@ -297,7 +297,7 @@
 
 :- pragma foreign_proc("C",
     getg32(Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getg32(Color);
     IO = IO0;
@@ -305,7 +305,7 @@
 
 :- pragma foreign_proc("C",
     getb32(Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getb32(Color);
     IO = IO0;
@@ -313,7 +313,7 @@
 
 :- pragma foreign_proc("C",
     geta32(Color::in, A::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     A = geta32(Color);
     IO = IO0;
@@ -323,7 +323,7 @@
 
 :- pragma foreign_proc("C",
     getr(Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr(Color);
     IO = IO0;
@@ -331,7 +331,7 @@
 
 :- pragma foreign_proc("C",
     getg(Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getr(Color);
     IO = IO0;
@@ -339,7 +339,7 @@
 
 :- pragma foreign_proc("C",
     getb(Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getr(Color);
     IO = IO0;
@@ -347,7 +347,7 @@
 
 :- pragma foreign_proc("C",
     geta(Color::in, A::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     A = geta(Color);
     IO = IO0;
@@ -357,7 +357,7 @@
 
 :- pragma foreign_proc("C",
     getr_depth(Depth::in, Color::in, R::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = getr_depth(Depth, Color);
     IO = IO0;
@@ -365,7 +365,7 @@
 
 :- pragma foreign_proc("C",
     getg_depth(Depth::in, Color::in, G::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     G = getg_depth(Depth, Color);
     IO = IO0;
@@ -373,7 +373,7 @@
 
 :- pragma foreign_proc("C",
     getb_depth(Depth::in, Color::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     B = getb_depth(Depth, Color);
     IO = IO0;
@@ -381,7 +381,7 @@
 
 :- pragma foreign_proc("C",
     geta_depth(Depth::in, Color::in, A::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     A = geta_depth(Depth, Color);
     IO = IO0;
@@ -389,7 +389,7 @@
 
 :- pragma foreign_proc("C",
     palette_color(Index::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = palette_color[Index];
     IO = IO0;

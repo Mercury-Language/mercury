@@ -44,7 +44,7 @@
 :- pragma foreign_proc("C",
     save_bitmap(Filename::in, Bitmap::in, Palette::in, Success::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == save_bitmap(Filename, Bitmap, Palette)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -53,7 +53,7 @@
 :- pragma foreign_proc("C",
     save_bmp(Filename::in, Bitmap::in, Palette::in, Success::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == save_bmp(Filename, Bitmap, Palette)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -62,7 +62,7 @@
 :- pragma foreign_proc("C",
     save_pcx(Filename::in, Bitmap::in, Palette::in, Success::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == save_pcx(Filename, Bitmap, Palette)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -71,7 +71,7 @@
 :- pragma foreign_proc("C",
     save_tga(Filename::in, Bitmap::in, Palette::in, Success::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == save_tga(Filename, Bitmap, Palette)) ? MR_YES : MR_NO;
     IO = IO0;

@@ -147,14 +147,9 @@
 
 %-----------------------------------------------------------------------------%
 
-install_allegro(System, Success, !IO) :-
-    install_allegro_2(system_driver_to_int(System), Success, !IO).
-
-:- pred install_allegro_2(int::in, bool::out, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    install_allegro_2(System::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    install_allegro(System::in, Success::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == install_allegro(System, &errno, atexit)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -162,7 +157,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     allegro_init(Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == allegro_init()) ? MR_YES : MR_NO;
     IO = IO0;
@@ -170,7 +165,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     allegro_exit(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     allegro_exit();
     IO = IO0;
@@ -185,7 +180,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     allegro_error(Error::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Error = allegro_error;
     IO = IO0;
@@ -239,7 +234,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     allegro_message(Message::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     allegro_message(""%s"", Message);
     IO = IO0;
@@ -247,7 +242,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_window_title(Title::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_window_title(Title);
     IO = IO0;
@@ -255,7 +250,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     desktop_color_depth(MaybeDepth::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int Depth = desktop_color_depth();
     if (Depth == 0) {
@@ -268,7 +263,7 @@ install_allegro(System, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     get_desktop_resolution(MaybeRes::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int Width;
     int Height;
@@ -282,22 +277,10 @@ install_allegro(System, Success, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func system_driver_to_int(system_driver) = int.
-
-system_driver_to_int(system_autodetect) = system_autodetect_int.
-system_driver_to_int(system_none) = system_none_int.
-
-:- func system_autodetect_int = int.
-:- func system_none_int = int.
-
-:- pragma foreign_proc("C",
-    system_autodetect_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SYSTEM_AUTODETECT;").
-:- pragma foreign_proc("C",
-    system_none_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SYSTEM_NONE;").
+:- pragma foreign_enum("C", system_driver/0, [
+    system_autodetect   - "SYSTEM_AUTODETECT",
+    system_none         - "SYSTEM_NONE"
+]).
 
 %-----------------------------------------------------------------------------%
 % vi:ts=8:sts=4:sw=4:et

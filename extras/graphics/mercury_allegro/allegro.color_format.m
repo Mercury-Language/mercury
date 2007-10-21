@@ -43,7 +43,7 @@
 :- pragma foreign_proc("C",
     bestfit_color(Palette::in, R::in, G::in, B::in, Index::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Index = bestfit_color(Palette, R, G, B);
     IO = IO0;
@@ -51,7 +51,7 @@
 
 :- pragma foreign_proc("C",
     rgb_map(Get::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Get = rgb_map;
     IO = IO0;
@@ -59,7 +59,7 @@
 
 :- pragma foreign_proc("C",
     set_rgb_map(Set::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     rgb_map = Set;
     IO = IO0;
@@ -67,7 +67,7 @@
 
 :- pragma foreign_proc("C",
     create_rgb_table(Map::out, Palette::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Map = MR_GC_NEW(RGB_MAP);
     create_rgb_table(Map, Palette, NULL);

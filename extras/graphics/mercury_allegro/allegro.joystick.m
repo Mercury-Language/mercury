@@ -72,22 +72,23 @@
 :- pragma foreign_type("C", axis_info, "JOYSTICK_AXIS_INFO *",
     [can_pass_as_mercury_type]).
 
-install_joystick(_Type, Success, !IO) :-
-    install_joystick_2(Success, !IO).
+:- pragma foreign_enum("C", joy_type/0, [
+    joy_type_autodetect - "JOY_TYPE_AUTODETECT"
+]).
 
-:- pred install_joystick_2(bool::out, io::di, io::uo) is det.
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    install_joystick_2(Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    install_joystick(Type::in, Success::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Success = (0 == install_joystick(JOY_TYPE_AUTODETECT)) ? MR_YES : MR_NO;
+    Success = (0 == install_joystick(Type)) ? MR_YES : MR_NO;
     IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     remove_joystick(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     remove_joystick();
     IO = IO0;
@@ -95,7 +96,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     poll_joystick(Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == poll_joystick()) ? MR_YES : MR_NO;
     IO = IO0;
@@ -103,7 +104,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     num_joysticks(Num::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Num = num_joysticks;
     IO = IO0;
@@ -111,7 +112,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     joy_flags(N::in, Flags::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Flags = joy[N].flags;
     IO = IO0;
@@ -119,7 +120,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     joy_num_sticks(N::in, NumSticks::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     NumSticks = joy[N].num_sticks;
     IO = IO0;
@@ -127,7 +128,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     joy_num_buttons(N::in, NumButtons::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     NumButtons = joy[N].num_buttons;
     IO = IO0;
@@ -135,7 +136,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     joy_button_b(N::in, Button::in, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     B = joy[N].button[Button].b ? MR_YES : MR_NO;
     IO = IO0;
@@ -143,7 +144,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     joy_button_name(N::in, Button::in, Name::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     const char *Name0 = joy[N].button[Button].name;
     Name = (char *)Name0;
@@ -188,7 +189,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     axis_pos(AxisInfo::in, Pos::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Pos = AxisInfo->pos;
     IO = IO0;
@@ -196,7 +197,7 @@ install_joystick(_Type, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     axis_d(AxisInfo::in, D1::out, D2::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     D1 = AxisInfo->d1 ? MR_YES : MR_NO;
     D2 = AxisInfo->d2 ? MR_YES : MR_NO;

@@ -73,7 +73,7 @@
 
 :- pragma foreign_proc("C",
     clear_bitmap(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     clear_bitmap(Bitmap);
     IO = IO0;
@@ -81,7 +81,7 @@
 
 :- pragma foreign_proc("C",
     clear_to_color(Bitmap::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     clear_to_color(Bitmap, Color);
     IO = IO0;
@@ -89,7 +89,7 @@
 
 :- pragma foreign_proc("C",
     putpixel(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     putpixel(Bitmap, X, Y, Color);
     IO = IO0;
@@ -97,7 +97,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_putpixel(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     _putpixel(Bitmap, X, Y, Color);
     IO = IO0;
@@ -105,7 +105,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_putpixel15(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     _putpixel15(Bitmap, X, Y, Color);
     IO = IO0;
@@ -113,7 +113,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_putpixel16(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     _putpixel16(Bitmap, X, Y, Color);
     IO = IO0;
@@ -121,7 +121,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_putpixel24(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     _putpixel24(Bitmap, X, Y, Color);
     IO = IO0;
@@ -129,7 +129,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_putpixel32(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     _putpixel32(Bitmap, X, Y, Color);
     IO = IO0;
@@ -137,7 +137,7 @@
 
 :- pragma foreign_proc("C",
     getpixel(Bitmap::in, X::in, Y::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = getpixel(Bitmap, X, Y);
     IO = IO0;
@@ -145,7 +145,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_getpixel(Bitmap::in, X::in, Y::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = _getpixel(Bitmap, X, Y);
     IO = IO0;
@@ -153,7 +153,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_getpixel15(Bitmap::in, X::in, Y::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = _getpixel15(Bitmap, X, Y);
     IO = IO0;
@@ -161,7 +161,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_getpixel16(Bitmap::in, X::in, Y::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = _getpixel16(Bitmap, X, Y);
     IO = IO0;
@@ -169,7 +169,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_getpixel24(Bitmap::in, X::in, Y::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = _getpixel24(Bitmap, X, Y);
     IO = IO0;
@@ -177,7 +177,7 @@
 
 :- pragma foreign_proc("C",
     unsafe_getpixel32(Bitmap::in, X::in, Y::in, Color::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Color = _getpixel32(Bitmap, X, Y);
     IO = IO0;
@@ -185,7 +185,7 @@
 
 :- pragma foreign_proc("C",
     vline(Bitmap::in, X::in, Y1::in, Y2::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     vline(Bitmap, X, Y1, Y2, Color);
     IO = IO0;
@@ -193,7 +193,7 @@
 
 :- pragma foreign_proc("C",
     hline(Bitmap::in, X1::in, Y::in, X2::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     hline(Bitmap, X1, Y, X2, Color);
     IO = IO0;
@@ -202,7 +202,7 @@
 :- pragma foreign_proc("C",
     line(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     line(Bitmap, X1, Y1, X2, Y2, Color);
     IO = IO0;
@@ -211,7 +211,7 @@
 :- pragma foreign_proc("C",
     fastline(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fastline(Bitmap, X1, Y1, X2, Y2, Color);
     IO = IO0;
@@ -220,7 +220,7 @@
 :- pragma foreign_proc("C",
     triangle(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, X3::in, Y3::in,
         Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     triangle(Bitmap, X1, Y1, X2, Y2, X3, Y3, Color);
     IO = IO0;
@@ -271,7 +271,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     polygon_2(Bitmap::in, NumVerts::in, VertexArray::di, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     polygon(Bitmap, NumVerts, VertexArray, Color);
     MR_free(VertexArray);
@@ -283,7 +283,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     rect(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     rect(Bitmap, X1, Y1, X2, Y2, Color);
     IO = IO0;
@@ -292,7 +292,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     rectfill(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     rectfill(Bitmap, X1, Y1, X2, Y2, Color);
     IO = IO0;
@@ -300,7 +300,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 
 :- pragma foreign_proc("C",
     circle(Bitmap::in, X::in, Y::in, Radius::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     circle(Bitmap, X, Y, Radius, Color);
     IO = IO0;
@@ -309,7 +309,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     circlefill(Bitmap::in, X::in, Y::in, Radius::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     circlefill(Bitmap, X, Y, Radius, Color);
     IO = IO0;
@@ -318,7 +318,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     ellipse(Bitmap::in, X::in, Y::in, RX::in, RY::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ellipse(Bitmap, X, Y, RX, RY, Color);
     IO = IO0;
@@ -327,7 +327,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     ellipsefill(Bitmap::in, X::in, Y::in, RX::in, RY::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ellipsefill(Bitmap, X, Y, RX, RY, Color);
     IO = IO0;
@@ -336,7 +336,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     arc(Bitmap::in, X::in, Y::in, Ang1::in, Ang2::in, R::in, Color::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     arc(Bitmap, X, Y, Ang1, Ang2, R, Color);
     IO = IO0;
@@ -363,7 +363,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- pragma foreign_proc("C",
     spline(Bitmap::in, AX::in, AY::in, BX::in, BY::in, CX::in, CY::in,
         DX::in, DY::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     const int points[8] = {AX, AY, BX, BY, CX, CY, DX, DY};
     spline(Bitmap, points, Color);
@@ -372,7 +372,7 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 
 :- pragma foreign_proc("C",
     floodfill(Bitmap::in, X::in, Y::in, Color::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     floodfill(Bitmap, X, Y, Color);
     IO = IO0;

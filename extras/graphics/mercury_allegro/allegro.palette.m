@@ -90,7 +90,7 @@
 
 :- pragma foreign_proc("C",
     set_color(Index::in, R::in, G::in, B::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     RGB rgb = {R,G,B};
     set_color(Index, &rgb);
@@ -99,7 +99,7 @@
 
 :- pragma foreign_proc("C",
     set_palette(Palette::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_palette(Palette);
     IO = IO0;
@@ -108,7 +108,7 @@
 :- pragma foreign_proc("C",
     set_palette_range(Palette::in, From::in, To::in, Vsync::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_palette_range(Palette, From, To, Vsync);
     IO = IO0;
@@ -116,7 +116,7 @@
 
 :- pragma foreign_proc("C",
     get_color(Index::in, R::out, G::out, B::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     RGB rgb;
     get_color(Index, &rgb);
@@ -128,7 +128,7 @@
 
 :- pragma foreign_proc("C",
     get_palette(Palette::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     get_palette(Palette);
@@ -137,7 +137,7 @@
 
 :- pragma foreign_proc("C",
     get_palette_range(Palette::out, From::in, To::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     get_palette_range(Palette, From, To);
@@ -156,7 +156,7 @@
 :- pragma foreign_proc("C",
     fade_from_range(Source::in, Dest::in, Speed::in, From::in, To::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fade_from_range(Source, Dest, Speed, From, To);
     IO = IO0;
@@ -164,7 +164,7 @@
 
 :- pragma foreign_proc("C",
     fade_in_range(P::in, Speed::in, From::in, To::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fade_in_range(P, Speed, From, To);
     IO = IO0;
@@ -172,7 +172,7 @@
 
 :- pragma foreign_proc("C",
     fade_out_range(Speed::in, From::in, To::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fade_out_range(Speed, From, To);
     IO = IO0;
@@ -180,7 +180,7 @@
 
 :- pragma foreign_proc("C",
     fade_from(Source::in, Dest::in, Speed::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fade_from(Source, Dest, Speed);
     IO = IO0;
@@ -188,7 +188,7 @@
 
 :- pragma foreign_proc("C",
     fade_in(P::in, Speed::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fade_in(P, Speed);
     IO = IO0;
@@ -196,7 +196,7 @@
 
 :- pragma foreign_proc("C",
     fade_out(P::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fade_out(P);
     IO = IO0;
@@ -204,7 +204,7 @@
 
 :- pragma foreign_proc("C",
     select_palette(Palette::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     select_palette(Palette);
     IO = IO0;
@@ -212,7 +212,7 @@
 
 :- pragma foreign_proc("C",
     unselect_palette(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     unselect_palette();
     IO = IO0;
@@ -333,7 +333,7 @@ spec_to_rsvd_2([Spec|Specs], Index, P, R) :-
 
 :- pragma foreign_proc("C",
     new_palette(Palette::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     IO = IO0;
@@ -342,7 +342,7 @@ spec_to_rsvd_2([Spec|Specs], Index, P, R) :-
 :- pragma foreign_proc("C",
     get_palette_entry(Palette::in, Index::in, R::out, G::out, B::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     R = Palette[Index].r;
     G = Palette[Index].g;
@@ -353,7 +353,7 @@ spec_to_rsvd_2([Spec|Specs], Index, P, R) :-
 :- pragma foreign_proc("C",
     set_palette_entry(Palette::in, Index::in, R::in, G::in, B::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Palette[Index].r = R;
     Palette[Index].g = G;

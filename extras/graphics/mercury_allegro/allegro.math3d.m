@@ -247,7 +247,7 @@
 
 :- pragma foreign_proc("C",
     set_projection_viewport(X::in, Y::in, W::in, H::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_projection_viewport(X, Y, W, H);
     IO = IO0;
@@ -255,7 +255,7 @@
 
 :- pragma foreign_proc("C",
     persp_project(X::in, Y::in, Z::in, XOut::out, YOut::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     float XOutf, YOutf;
     persp_project_f(X, Y, Z, &XOutf, &YOutf);

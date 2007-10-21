@@ -83,7 +83,7 @@
 
 :- pragma foreign_proc("C",
     screen(Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure, thread_safe],
+    [may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = screen ? _mal_make_yes_bitmap(screen) : _mal_make_no_bitmap();
     IO = IO0;
@@ -91,7 +91,7 @@
 
 :- pragma foreign_proc("C",
     screen_w(Result::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = SCREEN_W;
     IO = IO0;
@@ -99,7 +99,7 @@
 
 :- pragma foreign_proc("C",
     screen_h(Result::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = SCREEN_H;
     IO = IO0;
@@ -107,7 +107,7 @@
 
 :- pragma foreign_proc("C",
     virtual_w(Result::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = VIRTUAL_W;
     IO = IO0;
@@ -115,7 +115,7 @@
 
 :- pragma foreign_proc("C",
     virtual_h(Result::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = VIRTUAL_H;
     IO = IO0;
@@ -123,7 +123,7 @@
 
 :- pragma foreign_proc("C",
     create_bitmap(Width::in, Height::in, Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     BITMAP *bmp = create_bitmap(Width, Height);
     Result = bmp ? _mal_make_yes_bitmap(bmp) : _mal_make_no_bitmap();
@@ -133,7 +133,7 @@
 :- pragma foreign_proc("C",
     create_bitmap_ex(Depth::in, Width::in, Height::in, Result::out,
         IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     BITMAP *bmp = create_bitmap_ex(Depth, Width, Height);
     Result = bmp ? _mal_make_yes_bitmap(bmp) : _mal_make_no_bitmap();
@@ -143,7 +143,7 @@
 :- pragma foreign_proc("C",
     create_sub_bitmap(Parent::in, X::in, Y::in, Width::in, Height::in,
         Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     BITMAP *bmp = create_sub_bitmap(Parent, X, Y, Width, Height);
     Result = bmp ? _mal_make_yes_bitmap(bmp) : _mal_make_no_bitmap();
@@ -152,7 +152,7 @@
 
 :- pragma foreign_proc("C",
     create_video_bitmap(Width::in, Height::in, Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     BITMAP *bmp = create_video_bitmap(Width, Height);
     Result = bmp ? _mal_make_yes_bitmap(bmp) : _mal_make_no_bitmap();
@@ -161,7 +161,7 @@
 
 :- pragma foreign_proc("C",
     create_system_bitmap(Width::in, Height::in, Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     BITMAP *bmp = create_system_bitmap(Width, Height);
     Result = bmp ? _mal_make_yes_bitmap(bmp) : _mal_make_no_bitmap();
@@ -170,7 +170,7 @@
 
 :- pragma foreign_proc("C",
     destroy_bitmap(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     destroy_bitmap(Bitmap);
     IO = IO0;
@@ -178,7 +178,7 @@
 
 :- pragma foreign_proc("C",
     bitmap_color_depth(Bitmap::in, Depth::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Depth = bitmap_color_depth(Bitmap);
     IO = IO0;
@@ -186,7 +186,7 @@
 
 :- pragma foreign_proc("C",
     bitmap_mask_color(Bitmap::in, Mask::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Mask = bitmap_mask_color(Bitmap);
     IO = IO0;
@@ -250,7 +250,7 @@
 
 :- pragma foreign_proc("C",
     acquire_bitmap(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     acquire_bitmap(Bitmap);
     IO = IO0;
@@ -258,7 +258,7 @@
 
 :- pragma foreign_proc("C",
     release_bitmap(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     release_bitmap(Bitmap);
     IO = IO0;
@@ -266,7 +266,7 @@
 
 :- pragma foreign_proc("C",
     acquire_screen(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     acquire_screen();
     IO = IO0;
@@ -274,7 +274,7 @@
 
 :- pragma foreign_proc("C",
     release_screen(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     release_screen();
     IO = IO0;
@@ -282,7 +282,7 @@
 
 :- pragma foreign_proc("C",
     set_clip_rect(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_clip_rect(Bitmap, X1, Y1, X2, Y2);
     IO = IO0;
@@ -291,7 +291,7 @@
 :- pragma foreign_proc("C",
     get_clip_rect(Bitmap::in, X1::out, Y1::out, X2::out, Y2::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     int _X1, _Y1, _X2, _Y2;
     get_clip_rect(Bitmap, &_X1, &_Y1, &_X2, &_Y2);
@@ -304,7 +304,7 @@
 
 :- pragma foreign_proc("C",
     add_clip_rect(Bitmap::in, X1::in, Y1::in, X2::in, Y2::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     add_clip_rect(Bitmap, X1, Y1, X2, Y2);
     IO = IO0;
@@ -312,7 +312,7 @@
 
 :- pragma foreign_proc("C",
     set_clip_state(Bitmap::in, State::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_clip_state(Bitmap, State);
     IO = IO0;
@@ -320,7 +320,7 @@
 
 :- pragma foreign_proc("C",
     get_clip_state(Bitmap::in, State::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     State = get_clip_state(Bitmap);
     IO = IO0;
@@ -329,7 +329,7 @@
 :- pragma foreign_proc("C",
     is_inside_bitmap(Bitmap::in, X::in, Y::in, Clip::in, IsInside::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     IsInside = is_inside_bitmap(Bitmap, X, Y, Clip);
     IO = IO0;

@@ -34,50 +34,50 @@
 :- pred load_pcx(string::in, load_bitmap_result::out, io::di, io::uo) is det.
 :- pred load_tga(string::in, load_bitmap_result::out, io::di, io::uo) is det.
 % :- pred register_bitmap_file_type(string::in, load_bitmap_proc::in, save_bitmap_proc::in, io::di, io::uo) is det.
-:- pred set_color_conversion(int::in, io::di, io::uo) is det.
-:- pred get_color_conversion(int::out, io::di, io::uo) is det.
+:- pred set_color_conversion(colorconv::in, io::di, io::uo) is det.
+:- pred get_color_conversion(colorconv::out, io::di, io::uo) is det.
 
-:- func colorconv_none = int.
-:- func colorconv_8_to_15 = int.
-:- func colorconv_8_to_16 = int.
-:- func colorconv_8_to_24 = int.
-:- func colorconv_8_to_32 = int.
-:- func colorconv_15_to_8 = int.
-:- func colorconv_15_to_16 = int.
-:- func colorconv_15_to_24 = int.
-:- func colorconv_15_to_32 = int.
-:- func colorconv_16_to_8 = int.
-:- func colorconv_16_to_15 = int.
-:- func colorconv_16_to_24 = int.
-:- func colorconv_16_to_32 = int.
-:- func colorconv_24_to_8 = int.
-:- func colorconv_24_to_15 = int.
-:- func colorconv_24_to_16 = int.
-:- func colorconv_24_to_32 = int.
-:- func colorconv_32_to_8 = int.
-:- func colorconv_32_to_15 = int.
-:- func colorconv_32_to_16 = int.
-:- func colorconv_32_to_24 = int.
-:- func colorconv_32A_to_8 = int.
-:- func colorconv_32A_to_15 = int.
-:- func colorconv_32A_to_16 = int.
-:- func colorconv_32A_to_24 = int.
-:- func colorconv_dither_pal = int.
-:- func colorconv_dither_hi = int.
-:- func colorconv_keep_trans = int.
+:- func colorconv_none = colorconv.
+:- func colorconv_8_to_15 = colorconv.
+:- func colorconv_8_to_16 = colorconv.
+:- func colorconv_8_to_24 = colorconv.
+:- func colorconv_8_to_32 = colorconv.
+:- func colorconv_15_to_8 = colorconv.
+:- func colorconv_15_to_16 = colorconv.
+:- func colorconv_15_to_24 = colorconv.
+:- func colorconv_15_to_32 = colorconv.
+:- func colorconv_16_to_8 = colorconv.
+:- func colorconv_16_to_15 = colorconv.
+:- func colorconv_16_to_24 = colorconv.
+:- func colorconv_16_to_32 = colorconv.
+:- func colorconv_24_to_8 = colorconv.
+:- func colorconv_24_to_15 = colorconv.
+:- func colorconv_24_to_16 = colorconv.
+:- func colorconv_24_to_32 = colorconv.
+:- func colorconv_32_to_8 = colorconv.
+:- func colorconv_32_to_15 = colorconv.
+:- func colorconv_32_to_16 = colorconv.
+:- func colorconv_32_to_24 = colorconv.
+:- func colorconv_32A_to_8 = colorconv.
+:- func colorconv_32A_to_15 = colorconv.
+:- func colorconv_32A_to_16 = colorconv.
+:- func colorconv_32A_to_24 = colorconv.
+:- func colorconv_dither_pal = colorconv.
+:- func colorconv_dither_hi = colorconv.
+:- func colorconv_keep_trans = colorconv.
 
-:- func colorconv_expand_256 = int.
-:- func colorconv_reduce_to_256 = int.
-:- func colorconv_expand_15_to_16 = int.
-:- func colorconv_reduce_16_to_15 = int.
-:- func colorconv_expand_hi_to_true = int.
-:- func colorconv_reduce_true_to_hi = int.
-:- func colorconv_24_equals_32 = int.
-:- func colorconv_total = int.
-:- func colorconv_partial = int.
-:- func colorconv_most = int.
-:- func colorconv_dither = int.
-:- func colorconv_keep_alpha = int.
+:- func colorconv_expand_256 = colorconv.
+:- func colorconv_reduce_to_256 = colorconv.
+:- func colorconv_expand_15_to_16 = colorconv.
+:- func colorconv_reduce_16_to_15 = colorconv.
+:- func colorconv_expand_hi_to_true = colorconv.
+:- func colorconv_reduce_true_to_hi = colorconv.
+:- func colorconv_24_equals_32 = colorconv.
+:- func colorconv_total = colorconv.
+:- func colorconv_partial = colorconv.
+:- func colorconv_most = colorconv.
+:- func colorconv_dither = colorconv.
+:- func colorconv_keep_alpha = colorconv.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -94,7 +94,7 @@
 
 :- pragma foreign_proc("C",
     load_bitmap(Filename::in, Result::out, IO0::di, IO::uo),
-    [promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     RGB *Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     BITMAP *Bitmap = load_bitmap(Filename, Palette);
@@ -108,7 +108,7 @@
 
 :- pragma foreign_proc("C",
     load_bmp(Filename::in, Result::out, IO0::di, IO::uo),
-    [promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     RGB *Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     BITMAP *Bitmap = load_bmp(Filename, Palette);
@@ -122,7 +122,7 @@
 
 :- pragma foreign_proc("C",
     load_lbm(Filename::in, Result::out, IO0::di, IO::uo),
-    [promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     RGB *Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     BITMAP *Bitmap = load_lbm(Filename, Palette);
@@ -136,7 +136,7 @@
 
 :- pragma foreign_proc("C",
     load_pcx(Filename::in, Result::out, IO0::di, IO::uo),
-    [promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     RGB *Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     BITMAP *Bitmap = load_pcx(Filename, Palette);
@@ -150,7 +150,7 @@
 
 :- pragma foreign_proc("C",
     load_tga(Filename::in, Result::out, IO0::di, IO::uo),
-    [promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     RGB *Palette = MR_GC_NEW_ARRAY(RGB, PAL_SIZE);
     BITMAP *Bitmap = load_tga(Filename, Palette);
@@ -173,7 +173,7 @@
 
 :- pragma foreign_proc("C",
     set_color_conversion(Mode::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_color_conversion(Mode);
     IO = IO0;
@@ -181,7 +181,7 @@
 
 :- pragma foreign_proc("C",
     get_color_conversion(Mode::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Mode = get_color_conversion();
     IO = IO0;

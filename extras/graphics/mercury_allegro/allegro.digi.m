@@ -117,7 +117,7 @@
 
 :- pragma foreign_proc("C",
     load_sample(Filename::in, MaybeSample::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     SAMPLE *Sample = load_sample(Filename);
     if (Sample) {
@@ -130,7 +130,7 @@
 
 :- pragma foreign_proc("C",
     load_wav(Filename::in, MaybeSample::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     SAMPLE *Sample = load_wav(Filename);
     if (Sample) {
@@ -143,7 +143,7 @@
 
 :- pragma foreign_proc("C",
     load_voc(Filename::in, MaybeSample::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     SAMPLE *Sample = load_voc(Filename);
     if (Sample) {
@@ -156,7 +156,7 @@
 
 :- pragma foreign_proc("C",
     save_sample(Filename::in, Sample::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == save_sample(Filename, Sample)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -173,7 +173,7 @@ create_sample(Bits, Channels, Freq, Len, MaybeSample, !IO) :-
 :- pragma foreign_proc("C",
     create_sample_2(Bits::in, IsStereo::in, Freq::in, Len::in,
         MaybeSample::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     SAMPLE *Sample = create_sample(Bits, IsStereo, Freq, Len);
     if (Sample) {
@@ -186,7 +186,7 @@ create_sample(Bits, Channels, Freq, Len, MaybeSample, !IO) :-
 
 :- pragma foreign_proc("C",
     destroy_sample(Sample::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     destroy_sample(Sample);
     IO = IO0;
@@ -202,7 +202,7 @@ play_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 :- pragma foreign_proc("C",
     play_sample_2(Sample::in, Vol::in, Pan::in, Freq::in, Loop::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     play_sample(Sample, Vol, Pan, Freq, Loop);
     IO = IO0;
@@ -218,7 +218,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 :- pragma foreign_proc("C",
     adjust_sample_2(Sample::in, Vol::in, Pan::in, Freq::in, Loop::in,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     adjust_sample(Sample, Vol, Pan, Freq, Loop);
     IO = IO0;
@@ -226,7 +226,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     stop_sample(Sample::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     stop_sample(Sample);
     IO = IO0;
@@ -238,7 +238,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     allocate_voice(Sample::in, MaybeVoice::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int Voice = allocate_voice(Sample);
     if (Voice == -1) {
@@ -251,7 +251,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     deallocate_voice(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     deallocate_voice(Voice);
     IO = IO0;
@@ -259,7 +259,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     reallocate_voice(Voice::in, Sample::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     reallocate_voice(Voice, Sample);
     IO = IO0;
@@ -267,7 +267,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     release_voice(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     release_voice(Voice);
     IO = IO0;
@@ -275,7 +275,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_start(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_start(Voice);
     IO = IO0;
@@ -283,7 +283,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_stop(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_stop(Voice);
     IO = IO0;
@@ -291,7 +291,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_set_priority(Voice::in, Priority::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_set_priority(Voice, Priority);
     IO = IO0;
@@ -299,7 +299,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_check(Voice::in, MaybeSample::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     SAMPLE *Sample = voice_check(Voice);
     if (Sample) {
@@ -312,7 +312,7 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_get_position(Voice::in, MaybePos::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int Pos = voice_get_position(Voice);
     if (Pos == -1) {
@@ -325,20 +325,15 @@ adjust_sample(Sample, Vol, Pan, Freq, Loop, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_set_position(Voice::in, Pos::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_set_position(Voice, Pos);
     IO = IO0;
 ").
 
-voice_set_playmode(Voice, Playmode, !IO) :-
-    voice_set_playmode_2(Voice, playmode_to_int(Playmode), !IO).
-
-:- pred voice_set_playmode_2(voice::in, int::in, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    voice_set_playmode_2(Voice::in, Playmode::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    voice_set_playmode(Voice::in, Playmode::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_set_playmode(Voice, Playmode);
     IO = IO0;
@@ -346,7 +341,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_get_volume(Voice::in, MaybeVolume::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     int Volume = voice_get_volume(Voice);
     if (Volume == -1) {
@@ -359,7 +354,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_set_volume(Voice::in, Volume::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_set_volume(Voice, Volume);
     IO = IO0;
@@ -367,7 +362,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_ramp_volume(Voice::in, Time::in, Endvol::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_ramp_volume(Voice, Time, Endvol);
     IO = IO0;
@@ -375,7 +370,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_stop_volumeramp(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_stop_volumeramp(Voice);
     IO = IO0;
@@ -383,7 +378,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_get_frequency(Voice::in, Freq::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Freq = voice_get_frequency(Voice);
     IO = IO0;
@@ -391,7 +386,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_set_frequency(Voice::in, Freq::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_set_frequency(Voice, Freq);
     IO = IO0;
@@ -399,7 +394,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_sweep_frequency(Voice::in, Time::in, Endfreq::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_sweep_frequency(Voice, Time, Endfreq);
     IO = IO0;
@@ -407,7 +402,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_stop_frequency_sweep(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_stop_frequency_sweep(Voice);
     IO = IO0;
@@ -415,7 +410,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_get_pan(Voice::in, Pan::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Pan = voice_get_pan(Voice);
     IO = IO0;
@@ -423,7 +418,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_set_pan(Voice::in, Pan::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_set_pan(Voice, Pan);
     IO = IO0;
@@ -431,7 +426,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_sweep_pan(Voice::in, Time::in, Endpan::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_sweep_pan(Voice, Time, Endpan);
     IO = IO0;
@@ -439,7 +434,7 @@ voice_set_playmode(Voice, Playmode, !IO) :-
 
 :- pragma foreign_proc("C",
     voice_stop_pan_sweep(Voice::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     voice_stop_pan_sweep(Voice);
     IO = IO0;
@@ -468,35 +463,13 @@ channels_is_stereo_int(stereo, 1).
 loop(no_loop, 0).
 loop(loop, 1).
 
-:- func playmode_to_int(playmode) = int.
-
-playmode_to_int(playmode_play) = playmode_play_int.
-playmode_to_int(playmode_loop) = playmode_loop_int.
-playmode_to_int(playmode_forward) = playmode_forward_int.
-playmode_to_int(playmode_backward) = playmode_backward_int.
-playmode_to_int(playmode_bidir) = playmode_bidir_int.
-
-:- func playmode_play_int = int.
-:- func playmode_loop_int = int.
-:- func playmode_forward_int = int.
-:- func playmode_backward_int = int.
-:- func playmode_bidir_int = int.
-
-:- pragma foreign_proc("C", playmode_play_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = PLAYMODE_PLAY;").
-:- pragma foreign_proc("C", playmode_loop_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = PLAYMODE_LOOP;").
-:- pragma foreign_proc("C", playmode_forward_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = PLAYMODE_FORWARD;").
-:- pragma foreign_proc("C", playmode_backward_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = PLAYMODE_BACKWARD;").
-:- pragma foreign_proc("C", playmode_bidir_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = PLAYMODE_BIDIR;").
+:- pragma foreign_enum("C", playmode/0, [
+    playmode_play       - "PLAYMODE_PLAY",
+    playmode_loop       - "PLAYMODE_LOOP",
+    playmode_forward    - "PLAYMODE_FORWARD",
+    playmode_backward   - "PLAYMODE_BACKWARD",
+    playmode_bidir      - "PLAYMODE_BIDIR"
+]).
 
 %-----------------------------------------------------------------------------%
 
@@ -564,7 +537,7 @@ Sample ^ len = Len :-
 
 :- pragma foreign_proc("C",
     get_sample(Sample::in, Pos::in, Value::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ASSERT(Pos < Sample->len);
     if (Sample->bits == 8) {
@@ -579,7 +552,7 @@ Sample ^ len = Len :-
 
 :- pragma foreign_proc("C",
     set_sample(Sample::in, Pos::in, Value::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ASSERT(Pos < Sample->len);
     if (Sample->bits == 8) {

@@ -83,7 +83,7 @@
 
 :- pragma foreign_proc("C",
     set_color_depth(Depth::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_color_depth(Depth);
     IO0 = IO;
@@ -91,7 +91,7 @@
 
 :- pragma foreign_proc("C",
     get_color_depth(Depth::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Depth = get_color_depth();
     IO0 = IO;
@@ -99,7 +99,7 @@
 
 :- pragma foreign_proc("C",
     request_refresh_rate(Rate::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     request_refresh_rate(Rate);
     IO = IO0;
@@ -113,7 +113,7 @@ get_refresh_rate(MaybeRate, !IO) :-
 
 :- pragma foreign_proc("C",
     get_refresh_rate_2(Rate::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Rate = get_refresh_rate();
     IO = IO0;
@@ -128,7 +128,7 @@ set_gfx_mode(Card, W, H, VW, VH, Success, !IO) :-
 :- pragma foreign_proc("C",
     set_gfx_mode_2(Card::in, W::in, H::in, VW::in, VH::in, Success::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == set_gfx_mode(Card, W, H, VW, VH)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -139,7 +139,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     set_display_switch_mode(SwitchMode::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == set_display_switch_mode(SwitchMode)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -147,7 +147,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     get_display_switch_mode(SwitchMode::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     SwitchMode = get_display_switch_mode();
     IO = IO0;
@@ -155,7 +155,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     is_windowed_mode(Is::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Is = is_windowed_mode() ? MR_YES : MR_NO;
     IO = IO0;
@@ -163,7 +163,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     gfx_capabilities(Caps::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Caps = gfx_capabilities;
     IO = IO0;
@@ -171,7 +171,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     enable_triple_buffer(Enabled::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Enabled = enable_triple_buffer() ? MR_YES : MR_NO;
     IO = IO0;
@@ -179,7 +179,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     scroll_screen(X::in, Y::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     scroll_screen(X, Y);
     IO = IO0;
@@ -187,7 +187,7 @@ set_text_mode(!IO) :-
 
 :- pragma foreign_proc("C",
     request_scroll(X::in, Y::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     request_scroll(X, Y);
     IO = IO0;
@@ -201,7 +201,7 @@ poll_scroll(Status, !IO) :-
 
 :- pragma foreign_proc("C",
     poll_scroll_2(StatusInt::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     StatusInt = poll_scroll();
     IO = IO0;
@@ -209,7 +209,7 @@ poll_scroll(Status, !IO) :-
 
 :- pragma foreign_proc("C",
     show_video_bitmap(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     show_video_bitmap(Bitmap);
     IO = IO0;
@@ -217,7 +217,7 @@ poll_scroll(Status, !IO) :-
 
 :- pragma foreign_proc("C",
     request_video_bitmap(Bitmap::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     request_video_bitmap(Bitmap);
     IO = IO0;
@@ -225,7 +225,7 @@ poll_scroll(Status, !IO) :-
 
 :- pragma foreign_proc("C",
     vsync(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     vsync();
     IO = IO0;
@@ -282,35 +282,13 @@ gfx_card_to_int(gfx_opengl_fullscreen) = gfx_opengl_fullscreen_int.
 
 %-----------------------------------------------------------------------------%
 
-:- func switch_mode_to_int(switch_mode) = int.
-
-switch_mode_to_int(switch_none) = switch_none_int.
-switch_mode_to_int(switch_pause) = switch_pause_int.
-switch_mode_to_int(switch_amnesia) = switch_amnesia_int.
-switch_mode_to_int(switch_background) = switch_background_int.
-switch_mode_to_int(switch_backamnesia) = switch_backamnesia_int.
-
-:- func switch_none_int = int.
-:- func switch_pause_int = int.
-:- func switch_amnesia_int = int.
-:- func switch_background_int = int.
-:- func switch_backamnesia_int = int.
-
-:- pragma foreign_proc("C", switch_none_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SWITCH_NONE;").
-:- pragma foreign_proc("C", switch_pause_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SWITCH_PAUSE;").
-:- pragma foreign_proc("C", switch_amnesia_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SWITCH_AMNESIA;").
-:- pragma foreign_proc("C", switch_background_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SWITCH_BACKGROUND;").
-:- pragma foreign_proc("C", switch_backamnesia_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = SWITCH_BACKAMNESIA;").
+:- pragma foreign_enum("C", switch_mode/0, [
+    switch_none         - "SWITCH_NONE",
+    switch_pause        - "SWITCH_PAUSE",
+    switch_amnesia      - "SWITCH_AMNESIA",
+    switch_background   - "SWITCH_BACKGROUND",
+    switch_backamnesia  - "SWITCH_BACKAMNESIA"
+]).
 
 %-----------------------------------------------------------------------------%
 % vi:ts=8:sts=4:sw=4:et

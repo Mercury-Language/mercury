@@ -188,10 +188,6 @@
 :- pragma foreign_decl("C", "
     #include <alleggl.h>
     #include <allegro.mh>
-
-    extern int __magl_font_type_flags[];
-    extern int __magl_option_flags[];
-    extern int __magl_priority_flags[];
 ").
 
 %-----------------------------------------------------------------------------%
@@ -201,7 +197,7 @@
 
 :- pragma foreign_proc("C",
     install_allegro_gl(Result::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     __mal_GFX_OPENGL = GFX_OPENGL;
     __mal_GFX_OPENGL_WINDOWED = GFX_OPENGL_WINDOWED;
@@ -213,7 +209,7 @@
 
 :- pragma foreign_proc("C",
     remove_allegro_gl(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     remove_allegro_gl();
     IO = IO0;
@@ -221,7 +217,7 @@
 
 :- pragma foreign_proc("C",
     flip(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_flip();
     IO = IO0;
@@ -229,7 +225,7 @@
 
 :- pragma foreign_proc("C",
     opengl_version(Version::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Version = allegro_gl_opengl_version();
     IO = IO0;
@@ -246,49 +242,30 @@ texture_flags_to_bits([])       = 0.
 texture_flags_to_bits([F | Fs]) =
     texture_flag_to_bit(F) \/ texture_flags_to_bits(Fs).
 
+:- pragma foreign_enum("C", texture_flag/0, [
+    mipmap      - "AGL_TEXTURE_MIPMAP",
+    has_alpha   - "AGL_TEXTURE_HAS_ALPHA",
+    flip        - "AGL_TEXTURE_FLIP",
+    masked      - "AGL_TEXTURE_MASKED",
+    rescale     - "AGL_TEXTURE_RESCALE",
+    alpha_only  - "AGL_TEXTURE_ALPHA_ONLY"
+]).
+
 :- func texture_flag_to_bit(texture_flag) = int.
-
-texture_flag_to_bit(TF) = lookup_texture_flag_bit(texture_flag_to_int(TF)).
-
-:- func texture_flag_to_int(texture_flag) = int.
-
-texture_flag_to_int(mipmap)     = 0.
-texture_flag_to_int(has_alpha)  = 1.
-texture_flag_to_int(flip)       = 2.
-texture_flag_to_int(masked)     = 3.
-texture_flag_to_int(rescale)    = 4.
-texture_flag_to_int(alpha_only) = 5.
-
-:- func lookup_texture_flag_bit(int) = int.
 :- pragma foreign_proc("C",
-    lookup_texture_flag_bit(TextureFlagInt::in) = (Bit::out),
+    texture_flag_to_bit(TextureFlag::in) = (Bit::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    static const int __magl_texture_flag_bits[] = {
-        AGL_TEXTURE_MIPMAP,
-        AGL_TEXTURE_HAS_ALPHA,
-        AGL_TEXTURE_FLIP,
-        AGL_TEXTURE_MASKED,
-        AGL_TEXTURE_RESCALE,
-        AGL_TEXTURE_ALPHA_ONLY
-    };
-    Bit = __magl_texture_flag_bits[TextureFlagInt];
+    Bit = TextureFlag;
 ").
 
-check_texture_ex(TextureFlags, Bitmap, TextureFormat, CanBeTexture, !IO) :-
-    TextureFlagsBits = texture_flags_to_bits(TextureFlags),
-    check_texture_ex_2(TextureFlagsBits, Bitmap, TextureFormat,
-        CanBeTexture, !IO).
-
-:- pred check_texture_ex_2(int::in, bitmap::in, mogl.texture_format::in,
-    bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    check_texture_ex_2(TextureFlagsBits::in, Bitmap::in, TextureFormatInt::in,
+    check_texture_ex(TextureFlagsBits::in, Bitmap::in, TextureFormat::in,
         CanBeTexture::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     CanBeTexture = allegro_gl_check_texture_ex(TextureFlagsBits, Bitmap,
-        (GLenum) TextureFormatInt) ? MR_YES : MR_NO;
+        (GLenum) TextureFormat) ? MR_YES : MR_NO;
     IO = IO0;
 ").
 
@@ -303,7 +280,7 @@ make_texture_ex(TextureFlags, Bitmap, TextureFormat, MaybeTextureName, !IO) :-
 :- pragma foreign_proc("C",
     make_texture_ex_2(TextureFlagsBits::in, Bitmap::in, TextureFormat::in,
         TextureName::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     TextureName = allegro_gl_make_texture_ex(TextureFlagsBits, Bitmap,
         (GLenum) TextureFormat);
@@ -318,25 +295,16 @@ make_texture_ex(TextureFlags, Bitmap, TextureFormat, MaybeTextureName, !IO) :-
 :- pragma foreign_type("C", agl_font, "FONT *",
         [can_pass_as_mercury_type]).
 
-:- func font_type_to_int(font_type) = int.
-
-font_type_to_int(dont_care) = 0.
-font_type_to_int(bitmap)    = 1.
-font_type_to_int(textured)  = 2.
-
-:- pragma foreign_code("C",
-"
-    int __magl_font_type_flags[] = {
-        AGL_FONT_TYPE_DONT_CARE,
-        AGL_FONT_TYPE_BITMAP,
-        AGL_FONT_TYPE_TEXTURED
-    };
-").
+:- pragma foreign_enum("C", font_type/0, [
+    dont_care   - "AGL_FONT_TYPE_DONT_CARE",
+    bitmap      - "AGL_FONT_TYPE_BITMAP",
+    textured    - "AGL_FONT_TYPE_TEXTURED"
+]).
 
 :- pragma foreign_proc("C",
     printf(Fnt::in, X::in, Y::in, Z::in, Color::in, Str::in, Result::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = allegro_gl_printf(Fnt, X, Y, Z, Color, ""%s"", Str);
     IO = IO0;
@@ -345,26 +313,19 @@ font_type_to_int(textured)  = 2.
 :- pragma foreign_proc("C",
     printf_ex(Fnt::in, X::in, Y::in, Z::in, Str::in, Result::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Result = allegro_gl_printf_ex(Fnt, X, Y, Z, ""%s"", Str);
     IO = IO0;
 ").
 
-convert_allegro_font_ex(Fnt, FontType, Scale, Format, MaybeAGLFont, !IO) :-
-    convert_allegro_font_ex_2(Fnt, font_type_to_int(FontType), Scale,
-        Format, MaybeAGLFont, !IO).
-
-:- pred convert_allegro_font_ex_2(font::in, int::in, float::in,
-    mogl.texture_format::in, maybe(agl_font)::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    convert_allegro_font_ex_2(Fnt::in, FontType::in, Scale::in, Format::in,
+    convert_allegro_font_ex(Fnt::in, FontType::in, Scale::in, Format::in,
         MaybeAGLFont::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     FONT *AGLFont = allegro_gl_convert_allegro_font_ex(Fnt,
-        __magl_font_type_flags[FontType], Scale,
-        (GLenum) Format);
+        FontType, Scale, (GLenum) Format);
     if (AGLFont) {
         MaybeAGLFont = __magl_yes_agl_font(AGLFont);
     } else {
@@ -375,7 +336,7 @@ convert_allegro_font_ex(Fnt, FontType, Scale, Format, MaybeAGLFont, !IO) :-
 
 :- pragma foreign_proc("C",
     destroy_font(AGLFont::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_destroy_font(AGLFont);
     IO = IO0;
@@ -383,7 +344,7 @@ convert_allegro_font_ex(Fnt, FontType, Scale, Format, MaybeAGLFont, !IO) :-
 
 :- pragma foreign_proc("C",
     list_font_textures(AGLFont::in, Textures::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     size_t NumIds = allegro_gl_list_font_textures(AGLFont, NULL, 0);
     {
@@ -414,7 +375,7 @@ no_agl_font = no.
 
 :- pragma foreign_proc("C",
     draw_mouse(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     algl_draw_mouse();
     IO = IO0;
@@ -423,7 +384,7 @@ no_agl_font = no.
 :- pragma foreign_proc("C",
     alert(S1::in, S2::in, S3::in, B1::in, B2::in, C1::in, C2::in, Ret::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = algl_alert(S1, S2, S3, B1, B2, C1, C2);
     IO = IO0;
@@ -432,7 +393,7 @@ no_agl_font = no.
 :- pragma foreign_proc("C",
     alert3(S1::in, S2::in, S3::in, B1::in, B2::in, B3::in, C1::in, C2::in,
         C3::in, Ret::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = algl_alert3(S1, S2, S3, B1, B2, B3, C1, C2, C3);
     IO = IO0;
@@ -443,77 +404,38 @@ no_agl_font = no.
 % Option settings
 %
 
-:- func option_to_int(option) = int.
+:- pragma foreign_enum("C", option/0, [
+    red_depth           - "AGL_RED_DEPTH",
+    green_depth         - "AGL_GREEN_DEPTH",
+    blue_depth          - "AGL_BLUE_DEPTH",
+    alpha_depth         - "AGL_ALPHA_DEPTH",
+    color_depth         - "AGL_COLOR_DEPTH",
+    acc_red_depth       - "AGL_ACC_RED_DEPTH",
+    acc_green_depth     - "AGL_ACC_GREEN_DEPTH",
+    acc_blue_depth      - "AGL_ACC_BLUE_DEPTH",
+    acc_alpha_depth     - "AGL_ACC_ALPHA_DEPTH",
+    doublebuffer        - "AGL_DOUBLEBUFFER",
+    stereo              - "AGL_STEREO",
+    aux_buffers         - "AGL_AUX_BUFFERS",
+    z_depth             - "AGL_Z_DEPTH",
+    stencil_depth       - "AGL_STENCIL_DEPTH",
+    window_x            - "AGL_WINDOW_X",
+    window_y            - "AGL_WINDOW_Y",
+    rendermethod        - "AGL_RENDERMETHOD",
+    fullscreen          - "AGL_FULLSCREEN",
+    windowed            - "AGL_WINDOWED",
+    video_memory_policy - "AGL_VIDEO_MEMORY_POLICY",
+    sample_buffers      - "AGL_SAMPLE_BUFFERS",
+    samples             - "AGL_SAMPLES",
+    float_color         - "AGL_FLOAT_COLOR",
+    float_z             - "AGL_FLOAT_Z"
+]).
 
-option_to_int(red_depth)           = 0.
-option_to_int(green_depth)         = 1.
-option_to_int(blue_depth)          = 2.
-option_to_int(alpha_depth)         = 3.
-option_to_int(color_depth)         = 4.
-option_to_int(acc_red_depth)       = 5.
-option_to_int(acc_green_depth)     = 6.
-option_to_int(acc_blue_depth)      = 7.
-option_to_int(acc_alpha_depth)     = 8.
-option_to_int(doublebuffer)        = 9.
-option_to_int(stereo)              = 10.
-option_to_int(aux_buffers)         = 11.
-option_to_int(z_depth)             = 12.
-option_to_int(stencil_depth)       = 13.
-option_to_int(window_x)            = 14.
-option_to_int(window_y)            = 15.
-option_to_int(rendermethod)        = 16.
-option_to_int(fullscreen)          = 17.
-option_to_int(windowed)            = 18.
-option_to_int(video_memory_policy) = 19.
-option_to_int(sample_buffers)      = 20.
-option_to_int(samples)             = 21.
-option_to_int(float_color)         = 22.
-option_to_int(float_z)             = 23.
-
-:- pragma foreign_code("C",
-"
-    int __magl_option_flags[] = {
-        AGL_RED_DEPTH,
-        AGL_GREEN_DEPTH,
-        AGL_BLUE_DEPTH,
-        AGL_ALPHA_DEPTH,
-        AGL_COLOR_DEPTH,
-        AGL_ACC_RED_DEPTH,
-        AGL_ACC_GREEN_DEPTH,
-        AGL_ACC_BLUE_DEPTH,
-        AGL_ACC_ALPHA_DEPTH,
-        AGL_DOUBLEBUFFER,
-        AGL_STEREO,
-        AGL_AUX_BUFFERS,
-        AGL_Z_DEPTH,
-        AGL_STENCIL_DEPTH,
-        AGL_WINDOW_X,
-        AGL_WINDOW_Y,
-        AGL_RENDERMETHOD,
-        AGL_FULLSCREEN,
-        AGL_WINDOWED,
-        AGL_VIDEO_MEMORY_POLICY,
-        AGL_SAMPLE_BUFFERS,
-        AGL_SAMPLES,
-        AGL_FLOAT_COLOR,
-        AGL_FLOAT_Z
-    };
-").
-
-:- func priority_to_int(priority) = int.
-
-priority_to_int(dont_care) = 0.
-priority_to_int(suggest)   = 1.
-priority_to_int(require)   = 2.
-
-:- pragma foreign_code("C",
-"
-    int __magl_priority_flags[] = {
-        AGL_DONTCARE,
-        AGL_SUGGEST,
-        AGL_REQUIRE
-    };
-").
+:- pragma foreign_enum("C", priority/0, [
+    dont_care           - "AGL_DONTCARE",
+    suggest             - "AGL_SUGGEST",
+    require             - "AGL_REQUIRE"
+]).
 
 :- pragma foreign_proc("C",
     release = (Value::out),
@@ -531,52 +453,39 @@ priority_to_int(require)   = 2.
 
 :- pragma foreign_proc("C",
     clear_settings(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_clear_settings();
     IO = IO0;
 ").
 
-set(Option, Value, !IO) :-
-    set_2(option_to_int(Option), Value, !IO).
-
-:- pred set_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    set_2(Option::in, Value::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    set(Option::in, Value::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    allegro_gl_set(__magl_option_flags[Option], Value);
+    allegro_gl_set(Option, Value);
     IO = IO0;
 ").
 
-get(Option, Value, !IO) :-
-    get_2(option_to_int(Option), Value, !IO).
-
-:- pred get_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    get_2(Option::in, Value::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    get(Option::in, Value::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Value = allegro_gl_get(__magl_option_flags[Option]);
+    Value = allegro_gl_get(Option);
     IO = IO0;
 ").
 
-set_priority(Priority, Option, !IO) :-
-    set_priority_2(priority_to_int(Priority), option_to_int(Option), !IO).
-
-:- pred set_priority_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    set_priority_2(Priority::in, Option::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    set_priority(Priority::in, Option::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    allegro_gl_set(__magl_priority_flags[Priority],
-                    __magl_option_flags[Option]);
+    allegro_gl_set(Priority, Option);
     IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     save_settings(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_save_settings();
     IO = IO0;
@@ -584,7 +493,7 @@ set_priority(Priority, Option, !IO) :-
 
 :- pragma foreign_proc("C",
     load_settings(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_load_settings();
     IO = IO0;
@@ -597,16 +506,15 @@ set_priority(Priority, Option, !IO) :-
 
 :- pragma foreign_proc("C",
     set_allegro_mode(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_set_allegro_mode();
     IO = IO0;
 ").
 
-
 :- pragma foreign_proc("C",
     unset_allegro_mode(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_unset_allegro_mode();
     IO = IO0;
@@ -614,7 +522,7 @@ set_priority(Priority, Option, !IO) :-
 
 :- pragma foreign_proc("C",
     set_projection(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_set_projection();
     IO = IO0;
@@ -622,7 +530,7 @@ set_priority(Priority, Option, !IO) :-
 
 :- pragma foreign_proc("C",
     unset_projection(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     allegro_gl_unset_projection();
     IO = IO0;

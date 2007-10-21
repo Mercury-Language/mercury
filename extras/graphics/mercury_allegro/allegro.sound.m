@@ -47,27 +47,17 @@
 
 %-----------------------------------------------------------------------------%
 
-detect_digi_driver(Driver, Voices, !IO) :-
-    detect_digi_driver_2(digi_driver_to_int(Driver), Voices, !IO).
-
-:- pred detect_digi_driver_2(int::in, int::out, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    detect_digi_driver_2(Driver::in, Voices::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    detect_digi_driver(Driver::in, Voices::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Voices = detect_digi_driver(Driver);
     IO = IO0;
 ").
 
-detect_midi_driver(Driver, Voices, !IO) :-
-    detect_midi_driver_2(midi_driver_to_int(Driver), Voices, !IO).
-
-:- pred detect_midi_driver_2(int::in, int::out, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    detect_midi_driver_2(Driver::in, Voices::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    detect_midi_driver(Driver::in, Voices::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Voices = detect_midi_driver(Driver);
     IO = IO0;
@@ -75,7 +65,7 @@ detect_midi_driver(Driver, Voices, !IO) :-
 
 :- pragma foreign_proc("C",
     reserve_voices(DigiVoices::in, MidiVoices::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     reserve_voices(DigiVoices, MidiVoices);
     IO = IO0;
@@ -83,21 +73,15 @@ detect_midi_driver(Driver, Voices, !IO) :-
 
 :- pragma foreign_proc("C",
     set_volume_per_voice(Scale::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_volume_per_voice(Scale);
     IO = IO0;
 ").
 
-install_sound(Digi, Midi, Success, !IO) :-
-    install_sound_2(digi_driver_to_int(Digi), midi_driver_to_int(Midi),
-        Success, !IO).
-
-:- pred install_sound_2(int::in, int::in, bool::out, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-    install_sound_2(Digi::in, Midi::in, Success::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    install_sound(Digi::in, Midi::in, Success::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Success = (0 == install_sound(Digi, Midi, NULL)) ? MR_YES : MR_NO;
     IO = IO0;
@@ -105,7 +89,7 @@ install_sound(Digi, Midi, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     remove_sound(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     remove_sound();
     IO = IO0;
@@ -113,7 +97,7 @@ install_sound(Digi, Midi, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_volume(DigiVolume::in, MidiVolume::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_volume(DigiVolume, MidiVolume);
     IO = IO0;
@@ -121,7 +105,7 @@ install_sound(Digi, Midi, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     set_hardware_volume(DigiVolume::in, MidiVolume::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     set_hardware_volume(DigiVolume, MidiVolume);
     IO = IO0;
@@ -129,37 +113,15 @@ install_sound(Digi, Midi, Success, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func digi_driver_to_int(digi_driver) = int.
+:- pragma foreign_enum("C", digi_driver/0, [
+    digi_autodetect - "DIGI_AUTODETECT",
+    digi_none       - "DIGI_NONE"
+]).
 
-digi_driver_to_int(digi_autodetect) = digi_autodetect_int.
-digi_driver_to_int(digi_none) = digi_none_int.
-
-:- func digi_autodetect_int = int.
-:- func digi_none_int = int.
-
-:- pragma foreign_proc("C", digi_autodetect_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = DIGI_AUTODETECT;").
-:- pragma foreign_proc("C", digi_none_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = DIGI_NONE;").
-
-%-----------------------------------------------------------------------------%
-
-:- func midi_driver_to_int(midi_driver) = int.
-
-midi_driver_to_int(midi_autodetect) = midi_autodetect_int.
-midi_driver_to_int(midi_none) = midi_none_int.
-
-:- func midi_autodetect_int = int.
-:- func midi_none_int = int.
-
-:- pragma foreign_proc("C", midi_autodetect_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MIDI_AUTODETECT;").
-:- pragma foreign_proc("C", midi_none_int = (K::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-    "K = MIDI_NONE;").
+:- pragma foreign_enum("C", midi_driver/0, [
+    midi_autodetect - "MIDI_AUTODETECT",
+    midi_none       - "MIDI_NONE"
+]).
 
 %-----------------------------------------------------------------------------%
 % vi:ts=8:sts=4:sw=4:et

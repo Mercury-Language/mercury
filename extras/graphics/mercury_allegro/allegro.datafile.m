@@ -159,7 +159,7 @@
 
 :- pragma foreign_proc("C",
     load_datafile(Filename::in, MaybeDatafile::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     DATAFILE *Datafile = load_datafile(Filename);
     if (Datafile) {
@@ -179,7 +179,7 @@ unload_datafile(outer_datafile(Datafile), !IO) :-
 
 :- pragma foreign_proc("C",
     unload_datafile_2(Datafile::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     unload_datafile(Datafile);
     IO = IO0;
@@ -190,7 +190,7 @@ unload_datafile(outer_datafile(Datafile), !IO) :-
 :- pragma foreign_proc("C",
     load_datafile_object(Filename::in, Objectname::in, MaybeObject::out,
         IO0::di, IO::uo),
-    [may_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     DATAFILE *Object = load_datafile_object(Filename, Objectname);
     if (Object) {
@@ -211,7 +211,7 @@ unload_datafile_object(loose_datafile_object(Object), !IO) :-
 
 :- pragma foreign_proc("C",
     unload_datafile_object_2(Object::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     unload_datafile_object(Object);
     IO = IO0;
@@ -266,7 +266,7 @@ fixup_datafile(Datafile, !IO) :-
 
 :- pragma foreign_proc("C",
     fixup_datafile_2(Datafile::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     fixup_datafile(Datafile);
     IO = IO0;
