@@ -322,7 +322,7 @@ make_texture_ex(TextureFlags, Bitmap, TextureFormat, MaybeTextureName, !IO) :-
 :- pragma foreign_proc("C",
     convert_allegro_font_ex(Fnt::in, FontType::in, Scale::in, Format::in,
         MaybeAGLFont::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     FONT *AGLFont = allegro_gl_convert_allegro_font_ex(Fnt,
         FontType, Scale, (GLenum) Format);
