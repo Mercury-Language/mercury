@@ -112,6 +112,7 @@ SINGLEMODULE= \
 	inst_list_dup \
 	instance_bug \
 	instance_dup_var \
+	instance_no_type \
 	invalid_event \
 	invalid_export_detism \
 	invalid_import_detism \

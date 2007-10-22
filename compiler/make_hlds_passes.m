@@ -340,7 +340,8 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, InvalidMode,
     Item = item_inst_defn(VarSet, Name, Params, InstDefn, Cond),
     module_add_inst_defn(VarSet, Name, Params, InstDefn, Cond, Context,
         !.Status, !ModuleInfo, InvalidMode, !Specs).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, InvalidMode, !Specs) :-
+add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, InvalidMode,
+        !Specs) :-
     Item = item_mode_defn(VarSet, Name, Params, ModeDefn, Cond),
     module_add_mode_defn(VarSet, Name, Params, ModeDefn,
         Cond, Context, !.Status, !ModuleInfo, InvalidMode, !Specs).

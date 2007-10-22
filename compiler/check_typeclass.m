@@ -73,6 +73,9 @@
 % Fifth, in check_instance_declaration_types/4, we check that each type
 % in the instance declaration must be either a type with no arguments,
 % or a polymorphic type whose arguments are all distinct type variables.
+% We also check that all of the types in exported instance declarations are
+% in scope here.  XXX that should really be done earlier, but with the
+% current implementation this is the most convenient spot.
 %
 % Last, in check_typeclass_constraints/4, we check typeclass constraints on
 % predicate and function declarations and on existentially typed data
@@ -1258,7 +1261,6 @@ check_one_instance_declaration_types(MI, ClassId, InstanceDefn, !Specs) :-
     list.foldl3(is_valid_instance_type(MI, ClassId, InstanceDefn),
         Types, 1, _, set.init, _, !Specs).
 
-    %
     % Each of these types in the instance declaration must be either a
     % type with no arguments, or a polymorphic type whose arguments are
     % all distinct type variables.
@@ -1291,7 +1293,7 @@ is_valid_instance_type(_MI, ClassId, InstanceDefn,
     ).
 is_valid_instance_type(_MI, ClassId, InstanceDefn,
         apply_n_type(_, _, _), N, N+1, !SeenTypes, !Specs) :-
-    Err = [words("is a apply/N type")],
+    Err = [words("is an apply/N type")],
     Spec = error_message_2(ClassId, InstanceDefn, N, Err),
     !:Specs = [Spec | !.Specs].
 is_valid_instance_type(_MI, _ClassId, _InstanceDefn,
@@ -1303,19 +1305,29 @@ is_valid_instance_type(_MI, ClassId, InstanceDefn,
     Spec = error_message_2(ClassId, InstanceDefn, N, Err),
     !:Specs = [Spec | !.Specs].
 is_valid_instance_type(MI, ClassId, InstanceDefn,
-        Type @ defined_type(_, Args, _), N, N+1, !SeenTypes, !Specs) :-
+        Type @ defined_type(TypeName, Args, _), N, N+1, !SeenTypes, !Specs) :-
     each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
     (   
         Result = no_error,
         svset.insert_list(Args, !SeenTypes),
-        (
-            type_to_type_defn(MI, Type, TypeDefn),
+        ( type_to_type_defn(MI, Type, TypeDefn) ->
+            list.length(Args, TypeArity),
+            is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
+                InstanceDefn, !Specs),
             get_type_defn_body(TypeDefn, TypeBody),
-            TypeBody = hlds_eqv_type(EqvType)
-        ->
-            is_valid_instance_type(MI,
-                ClassId, InstanceDefn, EqvType, N, _, !SeenTypes, !Specs)
+            (
+                TypeBody = hlds_eqv_type(EqvType),
+                is_valid_instance_type(MI, ClassId, InstanceDefn, EqvType, N,
+                    _, !SeenTypes, !Specs)
+            ;
+                ( TypeBody = hlds_du_type(_, _, _, _, _, _, _)
+                ; TypeBody = hlds_foreign_type(_)
+                ; TypeBody = hlds_solver_type(_, _)
+                ; TypeBody = hlds_abstract_type(_)
+                )
+            )
         ;
+            % The type is either a builtin type or a type variable.
             true
         )
     ;
@@ -1327,6 +1339,53 @@ is_valid_instance_type(MI, ClassId, InstanceDefn,
         !:Specs = [Spec | !.Specs]
     ).
     
+    % Check that types that are referred to in an abstract instance
+    % declaration in a module interface are visible in the module
+    % interface, i.e they are either exported by the module or imported
+    % in the module interface.
+    %
+:- pred is_visible_instance_type(sym_name::in, arity::in, hlds_type_defn::in,
+    class_id::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+   
+is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
+        InstanceDefn, !Specs) :-
+    InstanceBody = InstanceDefn ^ instance_body,
+    (
+        InstanceBody = instance_body_abstract,
+        InstanceImportStatus = InstanceDefn ^ instance_status,
+        InstanceIsExported =
+            status_is_exported_to_non_submodules(InstanceImportStatus),
+        (
+            InstanceIsExported = yes,
+            get_type_defn_status(TypeDefn, TypeDefnImportStatus),
+            (
+                status_is_imported(TypeDefnImportStatus) = no,
+                status_is_exported_to_non_submodules(TypeDefnImportStatus) = no
+            ->
+                ClassId = class_id(ClassName, ClassArity),
+                Pieces = [
+                    words("Error: abstract instance declaration for"),
+                    words("type class"),
+                    sym_name_and_arity(ClassName / ClassArity), 
+                    words("contains the type"),
+                    sym_name_and_arity(TypeName / TypeArity),
+                    words("but that type is not visible in the"),
+                    words("module interface.")
+                ],
+                Context = InstanceDefn ^ instance_context,
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_type_check, [Msg]),
+                !:Specs = [Spec | !.Specs]
+            ;
+                true
+            )
+        ;
+            InstanceIsExported = no
+        )
+    ;
+        InstanceBody = instance_body_concrete(_)
+    ).
 
 :- type instance_arg_result
     --->    no_error
@@ -1341,13 +1400,13 @@ is_valid_instance_type(MI, ClassId, InstanceDefn,
     ;       arg_not_type_variable(ground)
     .
 
-
 :- pred each_arg_is_a_distinct_type_variable(set(mer_type)::in,
     list(mer_type)::in, int::in, instance_arg_result::out) is det.
 
 each_arg_is_a_distinct_type_variable(_, [], _, no_error).
 each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
-    ( Type = type_variable(_, _) ->
+    (
+        Type = type_variable(_, _),
         ( Type `list.member` Types ->
             Result = local_non_distinct
         ; Type `set.member` SeenTypes ->
@@ -1356,6 +1415,13 @@ each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
             each_arg_is_a_distinct_type_variable(SeenTypes, Types, N+1, Result)
         )
     ;
+        ( Type = defined_type(_, _, _)
+        ; Type = builtin_type(_)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = tuple_type(_, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        ),
         Result = arg_not_type_variable(N)
     ).
 
