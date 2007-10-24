@@ -16,6 +16,8 @@
 
 #include "mercury_std.h"
 
+#if defined(MR_LL_PARALLEL_CONJ)
+
 /*
 ** If the value at addr is equal to old, assign new to addr and return true.
 ** Otherwise return false.
@@ -26,7 +28,17 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(__GNUC__) && defined(__x86_64__)
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+
+    /*
+    ** gcc 4.1 and above have builtin atomic operations.
+    */
+    #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
+        do {                                                                \
+            return __sync_bool_compare_and_swap(addr, old, new_val);        \
+        } while (0)
+
+#elif defined(__GNUC__) && defined(__x86_64__)
 
     #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
         do {                                                                \
@@ -56,15 +68,6 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
             return (int) result;                                            \
         } while (0)
 
-#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
-
-    /* gcc 4.1 and above have builtin atomic operations. */
-
-    #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
-        do {                                                                \
-            return __sync_bool_compare_and_swap(addr, old, new_val);        \
-        } while (0)
-
 #endif
 
 #ifdef MR_COMPARE_AND_SWAP_WORD_BODY
@@ -82,4 +85,5 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
 ** currently require any atomic ops.
 */
 
+#endif /* MR_LL_PARALLEL_CONJ */
 #endif /* not MERCURY_ATOMIC_OPS_H */

@@ -14,6 +14,8 @@
 #include "mercury_imp.h"
 #include "mercury_atomic_ops.h"
 
+#if defined(MR_LL_PARALLEL_CONJ)
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Provide definitions for functions declared `extern inline'.
@@ -28,3 +30,5 @@ MR_OUTLINE_DEFN(
 	MR_COMPARE_AND_SWAP_WORD_BODY;
     }
 )
+
+#endif /* MR_LL_PARALLEL_CONJ */
