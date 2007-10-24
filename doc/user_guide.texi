@@ -1819,6 +1819,8 @@ Note that declarative debugging,
 with the exception of the subterm dependency tracking features,
 also works in the .debug grades.
 
+@c XXX mention ssdebug grades when ready
+
 The two drawbacks of using a debugging grade
 are the large size of the resulting executables,
 and the fact that often you discover that you need to debug a big program
@@ -7131,6 +7133,7 @@ The set of aspects and their alternatives are:
 @cindex .spf (grade modifier)
 @cindex .debug (grade modifier)
 @cindex .decldebug (grade modifier)
+@c @cindex .ssdebug (grade modifier)
 @cindex .par (grade modifier)
 @cindex prof (grade modifier)
 @cindex memprof (grade modifier)
@@ -7142,6 +7145,7 @@ The set of aspects and their alternatives are:
 @cindex spf (grade modifier)
 @cindex debug (grade modifier)
 @cindex decldebug (grade modifier)
+@c @cindex ssdebug (grade modifier)
 @cindex par (grade modifier)
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
@@ -7167,6 +7171,7 @@ The set of aspects and their alternatives are:
 
 @item What debugging features to enable:
 @samp{debug} and @samp{decldebug} (the default is no debugging features).
+@c XXX and @samp{ssdebug} 
 
 @item Whether to use a thread-safe version of the runtime environment:
 @samp{par} (the default is a non-thread-safe environment).
@@ -7292,6 +7297,9 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{.decldebug}
 @code{--decl-debug}.
+
+@c @item @samp{.ssdebug}
+@c @code{--ss-debug}.
 
 @end table
 
@@ -7447,6 +7455,12 @@ This option is only supported by the low-level C back-end.
 Enables the inclusion in the executable of code and data structures
 that allow subterm dependency tracking in the declarative debugger.
 This option is only supported by the low-level C back-end.
+
+@c @sp 1
+@c @item @code{--ss-debug} (grades: any grade containing @samp{.ssdebug})
+@c @findex --ss-debug
+@c @cindex Debugging
+@c Enables the source-to-source debugging transform.
 
 @sp 1
 @item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})

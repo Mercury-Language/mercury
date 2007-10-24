@@ -48,6 +48,7 @@ Grade options:
 	--no-stack-trace
 	--debug
 	--decl-debug
+	--ss-debug
 	--low-level-debug
 	--extend-stacks-when-needed
 	--stack-segments
@@ -85,6 +86,7 @@ single_prec_float=false
 pic_reg=false
 debug=false
 decl_debug=false
+ss_debug=false
 ll_debug=false
 extend_stacks=false
 stack_segments=false

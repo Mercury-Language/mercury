@@ -566,6 +566,14 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         DeclDebug = no,
         DeclDebugOpt = ""
     ),
+    globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+    (
+        SourceDebug = yes,
+        SourceDebugOpt = "-DMR_SS_DEBUG "
+    ;
+        SourceDebug = no,
+        SourceDebugOpt = ""
+    ),
     globals.io_lookup_bool_option(exec_trace, ExecTrace, !IO),
     (
         ExecTrace = yes,
@@ -772,7 +780,9 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         PIC_Reg_Opt, 
         TagsOpt, NumTagBitsOpt, 
         ExtendOpt,
-        Target_DebugOpt, LL_DebugOpt, DeclDebugOpt, ExecTraceOpt,
+        Target_DebugOpt, LL_DebugOpt, DeclDebugOpt,
+        SourceDebugOpt,
+        ExecTraceOpt,
         UseTrailOpt, 
         MinimalModelOpt, 
         SinglePrecFloatOpt,
@@ -1195,16 +1205,21 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         StdTraceInitFileNames = [
             ToGradeInit("mer_browser.init"),
             ToGradeInit("mer_mdbcomp.init")
+        ],
+        SourceDebugInitFileNames = [
+            ToGradeInit("mer_ssdb.init")
         ]
     ;
         MaybeStdLibDir = no,
         StdInitFileNames = [],
-        StdTraceInitFileNames = []
+        StdTraceInitFileNames = [],
+        SourceDebugInitFileNames = []
     ),
 
     globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
     make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, ".c",
-        StdInitFileNames, StdTraceInitFileNames, "", MaybeInitTargetFile, !IO),
+        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
+        "", MaybeInitTargetFile, !IO),
 
     get_object_code_type(executable, PIC, !IO),
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
@@ -1231,10 +1246,14 @@ make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
         MaybeStdLibDir = yes(StdLibDir),
         StdInitFileNames = [
             StdLibDir / "modules" / GradeDir / "mer_std.init"
+        ],
+        SourceDebugInitFileNames = [
+            StdLibDir / "modules" / GradeDir / "mer_ssdb.init"
         ]
     ;
         MaybeStdLibDir = no,
-        StdInitFileNames = []
+        StdInitFileNames = [],
+        SourceDebugInitFileNames = []
     ),
     % Tracing is not supported in Erlang backend.
     StdTraceInitFileNames = [],
@@ -1245,9 +1264,9 @@ make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
     ModuleNameOption = " -m " ++ quote_arg(ModuleNameStr),
 
     globals.io_lookup_string_option(mkinit_erl_command, MkInitErl, !IO),
-    make_init_target_file(ErrorStream, MkInitErl, ModuleName, ModuleNames, ".erl",
-        StdInitFileNames, StdTraceInitFileNames, ModuleNameOption,
-        MaybeInitTargetFile, !IO),
+    make_init_target_file(ErrorStream, MkInitErl, ModuleName, ModuleNames,
+        ".erl", StdInitFileNames, StdTraceInitFileNames,
+        SourceDebugInitFileNames, ModuleNameOption, MaybeInitTargetFile, !IO),
 
     module_name_to_file_name(ModuleName, "_init.beam", yes,
         InitObjFileName, !IO),
@@ -1260,12 +1279,12 @@ make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
 
 :- pred make_init_target_file(io.output_stream::in, string::in,
     module_name::in, list(module_name)::in, string::in,
-    list(file_name)::in, list(file_name)::in, string::in,
-    maybe(file_name)::out, io::di, io::uo) is det.
+    list(file_name)::in, list(file_name)::in, list(file_name)::in,
+    string::in, maybe(file_name)::out, io::di, io::uo) is det.
 
 make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
-        StdInitFileNames, StdTraceInitFileNames, ModuleNameOption,
-        MaybeInitTargetFile, !IO) :-
+        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
+        ModuleNameOption, MaybeInitTargetFile, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_write_string(Verbose, "% Creating initialization file...\n", !IO),
@@ -1294,11 +1313,21 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
     globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
         TraceOpt = "-t",
-        InitFileNamesList = InitFileNamesList1 ++ TraceInitFileNamesList
+        InitFileNamesList2 = InitFileNamesList1 ++ TraceInitFileNamesList
     ;
         TraceOpt = "",
-        InitFileNamesList = InitFileNamesList1
+        InitFileNamesList2 = InitFileNamesList1
     ),
+
+    globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+    (
+        SourceDebug = yes,
+        InitFileNamesList = InitFileNamesList2 ++ SourceDebugInitFileNames
+    ;
+        SourceDebug = no,
+        InitFileNamesList = InitFileNamesList2
+    ),
+
     join_quoted_string_list(InitFileNamesList, "", "", " ", InitFileNames),
 
     globals.io_lookup_accumulating_option(runtime_flags, RuntimeFlagsList,
@@ -1828,20 +1857,41 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
             [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
     ),
 
+    % Source-to-source debugging libraries.
+    globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+    (
+        SourceDebug = yes,
+        StaticSourceDebugLibs =
+            quote_arg(StdLibDir/"lib"/GradeDir/
+                ("libmer_ssdb" ++ LibExt)),
+        make_link_lib(TargetType, "mer_mdbcomp", SharedSourceDebugLibs, !IO)
+    ;
+        SourceDebug = no,
+        StaticSourceDebugLibs = "",
+        SharedSourceDebugLibs = ""
+    ),
+
     globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),
     ( MercuryLinkage = "static" ->
-        StdLibs = string.join_list(" ",
-            [StaticTraceLibs,
+        StdLibs = string.join_list(" ", [
+            StaticTraceLibs,
+            StaticSourceDebugLibs,
             quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_std" ++ LibExt)),
             quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_rt" ++ LibExt)),
-            StaticGCLibs])
+            StaticGCLibs
+        ])
     ; MercuryLinkage = "shared" ->
         make_link_lib(TargetType, "mer_std", StdLib, !IO),
         make_link_lib(TargetType, "mer_rt", RuntimeLib, !IO),
-        StdLibs = string.join_list(" ",
-            [SharedTraceLibs, StdLib, RuntimeLib, SharedGCLibs])
+        StdLibs = string.join_list(" ", [
+            SharedTraceLibs,
+            SharedSourceDebugLibs,
+            StdLib,
+            RuntimeLib,
+            SharedGCLibs
+        ])
     ;
         unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
     ).
@@ -2439,6 +2489,9 @@ make_standalone_int_body(Basename, !IO) :-
             StdLibDir / "modules" / GradeDir / "mer_browser.init",
             StdLibDir / "modules" / GradeDir / "mer_mdbcomp.init" |
             TraceInitFiles0
+        ],
+        SourceDebugInitFiles = [
+            StdLibDir / "modules" / GradeDir / "mer_ssdb.init"
         ]
     ;
         % Supporting `--no-mercury-standard-library-directory' is necessary
@@ -2446,15 +2499,24 @@ make_standalone_int_body(Basename, !IO) :-
         % the lmc script.
         MaybeStdLibDir = no,
         InitFiles1 = InitFiles0,
-        TraceInitFiles = TraceInitFiles0
+        TraceInitFiles = TraceInitFiles0,
+        SourceDebugInitFiles = []
     ),
     globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = no ->
         TraceOpt = "-t",
-        InitFiles = InitFiles1 ++ TraceInitFiles
+        InitFiles2 = InitFiles1 ++ TraceInitFiles
     ;
         TraceOpt = "",
-        InitFiles = InitFiles1
+        InitFiles2 = InitFiles1
+    ),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
+    (
+        SourceDebug = yes,
+        InitFiles = InitFiles2 ++ SourceDebugInitFiles
+    ;
+        SourceDebug = no,
+        InitFiles = InitFiles2
     ),
     join_string_list(InitFiles, "", "", " ", InitFilesList),
     globals.lookup_accumulating_option(Globals, runtime_flags,

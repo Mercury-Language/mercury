@@ -1882,6 +1882,9 @@ long_option("Erlang-only",          erlang_only).
 % (a) debugging
 long_option("debug",                exec_trace).
 long_option("decl-debug",           decl_debug).
+long_option("ssdb",                 source_to_source_debug).
+long_option("--ss-debug",           source_to_source_debug).
+long_option("source-to-source-debug", source_to_source_debug).
     % (b) profiling
 long_option("profiling",            profiling).
 long_option("time-profiling",       time_profiling).
@@ -1914,8 +1917,6 @@ long_option("stack-segments",       stack_segments).
 long_option("use-regions",          use_regions).
 long_option("use-regions-debug",    use_regions_debug).
 long_option("use-regions-profiling",use_regions_profiling).
-long_option("ssdb",                 source_to_source_debug).
-long_option("source-to-source-debug", source_to_source_debug).
 % Data representation options
 long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
@@ -3729,6 +3730,10 @@ options_help_compilation_model -->
         "\tfor details.",
         "\tThis option is not yet supported for the `--high-level-code'",
         "\tback-ends."
+% XXX The source-to-source debugging transform is not ready for public
+% consumption.
+%       "--ss-debug\t\t\t\t(grade modifier: `.ssdebug')",
+%       "\tEnable the source-to-source debugging transform."
     ]),
     io.write_string("      Profiling\n"),
     write_tabbed_lines([

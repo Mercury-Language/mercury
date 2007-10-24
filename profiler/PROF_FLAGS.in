@@ -6,6 +6,7 @@
 -I../library
 -I../browser
 -I../mdbcomp
+-I../ssdb
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
@@ -15,5 +16,7 @@
 --c-include-directory ../mdbcomp/Mercury/mihs
 --c-include-directory ../browser
 --c-include-directory ../browser/Mercury/mihs
+--c-include-directory ../ssdb
+--c-include-directory ../ssdb/Mercury/mihs
 --c-include-directory ../trace
 --config-file ../scripts/Mercury.config.bootstrap

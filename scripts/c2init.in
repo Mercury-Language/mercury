@@ -45,7 +45,7 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 #	tools/binary
 #	tools/binary_step
 #	tools/linear
-#	tools/lmc
+#	tools/lmc.in
 #	tools/lml
 
 RT_LIB_NAME=mer_rt
@@ -54,6 +54,7 @@ TRACE_LIB_NAME=mer_trace
 EVENTSPEC_LIB_NAME=mer_eventspec
 BROWSER_LIB_NAME=mer_browser
 MDBCOMP_LIB_NAME=mer_mdbcomp
+SSDB_LIB_NAME=mer_ssdb
 ANALYSIS_LIB_NAME=mer_analysis
 
 MKINIT=${MERCURY_MKINIT=mkinit}
@@ -85,17 +86,29 @@ then
 	MERCURY_TRACE_LIB_MODS="\
 		$mercury_stdlib_dir/modules/$GRADE/$BROWSER_LIB_NAME.init \
 		$mercury_stdlib_dir/modules/$GRADE/$MDBCOMP_LIB_NAME.init"
+	MERCURY_SSDB_LIB_MODS="\
+		$mercury_stdlib_dir/modules/$GRADE/$SSDB_LIB_NAME.init"
 fi
 MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
 
 case "$trace_opt" in
 	-t)
 		init_opt="-i"
-		MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS\
+		MERCURY_ALL_LIB_MODS0="$MERCURY_MOD_LIB_MODS\
 			$MERCURY_TRACE_LIB_MODS"
 		;;
 	*)
-		MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS"
+		MERCURY_ALL_LIB_MODS0="$MERCURY_MOD_LIB_MODS"
+		;;
+esac
+
+case $ss_debug in
+	true)
+		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS0\
+			$MERCURY_SSDB_LIB_MODS"
+		;;
+	false)
+		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS0"
 		;;
 esac
 

@@ -144,7 +144,7 @@ Options:
     --no-sym-links
         Use this option on systems which don't support symbolic links.
     --disable-debug-libs
-        Make the trace and browser libraries empty. This can be useful
+        Make the trace, browser, ssdb libraries empty. This can be useful
         when trying to track down the reason why they are being linked
         into the compiler in the first place.
     --keep-deep-data
@@ -977,6 +977,8 @@ then
         then
             /bin/rm $stage2dir/browser/lib$BROWSER_LIB_NAME.a
             ar cr $stage2dir/browser/lib$BROWSER_LIB_NAME.a
+            /bin/rm $stage2dir/ssdb/lib$ssdb_LIB_NAME.a
+            ar cr $stage2dir/ssdb/lib$ssdb_LIB_NAME.a
             /bin/rm $stage2dir/trace/lib$TRACE_LIB_NAME.a
             ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
         fi

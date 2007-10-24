@@ -17,6 +17,8 @@ include Mercury.options
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=$(ANALYSIS_LIB_NAME)
 
+VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
+
 #-----------------------------------------------------------------------------#
 
 # Specify which compilers to use to compile the library.

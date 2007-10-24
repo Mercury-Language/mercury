@@ -381,8 +381,13 @@
     #define MR_GRADE_PART_14		MR_PASTE3(MR_GRADE_PART_13, _debug, MR_GRADE_EXEC_TRACE_VERSION_NO)
     #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13 ".debug"
     #else
-      #define MR_GRADE_PART_14		MR_GRADE_PART_13
-      #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13
+      #if defined(MR_SS_DEBUG)
+	#define MR_GRADE_PART_14	MR_PASTE3(MR_GRADE_PART_13, _ssdebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
+	#define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13 ".ssdebug"
+      #else
+	#define MR_GRADE_PART_14	MR_GRADE_PART_13
+	#define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13
+      #endif
     #endif
 #endif
 

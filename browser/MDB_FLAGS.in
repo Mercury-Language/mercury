@@ -5,6 +5,7 @@
 --no-mercury-stdlib-dir
 --no-shlib-linker-use-install-name
 --force-disable-tracing
+--no-ssdb
 -I../library
 -I../mdbcomp
 -I../browser

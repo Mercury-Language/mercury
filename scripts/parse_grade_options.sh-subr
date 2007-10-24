@@ -185,6 +185,11 @@
     --no-decl-debug)
         decl_debug=false ;;
 
+    --ss-debug)
+        ss_debug=true ;;
+    --no-ss-debug)
+        ss_debug=false ;;
+
     --low-level-debug)
         ll_debug= true ;;
     --no-low-level-debug)
@@ -248,6 +253,7 @@
         pic_reg=false
         debug=false
         decl_debug=false
+        ss_debug=false
         ll_debug=false
         extend_stacks=false
         stack_segments=false
@@ -491,6 +497,10 @@
 
                 decldebug)
                     decl_debug=true
+                    ;;
+
+                ssdebug)
+                    ss_debug=true
                     ;;
 
                 ll_debug)

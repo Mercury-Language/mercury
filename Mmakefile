@@ -37,9 +37,9 @@ SUBDIRS = \
 		robdd \
 		library \
 		trace \
+		ssdb \
 		mdbcomp \
 		browser \
-		ssdb \
 		analysis \
 		compiler \
 		doc \
@@ -68,9 +68,9 @@ RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
 EVENTSPEC_LIB_NAME = mer_eventspec
+SSDB_LIB_NAME = mer_ssdb
 MDBCOMP_LIB_NAME = mer_mdbcomp
 BROWSER_LIB_NAME = mer_browser
-SSDB_LIB_NAME = mer_ssdb
 ANALYSIS_LIB_NAME = mer_analysis
 
 #-----------------------------------------------------------------------------#
@@ -79,8 +79,8 @@ ANALYSIS_LIB_NAME = mer_analysis
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
 .PHONY: dep
-dep: dep_library dep_mdbcomp dep_browser dep_analysis dep_compiler \
-		dep_slice dep_profiler dep_deep_profiler dep_ssdb
+dep: dep_library dep_ssdb dep_mdbcomp dep_browser dep_analysis dep_compiler \
+		dep_slice dep_profiler dep_deep_profiler
 
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)$(STD_LIB_NAME).dep
@@ -258,7 +258,7 @@ ssdb: dep_ssdb scripts boehm_gc runtime library mdbcomp browser
 
 .PHONY: analysis
 analysis: dep_analysis scripts util boehm_gc runtime library mdbcomp browser \
-		trace ssdb
+    		ssdb trace
 	+cd analysis && $(SUBDIR_MMAKE)
 
 .PHONY: runtime
@@ -267,12 +267,12 @@ trace: scripts boehm_gc runtime library mdbcomp browser
 
 .PHONY: compiler
 compiler: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace ssdb analysis
+		mdbcomp browser ssdb trace analysis
 	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: libmmc
 libmmc: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace ssdb analysis
+		mdbcomp browser ssdb trace analysis
 	+cd compiler && $(SUBDIR_MMAKE) libmmc
 
 .PHONY: doc
@@ -281,24 +281,24 @@ doc: scripts util
 
 .PHONY: slice
 slice: dep_slice scripts util boehm_gc runtime library \
-		mdbcomp browser trace ssdb
+		mdbcomp browser ssdb trace
 	+cd slice && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
 profiler: dep_profiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace ssdb
+		mdbcomp browser ssdb trace
 	+cd profiler && $(SUBDIR_MMAKE)
 
 .PHONY: deep_profiler
 deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
-		mdbcomp browser trace ssdb
+		mdbcomp browser ssdb trace
 	+cd deep_profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
-tags: tags_compiler tags_library tags_mdbcomp tags_browser tags_analysis \
-		tags_slice tags_profiler tags_deep_profiler tags_ssdb
+tags: tags_compiler tags_library tags_mdbcomp tags_browser tags_ssdb \
+    		tags_analysis tags_slice tags_profiler tags_deep_profiler
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -316,6 +316,10 @@ tags_mdbcomp:
 tags_browser:
 	+cd browser && $(SUBDIR_MMAKE) tags
 
+.PHONY: tags_ssdb
+tags_ssdb:
+	+cd ssdb && $(SUBDIR_MMAKE) tags
+
 .PHONY: tags_analysis
 tags_analysis:
 	+cd analysis && $(SUBDIR_MMAKE) tags
@@ -331,10 +335,6 @@ tags_profiler:
 .PHONY: tags_deep_profiler
 tags_deep_profiler:
 	+cd deep_profiler && $(SUBDIR_MMAKE) tags
-
-.PHONY: tags_ssdb
-tags_ssdb:
-	+cd ssdb && $(SUBDIR_MMAKE) tags
 
 #-----------------------------------------------------------------------------#
 
@@ -524,8 +524,8 @@ install: install_main install_grades
 .PHONY: install_main
 install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
-		install_library install_mdbcomp install_browser install_trace \
-		install_compiler install_slice install_profiler install_ssdb \
+		install_library install_mdbcomp install_browser install_ssdb \
+		install_trace install_compiler install_slice install_profiler \
 		install_deep_profiler install_doc install_config
 
 .PHONY: install_scripts
@@ -670,13 +670,13 @@ touch_files:
 	touch browser/*.optdate
 	chmod +w browser/*.dep
 	touch browser/*.dep
-	touch analysis/*.date*
-	chmod +w analysis/*.dep
-	touch analysis/*.dep
 	touch ssdb/*.date*
 	touch ssdb/*.optdate
 	chmod +w ssdb/*.dep
 	touch ssdb/*.dep
+	touch analysis/*.date*
+	chmod +w analysis/*.dep
+	touch analysis/*.dep
 	touch compiler/*.date*
 	chmod +w compiler/*.dep
 	touch compiler/*.dep

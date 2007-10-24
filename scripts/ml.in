@@ -49,7 +49,7 @@ LDFLAGS_FOR_THREADS="@LDFLAGS_FOR_THREADS@"
 LDFLAGS_FOR_TRACE="@LDFLAGS_FOR_TRACE@"
 LD_LIBFLAGS_FOR_THREADS="@LD_LIBFLAGS_FOR_THREADS@"
 THREAD_LIBS="@THREAD_LIBS@"
-TRACE_LIBS_SYSTEM="@TRACE_LIBS_SYSTEM@"
+TRACE_BASE_LIBS_SYSTEM="@TRACE_LIBS_SYSTEM@"
 
 TMPDIR=${TMPDIR=/tmp}
 MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
@@ -96,6 +96,7 @@ READLINE_LIBRARIES="@READLINE_LIBRARIES@"
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
+SSDB_LIB_NAME=mer_ssdb
 EVENTSPEC_LIB_NAME=mer_eventspec
 BROWSER_LIB_NAME=mer_browser
 MDBCOMP_LIB_NAME=mer_mdbcomp
@@ -104,6 +105,17 @@ MAYBE_STATIC_OPT=""
 
 case $debug in
 	true)	trace=true ;;
+	false)	;;
+esac
+
+trace_base=false
+case $trace in
+	true)	trace_base=true ;;
+	false)	;;
+esac
+
+case $ss_debug in
+	true)	trace_base=true ;;
 	false)	;;
 esac
 
@@ -222,13 +234,11 @@ case $readline in
 		;;
 esac
 
-case $trace in
-	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$EVENTSPEC_LIB_NAME \
+case $trace_base in
+	true)	TRACE_BASE_LIBS="-l$EVENTSPEC_LIB_NAME \
 		   -l$BROWSER_LIB_NAME -l$MDBCOMP_LIB_NAME"
-		TRACE_LIBS_SYSTEM="$TRACE_LIBS_SYSTEM $READLINE_LIBRARIES"
-		TRACE_STATIC_LIBS="\
-		  `$FIX_PATH_FOR_LINKER \
-		   $LIBDIR/$GRADE/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+ 		TRACE_BASE_LIBS_SYSTEM="$TRACE_LIBS_SYSTEM $READLINE_LIBRARIES"
+ 		TRACE_BASE_STATIC_LIBS="\
 		  `$FIX_PATH_FOR_LINKER \
 		   $LIBDIR/$GRADE/lib$EVENTSPEC_LIB_NAME.@LIB_SUFFIX@` \
 		  `$FIX_PATH_FOR_LINKER \
@@ -236,12 +246,37 @@ case $trace in
 		  `$FIX_PATH_FOR_LINKER \
 		   $LIBDIR/$GRADE/lib$MDBCOMP_LIB_NAME.@LIB_SUFFIX@`"
 		;;
+	false)	TRACE_BASE_LIBS=
+		TRACE_BASE_LIBS_SYSTEM=
+		TRACE_BASE_STATIC_LIBS=
+		;;
+esac
+
+case $trace in
+	true)	TRACE_LIBS="-l$TRACE_LIB_NAME $TRACE_BASE_LIBS"
+		TRACE_LIBS_SYSTEM="$TRACE_BASE_LIBS_SYSTEM"
+		TRACE_STATIC_LIBS="\
+		  `$FIX_PATH_FOR_LINKER \
+		   $LIBDIR/$GRADE/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+		   $TRACE_BASE_STATIC_LIBS"
+		;;
 	false)	TRACE_LIBS=
 		TRACE_LIBS_SYSTEM=
 		TRACE_STATIC_LIBS=
 		;;
 esac
-		
+
+case $ss_debug in
+	true)	SSDB_LIBS="-l$SSDB_LIB_NAME"
+		SSDB_STATIC_LIBS="\
+		  `$FIX_PATH_FOR_LINKER \
+		   $LIBDIR/$GRADE/lib$SSDB_LIB_NAME.@LIB_SUFFIX@`"
+		;;
+	false)	SSDB_LIBS=
+		SSDB_STATIC_LIBS=
+		;;
+esac
+
 case $strip in
 	true)	STRIP_OPTS="-s" ;;
 	false)  STRIP_OPTS="" ;;
@@ -342,18 +377,20 @@ LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts $system_libdir_opts"
 
 case $mercury_libs in
 	shared)
-		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_LIBS -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
+		MERCURY_LIBS=${MERCURY_LIBS="$SSDB_LIBS $TRACE_LIBS \
+			-l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
 		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE"
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR"
 		;;
 	static)
-		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
-		`$FIX_PATH_FOR_LINKER \
-		  $LIBDIR/$GRADE/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
-		`$FIX_PATH_FOR_LINKER \
-		  $LIBDIR/$GRADE/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
-		$LIBGC_STATIC"}
+		MERCURY_LIBS=${MERCURY_LIBS="$SSDB_STATIC_LIBS \
+			$TRACE_STATIC_LIBS \
+			`$FIX_PATH_FOR_LINKER \
+			  $LIBDIR/$GRADE/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
+			`$FIX_PATH_FOR_LINKER \
+			  $LIBDIR/$GRADE/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
+			$LIBGC_STATIC"}
 		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs=""
 		;;

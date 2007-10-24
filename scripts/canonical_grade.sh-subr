@@ -143,14 +143,15 @@ esac
 # 	false)	;;
 # esac
 
-case $debug,$decl_debug in
-	true,true)	GRADE="$GRADE.decldebug" ;;
-	true,false)	GRADE="$GRADE.debug" ;;
-	false,false)	;;
-	*)		progname=`basename $0`
-			echo "$progname: error: invalid combination of debugging options." 1>&2
-			exit 1
-			;;
+case $debug,$decl_debug,$ss_debug in
+	true,true,false)	GRADE="$GRADE.decldebug" ;;
+	true,false,false)	GRADE="$GRADE.debug" ;;
+	false,false,true)	GRADE="$GRADE.ssdebug" ;;
+	false,false,false)	;;
+	*)			progname=`basename $0`
+				echo "$progname: error: invalid combination of debugging options." 1>&2
+				exit 1
+				;;
 esac
 
 case $ll_debug in

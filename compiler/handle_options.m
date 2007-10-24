@@ -2495,6 +2495,8 @@ grade_component_table("decldebug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(yes)], no, yes).
 grade_component_table("debug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
+grade_component_table("ssdebug", comp_trace,
+    [source_to_source_debug - bool(yes)], no, yes).
 
     % Low (target) level debugging components.
 grade_component_table("ll_debug", comp_lowlevel,

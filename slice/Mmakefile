@@ -42,7 +42,7 @@ INTS	= $(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
 INT3S	= $(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 CHECKS	= $(patsubst %,%.check,$(MERCURY_MAIN_MODULES))
 
-VPATH = $(LIBRARY_DIR)
+VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
 #-----------------------------------------------------------------------------#
 

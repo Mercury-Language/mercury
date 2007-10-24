@@ -179,6 +179,11 @@
 **
 **	Setting MR_DECL_DEBUG requires MR_EXEC_TRACE to be set also.
 **
+** MR_SS_DEBUG
+**	Enable source-to-source debugging on all Mercury procedures.
+**	This effect is achieved by including MR_SS_DEBUG in the mangled
+**	grade (see mercury_grade.h).
+**
 ** MR_TRACE_COUNT_DEBUG
 ** 	Enables runtime checking of the invariants involving the implementation
 ** 	of the --trace-count runtime option.

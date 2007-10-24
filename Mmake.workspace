@@ -49,9 +49,9 @@ SCRIPTS_DIR = $(WORKSPACE)/scripts
 RUNTIME_DIR = $(WORKSPACE)/runtime
 LIBRARY_DIR = $(WORKSPACE)/library
 TRACE_DIR = $(WORKSPACE)/trace
+SSDB_DIR = $(WORKSPACE)/ssdb
 MDBCOMP_DIR = $(WORKSPACE)/mdbcomp
 BROWSER_DIR = $(WORKSPACE)/browser
-SSDB_DIR = $(WORKSPACE)/ssdb
 BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
 MPS_GC_DIR = $(WORKSPACE)/mps_gc/code
 COMPILER_DIR = $(WORKSPACE)/compiler
@@ -82,8 +82,8 @@ RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
 EVENTSPEC_LIB_NAME = mer_eventspec
-BROWSER_LIB_NAME = mer_browser
 SSDB_LIB_NAME = mer_ssdb
+BROWSER_LIB_NAME = mer_browser
 MDBCOMP_LIB_NAME = mer_mdbcomp
 ANALYSIS_LIB_NAME = mer_analysis
 
@@ -119,9 +119,13 @@ endif
 # MCFLAGS    += -I$(LIBRARY_DIR)
 # no in .mgnuc_opt files
 # MGNUCFLAGS += --no-mercury-stdlib-dir
+
+# XXX browser.init and mdbcomp.init might need to be included even if tracing
+# is disabled if ssdb uses code from the browser or mdbcomp libraries
 C2INITFLAGS  += --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
 		--trace-init-file $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
-C2INITARGS   += $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
+C2INITARGS   += $(SSDB_DIR)/$(SSDB_LIB_NAME).init \
+		$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
 MLFLAGS      += --no-mercury-stdlib-dir
 
@@ -192,6 +196,7 @@ STATIC_STD_LIBS = $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 ifneq ($(LINK_STDLIB_ONLY),yes)
 STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(TRACE_DIR)/lib$(EVENTSPEC_LIB_NAME).$A \
+		$(SSDB_DIR)/lib$(SSDB_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
 		$(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 endif
@@ -206,23 +211,23 @@ else # LINK_STATIC != yes
 
 LINK_RT_LIB_OPTS=
 LINK_STD_LIB_OPTS=
-LINK_TRACE_LIB_OPTS=
+LINK_TRACE_SSDB_LIB_OPTS=
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
 LINK_RT_LIB_OPTS = -l$(RT_LIB_NAME)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 LINK_STD_LIB_OPTS = -l$(STD_LIB_NAME)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-LINK_TRACE_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(EVENTSPEC_LIB_NAME) \
-	-l$(BROWSER_LIB_NAME) -l$(MDBCOMP_LIB_NAME)
+LINK_TRACE_SSDB_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(EVENTSPEC_LIB_NAME) \
+	-l$(SSDB_LIB_NAME) -l$(BROWSER_LIB_NAME) -l$(MDBCOMP_LIB_NAME)
 endif
 endif
 endif
 
-LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
+LINK_LIB_OPTS = $(LINK_TRACE_SSDB_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
 		$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS)
 LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(MPS_GC_DIR) -L$(RUNTIME_DIR) \
 		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(MDBCOMP_DIR) \
-		-L$(BROWSER_DIR)
+		-L$(BROWSER_DIR) -L$(SSDB_DIR)
 
 MLFLAGS      += $(LIB_DIR_OPTS)
 # now in FLAGS files

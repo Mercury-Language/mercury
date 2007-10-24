@@ -34,7 +34,14 @@ else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
-MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/mdbcomp/libmer_mdbcomp.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $gclib -lm"
+MERCURY_LIBS="\
+	$WORKSPACE/trace/libmer_trace.a \
+	$WORKSPACE/ssdb/libmer_ssdb.a \
+	$WORKSPACE/browser/libmer_browser.a \
+	$WORKSPACE/mdbcomp/libmer_mdbcomp.a \
+	$WORKSPACE/library/libmer_std.a \
+	$WORKSPACE/runtime/libmer_rt.a \
+	$gclib -lm"
 export MERCURY_LIBS
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
