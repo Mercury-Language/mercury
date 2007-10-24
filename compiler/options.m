@@ -1883,7 +1883,7 @@ long_option("Erlang-only",          erlang_only).
 long_option("debug",                exec_trace).
 long_option("decl-debug",           decl_debug).
 long_option("ssdb",                 source_to_source_debug).
-long_option("--ss-debug",           source_to_source_debug).
+long_option("ss-debug",             source_to_source_debug).
 long_option("source-to-source-debug", source_to_source_debug).
     % (b) profiling
 long_option("profiling",            profiling).
