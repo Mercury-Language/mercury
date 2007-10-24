@@ -56,6 +56,28 @@
 
 :- implementation.
 
+:- pragma foreign_decl("C", "
+#ifndef MR_HIGHLEVEL_CODE
+  #if !defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)
+    /*
+    ** In calling thread.yield, semaphore.wait or semaphore.signal, the
+    ** calling context may need to suspend and yield to another context.
+    ** This is implemented by setting the resume address of the context to an
+    ** auxiliary function outside of the foreign_proc.  This breaks when
+    ** execution tracing or deep profiling are enabled as code inserted at the
+    ** end of the foreign_proc won't be executed.  In those cases we rely on
+    ** the gcc extension that allows us to take the address of labels within
+    ** the foreign_proc, so the context will resume back inside the
+    ** foreign_proc.
+    **
+    ** XXX implement those procedures as :- external procedures so that the
+    ** transforms won't be applied
+    */
+    #define ML_THREAD_AVOID_LABEL_ADDRS
+  #endif
+#endif
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -77,7 +99,7 @@
 
 :- pragma foreign_proc("C",
     spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
     MR_Context  *ctxt;
@@ -113,7 +135,7 @@
 
 :- pragma foreign_proc("C#",
     spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     System.Threading.Thread t;
     MercuryThread mt = new MercuryThread(Goal);
@@ -126,15 +148,24 @@
 :- pragma no_inline(yield/2).
 :- pragma foreign_proc("C",
     yield(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
 #ifndef MR_HIGHLEVEL_CODE
     MR_save_context(MR_ENGINE(MR_eng_this_context));
+  #ifdef ML_THREAD_AVOID_LABEL_ADDRS
     MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
         MR_ENTRY(mercury__thread__yield_resume);
+  #else
+    MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
+        &&yield_skip_to_the_end;
+  #endif
     MR_schedule_context(MR_ENGINE(MR_eng_this_context));
     MR_ENGINE(MR_eng_this_context) = NULL;
     MR_runnext();
+
+  #ifndef ML_THREAD_AVOID_LABEL_ADDRS
+    yield_skip_to_the_end:
+  #endif
 #endif
     IO = IO0;
 ").

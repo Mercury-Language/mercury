@@ -174,7 +174,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 :- pragma no_inline(semaphore.signal/3).
 :- pragma foreign_proc("C",
     signal(Semaphore::in, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     ML_Semaphore    *sem;
 #ifndef MR_HIGHLEVEL_CODE
@@ -199,24 +199,42 @@ ML_finalize_semaphore(void *obj, void *cd)
 
         /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
+      #ifdef ML_THREAD_AVOID_LABEL_ADDRS
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
             MR_ENTRY(mercury__thread__semaphore__nop);
+      #else
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
+            &&signal_skip_to_the_end_1;
+      #endif
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
 
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
+
+      #ifndef ML_THREAD_AVOID_LABEL_ADDRS
+        signal_skip_to_the_end_1: ;
+      #endif
     } else {
         sem->count++;
         MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 
         /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
+      #ifdef ML_THREAD_AVOID_LABEL_ADDRS
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
             MR_ENTRY(mercury__thread__semaphore__nop);
+      #else
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
+            &&signal_skip_to_the_end_2;
+      #endif
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
 
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
+
+      #ifndef ML_THREAD_AVOID_LABEL_ADDRS
+        signal_skip_to_the_end_2: ;
+      #endif
     }
 #else
     sem->count++;
@@ -228,7 +246,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 :- pragma foreign_proc("C#",
     signal(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     System.Threading.Monitor.Enter(Semaphore);
     Semaphore.count++;
@@ -246,7 +264,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 :- pragma no_inline(semaphore.wait/3).
 :- pragma foreign_proc("C",
     wait(Semaphore::in, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     ML_Semaphore    *sem;
 #ifndef MR_HIGHLEVEL_CODE
@@ -266,7 +284,11 @@ ML_finalize_semaphore(void *obj, void *cd)
 
         /* Put the current context at the end of the queue. */
         ctxt = MR_ENGINE(MR_eng_this_context);
+      #ifdef ML_THREAD_AVOID_LABEL_ADDRS
         ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__semaphore__nop);
+      #else
+        ctxt->MR_ctxt_resume = &&wait_skip_to_the_end;
+      #endif
         ctxt->MR_ctxt_next = NULL;
         if (sem->suspended_tail) {
             sem->suspended_tail->MR_ctxt_next = ctxt;
@@ -280,6 +302,10 @@ ML_finalize_semaphore(void *obj, void *cd)
         /* Make the current engine do something else. */
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
+
+      #ifndef ML_THREAD_AVOID_LABEL_ADDRS
+        wait_skip_to_the_end: ;
+      #endif
     }
 #else
     while (sem->count <= 0) {
@@ -301,7 +327,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 :- pragma foreign_proc("C#",
     wait(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     System.Threading.Monitor.Enter(Semaphore);
 
@@ -322,7 +348,7 @@ semaphore.try_wait(Sem, Res, !IO) :-
 
 :- pragma foreign_proc("C",
     try_wait_2(Semaphore::in, Res::out, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     ML_Semaphore    *sem;
 
@@ -342,7 +368,7 @@ semaphore.try_wait(Sem, Res, !IO) :-
 
 :- pragma foreign_proc("C#",
     try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     if (System.Threading.Monitor.TryEnter(Semaphore)) {
         if (Semaphore.count > 0) {
@@ -381,22 +407,7 @@ INIT mercury_sys_init_semaphore_modules
 
     MR_define_entry(mercury__thread__semaphore__nop);
     {
-      #ifdef MR_DEEP_PROFILING
-
-        /*
-        ** Perform the actions that would have been taken if we had resumed
-        ** back in semaphore.signal and semaphore.wait and left the procedure
-        ** normally.
-        */
-        MR_succip_word = MR_sv(2);
-        MR_decr_sp(2);
-        MR_np_tailcall_ent(profiling_builtin__det_exit_port_code_sr_3_0);
-
-      #else  /* !MR_DEEP_PROFILING */
-
         MR_proceed();
-
-      #endif /* !MR_DEEP_PROFILING */ 
     }
     MR_END_MODULE
 

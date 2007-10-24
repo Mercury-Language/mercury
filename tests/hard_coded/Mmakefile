@@ -221,6 +221,8 @@ ORDINARY_PROGS=	\
 	test_pretty_printer \
 	test_pretty_printer_defaults \
 	test_promise_impure_implicit \
+	test_semaphore \
+	test_yield \
 	tim_qual1 \
 	time_test \
 	trace_goal_1 \
