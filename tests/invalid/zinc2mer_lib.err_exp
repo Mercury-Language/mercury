@@ -1,0 +1,10 @@
+zinc2mer_lib.m:037: In `min_split_var'(in(any)) = in(any):
+zinc2mer_lib.m:037:   error: determinism declaration not satisfied.
+zinc2mer_lib.m:037:   Declared `det', inferred `semidet'.
+zinc2mer_lib.m:045:   Unification of `BranchConstraints' and `list.[]' can
+zinc2mer_lib.m:045:   fail.
+zinc2mer_lib.m:034: In clause for `min_domsize_min_split(ia, oa)':
+zinc2mer_lib.m:034:   mode error: argument 2 became too instantiated.
+zinc2mer_lib.m:034:   Final instantiatedness of `HeadVar__2' was `free',
+zinc2mer_lib.m:034:   expected final instantiatedness was `any'.
+For more information, recompile with `-E'.

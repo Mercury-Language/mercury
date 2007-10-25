@@ -232,7 +232,8 @@ SINGLEMODULE= \
 	user_eq_dummy \
 	uu_type \
 	vars_in_wrong_places \
-	with_type
+	with_type \
+	zinc2mer_lib
 
 # The following require that num_tag_bits >= 1
 RESERVE_TAG_MODULES = \
