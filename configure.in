@@ -3229,6 +3229,23 @@ fi
 LIBGRADES=`echo $LIBGRADES`
 MERCURY_MSG("using \`$LIBGRADES' as the set of library grades to install")
 
+# Check that the default grade is in the set of grades to install.
+#
+have_default_grade="no"
+for libgrade in $LIBGRADES
+do
+	if test "$DEFAULT_GRADE" = "$libgrade"
+	then
+		have_default_grade="yes"
+	fi
+done
+	
+if test "$have_default_grade" = "no"
+then
+	AC_MSG_WARN([the default grade for applications is $DEFAULT_GRADE,
+****	but this grade is not going to be installed.])
+fi
+
 LIBGRADE_OPTS=
 for libgrade in $LIBGRADES
 do
