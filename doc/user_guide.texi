@@ -7130,6 +7130,7 @@ The set of aspects and their alternatives are:
 @cindex .mps (grade modifier)
 @cindex .agc (grade modifier)
 @cindex .spf (grade modifier)
+@cindex .stseg (grade modifier)
 @cindex .debug (grade modifier)
 @cindex .decldebug (grade modifier)
 @c @cindex .ssdebug (grade modifier)
@@ -7141,6 +7142,7 @@ The set of aspects and their alternatives are:
 @cindex gc (grade modifier)
 @cindex agc (grade modifier)
 @cindex spf (grade modifier)
+@cindex stseg (grade modifier)
 @cindex debug (grade modifier)
 @cindex decldebug (grade modifier)
 @c @cindex ssdebug (grade modifier)
@@ -7166,6 +7168,9 @@ The set of aspects and their alternatives are:
 
 @item Whether to use single-precision representation of floating point values:
 @samp{spf} (the default is to use double-precision floats)
+
+@item Whether to allocate a new stack segment when the limit on the old one
+is reached: @samp{stseg} (the default is not to allocate a new stack segement)
 
 @item What debugging features to enable:
 @samp{debug} and @samp{decldebug} (the default is no debugging features).
@@ -7209,8 +7214,11 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --profiling
 @findex --memory-profiling
 @findex --deep-profiling
+@findex --trailing
 @findex --record-term-sizes-as-words
 @findex --record-term-sizes-as-cells
+@findex --single-prec-float
+@findex --stack-segments
 
 @item @samp{none}
 @code{--target c --no-gcc-global-registers --no-gcc-nonlocal-gotos --no-asm-labels}.
@@ -7289,6 +7297,9 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{.spf}
 @code{--single-prec-float}
+
+@item @samp{.stseg}
+@code{--stack-segments}
 
 @item @samp{.debug}
 @code{--debug}.

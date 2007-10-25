@@ -3650,7 +3650,7 @@ options_help_compilation_model -->
 % it has been superceded by the il grade.
         "\tor one of those with one or more of the grade modifiers",
         "\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',",
-        "\t`.spf', `.debug', `.par' and/or `.pic_reg' appended.",
+        "\t`.spf', `.stseg', `.debug', `.par' and/or `.pic_reg' appended.",
         "\tDepending on your particular installation, only a subset",
         "\tof these possible grades will have been installed.",
         "\tAttempting to use a grade which has not been installed",
@@ -3823,7 +3823,7 @@ options_help_compilation_model -->
         "--extend-stacks-when-needed",
         "\tSpecify that code that increments a stack pointer must",
         "\textend the stack when this is needed.",
-        "--stack-segments",
+        "--stack-segments\t\t(grade modifier: `.stseg')",
         "\tSpecify that code that increments a stack pointer must allocate",
         "\ta new stack segment when the limit on the old one is reached."
         % RBMM is undocumented since it is still experimental.

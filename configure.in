@@ -2923,6 +2923,11 @@ AC_ARG_ENABLE(rbmm-grades,
                   [install experimental region-based memory management versions of the library]),
    enable_rbmm_grades="$enableval",enable_rbmm_grades=no)
 
+AC_ARG_ENABLE(stseg-grades,
+    AC_HELP_STRING([--enable-stseg-grades],
+    	[install stack segments versions of the library]),
+    [enable_stseg_grades="$enableval"],[enable_stseg_grades="no"])
+
 # We don't enable the .NET grades by default because that may lead to
 # installation process breaking on Linux systems that have DotGNU or Mono
 # installed.
@@ -2942,6 +2947,7 @@ AC_ARG_ENABLE(java-grade,
 AC_ARG_ENABLE(erlang-grade,
    AC_HELP_STRING([--enable-erlang-grade], [install the Erlang grade]),
    enable_erlang_grade="$enableval",enable_erlang_grade=no)
+
 
 AC_ARG_ENABLE(libgrades,
     AC_HELP_STRING([--enable-libgrades=...],
@@ -2963,6 +2969,7 @@ if test "$enable_most_grades" = no; then
 	enable_hlc_ll_debug_grades=no
 	enable_rbmm_grades=no
 	enable_par_grades=no
+	enable_stseg_grades=no
 	enable_dotnet_grades=no
 	enable_java_grade=no
 	enable_erlang_grade=no
@@ -3084,7 +3091,7 @@ if test "$enable_prof_grades" = yes; then
 fi
 
 if test "$enable_trail_grades" = yes; then
-	# add `.tr' (--trailing) grades
+	# Add `.tr' (--trailing) grades.
 	LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.tr"
 	if test "$enable_inefficient_grades" = yes; then
 		if test "$enable_nogc_grades" = yes; then
@@ -3100,7 +3107,7 @@ if test "$enable_trail_grades" = yes; then
 	fi
 fi
 
-# add `.mm' (--minimal-model) grades
+# Add `.mm' (--minimal-model) grades.
 if test "$enable_mm_grades" = yes; then
 	LIBGRADES="$LIBGRADES \
 		$BEST_LLDS_BASE_GRADE.gc.mmsc \
@@ -3112,7 +3119,7 @@ if test "$enable_mm_grades" = yes; then
 	fi
 fi
 
-# add `.mmos' grades
+# Add `.mmos' grades.
 if test "$enable_mmos_grades" = yes; then
 	LIBGRADES="$LIBGRADES \
 		$BEST_LLDS_BASE_GRADE.gc.mmos \
@@ -3124,7 +3131,7 @@ if test "$enable_mmos_grades" = yes; then
 	fi
 fi
 
-# add `.debug' (--debug) and `.decldebug' (--decl-debug) grades
+# Add `.debug' (--debug) and `.decldebug' (--decl-debug) grades.
 if test "$enable_debug_grades" = yes; then
 	LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
 	if test "$enable_decl_debug_grades" = yes; then
@@ -3132,12 +3139,12 @@ if test "$enable_debug_grades" = yes; then
 	fi
 fi
 
-# Add low level debug grades
+# Add low level debug grades.
 if test "$enable_hlc_ll_debug_grades" = yes; then
 	LIBGRADES="$LIBGRADES hlc.gcd.ll_debug"
 fi
 
-# Add rbmm grades
+# Add rbmm grades.
 if test "$enable_rbmm_grades" = yes; then
 	# As of Oct 2007, all the users of RBMM grades are implementors
 	# who may need the debugging and profiling versions.
@@ -3157,7 +3164,31 @@ then
 	LIBGRADES="$LIBGRADES hlc.par.gc"
 fi
 
-# add .NET back-end grades
+# Add the .stseg (stack segments) version of the library.
+if test "$enable_stseg_grades" = "yes"
+then
+	LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.stseg"
+	if test "$enable_trail_grades" = "yes"
+	then
+		LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.tr.stseg"
+	fi
+	
+	if test "$enable_debug_grades" = "yes"
+	then
+		LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug.stseg"
+		if test "$enable_decl_debug_grades" = "yes"
+		then
+			LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug.stseg"
+		fi
+	fi
+
+	if test "$mercury_cv_enable_deep_profiler" = "yes"
+	then
+		LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.profdeep.stseg"
+	fi
+fi
+
+# Add .NET back-end grades.
 if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
 then
 	LIBGRADES="$LIBGRADES il"
