@@ -3650,7 +3650,7 @@ options_help_compilation_model -->
 % it has been superceded by the il grade.
         "\tor one of those with one or more of the grade modifiers",
         "\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',",
-        "\t`.rt', `.spf', `.debug', `.par' and/or `.pic_reg' appended.",
+        "\t`.spf', `.debug', `.par' and/or `.pic_reg' appended.",
         "\tDepending on your particular installation, only a subset",
         "\tof these possible grades will have been installed.",
         "\tAttempting to use a grade which has not been installed",
