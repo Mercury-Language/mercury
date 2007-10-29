@@ -173,6 +173,7 @@ init_debugger_state = DbgState :-
     % XXX Not yet implemented : redo, fail.
     %
 handle_event(ProcId, Event, ListVarValue) :-
+    
     impure get_event_num_inc(EventNum),
     impure update_depth(Event, PrintDepth),
 
@@ -180,6 +181,7 @@ handle_event(ProcId, Event, ListVarValue) :-
         Event = ssdb_call,
         % set the new CSN.
         impure get_csn_inc(_),
+
         % set the list_var_value of the debugger state  with the list received
         impure set_list_var_value(ListVarValue),
 
@@ -197,12 +199,14 @@ handle_event(ProcId, Event, ListVarValue) :-
         impure set_list_var_value_in_stack(ListVarValue),
         semipure get_debugger_state(InitialState),
         stack.top_det(InitialState ^ ssdb_stack, StackFrame)
+
     ;
         Event = ssdb_redo,
         error("ssdb_redo: not yet implemented")
     ;
         Event = ssdb_fail,
-        error("ssdb_fail: not yet implemented")
+        semipure get_debugger_state(InitialState),
+        stack.top_det(InitialState ^ ssdb_stack, StackFrame)
     ),
  
     semipure get_debugger_state(State0),
@@ -228,7 +232,9 @@ handle_event(ProcId, Event, ListVarValue) :-
     ;
         NextStop0 = ns_final_port(StopCSN),
         (
-            Event = ssdb_exit,
+            ( Event = ssdb_exit
+	    ; Event = ssdb_fail
+	    ),
             is_same_event(StopCSN, CSN, Stop)
         ;
             Event = ssdb_call,
@@ -256,7 +262,7 @@ handle_event(ProcId, Event, ListVarValue) :-
             io.nl(!IO),
         
             semipure get_shadow_stack(ShadowStack),
-            impure prompt(ShadowStack, 0, WhatNext, !IO),
+            impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
 
             impure consume_io(!.IO),
         
@@ -291,12 +297,16 @@ handle_event(ProcId, Event, ListVarValue) :-
         StateEv1 = PopState ^ ssdb_stack := FinalStack1,
         impure set_debugger_state(StateEv1)
 
+    ; Event = ssdb_fail,
+        semipure get_debugger_state(PopState),
+        stack.pop_det(PopState ^ ssdb_stack, _StackFrame1, FinalStack1),
+        StateEv1 = PopState ^ ssdb_stack := FinalStack1,
+        impure set_debugger_state(StateEv1)
+
     /* XXX currently commented out because above these two cases
     ** throw an exception above and hence the compiler warns about
     ** these two cases being redundant
     ; Event = ssdb_redo
-
-    ; Event = ssdb_fail
     */
 
     ).
@@ -426,10 +436,10 @@ set_list_var_value_in_stack(ListVarValue) :-
     % d     :: down
     %
 
-:- impure pred prompt(stack(stack_elem)::in, int::in, what_next::out, 
-                io::di, io::uo) is det.
+:- impure pred prompt(ssdb_event_type::in, stack(stack_elem)::in, int::in, 
+                what_next::out, io::di, io::uo) is det.
 
-prompt(ShadowStack, Depth, WhatNext, !IO) :-
+prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
     io.write_string("ssdb> ", !IO),
     % Read a string in input and return a string.
     io.read_line_as_string(Result, !IO), 
@@ -455,28 +465,33 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
             io.nl(!IO),
             io.write_string("p      :: print goal's argument", !IO),
             io.nl(!IO),
-            io.write_string("dump   :: print stack trace", !IO),
+            io.write_string("stack  :: print stack trace", !IO),
             io.nl(!IO),
             io.write_string("u      :: up", !IO),
             io.nl(!IO),
             io.write_string("d      :: down", !IO),
             io.nl(!IO),
             io.nl(!IO),
-            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
 
         ; Words = ["p"] ->
             CurrentFrame = stack.top_det(ShadowStack),
             ListVarValue = CurrentFrame ^ se_initial_state  ^ 
                 ssdb_list_var_value,
             print_vars(ListVarValue, !IO),
-            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
 
-        ; Words = ["dump"] ->
+        ; Words = ["stack"] ->
             print_frames_list(ShadowStack, Depth, !IO),
-            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
 
         ; Words = ["n"] ->
-            WhatNext = wn_next
+            ( Event = ssdb_call ->
+                WhatNext = wn_next
+            ;
+                io.write_string("Impossible at exit or fail port\n", !IO),
+                impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
+            )
 
         ;
             ( Words = ["s"]
@@ -498,22 +513,27 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
             State = State0 ^ ssdb_breakpoints := Breakpoints,
             io.print(Breakpoints, !IO),nl(!IO),
             impure set_debugger_state(State),
-            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
 
         ; Words = ["f"] ->
-            stack.top_det(ShadowStack, FrameStack),
-            CSN = FrameStack ^  se_initial_state ^ ssdb_csn,
-            WhatNext = wn_finish(CSN)
+            ( Event = ssdb_call ->
+                stack.top_det(ShadowStack, FrameStack),
+                CSN = FrameStack ^  se_initial_state ^ ssdb_csn,
+                WhatNext = wn_finish(CSN)
+            ;
+                io.write_string("Impossible at exit or fail port\n", !IO),
+                impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
+            )
 
         ; Words = ["d"] ->
             (
                 DownDepth = Depth - 1,
                 DownDepth >= 0
             ->
-                impure prompt(ShadowStack, DownDepth, WhatNext, !IO)
+                impure prompt(Event, ShadowStack, DownDepth, WhatNext, !IO)
             ;
                 io.print("Impossible to go down\n", !IO),
-                impure prompt(ShadowStack, Depth, WhatNext, !IO)
+                impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
             )
             
         ; Words = ["u"] ->
@@ -521,15 +541,15 @@ prompt(ShadowStack, Depth, WhatNext, !IO) :-
                 UpDepth = Depth + 1,
                 UpDepth < stack.depth(ShadowStack) 
             ->
-                impure prompt(ShadowStack, UpDepth, WhatNext, !IO)
+                impure prompt(Event, ShadowStack, UpDepth, WhatNext, !IO)
             ;
                 io.print("Impossible to go up\n", !IO),
-                impure prompt(ShadowStack, Depth, WhatNext, !IO)
+                impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
             )
 
         ;
             io.write_string("huh?\n", !IO),
-            impure prompt(ShadowStack, Depth, WhatNext, !IO)
+            impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
         )
     ;
         Result = eof,
@@ -578,7 +598,7 @@ print_stack_frame(Starred, Frame, !IO) :-
     io.format("  %s.%s(\n", [s(Module), s(Procedure)], !IO),
     ListVarValue = Frame ^ se_initial_state  ^ ssdb_list_var_value,
     print_vars(ListVarValue, !IO),
-    io.write_string(")\n", !IO).
+    io.write_string("   )\n", !IO).
 
     %
     % Print the given list of variables and their values, if bound.
@@ -601,21 +621,14 @@ print_var(unbound_head_var(Name, Pos), !IO) :-
     io.nl(!IO).
 
 print_var(bound_head_var(Name, Pos, T), !IO) :-
-    ( if not string.prefix(Name, "STATE_VARIABLE_IO") then
-        io.write_char('\t', !IO),
-        io.write_string("bound_head\t", !IO),
-        io.write_string(Name, !IO),
-        io.write_string(":\t", !IO),
-        io.write_int(Pos, !IO),
-        io.write_string("\t=\t", !IO),
-        io.print(T, !IO),
-        io.nl(!IO)
-    else
-        io.write_char('\t', !IO),
-        io.write_string("bound_head\t", !IO),
-        io.write_string(Name, !IO),
-        io.nl(!IO)
-    ).
+    io.write_char('\t', !IO),
+    io.write_string("bound_head\t", !IO),
+    io.write_string(Name, !IO),
+    io.write_string(":\t", !IO),
+    io.write_int(Pos, !IO),
+    io.write_string("\t=\t", !IO),
+    io.print(T, !IO),
+    io.nl(!IO).
     
 print_var(bound_other_var(Name, T), !IO) :-
     io.write_char('\t', !IO),

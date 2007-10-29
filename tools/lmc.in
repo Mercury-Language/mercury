@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001,2003 The University of Melbourne.
+# Copyright (C) 2001,2003,2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -143,7 +143,14 @@ then
 	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags \"$MMC_ADDED_CFLAGS\""
 fi
 
-C_FLAGS="--c-include-directory $WORKSPACE/trace --c-include-directory $WORKSPACE/library --c-include-directory $WORKSPACE/library/Mercury/mihs --c-include-directory $WORKSPACE/runtime --c-include-directory $WORKSPACE/boehm_gc --c-include-directory $WORKSPACE/boehm_gc/include"
+C_FLAGS="--c-include-directory $WORKSPACE/trace \
+	--c-include-directory $WORKSPACE/library \
+	--c-include-directory $WORKSPACE/library/Mercury/mihs \
+	--c-include-directory $WORKSPACE/ssdb \
+	--c-include-directory $WORKSPACE/ssdb/Mercury/mihs \
+	--c-include-directory $WORKSPACE/runtime \
+	--c-include-directory $WORKSPACE/boehm_gc \
+	--c-include-directory $WORKSPACE/boehm_gc/include"
 
 if test "$MMC_UNDER_GDB" != ""
 then
@@ -159,4 +166,10 @@ fi
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
 export PATH
-exec mmc --no-mercury-stdlib-dir --config-file $WORKSPACE/scripts/Mercury.config -I $WORKSPACE/library -I $WORKSPACE/mdbcomp -I $WORKSPACE/analysis $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS $LINK_FLAGS "$@"
+exec mmc --no-mercury-stdlib-dir \
+	--config-file $WORKSPACE/scripts/Mercury.config \
+	-I $WORKSPACE/library \
+	-I $WORKSPACE/mdbcomp \
+	-I $WORKSPACE/ssdb \
+	-I $WORKSPACE/analysis \
+	$CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS $LINK_FLAGS "$@"
