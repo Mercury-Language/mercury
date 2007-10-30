@@ -70,9 +70,11 @@ select(Fd, R, W, E, Timeout, Result, !IO) :-
 "
     struct timeval tv;
 
-    tv.tv_sec = TS;
-    tv.tv_usec = TM;
-    Res = select(N, R, W, E, &tv);
+    do {
+        tv.tv_sec = TS;
+        tv.tv_usec = TM;
+        Res = select(N, R, W, E, &tv);
+    } while (Res == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 

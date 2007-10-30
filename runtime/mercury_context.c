@@ -400,6 +400,9 @@ MR_check_pending_contexts(MR_bool block)
     int                 err;
     int                 max_id;
     int                 n_ids;
+    fd_set              rd_set0;
+    fd_set              wr_set0;
+    fd_set              ex_set0;
     fd_set              rd_set;
     fd_set              wr_set;
     fd_set              ex_set;
@@ -410,26 +413,28 @@ MR_check_pending_contexts(MR_bool block)
         return 0;
     }
 
-    MR_fd_zero(&rd_set); MR_fd_zero(&wr_set); MR_fd_zero(&ex_set);
+    MR_fd_zero(&rd_set0);
+    MR_fd_zero(&wr_set0);
+    MR_fd_zero(&ex_set0);
     max_id = -1;
     for (pctxt = MR_pending_contexts ; pctxt ; pctxt = pctxt -> next) {
         if (pctxt->waiting_mode & MR_PENDING_READ) {
             if (max_id > pctxt->fd) {
                 max_id = pctxt->fd;
             }
-            FD_SET(pctxt->fd, &rd_set);
+            FD_SET(pctxt->fd, &rd_set0);
         }
         if (pctxt->waiting_mode & MR_PENDING_WRITE) {
             if (max_id > pctxt->fd) {
                 max_id = pctxt->fd;
             }
-            FD_SET(pctxt->fd, &wr_set);
+            FD_SET(pctxt->fd, &wr_set0);
         }
         if (pctxt->waiting_mode & MR_PENDING_EXEC) {
             if (max_id > pctxt->fd) {
                 max_id = pctxt->fd;
             }
-            FD_SET(pctxt->fd, &ex_set);
+            FD_SET(pctxt->fd, &ex_set0);
         }
     }
     max_id++;
@@ -439,11 +444,21 @@ MR_check_pending_contexts(MR_bool block)
     }
 
     if (block) {
-        err = select(max_id, &rd_set, &wr_set, &ex_set, NULL);
+        do {
+            rd_set = rd_set0;
+            wr_set = wr_set0;
+            ex_set = ex_set0;
+            err = select(max_id, &rd_set, &wr_set, &ex_set, NULL);
+        } while (err == -1 && MR_is_eintr(errno));
     } else {
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 0;
-        err = select(max_id, &rd_set, &wr_set, &ex_set, &timeout);
+        do {
+            rd_set = rd_set0;
+            wr_set = wr_set0;
+            ex_set = ex_set0;
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 0;
+            err = select(max_id, &rd_set, &wr_set, &ex_set, &timeout);
+        } while (err == -1 && MR_is_eintr(errno));
     }
 
     if (err < 0) {

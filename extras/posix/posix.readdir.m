@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -35,12 +35,13 @@ readdir(Dir, Result) -->
 		{ Result = error(Err) }
 	).				    
 
-:- pred readdir0(dir, string, int, io__state, io__state).
-:- mode readdir0(in, out, out, di, uo) is det.
+:- pred readdir0(dir::in, string::out, int::out, io::di, io::uo) is det.
 
-:- pragma c_code(readdir0(Dir::in, Entry::out, Result::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
-	struct dirent *ent = readdir((DIR *)Dir);
+:- pragma foreign_proc("C",
+	readdir0(Dir::in, Entry::out, Result::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+	struct dirent *ent = readdir(Dir);
 	if (ent != NULL) {
 		MR_make_aligned_string_copy(Entry, ent->d_name);
 		Result = 0;

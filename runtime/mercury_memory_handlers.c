@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998, 2000, 2002, 2005-2006 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -183,10 +183,15 @@ static void
 MR_fatal_abort(void *context, const char *main_msg, int dump)
 {
     char    *context_msg;
+    int     ret;
 
     context_msg = MR_explain_context(context);
-    write(STDERR, main_msg, strlen(main_msg));
-    write(STDERR, context_msg, strlen(context_msg));
+    do {
+        ret = write(STDERR, main_msg, strlen(main_msg));
+    } while (ret == -1 && MR_is_eintr(errno));
+    do {
+        ret = write(STDERR, context_msg, strlen(context_msg));
+    } while (ret == -1 && MR_is_eintr(errno));
     MR_trace_report_raw(STDERR);
 
     if (dump) {
@@ -1004,5 +1009,9 @@ MR_print_dump_stack(void)
 {
     const char *msg =
         "This may have been caused by a stack overflow, due to unbounded recursion.\n";
-    write(STDERR, msg, strlen(msg));
+    int ret;
+
+    do {
+        ret = write(STDERR, msg, strlen(msg));
+    } while (ret == -1 && MR_is_eintr(errno));
 }

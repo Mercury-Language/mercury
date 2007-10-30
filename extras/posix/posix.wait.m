@@ -64,7 +64,9 @@ wait(Result, !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     int status;
-    Pid = wait(&status);
+    do {
+        Pid = wait(&status);
+    } while (Pid == -1 && MR_is_eintr(errno));
     Status = status;
     IO = IO0;
 ").
@@ -102,7 +104,9 @@ waitpid(WaitFor, Result, !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     int status;
-    Pid = waitpid(Pid0, &status, 0);
+    do {
+        Pid = waitpid(Pid0, &status, 0);
+    } while (Pid == -1 && MR_is_eintr(errno));
     Status = status;
     IO = IO0;
 ").

@@ -132,7 +132,9 @@ close(fd(FdNo), Result, !IO) :-
     close0(Fd::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Res = close(Fd);
+    do {
+        Res = close(Fd);
+    } while (Res == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 
@@ -150,19 +152,27 @@ orflags([F | Fs], !Or) :-
     !:Or = !.Or \/ oflagval(F),
     orflags(Fs, !Or).
 
-:- pragma no_inline(oflagval/1).
 :- func oflagval(oflag) = int.
-:- pragma foreign_proc("C", 
-    oflagval(F::in) = (V::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    static const int oflag_values[] = {
-        O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_EXCL, O_NOCTTY,
-        O_TRUNC, O_APPEND, O_NDELAY, O_SYNC
-    };
 
-    V = oflag_values[F];
+:- pragma foreign_proc("C",
+    oflagval(F::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = F;
 ").
+
+:- pragma foreign_enum("C", oflag/0, [
+    rdonly  - "O_RDONLY",
+    wronly  - "O_WRONLY",
+    rdwr    - "O_RDWR",
+    creat   - "O_CREAT",
+    excl    - "O_EXCL",
+    noctty  - "O_NOCTTY",
+    trunc   - "O_TRUNC",
+    append  - "O_APPEND",
+    ndelay  - "O_NDELAY",
+    sync    - "O_SYNC"
+]).
 
 %-----------------------------------------------------------------------------%
 :- end_module posix.open.

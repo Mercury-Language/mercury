@@ -51,7 +51,9 @@ write(Fd, ToWrite, Text, Result, !IO) :-
     ME_Text *txtptr;
 
     txtptr = (ME_Text *) Text;
-    Res = write(Fd, txtptr->data, ToWrite);
+    do {
+        Res = write(Fd, txtptr->data, ToWrite);
+    } while (Res == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 

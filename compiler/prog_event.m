@@ -237,7 +237,10 @@ read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
     size_t      num_bytes_read;
     MR_String   problem;
 
-    num_bytes_read = read(spec_fd, spec_buf, size);
+    /* XXX we don't handle successful but partial reads */
+    do {
+        num_bytes_read = read(spec_fd, spec_buf, size);
+    } while (num_bytes_read == -1 && MR_is_eintr(errno));
     if (num_bytes_read != size) {
         problem = MR_make_string(proc_label, ""could not read in %s"",
             specs_file_name);

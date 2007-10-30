@@ -67,9 +67,13 @@ variable(Name - Value) = Name ++ "=" ++ Value.
     exec0(Command::in, Args::array_ui, Env::array_ui, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    execve(Command,
-        ((MR_ArrayType *)Args)->elements, 
-        ((MR_ArrayType *)Env)->elements);
+    int ret;
+
+    do {
+        ret = execve(Command,
+            ((MR_ArrayType *)Args)->elements, 
+            ((MR_ArrayType *)Env)->elements);
+    } while (ret == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 

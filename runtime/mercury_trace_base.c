@@ -958,6 +958,7 @@ void
 MR_trace_report_raw(int fd)
 {
     char    buf[80];    /* that ought to be more than long enough */
+    int     ret;
 
     if (MR_trace_event_number > 0) {
         /*
@@ -966,7 +967,11 @@ MR_trace_report_raw(int fd)
         */
 
         if (MR_trace_report_msg != NULL) {
-            write(fd, MR_trace_report_msg, strlen(MR_trace_report_msg));
+            do {
+                /* XXX we don't handle successful but partial writes */
+                ret = write(fd, MR_trace_report_msg,
+                    strlen(MR_trace_report_msg));
+            } while (ret == -1 && MR_is_eintr(errno));
         }
 
         if (MR_standardize_event_details) {
@@ -976,7 +981,10 @@ MR_trace_report_raw(int fd)
             sprintf(buf, "Last trace event was event #%ld.\n",
                 (long) MR_trace_event_number);
         }
-        write(fd, buf, strlen(buf));
+        do {
+            /* XXX we don't handle successful but partial writes */
+            ret = write(fd, buf, strlen(buf));
+        } while (ret == -1 && MR_is_eintr(errno));
     }
 }
 

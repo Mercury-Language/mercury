@@ -52,7 +52,9 @@ read(Fd, ToRead, Result, !Text, !IO) :-
 
     txtptr = (ME_Text *) Text0;
 
-    Read = read(Fd, txtptr->data, ToRead);
+    do {
+        Read = read(Fd, txtptr->data, ToRead);
+    } while (Read == -1 && MR_is_eintr(errno));
 
     Text = Text0;
     IO = IO0;

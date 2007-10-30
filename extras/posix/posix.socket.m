@@ -75,7 +75,7 @@
 %-----------------------------------------------------------------------------%
 
 socket(Dom, Typ, protocol(Prot), Result, !IO) :-
-    socket0(domain(Dom), socket_type(Typ), Prot, FdNo, !IO),
+    socket0(Dom, Typ, Prot, FdNo, !IO),
     ( FdNo < 0 ->
         errno(Err, !IO),
         Result = error(Err)
@@ -83,7 +83,8 @@ socket(Dom, Typ, protocol(Prot), Result, !IO) :-
         Result = ok(fd(FdNo))
     ).
 
-:- pred socket0(int::in, int::in, int::in, int::out, io::di, io::uo) is det.
+:- pred socket0(domain::in, socket_type::in, int::in, int::out, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
     socket0(Dom::in, Typ::in, Prot::in, Fd::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
@@ -92,36 +93,18 @@ socket(Dom, Typ, protocol(Prot), Result, !IO) :-
     IO = IO0;
 ").
 
-:- pragma no_inline(domain/1).
-:- func domain(domain) = int.
-:- pragma foreign_proc("C",
-    domain(D::in) = (V::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    static const int domain_values[] = {
-        AF_UNIX,
-        AF_INET
-    };
+:- pragma foreign_enum("C", domain/0, [
+    unix    - "AF_UNIX",
+    inet    - "AF_INET"
+]).
 
-    V = domain_values[D];
-").
-
-:- pragma no_inline(socket_type/1).
-:- func socket_type(socket_type) = int.
-:- pragma foreign_proc("C",
-    socket_type(T::in) = (V::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    static const int type_values[] = {
-        SOCK_STREAM,
-        SOCK_DGRAM,
-        SOCK_RAW,
-        SOCK_SEQPACKET,
-        SOCK_RDM
-    };
-
-    V = type_values[T];
-").
+:- pragma foreign_enum("C", socket_type/0, [
+    stream      - "SOCK_STREAM",
+    dgram       - "SOCK_DGRAM",
+    raw         - "SOCK_RAW",
+    seqpacket   - "SOCK_SEQPACKET",
+    rdm         - "SOCK_RDM"
+]).
 
 %-----------------------------------------------------------------------------%
 
@@ -194,7 +177,9 @@ connect(Fd, SockAddr, Result, !IO) :-
     connect0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Res = connect(Fd, Addr, Len);
+    do {
+        Res = connect(Fd, Addr, Len);
+    } while (Res == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 
@@ -245,7 +230,9 @@ accept(Fd, Result, !IO) :-
     MR_incr_hp(Ptr0, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
     Ptr = (struct sockaddr *) Ptr0;
     ptr = (struct sockaddr_in *) Ptr;
-    NewFd = accept(Fd, ptr, &len);
+    do {
+        NewFd = accept(Fd, ptr, &len);
+    } while (NewFd == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 
@@ -265,6 +252,8 @@ accept(Fd, Result, !IO) :-
     } else {
         MR_fatal_error(""cons_sockaddr: unknown type"");
     }
+
+    Sok = ptr;
 ").
 
 %-----------------------------------------------------------------------------%

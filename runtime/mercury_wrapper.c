@@ -2663,7 +2663,9 @@ mercury_runtime_terminate(void)
         for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
             sprintf(buf, ".mem_usage_report%02d", i);
 
-            fd = open(buf, O_WRONLY | O_CREAT | O_EXCL, 0600);
+            do {
+                fd = open(buf, O_WRONLY | O_CREAT | O_EXCL, 0600);
+            } while (fd == -1 && MR_is_eintr(errno));
             if (fd >= 0) {
                 fp = fdopen(fd, "w");
                 break;

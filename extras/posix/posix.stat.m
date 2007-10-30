@@ -85,7 +85,9 @@ stat(Path, Result, !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Stat = MR_GC_NEW(struct stat);
-    Res = stat(Path, Stat);
+    do {
+        Res = stat(Path, Stat);
+    } while (Res == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 

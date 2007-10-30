@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2006 The University of Melbourne.
+% Copyright (C) 2001, 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,9 @@ dup(Fd, Result, !IO) :-
     dup0(OldFd::in, NewFd::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    NewFd = dup(OldFd);
+    do {
+        NewFd = dup(OldFd);
+    } while (NewFd == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 
@@ -66,7 +68,9 @@ dup2(OldFd, NewFd, Result, !IO) :-
     dup2_2(OldFd::in, NewFd::in, Ret::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Ret = dup2(OldFd, NewFd);
+    do {
+        Ret = dup2(OldFd, NewFd);
+    } while (Ret == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").
 

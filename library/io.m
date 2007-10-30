@@ -9344,7 +9344,9 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
             ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE, Msg);
     } else {
         /* Wait for the spawned process to exit. */
-        err = waitpid(pid, &st, 0);
+        do {
+            err = waitpid(pid, &st, 0);
+        } while (err == -1 && MR_is_eintr(errno));
         if (err == -1) {
             Status = 127;
             ML_maybe_make_err_msg(MR_TRUE, errno,
@@ -9886,7 +9888,9 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         strncat(FileName, countstr, 3);
         strcat(FileName, ""."");
         strncat(FileName, countstr + 3, 3);
-        fd = open(FileName, O_WRONLY | O_CREAT | O_EXCL, 0600);
+        do {
+            fd = open(FileName, O_WRONLY | O_CREAT | O_EXCL, 0600);
+        } while (fd == -1 && MR_is_eintr(errno));
         num_tries++;
         ML_io_tempnam_counter += (1 << num_tries);
     } while (fd == -1 && errno == EEXIST &&
@@ -9897,7 +9901,9 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             ErrorMessage);
         Error = -1;
     }  else {
-        err = close(fd);
+        do {
+            err = close(fd);
+        } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
             ""error closing temporary file: "", MR_PROC_LABEL, MR_TRUE,
             ErrorMessage);
