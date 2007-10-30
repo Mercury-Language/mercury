@@ -61,10 +61,24 @@
 :- type pos == int.
 
     %
-    % This routine is called at each event that occurs.
+    % This routine is called at each call event that occurs.
     %
-:- impure pred handle_event(ssdb_proc_id::in, ssdb_event_type::in, 
-    list_var_value::in) is det.
+:- impure pred handle_event_call(ssdb_proc_id::in, list_var_value::in) is det.
+
+    %
+    % This routine is called at each exit event that occurs.
+    %
+:- impure pred handle_event_exit(ssdb_proc_id::in, list_var_value::in) is det.
+
+    %
+    % This routine is called at each fail event that occurs.
+    %
+:- impure pred handle_event_fail(ssdb_proc_id::in, list_var_value::in) is det.
+
+    %
+    % This routine is called at each redo event that occurs.
+    %
+:- impure pred handle_event_redo(ssdb_proc_id::in, list_var_value::in) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -167,120 +181,93 @@ init_debugger_state = DbgState :-
 
 %----------------------------------------------------------------------------%
 
-
     %
     % Write the event out and call the prompt.
-    % XXX Not yet implemented : redo, fail.
     %
-handle_event(ProcId, Event, ListVarValue) :-
-    
+handle_event_call(ProcId, ListVarValue) :-
+    Event = ssdb_call,
     impure get_event_num_inc(EventNum),
     impure update_depth(Event, PrintDepth),
 
-    ( 
-        Event = ssdb_call,
-        % set the new CSN.
-        impure get_csn_inc(_),
+    % Set the new CSN.
+    impure get_csn_inc(_),
 
-        % set the list_var_value of the debugger state  with the list received
-        impure set_list_var_value(ListVarValue),
+    % Set the list_var_value of the debugger state  with the list received.
+    impure set_list_var_value(ListVarValue),
 
-        % Push the new stack frame on top of the shadow stack.
-        semipure get_debugger_state(InitialState),
-        StackFrame = elem(ProcId, InitialState),
-        stack.push(InitialState ^ ssdb_stack, StackFrame, FinalStack),
-        StateEv = InitialState ^ ssdb_stack := FinalStack,
-        impure set_debugger_state(StateEv)
-    ;
-        % Just get the top stack frame. It will be popped at the end of
-        % handle_event. We need to leave the frame in place, e.g. for
-        % printing variables.
-        Event = ssdb_exit,
-        impure set_list_var_value_in_stack(ListVarValue),
-        semipure get_debugger_state(InitialState),
-        stack.top_det(InitialState ^ ssdb_stack, StackFrame)
-
-    ;
-        Event = ssdb_redo,
-        error("ssdb_redo: not yet implemented")
-    ;
-        Event = ssdb_fail,
-        semipure get_debugger_state(InitialState),
-        stack.top_det(InitialState ^ ssdb_stack, StackFrame)
-    ),
+    % Push the new stack frame on top of the shadow stack.
+    semipure get_debugger_state(InitialState),
+    StackFrame = elem(ProcId, InitialState),
+    stack.push(InitialState ^ ssdb_stack, StackFrame, FinalStack),
+    StateEv = InitialState ^ ssdb_stack := FinalStack,
+    impure set_debugger_state(StateEv),
  
     semipure get_debugger_state(State0),
 
     CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
-    NextStop0 = State0 ^ ssdb_next_stop,
-    (
-        NextStop0 = ns_step,
-        Stop = yes
-    ;
-        NextStop0 = ns_next(StopCSN),
-        is_same_event(StopCSN, CSN, Stop)
-    ;
-        NextStop0 = ns_continue,
-        ( set.contains(State0 ^ ssdb_breakpoints, 
-            breakpoint(ProcId ^ module_name, ProcId ^ proc_name)) 
-        ->
-            Stop = yes
-        ;
-            Stop = no
-        )
-    ;
-        NextStop0 = ns_final_port(StopCSN),
-        (
-            ( Event = ssdb_exit
-	    ; Event = ssdb_fail
-	    ),
-            is_same_event(StopCSN, CSN, Stop)
-        ;
-            Event = ssdb_call,
-            Stop = no
-        )
-    ),
-    
+    set_stop(Event, CSN, State0, ProcId, Stop),
     (
         Stop = yes,
         some [!IO] 
         (
             impure invent_io(!:IO),
-            io.write_string("       ", !IO),
-            io.write_int(EventNum, !IO),
-            io.write_string("\t", !IO),
-            io.write_string(ProcId ^ module_name, !IO),
-            io.write_string(".", !IO),
-            io.write_string(ProcId ^ proc_name, !IO),
-            io.write_string(".", !IO),
-            io.write(Event, !IO),
-            io.write_string("\t\t| DEPTH = ", !IO),
-            io.write_int(PrintDepth, !IO),
-            io.write_string("\t| CSN = ", !IO),
-            io.write_int(CSN, !IO),
-            io.nl(!IO),
-        
+            
+            print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO),  
+         
             semipure get_shadow_stack(ShadowStack),
             impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
 
             impure consume_io(!.IO),
-        
-            (
-                WhatNext = wn_step,
-                NextStop = ns_step
-            ;
-                WhatNext = wn_next,
-                NextStop = ns_next(CSN)
-            ;
-                WhatNext = wn_continue,
-                NextStop = ns_continue
-            ;
-                WhatNext = wn_finish(EndCSN),
-                NextStop = ns_final_port(EndCSN)
-            ),
 
-            % Set the last update :  breakpoints.
+            set_next_stop(CSN, WhatNext, NextStop),
+
+            % We need to get a new state because breakpoint could be added in 
+            % the prompt.
+            semipure get_debugger_state(State1),
+            State = State1 ^ ssdb_next_stop := NextStop,
+            impure set_debugger_state(State)
+        )
+    ;
+        Stop = no
+    ).
+
+
+    %
+    % Write the event out and call the prompt.
+    %
+handle_event_exit(ProcId, ListVarValue) :-
+    Event = ssdb_exit,
+    impure get_event_num_inc(EventNum),
+    impure update_depth(Event, PrintDepth),
+
+    % Just get the top stack frame. It will be popped at the end of
+    % handle_event. We need to leave the frame in place, e.g. for
+    % printing variables at the end of the procedure.
+    impure set_list_var_value_in_stack(ListVarValue),
+    semipure get_debugger_state(State0),
+    stack.top_det(State0 ^ ssdb_stack, StackFrame),
+
+    CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
+
+    set_stop(Event, CSN, State0, ProcId, Stop),
+    (
+        Stop = yes,
+        some [!IO] 
+        (
+            impure invent_io(!:IO),
+            
+            print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO),  
+         
+            semipure get_shadow_stack(ShadowStack),
+            impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
+
+            impure consume_io(!.IO),
+
+            set_next_stop(CSN, WhatNext, NextStop),
+
+            % We need to get a new state because breakpoint could be added in 
+            % the prompt.
             semipure get_debugger_state(State1),
             State = State1 ^ ssdb_next_stop := NextStop,
             impure set_debugger_state(State)
@@ -289,35 +276,76 @@ handle_event(ProcId, Event, ListVarValue) :-
         Stop = no
     ),
     
-    ( Event = ssdb_call
+    semipure get_debugger_state(PopState),
+    stack.pop_det(PopState ^ ssdb_stack, _StackFrame1, FinalStack1),
+    StateEv = PopState ^ ssdb_stack := FinalStack1,
+    impure set_debugger_state(StateEv).
 
-    ; Event = ssdb_exit,
-        semipure get_debugger_state(PopState),
-        stack.pop_det(PopState ^ ssdb_stack, _StackFrame1, FinalStack1),
-        StateEv1 = PopState ^ ssdb_stack := FinalStack1,
-        impure set_debugger_state(StateEv1)
 
-    ; Event = ssdb_fail,
-        semipure get_debugger_state(PopState),
-        stack.pop_det(PopState ^ ssdb_stack, _StackFrame1, FinalStack1),
-        StateEv1 = PopState ^ ssdb_stack := FinalStack1,
-        impure set_debugger_state(StateEv1)
+    %
+    % Write the event out and call the prompt.
+    %
+handle_event_fail(ProcId, _ListVarValue) :-
+    Event = ssdb_fail,
+    impure get_event_num_inc(EventNum),
+    impure update_depth(Event, PrintDepth),
 
-    /* XXX currently commented out because above these two cases
-    ** throw an exception above and hence the compiler warns about
-    ** these two cases being redundant
-    ; Event = ssdb_redo
-    */
+    semipure get_debugger_state(State0),
+    stack.top_det(State0 ^ ssdb_stack, StackFrame),
+ 
+    CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
-    ).
+    set_stop(Event, CSN, State0, ProcId, Stop),
+    (
+        Stop = yes,
+        some [!IO] 
+        (
+            impure invent_io(!:IO),
+            
+            print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO),  
+         
+            semipure get_shadow_stack(ShadowStack),
+            impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
+
+            impure consume_io(!.IO),
+
+            set_next_stop(CSN, WhatNext, NextStop),
+
+            % We need to get a new state because breakpoint could be added in 
+            % the prompt.
+            semipure get_debugger_state(State1),
+            State = State1 ^ ssdb_next_stop := NextStop,
+            impure set_debugger_state(State)
+        )
+    ;
+        Stop = no
+    ),
+    
+    semipure get_debugger_state(PopState),
+    stack.pop_det(PopState ^ ssdb_stack, _StackFrame1, FinalStack1),
+    StateEv = PopState ^ ssdb_stack := FinalStack1,
+    impure set_debugger_state(StateEv).
+
+
+    %
+    % Write the event out and call the prompt.
+    % XXX Need to be completed
+    %
+handle_event_redo(_ProcId, _ListVarValue) :-
+    Event = ssdb_redo,
+    impure get_event_num_inc(_EventNum),
+    impure update_depth(Event, _PrintDepth),
+
+    semipure get_debugger_state(_State0),
+    true.
 
     %
     % IsSame is 'yes' iff the two call sequence numbers are equal, 
     % 'no' otherwise.
     %
-:- pred is_same_event(int::in, int::in, bool::out) is det.
+:- pred is_same_csn(int::in, int::in, bool::out) is det.
 
-is_same_event(CSNA, CSNB, IsSame) :-
+is_same_csn(CSNA, CSNB, IsSame) :-
     IsSame = (CSNA = CSNB -> yes ; no).
     
     %
@@ -418,6 +446,83 @@ set_list_var_value_in_stack(ListVarValue) :-
     State = State0 ^ ssdb_stack := FinalStack,
     impure set_debugger_state(State).
 
+
+    %
+    % Set Stop, if Stop equals yes, we will call the prompt.
+    %
+:- pred set_stop(ssdb_event_type::in, int::in, debugger_state::in, 
+    ssdb_proc_id::in, bool::out) is det.
+
+set_stop(Event, CSN, State, ProcId, ShouldStopAtEvent) :-
+
+    NextStop = State ^ ssdb_next_stop,
+    (
+        NextStop = ns_step,
+        ShouldStopAtEvent = yes
+    ;
+        NextStop = ns_next(StopCSN),
+        is_same_csn(StopCSN, CSN, ShouldStopAtEvent)
+    ;
+        NextStop = ns_continue,
+        ( 
+	    set.contains(State ^ ssdb_breakpoints, 
+		breakpoint(ProcId ^ module_name, ProcId ^ proc_name)) 
+        ->
+            ShouldStopAtEvent = yes
+        ;
+            ShouldStopAtEvent = no
+        )
+    ;
+        NextStop = ns_final_port(StopCSN),
+        (
+            ( Event = ssdb_exit
+            ; Event = ssdb_fail
+            ),
+            is_same_csn(StopCSN, CSN, ShouldStopAtEvent)
+        ;
+            ( Event = ssdb_call
+            ; Event = ssdb_redo
+            ),
+            ShouldStopAtEvent = no
+        )
+    ).
+
+
+:- pred print_event_info(ssdb_event_type::in, int::in, ssdb_proc_id::in, 
+    int::in, int::in, io::di, io::uo) is det.
+    
+print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
+    io.write_string("       ", !IO),
+    io.write_int(EventNum, !IO),
+    io.write_string("\t", !IO),
+    io.write_string(ProcId ^ module_name, !IO),
+    io.write_string(".", !IO),
+    io.write_string(ProcId ^ proc_name, !IO),
+    io.write_string(".", !IO),
+    io.write(Event, !IO),
+    io.write_string("\t\t| DEPTH = ", !IO),
+    io.write_int(PrintDepth, !IO),
+    io.write_string("\t| CSN = ", !IO),
+    io.write_int(CSN, !IO),
+    io.nl(!IO).
+
+
+:- pred set_next_stop(int::in, what_next::in, next_stop::out) is det.
+
+set_next_stop(CSN, WhatNext, NextStop) :-
+    (
+        WhatNext = wn_step,
+        NextStop = ns_step
+    ;
+        WhatNext = wn_next,
+        NextStop = ns_next(CSN)
+    ;
+        WhatNext = wn_continue,
+        NextStop = ns_continue
+    ;
+        WhatNext = wn_finish(EndCSN),
+        NextStop = ns_final_port(EndCSN)
+    ).
 
 %----------------------------------------------------------------------------%
 

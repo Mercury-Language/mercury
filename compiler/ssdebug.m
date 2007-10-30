@@ -186,28 +186,28 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
  
     proc_info_get_inferred_determinism(!.ProcInfo, Determinism),
     ( 
-	Determinism = detism_det,
+        Determinism = detism_det,
         process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO)
     ; 
-	Determinism = detism_semi,
+        Determinism = detism_semi,
         process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO)
     ;
-	Determinism = detism_multi,
+        Determinism = detism_multi,
         error("determ_multi: not yet implemented in ssdb")
     ; 
-	Determinism = detism_non,
+        Determinism = detism_non,
         error("determ_non: not yet implemented in ssdb")
     ; 
-	Determinism = detism_cc_multi,
+        Determinism = detism_cc_multi,
         error("determ_cc_multi: not yet implemented in ssdb")
     ; 
-	Determinism = detism_cc_non,
+        Determinism = detism_cc_non,
         error("detism_cc_non: not yet implemented in ssdb")
     ; 
-	Determinism = detism_erroneous,
+        Determinism = detism_erroneous,
         error("detism_erroneous: not yet implemented in ssdb")
     ; 
-	Determinism = detism_failure,
+        Determinism = detism_failure,
         error("detism_failure: not yet implemented in ssdb")
     ).
   
@@ -250,8 +250,8 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         %
         % Generate the call to handle_event(call).
         %
-        make_call_handle_event(ssdb_call, ProcIdVar, CallArgListVar,
-            HandleEventCallGoals, !ModuleInfo, !Varset, !Vartypes),
+        make_handle_event_call(ProcIdVar, CallArgListVar, HandleEventCallGoal,
+            !ModuleInfo, !Varset, !Vartypes),
        
         %
         % Get the updated InstMap.
@@ -280,16 +280,16 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         %
         % Generate the call to handle_event(exit).
         %
-        make_call_handle_event(ssdb_exit, ProcIdVar, ExitArgListVar,
-            HandleEventExitGoals, !ModuleInfo, !Varset, !Vartypes),
+        make_handle_event_exit(ProcIdVar, ExitArgListVar, HandleEventExitGoal, 
+            !ModuleInfo, !Varset, !Vartypes),
 
 
         %
         % Organize the order of the generated code.
         %
-        ConjGoals = ProcIdGoals ++ CallArgListGoals ++ HandleEventCallGoals ++ 
-            [BodyGoal1 | ExitArgListGoals] ++ HandleEventExitGoals ++ 
-	    RenamingGoals,
+        ConjGoals = ProcIdGoals ++ CallArgListGoals ++ 
+            [HandleEventCallGoal, BodyGoal1 | ExitArgListGoals] ++ 
+            [HandleEventExitGoal | RenamingGoals],
 
         goal_info_init(GoalInfoWP),
         GoalWithoutPurity = hlds_goal(conj(plain_conj, ConjGoals), GoalInfoWP),
@@ -298,14 +298,14 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         % Get the purity of the goal.
         %
         Purity = goal_info_get_purity(BodyGoalInfo0),
-	
-	( Purity = purity_impure ->
-	    Goal = GoalWithoutPurity
-	;
-	    ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
-	    goal_info_init(GoalInfo),
-	    Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo)
-	),
+        
+        ( Purity = purity_impure ->
+            Goal = GoalWithoutPurity
+        ;
+            ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
+            goal_info_init(GoalInfo),
+            Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo)
+        ),
 
         commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, 
             !ModuleInfo, !.Varset, !.Vartypes)    
@@ -351,8 +351,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         %
         % Generate the call to handle_event(call).
         %
-        make_call_handle_event(ssdb_call, ProcIdVar, CallArgListVar,
-            HandleEventCallGoals, !ModuleInfo, !Varset, !Vartypes),
+        make_handle_event_call(ProcIdVar, CallArgListVar, HandleEventCallGoal, 
+            !ModuleInfo, !Varset, !Vartypes),
 
         %
         % Get the updated InstMap.
@@ -381,8 +381,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         %
         % Generate the call to handle_event(exit).
         %
-        make_call_handle_event(ssdb_exit, ProcIdVar, ExitArgListVar,
-            HandleEventExitGoals, !ModuleInfo, !Varset, !Vartypes),
+        make_handle_event_exit(ProcIdVar, ExitArgListVar, HandleEventExitGoal, 
+            !ModuleInfo, !Varset, !Vartypes),
 
 
         %
@@ -395,8 +395,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         %
         % Generate the call to handle_event(fail).
         %
-        make_call_handle_event(ssdb_fail, ProcIdVar, FailArgListVar,
-            HandleEventFailGoals, !ModuleInfo, !Varset, !Vartypes),
+        make_handle_event_fail(ProcIdVar, FailArgListVar, HandleEventFailGoal,
+            !ModuleInfo, !Varset, !Vartypes),
 
         make_fail_call(FailGoal, !.ModuleInfo),
 
@@ -405,8 +405,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         % Organize the order of the generated code.
         %       
         GoalsCond   = [BodyGoal1],
-        GoalsThen   = ExitArgListGoals ++ HandleEventExitGoals ++ RenamingGoals,
-        GoalsElse   = FailArgListGoals ++ HandleEventFailGoals ++ [FailGoal],
+        GoalsThen   = ExitArgListGoals ++ [HandleEventExitGoal| RenamingGoals],
+        GoalsElse   = FailArgListGoals ++ [HandleEventFailGoal, FailGoal],
 
         goal_info_init(GoalInfo0),
         goal_list_determinism(GoalsCond, Detism),
@@ -420,27 +420,27 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         ThenGoal = hlds_goal(conj(plain_conj, GoalsThen), GoalInfoThen),
         ElseGoal = hlds_goal(conj(plain_conj, GoalsElse), GoalInfoElse),
 
-        CallVarGoal = ProcIdGoals ++ CallArgListGoals ++ HandleEventCallGoals,
+        CallVarGoal = ProcIdGoals ++ CallArgListGoals ++ [HandleEventCallGoal],
         % XXX not sure about determinism.
         GoalITE = hlds_goal(if_then_else(IteExistVars, CondGoal, ThenGoal, 
             ElseGoal), GoalInfoCond),
 
         ConjGoal = CallVarGoal ++ [GoalITE],
         GoalWithoutPurity = hlds_goal(conj(plain_conj, ConjGoal), 
-	    GoalInfoCond),
+            GoalInfoCond),
 
         %
         % Get the purity of the goal.
         %
         Purity = goal_info_get_purity(BodyGoalInfo0),
-	
-	( Purity = purity_impure ->
-	    Goal = GoalWithoutPurity
-	;
-	    ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
-	    goal_info_init(GoalInfo),
-	    Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo)
-	),
+        
+        ( Purity = purity_impure ->
+            Goal = GoalWithoutPurity
+        ;
+            ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
+            goal_info_init(GoalInfo),
+            Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo)
+        ),
 
         commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo,
             !ModuleInfo, !.Varset, !.Vartypes)    
@@ -467,30 +467,84 @@ commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, !ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-
     %
-    % Build the following goal : handle_event(ProcId, Event, Arguments).
+    % Build the following goal : handle_event_call(ProcId, Arguments).
     %
-:- pred make_call_handle_event(ssdb_event_type::in, prog_var::in, 
-    prog_var::in, list(hlds_goal)::out, module_info::in, module_info::out, 
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- pred make_handle_event_call(prog_var::in, prog_var::in, hlds_goal::out, 
+    module_info::in, module_info::out, prog_varset::in, prog_varset::out, 
+    vartypes::in, vartypes::out) is det.
 
-make_call_handle_event(Event, ProcIdVar, ArgListVar, Goals, !ModuleInfo, 
+make_handle_event_call(ProcIdVar, ArgListVar, HandleEventGoal, !ModuleInfo, 
     !Varset, !Vartypes) :-
-
-    make_ssdb_event_type_construction(Event, EventConstructor, EventVar, 
-        !Varset, !Vartypes),
 
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     InstMapSrc = [],
     Context = term.context_init,
-    goal_util.generate_simple_call(SSDBModule, "handle_event", 
-    pf_predicate, only_mode, detism_det, purity_impure, 
-    [ProcIdVar, EventVar, ArgListVar], Features, InstMapSrc, !.ModuleInfo,
-    Context, HandleEventGoal),
-        
-    Goals = [EventConstructor, HandleEventGoal].
+    goal_util.generate_simple_call(SSDBModule, "handle_event_call", 
+        pf_predicate, only_mode, detism_det, purity_impure, 
+        [ProcIdVar, ArgListVar], Features, InstMapSrc, !.ModuleInfo, Context, 
+        HandleEventGoal).
+
+
+    %
+    % Build the following goal : handle_event_exit(ProcId, Arguments).
+    %
+:- pred make_handle_event_exit(prog_var::in, prog_var::in, hlds_goal::out, 
+    module_info::in, module_info::out, prog_varset::in, prog_varset::out, 
+    vartypes::in, vartypes::out) is det.
+
+make_handle_event_exit(ProcIdVar, ArgListVar, HandleEventGoal, !ModuleInfo, 
+    !Varset, !Vartypes) :-
+
+    SSDBModule = mercury_ssdb_builtin_module,
+    Features = [],
+    InstMapSrc = [],
+    Context = term.context_init,
+    goal_util.generate_simple_call(SSDBModule, "handle_event_exit", 
+        pf_predicate, only_mode, detism_det, purity_impure, 
+        [ProcIdVar, ArgListVar], Features, InstMapSrc, !.ModuleInfo, Context, 
+        HandleEventGoal).
+
+
+    %
+    % Build the following goal : handle_event_fail(ProcId, Arguments).
+    %
+:- pred make_handle_event_fail(prog_var::in, prog_var::in, hlds_goal::out, 
+    module_info::in, module_info::out, prog_varset::in, prog_varset::out, 
+    vartypes::in, vartypes::out) is det.
+
+make_handle_event_fail(ProcIdVar, ArgListVar, HandleEventGoal, !ModuleInfo, 
+    !Varset, !Vartypes) :-
+
+    SSDBModule = mercury_ssdb_builtin_module,
+    Features = [],
+    InstMapSrc = [],
+    Context = term.context_init,
+    goal_util.generate_simple_call(SSDBModule, "handle_event_fail", 
+        pf_predicate, only_mode, detism_det, purity_impure, 
+        [ProcIdVar, ArgListVar], Features, InstMapSrc, !.ModuleInfo, Context, 
+        HandleEventGoal).
+
+    
+    %
+    % Build the following goal : handle_event_redo(ProcId, Arguments).
+    %
+:- pred make_handle_event_redo(prog_var::in, prog_var::in, hlds_goal::out, 
+    module_info::in, module_info::out, prog_varset::in, prog_varset::out, 
+    vartypes::in, vartypes::out) is det.
+
+make_handle_event_redo(ProcIdVar, ArgListVar, HandleEventGoal, !ModuleInfo, 
+    !Varset, !Vartypes) :-
+
+    SSDBModule = mercury_ssdb_builtin_module,
+    Features = [],
+    InstMapSrc = [],
+    Context = term.context_init,
+    goal_util.generate_simple_call(SSDBModule, "handle_event_redo", 
+        pf_predicate, only_mode, detism_det, purity_impure, 
+        [ProcIdVar, ArgListVar], Features, InstMapSrc, !.ModuleInfo, Context, 
+        HandleEventGoal).
 
 
     %
@@ -542,15 +596,15 @@ make_fail_call(FailGoal, ModuleInfo) :-
     InstMapSrc = [],
     Context = term.context_init,
     goal_util.generate_simple_call(mercury_public_builtin_module, 
-	"false", pf_predicate, only_mode, detism_failure, purity_pure, 
-	[], Features, InstMapSrc, ModuleInfo, Context, FailGoal).
+        "false", pf_predicate, only_mode, detism_failure, purity_pure, 
+        [], Features, InstMapSrc, ModuleInfo, Context, FailGoal).
 
 %-----------------------------------------------------------------------------%
 
 
     %
     % make_arg_list(Pos, InstMap, Vars, RenamedVar, FullListVar, Goals, 
-    %	!ModuleInfo, !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundedVarDesc)
+    %   !ModuleInfo, !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundedVarDesc)
     %
     % Processes each variable in Vars creating a list(var_value) which records
     % the value of each of the variables. Vars points to the start of the
@@ -572,7 +626,7 @@ make_fail_call(FailGoal, ModuleInfo) :-
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is det.
 
 make_arg_list(_Pos, _InstMap, [], _Renaming, Var, [Goal], !ModuleInfo, 
-	!ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundVarDescs) :-
+        !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundVarDescs) :-
     
     svvarset.new_named_var("EmptyVarList", Var, !Varset), 
     svmap.det_insert(Var, list_var_value_type, !Vartypes),
@@ -691,10 +745,10 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         construct_type(TypeCtor, [], VarType), 
         svmap.det_insert(VarDesc, VarType, !VarTypes),
 
-	%
-	% Renaming contain the name of all instantiated argument during the 
-	% execution of the procedure's body.
-	%
+        %
+        % Renaming contain the name of all instantiated argument during the 
+        % execution of the procedure's body.
+        %
         ( map.is_empty(Renaming) ->
             construct_functor(VarDesc, ConsId, [TypeInfoVar, VarNameVar, 
                 VarPosVar, VarToInspect], ConstructVarGoal)
@@ -719,46 +773,6 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     
         Goals = [ConstructVarName, ConstructVarPos, ConstructVarGoal]
     ).
-
-%-----------------------------------------------------------------------------%
-
-    %
-    % make_ssdb_event_type_construction(EventType,
-    %   Goal, Var, !Varset, !Vartypes)
-    % 
-    % makes a construction unification, Goal, where Var will have the value
-    % EventType, updating the varset and vartypes to reflect this new goal.
-    %
-:- pred make_ssdb_event_type_construction(
-    ssdb_event_type::in, hlds_goal::out, prog_var::out, 
-    prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
-
-make_ssdb_event_type_construction(Event, Goal, EventVar, !Varset, !Vartypes) :-
-    (
-        Event = ssdb_call,
-        SSDB_Event = "ssdb_call"
-    ;
-        Event = ssdb_exit,
-        SSDB_Event = "ssdb_exit"
-    ;
-        Event = ssdb_redo,
-        SSDB_Event = "ssdb_redo"
-    ;
-        Event = ssdb_fail,
-        SSDB_Event = "ssdb_fail"
-    ),
-        
-    SSDBModule = mercury_ssdb_builtin_module,
-    TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_event_type"), 0),
-
-    svvarset.new_named_var(SSDB_Event, EventVar, !Varset), 
-    ConsId = cons(qualified(SSDBModule, SSDB_Event), 0),
-    construct_type(TypeCtor, [], EventVarType), 
-    svmap.det_insert(EventVar, EventVarType, !Vartypes),
-    construct_functor(EventVar, ConsId, [], Goal).
-
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
