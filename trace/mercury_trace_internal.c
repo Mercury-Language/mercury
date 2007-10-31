@@ -1538,6 +1538,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         MR_trace_movement_cmd_args, MR_trace_null_completer },
     { "forward", "finish", MR_trace_cmd_finish,
         MR_trace_movement_cmd_args, MR_trace_null_completer },
+    { "forward", "fail", MR_trace_cmd_fail,
+        MR_trace_movement_cmd_args, MR_trace_null_completer },
     { "forward", "exception", MR_trace_cmd_exception,
         MR_trace_movement_cmd_args, MR_trace_null_completer },
     { "forward", "return", MR_trace_cmd_return,
