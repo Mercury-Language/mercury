@@ -310,9 +310,11 @@
     --->    scope_is_cut
     ;       scope_is_no_cut.
 
+    % No reversing of the goal path steps is done by this predicate.
+    %
 :- pred path_from_string_det(string::in, goal_path::out) is det.
 
-    % This leaves the reverses the steps before converting them to a string.
+    % This reverses the steps before converting them to a string.
     %
 :- func goal_path_to_string(goal_path) = string.
 
@@ -322,6 +324,8 @@
     %
 :- func string_from_path(goal_path) = string.
 
+    % No reversing of the goal path steps is done by this predicate.
+    %
 :- pred path_from_string(string::in, goal_path::out) is semidet.
 
 :- pred path_step_from_string(string::in, goal_path_step::out) is semidet.
