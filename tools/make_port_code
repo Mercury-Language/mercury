@@ -250,7 +250,7 @@ cat >> ${header} << END
 END
 
 #---------------------------------------------------------------------------#
-# assembler the source file
+# assemble the source file
 
 cat ${tmp_prolog} > ${source}
 cat >> ${source} << END
