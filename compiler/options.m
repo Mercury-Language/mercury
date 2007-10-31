@@ -477,6 +477,10 @@
     ;       size_region_disj_snapshot
     ;       size_region_commit_entry
 
+    ;       solver_type_auto_init
+            % Insert calls to solver type initialisation predicates when
+            % the inst of solver type variables changes from free to any.
+
     % Code generation options
     ;       low_level_debug
     ;       table_debug
@@ -1210,7 +1214,8 @@ option_defaults_2(internal_use_option, [
     size_region_ite_snapshot            -   int(4),
     size_region_disj_protect            -   int(0),
     size_region_disj_snapshot           -   int(4),
-    size_region_commit_entry            -   int(1)
+    size_region_commit_entry            -   int(1),
+    solver_type_auto_init               -   bool(no)
 ]).
 option_defaults_2(code_gen_option, [
     % Code Generation Options
@@ -1994,6 +1999,7 @@ long_option("size-region-ite-snapshot",     size_region_ite_snapshot).
 long_option("size-region-disj-protect",     size_region_disj_protect).
 long_option("size-region-disj-snapshot",    size_region_disj_snapshot).
 long_option("size-region-commit-entry",     size_region_commit_entry).
+long_option("solver-type-auto-init",        solver_type_auto_init).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).
@@ -4088,6 +4094,11 @@ options_help_compilation_model -->
 %       "--size-region-disj-protect"
 %       "--size-region-disj-snapshot"
 %       "--size-region-commit-entry"
+
+        % This is a developer only option.
+%       "--solver-type-auto-init",
+%       "(This option is not for general use.)",
+%       Allow automatic initialisation of solver types.
     ]).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.

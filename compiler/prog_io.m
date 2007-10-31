@@ -2375,7 +2375,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             IsSolverType = solver_type,
             (
                 RepresentationIs = yes(RepnType),
-                InitialisationIs = yes(InitPred),
+                InitialisationIs = MaybeInitialisation,
                 GroundIs         = MaybeGroundInst,
                 AnyIs            = MaybeAnyInst,
                 EqualityIs       = MaybeEqPred,
@@ -2400,8 +2400,16 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     MaybeMutableItems = no,
                     MutableItems = []
                 ),
-                MaybeSolverTypeDetails = yes(solver_type_details(
-                    RepnType, InitPred, GroundInst, AnyInst, MutableItems)),
+                (
+                    MaybeInitialisation = yes(InitPred),
+                    HowToInit = solver_init_automatic(InitPred)
+                ;
+                    MaybeInitialisation = no,
+                    HowToInit = solver_init_explicit
+                ), 
+                SolverTypeDetails = solver_type_details(
+                    RepnType, HowToInit, GroundInst, AnyInst, MutableItems),
+                MaybeSolverTypeDetails = yes(SolverTypeDetails),
                 (
                     MaybeEqPred = no,
                     MaybeCmpPred = no
@@ -2417,12 +2425,6 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             ->
                 Msg = "solver type definitions must have a" ++
                     "`representation' attribute",
-                Result = error2([Msg - WhereTerm])
-            ;
-                InitialisationIs = no
-            ->
-                Msg = "solver type definitions must have an" ++
-                    "`initialisation' attribute",
                 Result = error2([Msg - WhereTerm])
             ;
                unexpected(this_file, "make_maybe_where_details_2: " ++

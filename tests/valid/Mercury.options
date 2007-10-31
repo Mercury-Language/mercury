@@ -90,6 +90,10 @@ MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-solver_type_bug		= --halt-at-warn
+# The following two test cases check for bugs that can only occur in the
+# presence of automatic solver type intialisation.
+MCFLAGS-solver_type_bug_2       = --solver-type-auto-init
+MCFLAGS-solver_type_mutable_bug = --solver-type-auto-init
 MCFLAGS-solv			= --halt-at-warn
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
 MCFLAGS-stack_opt_simplify	= --optimize-saved-vars

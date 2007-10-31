@@ -713,15 +713,22 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
 generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     (
-        type_util.type_body_has_solver_type_details(ModuleInfo,
-            TypeBody, SolverTypeDetails)
+        type_body_has_solver_type_details(ModuleInfo, TypeBody,
+            SolverTypeDetails)
     ->
         % Just generate a call to the specified predicate, which is
         % the user-defined equality pred for this type.
         % (The pred_id and proc_id will be figured out by type checking
         % and mode analysis.)
-
-        InitPred = SolverTypeDetails ^ init_pred,
+        %
+        HowToInit = SolverTypeDetails ^ init_pred,
+        (
+            HowToInit = solver_init_automatic(InitPred)
+        ;
+            HowToInit = solver_init_explicit,
+            unexpected(this_file, "generating initialise pred. for " ++
+                "solver type that does not have automatic initialisation.")
+        ),
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
         Call = plain_call(PredId, ModeId, [X], not_builtin, no, InitPred),
@@ -738,8 +745,8 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         make_fresh_named_var_from_type(EqvType, "PreCast_HeadVar", 1, X0,
             !Info),
         type_to_ctor_det(EqvType, TypeCtor),
-        PredName = special_pred.special_pred_name(spec_pred_init, TypeCtor),
-        hlds_module.module_info_get_name(ModuleInfo, ModuleName),
+        PredName = special_pred_name(spec_pred_init, TypeCtor),
+        module_info_get_name(ModuleInfo, ModuleName),
         TypeCtor = type_ctor(TypeSymName, _TypeArity),
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         InitPred = qualified(TypeModuleName, PredName),

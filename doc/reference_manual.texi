@@ -2245,7 +2245,6 @@ update_field_in_map(Map, Index, Value) =
 * Solver type definitions::
 * Implementing solver types::
 * Solver types and negated contexts::
-* Polymorphic solver types::
 @end menu
 
 Solver types are an experimental addition to the language supporting the
@@ -2305,7 +2304,6 @@ A solver type definition takes the following form:
 @example
 :- solver type solver_type
         where   representation   is representation_type,
-                initialisation   is initialisation_pred,
                 ground           is ground_inst,
                 any              is any_inst,
                 constraint_store is mutable_decls,
@@ -2313,8 +2311,7 @@ A solver type definition takes the following form:
                 comparison       is comparison_pred.
 @end example
 
-The @samp{representation} and @samp{initialisation} attributes are mandatory
-(@samp{initialization} is allowed as a synonym for @samp{initialisation}),
+The @samp{representation} attribute is mandatory
 @samp{ground_inst} and @samp{any_inst} default to @samp{ground},
 @samp{mutable_decls} is either a single mutable declaration
 (@pxref{Module-local mutable variables})
@@ -2337,17 +2334,22 @@ this approach greatly simplifies the definition of equality and
 comparison predicates for the @code{solver_type}.
 @end itemize
 
-The @code{initialisation_pred} is the name of a predicate defined in the same
-module as the solver type, with the following signature:
-
-@example
-:- pred initialisation_pred(solver_type::out(any)) is det.
-@end example
-
-Calls to this predicate are inserted automatically by the compiler when a
-@code{free} @code{solver_type} variable has to be given inst @code{any}.
-(The initialisation predicate is responsible for registering the new, unbound
-variable with the corresponding constraint solver state.)
+@c XXX The following paragraph describes the old support for automatic
+@c     initialisation of solver types.  We no longer officially support
+@c     automatic initialisation as part of the language but the compiler
+@c     still contains the code necessary to implement it.
+@c
+@c The @code{initialisation_pred} is the name of a predicate defined in the
+@c same module as the solver type, with the following signature:
+@c 
+@c @example
+@c :- pred initialisation_pred(solver_type::out(any)) is det.
+@c @end example
+@c 
+@c Calls to this predicate are inserted automatically by the compiler when a
+@c @code{free} @code{solver_type} variable has to be given inst @code{any}.
+@c (The initialisation predicate is responsible for registering the new,
+@c unbound variable with the corresponding constraint solver state.)
 
 The @code{ground_inst} is the inst associated with
 @code{representation_type} values denoting @code{ground}
@@ -2463,13 +2465,6 @@ are therefore required to place such goals inside a @code{promise_pure},
 @code{promise_semipure}, or @code{promise_impure} scope, and to declare such
 lambda expressions to be @code{impure}, even if they would normally be
 considered pure.
-
-@node Polymorphic solver types
-@subsection Polymorphic solver types
-
-Under the current design, the compiler does not have enough information to
-initialise variables belonging to polymorphic parameters that are themselves
-expected to be solver types.  At some point we intend to lift this restriction.
 
 @node Modes
 @chapter Modes

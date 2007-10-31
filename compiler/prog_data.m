@@ -1194,7 +1194,7 @@
 :- type solver_type_details
     --->    solver_type_details(
                 representation_type :: mer_type,
-                init_pred           :: init_pred,
+                init_pred           :: solver_type_init,
                 ground_inst         :: mer_inst,
                 any_inst            :: mer_inst,
                 mutable_items       :: list(item)
@@ -1206,6 +1206,17 @@
     % inst any variables where necessary.)
     %
 :- type init_pred   ==  sym_name.
+
+    % What sort of initialisation, if any, is required by a solver type?
+    %
+:- type solver_type_init
+    --->    solver_init_explicit
+            % The user will explicitly insert calls to initialise solver
+            % variables of this type in their code.
+    
+    ;       solver_init_automatic(init_pred).
+            % The mode analyser should insert calls to `init_pred' in order
+            % to initialise solver variables of this type.
 
     % An equality_pred specifies the name of a user-defined predicate
     % used for equality on a type.  See the chapter on them in the

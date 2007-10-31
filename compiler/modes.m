@@ -1185,12 +1185,21 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
         ;
             !:Changed = yes,
             (
-                % If this is a solver type with inst `free' that should have
-                % inst `any' then insert a call to the appropriate
-                % initialisation predicate.
+                % Insert a call to the appropriate solver type initialisation
+                % predicate if:
+                %
+                % (a) this is a solver type with inst `free' that should
+                %     have inst `any'.
+                % 
+                % (b) this is a solver type that allows automatic
+                %     initialisation.
+                %
+                % (c) the option `--solver-type-auto-init' is enabled.
+                %
                 inst_match.inst_is_free(ModuleInfo, VarInst),
                 inst_match.inst_is_any(ModuleInfo, Inst),
-                type_util.type_is_solver_type(ModuleInfo, Type)
+                type_is_solver_type_with_auto_init(ModuleInfo, Type), 
+                mode_info_solver_init_is_supported(!.ModeInfo)
             ->
                 prepend_initialisation_call(Var, Type, VarInst, !Goal,
                     !ModeInfo)
@@ -1988,11 +1997,11 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo, !IO) :-
     mode_info_set_delay_info(DelayInfo3, !ModeInfo),
 
     % Otherwise try scheduling by inserting solver initialisation calls
-    % where necessary.
+    % where necessary (although only if `--solver-type-auto-init' is enabled).
+    %
     modecheck_delayed_solver_goals(ConjType, Goals2,
         DelayedGoals0, DelayedGoals, RevImpurityErrors0, RevImpurityErrors,
         !ModeInfo, !IO),
-
     Goals = Goals1 ++ Goals2,
 
     mode_info_get_errors(!.ModeInfo, NewErrors),
@@ -2203,18 +2212,22 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_delayed_solver_goals(ConjType, Goals, DelayedGoals0, DelayedGoals,
+modecheck_delayed_solver_goals(ConjType, Goals, !DelayedGoals,
         !ImpurityErrors, !ModeInfo, !IO) :-
-    % Try to handle any unscheduled goals by inserting solver
-    % initialisation calls, aiming for a deterministic schedule.
-    modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals1,
-        Goals0, !ImpurityErrors, !ModeInfo, !IO),
+    ( mode_info_solver_init_is_supported(!.ModeInfo) ->
+        % Try to handle any unscheduled goals by inserting solver
+        % initialisation calls, aiming for a deterministic schedule.
+        modecheck_delayed_goals_try_det(ConjType, !DelayedGoals,
+            Goals0, !ImpurityErrors, !ModeInfo, !IO),
 
-    % Try to handle any unscheduled goals by inserting solver
-    % initialisation calls, aiming for *any* workable schedule.
-    modecheck_delayed_goals_eager(ConjType, DelayedGoals1, DelayedGoals,
-        Goals1, !ImpurityErrors, !ModeInfo, !IO),
-    Goals = Goals0 ++ Goals1.
+        % Try to handle any unscheduled goals by inserting solver
+        % initialisation calls, aiming for *any* workable schedule.
+        modecheck_delayed_goals_eager(ConjType, !DelayedGoals,
+            Goals1, !ImpurityErrors, !ModeInfo, !IO),
+        Goals = Goals0 ++ Goals1
+    ;
+        Goals = []
+    ).
 
     % We may still have some unscheduled goals.  This may be because some
     % initialisation calls are needed to turn some solver type vars
@@ -2289,7 +2302,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
             =>
                 (
                     map.lookup(VarTypes, Var, VarType),
-                    type_util.type_is_solver_type(ModuleInfo, VarType)
+                    type_is_solver_type_with_auto_init(ModuleInfo, VarType)
                 )
             )
         ->
@@ -3157,7 +3170,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
             mode_info_get_errors(!.ModeInfo, ModeErrors),
             ModeErrors = [],
             mode_info_may_init_solver_vars(!.ModeInfo),
-            type_util.type_is_solver_type(ModuleInfo0, VarType)
+            mode_info_solver_init_is_supported(!.ModeInfo),
+            type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
         ->
             % Create code to initialize the variable to inst `any',
             % by calling the solver type's initialisation predicate.
@@ -3214,7 +3228,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
         MaybeCallUnifyContext, InitVarGoal, !ModeInfo) :-
     (
         type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
-        PredName = special_pred.special_pred_name(spec_pred_init, TypeCtor),
+        PredName = special_pred_name(spec_pred_init, TypeCtor),
         (
             TypeCtor = type_ctor(qualified(ModuleName, _TypeName), _Arity)
         ;

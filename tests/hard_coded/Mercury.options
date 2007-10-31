@@ -59,6 +59,13 @@ MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
 MCFLAGS-opt_dup_bug	=	-O2 --optimize-dups --optimize-frames
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
+
+# This test checks that calls to initialisation predicates are correctly
+# added to construction unifications, so it only works if automatic
+# initialisation of solver types is enabled.
+#
+MCFLAGS-solver_construction_init_test = --solver-type-auto-init
+
 MCFLAGS-split_c_files	=	--trace rep
 MCFLAGS-switch_detect	=	--halt-at-warn
 # The trace_goal_1 and trace_goal_2 test cases differ only in that

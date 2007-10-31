@@ -308,6 +308,12 @@
 
 :- pred mode_info_may_init_solver_vars(mode_info::in) is semidet.
 
+    % Succeeds if automatic initialisation of solver variables is
+    % supported.  This is only the case if the developer-only option
+    % `--solver-type-auto-init' is enabled.
+    %
+:- pred mode_info_solver_init_is_supported(mode_info::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -429,6 +435,7 @@
     % Please try to keep the size of this structure down to eight fields.
     % Even one more field will cause the Boehm allocator to round up the size
     % of each memory cell to 16 words.
+    %
 :- type mode_info
     --->    mode_info(
                 mi_module_info              :: module_info,
@@ -821,6 +828,13 @@ mode_info_need_to_requantify(!ModeInfo) :-
 mode_info_may_init_solver_vars(ModeInfo) :-
     mode_info_get_may_init_solver_vars(ModeInfo, MayInitSolverVars),
     MayInitSolverVars = may_init_solver_vars.
+
+%-----------------------------------------------------------------------------%
+
+mode_info_solver_init_is_supported(ModeInfo) :-
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, solver_type_auto_init, yes).
 
 %-----------------------------------------------------------------------------%
 

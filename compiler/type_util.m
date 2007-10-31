@@ -97,6 +97,12 @@
 :- pred type_body_has_solver_type_details(module_info::in,
     hlds_type_body::in, solver_type_details::out) is semidet.
 
+    % Succeeds if this type is a solver type that has an initialisation
+    % predicate specified by the user in the solver type definition.
+    %
+:- pred type_is_solver_type_with_auto_init(module_info::in, mer_type::in)
+    is semidet.
+
 :- pred is_solver_type(module_info::in, mer_type::in) is semidet.
 
     % Succeed if the type body is for a solver type.
@@ -490,6 +496,28 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     ArgTypes = list.map((func(A) = A ^ arg_type), Args),
     list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
         ArgTypes, !SeenTypes).
+
+type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    (
+        TypeBody = hlds_solver_type(_, _),
+        ActualType = Type
+    ;
+        % XXX the current implementation doesn't provide enough information
+        % to determine whether abstract solver types support automatic
+        % initialisation or not.  In the absence of such information we
+        % assume that they do not.  Since we don't officially support
+        % automatic initialisation anyway this shouldn't be too much of a
+        % problem.  (In the event that we do re-add some form of support for 
+        % automatic solver initialisation then we will need to make sure
+        % that this information ends up in interface files somehow.)
+        TypeBody = hlds_abstract_type(solver_type),
+        fail
+    ;
+        TypeBody = hlds_eqv_type(ActualType)
+    ),
+    type_has_solver_type_details(ModuleInfo, ActualType, SolverTypeDetails),
+    SolverTypeDetails ^ init_pred = solver_init_automatic(_).
 
 type_is_solver_type(ModuleInfo, Type) :-
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),

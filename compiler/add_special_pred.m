@@ -172,16 +172,14 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
                     TypeCtor, Body, Context, Status, !ModuleInfo)
             )
         ),
-        (
-            type_util.type_body_is_solver_type(!.ModuleInfo, Body)
-        ->
+        ( type_is_solver_type_with_auto_init(!.ModuleInfo, Type) ->
             add_special_pred(spec_pred_init, TVarSet, Type, TypeCtor, Body,
                 Context, Status, !ModuleInfo)
         ;
             true
         )
     ;
-        ( type_util.type_body_is_solver_type(!.ModuleInfo, Body) ->
+        ( type_is_solver_type_with_auto_init(!.ModuleInfo, Type) ->
             SpecialPredIds = [spec_pred_unify, spec_pred_compare,
                 spec_pred_init]
         ;
@@ -226,17 +224,16 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
             SpecialPredId = spec_pred_index
         ;
             SpecialPredId = spec_pred_compare,
-            ( TypeBody ^ du_type_usereq = yes(_) ->
-                    % The compiler generated comparison
-                    % procedure prints an error message,
-                    % since comparisons of types with
-                    % user-defined equality are not
-                    % allowed. We get the runtime system
-                    % invoke this procedure instead of
-                    % printing the error message itself,
-                    % because it is easier to generate
-                    % a good error message in Mercury code
-                    % than in C code.
+            (
+                % The compiler generated comparison procedure prints an error
+                % message, since comparisons of types with user-defined
+                % equality are not allowed.
+                % We get the runtime system to invoke this procedure instead
+                % of printing the error message itself, because it is easier
+                % to generate a good error message in Mercury code than in
+                % C code.
+                TypeBody ^ du_type_usereq = yes(_)
+            ->       
                 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
                     TypeCtor, TypeBody, Context, Status0, !ModuleInfo)
             ;
@@ -244,12 +241,13 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
             )
         ;
             SpecialPredId = spec_pred_init,
-            ( type_is_solver_type(!.ModuleInfo, Type) ->
+            ( type_is_solver_type_with_auto_init(!.ModuleInfo, Type) ->
                 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
                     TypeCtor, TypeBody, Context, Status0, !ModuleInfo)
             ;
-                unexpected(this_file, "add_special_pred: " ++
-                    "attempt to add initialise pred for non-solver type")
+                unexpected(this_file, "add_special_pred: "
+                    ++ "attempt to add initialise pred for non-solver type "
+                    ++ "or solver type without automatic initialisation.")
             )
         )
     ).
@@ -296,7 +294,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     ;
         PredInfo1 = PredInfo0
     ),
-    unify_proc.generate_clause_info(SpecialPredId, Type, TypeBody,
+    generate_clause_info(SpecialPredId, Type, TypeBody,
         Context, !.ModuleInfo, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
     pred_info_get_markers(PredInfo2, Markers2),

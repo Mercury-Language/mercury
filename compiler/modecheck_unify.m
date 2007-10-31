@@ -130,13 +130,14 @@ modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
     % insert initialisation calls at this point, then do so to allow
     % scheduling of the unification.
     (
+        mode_info_solver_init_is_supported(!.ModeInfo),
         mode_info_may_init_solver_vars(!.ModeInfo),
         InstOfX0   = free,
         InstOfY0   = free,
-        VarType    = VarTypes^elem(X),
-        type_util.type_is_solver_type(ModuleInfo0, VarType)
+        VarType    = VarTypes ^ elem(X),
+        type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
     ->
-        modes.construct_initialisation_call(X, VarType, any_inst,
+        construct_initialisation_call(X, VarType, any_inst,
             context_init, no, InitXGoal, !ModeInfo),
         MaybeInitX = yes(InitXGoal),
         instmap.set(X, any_inst, InstMap0, InstMap),

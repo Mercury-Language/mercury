@@ -80,7 +80,7 @@
 
     % A compiler-generated predicate only needs type checking if
     % (a) it is a user-defined equality pred, or
-    % (b) it is the unification or comparison predicate for an existially
+    % (b) it is the unification or comparison predicate for an existentially
     %     quantified type, or
     % (c) it is the initialisation predicate for a solver type.
     %
@@ -293,7 +293,7 @@ is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 %-----------------------------------------------------------------------------%
 
     % The compiler generates the rtti for the builtins when we are on the
-    % non C backends. We don't generate the rtti on the C backends as the
+    % non-C backends. We don't generate the rtti on the C backends as the
     % runtime contains references to this rtti so the rtti must be defined
     % in the runtime not the library.
     %

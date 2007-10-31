@@ -48,13 +48,14 @@ main(!IO) :-
 :- pred solve_problem(int::out) is semidet.
 
 solve_problem(Solution) :-
+    init(B),
+    init(C),
     post_constraint( B \/ -C),
     post_constraint(-B \/  C),
     solve([B, C], Solution).
 
 :- solver type st
-    where   representation is int,
-            initialisation is init.
+    where   representation is int.
 
 
 :- pred init(st::oa) is det.

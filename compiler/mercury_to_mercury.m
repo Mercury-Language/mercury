@@ -1905,12 +1905,17 @@ mercury_output_where_attributes(TVarSet,
         solver_type_details::in, io::di, io::uo) is det.
 
 mercury_output_solver_type_details(TVarSet,
-        solver_type_details(RepresentationType, InitPred, GroundInst, AnyInst,
+        solver_type_details(RepresentationType, HowToInit, GroundInst, AnyInst,
         MutableItems), !IO) :-
     io.write_string("representation is ", !IO),
     mercury_output_type(TVarSet, no, RepresentationType, !IO),
-    io.write_string(",\n\t\tinitialisation is ", !IO),
-    mercury_output_bracketed_sym_name(InitPred, !IO),
+    (
+        HowToInit = solver_init_explicit
+    ;
+        HowToInit = solver_init_automatic(InitPred),
+        io.write_string(",\n\t\tinitialisation is ", !IO),
+        mercury_output_bracketed_sym_name(InitPred, !IO)
+    ),
     varset.init(EmptyInstVarSet),
     io.write_string(",\n\t\tground is ", !IO),
     mercury_output_inst(GroundInst, EmptyInstVarSet, !IO),
