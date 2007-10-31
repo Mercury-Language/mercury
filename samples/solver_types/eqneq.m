@@ -58,14 +58,11 @@
 :- import_module set.
 :- import_module univ.
 
-
-
     % An eqneq is represented by an eqneq_id, which is a key in the
     % mutable constraint_store map.
     %
 :- solver type eqneq(T) where
     representation is eqneq_id,
-    initialisation is new,
     equality is eq.
 
 :- type eqneq_id == int.
