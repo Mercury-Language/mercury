@@ -267,8 +267,8 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     map.lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
     module_info_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
-    % if the type was imported, then the special preds for that
-    % type should be imported too
+    % If the type was imported, then the special preds for that
+    % type should be imported too.
     (
         ( Status = status_imported(_)
         ; Status = status_pseudo_imported

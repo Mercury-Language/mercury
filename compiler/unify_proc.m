@@ -713,29 +713,6 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
 generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     (
-        type_body_has_solver_type_details(ModuleInfo, TypeBody,
-            SolverTypeDetails)
-    ->
-        % Just generate a call to the specified predicate, which is
-        % the user-defined equality pred for this type.
-        % (The pred_id and proc_id will be figured out by type checking
-        % and mode analysis.)
-        %
-        HowToInit = SolverTypeDetails ^ init_pred,
-        (
-            HowToInit = solver_init_automatic(InitPred)
-        ;
-            HowToInit = solver_init_explicit,
-            unexpected(this_file, "generating initialise pred. for " ++
-                "solver type that does not have automatic initialisation.")
-        ),
-        PredId = invalid_pred_id,
-        ModeId = invalid_proc_id,
-        Call = plain_call(PredId, ModeId, [X], not_builtin, no, InitPred),
-        goal_info_init(Context, GoalInfo),
-        Goal = hlds_goal(Call, GoalInfo),
-        quantify_clause_body([X], Goal, Context, Clause, !Info)
-    ;
         % If this is an equivalence type then we just generate a call
         % to the initialisation pred of the type on the RHS of the equivalence
         % and cast the result back to the type on the LHS of the equivalence.
@@ -759,6 +736,29 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         generate_cast_with_insts(equiv_type_cast, X0, X, Any, Any, Context,
             CastGoal),
         Goal = hlds_goal(conj(plain_conj, [InitGoal, CastGoal]), GoalInfo),
+        quantify_clause_body([X], Goal, Context, Clause, !Info)
+    ; 
+        type_body_has_solver_type_details(ModuleInfo, TypeBody,
+            SolverTypeDetails)
+    ->
+        % Just generate a call to the specified predicate, which is
+        % the user-defined equality pred for this type.
+        % (The pred_id and proc_id will be figured out by type checking
+        % and mode analysis.)
+        %
+        HowToInit = SolverTypeDetails ^ init_pred,
+        (
+            HowToInit = solver_init_automatic(InitPred)
+        ;
+            HowToInit = solver_init_explicit,
+            unexpected(this_file, "generating initialise pred. for " ++
+                "solver type that does not have automatic initialisation.")
+        ),
+        PredId = invalid_pred_id,
+        ModeId = invalid_proc_id,
+        Call = plain_call(PredId, ModeId, [X], not_builtin, no, InitPred),
+        goal_info_init(Context, GoalInfo),
+        Goal = hlds_goal(Call, GoalInfo),
         quantify_clause_body([X], Goal, Context, Clause, !Info)
     ;
         unexpected(this_file, "generate_initialise_proc_body: " ++
