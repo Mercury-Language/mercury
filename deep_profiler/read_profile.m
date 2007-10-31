@@ -1060,11 +1060,6 @@ read_n_bytes(N, Bytes0, Res, !IO) :-
 
 read_deep_byte(Res, !IO) :-
     read_byte(Res0, !IO),
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("byte ", !IO),
-        io.write(Res, !IO),
-        io.write_string("\n", !IO)
-    ),
     (
         Res0 = ok(Byte),
         Res = ok(Byte)
@@ -1075,6 +1070,11 @@ read_deep_byte(Res, !IO) :-
         Res0 = error(Err),
         io.error_message(Err, Msg),
         Res = error(Msg)
+    ),
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
+        io.write_string("byte ", !IO),
+        io.write(Res, !IO),
+        io.write_string("\n", !IO)
     ).
 
 %------------------------------------------------------------------------------%
