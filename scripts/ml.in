@@ -85,7 +85,9 @@ case "$CC" in
 	;;
 esac
 
-# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
+# On some systems we need -ldl (libdl.so) for dlopen() etc.
+# The name of the needed library is determined by autoconf and passed through
+# this variable.
 DL_LIBRARY="@DL_LIBRARY@"
 
 # Likewise for -lreadline -l{termcap,curses,ncurses}
