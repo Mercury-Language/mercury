@@ -525,12 +525,12 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         HowToCheckGoal = check_modes,
         inst_match.inst_is_free(ModuleInfo0, InstOfX),
         mode_info_may_init_solver_vars(!.ModeInfo),
+        mode_info_solver_init_is_supported(!.ModeInfo),
         instmap.lookup_vars(ArgVars0, InstMap0, InstArgs0),
         all_arg_vars_are_non_free_or_solver_vars(ArgVars0, InstArgs0,
             VarTypes, ModuleInfo0, ArgVarsToInit)
     ->
-        modes.construct_initialisation_calls(ArgVarsToInit, InitGoals,
-            !ModeInfo),
+        construct_initialisation_calls(ArgVarsToInit, InitGoals, !ModeInfo),
         (
             InitGoals = [],
             ExtraGoals1 = no_extra_goals
