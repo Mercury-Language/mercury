@@ -1198,7 +1198,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
                 %
                 inst_match.inst_is_free(ModuleInfo, VarInst),
                 inst_match.inst_is_any(ModuleInfo, Inst),
-                type_is_solver_type_with_auto_init(ModuleInfo, Type), 
+                type_is_solver_type_with_auto_init(ModuleInfo, Type),
                 mode_info_solver_init_is_supported(!.ModeInfo)
             ->
                 prepend_initialisation_call(Var, Type, VarInst, !Goal,
@@ -2207,6 +2207,9 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
     % from inst free to inst any. This predicate attempts to schedule
     % such goals.
     %
+    % XXX despite its name this predicate will in fact try to reschedule all
+    %     delayed goals, not just delayed solver goals.
+    %
 :- pred modecheck_delayed_solver_goals(conj_type::in, list(hlds_goal)::out,
     list(delayed_goal)::in, list(delayed_goal)::out,
     impurity_errors::in, impurity_errors::out,
@@ -2214,20 +2217,16 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
 
 modecheck_delayed_solver_goals(ConjType, Goals, !DelayedGoals,
         !ImpurityErrors, !ModeInfo, !IO) :-
-    ( mode_info_solver_init_is_supported(!.ModeInfo) ->
-        % Try to handle any unscheduled goals by inserting solver
-        % initialisation calls, aiming for a deterministic schedule.
-        modecheck_delayed_goals_try_det(ConjType, !DelayedGoals,
-            Goals0, !ImpurityErrors, !ModeInfo, !IO),
+    % Try to handle any unscheduled goals by inserting solver
+    % initialisation calls, aiming for a deterministic schedule.
+    modecheck_delayed_goals_try_det(ConjType, !DelayedGoals,
+        Goals0, !ImpurityErrors, !ModeInfo, !IO),
 
-        % Try to handle any unscheduled goals by inserting solver
-        % initialisation calls, aiming for *any* workable schedule.
-        modecheck_delayed_goals_eager(ConjType, !DelayedGoals,
-            Goals1, !ImpurityErrors, !ModeInfo, !IO),
-        Goals = Goals0 ++ Goals1
-    ;
-        Goals = []
-    ).
+    % Try to handle any unscheduled goals by inserting solver
+    % initialisation calls, aiming for *any* workable schedule.
+    modecheck_delayed_goals_eager(ConjType, !DelayedGoals,
+        Goals1, !ImpurityErrors, !ModeInfo, !IO),
+    Goals = Goals0 ++ Goals1.
 
     % We may still have some unscheduled goals.  This may be because some
     % initialisation calls are needed to turn some solver type vars
@@ -2304,7 +2303,8 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
                     map.lookup(VarTypes, Var, VarType),
                     type_is_solver_type_with_auto_init(ModuleInfo, VarType)
                 )
-            )
+            ),
+            mode_info_solver_init_is_supported(!.ModeInfo)
         ->
             % Construct the inferred initialisation goals
             % and try scheduling again.
