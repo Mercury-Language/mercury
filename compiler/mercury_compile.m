@@ -3191,7 +3191,10 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         process_all_nonimported_procs(
             update_module_io(ssdebug.process_proc), !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        maybe_report_stats(Stats, !IO),
+
+        % XXX Must be remove to manage the determinsim by hand
+        determinism_pass(!HLDS, _Specs)
     ;
         SSDB = no
     ).
