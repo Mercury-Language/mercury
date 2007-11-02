@@ -41,19 +41,15 @@ ALL_DEEP_MODULES = \
 	mdprof_feedback \
 	mdprof_procrep
 
+# Always compile the deep profiler, even if it is not enabled.
+# 
+MAIN_TARGET=all
+MERCURY_MAIN_MODULES=$(ALL_DEEP_MODULES)
+DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MODULES))
+
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
-	MAIN_TARGET=all
-	MERCURY_MAIN_MODULES=$(ALL_DEEP_MODULES)
-	DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MODULES))
 	INSTALL=install_cgi_progs
 else
-	MAIN_TARGET=nothing
-	MERCURY_MAIN_MODULES=
-	# When building the source .tar.gz distribution, we need to
-	# include the generated .c files for the deep profiler,
-	# even if deep profiling wasn't enabled on this host.
-	# That implies that we need to make the dependencies.
-	DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MODULES))
 	INSTALL=nothing
 endif
 
