@@ -158,13 +158,13 @@ dep_deep_profiler: deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 		deep_profiler/$(deps_subdir)mdprof_test.dep \
 		deep_profiler/$(deps_subdir)mdprof_dump.dep \
 		deep_profiler/$(deps_subdir)mdprof_feedback.dep \
-		deep_profiler/$(dpes_subdir)mdprof_procrep.dep
+		deep_profiler/$(deps_subdir)mdprof_procrep.dep
 
 deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 deep_profiler/$(deps_subdir)mdprof_test.dep \
 deep_profiler/$(deps_subdir)mdprof_dump.dep \
 deep_profiler/$(deps_subdir)mdprof_feedback.dep \
-deep_profiler/$(dpes_subdir)mdprof_proc_rep.dep: \
+deep_profiler/$(deps_subdir)mdprof_proc_rep.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
