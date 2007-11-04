@@ -154,6 +154,7 @@ profiler/$(deps_subdir)mercury_profile.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd profiler && $(SUBDIR_MMAKE) depend
 
+.PHONY: dep_deep_profiler
 dep_deep_profiler: deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 		deep_profiler/$(deps_subdir)mdprof_test.dep \
 		deep_profiler/$(deps_subdir)mdprof_dump.dep \
@@ -164,7 +165,7 @@ deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 deep_profiler/$(deps_subdir)mdprof_test.dep \
 deep_profiler/$(deps_subdir)mdprof_dump.dep \
 deep_profiler/$(deps_subdir)mdprof_feedback.dep \
-deep_profiler/$(deps_subdir)mdprof_proc_rep.dep: \
+deep_profiler/$(deps_subdir)mdprof_procrep.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
