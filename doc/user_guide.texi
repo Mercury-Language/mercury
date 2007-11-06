@@ -7170,7 +7170,7 @@ The set of aspects and their alternatives are:
 @samp{spf} (the default is to use double-precision floats)
 
 @item Whether to allocate a new stack segment when the limit on the old one
-is reached: @samp{stseg} (the default is not to allocate a new stack segement)
+is reached: @samp{stseg} (the default is not to allocate a new stack segment)
 
 @item What debugging features to enable:
 @samp{debug} and @samp{decldebug} (the default is no debugging features).
@@ -8729,6 +8729,24 @@ which a library to be installed should be built.
 Clear the list of compilation grades in which a library
 to be installed should be built.  The main use of this is to avoid
 building and installing the default set of grades.
+
+@sp 1
+@item --libgrades-include-component @var{component}
+@itemx --libgrades-include @var{component}
+@findex --libgrade-include-component
+@findex --libgrades-include
+Remove grades that do not contain the specified component from the
+set of library grades to be installed.
+(This option does not work with Mmake, only @samp{mmc --make}.)
+
+@sp 1
+@item --libgrades-exclude-component @var{component}
+@itemx --libgrade-exclude @var{component}
+@findex --libgrades-exclude-component
+@findex --libgrade-exclude
+Remove grades that contain the specified component from the set of
+library grades to be installed.
+(This option does not work with Mmake, only @samp{mmc --make}.)
 
 @sp 1
 @item --lib-linkage @{shared,static@}

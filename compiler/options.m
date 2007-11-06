@@ -826,6 +826,8 @@
     ;       install_command
     ;       install_command_dir_option
     ;       libgrades
+    ;       libgrades_include_components
+    ;       libgrades_exclude_components
     ;       lib_linkages
     ;       flags_file
     ;       options_files
@@ -1618,6 +1620,8 @@ option_defaults_2(build_system_option, [
     install_command                     -   string("cp"),
     install_command_dir_option          -   string("-r"),
     libgrades                           -   accumulating([]),
+    libgrades_include_components        -   accumulating([]),
+    libgrades_exclude_components        -   accumulating([]),
     lib_linkages                        -   accumulating([]),
     flags_file                          -   file_special,
     options_files                       -   accumulating(["Mercury.options"]),
@@ -2446,6 +2450,10 @@ long_option("install-command-dir-option", install_command_dir_option).
 long_option("use-symlinks",         use_symlinks).
 long_option("library-grade",        libgrades).
 long_option("libgrade",             libgrades).
+long_option("libgrades-include-component", libgrades_include_components).
+long_option("libgrades-include",           libgrades_include_components).
+long_option("libgrades-exclude-component", libgrades_exclude_components).
+long_option("libgrades-exclude",           libgrades_exclude_components).
 long_option("library-linkage",      lib_linkages).
 long_option("lib-linkage",          lib_linkages).
 long_option("flags",                flags_file).
@@ -4989,6 +4997,16 @@ options_help_build_system -->
         "--no-libgrade",
         "\tClear the list of compilation grades in which a library",
         "\tto be installed should be built.",
+        "--libgrades-include-component <component>",
+        "--libgrades-include <component>",
+        "\tRemove grades that do not contain the specified component from",
+        "\tthe set of library grades to be installed.",
+        "\t(This option does not work with Mmake, only `mmc --make'.)",
+        "--libgrades-exclude-component <component>",
+        "--libgrades-exclude <component>",
+        "\tRemove grades that contain the specified component from the",
+        "\tset of library grades to be installed.",
+        "\t(This option does not work with Mmake, only `mmc --make'.)",
         "--lib-linkage {shared|static}",
         "\tSpecify whether libraries should be installed for shared",
         "\tor static linking.  This option can be specified multiple",

@@ -217,8 +217,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         Target = target_c,     % dummy
         add_error("Invalid target option " ++
 % XXX When the x86_64 backend is documented modify the line below.
-% XXX When the erlang backend is documented modify the line below.
-            "(must be `c', `asm', `il', or `java')", !Errors)
+            "(must be `c', `asm', `il', `java', or `erlang')", !Errors)
     ),
     map.lookup(!.OptionTable, gc, GC_Method0),
     (
@@ -1816,8 +1815,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
             ( UseGradeSubdirs = yes ->
-                ToMihsSubdir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs"),
-                ToHrlsSubdir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"hrls")
+                ToMihsSubdir =
+                    (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs"),
+                ToHrlsSubdir =
+                    (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"hrls")
             ; UseSubdirs = yes ->
                 ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs"),
                 ToHrlsSubdir = (func(Dir) = Dir/"Mercury"/"hrls")
@@ -1945,6 +1946,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ;
             HighLevel = yes
         ),
+        postprocess_options_libgrades(!Globals, !Errors),
         globals.io_set_globals(!.Globals, !IO)
     ).
 
@@ -2139,6 +2141,136 @@ long_usage(!IO) :-
     options_help(!IO).
 
 %-----------------------------------------------------------------------------%
+%
+% Code for postprocessing the library grade set
+%
+
+    % Apply some sanity checks to the library grade set and then apply any
+    % library grade filters to that set.
+    %
+    % XXX we could do better with the sanity checks, currently we only
+    % check that all the grade components are valid and that there are
+    % no duplicate grade components.
+    %
+:- pred postprocess_options_libgrades(globals::in, globals::out,
+    list(string)::in, list(string)::out) is det.
+
+postprocess_options_libgrades(!Globals, !Errors) :-
+    globals.lookup_accumulating_option(!.Globals, libgrades_include_components,
+        IncludeComponentStrs),
+    globals.lookup_accumulating_option(!.Globals, libgrades_exclude_components,
+        OmitComponentStrs),
+    list.foldl2(string_to_grade_component("included"),
+        IncludeComponentStrs, [], IncludeComponents, !Errors),
+    list.foldl2(string_to_grade_component("excluded"),
+        OmitComponentStrs, [], OmitComponents, !Errors),
+    some [!LibGrades] (
+        globals.lookup_accumulating_option(!.Globals, libgrades, !:LibGrades),
+        %
+        % NOTE: the two calls to foldl2 here will preserve the original
+        %       relative ordering of the library grades.
+        %
+        list.foldl2(filter_grade(must_contain, IncludeComponents),
+            !.LibGrades, [], !:LibGrades, !Errors),
+        list.foldl2(filter_grade(must_not_contain, OmitComponents),
+            !.LibGrades, [], !:LibGrades, !Errors),
+        globals.set_option(libgrades, accumulating(!.LibGrades), !Globals)
+    ).
+
+    % string_to_grade_component(OptionStr, Comp, !Comps, !Errors):
+    %
+    % If `Comp' is a string that represents a valid grade component
+    % then add it to !Comps.  If it is not then emit an error message.
+    % `OptionStr' should be the name of the command line option for
+    % which the error is to be reported.
+    %
+:- pred string_to_grade_component(string::in, string::in,
+    list(string)::in, list(string)::out,
+    list(string)::in, list(string)::out) is det.
+
+string_to_grade_component(FilterDesc, Comp, !Comps, !Errors) :-
+    ( grade_component_table(Comp, _, _, _, _) ->
+        !:Comps = [Comp | !.Comps]
+    ;
+        add_error("unknown " ++ FilterDesc ++ " library grade component: "
+            ++ Comp, !Errors)
+    ).
+
+    % filter_grade(FilterPred, Components, GradeString, !Grades, !Errors):
+    % 
+    % Convert `GradeString' into a list of grade component strings, and
+    % then check whether the given grade should be filtered from the
+    % library grade set by applying the closure `FilterPred(Components)',
+    % to that list.  The grade is removed from the library grade set if
+    % that application fails.
+    %
+    % Emits an error if `GradeString' cannot be converted into a list
+    % of grade component strings.
+    %
+:- pred filter_grade(pred(list(string), list(string))
+    ::in(pred(in, in) is semidet), list(string)::in,
+    string::in, list(string)::in, list(string)::out,
+    list(string)::in, list(string)::out) is det.
+
+filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Errors) :-
+    grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors),
+    (
+        MaybeGrade = yes(GradeComponents),
+        ( FilterPred(CondComponents, GradeComponents) ->
+            !:Grades = [GradeString | !.Grades]
+        ;
+            true
+        )
+    ;
+        MaybeGrade = no
+    ).
+
+:- pred must_contain(list(string)::in, list(string)::in) is semidet.
+
+must_contain(IncludeComponents, GradeComponents) :-
+    all [Component] (
+        list.member(Component, IncludeComponents)
+    =>
+        list.member(Component, GradeComponents)
+    ).
+
+:- pred must_not_contain(list(string)::in, list(string)::in) is semidet.
+
+must_not_contain(OmitComponents, GradeComponents) :-
+    all [Component] (
+        list.member(Component, OmitComponents)
+    =>
+        not list.member(Component, GradeComponents)
+    ).
+
+    % Convert a grade string into a list of component strings.
+    % Emit an invalid grade error if the conversion fails.
+    %
+:- pred grade_string_to_comp_strings(string::in,
+    maybe(list(string))::out, list(string)::in, list(string)::out)
+    is det.
+
+grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
+    ( 
+        split_grade_string(GradeString, ComponentStrs),
+        StrToComp = (pred(Str::in, Str::out) is semidet :-
+            grade_component_table(Str, _, _, _, _)
+        ),
+        list.map(StrToComp, ComponentStrs, Components0)
+    ->
+        list.sort_and_remove_dups(Components0, Components),
+        ( list.length(Components0) > list.length(Components) ->
+            add_error("invalid library grade: " ++ GradeString, !Errors),
+            MaybeGrade = no
+        ;
+            MaybeGrade = yes(Components)
+        )
+    ;
+        add_error("invalid library grade: " ++ GradeString, !Errors),
+        MaybeGrade = no
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % IMPORTANT: any changes here may require similar changes to
     %   runtime/mercury_grade.h
@@ -2162,6 +2294,7 @@ long_usage(!IO) :-
     % corresponding change there. The only place where the ordering
     % actually matters is for constructing the pathname for the
     % grade of the library, etc for linking (and installation).
+    %
 :- type grade_component
     --->    comp_gcc_ext        % gcc extensions etc. -- see
                                 % grade_component_table
