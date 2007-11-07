@@ -7169,8 +7169,8 @@ The set of aspects and their alternatives are:
 @item Whether to use single-precision representation of floating point values:
 @samp{spf} (the default is to use double-precision floats)
 
-@item Whether to allocate a new stack segment when the limit on the old one
-is reached: @samp{stseg} (the default is not to allocate a new stack segment)
+@item Whether to use dynamically sized stacks that are composed of
+small segments: @samp{stseg} (the default is to used fixed size stacks)
 
 @item What debugging features to enable:
 @samp{debug} and @samp{decldebug} (the default is no debugging features).
@@ -7423,6 +7423,15 @@ This is necessary when using shared libraries on Intel x86 systems
 running Unix.  On other systems it has no effect.
 This option is also ignored if the @samp{--high-level-code} option is enabled.
 
+@sp 1
+@item @code{--stack-segments} (grades: any grade containing `.stseg')
+@findex --stack-segments
+@cindex Stack segments
+Specify whether use dynamically sized stacks that are composed of small
+segments.
+This can help to avoid stack exhaustion at the cost of increased
+execution time.
+This option is ignored if the @samp{--high-level-code} option is enabled.
 @end table
 
 @node MLDS back-end compilation model options

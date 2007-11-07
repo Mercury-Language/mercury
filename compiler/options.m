@@ -3833,13 +3833,11 @@ options_help_compilation_model -->
         "--single-prec-float\t\t(grade modifier: `.spf')",
         "\tUse single precision floats so that, on 32-bit machines,",
         "\tfloating point values don't need to be boxed.  Double",
-        "\tprecision floats are used by default.",
-        "--extend-stacks-when-needed",
-        "\tSpecify that code that increments a stack pointer must",
-        "\textend the stack when this is needed.",
-        "--stack-segments\t\t(grade modifier: `.stseg')",
-        "\tSpecify that code that increments a stack pointer must allocate",
-        "\ta new stack segment when the limit on the old one is reached."
+        "\tprecision floats are used by default."
+        % This is commented out as this feature is still experimental.
+        %"--extend-stacks-when-needed",
+        %"\tSpecify that code that increments a stack pointer must",
+        %"\textend the stack when this is needed.",
         % RBMM is undocumented since it is still experimental.
         % should also document rbmmd rbmmp rbmmdp
         %"--use-regions\t\t(grade modifier: `.rbmm')",
@@ -3872,7 +3870,13 @@ options_help_compilation_model -->
         "\tSelect a register usage convention that is compatible,",
         "\twith position-independent code (gcc's `-fpic' option).",
         "\tThis is necessary when using shared libraries on Intel x86",
-        "\tsystems running Unix.  On other systems it has no effect."
+        "\tsystems running Unix.  On other systems it has no effect.",
+        "--stack-segments\t\t(grade modifier: `.stseg')",
+        "\tSpecify whether to use dynamically sized stacks that are",
+        "\tcomposed of small segments.  This can help to avoid stack",
+        "\texhaustion at the cost of increased execution time.",
+        "\tThis option is ignored if the `--high-level-code' option is",
+        "\tenabled."
     ]),
 
     io.write_string("\n    MLDS back-end compilation model options:\n"),
