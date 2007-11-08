@@ -80,7 +80,7 @@ DEFAULT_MCFLAGS=\
 		--ranlib-flags "@RANLIBFLAGS@" \
 		--link-executable-command "@LINK_EXE@" \
 		--link-shared-lib-command "@LINK_SHARED_OBJ@" \
-		--trace-libs "@TRACE_LIBS_SYSTEM@" \
+		--trace-libs "@TRACE_BASE_LIBS_SYSTEM@" \
 		--thread-libs "@THREAD_LIBS@" \
 		--shared-libs "@SHARED_LIBS@" \
 		--math-lib "@MATH_LIB@" \

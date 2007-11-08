@@ -4389,8 +4389,8 @@ if test "$mercury_cv_enable_dynamic_link" = "yes"; then
 	LIBS="$save_LIBS"
 fi
 
-TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY"
-AC_SUBST(TRACE_LIBS_SYSTEM)
+TRACE_BASE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY"
+AC_SUBST(TRACE_BASE_LIBS_SYSTEM)
 
 #-----------------------------------------------------------------------------#
 #
