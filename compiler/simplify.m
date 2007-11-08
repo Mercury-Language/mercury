@@ -650,11 +650,10 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
             )
         ->
             MainPieces = [words("Warning: this goal cannot succeed.")],
-            VerbosePieces =
-                [words("The compiler will optimize away this goal,"),
-                words("replacing it with `fail'."),
-                words("To disable this optimization, use"),
-                words("the `--fully-strict' option.")],
+            VerbosePieces = [
+                words("The compiler will optimize away this goal,"),
+                words("replacing it with `fail'.")
+            ],
             Msg = simple_msg(Context,
                 [option_is_set(warn_simple_code, yes,
                     [always(MainPieces), verbose_only(VerbosePieces)])]),

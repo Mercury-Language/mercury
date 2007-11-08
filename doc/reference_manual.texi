@@ -6148,9 +6148,8 @@ different semantics, which can be selected with different
 combinations of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
 and @samp{--no-fully-strict} options.
 (The @samp{--no-fully-strict} option allows the compiler to improve
-completeness by optimizing away infinite loops,
-calls to @code{require.error/1} or @code{exception.throw/1} and
-(semi)pure goals that are declaratively equivalent to true or false.)
+completeness by optimizing away infinite loops and goals with determinism
+@code{erroneous}.)
 The default semantics are the strict commutative semantics.
 Enabling @samp{--no-reorder-conj} and @samp{--no-reorder-disj} gives the
 strict sequential semantics.
