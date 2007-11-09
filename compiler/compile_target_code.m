@@ -2260,8 +2260,7 @@ get_object_code_type(FileType, ObjectCodeType, !IO) :-
             ( MercuryLinkage = "shared" ->
                 (
                     % We only need to create `.lpic' files if `-DMR_PIC_REG'
-                    % has an effect, which currently is only with grades using
-                    % GCC global registers on x86 Unix.
+                    % has an effect, which is currently nowhere.
                     ( LinkWithPicObjExt = ObjExt
                     ; HighLevelCode = yes
                     ; GCCGlobals = no

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998, 2000, 2003 The University of Melbourne.
+** Copyright (C) 1993-1998, 2000, 2003, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,11 +38,7 @@
 ** the frame pointer.  (E.g. the one containing io__init_state/2.)
 */
 
-#if MR_PIC_REG
-  #define MR_NUM_REAL_REGS 2
-#else
-  #define MR_NUM_REAL_REGS 3
-#endif
+#define MR_NUM_REAL_REGS 2
 
 register	MR_Word	MR_mr0 __asm__("esi");	/* sp */
 register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
@@ -50,17 +46,6 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 #define MR_real_reg_number_mr0	esi
 #define MR_real_reg_number_mr1	edi
 
-#if MR_PIC_REG
-  #define 	MR_mr2	MR_fake_reg[2]
-#else
-  register	MR_Word	MR_mr2 __asm__("ebx");	/* r1 */
-
-  #define MR_real_reg_number_mr2	ebx
-
-#endif
-
-#if MR_PIC_REG
-
 #define MR_save_regs_to_mem(save_area) (	\
 	save_area[0] = MR_mr0,			\
 	save_area[1] = MR_mr1,			\
@@ -72,28 +57,11 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 	MR_mr1 = save_area[1],			\
 	(void)0					\
 )
-
-#else /* ! MR_PIC_REG */
-
-#define MR_save_regs_to_mem(save_area) (	\
-	save_area[0] = MR_mr0,			\
-	save_area[1] = MR_mr1,			\
-	save_area[2] = MR_mr2,			\
-	(void)0					\
-)
-
-#define MR_restore_regs_from_mem(save_area) (	\
-	MR_mr0 = save_area[0],			\
-	MR_mr1 = save_area[1],			\
-	MR_mr2 = save_area[2],			\
-	(void)0					\
-)
-
-#endif	/* ! MR_PIC_REG */
 
 #define MR_save_transient_regs_to_mem(save_area)	((void)0)
 #define MR_restore_transient_regs_from_mem(save_area)	((void)0)
 
+#define MR_mr2	MR_fake_reg[2]
 #define	MR_mr3	MR_fake_reg[3]
 #define	MR_mr4	MR_fake_reg[4]
 #define	MR_mr5	MR_fake_reg[5]

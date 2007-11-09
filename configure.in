@@ -3294,9 +3294,9 @@ AC_SUBST(LIBGRADE_OPTS)
 
 case "$host" in
 	i*86-*)
-		# NUM_REAL_REGS=3
+		# NUM_REAL_REGS=2
 		# but succip and sp are real regs, so subtract 2
-		NUM_REAL_R_REGS=1
+		NUM_REAL_R_REGS=0
 		NUM_REAL_R_TEMPS=0
 		HAVE_DELAY_SLOT=
 		;;
@@ -3476,7 +3476,7 @@ EXT_FOR_PIC_OBJECTS=pic_o
 # Object files with extension $EXT_FOR_LINK_WITH_PIC_OBJECTS are used
 # in executables which are linked with shared Mercury libraries.
 # EXT_FOR_LINK_WITH_PIC_OBJECTS should be `lpic_o' if `-DMR_PIC_REG'
-# has any effect (currently only on x86), or `o' otherwise.
+# has any effect (currently nowhere.)
 EXT_FOR_LINK_WITH_PIC_OBJECTS=lpic_o
 EXT_FOR_SHARED_LIB=$LIB_SUFFIX
 USE_DLLS=no
@@ -3556,13 +3556,14 @@ case "$host" in
 				;;
 		esac
 		
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+		
 		# On x86_64 machines we use -fPIC rather than -fpic
 		# in order to avoid limits on the size of the global
 		# offset table implied by the latter.
 		case "$host" in
 			x86_64-*-linux*)
 				CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
-				EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 			;;
 		esac
 		;;
