@@ -35,6 +35,13 @@
     ;       ssdb_fail
     .
 
+
+:- type ssdb_retry
+    --->    do_retry
+    ;       do_not_retry
+    .
+
+
     %
     % The list of all variables in use in a procedure.
     %
@@ -68,12 +75,14 @@
     %
     % This routine is called at each exit event that occurs.
     %
-:- impure pred handle_event_exit(ssdb_proc_id::in, list_var_value::in) is det.
+:- impure pred handle_event_exit(ssdb_proc_id::in, list_var_value::in, 
+    ssdb_retry::out) is det.
 
     %
     % This routine is called at each fail event that occurs.
     %
-:- impure pred handle_event_fail(ssdb_proc_id::in, list_var_value::in) is det.
+:- impure pred handle_event_fail(ssdb_proc_id::in, list_var_value::in, 
+    ssdb_retry::out) is det.
 
     %
     % This routine is called at each redo event that occurs.
@@ -128,6 +137,7 @@
                 se_initial_state   :: debugger_state
             ).
 
+
     %
     % Type used by the prompt predicate to configure the next step in the
     % handle_event predicate.
@@ -136,7 +146,14 @@
     --->    wn_step
     ;       wn_next
     ;       wn_continue
-    ;       wn_finish(int).
+    ;       wn_finish(int)
+    ;       wn_retry(int).
+
+:- inst what_next_no_retry
+    --->    wn_step
+    ;       wn_next
+    ;       wn_continue
+    ;       wn_finish(ground).
 
 
     %
@@ -145,9 +162,17 @@
     %
 :- type next_stop
     --->    ns_step
+	    % Stop at next step.
+
     ;       ns_next(int)
+	    % Stop at next event of the number between brakets.
+
     ;       ns_continue
-    ;       ns_final_port(int).
+	    % Continue until next breakpoint.
+
+    ;       ns_final_port(int, ssdb_retry).
+	    % Stop at final port (exit or fail) of the number between brakets,
+	    % the ssdb_retry is used to retry the rigth csn number.
 
 
 :- type breakpoint
@@ -157,11 +182,12 @@
             ).
 
 
+
 %----------------------------------------------------------------------------%
 
     %
     % Initialize the debugger state.
-    % XXX Will be extended.
+    % XXX Will be modifie.
     %
 :- func init_debugger_state = debugger_state.
 
@@ -182,7 +208,7 @@ init_debugger_state = DbgState :-
 %----------------------------------------------------------------------------%
 
     %
-    % Write the event out and call the prompt.
+    % Call at call port. It writes the event out and call the prompt.
     %
 handle_event_call(ProcId, ListVarValue) :-
     Event = ssdb_call,
@@ -206,7 +232,7 @@ handle_event_call(ProcId, ListVarValue) :-
 
     CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
-    set_stop(Event, CSN, State0, ProcId, Stop),
+    should_stop_at_this_event(Event, CSN, State0, ProcId, Stop, _AutoRetry),
     (
         Stop = yes,
         some [!IO] 
@@ -220,7 +246,7 @@ handle_event_call(ProcId, ListVarValue) :-
 
             impure consume_io(!.IO),
 
-            set_next_stop(CSN, WhatNext, NextStop),
+            impure what_next_stop(CSN, WhatNext, ShadowStack, NextStop, _Retry),
 
             % We need to get a new state because breakpoint could have been 
             % added in the prompt.
@@ -234,9 +260,9 @@ handle_event_call(ProcId, ListVarValue) :-
 
 
     %
-    % Write the event out and call the prompt.
+    % Call at exit port. Write the event out and call the prompt.
     %
-handle_event_exit(ProcId, ListVarValue) :-
+handle_event_exit(ProcId, ListVarValue, Retry) :-
     Event = ssdb_exit,
     impure get_event_num_inc(EventNum),
     impure update_depth(Event, PrintDepth),
@@ -250,7 +276,7 @@ handle_event_exit(ProcId, ListVarValue) :-
 
     CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
-    set_stop(Event, CSN, State0, ProcId, Stop),
+    should_stop_at_this_event(Event, CSN, State0, ProcId, Stop, AutoRetry),
     (
         Stop = yes,
         some [!IO] 
@@ -260,11 +286,17 @@ handle_event_exit(ProcId, ListVarValue) :-
             print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO),  
          
             semipure get_shadow_stack(ShadowStack),
-            impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
+            (
+                AutoRetry = do_retry,
+                WhatNext = wn_retry(CSN)
+            ;
+		AutoRetry = do_not_retry,
+                impure prompt(Event, ShadowStack, 0, WhatNext, !IO)
+            ),
 
             impure consume_io(!.IO),
 
-            set_next_stop(CSN, WhatNext, NextStop),
+            impure what_next_stop(CSN, WhatNext, ShadowStack, NextStop, Retry),
 
             % We need to get a new state because breakpoint could have been 
             % added in the prompt.
@@ -273,7 +305,8 @@ handle_event_exit(ProcId, ListVarValue) :-
             impure set_debugger_state(State)
         )
     ;
-        Stop = no
+        Stop = no,
+        Retry = do_not_retry
     ),
     
     semipure get_debugger_state(PopState),
@@ -283,9 +316,9 @@ handle_event_exit(ProcId, ListVarValue) :-
 
 
     %
-    % Write the event out and call the prompt.
+    % Call at fail port. Write the event out and call the prompt.
     %
-handle_event_fail(ProcId, _ListVarValue) :-
+handle_event_fail(ProcId, _ListVarValue, Retry) :-
     Event = ssdb_fail,
     impure get_event_num_inc(EventNum),
     impure update_depth(Event, PrintDepth),
@@ -295,7 +328,7 @@ handle_event_fail(ProcId, _ListVarValue) :-
  
     CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
-    set_stop(Event, CSN, State0, ProcId, Stop),
+    should_stop_at_this_event(Event, CSN, State0, ProcId, Stop, AutoRetry),
     (
         Stop = yes,
         some [!IO] 
@@ -305,11 +338,17 @@ handle_event_fail(ProcId, _ListVarValue) :-
             print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO),  
          
             semipure get_shadow_stack(ShadowStack),
-            impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
+            (
+                AutoRetry = do_retry,
+                WhatNext = wn_retry(CSN)
+            ;
+		AutoRetry = do_not_retry,
+                impure prompt(Event, ShadowStack, 0, WhatNext, !IO)
+            ),
 
             impure consume_io(!.IO),
 
-            set_next_stop(CSN, WhatNext, NextStop),
+            impure what_next_stop(CSN, WhatNext, ShadowStack, NextStop, Retry),
 
             % We need to get a new state because breakpoint could have been 
             % added in the prompt.
@@ -318,7 +357,8 @@ handle_event_fail(ProcId, _ListVarValue) :-
             impure set_debugger_state(State)
         )
     ;
-        Stop = no
+        Stop = no,
+        Retry = do_not_retry
     ),
     
     semipure get_debugger_state(PopState),
@@ -328,8 +368,7 @@ handle_event_fail(ProcId, _ListVarValue) :-
 
 
     %
-    % Write the event out and call the prompt.
-    % XXX Need to be completed
+    % Call at redo port. Write the event out and call the prompt.
     %
 handle_event_redo(ProcId, ListVarValue) :-
     Event = ssdb_redo,
@@ -352,7 +391,7 @@ handle_event_redo(ProcId, ListVarValue) :-
 
     CSN = StackFrame ^ se_initial_state ^ ssdb_csn,
 
-    set_stop(Event, CSN, State0, ProcId, Stop),
+    should_stop_at_this_event(Event, CSN, State0, ProcId, Stop, _AutoRetry),
     (
         Stop = yes,
         some [!IO] 
@@ -363,10 +402,10 @@ handle_event_redo(ProcId, ListVarValue) :-
          
             semipure get_shadow_stack(ShadowStack),
             impure prompt(Event, ShadowStack, 0, WhatNext, !IO),
-
+            
             impure consume_io(!.IO),
 
-            set_next_stop(CSN, WhatNext, NextStop),
+            impure what_next_stop(CSN, WhatNext, ShadowStack, NextStop, _Retry),
 
             % We need to get a new state because breakpoint could have been 
             % added in the prompt.
@@ -378,6 +417,7 @@ handle_event_redo(ProcId, ListVarValue) :-
         Stop = no
     ).
 
+
     %
     % IsSame is 'yes' iff the two call sequence numbers are equal, 
     % 'no' otherwise.
@@ -386,6 +426,7 @@ handle_event_redo(ProcId, ListVarValue) :-
 
 is_same_csn(CSNA, CSNB, IsSame) :-
     IsSame = (CSNA = CSNB -> yes ; no).
+
     
     %
     % Return the current event number.
@@ -395,6 +436,7 @@ is_same_csn(CSNA, CSNB, IsSame) :-
 get_event_num(EventNum) :-
     semipure get_debugger_state(State0),
     EventNum = State0 ^ ssdb_event_number.
+
 
     %
     % Increment the current event number in the debugger state, 
@@ -408,6 +450,18 @@ get_event_num_inc(EventNum) :-
     EventNum = EventNum0 + 1,
     State = State0 ^ ssdb_event_number := EventNum,
     impure set_debugger_state(State).
+
+
+    %
+    % Setter of the ssdb_event_number field.
+    %
+:- impure pred set_event_num(int::in) is det.
+
+set_event_num(EventNum) :-
+    semipure get_debugger_state(State0),
+    State = State0 ^ ssdb_event_number := EventNum,
+    impure set_debugger_state(State).
+
 
     %
     % For a given event type, update the depth in the debugger state,
@@ -447,6 +501,7 @@ get_csn_inc(CSN) :-
     State = State0 ^ ssdb_csn := CSN,
     impure set_debugger_state(State).
 
+
     %
     % Return the current call sequence number.
     %
@@ -455,6 +510,18 @@ get_csn_inc(CSN) :-
 get_csn(CSN) :-
     semipure get_debugger_state(State0),
     CSN = State0 ^ ssdb_csn.
+
+
+    %
+    % Setter of the ssdb_csn field.
+    %
+:- impure pred set_csn(int::in) is det.
+
+set_csn(CSN) :-
+    semipure get_debugger_state(State0),
+    State = State0 ^ ssdb_csn := CSN,
+    impure set_debugger_state(State).
+
     
     %
     % Return the current shadow stack.
@@ -465,6 +532,10 @@ get_shadow_stack(ShadowStack) :-
     semipure get_debugger_state(State0),
     ShadowStack = State0 ^ ssdb_stack.
 
+
+    %
+    % Setter of the ssdb_list_var_value field in the debugger_state.
+    %
 :- impure pred set_list_var_value(list(var_value)::in) is det.
 
 set_list_var_value(ListVarValue) :-
@@ -472,6 +543,10 @@ set_list_var_value(ListVarValue) :-
     State = State0 ^ ssdb_list_var_value := ListVarValue,
     impure set_debugger_state(State).
 
+
+    %
+    % Setter of the ssdb_list_var_value in the first element of the ssdb_stack.
+    %
 :- impure pred set_list_var_value_in_stack(list(var_value)::in) is det.
 
 set_list_var_value_in_stack(ListVarValue) :-
@@ -489,18 +564,20 @@ set_list_var_value_in_stack(ListVarValue) :-
     %
     % Set Stop, if Stop equals yes, we will call the prompt.
     %
-:- pred set_stop(ssdb_event_type::in, int::in, debugger_state::in, 
-    ssdb_proc_id::in, bool::out) is det.
+:- pred should_stop_at_this_event(ssdb_event_type::in, int::in, 
+    debugger_state::in, ssdb_proc_id::in, bool::out, ssdb_retry::out) is det.
 
-set_stop(Event, CSN, State, ProcId, ShouldStopAtEvent) :-
-
+should_stop_at_this_event(Event, CSN, State, ProcId, ShouldStopAtEvent, 
+	AutoRetry) :-
     NextStop = State ^ ssdb_next_stop,
     (
         NextStop = ns_step,
-        ShouldStopAtEvent = yes
+        ShouldStopAtEvent = yes,
+        AutoRetry = do_not_retry
     ;
         NextStop = ns_next(StopCSN),
-        is_same_csn(StopCSN, CSN, ShouldStopAtEvent)
+        is_same_csn(StopCSN, CSN, ShouldStopAtEvent),
+        AutoRetry = do_not_retry
     ;
         NextStop = ns_continue,
         ( 
@@ -510,9 +587,10 @@ set_stop(Event, CSN, State, ProcId, ShouldStopAtEvent) :-
             ShouldStopAtEvent = yes
         ;
             ShouldStopAtEvent = no
-        )
+        ),
+        AutoRetry = do_not_retry
     ;
-        NextStop = ns_final_port(StopCSN),
+        NextStop = ns_final_port(StopCSN, AutoRetry),
         (
             ( Event = ssdb_exit
             ; Event = ssdb_fail
@@ -527,6 +605,56 @@ set_stop(Event, CSN, State, ProcId, ShouldStopAtEvent) :-
     ).
 
 
+    %
+    % what_next_stop(CSN, WhatNext, ShadowStack, NextStop, Retry).
+    %
+    % Set the NextStop and the Retry variable according to the WhatNext value.
+    % In the case where the WathNext is set for a retry, it modify the 
+    % debugger_state at his old value which it had at the call point.
+    %
+:- impure pred what_next_stop(int::in, what_next::in, stack(stack_elem)::in, 
+    next_stop::out, ssdb_retry::out) is det.
+
+what_next_stop(CSN, WhatNext, ShadowStack, NextStop, Retry) :-
+    (
+        WhatNext = wn_step,
+        NextStop = ns_step,
+        Retry = do_not_retry
+    ;
+        WhatNext = wn_next,
+        NextStop = ns_next(CSN),
+        Retry = do_not_retry
+    ;
+        WhatNext = wn_continue,
+        NextStop = ns_continue,
+        Retry = do_not_retry
+    ;
+        WhatNext = wn_finish(EndCSN),
+        NextStop = ns_final_port(EndCSN, do_not_retry),
+        Retry = do_not_retry
+    ;
+        WhatNext = wn_retry(RetryCSN),
+        (
+            RetryCSN = CSN
+        ->
+            NextStop = ns_step,
+            Retry = do_retry,
+            % Set the debugger state for the retry
+            stack.top_det(ShadowStack, FrameStack),
+            SetCSN = FrameStack ^ se_initial_state ^ ssdb_csn,
+            SetEventNum = FrameStack ^ se_initial_state ^ ssdb_event_number,
+            impure set_csn(SetCSN - 1),
+            impure set_event_num(SetEventNum - 1)
+        ;
+            NextStop = ns_final_port(RetryCSN, do_retry),
+            Retry = do_not_retry
+        )
+    ).
+
+
+    %
+    % Print the current informations at this event point.
+    %
 :- pred print_event_info(ssdb_event_type::in, int::in, ssdb_proc_id::in, 
     int::in, int::in, io::di, io::uo) is det.
     
@@ -546,27 +674,10 @@ print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
     io.nl(!IO).
 
 
-:- pred set_next_stop(int::in, what_next::in, next_stop::out) is det.
-
-set_next_stop(CSN, WhatNext, NextStop) :-
-    (
-        WhatNext = wn_step,
-        NextStop = ns_step
-    ;
-        WhatNext = wn_next,
-        NextStop = ns_next(CSN)
-    ;
-        WhatNext = wn_continue,
-        NextStop = ns_continue
-    ;
-        WhatNext = wn_finish(EndCSN),
-        NextStop = ns_final_port(EndCSN)
-    ).
-
 %----------------------------------------------------------------------------%
 
     %
-    % Display the prompt to debug
+    % Display the prompt to debug.
     %
     % h     :: help
     % f     :: finish (go to the next exit or fail of the current call)
@@ -614,6 +725,8 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
             io.write_string("u      :: up", !IO),
             io.nl(!IO),
             io.write_string("d      :: down", !IO),
+            io.nl(!IO),
+            io.write_string("r      :: retry", !IO),
             io.nl(!IO),
             io.nl(!IO),
             impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
@@ -697,6 +810,18 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                 impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
             )
 
+        ; Words = ["r"] ->
+            (
+                ( Event = ssdb_exit
+                ; Event = ssdb_fail
+                ) ->
+                stack.top_det(ShadowStack, FrameStack),
+                CSN = FrameStack ^ se_initial_state ^ ssdb_csn,
+                WhatNext = wn_retry(CSN)        
+            ;
+                io.write_string("Impossible at call or redo port\n", !IO),
+                impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
+            )
         ;
             io.write_string("huh?\n", !IO),
             impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
@@ -713,7 +838,7 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
 %----------------------------------------------------------------------------%
 
     %
-    % Print the Stack Trace
+    % Print the Stack Trace. Predicate call at the 'stack' command.
     %
 :- pred print_frames_list(stack(stack_elem)::in, int::in, 
     io::di, io::uo) is det.
@@ -732,6 +857,9 @@ print_frames_list(ShadowStack0, Depth, !IO) :-
     ).
 
 
+    %
+    % Print one frame.
+    %
 :- pred print_stack_frame(bool::in, stack_elem::in, io::di, io::uo) is det.
 
 print_stack_frame(Starred, Frame, !IO) :-
@@ -749,6 +877,7 @@ print_stack_frame(Starred, Frame, !IO) :-
     ListVarValue = Frame ^ se_initial_state  ^ ssdb_list_var_value,
     print_vars(ListVarValue, !IO),
     io.write_string("   )\n", !IO).
+
 
     %
     % Print the given list of variables and their values, if bound.
