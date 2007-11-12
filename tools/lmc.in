@@ -102,7 +102,7 @@ LIB_FLAGS="\
 	--link-object $WORKSPACE/library/libmer_std.$O \
 	--link-object $WORKSPACE/runtime/libmer_rt.$O \
 	--link-object $gclib \
-	-lm @TRACE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
+	-lm @TRACE_BASE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
 
 # XXX browser.init and mdbcomp.init might need to be included even if tracing
 # is disabled if ssdb uses code from the browser or mdbcomp libraries
