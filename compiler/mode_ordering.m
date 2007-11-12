@@ -63,6 +63,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module digraph.
 :- import_module pair.
 :- import_module set.
@@ -414,7 +415,9 @@ mode_order_conj(Goals0, Goals) :-
     GoalMap = list.foldl((func(G, GM) = map.det_insert(GM, Index, G) :-
         (
             G = hlds_goal(_, GI),
-            goal_info_get_goal_path(GI) = [step_conj(Index0) | _]
+            GoalPath = goal_info_get_goal_path(GI),
+            cord.get_last(GoalPath, LastStep),
+            LastStep = step_conj(Index0)
         ->
             Index = Index0
         ;

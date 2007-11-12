@@ -67,6 +67,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -102,12 +103,13 @@ fill_goal_path_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
 
 fill_slots_in_clause(SlotInfo, Clause0, Clause, ClauseNum, ClauseNum + 1) :-
     Clause0 = clause(ProcIds, Goal0, Lang, Context),
-    fill_goal_slots([step_disj(ClauseNum)], SlotInfo, Goal0, Goal),
+    fill_goal_slots(cord.singleton(step_disj(ClauseNum)), SlotInfo,
+        Goal0, Goal),
     Clause = clause(ProcIds, Goal, Lang, Context).
 
 fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
     SlotInfo = slot_info(VarTypes, ModuleInfo, no),
-    fill_goal_slots([], SlotInfo, Goal0, Goal).
+    fill_goal_slots(empty, SlotInfo, Goal0, Goal).
 
 :- pred fill_goal_slots(goal_path::in, slot_info::in,
     hlds_goal::in, hlds_goal::out) is det.
@@ -117,7 +119,9 @@ fill_goal_slots(Path0, SlotInfo,
     OmitModeEquivPrefix = SlotInfo ^ omit_mode_equiv_prefix,
     (
         OmitModeEquivPrefix = yes,
-        list.takewhile(mode_equiv_step, Path0, _, Path)
+        PathSteps0 = cord.list(Path0),
+        list.takewhile(mode_equiv_step, PathSteps0, _, PathSteps),
+        Path = cord.from_list(PathSteps)
     ;
         OmitModeEquivPrefix = no,
         Path = Path0
@@ -160,7 +164,8 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         Goal = switch(Var, CanFail, Cases)
     ;
         Goal0 = negation(SubGoal0),
-        fill_goal_slots([step_neg | Path0], SlotInfo, SubGoal0, SubGoal),
+        fill_goal_slots(cord.snoc(Path0, step_neg), SlotInfo,
+            SubGoal0, SubGoal),
         Goal = negation(SubGoal)
     ;
         Goal0 = scope(Reason, SubGoal0),
@@ -172,14 +177,17 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         ;
             MaybeCut = scope_is_cut
         ),
-        fill_goal_slots([step_scope(MaybeCut) | Path0], SlotInfo,
+        fill_goal_slots(cord.snoc(Path0, step_scope(MaybeCut)), SlotInfo,
             SubGoal0, SubGoal),
         Goal = scope(Reason, SubGoal)
     ;
         Goal0 = if_then_else(A, Cond0, Then0, Else0),
-        fill_goal_slots([step_ite_cond | Path0], SlotInfo, Cond0, Cond),
-        fill_goal_slots([step_ite_then | Path0], SlotInfo, Then0, Then),
-        fill_goal_slots([step_ite_else | Path0], SlotInfo, Else0, Else),
+        fill_goal_slots(cord.snoc(Path0, step_ite_cond), SlotInfo,
+            Cond0, Cond),
+        fill_goal_slots(cord.snoc(Path0, step_ite_then), SlotInfo,
+            Then0, Then),
+        fill_goal_slots(cord.snoc(Path0, step_ite_else), SlotInfo,
+            Else0, Else),
         Goal = if_then_else(A, Cond, Then, Else)
     ;
         Goal0 = unify(LHS, RHS0, Mode, Kind, Context),
@@ -211,7 +219,7 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
 fill_conj_slots(_, _, _, [], []).
 fill_conj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots([step_conj(N1) | Path0], SlotInfo, Goal0, Goal),
+    fill_goal_slots(cord.snoc(Path0, step_conj(N1)), SlotInfo, Goal0, Goal),
     fill_conj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 :- pred fill_disj_slots(goal_path::in, int::in, slot_info::in,
@@ -220,7 +228,7 @@ fill_conj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
 fill_disj_slots(_, _, _, [], []).
 fill_disj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots([step_disj(N1) | Path0], SlotInfo, Goal0, Goal),
+    fill_goal_slots(cord.snoc(Path0, step_disj(N1)), SlotInfo, Goal0, Goal),
     fill_disj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 :- pred fill_switch_slots(goal_path::in, int::in, maybe(int)::in,
@@ -230,8 +238,8 @@ fill_switch_slots(_, _, _, _, [], []).
 fill_switch_slots(Path0, N0, MaybeNumFunctors, SlotInfo,
         [case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases]) :-
     N1 = N0 + 1,
-    fill_goal_slots([step_switch(N1, MaybeNumFunctors) | Path0], SlotInfo,
-        Goal0, Goal),
+    fill_goal_slots(cord.snoc(Path0, step_switch(N1, MaybeNumFunctors)),
+        SlotInfo, Goal0, Goal),
     fill_switch_slots(Path0, N1, MaybeNumFunctors, SlotInfo, Cases0, Cases).
 
 %-----------------------------------------------------------------------------%

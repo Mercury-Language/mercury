@@ -126,6 +126,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module digraph.
 :- import_module float.
@@ -1911,11 +1912,14 @@ get_ite_relative_frequencies(ProcCounts, ThenGoalPath, ElseGoalPath,
     float::out) is det.
 
 get_disjunct_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
-    ( GoalPath  = [step_disj(Num) | GoalPathRest] ->
+    (
+        cord.split_last(GoalPath, InitialSteps, LastStep),
+        LastStep = step_disj(Num)
+    ->
         get_path_only_count(ProcCounts,
-            [step_disj(Num) | GoalPathRest], DisjCount),
+            cord.snoc(InitialSteps, step_disj(Num)), DisjCount),
         get_path_only_count(ProcCounts,
-            [step_disj(1) | GoalPathRest], FirstDisjCount),
+            cord.snoc(InitialSteps, step_disj(1)), FirstDisjCount),
         ( FirstDisjCount = 0 ->
             RelFreq = 0.0
         ;
@@ -1958,8 +1962,9 @@ get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount,
 
 :- pred case_in_switch(goal_path::in, path_port::in) is semidet.
 
-case_in_switch([step_switch(_, _) | Prefix],
-    path_only([step_switch(_, _) | Prefix])).
+case_in_switch(GoalPath, path_only(GoalPath)) :-
+    cord.get_last(GoalPath, LastStep),
+    LastStep = step_switch(_, _).
 
 %-----------------------------------------------------------------------------%
 

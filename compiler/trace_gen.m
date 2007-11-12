@@ -256,6 +256,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module string.
@@ -684,9 +685,9 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
     (
         MaybeTraceInfo = yes(TraceInfo),
         Goal = hlds_goal(_, GoalInfo),
-        Path = goal_info_get_goal_path(GoalInfo),
+        GoalPath = goal_info_get_goal_path(GoalInfo),
         (
-            Path = [LastStep | _],
+            cord.get_last(GoalPath, LastStep),
             (
                 LastStep = step_switch(_, _),
                 PortPrime = port_switch
@@ -733,7 +734,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             ;
                 HideEvent = no
             ),
-            generate_event_code(Port, port_info_internal(Path, PreDeaths),
+            generate_event_code(Port, port_info_internal(GoalPath, PreDeaths),
                 yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI)
         ;
             Code = empty
@@ -834,7 +835,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
-        Path = []
+        Path = empty
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
         ResumeVars = code_info.current_resume_point_vars(!.CI),
@@ -851,9 +852,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         PortInfo = port_info_nondet_foreign_proc,
         LiveVars = [],
         ( Port = port_nondet_foreign_proc_first ->
-            Path = [step_first]
+            Path = cord.singleton(step_first)
         ; Port = port_nondet_foreign_proc_later ->
-            Path = [step_later]
+            Path = cord.singleton(step_later)
         ;
             unexpected(this_file,
                 "generate_event_code: bad nondet foreign_proc port")

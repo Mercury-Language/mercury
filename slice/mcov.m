@@ -338,10 +338,10 @@ write_path_port_for_user(port_only(Port), !IO) :-
     string_to_trace_port(PortStr, Port),
     io.write_string(PortStr, !IO).
 write_path_port_for_user(path_only(Path), !IO) :-
-    io.write_strings(["<", string_from_path(Path), ">"], !IO).
+    io.write_strings(["<", goal_path_to_string(Path), ">"], !IO).
 write_path_port_for_user(port_and_path(Port, Path), !IO) :-
     string_to_trace_port(PortStr, Port),
-    io.write_strings([PortStr, " <", string_from_path(Path), ">"], !IO).
+    io.write_strings([PortStr, " <", goal_path_to_string(Path), ">"], !IO).
 
 %-----------------------------------------------------------------------------%
 

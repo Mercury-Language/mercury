@@ -271,6 +271,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module map.
@@ -278,8 +279,8 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
-:- import_module term_io.
 :- import_module table_builtin.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1241,14 +1242,13 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ),
     ( string.contains_char(Verbose, 'P') ->
         Path = goal_info_get_goal_path(GoalInfo),
-        (
-            Path = [_ | _],
+        ( is_empty(Path) ->
+            true
+        ;
             write_indent(Indent, !IO),
             io.write_string("% goal path: ", !IO),
             io.write_string(goal_path_to_string(Path), !IO),
             io.write_string("\n", !IO)
-        ;
-            Path = []
         )
     ;
         true

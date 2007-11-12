@@ -64,6 +64,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
@@ -340,8 +341,7 @@ trace_subtree_suspicion(Store, NodeId, Suspicion, Excess) :-
     % accumulators which should initially be zero.  RecordDups keeps track
     % of whether the final node was a FAIL or EXCP. This should be `no'
     % initially.  DupFactor keeps track of how many times the nodes before
-    % the last REDO could have been duplicated and should initially be
-    % zero.
+    % the last REDO could have been duplicated and should initially be zero.
     %
 :- pred trace_weight(weighting_heuristic::in, wrap(S)::in, edt_node(R)::in,
     int::in, int::out, bool::in, int::in, int::in, int::out)
@@ -876,7 +876,7 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
     ),
     ProcDefnRep = proc_defn_rep(HeadVars, GoalRep),
     is_traced_grade(AllTraced),
-    MaybePrims = make_primitive_list(Store, [goal_and_path(GoalRep, [])],
+    MaybePrims = make_primitive_list(Store, [goal_and_path(GoalRep, empty)],
         Contour, StartPath, ArgNum, TotalArgs, HeadVars, AllTraced, []),
     (
         MaybePrims = yes(primitive_list_and_var(Primitives, Var,
@@ -973,7 +973,7 @@ find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
     CallPrecId = CallNode ^ call_preceding,
     CallAtom = get_trace_call_atom(CallNode),
     CallPathStr = get_goal_path_from_maybe_label(CallNode ^ call_return_label),
-    path_from_string_det(CallPathStr, CallPath),
+    goal_path_from_string_det(CallPathStr, CallPath),
     StartLoc = parent_goal(CallId, CallNode),
     absolute_arg_num(ArgPos, CallAtom, ArgNum),
     TotalArgs = length(CallAtom ^ atom_args),
@@ -1172,11 +1172,10 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
 :- pred contour_at_end_path(assoc_list(R, trace_node(R))::in,
     maybe(goal_path)::in) is semidet.
 
-contour_at_end_path(
-        [_ - node_call(_, _, _, _, _, _, MaybeReturnLabel, _, _, _)],
-        yes(EndPath)) :-
+contour_at_end_path([_ - Node], yes(EndPath)) :-
+    Node = node_call(_, _, _, _, _, _, MaybeReturnLabel, _, _, _),
     CallPathStr = get_goal_path_from_maybe_label(MaybeReturnLabel),
-    path_from_string_det(CallPathStr, CallPath),
+    goal_path_from_string_det(CallPathStr, CallPath),
     CallPath = EndPath.
 
 :- pred next_goal_generates_internal_event(list(goal_and_path)::in) is semidet.
@@ -1185,16 +1184,15 @@ next_goal_generates_internal_event([goal_and_path(NextGoal, _) | _]) :-
     goal_generates_internal_event(NextGoal) = yes.
 
     % match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour,
-    %   MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives)
+    %   MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
     %   = MaybePrims:
     %
     % Matches the given goal_rep to the first event in the contour for
     % all goal_reps except atomic goal reps which need to be handled
     % differently depending on whether everything is traced (AllTraced).
-    % Returns the list of Primitives appended to the list of
-    % primitive goals along the remaining contour.  If it cannot match
-    % a higher order call to a contour event and AllTraced is no, then
-    % no is returned.
+    % Returns Primitives0 appended to the end of the list of primitive goals
+    % along the remaining contour. If it cannot match a higher order call
+    % to a contour event and AllTraced is no, then it returns "no".
     %
 :- func match_goal_to_contour_event(S, goal_rep, goal_path, goal_and_path_list,
     assoc_list(R, trace_node(R)), maybe(goal_path), int, int,
@@ -1211,7 +1209,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Primitives0)
     ;
         Goal = scope_rep(InnerGoal, MaybeCut),
-        InnerPath = list.append(Path, [step_scope(MaybeCut)]),
+        InnerPath = cord.snoc(Path, step_scope(MaybeCut)),
         InnerAndPath = goal_and_path(InnerGoal, InnerPath),
         MaybePrims = make_primitive_list(Store, [InnerAndPath | GoalPaths],
             Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1242,9 +1240,10 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 ContourHeadNode = node_later_disj(_, Label, _)
             ),
             DisjPathStr = get_goal_path_from_label_layout(Label),
-            path_from_string_det(DisjPathStr, DisjPath),
-            list.append(Path, PathTail, DisjPath),
-            PathTail = [step_disj(N)]
+            goal_path_from_string_det(DisjPathStr, DisjPath),
+            cord.split_last(DisjPath, DisjInitialPath, DisjLastStep),
+            cord.equal(DisjInitialPath, Path),
+            DisjLastStep = step_disj(N)
         ->
             list.index1_det(Disjs, N, Disj),
             DisjAndPath = goal_and_path(Disj, DisjPath),
@@ -1261,9 +1260,10 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_switch(_, Label),
             ArmPathStr = get_goal_path_from_label_layout(Label),
-            path_from_string_det(ArmPathStr, ArmPath),
-            list.append(Path, PathTail, ArmPath),
-            PathTail = [step_switch(N, _)]
+            goal_path_from_string_det(ArmPathStr, ArmPath),
+            cord.split_last(ArmPath, ArmInitialPath, ArmLastStep),
+            cord.equal(ArmInitialPath, Path),
+            ArmLastStep = step_switch(N, _)
         ->
             list.index1_det(Cases, N, Case),
             Case = case_rep(_ConsId, _ConsIdArity, Arm),
@@ -1281,11 +1281,12 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
-            path_from_string_det(CondPathStr, CondPath),
-            list.append(Path, PathTail, CondPath),
-            PathTail = [step_ite_cond]
+            goal_path_from_string_det(CondPathStr, CondPath),
+            cord.split_last(CondPath, CondInitialPath, CondLastStep),
+            cord.equal(CondInitialPath, Path),
+            CondLastStep = step_ite_cond
         ->
-            ThenPath = list.append(Path, [step_ite_then]),
+            ThenPath = cord.snoc(Path, step_ite_then),
             CondAndPath = goal_and_path(Cond, CondPath),
             ThenAndPath = goal_and_path(Then, ThenPath),
             MaybePrims = make_primitive_list(Store,
@@ -1297,11 +1298,12 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             cond_node_from_id(Store, ElseCondId, CondNode),
             CondNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
-            path_from_string_det(CondPathStr, CondPath),
-            list.append(Path, PathTail, CondPath),
-            PathTail = [step_ite_cond]
+            goal_path_from_string_det(CondPathStr, CondPath),
+            cord.split_last(CondPath, CondInitialPath, CondLastStep),
+            cord.equal(CondInitialPath, Path),
+            CondLastStep = step_ite_cond
         ->
-            ElsePath = list.append(Path, [step_ite_else]),
+            ElsePath = cord.snoc(Path, step_ite_else),
             ElseAndPath = goal_and_path(Else, ElsePath),
             MaybePrims = make_primitive_list(Store, [ElseAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1325,7 +1327,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         ->
             % The end of the primitive list is somewhere inside
             % NegGoal.
-            NegPath = list.append(Path, [step_neg]),
+            NegPath = cord.snoc(Path, step_neg),
             NegAndPath = goal_and_path(NegGoal, NegPath),
             MaybePrims = make_primitive_list(Store, [NegAndPath], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
@@ -1384,7 +1386,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 MaybeReturnLabel, _, _, _),
             Atom = get_trace_call_atom(ContourHeadNode),
             CallPathStr = get_goal_path_from_maybe_label( MaybeReturnLabel),
-            path_from_string_det(CallPathStr, CallPath),
+            goal_path_from_string_det(CallPathStr, CallPath),
             CallPath = EndPath
         ->
             (
@@ -1750,7 +1752,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 add_paths_to_conjuncts([], _, _, []).
 add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
         [goal_and_path(Goal, Path) | GoalAndPaths]) :-
-    Path = ParentPath ++ [step_conj(N)],
+    Path = cord.snoc(ParentPath, step_conj(N)),
     add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
 %-----------------------------------------------------------------------------%
@@ -1876,9 +1878,8 @@ trace_arg_pos_to_user_arg_num(wrap(Store), dynamic(Ref), ArgPos) = ArgNum :-
 calls_arguments_are_all_ground(Store, CallId) :-
     call_node_from_id(Store, CallId, Call),
     Args = Call ^ call_atom_args,
-    %
+
     % XXX The following won't work for partially instantiated arguments.
-    %
     all [Arg] (
         list.member(Arg, Args)
     =>

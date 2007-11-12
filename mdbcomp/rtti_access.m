@@ -222,11 +222,7 @@ get_goal_path_from_maybe_label(no) = "".
 get_path_port_from_label_layout(Label) = PathPort :-
     Port = get_port_from_label_layout(Label),
     GoalPathStr = get_goal_path_from_label_layout(Label),
-    ( path_from_string(GoalPathStr, ValidGoalPath) ->
-        GoalPath = ValidGoalPath
-    ;
-        error("get_path_port_from_label_layout: invalid goal path")
-    ),
+    goal_path_from_string_det(GoalPathStr, GoalPath),
     PathPort = make_path_port(GoalPath, Port).
 
 %-----------------------------------------------------------------------------%

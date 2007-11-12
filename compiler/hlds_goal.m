@@ -1497,6 +1497,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module map.
 :- import_module string.
 :- import_module svmap.
@@ -1641,8 +1642,10 @@ goal_info_init(GoalInfo) :-
     set.init(NonLocals),
     term.context_init(Context),
     set.init(Features),
+    GoalPath = empty,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
-        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
+        Features, GoalPath, no_code_gen_info,
+        hlds_goal_extra_info_init(Context)).
 
 :- pragma inline(goal_info_init/2).
 
@@ -1651,19 +1654,25 @@ goal_info_init(Context, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     set.init(NonLocals),
     set.init(Features),
+    GoalPath = empty,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
-        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
+        Features, GoalPath, no_code_gen_info,
+        hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
     set.init(Features),
     term.context_init(Context),
+    GoalPath = empty,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
-        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
+        Features, GoalPath, no_code_gen_info,
+        hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
+    GoalPath = empty,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
-        Features, [], no_code_gen_info, hlds_goal_extra_info_init(Context)).
+        Features, GoalPath, no_code_gen_info,
+        hlds_goal_extra_info_init(Context)).
 
 :- func hlds_goal_extra_info_init(term.context) = hlds_goal_extra_info.
 

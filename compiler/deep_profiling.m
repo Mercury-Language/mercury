@@ -51,6 +51,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
@@ -550,7 +551,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             counter.init(0), [], !.VarSet, !.VarTypes, FileName, MaybeRecInfo)
     ),
 
-    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+    deep_prof_transform_goal(empty, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
     Vars = DeepInfo ^ deep_varset,
@@ -646,7 +647,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             FileName, MaybeRecInfo)
     ),
 
-    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+    deep_prof_transform_goal(empty, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
     Vars = DeepInfo ^ deep_varset,
@@ -760,7 +761,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             counter.init(0), [], !.VarSet, !.VarTypes, FileName, MaybeRecInfo)
     ),
 
-    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+    deep_prof_transform_goal(empty, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
     Vars = DeepInfo ^ deep_varset,
@@ -885,7 +886,7 @@ transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         counter.init(0), [], VarSet1, VarTypes1,
         FileName, MaybeRecInfo),
 
-    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+    deep_prof_transform_goal(empty, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
     VarSet = DeepInfo ^ deep_varset,
@@ -990,18 +991,18 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
-        deep_prof_transform_goal([step_neg | Path], SubGoal0, SubGoal,
+        deep_prof_transform_goal(cord.snoc(Path, step_neg), SubGoal0, SubGoal,
             AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(IVars, Cond0, Then0, Else0),
-        deep_prof_transform_goal([step_ite_cond | Path], Cond0, Cond,
+        deep_prof_transform_goal(cord.snoc(Path, step_ite_cond), Cond0, Cond,
             AddedImpurityC, !DeepInfo),
-        deep_prof_transform_goal([step_ite_then | Path], Then0, Then,
+        deep_prof_transform_goal(cord.snoc(Path, step_ite_then), Then0, Then,
             AddedImpurityT, !DeepInfo),
-        deep_prof_transform_goal([step_ite_else | Path], Else0, Else,
+        deep_prof_transform_goal(cord.snoc(Path, step_ite_else), Else0, Else,
             AddedImpurityE, !DeepInfo),
         (
             ( AddedImpurityC = yes
@@ -1043,7 +1044,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
                 AddForceCommit = yes
             )
         ),
-        deep_prof_transform_goal([step_scope(MaybeCut) | Path],
+        deep_prof_transform_goal(cord.snoc(Path, step_scope(MaybeCut)),
             SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         (
@@ -1068,7 +1069,7 @@ deep_prof_transform_conj(_, _, [], [], no, !DeepInfo).
 deep_prof_transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([step_conj(N1) | Path], Goal0, Goal,
+    deep_prof_transform_goal(cord.snoc(Path, step_conj(N1)), Goal0, Goal,
         AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_conj(N1, Path, Goals0, Goals, AddedImpurityLater,
         !DeepInfo),
@@ -1082,7 +1083,7 @@ deep_prof_transform_disj(_, _, [], [], no, !DeepInfo).
 deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([step_disj(N1) | Path], Goal0, Goal,
+    deep_prof_transform_goal(cord.snoc(Path, step_disj(N1)), Goal0, Goal,
         AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_disj(N1, Path, Goals0, Goals, AddedImpurityLater,
         !DeepInfo),
@@ -1096,7 +1097,7 @@ deep_prof_transform_switch(_, _, _, [], [], no, !DeepInfo).
 deep_prof_transform_switch(MaybeNumCases, N, Path, [case(Id, Goal0) | Goals0],
         [case(Id, Goal) | Goals], AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([step_switch(N1, MaybeNumCases) | Path],
+    deep_prof_transform_goal(cord.snoc(Path, step_switch(N1, MaybeNumCases)),
         Goal0, Goal, AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_switch(MaybeNumCases, N1, Path, Goals0, Goals,
         AddedImpurityLater, !DeepInfo),

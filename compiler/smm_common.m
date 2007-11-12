@@ -76,6 +76,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 
@@ -144,11 +145,10 @@ program_point_init(GoalInfo) = ProgPoint :-
 	ProgPoint = pp(Context, GoalPath).
 
 dump_program_point(pp(Context, GoalPath), !IO):- 
-    % context
     prog_out.write_context(Context, !IO), 
     io.write_string("--", !IO),
-    % goal path
-    list.foldl(dump_goal_path_step, GoalPath, !IO).
+    GoalPathSteps = cord.list(GoalPath),
+    list.foldl(dump_goal_path_step, GoalPathSteps, !IO).
 
 :- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.
 

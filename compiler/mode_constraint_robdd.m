@@ -152,6 +152,7 @@
 
 :- import_module bimap.
 :- import_module bool.
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module require.
@@ -163,24 +164,27 @@
 :- import_module term.
 :- import_module varset.
 
-:- type mc_type ---> mc_type.
+:- type mc_type
+    --->    mc_type.
 
-:- type mode_constraint_info --->
-    mode_constraint_info(
-        varset      :: varset(mc_type),
-        varmap      :: mode_constraint_varmap,
-        pred_id     :: pred_id,
-        lambda_path :: lambda_path,
-        min_vars    :: map(pred_id, mode_constraint_var),
-        max_vars    :: map(pred_id, mode_constraint_var),
-        input_nodes :: sparse_bitset(prog_var),
-        zero_var    :: robdd_var,
-                % A var that is always zero.
-        simple_constraints :: bool
-                % Are we using the simplified constraint model.
-    ).
+:- type mode_constraint_info
+    --->    mode_constraint_info(
+                varset              :: varset(mc_type),
+                varmap              :: mode_constraint_varmap,
+                pred_id             :: pred_id,
+                lambda_path         :: lambda_path,
+                min_vars            :: map(pred_id, mode_constraint_var),
+                max_vars            :: map(pred_id, mode_constraint_var),
+                input_nodes         :: sparse_bitset(prog_var),
+                zero_var            :: robdd_var,
+                                    % A var that is always zero.
+                simple_constraints  :: bool
+                                    % Are we using the simplified constraint
+                                    % model.
+            ).
 
-:- type threshold ---> threshold(mode_constraint_var).
+:- type threshold
+    --->    threshold(mode_constraint_var).
 
 init_mode_constraint_info(Simple) = Info :-
     VarSet0 = varset.init,
@@ -221,17 +225,16 @@ mode_constraint_var(PredId, RepVar0, RobddVar, Info0, Info) :-
         ;
             varset.new_var(Info0 ^ varset, RobddVar, NewVarSet),
             bimap.set(Info0 ^ varmap, Key, RobddVar, NewVarMap),
-            Info = (Info0 ^ varset := NewVarSet)
-                ^ varmap := NewVarMap
+            Info = (Info0 ^ varset := NewVarSet) ^ varmap := NewVarMap
         )
     ).
 
 mode_constraint_var(Info, RepVar) = bimap.lookup(Info ^ varmap, Key) :-
     Key = key(RepVar, Info ^ pred_id, Info ^ lambda_path).
 
-enter_lambda_goal(GoalPath) -->
-    LambdaPath0 =^ lambda_path,
-    ^ lambda_path := stack.push(LambdaPath0, GoalPath).
+enter_lambda_goal(GoalPath, !Info) :-
+    LambdaPath0 = !.Info ^ lambda_path,
+    !:Info = !.Info ^ lambda_path := stack.push(LambdaPath0, GoalPath).
 
 leave_lambda_goal -->
     LambdaPath0 =^ lambda_path,
@@ -240,10 +243,10 @@ leave_lambda_goal -->
 
 :- type prog_var_and_level
     --->    prog_var_and_level(
-            prog_var,
-            pred_id,
-            lambda_path
-        ).
+                prog_var,
+                pred_id,
+                lambda_path
+            ).
 
 get_prog_var_level(Var, prog_var_and_level(Var, PredId, LambdaPath)) -->
     PredId =^ pred_id,
@@ -335,51 +338,51 @@ using_simple_mode_constraints -->
 :- pred dump_mode_constraint_var(prog_varset::in, rep_var::in,
     io::di, io::uo) is det.
 
-dump_mode_constraint_var(VarSet, in(V)) -->
-    { varset.lookup_name(VarSet, V, Name) },
-    io.write_string(Name),
-    io.write_string("_in").
-dump_mode_constraint_var(VarSet, out(V)) -->
-    { varset.lookup_name(VarSet, V, Name) },
-    io.write_string(Name),
-    io.write_string("_out").
-dump_mode_constraint_var(VarSet, V `at` Path0) -->
-    { varset.lookup_name(VarSet, V, Name) },
-    io.write_string(Name),
-    io.write_char('_'),
-    { list.reverse(Path0, Path) },
-    list.foldl(dump_goal_path_step, Path).
+dump_mode_constraint_var(VarSet, in(V), !IO) :-
+    varset.lookup_name(VarSet, V, Name),
+    io.write_string(Name, !IO),
+    io.write_string("_in", !IO).
+dump_mode_constraint_var(VarSet, out(V), !IO) :-
+    varset.lookup_name(VarSet, V, Name),
+    io.write_string(Name, !IO),
+    io.write_string("_out", !IO).
+dump_mode_constraint_var(VarSet, V `at` Path, !IO) :-
+    varset.lookup_name(VarSet, V, Name),
+    io.write_string(Name, !IO),
+    io.write_char('_', !IO),
+    PathSteps = cord.list(Path),
+    list.foldl(dump_goal_path_step, PathSteps, !IO).
 
 :- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.
 
-dump_goal_path_step(step_conj(N)) -->
-    io.write_char('c'),
-    io.write_int(N).
-dump_goal_path_step(step_disj(N)) -->
-    io.write_char('d'),
-    io.write_int(N).
-dump_goal_path_step(step_switch(N, _)) -->
-    io.write_char('s'),
-    io.write_int(N).
-dump_goal_path_step(step_ite_cond) -->
-    io.write_char('c').
-dump_goal_path_step(step_ite_then) -->
-    io.write_char('t').
-dump_goal_path_step(step_ite_else) -->
-    io.write_char('e').
-dump_goal_path_step(step_neg) -->
-    io.write_char('n').
-dump_goal_path_step(step_scope(_)) -->
-    io.write_char('q').
-dump_goal_path_step(step_first) -->
-    io.write_char('f').
-dump_goal_path_step(step_later) -->
-    io.write_char('l').
+dump_goal_path_step(step_conj(N), !IO) :-
+    io.write_char('c', !IO),
+    io.write_int(N, !IO).
+dump_goal_path_step(step_disj(N), !IO) :-
+    io.write_char('d', !IO),
+    io.write_int(N, !IO).
+dump_goal_path_step(step_switch(N, _), !IO) :-
+    io.write_char('s', !IO),
+    io.write_int(N, !IO).
+dump_goal_path_step(step_ite_cond, !IO) :-
+    io.write_char('c', !IO).
+dump_goal_path_step(step_ite_then, !IO) :-
+    io.write_char('t', !IO).
+dump_goal_path_step(step_ite_else, !IO) :-
+    io.write_char('e', !IO).
+dump_goal_path_step(step_neg, !IO) :-
+    io.write_char('n', !IO).
+dump_goal_path_step(step_scope(_), !IO) :-
+    io.write_char('q', !IO).
+dump_goal_path_step(step_first, !IO) :-
+    io.write_char('f', !IO).
+dump_goal_path_step(step_later, !IO) :-
+    io.write_char('l', !IO).
 
-robdd_to_dot(Constraint, ProgVarSet, Info, FileName) -->
-    robdd_to_dot(Constraint ^ robdd, P, FileName),
-    { VarMap = Info ^ varmap },
-    { P = (pred(RobddVar::in, di, uo) is det -->
+robdd_to_dot(Constraint, ProgVarSet, Info, FileName, !IO) :-
+    robdd_to_dot(Constraint ^ robdd, P, FileName, !IO),
+    VarMap = Info ^ varmap,
+    P = (pred(RobddVar::in, di, uo) is det -->
         { bimap.reverse_lookup(VarMap, key(RepVar, PredId, LambdaPath),
             RobddVar) },
         dump_mode_constraint_var(ProgVarSet, RepVar),
@@ -391,7 +394,7 @@ robdd_to_dot(Constraint, ProgVarSet, Info, FileName) -->
         io.write_string(" ("),
         io.write_int(term.var_to_int(RobddVar)),
         io.write_string(")")
-    )}.
+    ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

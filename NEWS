@@ -197,6 +197,9 @@ Changes to the Mercury standard library:
 
 * We have added the predicate `dir.current_directory'.
 
+* We have added the predicates split_last, get_first and get_last to the cord
+  module.
+
 * We have added two predicates that are useful for custom term construction:
 	construct.find_functor/5
 	type_desc.same_type/2 

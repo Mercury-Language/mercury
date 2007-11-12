@@ -548,6 +548,8 @@
     ;       higher_order_arg_limit
     ;       unneeded_code
     ;       unneeded_code_copy_limit
+    ;       unneeded_code_debug
+    ;       unneeded_code_debug_pred_name
     ;       type_specialization
     ;       user_guided_type_specialization
     ;       introduce_accumulators
@@ -1370,6 +1372,8 @@ option_defaults_2(optimization_option, [
     higher_order_arg_limit              -   int(10),
     unneeded_code                       -   bool(no),
     unneeded_code_copy_limit            -   int(10),
+    unneeded_code_debug                 -   bool(no),
+    unneeded_code_debug_pred_name       -   accumulating([]),
     type_specialization                 -   bool(no),
     user_guided_type_specialization     -   bool(no),
     introduce_accumulators              -   bool(no),
@@ -2120,6 +2124,8 @@ long_option("higher-order-size-limit",  higher_order_size_limit).
 long_option("higher-order-arg-limit",   higher_order_arg_limit).
 long_option("unneeded-code",        unneeded_code).
 long_option("unneeded-code-copy-limit", unneeded_code_copy_limit).
+long_option("unneeded-code-debug",  unneeded_code_debug).
+long_option("unneeded-code-debug-pred-name",  unneeded_code_debug_pred_name).
 long_option("type-specialization",  type_specialization).
 long_option("type-specialisation",  type_specialization).
 long_option("user-guided-type-specialization",
@@ -4411,6 +4417,12 @@ options_help_hlds_hlds_optimization -->
         "\tnot needed. A value of zero forbids goal movement and allows",
         "\tonly goal deletion; a value of one prevents any increase in the",
         "\tsize of the code.",
+%       "--unneeded-code-debug",
+%       "\tPrint progress messages during the unneeded code elimination",
+%       "\tpasses.",
+%       "--unneeded-code-debug-pred-name <predname>",
+%       "\tPrint the definition of <predname> at the start of each pass",
+%       "\tof the unneeded code elimination algorithm.",
         "--introduce-accumulators",
         "\tAttempt to introduce accumulating variables into",
         "\tprocedures, so as to make them tail recursive.",

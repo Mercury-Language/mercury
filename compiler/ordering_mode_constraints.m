@@ -116,10 +116,11 @@
 
 :- import_module bimap.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
-:- import_module multi_map.
 :- import_module map.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module string.
 :- import_module svset.
@@ -583,7 +584,9 @@ produced_at_path(VarMap, Bindings, RepVar) :-
     %
 :- pred get_position_in_conj(mc_rep_var::in, conjunct_id::out) is semidet.
 
-get_position_in_conj(_ProgVar `in` _PredId `at` [step_conj(N) | _], N).
+get_position_in_conj(_ProgVar `in` _PredId `at` GoalPath, N) :-
+    cord.get_last(GoalPath, LastStep),
+    LastStep = step_conj(N).
 
 %-----------------------------------------------------------------------------%
 

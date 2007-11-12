@@ -40,6 +40,7 @@
 
 :- import_module bool.
 :- import_module char.
+:- import_module cord.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -285,15 +286,17 @@
 % the second number won't be present.)
 %
 % The goal_path type gives the sequence of steps from the root to the given
-% goal *in reverse order*, so that the step closest to the root is last.
-% (Keeping the list in reverse order makes the common operations constant-time
-% instead of linear in the length of the list.)
+% goal. We use a cord instead of a list because most operations on goal paths
+% focus on the last element, not the first.
+%
+% NOTE: Comparing two cords for equality should be done by calling cord.equal,
+% not by unifying them directly.
 
-:- type goal_path == list(goal_path_step).
+:- type goal_path == cord(goal_path_step).
 
 :- type goal_path_string == string.
 
-:- type goal_path_step 
+:- type goal_path_step
     --->    step_conj(int)
     ;       step_disj(int)
     ;       step_switch(int, maybe(int))
@@ -310,27 +313,36 @@
     --->    scope_is_cut
     ;       scope_is_no_cut.
 
-    % No reversing of the goal path steps is done by this predicate.
+    % goal_path_inside(PathA, PathB):
     %
-:- pred path_from_string_det(string::in, goal_path::out) is det.
+    % Succeed if PathB denotes a goal *inside* the goal denoted by PathA.
+    % (It considers a goal to be inside itself.)
+    %
+:- pred goal_path_inside(goal_path::in, goal_path::in) is semidet.
 
-    % This reverses the steps before converting them to a string.
+    % Converts a string to a goal path, failing if the string is not a valid
+    % goal path.
+    %
+:- pred goal_path_from_string(string::in, goal_path::out) is semidet.
+
+    % Converts a string to a goal path, aborting if the string is not a valid
+    % goal path.
+    %
+:- pred goal_path_from_string_det(string::in, goal_path::out) is det.
+
+    % Converts a string to a goal path step, failing if the string is not
+    % a valid goal path step.
+    %
+:- pred goal_path_step_from_string(string::in, goal_path_step::out) is semidet.
+
+    % Convert the goal path to its string representation. The resulting string
+    % is guaranteed to be acceptable to path_from_string_det.
     %
 :- func goal_path_to_string(goal_path) = string.
 
-    % This leaves the steps in the order in which they appear in goal_path;
-    % if the steps are reversed in the goal_path (as usual), the end result
-    % will be reversed too.
+    % Is this character the one that ends each goal path step?
     %
-:- func string_from_path(goal_path) = string.
-
-    % No reversing of the goal path steps is done by this predicate.
-    %
-:- pred path_from_string(string::in, goal_path::out) is semidet.
-
-:- pred path_step_from_string(string::in, goal_path_step::out) is semidet.
-
-:- pred is_path_separator(char::in) is semidet.
+:- pred is_goal_path_separator(char::in) is semidet.
 
     % User-visible head variables are represented by a number from 1..N,
     % where N is the user-visible arity.
@@ -354,9 +366,10 @@
 
     % A particular subterm within a term is represented by a term_path.
     % This is the list of argument positions that need to be followed
-    % in order to travel from the root to the subterm. In contrast to
-    % goal_paths, this list is in top-down order.
-:- type term_path ==    list(int).
+    % in order to travel from the root to the subterm. This list is in
+    % top-down order (i.e. the argument number in the top function symbol
+    % is first).
+:- type term_path == list(int).
 
     % Returns type_of(_ : proc_defn_rep), for use in C code.
     %
@@ -492,7 +505,7 @@ call_does_not_generate_events(ModuleName, PredName, Arity) :-
         SymModuleName = string_to_sym_name(ModuleName),
         non_traced_mercury_builtin_module(SymModuleName)
     ;
-        % The debugger cannot handle calls to polymorphic builtins that 
+        % The debugger cannot handle calls to polymorphic builtins that
         % do not take a type_info argument, so such calls are not traced.
         SymModuleName = string_to_sym_name(ModuleName),
         no_type_info_builtin(SymModuleName, PredName, Arity)
@@ -546,29 +559,35 @@ goal_rep_type = type_of(_ : goal_rep).
 
 %-----------------------------------------------------------------------------%
 
-path_from_string_det(GoalPathStr, GoalPath) :-
-    ( path_from_string(GoalPathStr, GoalPathPrime) ->
+goal_path_inside(PathA, PathB) :-
+    StepsA = cord.list(PathA),
+    StepsB = cord.list(PathB),
+    list.append(StepsA, _, StepsB).
+
+goal_path_from_string_det(GoalPathStr, GoalPath) :-
+    ( goal_path_from_string(GoalPathStr, GoalPathPrime) ->
         GoalPath = GoalPathPrime
     ;
         error("path_from_string_det: path_from_string failed")
     ).
 
-path_from_string(GoalPathStr, GoalPath) :-
-    StepStrs = string.words_separator(is_path_separator, GoalPathStr),
-    list.map(path_step_from_string, StepStrs, GoalPath).
+goal_path_from_string(GoalPathStr, GoalPath) :-
+    StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
+    list.map(goal_path_step_from_string, StepStrs, Steps),
+    GoalPath = cord.from_list(Steps).
 
-path_step_from_string(String, Step) :-
+goal_path_step_from_string(String, Step) :-
     string.first_char(String, First, Rest),
-    path_step_from_string_2(First, Rest, Step).
+    goal_path_step_from_string_2(First, Rest, Step).
 
-:- pred path_step_from_string_2(char::in, string::in, goal_path_step::out)
+:- pred goal_path_step_from_string_2(char::in, string::in, goal_path_step::out)
     is semidet.
 
-path_step_from_string_2('c', NStr, step_conj(N)) :-
+goal_path_step_from_string_2('c', NStr, step_conj(N)) :-
     string.to_int(NStr, N).
-path_step_from_string_2('d', NStr, step_disj(N)) :-
+goal_path_step_from_string_2('d', NStr, step_disj(N)) :-
     string.to_int(NStr, N).
-path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
+goal_path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
     string.words_separator(unify('-'), Str) = [NStr, MStr],
     string.to_int(NStr, N),
     % "na" is short for "not applicable"
@@ -578,23 +597,21 @@ path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
         string.to_int(MStr, M),
         MaybeM = yes(M)
     ).
-path_step_from_string_2('?', "", step_ite_cond).
-path_step_from_string_2('t', "", step_ite_then).
-path_step_from_string_2('e', "", step_ite_else).
-path_step_from_string_2('~', "", step_neg).
-path_step_from_string_2('q', "!", step_scope(scope_is_cut)).
-path_step_from_string_2('q', "", step_scope(scope_is_no_cut)).
-path_step_from_string_2('f', "", step_first).
-path_step_from_string_2('l', "", step_later).
+goal_path_step_from_string_2('?', "", step_ite_cond).
+goal_path_step_from_string_2('t', "", step_ite_then).
+goal_path_step_from_string_2('e', "", step_ite_else).
+goal_path_step_from_string_2('~', "", step_neg).
+goal_path_step_from_string_2('q', "!", step_scope(scope_is_cut)).
+goal_path_step_from_string_2('q', "", step_scope(scope_is_no_cut)).
+goal_path_step_from_string_2('f', "", step_first).
+goal_path_step_from_string_2('l', "", step_later).
 
-is_path_separator(';').
+is_goal_path_separator(';').
 
-goal_path_to_string(GoalPath) =
-    string.append_list(list.map(goal_path_step_to_string,
-        list.reverse(GoalPath))).
-
-string_from_path(GoalPath) =
-    string.append_list(list.map(goal_path_step_to_string, GoalPath)).
+goal_path_to_string(GoalPath) = GoalPathStr :-
+    Steps = cord.list(GoalPath),
+    StepStrs = list.map(goal_path_step_to_string, Steps),
+    string.append_list(StepStrs, GoalPathStr).
 
 :- func goal_path_step_to_string(goal_path_step) = string.
 
@@ -699,7 +716,7 @@ read_file_as_bytecode(FileName, Result, !IO) :-
 #if defined(MR_HAVE_SYS_STAT_H) && \
     defined(MR_HAVE_STAT) && \
     defined(MR_HAVE_OPEN)
-    
+
     struct  stat statbuf;
 
     if (stat(FileName, &statbuf) != 0) {

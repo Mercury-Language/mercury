@@ -127,6 +127,7 @@
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
@@ -430,32 +431,35 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
     set(string)::in, goal_path_regions_table::in,
     goal_path_regions_table::out) is det.
 
-record_non_local_regions([], _, _, !NonLocalRegionProc).
 record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
-    Path = [Step | Steps],
-    ( Step = step_ite_else ->
-        % The current NonLocalRegions are attached to the goal path to
-        % the corresponding condition.
-        PathToCond = [step_ite_cond | Steps],
-        ( map.search(!.NonLocalRegionProc, PathToCond, NonLocalRegions0) ->
-            set.union(NonLocalRegions0, Created, NonLocalRegions1),
-            set.difference(NonLocalRegions1, Removed, NonLocalRegions)
+    ( cord.split_last(Path, InitialPath, LastStep) ->
+        ( LastStep = step_ite_else ->
+            % The current NonLocalRegions are attached to the goal path to
+            % the corresponding condition.
+            PathToCond = cord.snoc(InitialPath, step_ite_cond),
+            ( map.search(!.NonLocalRegionProc, PathToCond, NonLocalRegions0) ->
+                set.union(NonLocalRegions0, Created, NonLocalRegions1),
+                set.difference(NonLocalRegions1, Removed, NonLocalRegions)
+            ;
+                set.difference(Created, Removed, NonLocalRegions)
+            ),
+            % Only record if some non-local region(s) exist.
+            ( set.empty(NonLocalRegions) ->
+                true
+            ;
+                svmap.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
+            )
         ;
-            set.difference(Created, Removed, NonLocalRegions)
-        ),
-        % Only record if some non-local region(s) exist.
-        ( set.empty(NonLocalRegions) ->
             true
-        ;
-            svmap.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
-        )
+        ),
+
+        % Need to update the non-local sets of outer if-then-elses of this one,
+        % if any.
+        record_non_local_regions(InitialPath, Created, Removed,
+            !NonLocalRegionProc)
     ;
         true
-    ),
-
-    % Need to update the non-local sets of outer if-then-elses of this one,
-    % if any.
-    record_non_local_regions(Steps, Created, Removed, !NonLocalRegionProc).
+    ).
 
 :- pred collect_non_local_regions_in_ite_compound_goal(rpt_graph::in,
     pp_region_set_table::in, pp_region_set_table::in,
@@ -605,26 +609,29 @@ collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
 :- pred record_regions_created_in_condition(goal_path::in, set(string)::in,
     goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-record_regions_created_in_condition([], _, !InCondRegionsProc).
 record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
-    Path = [Step | Steps],
-    ( Step = step_ite_cond  ->
-        ( map.search(!.InCondRegionsProc, Path, InCondRegions0) ->
-            set.union(InCondRegions0, Created, InCondRegions)
+    ( cord.split_last(Path, InitialPath, LastStep) ->
+        ( LastStep = step_ite_cond  ->
+            ( map.search(!.InCondRegionsProc, Path, InCondRegions0) ->
+                set.union(InCondRegions0, Created, InCondRegions)
+            ;
+                InCondRegions = Created
+            ),
+            % Only record if some regions are actually created inside
+            % the condition.
+            ( set.empty(InCondRegions) ->
+                true
+            ;
+                svmap.set(Path, InCondRegions, !InCondRegionsProc)
+            )
         ;
-            InCondRegions = Created
-        ),
-        % Only record if the some region(s) is actually created inside
-        % the condition.
-        ( set.empty(InCondRegions) ->
             true
-        ;
-            svmap.set(Path, InCondRegions, !InCondRegionsProc)
-        )
+        ),
+        record_regions_created_in_condition(InitialPath, Created,
+            !InCondRegionsProc)
     ;
         true
-    ),
-    record_regions_created_in_condition(Steps, Created, !InCondRegionsProc).
+    ).
 
 :- pred collect_regions_created_in_condition_compound_goal(rpt_graph::in,
     pp_region_set_table::in, pp_region_set_table::in,
@@ -967,9 +974,9 @@ collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
         !IteRenamingProc).
 
     % This predicate receives a goal path (to some goal) and returns
-    % the subpath to the closest condition containing the goal. It also
-    % returns the number of conditions that contain the goal.
-    % If the goal is in no condition, the output path is empty.
+    % the subpath to the closest condition containing the goal (if any);
+    % if the goal is not in in any condition, the output path is empty.
+    % It also returns the number of conditions that contain the goal.
     % e.g., ( if
     %           ( if
     %               goal
@@ -978,14 +985,19 @@ collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
     %
 :- pred get_closest_condition_in_goal_path(goal_path::in,
     goal_path::out, int::in, int::out) is det.
-get_closest_condition_in_goal_path([], [], !HowMany).
-get_closest_condition_in_goal_path([Step | Steps], PathToCond, !HowMany) :-
-    ( Step = step_ite_cond ->
-        PathToCond = [Step | Steps],
-        get_closest_condition_in_goal_path(Steps, _, !.HowMany, HowMany),
-        !:HowMany = HowMany + 1
+
+get_closest_condition_in_goal_path(Path, PathToCond, !HowMany) :-
+    ( cord.split_last(Path, InitialPath, LastStep) ->
+        ( LastStep = step_ite_cond ->
+            PathToCond = Path,
+            get_closest_condition_in_goal_path(InitialPath, _, !HowMany),
+            !:HowMany = !.HowMany + 1
+        ;
+            get_closest_condition_in_goal_path(InitialPath, PathToCond,
+                !HowMany)
+        )
     ;
-        get_closest_condition_in_goal_path(Steps, PathToCond, !HowMany)
+        PathToCond = empty
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1022,18 +1034,18 @@ collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, IteRenamingTable,
 
 collect_ite_annotation_region_names(ExecPaths, Graph, IteRenamingProc,
         PathToCond, RenamedRegions, !IteAnnotationProc) :-
-    (
-        PathToCond = [],
-        unexpected(this_file,
-            "collect_ite_annotation_region_set: empty path to condition.")
-    ;
-        PathToCond = [_ | Steps],
-        PathToThen = [step_ite_then | Steps],
+    ( cord.split_last(PathToCond, InitialSteps, LastStep) ->
+        expect(unify(LastStep, step_ite_cond), this_file,
+            "collect_ite_annotation_region_names: not step_ite_cond"),
+        PathToThen = cord.snoc(InitialSteps, step_ite_then),
         get_closest_condition_in_goal_path(PathToCond, _, 0, HowMany),
         list.foldl(
             collect_ite_annotation_exec_path(Graph, IteRenamingProc,
                 PathToThen, RenamedRegions, HowMany),
             ExecPaths, !IteAnnotationProc)
+    ;
+        unexpected(this_file,
+            "collect_ite_annotation_region_set: empty path to condition.")
     ).
 
 :- pred collect_ite_annotation_exec_path(rpt_graph::in,
@@ -1046,7 +1058,9 @@ collect_ite_annotation_exec_path(Graph, IteRenamingProc, PathToThen,
         RenamedRegions, HowMany,
         [ProgPoint - _ | ProgPoint_Goals], !IteAnnotationProc) :-
     ProgPoint = pp(_, GoalPath),
-    ( list.append(_, PathToThen, GoalPath) ->
+    PathToThenSteps = cord.list(PathToThen),
+    GoalPathSteps = cord.list(GoalPath),
+    ( list.append(_, PathToThenSteps, GoalPathSteps) ->
         % This is the first goal in the corresponding then branch, we need
         % to introduce reverse renaming at this point.
         set.fold(

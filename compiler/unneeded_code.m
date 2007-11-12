@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: unneeded_code.m.
 % Author: zs.
-% 
+%
 % This module implements two related source-to-source transforms,
 % both of which focus on goals that produce some variables, where these
 % variables are not always required by the following computation.
@@ -53,7 +53,7 @@
 % the semantics options explicitly permit the change in the operational
 % semantics, which will usually be an improvement (e.g. avoiding an infinite
 % loop or an unnecessary exception).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.unneeded_code.
@@ -91,12 +91,14 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%
@@ -225,20 +227,20 @@ process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         VeryVerbose = yes,
         io.write_string("% Removing dead code in ", !IO),
         hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
-        io.write_string(": ", !IO),
+        io.write_string(" ...\n", !IO),
         pre_process_proc(!ProcInfo),
-        process_proc(!ProcInfo, !ModuleInfo, Successful),
+        process_proc(!ProcInfo, !ModuleInfo, PredId, 1, Successful),
         (
             Successful = yes,
-            io.write_string("done.\n", !IO)
+            io.write_string("% done.\n", !IO)
         ;
             Successful = no,
-            io.write_string("none found.\n", !IO)
+            io.write_string("% none found.\n", !IO)
         )
     ;
         VeryVerbose = no,
         pre_process_proc(!ProcInfo),
-        process_proc(!ProcInfo, !ModuleInfo, _)
+        process_proc(!ProcInfo, !ModuleInfo, PredId, 1, _)
     ).
 
 :- pred pre_process_proc(proc_info::in, proc_info::out) is det.
@@ -246,13 +248,13 @@ process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 pre_process_proc(!ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal0, Goal,
-        Varset0, Varset, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
+        VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset(Varset, !ProcInfo),
+    proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
@@ -284,18 +286,19 @@ pre_process_proc(!ProcInfo) :-
 
 :- type option_values
     --->    option_values(
-                fully_strict    ::  bool,
-                reorder_conj    ::  bool,
-                copy_limit      ::  int
+                fully_strict    :: bool,
+                reorder_conj    :: bool,
+                copy_limit      :: int,
+                debug           :: bool
             ).
 
 :- pred process_proc(proc_info::in, proc_info::out,
-    module_info::in, module_info::out, bool::out) is det.
+    module_info::in, module_info::out, pred_id::in, int::in, bool::out) is det.
 
-process_proc(!ProcInfo, !ModuleInfo, Successful) :-
+process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
     Goal0 = hlds_goal(_, GoalInfo0),
@@ -312,7 +315,35 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
     globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     globals.lookup_int_option(Globals, unneeded_code_copy_limit, Limit),
-    Options = option_values(FullyStrict, ReorderConj, Limit),
+    globals.lookup_bool_option(Globals, unneeded_code_debug, Debug),
+    Options = option_values(FullyStrict, ReorderConj, Limit, Debug),
+    (
+        Debug = no
+    ;
+        Debug = yes,
+        trace [io(!IO)] (
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+            PredName = pred_info_name(PredInfo),
+            globals.lookup_accumulating_option(Globals,
+                unneeded_code_debug_pred_name, DebugPredNames),
+            (
+                DebugPredNames = [],
+                io.format("%% Starting unneededed code pass %d\n",
+                    [i(Pass)], !IO)
+            ;
+                DebugPredNames = [_ | _],
+                ( list.member(PredName, DebugPredNames) ->
+                    io.format("%% Starting unneededed code pass %d\n",
+                        [i(Pass)], !IO),
+                    AppendVarNums = yes,
+                    hlds_out.write_goal(Goal0, !.ModuleInfo, VarSet0,
+                        AppendVarNums, 0, ".\n", !IO)
+                ;
+                    true
+                )
+            )
+        )
+    ),
     process_goal(Goal0, Goal1, InitInstMap, FinalInstMap, VarTypes0,
         !.ModuleInfo, Options, WhereNeededMap1, _, map.init, RefinedGoals1,
         no, Changed),
@@ -327,15 +358,19 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         implicitly_quantify_clause_body(HeadVars, _Warnings,
-            Goal2, Goal3, Varset0, Varset, VarTypes0, VarTypes,
+            Goal2, Goal3, VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         recompute_instmap_delta(no, Goal3, Goal, VarTypes, InstVarSet,
             InitInstMap, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(Varset, !ProcInfo),
+        proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-        process_proc(!ProcInfo, !ModuleInfo, _),
+        ( Pass > 3 ->
+            true
+        ;
+            process_proc(!ProcInfo, !ModuleInfo, PredId, Pass + 1, _)
+        ),
         Successful = yes
     ;
         Changed = no,
@@ -363,7 +398,21 @@ process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
         list.foldl(insert_branch_into_refined_goals(Goal0), BranchList,
             !RefinedGoals),
         Goal = true_goal,
-        !:Changed = yes
+        !:Changed = yes,
+
+        Debug = Options ^ debug,
+        (
+            Debug = no
+        ;
+            Debug = yes,
+            Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+            GoalPath0 = goal_info_get_goal_path(GoalInfo0),
+            GoalPathStr0 = goal_path_to_string(GoalPath0),
+            trace [io(!IO)] (
+                io.format("unneeded code at goal path %s\n", [s(GoalPathStr0)],
+                    !IO)
+            )
+        )
     ),
     undemand_virgin_outputs(Goal0, ModuleInfo, InitInstMap, !WhereNeededMap),
     ( goal_get_purity(Goal) = purity_impure ->
@@ -620,8 +669,8 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         (
             Cases0 = [case(_, hlds_goal(_, FirstCaseGoalInfo)) | _],
             FirstCaseGoalPath = goal_info_get_goal_path(FirstCaseGoalInfo),
-            FirstCaseGoalPath = [SwitchStep | _],
-            SwitchStep = step_switch(_, MaybeNumAltPrime)
+            cord.get_last(FirstCaseGoalPath, FirstCaseLastStep),
+            FirstCaseLastStep = step_switch(_, MaybeNumAltPrime)
         ->
             MaybeNumAlt = MaybeNumAltPrime
         ;
@@ -1050,7 +1099,7 @@ where_needed_upper_bound(CurrentPath,
 
 where_needed_branches_upper_bound(CurrentPath, BranchesA, BranchesB,
         WhereNeeded) :-
-    % should select smaller map to convert to list
+    % Should select smaller map to convert to list.
     map.to_assoc_list(BranchesA, BranchesList),
     where_needed_branches_upper_bound_2(CurrentPath,
         BranchesList, BranchesB, WhereNeeded).
@@ -1070,13 +1119,14 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
         ( branch_point_is_complete(BranchAlts, Alts) ->
             (
                 get_parent_branch_point(GoalPath,
-                    ParentGoalPath, ParentGoalPathStep,
+                    ParentGoalInitialPath, ParentGoalPathStep,
                     ParentBranchAlt, ParentBranchNum),
-                \+ list.remove_suffix(CurrentPath,
-                    [ParentGoalPathStep | ParentGoalPath], _)
+                ParentGoalPath = cord.snoc(ParentGoalInitialPath,
+                    ParentGoalPathStep),
+                \+ goal_path_inside(ParentGoalPath, CurrentPath)
             ->
                 map.delete(Branches0, BranchPoint, Branches1),
-                ParentBranchPoint = branch_point(ParentGoalPath,
+                ParentBranchPoint = branch_point(ParentGoalInitialPath,
                     ParentBranchAlt),
                 set.singleton_set(ParentAlts, ParentBranchNum),
                 where_needed_branches_upper_bound_2(CurrentPath,
@@ -1099,25 +1149,27 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
 :- pred get_parent_branch_point(goal_path::in, goal_path::out,
     goal_path_step::out, branch_alts::out, int::out) is semidet.
 
-get_parent_branch_point([First | Rest], Parent, ParentStep,
+get_parent_branch_point(GoalPath, ParentPath, ParentStep,
         BranchAlt, BranchNum) :-
-    ( First = step_switch(Arm, MaybeNumAlts) ->
-        Parent = Rest,
-        ParentStep = First,
+    cord.split_last(GoalPath, InitialPath, LastStep),
+    ( LastStep = step_switch(Arm, MaybeNumAlts) ->
+        ParentPath = InitialPath,
+        ParentStep = LastStep,
         BranchAlt = alt_switch(MaybeNumAlts),
         BranchNum = Arm
-    ; First = step_ite_then ->
-        Parent = Rest,
-        ParentStep = First,
+    ; LastStep = step_ite_then ->
+        ParentPath = InitialPath,
+        ParentStep = LastStep,
         BranchAlt = alt_ite,
         BranchNum = 1
-    ; First = step_ite_else ->
-        Parent = Rest,
-        ParentStep = First,
+    ; LastStep = step_ite_else ->
+        ParentPath = InitialPath,
+        ParentStep = LastStep,
         BranchAlt = alt_ite,
         BranchNum = 2
     ;
-        get_parent_branch_point(Rest, Parent, ParentStep, BranchAlt, BranchNum)
+        get_parent_branch_point(InitialPath, ParentPath, ParentStep,
+            BranchAlt, BranchNum)
     ).
 
 :- pred branch_point_is_complete(branch_alts::in, set(int)::in) is semidet.

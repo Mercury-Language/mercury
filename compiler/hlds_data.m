@@ -37,6 +37,7 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module cord.
 :- import_module int.
 :- import_module svmap.
 :- import_module svmulti_map.
@@ -1090,7 +1091,7 @@ init_hlds_constraint(constraint(Name, Types), constraint([], Name, Types)).
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
     ProgConstraints = constraints(UnivConstraints, ExistConstraints),
-    GoalPath = [],
+    GoalPath = empty,
     make_hlds_constraint_list(UnivConstraints, assumed, GoalPath,
         AssumedConstraints),
     make_hlds_constraint_list(ExistConstraints, unproven, GoalPath,

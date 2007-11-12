@@ -906,12 +906,12 @@ format_proc_label(ProcLabel) = Str :-
 
 format_path_port(port_only(Port)) = Str :-
     mdbcomp.trace_counts.string_to_trace_port(Str, Port).
-format_path_port(path_only(Path)) = "<" ++ string_from_path(Path) ++ ">".
+format_path_port(path_only(Path)) = "<" ++ goal_path_to_string(Path) ++ ">".
 format_path_port(port_and_path(Port, Path)) =
     format_path_port(port_only(Port)) ++ " " ++
         format_path_port(path_only(Path)).
 
 :- func format_context(string, int) = string.
 
-format_context(FileName, LineNumber) =
-        FileName ++ ":" ++ int_to_string(LineNumber).
+format_context(FileName, LineNumber) = Str :-
+    Str = FileName ++ ":" ++ int_to_string(LineNumber).

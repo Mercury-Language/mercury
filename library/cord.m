@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -55,6 +55,10 @@
     %
 :- func empty = cord(T).
 
+    % Succeed iff the given cord is empty.
+    %
+:- pred is_empty(cord(T)::in) is semidet.
+
     % list(singleton(X)) = [X]
     %
 :- func singleton(T) = cord(T).
@@ -85,6 +89,23 @@
     % head_tail/3 gives O(1) amortized cost for each call.
     %
 :- pred head_tail(cord(T)::in, T::out, cord(T)::out) is semidet.
+
+    %     split_last(C0, C, X)  =>  list(C0) = C ++ [X].
+    % not split_last(C0, _, _)  =>  C0 = empty
+    % An O(n) operation, although traversing an entire cord with
+    % split_last/3 gives O(1) amortized cost for each call.
+    %
+:- pred split_last(cord(T)::in, cord(T)::out, T::out) is semidet.
+
+    %     get_first(C0, X)  =>  some [C]: list(C0) = [X] ++ C.
+    % not get_first(C0, _)  =>  C0 = empty
+    %
+:- pred get_first(cord(T)::in, T::out) is semidet.
+
+    %     get_last(C0, X)  =>  some [C]: list(C0) = C ++ [X].
+    % not get_last(C0, _)  =>  C0 = empty
+    %
+:- pred get_last(cord(T)::in, T::out) is semidet.
 
     % length(C) = list.length(list(C))
     % An O(n) operation.
@@ -120,6 +141,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module require.
 
     % We impose the following invariants to ensure we have a unique
     % representation for the empty cord (this makes the implementation
@@ -138,6 +160,10 @@
 %-----------------------------------------------------------------------------%
 
 empty = nil.
+
+%-----------------------------------------------------------------------------%
+
+is_empty(nil).
 
 %-----------------------------------------------------------------------------%
 
@@ -175,12 +201,80 @@ CA ++ CB = (      if CA = nil then CB
 
 %-----------------------------------------------------------------------------%
 
-head_tail(leaf(X),          X, nil ).
-head_tail(leaves([X | Xs]), X, C   ) :-
+head_tail(leaf(X),          X, nil).
+head_tail(leaves([X | Xs]), X, C  ) :-
     C = ( if Xs = [] then nil else leaves(Xs) ).
-head_tail(branch(CA0, CB),  X, C   ) :-
+head_tail(branch(CA0, CB),  X, C  ) :-
     head_tail(CA0, X, CA),
     C = CA ++ CB.
+
+%-----------------------------------------------------------------------------%
+
+split_last(leaf(X),         nil, X).
+split_last(leaves(Xs0),     C,   X) :-
+    split_list_last(Xs0, C, X).
+split_last(branch(CA, CB0), C,   X) :-
+    split_last(CB0, CB, X),
+    C = CA ++ CB.
+
+    % split_list_last(Xs0, C, X):
+    %
+    % Given a nonempty list Xs0, returns its last element as X and all the
+    % elements before it as the cord C. This has a similar effect to
+    %
+    %   list.split_last(Xs0, Xs, X),
+    %   C = ( if Xs = [] then nil else leaves(Xs) ).
+    %
+    % but while repeatedly taking the last element of a list is an O(n^2)
+    % operation (since a list is a right stick), we return C as a left stick,
+    % on which repeatedly taking the last element of a list is an O(n)
+    % operation. This ensures O(1) amortized cost for each call to
+    % split_last/3 when an entire cord is traversed with that predicate.
+    % 
+:- pred split_list_last(list(T)::in, cord(T)::out, T::out) is det.
+
+split_list_last([], _, _) :-
+    % This violates the invariant that an empty cord is represented by nil,
+    % not by leaves([]).
+    error("cord.m: split_list_last finds []").
+split_list_last([H | T], InitialCord, Last) :-
+    (
+        T = [],
+        InitialCord = nil,
+        Last = H
+    ;
+        T = [TH | TT],
+        split_list_last_2(leaf(H), TH, TT, InitialCord, Last)
+    ).
+
+:- pred split_list_last_2(cord(T)::in, T::in, list(T)::in,
+    cord(T)::out, T::out) is det.
+
+split_list_last_2(BeforeCord, H, T, InitialCord, Last) :-
+    (
+        T = [],
+        InitialCord = BeforeCord,
+        Last = H
+    ;
+        T = [TH | TT],
+        split_list_last_2(BeforeCord ++ leaf(H), TH, TT, InitialCord, Last)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_first(leaf(X),         X).
+get_first(leaves(Xs),      X) :-
+    Xs = [X | _].
+get_first(branch(CA, _CB), X) :-
+    get_first(CA, X).
+
+%-----------------------------------------------------------------------------%
+
+get_last(leaf(X),         X).
+get_last(leaves(Xs),      X) :-
+    list.last(Xs, X).
+get_last(branch(_CA, CB), X) :-
+    get_last(CB, X).
 
 %-----------------------------------------------------------------------------%
 
