@@ -268,7 +268,7 @@ realclean_local:
 # Installation targets
 
 .PHONY: install
-install: install_library
+install: install_ints install_hdrs install_library
 
 .PHONY: install_dirs
 install_dirs:
@@ -281,6 +281,12 @@ ifneq ("$(filter il% java% erlang%,$(GRADE))","")
 
 # there is no ssdb (YET!) in the .NET, Java, Erlang backends
 
+.PHONY: install_ints
+install_ints:
+
+.PHONY: install_hdrs
+install_hdrs:
+
 .PHONY: install_init
 install_init: 
 
@@ -288,6 +294,12 @@ install_init:
 install_library:
 
 else 
+
+.PHONY: install_ints
+install_ints: lib$(SSDB_LIB_NAME).install_ints
+
+.PHONY: install_hdrs
+install_hdrs: lib$(SSDB_LIB_NAME).install_hdrs
 
 .PHONY: install_init
 install_init: $(SSDB_LIB_NAME).init install_dirs
