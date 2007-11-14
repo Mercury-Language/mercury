@@ -51,6 +51,7 @@ MCFLAGS-invalid_event =		--event-set-file-name invalid_event_spec
 MCFLAGS-invalid_mllibs =	--no-errorcheck-only --no-verbose-make \
 				--options-file Mercury.options.invalid \
 				--make invalid_mllibs
+MCFLAGS-instance_var_bug =      --verbose-error-messages
 MCFLAGS-loopcheck =		--warn-inferred-erroneous \
 				--verbose-error-messages
 MCFLAGS-method_impl =		--no-intermodule-optimization \

@@ -12,7 +12,14 @@
 % This module checks conformance of instance declarations to the typeclass
 % declaration. It takes various steps to do this.
 %
-% First, in check_instance_decls/6, for every method of every instance we
+% (1) in check_instance_declaration_types/4, we check that each type
+% in the instance declaration must be either a type with no arguments,
+% or a polymorphic type whose arguments are all distinct type variables.
+% We also check that all of the types in exported instance declarations are
+% in scope here.  XXX the latter part should really be done earlier, but with
+% the current implementation this is the most convenient spot.
+%
+% (2) in check_instance_decls/6, for every method of every instance we
 % generate a new pred whose types and modes are as expected by the typeclass
 % declaration and whose body just calls the implementation provided by the
 % instance declaration.
@@ -47,7 +54,7 @@
 % using the instance constraints as assumptions.  At this point we fill in
 % the super class proofs.
 %
-% Second, in check_for_cyclic_classes/4, we check for cycles in the typeclass
+% (3) in check_for_cyclic_classes/4, we check for cycles in the typeclass
 % hierarchy.  A cycle occurs if we can start from any given typeclass
 % declaration and follow the superclass constraints on classes to reach the
 % same class that we started from.  Only the class_id needs to be repeated;
@@ -55,10 +62,10 @@
 % on class declarations only, not those on instance declarations.  While doing
 % this, we fill in the fundeps_ancestors field in the class table.
 %
-% Third, in check_for_missing_concrete_instances/4, we check that each
+% (4) in check_for_missing_concrete_instances/4, we check that each
 % abstract instance has a corresponding concrete instance.
 %
-% Fourth, in check_functional_dependencies/4, all visible instances are
+% (5) in check_functional_dependencies/4, all visible instances are
 % checked for coverage and mutual consistency with respect to any functional
 % dependencies.  This doesn't necessarily catch all cases of inconsistent
 % instances, however, since in general that cannot be done until link time.
@@ -70,14 +77,7 @@
 % generated, we should add the concrete definitions before this pass to
 % ensure that they get checked.
 %
-% Fifth, in check_instance_declaration_types/4, we check that each type
-% in the instance declaration must be either a type with no arguments,
-% or a polymorphic type whose arguments are all distinct type variables.
-% We also check that all of the types in exported instance declarations are
-% in scope here.  XXX that should really be done earlier, but with the
-% current implementation this is the most convenient spot.
-%
-% Last, in check_typeclass_constraints/4, we check typeclass constraints on
+% (6) in check_typeclass_constraints/4, we check typeclass constraints on
 % predicate and function declarations and on existentially typed data
 % constructors for ambiguity, taking into consideration the information
 % provided by functional dependencies.  We also call check_constraint_quant/5
@@ -149,41 +149,59 @@
 check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
+    
     trace [io(!IO1)] (
-        maybe_write_string(Verbose, "% Checking typeclass instances...\n",
-            !IO1)
-    ),
-    check_instance_decls(!ModuleInfo, !QualInfo, !Specs),
-
-    trace [io(!IO2)] (
-        maybe_write_string(Verbose, "% Checking for cyclic classes...\n",
-            !IO2)
-    ),
-    check_for_cyclic_classes(!ModuleInfo, !Specs),
-
-    trace [io(!IO3)] (
     maybe_write_string(Verbose,
-        "% Checking for missing concrete instances...\n", !IO3)
-    ),
-    check_for_missing_concrete_instances(!ModuleInfo, !Specs),
-
-    trace [io(!IO4)] (
-    maybe_write_string(Verbose,
-        "% Checking functional dependencies on instances...\n", !IO4)
-    ),
-    check_functional_dependencies(!ModuleInfo, !Specs),
-
-    trace [io(!IO5)] (
-    maybe_write_string(Verbose,
-        "% Checking instance declaration types...\n", !IO5)
+        "% Checking instance declaration types...\n", !IO1)
     ),
     check_instance_declaration_types(!ModuleInfo, !Specs),
+  
+    % If we encounter any errors while checking that the types in an
+    % instance declaration are valid then don't attempt the remaining
+    % passes.  Pass 2 cannot be run since the name mangling scheme we
+    % use to generate the names of the method wrapper predicates may 
+    % abort if the types in an instance are not valid, e.g. if an
+    % instance head contains a type variable that is not wrapped inside
+    % a functor.  Most of the other passes also depend upon information
+    % that is calculated during pass 2.
+    %
+    % XXX it would be better to just remove the invalid instances at this
+    % point and then continue on with the valid instances.
+    %
+    (
+        !.Specs = [],
+        trace [io(!IO2)] (
+            maybe_write_string(Verbose,
+                "% Checking typeclass instances...\n", !IO2)
+        ),
+        check_instance_decls(!ModuleInfo, !QualInfo, !Specs),
+    
+        trace [io(!IO3)] (
+            maybe_write_string(Verbose,
+                "% Checking for cyclic classes...\n", !IO3)
+        ),
+        check_for_cyclic_classes(!ModuleInfo, !Specs),
 
-    trace [io(!IO6)] (
-    maybe_write_string(Verbose, "% Checking typeclass constraints...\n",
-        !IO6)
-    ),
-    check_typeclass_constraints(!ModuleInfo, !Specs).
+        trace [io(!IO4)] (
+            maybe_write_string(Verbose,
+                "% Checking for missing concrete instances...\n", !IO4)
+        ),
+        check_for_missing_concrete_instances(!ModuleInfo, !Specs),
+
+        trace [io(!IO5)] (
+            maybe_write_string(Verbose,
+                "% Checking functional dependencies on instances...\n", !IO5)
+        ),
+        check_functional_dependencies(!ModuleInfo, !Specs),
+
+        trace [io(!IO6)] (
+            maybe_write_string(Verbose,
+                "% Checking typeclass constraints...\n", !IO6)
+        ),
+        check_typeclass_constraints(!ModuleInfo, !Specs)
+    ;
+        !.Specs = [_ | _]
+    ). 
 
 %---------------------------------------------------------------------------%
 
@@ -235,7 +253,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
         !:Specs = [Spec | !.Specs],
         InstanceDefns = InstanceDefns0
     ;
-        solutions.solutions(
+        solutions(
             ( pred(PredId::out) is nondet :-
                 list.member(ClassProc, ClassInterface),
                 ClassProc = hlds_class_proc(PredId, _)
@@ -431,7 +449,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         !InstanceCheckInfo, !Specs) :-
     !.InstanceCheckInfo = instance_check_info(InstanceDefn0,
         OrderedMethods0, ModuleInfo0, QualInfo0),
-    solutions.solutions((pred(ProcId::out) is nondet :-
+    solutions((pred(ProcId::out) is nondet :-
             list.member(ClassProc, ClassInterface),
             ClassProc = hlds_class_proc(PredId, ProcId)
         ), ProcIds),

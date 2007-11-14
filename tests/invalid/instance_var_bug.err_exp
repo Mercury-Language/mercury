@@ -1,0 +1,4 @@
+instance_var_bug.m:014: In instance declaration for `instance_var_bug.tc(V)':
+instance_var_bug.m:014:   the first arg is a type variable
+instance_var_bug.m:014:   types in instance declarations must be functors with
+instance_var_bug.m:014:   distinct variables as arguments
