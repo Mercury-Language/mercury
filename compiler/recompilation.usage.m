@@ -240,9 +240,11 @@ write_module_name_and_used_items(RecompInfo, Timestamps, ModuleInstances,
     io.write_string(Suffix, !IO),
     io.write_string(""", ", !IO),
     write_version_number(ModuleTimestamp, !IO),
-    ( NeedQualifier = must_be_qualified ->
+    (
+        NeedQualifier = must_be_qualified,
         io.write_string(", used)", !IO)
     ;
+        NeedQualifier = may_be_unqualified,
         io.write_string(")", !IO)
     ),
     (

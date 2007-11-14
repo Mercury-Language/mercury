@@ -74,6 +74,7 @@
 :- import_module multi_map.
 :- import_module string.
 :- import_module svmap.
+:- import_module svmulti_map.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -688,11 +689,12 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, _Context,
     ( QualifiedConsId = cons(qualified(Module, ConsName), Arity) ->
         % Add the unqualified version of the cons_id to the cons_table,
         % if appropriate.
-        ( NeedQual = may_be_unqualified ->
+        (
+            NeedQual = may_be_unqualified,
             UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-            multi_map.set(!.Ctors, UnqualifiedConsId, ConsDefn, !:Ctors)
+            svmulti_map.set(UnqualifiedConsId, ConsDefn, !Ctors)
         ;
-            true
+            NeedQual = must_be_qualified 
         ),
 
         % Add partially qualified versions of the cons_id.
@@ -788,11 +790,12 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
 
         % Add an unqualified version of the field name to the table,
         % if appropriate.
-        ( NeedQual = may_be_unqualified ->
-            multi_map.set(!.FieldNameTable, unqualified(UnqualFieldName),
-                FieldDefn, !:FieldNameTable)
+        (
+            NeedQual = may_be_unqualified,
+            svmulti_map.set(unqualified(UnqualFieldName), FieldDefn,
+                !FieldNameTable)
         ;
-            true
+            NeedQual = must_be_qualified 
         ),
 
         % Add partially qualified versions of the cons_id
@@ -804,8 +807,8 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     module_name::in, ctor_field_table::in, ctor_field_table::out) is det.
 
 do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
-    multi_map.set(!.FieldNameTable, qualified(ModuleName, FieldName),
-        FieldNameDefn, !:FieldNameTable).
+    svmulti_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
+        !FieldNameTable).
 
 %----------------------------------------------------------------------------%
 
