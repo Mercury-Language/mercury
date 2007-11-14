@@ -23,7 +23,7 @@
 
 :- import_module int, list, std_util.
 
-:- solver type st where representation is int, initialisation is i.
+:- solver type st where representation is int.
 
 %-----------------------------------------------------------------------------%
 

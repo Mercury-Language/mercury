@@ -2226,10 +2226,29 @@ parse_where_initialisation_is(ModuleName, Term) = Result :-
     (
         Result0 = ok1(no)
     ->
-        Result = parse_where_is("initialization",
+        Result1 = parse_where_is("initialization",
             parse_where_pred_is(ModuleName), Term)
     ;
-        Result = Result0
+        Result1 = Result0
+    ),
+    promise_pure (
+        (
+            Result1 = ok1(yes(_)),
+            semipure semipure_get_solver_auto_init_supported(AutoInitSupported),
+            (
+                AutoInitSupported = yes,
+                Result = Result1
+            ;
+                AutoInitSupported = no,
+                Msg = "unknown attribute in solver type definition",
+                Result = error1([Msg - Term])
+            )
+        ;
+            ( Result1 = ok1(no)
+            ; Result1 = error1(_)
+            ), 
+            Result  = Result1
+        )
     ).
 
 :- func parse_where_pred_is(module_name, term) = maybe1(sym_name).

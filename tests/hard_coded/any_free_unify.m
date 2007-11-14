@@ -16,7 +16,6 @@ main -->
 
 :- solver type foo
 	where	representation is int,	
-		initialisation is init_foo,
 		ground         is ground,
 		any            is ground.
 

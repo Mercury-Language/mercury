@@ -3,6 +3,7 @@ NEWS since Mercury 0.13.1
 
 Changes to the Mercury language:
 
+* We have removed support for automatic initialisation of solver variables.
 * A new pragma, foreign_enum, allows the constructors of Mercury 
   enumeration types to be assigned values from foreign language code.
 * A new pragma, foreign_export_enum, allows the constructors of Mercury
@@ -261,6 +262,18 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* Support for the automatic initialisation of solver variables has been
+  removed because it was source of confusing errors and was not used in
+  practice anyway.
+
+  A consequence of this is that solver types are now properly polymorphic,
+  i.e. types like `foo(bar)' where:
+
+  	:- solver type foo(T).
+	:- solver type bar.
+  
+  are now supported.
 
 * The new pragma, foreign_enum, can be used to establish a 
   mapping between values in a foreign language and the constructors

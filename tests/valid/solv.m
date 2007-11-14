@@ -53,7 +53,6 @@
 
 :- solver type fd_var
 	where	representation is c_pointer,
-		initialisation is init_any,
 		ground         is ground,
 		any            is ground.
 

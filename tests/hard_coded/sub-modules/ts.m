@@ -12,8 +12,7 @@
 :- implementation.
 
 :- import_module int, exception.
-:- solver type st where representation is int,
-    initialisation is init_int.
+:- solver type st where representation is int.
 
 :- pred init_int(st::oa) is erroneous.
 init_int(_A) :- throw("stop").

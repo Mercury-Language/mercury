@@ -57,8 +57,7 @@ literal_list(N) = LitList :-
 :- mutable(literal_supply, int, 561, ground, [untrailed]).
 
 :- solver type literal
-    where   representation is int,
-            initialisation is make_new_literal.
+    where   representation is int.
 
 :- pred make_new_literal(literal::oa) is det.
 

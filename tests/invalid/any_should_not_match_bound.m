@@ -33,7 +33,6 @@ test_any_solver(X, Y) :-
 
 :- solver type foo
 	where representation is int,
-	      initialisation is init_foo,
 	      ground         is ground,
 	      any            is ground,
 	      equality       is eq_foo.

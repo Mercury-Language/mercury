@@ -233,6 +233,12 @@
 
 :- pred io_get_extra_error_info(bool::out, io::di, io::uo) is det.
 
+    % This is semipure because it is called in a context in which the I/O
+    % state is not available.  Note that the corresponding set predicate
+    % below does take the I/O state.
+    %
+:- semipure pred semipure_get_solver_auto_init_supported(bool::out) is det.
+
 :- pred io_get_globals(globals::out, io::di, io::uo) is det.
 
 :- pred io_set_globals(globals::in, io::di, io::uo) is det.
@@ -244,6 +250,7 @@
 :- pred io_set_trace_level(trace_level::in, io::di, io::uo) is det.
 :- pred io_set_trace_level_none(io::di, io::uo) is det.
 :- pred io_set_extra_error_info(bool::in, io::di, io::uo) is det.
+:- pred io_set_solver_auto_init_supported(bool::in, io::di, io::uo) is det.
 
 :- pred io_lookup_option(option::in, option_data::out, io::di, io::uo) is det.
 
@@ -370,6 +377,19 @@ gc_is_conservative(gc_automatic) = no.
     % out if `-E' were enabled.
     %
 :- mutable(extra_error_info, bool, no, ground,
+    [untrailed, attach_to_io_state, thread_local]).
+
+    % This mutable is used to control how the parser handles `initialisation'
+    % attributes in solver type definitions.  They are not currently part
+    % of the language, so by default if we encounter one it is reported
+    % as a syntax error.   If the developer-only option
+    % `--solver-type-auto-init' is given then we enable support for them.
+    %
+    % Since this information is only needed at one place in the parser
+    % we use this mutable in preference to passing an extra argument
+    % throughout the parser.
+    %
+:- mutable(solver_auto_init_supported, bool, no, ground,
     [untrailed, attach_to_io_state, thread_local]).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
@@ -535,7 +555,10 @@ globals_io_init(Options, Target, GC_Method, TagsMethod, TerminationNorm,
     globals_init(Options, Target1, GC_Method1, TagsMethod1,
         TerminationNorm1, Termination2Norm1, TraceLevel1,
         TraceSuppress1, MaybeThreadSafe1, Globals),
-    io_set_globals(Globals, !IO).
+    io_set_globals(Globals, !IO),
+    getopt_io.lookup_bool_option(Options, solver_type_auto_init,
+        AutoInitSupported),
+    io_set_solver_auto_init_supported(AutoInitSupported, !IO).
 
 io_get_target(Target, !IO) :-
     io_get_globals(Globals, !IO),
@@ -571,6 +594,9 @@ io_get_maybe_thread_safe(MaybeThreadSafe, !IO) :-
 
 io_get_extra_error_info(ExtraErrorInfo, !IO) :-
     get_extra_error_info(ExtraErrorInfo, !IO).
+
+semipure_get_solver_auto_init_supported(AutoInitSupported) :-
+    semipure get_solver_auto_init_supported(AutoInitSupported).
 
 io_get_globals(Globals, !IO) :-
     globals.get_globals(UnivGlobals, !IO),
@@ -615,6 +641,9 @@ io_set_trace_level(TraceLevel, !IO) :-
 
 io_set_extra_error_info(ExtraErrorInfo, !IO) :-
     set_extra_error_info(ExtraErrorInfo, !IO).
+
+io_set_solver_auto_init_supported(AutoInitSupported, !IO) :-
+    set_solver_auto_init_supported(AutoInitSupported, !IO).
 
     % This predicate is needed because mercury_compile.m doesn't know
     % anything about type trace_level.
