@@ -2687,64 +2687,69 @@ process_du_type(ModuleName, Head, Body, Ctors, MaybeUserEqComp, Result) :-
     maybe1(processed_type_body)::out) is det.
 
 process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
+    process_du_ctors(Params, Ctors, CtorsResult),
     (
-        % Check that all type variables in the body are either explicitly
-        % existentially quantified or occur in the head.
+        CtorsResult = ok,
+        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp),
+        ProcessedTypeBody = processed_type_body(Functor, Params, TypeDefn),
+        Result = ok1(ProcessedTypeBody)
+    ;
+        CtorsResult = error(Msg),
+        Result = error1([Msg - Body])
+    ).
 
-        list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, _Constraints, _CtorName, CtorArgs, _Ctxt),
+:- pred process_du_ctors(list(type_param)::in, list(constructor)::in,
+    maybe_error::out) is det.
+
+process_du_ctors(_Params, [],  ok).
+process_du_ctors(Params, [Ctor | Ctors], Result) :-    
+    Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Conetxt),
+    (
+        % Check that all type variables in the ctor are either explicitly
+        % existentially quantified or occur in the head of the type.
+        %
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         type_list_contains_var(CtorArgTypes, Var),
         \+ list.member(Var, ExistQVars),
         \+ list.member(Var, Params)
     ->
-        Msg = "free type parameter in RHS of type definition",
-        Result = error1([Msg - Body])
+        Result = error("free type parameter in RHS of type definition")
     ;
         % Check that all type variables in existential quantifiers do not
         % occur in the head (maybe this should just be a warning, not an error?
         % If we were to allow it, we would need to rename them apart.)
-
-        list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, _Constraints, _CtorName, _CtorArgs, _Ctxt),
+        %
         list.member(Var, ExistQVars),
         list.member(Var, Params)
     ->
-        Msg = "type variable has overlapping scopes " ++
-            "(explicit type quantifier shadows argument type)",
-        Result = error1([Msg - Body])
+        Result = error("type variable has overlapping scopes " ++
+            "(explicit type quantifier shadows argument type)")
     ;
         % Check that all type variables in existential quantifiers occur
         % somewhere in the constructor argument types or constraints.
-
-        list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Ctxt),
+        %
         list.member(Var, ExistQVars),
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         \+ type_list_contains_var(CtorArgTypes, Var),
         constraint_list_get_tvars(Constraints, ConstraintTVars),
         \+ list.member(Var, ConstraintTVars)
-    ->
-        Msg = "type variable in existential quantifier " ++
-            "does not occur in arguments or constraints of constructor",
-        Result = error1([Msg - Body])
+    ->       
+        Result = error("type variable in existential quantifier " ++
+            "does not occur in arguments or constraints of constructor")
     ;
         % Check that all type variables in existential constraints occur in
         % the existential quantifiers.
-
-        list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, Constraints, _CtorName, _CtorArgs, _Ctxt),
+        %
         list.member(Constraint, Constraints),
         Constraint = constraint(_Name, ConstraintArgs),
         type_list_contains_var(ConstraintArgs, Var),
         \+ list.member(Var, ExistQVars)
     ->
-        Msg = "type variables in class constraints introduced with `=>' " ++
-            "must be explicitly existentially quantified using `some'",
-        Result = error1([Msg - Body])
+        Result = error("type variables in class constraints introduced" ++
+            " with `=>' must be explicitly existentially quantified" ++
+            " using `some'")
     ;
-        Result = ok1(processed_type_body(Functor, Params,
-            parse_tree_du_type(Ctors, MaybeUserEqComp)))
+        process_du_ctors(Params, Ctors, Result)
     ).
 
 %-----------------------------------------------------------------------------%
