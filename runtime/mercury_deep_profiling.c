@@ -1388,7 +1388,7 @@ MR_write_num(FILE *fp, unsigned long num)
     }
 #endif
 
-    MR_deep_assert(NULL, NULL, NULL, (int) num >= 0);
+    MR_deep_assert(NULL, NULL, NULL, (MR_Integer) num >= 0);
 
     i = 0;
     do {
@@ -1416,7 +1416,7 @@ MR_write_fixed_size_int(FILE *fp, unsigned long num)
     }
 #endif
 
-    MR_deep_assert(NULL, NULL, NULL, (int) num >= 0);
+    MR_deep_assert(NULL, NULL, NULL, (MR_Integer) num >= 0);
 
     for (i = 0; i < MR_FIXED_SIZE_INT_BYTES; i++) {
         putc(num & ((1 << 8) - 1), fp);
