@@ -247,18 +247,26 @@
     --->    all_strict
     ;       all_fast_loose
     ;       specified(
-                list(maybe(arg_tabling_method))
+                list(maybe(arg_tabling_method)),
                 % This list contains one element for each user-visible
                 % argument of the predicate. Elements that correspond
                 % to output arguments should be "no". Elements that
                 % correspond to input arguments should be "yes",
                 % specifying how to look up that argument in the call table.
+
+                hidden_arg_tabling_method
+                % This specifies the tabling method for hidden arguments
+                % introduced by the compiler.
             ).
 
 :- type arg_tabling_method
     --->    arg_value
     ;       arg_addr
     ;       arg_promise_implied.
+
+:- type hidden_arg_tabling_method
+    --->    hidden_arg_value
+    ;       hidden_arg_addr.
 
 :- type table_io_is_decl
     --->    table_io_decl       % The procedure is tabled for

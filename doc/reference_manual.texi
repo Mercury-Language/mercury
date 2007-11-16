@@ -10195,6 +10195,13 @@ the untabled argument for computing any of its output.
 (It is ok for it to use the untabled argument
 to decide what exception to throw.)
 
+@c Experimental:
+@c The @samp{specified} attribute can additionally take an argument after
+@c the list, which is either @samp{hidden_arg_value} or @samp{hidden_arg_addr}.
+@c If @samp{hidden_arg_addr} is specified, extra arguments introduced by the
+@c compiler will be tabled by address, otherwise they are tabled by value.
+@c @samp{hidden_arg_value} is assumed if neither is present.
+
 If the tabled predicate or function has only one mode,
 then this declaration can also be specified without giving the argument modes:
 

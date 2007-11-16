@@ -270,12 +270,16 @@ digits_to_num(Digits) = Num :-
     Num = digits_to_num_2(RevDigits).
 
 :- func digits_to_num_2(list(int)) = int.
+:- pragma memo(digits_to_num_2/1,
+    [specified([addr, output], hidden_arg_addr, hidden_arg_addr)]).
 
 digits_to_num_2([]) = 0.
 digits_to_num_2([Last | Rest]) =
     10 * digits_to_num_2(Rest) + Last.
 
 :- func num_to_digits(int) = list(int).
+:- pragma memo(num_to_digits/1,
+    [specified([value, output], voodoo)]).
 
 num_to_digits(Int) = Digits :-
     ( Int < 10 ->

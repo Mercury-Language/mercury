@@ -1,4 +1,6 @@
 specified.m:155: Error: expected argument tabling method: implied.
+specified.m:274: Error: expected one or two arguments: specified([addr, output], hidden_arg_addr, hidden_arg_addr).
+specified.m:282: Error: expected hidden argument tabling method: voodoo.
 specified.m:138: Error in `pragma memo' declaration for predicate
 specified.m:138:   `specified.ap_lp_fib'/3:
 specified.m:138:   argument 3: argument tabling method `addr' is not compatible

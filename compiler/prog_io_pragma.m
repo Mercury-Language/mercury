@@ -2262,7 +2262,7 @@ update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
                 MaybeAttributes)
         ;
             Msg = "duplicate argument tabling methods attribute"
-                ++ "in `:- pragma memo' declaration",
+                ++ " in `:- pragma memo' declaration",
             MaybeAttributes = error1([Msg - Term])
         )
     ;
@@ -2273,7 +2273,7 @@ update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
                 MaybeAttributes)
         ;
             Msg = "duplicate size limits attribute"
-                ++ "in `:- pragma memo' declaration",
+                ++ " in `:- pragma memo' declaration",
             MaybeAttributes = error1([Msg - Term])
         )
     ;
@@ -2288,7 +2288,7 @@ update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
                 MaybeAttributes)
         ;
             Msg = "duplicate statistics attribute"
-                ++ "in `:- pragma memo' declaration",
+                ++ " in `:- pragma memo' declaration",
             MaybeAttributes = error1([Msg - Term])
         )
     ;
@@ -2300,7 +2300,7 @@ update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
                 MaybeAttributes)
         ;
             Msg = "duplicate allow_reset attribute"
-                ++ "in `:- pragma memo' declaration",
+                ++ " in `:- pragma memo' declaration",
             MaybeAttributes = error1([Msg - Term])
         )
     ).
@@ -2323,14 +2323,42 @@ parse_tabling_attribute(EvalMethod, Term, MaybeTermAttribute) :-
         )
     ;
         Functor = "specified",
-        Args = [Arg],
-        convert_list(Arg, parse_arg_tabling_method,
+        Args = [Arg1 | MoreArgs],
+        convert_list(Arg1, parse_arg_tabling_method,
             "expected argument tabling method", MaybeMaybeArgMethods),
         (
             MaybeMaybeArgMethods = ok1(MaybeArgMethods),
             ( eval_method_allows_fast_loose(EvalMethod) = yes ->
-                Attribute = attr_strictness(specified(MaybeArgMethods)),
-                MaybeTermAttribute = ok1(Term - Attribute)
+                (
+                    MoreArgs = [],
+                    Attribute = attr_strictness(
+                        specified(MaybeArgMethods, hidden_arg_value)),
+                    MaybeTermAttribute = ok1(Term - Attribute)
+                ;
+                    MoreArgs = [Arg2],
+                    (
+                        Arg2 = term.functor(
+                            term.atom("hidden_arg_value"), [], _)
+                    ->
+                        Attribute = attr_strictness(
+                            specified(MaybeArgMethods, hidden_arg_value)),
+                        MaybeTermAttribute = ok1(Term - Attribute)
+                    ;
+                        Arg2 = term.functor(
+                            term.atom("hidden_arg_addr"), [], _)
+                    ->
+                        Attribute = attr_strictness(
+                            specified(MaybeArgMethods, hidden_arg_addr)),
+                        MaybeTermAttribute = ok1(Term - Attribute)
+                    ;
+                        Msg = "expected hidden argument tabling method",
+                        MaybeTermAttribute = error1([Msg - Arg2])
+                    )
+                ;
+                    MoreArgs = [_, _ | _],
+                    Msg = "expected one or two arguments",
+                    MaybeTermAttribute = error1([Msg - Term])
+                )
             ;
                 Msg = "evaluation method " ++
                     eval_method_to_string(EvalMethod) ++

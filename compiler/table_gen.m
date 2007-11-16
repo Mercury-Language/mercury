@@ -414,8 +414,8 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             CallStrictness = all_fast_loose,
             MaybeSpecMethod = all_same(arg_addr)
         ;
-            CallStrictness = specified(ArgMethods),
-            MaybeSpecMethod = specified(ArgMethods)
+            CallStrictness = specified(ArgMethods, HiddenArgMethod),
+            MaybeSpecMethod = specified(ArgMethods, HiddenArgMethod)
         ),
         ( EvalMethod = eval_minimal(_) ->
             expect(unify(MaybeSizeLimit, no), this_file,
@@ -2420,6 +2420,28 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
             TypeCat = type_cat_variable
         ;
             TypeCat = type_cat_user_ctor
+        ;
+            TypeCat = type_cat_typeclass_info,
+            (
+                ArgTablingMethod = arg_value,
+                unexpected(this_file,
+                    "gen_lookup_call_for_type: typeclass_info_type")
+            ;
+                ( ArgTablingMethod = arg_addr
+                ; ArgTablingMethod = arg_promise_implied
+                ) 
+            )
+        ;
+            TypeCat = type_cat_base_typeclass_info,
+            (
+                ArgTablingMethod = arg_value,
+                unexpected(this_file,
+                    "gen_lookup_call_for_type: base_typeclass_info_type")
+            ;
+                ( ArgTablingMethod = arg_addr
+                ; ArgTablingMethod = arg_promise_implied
+                )
+            )
         ),
         type_vars(Type, TypeVars),
         (
@@ -2469,13 +2491,6 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
     ;
         TypeCat = type_cat_void,
         unexpected(this_file, "gen_lookup_call_for_type: void")
-    ;
-        TypeCat = type_cat_typeclass_info,
-        unexpected(this_file, "gen_lookup_call_for_type: typeclass_info_type")
-    ;
-        TypeCat = type_cat_base_typeclass_info,
-        unexpected(this_file,
-            "gen_lookup_call_for_type: base_typeclass_info_type")
     ),
     CodeStr = CodeStr0 ++ "\t" ++ cur_table_node_name ++ " = " ++
         next_table_node_name ++ ";\n".
@@ -3178,7 +3193,10 @@ generator_type = Type :-
 
 :- type maybe_specified_method
     --->    all_same(arg_tabling_method)
-    ;       specified(list(maybe(arg_tabling_method))).
+    ;       specified(
+                list(maybe(arg_tabling_method)),
+                hidden_arg_tabling_method
+            ).
 
 :- pred get_input_output_vars(list(prog_var)::in, list(mer_mode)::in,
     module_info::in, maybe_specified_method::in, maybe_specified_method::out,
@@ -3197,7 +3215,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
         (
             !.MaybeSpecMethod = all_same(ArgMethod)
         ;
-            !.MaybeSpecMethod = specified(MaybeArgMethods0),
+            !.MaybeSpecMethod = specified(MaybeArgMethods0, HiddenArgMethod),
             (
                 list.split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
@@ -3209,13 +3227,20 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                     unexpected(this_file,
                         "get_input_output_vars: bad method for input var")
                 ),
-                !:MaybeSpecMethod = specified(MaybeArgMethods)
+                !:MaybeSpecMethod = specified(MaybeArgMethods,
+                    HiddenArgMethod)
             ;
                 % We have run out of specified arg_methods, which means the
                 % variable we are looking at right now is one that was added
                 % by the polymorphism transformation.
-                ArgMethod = arg_value,
-                !:MaybeSpecMethod = all_same(arg_value)
+                (
+                    HiddenArgMethod = hidden_arg_value,
+                    ArgMethod = arg_value
+                ;
+                    HiddenArgMethod = hidden_arg_addr,
+                    ArgMethod = arg_addr
+                ),
+                !:MaybeSpecMethod = all_same(ArgMethod)
             )
         ),
         InVarModes = [var_mode_method(Var, Mode, ArgMethod) | InVarModes0]
@@ -3228,19 +3253,27 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
             % to look up computed output arguments in them. The argument of
             % all_same refers only to the treatment of input arguments.
         ;
-            !.MaybeSpecMethod = specified(MaybeArgMethods0),
+            !.MaybeSpecMethod = specified(MaybeArgMethods0, HiddenArgMethod),
             (
                 list.split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
             ->
                 expect(unify(LastMaybeArgMethod, no), this_file,
                     "get_input_output_vars: bad method for output var"),
-                !:MaybeSpecMethod = specified(MaybeArgMethods)
+                !:MaybeSpecMethod = specified(MaybeArgMethods,
+                    HiddenArgMethod)
             ;
                 % We have run out of specified arg_methods, which means the
                 % variable we are looking at right now is one that was added
                 % by the polymorphism transformation.
-                !:MaybeSpecMethod = all_same(arg_value)
+                (
+                    HiddenArgMethod = hidden_arg_value,
+                    ArgMethod = arg_value
+                ;
+                    HiddenArgMethod = hidden_arg_addr,
+                    ArgMethod = arg_addr
+                ),
+                !:MaybeSpecMethod = all_same(ArgMethod)
             )
         ),
         OutVarModes = [var_mode_method(Var, Mode, arg_value) | OutVarModes0]

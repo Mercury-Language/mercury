@@ -2657,7 +2657,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 Statistics = table_gather_statistics,
                 AllowReset = table_allow_reset
             ),
-            ( Strictness = specified(MaybeArgMethods) ->
+            ( Strictness = specified(MaybeArgMethods, _HiddenArgMethod) ->
                 check_pred_args_against_tabling_methods(DeclaredArgModes,
                     MaybeArgMethods, !.ModuleInfo, 1, MaybeError)
             ;

@@ -628,11 +628,20 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
                     Strictness = all_fast_loose,
                     !:Strs = ["fast_loose" | !.Strs]
                 ;
-                    Strictness = specified(Args),
+                    Strictness = specified(Args, HiddenArgMethod),
                     ArgStrs = list.map(maybe_arg_tabling_method_to_string,
                         Args),
                     ArgsStr = string.join_list(", ", ArgStrs),
-                    !:Strs = ["specified(" ++ ArgsStr ++ ")" | !.Strs]
+                    (
+                        HiddenArgMethod = hidden_arg_value,
+                        HiddenArgStr = "hidden_arg_value"
+                    ;
+                        HiddenArgMethod = hidden_arg_addr,
+                        HiddenArgStr = "hidden_arg_addr"
+                    ),
+                    SpecifiedStr = "specified([" ++ ArgsStr ++ "], " ++
+                        HiddenArgStr ++ ")",
+                    !:Strs = [SpecifiedStr | !.Strs]
                 ),
                 (
                     MaybeSizeLimit = yes(SizeLimit),
