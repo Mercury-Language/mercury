@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -143,16 +143,34 @@ pop_list_path([_ | Path], Path).
 
 list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
         !IO) :-
-    find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
-    (
-        Result = yes(InStrm),
-        print_lines_in_range(InStrm, OutStrm, 1, FirstLine, LastLine,
-            MarkLine, !IO)
+    ( dir.path_name_is_absolute(FileName) ->
+        io.open_input(FileName, Result0, !IO),
+        (
+            Result0 = ok(InStream),
+            InStrm = mercury_stream_to_c_FILE_star(InStream),
+            print_lines_in_range(InStrm, OutStrm, 1, FirstLine, LastLine,
+                MarkLine, !IO)
+        ;
+            Result0 = error(Error),
+            ErrorMsg = io.error_message(Error),
+            write_to_c_file(ErrStrm, "mdb: cannot open file ", !IO),
+            write_to_c_file(ErrStrm, FileName, !IO),
+            write_to_c_file(ErrStrm, ": ", !IO),
+            write_to_c_file(ErrStrm, ErrorMsg, !IO),
+            write_to_c_file(ErrStrm, "\n", !IO)
+        )
     ;
-        Result = no,
-        write_to_c_file(ErrStrm, "mdb: cannot find file ", !IO),
-        write_to_c_file(ErrStrm, FileName, !IO),
-        write_to_c_file(ErrStrm, "\n", !IO)
+        find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
+        (
+            Result = yes(InStrm),
+            print_lines_in_range(InStrm, OutStrm, 1, FirstLine, LastLine,
+                MarkLine, !IO)
+        ;
+            Result = no,
+            write_to_c_file(ErrStrm, "mdb: cannot find file ", !IO),
+            write_to_c_file(ErrStrm, FileName, !IO),
+            write_to_c_file(ErrStrm, "\n", !IO)
+        )
     ).
 
 :- pred write_to_c_file(c_file_ptr::in, string::in, io::di, io::uo) is det.
@@ -175,7 +193,6 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
     maybe(c_file_ptr)::out, io::di, io::uo) is det.
 
 find_and_open_file([], _, no, !IO).
-
 find_and_open_file([Dir | Path], FileName, Result, !IO) :-
     io.open_input(Dir / FileName, Result0, !IO),
     (
