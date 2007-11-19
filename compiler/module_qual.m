@@ -352,9 +352,11 @@ collect_mq_info_item(item_mutable(_, _, _, _, _, _), !Info).
     mq_info::in, mq_info::out) is det.
 
 collect_mq_info_qualified_symname(SymName, !Info) :-
-    ( SymName = qualified(ModuleName, _) ->
+    (
+        SymName = qualified(ModuleName, _),
         mq_info_set_module_used(ModuleName, !Info)
     ;
+        SymName = unqualified(_),
         unexpected(this_file,
             "collect_mq_info_qualified_symname: not qualified.")
     ).
@@ -419,10 +421,18 @@ add_module_defn(ModuleName, !Info) :-
 :- pred add_imports(sym_list::in, mq_info::in, mq_info::out) is det.
 
 add_imports(Imports, !Info) :-
-    ( Imports = list_module(ImportedModules) ->
+    (
+        Imports = list_module(ImportedModules),
         add_imports_2(ImportedModules, !Info)
     ;
-        true
+        ( Imports = list_sym(_)
+        ; Imports = list_pred(_)
+        ; Imports = list_func(_)
+        ; Imports = list_cons(_)
+        ; Imports = list_op(_)
+        ; Imports = list_adt(_)
+        ; Imports = list_type(_)
+        )
     ).
 
 :- pred add_imports_2(list(sym_name)::in, mq_info::in, mq_info::out) is det.
@@ -1046,12 +1056,24 @@ qualify_inst_name(typed_inst(_, _), _, !Info, !Specs) :-
 qualify_bound_inst_list([], [], !Info, !Specs).
 qualify_bound_inst_list([bound_functor(ConsId, Insts0) | BoundInsts0],
          [bound_functor(ConsId, Insts) | BoundInsts], !Info, !Specs) :-
-    ( ConsId = cons(Name, Arity) ->
+    (
+        ConsId = cons(Name, Arity),
         Id = item_name(Name, Arity),
         update_recompilation_info(
             recompilation.record_used_item(functor_item, Id, Id), !Info)
     ;
-        true
+        ( ConsId = int_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = pred_const(_, _)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = table_io_decl(_)
+        )
     ),
     qualify_inst_list(Insts0, Insts, !Info, !Specs),
     qualify_bound_inst_list(BoundInsts0, BoundInsts, !Info, !Specs).
@@ -1133,7 +1155,8 @@ qualify_type(kinded_type(Type0, Kind), kinded_type(Type, Kind),
         !Info, !Specs) :-
     qualify_type(Type0, Type, !Info, !Specs).
     
-:- pred qualify_type_ctor(type_ctor::in, type_ctor::out, mq_info::in, mq_info::out,
+:- pred qualify_type_ctor(type_ctor::in, type_ctor::out,
+    mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_type_ctor(!TypeCtor, !Info, !Specs) :-
@@ -1143,7 +1166,8 @@ qualify_type_ctor(!TypeCtor, !Info, !Specs) :-
     ;
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
-        find_unique_match(TypeCtorId0, TypeCtorId, Types, type_id, !Info, !Specs),
+        find_unique_match(TypeCtorId0, TypeCtorId, Types, type_id,
+            !Info, !Specs),
         TypeCtorId = mq_id(SymName, _)
     ),
     !:TypeCtor = type_ctor(SymName, Arity).
@@ -1348,9 +1372,11 @@ qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
         InstanceBody = instance_body_abstract
     ;
         InstanceBody0 = instance_body_concrete(M0s),
-        ( ClassName = unqualified(_) ->
+        (
+            ClassName = unqualified(_),
             Ms = M0s
         ;
+            ClassName = qualified(_, _),
             sym_name_get_module_name(ClassName, unqualified(""), Module),
             Qualify = (pred(M0::in, M::out) is det :-
                 M0 = instance_method(A, Method0, C, D, E),
@@ -1965,7 +1991,7 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
                 list.member(MatchModule, AllMatchingModules),
                 set.member(MatchModule, DefiningModules)
             ),
-            solutions.solutions(FindMatch, MatchingModules)
+            solutions(FindMatch, MatchingModules)
         )
     ;
         MatchingModules = []

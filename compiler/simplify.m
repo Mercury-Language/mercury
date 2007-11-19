@@ -1234,11 +1234,15 @@ simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
     ;
         U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
     ->
-        ( RT0 = rhs_var(V) ->
+        (
+            RT0 = rhs_var(V),
             process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
                 GoalInfo0, GoalExpr1, !Info, !IO),
             GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
         ;
+            ( RT0 = rhs_functor(_, _, _)
+            ; RT0 = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+            ),
             unexpected(this_file, "invalid RHS for complicated unify")
         )
     ;

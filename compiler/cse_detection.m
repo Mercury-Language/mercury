@@ -593,9 +593,13 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
         Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail, CanCGC)
     ->
         Unif = deconstruct(Var, Consid, Args, Submodes, CanFail, CanCGC),
-        ( RHS = rhs_functor(_, _, _) ->
+        (
+            RHS = rhs_functor(_, _, _),
             GoalExpr1 = unify(Var, RHS, Umode, Unif, Ucontext)
         ;
+            ( RHS = rhs_var(_)
+            ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+            ),
             unexpected(this_file,
                 "non-functor unify in construct_common_unify")
         ),

@@ -720,10 +720,14 @@ traverse_goal(Info, Goal, !VarDep) :-
             % These should be transformed into calls by polymorphism.m.
             % This is here to cover the case where unused arguments is called
             % with --error-check-only and polymorphism has not been run.
-            ( RHS = rhs_var(RHSVar) ->
+            (
+                RHS = rhs_var(RHSVar),
                 set_var_used(RHSVar, !VarDep),
                 set_var_used(LHS, !VarDep)
             ;
+                ( RHS = rhs_functor(_, _, _)
+                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+                ),
                 unexpected(this_file,
                     "complicated unifications should only be var-var")
             )

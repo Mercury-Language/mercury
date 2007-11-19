@@ -29,6 +29,8 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred detect_switches(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -231,7 +233,8 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
         Goal = scope(Reason, SubGoal)
     ;
         Goal0 = unify(_, RHS0, _, _, _),
-        ( RHS0 = rhs_lambda_goal(_, _, _, _, Vars, Modes, _, LambdaGoal0) ->
+        (
+            RHS0 = rhs_lambda_goal(_, _, _, _, Vars, Modes, _, LambdaGoal0),
             % We need to insert the initial insts for the lambda variables
             % in the instmap before processing the lambda goal.
             instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
@@ -241,6 +244,9 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
             RHS = RHS0 ^ rhs_lambda_goal := LambdaGoal,
             Goal = Goal0 ^ unify_rhs := RHS
         ;
+            ( RHS0 = rhs_var(_)
+            ; RHS0 = rhs_functor(_, _, _)
+            ),
             Goal = Goal0
         )
     ;
@@ -263,7 +269,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
 :- type cases == map(cons_id, list(hlds_goal)).
 
 :- type sorted_case_list == list(case).
-    % the sorted_case_list should always be sorted on cons_id -
+    % The sorted_case_list should always be sorted on cons_id -
     % `delete_unreachable_cases' relies on this.
 
 :- type again
@@ -719,7 +725,7 @@ cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, InstMap, ModuleInfo,
     sorted_case_list::in) is semidet.
 
 switch_covers_all_cases(ModuleInfo, Type, CasesList) :-
-    type_util.switch_type_num_functors(ModuleInfo, Type, NumFunctors),
+    switch_type_num_functors(ModuleInfo, Type, NumFunctors),
     list.length(CasesList, NumCases),
     NumCases = NumFunctors.
 
