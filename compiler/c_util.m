@@ -72,13 +72,13 @@
     % C string literal. This doesn't actually add the enclosing double quotes
     % -- that is the caller's responsibility.
     %
-:- pred quote_string(string::in, string::out) is det.
+:- func quote_string(string) = string.
 
     % Convert a character to a form that is suitably escaped for use as a
     % C character literal. This doesn't actually add the enclosing single
     % quotes -- that is the caller's responsibility.
     %
-:- pred quote_char(char::in, string::out) is det.
+:- func quote_char(char) = string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -261,14 +261,14 @@ output_quoted_string(Cur, Len, S, !IO) :-
     ).
 
 output_quoted_char(Char, !IO) :-
-    quote_char(Char, EscapedChars),
-    io.write_string(EscapedChars, !IO).
+    EscapedCharStr = quote_char(Char),
+    io.write_string(EscapedCharStr, !IO).
 
-quote_char(Char, QuotedChar) :-
-    quote_one_char(Char, [], RevQuotedChar),
-    string.from_rev_char_list(RevQuotedChar, QuotedChar).
+quote_char(Char) = QuotedCharStr :-
+    quote_one_char(Char, [], RevQuotedCharStr),
+    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
-quote_string(String, QuotedString) :-
+quote_string(String) = QuotedString :-
     string.foldl(quote_one_char, String, [], RevQuotedChars),
     string.from_rev_char_list(RevQuotedChars, QuotedString).
 

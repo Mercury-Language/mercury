@@ -553,7 +553,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ThreadSafe = proc_not_thread_safe,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        c_util.quote_string(Name, MangledName),
+        MangledName = c_util.quote_string(Name),
         ObtainLockStr = "\tMR_OBTAIN_GLOBAL_LOCK("""
             ++ MangledName ++ """);\n",
         ObtainLock = foreign_proc_raw_code(cannot_branch_away,

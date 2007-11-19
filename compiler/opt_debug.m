@@ -312,7 +312,7 @@ dump_const(_, llconst_foreign(F, _)) = F.
 dump_const(_, llconst_float(F)) =
     float_to_string(F).
 dump_const(_, llconst_string(S)) =
-    """" ++ S ++ """".
+    """" ++ quote_string(S) ++ """".
 dump_const(_, llconst_multi_string(_S)) =
     "multi_string(...)".
 dump_const(MaybeProcLabel, llconst_code_addr(CodeAddr)) =

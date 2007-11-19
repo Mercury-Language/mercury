@@ -3801,6 +3801,7 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     Detism = goal_info_get_determinism(GoalInfo),
     get_opt_no_return_calls(!.CI, OptNoReturnCalls),
     get_module_info(!.CI, ModuleInfo),
+    VarTypes = get_var_types(!.CI),
     (
         Detism = detism_erroneous,
         OptNoReturnCalls = yes
@@ -3828,18 +3829,25 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
             ),
             StackVarLocs = ForwardVarLocs
         ),
-        VarTypes = get_var_types(!.CI),
         list.filter(valid_stack_slot(ModuleInfo, VarTypes), StackVarLocs,
             RealStackVarLocs, DummyStackVarLocs)
     ),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_arg_info_to_lval(InArgInfos, InArgLocs),
-    list.append(RealStackVarLocs, InArgLocs, AllRealLocs),
+    list.filter(key_var_is_of_dummy_type(ModuleInfo, VarTypes), InArgInfos,
+        _DummyInArgInfos, RealInArgInfos),
+    var_arg_info_to_lval(RealInArgInfos, RealInArgLocs),
+    list.append(RealStackVarLocs, RealInArgLocs, AllRealLocs),
     var_locn_place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI),
     assoc_list.values(AllRealLocs, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs).
+
+:- pred key_var_is_of_dummy_type(module_info::in, vartypes::in,
+    pair(prog_var, arg_info)::in) is semidet.
+
+key_var_is_of_dummy_type(ModuleInfo, VarTypes, Var - _ArgInfo) :-
+    var_is_of_dummy_type(ModuleInfo, VarTypes, Var).
 
 :- pred valid_stack_slot(module_info::in, vartypes::in,
     pair(prog_var, lval)::in) is semidet.
