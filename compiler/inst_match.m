@@ -553,7 +553,6 @@ inst_matches_initial_4(any(UniqA), ground(_, _)@InstB, Type, !Info) :-
 inst_matches_initial_4(any(UniqA), bound(_, _)@InstB, Type, !Info) :-
     maybe_any_to_bound(Type, !.Info ^ module_info, UniqA, InstA),
     inst_matches_initial_2(InstA, InstB, Type, !Info).
-inst_matches_initial_4(free, any(_), _, !Info).
 inst_matches_initial_4(free, free, _, !Info).
 inst_matches_initial_4(bound(UniqA, ListA), any(UniqB), _, !Info) :-
     compare_uniqueness(!.Info ^ uniqueness_comparison, UniqA, UniqB),
