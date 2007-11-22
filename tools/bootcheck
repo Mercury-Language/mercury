@@ -851,6 +851,11 @@ then
             /bin/rm -f deep_profiler/Mmake.deep.params
             cp $root/Mmake.stage.deep.params deep_profiler/Mmake.deep.params
         fi
+        if test -f $root/Mmake.stage.compiler.params
+        then
+            /bin/rm -f compiler/Mmake.compiler.params
+            cp $root/Mmake.stage.compiler.params compiler/Mmake.compiler.params
+        fi
         if test -f $root/Mmake.stage.library.params
         then
             /bin/rm -f library/Mmake.library.params
