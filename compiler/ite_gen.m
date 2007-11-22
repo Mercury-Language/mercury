@@ -602,12 +602,8 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
                     CondRemovedRegionVars),
                 SnapshotRegionVars0 = set.intersect(LiveRegionVars,
                     CondAllocRegionVars),
-                ( set.empty(UnprotectedRemovedAtStartOfElse) ->
-                    SnapshotRegionVars = SnapshotRegionVars0
-                ;
-                    SnapshotRegionVars = set.difference(SnapshotRegionVars0,
-                        UnprotectedRemovedAtStartOfElse)
-                ),
+                SnapshotRegionVars = set.difference(SnapshotRegionVars0,
+                    UnprotectedRemovedAtStartOfElse),
 
                 ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
                 SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),

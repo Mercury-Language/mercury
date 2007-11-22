@@ -1210,13 +1210,18 @@ option_defaults_2(internal_use_option, [
     use_minimal_model_stack_copy_pneg   -   bool(no),
     use_minimal_model_stack_copy_cut    -   bool(no), 
     disable_trail_ops                   -   bool(no),
-    % The values here must be consistent with those in mercury_region.h.
+    % The size_* values below *must* be consistent with the corresponding
+    % values or data structures in mercury_region.h.
     size_region_ite_fixed               -   int(4),
-    size_region_disj_fixed              -   int(4),
+    size_region_disj_fixed              -   int(3),
     size_region_commit_fixed            -   int(4),
     size_region_ite_protect             -   int(1),
     size_region_ite_snapshot            -   int(4),
     size_region_disj_protect            -   int(0),
+                                        % size_region_disj_protect is no longer
+                                        % used. It should be removed when the
+                                        % runtime support for RBMM is more
+                                        % stable.
     size_region_disj_snapshot           -   int(4),
     size_region_commit_entry            -   int(1),
     solver_type_auto_init               -   bool(no)

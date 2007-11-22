@@ -35,12 +35,14 @@ MR_RegionProfUnit   MR_rbmmp_regions_used = {0, 0, 0};
 MR_RegionProfUnit   MR_rbmmp_pages_used = {0, 0, 0};
 unsigned int        MR_rbmmp_pages_requested = 0;
 unsigned int        MR_rbmmp_biggest_region_size = 0;
-MR_RegionProfUnit   MR_rbmmp_regions_saved_at_commit = {0, 0, 0};
-unsigned int        MR_rbmmp_regions_protected_at_ite;
-unsigned int        MR_rbmmp_snapshots_saved_at_ite;
+unsigned int        MR_rbmmp_regions_saved_at_commit = 0;
+unsigned int        MR_rbmmp_regions_protected_at_ite = 0;
+unsigned int        MR_rbmmp_snapshots_saved_at_ite = 0;
 unsigned int        MR_rbmmp_regions_protected_at_disj;
-unsigned int        MR_rbmmp_snapshots_saved_at_disj;
+unsigned int        MR_rbmmp_snapshots_saved_at_disj = 0;
 double              MR_rbmmp_page_utilized;
+unsigned int        MR_rbmmp_words_snapshot_instant_reclaimed = 0;
+unsigned int        MR_rbmmp_pages_snapshot_instant_reclaimed = 0;
 
 #endif
 
@@ -68,6 +70,9 @@ static void             MR_region_print_profiling_unit(const char *str,
                             MR_RegionProfUnit *profiling_unit);
 #endif
 
+static void             MR_region_get_new_pages_and_new_words(
+                            MR_RegionSnapshot *snapshot, int *new_pages,
+                            int *new_words);
 /*---------------------------------------------------------------------------*/
 /* Page operations. */
 
@@ -162,9 +167,7 @@ MR_region_create_region(void)
     region->MR_region_previous_region = NULL;
     MR_live_region_list = region;
 
-#if defined(MR_RBMM_DEBUG)
     MR_region_debug_create_region(region);
-#endif
 
 #if defined(MR_RBMM_PROFILING)
     MR_region_update_profiling_unit(&MR_rbmmp_regions_used, 1);
@@ -241,8 +244,6 @@ MR_region_nullify_in_ite_frame(MR_Region *region)
 void
 MR_region_destroy_region(MR_Region *region)
 {
-    MR_region_debug_destroy_region(region);
-
     if (region->MR_region_commit_frame != NULL) {
         MR_region_nullify_entries_in_commit_stack(region);
     }
@@ -281,12 +282,10 @@ MR_remove_undisjprotected_region_ite_then_semidet(MR_Region *region)
     MR_region_debug_try_remove_region(region);
     if ( !MR_region_is_disj_protected(region) ) {
         MR_region_destroy_region(region);
+        MR_region_debug_destroy_region(region);
     } else {
         region->MR_region_logical_removed = 1;
-
-#if defined(MR_RBMM_DEBUG)
-        MR_region_logically_remove_region_msg(region);
-#endif
+        MR_region_debug_logically_remove_region(region);
     }
 }
 
@@ -305,12 +304,10 @@ MR_remove_undisjprotected_region_ite_then_nondet(MR_Region *region)
     if ( !MR_region_is_disj_protected(region) ) {
         MR_region_nullify_in_ite_frame(region);
         MR_region_destroy_region(region);
+        MR_region_debug_destroy_region(region);
     } else {
         region->MR_region_logical_removed = 1;
-
-#if defined(MR_RBMM_DEBUG)
-        MR_region_logically_remove_region_msg(region);
-#endif
+        MR_region_debug_logically_remove_region(region);
     }
 }
 
@@ -327,12 +324,18 @@ MR_region_remove_region(MR_Region *region)
         region->MR_region_logical_removed = 1;
 
         /*
-        ** This logical removal happens in a commit operation. Therefore we
-        ** mark the region so that it will be destroyed at the commit point.
+        ** This logical removal happens in a commit operation. If the region
+        ** is *new* since the start of the commit we mark the region so that it
+        ** will be destroyed at the commit point.
         */
-        if (MR_region_commit_sp != NULL) {
+        if (MR_region_commit_sp != NULL &&
+                MR_region_commit_sp->MR_rcff_saved_sequence_number <=
+                region->MR_region_sequence_number) {
             region->MR_region_destroy_at_commit = 1;
         }
+        /*if (MR_region_commit_sp != NULL) {
+            region->MR_region_destroy_at_commit = 1;
+        }*/
 
 #if defined(MR_RBMM_DEBUG)
         MR_region_logically_remove_region_msg(region);
@@ -373,7 +376,7 @@ MR_region_extend_region(MR_Region *region)
     region->MR_region_available_space = MR_REGION_PAGE_SPACE_SIZE;
 }
 
-/* Destroy any marked regions allocated before scope entry. */
+/* Destroy any marked regions allocated before the commit. */
 void
 MR_commit_success_destroy_marked_saved_regions(MR_Word num_saved_regions,
     MR_RegionCommitSave *first_commit_save)
@@ -388,28 +391,20 @@ MR_commit_success_destroy_marked_saved_regions(MR_Word num_saved_regions,
         if (region != NULL) {
             /*
             ** The region is saved here and has not been destroyed.
-            ** XXX If we save only regions that are live at entry and not live
-            ** at exit, at commit it should be the case that a logical removal
-            ** has happened to the region, i.e., destroy_at_commit = 1. So just
-            ** need to destroy it at commit. The check and the else below are
-            ** redundant.
+            ** XXX Because we save only regions that are live at entry, not
+            ** live at exit, and not protected at entry, at the commit point it
+            ** must be the case that a logical removal has happened to the
+            ** region, So just need to destroy it at commit. 
             */
-            if (region->MR_region_destroy_at_commit) {
-                /*
-                ** Logical removal happens to the region in the commit
-                ** context. So destroy it at commit.
-                */
-                MR_region_destroy_region(region);
-            } else {
-                MR_fatal_error(
-                    "MR_commit_success_destroy_marked_saved_regions: "
-                    "need to rethink.");
-            }
+            MR_region_destroy_region(region);
         }
     }
 }
 
-/* Destroy any marked regions allocated since scope entry. */
+/*
+** Destroy any marked regions allocated since scope entry, i.e., *new* to
+** the commit.
+*/
 void
 MR_commit_success_destroy_marked_new_regions(MR_Word saved_region_seq_number)
 {
@@ -417,7 +412,7 @@ MR_commit_success_destroy_marked_new_regions(MR_Word saved_region_seq_number)
 
     region = MR_live_region_list;
     while (region != NULL &&
-        region->MR_region_sequence_number > saved_region_seq_number)
+        region->MR_region_sequence_number >= saved_region_seq_number)
     {
         if (region->MR_region_destroy_at_commit) {
             MR_region_destroy_region(region);
@@ -434,23 +429,13 @@ MR_commit_success_destroy_marked_new_regions(MR_Word saved_region_seq_number)
 int
 MR_region_is_disj_protected(MR_Region *region) 
 {
-    MR_RegionDisjFixedFrame     *disj_frame;
-
-    disj_frame = MR_region_disj_sp;
-    while (disj_frame != NULL)
-    {
-        if (disj_frame->MR_rdff_disj_prot_seq_number !=
-               MR_REGION_DISJ_FRAME_DUMMY_SEQ_NUMBER &&
-            disj_frame->MR_rdff_disj_prot_seq_number <
+    if (MR_region_disj_sp != NULL &&
+            MR_region_disj_sp->MR_rdff_saved_sequence_number >
                 region->MR_region_sequence_number) {
-           return MR_TRUE;
-        } 
-        disj_frame = disj_frame->MR_rdff_previous_disj_frame;
-    }
+       return MR_TRUE;
+    } 
     return MR_FALSE;
 }
-
-
 /*---------------------------------------------------------------------------*/
 /* Debugging messages for RBMM. */
 
@@ -473,8 +458,8 @@ MR_region_get_frame_number(MR_Word *frame)
 void
 MR_region_create_region_msg(MR_Region *region)
 {
-    printf("Create region #%d:\n", region->MR_region_sequence_number);
-    printf("\tHandle: %d\n", region);
+    printf("Create region #%d (%d).\n", region->MR_region_sequence_number,
+        region);
 }
 
 void
@@ -487,28 +472,26 @@ MR_region_try_remove_region_msg(MR_Region *region)
 void
 MR_region_destroy_region_msg(MR_Region *region)
 {
-    printf("Destroy region ");
-    MR_region_region_struct_removal_info_msg(region);
+    printf("Destroy region #%d.\n", region->MR_region_sequence_number);
 }
 
 void
 MR_region_logically_remove_region_msg(MR_Region *region)
 {
-    printf("Logically remove region ");
-    MR_region_region_struct_removal_info_msg(region);
+    printf("Logically removed region #%d.\n",
+        region->MR_region_sequence_number);
 }
 
 void
 MR_region_region_struct_removal_info_msg(MR_Region *region)
 {
-    printf("#%d\n", region->MR_region_sequence_number);
-    printf("\tHandle: %d\n", region);
+    printf("#%d (%d)\n", region->MR_region_sequence_number, region);
     printf("\tLogically removed: %d\n", region->MR_region_logical_removed);
-    printf("\tProtected by ite frame #%d: %d\n",
+    printf("\tIte-protected by #%d: %d\n",
         MR_region_get_frame_number((MR_Word *)region->MR_region_ite_protected),
         region->MR_region_ite_protected);
     if ( MR_region_is_disj_protected(region) ) {
-        printf("\tProtected by a disj frame.\n");
+        printf("\tDisj-protected.\n");
     } else {
         printf("\tNot disj-protected.\n");
     }
@@ -522,16 +505,16 @@ MR_region_region_struct_removal_info_msg(MR_Region *region)
 void
 MR_region_push_ite_frame_msg(MR_RegionIteFixedFrame *ite_frame)
 {
-    int     frame_number;
+    int             frame_number;
 
     frame_number = MR_region_get_frame_number( (MR_Word *) ite_frame);
     printf("Push ite frame #%d: %d\n", frame_number, ite_frame);
-    printf("\tPrevious frame at push #%d: %d\n",
+    printf("\tPrevious #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) (ite_frame->MR_riff_previous_ite_frame)),
         ite_frame->MR_riff_previous_ite_frame);
-    printf("\tSaved most recent region at push: %d\n",
-        ite_frame->MR_riff_saved_region_list);
+    printf("\tSaved sequence number: %d\n",
+        ite_frame->MR_riff_saved_sequence_number);
 }
 
 void
@@ -539,11 +522,12 @@ MR_region_ite_frame_msg(MR_RegionIteFixedFrame *ite_frame)
 {
     printf("Ite frame #%d: %d\n",
         MR_region_get_frame_number( (MR_Word *) ite_frame), ite_frame);
-    printf("\tPrevious frame #%d: %d\n",
+    printf("\tPrevious #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) (ite_frame->MR_riff_previous_ite_frame)),
             ite_frame->MR_riff_previous_ite_frame);
-    printf("\tSaved most recent: %d\n", ite_frame->MR_riff_saved_region_list);
+    printf("\tSaved sequence number: %d\n",
+            ite_frame->MR_riff_saved_sequence_number);
     MR_region_ite_frame_protected_regions_msg(ite_frame);
     MR_region_ite_frame_snapshots_msg(ite_frame);
 }
@@ -568,7 +552,7 @@ MR_region_ite_frame_protected_regions_msg(MR_RegionIteFixedFrame *ite_frame)
         (MR_Word *) ite_frame + MR_REGION_ITE_FRAME_FIXED_SIZE);
     for (i = 0; i < ite_frame->MR_riff_num_prot_regions; i++, ite_prot++) {
         printf("\tAt slot: %d, ite-protect region: %d\n",
-            ite_prot, ite_prot->MR_ite_prot_region);
+            ite_prot, ite_prot->MR_ite_prot_region->MR_region_sequence_number);
     }
 }
 
@@ -589,8 +573,8 @@ MR_region_ite_frame_snapshots_msg(MR_RegionIteFixedFrame *ite_frame)
     snapshot = (MR_RegionSnapshot *) ((MR_Word *) ite_frame +
         MR_REGION_ITE_FRAME_FIXED_SIZE + protection_size);
     for (i = 0; i < ite_frame->MR_riff_num_snapshots; i++, snapshot++) {
-        printf("\tAt slot: %d, snapshot of region: %d\n", snapshot,
-            snapshot->MR_snapshot_region);
+        printf("\tAt slot: %d, snapshot of region: #%d\n", snapshot,
+            snapshot->MR_snapshot_region->MR_region_sequence_number);
     }
 }
 
@@ -599,12 +583,12 @@ MR_region_push_disj_frame_msg(MR_RegionDisjFixedFrame *disj_frame)
 {
     printf("Push disj frame #%d: %d\n",
         MR_region_get_frame_number((MR_Word *) disj_frame), disj_frame);
-    printf("\tPrevious frame at push #%d: %d\n",
+    printf("\tPrevious #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) (disj_frame->MR_rdff_previous_disj_frame)),
         disj_frame->MR_rdff_previous_disj_frame);
-    printf("\tSaved most recent region at push: %d\n",
-        disj_frame->MR_rdff_saved_region_list);
+    printf("\tSaved sequence number: %d\n",
+        disj_frame->MR_rdff_saved_sequence_number);
 }
 
 void
@@ -612,12 +596,12 @@ MR_region_disj_frame_msg(MR_RegionDisjFixedFrame *disj_frame)
 {
     printf("Disj frame #%d: %d\n",
         MR_region_get_frame_number((MR_Word *) disj_frame), disj_frame);
-    printf("\tPrevious frame #%d: %d\n",
+    printf("\tPrevious #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) disj_frame->MR_rdff_previous_disj_frame),
         disj_frame->MR_rdff_previous_disj_frame);
-    printf("\tSaved most recent region: %d\n",
-        disj_frame->MR_rdff_saved_region_list);
+    printf("\tSaved sequence number: %d\n",
+        disj_frame->MR_rdff_saved_sequence_number);
 }
 
 void
@@ -646,13 +630,13 @@ MR_region_push_commit_frame_msg(MR_RegionCommitFixedFrame *commit_frame)
 
     printf("Push commit frame #%d: %d\n",
         MR_region_get_frame_number((MR_Word *) commit_frame), commit_frame);
-    printf("\tPrevious frame at push #%d: %d\n",
+    printf("\tPrevious #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) commit_frame->MR_rcff_previous_commit_frame),
         commit_frame->MR_rcff_previous_commit_frame);
-    printf("\tSequence number at push: %d\n",
+    printf("\tSequence number: %d\n",
         commit_frame->MR_rcff_saved_sequence_number);
-    printf("\tDisj frame at push #%d: %d\n",
+    printf("\tDisj frame #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) (commit_frame->MR_rcff_saved_disj_sp)),
         commit_frame->MR_rcff_saved_disj_sp);
@@ -670,9 +654,9 @@ MR_region_commit_frame_msg(MR_RegionCommitFixedFrame *commit_frame)
         MR_region_get_frame_number(
             (MR_Word *) commit_frame->MR_rcff_previous_commit_frame),
         commit_frame->MR_rcff_previous_commit_frame);
-    printf("\tSequence number at push: %d\n",
+    printf("\tSequence number: %d\n",
         commit_frame->MR_rcff_saved_sequence_number);
-    printf("\tDisj frame at push #%d: %d\n",
+    printf("\tDisj frame #%d: %d\n",
         MR_region_get_frame_number(
             (MR_Word *) (commit_frame->MR_rcff_saved_disj_sp)),
         commit_frame->MR_rcff_saved_disj_sp);
@@ -721,6 +705,97 @@ MR_region_commit_frame_saved_regions_msg(
 
 }
 
+void
+MR_region_start_msg(const char *name)
+{
+    printf("Start %s:\n", name);
+}
+
+void
+MR_region_end_msg(const char *name)
+{
+    printf("End %s.\n", name);
+}
+
+void
+MR_region_fill_ite_protect_msg(MR_RegionIteProtect *ite_prot,
+    MR_Region *region)
+{
+    if (ite_prot == NULL) {
+        printf("\tNot protect region #%d.\n",
+            region->MR_region_sequence_number);
+    } else {
+        printf("\tAt slot: %d, protect region #%d.\n", ite_prot,
+            region->MR_region_sequence_number);
+    } 
+}
+
+void
+MR_region_fill_ite_snapshot_removed_msg(MR_RegionSnapshot *snapshot,
+    MR_Region *region)
+{
+    if (snapshot == NULL) {
+        printf("\tNot take snapshot of region #%d.\n",
+            region->MR_region_sequence_number);
+    } else {
+        printf("\tAt slot: %d, save snapshot of region #%d.\n", snapshot,
+            region->MR_region_sequence_number);
+    } 
+}
+
+void
+MR_region_fill_ite_snapshot_not_removed_msg(MR_RegionSnapshot *snapshot,
+    MR_Region *region)
+{
+    printf("\tAt slot: %d, save snapshot of region #%d.\n", snapshot,
+        region->MR_region_sequence_number);
+}
+
+void
+MR_region_fill_disj_snapshot_msg(MR_RegionSnapshot *snapshot,
+    MR_Region *region)
+{
+    printf("\tAt slot: %d, save snapshot of region #%d.\n", snapshot,
+        region->MR_region_sequence_number);
+}
+
+void
+MR_region_fill_commit_msg(MR_RegionCommitSave *commit_save,
+    MR_Region *region)
+{
+    if (commit_save == NULL) {
+        printf("\tNot save region #%d.\n", region->MR_region_sequence_number);
+    } else {
+        printf("\tAt slot: %d, save region #%d.\n", commit_save,
+            region->MR_region_sequence_number);
+    } 
+}
+
+void
+MR_region_ite_unprotect_msg(MR_Region *region)
+{
+    MR_RegionIteFixedFrame      *old_ite_frame;
+    MR_RegionIteFixedFrame      *new_ite_frame;
+
+    old_ite_frame = region->MR_region_ite_protected;
+    new_ite_frame = MR_region_ite_sp->MR_riff_previous_ite_frame;
+    printf("Ite protected by #%d (%d), now by #%d (%d).\n",
+        MR_region_get_frame_number((MR_Word *) old_ite_frame), old_ite_frame,
+        MR_region_get_frame_number((MR_Word *) new_ite_frame), new_ite_frame);
+}
+
+void
+MR_region_restore_from_snapshot_msg(MR_RegionSnapshot *snapshot)
+{
+    int        new_words;
+    int        new_pages;
+
+    MR_region_get_new_pages_and_new_words(snapshot, &new_pages, &new_words);
+    printf("Restore region #%d: reclaim %d pages, %d words.\n",
+            snapshot->MR_snapshot_region->MR_region_sequence_number,
+            new_pages, new_words);
+}
+
 #endif /* End of MR_RBMM_DEBUG. */
 
 /*---------------------------------------------------------------------------*/
@@ -765,28 +840,24 @@ MR_region_profile_destroyed_region(MR_Region *region)
 void
 MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *snapshot)
 {
-    MR_Region       *restoring_region;
-    MR_RegionPage   *first_new_page;
     int             new_words;
     int             new_pages;
+    MR_Region       *restoring_region;
 
+    MR_region_get_new_pages_and_new_words(snapshot, &new_pages, &new_words);
+    MR_region_update_profiling_unit(&MR_rbmmp_pages_used, -new_pages);
     restoring_region = snapshot->MR_snapshot_region;
-    first_new_page = snapshot->MR_snapshot_saved_last_page->MR_regionpage_next;
-
-    if (first_new_page != NULL) {
-        new_pages = MR_region_get_number_of_pages(first_new_page,
-             restoring_region->MR_region_last_page);
-        MR_region_update_profiling_unit(&MR_rbmmp_pages_used, -new_pages);
-        new_words = (new_pages * MR_REGION_PAGE_SPACE_SIZE -
-             restoring_region->MR_region_available_space +
-             snapshot->MR_snapshot_saved_available_space);
-    } else {
-        new_words = snapshot->MR_snapshot_saved_available_space -
-            restoring_region->MR_region_available_space;
-    }
     ((MR_RegionPage *) restoring_region)->MR_regionpage_allocated_size
         -= new_words;
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, -new_words);
+    MR_rbmmp_pages_snapshot_instant_reclaimed += new_pages;
+    MR_rbmmp_words_snapshot_instant_reclaimed += new_words;
+}
+
+void
+MR_region_profile_increase_counter(unsigned int *counter)
+{
+    *counter += 1;
 }
 
 int
@@ -810,7 +881,7 @@ void
 MR_region_print_profiling_unit(const char *str,
     MR_RegionProfUnit *profiling_unit)
 {
-    printf(str);    /* XXX This is dangerous. */
+    printf("%s", str);
     printf("\n");
     printf("\tTotal: %d.\n", profiling_unit->MR_rbmmpu_total);
     printf("\tMaximum: %d.\n", profiling_unit->MR_rbmmpu_max);
@@ -820,11 +891,25 @@ MR_region_print_profiling_unit(const char *str,
 void
 MR_region_print_profiling_info(void)
 {
+    printf("\n---------- Profiling information ----------\n");
     MR_region_print_profiling_unit("Regions:", &MR_rbmmp_regions_used);
     printf("Biggest region size: %d.\n", MR_rbmmp_biggest_region_size);
     MR_region_print_profiling_unit("Words:", &MR_rbmmp_words_used);
     MR_region_print_profiling_unit("Pages used:", &MR_rbmmp_pages_used);
     printf("Pages requested: %d.\n", MR_rbmmp_pages_requested);
+    printf("Pages utilized: %lf.\n",
+        MR_rbmmp_pages_used.MR_rbmmpu_total / (double)MR_rbmmp_pages_requested);
+    printf("Regions protected at ite frames: %d.\n",
+        MR_rbmmp_regions_protected_at_ite);
+    printf("Regions saved at commit frames: %d.\n",
+        MR_rbmmp_regions_saved_at_commit);
+    printf("Snapshots at ite frames: %d.\n", MR_rbmmp_snapshots_saved_at_ite);
+    printf("Snapshots at disj frames: %d.\n",
+        MR_rbmmp_snapshots_saved_at_disj);
+    printf("Words instant reclaimed thanks to snapshot: %d.\n",
+        MR_rbmmp_words_snapshot_instant_reclaimed);
+    printf("Pages instant reclaimed thanks to snapshot: %d.\n",
+        MR_rbmmp_pages_snapshot_instant_reclaimed);
 }
 
 #else /* Not define MR_RBMM_PROFILING. */
@@ -847,6 +932,12 @@ MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *s)
     /* do nothing */
 }
 
+void
+MR_region_profile_increase_counter(unsigned int *counter)
+{
+    /* do nothing */
+}
+
 int
 MR_region_get_number_of_pages(MR_RegionPage *fp, MR_RegionPage *tp)
 {
@@ -859,5 +950,29 @@ MR_region_print_profiling_info(void)
 }
 
 #endif /* End of Not define MR_RBMM_PROFILING. */
+
+static  void
+MR_region_get_new_pages_and_new_words(MR_RegionSnapshot *snapshot,
+    int *new_pages, int *new_words)
+{
+    MR_Region       *restoring_region;
+    MR_RegionPage   *first_new_page;
+
+    restoring_region = snapshot->MR_snapshot_region;
+    first_new_page = snapshot->MR_snapshot_saved_last_page->MR_regionpage_next;
+
+    if (first_new_page != NULL) {
+        *new_pages = MR_region_get_number_of_pages(first_new_page,
+             restoring_region->MR_region_last_page);
+        *new_words = (*new_pages * MR_REGION_PAGE_SPACE_SIZE -
+             restoring_region->MR_region_available_space +
+             snapshot->MR_snapshot_saved_available_space);
+    } else {
+        *new_pages = 0;
+        *new_words = snapshot->MR_snapshot_saved_available_space -
+            restoring_region->MR_region_available_space;
+    }
+}
+
 
 #endif  /* MR_USE_REGIONS */
