@@ -182,6 +182,36 @@ dump_instrs_2([Instr | Instrs], ProcLabel, PrintComments, !IO) :-
     io.nl(!IO),
     dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO).
 
+    % Return a string representation of a list of instructions; the string
+    % is the same as what dump_instrs_2 would print. Returning it as a string
+    % is significantly more expensive (due to all the string appends required),
+    % but we use dump_instrs only for printing blocks, whose size should be
+    % naturally limited.
+    %
+:- func dump_instrs(proc_label, bool, list(instruction)) = string.
+
+dump_instrs(_ProcLabel, _PrintComments, []) = "".
+dump_instrs(ProcLabel, PrintComments, [Instr | Instrs]) = Str :-
+    Instr = llds_instr(Uinstr, Comment),
+    ( Uinstr = label(_) ->
+        InstrStr0 = dump_instr(ProcLabel, PrintComments, Uinstr)
+    ; Uinstr = comment(InstrComment) ->
+        string.foldl(dump_comment_char, InstrComment, "", InstrCommentStr),
+        InstrStr0 = "\t% " ++ InstrCommentStr
+    ;
+        InstrStr0 = "\t" ++ dump_instr(ProcLabel, PrintComments, Uinstr)
+    ),
+    (
+        PrintComments = yes,
+        Comment \= ""
+    ->
+        InstrStr = InstrStr0 ++ "\n\t\t" ++ Comment ++ "\n"
+    ;
+        InstrStr = InstrStr0 ++ "\n"
+    ),
+    InstrsStr = dump_instrs(ProcLabel, PrintComments, Instrs),
+    Str = InstrStr ++ InstrsStr.
+
 :- pred print_comment_char(char::in, io::di, io::uo) is det.
 
 print_comment_char(C, !IO) :-
@@ -189,6 +219,15 @@ print_comment_char(C, !IO) :-
         io.write_string("\n\t% ", !IO)
     ;
         io.write_char(C, !IO)
+    ).
+
+:- pred dump_comment_char(char::in, string::in, string::out) is det.
+
+dump_comment_char(C, !Str) :-
+    ( C = '\n' ->
+        !:Str = !.Str ++ "\n\t% "
+    ;
+        !:Str = !.Str ++ string.char_to_string(C)
     ).
 
 dump_intlist([]) = "".
@@ -651,7 +690,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = block(RTemps, FTemps, Instrs),
         Str = "block(" ++ int_to_string(RTemps) ++ ", "
             ++ int_to_string(FTemps) ++ ",\n"
-            ++ dump_fullinstrs(ProcLabel, PrintComments, Instrs)
+            ++ dump_instrs(ProcLabel, PrintComments, Instrs)
             ++ ")"
     ;
         Instr = assign(Lval, Rval),
