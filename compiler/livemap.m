@@ -76,12 +76,16 @@ build_livemap_fixpoint(Backinstrs, Livemap0, MaybeLivemap) :-
     set.init(Livevals0),
     livemap_do_build(Backinstrs, Livevals0, no, ContainsBadUserCode,
         Livemap0, Livemap1),
-    ( ContainsBadUserCode = yes ->
+    (
+        ContainsBadUserCode = yes,
         MaybeLivemap = no
-    ; livemap.equal_livemaps(Livemap0, Livemap1) ->
-        MaybeLivemap = yes(Livemap1)
     ;
-        build_livemap_fixpoint(Backinstrs, Livemap1, MaybeLivemap)
+        ContainsBadUserCode = no,
+        ( livemap.equal_livemaps(Livemap0, Livemap1) ->
+            MaybeLivemap = yes(Livemap1)
+        ;
+            build_livemap_fixpoint(Backinstrs, Livemap1, MaybeLivemap)
+        )
     ).
 
     % Check whether the two livemaps agree on the set of live lvals
@@ -168,20 +172,31 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         LivevalsNeeded = opt_util.livevals_addr(CodeAddr),
         livemap.look_for_livevals(!Instrs, !Livevals, "goto",
             LivevalsNeeded, Found),
-        ( Found = yes ->
-            true
-        ; CodeAddr = code_label(Label) ->
-            livemap_insert_label_livevals(!.Livemap, Label,
-                set.init, !:Livevals)
+        (
+            Found = yes
         ;
-            ( CodeAddr = do_redo
-            ; CodeAddr = do_fail
-            ; CodeAddr = do_not_reached
+            Found = no,
+            (
+                CodeAddr = code_label(Label),
+                livemap_insert_label_livevals(!.Livemap, Label,
+                    set.init, !:Livevals)
+            ;
+                ( CodeAddr = do_redo
+                ; CodeAddr = do_fail
+                ; CodeAddr = do_not_reached
+                )
+            ;
+                ( CodeAddr = code_imported_proc(_)
+                ; CodeAddr = code_succip
+                ; CodeAddr = do_succeed(_)
+                ; CodeAddr = do_trace_redo_fail_shallow
+                ; CodeAddr = do_trace_redo_fail_deep
+                ; CodeAddr = do_call_closure(_)
+                ; CodeAddr = do_call_class_method(_)
+                ),
+                unexpected(this_file,
+                    "unknown code_addr type in build_livemap")
             )
-        ->
-            true
-        ;
-            unexpected(this_file, "unknown label type in build_livemap")
         ),
         livemap_special_code_addr(CodeAddr, MaybeSpecial),
         (
@@ -424,11 +439,15 @@ look_for_livevals(Instrs0, Instrs, !Livevals, Site, Compulsory, Found) :-
         livemap_filter_livevals(Livevals1, !:Livevals),
         Instrs = Instrs2,
         Found = yes
-    ; Compulsory = yes ->
-        unexpected(this_file, Site ++ " not preceded by livevals")
     ;
-        Instrs = Instrs1,
-        Found = no
+        (
+            Compulsory = yes,
+            unexpected(this_file, Site ++ " not preceded by livevals")
+        ;
+            Compulsory = no,
+            Instrs = Instrs1,
+            Found = no
+        )
     ).
 
     % What lval (if any) is consulted when we branch to a code address?

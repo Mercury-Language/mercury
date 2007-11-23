@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: browse.m.
 % Author: aet.
 % Stability: low.
-% 
+%
 % Implements a very simple term browser.
 % There are a number of features that haven't been incorporated:
 %
@@ -18,7 +18,7 @@
 % - User preferences, which use the scripting language
 %   to allow user control beyond the provided defaults.
 % - Node expansion and contraction in the style of Windows Explorer.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module mdb.browse.
@@ -1600,15 +1600,19 @@ names_to_dirs([Name | Names], Dirs) :-
 split_dirs(Cs, Names) :-
     takewhile(not_slash, Cs, NameCs, Rest),
     string.from_char_list(NameCs, Name),
-    ( NameCs = [] ->
+    (
+        NameCs = [],
         Names = []
-    ; Rest = [] ->
-        Names = [Name]
-    ; Rest = [_Slash | RestCs] ->
-        split_dirs(RestCs, RestNames),
-        Names = [Name | RestNames]
     ;
-        error("split_dirs: software error")
+        NameCs = [_ | _],
+        (
+            Rest = [],
+            Names = [Name]
+        ;
+            Rest = [_Slash | RestCs],
+            split_dirs(RestCs, RestNames),
+            Names = [Name | RestNames]
+        )
     ).
 
 :- pred not_slash(char::in) is semidet.
@@ -1654,11 +1658,13 @@ dir_to_string(child_name(Name)) = Name.
 :- func dirs_to_string(list(dir)) = string.
 
 dirs_to_string([]) = "".
-dirs_to_string([Dir | Dirs]) =
-    ( Dirs = [] ->
-        dir_to_string(Dir)
+dirs_to_string([Dir | Dirs]) = DirStr :-
+    (
+        Dirs = [],
+        DirStr = dir_to_string(Dir)
     ;
-        dir_to_string(Dir) ++ "/" ++ dirs_to_string(Dirs)
+        Dirs = [_ | _],
+        DirStr = dir_to_string(Dir) ++ "/" ++ dirs_to_string(Dirs)
     ).
 
 %---------------------------------------------------------------------------%

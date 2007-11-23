@@ -491,9 +491,10 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
     ( list.all_same(PathViaCellVars) ->
         BenefitNodeSets = BenefitNodeSets0,
         CostNodeSets = CostNodeSets0,
-        ( PathViaCellVars = [ViaCellVarsPrime | _] ->
-            ViaCellVars = ViaCellVarsPrime
+        (
+            PathViaCellVars = [ViaCellVars | _]
         ;
+            PathViaCellVars = [],
             ViaCellVars = set.init
         )
     ;
@@ -647,17 +648,21 @@ extract_match_and_save_info(Path0, MatchPathInfo, Anchors, Intervals) :-
 close_path(Path0) = Path :-
     Path0 = path(FlushState, CurSegment, FirstSegment0, OtherSegments0,
         FlushAnchors, IntervalIds),
-    ( FlushState = current_is_before_first_flush ->
+    (
+        FlushState = current_is_before_first_flush,
         expect(set.empty(FirstSegment0), this_file,
             "close_path: FirstSegment0 not empty"),
         FirstSegment = CurSegment,
         OtherSegments = OtherSegments0
-    ; set.empty(CurSegment) ->
-        FirstSegment = FirstSegment0,
-        OtherSegments = OtherSegments0
     ;
-        FirstSegment = FirstSegment0,
-        OtherSegments = [CurSegment | OtherSegments0]
+        FlushState = current_is_after_first_flush,
+        ( set.empty(CurSegment) ->
+            FirstSegment = FirstSegment0,
+            OtherSegments = OtherSegments0
+        ;
+            FirstSegment = FirstSegment0,
+            OtherSegments = [CurSegment | OtherSegments0]
+        )
     ),
     Path = path(current_is_after_first_flush, set.init,
         FirstSegment, OtherSegments, FlushAnchors, IntervalIds).
@@ -691,11 +696,17 @@ anchor_requires_close(IntervalInfo, anchor_branch_start(_, GoalPath)) =
         resume_save_status_requires_close(ResumeSaveStatus) :-
     map.lookup(IntervalInfo ^ branch_resume_map, GoalPath, ResumeSaveStatus).
 anchor_requires_close(_, anchor_cond_then(_)) = no.
-anchor_requires_close(_, anchor_branch_end(BranchConstruct, _)) =
-    ( BranchConstruct = branch_neg ->
-        no
+anchor_requires_close(_, anchor_branch_end(BranchType, _)) = NeedsClose :-
+    (
+        BranchType = branch_neg,
+        NeedsClose = no
     ;
-        yes
+        ( BranchType = branch_ite
+        ; BranchType = branch_disj
+        ; BranchType = branch_switch
+        ; BranchType = branch_par_conj
+        ),
+        NeedsClose = yes
     ).
 anchor_requires_close(_, anchor_call_site(_)) = yes.
 
@@ -726,11 +737,17 @@ may_have_one_successor(anchor_call_site(_)) = yes.
 
 may_have_more_successors(anchor_proc_start) = no.
 may_have_more_successors(anchor_proc_end) = no.
-may_have_more_successors(anchor_branch_start(BranchType, _)) =
-    ( BranchType = branch_neg ->
-        no
+may_have_more_successors(anchor_branch_start(BranchType, _)) = MaybeHaveMore :-
+    (
+        BranchType = branch_neg,
+        MaybeHaveMore = no
     ;
-        yes
+        ( BranchType = branch_ite
+        ; BranchType = branch_disj
+        ; BranchType = branch_switch
+        ; BranchType = branch_par_conj
+        ),
+        MaybeHaveMore = yes
     ).
 may_have_more_successors(anchor_cond_then(_)) = no.
 may_have_more_successors(anchor_branch_end(_, _)) = no.
@@ -816,12 +833,14 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
 
 find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         StackOptInfo, SuccessorIds, !AllPaths) :-
-    ( anchor_requires_close(IntervalInfo, End) = yes ->
+    AnchorRequiresClose = anchor_requires_close(IntervalInfo, End),
+    (
+        AnchorRequiresClose = yes,
         Paths0 = !.AllPaths ^ paths_so_far,
         Paths1 = set.map(close_path, Paths0),
         !:AllPaths = !.AllPaths ^ paths_so_far := Paths1
     ;
-        true
+        AnchorRequiresClose = no
     ),
     StackOptParams = StackOptInfo ^ stack_opt_params,
     FullPath = StackOptParams ^ full_path,

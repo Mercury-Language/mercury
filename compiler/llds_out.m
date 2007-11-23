@@ -3242,11 +3242,10 @@ output_rval_decls_format(const(Const), FirstIndent, LaterIndent, !N, !DeclSet,
         output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
     ; Const = llconst_float(FloatVal) ->
-        %
         % If floats are boxed, and the static ground terms option is enabled,
         % then for each float constant which we might want to box we declare
         % a static const variable holding that constant.
-        %
+
         globals.io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
         globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
             !IO),
@@ -3984,7 +3983,8 @@ output_data_addrs_decls([DataAddr | DataAddrs], FirstIndent, LaterIndent, !N,
         !DeclSet, !IO).
 
 c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
-    ( DefaultLinkage = extern ->
+    (
+        DefaultLinkage = extern,
         (
             BeingDefined = yes,
             LinkageStr = ""
@@ -3993,6 +3993,7 @@ c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
             LinkageStr = "extern "
         )
     ;
+        DefaultLinkage = static,
         % Previously we used to always write `extern' here, but declaring
         % something `extern' and then later defining it as `static' causes
         % undefined behavior -- on many systems, it works, but on some systems

@@ -1637,9 +1637,13 @@ bitmap_compare(Result, BM1, BM2) :-
 bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then
         compare(Result0, BM1 ^ unsafe_byte(Index), BM2 ^ unsafe_byte(Index)),
-        ( if Result0 = (=) then
+        (
+            Result0 = (=),
             bytes_compare(Result, Index + 1, MaxIndex, BM1, BM2)
-          else
+        ;
+            ( Result0 = (<)
+            ; Result0 = (>)
+            ),
             Result = Result0
         )
       else

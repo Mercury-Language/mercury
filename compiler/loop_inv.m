@@ -1201,33 +1201,38 @@ goal_expr_inputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _)) =
 
 goal_expr_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _)) = Inputs :-
     (
-            % The LHS is always an output var in constructions.
-            %
+        % The LHS is always an output var in constructions.
         Kind   = construct(_, _, RHSArgs, ArgUniModes, _, _, _),
         Inputs = list.filter_map_corresponding(
                         input_arg(MI), RHSArgs, rhs_modes(ArgUniModes))
     ;
-            % The LHS is always in input var in deconstructions.
-            %
+        % The LHS is always in input var in deconstructions.
         Kind   = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
         Inputs = [ LHS
                  | list.filter_map_corresponding(
                         input_arg(MI), RHSArgs, rhs_modes(ArgUniModes)) ]
     ;
-            % The RHS is the only input in an assignment.
-            %
+        % The RHS is the only input in an assignment.
         Kind   = assign(_, RHS),
         Inputs = [RHS]
     ;
-            % Both sides of a simple test are inputs.
-            %
+        % Both sides of a simple test are inputs.
         Kind   = simple_test(_, RHS),
         Inputs = [LHS, RHS]
     ;
-            % Both sides of a complicated unification are inputs.
-            %
+        % Both sides of a complicated unification are inputs.
         Kind   = complicated_unify(_, _, _),
-        Inputs = ( if UnifyRHS = rhs_var(RHS) then [LHS, RHS] else [LHS] )
+        (
+            UnifyRHS = rhs_var(RHS),
+            Inputs = [LHS, RHS]
+        ;
+            UnifyRHS = rhs_functor(_, _, _),
+            Inputs = [LHS]
+        ;
+            UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "goal_expr_inputs: lambda goal")
+        )
     ).
 
 goal_expr_inputs(_MI, conj(_, _)) = _ :-

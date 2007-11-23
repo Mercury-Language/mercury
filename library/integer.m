@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: integer.m.
 % Main authors: aet, Dan Hazel <odin@svrc.uq.edu.au>.
 % Stability: high.
-% 
+%
 % Implements an arbitrary precision integer type and basic
 % operations on it. (An arbitrary precision integer may have
 % any number of digits, unlike an int, which is limited to the
@@ -17,7 +17,7 @@
 %
 % NOTE: All operators behave as the equivalent operators on ints do.
 % This includes the division operators: / // rem div mod.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -573,11 +573,14 @@ big_plus(X, Y) = Sum :-
             Sum = big_sign(SignX, pos_plus(AbsX, AbsY))
         ;
             C = pos_cmp(AbsX, AbsY),
-            ( C = (<) ->
+            (
+                C = (<),
                 Sum = big_sign(SignY, pos_minus(AbsY, AbsX))
-            ; C = (>) ->
+            ;
+                C = (>),
                 Sum = big_sign(SignX, pos_minus(AbsX, AbsY))
             ;
+                C = (=),
                 Sum = integer.zero
             )
         )
@@ -1073,11 +1076,13 @@ digits_to_string([]) = "0".
 digits_to_string(Digits @ [_ | _]) = Str :-
     printbase_rep(printbase_pos_int_to_digits(base),
         Digits, i(_, DigitsInPrintBase)),
-    ( DigitsInPrintBase = [Head | Tail] ->
+    (
+        DigitsInPrintBase = [Head | Tail],
         string.int_to_string(Head, SHead),
         digits_to_strings(Tail, Ss, []),
         string.append_list([SHead | Ss], Str)
     ;
+        DigitsInPrintBase = [],
         error("integer.digits_to_string/1: empty list")
     ).
 

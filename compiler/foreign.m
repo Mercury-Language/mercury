@@ -545,11 +545,17 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
         map.search(Types, TypeCtor, TypeDefn)
     ->
         hlds_data.get_type_defn_body(TypeDefn, Body),
-        ( Body = hlds_foreign_type(ForeignTypeBody) ->
+        (
+            Body = hlds_foreign_type(ForeignTypeBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody,
                 ForeignTypeName, _, Assertions),
             ExportType = exported_type_foreign(ForeignTypeName, Assertions)
         ;
+            ( Body = hlds_du_type(_, _, _, _, _, _, _)
+            ; Body = hlds_eqv_type(_)
+            ; Body = hlds_solver_type(_, _)
+            ; Body = hlds_abstract_type(_)
+            ),
             ExportType = exported_type_mercury(Type)
         )
     ;

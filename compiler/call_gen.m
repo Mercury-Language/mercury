@@ -176,9 +176,13 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     generic_call_info(Globals, GenericCall, length(InVars), CodeAddr,
         SpecifierArgInfos, FirstImmInput, HoCallVariant),
     determinism_to_code_model(Det, CodeModel),
-    ( CodeModel = model_semi ->
+    (
+        CodeModel = model_semi,
         FirstOutput = 2
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         FirstOutput = 1
     ),
 
@@ -540,13 +544,17 @@ handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
 find_nonlive_outputs([], _, NonLiveOutputs, NonLiveOutputs).
 find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
         Liveness, NonLiveOutputs0, NonLiveOutputs) :-
-    ( Mode = top_out ->
+    (
+        Mode = top_out,
         ( set.member(Var, Liveness) ->
             NonLiveOutputs1 = NonLiveOutputs0
         ;
             set.insert(NonLiveOutputs0, Var, NonLiveOutputs1)
         )
     ;
+        ( Mode = top_in
+        ; Mode = top_unused
+        ),
         NonLiveOutputs1 = NonLiveOutputs0
     ),
     find_nonlive_outputs(Args, Liveness, NonLiveOutputs1, NonLiveOutputs).
@@ -673,9 +681,17 @@ generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
     code_info::in, code_info::out) is det.
 
 generate_builtin_arg(Rval0, Rval, Code, !CI) :-
-    ( Rval0 = var(Var) ->
+    (
+        Rval0 = var(Var),
         produce_variable(Var, Code, Rval, !CI)
     ;
+        ( Rval0 = const(_)
+        ; Rval0 = unop(_, _)
+        ; Rval0 = binop(_, _, _)
+        ; Rval0 = mkword(_, _)
+        ; Rval0 = mem_addr(_)
+        ; Rval0 = lval(_)
+        ),
         Rval = Rval0,
         Code = empty
     ).
@@ -686,18 +702,26 @@ generate_builtin_arg(Rval0, Rval, Code, !CI) :-
 input_arg_locs([], []).
 input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
     input_arg_locs(Args, Vs0),
-    ( Mode = top_in ->
+    (
+        Mode = top_in,
         Vs = [Var - Loc | Vs0]
     ;
+        ( Mode = top_out
+        ; Mode = top_unused
+        ),
         Vs = Vs0
     ).
 
 output_arg_locs([], []).
 output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
     output_arg_locs(Args, Vs0),
-    ( Mode = top_out ->
+    (
+        Mode = top_out,
         Vs = [Var - Loc | Vs0]
     ;
+        ( Mode = top_in
+        ; Mode = top_unused
+        ),
         Vs = Vs0
     ).
 

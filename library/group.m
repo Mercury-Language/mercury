@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999, 2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -181,10 +181,14 @@ group.largest_group_key_2([GK0 - S0 | Ss], Sz0, GK1, GK) :-
     set.to_sorted_list(S0, S1),
     list.length(S1, Sz1),
     compare(R, Sz1, Sz0),
-    ( R = (>) ->
+    (
+        R = (>),
         Sz = Sz1,
         GK2 = GK0
     ;
+        ( R = (=)
+        ; R = (<)
+        ),
         Sz = Sz0,
         GK2 = GK1
     ),

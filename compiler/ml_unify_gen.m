@@ -348,13 +348,11 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         % -- that only makes a difference when constructing, so here
         % we ignore that, and just recurse on the representation for
         % this constructor.
-        Tag = shared_with_reserved_addresses_tag(_, ThisTag)
-    ->
+        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
         ml_gen_static_const_arg_2(ThisTag, VarType, Var, StaticCons,
             Rval, !Info)
     ;
-        Tag = no_tag
-    ->
+        Tag = no_tag,
         (
             ArgVars = [Arg],
             StaticArgs = [StaticArg]
@@ -374,8 +372,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         ; Tag = single_functor_tag, TagVal = 0
         ; Tag = unshared_tag(TagVal)
         ; Tag = shared_remote_tag(TagVal, _SecondaryTag)
-        )
-    ->
+        ),
         % If this argument is something that would normally be allocated
         % on the heap, just generate a reference to the static constant
         % that we must have already generated for it.
@@ -394,13 +391,28 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         ),
         Rval = unop(cast(MLDS_VarType), TaggedRval)
     ;
-        % If this argument is just a constant, then generate the rval
-        % for the constant.
-        StaticArgs = []
-    ->
-        ml_gen_constant(Tag, VarType, Rval, !Info)
-    ;
-        unexpected(this_file, "ml_gen_static_const_arg: unknown compound term")
+        ( Tag = string_tag(_)
+        ; Tag = int_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = shared_local_tag(_, _)
+        ; Tag = reserved_address_tag(_)
+        ; Tag = foreign_tag(_, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ),
+        (
+            % If this argument is just a constant, then generate the rval
+            % for the constant.
+            StaticArgs = [],
+            ml_gen_constant(Tag, VarType, Rval, !Info)
+        ;
+            StaticArgs = [_ | _],
+            unexpected(this_file,
+                "ml_gen_static_const_arg: unknown compound term")
+        )
     ).
 
     % Generate the rval for a given constant.
@@ -489,7 +501,8 @@ ml_gen_reserved_address(_, small_pointer(Int), MLDS_Type) =
         unop(cast(MLDS_Type), const(mlconst_int(Int))).
 ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
         CtorArity), _Type) = Rval :-
-    ( QualCtorName = qualified(ModuleName, CtorName) ->
+    (
+        QualCtorName = qualified(ModuleName, CtorName),
         module_info_get_globals(ModuleInfo, Globals),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         TypeCtor = type_ctor(TypeName, TypeArity),
@@ -519,6 +532,7 @@ ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
             Rval = unop(cast(MLDS_Type), Rval0)
         )
     ;
+        QualCtorName = unqualified(_),
         unexpected(this_file,
             "unqualified ctor name in reserved_object")
     ).
@@ -705,7 +719,13 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 
         % Generate a local static constant for this term.
         ml_gen_static_const_name(Var, ConstName, !Info),
-        UsesBaseClass = (MaybeCtorName = yes(_) -> no ; yes),
+        (
+            MaybeCtorName = yes(_),
+            UsesBaseClass = no
+        ;
+            MaybeCtorName = no,
+            UsesBaseClass = yes
+        ),
         ConstType = get_type_for_cons_id(MLDS_Type, UsesBaseClass,
             MaybeConsId, HighLevelData, Globals),
         % XXX If the secondary tag is in a base class, then ideally its
@@ -1026,21 +1046,28 @@ ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
         FieldTypes = [],
         ArgRvals = []
     ->
-        BoxConstDefns = [], FieldRvals = []
+        BoxConstDefns = [],
+        FieldRvals = []
     ;
-        ArgTypes = [ArgType | ArgTypes1],
-        FieldTypes = [FieldType | FieldTypes1],
-        ArgRvals = [ArgRval | ArgRvals1]
+        ArgTypes = [ArgType | ArgTypesTail],
+        FieldTypes = [FieldType | FieldTypesTail],
+        ArgRvals = [ArgRval | ArgRvalsTail]
     ->
         (
             % Handle the case where the field type is a boxed type
             % -- in that case, we can just box the argument type.
-            FieldType = type_variable(_, _)
-        ->
+            FieldType = type_variable(_, _),
             ml_gen_type(!.Info, ArgType, MLDS_ArgType),
             ml_gen_box_const_rval(MLDS_ArgType, ArgRval, Context,
                 BoxConstDefns0, FieldRval, !Info)
         ;
+            ( FieldType = defined_type(_, _, _)
+            ; FieldType = builtin_type(_)
+            ; FieldType = tuple_type(_, _)
+            ; FieldType = higher_order_type(_, _, _, _)
+            ; FieldType = apply_n_type(_, _, _)
+            ; FieldType = kinded_type(_, _)
+            ),
             % Otherwise, fall back on ml_gen_box_or_unbox_rval.
             % XXX This might still generate stuff which is not legal
             % in a static initializer!
@@ -1048,10 +1075,10 @@ ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
                 ArgRval, FieldRval, !Info),
             BoxConstDefns0 = []
         ),
-        ml_gen_box_or_unbox_const_rval_list(ArgTypes1, FieldTypes1, ArgRvals1,
-            Context, BoxConstDefns1, FieldRvals1, !Info),
-        BoxConstDefns = BoxConstDefns0 ++ BoxConstDefns1,
-        FieldRvals = [FieldRval | FieldRvals1]
+        ml_gen_box_or_unbox_const_rval_list(ArgTypesTail, FieldTypesTail,
+            ArgRvalsTail, Context, BoxConstDefnsTail, FieldRvalsTail, !Info),
+        BoxConstDefns = BoxConstDefns0 ++ BoxConstDefnsTail,
+        FieldRvals = [FieldRval | FieldRvalsTail]
     ;
         unexpected(this_file,
             "ml_gen_box_or_unbox_const_rval_list: list length mismatch")
@@ -1508,9 +1535,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
             FieldId = offset(const(mlconst_int(Offset)))
         ;
             FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
-            (
-                ConsId = cons(ConsName, ConsArity)
-            ->
+            ( ConsId = cons(ConsName, ConsArity) ->
                 UnqualConsName = unqualify_name(ConsName),
                 FieldId = ml_gen_field_id(VarType, Tag, UnqualConsName,
                     ConsArity, FieldName, Globals)
@@ -1794,8 +1819,8 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     TypeDefn = map.lookup(TypeTable, TypeCtor),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(Ctors, TagValues, _, _, _ReservedTag, _, _)
-    ->
+        TypeDefnBody =
+            hlds_du_type(Ctors, TagValues, _, _, _ReservedTag, _, _),
         % XXX we probably shouldn't ignore ReservedTag here
         (
             some [Ctor] (
@@ -1819,6 +1844,11 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
             ClassArity = TypeArity
         )
     ;
+        ( TypeDefnBody = hlds_eqv_type(_)
+        ; TypeDefnBody = hlds_foreign_type(_)
+        ; TypeDefnBody = hlds_solver_type(_, _)
+        ; TypeDefnBody = hlds_abstract_type(_)
+        ),
         unexpected(this_file, "ml_gen_hl_tag_field_id: non-du type")
     ),
 

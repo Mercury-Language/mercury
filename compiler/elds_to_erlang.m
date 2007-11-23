@@ -979,10 +979,10 @@ erlang_nonspecial_proc_name(ThisModule, PredModule, PredName, PredOrFunc,
         PredArity, ProcId, PredIsImported, MaybeExtModule, ProcNameStr) :-
     (
         % XXX not completely sure this is right
-        PredIsImported = yes
-    ->
+        PredIsImported = yes,
         MaybeExtModule = yes(erlang_module_name_to_str(PredModule))
     ;
+        PredIsImported = no,
         MaybeExtModule = no
     ),
 

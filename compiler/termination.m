@@ -531,20 +531,32 @@ report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
         % then output both sorts of error.
         % (See term_errors.m for details of direct and indirect errors.)
 
-        ( VerboseErrors = yes ->
+        (
+            VerboseErrors = yes,
             PrintErrors = Errors
-        ; NormalErrors = yes ->
-            IsNonSimple = (pred(ContextError::in) is semidet :-
-                ContextError = termination_error_context(Error, _Context),
-                is_indirect_error(Error) = no
-            ),
-            list.filter(IsNonSimple, Errors, PrintErrors0),
-            % If there were no direct errors then use the indirect errors.
-            % This prevents warnings that report termination could not be
-            % proved for unknown reasons.
-            PrintErrors = ( PrintErrors0 = [] -> Errors ; PrintErrors0 )
         ;
-            fail
+            VerboseErrors = no,
+            (
+                NormalErrors = yes,
+                IsNonSimple = (pred(ContextError::in) is semidet :-
+                    ContextError = termination_error_context(Error, _Context),
+                    is_indirect_error(Error) = no
+                ),
+                list.filter(IsNonSimple, Errors, PrintErrors0),
+                % If there were no direct errors then use the indirect errors.
+                % This prevents warnings that report termination could not be
+                % proven for unknown reasons.
+                (
+                    PrintErrors0 = [],
+                    PrintErrors = Errors
+                ;
+                    PrintErrors0 = [_ | _],
+                    PrintErrors = PrintErrors0
+                )
+            ;
+                NormalErrors = no,
+                fail
+            )
         )
     ->
         report_term_errors(SCC, PrintErrors, !.ModuleInfo, !IO)
@@ -707,23 +719,24 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
 
 set_generated_terminates([], _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
-    %
-    % We don't need to do anything special for solver type initialisation
-    % predicates.  Leaving it up to the analyser may result in better
-    % argument size information anyway.
-    %
-    ( SpecialPredId \= spec_pred_init ->
+    (
+        ( SpecialPredId = spec_pred_unify
+        ; SpecialPredId = spec_pred_compare
+        ; SpecialPredId = spec_pred_index
+        ),
         map.lookup(!.ProcTable, ProcId, ProcInfo0),
         proc_info_get_headvars(ProcInfo0, HeadVars),
         special_pred_id_to_termination(SpecialPredId, HeadVars,
             ArgSize, Termination),
-        proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0,
-            ProcInfo1),
+        proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
         proc_info_set_maybe_termination_info(yes(Termination),
             ProcInfo1, ProcInfo),
         svmap.det_update(ProcId, ProcInfo, !ProcTable)
     ;
-        true
+        SpecialPredId = spec_pred_init
+        % We don't need to do anything special for solver type initialisation
+        % predicates.  Leaving it up to the analyser may result in better
+        % argument size information anyway.
     ),
     set_generated_terminates(ProcIds, SpecialPredId, !ProcTable).
 

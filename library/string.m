@@ -2447,18 +2447,7 @@ format_int(Flags, Width, Prec, Int) = String :-
 
     % Prefix with appropriate sign or zero padding.
     % The previous step has deliberately left room for this.
-    ( Int < 0 ->
-        SignedStr = "-" ++ FieldStr
-    ; member('+', Flags) ->
-        SignedStr = "+" ++ FieldStr
-    ; member(' ', Flags) ->
-        SignedStr = " " ++ FieldStr
-    ; ZeroPadded = yes ->
-        SignedStr = "0" ++ FieldStr
-    ;
-        SignedStr = FieldStr
-    ),
-
+    SignedStr = add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr),
     String = justify_string(Flags, Width, SignedStr).
 
     % Format an unsigned int, unsigned octal, or unsigned hexadecimal
@@ -2602,21 +2591,9 @@ format_float(Flags, Width, Prec, Float) = NewFloat :-
     ;
         FieldStr = PrecModStr,
         ZeroPadded = no
-
     ),
     % Finishing up ..
-    ( Float < 0.0 ->
-        SignedStr = "-" ++ FieldStr
-    ; member('+', Flags) ->
-        SignedStr = "+" ++ FieldStr
-    ; member(' ', Flags) ->
-        SignedStr = " " ++ FieldStr
-    ; ZeroPadded = yes ->
-        SignedStr = "0" ++ FieldStr
-    ;
-        SignedStr = FieldStr
-    ),
-
+    SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr),
     NewFloat = justify_string(Flags, Width, SignedStr).
 
     % Format a scientific number to a specified number of significant
@@ -2664,18 +2641,7 @@ format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
     ),
 
     % Finishing up ..
-    ( Float < 0.0 ->
-        SignedStr = "-" ++ FieldStr
-    ; member('+', Flags) ->
-        SignedStr = "+" ++ FieldStr
-    ; member(' ', Flags) ->
-        SignedStr = " " ++ FieldStr
-    ; ZeroPadded = yes ->
-        SignedStr = "0" ++ FieldStr
-    ;
-        SignedStr = FieldStr
-    ),
-
+    SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr),
     NewFloat = justify_string(Flags, Width, SignedStr).
 
     % Format a scientific number (e,E)
@@ -2727,19 +2693,46 @@ format_scientific_number(Flags, Width, Prec, Float, E) = NewFloat :-
     ),
 
     % Finishing up ..
+    SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr),
+    NewFloat = justify_string(Flags, Width, SignedStr).
+
+:- func add_int_prefix_if_needed(flags, bool, int, string) = string.
+
+add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr) = SignedStr :-
+    ( Int < 0 ->
+        SignedStr = "-" ++ FieldStr
+    ; member('+', Flags) ->
+        SignedStr = "+" ++ FieldStr
+    ; member(' ', Flags) ->
+        SignedStr = " " ++ FieldStr
+    ;
+        (
+            ZeroPadded = yes,
+            SignedStr = "0" ++ FieldStr
+        ;
+            ZeroPadded = no,
+            SignedStr = FieldStr
+        )
+    ).
+
+:- func add_float_prefix_if_needed(flags, bool, float, string) = string.
+
+add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr) = SignedStr :-
     ( Float < 0.0 ->
         SignedStr = "-" ++ FieldStr
     ; member('+', Flags) ->
         SignedStr = "+" ++ FieldStr
     ; member(' ', Flags) ->
         SignedStr = " " ++ FieldStr
-    ; ZeroPadded = yes ->
-        SignedStr = "0" ++ FieldStr
     ;
-        SignedStr = FieldStr
-    ),
-
-    NewFloat = justify_string(Flags, Width, SignedStr).
+        (
+            ZeroPadded = yes,
+            SignedStr = "0" ++ FieldStr
+        ;
+            ZeroPadded = no,
+            SignedStr = FieldStr
+        )
+    ).
 
 :- func justify_string(flags, maybe_width, string) = string.
 

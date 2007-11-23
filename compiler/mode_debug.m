@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-1997, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,18 +70,25 @@ mode_checkpoint(Port, Msg, !ModeInfo, !IO) :-
 mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg, !ModeInfo,
         !IO) :-
     mode_info_get_errors(!.ModeInfo, Errors),
-    ( Port = enter ->
+    (
+        Port = enter,
         io.write_string("Enter ", !IO),
         Detail = yes
-    ; Port = wakeup ->
+    ;
+        Port = wakeup,
         io.write_string("Wake ", !IO),
         Detail = no
-    ; Errors = [] ->
-        io.write_string("Exit ", !IO),
-        Detail = yes
     ;
-        io.write_string("Delay ", !IO),
-        Detail = no
+        Port = exit,
+        (
+            Errors = [],
+            io.write_string("Exit ", !IO),
+            Detail = yes
+        ;
+            Errors = [_ | _],
+            io.write_string("Delay ", !IO),
+            Detail = no
+        )
     ),
     io.write_string(Msg, !IO),
     (

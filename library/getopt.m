@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999,2001-2006 The University of Melbourne.
+% Copyright (C) 1994-1999,2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: getopt.m.
 % Authors: fjh, zs.
 % Stability: medium.
-% 
+%
 % This module exports the predicate getopt.process_options/4,
 % which can be used to parse command-line options.
 %
@@ -77,7 +77,7 @@
 % with another `-', e.g. `-x-' will negate the `-x' option.
 % Long options can be negated by preceding them with `--no-',
 % e.g. `--no-foo' will negate the `--foo' option.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -398,21 +398,22 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
     ; string.append("--no-", LongOption, Option) ->
         LongOptionPred = OptionOps ^ long_option,
         ( LongOptionPred(LongOption, Flag) ->
-            string.append("--", LongOption, OptName),
+            OptName = "--" ++ LongOption,
             process_negated_option(OptName, Flag, OptionOps,
                 OptionTable0, Result1, !OptionsSet),
-            ( Result1 = ok(OptionTable1) ->
+            (
+                Result1 = ok(OptionTable1),
                 getopt.process_arguments(Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs, OptionTable1, Result,
                     !OptionsSet)
             ;
+                Result1 = error(_),
                 Result = Result1,
                 OptionArgs = OptionArgs0,
                 Args = Args0
             )
         ;
-            string.append_list(["unrecognized option `", Option, "'"],
-                ErrorMsg),
+            ErrorMsg = "unrecognized option `" ++ Option ++ "'",
             Result = error(ErrorMsg),
             OptionArgs = OptionArgs0,
             Args = Args0
@@ -439,15 +440,13 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs,
                     OptionTable0, Result, !OptionsSet)
             ;
-                string.append_list(["unknown type for option `", Option, "'"],
-                    ErrorMsg),
+                ErrorMsg = "unknown type for option `" ++ Option ++ "'",
                 Result = error(ErrorMsg),
                 OptionArgs = OptionArgs0,
                 Args = Args0
             )
         ;
-            string.append("unrecognized option `", OptionName, Tmp),
-            string.append(Tmp, "'", ErrorMsg),
+            ErrorMsg = "unrecognized option `" ++ OptionName ++ "'",
             Result = error(ErrorMsg),
             OptionArgs = OptionArgs0,
             Args = Args0
@@ -461,18 +460,19 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
                 string.from_char_list(['-', SingleShortOpt], OptName),
                 process_negated_option(OptName, Flag, OptionOps,
                     OptionTable0, Result1, !OptionsSet),
-                ( Result1 = ok(OptionTable1) ->
+                (
+                    Result1 = ok(OptionTable1),
                     getopt.process_arguments(Args0, Args, OptionOps,
                         [Option | OptionArgs0], OptionArgs,
                         OptionTable1, Result, !OptionsSet)
                 ;
+                    Result1 = error(_),
                     Result = Result1,
                     OptionArgs = OptionArgs0,
                     Args = Args0
                 )
             ;
-                string.append_list(["unrecognized option `-", ShortOptions,
-                    "'"], ErrorMsg),
+                ErrorMsg = "unrecognized option `-" ++ ShortOptions ++ "'",
                 Result = error(ErrorMsg),
                 OptionArgs = OptionArgs0,
                 Args = Args0
@@ -486,10 +486,12 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
             getopt.handle_short_options(ShortOptionsList, OptionOps,
                 Args0, Args1, [Option | OptionArgs0], OptionArgs1,
                 OptionTable0, Result1, !OptionsSet),
-            ( Result1 = ok(OptionTable1) ->
+            (
+                Result1 = ok(OptionTable1),
                 getopt.process_arguments(Args1, Args, OptionOps,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
             ;
+                Result1 = error(_),
                 Result = Result1,
                 OptionArgs = OptionArgs1,
                 Args = Args0
@@ -537,31 +539,35 @@ getopt.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         OptionArgs1 = OptionArgs0,
         MissingArg = no
     ),
-    ( MissingArg = yes ->
+    (
+        MissingArg = yes,
         Args = Args0,
         OptionArgs = OptionArgs1,
-        string.append_list(["option `", Option, "' needs an argument"],
-            ErrorMsg),
+        ErrorMsg = "option `" ++ Option ++ "' needs an argument",
         Result = error(ErrorMsg)
     ;
-        getopt.need_arg(OptionData, no),
-        MaybeOptionArg = yes(_)
-    ->
-        Args = Args0,
-        OptionArgs = OptionArgs1,
-        string.append_list(["option `", Option,
-            "' does not allow an argument"], ErrorMsg),
-        Result = error(ErrorMsg)
-    ;
-        getopt.process_option(OptionData, Option, Flag, MaybeOptionArg,
-            OptionOps, OptionTable0, Result1, !OptionsSet),
-        ( Result1 = ok(OptionTable1) ->
-            getopt.process_arguments(Args1, Args, OptionOps,
-                OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
-        ;
-            Result = Result1,
+        MissingArg = no,
+        (
+            getopt.need_arg(OptionData, no),
+            MaybeOptionArg = yes(_)
+        ->
+            Args = Args0,
             OptionArgs = OptionArgs1,
-            Args = Args1
+            ErrorMsg = "option `" ++ Option ++ "' does not allow an argument",
+            Result = error(ErrorMsg)
+        ;
+            getopt.process_option(OptionData, Option, Flag, MaybeOptionArg,
+                OptionOps, OptionTable0, Result1, !OptionsSet),
+            (
+                Result1 = ok(OptionTable1),
+                getopt.process_arguments(Args1, Args, OptionOps,
+                    OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
+            ;
+                Result1 = error(_),
+                Result = Result1,
+                OptionArgs = OptionArgs1,
+                Args = Args1
+            )
         )
     ).
 
@@ -593,26 +599,26 @@ getopt.handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
             string.from_char_list(['-', Opt], Option),
             getopt.process_option(OptionData, Option, Flag, MaybeOptionArg,
                 OptionOps, OptionTable0, Result1, !OptionsSet),
-            ( Result1 = ok(OptionTable1) ->
+            (
+                Result1 = ok(OptionTable1),
                 getopt.handle_short_options(Opts1, OptionOps, Args1, Args,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
             ;
+                Result1 = error(_),
                 Result = Result1,
                 OptionArgs = OptionArgs1,
                 Args = Args1
             )
         ;
             string.char_to_string(Opt, OptString),
-            string.append_list(["unknown type for option `-",
-                OptString, "'"], ErrorMsg),
+            ErrorMsg = "unknown type for option `-" ++ OptString ++ "'",
             Result = error(ErrorMsg),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
     ;
         string.char_to_string(Opt, OptString),
-        string.append_list(["unrecognized option `-", OptString, "'"],
-            ErrorMsg),
+        ErrorMsg = "unrecognized option `-" ++ OptString ++ "'",
         Result = error(ErrorMsg),
         OptionArgs = OptionArgs0,
         Args = Args0
@@ -914,9 +920,8 @@ getopt.need_arg(maybe_string_special, yes).
     maybe_option_table(OptionType)::out) is det.
 
 getopt.numeric_argument(Option, Arg, Result) :-
-    string.append_list(["option `", Option,
-        "' requires a numeric argument; `", Arg, "' is not numeric"],
-        ErrorMsg),
+    ErrorMsg = "option `" ++ Option ++ "'" ++
+        "requires a numeric argument; `" ++ Arg ++ "' is not numeric",
     Result = error(ErrorMsg).
 
 %-----------------------------------------------------------------------------%

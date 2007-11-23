@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2006 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,12 +113,12 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo, !IO) :-
         AbstractSCC, [], IterationInfos, !IO),
     ChangeFlag = or_flags(IterationInfos),
     (
-        ChangeFlag = yes
-    ->  
+        ChangeFlag = yes,
         list.foldl(update_size_info, IterationInfos, !ModuleInfo),
         do_fixpoint_calculation(Options, SCC, Iteration + 1,  
             _, !ModuleInfo, !IO) 
     ;
+        ChangeFlag = no,
         % If one of the polyhedra in the SCC has `false' as its
         % argument size constraint then the analysis failed.  In that
         % case set the argument size constraints for every procedure

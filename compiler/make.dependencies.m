@@ -170,12 +170,9 @@ combine_deps_2(FindDeps1, FindDeps2, ModuleName, Success, Deps, !Info, !IO) :-
     (find_module_deps(T)::out(find_module_deps)) is det.
 
 combine_deps_list([]) = no_deps.
-combine_deps_list([FindDeps | FindDepsList]) =
-    ( FindDepsList = [] ->
-        FindDeps
-    ;
-        combine_deps(FindDeps, combine_deps_list(FindDepsList))
-    ).
+combine_deps_list([FindDeps]) = FindDeps.
+combine_deps_list([FindDeps1, FindDeps2 | FindDepsTail]) =
+    combine_deps(FindDeps1, combine_deps_list([FindDeps2 | FindDepsTail])).
 
 target_dependencies(_, module_target_source) = no_deps.
 target_dependencies(Globals, module_target_errors) =
@@ -216,8 +213,7 @@ target_dependencies(Globals, module_target_asm_code(_)) =
         compiled_code_dependencies(Globals).
 target_dependencies(Globals, module_target_object_code(PIC)) = Deps :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = ( CompilationTarget = target_asm ->
-        module_target_asm_code(PIC) ; module_target_c_code ),
+    TargetCode = target_to_module_target_code(CompilationTarget, PIC),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
     % For --highlevel-code, the `.c' file will #include the header
@@ -269,7 +265,7 @@ target_dependencies(Globals, module_target_foreign_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
 target_dependencies(Globals, module_target_fact_table_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
-target_dependencies(_, module_target_xml_doc) = 
+target_dependencies(_, module_target_xml_doc) =
     combine_deps_list([
         module_target_source `of` self,
         module_target_private_interface `of` parents,
@@ -282,11 +278,27 @@ target_dependencies(_, module_target_xml_doc) =
 
 get_foreign_deps(Globals, PIC) = Deps :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = ( CompilationTarget = target_asm ->
-        module_target_asm_code(PIC) ; module_target_c_code ),
+    TargetCode = target_to_module_target_code(CompilationTarget, PIC),
     Deps = combine_deps_list([
         TargetCode `of` self
     ]).
+
+:- func target_to_module_target_code(compilation_target, pic)
+    = module_target_type.
+
+target_to_module_target_code(CompilationTarget, PIC) = TargetCode :-
+    (
+        CompilationTarget = target_asm,
+        TargetCode = module_target_asm_code(PIC)
+    ;
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_il
+        ; CompilationTarget = target_java
+        ; CompilationTarget = target_x86_64
+        ; CompilationTarget = target_erlang
+        ),
+        TargetCode = module_target_c_code
+    ).
 
 :- func interface_file_dependencies =
     (find_module_deps(dependency_file)::out(find_module_deps)) is det.
@@ -1045,22 +1057,26 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
                 debug_msg(WriteMissingDeps, !IO)
             )
         ;
-            Rebuild = yes
-        ->
-            % With `--rebuild', a target is always considered to be
-            % out-of-date, regardless of the timestamps of its dependencies.
-
-            DepsResult = deps_out_of_date
-        ;
-            list.member(MaybeDepTimestamp2, DepTimestamps),
-            MaybeDepTimestamp2 = ok(DepTimestamp),
-            compare((>), DepTimestamp, Timestamp)
-        ->
-            debug_newer_dependencies(TargetFileName, MaybeTimestamp,
-                DepFiles, DepTimestamps, !IO),
-            DepsResult = deps_out_of_date
-        ;
-            DepsResult = deps_up_to_date
+            (
+                Rebuild = yes,
+                % With `--rebuild', a target is always considered to be
+                % out-of-date, regardless of the timestamps of its
+                % dependencies.
+                DepsResult = deps_out_of_date
+            ;
+                Rebuild = no,
+                (
+                    list.member(MaybeDepTimestamp2, DepTimestamps),
+                    MaybeDepTimestamp2 = ok(DepTimestamp),
+                    compare((>), DepTimestamp, Timestamp)
+                ->
+                    debug_newer_dependencies(TargetFileName, MaybeTimestamp,
+                        DepFiles, DepTimestamps, !IO),
+                    DepsResult = deps_out_of_date
+                ;
+                    DepsResult = deps_up_to_date
+                )
+            )
         )
     ).
 

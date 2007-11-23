@@ -221,6 +221,11 @@
             % the construction of the HLDS, so most passes of the compiler
             % will just call error/1 if they occur.
 
+:- inst plain_call_expr
+    --->    plain_call(ground, ground, ground, ground, ground, ground).
+:- inst plain_call
+    --->    hlds_goal(plain_call_expr, ground).
+
 :- type conj_type
     --->    plain_conj
     ;       parallel_conj.
@@ -2602,8 +2607,22 @@ goal_is_atomic(unify(_, _, _, _, _)) = yes.
 goal_is_atomic(generic_call(_, _, _, _)) = yes.
 goal_is_atomic(plain_call(_, _, _, _, _, _)) = yes.
 goal_is_atomic(call_foreign_proc(_, _, _, _, _, _,  _)) = yes.
-goal_is_atomic(conj(_, Conj)) = ( Conj = [] -> yes ; no ).
-goal_is_atomic(disj(Disj)) = ( Disj = [] -> yes ; no ).
+goal_is_atomic(conj(_, Conj)) = IsAtomic :-
+    (
+        Conj = [],
+        IsAtomic = yes
+    ;
+        Conj = [_ | _],
+        IsAtomic = no
+    ).
+goal_is_atomic(disj(Disj)) = IsAtomic :-
+    (
+        Disj = [],
+        IsAtomic = yes
+    ;
+        Disj = [_ | _],
+        IsAtomic = no
+    ).
 goal_is_atomic(if_then_else(_, _, _, _)) = no.
 goal_is_atomic(negation(_)) = no.
 goal_is_atomic(switch(_, _, _)) = no.

@@ -414,15 +414,19 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             Instrs2 = [TempAssign | Instrs1],
             opt_access(Instrs2, Instrs, !TempCounter, NumRealRRegs,
                 AlreadyTried1, AccessThreshold)
-        ; ChooseableRvals = [_ | _] ->
-            !:TempCounter = OrigTempCounter,
-            opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter,
-                NumRealRRegs, AlreadyTried1, AccessThreshold)
         ;
-            !:TempCounter = OrigTempCounter,
-            opt_access(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-                set.init, AccessThreshold),
-            Instrs = [Instr0 | TailInstrs]
+            (
+                ChooseableRvals = [_ | _],
+                !:TempCounter = OrigTempCounter,
+                opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter,
+                    NumRealRRegs, AlreadyTried1, AccessThreshold)
+            ;
+                ChooseableRvals = [],
+                !:TempCounter = OrigTempCounter,
+                opt_access(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
+                    set.init, AccessThreshold),
+                Instrs = [Instr0 | TailInstrs]
+            )
         )
     ;
         opt_access(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
@@ -505,11 +509,18 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
 substitute_lval_in_defn_components(_OldLval, _NewLval, [], [], !NumSubsts).
 substitute_lval_in_defn_components(OldLval, NewLval,
         [Comp0 | Comps0], [Comp | Comps], !NumSubsts) :-
-    ( Comp0 = foreign_proc_outputs(Outputs0) ->
+    (
+        Comp0 = foreign_proc_outputs(Outputs0),
         substitute_lval_in_defn_outputs(OldLval, NewLval,
             Outputs0, Outputs, !NumSubsts),
         Comp = foreign_proc_outputs(Outputs)
     ;
+        ( Comp0 = foreign_proc_inputs(_)
+        ; Comp0 = foreign_proc_user_code(_, _, _)
+        ; Comp0 = foreign_proc_raw_code(_, _, _, _)
+        ; Comp0 = foreign_proc_fail_to(_)
+        ; Comp0 = foreign_proc_noop
+        ),
         Comp = Comp0
     ),
     substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,

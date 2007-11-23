@@ -182,7 +182,8 @@ init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0, Counter,
         ),
         FileName = BaseName ++ ".opt" ++ num_to_str(0),
         io.open_output(FileName, Res, !IO),
-        ( Res = ok(FileStream) ->
+        (
+            Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
             counter.allocate(NextLabel, Counter, _),
             opt_debug.msg(yes, NextLabel, "before optimization", !IO),
@@ -190,6 +191,7 @@ init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0, Counter,
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;
+            Res = error(_),
             unexpected(this_file, "cannot open " ++ FileName)
         ),
         OptDebugInfo = opt_debug_info(BaseName, 0, FileName, 0, FileName,
@@ -230,7 +232,8 @@ maybe_opt_debug(Instrs, Counter, Suffix, Msg, ProcLabel, !OptDebugInfo, !IO) :-
         DiffFileName = BaseName ++ ".diff" ++ num_to_str(OptNum)
             ++ "." ++ Suffix,
         io.open_output(OptFileName, Res, !IO),
-        ( Res = ok(FileStream) ->
+        (
+            Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
             counter.allocate(NextLabel, Counter, _),
             opt_debug.msg(yes, NextLabel, Msg, !IO),
@@ -244,6 +247,7 @@ maybe_opt_debug(Instrs, Counter, Suffix, Msg, ProcLabel, !OptDebugInfo, !IO) :-
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;
+            Res = error(_),
             ErrorMsg = "cannot open " ++ OptFileName,
             unexpected(this_file, ErrorMsg)
         ),

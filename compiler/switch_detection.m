@@ -480,11 +480,13 @@ expand_sub_disj_process_conj(Var, ConjGoals, !.RevUnifies, GoalInfo,
     ;
         ConjGoals = [FirstGoal | RestGoals],
         FirstGoal = hlds_goal(FirstGoalExpr, _),
-        ( FirstGoalExpr = unify(_, _, _, _, _) ->
+        (
+            FirstGoalExpr = unify(_, _, _, _, _),
             !:RevUnifies = [FirstGoal | !.RevUnifies],
             expand_sub_disj_process_conj(Var, RestGoals, !.RevUnifies,
                 GoalInfo, !Cases)
-        ; FirstGoalExpr = disj(Disjuncts) ->
+        ;
+            FirstGoalExpr = disj(Disjuncts),
             Disjuncts = [_ | _],
             list.reverse(!.RevUnifies, Unifies),
             list.map(
@@ -492,8 +494,6 @@ expand_sub_disj_process_conj(Var, ConjGoals, !.RevUnifies, GoalInfo,
                 Disjuncts, ExpandedConjunctions),
             partition_disj_trial(ExpandedConjunctions, Var, [], Left, !Cases),
             Left = []
-        ;
-            fail
         )
     ).
 
@@ -599,28 +599,31 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         FoundDeconstruct) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
-        GoalExpr0 = scope(Reason, SubGoal0)
-    ->
+        GoalExpr0 = scope(Reason, SubGoal0),
         find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
             !Result, !Info, FoundDeconstruct),
         Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
     ;
         GoalExpr0 = conj(ConjType, SubGoals0),
-        ConjType = plain_conj
-    ->
         (
-            SubGoals0 = [],
-            Goal = Goal0,
-            FoundDeconstruct = before_deconstruct
+            ConjType = plain_conj,
+            (
+                SubGoals0 = [],
+                Goal = Goal0,
+                FoundDeconstruct = before_deconstruct
+            ;
+                SubGoals0 = [_ | _],
+                conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
+                    !Subst, !Result, !Info, FoundDeconstruct),
+                Goal = hlds_goal(conj(ConjType, SubGoals), GoalInfo)
+            )
         ;
-            SubGoals0 = [_ | _],
-            conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
-                !Subst, !Result, !Info, FoundDeconstruct),
-            Goal = hlds_goal(conj(ConjType, SubGoals), GoalInfo)
+            ConjType = parallel_conj,
+            Goal = Goal0,
+            FoundDeconstruct = given_up_search
         )
     ;
-        GoalExpr0 = unify(LHS, RHS, _, UnifyInfo0, _)
-    ->
+        GoalExpr0 = unify(LHS, RHS, _, UnifyInfo0, _),
         (
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.
@@ -646,12 +649,23 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             )
         )
     ;
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = disj(_)
+        ; GoalExpr0 = switch(_, _, _)
+        ; GoalExpr0 = negation(_)
+        ; GoalExpr0 = if_then_else(_, _, _, _)
+        ),
         Goal = Goal0,
         ( goal_info_has_feature(GoalInfo, feature_from_head) ->
             FoundDeconstruct = before_deconstruct
         ;
             FoundDeconstruct = given_up_search
         )
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "find_bind_var_2: shorthand")
     ).
 
 :- pred conj_find_bind_var(prog_var::in,
@@ -666,10 +680,14 @@ conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
         !Subst, !Result, !Info, FoundDeconstruct) :-
     find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
         !Result, !Info, FoundDeconstruct1),
-    ( FoundDeconstruct1 = before_deconstruct ->
+    (
+        FoundDeconstruct1 = before_deconstruct,
         conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
             !Subst, !Result, !Info, FoundDeconstruct)
     ;
+        ( FoundDeconstruct1 = found_deconstruct
+        ; FoundDeconstruct1 = given_up_search
+        ),
         FoundDeconstruct = FoundDeconstruct1,
         Goals = Goals0
     ).

@@ -598,10 +598,18 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
             Detism0 = goal_info_get_determinism(GoalInfo),
-            ( Detism0 \= detism_det ->
-                simplify_info_set_rerun_det(!Info)
+            (
+                Detism0 = detism_det
             ;
-                true
+                ( Detism0 = detism_semi
+                ; Detism0 = detism_non
+                ; Detism0 = detism_multi
+                ; Detism0 = detism_failure
+                ; Detism0 = detism_erroneous
+                ; Detism0 = detism_cc_non
+                ; Detism0 = detism_cc_multi
+                ),
+                simplify_info_set_rerun_det(!Info)
             )
         ;
             Context = goal_info_get_context(GoalInfo),
@@ -850,9 +858,7 @@ apply_induced_tsubst(ToVar, FromVar, !Info) :-
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     rtti_varmaps_var_info(RttiVarMaps0, FromVar, FromVarRttiInfo),
     rtti_varmaps_var_info(RttiVarMaps0, ToVar, ToVarRttiInfo),
-    (
-        calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst)
-    ->
+    ( calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) ->
         ( map.is_empty(TSubst) ->
             true
         ;
@@ -863,20 +869,31 @@ apply_induced_tsubst(ToVar, FromVar, !Info) :-
         % variables has rtti_var_info recorded.  This can happen if a new
         % variable has been introduced, eg in quantification, without
         % being recorded in the rtti_varmaps.
-        FromVarRttiInfo = non_rtti_var
-    ->
-        rtti_var_info_duplicate(ToVar, FromVar, RttiVarMaps0, RttiVarMaps),
-        simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
-    ;
-        ToVarRttiInfo = non_rtti_var
-    ->
-        rtti_var_info_duplicate(FromVar, ToVar, RttiVarMaps0, RttiVarMaps),
-        simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
-    ;
-        % calculate_induced_tsubst failed for a different reason, either
-        % because unification failed or because one variable was a
-        % type_info and the other was a typeclass_info.
-        unexpected(this_file, "apply_induced_tsubst: inconsistent info")
+        (
+            FromVarRttiInfo = non_rtti_var,
+            rtti_var_info_duplicate(ToVar, FromVar,
+                RttiVarMaps0, RttiVarMaps),
+            simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
+        ;
+            ( FromVarRttiInfo = type_info_var(_)
+            ; FromVarRttiInfo = typeclass_info_var(_)
+            ),
+            (
+                ToVarRttiInfo = non_rtti_var,
+                rtti_var_info_duplicate(FromVar, ToVar,
+                    RttiVarMaps0, RttiVarMaps),
+                simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
+            ;
+                ( ToVarRttiInfo = type_info_var(_)
+                ; ToVarRttiInfo = typeclass_info_var(_)
+                ),
+                % Calculate_induced_tsubst failed for a different reason,
+                % either because unification failed or because one variable
+                % was a type_info and the other was a typeclass_info.
+                unexpected(this_file,
+                    "apply_induced_tsubst: inconsistent info")
+            )
+        )
     ).
 
     % Calculate the induced substitution by unifying the types or constraints,

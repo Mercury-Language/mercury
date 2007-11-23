@@ -191,9 +191,13 @@ generate_proc_arg_info(ArgTypes, ModuleInfo, !ProcInfo) :-
     % of this decision.)
     %
 make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
-    ( CodeModel = model_semi ->
+    (
+        CodeModel = model_semi,
         StartReg = 2
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         StartReg = 1
     ),
     make_arg_infos_list(ArgModes, ArgTypes, 1, StartReg, ModuleInfo, ArgInfo).
@@ -205,10 +209,14 @@ make_arg_infos_list([], [], _, _, _, []).
 make_arg_infos_list([Mode | Modes], [Type | Types], !.InReg, !.OutReg,
         ModuleInfo, [ArgInfo | ArgInfos]) :-
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    ( ArgMode = top_in ->
+    (
+        ArgMode = top_in,
         ArgReg = !.InReg,
         !:InReg = !.InReg + 1
     ;
+        ( ArgMode = top_out
+        ; ArgMode = top_unused
+        ),
         ArgReg = !.OutReg,
         !:OutReg = !.OutReg + 1
     ),
@@ -242,9 +250,13 @@ compute_in_and_out_vars_2(ModuleInfo, [Var | Vars],
     compute_in_and_out_vars_2(ModuleInfo, Vars,
         Modes, Types, !:InVars, !:OutVars),
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    ( ArgMode = top_in ->
+    (
+        ArgMode = top_in,
         !:InVars = [Var | !.InVars]
     ;
+        ( ArgMode = top_out
+        ; ArgMode = top_unused
+        ),
         !:OutVars = [Var | !.OutVars]
     ).
 
@@ -285,10 +297,13 @@ partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
 input_args([], []).
 input_args([arg_info(Loc, Mode) | Args], !:Locs) :-
     input_args(Args, !:Locs),
-    ( Mode = top_in ->
+    (
+        Mode = top_in,
         !:Locs = [Loc | !.Locs]
     ;
-        true
+        Mode = top_out
+    ;
+        Mode = top_unused
     ).
 
 %---------------------------------------------------------------------------%

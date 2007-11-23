@@ -171,7 +171,14 @@ singleton(X) = leaf(X).
 
 %-----------------------------------------------------------------------------%
 
-from_list(Xs) = ( if Xs = [] then nil else leaves(Xs) ).
+from_list(Xs) = C :-
+    (
+        Xs = [],
+        C = nil
+    ;
+        Xs = [_ | _],
+        C = leaves(Xs)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -186,11 +193,31 @@ list_2(branch(CA, CB), Xs) = list_2(CA, list_2(CB, Xs)).
 
 %-----------------------------------------------------------------------------%
 
-cons(X, C) = ( if C = nil then leaf(X) else branch(leaf(X), C) ).
+cons(X, C) = XC :-
+    (
+        C = nil,
+        XC = leaf(X)
+    ;
+        ( C = leaf(_)
+        ; C = leaves(_)
+        ; C = branch(_, _)
+        ),
+        XC = branch(leaf(X), C)
+    ).
 
 %-----------------------------------------------------------------------------%
 
-snoc(C, X) = ( if C = nil then leaf(X) else branch(C, leaf(X)) ).
+snoc(C, X) = CX :-
+    (
+        C = nil,
+        CX = leaf(X)
+    ;
+        ( C = leaf(_)
+        ; C = leaves(_)
+        ; C = branch(_, _)
+        ),
+        CX = branch(C, leaf(X))
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -203,7 +230,13 @@ CA ++ CB = (      if CA = nil then CB
 
 head_tail(leaf(X),          X, nil).
 head_tail(leaves([X | Xs]), X, C  ) :-
-    C = ( if Xs = [] then nil else leaves(Xs) ).
+    (
+        Xs = [],
+        C = nil
+    ;
+        Xs = [_ | _],
+        C = leaves(Xs)
+    ).
 head_tail(branch(CA0, CB),  X, C  ) :-
     head_tail(CA0, X, CA),
     C = CA ++ CB.

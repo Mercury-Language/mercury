@@ -1576,11 +1576,16 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
 check_ctor_constraints(TypeTable, TypeCtor, !ModuleInfo, !Specs) :-
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, Body),
-    ( Body = hlds_du_type(Ctors, _, _, _, _, _, _) ->
+    (
+        Body = hlds_du_type(Ctors, _, _, _, _, _, _),
         list.foldl2(check_ctor_type_ambiguities(TypeCtor, TypeDefn), Ctors,
             !ModuleInfo, !Specs)
     ;
-        true
+        ( Body = hlds_eqv_type(_)
+        ; Body = hlds_foreign_type(_)
+        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_abstract_type(_)
+        )
     ).
 
 :- pred check_ctor_type_ambiguities(type_ctor::in, hlds_type_defn::in,
@@ -1787,27 +1792,27 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         InstanceTypes),
     HeaderPieces =
         [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++
-            "(" ++ InstanceTypesString ++ ")':"),
+        words("`" ++ ClassNameString ++  "(" ++ InstanceTypesString ++ ")':"),
         words("multiple implementations of type class"),
         p_or_f(PredOrFunc), words("method"),
         sym_name_and_arity(MethodName / Arity), suffix("."), nl],
     HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
-    ( MatchingInstanceMethods = [FirstInstance0 | LaterInstances0] ->
-        FirstInstance = FirstInstance0,
-        LaterInstances = LaterInstances0
+    (
+        MatchingInstanceMethods = [FirstInstance | LaterInstances]
     ;
+        MatchingInstanceMethods = [],
         unexpected(this_file, "no matching instances")
     ),
     FirstInstanceContext = FirstInstance ^ instance_method_decl_context,
     FirstPieces = [words("First definition appears here."), nl],
     FirstMsg = simple_msg(FirstInstanceContext, [always(FirstPieces)]),
-    DefnToMsg = (pred(Definition::in, Msg::out) is det :-
-        TheContext = Definition ^ instance_method_decl_context,
-        SubsequentPieces =
-            [words("Subsequent definition appears here."), nl],
-        Msg = simple_msg(TheContext, [always(SubsequentPieces)])
-    ),
+    DefnToMsg =
+        (pred(Definition::in, Msg::out) is det :-
+            TheContext = Definition ^ instance_method_decl_context,
+            SubsequentPieces =
+                [words("Subsequent definition appears here."), nl],
+            Msg = simple_msg(TheContext, [always(SubsequentPieces)])
+        ),
     list.map(DefnToMsg, LaterInstances, LaterMsgs),
 
     Spec = error_spec(severity_error, phase_type_check,

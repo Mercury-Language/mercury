@@ -95,7 +95,16 @@ make_module_target(DepFile, Succeeded, !Info, !IO) :-
 make_module_target_extra_options(_ExtraOptions, dep_file(_, _) @ Dep,
         Succeeded, !Info, !IO) :-
     dependency_status(Dep, Status, !Info, !IO),
-    Succeeded = ( Status = deps_status_error -> no ; yes ).
+    (
+        Status = deps_status_error,
+        Succeeded = no
+    ;
+        ( Status = deps_status_not_considered
+        ; Status = deps_status_being_built
+        ; Status = deps_status_up_to_date
+        ),
+        Succeeded = yes
+    ).
 make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
         Succeeded, !Info, !IO) :-
     dependency_status(Dep, Status, !Info, !IO),
@@ -177,8 +186,13 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                     make_dependency_files(TargetFile, DepFilesToMake,
                         TouchedTargetFiles, TouchedFiles, DepsResult0,
                         !Info, !IO),
-                    DepsResult =
-                        ( DepsSuccess = yes -> DepsResult0 ; deps_error )
+                    (
+                        DepsSuccess = yes,
+                        DepsResult = DepsResult0
+                    ;
+                        DepsSuccess = no,
+                        DepsResult = deps_error
+                    )
                 ),
                 (
                     DepsResult = deps_error,
@@ -237,59 +251,58 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
 
 make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedFiles, DepsResult, !Info, !IO) :-
-    %
     % Build the dependencies.
-    %
+
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
         DepFilesToMake, MakeDepsSuccess, !Info, !IO),
 
-    %
     % Check that the target files exist.
-    %
+
     list.map_foldl2(get_target_timestamp(no), TouchedTargetFiles,
         TargetTimestamps, !Info, !IO),
     (
-        MakeDepsSuccess = no
-    ->
+        MakeDepsSuccess = no,
         debug_file_msg(TargetFile, "error making dependencies", !IO),
         DepsResult = deps_error
     ;
-        list.member(error(_), TargetTimestamps)
-    ->
-        debug_file_msg(TargetFile, "target file does not exist", !IO),
-        DepsResult = deps_out_of_date
-    ;
-        (
-            TargetFile = target_file(ModuleName, FileType),
-            FileType = module_target_analysis_registry
-        ->
-            force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis,
-                !.Info, !IO)
-        ;
-            ForceReanalysis = no
-        ),
-        (
-            ForceReanalysis = yes,
+        MakeDepsSuccess = yes,
+        ( list.member(error(_), TargetTimestamps) ->
+            debug_file_msg(TargetFile, "target file does not exist", !IO),
             DepsResult = deps_out_of_date
         ;
-            ForceReanalysis = no,
+            (
+                TargetFile = target_file(ModuleName, FileType),
+                FileType = module_target_analysis_registry
+            ->
+                force_reanalysis_of_suboptimal_module(ModuleName,
+                    ForceReanalysis, !.Info, !IO)
+            ;
+                ForceReanalysis = no
+            ),
+            (
+                ForceReanalysis = yes,
+                DepsResult = deps_out_of_date
+            ;
+                ForceReanalysis = no,
 
-            % Compare the oldest of the timestamps of the touched
-            % files with the timestamps of the dependencies.
+                % Compare the oldest of the timestamps of the touched
+                % files with the timestamps of the dependencies.
 
-            list.map_foldl2(get_timestamp_file_timestamp,
-                TouchedTargetFiles, TouchedTargetFileTimestamps, !Info, !IO),
-            list.map_foldl2(get_file_timestamp([dir.this_directory]),
-                TouchedFiles, TouchedFileTimestamps, !Info, !IO),
-            MaybeOldestTimestamp0 = list.foldl(find_oldest_timestamp,
-                TouchedTargetFileTimestamps, ok(newest_timestamp)),
-            MaybeOldestTimestamp = list.foldl(find_oldest_timestamp,
-                TouchedFileTimestamps, MaybeOldestTimestamp0),
+                list.map_foldl2(get_timestamp_file_timestamp,
+                    TouchedTargetFiles, TouchedTargetFileTimestamps,
+                    !Info, !IO),
+                list.map_foldl2(get_file_timestamp([dir.this_directory]),
+                    TouchedFiles, TouchedFileTimestamps, !Info, !IO),
+                MaybeOldestTimestamp0 = list.foldl(find_oldest_timestamp,
+                    TouchedTargetFileTimestamps, ok(newest_timestamp)),
+                MaybeOldestTimestamp = list.foldl(find_oldest_timestamp,
+                    TouchedFileTimestamps, MaybeOldestTimestamp0),
 
-            get_file_name(no, TargetFile, TargetFileName, !Info, !IO),
-            check_dependencies(TargetFileName, MaybeOldestTimestamp,
-                MakeDepsSuccess, DepFilesToMake, DepsResult, !Info, !IO)
+                get_file_name(no, TargetFile, TargetFileName, !Info, !IO),
+                check_dependencies(TargetFileName, MaybeOldestTimestamp,
+                    MakeDepsSuccess, DepFilesToMake, DepsResult, !Info, !IO)
+            )
         )
     ).
 
@@ -1012,11 +1025,33 @@ external_foreign_code_files_for_il(ModuleName, Language, ForeignFiles, !IO) :-
 :- func target_type_to_pic(module_target_type) = pic.
 
 target_type_to_pic(TargetType) = Result :-
-    ( TargetType = module_target_asm_code(PIC) ->
-        Result = PIC
-    ; TargetType = module_target_object_code(PIC) ->
+    (
+        ( TargetType = module_target_asm_code(PIC)
+        ; TargetType = module_target_object_code(PIC)
+        ),
         Result = PIC
     ;
+        ( TargetType = module_target_source
+        ; TargetType = module_target_errors
+        ; TargetType = module_target_private_interface
+        ; TargetType = module_target_long_interface
+        ; TargetType = module_target_short_interface
+        ; TargetType = module_target_unqualified_short_interface
+        ; TargetType = module_target_intermodule_interface
+        ; TargetType = module_target_analysis_registry
+        ; TargetType = module_target_c_header(_)
+        ; TargetType = module_target_c_code
+        ; TargetType = module_target_il_code
+        ; TargetType = module_target_il_asm
+        ; TargetType = module_target_java_code
+        ; TargetType = module_target_erlang_header
+        ; TargetType = module_target_erlang_code
+        ; TargetType = module_target_erlang_beam_code
+        ; TargetType = module_target_foreign_il_asm(_)
+        ; TargetType = module_target_foreign_object(_, _)
+        ; TargetType = module_target_fact_table_object(_, _)
+        ; TargetType = module_target_xml_doc
+        ),
         Result = non_pic
     ).
 

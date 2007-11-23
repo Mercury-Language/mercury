@@ -778,9 +778,15 @@ default_all_yes(A0, B0, C0, D0, A, B, C, D) :-
 
 maybe_set_param(no, _, _, _, _, _, !Params).
 maybe_set_param(yes, F, Pr, V, NPr, Setting, !Params) :-
-    ( Setting = setting_format(NewFormat) ->
+    (
+        Setting = setting_format(NewFormat),
         !:Params = !.Params ^ default_format := NewFormat
     ;
+        ( Setting = setting_depth(_)
+        ; Setting = setting_width(_)
+        ; Setting = setting_lines(_)
+        ; Setting = setting_size(_)
+        ),
         Format0 = !.Params ^ default_format,
         FParams0 = !.Params ^ flat_params,
         PrParams0 = !.Params ^ raw_pretty_params,

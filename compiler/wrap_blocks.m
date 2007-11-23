@@ -57,12 +57,16 @@ wrap_blocks(Instrs0, Instrs) :-
     list(instruction)::in, list(instruction)::out) is det.
 
 wrap_instrs([], R, F, RevSofar, []) :-
-    ( RevSofar = [_ | _] ->
+    (
+        RevSofar = [_ | _],
         unexpected(this_file, "procedure ends with fallthrough")
-    ; ( R > 0 ; F > 0 ) ->
-        unexpected(this_file, "procedure ends without closing block")
     ;
-        true
+        RevSofar = [],
+        ( ( R > 0 ; F > 0 ) ->
+            unexpected(this_file, "procedure ends without closing block")
+        ;
+            true
+        )
     ).
 wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _Comment0),

@@ -89,17 +89,23 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
             CodeModel = model_det
         ;
             CodeModel = model_semi,
-            ( ContextModel \= model_det ->
-                true
-            ;
+            (
+                ContextModel = model_det,
                 unexpected(this_file, "semidet model in det context")
+            ;
+                ( ContextModel = model_semi
+                ; ContextModel = model_non
+                )
             )
         ;
             CodeModel = model_non,
-            ( ContextModel = model_non ->
-                true
-            ;
+            (
+                ( ContextModel = model_det
+                ; ContextModel = model_semi
+                ),
                 unexpected(this_file, "nondet model in det/semidet context")
+            ;
+                ContextModel = model_non
             )
         ),
 

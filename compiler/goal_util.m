@@ -462,14 +462,21 @@ goal_vars(hlds_goal(GoalExpr, _GoalInfo), Set) :-
 
 goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
     svset.insert(Var, !Set),
-    ( Unif = construct(_, _, _, _, CellToReuse, _, _) ->
+    (
+        Unif = construct(_, _, _, _, CellToReuse, _, _),
         ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
             svset.insert(Var, !Set)
         ;
             true
         )
     ;
-        true
+        Unif = deconstruct(_, _, _, _, _, _)
+    ;
+        Unif = assign(_, _)
+    ;
+        Unif = simple_test(_, _)
+    ;
+        Unif = complicated_unify(_, _, _)
     ),
     rhs_goal_vars(RHS, !Set).
 
@@ -1162,12 +1169,17 @@ if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
 
     % Add a commit inside the negation of the condition in the else branch
     % if the condition can succeed more than once.
-    ( CondMaxSoln0 = at_most_many ->
+    (
+        CondMaxSoln0 = at_most_many,
         CondMaxSoln = at_most_one,
         determinism_components(CondDetism, CondCanFail0, CondMaxSoln),
         goal_info_set_determinism(CondDetism, CondInfo0, CondInfo),
         Cond = hlds_goal(scope(commit(dont_force_pruning), Cond0), CondInfo)
     ;
+        ( CondMaxSoln0 = at_most_zero
+        ; CondMaxSoln0 = at_most_one
+        ; CondMaxSoln0 = at_most_many_cc
+        ),
         CondDetism = CondDetism0,
         CondInfo = CondInfo0,
         Cond = Cond0
@@ -1184,9 +1196,14 @@ if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
                 ++ "inappropriate determinism in a negation.")
     ),
     determinism_components(NegCondDet, _, NegCondMaxSoln),
-    ( NegCondMaxSoln = at_most_zero ->
+    (
+        NegCondMaxSoln = at_most_zero,
         instmap_delta_init_unreachable(NegCondDelta)
     ;
+        ( NegCondMaxSoln = at_most_one
+        ; NegCondMaxSoln = at_most_many
+        ; NegCondMaxSoln = at_most_many_cc
+        ),
         instmap_delta_init_reachable(NegCondDelta)
     ),
     CondNonLocals = goal_info_get_nonlocals(CondInfo),
@@ -1365,10 +1382,11 @@ reordering_maintains_termination_old(ModuleInfo, FullyStrict,
     ),
     % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
     % this could worsen the termination properties of the program.
-    ( EarlierCanFail = can_fail ->
+    (
+        EarlierCanFail = can_fail,
         goal_cannot_loop_or_throw(ModuleInfo, LaterGoal)
     ;
-        true
+        EarlierCanFail = cannot_fail
     ).
 
 reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
@@ -1450,9 +1468,14 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
     set.init(NonLocals0),
     set.insert_list(NonLocals0, Args, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
-    ( NumSolns = at_most_zero ->
+    (
+        NumSolns = at_most_zero,
         instmap_delta_init_unreachable(InstMapDelta)
     ;
+        ( NumSolns = at_most_one
+        ; NumSolns = at_most_many
+        ; NumSolns = at_most_many_cc
+        ),
         instmap_delta_from_assoc_list(InstMap, InstMapDelta)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1478,9 +1501,14 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     Vars = ArgVars ++ ExtraArgVars,
     set.list_to_set(Vars, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
-    ( NumSolns = at_most_zero ->
+    (
+        NumSolns = at_most_zero,
         instmap_delta_init_unreachable(InstMapDelta)
     ;
+        ( NumSolns = at_most_one
+        ; NumSolns = at_most_many
+        ; NumSolns = at_most_many_cc
+        ),
         instmap_delta_from_assoc_list(InstMap, InstMapDelta)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

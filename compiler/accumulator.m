@@ -1369,12 +1369,8 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst plain_call
-    --->    plain_call(ground, ground, ground, ground, ground, ground).
-:- inst hlds_plain_call
-    --->    hlds_goal(plain_call, ground).
 :- inst plain_call_goal
-    --->    stored_goal(hlds_plain_call, ground).
+    --->    stored_goal(plain_call, ground).
 
     % Do a goal_store_lookup where the result is known to be a call.
     %
@@ -1540,14 +1536,13 @@ create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
     % to the accumulator version of the call, which can have the
     % substitutions applied to it easily.
     %
-:- func create_acc_call(hlds_goal::in(hlds_plain_call), prog_vars::in,
-    pred_id::in, proc_id::in, sym_name::in) = (hlds_goal::out(hlds_plain_call))
+:- func create_acc_call(hlds_goal::in(plain_call), prog_vars::in,
+    pred_id::in, proc_id::in, sym_name::in) = (hlds_goal::out(plain_call))
     is det.
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-
     OrigCall = hlds_goal(OrigCallExpr, GoalInfo),
-    OrigCallExpr = plain_call(_PredId, _ProcId, Args, Builtin,
-        Context, _Name),
+    OrigCallExpr = plain_call(_PredId, _ProcId, Args, Builtin, Context, _Name),
     CallExpr = plain_call(AccPredId, AccProcId, Accs ++ Args, Builtin,
         Context, AccName),
     Call = hlds_goal(CallExpr, GoalInfo).

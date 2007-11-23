@@ -619,8 +619,8 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
 
 ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         PredOrFunc, CodeModel, Context, ForClosureWrapper, ArgNum,
-        InputRvals, OutputLvals, OutputTypes, ConvDecls, ConvOutputStatements,
-        !Info) :-
+        !:InputRvals, !:OutputLvals, !:OutputTypes, !:ConvDecls,
+        !:ConvOutputStatements, !Info) :-
     (
         VarNames = [],
         VarLvals = [],
@@ -628,91 +628,82 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         CalleeTypes = [],
         Modes = []
     ->
-        InputRvals = [],
-        OutputLvals = [],
-        OutputTypes = [],
-        ConvDecls = [],
-        ConvOutputStatements = []
+        !:InputRvals = [],
+        !:OutputLvals = [],
+        !:OutputTypes = [],
+        !:ConvDecls = [],
+        !:ConvOutputStatements = []
     ;
-        VarNames = [VarName | VarNames1],
-        VarLvals = [VarLval | VarLvals1],
-        CallerTypes = [CallerType | CallerTypes1],
-        CalleeTypes = [CalleeType | CalleeTypes1],
-        Modes = [Mode | Modes1]
+        VarNames = [VarName | VarNamesTail],
+        VarLvals = [VarLval | VarLvalsTail],
+        CallerTypes = [CallerType | CallerTypesTail],
+        CalleeTypes = [CalleeType | CalleeTypesTail],
+        Modes = [Mode | ModesTail]
     ->
-        ml_gen_arg_list(VarNames1, VarLvals1, CallerTypes1, CalleeTypes1,
-            Modes1, PredOrFunc, CodeModel, Context, ForClosureWrapper,
-            ArgNum + 1, InputRvals1, OutputLvals1, OutputTypes1,
-            ConvDecls1, ConvOutputStatements1, !Info),
+        ml_gen_arg_list(VarNamesTail, VarLvalsTail, CallerTypesTail,
+            CalleeTypesTail, ModesTail, PredOrFunc, CodeModel, Context,
+            ForClosureWrapper, ArgNum + 1, !:InputRvals, !:OutputLvals,
+            !:OutputTypes, !:ConvDecls, !:ConvOutputStatements, !Info),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_arg_mode(ModuleInfo, Mode, CalleeType, ArgMode),
-        (
-            ( is_dummy_argument_type(ModuleInfo, CalleeType)
-            ; ArgMode = top_unused
-            )
-        ->
+        ( is_dummy_argument_type(ModuleInfo, CalleeType) ->
             % Exclude arguments of type io.state etc.
-            % Also exclude those with arg_mode `top_unused'.
-            InputRvals = InputRvals1,
-            OutputLvals = OutputLvals1,
-            OutputTypes = OutputTypes1,
-            ConvDecls = ConvDecls1,
-            ConvOutputStatements = ConvOutputStatements1
+            true
         ;
-            ArgMode = top_in
-        ->
-            % It's an input argument.
-            ( is_dummy_argument_type(ModuleInfo, CallerType) ->
-                % The variable may not have been declared, so we need to
-                % generate a dummy value for it. Using `0' here is more
-                % efficient than using private_builtin.dummy_var, which is
-                % what ml_gen_var will have generated for this variable.
-                VarRval = const(mlconst_int(0))
-            ;
-                VarRval = lval(VarLval)
-            ),
-            ml_gen_box_or_unbox_rval(CallerType, CalleeType,
-                native_if_possible, VarRval, ArgRval, !Info),
-            InputRvals = [ArgRval | InputRvals1],
-            OutputLvals = OutputLvals1,
-            OutputTypes = OutputTypes1,
-            ConvDecls = ConvDecls1,
-            ConvOutputStatements = ConvOutputStatements1
-        ;
-            % It's an output argument.
-            ml_gen_box_or_unbox_lval(CallerType, CalleeType,
-                native_if_possible, VarLval, VarName, Context,
-                ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
-                _ThisArgConvInput, ThisArgConvOutput, !Info),
-            ConvDecls = ThisArgConvDecls ++ ConvDecls1,
-            ConvOutputStatements = ThisArgConvOutput ++ ConvOutputStatements1,
-
-            ml_gen_info_get_globals(!.Info, Globals),
-            CopyOut = get_copy_out_option(Globals, CodeModel),
             (
-                (
-                    % If the target language allows multiple return values,
-                    % then use them.
-                    CopyOut = yes
-                ;
-                    % If this is the result argument of a model_det function,
-                    % and it has an output mode, then return it as a value.
-                    VarNames1 = [],
-                    CodeModel = model_det,
-                    PredOrFunc = pf_function,
-                    ArgMode = top_out
-                )
-            ->
-                InputRvals = InputRvals1,
-                OutputLvals = [ArgLval | OutputLvals1],
-                ml_gen_type(!.Info, CalleeType, OutputType),
-                OutputTypes = [OutputType | OutputTypes1]
+                ArgMode = top_unused
+                % Also exclude those with arg_mode `top_unused'.
             ;
-                % Otherwise use the traditional C style of passing the address
-                % of the output value.
-                InputRvals = [ml_gen_mem_addr(ArgLval) | InputRvals1],
-                OutputLvals = OutputLvals1,
-                OutputTypes = OutputTypes1
+                ArgMode = top_in,
+                % It's an input argument.
+                ( is_dummy_argument_type(ModuleInfo, CallerType) ->
+                    % The variable may not have been declared, so we need to
+                    % generate a dummy value for it. Using `0' here is more
+                    % efficient than using private_builtin.dummy_var, which is
+                    % what ml_gen_var will have generated for this variable.
+                    VarRval = const(mlconst_int(0))
+                ;
+                    VarRval = lval(VarLval)
+                ),
+                ml_gen_box_or_unbox_rval(CallerType, CalleeType,
+                    native_if_possible, VarRval, ArgRval, !Info),
+                !:InputRvals = [ArgRval | !.InputRvals]
+            ;
+                ArgMode = top_out,
+                % It's an output argument.
+                ml_gen_box_or_unbox_lval(CallerType, CalleeType,
+                    native_if_possible, VarLval, VarName, Context,
+                    ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
+                    _ThisArgConvInput, ThisArgConvOutput, !Info),
+                !:ConvDecls = ThisArgConvDecls ++ !.ConvDecls,
+                !:ConvOutputStatements = ThisArgConvOutput ++
+                    !.ConvOutputStatements,
+
+                ml_gen_info_get_globals(!.Info, Globals),
+                CopyOut = get_copy_out_option(Globals, CodeModel),
+                (
+                    (
+                        % If the target language allows multiple return values,
+                        % then use them.
+                        CopyOut = yes
+                    ;
+                        % If this is the result argument of a model_det
+                        % function, and it has an output mode, then return it
+                        % as a value.
+                        VarNamesTail = [],
+                        CodeModel = model_det,
+                        PredOrFunc = pf_function,
+                        ArgMode = top_out
+                    )
+                ->
+                    !:OutputLvals = [ArgLval | !.OutputLvals],
+                    ml_gen_type(!.Info, CalleeType, OutputType),
+                    !:OutputTypes = [OutputType | !.OutputTypes]
+                ;
+                    % Otherwise use the traditional C style of passing the
+                    % address of the output value.
+                    !:InputRvals = [ml_gen_mem_addr(ArgLval) | !.InputRvals]
+                )
             )
         )
     ;
@@ -732,72 +723,75 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
         !Info) :-
     % Convert VarRval, of type SourceType, to ArgRval, of type DestType.
     (
-        BoxPolicy = always_boxed
-    ->
+        BoxPolicy = always_boxed,
         ArgRval = VarRval
     ;
-        % If converting from polymorphic type to concrete type, then unbox.
-        SourceType = type_variable(_, _),
-        DestType \= type_variable(_, _)
-    ->
-        ml_gen_type(!.Info, DestType, MLDS_DestType),
-        ArgRval = unop(unbox(MLDS_DestType), VarRval)
-    ;
-        % If converting from concrete type to polymorphic type, then box.
-        SourceType \= type_variable(_, _),
-        DestType = type_variable(_, _)
-    ->
-        ml_gen_type(!.Info, SourceType, MLDS_SourceType),
-        ArgRval = unop(box(MLDS_SourceType), VarRval)
-    ;
-        % If converting to float, cast to mlds_generic_type and then unbox.
-        DestType = builtin_type(builtin_type_float),
-        SourceType \= builtin_type(builtin_type_float)
-    ->
-        ml_gen_type(!.Info, DestType, MLDS_DestType),
-        ArgRval = unop(unbox(MLDS_DestType),
-            unop(cast(mlds_generic_type), VarRval))
-    ;
-        % If converting from float, box and then cast the result.
-        SourceType = builtin_type(builtin_type_float),
-        DestType \= builtin_type(builtin_type_float)
-    ->
-        ml_gen_type(!.Info, SourceType, MLDS_SourceType),
-        ml_gen_type(!.Info, DestType, MLDS_DestType),
-        ArgRval = unop(cast(MLDS_DestType),
-            unop(box(MLDS_SourceType), VarRval))
-    ;
-        % If converting from an array(T) to array(X) where X is a concrete
-        % instance, we should insert a cast to the concrete instance.
-        % Also when converting to array(T) from array(X) we should cast
-        % to array(T).
-        type_to_ctor_and_args(SourceType, SourceTypeCtor, SourceTypeArgs),
-        type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
+        BoxPolicy = native_if_possible,
         (
-            type_ctor_is_array(SourceTypeCtor),
-            SourceTypeArgs = [type_variable(_, _)]
+            % If converting from polymorphic type to concrete type, then unbox.
+            SourceType = type_variable(_, _),
+            DestType \= type_variable(_, _)
+        ->
+            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            ArgRval = unop(unbox(MLDS_DestType), VarRval)
         ;
-            type_ctor_is_array(DestTypeCtor),
-            DestTypeArgs = [type_variable(_, _)]
-        ),
-        % Don't insert redundant casts if the types are the same, since
-        % the extra assignments introduced can inhibit tail call optimisation.
-        SourceType \= DestType
-    ->
-        ml_gen_type(!.Info, DestType, MLDS_DestType),
-        ArgRval = unop(cast(MLDS_DestType), VarRval)
-    ;
-        % If converting from one concrete type to a different one, then cast.
-        % This is needed to handle construction/deconstruction unifications
-        % for no_tag types.
-        %
-        \+ type_unify(SourceType, DestType, [], map.init, _)
-    ->
-        ml_gen_type(!.Info, DestType, MLDS_DestType),
-        ArgRval = unop(cast(MLDS_DestType), VarRval)
-    ;
-        % Otherwise leave unchanged.
-        ArgRval = VarRval
+            % If converting from concrete type to polymorphic type, then box.
+            SourceType \= type_variable(_, _),
+            DestType = type_variable(_, _)
+        ->
+            ml_gen_type(!.Info, SourceType, MLDS_SourceType),
+            ArgRval = unop(box(MLDS_SourceType), VarRval)
+        ;
+            % If converting to float, cast to mlds_generic_type and then unbox.
+            DestType = builtin_type(builtin_type_float),
+            SourceType \= builtin_type(builtin_type_float)
+        ->
+            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            ArgRval = unop(unbox(MLDS_DestType),
+                unop(cast(mlds_generic_type), VarRval))
+        ;
+            % If converting from float, box and then cast the result.
+            SourceType = builtin_type(builtin_type_float),
+            DestType \= builtin_type(builtin_type_float)
+        ->
+            ml_gen_type(!.Info, SourceType, MLDS_SourceType),
+            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            ArgRval = unop(cast(MLDS_DestType),
+                unop(box(MLDS_SourceType), VarRval))
+        ;
+            % If converting from an array(T) to array(X) where X is a concrete
+            % instance, we should insert a cast to the concrete instance.
+            % Also when converting to array(T) from array(X) we should cast
+            % to array(T).
+            type_to_ctor_and_args(SourceType, SourceTypeCtor, SourceTypeArgs),
+            type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
+            (
+                type_ctor_is_array(SourceTypeCtor),
+                SourceTypeArgs = [type_variable(_, _)]
+            ;
+                type_ctor_is_array(DestTypeCtor),
+                DestTypeArgs = [type_variable(_, _)]
+            ),
+            % Don't insert redundant casts if the types are the same, since
+            % the extra assignments introduced can inhibit tail call
+            % optimisation.
+            SourceType \= DestType
+        ->
+            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            ArgRval = unop(cast(MLDS_DestType), VarRval)
+        ;
+            % If converting from one concrete type to a different one, then
+            % cast. This is needed to handle construction/deconstruction
+            % unifications for no_tag types.
+            %
+            \+ type_unify(SourceType, DestType, [], map.init, _)
+        ->
+            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            ArgRval = unop(cast(MLDS_DestType), VarRval)
+        ;
+            % Otherwise leave unchanged.
+            ArgRval = VarRval
+        )
     ).
 
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
@@ -971,8 +965,8 @@ ml_gen_simple_expr(int_const(Int)) = const(mlconst_int(Int)).
 ml_gen_simple_expr(float_const(Float)) = const(mlconst_float(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) =
     unop(std_unop(Op), ml_gen_simple_expr(Expr)).
-ml_gen_simple_expr(binary(Op, Expr1, Expr2)) =
-    binop(Op, ml_gen_simple_expr(Expr1), ml_gen_simple_expr(Expr2)).
+ml_gen_simple_expr(binary(Op, ExprA, ExprB)) =
+    binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
 
 %-----------------------------------------------------------------------------%
 

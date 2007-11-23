@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,10 +206,12 @@ init_var(Var, InstGraph0, InstGraph) :-
 
 set_parent(Parent, Child, InstGraph0, InstGraph) :-
     map.lookup(InstGraph0, Child, node(Functors, MaybeParent0)),
-    ( MaybeParent0 = top_level ->
+    (
+        MaybeParent0 = top_level,
         map.det_update(InstGraph0, Child, node(Functors, parent(Parent)),
             InstGraph)
     ;
+        MaybeParent0 = parent(_),
         unexpected(this_file, "set_parent: node already has parent")
     ).
 

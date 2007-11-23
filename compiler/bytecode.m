@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -165,7 +165,8 @@ bytecode.version(9).
 
 output_bytecode_file(FileName, ByteCodes, !IO) :-
     io.open_binary_output(FileName, Result, !IO),
-    ( Result = ok(FileStream) ->
+    (
+        Result = ok(FileStream),
         io.set_binary_output_stream(FileStream, OutputStream, !IO),
         bytecode.version(Version),
         output_short(Version, !IO),
@@ -173,6 +174,7 @@ output_bytecode_file(FileName, ByteCodes, !IO) :-
         io.set_binary_output_stream(OutputStream, _, !IO),
         io.close_binary_output(FileStream, !IO)
     ;
+        Result = error(_),
         io.progname_base("byte.m", ProgName, !IO),
         io.write_string("\n", !IO),
         io.write_string(ProgName, !IO),
@@ -184,7 +186,8 @@ output_bytecode_file(FileName, ByteCodes, !IO) :-
 
 debug_bytecode_file(FileName, ByteCodes, !IO) :-
     io.open_output(FileName, Result, !IO),
-    ( Result = ok(FileStream) ->
+    (
+        Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
         bytecode.version(Version),
         io.write_string("bytecode_version ", !IO),
@@ -194,6 +197,7 @@ debug_bytecode_file(FileName, ByteCodes, !IO) :-
         io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO)
     ;
+        Result = error(_),
         io.progname_base("byte.m", ProgName, !IO),
         io.write_string("\n", !IO),
         io.write_string(ProgName, !IO),

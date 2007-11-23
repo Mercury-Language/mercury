@@ -236,9 +236,13 @@ allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
 
 allocate_same_stack_slot([], _CodeModel, _Slot, !StackSlots).
 allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         Locn = nondet_slot(Slot)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         Locn = det_slot(Slot)
     ),
     svmap.det_insert(Var, Locn, !StackSlots),

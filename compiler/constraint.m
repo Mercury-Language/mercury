@@ -261,19 +261,26 @@ propagate_cases(Var, Constraints, [case(ConsId, Goal0) | Cases0],
 
 propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
     constraint_info_update_changed(Constraints, !Info),
-    ( Goals0 = [] ->
+    (
+        Goals0 = [],
         flatten_constraints(Constraints, Goals)
-    ; Goals0 = [Goal0], Constraints = [] ->
-        propagate_conj_sub_goal(Goal0, [], Goals, !Info, !IO)
     ;
-        InstMap0 = !.Info ^ instmap,
-        ModuleInfo = !.Info ^ module_info,
-        VarTypes = !.Info ^ vartypes,
-        annotate_conj_output_vars(Goals0, ModuleInfo,
-            VarTypes, InstMap0, [], RevGoals1),
-        annotate_conj_constraints(ModuleInfo, RevGoals1,
-            Constraints, [], Goals2, !Info, !IO),
-        propagate_conj_constraints(Goals2, [], Goals, !Info, !IO)
+        Goals0 = [Goal0 | GoalsTail0],
+        (
+            GoalsTail0 = [],
+            Constraints = []
+        ->
+            propagate_conj_sub_goal(Goal0, [], Goals, !Info, !IO)
+        ;
+            InstMap0 = !.Info ^ instmap,
+            ModuleInfo = !.Info ^ module_info,
+            VarTypes = !.Info ^ vartypes,
+            annotate_conj_output_vars(Goals0, ModuleInfo,
+                VarTypes, InstMap0, [], RevGoals1),
+            annotate_conj_constraints(ModuleInfo, RevGoals1,
+                Constraints, [], Goals2, !Info, !IO),
+            propagate_conj_constraints(Goals2, [], Goals, !Info, !IO)
+        )
     ).
 
     % Annotate each conjunct with the variables it produces.

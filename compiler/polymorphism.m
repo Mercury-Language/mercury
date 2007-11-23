@@ -681,13 +681,21 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
         ExistHeadTypeClassInfoVars, !Info) :-
     pred_info_get_origin(PredInfo, Origin),
     ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode),
-    ( Origin = origin_instance_method(InstanceMethodConstraints) ->
+    (
+        Origin = origin_instance_method(InstanceMethodConstraints),
         setup_headvars_instance_method(PredInfo,
             InstanceMethodConstraints, !HeadVars,
             UnconstrainedTVars, ExtraHeadTypeInfoVars,
             ExistHeadTypeClassInfoVars,
             ExtraArgModes0, ExtraArgModes, !Info)
     ;
+        ( Origin = origin_special_pred(_)
+        ; Origin = origin_transformed(_, _, _)
+        ; Origin = origin_created(_)
+        ; Origin = origin_assertion(_, _)
+        ; Origin = origin_lambda(_, _, _)
+        ; Origin = origin_user(_)
+        ),
         pred_info_get_class_context(PredInfo, ClassContext),
         InstanceTVars = [],
         InstanceUnconstrainedTVars = [],
@@ -1229,13 +1237,18 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
     % so that quantification.m can recompute variable scopes properly.
     % This field is also used by modecheck_unify.m -- for complicated
     % unifications, it checks that all these variables are ground.
-    ( !.Unification = complicated_unify(Modes, CanFail, _) ->
+    (
+        !.Unification = complicated_unify(Modes, CanFail, _),
         !:Unification = complicated_unify(Modes, CanFail, TypeInfoVars)
     ;
         % This can happen if an earlier stage of compilation has already
         % determined that this unification is particular kind of unification.
         % In that case, the type_info vars won't be needed.
-        true
+        ( !.Unification = construct(_, _, _, _, _, _, _)
+        ; !.Unification = deconstruct(_, _, _, _, _, _)
+        ; !.Unification = assign(_, _)
+        ; !.Unification = simple_test(_, _)
+        )
     ).
 
 :- pred polymorphism_process_unify_functor(prog_var::in, cons_id::in,
@@ -1512,13 +1525,17 @@ polymorphism_process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
     ArgVars0 = list.map(foreign_arg_var, Args0),
     polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ExtraVars, ExtraGoals, !Info),
-    ( Impl0 = fc_impl_import(_, _, _, _) ->
+    (
+        Impl0 = fc_impl_import(_, _, _, _),
         % The reference manual guarantees a one-to-one correspondence between
         % the arguments of the predicate (as augmented by with type_info and/or
         % typeclass_info arguments by polymorphism.m) and the arguments of the
         % imported function.
         CanOptAwayUnnamed = no
     ;
+        ( Impl0 = fc_impl_ordinary(_, _)
+        ; Impl0 = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
+        ),
         CanOptAwayUnnamed = yes
     ),
     polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl0,
@@ -1527,10 +1544,14 @@ polymorphism_process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
 
     % Add the type info arguments to the list of variables
     % to call for a pragma import.
-    ( Impl0 = fc_impl_import(Name, HandleReturn, Variables0, MaybeContext) ->
+    (
+        Impl0 = fc_impl_import(Name, HandleReturn, Variables0, MaybeContext),
         Variables = type_info_vars(ModuleInfo, ExtraArgs, Variables0),
         Impl = fc_impl_import(Name, HandleReturn, Variables, MaybeContext)
     ;
+        ( Impl0 = fc_impl_ordinary(_, _)
+        ; Impl0 = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
+        ),
         Impl = Impl0
     ),
 
@@ -2477,20 +2498,28 @@ polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
         % it should get included in the RTTI.
         polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, yes,
             Context, Var, ExtraGoals, !Info)
-    ; type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
-        % This occurs for code where a predicate calls a polymorphic predicate
-        % with a known value of the type variable. The transformation we
-        % perform is shown in the comment at the top of the module.
-        polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, no,
-            Context, Var, ExtraGoals, !Info)
     ;
-        % Now handle the cases of types which are not known statically
-        % (i.e. type variables)
-        ( Type = type_variable(TypeVar, _) ->
+        (
+            ( Type = defined_type(_, _, _)
+            ; Type = builtin_type(_)
+            ; Type = tuple_type(_, _)
+            ; Type = higher_order_type(_,_, _, _)
+            ; Type = apply_n_type(_, _, _)
+            ; Type = kinded_type(_, _)
+            ),
+            type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
+            % This occurs for code where a predicate calls a polymorphic
+            % predicate with a known value of the type variable. The
+            % transformation we perform is shown in the comment at the top
+            % of the module.
+            polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, no,
+                Context, Var, ExtraGoals, !Info)
+        ;
+            % Now handle the cases of types which are not known statically
+            % (i.e. type variables)
+            Type = type_variable(TypeVar, _),
             get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
             get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info)
-        ;
-            unexpected(this_file, "make_var: unknown type")
         )
     ).
 

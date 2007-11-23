@@ -399,7 +399,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     ),
     some [!Flags] (
         !:Flags = set.init,
-        ( TypeBody = hlds_du_type(_, _, _, _, BodyReservedTag, _, _) ->
+        (
+            TypeBody = hlds_du_type(_, _, _, _, BodyReservedTag, _, _),
             svset.insert(kind_of_du_flag, !Flags),
             (
                 BodyReservedTag = uses_reserved_tag,
@@ -408,7 +409,11 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 BodyReservedTag = does_not_use_reserved_tag
             )
         ;
-            true
+            ( TypeBody = hlds_eqv_type(_)
+            ; TypeBody = hlds_foreign_type(_)
+            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_abstract_type(_)
+            )
         ),
         TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
             UnifyUniv, CompareUniv, !.Flags, Details)
@@ -684,11 +689,29 @@ make_foreign_enum_functors(Lang, [Functor | Functors], NextOrdinal,
         "functor in foreign enum has nonzero arity"),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    ( ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0) ->
+    (
+        ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0),
         expect(unify(Lang, ForeignTagLang), this_file, 
             "language mismatch between foreign tag and foreign enum."),
         ForeignTagValue = ForeignTagValue0
     ;
+        ( ConsTag = string_tag(_)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = pred_closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = single_functor_tag
+        ; ConsTag = unshared_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = no_tag
+        ; ConsTag = reserved_address_tag(_)
+        ; ConsTag = shared_with_reserved_addresses_tag(_, _)
+        ),
         unexpected(this_file, "non foreign tag for foreign enum functor")
     ),
     FunctorName = unqualify_name(SymName),

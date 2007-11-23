@@ -89,7 +89,8 @@ replace_in_hlds(!ModuleInfo) :-
 
 add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
     hlds_data.get_type_defn_body(Defn, Body),
-    ( Body = hlds_eqv_type(EqvType) ->
+    (
+        Body = hlds_eqv_type(EqvType),
         hlds_data.get_type_defn_tvarset(Defn, TVarSet),
         hlds_data.get_type_defn_tparams(Defn, Params),
         hlds_data.get_type_defn_status(Defn, Status),
@@ -103,7 +104,11 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
             IsExported = no
         )
     ;
-        true
+        ( Body = hlds_du_type(_, _, _, _, _, _, _)
+        ; Body = hlds_foreign_type(_)
+        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_abstract_type(_)
+        )
     ).
 
 :- pred add_type_ctors_to_set(mer_type::in,
@@ -844,9 +849,13 @@ replace_in_goal_expr(EqvMap, GoalExpr0 @ unify(Var, _, _, _, _), GoalExpr,
         create_poly_info(!.Info ^ module_info, PredInfo0, !.Info ^ proc_info,
             PolyInfo0),
         rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
-        ( VarInfo = type_info_var(TypeInfoType0) ->
+        (
+            VarInfo = type_info_var(TypeInfoType0),
             TypeInfoType = TypeInfoType0
         ;
+            ( VarInfo = typeclass_info_var(_)
+            ; VarInfo = non_rtti_var
+            ),
             unexpected(this_file, "replace_in_goal_expr: info not found")
         ),
         polymorphism_make_type_info_var(TypeInfoType,

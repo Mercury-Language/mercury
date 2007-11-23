@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -131,17 +131,19 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
         ; SecTagLocn = sectag_remote
         ),
         (
-            CanFail = cannot_fail
-        ->
+            CanFail = cannot_fail,
             CaseCanFail = cannot_fail
         ;
-            list.length(GoalList, GoalCount),
-            FullGoalCount = MaxSecondary + 1,
-            FullGoalCount = GoalCount
-        ->
-            CaseCanFail = cannot_fail
-        ;
-            CaseCanFail = can_fail
+            CanFail = can_fail,
+            (
+                list.length(GoalList, GoalCount),
+                FullGoalCount = MaxSecondary + 1,
+                FullGoalCount = GoalCount
+            ->
+                CaseCanFail = cannot_fail
+            ;
+                CaseCanFail = can_fail
+            )
         ),
         (
             GoalList = [_Stag - stag_goal(_ConsId, Goal)],

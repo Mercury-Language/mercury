@@ -383,15 +383,21 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
             VerboseErrors = no,
             % In the absence of --verbose-errors, report only one error.
             % We prefer that this be an important error.
-            ( ImportantErrors = [FirstImportantError | _] ->
+            (
+                ImportantErrors = [FirstImportantError | _],
                 ConjMsgs = mode_error_conjunct_to_msgs(Context, ModeInfo,
                     FirstImportantError)
-            ; OtherErrors = [FirstOtherError | _] ->
-                ConjMsgs = mode_error_conjunct_to_msgs(Context, ModeInfo,
-                    FirstOtherError)
             ;
-                unexpected(this_file,
-                    "mode_error_conj_to_spec: no errors of any kind")
+                ImportantErrors = [],
+                (
+                    OtherErrors = [FirstOtherError | _],
+                    ConjMsgs = mode_error_conjunct_to_msgs(Context, ModeInfo,
+                        FirstOtherError)
+                ;
+                    OtherErrors = [],
+                    unexpected(this_file,
+                        "mode_error_conj_to_spec: no errors of any kind")
+                )
             ),
             % MoreMsg is there to indicate that --verbose-errors would yield
             % more information.
@@ -702,9 +708,13 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     mode_info_get_mode_context(ModeInfo, ModeContext),
-    ( ModeContext = mode_context_call(CallId, _) ->
+    (
+        ModeContext = mode_context_call(CallId, _),
         CallIdStr = hlds_out.call_id_to_string(CallId)
     ;
+        ( ModeContext = mode_context_unify(_, _)
+        ; ModeContext = mode_context_uninitialized
+        ),
         unexpected(this_file,
             "report_mode_error_no_matching_mode: invalid context")
     ),
@@ -1060,11 +1070,14 @@ mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    ( Reason = too_instantiated ->
+    (
+        Reason = too_instantiated,
         Problem = " became too instantiated."
-    ; Reason = not_instantiated_enough ->
+    ;
+        Reason = not_instantiated_enough,
         Problem = "did not get sufficiently instantiated."
     ;
+        Reason = wrongly_instantiated,
         % I don't think this can happen.  But just in case...
         Problem = "had the wrong instantiatedness."
     ),

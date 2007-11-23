@@ -72,7 +72,8 @@
 
 allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    ( RunType = final_allocation ->
+    (
+        RunType = final_allocation,
         proc_info_get_goal(!.ProcInfo, Goal0),
 
         find_final_follow_vars(!.ProcInfo, FollowVarsMap0, NextNonReserved0),
@@ -84,6 +85,7 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
         goal_info_set_follow_vars(yes(FollowVars), GoalInfo1, GoalInfo2),
         Goal2 = hlds_goal(GoalExpr1, GoalInfo2)
     ;
+        RunType = for_stack_opt,
         proc_info_get_goal(!.ProcInfo, Goal2)
     ),
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
@@ -330,9 +332,10 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], [case(Cons, Goal) | Goals],
 :- pred merge_last_locations(list(last_locns)::in, last_locns::out) is det.
 
 merge_last_locations(LastLocnsList, LastLocns) :-
-    ( LastLocnsList = [LastLocnsPrime | _] ->
-        LastLocns = LastLocnsPrime
+    (
+        LastLocnsList = [LastLocns | _]
     ;
+        LastLocnsList = [],
         LastLocns = map.init
     ).
 

@@ -612,10 +612,14 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
         SubTermB = get_subterm(ArgTypeInfo, TermB, Loc - 1, 0),
 
         generic_compare(SubResult, SubTermA, unsafe_cast(SubTermB)),
-        ( SubResult = (=) ->
+        (
+            SubResult = (=),
             compare_tuple_pos(Loc + 1, TupleArity, TypeInfo, Result,
                 TermA, TermB)
         ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
             Result = SubResult
         )
     ).
@@ -802,27 +806,40 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
     % to the type_ctor_infos.
     compare(NameRes, TypeCtorInfo1 ^ type_ctor_name,
         TypeCtorInfo2 ^ type_ctor_name),
-    ( NameRes = (=) ->
+    (
+        NameRes = (=),
         compare(ModNameRes,
             TypeCtorInfo1 ^ type_ctor_module_name,
             TypeCtorInfo2 ^ type_ctor_module_name),
         (
             ModNameRes = (=),
-            type_ctor_is_variable_arity(TypeCtorInfo1)
-        ->
-            Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
-            Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
-            compare(ArityRes, Arity1, Arity2),
-            ( ArityRes = (=) ->
-                compare_var_arity_typeinfos(1, Arity1, Res,
-                    TypeInfo1, TypeInfo2)
+            ( type_ctor_is_variable_arity(TypeCtorInfo1) ->
+                Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
+                Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
+                compare(ArityRes, Arity1, Arity2),
+                (
+                    ArityRes = (=),
+                    compare_var_arity_typeinfos(1, Arity1, Res,
+                        TypeInfo1, TypeInfo2)
+                ;
+                    ( ArityRes = (<)
+                    ; ArityRes = (>)
+                    ),
+                    Res = ArityRes
+                )
             ;
-                Res = ArityRes
+                Res = (=)
             )
         ;
+            ( ModNameRes = (<)
+            ; ModNameRes = (>)
+            ),
             Res = ModNameRes
         )
     ;
+        ( NameRes = (<)
+        ; NameRes = (>)
+        ),
         Res = NameRes
     ).
 
@@ -837,10 +854,14 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
         SubTypeInfoB = TypeInfoB ^ var_arity_type_info_index(Loc),
 
         compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
-        ( SubResult = (=) ->
+        (
+            SubResult = (=),
             compare_var_arity_typeinfos(Loc + 1, Arity, Result,
                 TypeInfoA, TypeInfoB)
         ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
             Result = SubResult
         )
     ).
@@ -1400,9 +1421,7 @@ high_level_data :-
 
 get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo) :-
-    (
-        typeinfo_is_variable(PseudoTypeInfo, VarNum)
-    ->
+    ( typeinfo_is_variable(PseudoTypeInfo, VarNum) ->
         get_type_info_for_var(TypeInfoParams, VarNum, Term, FunctorDesc,
             ExpandedTypeInfo),
         ( typeinfo_is_variable(ExpandedTypeInfo, _) ->
@@ -1413,9 +1432,7 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
     ;
         CastTypeInfo = type_info_cast(PseudoTypeInfo),
         TypeCtorInfo = get_type_ctor_info(CastTypeInfo),
-        (
-            type_ctor_is_variable_arity(TypeCtorInfo)
-        ->
+        ( type_ctor_is_variable_arity(TypeCtorInfo) ->
             Arity = pseudotypeinfo_get_higher_order_arity(CastTypeInfo),
             StartRegionSize = 2
         ;
@@ -1425,28 +1442,31 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo0 = maybe.no,
         UpperBound = Arity + StartRegionSize - 1,
 
-        iterate_foldl(StartRegionSize, UpperBound,
+        ProcessArgTypeInfos =
             (pred(I::in, TI0::in, TI::out) is det :-
                 PTI = get_pti_from_type_info(CastTypeInfo, I),
                 get_arg_type_info(TypeInfoParams, PTI, Term, FunctorDesc,
                     ETypeInfo),
-                (
-                    same_pointer_value_untyped(ETypeInfo, PTI)
-                ->
+                ( same_pointer_value_untyped(ETypeInfo, PTI) ->
                     TI = TI0
                 ;
-                    TI0 = maybe.yes(TypeInfo0)
-                ->
-                    unsafe_promise_unique(TypeInfo0, TypeInfo1),
-                    update_type_info_index(I, ETypeInfo, TypeInfo1, TypeInfo),
-                    TI = maybe.yes(TypeInfo)
-                ;
-                    NewTypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
-                    update_type_info_index(I, ETypeInfo, NewTypeInfo0,
-                        NewTypeInfo),
-                    TI = maybe.yes(NewTypeInfo)
+                    (
+                        TI0 = yes(TypeInfo0),
+                        unsafe_promise_unique(TypeInfo0, TypeInfo1),
+                        update_type_info_index(I, ETypeInfo,
+                            TypeInfo1, TypeInfo),
+                        TI = yes(TypeInfo)
+                    ;
+                        TI0 = no,
+                        NewTypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
+                        update_type_info_index(I, ETypeInfo,
+                            NewTypeInfo0, NewTypeInfo),
+                        TI = yes(NewTypeInfo)
+                    )
                 )
-            ), ArgTypeInfo0, MaybeArgTypeInfo),
+            ),
+        iterate_foldl(StartRegionSize, UpperBound, ProcessArgTypeInfos,
+            ArgTypeInfo0, MaybeArgTypeInfo),
         (
             MaybeArgTypeInfo = maybe.yes(ArgTypeInfo1),
             ArgTypeInfo = ArgTypeInfo1

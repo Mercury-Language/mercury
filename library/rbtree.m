@@ -254,10 +254,15 @@ rbtree.insert(red(_, _, _, _), _K, _V, _Tree) :-
 rbtree.insert(black(K0, V0, L0, R0), K, V, Tree) :-
     rbtree.insert_2(black(K0, V0, L0, R0), K, V, Tree0),
     % Ensure that the root of the tree is black.
-    ( Tree0 = red(K1, V1, L1, R1) ->
+    (
+        Tree0 = black(_, _, _, _),
+        Tree = Tree0
+    ;
+        Tree0 = red(K1, V1, L1, R1),
         Tree = black(K1, V1, L1, R1)
     ;
-        Tree = Tree0
+        Tree0 = empty,
+        error("rbtree.set: new tree is empty")
     ).
 
     % rbtree.insert_2:
@@ -436,10 +441,15 @@ rbtree.set(red(_, _, _, _), _K, _V, _Tree) :-
 rbtree.set(black(K0, V0, L0, R0), K, V, Tree) :-
     rbtree.set_2(black(K0, V0, L0, R0), K, V, Tree0),
     % Ensure that the root of the tree is black.
-    ( Tree0 = red(K1, V1, L1, R1) ->
+    (
+        Tree0 = black(_, _, _, _),
+        Tree = Tree0
+    ;
+        Tree0 = red(K1, V1, L1, R1),
         Tree = black(K1, V1, L1, R1)
     ;
-        Tree = Tree0
+        Tree0 = empty,
+        error("rbtree.set: new tree is empty")
     ).
 
     % rbtree.set_2:
@@ -654,9 +664,8 @@ rbtree.insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
             Result = (=),
             rbtree.insert_duplicate_2(L0, K, V, NewL),
             (
-                % Only need to start looking for a rotation case
-                % if the current node is black(known), and its
-                % new child red.
+                % Only need to start looking for a rotation case if the
+                % current node is black(known), and its new child red.
                 NewL = red(LK, LV, LL, LR)
             ->
                 % Check to see if a grandchild is red and if so rotate.
@@ -882,20 +891,28 @@ rbtree.remove(Tree0, K, V, Tree) :-
 rbtree.remove_largest(empty, _K, _V, _Tree) :-
     fail.
 rbtree.remove_largest(red(K0, V0, L, R), NewK, NewV, Tree) :-
-    ( R = empty ->
+    (
+        R = empty,
         NewK = K0,
         NewV = V0,
         Tree = L
     ;
+        ( R = red(_, _, _, _)
+        ; R = black(_, _, _, _)
+        ),
         rbtree.remove_largest(R, NewK, NewV, NewR),
         Tree = red(K0, V0, L, NewR)
     ).
 rbtree.remove_largest(black(K0, V0, L, R), NewK, NewV, Tree) :-
-    ( R = empty ->
+    (
+        R = empty,
         NewK = K0,
         NewV = V0,
         Tree = L
     ;
+        ( R = red(_, _, _, _)
+        ; R = black(_, _, _, _)
+        ),
         rbtree.remove_largest(R, NewK, NewV, NewR),
         Tree = black(K0, V0, L, NewR)
     ).
@@ -907,20 +924,28 @@ rbtree.remove_largest(black(K0, V0, L, R), NewK, NewV, Tree) :-
 rbtree.remove_smallest(empty, _K, _V, _Tree) :-
     fail.
 rbtree.remove_smallest(red(K0, V0, L, R), NewK, NewV, Tree) :-
-    ( L = empty ->
+    (
+        L = empty,
         NewK = K0,
         NewV = V0,
         Tree = R
     ;
+        ( L = red(_, _, _, _)
+        ; L = black(_, _, _, _)
+        ),
         rbtree.remove_smallest(L, NewK, NewV, NewL),
         Tree = red(K0, V0, NewL, R)
     ).
 rbtree.remove_smallest(black(K0, V0, L, R), NewK, NewV, Tree) :-
-    ( L = empty ->
+    (
+        L = empty,
         NewK = K0,
         NewV = V0,
         Tree = R
     ;
+        ( L = red(_, _, _, _)
+        ; L = black(_, _, _, _)
+        ),
         rbtree.remove_smallest(L, NewK, NewV, NewL),
         Tree = black(K0, V0, NewL, R)
     ).

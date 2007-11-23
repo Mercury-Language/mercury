@@ -20,7 +20,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -38,16 +37,6 @@
     % of a C static constant.
     %
 :- pred const_is_constant(rval_const::in, exprn_opts::in, bool::out) is det.
-
-:- pred rval_contains_lval(rval::in, lval::in) is semidet.
-
-:- pred rval_contains_rval(rval, rval).
-:- mode rval_contains_rval(in, in) is semidet.
-:- mode rval_contains_rval(in, out) is multidet.
-
-:- pred args_contain_rval(list(maybe(rval)), rval).
-:- mode args_contain_rval(in, in) is semidet.
-:- mode args_contain_rval(in, out) is nondet.
 
     % transform_lval_in_instr(Transform, !Instr, !Acc):
     %
@@ -126,6 +115,7 @@
 
 :- import_module getopt_io.
 :- import_module int.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 
@@ -197,82 +187,6 @@ label_is_constant(entry_label(entry_label_local, _),
 label_is_constant(entry_label(entry_label_c_local, _),
         _NonLocalGotos, _AsmLabels, yes).
 label_is_constant(internal_label(_, _), _NonLocalGotos, _AsmLabels, yes).
-
-%-----------------------------------------------------------------------------%
-
-rval_contains_lval(lval(Lval0), Lval) :-
-    lval_contains_lval(Lval0, Lval).
-rval_contains_lval(mkword(_, Rval), Lval) :-
-    rval_contains_lval(Rval, Lval).
-rval_contains_lval(unop(_, Rval), Lval) :-
-    rval_contains_lval(Rval, Lval).
-rval_contains_lval(binop(_, Rval0, Rval1), Lval) :-
-    (
-        rval_contains_lval(Rval0, Lval)
-    ;
-        rval_contains_lval(Rval1, Lval)
-    ).
-
-:- pred lval_contains_lval(lval::in, lval::in) is semidet.
-
-lval_contains_lval(Lval0, Lval) :-
-    ( Lval0 = Lval ->
-        true
-    ; Lval0 = field(_MaybeTag, Rval0, Rval1) ->
-        (
-            rval_contains_lval(Rval0, Lval)
-        ;
-            rval_contains_lval(Rval1, Lval)
-        )
-    ; Lval0 = lvar(_Var) ->
-        unexpected(this_file, "lval_contains_lval: var! I can't tell")
-    ;
-        fail
-    ).
-
-%-----------------------------------------------------------------------------%
-
-rval_contains_rval(Rval0, Rval) :-
-    (
-        Rval0 = Rval
-    ;
-        (
-            Rval0 = lval(Lval),
-            lval_contains_rval(Lval, Rval)
-        ;
-            Rval0 = mkword(_, Rval1),
-            rval_contains_rval(Rval1, Rval)
-        ;
-            Rval0 = unop(_Unop, Rval1),
-            rval_contains_rval(Rval1, Rval)
-        ;
-            Rval0 = binop(_Binop, Rval1, Rval2),
-            (
-                rval_contains_rval(Rval1, Rval)
-            ;
-                rval_contains_rval(Rval2, Rval)
-            )
-        )
-    ).
-
-:- pred lval_contains_rval(lval, rval).
-:- mode lval_contains_rval(in, in) is semidet.
-:- mode lval_contains_rval(in, out) is nondet.
-
-lval_contains_rval(field(_MaybeTag, Rval0, Rval1), Rval) :-
-    (
-        rval_contains_rval(Rval0, Rval)
-    ;
-        rval_contains_rval(Rval1, Rval)
-    ).
-
-args_contain_rval([M | Ms], Rval) :-
-    (
-        M = yes(Rval0),
-        rval_contains_rval(Rval0, Rval)
-    ;
-        args_contain_rval(Ms, Rval)
-    ).
 
 %-----------------------------------------------------------------------------%
 

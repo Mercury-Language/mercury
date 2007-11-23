@@ -342,15 +342,24 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody,
         Context, Status0, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, special_preds, GenSpecialPreds),
-    ( GenSpecialPreds = yes ->
+    (
+        GenSpecialPreds = yes,
         do_add_special_pred_decl_for_real(SpecialPredId,
             TVarSet, Type, TypeCtor, Context, Status0, !ModuleInfo)
-    ; SpecialPredId = spec_pred_unify ->
-        add_special_pred_unify_status(TypeBody, Status0, Status),
-        do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-            Type, TypeCtor, Context, Status, !ModuleInfo)
     ;
-        true
+        GenSpecialPreds = no,
+        (
+            SpecialPredId = spec_pred_unify,
+            add_special_pred_unify_status(TypeBody, Status0, Status),
+            do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
+                Type, TypeCtor, Context, Status, !ModuleInfo)
+        ;
+            SpecialPredId = spec_pred_compare
+        ;
+            SpecialPredId = spec_pred_index
+        ;
+            SpecialPredId = spec_pred_init
+        )
     ).
 
 do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,

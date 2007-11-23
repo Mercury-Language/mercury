@@ -466,21 +466,25 @@ filename_mangle_2([First | Rest]) = MangledChars :-
 
 send_term(ToPipeName, Debug, Data, !IO) :-
     io.open_output(ToPipeName, Res, !IO),
-    ( Res = ok(ToStream) ->
+    (
+        Res = ok(ToStream),
         io.write(ToStream, Data, !IO),
         io.write_string(ToStream, ".\n", !IO),
         io.close_output(ToStream, !IO)
     ;
+        Res = error(_),
         error("send_term: couldn't open pipe")
     ),
     (
         Debug = yes,
         io.open_output("/tmp/.send_term", Res2, !IO),
-        ( Res2 = ok(DebugStream) ->
+        (
+            Res2 = ok(DebugStream),
             io.write(DebugStream, Data, !IO),
             io.write_string(DebugStream, ".\n", !IO),
             io.close_output(DebugStream, !IO)
         ;
+            Res2 = error(_),
             error("send_term: couldn't debug")
         )
     ;
@@ -489,19 +493,23 @@ send_term(ToPipeName, Debug, Data, !IO) :-
 
 send_string(ToPipeName, Debug, Data, !IO) :-
     io.open_output(ToPipeName, Res, !IO),
-    ( Res = ok(ToStream) ->
+    (
+        Res = ok(ToStream),
         io.write_string(ToStream, Data, !IO),
         io.close_output(ToStream, !IO)
     ;
+        Res = error(_),
         error("send_string: couldn't open pipe")
     ),
     (
         Debug = yes,
         io.open_output("/tmp/.send_string", Res2, !IO),
-        ( Res2 = ok(DebugStream) ->
+        (
+            Res2 = ok(DebugStream),
             io.write_string(DebugStream, Data, !IO),
             io.close_output(DebugStream, !IO)
         ;
+            Res2 = error(_),
             error("send_string: couldn't debug")
         )
     ;
@@ -510,55 +518,70 @@ send_string(ToPipeName, Debug, Data, !IO) :-
 
 recv_term(FromPipeName, Debug, Resp, !IO) :-
     io.open_input(FromPipeName, Res0, !IO),
-    ( Res0 = ok(FromStream) ->
+    (
+        Res0 = ok(FromStream),
         io.read(FromStream, Res1, !IO),
-        ( Res1 = ok(Resp0) ->
+        (
+            Res1 = ok(Resp0),
             Resp = Resp0
         ;
+            Res1 = eof,
+            error("recv_term: read failed")
+        ;
+            Res1 = error(_, _),
             error("recv_term: read failed")
         ),
         io.close_input(FromStream, !IO),
         (
             Debug = yes,
             io.open_output("/tmp/.recv_term", Res2, !IO),
-            ( Res2 = ok(DebugStream) ->
+            (
+                Res2 = ok(DebugStream),
                 io.write(DebugStream, Res1, !IO),
                 io.write_string(DebugStream, ".\n", !IO),
                 io.close_output(DebugStream, !IO)
             ;
+                Res2 = error(_),
                 error("recv_term: couldn't debug")
             )
         ;
             Debug = no
         )
     ;
+        Res0 = error(_),
         error("recv_term: couldn't open pipe")
     ).
 
 recv_string(FromPipeName, Debug, Resp, !IO) :-
     io.open_input(FromPipeName, Res0, !IO),
-    ( Res0 = ok(FromStream) ->
+    (
+        Res0 = ok(FromStream),
         io.read_file_as_string(FromStream, Res1, !IO),
-        ( Res1 = ok(Resp0) ->
+        (
+            Res1 = ok(Resp0),
             Resp = Resp0
         ;
+            Res1 = error(_, _),
             error("recv_string: read failed")
         ),
         io.close_input(FromStream, !IO),
         (
             Debug = yes,
             io.open_output("/tmp/.recv_string", Res2, !IO),
-            ( Res2 = ok(DebugStream) ->
+            (
+                Res2 = ok(DebugStream),
                 io.write(DebugStream, Res1, !IO),
                 io.write_string(DebugStream, ".\n", !IO),
                 io.close_output(DebugStream, !IO)
             ;
+                Res2 = error(_),
                 error("recv_string: couldn't debug")
             )
         ;
             Debug = no
         )
     ;
+        Res0 = error(_),
         error("recv_term: couldn't open pipe")
     ).
 

@@ -675,13 +675,18 @@ det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     determinism_components(Actual, ActualCanFail, ActualSolns),
     compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
-    ( CmpCanFail = tighter ->
+    (
+        CmpCanFail = tighter,
         CanFailPieces = [words("can fail")]
     ;
+        ( CmpCanFail = sameas
+        ; CmpCanFail = looser
+        ),
         CanFailPieces = []
     ),
     compare_solncounts(DesiredSolns, ActualSolns, CmpSolns),
-    ( CmpSolns = tighter ->
+    (
+        CmpSolns = tighter,
         (
             CanFailPieces = [_ | _],
             ConnectPieces = [words("and")]
@@ -689,12 +694,20 @@ det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
             CanFailPieces = [],
             ConnectPieces = []
         ),
-        ( DesiredSolns = at_most_one ->
+        (
+            DesiredSolns = at_most_one,
             SolnsPieces = [words("can succeed more than once")]
         ;
+            ( DesiredSolns = at_most_zero
+            ; DesiredSolns = at_most_many
+            ; DesiredSolns = at_most_many_cc
+            ),
             SolnsPieces = [words("can succeed")]
         )
     ;
+        ( CmpSolns = sameas
+        ; CmpSolns = looser
+        ),
         ConnectPieces = [],
         SolnsPieces = []
     ),
@@ -821,7 +834,7 @@ det_diagnose_switch_context([SwitchContext | SwitchContexts], DetInfo,
     ConsIdStr = cons_id_to_string(ConsId),
     VarStr = mercury_var_to_string(VarSet, no, Var),
     HeadPieces = [words("Inside the case"), fixed(ConsIdStr),
-        words("of the switch on"), fixed(VarStr), words(":")],
+        words("of the switch on"), fixed(VarStr), suffix(":"), nl],
     det_diagnose_switch_context(SwitchContexts, DetInfo, TailPieces).
 
 %-----------------------------------------------------------------------------%
@@ -1019,12 +1032,18 @@ det_report_context_lines(Contexts) = det_report_context_lines_2(Contexts, yes).
 det_report_context_lines_2([], _) = "".
 det_report_context_lines_2([Context | Contexts], First) = Str :-
     term.context_line(Context, Line),
-    ( First = yes ->
+    (
+        First = yes,
         Punct = ""
-    ; Contexts = [] ->
-        Punct = " and "
     ;
-        Punct = ", "
+        First = no,
+        (
+            Contexts = [_ | _],
+            Punct = ", "
+        ;
+            Contexts = [],
+            Punct = " and "
+        )
     ),
     int_to_string(Line, This),
     Later = det_report_context_lines_2(Contexts, no),

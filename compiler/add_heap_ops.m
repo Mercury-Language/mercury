@@ -144,10 +144,9 @@ goal_expr_add_heap_ops(switch(Var, CanFail, Cases0), GI,
     cases_add_heap_ops(Cases0, Cases, !Info).
 
 goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
-    %
     % We handle negations by converting them into if-then-elses:
     %   not(G)  ===>  (if G then fail else true)
-    %
+
     Context = goal_info_get_context(OuterGoalInfo),
     InnerGoal = hlds_goal(_, InnerGoalInfo),
     Determinism = goal_info_get_determinism(InnerGoalInfo),
@@ -155,7 +154,8 @@ goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     True = true_goal_with_context(Context),
     Fail = fail_goal_with_context(Context),
     ModuleInfo = !.Info ^ module_info,
-    ( NumSolns = at_most_zero ->
+    (
+        NumSolns = at_most_zero,
         % The "then" part of the if-then-else will be unreachable, but to
         % preserve the invariants that the MLDS back-end relies on, we need to
         % make sure that it can't fail. So we use a call to
@@ -164,6 +164,10 @@ goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         generate_call("unused", detism_det, purity_pure, [], [],
             ModuleInfo, Context, ThenGoal)
     ;
+        ( NumSolns = at_most_one
+        ; NumSolns = at_most_many
+        ; NumSolns = at_most_many_cc
+        ),
         ThenGoal = Fail
     ),
     NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
@@ -209,7 +213,8 @@ goal_expr_add_heap_ops(GoalExpr @ unify(_, _, _, _, _), GI,
 
 goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
     PragmaForeign = call_foreign_proc(_, _, _, _, _, _, Impl),
-    ( Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _) ->
+    (
+        Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
         % XXX Implementing heap reclamation for nondet pragma foreign_code
         % via transformation is difficult, because there's nowhere in the HLDS
         % pragma_foreign_code goal where we can insert the heap reclamation
@@ -223,6 +228,9 @@ goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
             SorryNotImplementedCode),
         Goal = SorryNotImplementedCode
     ;
+        ( Impl = fc_impl_ordinary(_, _)
+        ; Impl = fc_impl_import(_, _, _, _)
+        ),
         Goal = hlds_goal(PragmaForeign, GoalInfo)
     ).
 

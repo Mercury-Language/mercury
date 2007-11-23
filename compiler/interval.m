@@ -288,10 +288,15 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             ArgModes, ArgTypes, InputArgs, _OutputArgs),
 
         % Casts are generated inline.
-        ( GenericCall = cast(_) ->
+        (
+            GenericCall = cast(_),
             require_in_regs(InputArgs, !IntervalInfo),
             require_access(InputArgs, !IntervalInfo)
         ;
+            ( GenericCall = higher_order(_, _, _, _)
+            ; GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ),
             module_info_get_globals(ModuleInfo, Globals),
             call_gen.generic_call_info(Globals, GenericCall,
                 length(InputArgs), _, GenericVarsArgInfos, _, _),
@@ -557,10 +562,13 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
     StartAnchor = anchor_branch_start(Construct, GoalPath),
     assign_open_intervals_to_anchor(EndAnchor, !IntervalInfo),
     CodeModel = goal_info_get_code_model(GoalInfo),
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         record_model_non_anchor(EndAnchor, !IntervalInfo)
     ;
-        true
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        )
     ),
     no_open_intervals(!IntervalInfo),
     get_cur_interval(AfterIntervalId, !.IntervalInfo),
@@ -870,7 +878,8 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
     ;
         GoalExpr0 = disj(Goals0),
         construct_anchors(branch_disj, Goal0, StartAnchor, EndAnchor),
-        ( Goals0 = [FirstGoal0 | LaterGoals0] ->
+        (
+            Goals0 = [FirstGoal0 | LaterGoals0],
             record_decisions_in_goal(FirstGoal0, FirstGoal, !VarInfo,
                 !.VarRename, _, InsertMap, MaybeFeature),
             lookup_inserts(InsertMap, StartAnchor, StartInserts),
@@ -882,6 +891,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
                 MaybeFeature)
         ;
+            Goals0 = [],
             GoalExpr = disj(Goals0),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )

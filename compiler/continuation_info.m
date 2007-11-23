@@ -624,10 +624,14 @@ find_return_var_lvals([Var | Vars], StackSlots, OkToDeleteAny, OutputArgLocs,
     ; map.search(StackSlots, Var, Slot) ->
         % On return, other live variables are in their stack slots.
         VarLvals = [Var - stack_slot_to_lval(Slot) | TailVarLvals]
-    ; OkToDeleteAny = yes ->
-        VarLvals = TailVarLvals
     ;
-        unexpected(this_file, "find_return_var_lvals: no slot")
+        (
+            OkToDeleteAny = yes,
+            VarLvals = TailVarLvals
+        ;
+            OkToDeleteAny = no,
+            unexpected(this_file, "find_return_var_lvals: no slot")
+        )
     ).
 
 :- pred generate_temp_live_lvalues(assoc_list(lval, slot_contents)::in,

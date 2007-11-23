@@ -385,7 +385,13 @@ start_in_forked_process_2(_, _, !IO) :-
 call_child_process_io_pred(P, Status, !IO) :-
     setup_child_signal_handlers(!IO),
     P(Success, !IO),
-    Status = ( Success = yes -> 0 ; 1 ).
+    (
+        Success = yes,
+        Status = 0
+    ;
+        Success = no,
+        Status = 1
+    ).
 
     % do_wait(Pid, WaitedPid, Status, !IO)
     %

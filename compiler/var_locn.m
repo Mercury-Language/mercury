@@ -931,7 +931,8 @@ assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
     (
         MaybeRval0 = yes(Rval0),
         Target = field(Ptag, Base, const(llconst_int(Offset))),
-        ( Rval0 = var(Var) ->
+        (
+            Rval0 = var(Var),
             find_var_availability(!.VLI, Var, no, Avail),
             (
                 Avail = available(Rval),
@@ -951,11 +952,18 @@ assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
                 Comment = "assigning from " ++ VarName,
                 AssignCode = node([llds_instr(assign(Target, Rval), Comment)])
             )
-        ; Rval0 = const(_) ->
+        ;
+            Rval0 = const(_),
             EvalCode = empty,
             Comment = "assigning field from const",
             AssignCode = node([llds_instr(assign(Target, Rval0), Comment)])
         ;
+            ( Rval0 = mkword(_, _)
+            ; Rval0 = binop(_, _, _)
+            ; Rval0 = unop(_, _)
+            ; Rval0 = lval(_)
+            ; Rval0 = mem_addr(_)
+            ),
             unexpected(this_file, "assign_cell_args: unknown rval")
         ),
         ThisCode = tree(EvalCode, AssignCode)

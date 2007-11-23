@@ -88,7 +88,15 @@ construct_maybe_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
     ).
 
 construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
+    (
+        ( Type = defined_type(_, _, _)
+        ; Type = builtin_type(_)
+        ; Type = tuple_type(_, _)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        ),
+        type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
         ( type_is_var_arity(Type, VarArityId) ->
             TypeCtor = type_ctor(_QualTypeName, RealArity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
@@ -116,7 +124,8 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
                     plain_pseudo_type_info(RttiTypeCtor, PseudoArgs)
             )
         )
-    ; Type = type_variable(Var, _) ->
+    ;
+        Type = type_variable(Var, _),
         % In the case of a type variable, we need to assign a
         % variable number *for this constructor*, i.e. taking
         % only the existentially quantified variables of
@@ -149,9 +158,6 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         expect(VarInt =< pseudo_typeinfo_max_var, this_file,
             "construct_pseudo_type_info: type var exceeds limit"),
         PseudoTypeInfo = type_var(VarInt)
-    ;
-        unexpected(this_file,
-            "construct_pseudo_type_info: neither var nor non-var")
     ).
 
 construct_type_info(Type, TypeInfo) :-
@@ -188,9 +194,13 @@ construct_type_info(Type, TypeInfo) :-
 
 check_var_arity(VarArityId, Args, RealArity) :-
     list.length(Args, NumPseudoArgs),
-    ( VarArityId = func_type_info ->
+    (
+        VarArityId = func_type_info,
         NumPseudoArgs = RealArity + 1
     ;
+        ( VarArityId = pred_type_info
+        ; VarArityId = tuple_type_info
+        ),
         NumPseudoArgs = RealArity
     ).
 

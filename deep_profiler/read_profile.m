@@ -414,7 +414,7 @@ raw_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
         _DefModule, Name, Arity, Mode)) =
     string.append_list([DeclModule, ".", Name,
         "/", string.int_to_string(Arity),
-        ( PredOrFunc = pf_function -> "+1" ; "" ),
+        add_plus_one_for_function(PredOrFunc),
         "-", string.int_to_string(Mode)]).
 
 :- func refined_proc_id_to_string(string_proc_label) = string.
@@ -461,7 +461,7 @@ refined_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
         RefinedProcName = string.from_char_list(ProcNameChars),
         Name = string.append_list([DeclModule, ".", RefinedProcName,
             "/", string.int_to_string(Arity),
-            ( PredOrFunc = pf_function -> "+1" ; "" ),
+            add_plus_one_for_function(PredOrFunc),
             "-", string.int_to_string(Mode),
             " [", SpecInfo, "]"])
     ;
@@ -483,13 +483,18 @@ refined_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
         Name = string.append_list([DeclModule, ".", ContainingName,
             " lambda line ", LineNumber,
             "/", string.int_to_string(Arity),
-            ( PredOrFunc = pf_function -> "+1" ; "" )])
+            add_plus_one_for_function(PredOrFunc)])
     ;
         Name = string.append_list([DeclModule, ".", ProcName,
             "/", string.int_to_string(Arity),
-            ( PredOrFunc = pf_function -> "+1" ; "" ),
+            add_plus_one_for_function(PredOrFunc),
             "-", string.int_to_string(Mode)])
     ).
+
+:- func add_plus_one_for_function(pred_or_func) = string.
+
+add_plus_one_for_function(pf_function) = "+1".
+add_plus_one_for_function(pf_predicate) = "".
 
 :- pred fix_type_spec_suffix(list(char)::in, list(char)::out, string::out)
     is semidet.
@@ -538,9 +543,11 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
         LineNumber = LineNumberPrime
     ; Segments = [Segment | TailSegments] ->
         glue_lambda_name(TailSegments, PredName1, LineNumber),
-        ( PredName1 = [] ->
+        (
+            PredName1 = [],
             PredName = Segment
         ;
+            PredName1 = [_ | _],
             list.append(Segment, ['_', '_' | PredName1], PredName)
         )
     ;
@@ -705,7 +712,8 @@ read_call_site_slot(Res, !IO) :-
     read_call_site_kind(Res1, !IO),
     (
         Res1 = ok(Kind),
-        ( Kind = normal_call ->
+        (
+            Kind = normal_call,
             read_ptr(csd, Res2, !IO),
             (
                 Res2 = ok(CSDI),
@@ -722,12 +730,16 @@ read_call_site_slot(Res, !IO) :-
             )
         ;
             (
-                ( Kind = higher_order_call
-                ; Kind = method_call
-                )
-            ->
+                Kind = higher_order_call,
                 Zeroed = zeroed
             ;
+                Kind = method_call,
+                Zeroed = zeroed
+            ;
+                Kind = special_call,
+                Zeroed = not_zeroed
+            ;
+                Kind = callback,
                 Zeroed = not_zeroed
             ),
             read_multi_call_site_csdis(Res2, !IO),

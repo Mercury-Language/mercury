@@ -1152,22 +1152,33 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
 get_parent_branch_point(GoalPath, ParentPath, ParentStep,
         BranchAlt, BranchNum) :-
     cord.split_last(GoalPath, InitialPath, LastStep),
-    ( LastStep = step_switch(Arm, MaybeNumAlts) ->
+    (
+        LastStep = step_switch(Arm, MaybeNumAlts),
         ParentPath = InitialPath,
         ParentStep = LastStep,
         BranchAlt = alt_switch(MaybeNumAlts),
         BranchNum = Arm
-    ; LastStep = step_ite_then ->
+    ;
+        LastStep = step_ite_then,
         ParentPath = InitialPath,
         ParentStep = LastStep,
         BranchAlt = alt_ite,
         BranchNum = 1
-    ; LastStep = step_ite_else ->
+    ;
+        LastStep = step_ite_else,
         ParentPath = InitialPath,
         ParentStep = LastStep,
         BranchAlt = alt_ite,
         BranchNum = 2
     ;
+        ( LastStep = step_ite_cond
+        ; LastStep = step_neg
+        ; LastStep = step_scope(_)
+        ; LastStep = step_conj(_)
+        ; LastStep = step_disj(_)
+        ; LastStep = step_first
+        ; LastStep = step_later
+        ),
         get_parent_branch_point(InitialPath, ParentPath, ParentStep,
             BranchAlt, BranchNum)
     ).

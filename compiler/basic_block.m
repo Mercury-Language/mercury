@@ -187,9 +187,11 @@ take_until_end_of_block([Instr0 | Instrs0], BlockInstrs, Rest) :-
 :- pred get_fallthrough_from_seq(list(label)::in, maybe(label)::out) is det.
 
 get_fallthrough_from_seq(LabelSeq, MaybeFallThrough) :-
-    ( LabelSeq = [NextLabel | _] ->
+    (
+        LabelSeq = [NextLabel | _],
         MaybeFallThrough = yes(NextLabel)
     ;
+        LabelSeq = [],
         MaybeFallThrough = no
     ).
 

@@ -224,6 +224,11 @@ Changes to the Mercury compiler:
 * A new option, `--generate-standalone-interface', simplifies the task
   of calling Mercury procedures from programs written in other languages.
 
+* We have added new option, `--inform-ite-instead-of-switch'. If this is
+  enabled, the compiler will generate informational messages about
+  if-then-elses that it thinks should be converted to switches for the
+  sake of program reliability.
+
 * We have removed support for Managed C++ as a foreign language for the IL
   backend.
 

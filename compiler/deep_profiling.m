@@ -169,9 +169,13 @@ find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
         ModuleInfo, Outputs) :-
     find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, Outputs1),
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    ( ArgMode = top_in ->
+    (
+        ArgMode = top_in,
         Outputs = Outputs1
     ;
+        ( ArgMode = top_out
+        ; ArgMode = top_unused
+        ),
         Outputs = [Var | Outputs1]
     ).
 
@@ -232,12 +236,16 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         GoalExpr0 = unify(_, _, _, Unify0, _),
         Goal = Goal0,
         (
-            Unify0 = assign(ToVar, FromVar)
-        ->
+            Unify0 = assign(ToVar, FromVar),
             apply_tail_recursion_process_assign(ApplyInfo ^ outputs,
                 ToVar, FromVar, Outputs),
             Continue = yes(Outputs)
         ;
+            ( Unify0 = construct(_, _, _, _, _, __, _)
+            ; Unify0 = deconstruct(_, _, _, _, __, _)
+            ; Unify0 = simple_test(_, _)
+            ; Unify0 = complicated_unify(_, _, _)
+            ),
             Continue = no
         )
     ;
@@ -1253,7 +1261,8 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         ),
 
         CodeModel = goal_info_get_code_model(GoalInfo0),
-        ( CodeModel = model_det ->
+        (
+            CodeModel = model_det,
             list.condense([
                 CallGoals,
                 [SiteNumVarGoal, PrepareGoal, Goal2],
@@ -1261,6 +1270,9 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
             ], Goals),
             GoalExpr = conj(plain_conj, Goals)
         ;
+            ( CodeModel = model_semi
+            ; CodeModel = model_non
+            ),
             ExtraVars = list_to_set([MiddleCSD | SaveRestoreVars]),
             WrappedGoalGoalInfo =
                 goal_info_add_nonlocals_make_impure(GoalInfo, ExtraVars),
@@ -1469,7 +1481,8 @@ compress_filename(Deep, FileName0, FileName) :-
 :- func classify_call(module_info, hlds_goal_expr) = call_class.
 
 classify_call(ModuleInfo, Expr) = Class :-
-    ( Expr = plain_call(PredId, ProcId, Args, _, _, _) ->
+    (
+        Expr = plain_call(PredId, ProcId, Args, _, _, _),
         (
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "unify",
@@ -1495,9 +1508,20 @@ classify_call(ModuleInfo, Expr) = Class :-
         ;
             Class = call_class_normal(proc(PredId, ProcId))
         )
-    ; Expr = generic_call(Generic, _, _, _) ->
+    ;
+        Expr = generic_call(Generic, _, _, _),
         Class = call_class_generic(Generic)
     ;
+        ( Expr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; Expr = unify(_, _, _, _, _)
+        ; Expr = conj(_, _)
+        ; Expr = disj(_)
+        ; Expr = switch(_, _, _)
+        ; Expr = if_then_else(_, _, _, _)
+        ; Expr = negation(_)
+        ; Expr = scope(_, _)
+        ; Expr = shorthand(_)
+        ),
         unexpected(this_file, "unexpected goal type in classify_call/2")
     ).
 

@@ -503,7 +503,7 @@ intermod_traverse_goal_expr(switch(Var, CanFail, Cases0),
     % or function calls.
 intermod_traverse_goal_expr(unify(LVar, RHS0, C, D, E),
         unify(LVar, RHS, C, D, E), DoWrite, !Info) :-
-    module_qualify_unify_rhs(LVar, RHS0, RHS, DoWrite, !Info).
+    module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info).
 intermod_traverse_goal_expr(negation(Goal0), negation(Goal), DoWrite, !Info) :-
     intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
 intermod_traverse_goal_expr(scope(Reason, Goal0), scope(Reason, Goal),
@@ -701,38 +701,40 @@ add_proc_2(PredId, DoWrite, !Info) :-
     % For function calls and higher-order terms, call add_proc
     % so that the predicate or function will be exported if necessary.
     %
-:- pred module_qualify_unify_rhs(prog_var::in, unify_rhs::in,
-    unify_rhs::out, bool::out, intermod_info::in,
-    intermod_info::out) is det.
+:- pred module_qualify_unify_rhs(unify_rhs::in, unify_rhs::out, bool::out,
+    intermod_info::in, intermod_info::out) is det.
 
-module_qualify_unify_rhs(_LHS, RHS @ rhs_var(_Var), RHS, yes, !Info).
-module_qualify_unify_rhs(_LHS,
-        rhs_lambda_goal(A, B, C, D, E, F, G,Goal0),
-        rhs_lambda_goal(A, B, C, D, E, F, G,Goal), DoWrite, !Info) :-
-    intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
-module_qualify_unify_rhs(_LHS, RHS @ rhs_functor(Functor, _Exist, _Vars),
-        RHS, DoWrite, !Info) :-
-    % Is this a higher-order predicate or higher-order function
-    % term?
-    ( Functor = pred_const(ShroudedPredProcId, _) ->
-        %
-        % Yes, the unification creates a higher-order term.
-        % Make sure that the predicate/function is exported.
-        %
-        proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
-        add_proc(PredId, DoWrite, !Info)
-    ;
-        %
-        % It's an ordinary constructor, or a constant of a builtin
-        % type, so just leave it alone.
-        %
-        % Constructors are module qualified by post_typecheck.m.
-        %
-        % Function calls and higher-order function applications
-        % are transformed into ordinary calls and higher-order calls
-        % by post_typecheck.m, so they can't occur here.
-        %
+module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info) :-
+    (
+        RHS0 = rhs_var(_),
+        RHS = RHS0,
         DoWrite = yes
+    ;
+        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, Goal0),
+        intermod_traverse_goal(Goal0, Goal, DoWrite, !Info),
+        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, Goal)
+    ;
+        RHS0 = rhs_functor(Functor, _Exist, _Vars),
+        RHS = RHS0,
+        % Is this a higher-order predicate or higher-order function term?
+        ( Functor = pred_const(ShroudedPredProcId, _) ->
+            % Yes, the unification creates a higher-order term.
+            % Make sure that the predicate/function is exported.
+
+            proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
+            add_proc(PredId, DoWrite, !Info)
+        ;
+            % It's an ordinary constructor, or a constant of a builtin type,
+            % so just leave it alone.
+            %
+            % Constructors are module qualified by post_typecheck.m.
+            %
+            % Function calls and higher-order function applications
+            % are transformed into ordinary calls and higher-order calls
+            % by post_typecheck.m, so they can't occur here.
+
+            DoWrite = yes
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2343,7 +2345,8 @@ read_optimization_interfaces(Transitive, ModuleName,
     maybe_write_string(VeryVerbose, "% done.\n", !IO),
 
     globals.io_get_globals(Globals, !IO),
-    ( Transitive = yes ->
+    (
+        Transitive = yes,
         get_dependencies(OptItems, NewImportDeps0, NewUseDeps0),
         get_implicit_dependencies(OptItems, Globals,
             NewImplicitImportDeps0, NewImplicitUseDeps0),
@@ -2354,6 +2357,7 @@ read_optimization_interfaces(Transitive, ModuleName,
         set.union(ModulesProcessed0, NewDepsSet, ModulesProcessed),
         set.to_sorted_list(NewDepsSet, NewDeps)
     ;
+        Transitive = no,
         ModulesProcessed = ModulesProcessed0,
         NewDeps = []
     ),

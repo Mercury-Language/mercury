@@ -124,6 +124,7 @@
     ;       warn_obsolete
     ;       warn_insts_without_matching_type
     ;       warn_unused_imports
+    ;       inform_ite_instead_of_switch
 
     % Verbosity options
     ;       verbose
@@ -959,7 +960,8 @@ option_defaults_2(warning_option, [
         % removes all the unused imports from
         % the compiler itself which is compiled
         % with --halt-at-warn by default.
-    warn_unused_imports                 -   bool(no)
+    warn_unused_imports                 -   bool(no),
+    inform_ite_instead_of_switch        -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1732,7 +1734,8 @@ long_option("warn-unknown-format-calls", warn_unknown_format_calls).
 long_option("warn-obsolete",             warn_obsolete).
 long_option("warn-insts-without-matching-type",
     warn_insts_without_matching_type).
-long_option("warn-unused-imports", warn_unused_imports).
+long_option("warn-unused-imports",      warn_unused_imports).
+long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2507,6 +2510,8 @@ long_option("no-det-warning-compound-compare-2007-07-17",
                                     compiler_sufficiently_recent).
 long_option("foreign-enum-switch-fix",
                                     compiler_sufficiently_recent).
+long_option("failing-disjunct-in-switch-dup-fix",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("feedback-file",        feedback_file).
 
@@ -2954,22 +2959,25 @@ quote_arg(Arg0) = Arg :-
     ;
         ArgList = quote_arg_unix(string.to_char_list(Arg0)),
         (
-            ArgList = []
-        ->
+            ArgList = [],
             Arg = """"""
         ;
-            list.member(Char, ArgList),
-            \+ ( char.is_alnum_or_underscore(Char)
-            ; Char = ('-')
-            ; Char = ('/')
-            ; Char = ('.')
-            ; Char = (',')
-            ; Char = (':')
+            ArgList = [_ | _],
+            (
+                list.member(Char, ArgList),
+                \+
+                    ( char.is_alnum_or_underscore(Char)
+                    ; Char = ('-')
+                    ; Char = ('/')
+                    ; Char = ('.')
+                    ; Char = (',')
+                    ; Char = (':')
+                    )
+            ->
+                Arg = """" ++ string.from_char_list(ArgList) ++ """"
+            ;
+                Arg = string.from_char_list(ArgList)
             )
-        ->
-            Arg = """" ++ string.from_char_list(ArgList) ++ """"
-        ;
-            Arg = string.from_char_list(ArgList)
         )
     ).
 
@@ -3140,7 +3148,10 @@ options_help_warning -->
         "\tbetween the format string and the supplied values.",
         "--no-warn-obsolete",
         "\tDo not warn about calls to predicates or functions that have",
-        "\tbeen marked as obsolete."
+        "\tbeen marked as obsolete.",
+        "--inform-ite-instead-of-switch",
+        "\tGenerate informational messages for if-then-elses that could be",
+        "\treplaced by switches."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

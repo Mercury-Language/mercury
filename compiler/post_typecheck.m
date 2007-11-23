@@ -1365,10 +1365,16 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     module_info_get_type_table(ModuleInfo, Types),
     map.lookup(Types, TermTypeCtor, TermTypeDefn),
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
-    ( Ctors = TermTypeBody ^ du_type_ctors ->
+    (
+        TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _),
         get_constructor_containing_field_2(Ctors, FieldName, ConsId,
             FieldNumber)
     ;
+        ( TermTypeBody = hlds_eqv_type(_)
+        ; TermTypeBody = hlds_foreign_type(_)
+        ; TermTypeBody = hlds_solver_type(_, _)
+        ; TermTypeBody = hlds_abstract_type(_)
+        ),
         unexpected(this_file, "get_constructor_containing_field: not du type")
     ).
 

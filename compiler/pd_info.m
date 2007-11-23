@@ -596,20 +596,18 @@ pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
     instmap.lookup_var(NewInstMap, NewVar, NewVarInst),
     map.lookup(VarTypes, NewVar, Type),
     inst_matches_initial(NewVarInst, OldVarInst, Type, ModuleInfo),
-    ( !.ExactSoFar = exact ->
+    (
+        !.ExactSoFar = exact,
         % Does inst_matches_initial(Inst1, Inst2, M) and
         % inst_matches_initial(Inst2, Inst1, M) imply that Inst1
         % and Inst2 are interchangable?
-        (
-            inst_matches_initial(OldVarInst, NewVarInst, Type,
-                ModuleInfo)
-        ->
+        ( inst_matches_initial(OldVarInst, NewVarInst, Type, ModuleInfo) ->
             !:ExactSoFar = exact
         ;
             !:ExactSoFar = more_general
         )
     ;
-        !:ExactSoFar = more_general
+        !.ExactSoFar = more_general
     ),
     pd_info.check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
         NewInstMap, VarTypes, !ExactSoFar).

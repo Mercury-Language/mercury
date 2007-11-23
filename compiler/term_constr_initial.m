@@ -394,12 +394,11 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
 set_generated_terminates([], _, _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         !ProcTable) :-
-    %
-    % We don't need to do anything special for solver type initialisation
-    % predicates.  Leaving it up to the analyser may result in better
-    % argument size information anyway.
-    %
-    ( SpecialPredId \= spec_pred_init ->
+    (
+        ( SpecialPredId = spec_pred_unify
+        ; SpecialPredId = spec_pred_compare
+        ; SpecialPredId = spec_pred_index
+        ),
         ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
         proc_info_get_headvars(ProcInfo0, HeadVars),
         proc_info_get_vartypes(ProcInfo0, VarTypes),
@@ -417,7 +416,10 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         ),
         svmap.det_update(ProcId, ProcInfo, !ProcTable)
     ;
-        true
+        SpecialPredId = spec_pred_init
+        % We don't need to do anything special for solver type initialisation
+        % predicates. Leaving it up to the analyser may result in better
+        % argument size information anyway.
     ),
     set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo, !ProcTable).
 
@@ -440,18 +442,23 @@ special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
     Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
     NonZeroHeadSizeVars = list.filter(isnt(is_zero_size_var(Zeros)),
         HeadSizeVars),
-    %
-    % unify may have more than two input arguments if one of them is a
-    % type-info related arg, or some such thing.  Since all these have
+
+    % Unify may have more than two input arguments if one of them is a
+    % type-info related arg, or some such thing. Since all these have
     % zero size type, after removing them there are two possibilities.
     % The list of non-zero size type head_vars is empty (if the
     % arguments are zero sized) or it contains two elements.
-    %
-    ( NonZeroHeadSizeVars = [] ->
+
+    (
+        NonZeroHeadSizeVars = [],
         Constrs  = []
-    ; NonZeroHeadSizeVars = [VarA, VarB] ->
+    ;
+        NonZeroHeadSizeVars = [VarA, VarB],
         Constrs  = [make_vars_eq_constraint(VarA, VarB)]
     ;
+        ( NonZeroHeadSizeVars = [_]
+        ; NonZeroHeadSizeVars = [_, _, _ | _]
+        ),
         unexpected(this_file, "special_pred_id_to_termination/7: " ++
              "wrong number of args for unify.")
     ),

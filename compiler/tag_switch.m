@@ -610,30 +610,37 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
     label::in, label::in, branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
+generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc, Rval,
         CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Code,
         !CI) :-
-    map.to_assoc_list(GoalMap, GoalList),
+    map.to_assoc_list(StagGoalMap, StagGoalList),
     (
         StagLoc = sectag_none,
-        % There is no secondary tag, so there is no switch on it
-        ( GoalList = [-1 - stag_goal(ConsId, Goal)] ->
-            Comment = "case " ++ cons_id_to_string(ConsId),
-            CommentCode = node([llds_instr(comment(Comment), "")]),
-            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-                !CI),
-            code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-            goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-            generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-            GotoCode = node([
-                llds_instr(goto(code_label(EndLabel)),
-                    "skip to end of primary tag switch")
-            ]),
-            Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode,
-                GotoCode])
-        ; GoalList = [] ->
+        % There is no secondary tag, so there is no switch on it.
+        (
+            StagGoalList = [],
             unexpected(this_file, "no goal for non-shared tag")
         ;
+            StagGoalList = [StagGoal],
+            ( StagGoal = -1 - stag_goal(ConsId, Goal) ->
+                Comment = "case " ++ cons_id_to_string(ConsId),
+                CommentCode = node([llds_instr(comment(Comment), "")]),
+                maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+                    TraceCode, !CI),
+                code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+                goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+                generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+                GotoCode = node([
+                    llds_instr(goto(code_label(EndLabel)),
+                        "skip to end of primary tag switch")
+                ]),
+                Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode,
+                    GotoCode])
+            ;
+                unexpected(this_file, "badly formed goal for non-shared tag")
+            )
+        ;
+            StagGoalList = [_, _ | _],
             unexpected(this_file, "more than one goal for non-shared tag")
         )
     ;
@@ -694,9 +701,9 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             StagRval = OrigStagRval
         ),
         (
-            list.length(GoalList, GoalCount),
+            list.length(StagGoalList, StagGoalCount),
             FullGoalCount = MaxSecondary + 1,
-            FullGoalCount = GoalCount
+            FullGoalCount = StagGoalCount
         ->
             CanFail = cannot_fail
         ;
@@ -705,9 +712,9 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
 
         (
             SecondaryMethod = jump_table,
-            generate_secondary_jump_table(GoalList, 0, MaxSecondary, CodeModel,
-                SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Labels,
-                CasesCode, !CI),
+            generate_secondary_jump_table(StagGoalList, 0, MaxSecondary,
+                CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
+                Labels, CasesCode, !CI),
             SwitchCode = node([
                 llds_instr(computed_goto(StagRval, Labels),
                     "switch on secondary tag")
@@ -715,20 +722,20 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             Code = tree(SwitchCode, CasesCode)
         ;
             SecondaryMethod = binary_search,
-            generate_secondary_binary_search(GoalList, 0, MaxSecondary,
+            generate_secondary_binary_search(StagGoalList, 0, MaxSecondary,
                 StagRval, CodeModel, CanFail, SwitchGoalInfo,
                 EndLabel, FailLabel, !MaybeEnd, Code, !CI)
         ;
             SecondaryMethod = try_chain,
-            generate_secondary_try_chain(GoalList, StagRval, CodeModel,
+            generate_secondary_try_chain(StagGoalList, StagRval, CodeModel,
                 CanFail, SwitchGoalInfo, EndLabel, FailLabel, empty, empty,
                 !MaybeEnd, Codes, !CI),
             Code = tree(StagCode, Codes)
         ;
             SecondaryMethod = try_me_else_chain,
-            generate_secondary_try_me_else_chain(GoalList, StagRval, CodeModel,
-                CanFail, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-                Codes, !CI),
+            generate_secondary_try_me_else_chain(StagGoalList, StagRval,
+                CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
+                !MaybeEnd, Codes, !CI),
             Code = tree(StagCode, Codes)
         )
     ).

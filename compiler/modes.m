@@ -1204,27 +1204,29 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
                 prepend_initialisation_call(Var, Type, VarInst, !Goal,
                     !ModeInfo)
             ;
-                % If we're inferring the mode, then don't report an error,
-                % just set changed to yes to make sure that we will do another
-                % fixpoint pass.
-                InferModes = yes
-            ->
-                true
-            ;
-                % XXX This might need to be reconsidered now we have
-                % unique modes.
-                ( inst_matches_initial(VarInst, Inst, Type, ModuleInfo) ->
-                    Reason = too_instantiated
-                ; inst_matches_initial(Inst, VarInst, Type, ModuleInfo) ->
-                    Reason = not_instantiated_enough
+                (
+                    % If we're inferring the mode, then don't report an error,
+                    % just set changed to yes to make sure that we will do
+                    % another fixpoint pass.
+                    InferModes = yes
                 ;
-                    % I don't think this can happen. But just in case...
-                    Reason = wrongly_instantiated
-                ),
-                set.init(WaitingVars),
-                mode_info_error(WaitingVars,
-                    mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
-                    !ModeInfo)
+                    InferModes = no,
+                    % XXX This might need to be reconsidered now we have
+                    % unique modes.
+                    ( inst_matches_initial(VarInst, Inst, Type, ModuleInfo) ->
+                        Reason = too_instantiated
+                    ; inst_matches_initial(Inst, VarInst, Type, ModuleInfo) ->
+                        Reason = not_instantiated_enough
+                    ;
+                        % I don't think this can happen. But just in case...
+                        Reason = wrongly_instantiated
+                    ),
+                    set.init(WaitingVars),
+                    mode_info_error(WaitingVars,
+                        mode_error_final_inst(ArgNum, Var, VarInst, Inst,
+                            Reason),
+                        !ModeInfo)
+                )
             )
         ),
         check_final_insts(VarsTail, InstsTail, VarInstsTail,
@@ -2110,11 +2112,15 @@ modecheck_conj_list_2(ConjType, [Goal0 | Goals0], Goals, !ImpurityErrors,
 modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         !ModeInfo, !IO) :-
     Purity = goal_get_purity(Goal0),
-    ( Purity = purity_impure ->
+    (
+        Purity = purity_impure,
         Impure = yes,
         check_for_impurity_error(Goal0, ScheduledSolverGoals,
             !ImpurityErrors, !ModeInfo, !IO)
     ;
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
         Impure = no,
         ScheduledSolverGoals = []
     ),

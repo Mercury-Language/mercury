@@ -1216,12 +1216,14 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         split_into_submodules(ModuleName, Items, SubModuleList0, [], Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
-        ( MaybeModulesToRecompile = some_modules(ModulesToRecompile) ->
+        (
+            MaybeModulesToRecompile = some_modules(ModulesToRecompile),
             ToRecompile = (pred((SubModule - _)::in) is semidet :-
                 list.member(SubModule, ModulesToRecompile)
             ),
             list.filter(ToRecompile, SubModuleList0, SubModuleListToCompile)
         ;
+            MaybeModulesToRecompile = all_modules,
             SubModuleListToCompile = SubModuleList0
         ),
         assoc_list.keys(SubModuleList0, NestedSubModules0),
@@ -1411,7 +1413,13 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
         TimestampSuffix = ".java_date"
     ;
         CompilationTarget = target_asm,
-        TimestampSuffix = (Pic = yes -> ".pic_s_date" ; ".s_date")
+        (
+            Pic = yes,
+            TimestampSuffix = ".pic_s_date"
+        ;
+            Pic = no,
+            TimestampSuffix = ".s_date"
+        )
     ;
         CompilationTarget = target_x86_64,
         TimestampSuffix = ".s_date"
@@ -2175,40 +2183,41 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
         (
             TypecheckOnly = yes
-        ->
-            true
         ;
-            ( FoundTypeError = yes
-            ; FoundPostTypecheckError = yes
-            )
-        ->
-            % XXX It would be nice if we could go on and mode-check the
-            % predicates which didn't have type errors, but we need to run
-            % polymorphism before running mode analysis, and currently
-            % polymorphism may get internal errors if any of the predicates
-            % are not type-correct.
-
-            !:FoundError = yes
-        ;
-            % Only write out the `.opt' file if there are no errors.
+            TypecheckOnly = no,
             (
-                !.FoundError = no,
-                FoundUndefModeError = no
+                ( FoundTypeError = yes
+                ; FoundPostTypecheckError = yes
+                )
             ->
-                maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO)
+                % XXX It would be nice if we could go on and mode-check the
+                % predicates which didn't have type errors, but we need to run
+                % polymorphism before running mode analysis, and currently
+                % polymorphism may get internal errors if any of the predicates
+                % are not type-correct.
+
+                !:FoundError = yes
             ;
-                true
-            ),
-            % If our job was to write out the `.opt' file, then we're done.
-            (
-                MakeOptInt = yes
-            ;
-                MakeOptInt = no,
-                % Now go ahead and do the rest of mode checking
-                % and determinism analysis.
-                frontend_pass_by_phases(!HLDS,
-                    FoundModeOrDetError, !DumpInfo, !IO),
-                !:FoundError = !.FoundError `or` FoundModeOrDetError
+                % Only write out the `.opt' file if there are no errors.
+                (
+                    !.FoundError = no,
+                    FoundUndefModeError = no
+                ->
+                    maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO)
+                ;
+                    true
+                ),
+                % If our job was to write out the `.opt' file, then we're done.
+                (
+                    MakeOptInt = yes
+                ;
+                    MakeOptInt = no,
+                    % Now go ahead and do the rest of mode checking
+                    % and determinism analysis.
+                    frontend_pass_by_phases(!HLDS,
+                        FoundModeOrDetError, !DumpInfo, !IO),
+                    !:FoundError = !.FoundError `or` FoundModeOrDetError
+                )
             )
         )
     ).

@@ -382,10 +382,15 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo, GoalInfo,
         _ResumeVars0, _AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         !ParStackVars) :-
     Goal = unify(_, _, _, Unification, _),
-    ( Unification = complicated_unify(_, _, _) ->
-        unexpected(this_file, "build_live_sets_in_goal_2: complicated_unify")
+    (
+        ( Unification = construct(_, _, _, _, _, _, _)
+        ; Unification = deconstruct(_, _, _, _, _, _)
+        ; Unification = assign(_, _)
+        ; Unification = simple_test(_, _)
+        )
     ;
-        true
+        Unification = complicated_unify(_, _, _),
+        unexpected(this_file, "build_live_sets_in_goal_2: complicated_unify")
     ).
 
 build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
@@ -466,10 +471,13 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     % must be protected against reuse in following code.
 
     CodeModel = goal_info_get_code_model(GoalInfo),
-    ( CodeModel = model_non ->
-        set.union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
+    (
+        CodeModel = model_det
     ;
-        true
+        CodeModel = model_semi
+    ;
+        CodeModel = model_non,
+        set.union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
     ),
 
     % In a parallel conjunction all the stack slots we need must not be reused
@@ -555,7 +563,8 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
         AllocData, !StackAlloc, Liveness0, _Liveness2,
         NondetLiveness0, NondetLiveness2, !ParStackVars),
     DisjCodeModel = goal_info_get_code_model(DisjGoalInfo),
-    ( DisjCodeModel = model_non ->
+    (
+        DisjCodeModel = model_non,
         % NondetLiveness should be a set of prog_var sets. Instead of taking
         % the union of the NondetLive sets at the ends of disjuncts, we should
         % just keep them in this set of sets.
@@ -570,6 +579,9 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
             NondetLiveness = NondetLiveness3
         )
     ;
+        ( DisjCodeModel = model_det
+        ; DisjCodeModel = model_semi
+        ),
         NondetLiveness = NondetLiveness0
     ).
 

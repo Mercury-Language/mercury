@@ -598,11 +598,13 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
                 %
                 % Add unlink statements before any explicit returns or tail
                 % calls.
-                ( Action = chain_gc_stack_frames ->
+                (
+                    Action = hoist_nested_funcs,
+                    FuncBody2 = FuncBody1
+                ;
+                    Action = chain_gc_stack_frames,
                     add_unchain_stack_to_statement(FuncBody1, FuncBody2,
                         ElimInfo, _ElimInfo)
-                ;
-                    FuncBody2 = FuncBody1
                 ),
                 % Add a final unlink statement at the end of the function,
                 % if needed. This is only needed if the function has no
@@ -1560,16 +1562,19 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         % rather than as local / per_instance,
         % if we're about to hoist it out to the top level.
         Action = !.Info ^ action,
-        ( Action = hoist_nested_funcs ->
+        (
+            Action = hoist_nested_funcs,
             Flags1 = set_access(Flags0, private),
             Flags = set_per_instance(Flags1, one_copy)
         ;
+            Action = chain_gc_stack_frames,
             Flags = Flags0
         ),
         DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
             EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
-        ( Action = hoist_nested_funcs ->
+        (
+            Action = hoist_nested_funcs,
             % Note that we assume that we can safely hoist stuff inside nested
             % functions into the containing function. If that wasn't the case,
             % we'd need code something like this:
@@ -1585,6 +1590,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
             elim_info_add_nested_func(Defn, !Info),
             Defns = []
         ;
+            Action = chain_gc_stack_frames,
             Defns = [Defn]
         ),
         InitStatements = []

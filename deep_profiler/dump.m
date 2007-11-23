@@ -400,7 +400,13 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
         ;
             InInterface = no
         ),
-        IsZeroStr = (IsZeroed = zeroed -> "zeroed" ; "not_zeroed" ),
+        (
+            IsZeroed = zeroed,
+            IsZeroStr = "zeroed"
+        ;
+            IsZeroed = not_zeroed,
+            IsZeroStr = "not_zeroed"
+        ),
         io.format("\t%s\n", [s(IsZeroStr)], !IO),
         array_foldl_from_0(dump_proc_static_call_sites, Sites, !IO),
         io.nl(!IO)

@@ -80,7 +80,8 @@ cases_list_is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
     Range = Span + 1,
     Density = switch_density(NumCases, Range),
     Density > ReqDensity,
-    ( CanFail0 = can_fail ->
+    (
+        CanFail0 = can_fail,
         % For semidet switches, we normally need to check that the variable
         % is in range before we index into the jump table. However, if the
         % range of the type is sufficiently small, we can make the jump table
@@ -102,7 +103,8 @@ cases_list_is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
             LastVal = LastCaseVal
         )
     ;
-        CanFail = CanFail0,
+        CanFail0 = cannot_fail,
+        CanFail = cannot_fail,
         FirstVal = FirstCaseVal,
         LastVal = LastCaseVal
     ).

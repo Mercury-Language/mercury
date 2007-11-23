@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1425,9 +1425,14 @@ fold_2(P, four(K0, T0, K1, T1, K2, T2, K3, T3), !Acc) :-
     is semidet.
 
 fold_subtree(P, K, T, !Acc) :-
-    ( T = leaf(V) ->
+    (
+        T = leaf(V),
         P(K, V, !Acc)
     ;
+        ( T = two(_, _, _, _)
+        ; T = three(_, _, _, _, _, _)
+        ; T = four(_, _, _, _, _, _, _, _)
+        ),
         fold_2(P, T, !Acc)
     ).
 
@@ -1449,28 +1454,33 @@ rtree.map_values(P, rtree(T), rtree(U)) :-
 map_values_2(_, leaf(_), _) :-
     error("map_values_2: unexpected leaf.").
 map_values_2(P, two(K0, T0, K1, T1), two(K0, U0, K1, U1)) :-
-    map_values_2(P, K0, T0, U0),
-    map_values_2(P, K1, T1, U1).
+    map_values_key_2(P, K0, T0, U0),
+    map_values_key_2(P, K1, T1, U1).
 map_values_2(P, three(K0, T0, K1, T1, K2, T2), three(K0, U0, K1, U1, K2, U2)) :-
-    map_values_2(P, K0, T0, U0),
-    map_values_2(P, K1, T1, U1),
-    map_values_2(P, K2, T2, U2).
+    map_values_key_2(P, K0, T0, U0),
+    map_values_key_2(P, K1, T1, U1),
+    map_values_key_2(P, K2, T2, U2).
 map_values_2(P, four(K0, T0, K1, T1, K2, T2, K3, T3), 
         four(K0, U0, K1, U1, K2, U2, K3, U3)) :-
-    map_values_2(P, K0, T0, U0),
-    map_values_2(P, K1, T1, U1),
-    map_values_2(P, K2, T2, U2),
-    map_values_2(P, K3, T3, U3).
+    map_values_key_2(P, K0, T0, U0),
+    map_values_key_2(P, K1, T1, U1),
+    map_values_key_2(P, K2, T2, U2),
+    map_values_key_2(P, K3, T3, U3).
 
-:- pred map_values_2(pred(K, V, W), K, rtree_2(K, V), rtree_2(K, W)).
-:- mode map_values_2(pred(in, in, out) is det, in, in, out) is det.
-:- mode map_values_2(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- pred map_values_key_2(pred(K, V, W), K, rtree_2(K, V), rtree_2(K, W)).
+:- mode map_values_key_2(pred(in, in, out) is det, in, in, out) is det.
+:- mode map_values_key_2(pred(in, in, out) is semidet, in, in, out) is semidet.
 
-map_values_2(P, K, T, U) :-
-    ( T = leaf(V) ->
+map_values_key_2(P, K, T, U) :-
+    (
+        T = leaf(V),
         P(K, V, W),
         U = leaf(W)
     ;
+        ( T = two(_, _, _, _)
+        ; T = three(_, _, _, _, _, _)
+        ; T = four(_, _, _, _, _, _, _, _)
+        ),
         map_values_2(P, T, U)
     ).
 

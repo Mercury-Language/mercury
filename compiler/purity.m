@@ -257,10 +257,15 @@ check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
 
     % Finish processing of promise declarations.
     pred_info_get_goal_type(PredInfo, GoalType),
-    ( GoalType = goal_type_promise(PromiseType) ->
+    (
+        GoalType = goal_type_promise(PromiseType),
         post_typecheck_finish_promise(PromiseType, PredId, !ModuleInfo, !Specs)
     ;
-        true
+        ( GoalType = goal_type_clause
+        ; GoalType = goal_type_foreign
+        ; GoalType = goal_type_clause_and_foreign
+        ; GoalType = goal_type_none
+        )
     ),
     check_preds_purity(PredIds, !ModuleInfo, !Specs).
 
@@ -533,12 +538,15 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         % the unification itself is always pure,
         % even if the lambda expression body is impure
         DeclaredPurity = goal_info_get_purity(GoalInfo),
-        ( DeclaredPurity \= purity_pure ->
+        (
+            ( DeclaredPurity = purity_impure
+            ; DeclaredPurity = purity_semipure
+            ),
             Context = goal_info_get_context(GoalInfo),
             Spec = impure_unification_expr_error(Context, DeclaredPurity),
             purity_info_add_message(Spec, !Info)
         ;
-            true
+            DeclaredPurity = purity_pure
         ),
         ActualPurity = purity_pure,
         ContainsTrace = contains_no_trace_goal
@@ -781,9 +789,13 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
     ;
         less_pure(ActualPurity, DeclaredPurity)
     ->
-        ( PromisedPurity = purity_impure ->
+        (
+            PromisedPurity = purity_impure,
             PurityCheckResult = insufficient_decl
         ;
+            ( PromisedPurity = purity_pure
+            ; PromisedPurity = purity_semipure
+            ),
             PurityCheckResult = no_worries
         )
     ;
@@ -837,42 +849,44 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         % If implicit_purity = make_implicit_promises then
         % we don't report purity errors or warnings.
         ImplicitPurity = make_implicit_promises
-    ->
-        true
     ;
-        % The purity of the callee should match the
-        % purity declared at the call.
-        ActualPurity = DeclaredPurity
-    ->
-        true
-    ;
-        % Don't require purity annotations on calls in
-        % compiler-generated code.
-        is_unify_or_compare_pred(PredInfo)
-    ->
-        true
-    ;
-        less_pure(ActualPurity, DeclaredPurity)
-    ->
-        Spec = error_missing_body_impurity_decl(ModuleInfo, PredId, Context),
-        purity_info_add_message(Spec, !Info)
-    ;
-        % We don't warn about exaggerated impurity decls in class methods
-        % or instance methods --- it just means that the predicate provided
-        % as an implementation was more pure than necessary.
-
-        pred_info_get_markers(PredInfo, Markers),
+        ImplicitPurity = dont_make_implicit_promises,
         (
-            check_marker(Markers, marker_class_method)
+            % The purity of the callee should match the
+            % purity declared at the call.
+            ActualPurity = DeclaredPurity
+        ->
+            true
         ;
-            check_marker(Markers, marker_class_instance_method)
+            % Don't require purity annotations on calls in
+            % compiler-generated code.
+            is_unify_or_compare_pred(PredInfo)
+        ->
+            true
+        ;
+            less_pure(ActualPurity, DeclaredPurity)
+        ->
+            Spec = error_missing_body_impurity_decl(ModuleInfo, PredId,
+                Context),
+            purity_info_add_message(Spec, !Info)
+        ;
+            % We don't warn about exaggerated impurity decls in class methods
+            % or instance methods --- it just means that the predicate provided
+            % as an implementation was more pure than necessary.
+
+            pred_info_get_markers(PredInfo, Markers),
+            (
+                check_marker(Markers, marker_class_method)
+            ;
+                check_marker(Markers, marker_class_instance_method)
+            )
+        ->
+            true
+        ;
+            Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
+                Context, DeclaredPurity),
+            purity_info_add_message(Spec, !Info)
         )
-    ->
-        true
-    ;
-        Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
-            DeclaredPurity),
-        purity_info_add_message(Spec, !Info)
     ).
 
 :- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
@@ -1100,9 +1114,13 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
     Pieces1 = [words("In call to")] ++ PredPieces ++ [suffix(":"), nl,
         words("warning: unnecessary"), quote(DeclaredPurityName),
         words("indicator."), nl],
-    ( ActualPurity = purity_pure ->
+    (
+        ActualPurity = purity_pure,
         Pieces2 = [words("No purity indicator is necessary."), nl]
     ;
+        ( ActualPurity = purity_impure
+        ; ActualPurity = purity_semipure
+        ),
         Pieces2 = [words("A purity indicator of"), quote(ActualPurityName),
             words("is sufficient."), nl]
     ),

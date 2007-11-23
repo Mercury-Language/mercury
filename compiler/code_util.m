@@ -418,10 +418,14 @@ build_input_arg_list(ProcInfo, VarLvals) :-
 build_input_arg_list_2([], []).
 build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
     Arg = arg_info(Loc, Mode),
-    ( Mode = top_in ->
+    (
+        Mode = top_in,
         arg_loc_to_register(Loc, Reg),
         VarArgs = [V - Reg | VarArgs0]
     ;
+        ( Mode = top_out
+        ; Mode = top_unused
+        ),
         VarArgs = VarArgs0
     ),
     build_input_arg_list_2(Rest0, VarArgs0).

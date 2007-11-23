@@ -1689,11 +1689,15 @@ output_custom_decl(custom_decl(Type, MaybeOwner, StringOrBytes), !Info, !IO) :-
         MaybeOwner = no
     ),
     output_custom_type(Type, !Info, !IO),
-    ( StringOrBytes = bytes(Bytes) ->
+    (
+        StringOrBytes = bytes(Bytes),
         io.write_string(" = (", !IO),
         io.write_list(Bytes, " ", output_hexbyte, !IO),
         io.write_string(")", !IO)
     ;
+        ( StringOrBytes = qstring(_)
+        ; StringOrBytes = no_initalizer
+        ),
         sorry(this_file, "custom_decl of this sort")
     ),
     io.write_string("\n", !IO).

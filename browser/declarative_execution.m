@@ -833,11 +833,9 @@ disj_node_from_id(Store, NodeId, Node) :-
 search_trace_node_store(_, _, _) :-
     private_builtin.sorry("search_trace_node_store").
 
+    % Following are some predicates that are useful for manipulating
+    % the above instance in C code.
     %
-    % Following are some predicates that are useful for
-    % manipulating the above instance in C code.
-    %
-
 :- func call_node_get_last_interface(trace_node(trace_node_id))
     = trace_node_id.
 :- pragma foreign_export("C", call_node_get_last_interface(in) = out,

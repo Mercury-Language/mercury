@@ -36,7 +36,7 @@
 :- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-        
+
 :- pred add_pragma_foreign_export_enum(foreign_language::in, sym_name::in,
     arity::in, export_enum_attributes::in, assoc_list(sym_name, string)::in,
     import_status::in, prog_context::in, module_info::in, module_info::out,
@@ -235,9 +235,9 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs) :-
         % types).
         Pragma = pragma_foreign_export_enum(_, _, _, _, _)
     ;
-        % Likewise for pragma foreign_enum. 
+        % Likewise for pragma foreign_enum.
         Pragma = pragma_foreign_enum(_, _, _, _)
-    ;      
+    ;
         % Handle pragma tabled decls later on (when we process clauses).
         Pragma = pragma_tabled(_, _, _, _, _, _)
     ;
@@ -520,7 +520,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
     TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, Types0),
     ContextPieces = [
-        words("In"), fixed("`pragma reserve_tag'"), words("declaration for"),
+        words("In"), quote("pragma reserve_tag"), words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
     ],
     ( map.search(Types0, TypeCtor, TypeDefn0) ->
@@ -538,46 +538,54 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         ->
             MaybeSeverity = yes(severity_error),
             ErrorPieces = [
-                words("error: `reserve_tag' declaration must have"),
+                words("error:"), quote("pragma reserve_tag"),
+                words("declaration must have"),
                 words("the same visibility as the type definition.")
             ]
         ;
-            TypeBody0 = hlds_du_type(Body, _CtorTags0, _IsEnum0,
-                MaybeUserEqComp, ReservedTag0, _ReservedAddr, IsForeign)
-        ->
             (
-                ReservedTag0 = uses_reserved_tag,
-                % Make doubly sure that we don't get any spurious warnings
-                % with intermodule optimization...
-                TypeStatus \= status_opt_imported
-            ->
-                MaybeSeverity = yes(severity_warning),
-                ErrorPieces = [
-                    words("warning: multiple"), fixed("`pragma reserved_tag'"),
-                    words("declarations for the same type.")
-                ]
-            ;
-                MaybeSeverity = no,
-                ErrorPieces = []
-            ),
+                TypeBody0 = hlds_du_type(Body, _CtorTags0, _IsEnum0,
+                    MaybeUserEqComp, ReservedTag0, _ReservedAddr, IsForeign),
+                (
+                    ReservedTag0 = uses_reserved_tag,
+                    % Make doubly sure that we don't get any spurious warnings
+                    % with intermodule optimization...
+                    TypeStatus \= status_opt_imported
+                ->
+                    MaybeSeverity = yes(severity_warning),
+                    ErrorPieces = [
+                        words("warning: multiple"),
+                        quote("pragma reserved_tag"),
+                        words("declarations for the same type.")
+                    ]
+                ;
+                    MaybeSeverity = no,
+                    ErrorPieces = []
+                ),
 
-            % We passed all the semantic checks. Mark the type as having
-            % a reserved tag, and recompute the constructor tags.
-            ReservedTag = uses_reserved_tag,
-            module_info_get_globals(!.ModuleInfo, Globals),
-            assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
-                ReservedTag, Globals, CtorTags, ReservedAddr, EnumDummy),
-            TypeBody = hlds_du_type(Body, CtorTags, EnumDummy, MaybeUserEqComp,
-                ReservedTag, ReservedAddr, IsForeign),
-            hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-            map.set(Types0, TypeCtor, TypeDefn, Types),
-            module_info_set_type_table(Types, !ModuleInfo)
-        ;
-            MaybeSeverity = yes(severity_error),
-            ErrorPieces = [
-                words("error:"), sym_name_and_arity(TypeName / TypeArity),
-                words("is not a discriminated union type."), nl
-            ]
+                % We passed all the semantic checks. Mark the type as having
+                % a reserved tag, and recompute the constructor tags.
+                ReservedTag = uses_reserved_tag,
+                module_info_get_globals(!.ModuleInfo, Globals),
+                assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
+                    ReservedTag, Globals, CtorTags, ReservedAddr, EnumDummy),
+                TypeBody = hlds_du_type(Body, CtorTags, EnumDummy,
+                    MaybeUserEqComp, ReservedTag, ReservedAddr, IsForeign),
+                hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
+                map.set(Types0, TypeCtor, TypeDefn, Types),
+                module_info_set_type_table(Types, !ModuleInfo)
+            ;
+                ( TypeBody0 = hlds_eqv_type(_)
+                ; TypeBody0 = hlds_foreign_type(_)
+                ; TypeBody0 = hlds_solver_type(_, _)
+                ; TypeBody0 = hlds_abstract_type(_)
+                ),
+                MaybeSeverity = yes(severity_error),
+                ErrorPieces = [
+                    words("error:"), sym_name_and_arity(TypeName / TypeArity),
+                    words("is not a discriminated union type."), nl
+                ]
+            )
         )
     ;
         MaybeSeverity = yes(severity_error),
@@ -612,7 +620,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
         words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
     ],
-    (   
+    (
         % Emit an error message for foreign_export_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
@@ -632,7 +640,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
     ;
         ( map.search(TypeDefnTable, TypeCtor, TypeDefn) ->
             get_type_defn_body(TypeDefn, TypeBody),
-            ( 
+            (
                 ( TypeBody = hlds_eqv_type(_)
                 ; TypeBody = hlds_abstract_type(_)
                 ; TypeBody = hlds_solver_type(_, _)
@@ -741,9 +749,9 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
     % Strip off module qualifiers that match those of the type
     % being exported.  We leave those that do not match so that
     % they can be reported as errors later.
-    % 
+    %
     StripQualifiers = (func(Name0) = Name :-
-        ( 
+        (
             Name0 = qualified(ModuleQualifier, UnqualName),
             ( ModuleQualifier = ModuleName ->
                 Name = unqualified(UnqualName)
@@ -772,7 +780,7 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
-    
+
 :- pred build_export_enum_name_map(format_components::in,
     foreign_language::in, sym_name::in, arity::in, prog_context::in,
     string::in, map(sym_name, string)::in, list(constructor)::in,
@@ -781,14 +789,14 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
 
 build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
         Context, Prefix, Overrides0, Ctors, MaybeMapping, !Specs) :-
-    ( 
+    (
         TypeName = qualified(TypeModuleQual, _)
     ;
         % The type name should have been module qualified by now.
         TypeName = unqualified(_),
         unexpected(this_file, "unqualified type name for foreign_export_enum")
     ),
-        
+
     list.foldl3(add_ctor_to_name_map(Lang, Prefix, TypeModuleQual),
         Ctors, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
     %
@@ -864,16 +872,16 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
                 [
                     always(ContextPieces ++ BadCtorsErrorPieces),
                     verbose_only(BadCtorsVerboseErrorPieces)
-                ]),  
+                ]),
             BadCtorsSpec = error_spec(severity_error,
                 phase_parse_tree_to_hlds, [BadCtorsMsg]),
             list.cons(BadCtorsSpec, !Specs),
             MaybeMapping = no
         )
     ).
-            
+
     % Check that the mapping from foreign names to Mercury names is not
-    % one-to-many.  
+    % one-to-many.
     %
 :- pred check_name_map_for_conflicts(prog_context::in, format_components::in,
     map(sym_name, string)::in, maybe(map(sym_name, string))::out,
@@ -883,7 +891,7 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap,
         MaybeNameMap, !Specs) :-
     NamesAndForeignNames  = map.to_assoc_list(NameMap),
     ( bimap.from_assoc_list(NamesAndForeignNames, _) ->
-        MaybeNameMap = yes(NameMap) 
+        MaybeNameMap = yes(NameMap)
     ;
         MaybeNameMap = no,
         % XXX we should report exactly why it is not bijective.
@@ -894,7 +902,7 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap,
         Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ).        
+    ).
 
     % add_ctor_to_name_map(ForeignLanguage, Overrides, Prefix, Ctor, !Map,
     %   !BadCtors):
@@ -908,14 +916,14 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap,
 add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
         !BadCtors) :-
     CtorSymName = Ctor ^ cons_name,
-    ( 
+    (
         % All of the constructor sym_names should be module qualified by now.
         % We unqualify them before inserting them into the mapping since
         % the code in export.m expects that to be done.
         %
         CtorSymName    = qualified(_, _),
         UnqualCtorName = unqualify_name(CtorSymName),
-        UnqualSymName  = unqualified(UnqualCtorName) 
+        UnqualSymName  = unqualified(UnqualCtorName)
     ;
         CtorSymName = unqualified(_),
         unexpected(this_file, "unqualified constructor name")
@@ -931,7 +939,7 @@ add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
         ForeignName1 = UnqualCtorName
     ),
     ForeignName = Prefix ++ ForeignName1,
-    (     
+    (
         Lang  = lang_c,
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
     ;
@@ -949,7 +957,7 @@ add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
         IsValidForeignName = no,
         list.cons(UnqualSymName, !BadCtors)
     ).
-    
+
 %-----------------------------------------------------------------------------%
 
 add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
@@ -961,7 +969,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
         words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
     ],
-    (   
+    (
         % Emit an error message for foreign_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
@@ -1013,7 +1021,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                 % module or they are both imported.  Any other combination
                 % is illegal.
                 IsTypeLocal = status_defined_in_this_module(TypeStatus),
-                ( 
+                (
                     (
                         IsTypeLocal = yes,
                         ( ImportStatus = status_local
@@ -1035,7 +1043,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                         MaybeForeignTagMap = yes(ForeignTagMap)
                     ->
                         map.foldl2(make_foreign_tag(Lang, ForeignTagMap),
-                            OldTagValues, map.init, TagValues, [], 
+                            OldTagValues, map.init, TagValues, [],
                             UnmappedCtors),
                         (
                             UnmappedCtors = [],
@@ -1050,7 +1058,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                             UnmappedCtors = [_ | _],
                             add_foreign_enum_unmapped_ctors_error(Context,
                                 ContextPieces, UnmappedCtors, !Specs)
-                        )          
+                        )
                     ;
                         % If there are no matching foreign_enum pragmas for
                         % this target language then don't do anything.
@@ -1103,7 +1111,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
         % will have already done so.
         MaybeSeverity = no,
         ErrorPieces = []
-    ), 
+    ),
     (
         ErrorPieces = []
     ;
@@ -1150,7 +1158,7 @@ build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
 
     % The constructor names we get from the parse tree may be unqualified
     % but the ones we match against in the HLDS are not.  Module qualify
-    % them.  
+    % them.
     %
     % XXX module_qual.m should really be doing this rather than add_pragma.m.
     %
@@ -1186,7 +1194,7 @@ target_lang_to_foreign_enum_lang(target_il)   = lang_il.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 target_lang_to_foreign_enum_lang(target_asm) =
     sorry(this_file, "pragma foreign_enum and --target `asm'.").
-target_lang_to_foreign_enum_lang(target_x86_64) = 
+target_lang_to_foreign_enum_lang(target_x86_64) =
     sorry(this_file, "pragma foreign_enum and --target `x86_64'.").
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
@@ -1237,7 +1245,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, UnmappedCtors0,
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
         [Msg]),
     list.cons(Spec, !Specs).
-       
+
 :- pred add_foreign_enum_bijection_error(prog_context::in,
     format_components::in, list(error_spec)::in, list(error_spec)::out)
     is det.
@@ -1251,7 +1259,7 @@ add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
     Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
-                    
+
 :- pred add_foreign_enum_pragma_in_interface_error(prog_context::in,
     sym_name::in, arity::in, list(error_spec)::in, list(error_spec)::out)
     is det.
@@ -1267,7 +1275,7 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
-        
+
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_unused_args(pred_or_func::in, sym_name::in, arity::in,
@@ -1580,100 +1588,104 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
         Types, ExistQVars, ClassContext, SubstOk, !ModuleInfo, !Specs) :-
     assoc_list.keys(Subst, VarsToSub),
     (
-        Subst = []
-    ->
+        Subst = [],
         unexpected(this_file,
             "handle_pragma_type_spec_subst: empty substitution")
     ;
+        Subst = [_ | _],
         find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
-        MultiSubstVars0 = [_ | _]
-    ->
-        list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
-        report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
-            MultiSubstVars, !Specs),
-        ExistQVars = [],
-        Types = [],
-        ClassContext = constraints([], []),
-        varset.init(TVarSet),
-        SubstOk = no
-    ;
-        pred_info_get_typevarset(PredInfo0, CalledTVarSet),
-        varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
-        list.filter((pred(Var::in) is semidet :-
-            varset.lookup_name(TVarSet0, Var, VarName),
-            \+ map.contains(NameVarIndex0, VarName)
-        ), VarsToSub, UnknownVarsToSub),
         (
-            UnknownVarsToSub = [],
-            % Check that the substitution is not recursive.
-            set.list_to_set(VarsToSub, VarsToSubSet),
-
-            assoc_list.values(Subst, SubstTypes0),
-            type_vars_list(SubstTypes0, TVarsInSubstTypes0),
-            set.list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes),
-
-            set.intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),
-            set.to_sorted_list(RecSubstTVars0, RecSubstTVars),
-
+            MultiSubstVars0 = [_ | _],
+            list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
+            report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
+                MultiSubstVars, !Specs),
+            ExistQVars = [],
+            Types = [],
+            ClassContext = constraints([], []),
+            varset.init(TVarSet),
+            SubstOk = no
+        ;
+            MultiSubstVars0 = [],
+            pred_info_get_typevarset(PredInfo0, CalledTVarSet),
+            varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
+            list.filter((pred(Var::in) is semidet :-
+                varset.lookup_name(TVarSet0, Var, VarName),
+                \+ map.contains(NameVarIndex0, VarName)
+            ), VarsToSub, UnknownVarsToSub),
             (
-                RecSubstTVars = [],
-                map.init(TVarRenaming0),
-                list.append(VarsToSub, TVarsInSubstTypes0, VarsToReplace),
+                UnknownVarsToSub = [],
+                % Check that the substitution is not recursive.
+                set.list_to_set(VarsToSub, VarsToSubSet),
 
-                get_new_tvars(VarsToReplace, TVarSet0, CalledTVarSet, TVarSet,
-                    NameVarIndex0, _, TVarRenaming0, TVarRenaming),
+                assoc_list.values(Subst, SubstTypes0),
+                type_vars_list(SubstTypes0, TVarsInSubstTypes0),
+                set.list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes),
 
-                % Check that none of the existentially quantified variables
-                % were substituted.
-                map.apply_to_list(VarsToSub, TVarRenaming, RenamedVarsToSub),
-                pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
-                list.filter((pred(RenamedVar::in) is semidet :-
-                    list.member(RenamedVar, ExistQVars)
-                ), RenamedVarsToSub, SubExistQVars),
+                set.intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),
+                set.to_sorted_list(RecSubstTVars0, RecSubstTVars),
+
                 (
-                    SubExistQVars = [],
-                    map.init(TypeSubst0),
-                    apply_variable_renaming_to_type_list(TVarRenaming,
-                        SubstTypes0, SubstTypes),
-                    assoc_list.from_corresponding_lists(RenamedVarsToSub,
-                        SubstTypes, SubAL),
-                    list.foldl(map_set_from_pair, SubAL,
-                        TypeSubst0, TypeSubst),
+                    RecSubstTVars = [],
+                    map.init(TVarRenaming0),
+                    list.append(VarsToSub, TVarsInSubstTypes0, VarsToReplace),
 
-                    % Apply the substitution.
-                    pred_info_get_arg_types(PredInfo0, Types0),
-                    pred_info_get_class_context(PredInfo0, ClassContext0),
-                    apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
-                    apply_rec_subst_to_prog_constraints(TypeSubst,
-                        ClassContext0, ClassContext),
-                    SubstOk = yes(TypeSubst)
+                    get_new_tvars(VarsToReplace, TVarSet0, CalledTVarSet,
+                        TVarSet, NameVarIndex0, _,
+                        TVarRenaming0, TVarRenaming),
+
+                    % Check that none of the existentially quantified variables
+                    % were substituted.
+                    map.apply_to_list(VarsToSub, TVarRenaming,
+                        RenamedVarsToSub),
+                    pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
+                    list.filter((pred(RenamedVar::in) is semidet :-
+                        list.member(RenamedVar, ExistQVars)
+                    ), RenamedVarsToSub, SubExistQVars),
+                    (
+                        SubExistQVars = [],
+                        map.init(TypeSubst0),
+                        apply_variable_renaming_to_type_list(TVarRenaming,
+                            SubstTypes0, SubstTypes),
+                        assoc_list.from_corresponding_lists(RenamedVarsToSub,
+                            SubstTypes, SubAL),
+                        list.foldl(map_set_from_pair, SubAL,
+                            TypeSubst0, TypeSubst),
+
+                        % Apply the substitution.
+                        pred_info_get_arg_types(PredInfo0, Types0),
+                        pred_info_get_class_context(PredInfo0, ClassContext0),
+                        apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
+                        apply_rec_subst_to_prog_constraints(TypeSubst,
+                            ClassContext0, ClassContext),
+                        SubstOk = yes(TypeSubst)
+                    ;
+                        SubExistQVars = [_ | _],
+                        report_subst_existq_tvars(PredInfo0, Context,
+                            SubExistQVars, !Specs),
+                        Types = [],
+                        ClassContext = constraints([], []),
+                        SubstOk = no
+                    )
                 ;
-                    SubExistQVars = [_ | _],
-                    report_subst_existq_tvars(PredInfo0, Context,
-                        SubExistQVars, !Specs),
+                    RecSubstTVars = [_ | _],
+                    report_recursive_subst(PredInfo0, Context, TVarSet0,
+                        RecSubstTVars, !Specs),
+                    ExistQVars = [],
                     Types = [],
                     ClassContext = constraints([], []),
+                    varset.init(TVarSet),
                     SubstOk = no
                 )
             ;
-                RecSubstTVars = [_ | _],
-                report_recursive_subst(PredInfo0, Context, TVarSet0,
-                    RecSubstTVars, !Specs),
+                UnknownVarsToSub = [_ | _],
+                report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
+                    UnknownVarsToSub, !Specs),
                 ExistQVars = [],
                 Types = [],
                 ClassContext = constraints([], []),
                 varset.init(TVarSet),
                 SubstOk = no
             )
-        ;
-            UnknownVarsToSub = [_ | _],
-            report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
-                UnknownVarsToSub, !Specs),
-            ExistQVars = [],
-            Types = [],
-            ClassContext = constraints([], []),
-            varset.init(TVarSet),
-            SubstOk = no
         )
     ).
 
@@ -2657,10 +2669,14 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 Statistics = table_gather_statistics,
                 AllowReset = table_allow_reset
             ),
-            ( Strictness = specified(MaybeArgMethods, _HiddenArgMethod) ->
+            (
+                Strictness = specified(MaybeArgMethods, _HiddenArgMethod),
                 check_pred_args_against_tabling_methods(DeclaredArgModes,
                     MaybeArgMethods, !.ModuleInfo, 1, MaybeError)
             ;
+                ( Strictness = all_strict
+                ; Strictness = all_fast_loose
+                ),
                 check_pred_args_against_tabling(DeclaredArgModes, !.ModuleInfo,
                     1, MaybeError)
             ),
@@ -3301,7 +3317,7 @@ clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         goal_info_set_purity(Purity, GoalInfo1, GoalInfo),
         % XXX ARGVEC - the foreign_args field in the hlds_goal_expr type
         %     should also be a an proc_arg_vector rather than a list.
-        HeadVarList = proc_arg_vector_to_list(HeadVars), 
+        HeadVarList = proc_arg_vector_to_list(HeadVars),
         make_foreign_args(HeadVarList, ArgInfo, OrigArgTypes, ForeignArgs),
         % Perform some renaming in any user annotated sharing information.
         maybe_rename_user_annotated_sharing_information(Globals,
@@ -3446,7 +3462,7 @@ decide_action(PredName, Arity, PredOrFunc, NewContext, Globals,
                 % Just ignore the clause - if they are both for the same
                 % language then we emit an error message as well.
                 % XXX This won't detect multiple clauses in languages
-                %     that are not supported by this backend. 
+                %     that are not supported by this backend.
                 !:Action = ignore,
                 ( OldLang = NewLang ->
                     PiecesA = [

@@ -230,14 +230,14 @@ split_unification_vars([], Modes, _, Vars, Vars) :-
     (
         Modes = []
     ;
-        Modes = [_|_],
+        Modes = [_ | _],
         unexpected(this_file, "split_unification_vars/5: unmatched variables.")
     ).
 split_unification_vars([Arg | Args], Modes, ModuleInfo,
         InVars, OutVars):-
-    ( Modes = [UniMode | UniModes] ->
-        split_unification_vars(Args, UniModes, ModuleInfo,
-            InVars0, OutVars0),
+    (
+        Modes = [UniMode | UniModes],
+        split_unification_vars(Args, UniModes, ModuleInfo, InVars0, OutVars0),
         UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
         (
             inst_is_bound(ModuleInfo, ArgInit)
@@ -257,6 +257,7 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
             OutVars = OutVars0
         )
     ;
+        Modes = [],
         unexpected(this_file, "split_unification_vars/5: unmatched variables.")
     ).
 

@@ -1186,10 +1186,14 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
     map.lookup(!.BlockMap, Label, BlockInfo0),
     BlockInfo0 = frame_block_info(BlockLabel, BlockInstrs0, FallInto,
         _, _, Type),
-    ( Type = ordinary_block(block_needs_frame(_), _) ->
+    (
+        Type = ordinary_block(block_needs_frame(_), _),
         !:AnyBlockNeedsFrame = yes
     ;
-        true
+        ( Type = ordinary_block(block_doesnt_need_frame, _)
+        ; Type = entry_block(_)
+        ; Type = exit_block(_)
+        )
     ),
     (
         Label = BlockLabel, % sanity check
@@ -1695,44 +1699,47 @@ ord_needs_frame(Label, CurReason, !OrdNeedsFrame) :-
 
 propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
         !.AlreadyProcessed, !PropagationStepsLeft, !CanTransform) :-
-    ( !.CanTransform = cannot_transform ->
-        true
-    ; !.PropagationStepsLeft < 0 ->
-        !:CanTransform = cannot_transform
-    ; svqueue.get(Reason - Label, !Queue) ->
-        !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
-        svset.insert(Label, !AlreadyProcessed),
-        map.lookup(BlockMap, Label, BlockInfo),
-        BlockType = BlockInfo ^ fb_type,
-        (
-            BlockType = ordinary_block(_, _MaybeDummy),
-            ord_needs_frame(Label, Reason, !OrdNeedsFrame),
-            % Putting an already processed label into the queue could
-            % lead to an infinite loop. However, we cannot decide whether
-            % a label has been processed by checking whether
-            % !.OrdNeedsFrame maps Label to yes, since !.OrdNeedsFrame
-            % doesn't mention setup frames, and we want to set
-            % !:CanTransform to no if any successor is a setup frame.
-            % We cannot assume that successors not in !.OrdNeedsFrame
-            % should set !:CanTransform to no either, since we don't want
-            % to do that for exit frames.
-            list.filter(set.contains(!.AlreadyProcessed),
-                successors(BlockInfo), _, UnprocessedSuccessors),
-            list.map(pair_with(succ_propagated(Label, Reason)),
-                UnprocessedSuccessors, PairedUnprocessedSuccessors),
-            svqueue.put_list(PairedUnprocessedSuccessors, !Queue)
-        ;
-            BlockType = entry_block(_),
-            !:CanTransform = cannot_transform
-        ;
-            BlockType = exit_block(_)
-            % Exit blocks never *need* stack frames.
-        ),
-        propagate_frame_requirement_to_successors(!.Queue, BlockMap,
-            !OrdNeedsFrame, !.AlreadyProcessed, !PropagationStepsLeft,
-            !CanTransform)
+    (
+        !.CanTransform = cannot_transform
     ;
-        true
+        !.CanTransform = can_transform,
+        ( !.PropagationStepsLeft < 0 ->
+            !:CanTransform = cannot_transform
+        ; svqueue.get(Reason - Label, !Queue) ->
+            !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
+            svset.insert(Label, !AlreadyProcessed),
+            map.lookup(BlockMap, Label, BlockInfo),
+            BlockType = BlockInfo ^ fb_type,
+            (
+                BlockType = ordinary_block(_, _MaybeDummy),
+                ord_needs_frame(Label, Reason, !OrdNeedsFrame),
+                % Putting an already processed label into the queue could
+                % lead to an infinite loop. However, we cannot decide whether
+                % a label has been processed by checking whether
+                % !.OrdNeedsFrame maps Label to yes, since !.OrdNeedsFrame
+                % doesn't mention setup frames, and we want to set
+                % !:CanTransform to no if any successor is a setup frame.
+                % We cannot assume that successors not in !.OrdNeedsFrame
+                % should set !:CanTransform to no either, since we don't want
+                % to do that for exit frames.
+                list.filter(set.contains(!.AlreadyProcessed),
+                    successors(BlockInfo), _, UnprocessedSuccessors),
+                list.map(pair_with(succ_propagated(Label, Reason)),
+                    UnprocessedSuccessors, PairedUnprocessedSuccessors),
+                svqueue.put_list(PairedUnprocessedSuccessors, !Queue)
+            ;
+                BlockType = entry_block(_),
+                !:CanTransform = cannot_transform
+            ;
+                BlockType = exit_block(_)
+                % Exit blocks never *need* stack frames.
+            ),
+            propagate_frame_requirement_to_successors(!.Queue, BlockMap,
+                !OrdNeedsFrame, !.AlreadyProcessed, !PropagationStepsLeft,
+                !CanTransform)
+        ;
+            true
+        )
     ).
 
     % This predicate implements the third part of the first phase of
@@ -1745,35 +1752,39 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
 
 propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
         !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform) :-
-    ( !.CanTransform = cannot_transform ->
-        true
-    ; !.PropagationStepsLeft < 0 ->
-        !:CanTransform = cannot_transform
-    ; svqueue.get(Reason - Label, !Queue) ->
-        !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
-        ( map.search(RevMap, Label, PredecessorsPrime) ->
-            Predecessors = PredecessorsPrime
-        ;
-            % We get here if Label cannot be reached by a fallthrough or an
-            % explicit jump, but only by backtracking. In that case, the code
-            % that sets up the resumption point saves the address of Label on
-            % the stack, and thus is already known to need a stack frame.
-            Predecessors = [],
-            ord_needs_frame(Label, Reason, !OrdNeedsFrame)
-        ),
-        list.filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrame),
-            Predecessors, NowNeedFrameLabels),
-        list.foldl2(record_frame_need(BlockMap, Reason), NowNeedFrameLabels,
-            !OrdNeedsFrame, !CanTransform),
-        % XXX map.lookup(BlockMap, Label, BlockInfo),
-        % XXX Successors = successors(BlockInfo),
-        list.map(pair_with(pred_propagated(Label, Reason)), NowNeedFrameLabels,
-            PairedNowNeedFrameLabels),
-        svqueue.put_list(PairedNowNeedFrameLabels, !Queue),
-        propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
-            RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
+    (
+        !.CanTransform = cannot_transform
     ;
-        true
+        !.CanTransform = can_transform,
+        ( !.PropagationStepsLeft < 0 ->
+            !:CanTransform = cannot_transform
+        ; svqueue.get(Reason - Label, !Queue) ->
+            !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
+            ( map.search(RevMap, Label, PredecessorsPrime) ->
+                Predecessors = PredecessorsPrime
+            ;
+                % We get here if Label cannot be reached by a fallthrough or an
+                % explicit jump, but only by backtracking. In that case, the
+                % code that sets up the resumption point saves the address of
+                % Label on the stack, and thus is already known to need
+                % a stack frame.
+                Predecessors = [],
+                ord_needs_frame(Label, Reason, !OrdNeedsFrame)
+            ),
+            list.filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrame),
+                Predecessors, NowNeedFrameLabels),
+            list.foldl2(record_frame_need(BlockMap, Reason), NowNeedFrameLabels,
+                !OrdNeedsFrame, !CanTransform),
+            % XXX map.lookup(BlockMap, Label, BlockInfo),
+            % XXX Successors = successors(BlockInfo),
+            list.map(pair_with(pred_propagated(Label, Reason)),
+                NowNeedFrameLabels, PairedNowNeedFrameLabels),
+            svqueue.put_list(PairedNowNeedFrameLabels, !Queue),
+            propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
+                RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
+        ;
+            true
+        )
     ).
 
 :- pred record_frame_need(frame_block_map(En, Ex)::in, needs_frame_reason::in,
@@ -2069,7 +2080,8 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
                 ++ dump_labels(yes(ProcLabel), SideLabels)), "")]
         ),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
-        ( Type = exit_block(ExitInfo) ->
+        (
+            Type = exit_block(ExitInfo),
             LabelInstr = llds_instr(label(ParallelLabel),
                 "non-teardown parallel"),
             ReplacementCode = [LabelInstr] ++ Comments ++
@@ -2090,6 +2102,9 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
                 no, ordinary_block(block_doesnt_need_frame, is_not_dummy)),
             svmap.det_insert(ParallelLabel, ParallelBlockInfo, !BlockMap)
         ;
+            ( Type = entry_block(_)
+            ; Type = ordinary_block(_, _)
+            ),
             unexpected(this_file, "block in exit_par_map is not exit")
         )
     ; search_setup_par_map(SetupParMap, Label0, SetupLabel) ->

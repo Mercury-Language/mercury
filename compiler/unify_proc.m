@@ -361,7 +361,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
 
         proc_info_get_goal(!.ProcInfo, !:Goal),
         set_goal_contexts(Context, !Goal),
-        
+
         % The X == Y pretest on unifications makes sense only for in-in
         % unifications, and if the initial insts are incompatible, then
         % casts in the pretest prevents mode analysis from discovering this
@@ -716,8 +716,7 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         % If this is an equivalence type then we just generate a call
         % to the initialisation pred of the type on the RHS of the equivalence
         % and cast the result back to the type on the LHS of the equivalence.
-        TypeBody = hlds_eqv_type(EqvType)
-    ->
+        TypeBody = hlds_eqv_type(EqvType),
         goal_info_init(Context, GoalInfo),
         make_fresh_named_var_from_type(EqvType, "PreCast_HeadVar", 1, X0,
             !Info),
@@ -737,15 +736,14 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
             CastGoal),
         Goal = hlds_goal(conj(plain_conj, [InitGoal, CastGoal]), GoalInfo),
         quantify_clause_body([X], Goal, Context, Clause, !Info)
-    ; 
-        type_body_has_solver_type_details(ModuleInfo, TypeBody,
-            SolverTypeDetails)
-    ->
+    ;
+        TypeBody = hlds_solver_type(SolverTypeDetails, _),
+
         % Just generate a call to the specified predicate, which is
         % the user-defined equality pred for this type.
         % (The pred_id and proc_id will be figured out by type checking
         % and mode analysis.)
-        %
+
         HowToInit = SolverTypeDetails ^ init_pred,
         (
             HowToInit = solver_init_automatic(InitPred)
@@ -761,6 +759,10 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         Goal = hlds_goal(Call, GoalInfo),
         quantify_clause_body([X], Goal, Context, Clause, !Info)
     ;
+        ( TypeBody = hlds_du_type(_, _, _, _, _, _, _)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
         unexpected(this_file, "generate_initialise_proc_body: " ++
             "trying to create initialisation proc for type " ++
             "that has no solver_type_details")
@@ -912,7 +914,8 @@ generate_user_defined_unify_proc_body(UserEqCompare, _, _, _, _, !Info) :-
 generate_user_defined_unify_proc_body(UserEqCompare, X, Y, Context, Clause,
         !Info) :-
     UserEqCompare = unify_compare(MaybeUnify, MaybeCompare),
-    ( MaybeUnify = yes(UnifyPredName) ->
+    (
+        MaybeUnify = yes(UnifyPredName),
         % Just generate a call to the specified predicate, which is the
         % user-defined equality pred for this type. (The pred_id and proc_id
         % will be figured out by type checking and mode analysis.)
@@ -923,25 +926,30 @@ generate_user_defined_unify_proc_body(UserEqCompare, X, Y, Context, Clause,
             UnifyPredName),
         goal_info_init(Context, GoalInfo),
         Goal0 = hlds_goal(Call, GoalInfo)
-    ; MaybeCompare = yes(ComparePredName) ->
-        % Just generate a call to the specified predicate, which is the
-        % user-defined comparison pred for this type, and unify the result
-        % with `='. (The pred_id and proc_id will be figured out by type
-        % checking and mode analysis.)
-
-        info_new_var(comparison_result_type, ResultVar, !Info),
-        PredId = invalid_pred_id,
-        ModeId = invalid_proc_id,
-        Call = plain_call(PredId, ModeId, [ResultVar, X, Y], not_builtin, no,
-            ComparePredName),
-        goal_info_init(Context, GoalInfo),
-        CallGoal = hlds_goal(Call, GoalInfo),
-
-        create_pure_atomic_complicated_unification(ResultVar, equal_functor,
-            Context, umc_explicit, [], UnifyGoal),
-        Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
     ;
-        unexpected(this_file, "generate_user_defined_unify_proc_body")
+        MaybeUnify = no,
+        (
+            MaybeCompare = yes(ComparePredName),
+            % Just generate a call to the specified predicate, which is the
+            % user-defined comparison pred for this type, and unify the result
+            % with `='. (The pred_id and proc_id will be figured out by type
+            % checking and mode analysis.)
+
+            info_new_var(comparison_result_type, ResultVar, !Info),
+            PredId = invalid_pred_id,
+            ModeId = invalid_proc_id,
+            Call = plain_call(PredId, ModeId, [ResultVar, X, Y], not_builtin,
+                no, ComparePredName),
+            goal_info_init(Context, GoalInfo),
+            CallGoal = hlds_goal(Call, GoalInfo),
+
+            create_pure_atomic_complicated_unification(ResultVar, equal_functor,
+                Context, umc_explicit, [], UnifyGoal),
+            Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
+        ;
+            MaybeCompare = no,
+            unexpected(this_file, "generate_user_defined_unify_proc_body")
+        )
     ),
     maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
     quantify_clause_body([X, Y], Goal, Context, Clause, !Info).
@@ -958,10 +966,8 @@ generate_eqv_unify_proc_body(EqvType, X, Y, Context, Clause, !Info) :-
     % its unification procedure directly; if it is a concrete type,
     % we should generate the body of its unification procedure
     % inline here.
-    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 1, CastX,
-        !Info),
-    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 2, CastY,
-        !Info),
+    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 1, CastX, !Info),
+    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 2, CastY, !Info),
     generate_cast(equiv_type_cast, X, CastX, Context, CastXGoal),
     generate_cast(equiv_type_cast, Y, CastY, Context, CastYGoal),
     create_pure_atomic_complicated_unification(CastX, rhs_var(CastY),
@@ -2100,7 +2106,7 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
     ).
 
     % We can start unify and compare predicates that may call other predicates
-    % with an equality test, since it often succeeds, and when it does, it is 
+    % with an equality test, since it often succeeds, and when it does, it is
     % faster than executing the rest of the predicate body.
     %
 :- func should_pretest_equality(unify_proc_info) = bool.

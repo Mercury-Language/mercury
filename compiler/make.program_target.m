@@ -363,8 +363,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     % libraries linked using dlopen().
     AllModulesList = set.to_sorted_list(AllModules),
     (
-        FileType = executable
-    ->
+        FileType = executable,
         (
             ( CompilationTarget = target_c
             ; CompilationTarget = target_asm
@@ -405,6 +404,11 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             InitObjects = []
         )
     ;
+        ( FileType = static_library
+        ; FileType = shared_library
+        ; FileType = java_archive
+        ; FileType = erlang_archive
+        ),
         DepsResult2 = BuildDepsResult,
         InitObjects = []
     ),
@@ -416,9 +420,11 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         list.map((func(F) = dep_file(F, no)), ObjectsToCheck),
             ExtraObjStatus, !Info, !IO),
 
-    DepsResult3 =
-        ( list.member(deps_status_error, ExtraObjStatus) ->
-            deps_error ; DepsResult2 ),
+    ( list.member(deps_status_error, ExtraObjStatus) ->
+        DepsResult3 = deps_error
+    ;
+        DepsResult3 = DepsResult2
+    ),
     BuildDepsSuccess = ( DepsResult3 \= deps_error -> yes ; no ),
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
@@ -426,7 +432,13 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         BuildDepsSuccess, ObjectsToCheck, io.write,
         ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
-    DepsResult4 = ( DepsSuccess = yes -> DepsResult3 ; deps_error ),
+    (
+        DepsSuccess = yes,
+        DepsResult4 = DepsResult3
+    ;
+        DepsSuccess = no,
+        DepsResult4 = deps_error
+    ),
     ( DepsResult4 = deps_error, DepsResult = DepsResult4
     ; DepsResult4 = deps_out_of_date, DepsResult = DepsResult4
     ; DepsResult4 = deps_up_to_date, DepsResult = ExtraObjectDepsResult
@@ -1038,9 +1050,11 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             % otherwise there is trouble using libraries installed by
             % `mmc --make' with Mmake.
             % XXX If we ever phase out mmake we could revert this behaviour.
-            ( Target = target_c ; Target = target_asm )
-            % Imports ^ contains_foreign_export = contains_foreign_export
-        ->
+            ( Target = target_c
+            ; Target = target_asm
+            ),
+            % XXX Should we test
+            % Imports ^ contains_foreign_export = contains_foreign_export?
             module_name_to_file_name(ModuleName, ".mh", no, FileName, !IO),
             install_file(FileName, LibDir/"inc", HeaderSucceeded1, !IO),
 
@@ -1050,11 +1064,14 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
-            Target = target_erlang
-        ->
+            Target = target_erlang,
             module_name_to_file_name(ModuleName, ".hrl", no, FileName, !IO),
             install_file(FileName, LibDir/"inc", HeaderSucceeded, !IO)
         ;
+            ( Target = target_java
+            ; Target = target_il
+            ; Target = target_x86_64
+            ),
             HeaderSucceeded = yes
         ),
         Succeeded = bool.and_list([HeaderSucceeded | Results])

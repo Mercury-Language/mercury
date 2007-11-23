@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,27 +87,38 @@ server_name_2(ServerName, !IO) :-
     ServerRedirectCmd =
         string.format("%s > %s", [s(HostnameCmd), s(TmpFile)]),
     io.call_system(ServerRedirectCmd, Res1, !IO),
-    ( Res1 = ok(0) ->
-        io.open_input(TmpFile, TmpRes, !IO),
-        ( TmpRes = ok(TmpStream) ->
-            io.read_file_as_string(TmpStream, TmpReadRes, !IO),
+    (
+        Res1 = ok(ResCode),
+        ( ResCode = 0 ->
+            io.open_input(TmpFile, TmpRes, !IO),
             (
-                TmpReadRes = ok(ServerNameNl),
-                ( string.remove_suffix(ServerNameNl, "\n", ServerNamePrime) ->
-                    ServerName = ServerNamePrime
+                TmpRes = ok(TmpStream),
+                io.read_file_as_string(TmpStream, TmpReadRes, !IO),
+                (
+                    TmpReadRes = ok(ServerNameNl),
+                    (
+                        string.remove_suffix(ServerNameNl, "\n",
+                            ServerNamePrime)
+                    ->
+                        ServerName = ServerNamePrime
+                    ;
+                        error("malformed server name")
+                    )
                 ;
-                    error("malformed server name")
-                )
+                    TmpReadRes = error(_, _),
+                    error("cannot read server's name")
+                ),
+                io.close_input(TmpStream, !IO)
             ;
-                TmpReadRes = error(_, _),
-                error("cannot read server's name")
+                TmpRes = error(_),
+                error("cannot open file to find the server's name")
             ),
-            io.close_input(TmpStream, !IO)
+            io.remove_file(TmpFile, _, !IO)
         ;
-            error("cannot open file to find the server's name")
-        ),
-        io.remove_file(TmpFile, _, !IO)
+            error("cannot execute cmd to find the server's name")
+        )
     ;
+        Res1 = error(_),
         error("cannot execute cmd to find the server's name")
     ).
 

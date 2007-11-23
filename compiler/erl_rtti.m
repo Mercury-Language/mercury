@@ -128,13 +128,15 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
 
 erlang_type_ctor_details_2(enum(_, Functors, _, _, IsDummy, FunctorNums))
         = Details :-
-    ( IsDummy = yes ->
+    (
+        IsDummy = yes,
         ( Functors = [F] ->
             Details = erlang_dummy(F ^ enum_name)
         ;
             unexpected(this_file, "dummy type with more than one functor")
         )
     ;
+        IsDummy = no,
         list.map_corresponding(convert_enum_functor, Functors, FunctorNums,
             ErlFunctors),
         Details = erlang_du(ErlFunctors)

@@ -199,8 +199,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         SingleGoal = hlds_goal(SingleExpr, _),
         (
             SingleExpr = call_foreign_proc(_, _, _, Args, ExtraArgs,
-                MaybeTraceRuntimeCond, _)
-        ->
+                MaybeTraceRuntimeCond, _),
             % Use the original variable names for the headvars of foreign_proc
             % clauses, not the introduced `HeadVar__n' names.
             VarSet = list.foldl(set_arg_names, Args, VarSet0),
@@ -209,6 +208,17 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
             expect(unify(MaybeTraceRuntimeCond, no), this_file,
                 "copy_clauses_to_proc: trace runtime cond")
         ;
+            ( SingleExpr = plain_call(_, _, _, _, _, _)
+            ; SingleExpr = generic_call(_, _, _, _)
+            ; SingleExpr = unify(_, _, _, _, _)
+            ; SingleExpr = conj(_, _)
+            ; SingleExpr = disj(_)
+            ; SingleExpr = switch(_, _, _)
+            ; SingleExpr = if_then_else(_,_,  _, _)
+            ; SingleExpr = negation(_)
+            ; SingleExpr = scope(_, _)
+            ; SingleExpr = shorthand(_)
+            ),
             VarSet = VarSet0
         ),
         Goal = SingleGoal
@@ -223,10 +233,12 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         % mode declaration.
         %
         goal_info_init(GoalInfo0),
-        ( GoalList = [FirstGoal | _] ->
+        (
+            GoalList = [FirstGoal | _],
             FirstGoal = hlds_goal(_, FirstGoalInfo),
             Context = goal_info_get_context(FirstGoalInfo)
         ;
+            GoalList = [],
             proc_info_get_context(!.Proc, Context)
         ),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),

@@ -876,9 +876,11 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
             CSDI > 0
         ), PtrList0, PtrList1),
         CSDPtrs1 = [PtrList1 | CSDPtrs0],
-        ( IsZeroed1 = zeroed ->
+        (
+            IsZeroed1 = zeroed,
             IsZeroed = zeroed
         ;
+            IsZeroed1 = not_zeroed,
             IsZeroed = IsZeroed0
         )
     ).

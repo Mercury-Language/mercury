@@ -242,12 +242,16 @@ read_options_file_params(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
             ( dir.path_name_is_absolute(OptionsDir) ->
                 FileToFind = OptionsFile,
                 Dirs = [OptionsDir]
-            ; MaybeDirName = yes(DirName) ->
-                FileToFind = OptionsFile,
-                Dirs = [DirName/OptionsDir | SearchDirs]
             ;
-                Dirs = SearchDirs,
-                FileToFind = OptionsFile0
+                (
+                    MaybeDirName = yes(DirName),
+                    FileToFind = OptionsFile,
+                    Dirs = [DirName/OptionsDir | SearchDirs]
+                ;
+                    MaybeDirName = no,
+                    Dirs = SearchDirs,
+                    FileToFind = OptionsFile0
+                )
             )
         ;
             Dirs = SearchDirs,
@@ -385,10 +389,13 @@ read_options_lines_3(Dir, !.Variables, !:Variables - FoundEOF, !IO) :-
 
 read_options_line(FoundEOF, list.reverse(RevChars), !IO) :-
     io.ignore_whitespace(SpaceResult, !IO),
-    ( SpaceResult = error(Error) ->
-        throw(options_file_error(io.error_message(Error)))
+    (
+        SpaceResult = ok
     ;
-        true
+        SpaceResult = eof
+    ;
+        SpaceResult = error(Error),
+        throw(options_file_error(io.error_message(Error)))
     ),
     read_options_line_2(FoundEOF, [], RevChars, !IO).
 
@@ -436,39 +443,42 @@ update_variable(VarName, AddToValue, NewValue0, !Variables, !IO) :-
     Words1 = split_into_words(NewValue1),
     io.get_environment_var(VarName, MaybeEnvValue, !IO),
     (
-        MaybeEnvValue = yes(EnvValue)
-    ->
+        MaybeEnvValue = yes(EnvValue),
         Value = string.to_char_list(EnvValue),
         Words = split_into_words(Value),
         OptVarValue = options_variable_value(string.to_char_list(EnvValue),
             Words, environment),
         map.set(!.Variables, VarName, OptVarValue, !:Variables)
     ;
-        map.search(!.Variables, VarName,
-            options_variable_value(OldValue, OldWords, Source))
-    ->
+        MaybeEnvValue = no,
         (
-            Source = environment
-        ;
-            Source = command_line
-        ;
-            Source = options_file,
+            map.search(!.Variables, VarName,
+                options_variable_value(OldValue, OldWords, Source))
+        ->
             (
-                AddToValue = yes,
-                NewValue = OldValue ++ [' ' |  NewValue1],
-                Words = OldWords ++ Words1
+                Source = environment
             ;
-                AddToValue = no,
-                NewValue = NewValue1,
-                Words = Words1
-            ),
-            OptVarValue = options_variable_value(NewValue, Words,
+                Source = command_line
+            ;
+                Source = options_file,
+                (
+                    AddToValue = yes,
+                    NewValue = OldValue ++ [' ' |  NewValue1],
+                    Words = OldWords ++ Words1
+                ;
+                    AddToValue = no,
+                    NewValue = NewValue1,
+                    Words = Words1
+                ),
+                OptVarValue = options_variable_value(NewValue, Words,
+                    options_file),
+                svmap.set(VarName, OptVarValue, !Variables)
+            )
+        ;
+            OptVarValue = options_variable_value(NewValue1, Words1,
                 options_file),
             svmap.set(VarName, OptVarValue, !Variables)
         )
-    ;
-        OptVarValue = options_variable_value(NewValue1, Words1, options_file),
-        svmap.set(VarName, OptVarValue, !Variables)
     ).
 
 :- pred expand_variables(options_variables::in, list(char)::in,
@@ -1028,10 +1038,14 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
     VarName = options_variable_name(FlagsVar),
     lookup_variable_words_report_error(Vars, "DEFAULT_" ++ VarName,
         DefaultFlagsResult, !IO),
-    ( OptionsVariableClass = default ->
+    (
+        OptionsVariableClass = default,
         FlagsResult = var_result_unset,
         ExtraFlagsResult = var_result_unset
     ;
+        ( OptionsVariableClass = module_specific(_)
+        ; OptionsVariableClass = non_module_specific
+        ),
         lookup_variable_words_report_error(Vars, VarName, FlagsResult, !IO),
         lookup_variable_words_report_error(Vars, "EXTRA_" ++ VarName,
             ExtraFlagsResult, !IO)
@@ -1047,51 +1061,47 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
     ;
         ModuleFlagsResult = var_result_unset
     ),
-    %
-    % NOTE: the order in which these lists of flags are added together is
-    %       important.  In the resulting set the flags from DefaultFlagsResult
-    %       *must* occur before those in FlagsResult, which in turn *must*
-    %       occur before those in ExtraFlagsResult ... etc.
-    %       Failing to maintain this order will result in the user being unable
-    %       to override the default value of many of the compiler's options.
-    %
+
+    % NOTE: The order in which these lists of flags are added together is
+    % important. In the resulting set the flags from DefaultFlagsResult
+    % *must* occur before those in FlagsResult, which in turn *must* occur
+    % before those in ExtraFlagsResult ... etc. Failing to maintain this order
+    % will result in the user being unable to override the default value
+    % of many of the compiler's options.
+
     Result0 =
         DefaultFlagsResult  `combine_var_results`
         FlagsResult         `combine_var_results`
         ExtraFlagsResult    `combine_var_results`
         ModuleFlagsResult,
 
-    %
     % Check the result is valid for the variable type.
-    %
     (
-        Result0 = var_result_unset, Result = var_result_unset
+        Result0 = var_result_unset,
+        Result = var_result_unset
     ;
-        Result0 = var_result_error(E), Result = var_result_error(E)
+        Result0 = var_result_error(E),
+        Result = var_result_error(E)
     ;
         Result0 = var_result_set(V),
         ( FlagsVar = ml_libs ->
-            BadLibs = list.filter(
-                        (pred(LibFlag::in) is semidet :-
-                                \+ string.prefix(LibFlag, "-l")
-                                
-                        ), V),
+            NotLibLPrefix =
+                (pred(LibFlag::in) is semidet :-
+                        \+ string.prefix(LibFlag, "-l")
+                ),
+            BadLibs = list.filter(NotLibLPrefix, V),
             (
                 BadLibs = [],
                 Result = Result0
             ;
                 BadLibs = [_ | _],
+                Pieces = [words("Error: MLLIBS must contain only"),
+                    words("`-l' options, found") |
+                    list_to_pieces(
+                        list.map(func(Lib) = add_quotes(Lib), BadLibs))]
+                    ++ [suffix(".")],
                 ErrorSpec = error_spec(severity_error, phase_read_files,
-                        [error_msg(no, no, 0,
-                            [always([words("Error: MLLIBS must contain only"),
-                                words("`-l' options, found") |
-                                list_to_pieces(
-                                    list.map(func(Lib) =
-                                        add_quotes(Lib), BadLibs))]
-                                ++ [suffix(".")]
-                            )]
-                        )]
-                    ),
+                    [error_msg(no, no, 0, [always(Pieces)])]),
                 globals.io_get_globals(Globals, !IO),
                 write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO),
                 Result = var_result_error(ErrorSpec)
@@ -1121,11 +1131,14 @@ combine_var_results(var_result_error(E), _) = var_result_error(E).
 
 lookup_variable_words_report_error(Vars, VarName, Result, !IO) :-
     lookup_variable_words(Vars, VarName, Result, !IO),
-    ( Result = var_result_error(ErrorSpec) ->
+    (
+        Result = var_result_error(ErrorSpec),
         globals.io_get_globals(Globals, !IO),
         write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO)
     ;
-        true
+        Result = var_result_set(_)
+    ;
+        Result = var_result_unset
     ).
 
 :- pred lookup_variable_words(options_variables::in, options_variable::in,
@@ -1156,23 +1169,22 @@ lookup_variable_words_maybe_env(LookupEnv, Vars, VarName, Result, !IO) :-
             SplitResult = error(Msg),
             
             ErrorSpec = error_spec(severity_error, phase_read_files,
-                        [error_msg(no, no, 0,
-                            [always([words("Error: in environment variable"),
-                                quote(VarName), suffix(":"), words(Msg)
-                            ])]
-                        )]
-                    ),
-            Result = var_result_error(ErrorSpec)
-        )
-    ;
-        MaybeEnvValue = no,
-        ( map.search(Vars, VarName, MapValue) ->
-            MapValue = options_variable_value(_, Words, _),
-            Result = var_result_set(Words)
-        ;
-            Result = var_result_unset
-        )
-    ).
+                [error_msg(no, no, 0,
+                    [always([words("Error: in environment variable"),
+                        quote(VarName), suffix(":"), words(Msg)
+                    ])]
+                )]),
+    Result = var_result_error(ErrorSpec)
+)
+;
+MaybeEnvValue = no,
+( map.search(Vars, VarName, MapValue) ->
+    MapValue = options_variable_value(_, Words, _),
+    Result = var_result_set(Words)
+;
+    Result = var_result_unset
+)
+).
 
 :- pred lookup_variable_chars(options_variables::in, string::in,
     list(char)::out, list(string)::in, list(string)::out,

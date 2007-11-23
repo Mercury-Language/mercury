@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002-2006 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,12 +150,15 @@ bintree.init(empty).
 bintree.insert(empty, Key, Value, tree(Key, Value, empty, empty)).
 bintree.insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
     compare(Result, Key0, Key),
-    ( Result = (=) ->
+    (
+        Result = (=),
         fail
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.insert(Right, Key, Value, NewRight),
         Tree = tree(Key0, Value0, Left, NewRight)
     ;
+        Result = (>),
         bintree.insert(Left, Key, Value, NewLeft),
         Tree = tree(Key0, Value0, NewLeft, Right)
     ).
@@ -166,12 +169,15 @@ bintree.update(empty, _Key, _Value, _Tree) :-
     fail.
 bintree.update(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
     compare(Result, Key0, Key),
-    ( Result = (=) ->
+    (
+        Result = (=),
         Tree = tree(Key0, Value, Left, Right)
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.update(Right, Key, Value, NewRight),
         Tree = tree(Key0, Value0, Left, NewRight)
     ;
+        Result = (>),
         bintree.update(Left, Key, Value, NewLeft),
         Tree = tree(Key0, Value0, NewLeft, Right)
     ).
@@ -181,12 +187,15 @@ bintree.update(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 bintree.set(empty, Key, Value, tree(Key, Value, empty, empty)).
 bintree.set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
     compare(Result, Key0, Key),
-    ( Result = (=) ->
+    (
+        Result = (=),
         Tree = tree(Key0, Value, Left, Right)
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.set(Right, Key, Value, NewRight),
         Tree = tree(Key0, Value0, Left, NewRight)
     ;
+        Result = (>),
         bintree.set(Left, Key, Value, NewLeft),
         Tree = tree(Key0, Value0, NewLeft, Right)
     ).
@@ -195,11 +204,14 @@ bintree.set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 
 bintree.search(tree(K0, V0, Left, Right), K, V) :-
     compare(Result, K0, K),
-    ( Result = (=) ->
+    (
+        Result = (=),
         V = V0
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.search(Right, K, V)
     ;
+        Result = (>),
         bintree.search(Left, K, V)
     ).
 
@@ -216,10 +228,12 @@ bintree.lookup(Tree, K, V) :-
 
 bintree.lower_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
     compare(Result, K0, SearchK),
-    ( Result = (=) ->
+    (
+        Result = (=),
         K = K0,
         V = V0
-    ; Result = (<) ->
+    ;
+        Result = (<),
         ( bintree.lower_bound_search(Right, SearchK, Kp, Vp) ->
             K = Kp,
             V = Vp
@@ -228,6 +242,7 @@ bintree.lower_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
             V = V0
         )
     ;
+        Result = (>),
         bintree.lower_bound_search(Left, SearchK, K, V)
     ).
 
@@ -244,12 +259,15 @@ bintree.lower_bound_lookup(Tree, SearchK, K, V) :-
 
 bintree.upper_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
     compare(Result, K0, SearchK),
-    ( Result = (=) ->
+    (
+        Result = (=),
         K = K0,
         V = V0
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.upper_bound_search(Right, SearchK, K, V)
     ;
+        Result = (>),
         ( bintree.upper_bound_search(Left, SearchK, Kp, Vp) ->
             K = Kp,
             V = Vp
@@ -273,12 +291,15 @@ bintree.upper_bound_lookup(Tree, SearchK, K, V) :-
 bintree.delete(empty, _K, empty).
 bintree.delete(tree(K0, V0, Left, Right), K, Tree) :-
     compare(Result, K0, K),
-    ( Result = (=) ->
+    (
+        Result = (=),
         bintree.fixup(Left, Right, Tree)
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.delete(Right, K, Tree1),
         Tree = tree(K0, V0, Left, Tree1)
     ;
+        Result = (>),
         bintree.delete(Left, K, Tree1),
         Tree = tree(K0, V0, Tree1, Right)
     ).
@@ -287,13 +308,16 @@ bintree.delete(tree(K0, V0, Left, Right), K, Tree) :-
 
 bintree.remove(tree(K0, V0, Left, Right), K, V, Tree) :-
     compare(Result, K0, K),
-    ( Result = (=) ->
+    (
+        Result = (=),
         V = V0,
         bintree.fixup(Left, Right, Tree)
-    ; Result = (<) ->
+    ;
+        Result = (<),
         bintree.remove(Right, K, V, Tree1),
         Tree = tree(K0, V0, Left, Tree1)
     ;
+        Result = (>),
         bintree.remove(Left, K, V, Tree1),
         Tree = tree(K0, V0, Tree1, Right)
     ).
@@ -304,21 +328,27 @@ bintree.remove(tree(K0, V0, Left, Right), K, V, Tree) :-
     bintree(K, V)::out) is det.
 
 bintree.fixup(Left, Right, Tree) :-
-    ( Left = empty ->
+    (
+        Left = empty,
         Tree = Right
-    ; Right = empty ->
-        Tree = Left
     ;
-        bintree.right_depth(Left, LD),
-        bintree.left_depth(Right, RD),
-        ( LD > RD ->
-            bintree.knock_left(Left, K, V, Left1),
-            Right1 = Right
+        Left = tree(_, _, _, _),
+        (
+            Right = empty,
+            Tree = Left
         ;
-            bintree.knock_right(Right, K, V, Right1),
-            Left1 = Left
-        ),
-        Tree = tree(K, V, Left1, Right1)
+            Right = tree(_, _, _, _),
+            bintree.right_depth(Left, LD),
+            bintree.left_depth(Right, RD),
+            ( LD > RD ->
+                bintree.knock_left(Left, K, V, NewLeft),
+                NewRight = Right
+            ;
+                bintree.knock_right(Right, K, V, NewRight),
+                NewLeft = Left
+            ),
+            Tree = tree(K, V, NewLeft, NewRight)
+        )
     ).
 
 :- pred bintree.right_depth(bintree(_K, _V)::in, int::out) is det.
@@ -341,11 +371,13 @@ bintree.left_depth(tree(_K, _V, Left, _Right), N) :-
 bintree.knock_left(empty, _, _, _) :-
     error("bintree.knock_left: empty tree").
 bintree.knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
-    ( Right = empty ->
+    (
+        Right = empty,
         K = K0,
         V = V0,
         Tree = Left
     ;
+        Right = tree(_, _, _, _),
         bintree.knock_left(Right, K, V, Right1),
         Tree = tree(K0, V0, Left, Right1)
     ).
@@ -356,11 +388,13 @@ bintree.knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
 bintree.knock_right(empty, _, _, _) :-
     error("bintree.knock_right: empty tree").
 bintree.knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
-    ( Left = empty ->
+    (
+        Left = empty,
         K = K0,
         V = V0,
         Tree = Right
     ;
+        Left = tree(_, _, _, _),
         bintree.knock_right(Left, K, V, Left1),
         Tree = tree(K0, V0, Left1, Right)
     ).
@@ -495,24 +529,31 @@ bintree.depth(tree(_K, _V, Left, Right), Depth) :-
 
 bintree.branching_factor(empty, 0, 0).
 bintree.branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
-    ( L = empty ->
-        ( R = empty ->
+    (
+        L = empty,
+        (
+            R = empty,
             Ones = 0,
             Twos = 0
         ;
-            bintree.branching_factor(R, Ones0, Twos),
-            Ones = Ones0 + 1
+            R = tree(_, _, _, _),
+            bintree.branching_factor(R, OnesR, TwosR),
+            Ones = OnesR + 1,
+            Twos = TwosR
         )
     ;
-        ( R = empty ->
-            bintree.branching_factor(L, Ones0, Twos),
-            Ones = Ones0 + 1
+        L = tree(_, _, _, _),
+        (
+            R = empty,
+            bintree.branching_factor(L, OnesL, TwosL),
+            Ones = OnesL + 1,
+            Twos = TwosL
         ;
-            bintree.branching_factor(L, Ones1, Twos1),
-            bintree.branching_factor(R, Ones2, Twos2),
-            Ones = Ones1 + Ones2,
-            Twos0 = Twos1 + Twos2,
-            Twos = Twos0 + 1
+            R = tree(_, _, _, _),
+            bintree.branching_factor(L, OnesL, TwosL),
+            bintree.branching_factor(R, OnesR, TwosR),
+            Ones = OnesL + OnesR,
+            Twos = TwosL + TwosR + 1
         )
     ).
 

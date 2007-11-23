@@ -336,21 +336,28 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 % Mark the procedure as changed.
                 !DelayInfo ^ dpi_changed := yes
 
-            else if
-                % Tranform lambda goals as well.  Non-local variables in lambda
-                % goals must be ground so we don't carry the construct map into
-                % the lambda goal.
-                RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
-                    NonLocals, LambdaQuantVars, Modues, Detism, LambdaGoal0)
-            then
-                delay_partial_inst_in_goal(InstMap0, LambdaGoal0, LambdaGoal,
-                    map.init, _ConstructMap, !DelayInfo),
-                RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
-                    NonLocals, LambdaQuantVars, Modues, Detism, LambdaGoal),
-                GoalExpr = unify(LHS, RHS, Mode, Unify, Context),
-                Goal = hlds_goal(GoalExpr, GoalInfo0)
             else
-                Goal = Goal0
+                (
+                    % Tranform lambda goals as well. Non-local variables in
+                    % lambda goals must be ground so we don't carry the
+                    % construct map into the lambda goal.
+                    RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+                        NonLocals, LambdaQuantVars, Modues, Detism,
+                        LambdaGoal0),
+                    delay_partial_inst_in_goal(InstMap0,
+                        LambdaGoal0, LambdaGoal, map.init, _ConstructMap,
+                        !DelayInfo),
+                    RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+                        NonLocals, LambdaQuantVars, Modues, Detism,
+                        LambdaGoal),
+                    GoalExpr = unify(LHS, RHS, Mode, Unify, Context),
+                    Goal = hlds_goal(GoalExpr, GoalInfo0)
+                ;
+                    ( RHS0 = rhs_var(_)
+                    ; RHS0 = rhs_functor(_, _, _)
+                    ),
+                    Goal = Goal0
+                )
             )
         ;
             Unify = deconstruct(Var, ConsId, DeconArgs, UniModes,

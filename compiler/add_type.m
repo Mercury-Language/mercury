@@ -409,23 +409,24 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
     !:FoundError = !.FoundError `or` NewFoundError,
     (
         !.FoundError = yes
-    ->
-        true
     ;
-        % Equivalence types are fully expanded on the IL and Java backends,
-        % so the special predicates aren't required.
-        are_equivalence_types_expanded(!.ModuleInfo),
-        Body = hlds_eqv_type(_)
-    ->
-        true
-    ;
-        % XXX kind inference:
-        % We set the kinds to `star'.  This will be different when we have
-        % a kind system.
-        prog_type.var_list_to_type_list(map.init, Args, ArgTypes),
-        construct_type(TypeCtor, ArgTypes, Type),
-        add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
-            !ModuleInfo)
+        !.FoundError = no,
+        (
+            % Equivalence types are fully expanded on the IL and Java backends,
+            % so the special predicates aren't required.
+            are_equivalence_types_expanded(!.ModuleInfo),
+            Body = hlds_eqv_type(_)
+        ->
+            true
+        ;
+            % XXX kind inference:
+            % We set the kinds to `star'. This will be different when we have
+            % a kind system.
+            prog_type.var_list_to_type_list(map.init, Args, ArgTypes),
+            construct_type(TypeCtor, ArgTypes, Type),
+            add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
+                !ModuleInfo)
+        )
     ).
 
     % Check_foreign_type ensures that if we are generating code for a specific
@@ -752,9 +753,11 @@ add_ctor_field_names([MaybeFieldName | FieldNames], NeedQual,
 
 add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         !FieldNameTable, !Specs) :-
-    ( FieldName = qualified(FieldModule0, _) ->
+    (
+        FieldName = qualified(FieldModule0, _),
         FieldModule = FieldModule0
     ;
+        FieldName = unqualified(_),
         unexpected(this_file, "add_ctor_field_name: unqualified field name")
     ),
     (

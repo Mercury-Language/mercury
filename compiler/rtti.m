@@ -2079,11 +2079,24 @@ module_qualify_name_of_ctor_rtti_name(_) = yes.
 %
 % This decision is implemented separately in tc_name_to_string.
 
-module_qualify_name_of_tc_rtti_name(TCRttiName) =
-    ( TCRttiName = type_class_base_typeclass_info(_, _) ->
-        no
+module_qualify_name_of_tc_rtti_name(TCRttiName) = ModuleQualify :-
+    (
+        TCRttiName = type_class_base_typeclass_info(_, _),
+        ModuleQualify = no
     ;
-        yes
+        ( TCRttiName = type_class_id
+        ; TCRttiName = type_class_id_var_names
+        ; TCRttiName = type_class_id_method_ids
+        ; TCRttiName = type_class_decl
+        ; TCRttiName = type_class_decl_super(_, _)
+        ; TCRttiName = type_class_decl_supers
+        ; TCRttiName = type_class_instance(_)
+        ; TCRttiName = type_class_instance_tc_type_vector(_)
+        ; TCRttiName = type_class_instance_constraint(_, _, _)
+        ; TCRttiName = type_class_instance_constraints(_)
+        ; TCRttiName = type_class_instance_methods(_)
+        ),
+        ModuleQualify = yes
     ).
 
 rtti_id_emits_type_ctor_info(RttiId, TypeCtor) :-

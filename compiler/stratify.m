@@ -547,7 +547,7 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             ;
                 CHOInOut = ho_none,
                 % XXX : what is a good message for this?
-                unexpected(this_file, "merge_calls : this cannot happen!")
+                unexpected(this_file, "merge_calls: this cannot happen!")
             ),
             NewCInfo = info(CHaveAT, CHOInOut),
             NewPInfo = info(PHaveAT, PHOInOut),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2006 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,26 +110,31 @@ report_termination2_errors(SCC, Errors, !ModuleInfo, !IO) :-
         ),
         NonImportedPPIds = list.filter(IsNonImported, SCC),
         list.is_not_empty(NonImportedPPIds),
-        ( VerboseErrors = yes ->
+        (
+            VerboseErrors = yes,
             PrintErrors = Errors
-        ; NormalErrors = yes ->
-            IsNonSimple = (pred(ContextError::in) is semidet :-
-                ContextError = _ - Error,
-                not indirect_error(Error)
-            ),
-            PrintErrors0 = list.filter(IsNonSimple, Errors),
-            %
-            % If there are no direct errors report the indirect ones instead.
-            %
-            (
-                PrintErrors0 = [],
-                PrintErrors = Errors
-            ;
-                PrintErrors0 = [_ | _],
-                PrintErrors = PrintErrors0
-            )
         ;
-            fail
+            VerboseErrors = no,
+            (
+                NormalErrors = yes,
+                IsNonSimple = (pred(ContextError::in) is semidet :-
+                    ContextError = _ - Error,
+                    not indirect_error(Error)
+                ),
+                PrintErrors0 = list.filter(IsNonSimple, Errors),
+                % If there are no direct errors, report the indirect ones
+                % instead.
+                (
+                    PrintErrors0 = [],
+                    PrintErrors = Errors
+                ;
+                    PrintErrors0 = [_ | _],
+                    PrintErrors = PrintErrors0
+                )
+            ;
+                NormalErrors = no,
+                fail
+            )
         )
     ->
         term_constr_errors.report_term_errors(SCC, PrintErrors, !.ModuleInfo,
@@ -191,11 +196,13 @@ output_errors([Error | Errors], Single, ErrNum0, Indent, Module, !IO) :-
 
 output_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :- 
     description(Error, Single, Module, Pieces0, _),
-    ( ErrorNum = yes(N) ->
+    (
+        ErrorNum = yes(N),
         string.int_to_string(N, Nstr),
         string.append_list(["Reason ", Nstr, ":"], Preamble),
         Pieces = [fixed(Preamble) | Pieces0]
     ;
+        ErrorNum = no,
         Pieces = Pieces0
     ),
     write_error_pieces(Context, Indent, Pieces, !IO).

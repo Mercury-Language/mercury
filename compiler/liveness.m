@@ -1441,8 +1441,7 @@ detect_resume_points_in_non_disj([Goal0 | Goals0], [Goal | Goals],
     (
         % If there are any more disjuncts, then this disjunct
         % establishes a resumption point.
-        Goals0 = [_ | _]
-    ->
+        Goals0 = [_ | _],
         detect_resume_points_in_non_disj(Goals0, Goals,
             Liveness0, LivenessRest, LiveInfo,
             ResumeVars0, NeededRest),
@@ -1450,6 +1449,7 @@ detect_resume_points_in_non_disj([Goal0 | Goals0], [Goal | Goals],
             Liveness0, LivenessRest, LiveInfo, ResumeVars0,
             Liveness, NeededRest, Needed)
     ;
+        Goals0 = [],
         detect_resume_points_in_last_disjunct(Goal0, Goal,
             Liveness0, Liveness, LiveInfo, ResumeVars0, Needed),
         Goals = Goals0

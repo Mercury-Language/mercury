@@ -1030,11 +1030,11 @@ count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState) :-
     arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars,
         ArgModes, ArgTypes, InputArgs, OutputArgs),
 
-    % Casts are generated inline.
-    ( GenericCall = cast(_) ->
-        cls_require_in_regs(CountInfo, InputArgs, !CountState),
-        cls_put_in_regs(OutputArgs, !CountState)
-    ;
+    (
+        ( GenericCall = higher_order(_, _, _, _)
+        ; GenericCall = class_method(_, _, _, _)
+        ; GenericCall = event_call(_)
+        ),
         module_info_get_globals(ModuleInfo, Globals),
         call_gen.generic_call_info(Globals, GenericCall,
             length(InputArgs), _, GenericVarsArgInfos, _, _),
@@ -1043,6 +1043,11 @@ count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState) :-
         set.list_to_set(OutputArgs, Outputs),
         count_load_stores_for_call(CountInfo, Inputs, Outputs,
             MaybeNeedAcrossCall, GoalInfo, !CountState)
+    ;
+        GenericCall = cast(_),
+        % Casts are generated inline.
+        cls_require_in_regs(CountInfo, InputArgs, !CountState),
+        cls_put_in_regs(OutputArgs, !CountState)
     ).
 
 count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState) :-

@@ -7,7 +7,7 @@ reserve_tag.m:024:   `reserve_tag.list'/1:
 reserve_tag.m:024:   error: undefined type `reserve_tag.list'/1.
 reserve_tag.m:025: In `pragma reserve_tag' declaration for
 reserve_tag.m:025:   `reserve_tag.exported_type'/0:
-reserve_tag.m:025:   error: `reserve_tag' declaration must have the same
+reserve_tag.m:025:   error: `pragma reserve_tag' declaration must have the same
 reserve_tag.m:025:   visibility as the type definition.
 reserve_tag.m:032: In `pragma reserve_tag' declaration for
 reserve_tag.m:032:   `reserve_tag.invalid_arity'/1:

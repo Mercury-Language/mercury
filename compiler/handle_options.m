@@ -1823,16 +1823,22 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %
         globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
-            ( UseGradeSubdirs = yes ->
+            (
+                UseGradeSubdirs = yes,
                 ToMihsSubdir =
                     (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs"),
                 ToHrlsSubdir =
                     (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"hrls")
-            ; UseSubdirs = yes ->
-                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs"),
-                ToHrlsSubdir = (func(Dir) = Dir/"Mercury"/"hrls")
             ;
-                fail
+                UseGradeSubdirs = no,
+                (
+                    UseSubdirs = yes,
+                    ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs"),
+                    ToHrlsSubdir = (func(Dir) = Dir/"Mercury"/"hrls")
+                ;
+                    UseSubdirs = no,
+                    fail
+                )
             )
         ->
             globals.lookup_accumulating_option(!.Globals, c_include_directory,

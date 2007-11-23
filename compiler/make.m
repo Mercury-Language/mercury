@@ -216,14 +216,14 @@
 
 :- type target_file
     --->    target_file(
-                target_file_name :: module_name,
-                target_file_type :: module_target_type
+                target_file_name    :: module_name,
+                target_file_type    :: module_target_type
             ).
 
-:- type linked_target_file 
+:- type linked_target_file
     --->    linked_target_file(
-                linked_tf_name :: module_name,
-                linked_tf_type :: linked_target_type
+                linked_tf_name      :: module_name,
+                linked_tf_type      :: linked_target_type
             ).
 
 %-----------------------------------------------------------------------------%

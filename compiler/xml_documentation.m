@@ -149,18 +149,24 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
 line_type(Line) = LineType :-
     list.takewhile(char.is_whitespace, Line, _WhiteSpace, Rest),
     list.takewhile(is_not_comment_char, Rest, Decl, Comment),
-    ( Rest = [] ->
+    (
+        Rest = [],
         LineType = blank
-    ; Comment = [_ | _] ->
-        (
-            Decl = [],
-            LineType = comment(string.from_char_list(Comment))
-        ;
-            Decl = [_ | _],
-            LineType = code_and_comment(string.from_char_list(Comment))
-        )
     ;
-        LineType = code
+        Rest = [_ | _],
+        (
+            Comment = [],
+            LineType = code
+        ;
+            Comment = [_ | _],
+            (
+                Decl = [],
+                LineType = comment(string.from_char_list(Comment))
+            ;
+                Decl = [_ | _],
+                LineType = code_and_comment(string.from_char_list(Comment))
+            )
+        )
     ).
 
 :- pred is_not_comment_char(char::in) is semidet.

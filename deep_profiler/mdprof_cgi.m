@@ -259,13 +259,14 @@ handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
     lookup_bool_option(Options, debug, Debug),
     trace [compiletime(flag("debug_client_server")), io(!S)] (
         io.open_append("/tmp/deep_debug", Res1, !S),
-        ( Res1 = ok(DebugStream1) ->
+        (
+            Res1 = ok(DebugStream1),
             io.write_string(DebugStream1,
                 "sending query to existing server.\n", !S),
             io.write(DebugStream1, cmd_pref(Cmd, PrefInd), !S),
             io.close_output(DebugStream1, !S)
         ;
-            true
+            Res1 = error(_)
         )
     ),
     send_term(ToServerPipe, Debug, cmd_pref(Cmd, PrefInd), !IO),
@@ -276,7 +277,8 @@ handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
     io.call_system(CatCmd, _, !IO),
     trace [compiletime(flag("debug_client_server")), io(!T)] (
         io.open_append("/tmp/deep_debug", Res2, !T),
-        ( Res2 = ok(DebugStream2) ->
+        (
+            Res2 = ok(DebugStream2),
             io.write_string(DebugStream2,
                 "sending reply from existing server.\n", !T),
             io.close_output(DebugStream2, !T),
@@ -284,7 +286,7 @@ handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
                 [s(ResponseFileName)]),
             io.call_system(DebugCatCmd, _, !T)
         ;
-            true
+            Res2 = error(_)
         )
     ),
     (

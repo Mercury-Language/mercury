@@ -507,10 +507,14 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, ModuleInfo,
         ArgName = ""
     ),
     TypeString0 = mercury_exported_type_to_string(ModuleInfo, lang_c, Type),
-    ( Mode = top_out ->
+    (
+        Mode = top_out,
         % output variables are passed as pointers
         TypeString = TypeString0 ++ " *"
     ;
+        ( Mode = top_in
+        ; Mode = top_unused
+        ),
         TypeString = TypeString0
     ).
 
@@ -596,7 +600,8 @@ argloc_to_string(RegNum, RegName) :-
     ).
 
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-
-    ( Type = builtin_type(BuiltinType) ->
+    (
+        Type = builtin_type(BuiltinType),
         (
             BuiltinType = builtin_type_string,
             ConvertedRval = "(MR_Word) " ++ Rval
@@ -614,15 +619,39 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
             ConvertedRval = Rval
         )
     ;
+        ( Type = type_variable(_, _)
+        ; Type = defined_type(_, _, _)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = tuple_type(_, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        ),
         ConvertedRval = Rval
     ).
 
 convert_type_from_mercury(Rval, Type, ConvertedRval) :-
-    ( Type = builtin_type(builtin_type_string) ->
-        ConvertedRval = "(MR_String) " ++ Rval
-    ; Type = builtin_type(builtin_type_float) ->
-        ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
+    (
+        Type = builtin_type(BuiltinType),
+        (
+            BuiltinType = builtin_type_string,
+            ConvertedRval = "(MR_String) " ++ Rval
+        ;
+            BuiltinType = builtin_type_float,
+            ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
+        ;
+            ( BuiltinType = builtin_type_int
+            ; BuiltinType = builtin_type_character
+            ),
+            ConvertedRval = Rval
+        )
     ;
+        ( Type = type_variable(_, _)
+        ; Type = defined_type(_, _, _)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = tuple_type(_, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        ),
         ConvertedRval = Rval
     ).
 
@@ -643,8 +672,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     module_name_to_file_name(ModuleName, HeaderExt, yes, FileName, !IO),
     io.open_output(FileName ++ ".tmp", Result, !IO),
     (
-        Result = ok(FileStream)
-    ->
+        Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
         module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
         library.version(Version),
@@ -699,6 +727,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         % rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
         update_interface(FileName, !IO)
     ;
+        Result = error(_),
         io.progname_base("export.m", ProgName, !IO),
         io.write_string("\n", !IO),
         io.write_string(ProgName, !IO),

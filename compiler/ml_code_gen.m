@@ -1362,11 +1362,15 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
             % Also figure out which output variables are returned by value
             % (rather than being passed by reference) and remove them from
             % the byref_output_vars field in the ml_gen_info.
-            ( CodeModel = model_non ->
+            (
+                ( CodeModel = model_det
+                ; CodeModel = model_semi
+                ),
+                ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
+            ;
+                CodeModel = model_non,
                 ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
                     !Info)
-            ;
-                ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
             ),
 
             % This would generate all the local variables at the top of
@@ -1431,23 +1435,26 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
     (
         % If --det-copy-out is enabled, all output variables are returned
         % by value, rather than passing them by reference.
-        DetCopyOut = yes
-    ->
+        DetCopyOut = yes,
         ByRefOutputVars = [],
         CopiedOutputVars = OutputVars
     ;
-        % For det functions, the function result variable is returned by value,
-        % and any remaining output variables are passed by reference.
-        ml_gen_info_get_pred_id(!.Info, PredId),
-        ml_gen_info_get_proc_id(!.Info, ProcId),
-        ml_is_output_det_function(ModuleInfo, PredId, ProcId, ResultVar)
-    ->
-        CopiedOutputVars = [ResultVar],
-        list.delete_all(OutputVars, ResultVar, ByRefOutputVars)
-    ;
-        % Otherwise, all output vars are passed by reference.
-        CopiedOutputVars = [],
-        ByRefOutputVars = OutputVars
+        DetCopyOut = no,
+        (
+            % For det functions, the function result variable is returned by
+            % value, and any remaining output variables are passed by
+            % reference.
+            ml_gen_info_get_pred_id(!.Info, PredId),
+            ml_gen_info_get_proc_id(!.Info, ProcId),
+            ml_is_output_det_function(ModuleInfo, PredId, ProcId, ResultVar)
+        ->
+            CopiedOutputVars = [ResultVar],
+            list.delete_all(OutputVars, ResultVar, ByRefOutputVars)
+        ;
+            % Otherwise, all output vars are passed by reference.
+            CopiedOutputVars = [],
+            ByRefOutputVars = OutputVars
+        )
     ),
     ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
     ml_gen_info_set_value_output_vars(CopiedOutputVars, !Info).
@@ -1595,16 +1602,16 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
         InputStatements = [],
         OutputStatements = []
     ;
-        Vars = [Var | Vars1],
-        HeadTypes = [HeadType | HeadTypes1],
-        ArgModes = [ArgMode | ArgModes1]
+        Vars = [Var | VarsTail],
+        HeadTypes = [HeadType | HeadTypesTail],
+        ArgModes = [ArgMode | ArgModesTail]
     ->
         ml_variable_type(!.Info, Var, BodyType),
         (
             % Arguments with mode `top_unused' do not need to be converted.
             ArgMode = top_unused
         ->
-            ml_gen_convert_headvars(Vars1, HeadTypes1, ArgModes1,
+            ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
                 CopiedOutputVars, Context, Decls,
                 InputStatements, OutputStatements, !Info)
         ;
@@ -1614,7 +1621,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             type_unify(HeadType, BodyType, [], Subst0, Subst),
             map.is_empty(Subst)
         ->
-            ml_gen_convert_headvars(Vars1, HeadTypes1, ArgModes1,
+            ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
                 CopiedOutputVars, Context, Decls,
                 InputStatements, OutputStatements, !Info)
         ;
@@ -1634,9 +1641,9 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             % HeadVarLval (which has type HeadType).
             ml_gen_info_set_var_lval(Var, BodyLval, !Info),
 
-            ml_gen_convert_headvars(Vars1, HeadTypes1, ArgModes1,
-                CopiedOutputVars, Context, Decls1,
-                InputStatements1, OutputStatements1, !Info),
+            ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
+                CopiedOutputVars, Context, DeclsTail,
+                InputStatementsTail, OutputStatementsTail, !Info),
 
             % Add the code to convert this input or output.
             ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
@@ -1645,13 +1652,13 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
                 ; list.member(Var, CopiedOutputVars)
                 )
             ->
-                InputStatements = InputStatements1,
-                OutputStatements = OutputStatements1 ++ ConvOutputStatements
+                InputStatements = InputStatementsTail,
+                OutputStatements = OutputStatementsTail ++ ConvOutputStatements
             ;
-                InputStatements = ConvInputStatements ++ InputStatements1,
-                OutputStatements = OutputStatements1
+                InputStatements = ConvInputStatements ++ InputStatementsTail,
+                OutputStatements = OutputStatementsTail
             ),
-            Decls = ConvDecls ++ Decls1
+            Decls = ConvDecls ++ DeclsTail
         )
     ;
         unexpected(this_file, "ml_gen_convert_headvars: length mismatch")
@@ -2192,7 +2199,8 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 
 ml_gen_goal_expr(plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         CodeModel, Context, Decls, Statements, !Info) :-
-    ( BuiltinState = not_builtin ->
+    (
+        BuiltinState = not_builtin,
         ml_gen_var_list(!.Info, ArgVars, ArgLvals),
         ml_gen_info_get_varset(!.Info, VarSet),
         ArgNames = ml_gen_var_names(VarSet, ArgVars),
@@ -2200,6 +2208,9 @@ ml_gen_goal_expr(plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
             CodeModel, Context, no, Decls, Statements, !Info)
     ;
+        ( BuiltinState = inline_builtin
+        ; BuiltinState = out_of_line_builtin
+        ),
         ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
             Decls, Statements, !Info)
     ).
@@ -2400,7 +2411,8 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
 
         % For IL code, we can't call continutations because there is no syntax
         % for calling managed function pointers in C#.  Instead we have
@@ -2427,6 +2439,9 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
                 "ml_gen_nondet_pragma_foreign_proc: target erlang")
         )
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         unexpected(this_file,
             "ml_gen_nondet_pragma_foreign_proc: unexpected code model")
     ),
@@ -2518,9 +2533,14 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             _PredInfo, ProcInfo),
         proc_info_interface_determinism(ProcInfo, Detism),
         determinism_components(Detism, _, MaxSoln),
-        ( MaxSoln = at_most_zero ->
+        (
+            MaxSoln = at_most_zero,
             OrdinaryKind = kind_failure
         ;
+            ( MaxSoln = at_most_one
+            ; MaxSoln = at_most_many
+            ; MaxSoln = at_most_many_cc
+            ),
             OrdinaryKind = kind_semi
         )
     ;
@@ -3252,10 +3272,13 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             % `MR_Box' in the MLDS back-end.
             ( OrigType = type_variable(_, _) ->
                 Cast = "(MR_Word) "
-            ; MaybeCast = yes(CastPrime) ->
-                Cast = CastPrime
             ;
-                Cast = ""
+                (
+                    MaybeCast = yes(Cast)
+                ;
+                    MaybeCast = no,
+                    Cast = ""
+                )
             )
         ),
         string.format("\t%s = %s ", [s(ArgName), s(Cast)], AssignToArgName),
@@ -3705,7 +3728,8 @@ ml_gen_disj([SingleGoal], CodeModel, Context, [], [Statement], !Info) :-
 
 ml_gen_disj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
     Rest = [_ | _],
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         % model_non disj:
         %
         %       <(Goal ; Goals) && SUCCEED()>
@@ -3727,6 +3751,9 @@ ml_gen_disj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
         )
 
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         % model_det/model_semi disj:
         %
         %   model_det goal:

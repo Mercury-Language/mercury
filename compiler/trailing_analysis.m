@@ -316,13 +316,18 @@ check_goal_for_trail_mods(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
     trailing_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_goal_for_trail_mods_2(_, _, GoalExpr, _, trail_will_not_modify, yes(optimal),
-        !ModuleInfo, !IO) :-
+check_goal_for_trail_mods_2(_, _, GoalExpr, _, trail_will_not_modify,
+        yes(optimal), !ModuleInfo, !IO) :-
     GoalExpr = unify(_, _, _, Kind, _),
-    ( Kind = complicated_unify(_, _, _) ->
-        unexpected(this_file, "complicated unify during trail usage analysis.")
+    (
+        ( Kind = construct(_, _, _, _, _, _, _)
+        ; Kind = deconstruct(_, _, _, _, _, _)
+        ; Kind = assign(_, _)
+        ; Kind = simple_test(_, _)
+        )
     ;
-        true
+        Kind = complicated_unify(_, _, _),
+        unexpected(this_file, "complicated unify during trail usage analysis.")
     ).
 check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
@@ -378,9 +383,13 @@ check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
             % analysis framework.
             search_analysis_status(CallPPId, Result0, AnalysisStatus, SCC,
                 !ModuleInfo, !IO),
-            ( Result0 = trail_conditional ->
+            (
+                Result0 = trail_conditional,
                 Result = check_vars(!.ModuleInfo, VarTypes, CallArgs)
             ;
+                ( Result0 = trail_may_modify
+                ; Result0 = trail_will_not_modify
+                ),
                 Result = Result0
             ),
             MaybeAnalysisStatus = yes(AnalysisStatus)
@@ -833,10 +842,14 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     annotate_goal_2(VarTypes, GoalInfo0, GoalExpr0, GoalExpr, Status,
         !ModuleInfo, !IO),
-    ( Status = trail_will_not_modify ->
+    (
+        Status = trail_will_not_modify,
         goal_info_add_feature(feature_will_not_modify_trail,
             GoalInfo0, GoalInfo)
     ;
+        ( Status = trail_may_modify
+        ; Status = trail_conditional
+        ),
         GoalInfo = GoalInfo0
     ),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -892,12 +905,20 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
 
             % XXX We shouldn't be getting invalid analysis results at this
             % stage so maybe we should just call unexpected/2 here?
-            ( AnalysisStatus = invalid ->
+            (
+                AnalysisStatus = invalid,
                 Status = trail_may_modify
             ;
-                ( Result = trail_conditional ->
+                ( AnalysisStatus = suboptimal
+                ; AnalysisStatus = optimal
+                ),
+                (
+                    Result = trail_conditional,
                     Status = check_vars(!.ModuleInfo, VarTypes, CallArgs)
                 ;
+                    ( Result = trail_may_modify
+                    ; Result = trail_will_not_modify
+                    ),
                     Status = Result
                 )
             )
@@ -928,10 +949,15 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     !:Goal = switch(Var, CanFail, Cases).
 annotate_goal_2(_VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = unify(_, _, _, Kind, _),
-    ( Kind = complicated_unify(_, _, _) ->
-        unexpected(this_file, "complicated unify during trail usage analysis.")
+    (
+        ( Kind = construct(_, _, _, _, _, _, _)
+        ; Kind = deconstruct(_, _, _, _, _, _)
+        ; Kind = assign(_, _)
+        ; Kind = simple_test(_, _)
+        )
     ;
-        true
+        Kind = complicated_unify(_, _, _),
+        unexpected(this_file, "complicated unify during trail usage analysis.")
     ),
     Status = trail_will_not_modify.
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-

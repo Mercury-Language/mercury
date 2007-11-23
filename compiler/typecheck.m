@@ -1591,9 +1591,10 @@ skip_arg([], []).
 skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
         [ArgTypeAssign | ArgTypeAssigns]) :-
     ArgTypeAssign0 = args(TypeAssign, Args0, Constraints),
-    ( Args0 = [_ | Args1] ->
-        Args = Args1
+    (
+        Args0 = [_ | Args]
     ;
+        Args0 = [],
         % this should never happen
         unexpected(this_file, "skip_arg")
     ),
@@ -2478,9 +2479,16 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         FieldDefn, FunctorConsTypeInfo, OrigExistTVars, ConsTypeInfo) :-
     FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
         FunctorType, ConsArgTypes, Constraints0, Source0),
-    ( Source0 = source_type(SourceTypePrime) ->
+    (
+        Source0 = source_type(SourceTypePrime),
         SourceType = SourceTypePrime
     ;
+        ( Source0 = source_builtin_type(_)
+        ; Source0 = source_get_field_access(_)
+        ; Source0 = source_set_field_access(_)
+        ; Source0 = source_apply(_)
+        ; Source0 = source_pred(_)
+        ),
         unexpected(this_file, "convert_field_access_cons_type_info: not type")
     ),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),

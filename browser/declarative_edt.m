@@ -1299,9 +1299,18 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
                     0, ChildrenOriginalWeight, 0, ChildrenExcess),
                 list.foldl(add_existing_weight, ChildrenSuspects,
                     0, ChildrenWeight),
-                ( Status = suspect_ignored ->
+                (
+                    Status = suspect_ignored,
                     Weight = ChildrenWeight + ChildrenExcess
                 ;
+                    ( Status = suspect_skipped(_)
+                    ; Status = suspect_correct
+                    ; Status = suspect_erroneous
+                    ; Status = suspect_inadmissible
+                    ; Status = suspect_pruned
+                    ; Status = suspect_in_erroneous_subtree_complement
+                    ; Status = suspect_unknown
+                    ),
                     Weight = OriginalWeight - ChildrenOriginalWeight
                         + ChildrenWeight + ChildrenExcess
                 )

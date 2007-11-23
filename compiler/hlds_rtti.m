@@ -613,12 +613,18 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     (
         % If the tvar is still a variable, insert it into the map with the
         % new var.
-        NewType = type_variable(NewTVar, _)
-    ->
+        NewType = type_variable(NewTVar, _),
         % Don't abort if two old type variables map to the same new type
         % variable.
         svmap.set(NewTVar, NewLocn, !Map)
     ;
+        ( NewType = builtin_type(_)
+        ; NewType = defined_type(_, _, _)
+        ; NewType = tuple_type(_, _)
+        ; NewType = higher_order_type(_, _, _, _)
+        ; NewType = apply_n_type(_, _, _)
+        ; NewType = kinded_type(_, _)
+        ),
         true
     ).
 

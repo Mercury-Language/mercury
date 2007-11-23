@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2006 The University of Melbourne.
+% Copyright (C) 1997,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,15 +45,21 @@
 
 :- type coeff == pair(var, float).
 
-:- type equation ---> eqn(list(coeff), operator, float).
+:- type equation
+    --->    eqn(list(coeff), operator, float).
 
-:- type operator ---> (=<) ; (=) ; (>=).
+:- type operator
+    --->    (=<)
+    ;       (=)
+    ;       (>=).
 
 :- type equations == list(equation).
 
 :- type objective == list(coeff).
 
-:- type direction --->  max ; min.
+:- type direction
+    --->    max
+    ;       min.
 
 :- type lp.result
     --->    unsatisfiable

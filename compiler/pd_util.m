@@ -657,7 +657,8 @@ get_sub_branch_vars_goal(_, [], _, _, Vars, Vars, !Module).
 get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         VarTypes, InstMap0, Vars0, SubVars, !ModuleInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    ( GoalExpr = if_then_else(_, Cond, Then, Else) ->
+    (
+        GoalExpr = if_then_else(_, Cond, Then, Else),
         Cond = hlds_goal(_, CondInfo),
         CondDelta = goal_info_get_instmap_delta(CondInfo),
         instmap.apply_instmap_delta(InstMap0, CondDelta, InstMap1),
@@ -667,14 +668,27 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         goal_to_conj_list(Else, ElseList),
         examine_branch(!.ModuleInfo, ProcArgInfo, 2, ElseList,
             VarTypes, InstMap0, Vars1, Vars2)
-    ; GoalExpr = disj(Goals) ->
+    ;
+        GoalExpr = disj(Goals),
         examine_branch_list(!.ModuleInfo, ProcArgInfo,
             1, Goals, VarTypes, InstMap0, Vars0, Vars2)
-    ; GoalExpr = switch(Var, _, Cases) ->
+    ;
+        GoalExpr = switch(Var, _, Cases),
         examine_case_list(ProcArgInfo, 1, Var,
             Cases, VarTypes, InstMap0, Vars0, Vars2, !ModuleInfo)
     ;
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = conj(_, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ),
         Vars2 = Vars0
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "get_sub_branch_vars_goal: shorthand")
     ),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),

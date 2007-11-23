@@ -1091,30 +1091,46 @@ convert_nondet_foreign_proc_port_type(nondet_foreign_proc_later) =
 :- pred redo_layout_slot(code_model::in, lval::out) is det.
 
 event_num_slot(CodeModel, EventNumSlot) :-
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         EventNumSlot  = framevar(1)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         EventNumSlot  = stackvar(1)
     ).
 
 call_num_slot(CodeModel, CallNumSlot) :-
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         CallNumSlot   = framevar(2)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         CallNumSlot   = stackvar(2)
     ).
 
 call_depth_slot(CodeModel, CallDepthSlot) :-
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         CallDepthSlot = framevar(3)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         CallDepthSlot = stackvar(3)
     ).
 
 redo_layout_slot(CodeModel, RedoLayoutSlot) :-
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         RedoLayoutSlot = framevar(4)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         unexpected(this_file,
             "attempt to access redo layout slot for det or semi procedure")
     ).

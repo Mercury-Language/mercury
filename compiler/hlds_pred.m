@@ -2528,18 +2528,23 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
 
     % Return Result = yes if the called predicate is known to never succeed.
     %
-proc_info_never_succeeds(ProcInfo, Result) :-
+proc_info_never_succeeds(ProcInfo, NeverSucceeds) :-
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     (
         DeclaredDeterminism = no,
-        Result = no
+        NeverSucceeds = no
     ;
         DeclaredDeterminism = yes(Determinism),
-        determinism_components(Determinism, _, HowMany),
-        ( HowMany = at_most_zero ->
-            Result = yes
+        determinism_components(Determinism, _, MaxSoln),
+        (
+            MaxSoln = at_most_zero,
+            NeverSucceeds = yes
         ;
-            Result = no
+            ( MaxSoln = at_most_one
+            ; MaxSoln = at_most_many
+            ; MaxSoln = at_most_many_cc
+            ),
+            NeverSucceeds = no
         )
     ).
 
@@ -3049,16 +3054,26 @@ is_unify_or_compare_pred(PredInfo) :-
 valid_determinism_for_eval_method(eval_normal, _) = yes.
 valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-
     determinism_components(Detism, _, MaxSoln),
-    ( MaxSoln = at_most_zero ->
+    (
+        MaxSoln = at_most_zero,
         Valid = no
     ;
+        ( MaxSoln = at_most_one
+        ; MaxSoln = at_most_many
+        ; MaxSoln = at_most_many_cc
+        ),
         Valid = yes
     ).
 valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
     determinism_components(Detism, _, MaxSoln),
-    ( MaxSoln = at_most_zero ->
+    (
+        MaxSoln = at_most_zero,
         Valid = no
     ;
+        ( MaxSoln = at_most_one
+        ; MaxSoln = at_most_many
+        ; MaxSoln = at_most_many_cc
+        ),
         Valid = yes
     ).
 valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-

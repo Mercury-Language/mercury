@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-% 
-% File: term_constr_main.m. 
+%
+% File: term_constr_main.m.
 % Main author: juliensf.
-% 
+%
 % This module contains the top level of a termination analyser for Mercury.
 % It is responsible for setting up the relevant data structures and invoking
 % all the other passes.
-% 
+%
 % --------
 % Overview
 % --------
-% 
+%
 % The main data structures used by this analysis are defined in
 % term_constr_data.m.
 %
@@ -44,33 +44,33 @@
 %   procedures in a SCC terminate.  There is an example of such a proof
 %   finder in term_constr_pass2.m, although we will probably end up with
 %   several such modules, each of which tries a different approach.
-%   
+%
 % In addition there are some utility procedures in term_constr_util.m
 % and some predicates for handling error messages in term_constr_error.m.
 %
 % The machinery for handling convex constraints (polyhedra) is in:
-%   
+%
 %   * polyhedron.m
 %   * lp_rational.m
 %   * rat.m
-% 
+%
 % TODO:
-%   * add support for higher-order code and intermodule 
+%   * add support for higher-order code and intermodule
 %     mutual recursion.
 %
 %   * add support for user-defined IR constraints for foreign
 %     code, :- pragma arg_size_relation(...) or something.
-%             
+%
 %   * experiment with different types of widening.
 %
 %   * experiment with different representation for the polyhedra.
 %
 %----------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_main. 
+:- module transform_hlds.term_constr_main.
 :- interface.
 
-:- import_module hlds.hlds_module. 
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 :- import_module libs.polyhedron.
@@ -83,13 +83,13 @@
 :- import_module maybe.
 
 %----------------------------------------------------------------------------%
-% 
+%
 % Types that define termination information about procedures
 %
 
     % This type is the interargument size relationships between
     % the arguments of a predicate.
-    % 
+    %
 :- type constr_arg_size_info == polyhedron.
 
     % Whether or not a procedure is terminating and some idea of why
@@ -101,17 +101,17 @@
     % Why does the termination analyser think that a procedure is
     % terminating?  This is useful for debugging purposes.
     %
-:- type term_reason 
-    --->    builtin             % procedure was a builtin. 
-    
-    ;       pragma_supplied     % procedure has pragma terminates decl.    
+:- type term_reason
+    --->    builtin             % procedure was a builtin.
+
+    ;       pragma_supplied     % procedure has pragma terminates decl.
 
     ;       foreign_supplied    % procedure has foreign code attribute.
-            
-    ;       import_supplied     % This procedure was imported and its 
+
+    ;       import_supplied     % This procedure was imported and its
                                 % termination status was read in from a .opt
                                 % or .trans_opt file.
-    
+
     ;       analysis.           % Termination info. was derived via analysis.
 
     % Whether a procedure may be involved in mutual recursion
@@ -119,7 +119,7 @@
     %
     % XXX Termination analysis of mutual recursion across module boundaries
     %     NYI.
-    % 
+    %
 :- type intermod_status
     --->    not_mutually_recursive
     ;       may_be_mutually_recursive.
@@ -140,7 +140,7 @@
 :- func termination2_info ^ size_var_map = size_var_map.
 :- func termination2_info ^ import_success =
     maybe(pragma_constr_arg_size_info).
-:- func termination2_info ^ import_failure = 
+:- func termination2_info ^ import_failure =
     maybe(pragma_constr_arg_size_info).
 :- func termination2_info ^ success_constrs = maybe(constr_arg_size_info).
 :- func termination2_info ^ failure_constrs = maybe(constr_arg_size_info).
@@ -150,9 +150,9 @@
 :- func termination2_info ^ head_vars = list(size_var).
 
 :- func termination2_info ^ size_var_map := size_var_map = termination2_info.
-:- func termination2_info ^ import_success := 
+:- func termination2_info ^ import_success :=
     maybe(pragma_constr_arg_size_info) = termination2_info.
-:- func termination2_info ^ import_failure := 
+:- func termination2_info ^ import_failure :=
     maybe(pragma_constr_arg_size_info) = termination2_info.
 :- func termination2_info ^ success_constrs := maybe(constr_arg_size_info)
     = termination2_info.
@@ -162,7 +162,7 @@
     = termination2_info.
 :- func termination2_info ^ intermod_status := maybe(intermod_status)
     = termination2_info.
-:- func termination2_info ^ abstract_rep := maybe(abstract_proc) 
+:- func termination2_info ^ abstract_rep := maybe(abstract_proc)
     = termination2_info.
 :- func termination2_info ^ head_vars := list(size_var)
     = termination2_info.
@@ -190,7 +190,7 @@
 :- pred term_constr_main.output_pragma_termination2_info(pred_or_func::in,
     sym_name::in, list(mer_mode)::in, prog_context::in,
     maybe(constr_arg_size_info)::in, maybe(constr_arg_size_info)::in,
-    maybe(constr_termination_info)::in, size_vars::in, io::di, 
+    maybe(constr_termination_info)::in, size_vars::in, io::di,
     io::uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -224,51 +224,51 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
-:- import_module varset.    
+:- import_module varset.
 
 %------------------------------------------------------------------------------%
 %
 % The 'termination2_info' structure
 %
 
-:- type termination2_info 
+:- type termination2_info
     --->    term2_info(
-            size_var_map :: size_var_map,       
-                % Map between prog_vars and size_vars for this procedure. 
+            size_var_map :: size_var_map,
+                % Map between prog_vars and size_vars for this procedure.
 
             head_vars :: size_vars,
                 % These are the size variables that occur in argument
                 % size constraints.  For procedures that are imported
                 % via a `.opt' or `.trans_opt' file we set these during
                 % the initial pass, for procedures in the module we are
-                % analysing, pass 1 sets it. 
-    
+                % analysing, pass 1 sets it.
+
             import_success :: maybe(pragma_constr_arg_size_info),
             import_failure :: maybe(pragma_constr_arg_size_info),
                 % Arg size info. imported from another module via a
                 % `.opt' or `.trans_opt' file.  Pass 0  needs to convert
                 % these to the proper form.  These particular fields are
                 % of no use after that.
-            
+
             success_constrs :: maybe(constr_arg_size_info),
                 % The interargument size relationships
                 % (expressed as convex constraints)
-                % obtained during pass 1. 
-            
+                % obtained during pass 1.
+
             failure_constrs :: maybe(constr_arg_size_info),
                 % Failure constraints for predicates that
                 % can fail (set by pass 1).
 
             term_status :: maybe(constr_termination_info),
                 % The termination status of the procedure as determined
-                % by pass 2. 
-            
+                % by pass 2.
+
             intermod_status :: maybe(intermod_status),
                 % Is this procedure (possibly) involved in mutual
                 % recursion across module boundaries? Set by pass 1.
-            
+
             abstract_rep :: maybe(abstract_proc)
-                % The abstract representation of this 
+                % The abstract representation of this
                 % proc. Set by term_constr_build.m.
         ).
 
@@ -279,13 +279,13 @@ term2_info_init = term2_info(map.init, [], no, no, no, no, no, no, no).
 % Main pass
 %
 
-term_constr_main.pass(!ModuleInfo, !IO) :- 
-    % 
+term_constr_main.pass(!ModuleInfo, !IO) :-
+    %
     % Get options required by the build pass.
     % These are:
     %   - which norm we are using.
     %   - whether we are propagating failure constraints.
-    %   
+    %
     globals.io_get_termination2_norm(Norm, !IO),
     FunctorInfo = set_functor_info(Norm, !.ModuleInfo),
     globals.io_lookup_bool_option(propagate_failure_constrs, Fail, !IO),
@@ -296,8 +296,8 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % Get options required by the fixpoint pass.
     % These are:
     %   - what cutoff value we are using
-    %   - the maximum allowable matrix size 
-    %     (this is also used in pass 2).    
+    %   - the maximum allowable matrix size
+    %     (this is also used in pass 2).
     %
     globals.io_lookup_int_option(term2_maximum_matrix_size, MaxSize, !IO),
     globals.io_lookup_int_option(widening_limit, CutOff, !IO),
@@ -311,7 +311,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % Currently this is just the maximum matrix size.
     %
     Pass2Options = pass2_options_init(MaxSize),
-    % 
+    %
     % Setup termination information for builtins and compiler generated
     % predicates.  Setup information from termination pragmas and
     % foreign proc attributes.
@@ -340,17 +340,17 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     %
     % The normal procedure for analysing a SCC is:
     %
-    % (1) Build the abstract representation (AR) of the procedures in 
+    % (1) Build the abstract representation (AR) of the procedures in
     %     the SCC. (term_constr_build.m).
     %
-    % (2) Use a fixpoint iteration to derive interargument size 
+    % (2) Use a fixpoint iteration to derive interargument size
     %     relationships for the procedures in the SCC.
     %     (term_constr_fixpoint.m).
     %
     % (3) Use this information to try and find a proof that the procedures
     %     in the SCC terminate.  (term_constr_pass2.m).
     %
-    % Exactly which of the above steps gets carried out depends upon 
+    % Exactly which of the above steps gets carried out depends upon
     % what (if any) additional information the user has supplied.
     %
     % For Mercury procedures:
@@ -360,95 +360,88 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % and (3).  If both have been supplied we do not carry out any
     % steps.
     %
-    % The usual caveats regarding the termination pragmas and mutual 
+    % The usual caveats regarding the termination pragmas and mutual
     % recursion apply (see the reference manual).
     %
     % XXX What do we do about pragma arg_size_info and mutual recursion?
     % (Nothing yet, because it isn't implemented :-( )
-    % 
+    %
     % For procedures implemented as foreign code:
-    % The usual defaults (see reference manual) apply.  
+    % The usual defaults (see reference manual) apply.
     % If no argument size constraint is supplied then non-zero arguments
-    % are assumed to have unbounded size. 
-    %   
+    % are assumed to have unbounded size.
+    %
 :- pred analyse_scc(dependency_ordering::in, build_options::in,
     fixpoint_options::in, pass2_options::in,
     list(pred_proc_id)::in, module_info::in, module_info::out, io::di,
     io::uo) is det.
 
 analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
-        !IO) :- 
-    %
-    % Since all of the passes are potentially optional we need to 
-    % initialise the size_var_maps separately.  If they are left 
-    % uninitialised intermodule optimization will not work.
-    %
+        !IO) :-
+    % Since all of the passes are potentially optional we need to initialise
+    % the size_var_maps separately. If they are left uninitialised intermodule
+    % optimization will not work.
     NeedsAR = list.filter(proc_needs_ar_built(!.ModuleInfo), SCC),
-    %
-    % Build the abstract representation for those procedures that 
-    % require it.  The procedures that require it are those that 
-    % do not already have both argument size information and termination
-    % information.
-    %
+
+    % Build the abstract representation for those procedures that require it.
+    % The procedures that require it are those that do not already have
+    % both argument size information and termination information.
     term_constr_build.build_abstract_scc(DepOrder, NeedsAR, BuildOpts,
-        BuildErrors, !ModuleInfo, !IO), 
-    %
-    % We only perform the fixpoint computation for those procedures
-    % where we can gain meaningful information from it.  We do not
-    % do it when:
+        BuildErrors, !ModuleInfo, !IO),
+
+    % We only perform the fixpoint computation for those procedures where
+    % we can gain meaningful information from it.  We do not do it when:
     % - the information is already known, or
     % - the argument size relationships depend upon higher-order calls.
-    %
-    NeedsArgSize = list.filter(isnt(has_arg_size_info(!.ModuleInfo)), 
-        NeedsAR),
+    NeedsArgSize = list.filter(isnt(has_arg_size_info(!.ModuleInfo)), NeedsAR),
     term_constr_fixpoint.do_fixpoint_calculation(FixpointOpts,
         NeedsArgSize, 1, FixpointErrors, !ModuleInfo, !IO),
-    %
-    % Errors detected during pass 1 always result in the rest of the
-    % analysis being aborted for the SCC under consideration.
-    %
+
+    % Errors detected during pass 1 always result in the rest of the analysis
+    % being aborted for the SCC under consideration.
     Pass1Errors = BuildErrors ++ FixpointErrors,
-    Pass1Result = ( if Pass1Errors = [] then ok else error(Pass1Errors) ),
-    globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly, 
-        !IO),
-    ( 
-        ArgSizeOnly = no 
-    ->
-        NeedsTerm = list.filter(isnt(has_term_info(!.ModuleInfo)), 
-            NeedsAR), 
-        %
-        % Some procedures may not have arg_size_info, but 
-        % may have termination info, i.e. those that have
-        % a pragma terminates or does_not_terminate declaration.
-        %
-        ( Pass1Result = error(Pass1Errors) ->
-            Pass2Result = can_loop(Pass1Errors)
-        ; 
+    (
+        Pass1Errors = [],
+        MaybeEarlyPass2Result = no
+    ;
+        Pass1Errors = [_ | _],
+        MaybeEarlyPass2Result = yes(can_loop(Pass1Errors))
+    ),
+    globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly, !IO),
+    (
+        ArgSizeOnly = no,
+        NeedsTerm = list.filter(isnt(has_term_info(!.ModuleInfo)), NeedsAR),
+
+        % Some procedures may not have arg_size_info, but may have termination
+        % info, i.e. those that have a pragma terminates or does_not_terminate
+        % declaration.
+        (
+            MaybeEarlyPass2Result = yes(Pass2Result)
+        ;
+            MaybeEarlyPass2Result = no,
             term_constr_pass2.prove_termination_in_scc(Pass2Opts,
                 NeedsTerm, !.ModuleInfo, Pass2Result, !IO)
         ),
-        %
-        % Set the termination property for this procedure and 
+
+        % Set the termination property for this procedure and
         % report any errors that we found during pass 2.
-        %
-        set_termination_info_for_procs(NeedsTerm, Pass2Result,
-            !ModuleInfo),
-        ( Pass2Result = can_loop(Errors) ->
-            report_termination2_errors(NeedsTerm, Errors,
-                !ModuleInfo, !IO)
+        set_termination_info_for_procs(NeedsTerm, Pass2Result, !ModuleInfo),
+        (
+            Pass2Result = can_loop(Errors),
+            report_termination2_errors(NeedsTerm, Errors, !ModuleInfo, !IO)
         ;
-            true
+            Pass2Result = cannot_loop(_)
         )
     ;
-        true    
+        ArgSizeOnly = yes
     ).
 
 %------------------------------------------------------------------------------%
-% 
+%
 % Procedures for storing 'termination2_info' in the HLDS
 %
 
-:- pred set_termination_info_for_procs(list(pred_proc_id)::in, 
+:- pred set_termination_info_for_procs(list(pred_proc_id)::in,
     constr_termination_info::in, module_info::in, module_info::out) is det.
 
 set_termination_info_for_procs(PPIds, TerminationInfo, !ModuleInfo) :-
@@ -470,11 +463,11 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 % Predicates for writing optimization interfaces
 %
 
-:- pred maybe_make_optimization_interface(module_info::in, io::di, io::uo) 
+:- pred maybe_make_optimization_interface(module_info::in, io::di, io::uo)
     is det.
 
 maybe_make_optimization_interface(ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, 
+    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
         !IO),
     (
         MakeOptInt = yes,
@@ -490,13 +483,13 @@ make_opt_int(PredIds, ModuleInfo, !IO) :-
   module_info_get_name(ModuleInfo, ModuleName),
   module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
   globals.io_lookup_bool_option(verbose, Verbose, !IO),
-  maybe_write_string(Verbose, 
+  maybe_write_string(Verbose,
       "% Appending termination2_info pragmas to `", !IO),
   maybe_write_string(Verbose, OptFileName, !IO),
   maybe_write_string(Verbose, "'...", !IO),
   maybe_flush_output(Verbose, !IO),
   io.open_append(OptFileName, OptFileRes, !IO),
-  (   
+  (
       OptFileRes = ok(OptFile),
       io.set_output_stream(OptFile, OldStream, !IO),
         list.foldl(output_pred_termination2_info(ModuleInfo), PredIds,
@@ -504,7 +497,7 @@ make_opt_int(PredIds, ModuleInfo, !IO) :-
       io.set_output_stream(OldStream, _, !IO),
       io.close_output(OptFile, !IO),
       maybe_write_string(Verbose, " done.\n", !IO)
-  ;   
+  ;
       OptFileRes = error(IOError),
           % failed to open the .opt file for processing
       maybe_write_string(Verbose, " failed!\n", !IO),
@@ -515,19 +508,18 @@ make_opt_int(PredIds, ModuleInfo, !IO) :-
   ).
 
 output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
-    % 
-    % Don't try to output termination2_info pragmas unless
-    % the analysis was actually run.  Doing otherwise won't
-    % work because the necessary information will not have been set
-    % up.
-    %
+    % Don't try to output termination2_info pragmas unless the analysis
+    % was actually run.  Doing otherwise won't work because the necessary
+    % information will not have been set up.
+
     globals.io_lookup_bool_option(termination2, RunningTerm2, !IO),
-    ( RunningTerm2 = yes ->
+    (
+        RunningTerm2 = yes,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_import_status(PredInfo, ImportStatus),
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-        ( 
+        (
             ( ImportStatus = status_exported
             ; ImportStatus = status_opt_exported
             ),
@@ -537,37 +529,37 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
             PredName   = pred_info_name(PredInfo),
             pred_info_get_procedures(PredInfo, ProcTable),
             pred_info_get_context(PredInfo, Context),
-            PredOrFunc = pred_info_is_pred_or_func(PredInfo),   
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             ModuleName = pred_info_module(PredInfo),
-            ProcIds    = pred_info_procids(PredInfo),   
+            ProcIds    = pred_info_procids(PredInfo),
             SymName    = qualified(ModuleName, PredName),
-            make_opt_int_procs(PredId, ProcIds, ProcTable, PredOrFunc, 
+            make_opt_int_procs(PredId, ProcIds, ProcTable, PredOrFunc,
                 SymName, Context, !IO)
         ;
-            true    
+            true
         )
     ;
-        true
+        RunningTerm2 = no
     ).
 
-:- pred make_opt_int_procs(pred_id::in, list(proc_id)::in, 
-    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in, 
+:- pred make_opt_int_procs(pred_id::in, list(proc_id)::in,
+    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
     io::di, io::uo) is det.
 
 make_opt_int_procs(_PredId, [], _, _, _, _, !IO).
-make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable, 
-        PredOrFunc, SymName, Context, !IO) :- 
+make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
+        PredOrFunc, SymName, Context, !IO) :-
     ProcInfo = ProcTable ^ det_elem(ProcId),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
     proc_info_declared_argmodes(ProcInfo, ModeList),
-    proc_info_get_headvars(ProcInfo, HeadVars), 
+    proc_info_get_headvars(ProcInfo, HeadVars),
     SizeVarMap = TermInfo ^ size_var_map,
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
-    output_pragma_termination2_info(PredOrFunc, SymName, 
-        ModeList, Context, TermInfo ^ success_constrs, 
+    output_pragma_termination2_info(PredOrFunc, SymName,
+        ModeList, Context, TermInfo ^ success_constrs,
         TermInfo ^ failure_constrs, TermInfo ^ term_status,
         HeadSizeVars, !IO),
-    make_opt_int_procs(PredId, ProcIds, ProcTable, 
+    make_opt_int_procs(PredId, ProcIds, ProcTable,
         PredOrFunc, SymName, Context, !IO).
 
 %----------------------------------------------------------------------------%
@@ -575,50 +567,50 @@ make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 % Predicates for writing 'termination2_info' pragmas
 %
 
-% NOTE: if these predicates are changed then prog_io_pragma.m must 
+% NOTE: if these predicates are changed then prog_io_pragma.m must
 %       also be changed so that it can parse the resulting pragma
 %       termination2_info declarations.
 
 output_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         Context, MaybeSuccess, MaybeFailure, MaybeTermination,
-        HeadVars, !IO) :- 
+        HeadVars, !IO) :-
     io.write_string(":- pragma termination2_info(", !IO),
-    ( 
+    (
         PredOrFunc = pf_predicate,
-        mercury_output_pred_mode_subdecl(varset.init, SymName, 
+        mercury_output_pred_mode_subdecl(varset.init, SymName,
             ModeList, no, Context, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
-        mercury_output_func_mode_subdecl(varset.init, SymName, 
+        mercury_output_func_mode_subdecl(varset.init, SymName,
             FuncModeList, RetMode, no, Context, !IO)
     ),
-    
+
     list.length(HeadVars, NumHeadVars),
     HeadVarIds = 0 .. NumHeadVars - 1,
     map.det_insert_from_corresponding_lists(map.init, HeadVars,
-        HeadVarIds, VarToVarIdMap), 
-    
+        HeadVarIds, VarToVarIdMap),
+
     io.write_string(", ", !IO),
     output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeSuccess,
         !IO),
     io.write_string(", ", !IO),
     output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeFailure,
         !IO),
-    io.write_string(", ", !IO), 
+    io.write_string(", ", !IO),
     output_maybe_termination2_info(MaybeTermination, !IO),
     io.write_string(").\n", !IO).
 
 :- pred output_maybe_constr_arg_size_info(map(size_var, int)::in,
-    maybe(constr_arg_size_info)::in, io::di, io::uo) is det. 
+    maybe(constr_arg_size_info)::in, io::di, io::uo) is det.
 
 output_maybe_constr_arg_size_info(VarToVarIdMap,
-        MaybeArgSizeConstrs, !IO) :- 
-    (   
+        MaybeArgSizeConstrs, !IO) :-
+    (
         MaybeArgSizeConstrs = no,
-        io.write_string("not_set", !IO) 
+        io.write_string("not_set", !IO)
     ;
-        MaybeArgSizeConstrs = yes(Polyhedron),  
+        MaybeArgSizeConstrs = yes(Polyhedron),
         io.write_string("constraints(", !IO),
         Constraints0 = polyhedron.non_false_constraints(Polyhedron),
         Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
@@ -631,10 +623,10 @@ output_maybe_constr_arg_size_info(VarToVarIdMap,
 :- pred output_maybe_termination2_info(maybe(constr_termination_info)::in,
     io::di, io::uo) is det.
 
-output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :- 
-    (   
+output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
+    (
         MaybeConstrTermInfo = no,
-        io.write_string("not_set", !IO) 
+        io.write_string("not_set", !IO)
     ;
         MaybeConstrTermInfo = yes(cannot_loop(_)),
         io.write_string("cannot_loop", !IO)
@@ -670,17 +662,17 @@ has_term_info(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
     TermInfo ^ term_status = yes(_).
-    
+
 :- pred proc_needs_ar_built(module_info::in, pred_proc_id::in) is semidet.
 
 proc_needs_ar_built(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
-    ( 
+    (
         TermInfo ^ success_constrs = no
     ;
-        TermInfo ^ term_status = no 
-    ). 
+        TermInfo ^ term_status = no
+    ).
 
 %------------------------------------------------------------------------------%
 

@@ -722,12 +722,19 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % But when targetting C, we want to omit empty base classes.
             % So if targetting C, don't include any base class if there is
             % no secondary tag.
-            ( MaybeSecTagVal = yes(_) ->
+            (
+                MaybeSecTagVal = yes(_),
                 Inherits = [SecondaryTagClassId]
-            ; target_uses_empty_base_classes(Target) = yes ->
-                Inherits = [BaseClassId]
             ;
-                Inherits = []
+                MaybeSecTagVal = no,
+                UsesEmptyBaseClasses = target_uses_empty_base_classes(Target),
+                (
+                    UsesEmptyBaseClasses = yes,
+                    Inherits = [BaseClassId]
+                ;
+                    UsesEmptyBaseClasses = no,
+                    Inherits = []
+                )
             ),
             Imports = [],
             Implements = [],
@@ -847,9 +854,13 @@ make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
 gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         Statement :-
     Member = mlds_defn(EntityName, Context, _Flags, Defn),
-    ( Defn = mlds_data(Type0, _Init, _GCStatement) ->
+    (
+        Defn = mlds_data(Type0, _Init, _GCStatement),
         Type = Type0
     ;
+        ( Defn = mlds_function(_, _, _, _, _)
+        ; Defn = mlds_class(_)
+        ),
         unexpected(this_file, "gen_init_field: non-data member")
     ),
     (
@@ -861,9 +872,9 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
     ;
         unexpected(this_file, "gen_init_field: non-var member")
     ),
+    RequiresQualifiedParams = target_requires_module_qualified_params(Target),
     (
-        target_requires_module_qualified_params(Target) = yes
-    ->
+        RequiresQualifiedParams = yes,
         ( BaseClassId = mlds_class_type(qual(ModuleName, _, _), _, _) ->
             QualVarName = qual(ModuleName, module_qual, VarName)
         ;
@@ -871,6 +882,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
                 "gen_init_field: invalid BaseClassId")
         )
     ;
+        RequiresQualifiedParams = no,
         QualVarName = qual(ClassQualifier, type_qual, VarName)
     ),
     Param = lval(var(QualVarName, Type)),

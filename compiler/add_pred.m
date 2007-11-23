@@ -420,15 +420,22 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         PredModule = pred_info_module(!.PredInfo),
         PredName = pred_info_name(!.PredInfo),
         PredSymName = qualified(PredModule, PredName),
-        ( IsClassMethod = yes ->
+        (
+            IsClassMethod = yes,
             unspecified_det_for_method(PredSymName, Arity, PredOrFunc,
                 MContext, !Specs)
-        ; status_is_exported(ImportStatus) = yes ->
-            unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
-                MContext, !Specs)
         ;
-            unspecified_det_for_local(PredSymName, Arity, PredOrFunc,
-                MContext, !Specs)
+            IsClassMethod = no,
+            IsExported = status_is_exported(ImportStatus),
+            (
+                IsExported = yes,
+                unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
+                    MContext, !Specs)
+            ;
+                IsExported = no,
+                unspecified_det_for_local(PredSymName, Arity, PredOrFunc,
+                    MContext, !Specs)
+            )
         )
     ;
         MaybeDet = yes(_)

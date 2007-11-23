@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002, 2005-2006 The University of Melbourne.
+% Copyright (C) 1997-2002, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,7 +65,7 @@
 :- type constraints == list(constraint).
 
     % Create a constraint from the given components.
-    % 
+    %
 :- func lp_rational.constraint(lp_terms, operator, constant) = constraint.
 
     % Create a constraint from the given components.
@@ -75,33 +75,33 @@
     = constraint.
 
     % Deconstruct the given constraint.
-    % 
-:- pred lp_rational.constraint(constraint::in, lp_terms::out, operator::out, 
+    %
+:- pred lp_rational.constraint(constraint::in, lp_terms::out, operator::out,
     constant::out) is det.
 
     % As above but throws an exception if the constraint is false.
-    % 
+    %
 :- pred lp_rational.non_false_constraint(constraint::in, lp_terms::out,
     operator::out, constant::out) is det.
 
     % Succeeds iff the given constraint contains a single variable and
     % that variable is constrained to be a nonnegative value.
-    % 
+    %
 :- pred lp_rational.nonneg_constr(constraint::in) is semidet.
 
-    % Create a constraint that constrains the argument 
+    % Create a constraint that constrains the argument
     % have a non-negative value.
     %
 :- func lp_rational.make_nonneg_constr(lp_var) = constraint.
 
     % Create a constraint that equates two variables.
-    % 
+    %
 :- func lp_rational.make_vars_eq_constraint(lp_var, lp_var) = constraint.
 
     % Create constraints of the form:
     %
     %   Var = Constant or Var >= Constant
-    % 
+    %
     % These functions are useful with higher-order code.
     %
 :- func lp_rational.make_var_const_eq_constraint(lp_var, rat) = constraint.
@@ -110,21 +110,21 @@
     % Create a constraint that is trivially false.
     %
 :- func lp_rational.false_constraint = constraint.
-    
+
     % Create a constraint that is trivially true.
-    % 
+    %
 :- func lp_rational.true_constraint = constraint.
 
     % Succeeds if the constraint is trivially false.
     %
 :- pred lp_rational.is_false(constraint::in) is semidet.
-    
+
     % Succeeds if the constraint is trivially true.
-    % 
+    %
 :- pred lp_rational.is_true(constraint::in) is semidet.
-    
+
     % Takes a list of constraints and looks for equality constraints
-    % that may be implicit in any inequalities. 
+    % that may be implicit in any inequalities.
     %
     % NOTE: this is only a syntactic check so it may miss
     % some equalities that are implicit in the system.
@@ -142,10 +142,10 @@
     % Fails if the system of constraints is inconsistent.
     %
 :- pred remove_some_entailed_constraints(lp_varset::in, constraints::in,
-    constraints::out) is semidet. 
+    constraints::out) is semidet.
 
     % Succeeds iff the given system of constraints is inconsistent.
-    % 
+    %
 :- pred lp_rational.inconsistent(lp_varset::in, constraints::in) is semidet.
 
     % Remove those constraints from the system whose redundancy can be
@@ -162,11 +162,11 @@
     %
     % If length(VarsA) \= length(VarsB) then an exception is thrown.
     %
-:- func lp_rational.substitute_vars(lp_vars, lp_vars, constraints) 
+:- func lp_rational.substitute_vars(lp_vars, lp_vars, constraints)
     = constraints.
 :- func lp_rational.substitute_vars(map(lp_var, lp_var), constraints)
     = constraints.
-    
+
     % Make the values of all the variables in the set zero.
     %
 :- func lp_rational.set_vars_to_zero(set(lp_var), constraints) = constraints.
@@ -194,25 +194,27 @@
 
 :- type objective == lp_terms.
 
-:- type direction --->  max ; min.
+:- type direction
+    --->    max
+    ;       min.
 
 :- type lp_result
-    --->    unbounded
-    ;       inconsistent
-    ;       satisfiable(rat, map(lp_var, rat)).
-                % satisfiable(ObjVal, MapFromObjVarsToVals)
+    --->    lp_res_unbounded
+    ;       lp_res_inconsistent
+    ;       lp_res_satisfiable(rat, map(lp_var, rat)).
+            % lp_res_satisfiable(ObjVal, MapFromObjVarsToVals)
 
     % Maximize (or minimize - depending on `direction') `objective'
     % subject to the given constraints.  The variables in the objective
     % and the constraints *must* be from the given `lp_varset'.  This
     % is passed to the solver so that it can allocate fresh variables
     % as required.
-    % 
+    %
     % The result is `unbounded' if the objective is not bounded by
     % the constraints, `inconsistent' if the given constraints are
     % inconsistent, or `satisfiable/2' otherwise.
     %
-:- func lp_rational.solve(constraints, direction, objective, lp_varset) 
+:- func lp_rational.solve(constraints, direction, objective, lp_varset)
     = lp_result.
 
 %-----------------------------------------------------------------------------%
@@ -220,14 +222,14 @@
 % Projection
 %
 
-:- type projection_result 
-    --->    ok(constraints) % projection succeeded.
-    ;       inconsistent    % matrix was inconsistent.  
-    ;       aborted.        % ran out of time/space and backed out.
+:- type projection_result
+    --->    pr_res_ok(constraints)  % projection succeeded.
+    ;       pr_res_inconsistent     % matrix was inconsistent.
+    ;       pr_res_aborted.         % ran out of time/space and backed out.
 
     % project(Constraints0, Vars, Varset) = Result:
     % Takes a list of constraints, `Constraints0', and eliminates the
-    % variables in the list `Vars' using Fourier elimination.   
+    % variables in the list `Vars' using Fourier elimination.
     %
     % Returns `ok(Constraints)' if `Constraints' is the projection
     % of `Constraints0' over `Vars'.  Returns `inconsistent' if
@@ -240,13 +242,13 @@
     % to do a consistency check on the result if they require
     % the resulting system of constraints to be consistent.
     %
-:- func lp_rational.project(lp_vars, lp_varset, constraints) 
+:- func lp_rational.project(lp_vars, lp_varset, constraints)
     = projection_result.
 :- pred lp_rational.project(lp_vars::in, lp_varset::in, constraints::in,
     projection_result::out) is det.
 
     % project(Vars, Varset, maybe(MaxMatrixSize), Matrix, Result).
-    % Same as above but if the size of the matrix ever exceeds 
+    % Same as above but if the size of the matrix ever exceeds
     % `MaxMatrixSize' we back out of the computation.
     %
 :- pred lp_rational.project(lp_vars::in, lp_varset::in, maybe(int)::in,
@@ -292,7 +294,7 @@
     %
 :- type output_var == (func(lp_var) = string).
 
-    % Write out the constraints in a form we can read in using the 
+    % Write out the constraints in a form we can read in using the
     % term parser from the standard library.
     %
 :- pred lp_rational.output_constraints(output_var::in, constraints::in,
@@ -303,11 +305,11 @@
 % Debugging predicates
 %
 
-    % Print out the constraints using the names in the varset.  If the 
+    % Print out the constraints using the names in the varset.  If the
     % variable has no name it will be given the name Temp<n>, where <n>
     % is the variable number.
     %
-:- pred lp_rational.write_constraints(constraints::in, lp_varset::in, io::di, 
+:- pred lp_rational.write_constraints(constraints::in, lp_varset::in, io::di,
     io::uo) is det.
 
     % Return the set of variables that are present in a list of constraints.
@@ -350,7 +352,6 @@
     ;       eq(lp_terms, constant)      % sumof(Terms) =  Constant
     ;       gte(lp_terms, constant).    % sumof(Terms) >= Constant
 
-
 %-----------------------------------------------------------------------------%
 %
 % Procedures for constructing/deconstructing constraints.
@@ -383,7 +384,7 @@ constraint(Terms0 @ [_ | _], (>=), Const0) = Constraint :-
 
 unchecked_constraint(Terms, (=<), Constant) = lte(Terms, Constant).
 unchecked_constraint(Terms, (=),  Constant) = eq(Terms, Constant).
-unchecked_constraint(Terms, (>=), Constant) = gte(Terms, Constant). 
+unchecked_constraint(Terms, (>=), Constant) = gte(Terms, Constant).
 
 :- func sum_like_terms(lp_terms) = lp_terms.
 
@@ -395,13 +396,13 @@ sum_like_terms(Terms) = map.to_assoc_list(lp_terms_to_map(Terms)).
     % coefficients.  Also if a coefficient is (or ends up being) zero
     % make sure that the variable doesn't end up in the resulting map.
     %
-:- func lp_terms_to_map(assoc_list(lp_var, coefficient)) = 
+:- func lp_terms_to_map(assoc_list(lp_var, coefficient)) =
     map(lp_var, coefficient).
 
 lp_terms_to_map(Terms) = Map :-
     list.foldl(lp_terms_to_map_2, Terms, map.init, Map).
 
-:- pred lp_terms_to_map_2(pair(lp_var, coefficient)::in, 
+:- pred lp_terms_to_map_2(pair(lp_var, coefficient)::in,
     map(lp_var, coefficient)::in, map(lp_var, coefficient)::out) is det.
 
 lp_terms_to_map_2(Var - Coeff0, !Map) :-
@@ -422,7 +423,7 @@ non_false_constraint(Terms, Op, Constant) = Constraint :-
     Constraint = constraint(Terms, Op, Constant),
     ( if    is_false(Constraint)
       then  unexpected(this_file,
-                "non_false_constraints/3: false constraint.") 
+                "non_false_constraints/3: false constraint.")
       else  true
     ).
 
@@ -433,9 +434,9 @@ constraint(gte(Terms, Constant), Terms, (>=), Constant).
 non_false_constraint(Constraint, Terms, Operator, Constant) :-
     ( if    is_false(Constraint)
       then  unexpected(this_file,
-                "non_false_constraint/4: false_constraint.") 
+                "non_false_constraint/4: false_constraint.")
       else  true
-    ),  
+    ),
     (
         Constraint = lte(Terms, Constant),
         Operator   = (=<)
@@ -451,13 +452,13 @@ non_false_constraint(Constraint, Terms, Operator, Constant) :-
 
 lp_terms(lte(Terms, _)) = Terms.
 lp_terms(eq(Terms,  _)) = Terms.
-lp_terms(gte(Terms, _)) = Terms. 
+lp_terms(gte(Terms, _)) = Terms.
 
 :- func constant(constraint) = constant.
 
 constant(lte(_, Constant)) = Constant.
 constant(eq(_,  Constant)) = Constant.
-constant(gte(_, Constant)) = Constant. 
+constant(gte(_, Constant)) = Constant.
 
 :- func operator(constraint) = operator.
 
@@ -477,8 +478,8 @@ nonneg_constr(gte(_, _)) :-
 
 make_nonneg_constr(Var) = constraint([Var - (-rat.one)], (=<), rat.zero).
 
-make_vars_eq_constraint(Var1, Var2) = 
-    constraint([Var1 - rat.one, Var2 - (-rat.one)], (=), rat.zero). 
+make_vars_eq_constraint(Var1, Var2) =
+    constraint([Var1 - rat.one, Var2 - (-rat.one)], (=), rat.zero).
 
 make_var_const_eq_constraint(Var, Constant) =
     constraint([Var - rat.one], (=), Constant).
@@ -500,7 +501,7 @@ is_true(eq([],  Const)) :- Const =  rat.zero.
     % Put each constraint in the list in standard form (see below).
     %
 :- func lp_rational.standardize_constraints(constraints) = constraints.
-    
+
 standardize_constraints(Constraints) =
     list.map(standardize_constraint, Constraints).
 
@@ -508,8 +509,8 @@ standardize_constraints(Constraints) =
     % has its terms list in increasing order of variable name
     % and then multiplied so that the absolute value of the leading
     % coefficient is one.  (>=) is converted to (=<) by multiplying
-    % through by negative one.  (=) constraints should have an 
-    % initial coefficient of (positive) 1. 
+    % through by negative one.  (=) constraints should have an
+    % initial coefficient of (positive) 1.
     %
 :- func lp_rational.standardize_constraint(constraint) = constraint.
 
@@ -521,7 +522,7 @@ standardize_constraint(eq(Terms0,  Const0)) = eq(Terms,  Const) :-
 standardize_constraint(lte(Terms0, Const0)) = lte(Terms, Const) :-
     normalize_terms_and_const(yes, Terms0, Const0, Terms, Const).
 
-    % Sort the list of terms in ascending order by variable 
+    % Sort the list of terms in ascending order by variable
     % and then multiply through so that the first term has a
     % coefficient of one or negative one.  If the first argument
     % is `yes' then we multiply through by the reciprocal of the
@@ -537,17 +538,17 @@ normalize_terms_and_const(AbsVal, !.Terms, !.Const, !:Terms, !:Const) :-
     ),
     !:Terms = list.sort(CompareTerms, !.Terms),
     ( if    !.Terms = [_ - Coefficient0 | _]
-      then  
-        ( 
+      then
+        (
             AbsVal = yes,
             Coefficient = rat.abs(Coefficient0)
         ;
             AbsVal = no,
             Coefficient = Coefficient0
         ),
-        ( if    Coefficient = rat.zero 
+        ( if    Coefficient = rat.zero
           then  unexpected(this_file,
-                    "normalize_term_and_const/5: zero coefficient.") 
+                    "normalize_term_and_const/5: zero coefficient.")
           else  true
         ),
         DivideBy = (func(Var - Coeff) = Var - (Coeff / Coefficient)),
@@ -584,8 +585,8 @@ inconsistent(Vars, Constraints @ [Constraint | _]) :-
             Constraint = gte([Term | _], _)
         ),
         DummyObjective = [Term],
-        Result = lp_rational.solve(Constraints, max, DummyObjective, Vars),
-        Result = inconsistent
+        lp_rational.solve(Constraints, max, DummyObjective, Vars) =
+            lp_res_inconsistent
     ).
 
 simplify_constraints(Constraints) = remove_weaker(remove_trivial(Constraints)).
@@ -609,7 +610,7 @@ remove_trivial([Constraint | Constraints]) = Result :-
                 Result = [ Constraint | Result0 ]
             )
         )
-    ).  
+    ).
 
 :- func remove_weaker(constraints) = constraints.
 
@@ -623,11 +624,11 @@ remove_weaker([C | Cs0]) = Result :-
     ;
         Keep = no,
         Result = Result0
-    ). 
+    ).
 
 :- pred remove_weaker_2(constraint::in, constraint::in, constraints::in,
     constraints::out, bool::in, bool::out) is det.
-    
+
 remove_weaker_2(A, B, !Acc, !Keep) :-
     ( is_stronger(A, B) -> true
     ; is_stronger(B, A) -> list.cons(B, !Acc), !:Keep = no
@@ -643,7 +644,7 @@ is_stronger(eq(Terms, Const), lte(negate_lp_terms(Terms), -Const)).
 is_stronger(lte([Var - (-one)], ConstA), lte([Var - (-one)], ConstB)) :-
     ConstA =< zero, ConstA =< ConstB.
 is_stronger(eq(Terms, ConstA), lte(negate_lp_terms(Terms), ConstB)) :-
-    ConstA >= (-one) * ConstB.  
+    ConstA >= (-one) * ConstB.
 is_stronger(lte(Terms, ConstA), lte(Terms, ConstB)) :-
     ConstB =< zero, ConstA =< ConstB.
 
@@ -661,8 +662,8 @@ substitute_vars_2(SubstMap, lte(Terms0, Const)) = Result :-
 substitute_vars_2(SubstMap, eq(Terms0, Const)) = Result :-
     Terms = list.map(substitute_term(SubstMap), Terms0),
     Result = eq(sum_like_terms(Terms), Const).
-substitute_vars_2(_, gte(_, _)) = 
-    unexpected(this_file, "substitute_vars_2/2: gte."). 
+substitute_vars_2(_, gte(_, _)) =
+    unexpected(this_file, "substitute_vars_2/2: gte.").
 
 :- func substitute_term(map(lp_var, lp_var), lp_term) = lp_term.
 
@@ -696,21 +697,23 @@ set_terms_to_zero(Vars, Terms0) = Terms :-
 
 bounding_box(Varset, Constraints) = BoundingBox :-
     Vars = set.to_sorted_list(get_vars_from_constraints(Constraints)),
-    BoundingBox = list.foldl((func(Var, Constrs0) = Constrs :-
+    CallProject =
+        (func(Var, Constrs0) = Constrs :-
             Result = lp_rational.project([Var], Varset, Constrs0),
             (
-                Result = inconsistent,
+                Result = pr_res_inconsistent,
                 Constrs = [false_constraint]
             ;
                 % If we needed to abort this computation
                 % we will just approximate the whole lot
                 % by `true'.
-                Result = aborted,
+                Result = pr_res_aborted,
                 Constrs = []
             ;
-                Result = ok(Constrs)
+                Result = pr_res_ok(Constrs)
             )
-        ), Vars, Constraints).
+        ),
+    BoundingBox = list.foldl(CallProject, Vars, Constraints).
 
 nonneg_box(VarsToIgnore, Constraints) = NonNegConstraints :-
     Vars0 = get_vars_from_constraints(Constraints),
@@ -729,39 +732,37 @@ nonneg_box(VarsToIgnore, Constraints) = NonNegConstraints :-
 % Linear solver.
 %
 
-% XXX Most of this came from lp.m.  We should try to remove a lot of 
+% XXX Most of this came from lp.m.  We should try to remove a lot of
 % nondeterminism here.
 
 :- type lp_info
-    ---> lp(
-        varset     :: lp_varset,        
-        slack_vars :: lp_vars,  % - slack variables.
-        art_vars   :: lp_vars   % - artificial variables.
-    ).
+    --->    lp(
+                varset     :: lp_varset,
+                slack_vars :: lp_vars,  % - slack variables.
+                art_vars   :: lp_vars   % - artificial variables.
+            ).
 
 lp_rational.solve(Constraints, Direction, Objective, Varset) = Result :-
     Info0 = lp_info_init(Varset),
     solve_2(Constraints, Direction, Objective, Result, Info0, _).
 
     % solve_2(Eqns, Dir, Obj, Res, LPInfo0, LPInfo) takes a list
-    % of inequalities `Eqns', a direction for optimization `Dir', an 
+    % of inequalities `Eqns', a direction for optimization `Dir', an
     % objective function `Obj' and an lp_info structure `LPInfo0'.
     % See inline comments for details on the algorithm.
     %
-:- pred solve_2(constraints::in, direction::in, objective::in, 
+:- pred solve_2(constraints::in, direction::in, objective::in,
     lp_result::out, lp_info::in, lp_info::out) is det.
 
 solve_2(!.Constraints, Direction, !.Objective, Result, !LPInfo) :-
-    %
     % Simplify the inequalities and convert them to standard form by
     % introducing slack/artificial variables.
-    %
+
     Obj = !.Objective,
     lp_standardize_constraints(!Constraints, !LPInfo),
-    %
+
     % If we are maximizing the objective function then we need
     % to negate all the coefficients in the objective.
-    %
     (
         Direction = max,
         ObjTerms = negate_constraint(eq(!.Objective, zero)),
@@ -776,8 +777,7 @@ solve_2(!.Constraints, Direction, !.Objective, Result, !LPInfo) :-
     VarNums = number_vars(VarList, 0),
     ArtVars = !.LPInfo ^ art_vars,
     Tableau0 = init_tableau(Rows, Columns, VarNums),
-    insert_constraints(!.Constraints, 1, Columns, VarNums, 
-        Tableau0, Tableau),
+    insert_constraints(!.Constraints, 1, Columns, VarNums, Tableau0, Tableau),
     (
         ArtVars = [_|_],
         % There are one or more artificial variables, so we use
@@ -793,15 +793,13 @@ solve_2(!.Constraints, Direction, !.Objective, Result, !LPInfo) :-
     ;
         Direction = min,
         (
-            Result0 = unbounded,
+            ( Result0 = lp_res_unbounded
+            ; Result0 = lp_res_inconsistent
+            ),
             Result = Result0
         ;
-            Result0 = inconsistent,
-            Result = Result0
-        ;
-            Result0 = satisfiable(NOptVal, OptCoffs),
-            OptVal = -NOptVal,
-            Result = satisfiable(OptVal, OptCoffs)
+            Result0 = lp_res_satisfiable(OptVal, OptCoffs),
+            Result = lp_res_satisfiable(-OptVal, OptCoffs)
         )
     ).
 
@@ -817,35 +815,33 @@ one_phase(Obj0, Obj, VarNums, !.Tableau) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-:- func two_phase(lp_terms, lp_terms, lp_vars, map(lp_var, int), tableau) 
+:- func two_phase(lp_terms, lp_terms, lp_vars, map(lp_var, int), tableau)
     = lp_result.
 
 two_phase(Obj0, Obj, ArtVars, VarNums, !.Tableau) = Result :-
-    %
     % Phase 1: minimize the sum of the artificial variables.
-    %
+
     ArtObj = list.map(lp_term, ArtVars),
     insert_terms(ArtObj, 0, VarNums, !Tableau),
     ensure_zero_obj_coeffs(ArtVars, !Tableau),
     optimize(ArtVars, Result0, !Tableau),
     (
-        Result0 = unbounded,
-        Result = unbounded
+        Result0 = lp_res_unbounded,
+        Result = lp_res_unbounded
     ;
-        Result0 = inconsistent,
-        Result = inconsistent
+        Result0 = lp_res_inconsistent,
+        Result = lp_res_inconsistent
     ;
-        Result0 = satisfiable(Val, _ArtRes),
+        Result0 = lp_res_satisfiable(Val, _ArtRes),
         ( if    Val \= zero
-          then  Result = inconsistent
-          else  
+          then  Result = lp_res_inconsistent
+          else
                 fix_basis_and_rem_cols(ArtVars, !.Tableau, Tableau1),
-                %
+
                 % Phase 2:
-                % Insert the real objective, zero the objective 
-                % coefficients of the basis variables and optimize
-                % the objective.
-                %
+                % Insert the real objective, zero the objective coefficients
+                % of the basis variables and optimize the objective.
+
                 insert_terms(Obj, 0, VarNums, Tableau1, Tableau2),
                 BasisVars = get_basis_vars(Tableau2),
                 ensure_zero_obj_coeffs(BasisVars, Tableau2, Tableau3),
@@ -857,15 +853,15 @@ two_phase(Obj0, Obj, ArtVars, VarNums, !.Tableau) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred lp_standardize_constraints(constraints::in, constraints::out, 
+:- pred lp_standardize_constraints(constraints::in, constraints::out,
     lp_info::in, lp_info::out) is det.
 
 lp_standardize_constraints(!Constraints, !LPInfo) :-
     list.map_foldl(lp_standardize_constraint, !Constraints, !LPInfo).
-    
+
     % standardize_constraint performs the following operations on a
     % constraint:
-    %   - ensures the constant is >= 0 
+    %   - ensures the constant is >= 0
     %       (multiplying by -1 if necessary)
     %   - introduces slack and artificial variables
     %
@@ -875,16 +871,16 @@ lp_standardize_constraints(!Constraints, !LPInfo) :-
 lp_standardize_constraint(Constr0 @ lte(Coeffs, Const), Constr, !LPInfo) :-
     ( Const < zero ->
         Constr1 = negate_constraint(Constr0),
-        lp_standardize_constraint(Constr1, Constr, !LPInfo) 
+        lp_standardize_constraint(Constr1, Constr, !LPInfo)
     ;
         new_slack_var(Var, !LPInfo),
         Constr = lte([Var - one | Coeffs], Const)
     ).
-lp_standardize_constraint(Eqn0 @ eq(Coeffs, Const), Eqn, !LPInfo) :- 
+lp_standardize_constraint(Eqn0 @ eq(Coeffs, Const), Eqn, !LPInfo) :-
     ( Const < zero ->
         Eqn1 = negate_constraint(Eqn0),
         lp_standardize_constraint(Eqn1, Eqn, !LPInfo)
-    ;       
+    ;
         new_art_var(Var, !LPInfo),
         Eqn = lte([Var - one | Coeffs], Const)
     ).
@@ -957,7 +953,7 @@ insert_constraints([C | Cs], Row, ConstCol, VarNums, !Tableau) :-
     set_cell(Row, ConstCol, constant(C), !Tableau),
     insert_constraints(Cs, Row + 1, ConstCol, VarNums, !Tableau).
 
-:- pred insert_terms(lp_terms::in, int::in, var_num_map::in, 
+:- pred insert_terms(lp_terms::in, int::in, var_num_map::in,
     tableau::in, tableau::out) is det.
 
 insert_terms([], _,  _, !Tableau).
@@ -971,24 +967,24 @@ insert_terms([Var - Const | Coeffs], Row, VarNums, !Tableau) :-
 :- pred optimize(lp_vars::in, lp_result::out, tableau::in, tableau::out)
     is det.
 
-optimize(ObjVars, Result, !Tableau) :- 
+optimize(ObjVars, Result, !Tableau) :-
     simplex(Result0, !Tableau),
     (
         Result0 = no,
-        Result  = unbounded 
+        Result  = lp_res_unbounded
     ;
         Result0 = yes,
         ObjVal  = !.Tableau ^ elem(0, !.Tableau ^ cols),
         ObjMap  = extract_objective(ObjVars, !.Tableau),
-        Result  = satisfiable(ObjVal, ObjMap)
+        Result  = lp_res_satisfiable(ObjVal, ObjMap)
     ).
 
-:- func extract_objective(lp_vars, tableau) = map(lp_var, rat). 
+:- func extract_objective(lp_vars, tableau) = map(lp_var, rat).
 
 extract_objective(ObjVars, Tableau) = Objective :-
     Objective = list.foldl(extract_obj_var(Tableau), ObjVars, map.init).
 
-:- func extract_obj_var(tableau, lp_var, map(lp_var, rat)) 
+:- func extract_obj_var(tableau, lp_var, map(lp_var, rat))
     = map(lp_var, rat).
 
 extract_obj_var(Tableau, Var, Map0) = Map :-
@@ -1044,7 +1040,7 @@ simplex(Result, !Tableau) :-
                         ),
                         CVal = MVal / MaxVal,
                         !:Max = yes(Row - CVal)
-                  else  
+                  else
                         !:Max = no
                 )
         ;
@@ -1058,12 +1054,12 @@ simplex(Result, !Tableau) :-
                         ( if    CellVal = zero
                           then  unexpected(this_file,
                                     "simplex/3: zero divisor.")
-                          else  true    
+                          else  true
                         ),
                         MaxVal1 = MVal / CellVal,
                         ( if    MaxVal1 =< MaxVal0
                           then  !:Max = yes(Row - MaxVal1)
-                          else  true    
+                          else  true
                         )
                 )
             )
@@ -1092,7 +1088,7 @@ ensure_zero_obj_coeffs([Var | Vars], !Tableau) :-
     ;
         FindOne = (pred(P::out) is nondet :-
             all_rows(!.Tableau, R),
-            ValF0 = !.Tableau ^ elem(R, Col), 
+            ValF0 = !.Tableau ^ elem(R, Col),
             ValF0 \= zero,
             P = R - ValF0
         ),
@@ -1121,7 +1117,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
     Col = var_col(!.Tableau, Var),
     BasisAgg = (pred(R::in, Ones0::in, Ones::out) is det :-
         Val = !.Tableau ^ elem(R, Col),
-        Ones = ( Val = zero -> Ones0 ; [Val - R | Ones0] )  
+        Ones = ( Val = zero -> Ones0 ; [Val - R | Ones0] )
     ),
     solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
     (
@@ -1173,7 +1169,7 @@ pivot(P, Q, !Tableau) :-
           then  unexpected(this_file, "pivot/4 - ScaleCell: zero divisor.")
           else  true
         ),
-        T = T0 ^ elem(J, K) := Ajk - Apk * Ajq / Apq 
+        T = T0 ^ elem(J, K) := Ajk - Apk * Ajq / Apq
     ),
     solutions.aggregate(MostCells, ScaleCell, !Tableau),
     QColumn = (pred(Cell::out) is nondet :-
@@ -1189,15 +1185,15 @@ pivot(P, Q, !Tableau) :-
     ScaleRow = (pred(K::in, T0::in, T::out) is det :-
         Apk = T0 ^ elem(P, K),
         ( if    Apq = zero
-          then  unexpected(this_file, "pivot/4 - ScaleRow: zero divisor.")  
-          else  true    
+          then  unexpected(this_file, "pivot/4 - ScaleRow: zero divisor.")
+          else  true
         ),
-        T = T0 ^ elem(P, K) := Apk / Apq 
+        T = T0 ^ elem(P, K) := Apk / Apq
     ),
     solutions.aggregate(PRow, ScaleRow, !Tableau),
     set_cell(P, Q, one, !Tableau).
 
-:- pred row_op(rat::in, int::in, int::in, tableau::in, 
+:- pred row_op(rat::in, int::in, int::in, tableau::in,
     tableau::out) is det.
 
 row_op(Scale, From, To, !Tableau) :-
@@ -1220,8 +1216,8 @@ row_op(Scale, From, To, !Tableau) :-
                 rows         :: int,
                 cols         :: int,
                 var_nums     :: map(lp_var, int),
-                shunned_rows :: list(int),  
-                shunned_cols :: list(int),  
+                shunned_rows :: list(int),
+                shunned_cols :: list(int),
                 cells        :: map(pair(int), rat)
             ).
 
@@ -1250,11 +1246,11 @@ get_cell(Tableau, Row, Col) = Cell :-
       else  true
     ),
     ( if    Cell0 = Tableau ^ cells ^ elem(Row - Col)
-      then  Cell = Cell0 
+      then  Cell = Cell0
       else  Cell = zero
     ).
 
-:- pred set_cell(int::in, int::in, rat::in, tableau::in, 
+:- pred set_cell(int::in, int::in, rat::in, tableau::in,
     tableau::out) is det.
 
 set_cell(J, K, R, Tableau0, Tableau) :-
@@ -1264,7 +1260,7 @@ set_cell(J, K, R, Tableau0, Tableau) :-
                 "set_cell/5: Attempt to write shunned row/col.")
       else  true
     ),
-    ( if    R = zero 
+    ( if    R = zero
       then  Cells = map.delete(Cells0, J - K)
       else  Cells = map.set(Cells0, J - K, R)
     ),
@@ -1346,7 +1342,7 @@ lp_info_init(Varset) = lp(Varset, [], []).
 
 :- pred new_slack_var(lp_var::out, lp_info::in, lp_info::out) is det.
 
-new_slack_var(Var, !LPInfo) :- 
+new_slack_var(Var, !LPInfo) :-
     varset.new_var(!.LPInfo ^ varset, Var, Varset),
     !:LPInfo = !.LPInfo ^ varset := Varset,
     Vars = !.LPInfo ^ slack_vars,
@@ -1354,7 +1350,7 @@ new_slack_var(Var, !LPInfo) :-
 
 :- pred new_art_var(lp_var::out, lp_info::in, lp_info::out) is det.
 
-new_art_var(Var, !LPInfo) :- 
+new_art_var(Var, !LPInfo) :-
     varset.new_var(!.LPInfo ^ varset, Var, Varset),
     !:LPInfo = !.LPInfo ^ varset := Varset,
     Vars = !.LPInfo ^ art_vars,
@@ -1375,8 +1371,8 @@ between(Min, Max, I) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Projection. 
-% 
+% Projection.
+%
 
 % The following code more or less follows the algorithm described in:
 % Joxan Jaffar, Michael Maher, Peter Stuckey and Roland Yap.
@@ -1388,8 +1384,8 @@ between(Min, Max, I) :-
 
 % We next convert any remaining equations into opposing inequalities and
 % then use Fourier elimination to try and eliminate any remaining target
-% variables.  The main problem here is ensuring that we don't get 
-% swamped by redundant constraints. 
+% variables.  The main problem here is ensuring that we don't get
+% swamped by redundant constraints.
 
 % The implementation here uses the extensions to FM elimination described by
 % Cernikov as well as some other redundancy checks.  Note that in general
@@ -1397,21 +1393,21 @@ between(Min, Max, I) :-
 % methods is unsound (See the above article for an example).
 
 % In addition to Cernikov's methods and quasi-syntactic redundancy checks
-% we also use a heuristic developed by Duffin to choose the order in 
+% we also use a heuristic developed by Duffin to choose the order in
 % which we eliminate variables (See below).
-% 
+%
 %-----------------------------------------------------------------------------%
 
-:- type vector 
+:- type vector
     ---> vector(
         label :: set(int),
             % The vector's label is for redundancy checking
             % during Fourier elimination - see below.
-        
+
         terms :: map(lp_var, coefficient),
             % A map from each variable in the vector to its
             % coefficient
-        
+
         const :: constant
     ).
 
@@ -1426,37 +1422,37 @@ project(Vars, Varset, Constraints, Result) :-
     % For the first branch of this switch the `Constraints' may actually
     % be an inconsistent system - we don't bother checking that here though.
     % We instead delay that until we need to perform an entailment check.
-    % 
-project([], _, _, Constraints, ok(Constraints)).
-project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :- 
+    %
+project([], _, _, Constraints, pr_res_ok(Constraints)).
+project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
     eliminate_equations(!Vars, Constraints0, EqlResult),
     (
-        EqlResult = inconsistent,
-        Result = inconsistent
+        EqlResult = pr_res_inconsistent,
+        Result = pr_res_inconsistent
     ;
         % Elimination of equations should not cause an abort since we always
         % make the matrix smaller.
         %
-        EqlResult = aborted,
+        EqlResult = pr_res_aborted,
         unexpected(this_file, "project/5: abort from eliminate_equations.")
     ;
-        EqlResult = ok(Constraints1),
-        % 
+        EqlResult = pr_res_ok(Constraints1),
+        %
         % Skip the call to fourier_elimination/6 if there are no variables to
         % project - this avoids the transformation to vector form.
         %
         (
             !.Vars = [_ | _],
-            Matrix0 = constraints_to_matrix(Constraints1),      
-            fourier_elimination(!.Vars, Varset, MaybeThreshold, 0, 
+            Matrix0 = constraints_to_matrix(Constraints1),
+            fourier_elimination(!.Vars, Varset, MaybeThreshold, 0,
                 Matrix0, FourierResult),
             (
-                FourierResult = yes(Matrix), 
+                FourierResult = yes(Matrix),
                 Constraints = matrix_to_constraints(Matrix),
-                Result = ok(Constraints)
+                Result = pr_res_ok(Constraints)
             ;
                 FourierResult = no,
-                Result = aborted
+                Result = pr_res_aborted
             )
         ;
             % NOTE: the matrix `Constraints1' may actually be inconsistent
@@ -1465,12 +1461,12 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
             % operation that needs to traverse it anyway or until the
             % next entailment check.
             !.Vars = [],
-            Result = ok(Constraints1)
-        ) 
+            Result = pr_res_ok(Constraints1)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Convert each constraint into `=<' form and give each an initial label
 %
 
@@ -1479,7 +1475,7 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
 constraints_to_matrix(Constraints) = Matrix :-
     list.foldl2(fm_standardize, Constraints, 0, _, [], Matrix).
 
-:- pred fm_standardize(constraint::in, int::in, int::out, matrix::in, 
+:- pred fm_standardize(constraint::in, int::in, int::out, matrix::in,
     matrix::out) is det.
 
 fm_standardize(lte(Terms0, Constant), !Labels, !Matrix) :-
@@ -1526,25 +1522,25 @@ vector_to_constraint(vector(_, Terms0, Constant0)) = Constraint :-
     % equality that contains that variable.  If so, then substitute the
     % value of that variable into the other constraints.  Return the set
     % of target variables that do not occur in any equality.
-    %  
+    %
 :- pred eliminate_equations(lp_vars::in, lp_vars::out, constraints::in,
     projection_result::out) is det.
 
 eliminate_equations(!Vars, Constraints0, Result) :-
     Constraints = simplify_constraints(Constraints0),
     list.filter((pred(eq(_, _)::in) is semidet), Constraints,
-        Equalities0, Inequalities0),        
+        Equalities0, Inequalities0),
     (
-        eliminate_equations_2(!Vars, Equalities0, Equalities, 
+        eliminate_equations_2(!Vars, Equalities0, Equalities,
             Inequalities0, Inequalities)
     ->
-        Result = ok(Equalities ++ Inequalities)
+        Result = pr_res_ok(Equalities ++ Inequalities)
     ;
-        Result = inconsistent   
+        Result = pr_res_inconsistent
     ).
 
-:- pred eliminate_equations_2(lp_vars::in, lp_vars::out, 
-    constraints::in, constraints::out, constraints::in, 
+:- pred eliminate_equations_2(lp_vars::in, lp_vars::out,
+    constraints::in, constraints::out, constraints::in,
     constraints::out) is semidet.
 
 eliminate_equations_2([], [], !Equations, !Inequations).
@@ -1553,12 +1549,12 @@ eliminate_equations_2([Var | !.Vars], !:Vars, !Equations, !Inequations) :-
     ( find_target_equality(Var, Target, !Equations) ->
         substitute_variable(Target, Var, !Equations, !Inequations,
             SuccessFlag),
-        ( 
-            SuccessFlag = no, 
+        (
+            SuccessFlag = no,
             list.cons(Var, !Vars),
             list.cons(Target, !Equations)
         ;
-            SuccessFlag = yes 
+            SuccessFlag = yes
         )
     ;
         list.cons(Var, !Vars)
@@ -1567,14 +1563,14 @@ eliminate_equations_2([Var | !.Vars], !:Vars, !Equations, !Inequations) :-
     % Find an equation that constrains a variable we are trying
     % to eliminate.
     %
-:- pred find_target_equality(lp_var::in, constraint::out, constraints::in, 
+:- pred find_target_equality(lp_var::in, constraint::out, constraints::in,
     constraints::out) is semidet.
 
 find_target_equality(Var, Target, Constraints0, Constraints) :-
     Result = find_target_equality(Var, Constraints0),
     Result = yes(Target - Constraints).
-    
-:- func find_target_equality(lp_var, constraints) = 
+
+:- func find_target_equality(lp_var, constraints) =
     maybe(pair(constraint, constraints)).
 
 find_target_equality(Var, Eqns) = find_target_equality_2(Var, Eqns, []).
@@ -1599,65 +1595,68 @@ find_target_equality_2(Var, [Eqn | Eqns], Acc) = MaybeTargetEqn :-
     % a target variable, say `x1', notionally rewrite the equation as:
     %
     % x1 = C - ... aN/a1 xN
-    % 
+    %
     % and then substitute that value for x1 in the supplied sets
-    % of equations and inequations. 
-    %   
-:- pred substitute_variable(constraint::in, lp_var::in, 
-    constraints::in, constraints::out, constraints::in, constraints::out, 
-    bool::out) is semidet. 
+    % of equations and inequations.
+    %
+:- pred substitute_variable(constraint::in, lp_var::in,
+    constraints::in, constraints::out, constraints::in, constraints::out,
+    bool::out) is semidet.
 
 substitute_variable(Target0, Var, !Equations, !Inequations, Flag) :-
     normalize_constraint(Var, Target0, Target),
     constraint(Target, TargetCoeffs, Op, TargetConst),
-    ( if    Op \= (=)
-      then  unexpected(this_file,
-                "substitute_variable/7: inequality encountered.")
-      else  true
+    (
+        Op = (=)
+    ;
+        ( Op = (=<)
+        ; Op = (>=)
+        ),
+        unexpected(this_file, "substitute_variable/7: inequality encountered.")
     ),
     fix_coeff_and_const(Var, TargetCoeffs, TargetConst, Coeffs, Const),
     substitute_into_constraints(Var, Coeffs, Const, !Equations, EqlFlag),
     substitute_into_constraints(Var, Coeffs, Const, !Inequations, IneqlFlag),
     Flag = bool.or(EqlFlag, IneqlFlag).
-    
+
     % Multiply the terms and constant except for the term containing
     % the specified variable in preparation for making a substitution
     % for that variable.  Notionally this converts a constraint of the
     % form:
     %       t + z + w = C   ... C is a constant
-    %  
+    %
     % into:
     %
     %       t = C - z - w
     %
-:- pred fix_coeff_and_const(lp_var::in, lp_terms::in, constant::in, 
+:- pred fix_coeff_and_const(lp_var::in, lp_terms::in, constant::in,
     lp_terms::out, constant::out) is det.
 
 fix_coeff_and_const(_, [], Const, [], -Const).
-fix_coeff_and_const(Var, [Var1 - Coeff1 | Coeffs], Const0, FixedCoeffs, 
+fix_coeff_and_const(Var, [Var1 - Coeff1 | Coeffs], Const0, FixedCoeffs,
         Const) :-
     fix_coeff_and_const(Var, Coeffs, Const0, FCoeffs0, Const),
     FixedCoeffs = ( Var = Var1 -> FCoeffs0 ; [Var1 - (-Coeff1) | FCoeffs0]).
 
-    % The `Flag' argument is `yes' if one or more substitutions were made, 
+    % The `Flag' argument is `yes' if one or more substitutions were made,
     % `no' otherwise.  substitute_into_constraints/7 fails if a false
     % constraint is generated as a result of a substitution.  This means
-    % that the original matrix was inconsistent. 
+    % that the original matrix was inconsistent.
     %
 :- pred substitute_into_constraints(lp_var::in, lp_terms::in,
     constant::in, constraints::in, constraints::out, bool::out) is semidet.
 
 substitute_into_constraints(_, _, _, [], [], no).
 substitute_into_constraints(Var, Coeffs, Const, [Constr0 | Constrs0], Result,
-        Flag) :- 
+        Flag) :-
     substitute_into_constraint(Var, Coeffs, Const, Constr0, Constr, Flag0),
-    not is_false(Constr),   
-    substitute_into_constraints(Var, Coeffs, Const, Constrs0, Constrs, 
+    not is_false(Constr),
+    substitute_into_constraints(Var, Coeffs, Const, Constrs0, Constrs,
         Flag1),
     Result = ( if is_true(Constr) then Constrs else [ Constr | Constrs ] ),
     Flag = bool.or(Flag0, Flag1).
 
-:- pred substitute_into_constraint(lp_var::in, lp_terms::in, 
+:- pred substitute_into_constraint(lp_var::in, lp_terms::in,
     constant::in, constraint::in, constraint::out, bool::out) is det.
 
 substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
@@ -1685,7 +1684,7 @@ substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
     % Will return `no' if it aborts otherwise `yes(Matrix)', where
     % `Matrix' is the result of the projection.
     %
-:- pred fourier_elimination(lp_vars::in, lp_varset::in, maybe(int)::in, 
+:- pred fourier_elimination(lp_vars::in, lp_varset::in, maybe(int)::in,
     int::in, matrix::in, maybe(matrix)::out) is det.
 
 fourier_elimination([], _, _, _, Matrix, yes(Matrix)).
@@ -1703,29 +1702,36 @@ fourier_elimination(Vars @ [Var0 | Vars0], Varset, MaybeThreshold, !.Step,
       then  Var = TargetVar0, OtherVars = OtherVars0
       else  Var = Var0, OtherVars = Vars0
     ),
-    separate_vectors(Matrix0, Var, PosMatrix, NegMatrix, ZeroMatrix, 
-        SizeZeroMatrix),    
-    %
-    % `Step' counts active Fourier eliminations only.  An elimination is
-    % active if at least one constraint contains a term that has a
-    % non-zero coefficient for the variable being eliminated.
-    %
-    ( PosMatrix \= [], NegMatrix \= []  ->
+    separate_vectors(Matrix0, Var, PosMatrix, NegMatrix, ZeroMatrix,
+        SizeZeroMatrix),
+
+    % `Step' counts active Fourier eliminations only. An elimination is active
+    % if at least one constraint contains a term that has a non-zero
+    % coefficient for the variable being eliminated.
+
+    (
+        PosMatrix = [_ | _],
+        NegMatrix = [_ | _]
+    ->
         !:Step = !.Step + 1,
-        ( list.foldl2(eliminate_var(!.Step, MaybeThreshold, NegMatrix),
-            PosMatrix, ZeroMatrix, ResultMatrix, SizeZeroMatrix, _)
+        (
+            list.foldl2(eliminate_var(!.Step, MaybeThreshold, NegMatrix),
+                PosMatrix, ZeroMatrix, ResultMatrix, SizeZeroMatrix, _)
         ->
             NewMatrix = yes(ResultMatrix)
-        ;   
+        ;
             NewMatrix = no
         )
-    ;   
+    ;
         NewMatrix = yes(ZeroMatrix)
     ),
-    ( if    NewMatrix = yes(Matrix)
-      then  fourier_elimination(OtherVars, Varset, MaybeThreshold, !.Step, 
+    (
+        NewMatrix = yes(Matrix),
+        fourier_elimination(OtherVars, Varset, MaybeThreshold, !.Step,
             Matrix, Result)
-      else  Result = no
+    ;
+        NewMatrix = no,
+        Result = no
     ).
 
     % separate_vectors(Matrix, Var, Positive, Negative, Zero, Num).
@@ -1746,7 +1752,7 @@ separate_vectors(Matrix, Var, Pos, Neg, Zero, NumZeros) :-
     matrix::out, matrix::in, matrix::out, matrix::in, matrix::out,
     int::in, int::out) is det.
 
-classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :- 
+classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :-
     ( Coefficient = Vector0 ^ terms ^ elem(Var) ->
         Vector0 = vector(Label, Terms0, Const0),
         normalize_vector(Var, Terms0, Const0, Terms, Const),
@@ -1771,7 +1777,7 @@ eliminate_var(Step, MaybeThreshold, NegMatrix, PosVector, !Zeros,
 :- pred combine_vectors(int::in, maybe(int)::in, vector::in,
     vector::in, matrix::in, matrix::out, int::in, int::out) is semidet.
 
-combine_vectors(Step, MaybeThreshold, vector(LabelPos, TermsPos, ConstPos), 
+combine_vectors(Step, MaybeThreshold, vector(LabelPos, TermsPos, ConstPos),
         vector(LabelNeg, TermsNeg, ConstNeg), !Zeros, !Num) :-
     LabelNew = set.union(LabelPos, LabelNeg),
     (
@@ -1782,18 +1788,18 @@ combine_vectors(Step, MaybeThreshold, vector(LabelPos, TermsPos, ConstPos),
         add_vectors(TermsPos, ConstPos, TermsNeg, ConstNeg, Coeffs,
             Const),
         New = vector(LabelNew, Coeffs, Const),
-        ( 
+        (
             (
                 % Do not bother adding the new constraint
                 % if it is just `true'.
                 map.is_empty(Coeffs),
                 Const >= zero
             ;
-                list.member(Vec, !.Zeros), 
+                list.member(Vec, !.Zeros),
                 quasi_syntactic_redundant(New, Vec)
             )
         ->
-            % If the new constraint is `true' or is 
+            % If the new constraint is `true' or is
             % quasi-syntactic redundant with something
             % already there.
             true
@@ -1809,16 +1815,16 @@ combine_vectors(Step, MaybeThreshold, vector(LabelPos, TermsPos, ConstPos),
             (
                 list.member(Vec, !.Zeros),
                 label_subsumed(New, Vec)
-            ->  
+            ->
                 % Do not add the new constraint because it is label
                 % subsumed by something already in the matrix.
                 %
                 true
-            ; 
+            ;
                 filter_and_count(
                     (pred(Vec2::in) is semidet :-
                         not label_subsumed(Vec2, New)
-                    ), 
+                    ),
                     !.Zeros, [], !:Zeros, 0, !:Num),
                 list.cons(New, !Zeros),
                 !:Num = !.Num + 1
@@ -1854,25 +1860,25 @@ filter_and_count(P, [X | Xs], !Acc, !Count) :-
     % Succeeds if the first vector is quasi-syntactic redundant wrt to the
     % second.  That is c = c' + (0 < e), for e > 0.
     %
-:- pred quasi_syntactic_redundant(vector::in, vector::in) is semidet. 
+:- pred quasi_syntactic_redundant(vector::in, vector::in) is semidet.
 
 quasi_syntactic_redundant(VecA, VecB) :-
     VecB ^ const < VecA ^ const,
     all [Var] (
-        map.member(VecA ^ terms, Var, Coeff) <=> 
+        map.member(VecA ^ terms, Var, Coeff) <=>
         map.member(VecB ^ terms, Var, Coeff)
     ).
 
 %-----------------------------------------------------------------------------%
-% 
-% Label subsumption. 
+%
+% Label subsumption.
 %
     % label_subsumed(A, B) : succeeds iff
     % constraint A is label subsumed by constraint B.
     %
 :- pred label_subsumed(vector::in, vector::in) is semidet.
 
-label_subsumed(VectorA, VectorB) :- 
+label_subsumed(VectorA, VectorB) :-
     set.subset(VectorB ^ label, VectorA ^ label).
 
 %-----------------------------------------------------------------------------%
@@ -1880,9 +1886,9 @@ label_subsumed(VectorA, VectorB) :-
 % Duffin's heuristic.
 %
 
-% This attempts to find an order in which to eliminate variables such that 
+% This attempts to find an order in which to eliminate variables such that
 % the minimal number of redundant constraints are generated at each
-% Fourier step.  For each variable, x_h, to be eliminated, we 
+% Fourier step.  For each variable, x_h, to be eliminated, we
 % calculate E(x_h) which is defined as follows:
 %
 %  E(x_h) = p(x_h)q(x_h) + r(x_h) ... if p(x_h) + q(x_h) > 0
@@ -1904,7 +1910,7 @@ label_subsumed(VectorA, VectorB) :-
     % We can work out the zero occurrences by subtracting the two
     % previous totals from the total number of constraints.
     %
-:- type coeff_info 
+:- type coeff_info
     ---> coeff_info(
            pos :: int,
            neg :: int
@@ -1918,7 +1924,7 @@ label_subsumed(VectorA, VectorB) :-
     % anyway).  Fails if it can't find such a variable, ie. none of the
     % variables being eliminated actually occurs in the constraints.
     %
-:- pred duffin_heuristic(lp_vars::in, matrix::in, lp_var::out, 
+:- pred duffin_heuristic(lp_vars::in, matrix::in, lp_var::out,
     lp_vars::out) is semidet.
 
 duffin_heuristic([Var], _, Var, []).
@@ -1943,8 +1949,8 @@ collect_remaining_vars([Var - _ | Rest], TargetVar) = Result :-
 find_max([]) = unexpected(this_file, "find_max/2: empty list passed as arg.").
 find_max([Var0 - ExpnNum0 | Vars]) = fst(find_max_2(Vars, Var0 - ExpnNum0)).
 
-:- func find_max_2(assoc_list(lp_var, int), pair(lp_var, int)) = 
-    pair(lp_var, int). 
+:- func find_max_2(assoc_list(lp_var, int), pair(lp_var, int)) =
+    pair(lp_var, int).
 
 find_max_2([], Best) = Best.
 find_max_2([Var1 - ExpnNum1 | Vars], Var0 - ExpnNum0) =
@@ -1967,17 +1973,17 @@ generate_expansion_nums(Vars0, Matrix) = ExpansionNums :-
     Vars = list.sort_and_remove_dups(Vars0),
     CoeffMap0 = init_cc_map(Vars),
     CoeffMap  = list.foldl(count_coeffs_in_vector, Matrix, CoeffMap0),
-    CoeffList = map.to_assoc_list(CoeffMap),        
+    CoeffList = map.to_assoc_list(CoeffMap),
     ConstrNum = list.length(Matrix),
     ExpansionNums = list.map(make_expansion_num(ConstrNum), CoeffList).
 
 :- func make_expansion_num(int, pair(lp_var, coeff_info)) = pair(lp_var, int).
-    
+
 make_expansion_num(ConstrNum, Var - coeff_info(Pos, Neg)) = Var - ExpnNum :-
     PosAndNeg = Pos + Neg,
-    ( if    PosAndNeg = 0 
+    ( if    PosAndNeg = 0
       then  ExpnNum = 0
-      else  ExpnNum = (Pos * Neg) + (ConstrNum - PosAndNeg) 
+      else  ExpnNum = (Pos * Neg) + (ConstrNum - PosAndNeg)
     ).
 
 :- func count_coeffs_in_vector(vector, cc_map) = cc_map.
@@ -2000,8 +2006,8 @@ count_coeff(Var - Coeff, !Map) :-
         ),
         svmap.det_update(Var, coeff_info(Pos, Neg), !Map)
     ;
-        true    
-        % If the variable in the term was not in the map then it is not 
+        true
+        % If the variable in the term was not in the map then it is not
         % one of the ones that is being eliminated.
     ).
 
@@ -2016,11 +2022,11 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
 %
 % Predicates for normalizing vectors and constraints.
 %
-    
+
     % normalize_vector(Var, Terms0, Const0, Terms, Const).
     % Multiply the given vector by a scalar appropraite to make the
     % coefficient of the given variable in the vector one.  Throws
-    % an exception if `Var' has a zero coefficient.      
+    % an exception if `Var' has a zero coefficient.
     %
 :- pred normalize_vector(lp_var::in, map(lp_var, coefficient)::in,
     constant::in, map(lp_var, coefficient)::out, constant::out) is det.
@@ -2034,7 +2040,7 @@ normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
         ),
         DivVal = rat.abs(Coefficient),
         !:Terms = map.map_values((func(_, C) = C / DivVal), !.Terms),
-        !:Constant = !.Constant / DivVal 
+        !:Constant = !.Constant / DivVal
     ;
         % In this case the the coefficient of the variable was zero
         % (implicit in the fact that it is not in the map).
@@ -2060,8 +2066,8 @@ normalize_constraint(Var, Constraint0, Constraint) :-
           else  true
         ),
         Terms = list.map((func(V - C) = V - (C / Coefficient)), Terms0),
-        Constant = Constant0 / Coefficient, 
-        ( if    Coefficient < zero 
+        Constant = Constant0 / Coefficient,
+        ( if    Coefficient < zero
           then  Op = negate_operator(Op0)
           else  Op = Op0
         )
@@ -2071,9 +2077,9 @@ normalize_constraint(Var, Constraint0, Constraint) :-
         Terms    = Terms0,
         Op       = Op0,
         Constant = Constant0
-    ),           
+    ),
     Constraint = lp_rational.unchecked_constraint(Terms, Op, Constant).
-        
+
 :- pred add_vectors(map(lp_var, coefficient)::in, constant::in,
     map(lp_var, coefficient)::in, constant::in,
     map(lp_var, coefficient)::out, constant::out) is det.
@@ -2096,7 +2102,7 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
     solutions.aggregate(IsMapKey, AddVal, TermsB, Terms).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Redundancy checking using the linear solver
 %
 
@@ -2104,10 +2110,10 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
     % XXX It would be preferable not to use this as it can be very slow.
     %
 remove_some_entailed_constraints(Varset, Constraints0, Constraints) :-
-    remove_some_entailed_constraints_2(Varset, Constraints0, [], 
+    remove_some_entailed_constraints_2(Varset, Constraints0, [],
         Constraints).
 
-:- pred remove_some_entailed_constraints_2(lp_varset::in, constraints::in, 
+:- pred remove_some_entailed_constraints_2(lp_varset::in, constraints::in,
     constraints::in, constraints::out) is semidet.
 
 remove_some_entailed_constraints_2(_, [], !Constraints).
@@ -2119,7 +2125,7 @@ remove_some_entailed_constraints_2(Varset, [E, X | Es], !Constraints) :-
     ;
         RestOfMatrix = [ X | Es ] ++ !.Constraints,
         Result = entailed(Varset, RestOfMatrix, E),
-        ( 
+        (
             Result = entailed
         ;
             Result = not_entailed,
@@ -2135,17 +2141,17 @@ remove_some_entailed_constraints_2(Varset, [E, X | Es], !Constraints) :-
 
 restore_equalities([], []).
 restore_equalities([E0 | Es0], [E | Es])  :-
-    ( if    check_for_equalities(E0, Es0, [], E1, Es1) 
-      then  E = E1, Es2 = Es1   
+    ( if    check_for_equalities(E0, Es0, [], E1, Es1)
+      then  E = E1, Es2 = Es1
       else  Es2 = Es0, E = E0
     ),
     restore_equalities(Es2, Es).
 
-:- pred check_for_equalities(constraint::in, constraints::in, constraints::in, 
+:- pred check_for_equalities(constraint::in, constraints::in, constraints::in,
     constraint::out, constraints::out) is semidet.
 
 check_for_equalities(Eqn0, [Eqn | Eqns], SoFar, NewEqn, NewEqnSet) :-
-    ( 
+    (
         opposing_inequalities(Eqn0 @ lte(Coeffs, Constant), Eqn)
     ->
         NewEqn = standardize_constraint(eq(Coeffs, Constant)),
@@ -2155,20 +2161,20 @@ check_for_equalities(Eqn0, [Eqn | Eqns], SoFar, NewEqn, NewEqnSet) :-
     ).
 
     % Checks if a pair of constraints are inequalities of the form:
-    %    
+    %
     %   -ax1 - ax2 - ... - axN  =< -C
     %    ax1 + ax2 + ... + axN  =<  C
-    % 
+    %
     % These can be converted into the equality:
     %
-    %   ax1 + ... + axN = C     
+    %   ax1 + ... + axN = C
     %
     % NOTE: we don't check for gte constraints because these should
-    % have been transformed away when we converted to standard form. 
+    % have been transformed away when we converted to standard form.
     %
 :- pred opposing_inequalities(constraint::in, constraint::in) is semidet.
 
-opposing_inequalities(lte(TermsA, Const), lte(TermsB, -Const)) :- 
+opposing_inequalities(lte(TermsA, Const), lte(TermsB, -Const)) :-
     TermsB = list.map((func(V - X) = V - (-X)), TermsA).
 
 %-----------------------------------------------------------------------------%
@@ -2176,49 +2182,53 @@ opposing_inequalities(lte(TermsA, Const), lte(TermsB, -Const)) :-
 %
 % Entailment test
 %
-    
+
 entailed(Varset, Constraints, lte(Objective, Constant)) = Result :-
-    SolverResult = lp_rational.solve(Constraints, max, Objective, Varset),  
-    ( 
-        SolverResult = satisfiable(MaxVal, _),
+    SolverResult = lp_rational.solve(Constraints, max, Objective, Varset),
+    (
+        SolverResult = lp_res_satisfiable(MaxVal, _),
         Result = ( if MaxVal =< Constant then entailed else not_entailed )
     ;
-        SolverResult = unbounded,
+        SolverResult = lp_res_unbounded,
         Result = not_entailed
     ;
-        SolverResult = inconsistent,
+        SolverResult = lp_res_inconsistent,
         Result = inconsistent
-    ).  
+    ).
 entailed(Varset, Constraints, eq(Objective, Constant)) = Result :-
     Result0 = entailed(Varset, Constraints, lte(Objective, Constant)),
-    ( Result0 = entailed ->
+    (
+        Result0 = entailed,
         Result  = entailed(Varset, Constraints, gte(Objective, Constant))
     ;
+        ( Result0 = not_entailed
+        ; Result0 = inconsistent
+        ),
         Result0 = Result
     ).
 entailed(Varset, Constraints, gte(Objective, Constant)) = Result :-
     SolverResult = lp_rational.solve(Constraints, min, Objective, Varset),
-    ( 
-        SolverResult = satisfiable(MinVal, _),
+    (
+        SolverResult = lp_res_satisfiable(MinVal, _),
         Result = ( if MinVal >= Constant then entailed else not_entailed )
     ;
-        SolverResult = unbounded,
+        SolverResult = lp_res_unbounded,
         Result = not_entailed
     ;
-        SolverResult = inconsistent,
+        SolverResult = lp_res_inconsistent,
         Result = inconsistent
-    ).  
+    ).
 
 entailed(Varset, Constraints, Constraint) :-
     Result = entailed(Varset, Constraints, Constraint),
-    ( 
+    (
         Result = entailed
     ;
         Result = inconsistent,
         unexpected(this_file, "entailed/3: inconsistent constraint set.")
     ;
         Result = not_entailed,
-        fail 
+        fail
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2258,16 +2268,16 @@ write_term(Varset, Var - Coefficient, !IO) :-
     io.write_string(" (", !IO),
     Num = abs(numer(Coefficient)),
     io.write_string(int_to_string(Num), !IO),
-    ( if    denom(Coefficient) \= 1 
+    ( if    denom(Coefficient) \= 1
       then  io.format("/%s", [s(int_to_string(denom(Coefficient)))], !IO)
-      else  true    
+      else  true
     ),
     io.write_char(')', !IO),
     io.write_string(varset.lookup_name(Varset, Var), !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Debugging predicates for writing out constraints. 
+% Debugging predicates for writing out constraints.
 %
 
 write_constraints(Constraints, Varset, !IO) :-
@@ -2275,18 +2285,18 @@ write_constraints(Constraints, Varset, !IO) :-
 
 :- pred write_constraint(lp_varset::in, constraint::in, io::di, io::uo) is det.
 
-write_constraint(Varset, Constr, !IO) :- 
+write_constraint(Varset, Constr, !IO) :-
     constraint(Constr, Coeffs, Operator, Constant),
     io.write_char('\t', !IO),
     list.foldl(write_constr_term(Varset), Coeffs, !IO),
     io.format("%s %s\n", [s(operator_to_string(Operator)),
-        s(rat.to_string(Constant))], !IO). 
+        s(rat.to_string(Constant))], !IO).
 
 :- pred write_constr_term(lp_varset::in, lp_term::in, io::di, io::uo) is det.
 
 write_constr_term(Varset, Var - Coeff, !IO) :-
     VarName = varset.lookup_name(Varset, Var),
-    io.format("%s%s ", [s(rat.to_string(Coeff)), s(VarName)], !IO). 
+    io.format("%s%s ", [s(rat.to_string(Coeff)), s(VarName)], !IO).
 
 :- func operator_to_string(operator) = string.
 
@@ -2306,7 +2316,12 @@ write_vars(Varset, Vars, !IO) :-
 write_vars_2(_, [], !IO).
 write_vars_2(Varset, [V | Vs], !IO) :-
     io.write_string(var_to_string(Varset, V), !IO),
-    ( if Vs = [] then true else io.write_string(", ", !IO)),
+    (
+        Vs = []
+    ;
+        Vs = [_ | _],
+        io.write_string(", ", !IO)
+    ),
     write_vars_2(Varset, Vs, !IO).
 
 :- func var_to_string(lp_varset, lp_var) = string.
@@ -2317,7 +2332,7 @@ var_to_string(Varset, Var) = varset.lookup_name(Varset, Var, "Unnamed").
     % `Labels' is `yes' then write out the label for each vector
     % as well.
     %
-:- pred write_matrix(lp_varset::in, bool::in, matrix::in, io::di, io::uo) 
+:- pred write_matrix(lp_varset::in, bool::in, matrix::in, io::di, io::uo)
     is det.
 
 write_matrix(Varset, Labels, Matrix, !IO) :-
@@ -2343,7 +2358,7 @@ write_vector(Varset, _WriteLabels, vector(_Label, Terms0, Constant), !IO) :-
 output_constraints(OutputVar, Constraints, !IO) :-
     io.write_char('[', !IO),
     io.write_list(Constraints, ", ", output_constraint(OutputVar), !IO),
-    io.write_char(']', !IO).    
+    io.write_char(']', !IO).
 
 :- pred output_constraint(output_var::in, constraint::in,
     io::di, io::uo) is det.
@@ -2356,7 +2371,7 @@ output_constraint(OutputVar, eq(Terms, Constant), !IO) :-
     output_constraint_2(OutputVar, Terms, Constant, !IO).
 output_constraint(_, gte(_,_), _, _) :-
     unexpected(this_file, "output_constraint/3: gte encountered.").
-    
+
 :- pred output_constraint_2(output_var::in, lp_terms::in,
     constant::in, io::di, io::uo) is det.
 

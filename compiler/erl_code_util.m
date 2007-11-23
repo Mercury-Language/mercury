@@ -350,24 +350,28 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
             VarNames1, ArgTypes1, ArgModes1, Inputs1, Outputs1),
         (
             OptDummyArgs = opt_dummy_args,
+            % Exclude arguments of type io.state etc.
+            % Also exclude those with arg_mode `top_unused'.
             ( is_dummy_argument_type(ModuleInfo, ArgType)
             ; ArgMode = top_unused
             )
         ->
-            % Exclude arguments of type io.state etc.
-            % Also exclude those with arg_mode `top_unused'.
             Inputs = Inputs1,
             Outputs = Outputs1
         ;
-            ArgMode = top_in
-        ->
-            % It's an input argument.
-            Inputs = [VarName | Inputs1],
-            Outputs = Outputs1
-        ;
-            % It's an output argument.
-            Inputs = Inputs1,
-            Outputs = [VarName | Outputs1]
+            (
+                ArgMode = top_in,
+                % It's an input argument.
+                Inputs = [VarName | Inputs1],
+                Outputs = Outputs1
+            ;
+                ( ArgMode = top_out
+                ; ArgMode = top_unused
+                ),
+                % It's an output argument.
+                Inputs = Inputs1,
+                Outputs = [VarName | Outputs1]
+            )
         )
     ;
         unexpected(this_file, "erl_gen_arg_list_arg_modes: length mismatch")

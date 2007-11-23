@@ -1258,6 +1258,9 @@
     % they will be the most commonly used and therefore we want them to
     % get the primary tags on a 32-bit machine.
 
+    ;       tuple_type(list(mer_type), kind)
+            % Tuple types.
+
     ;       higher_order_type(
                 % A type for higher-order values. If the second argument
                 % is yes(T) then the values are functions returning T,
@@ -1268,9 +1271,6 @@
                 purity,
                 lambda_eval_method
             )
-
-    ;       tuple_type(list(mer_type), kind)
-            % Tuple types.
 
     ;       apply_n_type(tvar, list(mer_type), kind)
             % An apply/N expression.  `apply_n(V, [T1, ...], K)'
@@ -2135,9 +2135,14 @@ det_conjunction_detism(DetismA, DetismB, Detism) :-
     % the determinism of the first goal.
 
     determinism_components(DetismA, CanFailA, MaxSolnA),
-    ( MaxSolnA = at_most_zero ->
+    (
+        MaxSolnA = at_most_zero,
         Detism = DetismA
     ;
+        ( MaxSolnA = at_most_one
+        ; MaxSolnA = at_most_many
+        ; MaxSolnA = at_most_many_cc
+        ),
         determinism_components(DetismB, CanFailB, MaxSolnB),
         det_conjunction_canfail(CanFailA, CanFailB, CanFail),
         det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),

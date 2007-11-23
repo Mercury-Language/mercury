@@ -417,13 +417,16 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             CallStrictness = specified(ArgMethods, HiddenArgMethod),
             MaybeSpecMethod = specified(ArgMethods, HiddenArgMethod)
         ),
-        ( EvalMethod = eval_minimal(_) ->
+        (
+            EvalMethod = eval_loop_check
+        ;
+            EvalMethod = eval_memo
+        ;
+            EvalMethod = eval_minimal(_),
             expect(unify(MaybeSizeLimit, no), this_file,
                 "eval_minimal with size limit"),
             expect(unify(MaybeSpecMethod, all_same(arg_value)), this_file,
                 "eval_minimal without all_strict")
-        ;
-            true
         )
     ),
     get_input_output_vars(HeadVars, ArgModes, !.ModuleInfo, MaybeSpecMethod, _,
@@ -456,7 +459,8 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeProcTableStructInfo = yes(ProcTableStructInfo)
     ;
         EvalMethod = eval_memo,
-        ( CodeModel = model_non ->
+        (
+            CodeModel = model_non,
             create_new_memo_non_goal(Detism, OrigGoal, Statistics,
                 MaybeSizeLimit, PredId, ProcId,
                 HeadVars, NumberedInputVars, NumberedOutputVars,
@@ -464,6 +468,9 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 CallTableTip, Goal, InputSteps, OutputSteps),
             MaybeOutputSteps = yes(OutputSteps)
         ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
             create_new_memo_goal(Detism, OrigGoal, Statistics, MaybeSizeLimit,
                 PredId, ProcId,
                 HeadVars, NumberedInputVars, NumberedOutputVars,
@@ -3058,9 +3065,13 @@ generate_new_table_var(Name, Type, !VarSet, !VarTypes, Var) :-
 table_generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo,
         Context, Goal) :-
     BuiltinModule = mercury_table_builtin_module,
-    ( Purity = purity_pure ->
+    (
+        Purity = purity_pure,
         Features0 = []
     ;
+        ( Purity = purity_semipure
+        ; Purity = purity_impure
+        ),
         Features0 = [feature_not_impure_for_determinism]
     ),
     ( Detism = detism_failure ->
@@ -3080,9 +3091,13 @@ table_generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo,
 
 table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
         Code, Purity, InstMapSrc, ModuleInfo, Context, Goal) :-
-    ( Purity = purity_pure ->
+    (
+        Purity = purity_pure,
         Features0 = []
     ;
+        ( Purity = purity_semipure
+        ; Purity = purity_impure
+        ),
         Features0 = [feature_not_impure_for_determinism]
     ),
     ( Detism = detism_failure ->

@@ -1177,9 +1177,13 @@ matching_constraints(constraint(_, Name, Types), constraint(_, Name, Types)).
 
 compare_hlds_constraints(constraint(_, NA, TA), constraint(_, NB, TB), R) :-
     compare(R0, NA, NB),
-    ( R0 = (=) ->
+    (
+        R0 = (=),
         compare(R, TA, TB)
     ;
+        ( R0 = (<)
+        ; R0 = (>)
+        ),
         R = R0
     ).
 

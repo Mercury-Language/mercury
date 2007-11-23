@@ -1,21 +1,21 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2006 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_constr_pass2.m.
 % Main author: juliensf.
-%  
+%
 % This module analyses a SCC of the call-graph and tries to prove that
 % it terminates.
 %
 % XXX This version is just a place-holder.  It attempts a very simple
-% proof method which is essentially what the existing termination analyser 
+% proof method which is essentially what the existing termination analyser
 % does.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_pass2.
@@ -37,11 +37,11 @@
     % pass2_options_init(MaxMatrixSize).
     % Initialise the pass2_options structure.  `MaxMatrixSize' specifies
     % the maximum number of constraints we allow a matrix to grow to
-    % before we abort and try other approximations. 
-    % 
+    % before we abort and try other approximations.
+    %
 :- func pass2_options_init(int) = pass2_options.
 
-:- pred prove_termination_in_scc(pass2_options::in, list(pred_proc_id)::in, 
+:- pred prove_termination_in_scc(pass2_options::in, list(pred_proc_id)::in,
     module_info::in, constr_termination_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -90,45 +90,45 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
 
     % Each edge in the call-graph represents a single call site.
     %
-:- type edge 
+:- type edge
     --->    edge(
                 head        :: abstract_ppid,
-                            % The procedure that is making the call. 
-                
+                            % The procedure that is making the call.
+
                 zeros       :: set(size_var),
                             % Variables in the procedure known to have
                             % zero size.
-                
+
                 head_args   :: size_vars,
-                            % The size_vars that correspond to the 
+                            % The size_vars that correspond to the
                             % variables in the head of the procedure.
-                
+
                 label       :: polyhedron,
                             % The constraints that occur between the
                             % head of the procedure and the call.
-                
-                callee      :: abstract_ppid, 
+
+                callee      :: abstract_ppid,
                             % The callee procedure.
-                
-                call_args   :: size_vars 
+
+                call_args   :: size_vars
                             % The size_vars that correspond to the
                             % variables in the procedure call.
             ).
 
 :- type edges == list(edge).
 
-:- type cycle 
+:- type cycle
     --->    cycle(
                 nodes       :: list(abstract_ppid),
-                            % A list of every procedure involved in 
+                            % A list of every procedure involved in
                             % this cycle.
-                
+
                 edges       :: list(edge)
                             % A list of edges involved in this cycle.
                             % Note: It is not ordered.  This allows
                             % us to decide (later) on where we want
                             % the cycle to start.
-            ). 
+            ).
 
 :- type cycles == list(cycle).
 
@@ -136,7 +136,7 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
     % call-graph where we have picked a starting vertex and travelled
     % around the cycle conjoining all the labels (constraints) as we go.
     %
-:- type cycle_set 
+:- type cycle_set
     --->    c_set(
                 start    :: abstract_ppid,
                 c_cycles :: list(edge)
@@ -144,7 +144,7 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
 
 %-----------------------------------------------------------------------------%
 
-prove_termination_in_scc(_, [], _, cannot_loop(analysis), !IO). 
+prove_termination_in_scc(_, [], _, cannot_loop(analysis), !IO).
 prove_termination_in_scc(Options, SCC0 @ [_|_], ModuleInfo, Result, !IO) :-
     AbstractSCC = get_abstract_scc(ModuleInfo, SCC0),
     % XXX Pass 1 should really set this up.
@@ -181,13 +181,13 @@ label_edges_in_scc(Procs, ModuleInfo, MaxMatrixSize) = Edges :-
             ProcEdges, yes, _),
         list.append(ProcEdges, !Edges)
     ),
-    list.foldl(FindEdges, Procs, [], Edges).        
+    list.foldl(FindEdges, Procs, [], Edges).
 
     % The four accumulators here are for:
     % (1) the number of calls seen so far
     % (2) the constraints so far
     % (3) the edges found
-    % (4) whether to abort or continue looking 
+    % (4) whether to abort or continue looking
     %
 :- pred find_edges_in_goal(abstract_proc::in, abstract_scc::in,
     module_info::in, int::in, abstract_goal::in, int::in, int::out,
@@ -195,16 +195,16 @@ label_edges_in_scc(Procs, ModuleInfo, MaxMatrixSize) = Edges :-
     bool::out) is det.
 
 find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
-        AbstractGoal, !Calls, !Polyhedron, !Edges, !Continue) :- 
+        AbstractGoal, !Calls, !Polyhedron, !Edges, !Continue) :-
     AbstractGoal = term_disj(Goals, _, Locals, _),
-    ( 
+    (
         !.Continue = yes,
         %
         % XXX We may be able to prove termination in more cases
         % if we pass in !.Polyhedron instead of
         % of polyhedron.universe ... although I don't think
         % it is a major concern at the moment.
-        %   
+        %
         find_edges_in_disj(Proc, AbstractSCC, ModuleInfo,
             MaxMatrixSize, polyhedron.universe, Goals, !Calls,
             [], DisjConstrs0, [], Edges1, !Continue),
@@ -216,8 +216,8 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
             DisjConstrs = polyhedron.project_all(Varset, Locals,
                 DisjConstrs0),
             Constrs2 = list.foldl(
-                polyhedron.convex_union(Varset, 
-                    yes(MaxMatrixSize)), DisjConstrs, 
+                polyhedron.convex_union(Varset,
+                    yes(MaxMatrixSize)), DisjConstrs,
                     polyhedron.empty),
             polyhedron.intersection(Constrs2, !Polyhedron)
         ;
@@ -228,13 +228,13 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
     ).
 
 find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
-        AbstractGoal, !Calls, !Polyhedron, !Edges, !Continue) :- 
+        AbstractGoal, !Calls, !Polyhedron, !Edges, !Continue) :-
     AbstractGoal = term_conj(Goals, Locals, _),
-    ( 
-        !.Continue = yes,   
+    (
+        !.Continue = yes,
         list.foldl4(find_edges_in_goal(Proc, AbstractSCC, ModuleInfo,
                 MaxMatrixSize),
-            Goals, !Calls, !Polyhedron, !Edges, !Continue), 
+            Goals, !Calls, !Polyhedron, !Edges, !Continue),
         (
             !.Continue = yes,
                 polyhedron.project(Locals, Proc ^ varset, !Polyhedron)
@@ -245,17 +245,17 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
         !.Continue = no
     ).
 
-find_edges_in_goal(Proc, _AbstractSCC, ModuleInfo, _, 
+find_edges_in_goal(Proc, _AbstractSCC, ModuleInfo, _,
         term_call(CallPPId0, _, CallVars, ZeroVars, _, _, _),
-        !Calls, !Polyhedron, !Edges, !Continue) :- 
+        !Calls, !Polyhedron, !Edges, !Continue) :-
     %
     % Having found a call we now need to construct a label for that
     % edge and then continue looking for more edges.
-    % 
-    Edge = edge(Proc ^ ppid, Proc ^ zeros, Proc ^ head_vars, !.Polyhedron, 
+    %
+    Edge = edge(Proc ^ ppid, Proc ^ zeros, Proc ^ head_vars, !.Polyhedron,
         CallPPId0, CallVars),
     list.cons(Edge, !Edges),
-    %   
+    %
     % Update the call count and maybe stop processing if that was
     % the last call.
     %
@@ -274,23 +274,26 @@ find_edges_in_goal(Proc, _AbstractSCC, ModuleInfo, _,
             CallProcInfo),
         proc_info_get_termination2_info(CallProcInfo, CallTermInfo),
         MaybeArgSizeInfo = CallTermInfo ^ success_constrs,
-        (   
+        (
             MaybeArgSizeInfo = no,
             unexpected(this_file, "Proc with no arg size info in pass 2.")
         ;
             MaybeArgSizeInfo = yes(ArgSizePolyhedron0),
             %
             % If the polyhedron is universe then
-            % there's no point running the substitution. 
+            % there's no point running the substitution.
             %
             ( polyhedron.is_universe(ArgSizePolyhedron0) ->
-                true  
+                true
             ;
-                MaybeCallProc = CallTermInfo ^ abstract_rep, 
-                ( if    MaybeCallProc = yes(CallProc0)
-                  then  CallProc = CallProc0
-                  else  unexpected(this_file, 
-                    "No abstract representation for proc.")
+                MaybeCallProc = CallTermInfo ^ abstract_rep,
+                (
+                    MaybeCallProc = yes(CallProc0),
+                    CallProc = CallProc0
+                ;
+                    MaybeCallProc = no,
+                    unexpected(this_file,
+                        "No abstract representation for proc.")
                 ),
                 HeadVars = CallProc ^ head_vars,
                 Subst = map.from_corresponding_lists(HeadVars, CallVars),
@@ -316,11 +319,11 @@ find_edges_in_goal(_, _, _, _, AbstractGoal, !Calls, !Polyhedron, !Edges,
 :- pred find_edges_in_disj(abstract_proc::in, abstract_scc::in, module_info::in,
     int::in, polyhedron::in, abstract_goals::in, int::in, int::out,
     polyhedra::in, polyhedra::out, edges::in, edges::out, bool::in,
-    bool::out) is det. 
+    bool::out) is det.
 
 find_edges_in_disj(_, _, _, _, _, [], !Calls, !DisjConstrs, !Edges, !Continue).
 find_edges_in_disj(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize, TopPoly,
-        [Disj | Disjs], !Calls, !DisjConstrs, !Edges, !Continue) :- 
+        [Disj | Disjs], !Calls, !DisjConstrs, !Edges, !Continue) :-
     find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize, Disj,
         !Calls, TopPoly, Constrs, !Edges, !Continue),
     list.cons(Constrs, !DisjConstrs),
@@ -334,7 +337,7 @@ find_edges_in_disj(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize, TopPoly,
         find_edges_in_disj(Proc, AbstractSCC, ModuleInfo,
             MaxMatrixSize, TopPoly, Disjs, !Calls, !DisjConstrs,
             !Edges, !Continue)
-    ;   
+    ;
         !.Continue = no
     ).
 
@@ -355,9 +358,9 @@ fix_edges(Poly, Edge0) = Edge :-
 
 :- func find_elementary_cycles_in_scc(list(abstract_ppid), edges) = cycles.
 
-find_elementary_cycles_in_scc(SCC, Edges0) = Cycles :- 
-    % 
-    % Get any self-loops for each procedure. 
+find_elementary_cycles_in_scc(SCC, Edges0) = Cycles :-
+    %
+    % Get any self-loops for each procedure.
     %
     list.filter_map(direct_call, Edges0, Cycles0, Edges),
     %
@@ -367,7 +370,7 @@ find_elementary_cycles_in_scc(SCC, Edges0) = Cycles :-
     Cycles = Cycles0 ++ Cycles1.
 
     % Succeeds iff Edge is an edge that represents
-    % a directly recursive call (a self-loop in 
+    % a directly recursive call (a self-loop in
     % the pseudograph)
     %
 :- pred direct_call(edge::in, cycle::out) is semidet.
@@ -378,9 +381,9 @@ direct_call(Edge, Cycle) :-
 
 :- func find_cycles(list(abstract_ppid), edges) = cycles.
 
-find_cycles(SCC, Edges) = Cycles :- 
+find_cycles(SCC, Edges) = Cycles :-
     EdgeMap = partition_edges(SCC, Edges),
-    Cycles = search_for_cycles(SCC, EdgeMap). 
+    Cycles = search_for_cycles(SCC, EdgeMap).
 
     % Builds a map from `pred_proc_id' to a list of the edges that begin
     % with the `pred_proc_id.
@@ -388,13 +391,13 @@ find_cycles(SCC, Edges) = Cycles :-
 :- func partition_edges(list(abstract_ppid), edges) = map(abstract_ppid, edges).
 
 partition_edges([], _) = map.init.
-partition_edges([ProcId | SCC], Edges0) = Map :- 
-    Map0 = partition_edges(SCC, Edges0), 
+partition_edges([ProcId | SCC], Edges0) = Map :-
+    Map0 = partition_edges(SCC, Edges0),
     Edges = list.filter((pred(Edge::in) is semidet :- ProcId = Edge ^ head),
-        Edges0), 
-    Map = map.det_insert(Map0, ProcId, Edges).  
+        Edges0),
+    Map = map.det_insert(Map0, ProcId, Edges).
 
-:- func search_for_cycles(list(abstract_ppid), map(abstract_ppid, edges)) 
+:- func search_for_cycles(list(abstract_ppid), map(abstract_ppid, edges))
     = cycles.
 
 search_for_cycles([], _) = [].
@@ -408,11 +411,11 @@ search_for_cycles([Start | Rest], Map0) = Cycles :-
 
 search_for_cycles_2(StartPPId, Map) = Cycles :-
     InitialEdges = Map ^ det_elem(StartPPId),
-    list.foldl(search_for_cycles_3(StartPPId, [], Map, []), InitialEdges, 
+    list.foldl(search_for_cycles_3(StartPPId, [], Map, []), InitialEdges,
         [], Cycles).
 
-:- pred search_for_cycles_3(abstract_ppid::in, edges::in, 
-    map(abstract_ppid, edges)::in, list(abstract_ppid)::in, edge::in, 
+:- pred search_for_cycles_3(abstract_ppid::in, edges::in,
+    map(abstract_ppid, edges)::in, list(abstract_ppid)::in, edge::in,
     cycles::in, cycles::out) is det.
 
 search_for_cycles_3(Start, SoFar, Map, Visited, Edge, !Cycles) :-
@@ -445,10 +448,13 @@ partition_cycles([], _) = [].
 partition_cycles([Proc | Procs], Cycles0) = CycleSets :-
     list.filter(cycle_contains_proc(Proc), Cycles0, PCycles, Cycles1),
     CycleSets0 = partition_cycles(Procs, Cycles1),
-    PEdges = list.map(collapse_cycle(Proc), PCycles),   
-    ( if    PEdges    = []
-      then  CycleSets = CycleSets0
-      else  CycleSets = [c_set(Proc, PEdges) | CycleSets0]
+    PEdges = list.map(collapse_cycle(Proc), PCycles),
+    (
+        PEdges = [],
+        CycleSets = CycleSets0
+    ;
+        PEdges = [_ | _],
+        CycleSets = [c_set(Proc, PEdges) | CycleSets0]
     ).
 
 :- func get_proc_from_abstract_scc(list(abstract_proc), abstract_ppid)
@@ -456,7 +462,7 @@ partition_cycles([Proc | Procs], Cycles0) = CycleSets :-
 
 get_proc_from_abstract_scc([], _) = _ :-
     unexpected(this_file, "Cannot find proc.").
-get_proc_from_abstract_scc([ Proc | Procs ], PPId) = 
+get_proc_from_abstract_scc([ Proc | Procs ], PPId) =
     ( Proc ^ ppid = PPId ->
         Proc
     ;
@@ -464,12 +470,12 @@ get_proc_from_abstract_scc([ Proc | Procs ], PPId) =
     ).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Termination checking.
 %
 
 % This approach is very crude.  It just checks that the sum of all
-% the non-zero arguments is decreasing around all the elementary cycles.  
+% the non-zero arguments is decreasing around all the elementary cycles.
 
 :- pred prove_termination(list(cycle_set)::in, abstract_scc::in,
     size_varset::in, constr_termination_info::out) is det.
@@ -477,14 +483,14 @@ get_proc_from_abstract_scc([ Proc | Procs ], PPId) =
 prove_termination(Cycles, AbstractSCC, Varset, Result) :-
     ( total_sum_decrease(AbstractSCC, Varset, Cycles) ->
         Result = cannot_loop(analysis)
-    ; 
+    ;
         % NOTE: the context here will never be used, in any
         % case it's not clear what it should be.
         Error = term.context_init - cond_not_satisfied,
         Result = can_loop([Error])
     ).
 
-:- pred total_sum_decrease(abstract_scc::in, size_varset::in, 
+:- pred total_sum_decrease(abstract_scc::in, size_varset::in,
     list(cycle_set)::in) is semidet.
 
 total_sum_decrease(_, _, []).
@@ -499,7 +505,7 @@ total_sum_decrease_2(_, _, _, []).
 total_sum_decrease_2(AbstractSCC, Varset, PPId, Loops @ [_|_]) :-
     all [Loop] (
         list.member(Loop, Loops)
-    => 
+    =>
         strict_decrease_around_loop(AbstractSCC, Varset, PPId, Loop)
     ).
 
@@ -514,7 +520,7 @@ strict_decrease_around_loop(AbstractSCC, Varset, PPId, Loop) :-
       then  unexpected(this_file, "Badly formed loop.")
       else  true
     ),
-    IsActive = (func(Var::in, Input::in) = (Var::out) is semidet :- 
+    IsActive = (func(Var::in, Input::in) = (Var::out) is semidet :-
         Input = yes
     ),
     Proc = get_proc_from_abstract_scc(AbstractSCC, PPId),
@@ -535,12 +541,13 @@ strict_decrease_around_loop(AbstractSCC, Varset, PPId, Loop) :-
     entailed(Varset, Label, Condition).
 
 :- pred cycle_contains_proc(abstract_ppid::in, cycle::in) is semidet.
- 
+
 cycle_contains_proc(PPId, cycle(Nodes, _)) :- list.member(PPId, Nodes).
-    
+
     % XXX Fix this name.
+    %
 :- func make_coeffs(size_vars, rat) = lp_terms.
- 
+
 make_coeffs(Vars, Coeff) = list.map((func(Var) = Var - Coeff), Vars).
 
 %-----------------------------------------------------------------------------%
@@ -552,36 +559,40 @@ make_coeffs(Vars, Coeff) = list.map((func(Var) = Var - Coeff), Vars).
 
 collapse_cycles(Start, Cycles) = list.map(collapse_cycle(Start), Cycles).
 
-:- func collapse_cycle(abstract_ppid, cycle) = edge. 
+:- func collapse_cycle(abstract_ppid, cycle) = edge.
 
 collapse_cycle(_, cycle(_, [])) = _ :-
     unexpected(this_file, "Trying to collapse a cycle with no edges.").
-collapse_cycle(_, cycle(_, [Edge])) = Edge. 
+collapse_cycle(_, cycle(_, [Edge])) = Edge.
 collapse_cycle(StartPPId, cycle(_, Edges0 @ [_,_|_])) = CollapsedCycle :-
     order_nodes(StartPPId, Edges0, Edges),
-    ( if    Edges = [StartEdge0 | Rest0] 
-      then  StartEdge = StartEdge0, Rest = Rest0
-      else  unexpected(this_file, "Error while collapsing cycles.")
+    (
+        Edges = [StartEdge0 | Rest0],
+        StartEdge = StartEdge0,
+        Rest = Rest0
+    ;
+        Edges = [],
+        unexpected(this_file, "Error while collapsing cycles.")
     ),
     StartEdge = edge(_, Zeros0, HeadVars, Polyhedron0, _, CallVars0),
-    collapse_cycle_2(Rest, Zeros0, Zeros, CallVars0, CallVars, Polyhedron0, 
+    collapse_cycle_2(Rest, Zeros0, Zeros, CallVars0, CallVars, Polyhedron0,
         Polyhedron),
-    CollapsedCycle = edge(StartPPId, Zeros, HeadVars, Polyhedron, 
+    CollapsedCycle = edge(StartPPId, Zeros, HeadVars, Polyhedron,
         StartPPId, CallVars).
 
-:- pred collapse_cycle_2(edges::in, zero_vars::in, zero_vars::out, 
+:- pred collapse_cycle_2(edges::in, zero_vars::in, zero_vars::out,
     size_vars::in, size_vars::out, polyhedron::in, polyhedron::out) is det.
 
-collapse_cycle_2([], !Zeros, !CallVars, !Polyhedron). 
+collapse_cycle_2([], !Zeros, !CallVars, !Polyhedron).
 collapse_cycle_2([Edge | Edges], !Zeros, !CallVars, !Polyhedron) :-
     set.union(Edge ^ zeros, !Zeros),
     HeadVars = Edge ^ head_args,
     Subst0 = assoc_list.from_corresponding_lists(HeadVars, !.CallVars),
     bimap.set_from_assoc_list(Subst0, bimap.init, Subst),
     %
-    % We now need to substitute variables from the call to *this* 
-    % predicate for head variables in both the constraints from the 
-    % body of the predicate and also into the variables in the 
+    % We now need to substitute variables from the call to *this*
+    % predicate for head variables in both the constraints from the
+    % body of the predicate and also into the variables in the
     % calls to the next predicate.
     %
     % While it might be easier to put equality constraints
@@ -599,7 +610,7 @@ collapse_cycle_2([Edge | Edges], !Zeros, !CallVars, !Polyhedron) :-
     Constraints2 = list.map(subst_size_var_eqn(Subst), Constraints1),
     Constraints3 = Constraints0 ++ Constraints2,
     !:Polyhedron = polyhedron.from_constraints(Constraints3),
-    collapse_cycle_2(Edges, !Zeros, !CallVars, !Polyhedron).    
+    collapse_cycle_2(Edges, !Zeros, !CallVars, !Polyhedron).
 
 :- pred order_nodes(abstract_ppid::in, edges::in, edges::out) is det.
 
@@ -608,13 +619,13 @@ order_nodes(StartPPId, Edges0, [Edge | Edges]) :-
     Edge = EdgeMap ^ det_elem(StartPPId),
     order_nodes_2(StartPPId, Edge ^ callee, EdgeMap, Edges).
 
-:- pred order_nodes_2(abstract_ppid::in, abstract_ppid::in, 
+:- pred order_nodes_2(abstract_ppid::in, abstract_ppid::in,
     map(abstract_ppid, edge)::in, edges::out) is det.
 
 order_nodes_2(StartPPId, CurrPPId, Map, Edges) :-
     ( if    StartPPId = CurrPPId
       then  Edges = []
-      else  
+      else
             Edge = Map ^ det_elem(CurrPPId),
             order_nodes_2(StartPPId, Edge ^ callee, Map, Edges0),
             Edges = [Edge | Edges0]
@@ -623,7 +634,7 @@ order_nodes_2(StartPPId, CurrPPId, Map, Edges) :-
 :- func build_edge_map(edges) = map(abstract_ppid, edge).
 
 build_edge_map([]) = map.init.
-build_edge_map([Edge | Edges]) = 
+build_edge_map([Edge | Edges]) =
     map.det_insert(build_edge_map(Edges), Edge ^ head, Edge).
 
 :- func subst_size_var_eqn(bimap(size_var, size_var), constraint)
@@ -634,36 +645,36 @@ subst_size_var_eqn(Map, Eqn0) = Eqn :-
     Coeffs = list.map(subst_size_var_coeff(Map), Coeffs0),
     Eqn = constraint(Coeffs, Operator, Constant).
 
-:- func subst_size_var_coeff(bimap(size_var, size_var), lp_term) = lp_term. 
+:- func subst_size_var_coeff(bimap(size_var, size_var), lp_term) = lp_term.
 
 subst_size_var_coeff(Map, Var0 - Coeff) = Var - Coeff :-
     Var = subst_size_var(Map, Var0).
 
 :- func subst_size_var(bimap(size_var, size_var), size_var) = size_var.
 
-subst_size_var(Map, Old) = (if bimap.search(Map, Old, New) then New else Old).  
+subst_size_var(Map, Old) = (if bimap.search(Map, Old, New) then New else Old).
 
 %-----------------------------------------------------------------------------%
 %
 % Predicates for printing out debugging traces.
 %
 
-:- pred write_cycles(cycles::in, module_info::in, size_varset::in, 
+:- pred write_cycles(cycles::in, module_info::in, size_varset::in,
     io::di, io::uo) is det.
 
 write_cycles([], _, _, !IO).
-write_cycles([Cycle | Cycles], ModuleInfo, Varset, !IO) :- 
+write_cycles([Cycle | Cycles], ModuleInfo, Varset, !IO) :-
     io.write_string("Cycle in SCC:\n", !IO),
-    write_cycle(Cycle ^ nodes, ModuleInfo, !IO), 
+    write_cycle(Cycle ^ nodes, ModuleInfo, !IO),
     io.write_list(Cycle ^ edges, "\n", write_edge(ModuleInfo, Varset), !IO),
     io.nl(!IO),
     write_cycles(Cycles, ModuleInfo, Varset, !IO).
 
-:- pred write_cycle(list(abstract_ppid)::in, module_info::in, io::di, io::uo) 
+:- pred write_cycle(list(abstract_ppid)::in, module_info::in, io::di, io::uo)
     is det.
 
 write_cycle([], _, !IO).
-write_cycle([ Proc | Procs ], ModuleInfo, !IO) :- 
+write_cycle([ Proc | Procs ], ModuleInfo, !IO) :-
     io.write_string("\t- ", !IO),
     Proc = real(PredProcId),
     hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
@@ -673,7 +684,7 @@ write_cycle([ Proc | Procs ], ModuleInfo, !IO) :-
 :- pred write_edge(module_info::in, size_varset::in, edge::in,
     io::di, io::uo) is det.
 
-write_edge(ModuleInfo, Varset, Edge, !IO) :- 
+write_edge(ModuleInfo, Varset, Edge, !IO) :-
     io.write_string("Edge is:\n\tHead: ", !IO),
     Edge ^ head = real(PredProcId),
     hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),

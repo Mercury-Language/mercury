@@ -1300,10 +1300,14 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo, !IO) :-
                 !AnalysisInfo, !IO),
             (
                 MaybeBestStatus = yes({_Call, Answer, AnalysisStatus}),
-                ( AnalysisStatus = invalid ->
+                (
+                    AnalysisStatus = invalid,
                     unexpected(this_file,
                         "invalid exception_analysis answer")
                 ;
+                    ( AnalysisStatus = optimal
+                    ; AnalysisStatus = suboptimal
+                    ),
                     Answer = exception_analysis_answer(ExceptionStatus)
                 )
             ;

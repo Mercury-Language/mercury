@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -362,7 +362,12 @@ maybe_write_trace(TracePred, NewLine, !IO) :-
     (
         Trace = yes,
         TracePred(!IO),
-        ( if NewLine = yes then io.nl(!IO) else true ),
+        (
+            NewLine = yes,
+            io.nl(!IO)
+        ;
+            NewLine = no
+        ),
         io.flush_output(!IO)
     ;
         Trace = no

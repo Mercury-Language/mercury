@@ -1031,13 +1031,13 @@
 :- typeclass io.binary_stream(T).
 :- instance  io.binary_stream(io.binary_input_stream).
 :- instance  io.binary_stream(io.binary_output_stream).
-    
+
     % Seek to an offset relative to Whence (documented above)
     % on a specified binary stream. Attempting to seek on a pipe
     % or tty results in implementation dependent behaviour.
     %
 :- pragma obsolete(io.seek_binary/5).
-:- pred io.seek_binary(T::in, io.whence::in, int::in, io::di, io::uo) 
+:- pred io.seek_binary(T::in, io.whence::in, int::in, io::di, io::uo)
     is det <= io.binary_stream(T).
 
     % Seek to an offset relative to Whence (documented above)
@@ -1055,7 +1055,7 @@
     int::in, io::di, io::uo) is det.
 
     % Returns the offset (in bytes) into the specified binary stream.
-    % 
+    %
     % NOTE: this predicate is deprecated; please use either
     %       io.binary_input_stream_offset or io.binary_output_stream_offset
     %       instead.
@@ -1809,7 +1809,7 @@
 :- pragma foreign_type("Erlang", io.stream, "").
 
     % A unique identifier for an I/O stream.
-    % 
+    %
 :- type io.stream_id == int.
 
 :- func io.get_stream_id(io.stream) = io.stream_id.
@@ -1931,7 +1931,7 @@ io.read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
             Result = ok
         ;
             Result = error(io_error(ErrMsg))
-        ) 
+        )
     ;
         NumBytes = 0,
         byte_in_range(!.Bitmap, Start)
@@ -2035,7 +2035,7 @@ io.read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
                 Res = ok
             ;
                 !:BMs = [!.BM | !.BMs],
-                
+
                 % Double the buffer size each time.
                 %
                 io.read_binary_file_as_bitmap_2(Stream, BufferSize * 2,
@@ -2183,7 +2183,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
             break;
         }
         if (char_code == 0) {
-            Res = -2; 
+            Res = -2;
             break;
         }
         if (char_code != (MR_UnsignedChar) char_code) {
@@ -2324,7 +2324,7 @@ io.read_file_as_string(Stream, Result, !IO) :-
             Result0 = error(Error),
             Result = error(String, Error)
         )
-    ;   
+    ;
         Result = error("", io_error("null character in input"))
     ).
 
@@ -2887,7 +2887,13 @@ io.file_modification_time(File, Result, !IO) :-
 
 io.file_type(FollowSymLinks, FileName, MaybeType, !IO) :-
     ( file_type_implemented ->
-        FollowSymLinksInt = (FollowSymLinks = yes -> 1 ; 0),
+        (
+            FollowSymLinks = yes,
+            FollowSymLinksInt = 1
+        ;
+            FollowSymLinks = no,
+            FollowSymLinksInt = 0
+        ),
         io.file_type_2(FollowSymLinksInt, FileName, MaybeType, !IO)
     ;
         MaybeType = error(io.make_io_error(
@@ -2896,7 +2902,8 @@ io.file_type(FollowSymLinks, FileName, MaybeType, !IO) :-
 
 :- pred file_type_implemented is semidet.
 
-file_type_implemented :- semidet_fail.
+file_type_implemented :-
+    semidet_fail.
 
 :- pragma foreign_proc("C",
     file_type_implemented,
@@ -2912,8 +2919,9 @@ file_type_implemented :- semidet_fail.
 :- pragma foreign_proc("C#",
     file_type_implemented,
     [will_not_call_mercury, promise_pure, thread_safe],
-    "SUCCESS_INDICATOR = true;"
-).
+"
+    SUCCESS_INDICATOR = true;
+").
 :- pragma foreign_proc("Java",
     file_type_implemented,
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -3405,7 +3413,8 @@ io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
             check_directory_accessibility_dotnet(FileName,
                 to_int(CheckRead), to_int(CheckWrite), Result, !IO)
         ;
-            ( CheckRead = yes ->
+            (
+                CheckRead = yes,
                 io.open_input(FileName, InputRes, !IO),
                 (
                     InputRes = ok(InputStream),
@@ -3416,6 +3425,7 @@ io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
                     CheckReadRes = error(InputError)
                 )
             ;
+                CheckRead = no,
                 CheckReadRes = ok
             ),
             (
@@ -3978,12 +3988,15 @@ io.read_into_array(Stream, !Array, !Pos, Size, !IO) :-
         true
     ;
         io.read_char(input_stream(Stream), CharResult, !IO),
-        ( CharResult = ok(Char) ->
+        (
+            CharResult = ok(Char),
             array.set(!.Array, !.Pos, Char, !:Array),
             !:Pos = !.Pos + 1,
             io.read_into_array(Stream, !Array, !Pos, Size, !IO)
         ;
-            true
+            CharResult = error(_)
+        ;
+            CharResult = eof
         )
     ).
 
@@ -4572,11 +4585,18 @@ io.read_binary(Result, !IO) :-
         % We've read the newline and the trailing full stop.
         % Now skip the newline after the full stop.
         io.read_char(input_stream(Stream), NewLineRes, !IO),
-        ( NewLineRes = error(Error) ->
+        (
+            NewLineRes = error(Error),
             Result = error(Error)
-        ; NewLineRes = ok('\n') ->
-            Result = ok(T)
         ;
+            NewLineRes = ok(NewLineChar),
+            ( NewLineChar = '\n' ->
+                Result = ok(T)
+            ;
+                Result = error(io_error("io.read_binary: missing newline"))
+            )
+        ;
+            NewLineRes = eof,
             Result = error(io_error("io.read_binary: missing newline"))
         )
     ;
@@ -5299,7 +5319,7 @@ io.report_stats(Selector, !IO) :-
 
 io.init_state(!IO) :-
     init_std_streams(!IO),
-    % 
+    %
     % In C grades the "current" streams are thread-local values, so can only be
     % set after the MR_Context has been initialised for the initial thread.
     %
@@ -6151,7 +6171,7 @@ MR_Unsigned mercury_current_text_input_index;
 MR_Unsigned mercury_current_text_output_index;
 MR_Unsigned mercury_current_binary_input_index;
 MR_Unsigned mercury_current_binary_output_index;
-  
+
 void
 mercury_init_io(void)
 {
@@ -6185,7 +6205,7 @@ mercury_init_io(void)
         */
         MR_file(mercury_stdin_binary) = stdin;
     }
-    
+
     MR_file(mercury_stdout_binary) = fdopen(dup(fileno(stdout)), ""wb"");
     if (MR_file(mercury_stdout_binary) == NULL) {
         MR_file(mercury_stdout_binary) = stdout;
@@ -6535,7 +6555,7 @@ count_nls_2(Bin, I, N) ->
 
 mercury_open_stream(FileName, Mode) ->
     ParentPid = self(),
-    Pid = spawn(fun() -> 
+    Pid = spawn(fun() ->
         % Raw streams can only be used by the process which opened it.
         mercury_start_file_server(ParentPid, FileName, Mode)
     end),
@@ -7242,7 +7262,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 %----------------------------------------------------------------------------%
 %
-% Input predicates 
+% Input predicates
 %
 
 io.read_char_code(input_stream(Stream), CharCode, !IO) :-
@@ -7494,7 +7514,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 io.write_bitmap(Bitmap, !IO) :-
     io.binary_output_stream(Stream, !IO),
     io.write_bitmap(Stream, Bitmap, !IO).
- 
+
 io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io.binary_output_stream(Stream, !IO),
     io.write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
@@ -7878,7 +7898,7 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
 io.write_bytes(binary_output_stream(Stream), Message, !IO) :-
     io.write_bytes_2(Stream, Message, !IO).
 
-:- pred io.write_bytes_2(io.stream::in, string::in, io::di, io::uo) is det. 
+:- pred io.write_bytes_2(io.stream::in, string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.write_bytes_2(Stream::in, Message::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
@@ -7887,7 +7907,7 @@ io.write_bytes(binary_output_stream(Stream), Message, !IO) :-
     mercury_print_binary_string(Stream, Message);
     MR_update_io(IO0, IO);
 ").
-   
+
 io.write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
     ( NumBytes = Bitmap ^ num_bytes ->
         io.do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
@@ -10269,7 +10289,8 @@ remove_file_recursively(FileName, Res, !IO) :-
     io.file_type(FollowSymLinks, FileName, ResFileType, !IO),
     (
         ResFileType = ok(FileType),
-        ( FileType = directory ->
+        (
+            FileType = directory,
             dir.foldl2(remove_directory_entry, FileName, ok, Res0, !IO),
             (
                 Res0 = ok(MaybeError),
@@ -10285,6 +10306,17 @@ remove_file_recursively(FileName, Res, !IO) :-
                 Res = error(Error)
             )
         ;
+            ( FileType = regular_file
+            ; FileType = symbolic_link
+            ; FileType = named_pipe
+            ; FileType = socket
+            ; FileType = character_device
+            ; FileType = block_device
+            ; FileType = message_queue
+            ; FileType = semaphore
+            ; FileType = shared_memory
+            ; FileType = unknown
+            ),
             io.remove_file(FileName, Res, !IO)
         )
     ;
@@ -10732,7 +10764,7 @@ io.result_to_stream_result(error(Error)) = error(Error).
         io.read_byte(Stream, Result0, !IO),
         Result = io.result_to_stream_result(Result0)
     )
-]. 
+].
 
 :- instance stream.bulk_reader(io.binary_input_stream, int,
         bitmap, io, io.error)
@@ -10758,7 +10790,7 @@ io.result_to_stream_result(error(Error)) = error(Error).
         Whence = stream_whence_to_io_whence(Whence0),
         io.seek_binary_input(Stream, Whence, OffSet, !IO)
     )
-].    
+].
 
 :- func stream_whence_to_io_whence(stream.whence) = io.whence.
 
@@ -10816,7 +10848,7 @@ io.res_to_stream_res(error(E)) = error(E).
         Whence = stream_whence_to_io_whence(Whence0),
         io.seek_binary_output(Stream, Whence, OffSet, !IO)
     )
-].    
+].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

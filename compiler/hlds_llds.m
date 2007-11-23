@@ -428,9 +428,14 @@ goal_info_get_resume_point(GoalInfo, ResumePoint) :-
 goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
-        ( MaybeNeed = need_call(NeedAtCall) ->
+        (
+            MaybeNeed = need_call(NeedAtCall),
             MaybeNeedAtCall = yes(NeedAtCall)
         ;
+            ( MaybeNeed = need_resume(_)
+            ; MaybeNeed = need_par_conj(_)
+            ; MaybeNeed = no_need
+            ),
             MaybeNeedAtCall = no
         )
     ;
@@ -440,9 +445,14 @@ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
 goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
-        ( MaybeNeed = need_resume(NeedInResume) ->
+        (
+            MaybeNeed = need_resume(NeedInResume),
             MaybeNeedInResume = yes(NeedInResume)
         ;
+            ( MaybeNeed = need_call(_)
+            ; MaybeNeed = need_par_conj(_)
+            ; MaybeNeed = no_need
+            ),
             MaybeNeedInResume = no
         )
     ;
@@ -452,9 +462,14 @@ goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
 goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
-        ( MaybeNeed = need_par_conj(NeedInParConj) ->
+        (
+            MaybeNeed = need_par_conj(NeedInParConj),
             MaybeNeedInParConj = yes(NeedInParConj)
         ;
+            ( MaybeNeed = need_call(_)
+            ; MaybeNeed = need_resume(_)
+            ; MaybeNeed = no_need
+            ),
             MaybeNeedInParConj = no
         )
     ;

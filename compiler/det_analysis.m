@@ -699,13 +699,22 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
     ;
         Context = goal_info_get_context(GoalInfo),
         determinism_components(Detism, CanFail, MaxSoln),
-        ( CanFail \= cannot_fail ->
+        (
+            CanFail = can_fail,
             First = "Error: parallel conjunct may fail."
-        ; MaxSoln = at_most_many ->
-            First = "Error: parallel conjunct may have multiple solutions."
         ;
-            unexpected(this_file,
-                "strange determinism error for parallel conjunction")
+            CanFail = cannot_fail,
+            (
+                MaxSoln = at_most_many,
+                First = "Error: parallel conjunct may have multiple solutions."
+            ;
+                ( MaxSoln = at_most_zero
+                ; MaxSoln = at_most_one
+                ; MaxSoln = at_most_many_cc
+                ),
+                unexpected(this_file,
+                    "strange determinism error for parallel conjunction")
+            )
         ),
         Rest = "The current implementation supports only "
             ++ "single-solution non-failing parallel conjunctions.",
@@ -1052,11 +1061,15 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         ;
             true
         ),
-        ( PragmaCode = fc_impl_model_non(_, _, _, _, _, _, _, _, _) ->
+        (
+            PragmaCode = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
             % Foreign_procs codes of this form can have more than one
             % solution.
             NumSolns1 = at_most_many
         ;
+            ( PragmaCode = fc_impl_ordinary(_, _)
+            ; PragmaCode = fc_impl_import(_, _, _, _)
+            ),
             NumSolns1 = NumSolns0
         ),
         (
@@ -1161,11 +1174,15 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
             unexpected(this_file, "can_fail assign")
         ;
             Unify = complicated_unify(_, _, _),
-            ( RHS = rhs_var(RHSVar) ->
+            (
+                RHS = rhs_var(RHSVar),
                 FailingContext = failing_context(Context,
                     test_goal(LHS, RHSVar)),
                 GoalFailingContexts = [FailingContext]
             ;
+                ( RHS = rhs_functor(_, _, _)
+                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+                ),
                 unexpected(this_file, "complicated_unify but no var")
             )
         ;
@@ -1231,25 +1248,34 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
     determinism_components(ElseDetism, ElseCanFail, ElseMaxSoln),
 
     % Finally combine the results from the three parts.
-    ( CondCanFail = cannot_fail ->
+    (
+        CondCanFail = cannot_fail,
         % A -> B ; C is equivalent to A, B if A cannot fail
         det_conjunction_detism(CondDetism, ThenDetism, Detism)
-    ; CondMaxSoln = at_most_zero ->
-        % A -> B ; C is equivalent to ~A, C if A cannot succeed
-        det_negation_det(CondDetism, MaybeNegDetism),
-        (
-            MaybeNegDetism = no,
-            unexpected(this_file,
-                "cannot find determinism of negated condition")
-        ;
-            MaybeNegDetism = yes(NegDetism)
-        ),
-        det_conjunction_detism(NegDetism, ElseDetism, Detism)
     ;
-        det_conjunction_maxsoln(CondMaxSoln, ThenMaxSoln, CTMaxSoln),
-        det_switch_maxsoln(CTMaxSoln, ElseMaxSoln, MaxSoln),
-        det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
-        determinism_components(Detism, CanFail, MaxSoln)
+        CondCanFail = can_fail,
+        (
+            CondMaxSoln = at_most_zero,
+            % A -> B ; C is equivalent to ~A, C if A cannot succeed
+            det_negation_det(CondDetism, MaybeNegDetism),
+            (
+                MaybeNegDetism = no,
+                unexpected(this_file,
+                    "cannot find determinism of negated condition")
+            ;
+                MaybeNegDetism = yes(NegDetism)
+            ),
+            det_conjunction_detism(NegDetism, ElseDetism, Detism)
+        ;
+            ( CondMaxSoln = at_most_one
+            ; CondMaxSoln = at_most_many
+            ; CondMaxSoln = at_most_many_cc
+            ),
+            det_conjunction_maxsoln(CondMaxSoln, ThenMaxSoln, CTMaxSoln),
+            det_switch_maxsoln(CTMaxSoln, ElseMaxSoln, MaxSoln),
+            det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
+            determinism_components(Detism, CanFail, MaxSoln)
+        )
     ),
     % Failing contexts in the condition are ignored, since they can't lead
     % to failure of the if-then-else as a whole without one or more failing
@@ -1562,7 +1588,8 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         map.lookup(VarTypes, Var, Type),
         det_type_has_user_defined_equality_pred(DetInfo, Type)
     ->
-        ( CanFail = can_fail ->
+        (
+            CanFail = can_fail,
             Context = goal_info_get_context(GoalInfo),
             proc_info_get_varset(ProcInfo, VarSet),
             (
@@ -1602,52 +1629,58 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     [always(Pieces0 ++ Pieces1),
                     verbose_only(VerbosePieces)])]),
             !:Specs = [Spec | !.Specs]
-        ; SolnContext = all_solns ->
-            Context = goal_info_get_context(GoalInfo),
-            proc_info_get_varset(ProcInfo, VarSet),
-            (
-                GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_string(VarSet, no, Var),
-                Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"),
-                    nl]
-            ;
-                GoalContext = ccuc_unify(UnifyContext),
-                unify_context_first_to_pieces(yes, _, UnifyContext, [], Pieces0)
-            ),
-            (
-                Pieces0 = [],
-                ErrorMsg = "Error:"
-            ;
-                Pieces0 = [_ | _],
-                ErrorMsg = "error:"
-            ),
-            Pieces1 = [words(ErrorMsg),
-                words("unification for non-canonical type"),
-                top_ctor_of_type(Type),
-                words("occurs in a context which requires all solutions."),
-                nl],
-            VerbosePieces = [words("Since the type has a user-defined"),
-                words("equality predicate, I must presume that"),
-                words("there is more than one possible concrete"),
-                words("representation for each abstract value"),
-                words("of this type. The results of this unification"),
-                words("might depend on the choice of concrete"),
-                words("representation. Finding all possible"),
-                words("solutions to this unification would require"),
-                words("backtracking over all possible"),
-                words("representations, but I'm not going to do that"),
-                words("implicitly. (If that's really what you want,"),
-                words("you must do it explicitly.)")],
-            det_info_get_module_info(DetInfo, ModuleInfo),
-            ContextMsgs = failing_contexts_description(ModuleInfo, VarSet,
-                FailingContextsA ++ FailingContextsB),
-            Spec = error_spec(severity_error, phase_detism_check,
-                [simple_msg(Context,
-                    [always(Pieces0 ++ Pieces1), verbose_only(VerbosePieces)])]
-                ++ ContextMsgs),
-            !:Specs = [Spec | !.Specs]
         ;
-            true
+            CanFail = cannot_fail,
+            (
+                SolnContext = all_solns,
+                Context = goal_info_get_context(GoalInfo),
+                proc_info_get_varset(ProcInfo, VarSet),
+                (
+                    GoalContext = ccuc_switch,
+                    VarStr = mercury_var_to_string(VarSet, no, Var),
+                    Pieces0 = [words("In switch on variable"), quote(VarStr),
+                        suffix(":"), nl]
+                ;
+                    GoalContext = ccuc_unify(UnifyContext),
+                    unify_context_first_to_pieces(yes, _, UnifyContext, [],
+                        Pieces0)
+                ),
+                (
+                    Pieces0 = [],
+                    ErrorMsg = "Error:"
+                ;
+                    Pieces0 = [_ | _],
+                    ErrorMsg = "error:"
+                ),
+                Pieces1 = [words(ErrorMsg),
+                    words("unification for non-canonical type"),
+                    top_ctor_of_type(Type),
+                    words("occurs in a context which requires all solutions."),
+                    nl],
+                VerbosePieces = [words("Since the type has a user-defined"),
+                    words("equality predicate, I must presume that"),
+                    words("there is more than one possible concrete"),
+                    words("representation for each abstract value"),
+                    words("of this type. The results of this unification"),
+                    words("might depend on the choice of concrete"),
+                    words("representation. Finding all possible"),
+                    words("solutions to this unification would require"),
+                    words("backtracking over all possible"),
+                    words("representations, but I'm not going to do that"),
+                    words("implicitly. (If that's really what you want,"),
+                    words("you must do it explicitly.)")],
+                det_info_get_module_info(DetInfo, ModuleInfo),
+                ContextMsgs = failing_contexts_description(ModuleInfo, VarSet,
+                    FailingContextsA ++ FailingContextsB),
+                Spec = error_spec(severity_error, phase_detism_check,
+                    [simple_msg(Context,
+                        [always(Pieces0 ++ Pieces1),
+                        verbose_only(VerbosePieces)])]
+                    ++ ContextMsgs),
+                !:Specs = [Spec | !.Specs]
+            ;
+                SolnContext = first_soln
+            )
         ),
         (
             SolnContext = first_soln,

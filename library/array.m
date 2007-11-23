@@ -480,9 +480,13 @@ array_compare(Result, Array1, Array2) :-
     array.size(Array1, Size1),
     array.size(Array2, Size2),
     compare(SizeResult, Size1, Size2),
-    ( SizeResult = (=) ->
+    (
+        SizeResult = (=),
         array.compare_elements(0, Size1, Array1, Array2, Result)
     ;
+        ( SizeResult = (<)
+        ; SizeResult = (>)
+        ),
         Result = SizeResult
     ).
 
@@ -496,10 +500,14 @@ array.compare_elements(N, Size, Array1, Array2, Result) :-
         array.lookup(Array1, N, Elem1),
         array.lookup(Array2, N, Elem2),
         compare(ElemResult, Elem1, Elem2),
-        ( ElemResult = (=) ->
+        (
+            ElemResult = (=),
             N1 = N + 1,
             array.compare_elements(N1, Size, Array1, Array2, Result)
         ;
+            ( ElemResult = (<)
+            ; ElemResult = (>)
+            ),
             Result = ElemResult
         )
     ).

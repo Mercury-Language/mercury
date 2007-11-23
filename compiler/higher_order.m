@@ -576,8 +576,12 @@ traverse_goal_2(Goal0, Goal, !Info) :-
 traverse_goal_2(Goal0, Goal, !Info) :-
     % Check whether this call can be specialized.
     %
-    Goal0 = hlds_goal(plain_call(_, _, _, _, _, _), _),
-    maybe_specialize_call(Goal0, Goal, !Info).
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    GoalExpr0 = plain_call(_, _, _, _, _, _),
+    % XXX Due to the absence of alias tracking, assing Goal0 instead of Goal1
+    % would result in a mode error.
+    Goal1 = hlds_goal(GoalExpr0, GoalInfo0),
+    maybe_specialize_call(Goal1, Goal, !Info).
 
 traverse_goal_2(Goal0, Goal, !Info) :-
     % if-then-elses are handled as disjunctions.
@@ -1141,18 +1145,14 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     maybe_specialize_call(hlds_goal(GoalExpr1, GoalInfo),
         hlds_goal(GoalExpr, _), !Info).
 
-:- pred maybe_specialize_call(hlds_goal::in, hlds_goal::out,
+:- pred maybe_specialize_call(hlds_goal::in(plain_call), hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
 maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
     ModuleInfo0 = !.Info ^ global_info ^ module_info,
-    ( GoalExpr0 = plain_call(_, _, _, _, _, _) ->
-        GoalExpr0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
-            MaybeContext, _SymName0)
-    ;
-        unexpected(this_file, "maybe_specialize_call: expected call")
-    ),
+    GoalExpr0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
+        MaybeContext, _SymName0),
     module_info_pred_proc_info(ModuleInfo0, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo),
     module_info_get_globals(ModuleInfo0, Globals),
@@ -1732,22 +1732,23 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
             Match = Match1
         ;
             (
-                MaybeMatch0 = no
-            ->
+                MaybeMatch0 = no,
                 MaybeMatch2 = yes(Match1)
             ;
-                % Pick the best match.
                 MaybeMatch0 = yes(Match0),
-                Match0 = match(_, yes(NumMatches0), _, _),
-                Match1 = match(_, yes(NumMatches1), _, _)
-            ->
-                ( NumMatches0 > NumMatches1 ->
-                    MaybeMatch2 = MaybeMatch0
+                (
+                    % Pick the best match.
+                    Match0 = match(_, yes(NumMatches0), _, _),
+                    Match1 = match(_, yes(NumMatches1), _, _)
+                ->
+                    ( NumMatches0 > NumMatches1 ->
+                        MaybeMatch2 = MaybeMatch0
+                    ;
+                        MaybeMatch2 = yes(Match1)
+                    )
                 ;
-                    MaybeMatch2 = yes(Match1)
+                    unexpected(this_file, "search_for_version")
                 )
-            ;
-                unexpected(this_file, "search_for_version")
             ),
             search_for_version(Info, Params, ModuleInfo, Request,
                 Versions, MaybeMatch2, Match)
@@ -3180,11 +3181,18 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
-    ( ConstraintType = type_variable(ConstraintTVar, _) ->
+    (
+        ConstraintType = type_variable(ConstraintTVar, _),
         maybe_set_typeinfo_locn(ConstraintTVar,
             typeclass_info(Var, Index), !RttiVarMaps)
     ;
-        true
+        ( ConstraintType = defined_type(_, _, _)
+        ; ConstraintType = builtin_type(_)
+        ; ConstraintType = tuple_type(_, _)
+        ; ConstraintType = higher_order_type(_, _, _, _)
+        ; ConstraintType = apply_n_type(_, _, _)
+        ; ConstraintType = kinded_type(_, _)
+        )
     ).
 
 :- pred maybe_set_typeinfo_locn(tvar::in, type_info_locn::in,
@@ -3202,7 +3210,8 @@ maybe_set_typeinfo_locn(TVar, Locn, !RttiVarMaps) :-
 
 remove_const_higher_order_args(_, [], _, []).
 remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
-    ( HOArgs0 = [HOArg | HOArgs] ->
+    (
+        HOArgs0 = [HOArg | HOArgs],
         HOArg = higher_order_arg(_, HOIndex, _, _, _, _, _, IsConst),
         ( HOIndex = Index ->
             remove_const_higher_order_args(Index + 1, Args0, HOArgs, Args1),
@@ -3220,6 +3229,7 @@ remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
             unexpected(this_file, "remove_const_higher_order_args")
         )
     ;
+        HOArgs0 = [],
         Args = [Arg | Args0]
     ).
 
@@ -3299,15 +3309,16 @@ find_class_context(_, [_ | _], [], _, _, _) :-
 find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
         !.Univ, !.Exist, Constraints) :-
     (
-        VarInfo = typeclass_info_var(Constraint)
-    ->
+        VarInfo = typeclass_info_var(Constraint),
         ( mode_is_input(ModuleInfo, Mode) ->
             maybe_add_constraint(Constraint, !Univ)
         ;
             maybe_add_constraint(Constraint, !Exist)
         )
     ;
-        true
+        VarInfo = type_info_var(_)
+    ;
+        VarInfo = non_rtti_var
     ),
     find_class_context(ModuleInfo, VarInfos, Modes, !.Univ, !.Exist,
         Constraints).

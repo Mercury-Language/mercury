@@ -1,18 +1,18 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: cterm.m.
 % Author: zs.
-% 
+%
 % This module provides a mechanism for matching terms from the running program
 % against terms specified by debugger commands, which are implemented in C in
 % runtime/mercury_trace_term.[ch].
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module mdb.cterm.
@@ -86,7 +86,11 @@ match_with_cterm(Term, CTerm, Match) :-
 
 match_with_cterms(UnivArgs, CArgs, Match) :-
     ( cterm_head_tail(CArgs, CHead, CTail) ->
-        ( UnivArgs = [UnivHead | UnivTail] ->
+        (
+            UnivArgs = [],
+            Match = no
+        ;
+            UnivArgs = [UnivHead | UnivTail],
             Head = univ_value(UnivHead),
             match_with_cterm(Head, CHead, MatchHead),
             (
@@ -96,13 +100,13 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
                 MatchHead = yes,
                 match_with_cterms(UnivTail, CTail, Match)
             )
-        ;
-            Match = no
         )
     ;
-        ( UnivArgs = [] ->
+        (
+            UnivArgs = [],
             Match = yes
         ;
+            UnivArgs = [_ | _],
             Match = no
         )
     ).

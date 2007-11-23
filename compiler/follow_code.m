@@ -337,9 +337,14 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Detism0 = goal_info_get_determinism(GoalInfo0),
     determinism_components(Detism0, _CanFail0, MaxSolns0),
-    ( MaxSolns0 = at_most_zero ->
+    (
+        MaxSolns0 = at_most_zero,
         Goal = Goal0
     ;
+        ( MaxSolns0 = at_most_one
+        ; MaxSolns0 = at_most_many
+        ; MaxSolns0 = at_most_many_cc
+        ),
         check_follow_code_detism(FollowGoals, Detism0),
         ( GoalExpr0 = conj(plain_conj, GoalList0) ->
             list.append(GoalList0, FollowGoals, GoalList),

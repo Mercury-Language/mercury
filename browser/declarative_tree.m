@@ -512,33 +512,16 @@ contour_children(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
     det_trace_node_from_id(Store, NodeId, Node),
     (
-        (
-            Node = node_call(_, _, _, _, _, _, _, _, _, _)
-        ;
-            % A non-failed NEGE could be encountered when gathering
-            % the children of an exception node, since the exception
-            % may have been thrown inside the negation.
-            (
-                ContourType = normal,
-                Node = node_neg(_, _, _)
-            ;
-                ContourType = exception,
-                Node = node_neg(_, _, failed)
-            )
-        ;
-            Node = node_cond(_, _, failed)
-        )
-    ->
+        Node = node_call(_, _, _, _, _, _, _, _, _, _),
         throw(internal_error("contour_children_2",
             "unexpected start of contour"))
     ;
-        Node = node_exit(_, _, _, _, _, _, _, _)
-    ->
+        Node = node_exit(_, _, _, _, _, _, _, _),
         % Add a child for this node.
         Ns1 = [dynamic(NodeId) | Ns0]
     ;
-        Node = node_fail(_, CallId, _, _, _, _)
-    ->
+        Node = node_fail(_, CallId, _, _, _, _),
+
         % Fail events can be reached here if there were events missing
         % due to a parent being shallow traced. In this case, we can't tell
         % whether the call was in a negated context or backtracked over,
@@ -555,8 +538,8 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
         NestedStartId = Call ^ call_preceding,
         stratum_children(Store, NodeId, NestedStartId, Ns0, Ns1)
     ;
-        Node = node_neg_fail(Prec, NestedStartId, _)
-    ->
+        Node = node_neg_fail(Prec, NestedStartId, _),
+
         % There is a nested context.  Neg_fail events can be reached here
         % if there were events missing due to a parent being shallow traced.
         % In this case, we can't tell whether the call was in a negated context
@@ -566,13 +549,12 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
     ;
         ( Node = node_else(Prec, NestedStartId, _)
         ; Node = node_neg_succ(Prec, NestedStartId, _)
-        )
-    ->
+        ),
         % There is a nested context.
         stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
     ;
-        Node = node_excp(_, CallId, _, _, _, _, _)
-    ->
+        Node = node_excp(_, CallId, _, _, _, _, _),
+
         % If the contour ends in an exception, then add this exception
         % to the list of contour children and continue along the contour,
         % since in this case we are only interested in nodes that caused
@@ -593,6 +575,14 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
             stratum_children(Store, NodeId, NestedStartId, Ns0, Ns1)
         )
     ;
+        ( Node = node_redo(_, _, _, _, _)
+        ; Node = node_switch(_, _)
+        ; Node = node_first_disj(_, _)
+        ; Node = node_later_disj(_, _, _)
+        ; Node = node_then(_, _, _)
+        ),
+
+        % We skip neg_succ nodes for the same reason that we skip exit nodes
         % This handles the following cases: redo, switch, first_disj,
         % later_disj, and then. Also handles cond when the status is anything
         % other than failed.
@@ -603,6 +593,40 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
         % how much of it was backtracked over.
 
         Ns1 = Ns0
+    ;
+        Node = node_cond(_, _, CondStatus),
+        (
+            CondStatus = failed,
+            throw(internal_error("contour_children_2",
+                "unexpected start of contour"))
+        ;
+            ( CondStatus = succeeded
+            ; CondStatus = undecided
+            ),
+            Ns1 = Ns0
+        )
+    ;
+        Node = node_neg(_, _, NegStatus),
+        (
+            ContourType = normal,
+            throw(internal_error("contour_children_2",
+                "unexpected start of contour"))
+        ;
+            ContourType = exception,
+            (
+                NegStatus = failed,
+                throw(internal_error("contour_children_2",
+                    "unexpected start of contour"))
+            ;
+                ( NegStatus = succeeded
+                ; NegStatus = undecided
+                ),
+                % A non-failed NEGE could be encountered when gathering
+                % the children of an exception node, since the exception
+                % may have been thrown inside the negation.
+                Ns1 = Ns0
+            )
+        )
     ),
     Next = step_left_in_contour(Store, Node),
     contour_children(ContourType, Store, Next, StartId, Ns1, Ns).
@@ -625,31 +649,25 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
     (
         ( Node = node_call(_, _, _, _, _, _, _, _, _, _)
         ; Node = node_neg(_, _, _)
-        ; Node = node_cond(_, _, failed)
-        )
-    ->
+        ),
         throw(internal_error("stratum_children_2",
             "unexpected start of contour"))
     ;
         ( Node = node_fail(_, _, _, _, _, _)
         ; Node = node_excp(_, _, _, _, _, _, _)
-        )
-    ->
+        ),
         % Add a child for this node.
         Ns1 = [dynamic(NodeId) | Ns0]
     ;
-        Node = node_neg_fail(Prec, NestedStartId, _)
-    ->
+        Node = node_neg_fail(Prec, NestedStartId, _),
         % There is a nested successful context.
         contour_children(normal, Store, Prec, NestedStartId, Ns0, Ns1)
     ;
-        Node = node_else(Prec, NestedStartId, _)
-    ->
+        Node = node_else(Prec, NestedStartId, _),
         % There is a nested failed context.
         stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
     ;
-        Node = node_exit(_, CallId, _, _, _, _, _, _)
-    ->
+        Node = node_exit(_, CallId, _, _, _, _, _, _),
         % Only include an exit node as a missing answer child if it
         % produces output. If the exit event doesn't produce output
         % then the only way the call could have behaved differently
@@ -663,13 +681,28 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
             Ns1 = [dynamic(NodeId) | Ns0]
         )
     ;
-        % This handles the following cases: redo, switch, first_disj,
-        % later_disj, then and neg_succ. Also handles cond when the status is
-        % anything other than failed. We skip neg_succ nodes for the same
-        % reason that we skip exit nodes where there are no outputs (see
-        % above).
-
+        ( Node = node_redo(_, _, _, _, _)
+        ; Node = node_switch(_, _)
+        ; Node = node_first_disj(_, _)
+        ; Node = node_later_disj(_, _, _)
+        ; Node = node_then(_, _, _)
+        ; Node = node_neg_succ(_, _, _)
+        ),
+        % We skip neg_succ nodes for the same reason that we skip exit nodes
+        % where there are no outputs (see above).
         Ns1 = Ns0
+    ;
+        Node = node_cond(_, _, CondStatus),
+        (
+            ( CondStatus = succeeded
+            ; CondStatus = undecided
+            ),
+            Ns1 = Ns0
+        ;
+            CondStatus = failed,
+            throw(internal_error("stratum_children_2",
+                "unexpected start of contour"))
+        )
     ),
     Next = step_in_stratum(Store, Node),
     stratum_children(Store, Next, StartId, Ns1, Ns).
@@ -1022,12 +1055,11 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
     ( Node = node_call(_, _, _, _, _, _, _, _, _, _) ->
         ParentCallNode = Node
     ;
-        %
         % We wish to step through negated contexts, so we handle NEGE
         % and COND events separately, since step_left_in_contour/2
         % will throw an exception if it reaches the boundary of a
         % negated context.
-        %
+
         ( Node = node_neg(NegPrec, _, _) ->
             PrevNodeId = NegPrec
         ; Node = node_cond(CondPrec, _, _) ->
@@ -1408,10 +1440,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 ;
                     % Perhaps this is a closure and the argument was passed in
                     % when the closure was created.
-                    (
-                        AtomicGoal =
-                        higher_order_call_rep(Closure, _)
-                    ->
+                    ( AtomicGoal = higher_order_call_rep(Closure, _) ->
                         Var = Closure,
                         MaybePrims = yes(
                             primitive_list_and_var(Primitives0, Var, yes))

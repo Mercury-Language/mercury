@@ -538,11 +538,15 @@ allocate_slot_numbers_cl([], _, []).
 allocate_slot_numbers_cl([Var - Info | VarInfos], Offset,
         NumberedProfiledVars) :-
     Info = complexity_arg_info(_, Kind),
-    ( Kind = complexity_input_variable_size ->
+    (
+        Kind = complexity_input_variable_size,
         allocate_slot_numbers_cl(VarInfos, Offset + 1,
             NumberedProfiledVarsTail),
         NumberedProfiledVars = [Var - Offset | NumberedProfiledVarsTail]
     ;
+        ( Kind = complexity_input_fixed_size
+        ; Kind = complexity_output
+        ),
         allocate_slot_numbers_cl(VarInfos, Offset, NumberedProfiledVars)
     ).
 

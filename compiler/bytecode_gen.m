@@ -158,9 +158,13 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     gen_places(OutputArgs, ByteInfo, PlaceCode),
 
     % If semideterministic, reserve temp slot 0 for the return value
-    ( CodeModel = model_semi ->
+    (
+        CodeModel = model_semi,
         get_next_temp(_FrameTemp, ByteInfo1, ByteInfo2)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         ByteInfo2 = ByteInfo1
     ),
 
@@ -180,10 +184,14 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     proc_id_to_int(ProcId, ProcInt),
     EnterCode = node([byte_enter_proc(ProcInt, Detism, LabelCount, EndLabel,
         TempCount, VarInfos)]),
-    ( CodeModel = model_semi ->
+    (
+        CodeModel = model_semi,
         EndofCode = node([byte_semidet_succeed, byte_label(EndLabel),
             byte_endof_proc])
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         EndofCode = node([byte_label(EndLabel), byte_endof_proc])
     ),
     Code = tree_list([EnterCode, BodyCode, EndofCode]).
@@ -206,10 +214,15 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     (
         GoalExpr = generic_call(GenericCallType,
             ArgVars, ArgModes, Detism),
-        ( GenericCallType = higher_order(PredVar, _, _, _) ->
+        (
+            GenericCallType = higher_order(PredVar, _, _, _),
             gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism,
                 !.ByteInfo, Code)
         ;
+            ( GenericCallType = class_method(_, _, _, _)
+            ; GenericCallType = cast(_)
+            ; GenericCallType = event_call(_)
+            ),
             % XXX
             % string.append_list([
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
@@ -219,10 +232,14 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
-        ( BuiltinState = not_builtin ->
+        (
+            BuiltinState = not_builtin,
             Detism = goal_info_get_determinism(GoalInfo),
             gen_call(PredId, ProcId, ArgVars, Detism, !.ByteInfo, Code)
         ;
+            ( BuiltinState = inline_builtin
+            ; BuiltinState = out_of_line_builtin
+            ),
             gen_builtin(PredId, ProcId, ArgVars, !.ByteInfo, Code)
         )
     ;

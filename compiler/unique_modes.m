@@ -559,42 +559,47 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     mode_info_get_errors(!.ModeInfo, Errors),
     mode_info_set_errors(OldErrors, !ModeInfo),
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
-    ( Errors = [] ->
+    (
+        Errors = [],
         ProcId = ProcId0
-    ; MayChangeCalledProc = may_not_change_called_proc ->
-        % We're not allowed to try a different procedure here, so just return
-        % all the errors.
-        ProcId = ProcId0,
-        list.append(OldErrors, Errors, AllErrors),
-        mode_info_set_errors(AllErrors, !ModeInfo)
     ;
-        % If it didn't work, restore the original instmap, and then call
-        % modecheck_call_pred. That will try all the modes, and will infer
-        % new ones if necessary.
-        %
-        % We set the declared determinism for newly inferred modes to be the
-        % same as the determinism inferred for the existing mode selected by
-        % ordinary (non-unique) mode analysis. This means that determinism
-        % analysis will report an error if the determinism changes as a result
-        % of unique mode analysis.  That is OK, because uniqueness should not
-        % affect determinism.
-        mode_info_set_instmap(InstMap0, !ModeInfo),
-        proc_info_get_inferred_determinism(ProcInfo, Determinism),
-        modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
-            ArgVars, NewArgVars, GoalInfo, ExtraGoals, !ModeInfo),
-
+        Errors = [_ | _],
         (
-            NewArgVars = ArgVars,
-            ExtraGoals = no_extra_goals
-        ->
-            true
+            MayChangeCalledProc = may_not_change_called_proc,
+            % We're not allowed to try a different procedure here, so just
+            % return all the errors.
+            ProcId = ProcId0,
+            list.append(OldErrors, Errors, AllErrors),
+            mode_info_set_errors(AllErrors, !ModeInfo)
         ;
-            % This shouldn't happen, since modes.m should do all the handling
-            % of implied modes
-            % XXX it might happen, though, if the user
-            % XXX writes strange code; we should report
-            % XXX a proper error here
-            unexpected(this_file, "call to implied mode?")
+            MayChangeCalledProc = may_change_called_proc,
+            % If it didn't work, restore the original instmap, and then call
+            % modecheck_call_pred. That will try all the modes, and will infer
+            % new ones if necessary.
+            %
+            % We set the declared determinism for newly inferred modes to be
+            % the same as the determinism inferred for the existing mode
+            % selected by ordinary (non-unique) mode analysis. This means that
+            % determinism analysis will report an error if the determinism
+            % changes as a result of unique mode analysis. That is OK, because
+            % uniqueness should not affect determinism.
+            mode_info_set_instmap(InstMap0, !ModeInfo),
+            proc_info_get_inferred_determinism(ProcInfo, Determinism),
+            modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
+                ArgVars, NewArgVars, GoalInfo, ExtraGoals, !ModeInfo),
+
+            (
+                NewArgVars = ArgVars,
+                ExtraGoals = no_extra_goals
+            ->
+                true
+            ;
+                % This shouldn't happen, since modes.m should do all the
+                % handling of implied modes.
+                % XXX It might happen, though, if the user writes strange code;
+                % we should report a proper error here.
+                unexpected(this_file, "call to implied mode?")
+            )
         )
     ).
 

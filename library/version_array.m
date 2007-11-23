@@ -6,11 +6,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: version_array.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
 % Stability: low.
-% 
+%
 % (See the header comments in version_types.m for an explanation of version
 % types.)
 %
@@ -28,7 +28,7 @@
 % XXX This implementation is not yet guaranteed to work with the agc (accurate
 % garbage collection) grades.  Specifically, MR_deep_copy and MR_agc_deep_copy
 % currently do not recognise version arrays.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -43,8 +43,7 @@
     %
 :- func empty = version_array(T).
 
-    % new(N, X) returns an array of size N with each item initialised
-    % to X.
+    % new(N, X) returns an array of size N with each item initialised to X.
     %
 :- func new(int, T) = version_array(T).
 
@@ -231,12 +230,14 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 % attributes!
 
 :- pragma foreign_type("C", version_array(T), "struct ML_va *")
-            where equality   is eq_version_array,
-                  comparison is cmp_version_array.
+    where
+        equality   is eq_version_array,
+        comparison is cmp_version_array.
 
     % This is necessary for the library to compile in the il and java
     % grades.
-:- type version_array(T) ---> version_array(T).
+:- type version_array(T)
+    --->    version_array(T).
 
 :- pragma terminates(eq_version_array/2).
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
@@ -266,9 +267,13 @@ cmp_version_array(R, VAa, VAb) :-
     SizeA = VAa ^ size,
     SizeB = VAb ^ size,
     compare(SizeResult, SizeA, SizeB),
-    ( SizeResult = (=) ->
+    (
+        SizeResult = (=),
         cmp_version_array_2(0, SizeA, VAa, VAb, R)
     ;
+        ( SizeResult = (<)
+        ; SizeResult = (>)
+        ),
         R = SizeResult
     ).
 
@@ -280,9 +285,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
         R = (=)
       else
         compare(R0, VAa ^ elem(I), VAb ^ elem(I)),
-        ( if   R0 = (=)
-          then cmp_version_array_2(I + 1, Size, VAa, VAb, R)
-          else R  = R0
+        (
+            R0 = (=),
+            cmp_version_array_2(I + 1, Size, VAa, VAb, R)
+        ;
+            ( R0 = (<)
+            ; R0 = (>)
+            ),
+            R  = R0
         )
     ).
 
@@ -305,7 +315,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
         does_not_affect_liveness],
 "
     MR_Integer  i;
-    
+
     VA = MR_GC_NEW(struct ML_va);
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
@@ -325,7 +335,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     MR_Integer  i;
     MR_Integer  size_VA0;
     MR_Integer  min;
-    
+
     size_VA0 = ML_va_size(VA0);
     min      = (N <= size_VA0 ? N : size_VA0);
     VA       = MR_GC_NEW(struct ML_va);

@@ -917,26 +917,30 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         % For free-free unifications, we pretend for a moment that they are
         % an assignment to the dead variable - they will then be optimized
         % away.
-        ( LiveX = is_dead ->
+        (
+            LiveX = is_dead,
             Unification = assign(X, Y)
-        ; LiveY = is_dead ->
-            Unification = assign(Y, X)
         ;
-            unexpected(this_file, "categorize_unify_var_var: free-free unify!")
+            LiveX = is_live,
+            (
+                LiveY = is_dead,
+                Unification = assign(Y, X)
+            ;
+                LiveY = is_live,
+                unexpected(this_file,
+                    "categorize_unify_var_var: free-free unify!")
+            )
         )
     ;
-        %
-        % Check for unreachable unifications
-        %
+        % Check for unreachable unifications.
         ( mode_get_insts(ModuleInfo0, ModeOfX, not_reached, _)
         ; mode_get_insts(ModuleInfo0, ModeOfY, not_reached, _)
         )
     ->
-        %
         % For these, we can generate any old junk here --
         % we just need to avoid calling modecheck_complicated_unify,
         % since that might abort.
-        %
+
         Unification = simple_test(X, Y)
     ;
         map.lookup(VarTypes, X, Type),
@@ -1149,7 +1153,8 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         RHS0, RHS, Unification0, Unification, !ModeInfo) :-
     % If we are re-doing mode analysis, preserve the existing cons_id.
     list.length(ArgVars, Arity),
-    ( Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0) ->
+    (
+        Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0),
         (
             SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize),
             expect(unify(MaybeTakeAddr, no), this_file,
@@ -1159,10 +1164,15 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         ),
         SubInfo = SubInfo0,
         ConsId = ConsIdPrime
-    ; Unification0 = deconstruct(_, ConsIdPrime, _, _, _, _) ->
+    ;
+        Unification0 = deconstruct(_, ConsIdPrime, _, _, _, _),
         SubInfo = no_construct_sub_info,
         ConsId = ConsIdPrime
     ;
+        ( Unification0 = assign(_, _)
+        ; Unification0 = simple_test(_, _)
+        ; Unification0 = complicated_unify(_, _, _)
+        ),
         % The real cons_id will be computed by lambda.m;
         % we just put in a dummy one for now.
         SubInfo = no_construct_sub_info,
@@ -1240,7 +1250,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     map.lookup(VarTypes, X, TypeOfX),
     % If we are re-doing mode analysis, preserve the existing cons_id.
-    ( Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0) ->
+    (
+        Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0),
         (
             SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize0),
             expect(unify(MaybeTakeAddr, no), this_file,
@@ -1250,10 +1261,15 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         ),
         SubInfo = SubInfo0,
         ConsId = ConsIdPrime
-    ; Unification0 = deconstruct(_, ConsIdPrime, _, _, _, _) ->
+    ;
+        Unification0 = deconstruct(_, ConsIdPrime, _, _, _, _),
         SubInfo = no_construct_sub_info,
         ConsId = ConsIdPrime
     ;
+        ( Unification0 = assign(_, _)
+        ; Unification0 = simple_test(_, _)
+        ; Unification0 = complicated_unify(_, _, _)
+        ),
         SubInfo = no_construct_sub_info,
         ConsId = NewConsId
     ),

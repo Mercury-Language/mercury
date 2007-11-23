@@ -440,11 +440,9 @@ add_imports(Imports, !Info) :-
 add_imports_2(Imports, !Info) :-
     mq_info_get_import_status(!.Info, Status),
 
-    %
     % Modules imported from the the private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
-    %
     (
         ( Status = mq_status_local
         ; Status = mq_status_exported
@@ -458,10 +456,8 @@ add_imports_2(Imports, !Info) :-
         true
     ),
 
-    %
     % We check that all modules imported in the interface are
     % used in the interface.
-    %
     (
         Status = mq_status_exported
     ->
@@ -473,10 +469,8 @@ add_imports_2(Imports, !Info) :-
         true
     ),
 
-    %
     % Only modules imported in the interface or in the private
     % interface of ancestor modules may be used in the interface.
-    %
     (
         ( Status = mq_status_exported
         ; Status = mq_status_imported(import_locn_ancestor_private_interface)
@@ -572,7 +566,8 @@ process_assert(event_expr(_Name, Args0) - _, Symbols, Success) :-
         Success = no
     ).
 process_assert(call_expr(SymName, Args0, _Purity) - _, Symbols, Success) :-
-    ( SymName = qualified(_, _) ->
+    (
+        SymName = qualified(_, _),
         list.map(term.coerce, Args0, Args),
         ( term_qualified_symbols_list(Args, Symbols0) ->
             Symbols = [SymName | Symbols0],
@@ -582,6 +577,7 @@ process_assert(call_expr(SymName, Args0, _Purity) - _, Symbols, Success) :-
             Success = no
         )
     ;
+        SymName = unqualified(_),
         Symbols = [],
         Success = no
     ).
@@ -1571,23 +1567,26 @@ report_undefined(MatchingModules, Info, Id, IdType, !Specs) :-
         Pieces2 = [words("(The module"), sym_name(ModuleName),
             words("has not been imported.)"), nl]
     ;
-        MatchingModules = [_ | MatchingModules1]
-    ->
         (
-            MatchingModules1 = [],
-            ModuleWord = "module",
-            HasWord = "has"
+            MatchingModules = [_ | MatchingModulesTail],
+            (
+                MatchingModulesTail = [],
+                ModuleWord = "module",
+                HasWord = "has"
+            ;
+                MatchingModulesTail = [_ | _],
+                ModuleWord = "modules",
+                HasWord = "have"
+            ),
+            MatchingSymNames = list.map(wrap_module_name, MatchingModules),
+            Pieces2 = [words("(The"), fixed(ModuleWord)] ++
+                component_list_to_pieces(MatchingSymNames) ++
+                [fixed(HasWord),
+                    words("not been imported in the interface.)"), nl]
         ;
-            MatchingModules1 = [_ | _],
-            ModuleWord = "modules",
-            HasWord = "have"
-        ),
-        MatchingSymNames = list.map(wrap_module_name, MatchingModules),
-        Pieces2 = [words("(The"), fixed(ModuleWord)] ++
-            component_list_to_pieces(MatchingSymNames) ++
-            [fixed(HasWord), words("not been imported in the interface.)"), nl]
-    ;
-        Pieces2 = []
+            MatchingModules = [],
+            Pieces2 = []
+        )
     ),
     Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -2016,26 +2015,24 @@ get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
 
 get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
         !Qualifiers) :-
-    %
     % If the ImplicitPart module was imported, rather than just being
     % used, then insert the ExplicitPart module into the list of
     % valid partial qualifiers.
-    %
+
     ( parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet) ->
         !:Qualifiers = [ExplicitPart | !.Qualifiers]
     ;
         true
     ),
-    %
     % Recursively try to add the other possible partial qualifiers.
-    %
-    ( ImplicitPart = qualified(Parent, Child) ->
+    (
+        ImplicitPart = qualified(Parent, Child),
         NextImplicitPart = Parent,
         NextExplicitPart = insert_module_qualifier(Child, ExplicitPart),
         get_partial_qualifiers_2(NextImplicitPart, NextExplicitPart,
             ModuleIdSet, !Qualifiers)
     ;
-        true
+        ImplicitPart = unqualified(_)
     ).
 
     % Check whether the parent module was imported, given the name of a

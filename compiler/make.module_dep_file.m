@@ -58,32 +58,38 @@
 
 get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
     RebuildModuleDeps = !.Info ^ rebuild_module_deps,
-    ( ModuleName = unqualified(_) ->
+    (
+        ModuleName = unqualified(_),
         maybe_get_module_dependencies(RebuildModuleDeps, ModuleName,
             MaybeImports, !Info, !IO)
-    ; map.search(!.Info ^ module_dependencies, ModuleName, MaybeImports0) ->
-        MaybeImports = MaybeImports0
     ;
-        %
-        % For sub-modules, we need to generate the dependencies
-        % for the parent modules first (make_module_dependencies
-        % expects to be given the top-level module in a source file).
-        % If the module is a nested module, its dependencies will be
-        % generated as a side effect of generating the parent's
-        % dependencies.
-        %
-        Ancestors = get_ancestors(ModuleName),
-        list.foldl3(generate_ancestor_dependencies(RebuildModuleDeps),
-            Ancestors, no, Error, !Info, !IO),
+        ModuleName = qualified(_, _),
         (
-            Error = yes,
-            MaybeImports = no,
-            !:Info = !.Info ^ module_dependencies
-                ^ elem(ModuleName) := MaybeImports
+            map.search(!.Info ^ module_dependencies, ModuleName,
+                MaybeImportsPrime)
+        ->
+            MaybeImports = MaybeImportsPrime
         ;
-            Error = no,
-            maybe_get_module_dependencies(RebuildModuleDeps,
-                ModuleName, MaybeImports, !Info, !IO)
+            % For sub-modules, we need to generate the dependencies
+            % for the parent modules first (make_module_dependencies
+            % expects to be given the top-level module in a source file).
+            % If the module is a nested module, its dependencies will be
+            % generated as a side effect of generating the parent's
+            % dependencies.
+
+            Ancestors = get_ancestors(ModuleName),
+            list.foldl3(generate_ancestor_dependencies(RebuildModuleDeps),
+                Ancestors, no, Error, !Info, !IO),
+            (
+                Error = yes,
+                MaybeImports = no,
+                !:Info = !.Info ^ module_dependencies
+                    ^ elem(ModuleName) := MaybeImports
+            ;
+                Error = no,
+                maybe_get_module_dependencies(RebuildModuleDeps,
+                    ModuleName, MaybeImports, !Info, !IO)
+            )
         )
     ).
 

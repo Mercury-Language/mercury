@@ -87,10 +87,13 @@
 %---------------------------------------------------------------------------%
 
 generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
-    ( CodeModel = model_non ->
-        unexpected(this_file, "nondet unification in generate_unification")
+    (
+        CodeModel = model_det
     ;
-        true
+        CodeModel = model_semi
+    ;
+        CodeModel = model_non,
+        unexpected(this_file, "nondet unification in generate_unification")
     ),
     (
         Uni = assign(Left, Right),

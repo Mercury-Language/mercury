@@ -372,17 +372,24 @@ pred_or_func_to_str(pf_predicate) = "pred".
 pred_or_func_to_str(pf_function) = "func".
 
 write_purity_prefix(Purity, !IO) :-
-    ( Purity = purity_pure ->
-        true
+    (
+        Purity = purity_pure
     ;
+        ( Purity = purity_impure
+        ; Purity = purity_semipure
+        ),
         write_purity(Purity, !IO),
         io.write_string(" ", !IO)
     ).
 
 purity_prefix_to_string(Purity) = String :-
-    ( Purity = purity_pure ->
+    (
+        Purity = purity_pure,
         String = ""
     ;
+        ( Purity = purity_impure
+        ; Purity = purity_semipure
+        ),
         purity_name(Purity, PurityName),
         String = string.append(PurityName, " ")
     ).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -611,12 +611,19 @@ generate_module_page(Cmd, ModuleName, ModuleData, Pref, Deep) = HTML :-
 
 generate_top_procs_page(Cmd, Limit, CostKind, InclDesc0, Scope0, Pref, Deep)
         = HTML :-
-    ( CostKind = cost_calls ->
+    (
+        CostKind = cost_calls,
         % Counting calls is incompatible both with self_and_desc
         % and per_call.
         InclDesc = self,
         Scope = overall
     ;
+        ( CostKind = cost_redos
+        ; CostKind = cost_time
+        ; CostKind = cost_callseqs
+        ; CostKind = cost_allocs
+        ; CostKind = cost_words
+        ),
         InclDesc = InclDesc0,
         Scope = Scope0
     ),
@@ -718,10 +725,14 @@ module_to_html(Pref, Deep, _ModuleName, ModuleData, IdHeaders, HTML) :-
         PSPtrs),
     Criteria = Pref ^ pref_criteria,
     SortedProcLines = sort_line_groups(Criteria, ProcLines),
-    ( Criteria = by_cost(_, _, _) ->
+    (
+        Criteria = by_cost(_, _, _),
         IdHeaders = rank_proc,
         RankedProcLines = add_ranks(SortedProcLines)
     ;
+        ( Criteria = by_name
+        ; Criteria = by_context
+        ),
         IdHeaders = source_proc,
         RankedProcLines = list.map(add_self_context, SortedProcLines)
     ),
@@ -845,13 +856,16 @@ group_proc_dynamics_by_proc_static(Deep, PDPtr, PStoPDsMap0, PStoPDsMap) :-
 
 procs_in_clique_to_html(Pref, Deep, CliquePtr, Percent, PSPtr - PDPtrs,
         HTML, ActionPtrs) :-
-    ( PDPtrs = [] ->
+    (
+        PDPtrs = [],
         HTML = "",
         ActionPtrs = []
-    ; PDPtrs = [PDPtr] ->
+    ;
+        PDPtrs = [PDPtr],
         proc_in_clique_to_html(Pref, Deep, CliquePtr, Percent, PDPtr,
             HTML, ActionPtrs)
     ;
+        PDPtrs = [_, _ | _],
         list.map(deep_lookup_pd_own(Deep), PDPtrs, ProcOwns),
         list.map(deep_lookup_pd_desc(Deep), PDPtrs, ProcDescs),
         ProcOwn = sum_own_infos(ProcOwns),
@@ -1004,17 +1018,21 @@ call_site_clique_to_html(Pref, Deep, CallerCliquePtr, Percent, Pair,
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
     Kind = CSS ^ css_kind,
     ( Kind = normal_call_and_callee(_CalleePSPtr, _) ->
-        ( CallSiteArraySlot = slot_normal(CSDPtr0) ->
+        (
+            CallSiteArraySlot = slot_normal(CSDPtr0),
             CSDPtr = CSDPtr0
         ;
+            CallSiteArraySlot = slot_multi(_, _),
             error("call_site_clique_to_html: normal_call error")
         ),
         normal_call_site_clique_to_html(Pref, Deep, CallerCliquePtr,
             CSDPtr, LineGroups, Percent, ActionPtrs)
     ;
-        ( CallSiteArraySlot = slot_multi(_, CSDPtrs0) ->
+        (
+            CallSiteArraySlot = slot_multi(_, CSDPtrs0),
             array.to_list(CSDPtrs0, CSDPtrs)
         ;
+            CallSiteArraySlot = slot_normal(_),
             error("call_site_clique_to_html: non-normal_call error")
         ),
         call_site_context(Deep, CSSPtr, FileName, LineNumber),
@@ -1135,7 +1153,8 @@ normal_call_site_summary_to_html(Pref, Deep, FileName, LineNumber,
         CallerPSPtr, CalleePSPtr, CallSiteCallList) = LineGroup :-
     deep_lookup_proc_statics(Deep, CalleePSPtr, CalleePS),
     ProcName = CalleePS ^ ps_refined_id,
-    ( CallSiteCallList = [] ->
+    (
+        CallSiteCallList = [],
         Own = zero_own_prof_info,
         Desc = zero_inherit_prof_info,
         SummaryHTML =
@@ -1144,7 +1163,8 @@ normal_call_site_summary_to_html(Pref, Deep, FileName, LineNumber,
         LineGroup = line_group(FileName, LineNumber,
             ProcName, Own, Desc, SummaryHTML,
             sub_lines(two_id, []))
-    ; CallSiteCallList = [CallSiteCall] ->
+    ;
+        CallSiteCallList = [CallSiteCall],
         CallSiteCall = CalleePSPtrFromCall - _,
         require(unify(CalleePSPtr, CalleePSPtrFromCall),
             "call_site_summary_to_html: callee mismatch"),
@@ -1152,6 +1172,7 @@ normal_call_site_summary_to_html(Pref, Deep, FileName, LineNumber,
             FileName, LineNumber, ProcName, CallerPSPtr, CallSiteCall),
         LineGroup = line_to_two_id_subline_group(LineGroup0)
     ;
+        CallSiteCallList = [_, _ | _],
         error("normal_call_site_summary_to_html: too many procedures")
     ).
 
@@ -1204,12 +1225,19 @@ call_site_summary_group_to_html(Pref, Deep, FileName, LineNumber, ProcName,
 :- func multi_call_site_add_suffix(preferences, string, list(T)) = string.
 
 multi_call_site_add_suffix(Pref, RawCallSiteName, CallList) = CallSiteName :-
-    ( CallList = [] ->
+    (
+        CallList = [],
         CallSiteName = RawCallSiteName ++ " (no&nbsp;calls&nbsp;made)"
-    ; Pref ^ pref_summarize = summarize ->
-        CallSiteName = RawCallSiteName ++ " (summary)"
     ;
-        CallSiteName = RawCallSiteName
+        CallList = [_ | _],
+        Summarize = Pref ^ pref_summarize,
+        (
+            Summarize = summarize,
+            CallSiteName = RawCallSiteName ++ " (summary)"
+        ;
+            Summarize = dont_summarize,
+            CallSiteName = RawCallSiteName
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1356,9 +1384,11 @@ downward_summary_display =
 call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
         CallerPDPtr, CalleePDPtr,
         MaybeCallerCliquePtr, CalleeCliquePtr) = HTML :-
-    ( MaybeCallerCliquePtr = yes(CallerCliquePtr0) ->
+    (
+        MaybeCallerCliquePtr = yes(CallerCliquePtr0),
         CallerCliquePtr = CallerCliquePtr0
     ;
+        MaybeCallerCliquePtr = no,
         CallerCliquePtr = dummy_clique_ptr
     ),
     (
@@ -1858,9 +1888,11 @@ proc_summary_to_html(Pref, Deep, PSPtr) = HTML :-
         two_id_line_group_to_html(Pref, Deep, totals_meaningful),
         SortedCallSiteGroups),
     string.append_list(BodyHTMLs, BodyHTML0),
-    ( SortedCallSiteGroups = [] ->
+    (
+        SortedCallSiteGroups = [],
         BodyHTML = BodyHTML0
     ;
+        SortedCallSiteGroups = [_ | _],
         BodyHTML =
             BodyHTML0 ++
             separator_row(Pref, source_proc, totals_meaningful)

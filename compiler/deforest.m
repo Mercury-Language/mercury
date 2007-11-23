@@ -429,9 +429,23 @@ compute_goal_infos([Goal | Goals0], [Goal - MaybeBranchInfo | Goals],
 
 deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     Goal = hlds_goal(GoalExpr, _),
-    ( goal_util.goal_is_branched(GoalExpr) ->
+    (
+        ( GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ),
         pd_util.get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo)
-    ; GoalExpr = plain_call(PredId, ProcId, Args, _, _, _) ->
+    ;
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = conj(_, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ),
+        MaybeBranchInfo = no
+    ;
+        GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
         pd_info_get_proc_arg_info(!.PDInfo, ProcBranchInfos),
         ( map.search(ProcBranchInfos, proc(PredId, ProcId), BranchInfo0) ->
             % Rename the branch_info for the called procedure
@@ -442,7 +456,8 @@ deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
             MaybeBranchInfo = no
         )
     ;
-        MaybeBranchInfo = no
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "deforest_get_branch_vars_goal: shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -647,75 +662,77 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
 
     should_try_deforestation(DeforestInfo, ShouldOptimize, !PDInfo, !IO),
     (
-        ShouldOptimize = no
-    ->
+        ShouldOptimize = no,
         Optimized0 = no,
         Goals = []
     ;
-        EarlierGoal = hlds_goal(plain_call(PredId1, _, _, _, _, _), _),
-        LaterGoal = hlds_goal(plain_call(PredId2, _, _, _, _, _), _)
-    ->
-        % If both goals are calls create a new predicate for the conjunction
-        % to be deforested and process it.
-        pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-        PredName1 = predicate_name(ModuleInfo0, PredId1),
-        PredName2 = predicate_name(ModuleInfo0, PredId2),
-        pd_debug_message("deforesting calls to %s and %s\n",
-            [s(PredName1), s(PredName2)], !IO),
-        call_call(ConjNonLocals, EarlierGoal, BetweenGoals,
-            yes(LaterGoal), MaybeGoal, !PDInfo, !IO),
+        ShouldOptimize = yes,
         (
-            MaybeGoal = yes(Goal),
-            Optimized0 = yes,
-            Goals = [Goal]
+            EarlierGoal = hlds_goal(plain_call(PredId1, _, _, _, _, _), _),
+            LaterGoal = hlds_goal(plain_call(PredId2, _, _, _, _, _), _)
+        ->
+            % If both goals are calls create a new predicate for the
+            % conjunction to be deforested and process it.
+            pd_info_get_module_info(!.PDInfo, ModuleInfo0),
+            PredName1 = predicate_name(ModuleInfo0, PredId1),
+            PredName2 = predicate_name(ModuleInfo0, PredId2),
+            pd_debug_message("deforesting calls to %s and %s\n",
+                [s(PredName1), s(PredName2)], !IO),
+            call_call(ConjNonLocals, EarlierGoal, BetweenGoals,
+                yes(LaterGoal), MaybeGoal, !PDInfo, !IO),
+            (
+                MaybeGoal = yes(Goal),
+                Optimized0 = yes,
+                Goals = [Goal]
+            ;
+                MaybeGoal = no,
+                Optimized0 = no,
+                Goals = []
+            )
         ;
-            MaybeGoal = no,
-            Optimized0 = no,
-            Goals = []
+            % If the first goal is branched and the second goal is a call,
+            % attempt to push the call into the branches. Don't push a
+            % recursive call or a call to a predicate we have already pushed
+            % into a switch, since it is difficult to stop the process.
+            EarlierGoal = hlds_goal(EarlierGoalExpr, _),
+            goal_util.goal_is_branched(EarlierGoalExpr),
+            LaterGoal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _),
+            PredProcId = proc(PredId, ProcId),
+            PredProcId \= CurrPredProcId,
+            \+ set.member(PredProcId, Parents0)
+        ->
+            CurrPredName = predicate_name(ModuleInfo, PredId),
+            pd_debug_message("Pushing call to %s into goal\n",
+                [s(CurrPredName)], !IO),
+            set.insert(Parents0, proc(PredId, ProcId), Parents),
+            pd_info_set_parents(Parents, !PDInfo),
+            push_goal_into_goal(ConjNonLocals, DeforestBranches,
+                EarlierGoal, BetweenGoals, LaterGoal, Goal, !PDInfo, !IO),
+            Goals = [Goal],
+            Optimized0 = yes
+        ;
+            % If both goals are branched, push the second into the branches
+            % of the first.
+            EarlierGoal = hlds_goal(EarlierGoalExpr, _),
+            LaterGoal = hlds_goal(LaterGoalExpr, _),
+            goal_util.goal_is_branched(EarlierGoalExpr),
+            goal_util.goal_is_branched(LaterGoalExpr)
+        ->
+            pd_debug_message("Pushing goal into goal\n", [], !IO),
+            push_goal_into_goal(ConjNonLocals, DeforestBranches,
+                EarlierGoal, BetweenGoals, LaterGoal, Goal, !PDInfo, !IO),
+            Goals = [Goal],
+            goals_size([EarlierGoal | BetweenGoals], ConjSize1),
+            goal_size(LaterGoal, ConjSize2),
+            goal_size(Goal, NewSize),
+            SizeDiff = NewSize - ConjSize1 - ConjSize2,
+            pd_info_incr_size_delta(SizeDiff, !PDInfo),
+            Optimized0 = yes
+        ;
+            pd_debug_message("not optimizing\n", [], !IO),
+            Goals = [],
+            Optimized0 = no
         )
-    ;
-        % If the first goal is branched and the second goal is a call,
-        % attempt to push the call into the branches. Don't push a recursive
-        % call or a call to a predicate we have already pushed into a switch,
-        % since it is difficult to stop the process.
-        EarlierGoal = hlds_goal(EarlierGoalExpr, _),
-        goal_util.goal_is_branched(EarlierGoalExpr),
-        LaterGoal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _),
-        PredProcId = proc(PredId, ProcId),
-        PredProcId \= CurrPredProcId,
-        \+ set.member(PredProcId, Parents0)
-    ->
-        CurrPredName = predicate_name(ModuleInfo, PredId),
-        pd_debug_message("Pushing call to %s into goal\n",
-            [s(CurrPredName)], !IO),
-        set.insert(Parents0, proc(PredId, ProcId), Parents),
-        pd_info_set_parents(Parents, !PDInfo),
-        push_goal_into_goal(ConjNonLocals, DeforestBranches,
-            EarlierGoal, BetweenGoals, LaterGoal, Goal, !PDInfo, !IO),
-        Goals = [Goal],
-        Optimized0 = yes
-    ;
-        % If both goals are branched, push the second into the branches
-        % of the first.
-        EarlierGoal = hlds_goal(EarlierGoalExpr, _),
-        LaterGoal = hlds_goal(LaterGoalExpr, _),
-        goal_util.goal_is_branched(EarlierGoalExpr),
-        goal_util.goal_is_branched(LaterGoalExpr)
-    ->
-        pd_debug_message("Pushing goal into goal\n", [], !IO),
-        push_goal_into_goal(ConjNonLocals, DeforestBranches,
-            EarlierGoal, BetweenGoals, LaterGoal, Goal, !PDInfo, !IO),
-        Goals = [Goal],
-        goals_size([EarlierGoal | BetweenGoals], ConjSize1),
-        goal_size(LaterGoal, ConjSize2),
-        goal_size(Goal, NewSize),
-        SizeDiff = NewSize - ConjSize1 - ConjSize2,
-        pd_info_incr_size_delta(SizeDiff, !PDInfo),
-        Optimized0 = yes
-    ;
-        pd_debug_message("not optimizing\n", [], !IO),
-        Goals = [],
-        Optimized0 = no
     ),
     check_improvement(Optimized0, CostDelta0, SizeDelta0, Optimized,
         !.PDInfo, !IO),
@@ -1610,12 +1627,14 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
         BetweenGoals, LaterGoal, Goal, !PDInfo, !IO) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     EarlierGoal = hlds_goal(EarlierGoalExpr, _),
-    ( EarlierGoalExpr = switch(Var1, CanFail1, Cases1) ->
+    (
+        EarlierGoalExpr = switch(Var1, CanFail1, Cases1),
         set.insert(NonLocals, Var1, CaseNonLocals),
         append_goal_to_cases(Var1, BetweenGoals, LaterGoal,
             CaseNonLocals, 1, DeforestInfo, Cases1, Cases, !PDInfo, !IO),
         GoalExpr = switch(Var1, CanFail1, Cases)
-    ; EarlierGoalExpr = if_then_else(Vars, Cond, Then0, Else0) ->
+    ;
+        EarlierGoalExpr = if_then_else(Vars, Cond, Then0, Else0),
         pd_info_update_goal(Cond, !PDInfo),
         Cond = hlds_goal(_, CondInfo),
         CondNonLocals = goal_info_get_nonlocals(CondInfo),
@@ -1626,11 +1645,21 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
         append_goal(Else0, BetweenGoals, LaterGoal,
             NonLocals, 2, DeforestInfo, Else, !PDInfo, !IO),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
-    ; EarlierGoalExpr = disj(Disjuncts0) ->
+    ;
+        EarlierGoalExpr = disj(Disjuncts0),
         append_goal_to_disjuncts(BetweenGoals, LaterGoal,
             NonLocals, 1, DeforestInfo, Disjuncts0, Disjuncts, !PDInfo, !IO),
         GoalExpr = disj(Disjuncts)
     ;
+        ( EarlierGoalExpr = unify(_, _, _, _, _)
+        ; EarlierGoalExpr = plain_call(_, _, _, _, _, _)
+        ; EarlierGoalExpr = generic_call(_, _, _, _)
+        ; EarlierGoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; EarlierGoalExpr = conj(_, _)
+        ; EarlierGoalExpr = negation(_)
+        ; EarlierGoalExpr = scope(_, _)
+        ; EarlierGoalExpr = shorthand(_)
+        ),
         unexpected(this_file, "push_goal_into_goal")
     ),
     pd_info_set_instmap(InstMap0, !PDInfo),

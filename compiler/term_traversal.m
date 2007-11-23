@@ -484,9 +484,11 @@ compute_rec_start_vars([], [_ | _], _Out) :-
 compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
         Out) :-
     compute_rec_start_vars(Vars, RecInputSuppliers, Out1),
-    ( RecInputSupplier = yes ->
+    (
+        RecInputSupplier = yes,
         bag.insert(Out1, Var, Out)
     ;
+        RecInputSupplier = no,
         Out = Out1
     ).
 

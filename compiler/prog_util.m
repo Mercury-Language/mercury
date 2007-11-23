@@ -338,9 +338,11 @@ adjust_func_arity(pf_function, Arity - 1, Arity).
 
 split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
     split_types_and_modes_2(TypesAndModes, yes, Types, Modes, Result),
-    ( Result = yes ->
+    (
+        Result = yes,
         MaybeModes = yes(Modes)
     ;
+        Result = no,
         MaybeModes = no
     ).
 

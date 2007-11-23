@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_to_xml.m.
 % Main author: maclarty.
 % Stability: low.
-% 
+%
 % This module provides two mechanisms for converting Mercury terms
 % to XML documents.
 %
@@ -46,7 +46,7 @@
 %
 % In both methods the XML document can be annotated with a stylesheet
 % reference.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -95,7 +95,7 @@
     ;       comment(string)
             % An XML comment.  The comment should not
             % include the `<!--' and `-->'.  Any occurrences of
-            % the substring "--" will be replaced by " - ", 
+            % the substring "--" will be replaced by " - ",
             % since "--" is not allowed in XML comments.
 
     ;       entity(string)
@@ -464,7 +464,7 @@
     in, in, di, uo) is det.
 :- mode write_xml_element_general(in, in(canonicalize), in(element_mapping),
     in, in, di, uo) is det.
-:- mode write_xml_element_general(in, in(include_details_cc), 
+:- mode write_xml_element_general(in, in(include_details_cc),
     in(element_mapping), in, in, di, uo) is cc_multi.
 :- mode write_xml_element_general(in, in, in(element_mapping),
     in, in, di, uo) is cc_multi.
@@ -540,7 +540,7 @@
 :- pred write_dtd_from_type_to_stream(io.output_stream::in, type_desc::in,
     element_mapping::in(element_mapping), dtd_generation_result::out,
     io::di, io::uo) is det.
-    
+
 :- pragma obsolete(write_xml_element_general/6).
 :- pred write_xml_element_general(deconstruct.noncanon_handling,
     element_mapping, int, T, io, io).
@@ -571,8 +571,7 @@
 %-----------------------------------------------------------------------------%
 
 write_xml_doc(Stream, Term, !State) :-
-    write_xml_doc_style_dtd(Stream, Term, no_stylesheet, no_dtd,
-        !State).
+    write_xml_doc_style_dtd(Stream, Term, no_stylesheet, no_dtd, !State).
 
 write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !State) :-
     write_xml_header(Stream, no, !State),
@@ -606,24 +605,26 @@ write_xml_doc_general(Stream, Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
         DTDResult, !State) :-
     DTDResult = can_generate_dtd_2(MaybeDTD, ElementMapping, type_of(Term)),
     (
-        DTDResult = ok
-    ->
+        DTDResult = ok,
         write_xml_header(Stream, no, !State),
         write_stylesheet_ref(Stream, MaybeStyleSheet, !State),
         write_doctype(Stream, canonicalize, Term, ElementMapping, MaybeDTD, _,
             !State),
-        write_xml_element_general(Stream, canonicalize, ElementMapping, 0, 
+        write_xml_element_general(Stream, canonicalize, ElementMapping, 0,
             Term, !State)
     ;
-        true
+        ( DTDResult = multiple_functors_for_root
+        ; DTDResult = duplicate_elements(_, _)
+        ; DTDResult = unsupported_dtd_type(_)
+        ; DTDResult = type_not_ground(_)
+        )
     ).
 
 write_xml_doc_general_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
         MaybeDTD, DTDResult, !State) :-
     DTDResult = can_generate_dtd_2(MaybeDTD, ElementMapping, type_of(Term)),
     (
-        DTDResult = ok
-    ->
+        DTDResult = ok,
         write_xml_header(Stream, no, !State),
         write_stylesheet_ref(Stream, MaybeStyleSheet, !State),
         write_doctype(Stream, include_details_cc, Term, ElementMapping,
@@ -631,7 +632,11 @@ write_xml_doc_general_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
         write_xml_element_general(Stream, include_details_cc, ElementMapping,
             0, Term, !State)
     ;
-        true
+        ( DTDResult = multiple_functors_for_root
+        ; DTDResult = duplicate_elements(_, _)
+        ; DTDResult = unsupported_dtd_type(_)
+        ; DTDResult = type_not_ground(_)
+        )
     ).
 
 write_xml_element_general(Stream, NonCanon, ElementMapping, IndentLevel, Term,
@@ -1192,7 +1197,7 @@ write_child_xml_elements(Stream, NonCanon, MakeElement, IndentLevel, Args,
             MaybeFieldNames, _, !State)
     ).
 
-:- pred write_xml_element_univ_do_not_allow(Stream::in, 
+:- pred write_xml_element_univ_do_not_allow(Stream::in,
     element_pred::in(element_pred),
     int::in, univ::in, list(maybe(string))::in, list(maybe(string))::out,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
@@ -1202,7 +1207,7 @@ write_xml_element_univ_do_not_allow(Stream, MakeElement, IndentLevel, Univ,
     write_xml_element_univ(Stream, do_not_allow, MakeElement, IndentLevel,
         Univ, MaybeFieldNames0, MaybeFieldNames, !State).
 
-:- pred write_xml_element_univ_canonicalize(Stream::in, 
+:- pred write_xml_element_univ_canonicalize(Stream::in,
     element_pred::in(element_pred),
     int::in, univ::in, list(maybe(string))::in, list(maybe(string))::out,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
@@ -1400,8 +1405,7 @@ xml_predefined_entity(('\"'), "&quot;").
 write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
     DTDResult = can_generate_dtd(ElementMapping, TypeDesc),
     (
-        DTDResult = ok
-    ->
+        DTDResult = ok,
         get_element_pred(ElementMapping, MakeElement),
         (
             get_elements_and_args(MakeElement, TypeDesc,
@@ -1421,7 +1425,11 @@ write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
                 ++ ": not ok to generate DTD"))
         )
     ;
-        true
+        ( DTDResult = multiple_functors_for_root
+        ; DTDResult = duplicate_elements(_, _)
+        ; DTDResult = unsupported_dtd_type(_)
+        ; DTDResult = type_not_ground(_)
+        )
     ).
 
 can_generate_dtd(ElementMapping, TypeDesc) =  Result :-

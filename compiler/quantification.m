@@ -520,7 +520,8 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
     TypeInfoVars = get_unify_typeinfos(Unification0),
-    ( Unification0 = construct(_, _, _, _, How, _, SubInfo) ->
+    (
+        Unification0 = construct(_, _, _, _, How, _, SubInfo),
         (
             How = reuse_cell(cell_to_reuse(ReuseVar0, _, SetArgs)),
             MaybeSetArgs = yes(SetArgs),
@@ -548,6 +549,11 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, GoalInfo0, !Info) :-
             MaybeSizeVar = no
         )
     ;
+        ( Unification0 = deconstruct(_, _, _, _, _, _)
+        ; Unification0 = assign(_, _)
+        ; Unification0 = simple_test(_, _)
+        ; Unification0 = complicated_unify(_, _, _)
+        ),
         MaybeSetArgs = no,
         MaybeReuseVar = no,
         MaybeSizeVar = no,
@@ -804,8 +810,7 @@ implicitly_quantify_unify_rhs(_, GoalInfo0, !RHS, !Unification, !Info) :-
 
     (
         !.Unification = construct(ConstructVar, ConsId, Args0,
-            ArgModes0, HowToConstruct, Uniq, SubInfo)
-    ->
+            ArgModes0, HowToConstruct, Uniq, SubInfo),
         (
             SubInfo = no_construct_sub_info
         ;
@@ -824,7 +829,11 @@ implicitly_quantify_unify_rhs(_, GoalInfo0, !RHS, !Unification, !Info) :-
         % After mode analysis, unifications with lambda variables should always
         % be construction unifications, but quantification gets invoked before
         % mode analysis, so we need to allow this case...
-        true
+        ( !.Unification = deconstruct(_, _, _, _, _, _)
+        ; !.Unification = assign(_, _)
+        ; !.Unification = simple_test(_, _)
+        ; !.Unification = complicated_unify(_, _, _)
+        )
     ).
 
 :- pred implicitly_quantify_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1144,7 +1153,8 @@ goal_vars_both(NonLocalsToRecompute, hlds_goal(Goal, _GoalInfo),
 goal_vars_2(NonLocalsToRecompute, unify(LHS, RHS, _, Unification, _),
         !Set, !LambdaSet) :-
     insert(!.Set, LHS, !:Set),
-    ( Unification = construct(_, _, _, _, How, _, SubInfo) ->
+    (
+        Unification = construct(_, _, _, _, How, _, SubInfo),
         (
             How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)),
             MaybeSetArgs = yes(SetArgs),
@@ -1167,10 +1177,15 @@ goal_vars_2(NonLocalsToRecompute, unify(LHS, RHS, _, Unification, _),
         ;
             true
         )
-    ; Unification = complicated_unify(_, _, TypeInfoVars) ->
+    ;
+        Unification = complicated_unify(_, _, TypeInfoVars),
         MaybeSetArgs = no,
         insert_list(!.Set, TypeInfoVars, !:Set)
     ;
+        ( Unification = deconstruct(_, _, _, _, _, _)
+        ; Unification = assign(_, _)
+        ; Unification = simple_test(_, _)
+        ),
         MaybeSetArgs = no
     ),
     unify_rhs_vars(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set, !LambdaSet).
@@ -1330,11 +1345,16 @@ get_updated_fields([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
 
 :- func get_unify_typeinfos(unification) = list(prog_var).
 
-get_unify_typeinfos(Unification) =
-    ( Unification = complicated_unify(_, _, TypeInfoVars0) ->
-        TypeInfoVars0
+get_unify_typeinfos(Unification) = TypeInfoVars :-
+    (
+        Unification = complicated_unify(_, _, TypeInfoVars)
     ;
-        []
+        ( Unification = construct(_, _, _, _, _, _, _)
+        ; Unification = deconstruct(_, _, _, _, _, _)
+        ; Unification = assign(_, _)
+        ; Unification = simple_test(_, _)
+        ),
+        TypeInfoVars = []
     ).
 
 %-----------------------------------------------------------------------------%

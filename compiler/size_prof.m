@@ -283,24 +283,35 @@ process_goal(Goal0, Goal, !Info) :-
     (
         GoalExpr0 = unify(LHS, RHS, UniMode, Unify0, UnifyContext),
         (
-            Unify0 = construct(Var, ConsId, Args, ArgModes, How, Unique, _)
-        ->
+            Unify0 = construct(Var, ConsId, Args, ArgModes, How, Unique, _),
             process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
                 Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info)
         ;
             Unify0 = deconstruct(Var, ConsId, Args, ArgModes,
                 _CanFail, _CanCGC),
-            % The following test is an optimization. If
-            % BindingArgModes = [], which is almost 100% likely,
-            % then process_deconstruct would return GoalExpr0 as
-            % GoalExpr anyway, but would take longer.
-            list.filter(binds_arg_in_cell(!.Info), ArgModes, BindingArgModes),
-            BindingArgModes \= []
-        ->
-            process_deconstruct(Var, ConsId, Args, ArgModes,
-                Goal0, GoalExpr, !Info)
+            (
+                % The following test is an optimization. If
+                % BindingArgModes = [], which is almost 100% likely,
+                % then process_deconstruct would return GoalExpr0 as
+                % GoalExpr anyway, but would take longer.
+                list.filter(binds_arg_in_cell(!.Info), ArgModes,
+                    BindingArgModes),
+                BindingArgModes = [_ | _]
+            ->
+                process_deconstruct(Var, ConsId, Args, ArgModes,
+                    Goal0, GoalExpr, !Info)
+            ;
+                GoalExpr = GoalExpr0
+            )
         ;
+            ( Unify0 = assign(_, _)
+            ; Unify0 = simple_test(_, _)
+            ),
             GoalExpr = GoalExpr0
+        ;
+            Unify0 = complicated_unify(_, _, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "process_goal: complicated_unify")
         )
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),

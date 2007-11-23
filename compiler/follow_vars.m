@@ -83,12 +83,15 @@ find_final_follow_vars(ProcInfo, FollowVarsMap, NextNonReserved) :-
 find_final_follow_vars_2([], !FollowMap, !NextNonReserved).
 find_final_follow_vars_2([arg_info(RegNum, Mode) - Var | ArgInfoVars],
         !FollowVarsMap, !NextNonReserved) :-
-    ( Mode = top_out ->
+    (
+        Mode = top_out,
         Locn = abs_reg(RegNum),
         svmap.det_insert(Var, Locn, !FollowVarsMap),
         int.max(RegNum + 1, !NextNonReserved)
     ;
-        true
+        Mode = top_in
+    ;
+        Mode = top_unused
     ),
     find_final_follow_vars_2(ArgInfoVars, !FollowVarsMap, !NextNonReserved).
 
@@ -223,10 +226,14 @@ find_follow_vars_in_goal_expr(
         Call @ generic_call(GenericCall, Args, Modes, Det), Call,
         GoalInfo, GoalInfo, VarTypes, ModuleInfo,
         !FollowVarsMap, !NextNonReserved) :-
-    % Casts are generated inline.
-    ( GenericCall = cast(_) ->
-        true
+    (
+        GenericCall = cast(_)
+        % Casts are generated inline.
     ;
+        ( GenericCall = higher_order(_, _, _, _)
+        ; GenericCall = class_method(_, _, _, _)
+        ; GenericCall = event_call(_)
+        ),
         determinism_to_code_model(Det, CodeModel),
         map.apply_to_list(Args, VarTypes, Types),
         make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos),
@@ -276,7 +283,8 @@ find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
 find_follow_vars_from_arginfo([], !FollowVarsMap, !NextNonReserved).
 find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
         !FollowVarsMap, !NextNonReserved) :-
-    ( Mode = top_in ->
+    (
+        Mode = top_in,
         Locn = abs_reg(RegNum),
         ( svmap.insert(ArgVar, Locn, !FollowVarsMap) ->
             true    % FollowVarsMap is updated
@@ -290,7 +298,9 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
         ),
         int.max(RegNum + 1, !NextNonReserved)
     ;
-        true
+        ( Mode = top_out
+        ; Mode = top_unused
+        )
     ),
     find_follow_vars_from_arginfo(ArgsInfos,
         !FollowVarsMap, !NextNonReserved).

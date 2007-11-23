@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -194,9 +194,11 @@ parse_tokens(FileName, Tokens, Result) :-
         Result).
 
 parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
-    ( Tokens = token_nil ->
+    (
+        Tokens = token_nil,
         Result = eof
     ;
+        Tokens = token_cons(_, _, _),
         init_parser_state(Ops, FileName, Tokens, ParserState0),
         parse_whole_term(Term, ParserState0, ParserState),
         final_parser_state(ParserState, VarSet, LeftOverTokens),
@@ -214,18 +216,20 @@ check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
         LineNum = BadTokenLineNum
     ;
         % Find the token that caused the error.
-        ( ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _) ->
+        (
+            ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _),
             lexer.token_to_string(ErrorTok, TokString),
-            string.append_list(["Syntax error at ", TokString, ": ",
-                ErrorMessage], Message),
+            Message = "Syntax error at " ++ TokString ++ ": " ++ ErrorMessage,
             LineNum = ErrorTokLineNum
         ;
-            ( Tokens = token_cons(_, FirstTokLineNum, _) ->
-                LineNum = FirstTokLineNum
+            ErrorTokens = token_nil,
+            (
+                Tokens = token_cons(_, LineNum, _)
             ;
+                Tokens = token_nil,
                 error("check_for_errors")
             ),
-            string.append("Syntax error: ", ErrorMessage, Message)
+            Message = "Syntax error: " ++ ErrorMessage
         )
     ),
     Result = error(Message, LineNum).
@@ -233,12 +237,16 @@ check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
 check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
     ( check_for_bad_token(Tokens, Message, LineNum) ->
         Result = error(Message, LineNum)
-    ; LeftOverTokens = token_cons(Token, LineNum, _) ->
-        lexer.token_to_string(Token, TokString),
-        Message = "Syntax error: unexpected " ++ TokString,
-        Result = error(Message, LineNum)
     ;
-        Result = term(VarSet, Term)
+        (
+            LeftOverTokens = token_cons(Token, LineNum, _),
+            lexer.token_to_string(Token, TokString),
+            Message = "Syntax error: unexpected " ++ TokString,
+            Result = error(Message, LineNum)
+        ;
+            LeftOverTokens = token_nil,
+            Result = term(VarSet, Term)
+        )
     ).
 
 :- pred check_for_bad_token(token_list::in, string::out, int::out) is semidet.
@@ -314,9 +322,11 @@ parse_list_elem(Term, !PS) :-
 
 parse_term_2(MaxPriority, TermKind, Term, !PS) :-
     parse_left_term(MaxPriority, TermKind, LeftPriority, LeftTerm0, !PS),
-    ( LeftTerm0 = ok(LeftTerm) ->
+    (
+        LeftTerm0 = ok(LeftTerm),
         parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS)
     ;
+        LeftTerm0 = error(_, _),
         % propagate error upwards
         Term = LeftTerm0
     ).
@@ -361,18 +371,22 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
                 RightRightAssoc, RightRightPriority),
             OpPriority = BinOpPriority,
             parse_term_2(RightPriority, TermKind, RightResult, !PS),
-            ( RightResult = ok(RightTerm) ->
+            (
+                RightResult = ok(RightTerm),
                 parse_term_2(RightRightPriority, TermKind, RightRightResult,
                     !PS),
-                ( RightRightResult = ok(RightRightTerm) ->
+                (
+                    RightRightResult = ok(RightRightTerm),
                     get_term_context(!.PS, Context, TermContext),
                     Term = ok(term.functor(term.atom(Op),
                         [RightTerm, RightRightTerm], TermContext))
                 ;
+                    RightRightResult = error(_, _),
                     % Propagate error upwards.
                     Term = RightRightResult
                 )
             ;
+                RightResult = error(_, _),
                 % Propagate error upwards.
                 Term = RightResult
             )
@@ -390,11 +404,13 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
                 RightPriority),
             parse_term_2(RightPriority, TermKind, RightResult, !PS),
             OpPriority = UnOpPriority,
-            ( RightResult = ok(RightTerm) ->
+            (
+                RightResult = ok(RightTerm),
                 get_term_context(!.PS, Context, TermContext),
                 Term = ok(term.functor(term.atom(Op), [RightTerm],
                     TermContext))
             ;
+                RightResult = error(_, _),
                 % Propagate error upwards.
                 Term = RightResult
             )
@@ -452,7 +468,8 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
     ->
         adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
         parse_term_2(RightPriority, TermKind, RightTerm0, !PS),
-        ( RightTerm0 = ok(RightTerm) ->
+        (
+            RightTerm0 = ok(RightTerm),
             get_term_context(!.PS, Context, TermContext),
             OpTerm0 = term.functor(term.atom(Op),
                 list.append(VariableTerm, [LeftTerm, RightTerm]),
@@ -467,6 +484,7 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
             ),
             parse_rest(MaxPriority, TermKind, OpPriority, OpTerm, Term, !PS)
         ;
+            RightTerm0 = error(_, _),
             % Propagate error upwards.
             Term = RightTerm0
         )
@@ -650,7 +668,8 @@ parse_simple_term_2(open_curly, Context, _, Term, !PS) :-
         % "'{}'(1,2,3)". This makes the structure of tuple functors the same
         % as other functors.
         parse_term(SubTerm0, !PS),
-        ( SubTerm0 = ok(SubTerm) ->
+        (
+            SubTerm0 = ok(SubTerm),
             conjunction_to_list(SubTerm, ArgTerms),
             ( parser_get_token(close_curly, !PS) ->
                 Term = ok(term.functor(term.atom("{}"), ArgTerms,
@@ -659,6 +678,7 @@ parse_simple_term_2(open_curly, Context, _, Term, !PS) :-
                 parser_unexpected("expecting `}' or operator", Term, !PS)
             )
         ;
+            SubTerm0 = error(_, _),
             % Propagate error upwards.
             Term = SubTerm0
         )
@@ -726,9 +746,11 @@ parse_special_atom(Atom, TermContext, Term, !PS) :-
 
 parse_list(List, !PS) :-
     parse_list_elem(Arg0, !PS),
-    ( Arg0 = ok(Arg) ->
+    (
+        Arg0 = ok(Arg),
         parse_list_2(Arg, List, !PS)
     ;
+        Arg0 = error(_, _),
         % Propagate error.
         List = Arg0
     ).
@@ -741,16 +763,19 @@ parse_list_2(Arg, List, !PS) :-
         get_term_context(!.PS, Context, TermContext),
         ( Token = comma ->
             parse_list(Tail0, !PS),
-            ( Tail0 = ok(Tail) ->
+            (
+                Tail0 = ok(Tail),
                 List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                     TermContext))
             ;
+                Tail0 = error(_, _),
                 % Propagate error.
                 List = Tail0
             )
         ; Token = ht_sep ->
             parse_arg(Tail0, !PS),
-            ( Tail0 = ok(Tail) ->
+            (
+                Tail0 = ok(Tail),
                 ( parser_get_token(close_list, !PS) ->
                     List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                         TermContext))
@@ -758,6 +783,7 @@ parse_list_2(Arg, List, !PS) :-
                     parser_unexpected("expecting ']' or operator", List, !PS)
                 )
             ;
+                Tail0 = error(_, _),
                 % Propagate error.
                 List = Tail0
             )
@@ -784,9 +810,11 @@ parse_args(List, !PS) :-
         ( parser_get_token_context(Token, Context, !PS) ->
             ( Token = comma ->
                 parse_args(Tail0, !PS),
-                ( Tail0 = ok(Tail) ->
+                (
+                    Tail0 = ok(Tail),
                     List = ok([Arg|Tail])
                 ;
+                    Tail0 = error(_, _),
                     % Propagate error upwards.
                     List = Tail0
                 )

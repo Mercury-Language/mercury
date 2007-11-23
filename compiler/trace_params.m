@@ -162,10 +162,10 @@
     ;       decl_rep.
 
 :- type trace_suppress_item
-    --->    port(trace_port)
-    ;       return_info
-    ;       all_var_names
-    ;       proc_body_reps.
+    --->    suppress_port(trace_port)
+    ;       suppress_return_info
+    ;       suppress_all_var_names
+    ;       suppress_proc_body_reps.
 
 :- type trace_suppress_items == set(trace_suppress_item).
 
@@ -367,7 +367,7 @@ trace_level_needs_meaningful_var_names(decl_rep) = yes.
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
     (
         trace_level_has_return_info(TraceLevel) = yes,
-        \+ set.member(return_info, TraceSuppressItems)
+        \+ set.member(suppress_return_info, TraceSuppressItems)
     ->
         Need = yes
     ;
@@ -377,7 +377,7 @@ trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
 trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
     (
         trace_level_has_all_var_names(TraceLevel) = yes,
-        \+ set.member(all_var_names, TraceSuppressItems)
+        \+ set.member(suppress_all_var_names, TraceSuppressItems)
     ->
         Need = yes
     ;
@@ -387,7 +387,7 @@ trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
 trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
     (
         trace_level_has_proc_body_reps(TraceLevel) = yes,
-        \+ set.member(proc_body_reps, TraceSuppressItems)
+        \+ set.member(suppress_proc_body_reps, TraceSuppressItems)
     ->
         Need = yes
     ;
@@ -481,19 +481,19 @@ convert_port_class_name("context") =
 
 :- func convert_other_name(string) = trace_suppress_item is semidet.
 
-convert_other_name("return") = return_info.
-convert_other_name("return_info") = return_info.
-convert_other_name("names") = all_var_names.
-convert_other_name("all_var_names") = all_var_names.
-convert_other_name("bodies") = proc_body_reps.
-convert_other_name("proc_body_reps") = proc_body_reps.
+convert_other_name("return") = suppress_return_info.
+convert_other_name("return_info") = suppress_return_info.
+convert_other_name("names") = suppress_all_var_names.
+convert_other_name("all_var_names") = suppress_all_var_names.
+convert_other_name("bodies") = suppress_proc_body_reps.
+convert_other_name("proc_body_reps") = suppress_proc_body_reps.
 
 :- pred convert_item_name(string::in, list(trace_suppress_item)::out)
     is semidet.
 
 convert_item_name(String, Names) :-
     ( convert_port_name(String) = PortName ->
-        Names = [port(PortName)]
+        Names = [suppress_port(PortName)]
     ; convert_port_class_name(String) = PortNames ->
         list.map(wrap_port, PortNames, Names)
     ; convert_other_name(String) = OtherName ->
@@ -504,7 +504,7 @@ convert_item_name(String, Names) :-
 
 :- pred wrap_port(trace_port::in, trace_suppress_item::out) is det.
 
-wrap_port(Port, port(Port)).
+wrap_port(Port, suppress_port(Port)).
 
     % If this is modified, then the corresponding code in
     % runtime/mercury_stack_layout.h needs to be updated.
@@ -580,7 +580,7 @@ trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
         list.member(Category, trace_level_port_categories(TraceLevel)),
         \+ (
             trace_level_allows_port_suppression(TraceLevel) = yes,
-            set.member(port(Port), TraceSuppressItems)
+            set.member(suppress_port(Port), TraceSuppressItems)
         )
     ->
         NeedsPort = yes
@@ -597,9 +597,14 @@ encode_suppressed_events(SuppressedEvents) = SuppressedEventsInt :-
 
 maybe_add_suppressed_event(SuppressItem, SuppressedEventsInt0,
         SuppressedEventsInt) :-
-    ( SuppressItem = port(Port) ->
+    (
+        SuppressItem = suppress_port(Port),
         SuppressedEventsInt = SuppressedEventsInt0 \/ (1 << port_number(Port))
     ;
+        ( SuppressItem = suppress_return_info
+        ; SuppressItem = suppress_all_var_names
+        ; SuppressItem = suppress_proc_body_reps
+        ),
         SuppressedEventsInt = SuppressedEventsInt0
     ).
 

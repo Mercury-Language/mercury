@@ -312,10 +312,16 @@ type_range(type_cat_enum, Type, ModuleInfo, 0, MaxEnum) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    ( ConsTable = TypeBody ^ du_type_cons_tag_values ->
+    (
+        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _),
         map.count(ConsTable, TypeRange),
         MaxEnum = TypeRange - 1
     ;
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
         unexpected(this_file, "type_range: enum type is not d.u. type?")
     ).
 
@@ -332,11 +338,17 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
     map.lookup(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, Body),
-    ( ConsTable = Body ^ du_type_cons_tag_values ->
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    (
+        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _),
         map.to_assoc_list(ConsTable, ConsList),
         assoc_list.values(ConsList, TagList)
     ;
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
         unexpected(this_file, "non-du type in get_ptag_counts")
     ),
     map.init(PtagCountMap0),
@@ -362,9 +374,12 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
-            ( TagType = sectag_remote ->
-                true
+            (
+                TagType = sectag_remote
             ;
+                ( TagType = sectag_local
+                ; TagType = sectag_none
+                ),
                 unexpected(this_file, "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
@@ -377,9 +392,12 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
-            ( TagType = sectag_local ->
-                true
+            (
+                TagType = sectag_local
             ;
+                ( TagType = sectag_remote
+                ; TagType = sectag_none
+                ),
                 unexpected(this_file, "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),

@@ -179,16 +179,26 @@ reg_map_lookup_reg_locn(Map, Lval) = RegLocn :-
         ; Lval = prevfr_slot(_)
         ; Lval = mem_ref(_)
         ; Lval = global_var_ref(_)
-        )
-    ->
+        ),
         unexpected(this_file, "reg_map_lookup_reg_locn: unexpected: " 
             ++ "lval is not a virtual machine register")
     ;
-        Lval = lvar(_)
-    ->
+        Lval = lvar(_),
         unexpected(this_file, "reg_map_lookup_reg_locn: unexpected: "
             ++ "lvar/1 during x86_64 code generation")
     ;
+        ( Lval = reg(_, _)
+        ; Lval = temp(_, _)
+        ; Lval = succip
+        ; Lval = maxfr
+        ; Lval = curfr
+        ; Lval = hp
+        ; Lval = sp
+        ; Lval = parent_sp
+        ; Lval = stackvar(_)
+        ; Lval = framevar(_)
+        ; Lval = field(_, _, _)
+        ),
         map.lookup(RegMap, Lval, RegLocn)
     ).
 

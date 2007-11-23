@@ -717,11 +717,15 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % assignment to `closure_arg' and some unbox operations).
     WrapperArgs1 = list.map(arg_delete_gc_statement, WrapperArgs0),
 
-    % then insert the `closure_arg' parameter, if needed.
-    ( ClosureKind = special_pred ->
+    % Then insert the `closure_arg' parameter, if needed.
+    (
+        ClosureKind = special_pred,
         MaybeClosureA = no,
         WrapperArgs = WrapperArgs1
     ;
+        ( ClosureKind = higher_order_proc_closure
+        ; ClosureKind = typeclass_info_closure
+        ),
         ClosureArgType = mlds_generic_type,
         ClosureArgName = mlds_var_name("closure_arg", no),
         ClosureArgDeclType = list.det_head(ml_make_boxed_types(1)),
@@ -786,7 +790,12 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 
     % If the wrapper function is model_non, then set up the initial success
     % continuation; this is needed by ml_gen_call which we call below.
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_det
+    ;
+        CodeModel = model_semi
+    ;
+        CodeModel = model_non,
         globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
         (
             NondetCopyOut = yes,
@@ -804,8 +813,6 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
             ml_initial_cont(!.Info, [], [], InitialCont)
         ),
         ml_gen_info_push_success_cont(InitialCont, !Info)
-    ;
-        true
     ),
 
     % Generate code to call the function:
@@ -859,11 +866,15 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % For semidet code, add the declaration `MR_bool succeeded;'.
-    ( CodeModel = model_semi ->
+    (
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
+        Decls2 = Decls1
+    ;
+        CodeModel = model_semi,
         SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context),
         Decls2 = [SucceededVarDecl | Decls1]
-    ;
-        Decls2 = Decls1
     ),
 
     % Add an appropriate `return' statement.
@@ -890,10 +901,13 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 
     % If the wrapper function was model_non, then pop the success continuation
     % that we pushed.
-    ( CodeModel = model_non ->
-        ml_gen_info_pop_success_cont(!Info)
+    (
+        CodeModel = model_det
     ;
-        true
+        CodeModel = model_semi
+    ;
+        CodeModel = model_non,
+        ml_gen_info_pop_success_cont(!Info)
     ),
 
     % Put it all together.
@@ -989,21 +1003,25 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         CopyOutLvals = [],
         Defns = []
     ;
-        Names = [Name | Names1],
-        Types = [Type | Types1],
-        Modes = [Mode | Modes1]
+        Names = [Name | NamesTail],
+        Types = [Type | TypesTail],
+        Modes = [Mode | ModesTail]
     ->
-        ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1, PredOrFunc, CodeModel,
-            Context, ArgNum + 1, Defns1, Lvals1, CopyOutLvals1, !Info),
+        ml_gen_wrapper_arg_lvals(NamesTail, TypesTail, ModesTail, PredOrFunc,
+            CodeModel, Context, ArgNum + 1, DefnsTail, LvalsTail,
+            CopyOutLvalsTail, !Info),
         ml_gen_type(!.Info, Type, MLDS_Type),
         ml_gen_var_lval(!.Info, Name, MLDS_Type, VarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
         ( ArgMode = top_in ->
             Lval = VarLval,
-            CopyOutLvals = CopyOutLvals1,
-            Defns = Defns1
+            CopyOutLvals = CopyOutLvalsTail,
+            Defns = DefnsTail
         ;
+            % ( ArgMode = top_out
+            % ; ArgMode = top_unused
+            % ),
             % Handle output variables.
             ml_gen_info_get_globals(!.Info, Globals),
             CopyOut = get_copy_out_option(Globals, CodeModel),
@@ -1016,7 +1034,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                     PredOrFunc = pf_function,
                     CodeModel = model_det,
                     ArgMode = top_out,
-                    Types1 = [],
+                    TypesTail = [],
                     \+ type_util.is_dummy_argument_type(ModuleInfo, Type)
                 )
             ->
@@ -1024,23 +1042,23 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                 % a local declaration for them here.
                 Lval = VarLval,
                 ( is_dummy_argument_type(ModuleInfo, Type) ->
-                    CopyOutLvals = CopyOutLvals1,
-                    Defns = Defns1
+                    CopyOutLvals = CopyOutLvalsTail,
+                    Defns = DefnsTail
                 ;
-                    CopyOutLvals = [Lval | CopyOutLvals1],
+                    CopyOutLvals = [Lval | CopyOutLvalsTail],
                     ml_gen_local_for_output_arg(Name, Type,
                         ArgNum, Context, Defn, !Info),
-                    Defns = [Defn | Defns1]
+                    Defns = [Defn | DefnsTail]
                 )
             ;
                 % Output arguments are passed by reference, so we need to
                 % dereference them.
                 Lval = mem_ref(lval(VarLval), MLDS_Type),
-                CopyOutLvals = CopyOutLvals1,
-                Defns = Defns1
+                CopyOutLvals = CopyOutLvalsTail,
+                Defns = DefnsTail
             )
         ),
-        Lvals = [Lval | Lvals1]
+        Lvals = [Lval | LvalsTail]
     ;
         sorry(this_file, "ml_gen_wrapper_arg_lvals: length mismatch")
     ).

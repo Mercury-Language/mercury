@@ -509,9 +509,11 @@ augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
     = cost_node is semidet.
 
 find_unmatched_cost([CostNode - MaybeBenefitNode | Matches]) = Unmatched :-
-    ( MaybeBenefitNode = no ->
+    (
+        MaybeBenefitNode = no,
         Unmatched = CostNode
     ;
+        MaybeBenefitNode = yes(_),
         Unmatched = find_unmatched_cost(Matches)
     ).
 

@@ -555,14 +555,12 @@ output_x86_64_inst(Stream, bs(Src, Dest, Cond), !IO) :-
         check_operand_register(Dest, DestRes),
         (
             DestRes = yes,
-            ( Cond = f ->
+            (
+                Cond = f,
                 Instr = "bsf"
             ;
-                Cond = r ->
+                Cond = r,
                 Instr = "bsr"
-            ;
-                unexpected(this_file, "output_x86_64_inst: bs: unexpected:" 
-                    ++ " invalid condition third operand")
             ),
             put(Stream, "\t" ++ Instr ++ "\t", !IO),
             operand_to_string(Dest, DestType),
@@ -797,9 +795,11 @@ output_x86_64_inst(Stream, rc(Amnt, Dest, Cond), !IO) :-
     ).
 output_x86_64_inst(Stream, ret(Op), !IO) :-
     ( 
+        Op = no,
+        put(Stream, "\tret\t\t", !IO)
+    ;
         Op = yes(OpRes),
-        OpRes = uint16(NumBytes)
-    ->
+        OpRes = uint16(NumBytes),
         check_unsigned_int_size(16, NumBytes, Result),
         ( 
             Result = yes,
@@ -811,13 +811,6 @@ output_x86_64_inst(Stream, ret(Op), !IO) :-
             unexpected(this_file, "output_x86_64_instr: ret: unexpected:"
                 ++ "check_unsigned_int_size failed")
         )
-    ;
-        Op = no
-    ->
-        put(Stream, "\tret\t\t", !IO)
-    ;
-        unexpected(this_file, "output_x86_64_instr: ret: unexpected" 
-            ++ " invalid operand")
     ).
 output_x86_64_inst(Stream, ro(Amnt, Dest, Dir), !IO) :-
     check_operand_not_mem_ref(Amnt, Result1),
@@ -1361,7 +1354,8 @@ output_instr_with_condition(Stream, Instr, Op1, Op2, Cond, !IO) :-
 :- pred check_rc_first_operand(operand::in, bool::out) is det. 
 
 check_rc_first_operand(Op, Result) :-
-    ( Op = operand_imm(_) ->
+    (
+        Op = operand_imm(_),
         operand_to_string(Op, OpType),
         ( string.to_int(OpType, OpInt) ->
             check_unsigned_int_size(8, OpInt, Result1),
@@ -1373,11 +1367,11 @@ check_rc_first_operand(Op, Result) :-
                 Result = no
             )
         ;
-            unexpected(this_file, "check_rc_first_operand: unexpected:" 
-                ++ " string.to_int")
+            unexpected(this_file,
+                "check_rc_first_operand: unexpected: string.to_int")
         )
     ;
-        Op = operand_reg(_) ->
+        Op = operand_reg(_),
         check_operand_register(Op, Result2),
         (   
             Result2 = yes,
@@ -1387,8 +1381,12 @@ check_rc_first_operand(Op, Result) :-
             Result = no
         )
     ;
-        unexpected(this_file, "check_rc_first_operand: unexpected:" 
-            ++ " invalid operand")
+        ( Op = operand_mem_ref(_)
+        ; Op = operand_rel_offset(_)
+        ; Op = operand_label(_)
+        ),
+        unexpected(this_file,
+            "check_rc_first_operand: unexpected: invalid operand")
     ). 
 
 :- pred check_not_both_memory_ops(operand::in, operand::in, bool::out) is det. 

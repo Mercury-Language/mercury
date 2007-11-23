@@ -135,6 +135,7 @@
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
+:- import_module hlds.hlds_data.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
@@ -677,13 +678,12 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         simplify_info_incr_cost_delta(CostDelta, !Info),
         Goal1 = fail_goal_with_context(Context)
     ;
-        %
         % If --no-fully-strict, replace goals which cannot fail and have
         % no output variables with `true'. However, we don't do this for
         % erroneous goals, since these may occur in conjunctions where there
         % are no producers for some variables, and the code generator would
         % fail for these.
-        %
+
         determinism_components(Detism, cannot_fail, MaxSoln),
         MaxSoln \= at_most_zero,
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
@@ -1201,15 +1201,8 @@ simplify_goal_2_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
     GoalExpr0 = unify(LT0, RT0, M, U0, C),
     (
-        % A unification of the form X = X can be safely optimised away.
-        RT0 = rhs_var(LT0)
-    ->
-        Context = goal_info_get_context(GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
-    ;
         RT0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
-            Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
-    ->
+            Vars, Modes, LambdaDeclaredDet, LambdaGoal0),
         simplify_info_enter_lambda(!Info),
         simplify_info_get_common_info(!.Info, Common1),
         simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -1232,40 +1225,49 @@ simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
         GoalExpr = unify(LT0, RT, M, U0, C),
         GoalInfo = GoalInfo0
     ;
-        U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
-    ->
+        ( RT0 = rhs_functor(_, _, _)
+        ; RT0 = rhs_var(_)
+        ),
         (
-            RT0 = rhs_var(V),
-            process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
-                GoalInfo0, GoalExpr1, !Info, !IO),
-            GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
+            % A unification of the form X = X can be safely optimised away.
+            RT0 = rhs_var(LT0)
+        ->
+            Context = goal_info_get_context(GoalInfo0),
+            hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
         ;
-            ( RT0 = rhs_functor(_, _, _)
-            ; RT0 = rhs_lambda_goal(_, _, _, _, _, _, _, _)
-            ),
-            unexpected(this_file, "invalid RHS for complicated unify")
+            U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
+        ->
+            (
+                RT0 = rhs_var(V),
+                process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
+                    GoalInfo0, GoalExpr1, !Info, !IO),
+                GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
+            ;
+                RT0 = rhs_functor(_, _, _),
+                unexpected(this_file, "invalid RHS for complicated unify")
+            )
+        ;
+            simplify_do_common_struct(!.Info)
+        ->
+            common_optimise_unification(U0, LT0, RT0, M, C,
+                GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
+        ;
+            ( simplify_do_opt_duplicate_calls(!.Info)
+            ; simplify_do_warn_duplicate_calls(!.Info)
+            )
+        ->
+            % We need to do the pass, to record the variable equivalences
+            % used for optimizing or warning about duplicate calls.
+            % But we don't want to perform the optimization, so we disregard
+            % the optimized goal and instead use the original one.
+            common_optimise_unification(U0, LT0, RT0, M, C,
+                GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Info),
+            GoalExpr = GoalExpr0,
+            GoalInfo = GoalInfo0
+        ;
+            GoalExpr = GoalExpr0,
+            GoalInfo = GoalInfo0
         )
-    ;
-        simplify_do_common_struct(!.Info)
-    ->
-        common_optimise_unification(U0, LT0, RT0, M, C,
-            GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
-    ;
-        ( simplify_do_opt_duplicate_calls(!.Info)
-        ; simplify_do_warn_duplicate_calls(!.Info)
-        )
-    ->
-        % We need to do the pass, to record the variable equivalences
-        % used for optimizing or warning about duplicate calls.
-        % But we don't want to perform the optimization, so we disregard
-        % the optimized goal and instead use the original one.
-        common_optimise_unification(U0, LT0, RT0, M, C,
-            GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Info),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
     ).
 
 :- pred simplify_goal_2_ite(
@@ -1303,7 +1305,8 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
     Cond0 = hlds_goal(_, CondInfo0),
     CondDetism0 = goal_info_get_determinism(CondInfo0),
     determinism_components(CondDetism0, CondCanFail0, CondSolns0),
-    ( CondCanFail0 = cannot_fail ->
+    (
+        CondCanFail0 = cannot_fail,
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list.append(CondList, ThenList, List),
@@ -1332,67 +1335,88 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
         ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
-    ; CondSolns0 = at_most_zero ->
-        % Optimize away the condition and the `then' part.
-        det_negation_det(CondDetism0, MaybeNegDetism),
+    ;
+        CondCanFail0 = can_fail,
         (
-            Cond0 = hlds_goal(negation(NegCond), _),
-            % XXX BUG! This optimization is only safe if it preserves mode
-            % correctness, which means in particular that the negated goal
-            % must not clobber any variables. For now I've just disabled
-            % the optimization.
-            semidet_fail
-        ->
-            Cond = NegCond
-        ;
+            CondSolns0 = at_most_zero,
+            % Optimize away the condition and the `then' part.
+            det_negation_det(CondDetism0, MaybeNegDetism),
             (
-                MaybeNegDetism = yes(NegDetism1),
-                (
-                    NegDetism1 = detism_erroneous,
-                    instmap_delta_init_unreachable(NegInstMapDelta1)
-                ;
-                    NegDetism1 = detism_det,
-                    instmap_delta_init_reachable(NegInstMapDelta1)
-                )
+                Cond0 = hlds_goal(negation(NegCond), _),
+                % XXX BUG! This optimization is only safe if it preserves mode
+                % correctness, which means in particular that the negated goal
+                % must not clobber any variables. For now I've just disabled
+                % the optimization.
+                semidet_fail
             ->
-                NegDetism = NegDetism1,
-                NegInstMapDelta = NegInstMapDelta1
+                Cond = NegCond
             ;
-                unexpected(this_file, "goal_2: cannot get negated determinism")
+                (
+                    MaybeNegDetism = yes(NegDetism1),
+                    (
+                        NegDetism1 = detism_erroneous,
+                        instmap_delta_init_unreachable(NegInstMapDelta1)
+                    ;
+                        NegDetism1 = detism_det,
+                        instmap_delta_init_reachable(NegInstMapDelta1)
+                    )
+                ->
+                    NegDetism = NegDetism1,
+                    NegInstMapDelta = NegInstMapDelta1
+                ;
+                    unexpected(this_file,
+                        "goal_2: cannot get negated determinism")
+                ),
+                goal_info_set_determinism(NegDetism, CondInfo0, NegCondInfo0),
+                goal_info_set_instmap_delta(NegInstMapDelta,
+                    NegCondInfo0, NegCondInfo),
+                Cond = hlds_goal(negation(Cond0), NegCondInfo)
             ),
-            goal_info_set_determinism(NegDetism, CondInfo0, NegCondInfo0),
-            goal_info_set_instmap_delta(NegInstMapDelta,
-                NegCondInfo0, NegCondInfo),
-            Cond = hlds_goal(negation(Cond0), NegCondInfo)
-        ),
-        goal_to_conj_list(Else0, ElseList),
-        List = [Cond | ElseList],
-        simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
-            hlds_goal(GoalExpr, GoalInfo), !Info, !IO),
-        simplify_info_get_inside_duplicated_for_switch(!.Info,
-            InsideDuplForSwitch),
-        (
-            InsideDuplForSwitch = yes
-            % Do not generate the warning, since it is quite likely to be
-            % spurious: though the condition cannot succeed in this arm of the
-            % switch, it likely can succeed in other arms that derive from
-            % the exact same piece of source code.
+            goal_to_conj_list(Else0, ElseList),
+            List = [Cond | ElseList],
+            simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
+                hlds_goal(GoalExpr, GoalInfo), !Info, !IO),
+            simplify_info_get_inside_duplicated_for_switch(!.Info,
+                InsideDuplForSwitch),
+            (
+                InsideDuplForSwitch = yes
+                % Do not generate the warning, since it is quite likely to be
+                % spurious: though the condition cannot succeed in this arm
+                % of the switch, it likely can succeed in other arms that
+                % derive from the exact same piece of source code.
+            ;
+                InsideDuplForSwitch = no,
+                Context = goal_info_get_context(GoalInfo0),
+                Pieces = [words("Warning: the condition of this if-then-else"),
+                    words("cannot succeed.")],
+                Msg = simple_msg(Context,
+                    [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+                Severity = severity_conditional(warn_simple_code, yes,
+                    severity_warning, no),
+                Spec = error_spec(Severity,
+                    phase_simplify(report_only_if_in_all_modes), [Msg]),
+                simplify_info_add_error_spec(Spec, !Info)
+            ),
+            simplify_info_set_requantify(!Info),
+            simplify_info_set_rerun_det(!Info)
         ;
-            InsideDuplForSwitch = no,
-            Context = goal_info_get_context(GoalInfo0),
-            Pieces = [words("Warning: the condition of this if-then-else"),
-                words("cannot succeed.")],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_simple_code, yes,
-                severity_warning, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_error_spec(Spec, !Info)
-        ),
-        simplify_info_set_requantify(!Info),
-        simplify_info_set_rerun_det(!Info)
-    ; Else0 = hlds_goal(disj([]), _) ->
+            ( CondSolns0 = at_most_one
+            ; CondSolns0 = at_most_many
+            ; CondSolns0 = at_most_many_cc
+            ),
+            simplify_goal_2_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
+                GoalInfo0, GoalInfo, !Info, !IO)
+        )
+    ).
+
+:- pred simplify_goal_2_ordinary_ite(list(prog_var)::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
+
+simplify_goal_2_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
+        GoalInfo0, GoalInfo, !Info, !IO) :-
+    ( Else0 = hlds_goal(disj([]), _) ->
         % (A -> C ; fail) is equivalent to (A, C)
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
@@ -1402,8 +1426,8 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ;
-        % Recursively simplify the sub-goals,
-        % and rebuild the resulting if-then-else.
+        % Recursively simplify the sub-goals, and rebuild the resulting
+        % if-then-else.
 
         Info0 = !.Info,
         simplify_info_get_instmap(!.Info, InstMap0),
@@ -1422,12 +1446,13 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
         Else = hlds_goal(_, ElseInfo),
         ElseDelta = goal_info_get_instmap_delta(ElseInfo),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        simplify_info_get_module_info(!.Info, ModuleInfo0),
-        simplify_info_get_var_types(!.Info, VarTypes),
-        merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
-            [CondThenDelta, ElseDelta], NewDelta,
-            ModuleInfo0, ModuleInfo1),
-        simplify_info_set_module_info(ModuleInfo1, !Info),
+        some [!ModuleInfo] (
+            simplify_info_get_module_info(!.Info, !:ModuleInfo),
+            simplify_info_get_var_types(!.Info, VarTypes),
+            merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
+                [CondThenDelta, ElseDelta], NewDelta, !ModuleInfo),
+            simplify_info_set_module_info(!.ModuleInfo, !Info)
+        ),
         goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo1),
         IfThenElse = if_then_else(Vars, Cond, Then, Else),
 
@@ -1441,23 +1466,51 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
             % Check again if we can apply one of the above simplifications
             % after having simplified the sub-goals (we need to do this
             % to ensure that the goal is fully simplified, to maintain the
-            % invariants that the MLDS back-end depends on)
+            % invariants that the MLDS back-end depends on).
             ( CondCanFail = cannot_fail
             ; CondSolns = at_most_zero
             ; Else = hlds_goal(disj([]), _)
             )
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
-            simplify_goal_2(IfThenElse, GoalExpr, GoalInfo1, GoalInfo, !Info,
-                !IO)
+            simplify_goal_2(IfThenElse, GoalExpr, GoalInfo1, GoalInfo,
+                !Info, !IO)
         ;
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond,
+                cond_can_switch_uncommitted, CanSwitch),
+            (
+                CanSwitch = cond_can_switch_on(SwitchVar),
+                Context = goal_info_get_context(CondInfo),
+                VarSet = !.Info ^ varset,
+                Pieces0 = [words("Warning: this if-then-else"),
+                    words("could be replaced by a switch")],
+                ( varset.search_name(VarSet, SwitchVar, SwitchVarName) ->
+                    OnPieces = [words("on"), quote(SwitchVarName)]
+                ;
+                    OnPieces = []
+                ),
+                Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
+                Msg = simple_msg(Context,
+                    [option_is_set(inform_ite_instead_of_switch, yes,
+                        [always(Pieces)])]),
+                Severity = severity_conditional(inform_ite_instead_of_switch,
+                    yes, severity_informational, no),
+                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
+                    [Msg]),
+                simplify_info_add_error_spec(Spec, !Info)
+            ;
+                CanSwitch = cond_can_switch_uncommitted
+            ;
+                CanSwitch = cond_cannot_switch
+            ),
             (
                 % If-then-elses that are det or semidet may nevertheless
-                % contain nondet or multidet conditions. If this happens,
-                % the if-then-else must be put inside a `scope' to appease the
-                % code generator.  (Both the MLDS and LLDS back-ends rely
-                % on this.)
-                %
+                % contain nondet or multi conditions. If this happens,
+                % the if-then-else must be put inside a `scope' to appease
+                % the code generator. (Both the MLDS and LLDS back-ends
+                % rely on this.)
+
                 simplify_do_once(!.Info),
                 CondSolns = at_most_many,
                 IfThenElseNumSolns \= at_most_many
@@ -1472,6 +1525,142 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
             ),
             GoalInfo = GoalInfo1
         )
+    ).
+
+:- type cond_can_switch
+    --->    cond_can_switch_uncommitted
+    ;       cond_can_switch_on(prog_var)
+    ;       cond_cannot_switch.
+
+:- pred warn_switch_for_ite_cond(module_info::in, vartypes::in, hlds_goal::in,
+    cond_can_switch::in, cond_can_switch::out) is det.
+
+warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
+    Cond = hlds_goal(CondExpr, _CondInfo),
+    (
+        CondExpr = unify(_LHSVar, _RHS, _Mode, Unification, _UContext),
+        (
+            ( Unification = construct(_, _, _, _, _, _, _)
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
+            ),
+            !:CondCanSwitch = cond_cannot_switch
+        ;
+            Unification = deconstruct(LHSVar, _ConsId, _Args, _ArgModes,
+                _CanFail, _CanCGC),
+            map.lookup(VarTypes, LHSVar, LHSVarType),
+            ( type_to_type_defn_body(ModuleInfo, LHSVarType, TypeBody) ->
+                CanSwitchOnType = can_switch_on_type(TypeBody),
+                (
+                    CanSwitchOnType = no,
+                    !:CondCanSwitch = cond_cannot_switch
+                ;
+                    CanSwitchOnType = yes,
+                    (
+                        !.CondCanSwitch = cond_can_switch_uncommitted,
+                        !:CondCanSwitch = cond_can_switch_on(LHSVar)
+                    ;
+                        !.CondCanSwitch = cond_can_switch_on(SwitchVar),
+                        ( SwitchVar = LHSVar ->
+                            true
+                        ;
+                            !:CondCanSwitch = cond_cannot_switch
+                        )
+                    ;
+                        !.CondCanSwitch = cond_cannot_switch
+                    )
+                )
+            ;
+                % You cannot have a switch on a type with no body (e.g. a
+                % builtin type such as int).
+                !:CondCanSwitch = cond_cannot_switch
+            )
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(this_file,
+                "warn_ite_instead_of_switch: complicated unify")
+        )
+    ;
+        CondExpr = disj(Disjuncts),
+        list.foldl(warn_switch_for_ite_cond(ModuleInfo, VarTypes), Disjuncts,
+            !CondCanSwitch)
+    ;
+        CondExpr = negation(SubGoal),
+        (
+            !.CondCanSwitch = cond_can_switch_uncommitted,
+            warn_switch_for_ite_cond(ModuleInfo, VarTypes, SubGoal,
+                !CondCanSwitch)
+        ;
+            !.CondCanSwitch = cond_can_switch_on(_),
+            % The condition cannot do both.
+            !:CondCanSwitch = cond_cannot_switch
+        ;
+            !.CondCanSwitch = cond_cannot_switch
+        )
+    ;
+        ( CondExpr = plain_call(_, _, _, _, _, _)
+        ; CondExpr = generic_call(_, _, _, _)
+        ; CondExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; CondExpr = conj(_, _)
+        ; CondExpr = switch(_, _, _)
+        ; CondExpr = scope(_, _)
+        ; CondExpr = if_then_else(_, _, _, _)
+        ),
+        !:CondCanSwitch = cond_cannot_switch
+    ;
+        CondExpr = shorthand(_),
+        unexpected(this_file, "warn_ite_instead_of_switch: shorthand")
+    ).
+
+:- func can_switch_on_type(hlds_type_body) = bool.
+
+can_switch_on_type(TypeBody) = CanSwitchOnType :-
+    (
+        TypeBody = hlds_du_type(_Ctors, _TagValues, IsEnumOrDummy,
+            _UserEq, _ReservedTag, _ReservedAddr, _MaybeForeignType),
+        % We don't care about _UserEq, since the unification with *any* functor
+        % of the type indicates that we are deconstructing the physical
+        % representation, not the logical value.
+        %
+        % We don't care about _ReservedTag or _ReservedAddr, since those are
+        % only implementation details.
+        %
+        % We don't care about _MaybeForeignType, since the unification with
+        % *any* functor of the type means that either there is no foreign type
+        % version, or we are using the Mercury version of the type.
+        (
+            ( IsEnumOrDummy = is_mercury_enum
+            ; IsEnumOrDummy = is_foreign_enum(_)
+            ; IsEnumOrDummy = not_enum_or_dummy
+            ),
+            CanSwitchOnType = yes
+        ;
+            IsEnumOrDummy = is_dummy,
+            % We should have already got a warning that the condition cannot
+            % fail; a warning about using a switch would therefore be redundant
+            % (as well as confusing, since you cannot have a switch with one
+            % arm for the one function symbol).
+            CanSwitchOnType = no
+        )
+    ;
+        TypeBody = hlds_eqv_type(_),
+        % The type of the variable should have had any equivalences expanded
+        % out of it before simplify.
+        unexpected(this_file, "warn_switch_for_ite_cond: eqv type")
+    ;
+        TypeBody = hlds_foreign_type(_),
+        % If the type is foreign, how can have a Mercury unification using it?
+        unexpected(this_file, "warn_switch_for_ite_cond: foreign type")
+    ;
+        TypeBody = hlds_abstract_type(_),
+        % If the type is abstract, how can have a Mercury unification using it?
+        unexpected(this_file, "warn_switch_for_ite_cond: foreign type")
+    ;
+        TypeBody = hlds_solver_type(_, _),
+        % Any unifications on constrained variables should be done on the
+        % representation type, and the type of the variable in the unification
+        % should be the representation type, not the solver type.
+        unexpected(this_file, "warn_switch_for_ite_cond: solver type")
     ).
 
 :- pred simplify_goal_2_neg(
@@ -2921,7 +3110,14 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             % Don't warn where the initial goal was fail, since that can result
             % from mode analysis pruning away cases in a switch which cannot
             % succeed due to sub-typing in the modes.
-            Goal0 \= hlds_goal(disj([]), _)
+            Goal0 \= hlds_goal(disj([]), _),
+            % Don't warn if the code was duplicated, since it is quite likely
+            % to be spurious: though the disjunct cannot succeed in this arm of
+            % the switch, it likely can succeed in other arms that derive from
+            % the exact same piece of source code.
+            simplify_info_get_inside_duplicated_for_switch(!.Info,
+                 InsideDuplForSwitch),
+            InsideDuplForSwitch = no
         ->
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Warning: this disjunct"),

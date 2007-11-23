@@ -216,9 +216,13 @@ goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     Goal = plain_call(PredId, ProcId, _, _, _, _),
     lookup_exception_analysis_result(proc(PredId, ProcId), Status,
         !ModuleInfo, !IO),
-    ( Status = will_not_throw ->
+    (
+        Status = will_not_throw,
         Result = cannot_throw
     ;
+        ( Status = may_throw(_)
+        ; Status = throw_conditional
+        ),
         Result = can_throw
     ).
 goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
@@ -231,9 +235,15 @@ goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
 goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     Goal = unify(_, _, _, Uni, _),
     % Complicated unifies are _non_builtin_
-    ( Uni = complicated_unify(_, _, _) ->
+    (
+        Uni = complicated_unify(_, _, _),
         Result = can_throw
     ;
+        ( Uni = construct(_, _, _, _, _, _, _)
+        ; Uni = deconstruct(_, _, _, _, _, _)
+        ; Uni = assign(_, _)
+        ; Uni = simple_test(_, _)
+        ),
         Result = cannot_throw
     ).
 goal_can_throw_2(OuterGoal, _, Result, !ModuleInfo, !IO) :-

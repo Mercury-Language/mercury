@@ -1040,11 +1040,16 @@ write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
     write_indent(Indent, !IO),
 
     % Print initial formatting differently for assertions.
-    ( PromiseType = promise_type_true ->
+    (
+        PromiseType = promise_type_true,
         io.write_string(":- promise all [", !IO),
         io.write_list(HeadVars, ", ", PrintVar, !IO),
         io.write_string("] (\n", !IO)
     ;
+        ( PromiseType = promise_type_exclusive
+        ; PromiseType = promise_type_exhaustive
+        ; PromiseType = promise_type_exclusive_exhaustive
+        ),
         io.write_string(":- all [", !IO),
         io.write_list(HeadVars, ", ", PrintVar, !IO),
         io.write_string("]", !IO),
@@ -1071,8 +1076,7 @@ write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
 write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, ClauseNum, !IO) :-
     (
-        Clauses0 = [Clause | Clauses]
-    ->
+        Clauses0 = [Clause | Clauses],
         term.var_list_to_term_list(HeadVars, HeadTerms),
         UseDeclaredModes = no,
         io.write_string("% clause ", !IO),
@@ -1083,7 +1087,7 @@ write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
             HeadVars, PredOrFunc, Clauses, TypeQual, ClauseNum + 1, !IO)
     ;
-        true
+        Clauses0 = []
     ).
 
 write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
@@ -1757,7 +1761,8 @@ write_goal_2(conj(ConjType, List), ModuleInfo, VarSet, AppendVarNums, Indent,
 write_goal_2(disj(List), ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO) :-
     write_indent(Indent, !IO),
-    ( List = [Goal | Goals] ->
+    (
+        List = [Goal | Goals],
         io.write_string("( % disjunction\n", !IO),
         write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
             TypeQual, !IO),
@@ -1767,6 +1772,7 @@ write_goal_2(disj(List), ModuleInfo, VarSet, AppendVarNums,
         io.write_string(")", !IO),
         io.write_string(Follow, !IO)
     ;
+        List = [],
         io.write_string("fail", !IO),
         io.write_string(Follow, !IO)
     ).
@@ -3855,9 +3861,14 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         io.write_string("% does not contain user event\n", !IO)
     ),
 
-    ( EvalMethod = eval_normal ->
-        true
+    (
+        EvalMethod = eval_normal
     ;
+        ( EvalMethod = eval_loop_check
+        ; EvalMethod = eval_memo
+        ; EvalMethod = eval_minimal(_)
+        ; EvalMethod = eval_table_io(_, _)
+        ),
         io.write_string("% eval method: ", !IO),
         write_eval_method(EvalMethod, !IO),
         io.write_string("\n", !IO)
@@ -4332,23 +4343,23 @@ inst_name_to_term(mostly_uniq_inst(InstName), Context) = Term :-
         Context, Term).
 inst_name_to_term(unify_inst(Liveness, InstA, InstB, Real), Context) = Term :-
     construct_qualified_term(unqualified("$unify"),
-        [make_atom((Liveness = is_live -> "live" ; "dead"), Context)] ++
+        [make_atom(is_live_to_str(Liveness), Context)] ++
         list.map(map_inst_to_term(Context), [InstA, InstB]) ++
-        [make_atom((Real = real_unify -> "real" ; "fake"), Context)],
+        [make_atom(unify_is_real_to_str(Real), Context)],
         Context, Term).
 inst_name_to_term(ground_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
     construct_qualified_term(unqualified("$ground"),
         [inst_name_to_term(InstName, Context),
-        make_atom((IsLive = is_live -> "live" ; "dead"), Context),
+        make_atom(is_live_to_str(IsLive), Context),
         make_atom(inst_uniqueness(Uniq, "shared"), Context),
-        make_atom((Real = real_unify -> "real" ; "fake"), Context)],
+        make_atom(unify_is_real_to_str(Real), Context)],
         Context, Term).
 inst_name_to_term(any_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
     construct_qualified_term(unqualified("$any"),
         [inst_name_to_term(InstName, Context),
-        make_atom((IsLive = is_live -> "live" ; "dead"), Context),
+        make_atom(is_live_to_str(IsLive), Context),
         make_atom(inst_uniqueness(Uniq, "shared"), Context),
-        make_atom((Real = real_unify -> "real" ; "fake"), Context)],
+        make_atom(unify_is_real_to_str(Real), Context)],
         Context, Term).
 inst_name_to_term(typed_ground(Uniq, Type), Context) = Term :-
     unparse_type(Type, Term0),
@@ -4362,6 +4373,16 @@ inst_name_to_term(typed_inst(Type, InstName), Context) = Term :-
         [term.coerce(Term0),
         inst_name_to_term(InstName, Context)],
         Context, Term).
+
+:- func is_live_to_str(is_live) = string.
+
+is_live_to_str(is_live) = "live".
+is_live_to_str(is_dead) = "dead".
+
+:- func unify_is_real_to_str(unify_is_real) = string.
+
+unify_is_real_to_str(real_unify) = "real".
+unify_is_real_to_str(fake_unify) = "fake".
 
 :- func any_inst_uniqueness(uniqueness) = string.
 

@@ -352,13 +352,18 @@ set_fallback_search_mode(Store, FallBackSearchMode, !Analyser) :-
     !:Analyser = !.Analyser ^ fallback_search_mode := FallBackSearchMode,
     !:Analyser = !.Analyser ^ search_mode := FallBackSearchMode,
     !:Analyser = !.Analyser ^ last_search_question := no,
-    ( FallBackSearchMode = analyser_divide_and_query(Weighting) ->
+    (
+        FallBackSearchMode = analyser_divide_and_query(Weighting),
         SearchSpace0 = !.Analyser ^ search_space,
         update_weighting_heuristic(Store, Weighting, SearchSpace0,
             SearchSpace),
         !:Analyser = !.Analyser ^ search_space := SearchSpace
     ;
-        true
+        FallBackSearchMode = analyser_follow_subterm_end(_, _, _, _, _)
+    ;
+        FallBackSearchMode = analyser_binary(_, _, _)
+    ;
+        FallBackSearchMode = analyser_top_down
     ).
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).

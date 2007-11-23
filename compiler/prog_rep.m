@@ -270,13 +270,17 @@ goal_expr_to_byte_list(plain_call(PredId, _, Args, Builtin, _, _),
     PredName = pred_info_name(PredInfo),
     string_to_byte_list(ModuleName, !StackInfo, ModuleNameBytes),
     string_to_byte_list(PredName, !StackInfo, PredNameBytes),
-    ( Builtin = not_builtin ->
+    (
+        Builtin = not_builtin,
         Bytes = [goal_type_to_byte(goal_plain_call)] ++
             ModuleNameBytes ++
             PredNameBytes ++
             vars_to_byte_list(Info, Args) ++
             AtomicBytes
     ;
+        ( Builtin = inline_builtin
+        ; Builtin = out_of_line_builtin
+        ),
         Bytes = [goal_type_to_byte(goal_builtin_call)] ++
             ModuleNameBytes ++
             PredNameBytes ++

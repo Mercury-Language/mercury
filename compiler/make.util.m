@@ -1089,7 +1089,8 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
     ;
         io.input_stream(OldInputStream, !IO),
         search_for_file(SearchDirs, FileName, SearchResult, !IO),
-        ( SearchResult = ok(_) ->
+        (
+            SearchResult = ok(_),
             io.input_stream_name(FullFileName, !IO),
             io.set_input_stream(OldInputStream, FileStream, !IO),
             io.close_input(FileStream, !IO),
@@ -1105,6 +1106,7 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
             !:Info = !.Info ^ file_timestamps ^ elem(FileName)
                 := MaybeTimestamp
         ;
+            SearchResult = error(_),
             MaybeTimestamp = error("file `" ++ FileName ++ "' not found")
         )
     ).
@@ -1263,7 +1265,8 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
         )
     ;
         MaybeExt = no,
-        ( TargetType = module_target_foreign_object(PIC, Lang) ->
+        (
+            TargetType = module_target_foreign_object(PIC, Lang),
             (
                 ForeignModuleName =
                     foreign_language_module_name(ModuleName, Lang)
@@ -1274,7 +1277,8 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
             ;
                 unexpected(this_file, "module_target_to_file_name_2")
             )
-        ; TargetType = module_target_foreign_il_asm(Lang) ->
+        ;
+            TargetType = module_target_foreign_il_asm(Lang),
             (
                 ForeignModuleName =
                     foreign_language_module_name(ModuleName, Lang)
@@ -1284,11 +1288,32 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
             ;
                 unexpected(this_file, "module_target_to_file_name_2")
             )
-        ; TargetType = module_target_fact_table_object(PIC, FactFile) ->
+        ;
+            TargetType = module_target_fact_table_object(PIC, FactFile),
             maybe_pic_object_file_extension(PIC, Ext, !IO),
             fact_table_file_name(ModuleName, FactFile, Ext, MkDir, FileName,
                 !IO)
         ;
+            ( TargetType = module_target_analysis_registry
+            ; TargetType = module_target_asm_code(_)
+            ; TargetType = make.module_target_c_code
+            ; TargetType = module_target_c_header(_)
+            ; TargetType = module_target_erlang_beam_code
+            ; TargetType = module_target_erlang_code
+            ; TargetType = module_target_erlang_header
+            ; TargetType = module_target_errors
+            ; TargetType = make.module_target_il_asm
+            ; TargetType = module_target_il_code
+            ; TargetType = module_target_intermodule_interface
+            ; TargetType = module_target_java_code
+            ; TargetType = module_target_long_interface
+            ; TargetType = module_target_object_code(_)
+            ; TargetType = module_target_private_interface
+            ; TargetType = module_target_short_interface
+            ; TargetType = module_target_source
+            ; TargetType = module_target_unqualified_short_interface
+            ; TargetType = module_target_xml_doc
+            ),
             unexpected(this_file, "module_target_to_file_name_2")
         )
     ).
@@ -1315,9 +1340,20 @@ timestamp_extension(_, module_target_analysis_registry) = ".analysis_date".
 timestamp_extension(_, module_target_c_code) = ".c_date".
 timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
     globals.get_target(Globals, Target),
-    Ext = timestamp_extension(Globals,
-        (Target = target_asm ->
-            module_target_asm_code(non_pic) ; module_target_c_code)).
+    (
+        Target = target_asm,
+        ModuleTargetType = module_target_asm_code(non_pic)
+    ;
+        % XXX Some of these alternatives don't look right.
+        ( Target = target_c
+        ; Target = target_x86_64
+        ; Target = target_il
+        ; Target = target_java
+        ; Target = target_erlang
+        ),
+        ModuleTargetType = module_target_c_code
+    ),
+    Ext = timestamp_extension(Globals, ModuleTargetType).
 timestamp_extension(_, module_target_il_code) = ".il_date".
 timestamp_extension(_, module_target_java_code) = ".java_date".
 timestamp_extension(_, module_target_erlang_code) = ".erl_date".

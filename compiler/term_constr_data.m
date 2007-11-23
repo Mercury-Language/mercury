@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2006 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -455,23 +455,21 @@ simplify_abstract_rep(Goal0) = Goal :- simplify_abstract_rep(Goal0, Goal).
 
 simplify_abstract_rep(term_disj(!.Disjuncts, _Size0, Locals, NonLocals),
         Goal) :-
-    %
     % Begin by simplifying each disjunct.
-    %
+
     list.map(simplify_abstract_rep, !Disjuncts),
     ( 
-        !.Disjuncts = [Disjunct] 
-    ->
+        !.Disjuncts = [] ,
+        Goal = term_primitive(polyhedron.universe, [], [])
+    ;
+        !.Disjuncts = [Disjunct] ,
         % We need to merge the set of locals with the locals from the 
         % disjunct otherwise we will end up throwing away the locals
         % from the enclosing goal.
         %
         Goal = update_local_and_nonlocal_vars(Disjunct, Locals, NonLocals)
     ;   
-        !.Disjuncts = [] 
-    ->
-        Goal = term_primitive(polyhedron.universe, [], [])
-    ;
+        !.Disjuncts = [_, _ | _] ,
         Size = list.length(!.Disjuncts),
         Goal = term_disj(!.Disjuncts, Size, Locals, NonLocals) 
     ).
@@ -482,12 +480,10 @@ simplify_abstract_rep(term_conj(!.Conjuncts, Locals, NonLocals), Goal) :-
     flatten_conjuncts(!Conjuncts),
     list.filter(isnt(is_empty_conj), !Conjuncts),
     ( !.Conjuncts = [Conjunct] ->
-        %
         % The local/non-local var sets need to be updated for similar
         % reasons as we do with disjunctions.
-        %
-        Goal = update_local_and_nonlocal_vars(Conjunct, Locals,
-            NonLocals) 
+
+        Goal = update_local_and_nonlocal_vars(Conjunct, Locals, NonLocals) 
     ; 
         Goal = term_conj(!.Conjuncts, Locals, NonLocals)
     ).
@@ -530,10 +526,12 @@ flatten_conjuncts_2([], !Goals).
 flatten_conjuncts_2([Goal0 | Goals0], !Goals) :-
     ( Goal0 = term_primitive(_, _, _) ->
         list.takewhile(is_primitive, Goals0, Primitives, NextNonPrimitive),
-        ( Primitives = [_|_] ->
-            NewPrimitive = list.foldl(combine_primitives, Primitives, Goal0)
-        ;
+        (
+            Primitives = [],
             NewPrimitive = Goal0
+        ;
+            Primitives = [_ | _],
+            NewPrimitive = list.foldl(combine_primitives, Primitives, Goal0)
         ),
         list.cons(NewPrimitive, !Goals)
     ;
@@ -753,28 +751,28 @@ simplify_conjuncts(Goals0) = Goals :-
 
 simplify_conjuncts(Goals0, Goals) :-
     ( 
-        Goals0 = []
-    ->
+        Goals0 = [],
         Goals = []
     ;   
-        Goals0 = [Goal]
-    ->
+        Goals0 = [Goal],
         Goals = [Goal]
     ;   
         % If the list of conjuncts starts with two primitives
         % join them together into a single primitive.
         Goals0 = [GoalA, GoalB | OtherGoals],
-        GoalA  = term_primitive(PolyA,  LocalsA, NonLocalsA),
-        GoalB  = term_primitive(PolyB,  LocalsB, NonLocalsB)
-    ->  
-        Poly = polyhedron.intersection(PolyA, PolyB),
-        Locals = LocalsA ++ LocalsB,
-        NonLocals = NonLocalsA ++ NonLocalsB, 
-        Goal = term_primitive(Poly, Locals, NonLocals),
-        Goals1 = [Goal | OtherGoals],
-        simplify_conjuncts(Goals1, Goals)
-    ;
-        Goals = Goals0  
+        (
+            GoalA = term_primitive(PolyA,  LocalsA, NonLocalsA),
+            GoalB = term_primitive(PolyB,  LocalsB, NonLocalsB)
+        ->  
+            Poly = polyhedron.intersection(PolyA, PolyB),
+            Locals = LocalsA ++ LocalsB,
+            NonLocals = NonLocalsA ++ NonLocalsB, 
+            Goal = term_primitive(Poly, Locals, NonLocals),
+            Goals1 = [Goal | OtherGoals],
+            simplify_conjuncts(Goals1, Goals)
+        ;
+            Goals = Goals0  
+        )
     ). 
 
 %-----------------------------------------------------------------------------%

@@ -1328,11 +1328,11 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
     % instmap_delta.
     ModuleInfo = RI ^ module_info,
     (
-        Uni = deconstruct(Var, _ConsId, Vars, UniModes, _, _CanCGC)
-    ->
+        Uni = deconstruct(Var, _ConsId, Vars, UniModes, _, _CanCGC),
+
         % Get the final inst of the deconstructed var, which will be the same
         % as in the old instmap.
-        %
+
         OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap.lookup_var(InstMap, Var, InitialInst),
         ( instmap_delta_search_var(OldInstMapDelta, Var, FinalInst1) ->
@@ -1348,7 +1348,8 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             % change.
             FinalInst = InitialInst
         ),
-        UniModeToRhsMode = (pred(UMode::in, Mode::out) is det :-
+        UniModeToRhsMode =
+            (pred(UMode::in, Mode::out) is det :-
                 UMode = ((_ - Inst0) -> (_ - Inst)),
                 Mode = (Inst0 -> Inst)
             ),
@@ -1359,17 +1360,27 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         UniMode = UniMode0
     ;
         Uni = construct(Var, ConsId, Args, _, _, _, _),
-        NonLocals = goal_info_get_nonlocals(GoalInfo),
-        set.member(Var, NonLocals),
-        OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-        \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
-        MaybeInst = cons_id_to_shared_inst(ModuleInfo, ConsId, length(Args)),
-        MaybeInst = yes(Inst)
-    ->
-        UniMode = UniMode0,
-        instmap_delta_init_reachable(InstMapDelta0),
-        instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta)
+        (
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            set.member(Var, NonLocals),
+            OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+            \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
+            MaybeInst = cons_id_to_shared_inst(ModuleInfo, ConsId,
+                length(Args)),
+            MaybeInst = yes(Inst)
+        ->
+            UniMode = UniMode0,
+            instmap_delta_init_reachable(InstMapDelta0),
+            instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta)
+        ;
+            InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+            UniMode = UniMode0
+        )
     ;
+        ( Uni = assign(_, _)
+        ; Uni = simple_test(_, _)
+        ; Uni = complicated_unify(_, _, _)
+        ),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         UniMode = UniMode0
     ).

@@ -120,14 +120,19 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         map.lookup(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        ( ConsTable0 = TypeBody ^ du_type_cons_tag_values ->
-            ConsTable = ConsTable0
+        (
+            TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _)
         ;
+            ( TypeBody = hlds_eqv_type(_)
+            ; TypeBody = hlds_foreign_type(_)
+            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_abstract_type(_)
+            ),
             unexpected(this_file, "cons_id_to_tag: type is not d.u. type?")
         ),
 
         % Finally look up the cons_id in the table.
-        map.lookup(ConsTable, cons(Name, Arity), Tag)
+        map.lookup(ConsTagTable, cons(Name, Arity), Tag)
     ).
 
 %-----------------------------------------------------------------------------%

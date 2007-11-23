@@ -875,12 +875,14 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        ( ConjType = parallel_conj ->
-            unexpected(this_file, "transform_variant_goal: parallel_conj")
-        ;
+        (
+            ConjType = plain_conj,
             transform_variant_conj(ModuleInfo, VarToAddr, InstMap0,
                 Goals0, Goals, Changed),
             GoalExpr = conj(ConjType, Goals)
+        ;
+            ConjType = parallel_conj,
+            unexpected(this_file, "transform_variant_goal: parallel_conj")
         )
     ;
         GoalExpr0 = disj(Goals0),

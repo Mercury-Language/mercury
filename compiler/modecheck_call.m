@@ -108,13 +108,15 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_procedures(PredInfo, Procs),
-    ( MayChangeCalledProc = may_not_change_called_proc ->
+    (
+        MayChangeCalledProc = may_not_change_called_proc,
         ( ProcId0 = invalid_proc_id ->
             unexpected(this_file, "modecheck_call_pred: invalid proc_id")
         ;
             ProcIds = [ProcId0]
         )
     ;
+        MayChangeCalledProc = may_change_called_proc,
         % Get the list of different possible modes for the called predicate.
         ProcIds = pred_info_all_procids(PredInfo)
     ),
@@ -188,7 +190,8 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
                 ArgVars0, TheProcId, InstVarSub, ProcArgModes),
             map.lookup(Procs, TheProcId, ProcInfo),
             CalleeModeErrors = ProcInfo ^ mode_errors,
-            ( CalleeModeErrors = [_|_] ->
+            (
+                CalleeModeErrors = [_ | _],
                 % mode error in callee for this mode
                 ArgVars = ArgVars0,
                 WaitingVars = set.list_to_set(ArgVars),
@@ -200,6 +203,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
                         CalleeModeErrors),
                     !ModeInfo)
             ;
+                CalleeModeErrors = [],
                 modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0,
                     ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
             )
@@ -884,7 +888,8 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
             ; Arg_mf_A = no,  Arg_mf_B = no,  Result0 = same
             )
         ),
-        ( Result0 = same ->
+        (
+            Result0 = same,
             %
             % If the actual arg inst is not available, or comparing with
             % the arg inst doesn't help, then compare the two proc insts.
@@ -911,6 +916,9 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
             ; A_mf_B = yes, B_mf_A = yes, Result = same
             )
         ;
+            ( Result0 = better
+            ; Result0 = worse
+            ),
             Result = Result0
         )
     ).

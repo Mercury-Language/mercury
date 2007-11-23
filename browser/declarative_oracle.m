@@ -257,9 +257,13 @@ oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO) :-
     User0 = Oracle0 ^ user_state,
     user_confirm_bug(Bug, Confirmation, User0, User, !IO),
     Oracle1 = Oracle0 ^ user_state := User,
-    ( Confirmation = overrule_bug ->
+    (
+        Confirmation = overrule_bug,
         list.foldl(revise_oracle, Evidence, Oracle1, Oracle)
     ;
+        ( Confirmation = confirm_bug
+        ; Confirmation = abort_diagnosis
+        ),
         Oracle = Oracle1
     ).
 
@@ -597,17 +601,21 @@ assert_oracle_kb(_, skip(_), !KB).
 assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), !KB) :-
     get_kb_ground_map(!.KB, Map0),
     ProcLayout = Atom ^ final_atom ^ proc_layout,
-    %
+
     % Insert all modes for the atom if the atom is correct and just the
     % one mode if it's not correct.  In general we cannot insert all modes
     % for erroneous or inadmissible atoms since the atom might be
     % erroneous with respect to one mode, but inadmissible with respect to
     % another mode.
-    %
-    ( Truth = truth_correct ->
+
+    (
+        Truth = truth_correct,
         foldl(add_atom_to_ground_map(Truth, Atom),
             get_all_modes_for_layout(ProcLayout), Map0, Map)
     ;
+        ( Truth = truth_erroneous
+        ; Truth = truth_inadmissible
+        ),
         add_atom_to_ground_map(Truth, Atom, ProcLayout, Map0, Map)
     ),
     set_kb_ground_map(Map, !KB).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2006 The University of Melbourne.
+% Copyright (C) 2001, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,15 +134,23 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
 
 compare_procs_fallback(MainFunc, Deep, PSI1, PSI2) = Result :-
     Result0 = MainFunc(Deep, PSI1, PSI2),
-    ( Result0 \= (=) ->
-        Result = Result0
-    ;
+    (
+        Result0 = (=),
         Result1 = compare_ps_time_both_overall(Deep, PSI1, PSI2),
-        ( Result1 \= (=) ->
-            Result = Result1
-        ;
+        (
+            Result1 = (=),
             Result = compare_ps_words_both_overall(Deep, PSI1, PSI2)
+        ;
+            ( Result1 = (<)
+            ; Result1 = (>)
+            ),
+            Result = Result1
         )
+    ;
+        ( Result0 = (<)
+        ; Result0 = (>)
+        ),
+        Result = Result0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -967,15 +975,23 @@ sort_line_groups(Criteria, Groups) = SortedGroups :-
 
 compare_groups_fallback(MainFunc, Group1, Group2) = Result :-
     Result0 = MainFunc(Group1, Group2),
-    ( Result0 \= (=) ->
-        Result = Result0
-    ;
+    (
+        Result0 = (=),
         Result1 = compare_line_groups_by_context(Group1, Group2),
-        ( Result1 \= (=) ->
-            Result = Result1
-        ;
+        (
+            Result1 = (=),
             Result = compare_line_groups_by_name(Group1, Group2)
+        ;
+            ( Result1 = (<)
+            ; Result1 = (>)
+            ),
+            Result = Result1
         )
+    ;
+        ( Result0 = (<)
+        ; Result0 = (>)
+        ),
+        Result = Result0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -986,10 +1002,13 @@ compare_groups_fallback(MainFunc, Group1, Group2) = Result :-
 compare_line_groups_by_context(Group1, Group2) = Result :-
     compare(ResultFilenames,
         Group1 ^ group_filename, Group2 ^ group_filename),
-    ( ResultFilenames = (=) ->
-        compare(Result,
-            Group1 ^ group_linenumber, Group2 ^ group_linenumber)
+    (
+        ResultFilenames = (=),
+        compare(Result, Group1 ^ group_linenumber, Group2 ^ group_linenumber)
     ;
+        ( ResultFilenames = (<)
+        ; ResultFilenames = (>)
+        ),
         Result = ResultFilenames
     ).
 

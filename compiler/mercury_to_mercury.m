@@ -1164,9 +1164,14 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet,
     mercury_format_tabs(Indent, !U),
     (
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
-        ( Uniq = shared ->
-            true
+        (
+            Uniq = shared
         ;
+            ( Uniq = unique
+            ; Uniq = mostly_unique
+            ; Uniq = clobbered
+            ; Uniq = mostly_clobbered
+            ),
             add_string("/* ", !U),
             mercury_format_uniqueness(Uniq, "ground", !U),
             add_string(" */", !U)
@@ -1254,9 +1259,14 @@ mercury_format_inst(bound(Uniq, BoundInsts), InstInfo, !U) :-
 mercury_format_inst(ground(Uniq, GroundInstInfo), InstInfo, !U) :-
     (
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
-        ( Uniq = shared ->
-            true
+        (
+            Uniq = shared
         ;
+            ( Uniq = unique
+            ; Uniq = mostly_unique
+            ; Uniq = clobbered
+            ; Uniq = mostly_clobbered
+            ),
             add_string("/* ", !U),
             mercury_format_uniqueness(Uniq, "ground", !U),
             add_string(" */", !U)
@@ -3905,15 +3915,17 @@ mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken,
         ),
         add_string(")", !U)
     ;
-        Args = [Y | Ys]
-    ->
-        mercury_format_constant(Functor, NextToGraphicToken, !U),
-        add_string("(", !U),
-        mercury_format_term(VarSet, AppendVarnums, Y, !U),
-        mercury_format_remaining_terms(VarSet, AppendVarnums, Ys, !U),
-        add_string(")", !U)
-    ;
-        mercury_format_bracketed_constant(Functor, NextToGraphicToken, !U)
+        (
+            Args = [Y | Ys],
+            mercury_format_constant(Functor, NextToGraphicToken, !U),
+            add_string("(", !U),
+            mercury_format_term(VarSet, AppendVarnums, Y, !U),
+            mercury_format_remaining_terms(VarSet, AppendVarnums, Ys, !U),
+            add_string(")", !U)
+        ;
+            Args = [],
+            mercury_format_bracketed_constant(Functor, NextToGraphicToken, !U)
+        )
     ).
 
 :- pred mercury_format_list_args(varset(T)::in, bool::in, term(T)::in,
@@ -4518,12 +4530,13 @@ write_maybe_termination_info(MaybeTerminationInfo, Verbose, !IO) :-
     ;
         MaybeTerminationInfo = yes(can_loop(Error)),
         io.write_string("can_loop", !IO),
-        ( Verbose = yes ->
+        (
+            Verbose = yes,
             io.write_string("(", !IO),
             io.write(Error, !IO),
             io.write_string(")", !IO)
         ;
-            true
+            Verbose = no
         )
     ).
 

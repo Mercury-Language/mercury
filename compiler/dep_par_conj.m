@@ -618,9 +618,13 @@ transform_conjunction(SharedVars, Goals, GoalInfo, NewGoal, InstMap,
     % by the addition of signal goals (which are impure) or calls to
     % parallelised procs (which may be impure).
     Purity = goal_info_get_purity(GoalInfo),
-    ( Purity = purity_impure ->
+    (
+        Purity = purity_impure,
         NewGoal = NewGoal0
     ;
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
         Reason = promise_purity(dont_make_implicit_promises, Purity),
         NewGoal = hlds_goal(scope(Reason, NewGoal0), GoalInfo)
     ).

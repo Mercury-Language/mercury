@@ -426,12 +426,18 @@ type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type, !SeenTypes) :-
         true
     else
         svset.insert(Type, !SeenTypes),
-        ( Type = builtin_type(_) ->
-            true
-        ; Type = tuple_type(Args, _Kind) ->
+        (
+            Type = builtin_type(_)
+        ;
+            Type = tuple_type(Args, _Kind),
             types_definitely_have_no_user_defined_eq_pred(ModuleInfo,
                 Args, !SeenTypes)
         ;
+            ( Type = defined_type(_, _, _)
+            ; Type = higher_order_type(_, _, _, _)
+            ; Type = apply_n_type(_, _, _)
+            ; Type = kinded_type(_, _)
+            ),
             type_to_type_defn_body(ModuleInfo, Type, TypeBody),
             type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
                 Type, TypeBody, !SeenTypes),

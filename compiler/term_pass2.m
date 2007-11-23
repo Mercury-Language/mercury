@@ -312,20 +312,23 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
         Result = ok(CallInfo, _),
         CallInfo = call_weight_info(InfCalls, CallWeights),
         (
-            InfCalls \= []
-        ->
+            InfCalls = [_ | _],
             PassInfo = pass_info(_, MaxErrors, _),
             list.take_upto(MaxErrors, InfCalls, ReportedInfCalls),
             Termination = can_loop(ReportedInfCalls)
         ;
-            zero_or_positive_weight_cycles(CallWeights, !.ModuleInfo, Cycles),
-            Cycles \= []
-        ->
-            PassInfo = pass_info(_, MaxErrors, _),
-            list.take_upto(MaxErrors, Cycles, ReportedCycles),
-            Termination = can_loop(ReportedCycles)
-        ;
-            Termination = cannot_loop(unit)
+            InfCalls = [],
+            (
+                zero_or_positive_weight_cycles(CallWeights, !.ModuleInfo,
+                    Cycles),
+                Cycles = [_ | _]
+            ->
+                PassInfo = pass_info(_, MaxErrors, _),
+                list.take_upto(MaxErrors, Cycles, ReportedCycles),
+                Termination = can_loop(ReportedCycles)
+            ;
+                Termination = cannot_loop(unit)
+            )
         )
     ;
         Result = error(Errors),

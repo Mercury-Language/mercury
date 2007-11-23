@@ -952,25 +952,38 @@ cell_inst_cons_id(Which, Arity) = InstConsId :-
 qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
     (
         ConsId0 = cons(Name0, OrigArity),
-        type_to_ctor_and_args(Type, TypeCtor, _),
-        TypeCtor = type_ctor(qualified(TypeModule, _), _)
-    ->
-        UnqualName = unqualify_name(Name0),
-        Name = qualified(TypeModule, UnqualName),
-        ConsId = cons(Name, OrigArity),
-        InstConsId = ConsId
+        (
+            type_to_ctor_and_args(Type, TypeCtor, _),
+            TypeCtor = type_ctor(qualified(TypeModule, _), _)
+        ->
+            UnqualName = unqualify_name(Name0),
+            Name = qualified(TypeModule, UnqualName),
+            ConsId = cons(Name, OrigArity),
+            InstConsId = ConsId
+        ;
+            ConsId = ConsId0,
+            InstConsId = ConsId
+        )
     ;
-        ConsId0 = type_info_cell_constructor(CellCtor)
-    ->
+        ConsId0 = type_info_cell_constructor(CellCtor),
         ConsId = ConsId0,
         InstConsId = cell_inst_cons_id(type_info_cell(CellCtor),
             list.length(Args))
     ;
-        ConsId0 = typeclass_info_cell_constructor
-    ->
+        ConsId0 = typeclass_info_cell_constructor,
         ConsId = typeclass_info_cell_constructor,
         InstConsId = cell_inst_cons_id(typeclass_info_cell, list.length(Args))
     ;
+        ( ConsId0 = int_const(_)
+        ; ConsId0 = float_const(_)
+        ; ConsId0 = string_const(_)
+        ; ConsId0 = pred_const(_, _)
+        ; ConsId0 = type_ctor_info_const(_, _, _)
+        ; ConsId0 = base_typeclass_info_const(_, _, _, _)
+        ; ConsId0 = table_io_decl(_)
+        ; ConsId0 = tabling_info_const(_)
+        ; ConsId0 = deep_profiling_proc_layout(_)
+        ),
         ConsId = ConsId0,
         InstConsId = ConsId
     ).

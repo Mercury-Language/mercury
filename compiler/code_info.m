@@ -1531,70 +1531,84 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, CondEnv,
         Allow),
     (
-        CodeModel \= model_non
-    ->
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         HijackInfo = disj_no_hijack,
         Code = node([
             llds_instr(comment("disj no hijack"), "")
         ])
     ;
-        CondEnv = inside_non_condition
-    ->
-        HijackInfo = disj_temp_frame,
-        create_temp_frame(do_fail, "prepare for disjunction", Code, !CI)
-    ;
-        Allow = not_allowed
-    ->
+        CodeModel = model_non,
         (
-            CurfrMaxfr = must_be_equal,
-            ResumeKnown = resume_point_known(has_been_done),
-            stack.pop(ResumePoints, TopResumePoint, RestResumePoints),
-            stack.is_empty(RestResumePoints),
-            TopResumePoint = stack_only(_, do_fail)
-        ->
-            HijackInfo = disj_quarter_hijack,
-            Code = node([
-                llds_instr(comment("disj quarter hijack of do_fail"), "")
-            ])
-        ;
+            CondEnv = inside_non_condition,
             HijackInfo = disj_temp_frame,
             create_temp_frame(do_fail, "prepare for disjunction", Code, !CI)
+        ;
+            CondEnv = not_inside_non_condition,
+            (
+                Allow = not_allowed,
+                (
+                    CurfrMaxfr = must_be_equal,
+                    ResumeKnown = resume_point_known(has_been_done),
+                    stack.pop(ResumePoints, TopResumePoint, RestResumePoints),
+                    stack.is_empty(RestResumePoints),
+                    TopResumePoint = stack_only(_, do_fail)
+                ->
+                    HijackInfo = disj_quarter_hijack,
+                    Code = node([
+                        llds_instr(comment("disj quarter hijack of do_fail"),
+                        "")
+                    ])
+                ;
+                    HijackInfo = disj_temp_frame,
+                    create_temp_frame(do_fail, "prepare for disjunction", Code,
+                        !CI)
+                )
+            ;
+                Allow = allowed,
+                (
+                    CurfrMaxfr = must_be_equal,
+                    (
+                        ResumeKnown = resume_point_known(has_been_done),
+                        HijackInfo = disj_quarter_hijack,
+                        Code = node([
+                            llds_instr(comment("disj quarter hijack"), "")
+                        ])
+                    ;
+                        ( ResumeKnown = resume_point_known(wont_be_done)
+                        ; ResumeKnown = resume_point_unknown
+                        ),
+                        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
+                            non_persistent_temp_slot, RedoipSlot, !CI),
+                        HijackInfo = disj_half_hijack(RedoipSlot),
+                        Code = node([
+                            llds_instr(assign(RedoipSlot,
+                                lval(redoip_slot(lval(curfr)))),
+                                "prepare for half disj hijack")
+                        ])
+                    )
+                ;
+                    CurfrMaxfr = may_be_different,
+                    acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
+                        non_persistent_temp_slot, RedoipSlot, !CI),
+                    acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
+                        non_persistent_temp_slot, RedofrSlot, !CI),
+                    HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
+                    Code = node([
+                        llds_instr(
+                            assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
+                            "prepare for full disj hijack"),
+                        llds_instr(
+                            assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
+                            "prepare for full disj hijack"),
+                        llds_instr(
+                            assign(redofr_slot(lval(maxfr)), lval(curfr)),
+                            "prepare for full disj hijack")
+                    ])
+                )
+            )
         )
-    ;
-        CurfrMaxfr = must_be_equal,
-        ResumeKnown = resume_point_known(has_been_done)
-    ->
-        HijackInfo = disj_quarter_hijack,
-        Code = node([
-            llds_instr(comment("disj quarter hijack"), "")
-        ])
-    ;
-        CurfrMaxfr = must_be_equal
-    ->
-        % Here ResumeKnown must be resume_point_unknown
-        % or resume_point_known(wont_be_done).
-        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
-            non_persistent_temp_slot, RedoipSlot, !CI),
-        HijackInfo = disj_half_hijack(RedoipSlot),
-        Code = node([
-            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
-                "prepare for half disj hijack")
-        ])
-    ;
-        % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
-            non_persistent_temp_slot, RedoipSlot, !CI),
-        acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
-            non_persistent_temp_slot, RedofrSlot, !CI),
-        HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
-        Code = node([
-            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
-                "prepare for full disj hijack"),
-            llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
-                "prepare for full disj hijack"),
-            llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
-                "prepare for full disj hijack")
-        ])
     ).
 
 undo_disj_hijack(HijackInfo, Code, !CI) :-
@@ -2124,50 +2138,54 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
         ),
         HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode))
     ;
-        ResumeKnown = resume_point_known(has_been_done),
-        CurfrMaxfr = must_be_equal
-    ->
-        HijackInfo = commit_quarter_hijack,
-        HijackCode = node([
-            llds_instr(assign(redoip_slot(lval(curfr)), StackLabelConst),
-                "hijack the redofr slot")
-        ])
-    ;
-        CurfrMaxfr = must_be_equal
-    ->
-        % Here ResumeKnown must be resume_point_unknown or
-        % resume_point_known(wont_be_done).
-
-        acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
-            non_persistent_temp_slot, RedoipSlot, !CI),
-        HijackInfo = commit_half_hijack(RedoipSlot),
-        HijackCode = node([
-            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
-                "prepare for half commit hijack"),
-            llds_instr(assign(redoip_slot(lval(curfr)), StackLabelConst),
-                "hijack the redofr slot")
-        ])
-    ;
-        % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
-            non_persistent_temp_slot, RedoipSlot, !CI),
-        acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
-            non_persistent_temp_slot, RedofrSlot, !CI),
-        acquire_temp_slot(slot_lval(maxfr),
-            non_persistent_temp_slot, MaxfrSlot, !CI),
-        HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
-        HijackCode = node([
-            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
-                "prepare for full commit hijack"),
-            llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
-                "prepare for full commit hijack"),
-            llds_instr(save_maxfr(MaxfrSlot),
-                "prepare for full commit hijack"),
-            llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
-                "hijack the redofr slot"),
-            llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
-                "hijack the redoip slot")
-        ])
+        (
+            CurfrMaxfr = must_be_equal,
+            (
+                ResumeKnown = resume_point_known(has_been_done),
+                HijackInfo = commit_quarter_hijack,
+                HijackCode = node([
+                    llds_instr(assign(redoip_slot(lval(curfr)),
+                        StackLabelConst),
+                        "hijack the redofr slot")
+                ])
+            ;
+                ( ResumeKnown = resume_point_known(wont_be_done)
+                ; ResumeKnown = resume_point_unknown
+                ),
+                acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
+                    non_persistent_temp_slot, RedoipSlot, !CI),
+                HijackInfo = commit_half_hijack(RedoipSlot),
+                HijackCode = node([
+                    llds_instr(assign(RedoipSlot,
+                        lval(redoip_slot(lval(curfr)))),
+                        "prepare for half commit hijack"),
+                    llds_instr(assign(redoip_slot(lval(curfr)),
+                        StackLabelConst),
+                        "hijack the redofr slot")
+                ])
+            )
+        ;
+            CurfrMaxfr = may_be_different,
+            acquire_temp_slot(slot_lval(redoip_slot(lval(maxfr))),
+                non_persistent_temp_slot, RedoipSlot, !CI),
+            acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
+                non_persistent_temp_slot, RedofrSlot, !CI),
+            acquire_temp_slot(slot_lval(maxfr),
+                non_persistent_temp_slot, MaxfrSlot, !CI),
+            HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
+            HijackCode = node([
+                llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
+                    "prepare for full commit hijack"),
+                llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
+                    "prepare for full commit hijack"),
+                llds_instr(save_maxfr(MaxfrSlot),
+                    "prepare for full commit hijack"),
+                llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
+                    "hijack the redofr slot"),
+                llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
+                    "hijack the redoip slot")
+            ])
+        )
     ),
     maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
     maybe_save_region_commit_frame(AddRegionOps, ForwardLiveVarsBeforeGoal,
@@ -2467,7 +2485,8 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         true
     ),
     stack.push(ResumePoints0, ResumePoint, ResumePoints),
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(llconst_code_addr(StackLabel)),
         Code = node([
@@ -2476,6 +2495,9 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         ]),
         RedoipUpdate = has_been_done
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         Code = empty,
         RedoipUpdate = wont_be_done
     ),
@@ -4309,10 +4331,10 @@ find_unused_slots_for_items([Head | Tail], HeadItem, TailItems, TempsInUse,
     (
         find_unused_slot_for_item([Head | Tail], HeadItem, TempsInUse,
             ChosenHeadStackVar, Remainder),
-        ( ChosenHeadStackVar =  stackvar(N) ->
+        ( ChosenHeadStackVar = stackvar(N) ->
             StackId0 = det_stack,
             FirstSlotNum0 = N
-        ; ChosenHeadStackVar =  framevar(N) ->
+        ; ChosenHeadStackVar = framevar(N) ->
             StackId0 = nondet_stack,
             FirstSlotNum0 = N
         ;

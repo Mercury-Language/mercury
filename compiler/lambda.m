@@ -280,12 +280,11 @@ lambda_process_cases([case(ConsId, Goal0) | Cases0],
     unification::in, unify_context::in, hlds_goal_expr::out,
     lambda_info::in, lambda_info::out) is det.
 
-lambda_process_unify_goal(XVar, Y0, Mode, Unification0, Context, GoalExpr,
+lambda_process_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         !Info) :-
     (
-        Y0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
-            NonLocalVars, Vars, Modes, Det, LambdaGoal0)
-    ->
+        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+            NonLocalVars, Vars, Modes, Det, LambdaGoal0),
         % First, process the lambda goal recursively, in case it contains
         % some nested lambda expressions.
         lambda_process_goal(LambdaGoal0, LambdaGoal, !Info),
@@ -293,10 +292,13 @@ lambda_process_unify_goal(XVar, Y0, Mode, Unification0, Context, GoalExpr,
         % Then, convert the lambda expression into a new predicate.
         lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Det,
             NonLocalVars, LambdaGoal, Unification0, Y, Unification, !Info),
-        GoalExpr = unify(XVar, Y, Mode, Unification, Context)
+        GoalExpr = unify(LHS, Y, Mode, Unification, Context)
     ;
+        ( RHS0 = rhs_var(_)
+        ; RHS0 = rhs_functor(_, _, _)
+        ),
         % Ordinary unifications are left unchanged.
-        GoalExpr = unify(XVar, Y0, Mode, Unification0, Context)
+        GoalExpr = unify(LHS, RHS0, Mode, Unification0, Context)
     ).
 
 :- pred lambda_process_lambda(purity::in, pred_or_func::in,

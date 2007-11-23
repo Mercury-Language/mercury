@@ -665,7 +665,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             no, no, no, MaybeFailLabel, RefersToLLDSSTack, MayDupl),
             "foreign_proc inclusion")
     ]),
-    %
+
     % For semidet code, we need to insert the failure handling code here:
     %
     %   goto skip_label;
@@ -677,8 +677,9 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     % handling code here:
     %
     %   <code to fail>
-    %
-    ( MaybeFailLabel = yes(TheFailLabel) ->
+
+    (
+        MaybeFailLabel = yes(TheFailLabel),
         code_info.get_next_label(SkipLabel, !CI),
         code_info.generate_failure(FailCode, !CI),
         GotoSkipLabelCode = node([
@@ -688,10 +689,13 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         FailLabelCode = node([llds_instr(label(TheFailLabel), "")]),
         FailureCode = tree_list([GotoSkipLabelCode, FailLabelCode,
             FailCode, SkipLabelCode])
-    ; Detism = detism_failure ->
-        code_info.generate_failure(FailureCode, !CI)
     ;
-        FailureCode = empty
+        MaybeFailLabel = no,
+        ( Detism = detism_failure ->
+            code_info.generate_failure(FailureCode, !CI)
+        ;
+            FailureCode = empty
+        )
     ),
 
     % Join all code fragments together.
@@ -1281,9 +1285,13 @@ foreign_proc_select_out_args([Arg | Rest], Out) :-
     foreign_proc_select_out_args(Rest, OutTail),
     Arg = c_arg(_, _, _, _, ArgInfo),
     ArgInfo = arg_info(_Loc, Mode),
-    ( Mode = top_out ->
+    (
+        Mode = top_out,
         Out = [Arg | OutTail]
     ;
+        ( Mode = top_in
+        ; Mode = top_unused
+        ),
         Out = OutTail
     ).
 
@@ -1297,9 +1305,13 @@ foreign_proc_select_in_args([Arg | Rest], In) :-
     foreign_proc_select_in_args(Rest, InTail),
     Arg = c_arg(_, _, _, _, ArgInfo),
     ArgInfo = arg_info(_Loc, Mode),
-    ( Mode = top_in ->
+    (
+        Mode = top_in,
         In = [Arg | InTail]
     ;
+        ( Mode = top_out
+        ; Mode = top_unused
+        ),
         In = InTail
     ).
 

@@ -263,10 +263,12 @@ report_error_undef_pred(Info, SimpleCallId) = Msg :-
         Components = [always(Pieces)]
     ;
         MainPieces = [words("error: undefined"), simple_call(SimpleCallId)],
-        ( PredName = qualified(ModuleQualifier, _) ->
+        (
+            PredName = qualified(ModuleQualifier, _),
             Pieces = MainPieces ++
                 maybe_report_missing_import_addendum(Info, ModuleQualifier)
         ;
+            PredName = unqualified(_),
             Pieces = MainPieces ++ [suffix("."), nl]
         ),
         Components = [always(Pieces)]

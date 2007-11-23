@@ -1134,9 +1134,13 @@ sort_livevals(OrigInfos, FinalInfos) :-
         get_name_from_live_value_type(LiveType1, Name1),
         get_name_from_live_value_type(LiveType2, Name2),
         compare(NameResult, Name1, Name2),
-        ( NameResult = (=) ->
+        (
+            NameResult = (=),
             compare(Result, Lval1, Lval2)
         ;
+            ( NameResult = (<)
+            ; NameResult = (>)
+            ),
             Result = NameResult
         )
     ),

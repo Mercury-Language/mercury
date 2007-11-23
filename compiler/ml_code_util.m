@@ -777,8 +777,7 @@ ml_gen_assign(Lval, Rval, Context) = Statement :-
 ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
         !Statements) :-
     (
-        CodeModel = model_semi
-    ->
+        CodeModel = model_semi,
         ml_gen_test_success(Info, Succeeded),
         CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
             CopiedOutputVarLvals),
@@ -787,17 +786,20 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
             mlds_make_context(Context)),
         !:Statements = !.Statements ++ [ReturnStatement]
     ;
-        CodeModel \= model_non,
-        CopiedOutputVarLvals = [_ | _]
-    ->
-        CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
-            CopiedOutputVarLvals),
-        ReturnStmt = ml_stmt_return(CopiedOutputVarRvals),
-        ReturnStatement = statement(ReturnStmt,
-            mlds_make_context(Context)),
-        !:Statements = !.Statements ++ [ReturnStatement]
+        CodeModel = model_det,
+        (
+            CopiedOutputVarLvals = [_ | _],
+            CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
+                CopiedOutputVarLvals),
+            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals),
+            ReturnStatement = statement(ReturnStmt,
+                mlds_make_context(Context)),
+            !:Statements = !.Statements ++ [ReturnStatement]
+        ;
+            CopiedOutputVarLvals = []
+        )
     ;
-        true
+        CodeModel = model_non
     ).
 
 ml_gen_block(VarDecls, Statements, Context) =
@@ -1216,9 +1218,13 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
 
 ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-    ( ArgMode = top_in ->
+    (
+        ArgMode = top_in,
         MLDS_ArgType = MLDS_Type
     ;
+        ( ArgMode = top_out
+        ; ArgMode = top_unused
+        ),
         MLDS_ArgType = mlds_ptr_type(MLDS_Type)
     ),
     Name = entity_data(var(Var)),

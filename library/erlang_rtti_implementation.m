@@ -67,13 +67,12 @@
 :- pred functor_number(T::in, functor_number_lex::out, int::out) is semidet.
 
 :- pred functor_number_cc(T::in, functor_number_lex::out,
-    int::out) is cc_nondet. 
+    int::out) is cc_nondet.
 
 :- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
 :- mode deconstruct(in, in(canonicalize), out, out, out) is det.
-:- mode deconstruct(in, in(include_details_cc), out, out, out)
-    is cc_multi.
+:- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
 :- mode deconstruct(in, in, out, out, out) is cc_multi.
 
 :- pred deconstruct_du(T, noncanon_handling, functor_number_lex,
@@ -130,7 +129,6 @@
 :- import_module term_io.
 :- import_module type_desc.
 
-    %
     % A type_info can be represented in one of three ways
     % For a type with arity 0
     %   TypeCtorInfo
@@ -141,21 +139,24 @@
     %
     % Note that we usually we pass thunks in place of type_ctor_infos
     % themselves.
-    %   
+    %
 :- pragma foreign_type("Erlang", type_info, "").
-:- type type_info ---> type_info.
+:- type type_info
+    --->    type_info.
 
     % In the Erlang RTTI implementation, this is actually a thunk returning a
     % type_ctor_info.
     %
 :- pragma foreign_type("Erlang", type_ctor_info, "").
-:- type type_ctor_info ---> type_ctor_info.
+:- type type_ctor_info
+    --->    type_ctor_info.
 
     % The actual type_ctor_info, i.e. after evaluating the thunk.  For the
     % representation of a type_ctor_info see erl_rtti.type_ctor_data_to_elds.
     %
 :- pragma foreign_type("Erlang", type_ctor_info_evaled, "").
-:- type type_ctor_info_evaled ---> type_ctor_info_evaled.
+:- type type_ctor_info_evaled
+    --->    type_ctor_info_evaled.
 
     % The type_ctor_rep needs to be kept up to date with the alternatives
     % given by the function erl_rtti.erlang_type_ctor_rep/1
@@ -186,9 +187,8 @@
     ;       etcr_base_typeclass_info
     ;       etcr_foreign
 
-            % These types shouldn't be needed they are
-            % introduced for library predicates which
-            % don't apply on this backend.
+            % These types shouldn't be needed; they are introduced for library
+            % predicates which don't apply on this backend.
     ;       etcr_hp
     ;       etcr_subgoal
     ;       etcr_ticket
@@ -341,7 +341,7 @@ generic_compare(Res, X, Y) :-
             error("compare/3: type arity > 5 not supported")
         )
     ).
-    
+
 :- pred compare_tuple(type_info::in, comparison_result::out, T::in, T::in)
     is det.
 
@@ -381,35 +381,49 @@ compare_type_infos(Res, TypeInfoA, TypeInfoB) :-
     TCB = TB ^ type_ctor_info_evaled,
 
     compare(NameRes, TCA ^ type_ctor_type_name, TCB ^ type_ctor_type_name),
-    ( NameRes = (=) ->
+    (
+        NameRes = (=),
         compare(ModuleRes,
             TCA ^ type_ctor_module_name, TCB ^ type_ctor_module_name),
-        ( ModuleRes = (=) ->
-            (
-                type_ctor_is_variable_arity(TCA)
-            ->
+        (
+            ModuleRes = (=),
+            ( type_ctor_is_variable_arity(TCA) ->
                 ArityA = TA ^ var_arity_type_info_arity,
                 ArityB = TB ^ var_arity_type_info_arity,
                 compare(ArityRes, ArityA, ArityB),
-                ( ArityRes = (=) ->
+                (
+                    ArityRes = (=),
                     compare_var_arity_typeinfos(1, ArityA, Res, TA, TB)
                 ;
+                    ( ArityRes = (<)
+                    ; ArityRes = (>)
+                    ),
                     Res = ArityRes
                 )
             ;
                 ArityA = TCA ^ type_ctor_arity,
                 ArityB = TCA ^ type_ctor_arity,
                 compare(ArityRes, ArityA, ArityB),
-                ( ArityRes = (=) ->
+                (
+                    ArityRes = (=),
                     compare_sub_typeinfos(1, ArityA, Res, TA, TB)
                 ;
+                    ( ArityRes = (<)
+                    ; ArityRes = (>)
+                    ),
                     Res = ArityRes
                 )
             )
         ;
+            ( ModuleRes = (<)
+            ; ModuleRes = (>)
+            ),
             Res = ModuleRes
         )
     ;
+        ( NameRes = (<)
+        ; NameRes = (>)
+        ),
         Res = NameRes
     ).
 
@@ -424,10 +438,14 @@ compare_sub_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
         SubTypeInfoB = TypeInfoB ^ type_info_index(Loc),
 
         compare_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
-        ( SubResult = (=) ->
+        (
+            SubResult = (=),
             compare_sub_typeinfos(Loc + 1, Arity, Result,
                 TypeInfoA, TypeInfoB)
         ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
             Result = SubResult
         )
     ).
@@ -443,18 +461,18 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
         SubTypeInfoB = TypeInfoB ^ var_arity_type_info_index(Loc),
 
         compare_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
-        ( SubResult = (=) ->
+        (
+            SubResult = (=),
             compare_var_arity_typeinfos(Loc + 1, Arity, Result,
                 TypeInfoA, TypeInfoB)
         ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
             Result = SubResult
         )
     ).
 
-
-
-
-    
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -575,7 +593,7 @@ type_descs_from_type_infos(TypeInfos) = TypeDescs :-
         (fun(TypeCtorInfo, Arity, ArgTypeInfos) ->
             case Arity =:= length(ArgTypeInfos) of
                 true ->
-                    TypeInfo = 
+                    TypeInfo =
                         list_to_tuple([TypeCtorInfo, Arity | ArgTypeDescs]),
                     {true, TypeInfo};
                 false ->
@@ -828,8 +846,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
-            % There is no way to create values of type `void', so this
-            % should never happen.
+        % There is no way to create values of type `void', so this
+        % should never happen.
         TypeCtorRep = etcr_void,
         error(this_file ++ " deconstruct: cannot deconstruct void types")
     ;
@@ -878,7 +896,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Arity = 0,
             Arguments = []
         ;
-                % XXX this needs to be fixed
+            % XXX this needs to be fixed
             NonCanon = include_details_cc,
             Functor = Name,
             FunctorNumber = 0,
@@ -893,9 +911,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
 
-            % These types shouldn't be needed they are
-            % introduced for library predicates which
-            % don't apply on this backend.
+        % These types shouldn't be needed; they are introduced for library
+        % predicates which don't apply on this backend.
         ( TypeCtorRep = etcr_hp
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
@@ -904,10 +921,9 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             string(TypeCtorRep))
     ).
 
-    %
     % matching_du_functor(FunctorReps, Term, FunctorRep)
     %
-    % finds the erlang_du_functor in the list Functors which describes
+    % Finds the erlang_du_functor in the list Functors which describes
     % the given Term.
     %
 :- pred matching_du_functor(list(erlang_du_functor)::in, T::in,
@@ -922,7 +938,6 @@ matching_du_functor([F | Fs], T, Functor) :-
         matching_du_functor(Fs, T, Functor)
     ).
 
-    %
     % A functor matches a term, if the first argument of the term
     % is the same erlang atom as the recorded in the edu_rep field,
     % and the size of the term matches the calculated size of term.
@@ -940,8 +955,10 @@ matches_du_functor(Term, Functor) :-
     Functor ^ edu_orig_arity + 1 + extra_args(Functor) = Size.
 
 :- pred check_functor(T::in, erlang_atom::in, int::out) is semidet.
-:- pragma foreign_proc("Erlang", check_functor(Term::in, Atom::in, Size::out),
-        [will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("Erlang",
+    check_functor(Term::in, Atom::in, Size::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
     case Atom of
         % This case must come before the next to handle existential types using
         % the '[|]' constructor.  In that case the Erlang term will be a tuple
@@ -968,13 +985,13 @@ matches_du_functor(Term, Functor) :-
 check_functor(_, _, 0) :-
     semidet_unimplemented("check_functor/3").
 
-
 :- some [H, T] pred is_non_empty_list(type_info::in, type_info::in,
     L::in, H::out, T::out) is semidet.
 
 :- pragma foreign_proc("Erlang",
-        is_non_empty_list(ListTI::in, ElemTI::in, L::in, H::out, T::out),
-        [promise_pure, will_not_call_mercury, thread_safe], "
+    is_non_empty_list(ListTI::in, ElemTI::in, L::in, H::out, T::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
     % TypeInfo_for_L
     TypeInfo_for_H = ElemTI,
     TypeInfo_for_T = ListTI,
@@ -992,9 +1009,9 @@ check_functor(_, _, 0) :-
 
 is_non_empty_list(_, _, _, "dummy value", "dummy value") :-
     semidet_unimplemented("is_non_empty_list/5").
-    
+
     %
-    % Calculate the number of type_info and type_class_infos which 
+    % Calculate the number of type_info and type_class_infos which
     % have been introduced due to existentially quantified type
     % variables on the given functor.
     %
@@ -1004,8 +1021,8 @@ extra_args(Functor) = ExtraArgs :-
     MaybeExist = Functor ^ edu_exist_info,
     (
         MaybeExist = yes(ExistInfo),
-            % XXX we should record the number of typeclass_constraints
-            % in the exist_info
+        % XXX We should record the number of typeclass_constraints
+        % in the exist_info.
         ExtraArgs = ExistInfo ^ exist_num_plain_typeinfos +
             list.length(ExistInfo ^ exist_typeclass_constraints)
     ;
@@ -1013,11 +1030,10 @@ extra_args(Functor) = ExtraArgs :-
         ExtraArgs = 0
     ).
 
-    %
     % get_du_functor_arg(TypeInfo, Functor, Term, N)
     %
-    % returns a univ which represent the N'th argument of the term, Term,
-    % which is described the erlang_du_functor, Functor, and the type_info,
+    % Returns a univ which represents the N'th argument of the term, Term,
+    % which is described by the erlang_du_functor Functor, and the type_info
     % TypeInfo.
     %
 :- func get_du_functor_arg(type_info, erlang_du_functor, T, int) = univ.
@@ -1032,11 +1048,10 @@ get_du_functor_arg(TypeInfo, Functor, Term, Loc) = Univ :-
     SubTerm = get_subterm(ArgTypeInfo, Term, Loc, extra_args(Functor) + 1),
     Univ = univ(SubTerm).
 
-    %
     % get_tuple_arg(TypeInfo, Tuple, N)
     %
-    % Get the N'th argument as a univ from the tuple
-    % described by the type_info.
+    % Get the N'th argument as a univ from the tuple described by the
+    % type_info.
     %
 :- func get_tuple_arg(type_info, U, int) = univ.
 
@@ -1071,7 +1086,7 @@ collapse_equivalences(TypeInfo0) = TypeInfo :-
 %-----------------------------------------------------------------------------%
 
 pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, Args) :-
-        % XXX Still need to handle equivalence types.
+    % XXX Still need to handle equivalence types.
     EvalPTI = pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc),
     EvalPTI = pseudo_type_info(PTI),
 
@@ -1084,17 +1099,14 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, Args) :-
         Arity = TI ^ var_arity_type_info_arity,
         TypeCtorDesc = make_pred_type_ctor_desc(Arity),
         ArgInfos = get_var_arity_arg_type_infos(TI)
-
     ; TypeCtorRep = etcr_func ->
         Arity = TI ^ var_arity_type_info_arity,
         TypeCtorDesc = make_func_type_ctor_desc(Arity),
         ArgInfos = get_var_arity_arg_type_infos(TI)
-
     ; TypeCtorRep = etcr_tuple ->
         Arity = TI ^ var_arity_type_info_arity,
         TypeCtorDesc = make_tuple_type_ctor_desc(Arity),
         ArgInfos = get_var_arity_arg_type_infos(TI)
-
     ;
         % Handle fixed arity types.
         TypeCtorDesc = make_fixed_arity_type_ctor_desc(TypeCtorInfo),
@@ -1131,7 +1143,7 @@ pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc) =
 
 type_ctor_info_from_pseudo_type_info(PTI) =
     unsafe_cast(PTI) ^ type_ctor_info_evaled.
-    
+
 :- func pseudo_type_descs_from_type_infos(list(type_info)) =
     list(pseudo_type_desc).
 
@@ -1220,8 +1232,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         FunctorReps = TypeCtorInfo ^ type_ctor_functors,
         ( matching_du_functor_number(FunctorReps, NumFunctor, FunctorRep) ->
             ArgInfos = FunctorRep ^ edu_arg_infos,
-
-            list.map2(
+            MapArgInfosToTypesNames =
                 (pred(ArgInfo::in, ArgTypeInfo::out, ArgName::out) is det :-
                     MaybePTI = ArgInfo ^ du_arg_type,
                     Info = yes({TypeInfo, no : pti_info(int)}),
@@ -1235,7 +1246,8 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
                         MaybeArgName = no,
                         ArgName = ""
                     )
-                ), ArgInfos, ArgTypes, ArgNames),
+                ),
+            list.map2(MapArgInfosToTypesNames, ArgInfos, ArgTypes, ArgNames),
 
             Name = string.from_char_list(FunctorRep ^ edu_name),
             Arity = FunctorRep ^ edu_orig_arity,
@@ -1265,10 +1277,8 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
             ArgTypes = [],
             ArgNames = [],
             Result = yes({Name, Arity, ArgTypes, ArgNames})
-
         ; NumFunctor = 1 ->
             ArgTypeInfo = TypeInfo ^ type_info_index(1),
-
             Name = "[|]",
             Arity = 2,
             ArgTypes = [ArgTypeInfo, TypeInfo],
@@ -1397,7 +1407,7 @@ construct(TypeDesc, Index, Args) = Term :-
     TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
 
-    ( 
+    (
         TypeCtorRep = etcr_du,
         Result = get_functor_with_names(TypeInfo, Index),
         Result = yes({FunctorName, _FunctorArity, ArgTypes, _ArgNames}),
@@ -1472,23 +1482,23 @@ check_tuple_arg_types(TypeInfo, [I | Is], [U | Us]) :-
 :- func univ_type_info(univ) = type_info.
 
 :- pragma foreign_proc(erlang,
-        univ_type_info(Univ::in) = (TypeInfo::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    univ_type_info(Univ::in) = (TypeInfo::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     {univ_cons, TypeInfo, _} = Univ
 ").
 
 univ_type_info(_) = _ :-
     private_builtin.sorry("univ_type_info").
 
-
-    %
     % Construct a du type and store it in a univ.
     %
 :- func construct_univ(type_info, string, list(univ)) = univ.
 
 :- pragma foreign_proc(erlang,
-        construct_univ(TypeInfo::in, Functor::in, Args::in) = (Univ::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    construct_univ(TypeInfo::in, Functor::in, Args::in) = (Univ::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     if
         is_binary(Functor) ->
             List = binary_to_list(Functor);
@@ -1502,14 +1512,14 @@ univ_type_info(_) = _ :-
 construct_univ(_, _, _) = _ :-
     private_builtin.sorry("construct_univ").
 
-    %
     % Construct a tuple and store it in a univ.
     %
 :- func construct_tuple_univ(type_info, list(univ)) = univ.
 
 :- pragma foreign_proc(erlang,
-        construct_tuple_univ(TypeInfo::in, Args::in) = (Univ::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    construct_tuple_univ(TypeInfo::in, Args::in) = (Univ::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     Univ = {univ_cons, TypeInfo,
         list_to_tuple(lists:map(fun univ_to_value/1, Args))}
 ").
@@ -1517,28 +1527,28 @@ construct_univ(_, _, _) = _ :-
 construct_tuple_univ(_, _) = _ :-
     private_builtin.sorry("construct_tuple_univ").
 
-    %
     % Construct a empty list and store it in a univ.
     %
 :- func construct_empty_list_univ(type_info) = univ.
 
 :- pragma foreign_proc(erlang,
-        construct_empty_list_univ(TypeInfo::in) = (Univ::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    construct_empty_list_univ(TypeInfo::in) = (Univ::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     Univ = {univ_cons, TypeInfo, []}
 ").
 
 construct_empty_list_univ(_) = _ :-
     private_builtin.sorry("construct_empty_list_univ").
 
-    %
     % Construct a cons cell and store it in a univ.
     %
 :- func construct_list_cons_univ(type_info, univ, univ) = univ.
 
 :- pragma foreign_proc(erlang,
-        construct_list_cons_univ(TypeInfo::in, H::in, T::in) = (Univ::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    construct_list_cons_univ(TypeInfo::in, H::in, T::in) = (Univ::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     Univ = {univ_cons, TypeInfo, [univ_to_value(H) | univ_to_value(T)]}
 ").
 
@@ -1546,18 +1556,17 @@ construct_list_cons_univ(_, _, _) = _ :-
     private_builtin.sorry("construct_list_cons_univ").
 
 :- pragma foreign_code(erlang, "
-    %
-    % Get the value out of the univ
+    % Get the value out of the univ.
     % Note we assume that we've checked that the value is consistent
     % with another type_info elsewhere,
-    % for example in check_arg_types and check_tuple_arg_types
+    % for example in check_arg_types and check_tuple_arg_types.
     %
 univ_to_value(Univ) ->
     {univ_cons, _UnivTypeInfo, Value} = Univ,
     Value.
-    
+
 ").
-    
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1568,12 +1577,12 @@ construct_tuple_2(Args, ArgTypes, Arity) = Tuple :-
 :- func construct_tuple_3(type_info, int, list(type_desc), list(univ)) = univ.
 
 :- pragma foreign_proc(erlang,
-        construct_tuple_3(TI::in,
-                Arity::in, ArgTypes::in, Args::in) = (Term::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    construct_tuple_3(TI::in, Arity::in, ArgTypes::in, Args::in) = (Term::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    % Get the type_ctor_info from the empty tuple type_info
+    % and use that to create the correct var_arity type_info.
 
-        % Get the type_ctor_info from the empty tuple type_info
-        % and use that to create the correct var_arity type_info
     TCI = element(?ML_ti_type_ctor_info, TI),
     TupleTypeInfo = list_to_tuple([TCI, Arity | ArgTypes]),
 
@@ -1584,7 +1593,6 @@ construct_tuple_2(Args, ArgTypes, Arity) = Tuple :-
 
 construct_tuple_3(_, _, _, _) = _ :-
     private_builtin.sorry("construct_tuple_3").
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1631,18 +1639,18 @@ type_info(_) = type_info :-
     type_ctor_info_evaled(TypeInfo::in) = (TypeCtorInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    %io:format(""~nTypeInfo: ~p~n"", [TypeInfo]),
-        % 
-        % If the type_info is for a type with arity 0,
-        % then the type_info is already the type_ctor info.
-        % We evaluate the thunk to get the actual type_ctor_info data.
-        %
+    % io:format(""~nTypeInfo: ~p~n"", [TypeInfo]),
+
+    % If the type_info is for a type with arity 0,
+    % then the type_info is already the type_ctor info.
+    % We evaluate the thunk to get the actual type_ctor_info data.
+
     if
         is_function(TypeInfo, 0) ->
             TypeCtorInfo = TypeInfo();
         true ->
             FirstElement = element(?ML_ti_type_ctor_info, TypeInfo),
-            if 
+            if
                 is_integer(FirstElement) ->
                     TypeCtorInfo = TypeInfo;
                 true ->
@@ -1668,27 +1676,24 @@ type_ctor_info_evaled(_) = type_ctor_info_evaled :-
 var_arity_type_info_arity(_) = 0 :-
     det_unimplemented("var_arity_type_info_arity").
 
-    %
     % TI ^ type_info_index(I)
     %
-    % returns the I'th type_info from the given standard type_info TI.
-    % NOTE indexes start at one.
-    % 
+    % Returns the I'th type_info from the given standard type_info TI.
+    % NOTE Indexes start at one.
+    %
 :- func type_info_index(int, type_info) = type_info.
 
 type_info_index(I, TI) = TI ^ unsafe_type_info_index(I + 1).
 
-    %
     % TI ^ var_arity_type_info_index(I)
     %
-    % returns the I'th type_info from the given variable arity type_info TI.
-    % NOTE indexes start at one.
-    % 
+    % Returns the I'th type_info from the given variable arity type_info TI.
+    % NOTE Indexes start at one.
+    %
 :- func var_arity_type_info_index(int, type_info) = type_info.
 
 var_arity_type_info_index(I, TI) = TI ^ unsafe_type_info_index(I + 2).
 
-    %
     % Use type_info_index or var_arity_type_info_index, never this predicate
     % directly.
     %
@@ -1759,7 +1764,7 @@ type_ctor_rep(_) = _ :-
     type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-        % The TypeInfo is never used so this is safe
+    % The TypeInfo is never used so this is safe.
     TypeInfo_for_P = 0,
     UnifyPred = element(?ML_tci_unify_pred, TypeCtorInfo)
 ").
@@ -2095,7 +2100,8 @@ det_dynamic_cast(Term, Actual) :-
 
 :- type erlang_atom.
 :- pragma foreign_type("Erlang", erlang_atom, "").
-:- type erlang_atom ---> erlang_atom.
+:- type erlang_atom
+    --->    erlang_atom.
 
 :- type erlang_du_functor
     --->    erlang_du_functor(
@@ -2161,13 +2167,11 @@ det_dynamic_cast(Term, Actual) :-
     --->    pseudo(pseudo_type_info_thunk)
     ;       plain(type_info_thunk).
 
-        
 %-----------------------------------------------------------------------------%
 
 :- type ti_info(T) == maybe({type_info, pti_info(T)}).
 :- type pti_info(T) == maybe({erlang_du_functor, T}).
 
-    %
     % Given a plain or pseudo type_info, return the concrete type_info
     % which represents the type.
     %
@@ -2225,30 +2229,28 @@ exist_type_info(TypeInfo, Functor, Term, N) = ArgTypeInfo :-
         (
             ExistLocn = plain_typeinfo(X),
 
-                % plain_typeinfo index's start at 0, so we need to
-                % add two to get to the first index.
+            % Plain_typeinfo indexes start at 0, so we need to add two
+            % to get to the first index.
             ArgTypeInfo = unsafe_cast(get_subterm(TypeInfo, Term, X, 2))
         ;
             ExistLocn = typeinfo_in_tci(A, B),
 
-                % A starts at index 0 and measures from the start
-                % of the list of plain type_infos
-                %
-                % B starts at index 1 and measures from the start
-                % of the type_class_info
-                %
-                % Hence the addition of two extra arguments to find the
-                % type_class_info and then the addition of one extra
-                % arg to find the type_info in the type_class_info.
-                %
-                % Note it's safe to pass a bogus type_info to
-                % get_subterm because we never use the returned
-                % type_info.
-                %
+            % A starts at index 0 and measures from the start
+            % of the list of plain type_infos.
+            %
+            % B starts at index 1 and measures from the start
+            % of the type_class_info.
+            %
+            % Hence the addition of two extra arguments to find the
+            % type_class_info and then the addition of one extra
+            % arg to find the type_info in the type_class_info.
+            %
+            % Note it's safe to pass a bogus type_info to get_subterm
+            % because we never use the returned type_info.
+
             Bogus = TypeInfo,
             TypeClassInfo = get_subterm(Bogus, Term, A, 2),
-            ArgTypeInfo = unsafe_cast(
-                get_subterm(Bogus, TypeClassInfo, B, 1))
+            ArgTypeInfo = unsafe_cast(get_subterm(Bogus, TypeClassInfo, B, 1))
         )
     ;
         MaybeExist = no,
@@ -2268,7 +2270,8 @@ eval_type_info(I, TI) = TypeInfo :-
     ( type_ctor_is_variable_arity(TypeCtorInfo) ->
         Arity = TI ^ var_arity_type_info_arity,
         ArgTypeInfos = list.map(var_arity_arg_type_info(I, TI), 1 .. Arity),
-        TypeInfo = create_var_arity_type_info(TypeCtorInfo, Arity, ArgTypeInfos)
+        TypeInfo = create_var_arity_type_info(TypeCtorInfo, Arity,
+            ArgTypeInfos)
     ; TypeCtorInfo ^ type_ctor_arity = 0 ->
         TypeInfo = TI
     ;
@@ -2276,7 +2279,6 @@ eval_type_info(I, TI) = TypeInfo :-
         ArgTypeInfos = list.map(arg_type_info(I, TI), 1 .. Arity),
         TypeInfo = create_type_info(TypeCtorInfo, ArgTypeInfos)
     ).
-
 
 :- func var_arity_arg_type_info(ti_info(T), TypeInfo, int) = type_info.
 
@@ -2295,8 +2297,9 @@ arg_type_info(Info, TypeInfo, Index) = ArgTypeInfo :-
 :- func create_type_info(type_ctor_info_evaled, list(type_info)) = type_info.
 
 :- pragma foreign_proc("Erlang",
-        create_type_info(TypeCtorInfo::in, Args::in) = (TypeInfo::out),
-        [promise_pure, will_not_call_mercury, thread_safe], "
+    create_type_info(TypeCtorInfo::in, Args::in) = (TypeInfo::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
     % TypeCtorInfo was evaluated by eval_type_info, so we wrap it back up in a
     % thunk.  It may or may not be costly to do this, when we could have
     % already used the one we extracted out of the type_info.
@@ -2312,15 +2315,15 @@ arg_type_info(Info, TypeInfo, Index) = ArgTypeInfo :-
 
 create_type_info(_, _) = type_info :-
     det_unimplemented("create_type_info/2").
-    
 
 :- func create_var_arity_type_info(type_ctor_info_evaled,
     int, list(type_info)) = type_info.
 
 :- pragma foreign_proc("Erlang",
-        create_var_arity_type_info(TypeCtorInfo::in,
-            Arity::in, Args::in) = (TypeInfo::out),
-        [promise_pure, will_not_call_mercury, thread_safe], "
+    create_var_arity_type_info(TypeCtorInfo::in, Arity::in, Args::in)
+        = (TypeInfo::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
     % TypeCtorInfo was evaluated by eval_type_info, so we wrap it back up in a
     % thunk.  It may or may not be costly to do this, when we could have
     % already used the one we extracted out of the type_info.
@@ -2330,44 +2333,41 @@ create_type_info(_, _) = type_info :-
 
 create_var_arity_type_info(_, _, _) = type_info :-
     det_unimplemented("create_var_arity_type_info/3").
-    
+
 %-----------------------------------------------------------------------------%
 
-    %
-    % A pseudo_type_info can be represented in one of three ways
+    % A pseudo_type_info can be represented in one of three ways.
     % For a type with arity 0
     %   TypeCtorInfo
     % a type with arity > 0
     %   { TypeCtorInfo, PseudoTypeInfo0, ..., PseudoTypeInfoN }
     % a type with variable arity of size N
     %   { TypeCtorInfo, N, PseudoTypeInfo0, ..., PseudoTypeInfoN }
-    %   
+    %
 :- type pseudo_type_info.
 :- pragma foreign_type("Erlang", pseudo_type_info, "").
-:- type pseudo_type_info ---> pseudo_type_info.
+:- type pseudo_type_info
+    --->    pseudo_type_info.
 
-    %
     % TI ^ pseudo_type_info_index(I)
     %
-    % returns the I'th maybe_pseudo_type_info from the given type_info
-    % or pseudo_type_info
-    % NOTE indexes start at one.
-    % 
+    % Returns the I'th maybe_pseudo_type_info from the given type_info
+    % or pseudo_type_info.
+    % NOTE Indexes start at one.
+    %
 :- func pseudo_type_info_index(int, T) = maybe_pseudo_type_info.
 
 pseudo_type_info_index(I, TI) = TI ^ unsafe_pseudo_type_info_index(I + 1).
 
-    %
     % TI ^ var_arity_pseudo_type_info_index(I)
     %
-    % NOTE indexes start at one.
-    % 
+    % NOTE Indexes start at one.
+    %
 :- func var_arity_pseudo_type_info_index(int, T) = maybe_pseudo_type_info.
 
-var_arity_pseudo_type_info_index(I, TI) = 
+var_arity_pseudo_type_info_index(I, TI) =
     TI ^ unsafe_pseudo_type_info_index(I + 2).
 
-    %
     % Use pseudo_type_info_index or var_arity_pseudo_type_info_index, never
     % this predicate directly.
     %
@@ -2378,7 +2378,7 @@ var_arity_pseudo_type_info_index(I, TI) =
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Maybe = element(Index, TypeInfo),
-    %io:format(""unsafe_pseudo_type_info_index(~p, ~p) = ~p~n"",
+    % io:format(""unsafe_pseudo_type_info_index(~p, ~p) = ~p~n"",
     %    [Index, TypeInfo, Maybe]),
     void
 ").
@@ -2390,20 +2390,21 @@ unsafe_pseudo_type_info_index(_, _) = pseudo(pseudo_type_info_thunk) :-
 
 :- type pseudo_type_info_thunk.
 :- pragma foreign_type("Erlang", pseudo_type_info_thunk, "").
-:- type pseudo_type_info_thunk ---> pseudo_type_info_thunk.
+:- type pseudo_type_info_thunk
+    --->    pseudo_type_info_thunk.
 
 :- type evaluated_pseudo_type_info_thunk
     --->    universal_type_info(int)
     ;       existential_type_info(int)
-    ;       pseudo_type_info(pseudo_type_info)
-    .
+    ;       pseudo_type_info(pseudo_type_info).
 
 :- func eval_pseudo_type_info_thunk(pseudo_type_info_thunk) =
     evaluated_pseudo_type_info_thunk.
 
 :- pragma foreign_proc("Erlang",
-        eval_pseudo_type_info_thunk(Thunk::in) = (TypeInfo::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+    eval_pseudo_type_info_thunk(Thunk::in) = (TypeInfo::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     if
         is_function(Thunk, 0) ->
             MaybeTypeInfo = Thunk();
@@ -2411,7 +2412,7 @@ unsafe_pseudo_type_info_index(_, _) = pseudo(pseudo_type_info_thunk) :-
             MaybeTypeInfo = Thunk
     end,
     TypeInfo =
-        if 
+        if
             is_integer(MaybeTypeInfo), MaybeTypeInfo < 512 ->
                 { universal_type_info, MaybeTypeInfo };
             is_integer(MaybeTypeInfo) ->
@@ -2434,8 +2435,10 @@ eval_pseudo_type_info_thunk(X) = erlang_rtti_implementation.unsafe_cast(X) :-
 :- type type_info_thunk ---> type_info_thunk.
 
 :- func eval_type_info_thunk_2(type_info_thunk) = type_info.
-:- pragma foreign_proc("Erlang", eval_type_info_thunk_2(Thunk::in) = (TypeInfo::out),
-        [will_not_call_mercury, thread_safe, promise_pure], "
+:- pragma foreign_proc("Erlang",
+    eval_type_info_thunk_2(Thunk::in) = (TypeInfo::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     TypeInfo = Thunk(),
     % io:format(""eval_type_info_thunk_2(~p) = ~p~n"", [Thunk, TypeInfo]),
     void
@@ -2450,8 +2453,10 @@ eval_type_info_thunk_2(X) = erlang_rtti_implementation.unsafe_cast(X) :-
 :- pred is_erlang_backend is semidet.
 :- implementation.
 
-:- pragma foreign_proc("Erlang", is_erlang_backend,
-        [will_not_call_mercury, thread_safe, promise_pure], "
+:- pragma foreign_proc("Erlang",
+    is_erlang_backend,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
     SUCCESS_INDICATOR = true
 ").
 

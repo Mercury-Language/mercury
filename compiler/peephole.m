@@ -270,9 +270,11 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     (
         % A mkframe sets curfr to point to the new frame
         % only for ordinary frames, not temp frames.
-        ( NondetFrameInfo = ordinary_frame(_, _, _) ->
+        (
+            NondetFrameInfo = ordinary_frame(_, _, _),
             AllowedBases = [maxfr, curfr]
         ;
+            NondetFrameInfo = temp_frame(_),
             AllowedBases = [maxfr]
         ),
         opt_util.next_assign_to_redoip(Instrs0, AllowedBases, [], Redoip1,
@@ -438,9 +440,16 @@ peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
 :- pred invalid_peephole_opts(gc_method::in, list(pattern)::out) is det.
 
 invalid_peephole_opts(GC_Method, InvalidPatterns) :-
-    ( GC_Method = gc_accurate ->
+    (
+        GC_Method = gc_accurate,
         InvalidPatterns = [incr_sp]
     ;
+        ( GC_Method = gc_automatic
+        ; GC_Method = gc_none
+        ; GC_Method = gc_boehm
+        ; GC_Method = gc_boehm_debug
+        ; GC_Method = gc_mps
+        ),
         InvalidPatterns = []
     ).
 

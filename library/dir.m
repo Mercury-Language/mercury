@@ -1,15 +1,15 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: dir.m.
 % Main authors: fjh, stayl.
 % Stability: high.
-% 
+%
 % Filename and directory handling.
 %
 % Note that the predicates and functions in this module change directory
@@ -18,7 +18,7 @@
 %
 % Duplicate directory separators and trailing separators are also removed
 % where that doesn't change the meaning of the path name.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -830,13 +830,13 @@ DirName0/FileName0 = PathName :-
 :- pragma foreign_proc("C",
     dir.current_directory(Res::out, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
-"   
+"
     /*
     ** Marked thread_safe because ML_make_io_res_1_error_string will acquire
     ** the global lock.
     */
 
-    size_t      size = 256; 
+    size_t      size = 256;
     char        *buf;
     MR_String   str;
 
@@ -1338,10 +1338,23 @@ dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
                 io.file_type(yes, PathName, TargetTypeRes, !IO),
                 (
                     TargetTypeRes = ok(TargetType),
-                    ( TargetType = directory ->
+                    (
+                        TargetType = directory,
                         dir.foldl2_process_dir(yes, P, PathName, ParentIds,
                             Recursive, FollowLinks, Continue2, T1, Res1, !IO)
                     ;
+
+                        ( TargetType = regular_file
+                        ; TargetType = symbolic_link
+                        ; TargetType = named_pipe
+                        ; TargetType = socket
+                        ; TargetType = character_device
+                        ; TargetType = block_device
+                        ; TargetType = message_queue
+                        ; TargetType = semaphore
+                        ; TargetType = shared_memory
+                        ; TargetType = unknown
+                        ),
                         Continue2 = yes,
                         Res1 = ok(T1)
                     )
@@ -1599,7 +1612,8 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
     io.file_type(yes, DirName, FileTypeRes, !IO),
     (
         FileTypeRes = ok(FileType),
-        ( FileType = directory ->
+        (
+            FileType = directory,
             io.check_file_accessibility(DirName, [read, execute],
                 AccessResult, !IO),
             (
@@ -1613,10 +1627,20 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
                 Result = error(Msg)
             )
         ;
+            ( FileType = regular_file
+            ; FileType = symbolic_link
+            ; FileType = named_pipe
+            ; FileType = socket
+            ; FileType = character_device
+            ; FileType = block_device
+            ; FileType = message_queue
+            ; FileType = semaphore
+            ; FileType = shared_memory
+            ; FileType = unknown
+            ),
             IsReadable = 0,
             Result = error(make_io_error(
                 "dir.foldl2: pathname is not a directory"))
-
         )
     ;
         FileTypeRes = error(Msg),

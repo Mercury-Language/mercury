@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,23 +90,27 @@ merge_cliques([Clique | Cliques], MergeInfo, !InitDeep, !Redirect) :-
     redirect::in, redirect::out) is det.
 
 merge_clique(CliquePDs0, MergeInfo, !InitDeep, !Redirect) :-
-    ( CliquePDs0 = [_, _ | _] ->
+    (
+        CliquePDs0 = []
+    ;
+        CliquePDs0 = [_]
+    ;
+        CliquePDs0 = [_, _ | _],
         map.init(ProcMap0),
         list.foldl(cluster_pds_by_ps(!.InitDeep), CliquePDs0,
             ProcMap0, ProcMap1),
         map.values(ProcMap1, PDsList1),
         list.filter(two_or_more, PDsList1, ToMergePDsList1),
-        ( ToMergePDsList1 = [_ | _] ->
+        (
+            ToMergePDsList1 = [_ | _],
             complete_clique(!.InitDeep, !.Redirect, ProcMap1, ProcMap, Clique),
             map.values(ProcMap, PDsList),
             list.filter(two_or_more, PDsList, ToMergePDsList),
             list.foldl2(merge_proc_dynamics_ignore_chosen(MergeInfo, Clique),
                 ToMergePDsList, !InitDeep, !Redirect)
         ;
-            true
+            ToMergePDsList1 = []
         )
-    ;
-        true
     ).
 
 :- pred insert_pds(list(T)::in, set(T)::in, set(T)::out) is det.
@@ -235,7 +239,8 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
     list.filter(valid_proc_dynamic_ptr_raw(ProcDynamics0),
         CandidatePDPtrs, ValidPDPtrs, InvalidPDPtrs),
     require(unify(InvalidPDPtrs, []), "merge_proc_dynamics: invalid pdptrs"),
-    ( ValidPDPtrs = [PrimePDPtr | RestPDPtrs] ->
+    (
+        ValidPDPtrs = [PrimePDPtr | RestPDPtrs],
         record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect),
         lookup_proc_dynamics(ProcDynamics0, PrimePDPtr, PrimePD0),
         list.map(lookup_proc_dynamics(ProcDynamics0), RestPDPtrs, RestPDs),
@@ -252,6 +257,7 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
         !:InitDeep = !.InitDeep ^ init_proc_dynamics := ProcDynamics,
         ChosenPDPtr = PrimePDPtr
     ;
+        ValidPDPtrs = [],
         % This could happen when merging the callees of CSDs representing
         % special calls, but only before we added callcode to the
         % unify/compare routines of builtin types.
@@ -775,7 +781,8 @@ subst_in_slot(Redirect, slot_multi(IsZeroed, CSDPtrs0),
     is det.
 
 merge_profiles(InitDeeps, MaybeMergedInitDeep) :-
-    ( InitDeeps = [FirstInitDeep | LaterInitDeeps] ->
+    (
+        InitDeeps = [FirstInitDeep | LaterInitDeeps],
         ( all_compatible(FirstInitDeep, LaterInitDeeps) ->
             do_merge_profiles(FirstInitDeep, LaterInitDeeps, MergedInitDeep),
             MaybeMergedInitDeep = ok(MergedInitDeep)
@@ -784,6 +791,7 @@ merge_profiles(InitDeeps, MaybeMergedInitDeep) :-
                 error("profiles are not from the same executable")
         )
     ;
+        InitDeeps = [],
         MaybeMergedInitDeep = error("merge_profiles: empty list of profiles")
     ).
 

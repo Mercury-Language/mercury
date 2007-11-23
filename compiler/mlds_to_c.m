@@ -1414,12 +1414,19 @@ mlds_output_type_forward_decl(Indent, Type, !IO) :-
 
 mlds_output_defn(Indent, Separate, ModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
-    ( DefnBody \= mlds_data(_, _, _) ->
-        io.nl(!IO)
-    ; Separate = yes ->
+    (
+        ( DefnBody = mlds_function(_, _, _, _, _)
+        ; DefnBody = mlds_class(_)
+        ),
         io.nl(!IO)
     ;
-        true
+        DefnBody = mlds_data(_, _, _),
+        (
+            Separate = yes,
+            io.nl(!IO)
+        ;
+            Separate = no
+        )
     ),
     mlds_indent(Context, Indent, !IO),
     mlds_output_decl_flags(Flags, definition, Name, DefnBody, !IO),
@@ -1660,12 +1667,16 @@ is_enum_const(Defn) :-
 
 mlds_output_enum_constant(Indent, EnumModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, _Flags, DefnBody),
-    ( DefnBody = mlds_data(Type, Initializer, _GCStatement) ->
+    (
+        DefnBody = mlds_data(Type, Initializer, _GCStatement),
         mlds_indent(Context, Indent, !IO),
         mlds_output_fully_qualified_name(
             qual(EnumModuleName, type_qual, Name), !IO),
         mlds_output_initializer(Type, Initializer, !IO)
     ;
+        ( DefnBody = mlds_function(_, _, _, _, _)
+        ; DefnBody = mlds_class(_)
+        ),
         unexpected(this_file,
             "mlds_output_enum_constant: constant is not data")
     ).
@@ -3179,7 +3190,8 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
     % For --gc accurate, we need to insert a call to GC_check()
     % before every allocation.
     globals.io_get_gc_method(GC_Method, !IO),
-    ( GC_Method = gc_accurate ->
+    (
+        GC_Method = gc_accurate,
         mlds_indent(Context, Indent + 1, !IO),
         io.write_string("MR_GC_check();\n", !IO),
         % For types which hold RTTI that will be traversed by the collector
@@ -3188,17 +3200,24 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
         % word of the object in the "from" space, but this can't be done for
         % objects which will be referenced during the garbage collection
         % process.
-        ( type_needs_forwarding_pointer_space(Type) = yes ->
+        NeedsForwardingSpace = type_needs_forwarding_pointer_space(Type),
+        (
+            NeedsForwardingSpace = yes,
             mlds_indent(Context, Indent + 1, !IO),
             io.write_string("/* reserve space for " ++
                 "GC forwarding pointer*/\n", !IO),
             mlds_indent(Context, Indent + 1, !IO),
             io.write_string("MR_hp_alloc(1);\n", !IO)
         ;
-            true
+            NeedsForwardingSpace = no
         )
     ;
-        true
+        ( GC_Method = gc_none
+        ; GC_Method = gc_boehm
+        ; GC_Method = gc_boehm_debug
+        ; GC_Method = gc_mps
+        ; GC_Method = gc_automatic
+        )
     ),
 
     FuncInfo = func_info(FuncName, _FuncSignature),

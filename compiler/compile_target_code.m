@@ -549,15 +549,18 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     ),
 
     globals.io_get_tags_method(Tags_Method, !IO),
-    ( Tags_Method = tags_high ->
+    (
+        Tags_Method = tags_high,
         TagsOpt = "-DMR_HIGHTAGS "
     ;
+        ( Tags_Method = tags_low
+        ; Tags_Method = tags_none
+        ),
         TagsOpt = ""
     ),
     globals.io_lookup_int_option(num_tag_bits, NumTagBits, !IO),
     string.int_to_string(NumTagBits, NumTagBitsString),
-    string.append_list(["-DMR_TAGBITS=", NumTagBitsString, " "],
-        NumTagBitsOpt),
+    NumTagBitsOpt = "-DMR_TAGBITS=" ++ NumTagBitsString ++ " ",
     globals.io_lookup_bool_option(decl_debug, DeclDebug, !IO),
     (
         DeclDebug = yes,
@@ -659,7 +662,8 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
             % We ignore the debug flag unless one of the base flags is set.
             MinimalModelOpt = MinimalModelBaseOpt
         ;
-            MinimalModelOpt = MinimalModelBaseOpt ++ "-DMR_MINIMAL_MODEL_DEBUG"
+            MinimalModelOpt = MinimalModelBaseOpt ++
+                "-DMR_MINIMAL_MODEL_DEBUG "
         )
     ;
         MinimalModelDebug = no,
@@ -754,7 +758,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         GCC_Regs = yes,
         string.prefix(FullArch, "powerpc-apple-darwin")
     ->
-        AppleGCCRegWorkaroundOpt = "-fno-loop-optimize"
+        AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
     ;
         AppleGCCRegWorkaroundOpt = ""
     ),
@@ -788,9 +792,9 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         SinglePrecFloatOpt,
         UseRegionsOpt,
         TypeLayoutOpt,
-        InlineAllocOpt, " ", 
+        InlineAllocOpt,
         AnsiOpt, " ", 
-        AppleGCCRegWorkaroundOpt, " ", 
+        AppleGCCRegWorkaroundOpt,
         WarningOpt, " ", 
         CFLAGS, 
         " -c ", C_File, " ",
@@ -1116,7 +1120,13 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 
     globals.io_lookup_bool_option(compile_to_shared_lib, CompileToSharedLib,
         !IO),
-    TargetType = (CompileToSharedLib = yes -> shared_library ; executable),
+    (
+        CompileToSharedLib = yes,
+        TargetType = shared_library
+    ;
+        CompileToSharedLib = no,
+        TargetType = executable
+    ),
     get_object_code_type(TargetType, PIC, !IO),
     maybe_pic_object_file_extension(PIC, Obj, !IO),
 
@@ -1336,10 +1346,22 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
 
     globals.io_lookup_bool_option(extra_initialization_functions, ExtraInits,
         !IO),
-    ExtraInitsOpt = ( ExtraInits = yes -> "-x" ; "" ),
+    (
+        ExtraInits = yes,
+        ExtraInitsOpt = "-x"
+    ;
+        ExtraInits = no,
+        ExtraInitsOpt = ""
+    ),
 
     globals.io_lookup_bool_option(main, Main, !IO),
-    NoMainOpt = ( Main = no -> "-l" ; "" ),
+    (
+        Main = no,
+        NoMainOpt = "-l"
+    ;
+        Main = yes,
+        NoMainOpt = ""
+    ),
 
     globals.io_lookup_string_option(experimental_complexity,
         ExperimentalComplexity, !IO),
@@ -1491,9 +1513,16 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             ObjectsList, LinkSucceeded, !IO)
     ;
         LinkTargetType = executable,
-        ( Target = target_erlang ->
+        (
+            Target = target_erlang,
             create_erlang_shell_script(ModuleName, LinkSucceeded, !IO)
         ;
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_java
+            ; Target = target_asm
+            ; Target = target_x86_64
+            ),
             link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
                 OutputFileName, ObjectsList, LinkSucceeded, !IO)
         )
@@ -1790,13 +1819,12 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
         StaticGCLibs = "",
         SharedGCLibs = ""
     ;
-        ( GCMethod = gc_boehm
-        ; GCMethod = gc_boehm_debug
-        ),
-        ( GCMethod = gc_boehm_debug ->
-            GCGrade0 = "gc_debug"
-        ;
+        (
+            GCMethod = gc_boehm,
             GCGrade0 = "gc"
+        ;
+            GCMethod = gc_boehm_debug,
+            GCGrade0 = "gc_debug"
         ),
         globals.io_lookup_bool_option(profile_time, ProfTime, !IO),
         globals.io_lookup_bool_option(profile_deep, ProfDeep, !IO),

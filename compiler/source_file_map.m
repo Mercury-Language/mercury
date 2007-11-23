@@ -165,7 +165,13 @@ read_until_char(EndChar, Chars0, Result, !IO) :-
         )
     ;
         CharRes = eof,
-        Result = ( Chars0 = [] -> eof ; ok(Chars0) )
+        (
+            Chars0 = [],
+            Result = eof
+        ;
+            Chars0 = [_ | _],
+            Result = ok(Chars0)
+        )
     ;
         CharRes = error(Error),
         Result = error(Error)

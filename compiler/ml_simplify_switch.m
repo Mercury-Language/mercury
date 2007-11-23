@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -192,9 +192,13 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         FirstVal = Min,
         LastVal = Max
     ;
-        ( Default = default_is_unreachable ->
+        (
+            Default = default_is_unreachable,
             NeedRangeCheck = no
         ;
+            ( Default = default_do_nothing
+            ; Default = default_case(_)
+            ),
             NeedRangeCheck = yes
         ),
         find_first_and_last_case(Cases, FirstCaseVal, LastCaseVal),

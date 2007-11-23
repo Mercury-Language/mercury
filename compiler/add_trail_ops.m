@@ -162,10 +162,9 @@ goal_expr_add_trail_ops(switch(A, B, Cases0), GI,
     cases_add_trail_ops(Cases0, Cases, !Info).
 
 goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
-    %
     % We handle negations by converting them into if-then-elses:
     %   not(G)  ===>  (if G then fail else true)
-    %
+
     Context = goal_info_get_context(OuterGoalInfo),
     InnerGoal = hlds_goal(_, InnerGoalInfo),
     Determinism = goal_info_get_determinism(InnerGoalInfo),
@@ -173,7 +172,8 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     True = true_goal_with_context(Context),
     Fail = fail_goal_with_context(Context),
     ModuleInfo = !.Info ^ module_info,
-    ( NumSolns = at_most_zero ->
+    (
+        NumSolns = at_most_zero,
         % The "then" part of the if-then-else will be unreachable, but to
         % preserve the invariants that the MLDS back-end relies on, we need to
         % make sure that it can't fail. So we use a call to
@@ -183,6 +183,10 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         generate_simple_call(PrivateBuiltin, "unused", pf_predicate, only_mode,
             detism_det, purity_pure, [], [], [], ModuleInfo, Context, ThenGoal)
     ;
+        ( NumSolns = at_most_one
+        ; NumSolns = at_most_many
+        ; NumSolns = at_most_many_cc
+        ),
         ThenGoal = Fail
     ),
     NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
@@ -231,7 +235,8 @@ goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
             conj(plain_conj,
                 [Goal2, ResetTicketCommitGoal, PruneTicketsToGoal]),
             OuterGoalInfo),
-        ( OuterCodeModel = model_semi ->
+        (
+            OuterCodeModel = model_semi,
             FailGoal = hlds_goal(_, FailGoalInfo),
             FailCode = hlds_goal(
                 conj(plain_conj,
@@ -239,6 +244,9 @@ goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
                 FailGoalInfo),
             Goal3 = hlds_goal(disj([SuccCode, FailCode]), OuterGoalInfo)
         ;
+            ( OuterCodeModel = model_det
+            ; OuterCodeModel = model_non
+            ),
             Goal3 = SuccCode
         ),
         GoalExpr =
@@ -277,13 +285,17 @@ goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0),
         % Commit the trail ticket entries if the condition succeeds.
         %
         Then1 = hlds_goal(_, Then1GoalInfo),
-        ( CondCodeModel = model_non ->
+        (
+            CondCodeModel = model_non,
             gen_reset_ticket_solve(TicketVar, Context, ResetTicketSolveGoal,
                 !.Info),
             Then = hlds_goal(
                 conj(plain_conj, [ResetTicketSolveGoal, Then1]),
                 Then1GoalInfo)
         ;
+            ( CondCodeModel = model_det
+            ; CondCodeModel = model_semi
+            ),
             gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
                 !.Info),
             gen_prune_ticket(Context, PruneTicketGoal, !.Info),
