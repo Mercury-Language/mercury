@@ -235,8 +235,7 @@ C_INTERFACE_PROGS = \
 
 SOLVER_PROGS = \
 	solv \
-	solver_type_bug_2 \
-	solver_type_mutable_bug
+	solver_type_bug_2
 
 DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
@@ -278,6 +277,13 @@ RESERVE_TAG_PROGS = \
 # XXX The following test is not valid under the current Mercury
 # language rules:
 #	field_detism
+#
+# The following test case checked for a problem with the varsets attached
+# to mutables.  It only ever worked in the presence of automatic solver
+# type initialisation, but due to subsequent changes in the mode analyser
+# it cannot currently be compiled.
+#	
+#       solver_type_mutable_bug
 
 # The agc.* tests don't work in --high-level-code grades,
 # except hl*.agc*, because they require grade-specific header
