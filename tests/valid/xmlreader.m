@@ -33,7 +33,12 @@
 */
 ").
 
-:- pragma foreign_type("C", xmlreader, "xmlTextReaderPtr",
+% The original code used this, but it breaks compiling this test
+% with --intermodule-optimization since xmlTextReaderPtr is undefined.
+%:- pragma foreign_type("C", xmlreader, "xmlTextReaderPtr",
+%    [can_pass_as_mercury_type]).
+
+:- pragma foreign_type("C", xmlreader, "MR_Word",
     [can_pass_as_mercury_type]).
 
 :- initialise c_init_xml_reader/2.
