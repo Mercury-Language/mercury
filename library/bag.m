@@ -277,7 +277,7 @@ bag.insert(Bag0, Item, Bag) :-
 %---------------------------------------------------------------------------%
 
 bag.insert_list(Bag, [], Bag).
-bag.insert_list(Bag0, [Item|Items], Bag) :-
+bag.insert_list(Bag0, [Item | Items], Bag) :-
     bag.insert(Bag0, Item, Bag1),
     bag.insert_list(Bag1, Items, Bag).
 
