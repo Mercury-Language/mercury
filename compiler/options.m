@@ -637,6 +637,8 @@
     ;         tag_switch_size
     ;         try_switch_size
     ;         binary_switch_size
+    ;         switch_single_rec_base_first
+    ;         switch_multi_rec_base_first
     ;       static_ground_terms
     ;       use_atomic_cells
     ;       middle_rec
@@ -1418,6 +1420,8 @@ option_defaults_2(optimization_option, [
     tag_switch_size                     -   int(3),
     try_switch_size                     -   int(3),
     binary_switch_size                  -   int(4),
+    switch_single_rec_base_first        -   bool(no),
+    switch_multi_rec_base_first         -   bool(yes),
     static_ground_terms                 -   bool(no),
     use_atomic_cells                    -   bool(no),
     middle_rec                          -   bool(no),
@@ -1425,10 +1429,10 @@ option_defaults_2(optimization_option, [
     allow_hijacks                       -   bool(yes),
 
     % MLDS
-    optimize_tailcalls                  -  bool(no),
-    optimize_initializations            -  bool(no),
-    eliminate_local_vars                -  bool(no),
-    generate_trail_ops_inline           -  bool(yes),
+    optimize_tailcalls                  -   bool(no),
+    optimize_initializations            -   bool(no),
+    eliminate_local_vars                -   bool(no),
+    generate_trail_ops_inline           -   bool(yes),
 
     % LLDS
     common_data                         -   bool(no),
@@ -1437,9 +1441,9 @@ option_defaults_2(optimization_option, [
     optimize_jumps                      -   bool(no),
     optimize_fulljumps                  -   bool(no),
     pessimize_tailcalls                 -   bool(no),
-    checked_nondet_tailcalls            -  bool(no),
+    checked_nondet_tailcalls            -   bool(no),
     use_local_vars                      -   bool(no),
-    local_var_access_threshold          -    int(2),
+    local_var_access_threshold          -   int(2),
     standardize_labels                  -   bool(no),
     optimize_labels                     -   bool(no),
     optimize_dups                       -   bool(no),
@@ -2239,6 +2243,8 @@ long_option("string-switch-size",   string_switch_size).
 long_option("tag-switch-size",      tag_switch_size).
 long_option("try-switch-size",      try_switch_size).
 long_option("binary-switch-size",   binary_switch_size).
+long_option("switch-single-rec-base-first", switch_single_rec_base_first).
+long_option("switch-multi-rec-base-first",  switch_multi_rec_base_first).
 long_option("static-ground-terms",  static_ground_terms).
 long_option("use-atomic-cells",     use_atomic_cells).
 long_option("middle-rec",           middle_rec).
@@ -4580,6 +4586,13 @@ options_help_hlds_llds_optimization -->
         "--binary-switch-size <n>",
         "\tThe number of alternatives in a binary search switch",
         "\tmust be at least this number (default: 4).",
+% These options are only for performance tests.
+%       "--switch-single-rec-base-first",
+%       "\tIn a switch with two arms, one a base case and one with a single",
+%       "\trecursive call, put the base case first.
+%       "--switch-multi-rec-base-first",
+%       "\tIn a switch with two arms, one a base case and one with multiple",
+%       "\trecursive calls, put the base case first.
         "--no-static-ground-terms",
         "\tDisable the optimization of constructing constant ground terms",
         "\tat compile time and storing them as static constants.",

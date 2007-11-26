@@ -71,7 +71,7 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
 
-    code_info.get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
+    get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
 
     % Make any changes to liveness before Goal.
     ( goal_is_atomic(GoalExpr) ->
@@ -79,8 +79,8 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
     ;
         IsAtomic = no
     ),
-    code_info.pre_goal_update(GoalInfo, IsAtomic, !CI),
-    code_info.get_instmap(!.CI, InstMap),
+    pre_goal_update(GoalInfo, IsAtomic, !CI),
+    get_instmap(!.CI, InstMap),
     ( instmap.is_reachable(InstMap) ->
         CodeModel = goal_info_get_code_model(GoalInfo),
         % Sanity check: code of some code models should occur
@@ -112,7 +112,7 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
         generate_goal_2(GoalExpr, GoalInfo, CodeModel,
             ForwardLiveVarsBeforeGoal, GoalCode, !CI),
         Features = goal_info_get_features(GoalInfo),
-        code_info.get_proc_info(!.CI, ProcInfo),
+        get_proc_info(!.CI, ProcInfo),
 
         % If the predicate's evaluation method is memo, loopcheck or minimal
         % model, the goal generated the variable that represents the call table
@@ -125,13 +125,12 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
         % to have a stack slot.
         (
             set.member(feature_call_table_gen, Features),
-            code_info.get_proc_info(!.CI, ProcInfo),
+            get_proc_info(!.CI, ProcInfo),
             proc_info_get_call_table_tip(ProcInfo, MaybeCallTableVar),
             MaybeCallTableVar = yes(CallTableVar),
-            code_info.get_maybe_trace_info(!.CI, yes(_))
+            get_maybe_trace_info(!.CI, yes(_))
         ->
-            code_info.save_variables_on_stack([CallTableVar], TipSaveCode,
-                !CI),
+            save_variables_on_stack([CallTableVar], TipSaveCode, !CI),
             CodeUptoTip = tree(GoalCode, TipSaveCode)
         ;
             CodeUptoTip = GoalCode
@@ -161,8 +160,8 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
 
         % Make live any variables which subsequent goals will expect to be
         % live, but were not generated.
-        code_info.set_instmap(InstMap, !CI),
-        code_info.post_goal_update(GoalInfo, !CI)
+        set_instmap(InstMap, !CI),
+        post_goal_update(GoalInfo, !CI)
     ;
         Code = empty
     ).
@@ -289,7 +288,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
 generate_goals([], _, empty, !CI).
 generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
     generate_goal(CodeModel, Goal, Code1, !CI),
-    code_info.get_instmap(!.CI, Instmap),
+    get_instmap(!.CI, Instmap),
     ( instmap.is_unreachable(Instmap) ->
         Code = Code1
     ;

@@ -458,7 +458,7 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
 
 trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
         !CI) :-
-    CodeModel = code_info.get_proc_model(!.CI),
+    CodeModel = get_proc_model(!.CI),
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
@@ -468,7 +468,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
         TraceRedo = yes,
         CodeModel = model_non
     ->
-        code_info.get_next_label(RedoLayoutLabel, !CI),
+        get_next_label(RedoLayoutLabel, !CI),
         MaybeRedoLayoutLabel = yes(RedoLayoutLabel),
         NextSlotAfterRedoLayout = 5
     ;
@@ -545,7 +545,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
         MaybeMaxfrLval, MaybeCallTableLval, MaybeRedoLayoutLabel).
 
 generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
-    CodeModel = code_info.get_proc_model(CI),
+    CodeModel = get_proc_model(CI),
     MaybeFromFullSlot  = TraceInfo ^ from_full_lval,
     MaybeIoSeqSlot     = TraceInfo ^ io_seq_lval,
     MaybeTrailLvals    = TraceInfo ^ trail_lvals,
@@ -656,8 +656,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     TraceCode = tree(TraceCode1, tree(TraceCode2, TraceCode3)).
 
 trace_prepare_for_call(CI, TraceCode) :-
-    code_info.get_maybe_trace_info(CI, MaybeTraceInfo),
-    CodeModel = code_info.get_proc_model(CI),
+    get_maybe_trace_info(CI, MaybeTraceInfo),
+    CodeModel = get_proc_model(CI),
     (
         MaybeTraceInfo = yes(TraceInfo),
         MaybeFromFullSlot = TraceInfo ^ from_full_lval,
@@ -681,7 +681,7 @@ trace_prepare_for_call(CI, TraceCode) :-
     ).
 
 maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
-    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         Goal = hlds_goal(_, GoalInfo),
@@ -717,9 +717,9 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             unexpected(this_file, "generate_internal_event_code: bad path")
         ),
         (
-            code_info.get_module_info(!.CI, ModuleInfo),
-            code_info.get_pred_info(!.CI, PredInfo),
-            code_info.get_proc_info(!.CI, ProcInfo),
+            get_module_info(!.CI, ModuleInfo),
+            get_pred_info(!.CI, PredInfo),
+            get_proc_info(!.CI, ProcInfo),
             eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
                 TraceInfo ^ trace_level,
                 TraceInfo ^ trace_suppress_items, Port) = yes
@@ -745,7 +745,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
     ).
 
 maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
-    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         (
@@ -755,9 +755,9 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
             NegPort = neg_success,
             Port = port_neg_success
         ),
-        code_info.get_module_info(!.CI, ModuleInfo),
-        code_info.get_pred_info(!.CI, PredInfo),
-        code_info.get_proc_info(!.CI, ProcInfo),
+        get_module_info(!.CI, ModuleInfo),
+        get_pred_info(!.CI, PredInfo),
+        get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
@@ -777,13 +777,13 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
     ).
 
 maybe_generate_foreign_proc_event_code(PragmaPort, Context, Code, !CI) :-
-    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         Port = convert_nondet_foreign_proc_port_type(PragmaPort),
-        code_info.get_module_info(!.CI, ModuleInfo),
-        code_info.get_pred_info(!.CI, PredInfo),
-        code_info.get_proc_info(!.CI, ProcInfo),
+        get_module_info(!.CI, ModuleInfo),
+        get_pred_info(!.CI, PredInfo),
+        get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
@@ -807,9 +807,9 @@ generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
 generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI) :-
     Port = convert_external_port_type(ExternalPort),
-    code_info.get_module_info(!.CI, ModuleInfo),
-    code_info.get_pred_info(!.CI, PredInfo),
-    code_info.get_proc_info(!.CI, ProcInfo),
+    get_module_info(!.CI, ModuleInfo),
+    get_pred_info(!.CI, PredInfo),
+    get_proc_info(!.CI, ProcInfo),
     NeedPort = eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
         TraceInfo ^ trace_level, TraceInfo ^ trace_suppress_items, Port),
     (
@@ -830,15 +830,15 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
 
 generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         MaybeUserInfo, Label, TvarDataMap, Code, !CI) :-
-    code_info.get_next_label(Label, !CI),
-    code_info.get_known_variables(!.CI, LiveVars0),
+    get_next_label(Label, !CI),
+    get_known_variables(!.CI, LiveVars0),
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
         Path = empty
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
-        ResumeVars = code_info.current_resume_point_vars(!.CI),
+        ResumeVars = current_resume_point_vars(!.CI),
         set.difference(PreDeaths, ResumeVars, RealPreDeaths),
         set.to_sorted_list(RealPreDeaths, RealPreDeathList),
         list.delete_elems(LiveVars0, RealPreDeathList, LiveVars)
@@ -860,20 +860,20 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 "generate_event_code: bad nondet foreign_proc port")
         )
     ),
-    VarTypes = code_info.get_var_types(!.CI),
-    code_info.get_varset(!.CI, VarSet),
-    code_info.get_instmap(!.CI, InstMap),
+    VarTypes = get_var_types(!.CI),
+    get_varset(!.CI, VarSet),
+    get_instmap(!.CI, InstMap),
     trace_produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
         set.init, TvarSet, [], VarInfoList, ProduceCode, !CI),
-    code_info.max_reg_in_use(!.CI, MaxReg),
-    code_info.get_max_reg_in_use_at_trace(!.CI, MaxTraceReg0),
+    max_reg_in_use(!.CI, MaxReg),
+    get_max_reg_in_use_at_trace(!.CI, MaxTraceReg0),
     ( MaxTraceReg0 < MaxReg ->
-        code_info.set_max_reg_in_use_at_trace(MaxReg, !CI)
+        set_max_reg_in_use_at_trace(MaxReg, !CI)
     ;
         true
     ),
-    code_info.variable_locations(!.CI, VarLocs),
-    code_info.get_proc_info(!.CI, ProcInfo),
+    variable_locations(!.CI, VarLocs),
+    get_proc_info(!.CI, ProcInfo),
     set.to_sorted_list(TvarSet, TvarList),
     continuation_info.find_typeinfos_for_tvars(TvarList, VarLocs, ProcInfo,
         TvarDataMap),
@@ -901,9 +901,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         "path <" ++ goal_path_to_string(Path) ++ "> */\n" ++
         TraceStmt0,
 
-    code_info.add_trace_layout_for_label(Label, Context, Port, HideEvent,
+    add_trace_layout_for_label(Label, Context, Port, HideEvent,
         Path, MaybeUserInfo, LayoutLabelInfo, !CI),
-    code_info.set_proc_trace_events(yes, !CI),
+    set_proc_trace_events(yes, !CI),
     (
         Port = port_fail,
         MaybeTraceInfo = yes(TraceInfo),
@@ -919,7 +919,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         % at procedure entry. Therefore setup reserves a label
         % for the redo event, whose layout information is filled in
         % when we get to the fail event.
-        code_info.add_trace_layout_for_label(RedoLabel, Context, port_redo,
+        add_trace_layout_for_label(RedoLabel, Context, port_redo,
             HideEvent, Path, no, LayoutLabelInfo, !CI)
     ;
         true
@@ -990,7 +990,7 @@ trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
 trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !TVars, !VarInfos, tree(VarCode, VarsCode), !CI) :-
     map.lookup(VarTypes, Var, Type),
-    code_info.get_module_info(!.CI, ModuleInfo),
+    get_module_info(!.CI, ModuleInfo),
     ( is_dummy_argument_type(ModuleInfo, Type) ->
         VarCode = empty
     ;
@@ -1005,9 +1005,9 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
     code_info::in, code_info::out) is det.
 
 trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
-    code_info.produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CI),
-    Type = code_info.variable_type(!.CI, Var),
-    code_info.get_module_info(!.CI, ModuleInfo),
+    produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CI),
+    Type = variable_type(!.CI, Var),
+    get_module_info(!.CI, ModuleInfo),
     ( varset.search_name(VarSet, Var, SearchName) ->
         Name = SearchName
     ;

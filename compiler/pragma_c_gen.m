@@ -407,8 +407,8 @@ generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
 
 generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI) :-
     generate_runtime_cond_code(RuntimeExpr, CondRval, !CI),
-    code_info.get_next_label(SuccessLabel, !CI),
-    code_info.generate_failure(FailCode, !CI),
+    get_next_label(SuccessLabel, !CI),
+    generate_failure(FailCode, !CI),
     CondCode = node([
         llds_instr(if_val(CondRval, code_label(SuccessLabel)),
             "environment variable tests")
@@ -476,9 +476,9 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ThreadSafe = proc_not_thread_safe
     ),
     % First we need to get a list of input and output arguments.
-    ArgInfos = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
+    ArgInfos = get_pred_proc_arginfo(!.CI, PredId, ProcId),
     make_c_arg_list(Args, ArgInfos, OrigCArgs),
-    code_info.get_module_info(!.CI, ModuleInfo),
+    get_module_info(!.CI, ModuleInfo),
     make_extra_c_arg_list(ExtraArgs, ModuleInfo, ArgInfos, ExtraCArgs),
     list.append(OrigCArgs, ExtraCArgs, CArgs),
     foreign_proc_select_in_args(CArgs, InCArgs),
@@ -495,14 +495,14 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ;
         MayCallMercury = proc_may_call_mercury,
         % The C code might call back Mercury code which clobbers the succip.
-        code_info.succip_is_used(!CI),
+        succip_is_used(!CI),
 
         % The C code might call back Mercury code which clobbers the
         % other registers, so we need to save any live variables
         % (other than the output args) onto the stack.
         get_c_arg_list_vars(OutCArgs, OutVars),
         set.list_to_set(OutVars, OutVarsSet),
-        code_info.save_variables(OutVarsSet, _, SaveVarsCode, !CI)
+        save_variables(OutVarsSet, _, SaveVarsCode, !CI)
     ),
 
     % Generate the values of input variables.
@@ -515,15 +515,15 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     % finished generating the code producing the input variables.
     % (The forward dead variables will be dead after the call_foreign_proc,
     % but are live during its input phase.)
-    code_info.make_vars_forward_dead(DeadVars, !CI),
+    make_vars_forward_dead(DeadVars, !CI),
 
     % Generate <declaration of one local variable for each arg>.
     make_foreign_proc_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
 
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
     % and #undef MR_PROC_LABEL.
-    code_info.get_pred_id(!.CI, CallerPredId),
-    code_info.get_proc_id(!.CI, CallerProcId),
+    get_pred_id(!.CI, CallerPredId),
+    get_proc_id(!.CI, CallerProcId),
     make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
         ProcLabelHashDefine, ProcLabelHashUndef),
 
@@ -577,7 +577,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             CheckSuccess_Comp = foreign_proc_noop,
             MaybeFailLabel = no
         ;
-            code_info.get_next_label(FailLabel, !CI),
+            get_next_label(FailLabel, !CI),
             CheckSuccess_Comp = foreign_proc_fail_to(FailLabel),
             MaybeFailLabel = yes(FailLabel)
         ),
@@ -627,7 +627,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ;
             OkToDelete = yes
         ),
-        code_info.clear_all_registers(OkToDelete, !CI)
+        clear_all_registers(OkToDelete, !CI)
     ),
 
     % <assignment of the output values from local variables to registers>
@@ -680,8 +680,8 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
 
     (
         MaybeFailLabel = yes(TheFailLabel),
-        code_info.get_next_label(SkipLabel, !CI),
-        code_info.generate_failure(FailCode, !CI),
+        get_next_label(SkipLabel, !CI),
+        generate_failure(FailCode, !CI),
         GotoSkipLabelCode = node([
             llds_instr(goto(code_label(SkipLabel)), "Skip past failure code")
         ]),
@@ -692,7 +692,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ;
         MaybeFailLabel = no,
         ( Detism = detism_failure ->
-            code_info.generate_failure(FailureCode, !CI)
+            generate_failure(FailureCode, !CI)
         ;
             FailureCode = empty
         )
@@ -750,9 +750,9 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
 
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
     % and #undef MR_PROC_LABEL.
-    code_info.get_module_info(!.CI, ModuleInfo),
-    code_info.get_pred_id(!.CI, CallerPredId),
-    code_info.get_proc_id(!.CI, CallerProcId),
+    get_module_info(!.CI, ModuleInfo),
+    get_pred_id(!.CI, CallerPredId),
+    get_proc_id(!.CI, CallerProcId),
     make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
         ProcLabelDefine, ProcLabelUndef),
 
@@ -761,7 +761,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         PredId, ProcId),
 
     % Get a list of input and output arguments.
-    ArgInfos = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
+    ArgInfos = get_pred_proc_arginfo(!.CI, PredId, ProcId),
     make_c_arg_list(Args, ArgInfos, CArgs),
     foreign_proc_select_in_args(CArgs, InCArgs),
     foreign_proc_select_out_args(CArgs, OutCArgs),
@@ -786,7 +786,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         [s(StructName), s(StructName)],
         InitSaveStruct),
 
-    code_info.get_next_label(RetryLabel, !CI),
+    get_next_label(RetryLabel, !CI),
     ModFrameCode = node([
         llds_instr(assign(redoip_slot(lval(curfr)),
             const(llconst_code_addr(code_label(RetryLabel)))),
@@ -796,18 +796,16 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         llds_instr(label(RetryLabel), "Start of the retry block")
     ]),
 
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
 
     globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
         ReclaimHeap),
-    code_info.maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot, !CI),
-    code_info.maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
+    maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot, !CI),
+    maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
 
-    code_info.get_emit_trail_ops(!.CI, AddTrailOps),
-    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
-        !CI),
-    code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
-        RestoreTicketCode),
+    get_emit_trail_ops(!.CI, AddTrailOps),
+    maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
+    maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo, RestoreTicketCode),
     (
         FirstContext = yes(ActualFirstContext)
     ;
@@ -1006,7 +1004,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
             RetryLabelCode, LaterDisjunctCode, RetryBlockCode])
     ;
-        code_info.get_next_label(SharedLabel, !CI),
+        get_next_label(SharedLabel, !CI),
         SharedLabelCode = node([
             llds_instr(label(SharedLabel), "Start of the shared block")
         ]),
@@ -1416,9 +1414,9 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
     (
         MaybeName = yes(Name),
         VarType = variable_type(!.CI, Var),
-        code_info.produce_variable(Var, FirstCode, Rval, !CI),
+        produce_variable(Var, FirstCode, Rval, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
-        code_info.get_module_info(!.CI, ModuleInfo),
+        get_module_info(!.CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
             IsDummy = yes
         ;
@@ -1441,7 +1439,7 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
     maybe(foreign_proc_type).
 
 get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
-    code_info.get_module_info(CI, Module),
+    get_module_info(CI, Module),
     module_info_get_type_table(Module, Types),
     (
         type_to_ctor_and_args(Type, TypeId, _SubTypes),
@@ -1475,7 +1473,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 foreign_proc_acquire_regs([], [], !CI).
 foreign_proc_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
     Arg = c_arg(Var, _, _, _, _),
-    code_info.acquire_reg_for_var(Var, Reg, !CI),
+    acquire_reg_for_var(Var, Reg, !CI),
     foreign_proc_acquire_regs(Args, Regs, !CI).
 
 %---------------------------------------------------------------------------%
@@ -1494,15 +1492,15 @@ place_foreign_proc_output_args_in_regs([Arg | Args], [Reg | Regs],
     place_foreign_proc_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
         OutputsTail, !CI),
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
-    code_info.release_reg(Reg, !CI),
-    ( code_info.variable_is_forward_live(!.CI, Var) ->
-        code_info.set_var_location(Var, Reg, !CI),
+    release_reg(Reg, !CI),
+    ( variable_is_forward_live(!.CI, Var) ->
+        set_var_location(Var, Reg, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
         MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var,
             MaybeArgName),
         (
             MaybeName = yes(Name),
-            code_info.get_module_info(!.CI, ModuleInfo),
+            get_module_info(!.CI, ModuleInfo),
             VarType = variable_type(!.CI, Var),
             ( is_dummy_argument_type(ModuleInfo, VarType) ->
                 IsDummy = yes
@@ -1545,7 +1543,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
         ArgInfo = arg_info(N, _),
         Reg = reg(reg_r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-        code_info.get_module_info(CI, ModuleInfo),
+        get_module_info(CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
             IsDummy = yes
         ;
@@ -1579,7 +1577,7 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
         ArgInfo = arg_info(N, _),
         Reg = reg(reg_r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-        code_info.get_module_info(CI, ModuleInfo),
+        get_module_info(CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
             IsDummy = yes
         ;

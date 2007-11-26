@@ -107,9 +107,9 @@ contains_simple_recursive_call_conj([Goal | Goals], CodeInfo) :-
 is_recursive_call(Goal, CodeInfo) :-
     Goal = plain_call(CallPredId, CallProcId, _, BuiltinState, _, _),
     BuiltinState = not_builtin,
-    code_info.get_pred_id(CodeInfo, PredId),
+    get_pred_id(CodeInfo, PredId),
     PredId = CallPredId,
-    code_info.get_proc_id(CodeInfo, ProcId),
+    get_proc_id(CodeInfo, ProcId),
     ProcId = CallProcId.
 
     % contains_only_builtins(G) returns `yes' if G is a leaf procedure,
@@ -225,37 +225,35 @@ contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
 
 middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         Instrs, !CI) :-
-    code_info.get_stack_slots(!.CI, StackSlots),
-    code_info.get_varset(!.CI, VarSet),
+    get_stack_slots(!.CI, StackSlots),
+    get_varset(!.CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
-    code_info.get_module_info(!.CI, ModuleInfo),
-    code_info.get_pred_id(!.CI, PredId),
-    code_info.get_proc_id(!.CI, ProcId),
+    get_module_info(!.CI, ModuleInfo),
+    get_pred_id(!.CI, PredId),
+    get_proc_id(!.CI, ProcId),
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
 
-    code_info.pre_goal_update(SwitchGoalInfo, no, !CI),
+    pre_goal_update(SwitchGoalInfo, no, !CI),
     unify_gen.generate_tag_test(Var, BaseConsId, branch_on_success,
         BaseLabel, EntryTestCode, !CI),
     tree.flatten(EntryTestCode, EntryTestListList),
     list.condense(EntryTestListList, EntryTestList),
 
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-    code_info.remember_position(!.CI, BranchStart),
+    remember_position(!.CI, BranchStart),
     code_gen.generate_goal(model_det, Base, BaseGoalCode, !CI),
-    code_info.generate_branch_end(StoreMap, no, MaybeEnd1,
-        BaseSaveCode, !CI),
-    code_info.reset_to_position(BranchStart, !CI),
+    generate_branch_end(StoreMap, no, MaybeEnd1, BaseSaveCode, !CI),
+    reset_to_position(BranchStart, !CI),
     code_gen.generate_goal(model_det, Recursive, RecGoalCode, !CI),
-    code_info.generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd,
-        RecSaveCode, !CI),
+    generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd, RecSaveCode, !CI),
 
-    code_info.post_goal_update(SwitchGoalInfo, !CI),
-    code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
+    post_goal_update(SwitchGoalInfo, !CI),
+    after_all_branches(StoreMap, MaybeEnd, !CI),
 
-    ArgModes = code_info.get_arginfo(!.CI),
-    HeadVars = code_info.get_headvars(!.CI),
+    ArgModes = get_arginfo(!.CI),
+    HeadVars = get_headvars(!.CI),
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
-    code_info.setup_return(Args, LiveArgs, EpilogCode, !CI),
+    setup_return(Args, LiveArgs, EpilogCode, !CI),
 
     BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)),
     RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)),
@@ -278,9 +276,9 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     split_rec_code(RecList, BeforeList0, AfterList),
     add_counter_to_livevals(BeforeList0, AuxReg, BeforeList),
 
-    code_info.get_next_label(Loop1Label, !CI),
-    code_info.get_next_label(Loop2Label, !CI),
-    code_info.get_total_stackslot_count(!.CI, FrameSize),
+    get_next_label(Loop1Label, !CI),
+    get_next_label(Loop2Label, !CI),
+    get_total_stackslot_count(!.CI, FrameSize),
 
     generate_downloop_test(EntryTestList, Loop1Label, Loop1Test),
 

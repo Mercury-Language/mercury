@@ -95,8 +95,8 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
     ( instmap_delta_is_unreachable(InstMapDelta) ->
         OutVars = []
     ;
-        code_info.get_instmap(CI, CurrentInstMap),
-        code_info.get_module_info(CI, ModuleInfo),
+        get_instmap(CI, CurrentInstMap),
+        get_module_info(CI, ModuleInfo),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
         instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
             InstMapAfter),
@@ -146,14 +146,14 @@ generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
 
 do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
         !MaybeEnd, Liveness, !CI) :-
-    code_info.remember_position(!.CI, BranchStart),
+    remember_position(!.CI, BranchStart),
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     CodeModel = goal_info_get_code_model(GoalInfo),
     code_gen.generate_goal(CodeModel, Goal, Code, !CI),
     tree.tree_of_lists_is_empty(Code),
-    code_info.get_forward_live_vars(!.CI, Liveness),
+    get_forward_live_vars(!.CI, Liveness),
 
-    code_info.get_globals(!.CI, Globals),
+    get_globals(!.CI, Globals),
     globals.get_options(Globals, Options),
     exprn_aux.init_exprn_opts(Options, ExprnOpts),
     get_arm_rvals(Vars, CaseRvals, !CI, ExprnOpts),
@@ -161,13 +161,13 @@ do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
         SetToUnknown = no
     ;
         SetToUnknown = yes,
-        code_info.set_resume_point_to_unknown(!CI)
+        set_resume_point_to_unknown(!CI)
     ),
     % EndCode code may contain instructions that place Vars in the locations
     % dictated by StoreMap, and thus does not have to be empty. (The array
     % lookup code will put those variables in those locations directly.)
-    code_info.generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
-    code_info.reset_to_position(BranchStart, !CI).
+    generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
+    reset_to_position(BranchStart, !CI).
 
 generate_constants_for_disjuncts([], _Vars, _StoreMap, [], !MaybeEnd,
         no, !CI).
@@ -191,7 +191,7 @@ generate_constants_for_disjuncts([Disjunct0 | Disjuncts], Vars, StoreMap,
 
 get_arm_rvals([], [], !CI, _ExprnOpts).
 get_arm_rvals([Var | Vars], [Rval | Rvals], !CI, ExprnOpts) :-
-    code_info.produce_variable(Var, Code, Rval, !CI),
+    produce_variable(Var, Code, Rval, !CI),
     tree.tree_of_lists_is_empty(Code),
     rval_is_constant(Rval, ExprnOpts),
     get_arm_rvals(Vars, Rvals, !CI, ExprnOpts).
@@ -219,14 +219,13 @@ set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness, BranchEndCode,
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
-    code_info.set_forward_live_vars(Liveness, !CI),
-    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
-        BranchEndCode, !CI).
+    set_forward_live_vars(Liveness, !CI),
+    generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd, BranchEndCode, !CI).
 
 generate_offset_assigns([], _, _, !CI).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
     LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
-    code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
+    assign_lval_to_var(Var, LookupLval, Code, !CI),
     expect(tree.is_empty(Code), this_file,
         "generate_offset_assigns: nonempty code"),
     generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).

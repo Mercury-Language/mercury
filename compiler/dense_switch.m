@@ -146,7 +146,7 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
         RangeCheck = empty
     ),
     % Now generate the jump table and the cases.
-    generate_cases(Cases, StartVal, EndVal, CodeModel, SwitchGoalInfo,
+    generate_dense_cases(Cases, StartVal, EndVal, CodeModel, SwitchGoalInfo,
         EndLabel, MaybeEnd0, MaybeEnd, Labels, CasesCode, !CI),
 
     % XXX We keep track of the code_info at the end of one of the non-fail
@@ -160,12 +160,12 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
     % Assemble the code fragments.
     Code = tree_list([VarCode, RangeCheck, DoJump, CasesCode]).
 
-:- pred generate_cases(cases_list::in, int::in, int::in, code_model::in,
+:- pred generate_dense_cases(cases_list::in, int::in, int::in, code_model::in,
     hlds_goal_info::in, label::in, branch_end::in, branch_end::out,
     list(label)::out, code_tree::out, code_info::in, code_info::out) is det.
 
-generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
-        !MaybeEnd, Labels, Code, !CI) :-
+generate_dense_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo,
+        EndLabel, !MaybeEnd, Labels, Code, !CI) :-
     ( NextVal > EndVal ->
         Labels = [],
         Code = node([
@@ -173,7 +173,7 @@ generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
         ])
     ;
         get_next_label(ThisLabel, !CI),
-        generate_case(Cases0, Cases1, NextVal, CodeModel,
+        generate_dense_case(Cases0, Cases1, NextVal, CodeModel,
             SwitchGoalInfo, !MaybeEnd, ThisCode, Comment, !CI),
         LabelCode = node([
             llds_instr(label(ThisLabel), Comment)
@@ -184,20 +184,20 @@ generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
         ]),
         % Generate the rest of the cases.
         NextVal1 = NextVal + 1,
-        generate_cases(Cases1, NextVal1, EndVal, CodeModel, SwitchGoalInfo,
-            EndLabel, !MaybeEnd, Labels1, OtherCasesCode, !CI),
+        generate_dense_cases(Cases1, NextVal1, EndVal, CodeModel,
+            SwitchGoalInfo, EndLabel, !MaybeEnd, Labels1, OtherCasesCode, !CI),
         Labels = [ThisLabel | Labels1],
         Code = tree_list([LabelCode, ThisCode, JumpCode, OtherCasesCode])
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_case(cases_list::in, cases_list::out, int::in, code_model::in,
-    hlds_goal_info::in, branch_end::in, branch_end::out, code_tree::out,
-    string::out, code_info::in, code_info::out) is det.
+:- pred generate_dense_case(cases_list::in, cases_list::out, int::in,
+    code_model::in, hlds_goal_info::in, branch_end::in, branch_end::out,
+    code_tree::out, string::out, code_info::in, code_info::out) is det.
 
-generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
-        Comment, !CI) :-
+generate_dense_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd,
+        Code, Comment, !CI) :-
     (
         !.Cases = [Case | !:Cases],
         Case = extended_case(_, int_tag(NextVal), _, Goal)

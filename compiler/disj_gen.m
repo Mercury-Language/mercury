@@ -347,8 +347,7 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
     % for semi and det disjunctions, and delay saving the ticket until
     % necessary.
     get_globals(!.CI, Globals),
-    maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
-        !CI),
+    maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
 
     % If we are using a grade in which we can recover memory by saving
     % and restoring the heap pointer, set up for doing so if necessary.

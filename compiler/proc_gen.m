@@ -348,14 +348,14 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     generate_category_code(CodeModel, ProcContext, Goal, OutsideResumePoint,
         TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
         CodeInfo0, CodeInfo),
-    code_info.get_max_reg_in_use_at_trace(CodeInfo, MaxTraceReg),
-    code_info.get_static_cell_info(CodeInfo, StaticCellInfo),
+    get_max_reg_in_use_at_trace(CodeInfo, MaxTraceReg),
+    get_static_cell_info(CodeInfo, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
 
     globals.get_trace_level(Globals, TraceLevel),
-    code_info.get_created_temp_frame(CodeInfo, CreatedTempFrame),
+    get_created_temp_frame(CodeInfo, CreatedTempFrame),
 
-    code_info.get_proc_trace_events(CodeInfo, ProcTraceEvents),
+    get_proc_trace_events(CodeInfo, ProcTraceEvents),
     % You can have user trace events even if the effective trace level is none.
     (
         ProcTraceEvents =  yes,
@@ -399,7 +399,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     ->
         % Create the procedure layout structure.
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-        code_info.get_layout_info(CodeInfo, InternalMap),
+        get_layout_info(CodeInfo, InternalMap),
         EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
         proc_info_get_eval_method(ProcInfo, EvalMethod),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
@@ -463,14 +463,14 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         true
     ),
 
-    code_info.get_closure_layouts(CodeInfo, ClosureLayouts),
+    get_closure_layouts(CodeInfo, ClosureLayouts),
     global_data_add_new_closure_layouts(ClosureLayouts, !GlobalData),
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
 
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
 
-    code_info.get_label_counter(CodeInfo, LabelCounter),
+    get_label_counter(CodeInfo, LabelCounter),
     % You can have user trace events even if the effective trace level is none.
     (
         ProcTraceEvents = no,
@@ -501,7 +501,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         ProcInstructions = Instructions,
         ProcLabelCounter = LabelCounter
     ),
-    code_info.get_used_env_vars(CodeInfo, UsedEnvVars),
+    get_used_env_vars(CodeInfo, UsedEnvVars),
     Proc = c_procedure(Name, Arity, proc(PredId, ProcId), CodeModel,
         ProcInstructions, ProcLabel, ProcLabelCounter, MayAlterRtti,
         UsedEnvVars).
@@ -624,16 +624,17 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
 generate_category_code(model_det, ProcContext, Goal, ResumePoint,
         TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
     % Generate the code for the body of the procedure.
+    get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, middle_rec, MiddleRec),
     (
-        code_info.get_globals(!.CI, Globals),
-        globals.lookup_bool_option(Globals, middle_rec, yes),
+        MiddleRec = yes,
         middle_rec.match_and_generate(Goal, MiddleRecCode, !CI)
     ->
         Code = MiddleRecCode,
         MaybeTraceCallLabel = no,
         FrameInfo = frame(0, no, no)
     ;
-        code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+        get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
             MaybeTraceInfo = yes(TraceInfo),
             generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
@@ -659,7 +660,7 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         llds_instr(livevals(FailureLiveRegs), ""),
         llds_instr(goto(code_succip), "Return from procedure call")
     ]),
-    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
@@ -670,10 +671,10 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         generate_exit(model_semi, FrameInfo, TraceSlotInfo,
             ProcContext, RestoreDeallocCode, ExitCode, !CI),
 
-        code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
-        code_info.resume_point_vars(ResumePoint, ResumeVarList),
+        generate_resume_point(ResumePoint, ResumeCode, !CI),
+        resume_point_vars(ResumePoint, ResumeVarList),
         set.list_to_set(ResumeVarList, ResumeVars),
-        code_info.set_forward_live_vars(ResumeVars, !CI),
+        set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
         generate_external_event_code(external_port_fail, TraceInfo,
@@ -695,14 +696,14 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
             FrameInfo, EntryCode),
         generate_exit(model_semi, FrameInfo, TraceSlotInfo,
             ProcContext, RestoreDeallocCode, ExitCode, !CI),
-        code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
+        generate_resume_point(ResumePoint, ResumeCode, !CI),
         Code = tree_list([EntryCode, BodyCode, ExitCode,
             ResumeCode, RestoreDeallocCode, FailCode])
     ).
 
 generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
-    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
@@ -713,10 +714,10 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         generate_exit(model_non, FrameInfo, TraceSlotInfo,
             ProcContext, _, ExitCode, !CI),
 
-        code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
-        code_info.resume_point_vars(ResumePoint, ResumeVarList),
+        generate_resume_point(ResumePoint, ResumeCode, !CI),
+        resume_point_vars(ResumePoint, ResumeVarList),
         set.list_to_set(ResumeVarList, ResumeVars),
-        code_info.set_forward_live_vars(ResumeVars, !CI),
+        set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
         generate_external_event_code(external_port_fail, TraceInfo,
@@ -736,7 +737,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
                 % allocated, i.e. only if MR_trace_from_full was true on entry.
                 FromFullSlotLval =
                     llds.stack_slot_num_to_lval(nondet_stack, FromFullSlot),
-                code_info.get_next_label(SkipLabel, !CI),
+                get_next_label(SkipLabel, !CI),
                 DiscardTraceTicketCode = node([
                     llds_instr(
                         if_val(unop(logical_not, lval(FromFullSlotLval)),
@@ -815,22 +816,22 @@ generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
 
 generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         EntryCode) :-
-    code_info.get_stack_slots(CI, StackSlots),
-    code_info.get_varset(CI, VarSet),
+    get_stack_slots(CI, StackSlots),
+    get_varset(CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
     StartComment = node([
         llds_instr(comment("Start of procedure prologue"), ""),
         llds_instr(comment(SlotsComment), "")
     ]),
-    code_info.get_total_stackslot_count(CI, MainSlots),
-    code_info.get_pred_id(CI, PredId),
-    code_info.get_proc_id(CI, ProcId),
-    code_info.get_module_info(CI, ModuleInfo),
+    get_total_stackslot_count(CI, MainSlots),
+    get_pred_id(CI, PredId),
+    get_proc_id(CI, ProcId),
+    get_module_info(CI, ModuleInfo),
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
     LabelCode = node([
         llds_instr(label(EntryLabel), "Procedure entry point")
     ]),
-    code_info.get_succip_used(CI, Used),
+    get_succip_used(CI, Used),
     (
         % Do we need to save the succip across calls?
         Used = yes,
@@ -849,7 +850,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         TotalSlots = MainSlots,
         MaybeSuccipSlot = no
     ),
-    code_info.get_maybe_trace_info(CI, MaybeTraceInfo),
+    get_maybe_trace_info(CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         generate_slot_fill_code(CI, TraceInfo, TraceFillCode)
@@ -865,8 +866,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     PushMsg = push_msg(ModuleInfo, PredId, ProcId),
     (
         CodeModel = model_non,
-        code_info.resume_point_stack_addr(OutsideResumePoint,
-            OutsideResumeAddress),
+        resume_point_stack_addr(OutsideResumePoint, OutsideResumeAddress),
         (
             Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, PragmaCode),
                 _),
@@ -986,15 +986,15 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ExitCode = tree_list([StartComment, UndefCode, EndComment])
     ;
         NondetPragma = no,
-        code_info.get_instmap(!.CI, InstMap),
-        ArgModes = code_info.get_arginfo(!.CI),
-        HeadVars = code_info.get_headvars(!.CI),
+        get_instmap(!.CI, InstMap),
+        ArgModes = get_arginfo(!.CI),
+        HeadVars = get_headvars(!.CI),
         assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
         ( instmap.is_unreachable(InstMap) ->
             OutLvals = set.init,
             FlushCode = empty
         ;
-            code_info.setup_return(Args, OutLvals, FlushCode, !CI)
+            setup_return(Args, OutLvals, FlushCode, !CI)
         ),
         (
             MaybeSuccipSlot = yes(SuccipSlot),
@@ -1035,8 +1035,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 StackId = code_model_to_main_stack(CodeModel),
                 FromFullSlotLval =
                     llds.stack_slot_num_to_lval(StackId, FromFullSlot),
-                code_info.get_next_label(SkipLabel, !CI),
-                code_info.get_next_label(SkipLabelCopy, !CI),
+                get_next_label(SkipLabel, !CI),
+                get_next_label(SkipLabelCopy, !CI),
                 PruneTraceTicketCode = node([
                     llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
                         code_label(SkipLabel)), ""),
@@ -1066,7 +1066,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         RestoreDeallocCodeCopy = tree_list([RestoreSuccipCode,
             PruneTraceTicketCodeCopy, DeallocCode]),
 
-        code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
+        get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
             MaybeTraceInfo = yes(TraceInfo),
             % XXX A context that gives the end of the procedure definition
@@ -1100,7 +1100,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             LiveLvals = OutLvals
         ),
 
-        code_info.get_proc_info(!.CI, ProcInfo),
+        get_proc_info(!.CI, ProcInfo),
         proc_info_get_maybe_special_return(ProcInfo, MaybeSpecialReturn),
         (
             CodeModel = model_det,

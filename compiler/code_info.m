@@ -731,6 +731,18 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
     %
 :- func variable_type(code_info, prog_var) = mer_type.
 
+    % Compute the principal type constructor of the given type, and return the
+    % definition of this type constructor, if it has one (some type
+    % constructors are built in, and some are hidden behind abstraction
+    % barriers).
+    %
+:- pred search_type_defn(code_info::in, mer_type::in, hlds_type_defn::out) is
+    semidet.
+
+    % Compute the principal type constructor of the given type, and return the
+    % definition of this type constructor. Abort if it doesn't have a
+    % definition (e.g. because it is a builtin).
+    %
 :- func lookup_type_defn(code_info, mer_type) = hlds_type_defn.
 
 :- func filter_region_vars(code_info, set(prog_var)) = set(prog_var).
@@ -905,15 +917,22 @@ get_var_types(CI) = VarTypes :-
 variable_type(CI, Var) = Type :-
     map.lookup(get_var_types(CI), Var, Type).
 
-lookup_type_defn(CI, Type) = TypeDefn :-
+search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),
     ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
         TypeCtor = TypeCtorPrime
     ;
-        unexpected(this_file, "unknown type in lookup_type_defn")
+        unexpected(this_file, "unknown type in search_type_defn")
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.lookup(TypeTable, TypeCtor, TypeDefn).
+    map.search(TypeTable, TypeCtor, TypeDefn).
+
+lookup_type_defn(CI, Type) = TypeDefn :-
+    ( search_type_defn(CI, Type, TypeDefnPrime) ->
+        TypeDefn = TypeDefnPrime
+    ;
+        unexpected(this_file, "lookup_type_defn: type ctor has no definition")
+    ).
 
 filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
     VarTypes = code_info.get_var_types(CI),
