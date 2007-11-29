@@ -1343,9 +1343,14 @@ modecheck_goal_expr(disj(Disjs0), GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
         Disjs0 = [_ | _],
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         modecheck_disj_list(Disjs0, Disjs1, InstMapList0, !ModeInfo, !IO),
-        mode_info_get_var_types(!.ModeInfo, VarTypes),
-        handle_solver_vars_in_disjs(set.to_sorted_list(NonLocals),
-            VarTypes, Disjs1, Disjs2, InstMapList0, InstMapList, !ModeInfo),
+        ( mode_info_solver_init_is_supported(!.ModeInfo) ->
+            mode_info_get_var_types(!.ModeInfo, VarTypes),
+            handle_solver_vars_in_disjs(set.to_sorted_list(NonLocals),
+                VarTypes, Disjs1, Disjs2, InstMapList0, InstMapList, !ModeInfo)
+        ;
+            InstMapList = InstMapList0,
+            Disjs2 = Disjs1
+        ),
         Disjs = flatten_disjs(Disjs2),
         instmap_merge(NonLocals, InstMapList, disj, !ModeInfo),
         disj_list_to_goal(Disjs, GoalInfo0, hlds_goal(GoalExpr, _GoalInfo))
@@ -1861,7 +1866,7 @@ solver_vars_that_must_be_initialised(Vars, VarTypes, ModuleInfo, InstMaps) =
 
 solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps, Var) :-
     map.lookup(VarTypes, Var, VarType),
-    type_util.type_is_solver_type(ModuleInfo, VarType),
+    type_is_solver_type_with_auto_init(ModuleInfo, VarType),
     list.member(InstMap, InstMaps),
     instmap.lookup_var(InstMap, Var, Inst),
     not inst_match.inst_is_free(ModuleInfo, Inst).
@@ -1870,7 +1875,7 @@ solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps, Var) :-
 
 is_solver_var(VarTypes, ModuleInfo, Var) :-
     map.lookup(VarTypes, Var, VarType),
-    type_util.type_is_solver_type(ModuleInfo, VarType).
+    type_is_solver_type(ModuleInfo, VarType).
 
 :- pred add_necessary_disj_init_calls(list(hlds_goal)::in,
     list(hlds_goal)::out, list(instmap)::in, list(instmap)::out,
@@ -2532,7 +2537,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
 
 non_solver_var(ModuleInfo, VarTypes, Var) :-
     VarType = VarTypes ^ det_elem(Var),
-    not type_util.type_is_solver_type(ModuleInfo, VarType).
+    not type_is_solver_type(ModuleInfo, VarType).
 
     % Update !NonFree and !CandidateVars given the args and modes for a call.
     %
