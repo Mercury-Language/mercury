@@ -900,7 +900,18 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
     list.length(Args, Arity),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    map.search(ModeDefns, mode_id(Name, Arity), HLDS_Mode),
+    % Try looking up Name as-is.  If that fails and Name is unqualified,
+    % try looking it up with the builtin qualifier.
+    % XXX This is a makeshift fix for a problem that requires more
+    % investigation (without this fix the compiler occasionally
+    % throws an exception in mode_get_insts/4).
+    ( if map.search(ModeDefns, mode_id(Name, Arity), HLDS_Mode0) then
+        HLDS_Mode = HLDS_Mode0
+      else
+        Name = unqualified(String),
+        BuiltinName = qualified(mercury_public_builtin_module, String),
+        map.search(ModeDefns, mode_id(BuiltinName, Arity), HLDS_Mode)
+    ),
     HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Context, _Status),
     ModeDefn = eqv_mode(Mode0),
     mode_substitute_arg_list(Mode0, Params, Args, Mode),
