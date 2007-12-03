@@ -175,6 +175,7 @@ OTHER_PROGS= \
 	nested_module_bug \
 	no_warn_obsolete \
 	nondet_live \
+	opt_det_warn \
 	overloading \
 	param_mode_bug \
 	parsing_bug_main \

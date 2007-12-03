@@ -220,7 +220,13 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, ModuleInfo, !Specs) :-
                 ;
                     WarnAboutInferredErroneous = no,
                     InferredDetism \= detism_erroneous
-                )
+                ),
+
+                % Only warn about predicates that are defined in this module.
+                % This avoids warnings being emitted for opt_imported 
+                % predicates.
+                pred_info_get_import_status(PredInfo0, ImportStatus),
+                status_defined_in_this_module(ImportStatus) = yes
             ->
                 Message = "warning: determinism declaration " ++
                     "could be tighter.\n",
