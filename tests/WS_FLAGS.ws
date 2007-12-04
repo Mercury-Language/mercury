@@ -12,5 +12,7 @@
 --c-include-directory @WORKSPACE@/browser
 --c-include-directory @WORKSPACE@/browser/Mercury/mihs
 --c-include-directory @WORKSPACE@/trace
+--c-include-directory @WORKSPACE@/ssdb
+--c-include-directory @WORKSPACE@/ssdb/Mercury/mihs
 --linkage shared
 --config-file @WORKSPACE@/scripts/Mercury.config.bootstrap

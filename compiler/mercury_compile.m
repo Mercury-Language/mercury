@@ -2573,9 +2573,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination2", !DumpInfo, !IO),
 
-    maybe_ssdb(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 123, "ssdb", !DumpInfo, !IO),
-
     maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !DumpInfo, !IO),
 
@@ -2598,6 +2595,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_higher_order(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 135, "higher_order", !DumpInfo, !IO),
+
+    maybe_ssdb(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 137, "ssdb", !DumpInfo, !IO),
 
     maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 139, "implicit_parallelism", !DumpInfo, !IO),
