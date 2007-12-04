@@ -35,82 +35,82 @@
 
 :- interface.
 
-% This section of the module contains predicates that are used
-% by the compiler, to implement polymorphism. These predicates
-% should not be used by user programs directly.
+    % This section of the module contains predicates that are used
+    % by the compiler, to implement polymorphism. These predicates
+    % should not be used by user programs directly.
 
-% Changes here may also require changes in compiler/polymorphism.m,
-% compiler/unify_proc.m, compiler/higher_order.m and
-% runtime/mercury_type_info.{c,h}.
+    % Changes here may also require changes in compiler/polymorphism.m,
+    % compiler/unify_proc.m, compiler/higher_order.m and
+    % runtime/mercury_type_info.{c,h}.
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_compare_int(comparison_result::uo, int::in, int::in) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
-character::in) is det.
+    character::in) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
 :- pred builtin_compare_string(comparison_result::uo, string::in, string::in)
-is det.
+    is det.
 
 :- pred builtin_unify_float(float::in, float::in) is semidet.
 :- pred builtin_compare_float(comparison_result::uo, float::in, float::in)
-is det.
+    is det.
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
 :- pred builtin_compare_pred(comparison_result::uo, (pred)::in, (pred)::in)
-is det.
+    is det.
 
-% These should never be called -- the compiler never specializes them
-% because the generic compare is just as good as anything we could put
-% here.
-%
+    % These should never be called -- the compiler never specializes them
+    % because the generic compare is just as good as anything we could put
+    % here.
+    %
 :- pred builtin_unify_tuple(T::in, T::in) is semidet.
 :- pred builtin_compare_tuple(comparison_result::uo, T::in, T::in) is det.
 
-% The following pred is used for compare/3 on non-canonical types
-% (types for which there is a `where equality is ...' declaration).
-%
+    % The following pred is used for compare/3 on non-canonical types
+    % (types for which there is a `where equality is ...' declaration).
+    %
 :- pred builtin_compare_non_canonical_type(comparison_result::uo,
-T::in, T::in) is det.
+        T::in, T::in) is det.
 
-% Compare_error is used in the code generated for compare/3 preds.
-%
+    % Compare_error is used in the code generated for compare/3 preds.
+    %
 :- pred compare_error is erroneous.
 
-% The builtin < operator on ints, used in the code generated
-% for compare/3 preds.
-%
+    % The builtin < operator on ints, used in the code generated
+    % for compare/3 preds.
+    %
 :- pred builtin_int_lt(int::in, int::in) is semidet.
 
-% The builtin > operator on ints, used in the code generated
-% for compare/3 preds.
-%
+    % The builtin > operator on ints, used in the code generated
+    % for compare/3 preds.
+    %
 :- pred builtin_int_gt(int::in, int::in) is semidet.
 
-% These should never be called -- the compiler replaces calls to these
-% predicates with inline code.  These predicates are declared not to take
-% type_infos.
-%
+    % These should never be called -- the compiler replaces calls to these
+    % predicates with inline code.  These predicates are declared not to take
+    % type_infos.
+    %
 :- pred builtin_compound_eq(T::in, T::in) is semidet.
 :- pred builtin_compound_lt(T::in, T::in) is semidet.
 
-% A "typed" version of unify/2 -- i.e. one that can handle arguments
-% of different types.  It first unifies their types, and then if
-% the types are equal it unifies the values.
-%
+    % A "typed" version of unify/2 -- i.e. one that can handle arguments
+    % of different types.  It first unifies their types, and then if
+    % the types are equal it unifies the values.
+    %
 :- pred typed_unify(T1, T2).
 :- mode typed_unify(in, in) is semidet.
 :- mode typed_unify(in, out) is semidet.
 
-% A "typed" version of compare/3 -- i.e. one that can handle arguments
-% of different types.  It first compares the types, and then if the
-% types are equal it compares the values.
-%
+    % A "typed" version of compare/3 -- i.e. one that can handle arguments
+    % of different types.  It first compares the types, and then if the
+    % types are equal it compares the values.
+    %
 :- pred typed_compare(comparison_result::uo, T1::in, T2::in) is det.
 
-% N.B. interface continued below.
+    % N.B. interface continued below.
 
 %-----------------------------------------------------------------------------%
 
@@ -143,166 +143,166 @@ public static object dummy_var;
 builtin_unify_int(X, X).
 
 builtin_compare_int(R, X, Y) :-
-( X < Y ->
-R = (<)
-; X = Y ->
-R = (=)
-;
-R = (>)
-).
+    ( X < Y ->
+        R = (<)
+    ; X = Y ->
+        R = (=)
+    ;
+        R = (>)
+    ).
 
 builtin_unify_character(C, C).
 
 builtin_compare_character(R, X, Y) :-
-char.to_int(X, XI),
-char.to_int(Y, YI),
-( XI < YI ->
-R = (<)
-; XI = YI ->
-R = (=)
-;
-R = (>)
-).
+    char.to_int(X, XI),
+    char.to_int(Y, YI),
+    ( XI < YI ->
+        R = (<)
+    ; XI = YI ->
+        R = (=)
+    ;
+        R = (>)
+    ).
 
 builtin_unify_string(S, S).
 
 builtin_compare_string(R, S1, S2) :-
-builtin_strcmp(Res, S1, S2),
-( Res < 0 ->
-R = (<)
-; Res = 0 ->
-R = (=)
-;
-R = (>)
-).
+    builtin_strcmp(Res, S1, S2),
+    ( Res < 0 ->
+        R = (<)
+    ; Res = 0 ->
+        R = (=)
+    ;
+        R = (>)
+    ).
 
 :- pred builtin_strcmp(int::out, string::in, string::in) is det.
 
 :- pragma foreign_proc("C",
-builtin_strcmp(Res::out, S1::in, S2::in),
-[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-does_not_affect_liveness],
+    builtin_strcmp(Res::out, S1::in, S2::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
-Res = strcmp(S1, S2);
+    Res = strcmp(S1, S2);
 ").
 
 :- pragma foreign_proc("C#",
-builtin_strcmp(Res::out, S1::in, S2::in),
-[will_not_call_mercury, promise_pure, thread_safe],
+    builtin_strcmp(Res::out, S1::in, S2::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-Res = System.String.Compare(S1, S2);
+    Res = System.String.Compare(S1, S2);
 ").
 :- pragma foreign_proc("Java",
-builtin_strcmp(Res::out, S1::in, S2::in),
-[will_not_call_mercury, promise_pure, thread_safe],
+    builtin_strcmp(Res::out, S1::in, S2::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-Res = S1.compareTo(S2);
+    Res = S1.compareTo(S2);
 ").
 :- pragma foreign_proc("Erlang",
-builtin_strcmp(Res::out, S1::in, S2::in),
-[will_not_call_mercury, promise_pure, thread_safe],
+    builtin_strcmp(Res::out, S1::in, S2::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-% XXX is there a more efficient three-way compare?
-if
-S1 =:= S2 ->
-    Res = 0;
-S1 < S2 ->
-    Res = -1;
-true ->
-    Res = 1
-end
+    % XXX is there a more efficient three-way compare?
+    if
+        S1 =:= S2 ->
+            Res = 0;
+        S1 < S2 ->
+            Res = -1;
+        true ->
+            Res = 1
+    end
 ").
 
 builtin_unify_float(F, F).
 
 builtin_compare_float(R, F1, F2) :-
-( F1 < F2 ->
-R = (<)
-; F1 > F2 ->
-R = (>)
-;
-R = (=)
-).
+    ( F1 < F2 ->
+        R = (<)
+    ; F1 > F2 ->
+        R = (>)
+    ;
+        R = (=)
+    ).
 
 builtin_unify_tuple(_, _) :-
-( semidet_succeed ->
-% The generic unification function in the runtime
-% should handle this itself.
-error("builtin_unify_tuple called")
-;
-% The following is never executed.
-semidet_succeed
-).
+    ( semidet_succeed ->
+        % The generic unification function in the runtime
+        % should handle this itself.
+        error("builtin_unify_tuple called")
+    ;
+        % The following is never executed.
+        semidet_succeed
+    ).
 
 builtin_compare_tuple(Res, _, _) :-
-( semidet_succeed ->
-% The generic comparison function in the runtime
-% should handle this itself.
-error("builtin_compare_tuple called")
-;
-% The following is never executed.
-Res = (<)
-).
+    ( semidet_succeed ->
+        % The generic comparison function in the runtime
+        % should handle this itself.
+        error("builtin_compare_tuple called")
+    ;
+        % The following is never executed.
+        Res = (<)
+    ).
 
 :- pragma no_inline(builtin_unify_pred/2).
 builtin_unify_pred(_X, _Y) :-
-( semidet_succeed ->
-error("attempted higher-order unification")
-;
-% The following is never executed.
-semidet_succeed
-).
+    ( semidet_succeed ->
+        error("attempted higher-order unification")
+    ;
+        % The following is never executed.
+        semidet_succeed
+    ).
 
 :- pragma no_inline(builtin_compare_pred/3).
 builtin_compare_pred(Result, _X, _Y) :-
-( semidet_succeed ->
-error("attempted higher-order comparison")
-;
-% The following is never executed.
-Result = (<)
-).
+    ( semidet_succeed ->
+        error("attempted higher-order comparison")
+    ;
+        % The following is never executed.
+        Result = (<)
+    ).
 
 :- pragma no_inline(builtin_compare_non_canonical_type/3).
 builtin_compare_non_canonical_type(Res, X, _Y) :-
-% suppress determinism warning
-( semidet_succeed ->
-Message = "call to compare/3 for non-canonical type `"
-    ++ type_name(type_of(X)) ++ "'",
-error(Message)
-;
-% The following is never executed.
-Res = (<)
-).
+    % suppress determinism warning
+    ( semidet_succeed ->
+        Message = "call to compare/3 for non-canonical type `"
+            ++ type_name(type_of(X)) ++ "'",
+        error(Message)
+    ;
+        % The following is never executed.
+        Res = (<)
+    ).
 
 :- pragma no_inline(compare_error/0).
 compare_error :-
-error("internal error in compare/3").
+    error("internal error in compare/3").
 
 %-----------------------------------------------------------------------------%
 
 typed_unify(X, Y) :-
-( type_of(X) = type_of(Y) ->
-unsafe_type_cast(X, Y)
-;
-fail
-).
+    ( type_of(X) = type_of(Y) ->
+        unsafe_type_cast(X, Y)
+    ;
+        fail
+    ).
 
 typed_compare(R, X, Y) :-
-compare(R0, type_of(X), type_of(Y)),
-( R0 = (=) ->
-unsafe_type_cast(X, Z),
-compare(R, Z, Y)
-;
-R = R0
-).
+    compare(R0, type_of(X), type_of(Y)),
+    ( R0 = (=) ->
+        unsafe_type_cast(X, Z),
+        compare(R, Z, Y)
+    ;
+        R = R0
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- interface.
 
-% This section of the module handles the runtime representation of
-% type information.
+    % This section of the module handles the runtime representation of
+    % type information.
 
 :- type type_info.
 :- type type_ctor_info.
@@ -310,96 +310,96 @@ R = R0
 :- type typeclass_info.
 :- type base_typeclass_info.
 
-% The following types are used by compiler/ml_code_util.m as the types
-% used for copying type_info/0 and typeclass_info/0 types.
-% XXX Document me better
-%
+    % The following types are used by compiler/ml_code_util.m as the types
+    % used for copying type_info/0 and typeclass_info/0 types.
+    % XXX Document me better
+    %
 :- type sample_type_info
----> sample_type_info(type_info).
+    ---> sample_type_info(type_info).
 :- type sample_typeclass_info
----> sample_typeclass_info(typeclass_info).
+    ---> sample_typeclass_info(typeclass_info).
 
-% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo):
-%
-% Extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
-% type_info in the typeclass_info.
-%
-% Note: Index must be equal to the number of the desired type_info
-% plus the number of superclasses for this class.
-%
+    % type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo):
+    %
+    % Extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
+    % type_info in the typeclass_info.
+    %
+    % Note: Index must be equal to the number of the desired type_info
+    % plus the number of superclasses for this class.
+    %
 :- pred type_info_from_typeclass_info(typeclass_info::in, int::in,
-type_info::out) is det.
+    type_info::out) is det.
 
-% unconstrained_type_info_from_typeclass_info(TypeClassInfo, 
-%   Index, TypeInfo):
-%
-% Extracts the TypeInfo for the Indexth unconstrained type variable
-% from the instance represented by TypeClassInfo.
-%
+    % unconstrained_type_info_from_typeclass_info(TypeClassInfo, 
+    %   Index, TypeInfo):
+    %
+    % Extracts the TypeInfo for the Indexth unconstrained type variable
+    % from the instance represented by TypeClassInfo.
+    %
 :- pred unconstrained_type_info_from_typeclass_info(typeclass_info::in,
-int::in, type_info::out) is det.
+    int::in, type_info::out) is det.
 
-% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass):
-%
-% Extracts SuperClass from TypeClassInfo where SuperClass is the
-% Indexth superclass of the class.
-%
+    % superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass):
+    %
+    % Extracts SuperClass from TypeClassInfo where SuperClass is the
+    % Indexth superclass of the class.
+    %
 :- pred superclass_from_typeclass_info(typeclass_info::in,
-int::in, typeclass_info::out) is det.
+    int::in, typeclass_info::out) is det.
 
-% instance_constraint_from_typeclass_info(TypeClassInfo, Index,
-%   InstanceConstraintTypeClassInfo):
-%
-% Extracts the typeclass_info for the Indexth typeclass constraint
-% of the instance described by TypeClassInfo.
-%
-% Note: Index must be equal to the number of the desired constraint
-% plus the number of unconstrained type variables for this instance.
-%
+    % instance_constraint_from_typeclass_info(TypeClassInfo, Index,
+    %   InstanceConstraintTypeClassInfo):
+    %
+    % Extracts the typeclass_info for the Indexth typeclass constraint
+    % of the instance described by TypeClassInfo.
+    %
+    % Note: Index must be equal to the number of the desired constraint
+    % plus the number of unconstrained type variables for this instance.
+    %
 :- pred instance_constraint_from_typeclass_info(typeclass_info::in,
-int::in, typeclass_info::out) is det.
+    int::in, typeclass_info::out) is det.
 
-% N.B. interface continued below.
+    % N.B. interface continued below.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-% The definitions for type_ctor_info/0 and type_info/0.
+    % The definitions for type_ctor_info/0 and type_info/0.
 
 :- pragma foreign_code("C#", "
 
 public static object[] MR_typeclass_info_param_type_info(object[] tcinfo,
-int index)
+    int index)
 {
-object[] tmp;
-int t1;
+    object[] tmp;
+    int t1;
 
-tmp = (object[]) tcinfo[0];
-t1 = System.Convert.ToInt32(tmp[0]) + index;
-return (object[]) tcinfo[t1];
+    tmp = (object[]) tcinfo[0];
+    t1 = System.Convert.ToInt32(tmp[0]) + index;
+    return (object[]) tcinfo[t1];
 }
 public static object[] MR_typeclass_info_instance_tvar_type_info(
-object[] tcinfo, int index) 
+    object[] tcinfo, int index) 
 {
-return (object[]) tcinfo[index];
+    return (object[]) tcinfo[index];
 }
 
 public static object[] MR_typeclass_info_superclass_info(
-object[] tcinfo, int index)
+    object[] tcinfo, int index)
 {
-object[] tmp;
-int t1;
+    object[] tmp;
+    int t1;
 
-tmp = (object[]) tcinfo[0];
-t1 = System.Convert.ToInt32(tmp[0]) + index;
-return (object[]) tcinfo[t1];
+    tmp = (object[]) tcinfo[0];
+    t1 = System.Convert.ToInt32(tmp[0]) + index;
+    return (object[]) tcinfo[t1];
 }
 
 public static object[] MR_typeclass_info_arg_typeclass_info(
-object[] tcinfo, int index) 
+    object[] tcinfo, int index) 
 {
-return (object[]) tcinfo[index];
+    return (object[]) tcinfo[index];
 }
 
 ").
@@ -408,53 +408,53 @@ return (object[]) tcinfo[index];
 
 public static TypeInfo_Struct
 MR_typeclass_info_param_type_info(/* typeclass_info */ Object[] tcinfo,
-int index)
+    int index)
 {
-/* typeclass_info */ Object[] base_tcinfo;
-int t1;
+    /* typeclass_info */ Object[] base_tcinfo;
+    int t1;
 
-base_tcinfo = (Object[]) tcinfo[0];
-t1 = ((Integer) base_tcinfo[0]).intValue() + index;
-return (TypeInfo_Struct) tcinfo[t1];
+    base_tcinfo = (Object[]) tcinfo[0];
+    t1 = ((Integer) base_tcinfo[0]).intValue() + index;
+    return (TypeInfo_Struct) tcinfo[t1];
 }
 
 public static TypeInfo_Struct MR_typeclass_info_instance_tvar_type_info(
-/* typeclass_info */ Object[] tcinfo, int index) 
+    /* typeclass_info */ Object[] tcinfo, int index) 
 {
-return (TypeInfo_Struct) tcinfo[index];
+    return (TypeInfo_Struct) tcinfo[index];
 }
 
 public static /* typeclass_info */ Object[] MR_typeclass_info_superclass_info(
-/* typeclass_info */ Object[] tcinfo, int index)
+    /* typeclass_info */ Object[] tcinfo, int index)
 {
-/* typeclass_info */ Object[] base_tcinfo;
-int t1;
+    /* typeclass_info */ Object[] base_tcinfo;
+    int t1;
 
-base_tcinfo = (Object[]) tcinfo[0];
-t1 = ((Integer) base_tcinfo[0]).intValue() + index;
-return (/* typeclass_info */ Object[]) tcinfo[t1];
+    base_tcinfo = (Object[]) tcinfo[0];
+    t1 = ((Integer) base_tcinfo[0]).intValue() + index;
+    return (/* typeclass_info */ Object[]) tcinfo[t1];
 }
 
 public static /* typeclass_info */ Object[] MR_typeclass_info_arg_typeclass_info(
-/* typeclass_info */ Object[] tcinfo, int index) 
+    /* typeclass_info */ Object[] tcinfo, int index) 
 {
-return (/* typeclass_info */ Object[]) tcinfo[index];
+    return (/* typeclass_info */ Object[]) tcinfo[index];
 }
 
 ").
 
 :- pragma foreign_code("C#", "
 
-// XXX These static constants are duplicated both here and in
-// mercury_dotnet.cs.in.
+    // XXX These static constants are duplicated both here and in
+    // mercury_dotnet.cs.in.
 
-// This is because other library modules reference them
-// from .NET code (so they depend on the versions in the runtime to
-// make the dependencies simple) whereas the compiler generates
-// references to the ones here. 
+    // This is because other library modules reference them
+    // from .NET code (so they depend on the versions in the runtime to
+    // make the dependencies simple) whereas the compiler generates
+    // references to the ones here. 
 
-// See runtime/mercury_dotnet.cs.in for discussion of why we aren't
-// using enums or const static ints here.
+    // See runtime/mercury_dotnet.cs.in for discussion of why we aren't
+    // using enums or const static ints here.
 
 public static int MR_TYPECTOR_REP_ENUM                  = 0;
 public static int MR_TYPECTOR_REP_ENUM_USEREQ           = 1;
@@ -512,62 +512,62 @@ public static int MR_FUNCTION                           = 1;
 
 public static bool
 special__Unify____type_info_1_0(
-object[] type_info, object[] x, object[] y)
+    object[] type_info, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""unify for type_info"");
-return false;
+    mercury.runtime.Errors.SORRY(""unify for type_info"");
+    return false;
 }
 
 public static bool
 special__Unify____typeclass_info_1_0(
-object[] type_info, object[] x, object[] y)
+    object[] type_info, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""unify for typeclass_info"");
-return false;
+    mercury.runtime.Errors.SORRY(""unify for typeclass_info"");
+    return false;
 }
 
 public static bool
 special__Unify____base_typeclass_info_1_0(
-object[] type_info, object[] x, object[] y)
+    object[] type_info, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""unify for base_typeclass_info"");
-return false;
+    mercury.runtime.Errors.SORRY(""unify for base_typeclass_info"");
+    return false;
 }
 
 public static bool
 special__Unify____type_ctor_info_1_0(
-object[] type_info, object[] x, object[] y)
+    object[] type_info, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""unify for type_ctor_info"");
-return false;
+    mercury.runtime.Errors.SORRY(""unify for type_ctor_info"");
+    return false;
 }
 
 public static void
 special__Compare____type_ctor_info_1_0(
-object[] type_info, ref object[] result, object[] x, object[] y)
+    object[] type_info, ref object[] result, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""compare for type_ctor_info"");
+    mercury.runtime.Errors.SORRY(""compare for type_ctor_info"");
 }
 
 public static void
 special__Compare____type_info_1_0(
-object[] type_info, ref object[] result, object[] x, object[] y)
+    object[] type_info, ref object[] result, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""compare for type_info"");
+    mercury.runtime.Errors.SORRY(""compare for type_info"");
 }
 
 public static void
 special__Compare____typeclass_info_1_0(
-object[] type_info, ref object[] result, object[] x, object[] y)
+    object[] type_info, ref object[] result, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""compare for typeclass_info"");
+    mercury.runtime.Errors.SORRY(""compare for typeclass_info"");
 }
 
 public static void
 special__Compare____base_typeclass_info_1_0(
-object[] type_info, ref object[] result, object[] x, object[] y)
+    object[] type_info, ref object[] result, object[] x, object[] y)
 {
-mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
+    mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
 }
 
 ").
@@ -575,197 +575,197 @@ mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
 :- pragma foreign_code("Erlang", "
 
 '__Unify____type_info_0_0'(X, Y) ->
-throw(""unify for type_info"").
+    throw(""unify for type_info"").
 
 '__Unify____typeclass_info_0_0'(X, Y) ->
-throw(""unify for typeclass_info"").
+    throw(""unify for typeclass_info"").
 
 '__Unify____base_typeclass_info_0_0'(X, Y) ->
-throw(""unify for base_typeclass_info"").
+    throw(""unify for base_typeclass_info"").
 
 '__Unify____type_ctor_info_0_0'(X, Y) ->
-throw(""unify for type_ctor_info"").
+    throw(""unify for type_ctor_info"").
 
 '__Compare____type_ctor_info_0_0'(X, Y) ->
-throw(""compare for type_ctor_info"").
+    throw(""compare for type_ctor_info"").
 
 '__Compare____type_info_0_0'(X, Y) ->
-throw(""compare for type_info"").
+    throw(""compare for type_info"").
 
 '__Compare____typeclass_info_0_0'(X, Y) ->
-throw(""compare for typeclass_info"").
+    throw(""compare for typeclass_info"").
 
 '__Compare____base_typeclass_info_0_0'(X, Y) ->
-throw(""compare for base_typeclass_info"").
+    throw(""compare for base_typeclass_info"").
 ").
 
 :- pragma foreign_proc("C",
-type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-does_not_affect_liveness],
+    type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+        TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
-TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C",
-unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-Index::in, TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-does_not_affect_liveness],
+    unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+        Index::in, TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
-TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C",
-superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-does_not_affect_liveness],
+    superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+        TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
-TypeClassInfo =
-MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+    TypeClassInfo =
+        MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("C",
-instance_constraint_from_typeclass_info(TypeClassInfo0::in,
-Index::in, TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-does_not_affect_liveness],
+    instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+        Index::in, TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
-TypeClassInfo =
-MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+    TypeClassInfo =
+        MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("C#",
-type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+        TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C#",
-unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-Index::in, TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+        Index::in, TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C#",
-superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+        TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeClassInfo = MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+    TypeClassInfo = MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("C#",
-instance_constraint_from_typeclass_info(TypeClassInfo0::in,
-Index::in, TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+        Index::in, TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeClassInfo =
-MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+    TypeClassInfo =
+        MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Java",
-type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+        TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeInfo = MR_typeclass_info_param_type_info(
-(Object[]) TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_param_type_info(
+        (Object[]) TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("Java",
-unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-Index::in, TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+        Index::in, TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeInfo = MR_typeclass_info_instance_tvar_type_info(
-(Object[]) TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_instance_tvar_type_info(
+        (Object[]) TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("Java",
-superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+        TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeClassInfo = MR_typeclass_info_superclass_info(
-(Object[]) TypeClassInfo0, Index);
+    TypeClassInfo = MR_typeclass_info_superclass_info(
+        (Object[]) TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Java",
-instance_constraint_from_typeclass_info(TypeClassInfo0::in,
-Index::in, TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+        Index::in, TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-TypeClassInfo = MR_typeclass_info_arg_typeclass_info(
-(Object[]) TypeClassInfo0, Index);
+    TypeClassInfo = MR_typeclass_info_arg_typeclass_info(
+        (Object[]) TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Erlang",
-type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+        TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-BaseTypeClassInfo = element(1, TypeClassInfo),
-ExtraArgs = element(1, BaseTypeClassInfo),
-% Indexes start at 1 in Erlang,
-% while in C they start at 0
-TypeInfo = element(ExtraArgs + Index + 1, TypeClassInfo)
+    BaseTypeClassInfo = element(1, TypeClassInfo),
+    ExtraArgs = element(1, BaseTypeClassInfo),
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeInfo = element(ExtraArgs + Index + 1, TypeClassInfo)
 ").
 
 :- pragma foreign_proc("Erlang",
-unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-Index::in, TypeInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+        Index::in, TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-% Indexes start at 1 in Erlang,
-% while in C they start at 0
-TypeInfo = element(Index + 1, TypeClassInfo)
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeInfo = element(Index + 1, TypeClassInfo)
 ").
 
 :- pragma foreign_proc("Erlang",
-superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+        TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-BaseTypeClassInfo = element(1, TypeClassInfo0),
-ExtraArgs = element(1, BaseTypeClassInfo),
-% Indexes start at 1 in Erlang,
-% while in C they start at 0
-TypeClassInfo = element(ExtraArgs + Index + 1, TypeClassInfo0)
+    BaseTypeClassInfo = element(1, TypeClassInfo0),
+    ExtraArgs = element(1, BaseTypeClassInfo),
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeClassInfo = element(ExtraArgs + Index + 1, TypeClassInfo0)
 ").
 
 :- pragma foreign_proc("Erlang",
-instance_constraint_from_typeclass_info(TypeClassInfo0::in,
-Index::in, TypeClassInfo::out),
-[will_not_call_mercury, promise_pure, thread_safe],
+    instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+        Index::in, TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-% Indexes start at 1 in Erlang,
-% while in C they start at 0
-TypeClassInfo = element(Index + 1, TypeClassInfo0)
+        % Indexes start at 1 in Erlang,
+        % while in C they start at 0
+    TypeClassInfo = element(Index + 1, TypeClassInfo0)
 ").
 
 %-----------------------------------------------------------------------------%
 
-% This section of the module contains predicates that are used
-% by the MLDS back-end, to implement trailing.
-% (The LLDS back-end does not use these; instead it inserts
-% the corresponding LLDS instructions directly during code
-% generation.)
-% These predicates should not be used by user programs directly.
+    % This section of the module contains predicates that are used
+    % by the MLDS back-end, to implement trailing.
+    % (The LLDS back-end does not use these; instead it inserts
+    % the corresponding LLDS instructions directly during code
+    % generation.)
+    % These predicates should not be used by user programs directly.
 
 :- interface.
 
 :- type ticket == c_pointer.
 :- type ticket_counter == c_pointer.
 
-% For documentation, see the corresponding LLDS instructions
-% in compiler/llds.m.  See also compiler/notes/trailing.html.
+    % For documentation, see the corresponding LLDS instructions
+    % in compiler/llds.m.  See also compiler/notes/trailing.html.
 
 :- impure pred store_ticket(ticket::out) is det.
 :- impure pred reset_ticket_undo(ticket::in) is det.
@@ -776,292 +776,292 @@ TypeClassInfo = element(Index + 1, TypeClassInfo0)
 :- impure pred mark_ticket_stack(ticket_counter::out) is det.
 :- impure pred prune_tickets_to(ticket_counter::in) is det.
 
-% XXX currently we don't support nondet pragma
-% foreign_code when trailing is enabled.
-% Instead we generate code which calls this procedure,
-% which will call error/1 with an appropriate message.
+    % XXX currently we don't support nondet pragma
+    % foreign_code when trailing is enabled.
+    % Instead we generate code which calls this procedure,
+    % which will call error/1 with an appropriate message.
 :- pred trailed_nondet_pragma_foreign_code is erroneous.
 
-% N.B. interface continued below.
+    % N.B. interface continued below.
 
 :- implementation.
 
 :- pragma foreign_proc("C",
-store_ticket(Ticket::out),
-[will_not_call_mercury, thread_safe],
+    store_ticket(Ticket::out),
+    [will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-MR_store_ticket(Ticket);
+    MR_store_ticket(Ticket);
 #else
-Ticket = 0;
+    Ticket = 0;
 #endif
 ").
 
 :- pragma foreign_proc("C",
-reset_ticket_undo(Ticket::in),
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    reset_ticket_undo(Ticket::in),
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_reset_ticket(Ticket, MR_undo);
+    MR_reset_ticket(Ticket, MR_undo);
 #endif
 ").
 
 :- pragma foreign_proc("C",
-reset_ticket_commit(Ticket::in),
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    reset_ticket_commit(Ticket::in),
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_reset_ticket(Ticket, MR_commit);
+    MR_reset_ticket(Ticket, MR_commit);
 #endif
 ").
 
 :- pragma foreign_proc("C",
-reset_ticket_solve(Ticket::in),
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    reset_ticket_solve(Ticket::in),
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_reset_ticket(Ticket, MR_solve);
+    MR_reset_ticket(Ticket, MR_solve);
 #endif
 ").
 
 :- pragma foreign_proc("C",
-discard_ticket,
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    discard_ticket,
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_discard_ticket();
+    MR_discard_ticket();
 #endif
 ").
 
 :- pragma foreign_proc("C",
-prune_ticket,
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    prune_ticket,
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_prune_ticket();
+    MR_prune_ticket();
 #endif
 ").
 
 :- pragma foreign_proc("C",
-mark_ticket_stack(TicketCounter::out),
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    mark_ticket_stack(TicketCounter::out),
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_mark_ticket_stack(TicketCounter);
+    MR_mark_ticket_stack(TicketCounter);
 #else
-TicketCounter = 0;
+    TicketCounter = 0;
 #endif
 ").
 
 :- pragma foreign_proc("C",
-prune_tickets_to(TicketCounter::in),
-[will_not_call_mercury, thread_safe, does_not_affect_liveness],
+    prune_tickets_to(TicketCounter::in),
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
-MR_prune_tickets_to(TicketCounter);
+    MR_prune_tickets_to(TicketCounter);
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-store_ticket(Ticket::out),
-[will_not_call_mercury, thread_safe],
+    store_ticket(Ticket::out),
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_store_ticket(Ticket);
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_store_ticket(Ticket);
 #else
-Ticket = null;
+    Ticket = null;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-reset_ticket_undo(Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_undo(Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_reset_ticket(Ticket, MR_undo);
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_reset_ticket(Ticket, MR_undo);
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-reset_ticket_commit(Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_commit(Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_reset_ticket(Ticket, MR_commit);
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_reset_ticket(Ticket, MR_commit);
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-reset_ticket_solve(Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_solve(Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_reset_ticket(Ticket, MR_solve);
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_reset_ticket(Ticket, MR_solve);
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-discard_ticket,
-[will_not_call_mercury, thread_safe],
+    discard_ticket,
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_discard_ticket();
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_discard_ticket();
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-prune_ticket,
-[will_not_call_mercury, thread_safe],
+    prune_ticket,
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_prune_ticket();
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_prune_ticket();
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-mark_ticket_stack(TicketCounter::out),
-[will_not_call_mercury, thread_safe],
+    mark_ticket_stack(TicketCounter::out),
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_mark_ticket_stack(TicketCounter);
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_mark_ticket_stack(TicketCounter);
 #else
-TicketCounter = null;
+    TicketCounter = null;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-prune_tickets_to(TicketCounter::in),
-[will_not_call_mercury, thread_safe],
+    prune_tickets_to(TicketCounter::in),
+    [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-mercury.runtime.Errors.SORRY(""foreign code for this function"");
-// MR_prune_tickets_to(TicketCounter);
+    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    // MR_prune_tickets_to(TicketCounter);
 #endif
 ").
 
 :- pragma foreign_proc("Java",
-store_ticket(Ticket::out),
-[will_not_call_mercury, thread_safe],
+    store_ticket(Ticket::out),
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
-Ticket = null;
+    /* XXX No trailing for the Java back-end, so take no action. */
+    Ticket = null;
 ").
 
 :- pragma foreign_proc("Java",
-reset_ticket_undo(_Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_undo(_Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
+    /* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 :- pragma foreign_proc("Java",
-reset_ticket_commit(_Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_commit(_Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
+    /* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 :- pragma foreign_proc("Java",
-reset_ticket_solve(_Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_solve(_Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
+    /* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 :- pragma foreign_proc("Java",
-discard_ticket,
-[will_not_call_mercury, thread_safe],
+    discard_ticket,
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
+    /* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 :- pragma foreign_proc("Java",
-prune_ticket,
-[will_not_call_mercury, thread_safe],
+    prune_ticket,
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
+    /* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 :- pragma foreign_proc("Java",
-mark_ticket_stack(TicketCounter::out),
-[will_not_call_mercury, thread_safe],
+    mark_ticket_stack(TicketCounter::out),
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
-TicketCounter = null;
+    /* XXX No trailing for the Java back-end, so take no action. */
+    TicketCounter = null;
 ").
 
 :- pragma foreign_proc("Java",
-prune_tickets_to(_TicketCounter::in),
-[will_not_call_mercury, thread_safe],
+    prune_tickets_to(_TicketCounter::in),
+    [will_not_call_mercury, thread_safe],
 "
-/* XXX No trailing for the Java back-end, so take no action. */
+    /* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 :- pragma foreign_proc("Erlang",
-store_ticket(Ticket::out),
-[will_not_call_mercury, thread_safe],
+    store_ticket(Ticket::out),
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-Ticket = null
+    % XXX No trailing for the Erlang back-end, so take no action.
+    Ticket = null
 ").
 
 :- pragma foreign_proc("Erlang",
-reset_ticket_undo(_Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_undo(_Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-void
+    % XXX No trailing for the Erlang back-end, so take no action.
+    void
 ").
 
 :- pragma foreign_proc("Erlang",
-reset_ticket_commit(_Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_commit(_Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-void
+    % XXX No trailing for the Erlang back-end, so take no action.
+    void
 ").
 
 :- pragma foreign_proc("Erlang",
-reset_ticket_solve(_Ticket::in),
-[will_not_call_mercury, thread_safe],
+    reset_ticket_solve(_Ticket::in),
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-void
+    % XXX No trailing for the Erlang back-end, so take no action.
+    void
 ").
 
 :- pragma foreign_proc("Erlang",
-discard_ticket,
-[will_not_call_mercury, thread_safe],
+    discard_ticket,
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-void
+    % XXX No trailing for the Erlang back-end, so take no action.
+    void
 ").
 
 :- pragma foreign_proc("Erlang",
-prune_ticket,
-[will_not_call_mercury, thread_safe],
+    prune_ticket,
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-void
+    % XXX No trailing for the Erlang back-end, so take no action.
+    void
 ").
 
 :- pragma foreign_proc("Erlang",
-mark_ticket_stack(TicketCounter::out),
-[will_not_call_mercury, thread_safe],
+    mark_ticket_stack(TicketCounter::out),
+    [will_not_call_mercury, thread_safe],
 "
-% XXX No trailing for the Erlang back-end, so take no action.
-TicketCounter = null
+    % XXX No trailing for the Erlang back-end, so take no action.
+    TicketCounter = null
 ").
 
 :- pragma foreign_proc("Erlang",
-prune_tickets_to(_TicketCounter::in),
+    prune_tickets_to(_TicketCounter::in),
     [will_not_call_mercury, thread_safe],
 "
     % XXX No trailing for the Erlang back-end, so take no action.

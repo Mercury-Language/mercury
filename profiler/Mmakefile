@@ -17,8 +17,6 @@ include Mercury.options
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=mercury_profile
 
-VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
-
 #-----------------------------------------------------------------------------#
 
 MLFLAGS += --shared

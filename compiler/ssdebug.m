@@ -74,11 +74,20 @@
 %            (
 %                CallVarDescs = [ ... ],
 %                impure call_port(ProcId, CallVarDescs),
-%                <original body>,
+%                <original body>,    % renaming outputs
 %                ExitVarDescs = [ ... | CallVarDescs ],
 %                (
-%                    impure exit_port(ProcId, ExitVarDescs)
-%                    % Go to fail port if retry.
+%                    impure exit_port(ProcId, ExitVarDescs, DoRetryA),
+%                    (
+%                        DoRetryA = do_retry,
+%                        p(...)
+%                        % Will give same result as long as p is pure or
+%                        % semipure. Retry of impure procedures should probably
+%                        % be disallowed anyway.
+%                    ;
+%                        DoRetryA = do_not_retry,
+%                        % bind outputs
+%                    )
 %                ;
 %                    % preserve_backtrack_into,
 %                    impure redo_port(ProcId, ExitVarDescs),
@@ -97,40 +106,6 @@
 %            )
 %        ).
 %
-% detism_failure:
-%
-%   p(...) :-
-%       promise_<original_purity> (
-% 	    (
-% 	        CallVarDescs = [ ... ],
-% 	        impure call_port(ProcId, CallVarDescs),
-% 	        <original body>
-% 	    ;
-%		% preserve_backtrack_into
-% 	        impure fail_port(ProcId, CallVarDescs, DoRetry),
-% 	        (
-% 		    DoRetry = do_retry,
-% 		    p(...)
-% 	        ;
-% 		    DoRetry = do_not_retry,
-% 		    fail
-% 	        )
-% 	    )
-%       ).
-%
-%
-% detism_erroneous:
-%
-%   p(...) :-
-%       promise_<original_purity> (
-%           (
-%               CallVarDescs = [ ... ],
-%               impure call_port(ProcId, CallVarDescs),
-%               <original body>,
-%           )
-%       ).
-%
-% 
 % where CallVarDescs, ExitVarDescs are lists of var_value
 %
 %    :- type var_value
@@ -173,7 +148,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.modes.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.purity.
@@ -231,12 +205,11 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO)
     ;
         Determinism = detism_erroneous,
-        process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO)
-    ; 
+        error("detism_erroneous: not yet implemented in ssdb")
+    ;
         Determinism = detism_failure,
-        process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO)
+        error("detism_failure: not yet implemented in ssdb")
     ).
-
 
     % Source-to-source transformation for a deterministic goal.
     %
@@ -256,15 +229,10 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, !.ProcInfo, ProcIdGoals,
             ProcIdVar, !Varset, !Vartypes),
-        
-        % Get the list of head variables and their instantiation state.
+
+        % Get the list of head variables and their instantiation type.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
-        
-        % Make a list which records the value for each of the head variables at
-        % the call port.
-        make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar, 
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
 
         % Make a list which records the value for each of the head variables
         % at the call port.
@@ -273,15 +241,15 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             !Vartypes, map.init, BoundVarDescsAtCall),
 
         % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar], 
+        make_handle_event("call", [ProcIdVar, CallArgListVar],
             HandleEventCallGoal, !ModuleInfo, !Varset, !Vartypes),
 
         % Get the InstMap at the end of the procedure.
         update_instmap(BodyGoal0, InitInstMap, FinalInstMap),
 
-        % In the case of a retry, the output variables will be bound by the 
-        % retried call.
-        proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, 
+        % We have to rename the output variables because, if we do a retry,
+        % we can get an other value.
+        proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo,
             InstantiatedVars),
         goal_info_get_instmap_delta(BodyGoalInfo0) = InstMapDelta,
         create_renaming(InstantiatedVars, InstMapDelta, !Varset, !Vartypes,
@@ -294,47 +262,44 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
             ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
             !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
-        
+
         % Create DoRetry output variable.
         make_retry_var("DoRetry", RetryVar, !Varset, !Vartypes),
 
         % Generate the call to handle_event_exit(ProcId, VarList, DoRetry).
-        make_handle_event("handle_event_exit", 
-            [ProcIdVar, ExitArgListVar, RetryVar], HandleEventExitGoal, 
-            !ModuleInfo, !Varset, !Vartypes),
+        make_handle_event("exit", [ProcIdVar, ExitArgListVar, RetryVar],
+            HandleEventExitGoal, !ModuleInfo, !Varset, !Vartypes),
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId, HeadVars,
             RecursiveGoal),
 
         % Organize the order of the generated code.
+        % XXX Need optimization in list append.
         goal_to_conj_list(BodyGoal1, BodyGoalList),
         % Set the determinism.
         Determinism = detism_det,
         goal_info_init(GoalInfo0),
-        goal_info_set_determinism(Determinism, GoalInfo0, 
-            GoalInfoDet),
-        goal_info_set_purity(purity_impure, GoalInfoDet, GoalInfoImpureDet),
+        goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
 
-        conj_list_to_goal(RenamingGoals, GoalInfoImpureDet, RenamingGoal),
+        conj_list_to_goal(RenamingGoals, GoalInfo, RenamingGoal),
         % Create the switch on Retry at exit port.
-        make_switch_goal(RetryVar, RecursiveGoal, RenamingGoal, 
-            GoalInfoImpureDet, SwitchGoal),
+        make_switch_goal(RetryVar, RecursiveGoal, RenamingGoal, GoalInfo,
+            SwitchGoal),
 
-        ConjGoals = ProcIdGoals ++ CallArgListGoals ++ 
-            [HandleEventCallGoal | BodyGoalList] ++ 
-            ExitArgListGoals ++ [HandleEventExitGoal, SwitchGoal],
- 
-        conj_list_to_goal(ConjGoals, GoalInfoImpureDet, GoalWithoutPurity),
+        ConjGoals = ProcIdGoals ++ CallArgListGoals ++
+            [HandleEventCallGoal | BodyGoalList] ++ ExitArgListGoals ++
+            [HandleEventExitGoal, SwitchGoal],
+
+        conj_list_to_goal(ConjGoals, GoalInfo, GoalWithoutPurity),
 
         % Add the purity scope.
         Purity = goal_info_get_purity(BodyGoalInfo0),
-        wrap_with_purity_scope(Purity, GoalInfoDet, GoalWithoutPurity, Goal),
+        wrap_with_purity_scope(Purity, GoalInfo, GoalWithoutPurity, Goal),
 
-        commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, 
+        commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo,
             !ModuleInfo, !.Varset, !.Vartypes)
     ).
-
 
     % Source-to-source transformation for a semidet goal.
     %
@@ -349,151 +314,123 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     some [!PredInfo, !Varset, !Vartypes] (
         proc_info_get_varset(!.ProcInfo, !:Varset),
         proc_info_get_vartypes(!.ProcInfo, !:Vartypes),
-        
+
         % Make the ssdb_proc_id.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, !.ProcInfo, ProcIdGoals,
             ProcIdVar, !Varset, !Vartypes),
 
-        % Get the list of head variables and their initial instantiations.
+        % Get the list of head variables and their instantiation type.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
-        proc_info_get_argmodes(!.ProcInfo, ListMerMode),
-        
-        ( check_arguments_modes(!.ModuleInfo, ListMerMode) ->
 
-            % Make the ssdb_proc_id.
-            module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-            make_proc_id_construction(!.PredInfo, !.ProcInfo, ProcIdGoals, 
-                ProcIdVar, !Varset, !Vartypes),
-            
-            % Make a list which records the value for each of the head 
-            % variables at the call port.
-            make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar, 
-                CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
-                !Vartypes, map.init, BoundVarDescsAtCall),
-            
-            % Generate the call to handle_event_call(ProcId, VarList).
-            make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar], 
-                HandleEventCallGoal, !ModuleInfo, !Varset, !Vartypes),
+        % Make a list which records the value for each of the head variables
+        % at the call port.
+        make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
+            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
+            !Vartypes, map.init, BoundVarDescsAtCall),
 
-            % Get the InstMap at the end of the procedure.
-            update_instmap(BodyGoal0, InitInstMap, FinalInstMap),
+        % Generate the call to handle_event_call(ProcId, VarList).
+        make_handle_event("call", [ProcIdVar, CallArgListVar],
+            HandleEventCallGoal, !ModuleInfo, !Varset, !Vartypes),
 
-            % In the case of a retry, the output variables will be bound by the 
-            % retried call.
-            proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, 
-                InstantiatedVars),
-            goal_info_get_instmap_delta(BodyGoalInfo0) = InstMapDelta,
-            create_renaming(InstantiatedVars, InstMapDelta, !Varset, !Vartypes, 
-                RenamingGoals, _NewVars, Renaming),
-            rename_some_vars_in_goal(Renaming, BodyGoal0, BodyGoal1),
-            
-            % Make the variable list at the exit port. It's currently a 
-            % completely new list instead of adding on to the list generated 
-            % for the call port.
-            make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar, 
-                ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
-                !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
-            
-            % Create DoRetryA output variable
-            make_retry_var("DoRetryA", RetryAVar, !Varset, !Vartypes),
+        % Get the InstMap at the end of the procedure.
+        update_instmap(BodyGoal0, InitInstMap, FinalInstMap),
 
-            % Generate the call to 
-            %   handle_event_exit(ProcId, VarList, DoRetryA).
-            make_handle_event("handle_event_exit", 
-                [ProcIdVar, ExitArgListVar, RetryAVar], HandleEventExitGoal, 
-                !ModuleInfo, !Varset, !Vartypes),
+        % We have to rename the output variables because, if we do a retry,
+        % we can get an other value.
+        proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo,
+            InstantiatedVars),
+        goal_info_get_instmap_delta(BodyGoalInfo0) = InstMapDelta,
+        create_renaming(InstantiatedVars, InstMapDelta, !Varset, !Vartypes,
+            RenamingGoals, _NewVars, Renaming),
+        rename_some_vars_in_goal(Renaming, BodyGoal0, BodyGoal1),
 
-            % Generate the recursive call in the case of a retry
-            make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId, 
-                HeadVars, RecursiveGoal),
+        % Make the variable list at the exit port. It's currently a completely
+        % new list instead of adding on to the list generated for the call
+        % port.
+        make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
+            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
+            !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
 
-            % Generate the list of arguments at the fail port.
-            make_arg_list(0, InitInstMap, [], Renaming, FailArgListVar, 
-                FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
-                !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtFail),
+        % Create DoRetryA output variable
+        make_retry_var("DoRetryA", RetryAVar, !Varset, !Vartypes),
 
-            % Create DoRetryB output variable
-            make_retry_var("DoRetryB", RetryBVar, !Varset, !Vartypes),
+        % Generate the call to handle_event_exit(ProcId, VarList, DoRetryA).
+        make_handle_event("exit", [ProcIdVar, ExitArgListVar, RetryAVar],
+            HandleEventExitGoal, !ModuleInfo, !Varset, !Vartypes),
 
-            % Generate the call to 
-            %   handle_event_fail(ProcId, VarList, DoRetryB).
-            make_handle_event("handle_event_fail", 
-                [ProcIdVar, FailArgListVar, RetryBVar], HandleEventFailGoal, 
-                !ModuleInfo, !Varset, !Vartypes),
+        % Generate the recursive call in the case of a retry
+        make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId, HeadVars,
+            RecursiveGoal),
 
-            make_fail_call(FailGoal, !.ModuleInfo),
-            
-            % Organize the order of the generated code.
+        % Generate the list of arguments at the fail port.
+        make_arg_list(0, InitInstMap, [], Renaming, FailArgListVar,
+            FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
+            !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtFail),
 
-            % Get a flattened goal to avoid nested conjuction.
-            goal_to_conj_list(BodyGoal1, BodyGoalList),
-            GoalsCond = BodyGoalList,
-            
-            % Create the switch on DoRetryA at exit port.
-            goal_info_init(GoalInfo0),
-            goal_info_set_purity(purity_impure, GoalInfo0, GoalInfoImpure),
-            goal_list_purity(GoalsCond, PurityCond),
-            goal_list_determinism(GoalsCond, DetismCond),
-            goal_info_set_determinism(DetismCond, GoalInfo0, 
-                GoalInfoCondDet),
-            goal_info_set_purity(PurityCond, GoalInfoCondDet, 
-                GoalInfoCondPurDet),
+        % Create DoRetryA output variable
+        make_retry_var("DoRetryB", RetryBVar, !Varset, !Vartypes),
 
-            SemiDet = detism_semi,
-            goal_info_set_determinism(SemiDet, GoalInfo0, GoalInfoSemiDet),
-            goal_info_set_purity(purity_impure, GoalInfoSemiDet, 
-                GoalInfoImpureSemiDet),
-            goal_info_set_determinism(detism_det, GoalInfoImpure, 
-                GoalInfoImpureDet),
-            conj_list_to_goal(RenamingGoals, GoalInfoImpureDet, RenamingGoal),
+        % Generate the call to handle_event_fail(ProcId, VarList, DoRetryB).
+        make_handle_event("fail", [ProcIdVar, FailArgListVar, RetryBVar],
+            HandleEventFailGoal, !ModuleInfo, !Varset, !Vartypes),
 
-            % Create the switch on DoRetryA at exit port.
-            make_switch_goal(RetryAVar, RecursiveGoal, RenamingGoal, 
-                GoalInfoImpureSemiDet, SwitchExitPortGoal),        
-            % Create the switch on DoRetryB at fail port.
-            make_switch_goal(RetryBVar, RecursiveGoal, FailGoal, 
-                GoalInfoImpureSemiDet, SwitchFailPortGoal),
+        make_fail_call(FailGoal, !.ModuleInfo),
 
-            GoalsThen   = ExitArgListGoals ++ 
-                [HandleEventExitGoal, SwitchExitPortGoal],
-            GoalsElse   = FailArgListGoals ++ 
-                [HandleEventFailGoal, SwitchFailPortGoal],
+        % Organize the order of the generated code.
+        % XXX Need optimization in list append.
 
-            goal_info_set_determinism(detism_det, GoalInfoImpure, GoalInfoThen),
-            goal_info_set_determinism(detism_semi, GoalInfoImpure, 
-                GoalInfoElse),
+        % Get a flattened goal to avoid nested conjuction.
+        goal_to_conj_list(BodyGoal1, BodyGoalList),
+        GoalsCond = BodyGoalList,
 
-            IteExistVars = [],
-            conj_list_to_goal(GoalsCond, GoalInfoCondPurDet, CondGoal),
-            ThenGoal = hlds_goal(conj(plain_conj, GoalsThen), GoalInfoThen),
-            ElseGoal = hlds_goal(conj(plain_conj, GoalsElse), GoalInfoElse),
+        % Create the switch on DoRetryA at exit port.
+        Determinism = detism_det,
+        goal_info_init(GoalInfo1),
+        goal_info_set_determinism(Determinism, GoalInfo1, GoalInfo),
+        conj_list_to_goal(RenamingGoals, GoalInfo, RenamingGoal),
+        make_switch_goal(RetryAVar, RecursiveGoal, RenamingGoal, GoalInfo,
+            SwitchExitPortGoal),
 
-            CallVarGoal = ProcIdGoals ++ CallArgListGoals ++ 
-                [HandleEventCallGoal],
-            % XXX not sure about determinism.
-            GoalITE = hlds_goal(if_then_else(IteExistVars, CondGoal, ThenGoal, 
-                ElseGoal), GoalInfoCondPurDet),
+        % Create the switch on DoRetryB at fail port.
+        make_switch_goal(RetryBVar, RecursiveGoal, FailGoal, GoalInfo,
+            SwitchFailPortGoal),
 
-            ConjGoal = CallVarGoal ++ [GoalITE],
-            GoalWithoutPurity = hlds_goal(conj(plain_conj, ConjGoal), 
-                GoalInfoCondPurDet),
-            
-            % Add the purity scope.
-            Purity = goal_info_get_purity(BodyGoalInfo0),        
-            wrap_with_purity_scope(Purity, GoalInfoSemiDet, GoalWithoutPurity, 
-                Goal),
+        GoalsThen = ExitArgListGoals ++
+            [HandleEventExitGoal, SwitchExitPortGoal],
+        GoalsElse = FailArgListGoals ++
+            [HandleEventFailGoal, SwitchFailPortGoal],
 
-            commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo,
-                !ModuleInfo, !.Varset, !.Vartypes)
-        ;
-            % In the case of a mode which is not fully input or output,
-            % the procedure is not transformed.
-            true 
-        )
+        goal_info_init(GoalInfo0),
+        goal_list_determinism(GoalsCond, Detism),
+        goal_info_set_determinism(Detism, GoalInfo0, GoalInfoCond),
+
+        goal_info_set_determinism(detism_det, GoalInfo0, GoalInfoThen),
+        goal_info_set_determinism(detism_semi, GoalInfo0, GoalInfoElse),
+
+        IteExistVars = [],
+        conj_list_to_goal(GoalsCond, GoalInfoCond, CondGoal),
+        ThenGoal = hlds_goal(conj(plain_conj, GoalsThen), GoalInfoThen),
+        ElseGoal = hlds_goal(conj(plain_conj, GoalsElse), GoalInfoElse),
+
+        CallVarGoal = ProcIdGoals ++ CallArgListGoals ++ [HandleEventCallGoal],
+        % XXX not sure about determinism.
+        GoalITE = hlds_goal(
+            if_then_else(IteExistVars, CondGoal, ThenGoal, ElseGoal),
+            GoalInfoCond),
+
+        ConjGoal = CallVarGoal ++ [GoalITE],
+        GoalWithoutPurity = hlds_goal(conj(plain_conj, ConjGoal),
+            GoalInfoCond),
+
+        % Add the purity scope.
+        Purity = goal_info_get_purity(BodyGoalInfo0),
+        wrap_with_purity_scope(Purity, GoalInfo, GoalWithoutPurity, Goal),
+
+        commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo,
+            !ModuleInfo, !.Varset, !.Vartypes)
     ).
-
 
     % Source-to-source transformation for a nondeterministic procedure.
     %
@@ -513,8 +450,8 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, !.ProcInfo, ProcIdGoals,
             ProcIdVar, !Varset, !Vartypes),
-        
-        % Get the list of head variables and their instantiation state.
+
+        % Get the list of head variables and their instantiation type.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
 
@@ -525,51 +462,60 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             !Vartypes, map.init, BoundVarDescsAtCall),
 
         % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call_nondet", 
-            [ProcIdVar, CallArgListVar], 
+        make_handle_event("call", [ProcIdVar, CallArgListVar],
             HandleEventCallGoal, !ModuleInfo, !Varset, !Vartypes),
 
         % Get the InstMap at the end of the procedure.
         update_instmap(BodyGoal0, InitInstMap, FinalInstMap),
 
-        % Make the variable list at the exit port. It's currently a completely 
-        % new list instead of adding on to the list generated for the call 
+        % We have to rename the output variables because, if we do a retry,
+        % we can get an other value.
+        proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo,
+            InstantiatedVars),
+        goal_info_get_instmap_delta(BodyGoalInfo0) = InstMapDelta,
+        create_renaming(InstantiatedVars, InstMapDelta, !Varset, !Vartypes,
+            RenamingGoals, _NewVars, Renaming),
+        rename_some_vars_in_goal(Renaming, BodyGoal0, BodyGoal1),
+
+        % Make the variable list at the exit port. It's currently a completely
+        % new list instead of adding on to the list generated for the call
         % port.
-        make_arg_list(0, FinalInstMap, HeadVars, map.init, ExitArgListVar, 
-            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
+        make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
+            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
             !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
-        
-        % Generate the call to handle_event_exit_nondet(ProcId, VarList).
-        make_handle_event("handle_event_exit_nondet", 
-            [ProcIdVar, ExitArgListVar], 
+
+        % Create DoRetryA output variable
+        make_retry_var("DoRetryA", RetryAVar, !Varset, !Vartypes),
+
+        % Generate the call to handle_event_exit(ProcId, VarList, DoRetryA).
+        make_handle_event("exit", [ProcIdVar, ExitArgListVar, RetryAVar],
             HandleEventExitGoal, !ModuleInfo, !Varset, !Vartypes),
 
         % Generate the call to handle_event_redo(ProcId, VarList).
-        make_handle_event("handle_event_redo_nondet", 
-            [ProcIdVar, ExitArgListVar], 
+        make_handle_event("redo", [ProcIdVar, ExitArgListVar],
             HandleEventRedoGoal, !ModuleInfo, !Varset, !Vartypes),
 
         % Generate the list of argument at the fail port.
-        make_arg_list(0, InitInstMap, [], map.init, FailArgListVar, 
-            FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
+        make_arg_list(0, InitInstMap, [], Renaming, FailArgListVar,
+            FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
             !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtFail),
 
-        % Create DoRetry output variable
-        make_retry_var("DoRetry", RetryVar, !Varset, !Vartypes),
+        % Create DoRetryB output variable
+        make_retry_var("DoRetryB", RetryBVar, !Varset, !Vartypes),
 
-        % Generate the call to 
-        %   handle_event_fail_nondet(ProcId, VarList, DoRetry).
-        make_handle_event("handle_event_fail_nondet", 
-            [ProcIdVar, FailArgListVar, RetryVar], 
+        % Generate the call to handle_event_fail(ProcId, VarList, DoRetryB).
+        make_handle_event("fail", [ProcIdVar, FailArgListVar, RetryBVar],
             HandleEventFailGoal, !ModuleInfo, !Varset, !Vartypes),
 
         make_fail_call(FailGoal, !.ModuleInfo),
 
         % Organize the order of the generated code.
+        % XXX Need optimization in list append.
+
         % Get a flattened goal to avoid nested conjuction.
-        goal_to_conj_list(BodyGoal0, BodyGoalList0),
-        CallVarGoal0 = CallArgListGoals ++ 
-            [HandleEventCallGoal | BodyGoalList0] ++ ExitArgListGoals,
+        goal_to_conj_list(BodyGoal1, BodyGoalList1),
+        CallVarGoal0 = CallArgListGoals ++
+            [HandleEventCallGoal | BodyGoalList1] ++ ExitArgListGoals,
         goal_info_init(GoalInfo0),
         conj_list_to_goal(CallVarGoal0, GoalInfo0, CallVarGoal1),
         goal_to_conj_list(CallVarGoal1, CallVarGoal),
@@ -578,204 +524,44 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId, HeadVars,
             RecursiveGoal),
 
-        Det = detism_det,
-        FailDet = detism_failure,
-        NonDet = detism_non,
-        goal_info_set_purity(purity_impure, GoalInfo0, 
-            GoalInfoImpure),
-        goal_info_set_determinism(Det, GoalInfoImpure, GoalInfoImpureDet),
-        goal_info_set_determinism(FailDet, GoalInfoImpure, 
-            GoalInfoImpureFailDet),
-        goal_info_set_determinism(NonDet, GoalInfoImpure, 
-            GoalInfoImpureNonDet),
-        goal_list_determinism(BodyGoalList0, Detism),
-        goal_info_set_determinism(Detism, GoalInfo0, GoalInfoDetism),
-        goal_info_set_determinism(Detism, GoalInfoImpure, 
-            GoalInfoImpureDetism),
+        % Create the switch on DoRetryA at exit port.
+        Determinism = detism_det,
+        goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
+        conj_list_to_goal(RenamingGoals, GoalInfo, RenamingGoal),
+        make_switch_goal(RetryAVar, RecursiveGoal, RenamingGoal, GoalInfo,
+            SwitchExitPortGoal),
 
-        % Create the switch on DoRetry at fail port.
-        make_switch_goal(RetryVar, RecursiveGoal, FailGoal, 
-            GoalInfoImpureNonDet, SwitchFailPortGoal),
+        % Create the switch on DoRetryB at fail port.
+        make_switch_goal(RetryBVar, RecursiveGoal, FailGoal, GoalInfo,
+            SwitchFailPortGoal),
 
-        ConjGoal11 = hlds_goal(conj(plain_conj, 
-            [HandleEventExitGoal]), GoalInfoImpureDet),
-        ConjGoal120 = hlds_goal(conj(plain_conj, 
-            [HandleEventRedoGoal, FailGoal]), GoalInfoImpureFailDet),
-        goal_add_feature(feature_preserve_backtrack_into, ConjGoal120, 
+        ConjGoal11 = hlds_goal(conj(plain_conj,
+            [HandleEventExitGoal, SwitchExitPortGoal]), GoalInfo0),
+        ConjGoal120 = hlds_goal(conj(plain_conj,
+            [HandleEventRedoGoal, FailGoal]), GoalInfo0),
+        goal_add_feature(feature_preserve_backtrack_into, ConjGoal120,
             ConjGoal12),
+        DisjGoal1 = hlds_goal(disj([ConjGoal11, ConjGoal12]), GoalInfo0),
 
-        DisjGoal1 = hlds_goal(disj([ConjGoal11, ConjGoal12]), 
-            GoalInfoImpureDetism),
-
-        ConjGoal21 = hlds_goal(conj(plain_conj, 
-            CallVarGoal ++ [DisjGoal1]), GoalInfoImpureDetism),
-        ConjGoal220 = hlds_goal(conj(plain_conj, FailArgListGoals ++ 
-            [HandleEventFailGoal, SwitchFailPortGoal]), GoalInfoImpureNonDet),
-        goal_add_feature(feature_preserve_backtrack_into, ConjGoal220, 
+        ConjGoal21 = hlds_goal(conj(plain_conj,
+            CallVarGoal ++ [DisjGoal1]), GoalInfo0),
+        ConjGoal220 = hlds_goal(conj(plain_conj,
+            FailArgListGoals ++ [HandleEventFailGoal, SwitchFailPortGoal]),
+            GoalInfo0),
+        goal_add_feature(feature_preserve_backtrack_into, ConjGoal220,
             ConjGoal22),
-        DisjGoal2 = hlds_goal(disj([ConjGoal21, ConjGoal22]), 
-            GoalInfoImpureDetism),
+        DisjGoal2 = hlds_goal(disj([ConjGoal21, ConjGoal22]), GoalInfo0),
 
-        GoalWithoutPurity = hlds_goal(conj(plain_conj, 
-            ProcIdGoals ++ [DisjGoal2]), GoalInfoImpureDetism),
+        GoalWithoutPurity = hlds_goal(conj(plain_conj,
+            ProcIdGoals ++ [DisjGoal2]), GoalInfo0),
 
         % Add the purity scope.
         Purity = goal_info_get_purity(BodyGoalInfo0),
-        wrap_with_purity_scope(Purity, GoalInfoDetism, GoalWithoutPurity, Goal),
+        wrap_with_purity_scope(Purity, GoalInfo, GoalWithoutPurity, Goal),
 
         commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo,
             !ModuleInfo, !.Varset, !.Vartypes)
     ).
-
-
-      % Source-to-source transformation for a failure procedure.
-      %
-:- pred process_proc_failure(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
-  
-process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
-    proc_info_get_goal(!.ProcInfo, BodyGoal0),
-    BodyGoalInfo0 = get_hlds_goal_info(BodyGoal0),
- 
-    some [!PredInfo, !Varset, !Vartypes] (
-        proc_info_get_varset(!.ProcInfo, !:Varset),
-        proc_info_get_vartypes(!.ProcInfo, !:Vartypes),
-
-        % Make the ssdb_proc_id.
-        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-        make_proc_id_construction(!.PredInfo, !.ProcInfo, ProcIdGoals, 
-            ProcIdVar, !Varset, !Vartypes),
-        
-        % Get the list of head variables and their instantiation state.
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
-        
-        % Make a list which records the value for each of the head variables at
-        % the call port.
-        make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar, 
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
-            !Vartypes, map.init, BoundVarDescsAtCall),
-
-        % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar],
-            HandleEventCallGoal, !ModuleInfo, !Varset, !Vartypes),
-       
-        % Make the variable list at the exit port. It's currently a completely 
-        % new list instead of adding on to the list generated for the call 
-        % port.
-        make_arg_list(0, InitInstMap, [], map.init, FailArgListVar, 
-            FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
-            !Vartypes, BoundVarDescsAtCall, _BoundVarDescsAtFail),
-        
-        % Create DoRetry output variable.
-        make_retry_var("DoRetry", RetryVar, !Varset, !Vartypes),
-
-        % Generate the call to handle_event_exit(ProcId, VarList, DoRetry).
-        make_handle_event("handle_event_fail", 
-            [ProcIdVar, FailArgListVar, RetryVar],
-            HandleEventFailGoal, !ModuleInfo, !Varset, !Vartypes),
-
-        make_fail_call(FailGoal, !.ModuleInfo),
-
-        % Generate the recursive call in the case of a retry.
-        make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId, HeadVars, 
-            RecursiveGoal),
-        
-        % Organize the order of the generated code.
-
-        goal_to_conj_list(BodyGoal0, BodyGoalList),
-        % Set the determinism.
-        Determinism = detism_failure,
-        goal_info_init(GoalInfo0),
-        goal_info_set_determinism(Determinism, GoalInfo0, GoalInfoFail),
-        goal_info_set_purity(purity_impure, GoalInfoFail, GoalInfoImpureFail),
-
-        % Create the switch on Retry at fail port.
-        make_switch_goal(RetryVar, RecursiveGoal, FailGoal, GoalInfoImpureFail, 
-            SwitchGoal),
- 
-        ConjGoal1 = hlds_goal(conj(plain_conj, BodyGoalList), 
-            GoalInfoImpureFail),
-        ConjGoal20 = hlds_goal(conj(plain_conj, FailArgListGoals ++ 
-            [HandleEventFailGoal, SwitchGoal]), GoalInfoImpureFail),
-        goal_add_feature(feature_preserve_backtrack_into, ConjGoal20, 
-            ConjGoal2),
-
-        DisjGoal = hlds_goal(disj([ConjGoal1, ConjGoal2]), GoalInfoImpureFail),
-
-        ConjGoals = ProcIdGoals ++ CallArgListGoals ++ 
-            [HandleEventCallGoal, DisjGoal],
- 
-        conj_list_to_goal(ConjGoals, GoalInfoImpureFail, GoalWithoutPurity),
-
-        % Add the purity scope.
-        Purity = goal_info_get_purity(BodyGoalInfo0),
-        wrap_with_purity_scope(Purity, GoalInfoFail, GoalWithoutPurity, Goal),
-
-        commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, 
-            !ModuleInfo, !.Varset, !.Vartypes)
-    ).
-
-        
-      % Source-to-source transformation for an erroneous procedure.
-      % XXX ERRONEOUS procedure have currently just a call port.
-      %
-:- pred process_proc_erroneous(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
-  
-process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
-    proc_info_get_goal(!.ProcInfo, BodyGoal0),
-    BodyGoalInfo0 = get_hlds_goal_info(BodyGoal0),
-    
-    some [!PredInfo, !Varset, !Vartypes] (
-        proc_info_get_varset(!.ProcInfo, !:Varset),
-        proc_info_get_vartypes(!.ProcInfo, !:Vartypes),
-
-        % Make the ssdb_proc_id.
-        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-        make_proc_id_construction(!.PredInfo, !.ProcInfo, ProcIdGoals, 
-            ProcIdVar, !Varset, !Vartypes),
-        
-        % Get the list of head variables and their instantiation state.
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
-        
-        % Make a list which records the value for each of the head variables at
-        % the call port.
-        make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar, 
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, 
-            !Vartypes, map.init, _BoundVarDescsAtCall),
-
-        % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar],
-            HandleEventCallGoal, !ModuleInfo, !Varset, !Vartypes),
-        
-        % Organize the order of the generated code.
-        goal_to_conj_list(BodyGoal0, BodyGoalList),
-        % Set the determinism.
-        DeterminismErr = detism_erroneous,
-        goal_info_init(GoalInfo0),
-        goal_info_set_determinism(DeterminismErr, GoalInfo0, 
-            GoalInfoErr),
-        goal_info_set_purity(purity_impure, GoalInfoErr, GoalInfoImpureErr),
-
-        ConjGoals = ProcIdGoals ++ CallArgListGoals ++ 
-            [HandleEventCallGoal | BodyGoalList], 
-
-        conj_list_to_goal(ConjGoals, GoalInfoImpureErr, GoalWithoutPurity),
-
-        % Add the purity scope.
-        Purity = goal_info_get_purity(BodyGoalInfo0),
-        wrap_with_purity_scope(Purity, GoalInfoErr, GoalWithoutPurity, Goal),
-
-        commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, 
-            !ModuleInfo, !.Varset, !.Vartypes)
-    ).
-
-%-----------------------------------------------------------------------------%
-
 
     % Create the output variable DoRetry.
     %
@@ -807,13 +593,13 @@ make_recursive_call(PredInfo, ModuleInfo, PredId, ProcId, HeadVars, Goal) :-
     % make_switch_goal(SwitchVar, SwitchCase1, SwitchCase2, GoalInfo, Goal).
     %
     % Create an output Goal, which is a switch with following pattern :
-    %   ( 
-    %       SwitchVar = do_retry,
-    %       SwitchCase1
-    %   ;
-    %       SwitchVar = do_not_retry,
-    %       SwitchCase2
-    %   )
+    %	(
+    %	    SwitchVar = do_retry,
+    %	    SwitchCase1
+    %	;
+    %	    SwitchVar = do_not_retry,
+    %	    SwitchCase2
+    %	)
     %
 :- pred make_switch_goal(prog_var::in, hlds_goal::in, hlds_goal::in,
     hlds_goal_info::in, hlds_goal::out) is det.
@@ -829,19 +615,27 @@ make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, GoalInfo,
         switch(SwitchVar, cannot_fail, [CaseDoRetry, CaseDoNotRetry]),
         GoalInfo).
 
-
     % wrap_with_purity_scope(Purity, GoalInfo, Goal0, Goal):
     %
     % The Goal0 is wrap with the Purity to give Goal.
+    % Not wrapping impure procedures with redundant promise_impure scopes.
     %
 :- pred wrap_with_purity_scope(purity::in, hlds_goal_info::in, hlds_goal::in,
     hlds_goal::out) is det.
 
-wrap_with_purity_scope(Purity, GoalInfo0, GoalWithoutPurity, Goal) :-
-    goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-    ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
-    Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo).
-    
+wrap_with_purity_scope(Purity, GoalInfo, GoalWithoutPurity, Goal) :-
+    % The scope are not introduce when the purity is impure because it is the
+    % default case.
+    (
+        Purity = purity_impure,
+        Goal = GoalWithoutPurity
+    ;
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
+        ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
+        Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo)
+    ).
 
     % Update the proc_info and pred_info with the result of the
     % source-to-source transformation.
@@ -861,7 +655,6 @@ commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, !ModuleInfo,
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
 
-
 %-----------------------------------------------------------------------------%
 
     % Build the following goal : handle_event_EVENT(ProcId, Arguments).
@@ -872,16 +665,17 @@ commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, !ModuleInfo,
     module_info::in, module_info::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo, 
+make_handle_event(Event, Arguments, HandleEventGoal, !ModuleInfo,
     !Varset, !Vartypes) :-
 
+    CallString = "handle_event_" ++ Event,
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     InstMapSrc = [],
     Context = term.context_init,
-    goal_util.generate_simple_call(SSDBModule, HandleTypeString, 
-        pf_predicate, only_mode, detism_det, purity_impure, 
-        Arguments, Features, InstMapSrc, !.ModuleInfo, Context, 
+    goal_util.generate_simple_call(SSDBModule, CallString,
+        pf_predicate, only_mode, detism_det, purity_impure,
+        Arguments, Features, InstMapSrc, !.ModuleInfo, Context,
         HandleEventGoal).
 
     % make_proc_id_construction(PredInfo, ProcInfo,
@@ -932,31 +726,9 @@ make_fail_call(FailGoal, ModuleInfo) :-
         "false", pf_predicate, only_mode, detism_failure, purity_pure,
         [], Features, InstMapSrc, ModuleInfo, Context, FailGoal).
 
-
-    %
-    % Detect if all argument's mode are fully input or output.
-    % XXX Other mode than fully input or output are not managed for the 
-    % moment. So the code of these procedures will not be generated.
-    %
-:- pred check_arguments_modes(module_info::in, list(mer_mode)::in) 
-    is semidet.
-
-check_arguments_modes(ModuleInfo, HeadModes) :-
-    all [Modes] (
-        list.member(Mode, HeadModes)
-    =>
-        ( mode_is_fully_input(ModuleInfo, Mode)
-        ; mode_is_fully_output(ModuleInfo, Mode)
-        )
-    ).
-
 %-----------------------------------------------------------------------------%
 
-    % The following code concern predicates which create the list argument at 
-    % event point.
-    %
-
-    % make_arg_list(Pos, InstMap, Vars, RenamedVar, FullListVar, Goals, 
+    % make_arg_list(Pos, InstMap, Vars, RenamedVar, FullListVar, Goals,
     %   !ModuleInfo, !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundedVarDesc)
     %
     % Processes each variable in Vars creating a list(var_value) named
@@ -1105,6 +877,6 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         Goals = [ConstructVarName, ConstructVarPos, ConstructVarGoal]
     ).
-    
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
