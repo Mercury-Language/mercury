@@ -1266,6 +1266,7 @@ qualify_pragma(X @ pragma_terminates(_, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_does_not_terminate(_, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_check_termination(_, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_mode_check_clauses(_, _), X, !Info, !Specs).
+qualify_pragma(X @ pragma_require_feature_set(_), X, !Info, !Specs).
 
 :- pred qualify_pragma_vars(list(pragma_var)::in, list(pragma_var)::out,
     mq_info::in, mq_info::out,

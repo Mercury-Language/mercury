@@ -129,6 +129,9 @@ MCFLAGS-one_member			= --verbose-error-messages
 MCFLAGS-polymorphic_unification		= --verbose-error-messages
 MCFLAGS-predmode			= --verbose-error-messages
 MCFLAGS-prog_io_erroneous		= --verbose-error-messages
+# We compile test_feature_set in hl.gc because that grade is incompatible
+# with the features in the test require_feature_set pragma.
+MCFLAGS-test_feature_set            = --grade hl.gc --verbose-error-messages
 MCFLAGS-tricky_assert1			= --verbose-error-messages
 MCFLAGS-typeclass_constraint_extra_var  = --verbose-error-messages
 MCFLAGS-typeclass_missing_det_3		= --verbose-error-messages

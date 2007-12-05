@@ -2286,6 +2286,7 @@ pragma_allowed_in_interface(pragma_check_termination(_, _), yes).
 pragma_allowed_in_interface(pragma_structure_sharing(_, _, _, _, _, _), yes).
 pragma_allowed_in_interface(pragma_structure_reuse(_, _, _, _, _, _), yes).
 pragma_allowed_in_interface(pragma_mode_check_clauses(_, _), yes).
+pragma_allowed_in_interface(pragma_require_feature_set(_), no).
 
 check_for_no_exports(Items, ModuleName, !IO) :-
     globals.io_lookup_bool_option(warn_nothing_exported, ExportWarning, !IO),
@@ -7993,6 +7994,7 @@ reorderable_item(item_pragma(_, Pragma)) = Reorderable :-
     ; Pragma = pragma_structure_reuse(_, _, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_unused_args(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_require_feature_set(_), Reorderable = yes
     ).
 reorderable_item(item_type_defn(_, _, _, _, _)) = yes.
 reorderable_item(item_inst_defn(_, _, _, _, _)) = yes.
@@ -8079,6 +8081,7 @@ chunkable_item(item_pragma(_, Pragma)) = Reorderable :-
     ; Pragma = pragma_mm_tabling_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_unused_args(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_require_feature_set(_), Reorderable = yes
     ).
 chunkable_item(item_type_defn(_, _, _, _, _)) = yes.
 chunkable_item(item_inst_defn(_, _, _, _, _)) = yes.

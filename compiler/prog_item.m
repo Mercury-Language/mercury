@@ -662,7 +662,7 @@
                 reuse_headvars        :: prog_vars,
                 reuse_headvartypes    :: list(mer_type),
                 reuse_description     :: maybe(structure_reuse_domain)
-            ).
+            )
             % After reuse analysis, the compiler generates structure reuse
             % pragmas to be stored in and read from optimization interface
             % files.
@@ -671,6 +671,10 @@
             % argmodes if there are no declared ones).
             % The last sym_name (reuse_optimised_name) stores the name of the
             % optimised version of the exported predicate.
+
+    ;       pragma_require_feature_set(
+                rfs_feature_set :: set(required_feature)
+            ).
 
 :- inst pragma_type_spec == bound(pragma_type_spec(ground, ground, ground,
     ground, ground, ground, ground, ground)).

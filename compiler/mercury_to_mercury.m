@@ -769,6 +769,9 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
         Pragma = pragma_mode_check_clauses(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "mode_check_clauses", no, !IO)
+    ;
+        Pragma = pragma_require_feature_set(Features),
+        mercury_output_pragma_require_feature_set(Features, !IO)
     ).
 
 mercury_output_item(_, item_promise(PromiseType, Goal0, VarSet, UnivVars), _,
@@ -3757,6 +3760,35 @@ mercury_format_pragma_fact_table(Pred, Arity, FileName, !U) :-
     add_string(", ", !U),
     add_quoted_string(FileName, !U),
     add_string(").\n", !U).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_require_feature_set(set(required_feature)::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_output_pragma_require_feature_set(Features0, !U) :-
+    Features = set.to_sorted_list(Features0),
+    add_string(":- pragma require_feature_set(", !U),
+    add_list(Features, ",", mercury_format_required_feature, !U),
+    add_string(").\n", !U).
+
+:- pred mercury_format_required_feature(required_feature::in, U::di, U::uo)
+    is det <= output(U).
+
+mercury_format_required_feature(reqf_concurrency, !U) :-
+    add_string("concurrency", !U).
+mercury_format_required_feature(reqf_single_prec_float, !U) :-
+    add_string("single_prec_float", !U).
+mercury_format_required_feature(reqf_double_prec_float, !U) :-
+    add_string("double_prec_float", !U).
+mercury_format_required_feature(reqf_memo, !U) :-
+    add_string("memo", !U).
+mercury_format_required_feature(reqf_parallel_conj, !U) :-
+    add_string("parallel_conj", !U).
+mercury_format_required_feature(reqf_trailing, !U) :-
+    add_string("trailing", !U).
+mercury_format_required_feature(reqf_strict_sequential, !U) :-
+    add_string("strict_sequential", !U).
 
 %-----------------------------------------------------------------------------%
 

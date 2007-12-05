@@ -194,21 +194,11 @@ dependent_par_conj(!ModuleInfo, !IO) :-
     add_pending_par_procs(DoneParProcs, PendingProcs,
         ModuleInfo0, !ModuleInfo, !IO).
 
-    % Parallel conjunctions only supported on lowlevel C parallel grades.
-    % They are not (currently) supported if trailing is enabled.
-    %
 :- pred handle_par_conj(module_info::in) is semidet.
 
 handle_par_conj(ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.lookup_bool_option(Globals, parallel, Parallel),
-    globals.lookup_bool_option(Globals, use_trail, UseTrail),
-    Target = target_c,
-    HighLevelCode = no,
-    Parallel = yes,
-    UseTrail = no.
+    current_grade_supports_par_conj(Globals, yes).
 
 %-----------------------------------------------------------------------------%
 

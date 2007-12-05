@@ -328,12 +328,13 @@ report_missing_tabled_for_io(PredInfo, PredId, ProcId, ModuleInfo) = Spec :-
 table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
         !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    globals.get_gc_method(Globals, GC_Method),
-    ( Target = target_c, GC_Method \= gc_accurate ->
+    current_grade_supports_tabling(Globals, IsTablingSupported),
+    (
+        IsTablingSupported = yes,
         table_gen_transform_proc(EvalMethod, PredId, ProcId,
             !ProcInfo, !PredInfo, !ModuleInfo, !GenMap)
     ;
+        IsTablingSupported = no,
         pred_info_get_context(!.PredInfo, Context),
         ProcPieces = describe_one_proc_name(!.ModuleInfo,
             should_module_qualify, proc(PredId, ProcId)),

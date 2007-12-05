@@ -9957,6 +9957,9 @@ extensions to the Mercury language:
                                 calculated results and detecting or avoiding
                                 certain kinds of infinite loops.
 * Termination analysis::        Support for automatic proofs of termination.
+* Feature sets::                Support for checking that optional features of
+                                the implementation are supported at compile
+                                time.
 
 @end menu
 @c XXX The `reserved tag' pragma is not documented because it is intended to
@@ -10419,6 +10422,80 @@ function then the compiler will quit with an error message.
 @c 
 @c The compiler includes a structure reuse analysis system. 
 @c
+
+@node Feature sets
+@section Feature sets
+
+The University of Melbourne Mercury implementation supports a number
+of optional compilation model features,
+such as @ref{Trailing} or @ref{Tabled evaluation}.
+Feature sets allow the programmer to assert that a module requires
+the presence of one or more optional features in the compilation model.
+These assertions can be made use a @samp{pragma require_feature_set}
+declaration.
+
+The @samp{require_feature_set} pragma declaration has the following form:
+@example
+:- pragma require_feature_set(@var{Features}).
+@end example
+
+where @samp{Features} is a (possibly empty) list of features.
+
+The supported features are:
+@table @asis
+
+@item @samp{concurrency}
+This specifies that the compilation model must
+support concurrent execution of multiple threads.
+
+@item @samp{single_prec_float}
+This specifies that the compilation model must use
+single precision floats.
+This feature cannot be specified together with the @samp{double_prec_float}
+feature.
+
+@item @samp{double_prec_float},
+This feature specifies that the compilation model must use double precision
+floats.
+This feature cannot be specified together with the @samp{single_prec_float}
+feature.
+
+@item @samp{memo}
+This feature specifies that the compilation model must support memoisation
+(see @ref{Tabled evaluation}).
+
+@item @samp{parallel_conj}
+This feature specifies that the compilation model must suppport
+parallel execution of conjunctions.
+This feature cannot be specified together with the @samp{trailing}
+feature.
+
+@item @samp{trailing}
+This feature specifies that the compilation model must support
+trailing, see @ref{Trailing}.
+This feature cannot be specified together with the @samp{parallel_conj}
+feature.
+
+@item @samp{strict_sequential}
+This feature specifes that a semantics that is equivalent to the strict
+sequential operational semantics must be used.
+
+@end table
+
+When a module containing a @samp{pragma require_feature_set} declaration
+is compiled, the implementation checks to see that the specified features
+are supported by the compilation model.
+It emits an error if they are not.
+
+A @samp{pragma require_feature_set} may only occur in the implementation
+section of a module.
+
+A @samp{pragma require_feature_set} affects only the the module in which
+it occurs; in particular it does not affect any sub-modules
+
+If a module contains multiple @samp{pragma require_feature_set} declarations
+then the implementation should emit an error if any of them specifies a
+feature that is not supported by the compilation model.
 
 @node Bibliography
 @chapter Bibliography

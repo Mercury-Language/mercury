@@ -1122,6 +1122,47 @@ parse_pragma_type(ModuleName, "mode_check_clauses", PragmaTerms, ErrorTerm,
     parse_simple_pragma(ModuleName, "mode_check_clauses", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
+parse_pragma_type(_ModuleName, "require_feature_set", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    ( PragmaTerms = [FeatureListTerm] ->
+        convert_maybe_list(FeatureListTerm, parse_required_feature,
+            "not a feature", MaybeFeatureList),
+        (
+            MaybeFeatureList = ok1(FeatureList),
+            ConflictingFeatures = [
+                reqf_single_prec_float - reqf_double_prec_float,
+                reqf_parallel_conj     - reqf_trailing
+            ],
+            (
+                list.member(ConflictA - ConflictB, ConflictingFeatures),
+                list.member(ConflictA, FeatureList),
+                list.member(ConflictB, FeatureList)
+            ->
+                Msg = "conflicting features in feature set",
+                Result = error1([Msg - FeatureListTerm])
+            ;
+                (
+                    FeatureList = [],
+                    Item = item_nothing(no)
+                ;
+                    FeatureList = [_ | _],
+                    FeatureSet = set.from_list(FeatureList),
+                    Pragma = pragma_require_feature_set(FeatureSet),
+                    Item = item_pragma(user, Pragma)
+                ),      
+                Result = ok1(Item)
+            )
+        ;
+            MaybeFeatureList = error1(Errors),
+            Result = error1(Errors)
+        )
+    ;
+        Msg = "syntax error in `:- pragma require_feature_set' declaration",
+        Result = error1([Msg - ErrorTerm])
+    ).
+
+%----------------------------------------------------------------------------%
+
 :- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
     is semidet.
 
@@ -1672,7 +1713,7 @@ parse_simple_pragma_base(ModuleName, PragmaType, NameKind, MakePragma,
             PredAndArityTerm, PredAndArityTerm, NameArityResult),
         (
             NameArityResult = ok2(PredName, Arity),
-            call(MakePragma, PredName, Arity, Pragma),
+            MakePragma(PredName, Arity, Pragma),
             Result = ok1(item_pragma(user, Pragma))
         ;
             NameArityResult = error2(Errors),
@@ -2454,9 +2495,11 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
         (
             PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
             list.length(Modes, Arity0),
-            ( PredOrFunc = pf_function ->
+            (
+                PredOrFunc = pf_function,
                 Arity = Arity0 - 1
             ;
+                PredOrFunc = pf_predicate,
                 Arity = Arity0
             ),
             Result = ok1(arity_or_modes(PredName, Arity, yes(PredOrFunc),
@@ -2549,7 +2592,7 @@ convert_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
         Functor = term.atom("[|]"),
         Args = [Term, RestTerm]
     ->
-        ( call(Pred, Term, Element) ->
+        ( Pred(Term, Element) ->
             convert_list(RestTerm, Pred, UnrecognizedMsg, RestResult),
             (
                 RestResult = ok1(List0),
@@ -2589,7 +2632,7 @@ convert_maybe_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
         Functor = term.atom("[|]"),
         Args = [Term, RestTerm]
     ->
-        ( call(Pred, Term, ElementResult) ->
+        ( Pred(Term, ElementResult) ->
             (
                 ElementResult = ok1(Element),
                 convert_maybe_list(RestTerm, Pred, UnrecognizedMsg,
@@ -2683,6 +2726,27 @@ parse_rational(Term, Rational) :-
     NumerTerm = term.functor(term.integer(Numer), [], _),
     DenomTerm = term.functor(term.integer(Denom), [], _),
     Rational = rat.rat(Numer, Denom).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_required_feature(term::in,
+    maybe1(required_feature)::out) is semidet.
+
+parse_required_feature(ReqFeatureTerm, Result) :-
+    ReqFeatureTerm = term.functor(term.atom(Functor), [], _),
+    string_to_required_feature(Functor, ReqFeature),
+    Result = ok1(ReqFeature).
+
+:- pred string_to_required_feature(string::in, required_feature::out)
+    is semidet.
+
+string_to_required_feature("concurrency",       reqf_concurrency).
+string_to_required_feature("single_prec_float", reqf_single_prec_float).
+string_to_required_feature("double_prec_float", reqf_double_prec_float).
+string_to_required_feature("memo",              reqf_memo).
+string_to_required_feature("parallel_conj",     reqf_parallel_conj).
+string_to_required_feature("trailing",          reqf_trailing).
+string_to_required_feature("strict_sequential", reqf_strict_sequential).
 
 %-----------------------------------------------------------------------------%
 

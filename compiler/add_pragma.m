@@ -380,6 +380,10 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs) :-
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
             Context, marker_user_marked_no_inline, [marker_user_marked_inline],
             !ModuleInfo, !Specs)
+    ;
+        Pragma = pragma_require_feature_set(FeatureSet),
+        check_required_feature_set(FeatureSet, ImportStatus, Context,
+            !ModuleInfo, !Specs)
     ).
 
 add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
@@ -3717,6 +3721,163 @@ merge_inst_var_renamings(RenamingA, RenamingB, Result) :-
     is semidet.
 
 merge_common_inst_vars(A, A, A).
+
+%----------------------------------------------------------------------------%
+%
+% Code for checking required feature set pragmas
+%
+
+:- pred check_required_feature_set(set(required_feature)::in,
+    import_status::in, prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_required_feature_set(FeatureSet, ImportStatus, Context, !ModuleInfo,
+        !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    IsImported = status_is_imported(ImportStatus),
+    (
+        % `require_feature_set' pragmas are not included in interface files
+        % (including private interfaces) and so this case should not occur.
+        IsImported = yes,
+        unexpected(this_file, "imported require_feature_set pragma")
+    ;
+        IsImported = no,
+        set.fold(check_required_feature(Globals, Context), FeatureSet, !Specs)
+    ).
+
+:- pred check_required_feature(globals::in,
+    prog_context::in, required_feature::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_required_feature(Globals, Context, Feature, !Specs) :-
+    (
+        Feature = reqf_concurrency,
+        current_grade_supports_concurrency(Globals, IsConcurrencySupported),
+        (
+            IsConcurrencySupported = no,
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("supports concurrent execution.")
+            ],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            IsConcurrencySupported = yes
+        )
+    ;
+        Feature = reqf_single_prec_float,
+        globals.lookup_bool_option(Globals, single_prec_float,
+            SinglePrecFloat),
+        (
+            SinglePrecFloat = no,
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("uses single precision floats.")
+            ],
+            VerbosePieces = [
+                words("Grades that use single precision floats contain the"),
+                words("grade modifier"), quote("spf"), suffix(".")
+            ],
+            Msg = simple_msg(Context,
+                [always(Pieces), verbose_only(VerbosePieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            SinglePrecFloat = yes
+        )
+    ;
+        Feature = reqf_double_prec_float,
+        globals.lookup_bool_option(Globals, single_prec_float,
+            SinglePrecFloat),
+        (
+            SinglePrecFloat = yes,
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("uses double precision floats.")
+            ],
+            VerbosePieces = [
+                words("Grades that use double precision floats do not"),
+                words("contain the grade modifier"), quote("spf"), suffix(".")
+            ],
+            Msg = simple_msg(Context,
+                [always(Pieces), verbose_only(VerbosePieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            SinglePrecFloat = no
+        )
+    ;
+        Feature = reqf_memo,
+        current_grade_supports_tabling(Globals, IsTablingSupported),
+        (
+            IsTablingSupported = no,
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("supports memoisation.")
+            ],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            IsTablingSupported = yes
+        )
+    ;
+        Feature = reqf_parallel_conj,
+        current_grade_supports_par_conj(Globals, IsParConjSupported),
+        (
+            IsParConjSupported = no,
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("supports executing conjuntions in parallel.")
+            ],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            IsParConjSupported = yes
+        )
+    ;
+        Feature = reqf_trailing,
+        globals.lookup_bool_option(Globals, use_trail, UseTrail),
+        (
+            UseTrail = no,
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("supports trailing.")
+            ],
+            VerbosePieces = [
+                words("Grades that support trailing contain the"),
+                words("grade modifier"), quote("tr"), suffix(".")
+            ],
+            Msg = simple_msg(Context,
+                [always(Pieces), verbose_only(VerbosePieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            UseTrail = yes
+        )
+    ;
+        Feature = reqf_strict_sequential,
+        globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
+        globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
+        globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
+        (
+            ReorderConj = no,
+            ReorderDisj = no,
+            FullyStrict = yes
+        ->
+            true
+        ;
+            Pieces = [
+                words("Error: this module must be compiled using the"),
+                words("strict sequential semantics.")
+            ],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        )
+    ).
 
 %----------------------------------------------------------------------------%
 

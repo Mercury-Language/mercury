@@ -626,6 +626,20 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Stuff for the `require_feature_set' pragma
+%
+
+:- type required_feature
+    --->    reqf_concurrency
+    ;       reqf_single_prec_float
+    ;       reqf_double_prec_float
+    ;       reqf_memo
+    ;       reqf_parallel_conj
+    ;       reqf_trailing
+    ;       reqf_strict_sequential.
+
+%-----------------------------------------------------------------------------%
+%
 % Type classes
 %
 

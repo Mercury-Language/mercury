@@ -62,6 +62,7 @@ SINGLEMODULE= \
 	circ_type5 \
 	complex_constraint_err \
 	conflicting_tabling_pragmas \
+	conflicting_fs \
 	constrained_poly_insts \
 	constructor_warning \
 	cyclic_typeclass \
@@ -180,6 +181,7 @@ SINGLEMODULE= \
 	state_vars_test5 \
 	tc_err1 \
 	tc_err2 \
+	test_feature_set \
 	test_may_duplicate \
 	tricky_assert1 \
 	type_inf_loop \

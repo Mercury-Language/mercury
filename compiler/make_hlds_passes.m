@@ -1114,6 +1114,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         ; Pragma = pragma_terminates(_, _)
         ; Pragma = pragma_trailing_info(_, _, _, _, _)
         ; Pragma = pragma_unused_args(_, _, _, _, _)
+        ; Pragma = pragma_require_feature_set(_)
         )
     ).
 add_item_clause(item_promise(PromiseType, Goal, VarSet, UnivVars),

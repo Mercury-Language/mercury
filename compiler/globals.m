@@ -200,6 +200,21 @@
     %
 :- pred imported_is_constant(bool::in, bool::in, bool::out) is det.
 
+    % Check that the current grade supports tabling.
+    %
+:- pred current_grade_supports_tabling(globals::in, bool::out) is det.
+
+    % Check that code compiled in the current grade can execute
+    % conjunctions in parallel.
+    %
+:- pred current_grade_supports_par_conj(globals::in, bool::out) is det.
+
+    % Check that code compiled in the current grade supports concurrent
+    % execution, i.e. that spawn/3 will create a new thread instead of 
+    % aborting execution.
+    %
+:- pred current_grade_supports_concurrency(globals::in, bool::out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Access predicates for storing a `globals' structure in the io.state
@@ -500,6 +515,68 @@ have_static_code_addresses_2(OptionTable, IsConst) :-
         NonLocalGotos),
     getopt_io.lookup_bool_option(OptionTable, asm_labels, AsmLabels),
     imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+
+current_grade_supports_tabling(Globals, TablingSupported) :-
+    globals.get_target(Globals, Target),
+    globals.get_gc_method(Globals, GC_Method),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    ( 
+        Target = target_c,
+        GC_Method \= gc_accurate,
+        HighLevelData = no
+    ->
+        TablingSupported = yes 
+    ;
+        TablingSupported = no 
+    ).
+
+    % Parallel conjunctions only supported on lowlevel C parallel grades.
+    % They are not (currently) supported if trailing is enabled.
+    %
+current_grade_supports_par_conj(Globals, ParConjSupported) :-
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    (
+        Target = target_c,
+        HighLevelCode = no,
+        Parallel = yes,
+        UseTrail = no
+    ->
+        ParConjSupported = yes
+    ;
+        ParConjSupported = no
+    ).
+
+current_grade_supports_concurrency(Globals, ThreadsSupported) :-
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+        % In high-level C grades we only support threads in .par grades.
+        (
+            HighLevelCode = no,
+            ThreadsSupported = yes
+        ;
+            HighLevelCode = yes,
+            globals.lookup_bool_option(Globals, parallel, Parallel),
+            ThreadsSupported = Parallel
+        )
+    ;
+        ( Target = target_erlang
+        ; Target = target_il
+        ),
+        ThreadsSupported = yes
+    ;
+        % Threads are not yet supported in the Java or x86_64 backends.
+        % XXX I'm not sure what their status in the gcc backend is.
+        ( Target = target_java
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ),
+        ThreadsSupported = no
+    ).
 
 want_return_var_layouts(Globals, WantReturnLayouts) :-
     % We need to generate layout info for call return labels
