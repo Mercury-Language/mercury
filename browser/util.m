@@ -151,7 +151,7 @@ trace_get_command(Prompt, Result, !IO) :-
         MR_free(line);
 
     } else {
-        BROWSER_trace_get_command_fallback(Prompt, &Line, MdbIn, MdbOut);
+        ML_BROWSER_trace_get_command_fallback(Prompt, &Line, MdbIn, MdbOut);
     }
 
     State = State0;
@@ -168,7 +168,7 @@ trace_get_command(_, _, _, _, !IO) :-
 
 :- pragma foreign_export("C",
     trace_get_command_fallback(in, out, in, in, di, uo),
-    "BROWSER_trace_get_command_fallback").
+    "ML_BROWSER_trace_get_command_fallback").
 
 trace_get_command_fallback(Prompt, String, MdbIn, MdbOut, !IO) :-
     io.write_string(MdbOut, Prompt, !IO),
