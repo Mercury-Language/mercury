@@ -59,6 +59,9 @@
 :- implementation.
 
 :- import_module require.
+:- import_module string.
+
+%---------------------------------------------------------------------------%
 
 is_predicate(pf_predicate) = yes.
 is_predicate(pf_function) = no.
@@ -133,7 +136,7 @@ trace_get_command(Prompt, Result, !IO) :-
 :- pragma foreign_proc("C",
     trace_get_command(Prompt::in, Line::out, MdbIn::in,
         MdbOut::in, State0::di, State::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [may_call_mercury, promise_pure, tabled_for_io],
 "
     char        *line;
     MercuryFile *mdb_in = (MercuryFile *) MdbIn;
@@ -143,19 +146,43 @@ trace_get_command(Prompt, Result, !IO) :-
         line = (*MR_address_of_trace_get_command)(
                 (char *) Prompt,
                 MR_file(*mdb_in), MR_file(*mdb_out));
-    } else {
-        MR_tracing_not_enabled();
-        /* not reached */
-    }
 
-    MR_make_aligned_string_copy(Line, line);
-    MR_free(line);
+        MR_make_aligned_string_copy(Line, line);
+        MR_free(line);
+
+    } else {
+        BROWSER_trace_get_command_fallback(Prompt, &Line, MdbIn, MdbOut);
+    }
 
     State = State0;
 ").
 
 trace_get_command(_, _, _, _, !IO) :-
     private_builtin.sorry("mdb.trace_get_command/6").
+
+    % This is called by trace_get_command when the trace library is not linked
+    % in.
+    %
+:- pred trace_get_command_fallback(string::in, string::out, io.input_stream::in,
+    io.output_stream::in, io::di, io::uo) is det.
+
+:- pragma foreign_export("C",
+    trace_get_command_fallback(in, out, in, in, di, uo),
+    "BROWSER_trace_get_command_fallback").
+
+trace_get_command_fallback(Prompt, String, MdbIn, MdbOut, !IO) :-
+    io.write_string(MdbOut, Prompt, !IO),
+    io.flush_output(MdbOut, !IO),
+    io.read_line_as_string(MdbIn, Result, !IO),
+    (
+        Result = ok(String)
+    ;
+        Result = eof,
+        String = "quit"
+    ;
+        Result = error(Error),
+        error("trace_get_command_fallback: " ++ io.error_message(Error))
+    ).
 
 zip_with(Pred, XXs, YYs, Zipped) :-
     ( (XXs = [], YYs = []) ->

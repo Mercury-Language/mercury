@@ -7,6 +7,8 @@
 -I../mdbcomp/Mercury/mihs
 -I../browser
 -I../browser/Mercury/mihs
+-I../ssdb
+-I../ssdb/Mercury/mihs
 -I../trace
 -I../analysis
 -I../analysis/Mercury/mihs

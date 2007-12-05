@@ -53,7 +53,7 @@ else
 	INSTALL=nothing
 endif
 
-VPATH = $(LIBRARY_DIR)
+VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
 #-----------------------------------------------------------------------------#
 

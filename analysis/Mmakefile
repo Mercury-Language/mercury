@@ -7,7 +7,6 @@
 # inter-module analysis library.
 
 MERCURY_DIR=..
-LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

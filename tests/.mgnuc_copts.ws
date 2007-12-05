@@ -8,3 +8,5 @@
 -I@WORKSPACE@/browser
 -I@WORKSPACE@/browser/Mercury/mihs
 -I@WORKSPACE@/trace
+-I@WORKSPACE@/ssdb
+-I@WORKSPACE@/ssdb/Mercury/mihs
