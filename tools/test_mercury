@@ -16,7 +16,8 @@ case $# in
 	*)	echo "Usage: $0 host arch fullarch branch c_compiler use_mmc_make" 1>&2; exit 1 ;;
 esac
 
-if [ -d /home/mercury/public/. ]; then
+if test -d /home/mercury/public/.
+then
 	TOPDIR=/home/mercury/public
 	PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' $TOPDIR/cron/.path`"
 	PATH="$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH"
@@ -29,6 +30,12 @@ if [ -d /home/mercury/public/. ]; then
 	# generate_index_html needs to be in our PATH too
 	PATH="$TOPDIR/test_mercury/scripts:$PATH"
 else
+	case "$HOST" in
+	    eris)
+	        HOME=/Users/mercury/mercury
+		;;
+	esac
+
 	TOPDIR=$HOME/public
 	PATH=$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH
 	PATH="$TOPDIR/$FULLARCH:$PATH"
@@ -48,7 +55,7 @@ if [ -d $CVSROOT/. ]; then
 	:
 else
 	case "$HOST" in
-	    neptune|pluto)
+	    neptune|pluto|eris)
 	    CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
 	    ;;
 	    *)
