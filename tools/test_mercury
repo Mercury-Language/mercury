@@ -314,7 +314,8 @@ PATH="$INSTALL_DIR/bin:$PATH"
 PARALLEL=
 case $HOST in
 	saturn|pluto)	PARALLEL="-j2" ;;
-	*)			PARALLEL= ;;
+	eris)		PARALLEL="-j3" ;;
+	*)		PARALLEL= ;;
 esac
 
 # Version of the mercury compiler to use for bootstrapping
