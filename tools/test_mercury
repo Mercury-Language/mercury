@@ -695,6 +695,15 @@ if test "$INSTALL_LIBGRADES" != ""
 then
 	echo "$INSTALL_LIBGRADES" > .enable_lib_grades
 fi
+
+# XXX Darwin attachs an underscore to the names of exported symbols, so the 
+# namespace cleanliness check will fail if we perform it on that platform.
+namespace_opt=""
+case "$host" in
+    eris)
+    namespace_opt="--no-check-namespace"
+    ;;
+esac
 	
 autoconf || { false; exit 1; }
 rm -f config.cache
@@ -706,7 +715,7 @@ $MMAKE $target_opts depend $PARALLEL || { false; exit 1; }
 version=`$MMAKE $target_opts version` || { false; exit 1; }
 fullarch=`$MMAKE $target_opts fullarch` || { false; exit 1; }
 tools/bootcheck $USE_MMC_MAKE $use_cp_opt $target_opts \
-	--keep-objs --copy-runtime \
+	--keep-objs --copy-runtime $namespace_opt \
 	--no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
