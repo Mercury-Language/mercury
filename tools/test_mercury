@@ -286,6 +286,11 @@ esac
 case $HOST in
 	earth|ceres|aral|jupiter|swordfish|saturn|uranus|neptune|pluto)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+
+	# The actual architecture string for eris has the version appended to it, but
+	# that will change with every OS update so we don't include it here.
+	eris)
+		INSTALL_DIR=/Users/mercury/mercury/public/$INSTALL_DIR_NAME/i686-apple-darwin ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
 esac
@@ -505,6 +510,19 @@ case $HOST in
 		;; 
 	uranus)
 		CONFIG_OPTS=""
+		;;
+	
+	eris)
+		# The asm_fast grades don't work on Darwin.
+		# XXX Install more grades on this machine.
+		CONFIG_OPTS=""
+		DEFAULT_GRADE="hlc.gc"
+		export DEFAULT_GRADE
+		INSTALL_GRADE="hlc.gc"
+		INSTALL_LIBGRADES="hlc.gc		\
+			hlc.gc.tr			\
+			reg.gc.tr			\
+			reg.gc.tr.debug"		
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
