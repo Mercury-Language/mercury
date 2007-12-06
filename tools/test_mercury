@@ -700,7 +700,7 @@ fi
 # XXX Darwin attachs an underscore to the names of exported symbols, so the 
 # namespace cleanliness check will fail if we perform it on that platform.
 namespace_opt=""
-case "$host" in
+case "$HOST" in
     eris)
     namespace_opt="--no-check-namespace"
     ;;
