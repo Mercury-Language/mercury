@@ -81,7 +81,7 @@
 #ifdef MR_USE_REGIONS
     MR_region_print_profiling_info();
 #else
-    printf(""There is no rbmm profiling info to print in a non-rbmm grade."");
+    printf(""There is no rbmm profiling info to print in a non-rbmm grade.\n"");
 #endif
 ").
 
