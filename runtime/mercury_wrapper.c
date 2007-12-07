@@ -38,9 +38,11 @@ ENDINIT
 
 #include    <stdio.h>
 #include    <string.h>
+#ifdef MR_HAVE_SYS_STAT_H
+#include    <sys/stat.h>
+#endif
 #if 0 /* XXX the following code breaks on Win32 */
 #include    <sys/types.h>
-#include    <sys/stat.h>
 #include    <fcntl.h>
 #include    <sys/resource.h>
 #endif /* breaks on Win32 */
@@ -273,9 +275,9 @@ static  MR_bool     use_own_timer = MR_FALSE;
 static  int         repeats = 1;
 
 #define MAX_MEM_USAGE_REPORT_ATTEMPTS       100
-#define MAX_MEM_USAGE_REPORT_FILENAME_SIZE  1024
+#define MAX_MEM_USAGE_REPORT_CMD_SIZE       1024
 
-static  MR_bool     mem_usage_report = MR_FALSE;
+static  char        *MR_mem_usage_report_prefix = NULL;
 
 static  int         MR_num_output_args = 0;
 
@@ -1204,7 +1206,7 @@ struct MR_option MR_long_opts[] = {
     { "trace-count-summary-cmd",        1, 0, MR_TRACE_COUNT_SUMMARY_CMD_OPT },
     { "tc-summary-max",                 1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "trace-count-summary-max",        1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
-    { "mem-usage-report",               0, 0, MR_MEM_USAGE_REPORT },
+    { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
 
     /* This needs to be kept at the end. */
     { NULL,                             0, 0, 0 }
@@ -1726,7 +1728,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_MEM_USAGE_REPORT:
-                mem_usage_report = MR_TRUE;
+                MR_mem_usage_report_prefix = MR_copy_string(MR_optarg);
                 break;
 
             case 'a':
@@ -2652,16 +2654,38 @@ mercury_runtime_terminate(void)
     MR_primordial_thread = (MercuryThread) 0;
 #endif
 
-#if 0 /* XXX the following code breaks on Win32 */
-    if (mem_usage_report) {
-        char    buf[MAX_MEM_USAGE_REPORT_FILENAME_SIZE];
-        int i;
-        int fd;
+#ifdef MR_HAVE_SYS_STAT_H
+    if (MR_mem_usage_report_prefix != NULL) {
+        struct stat statbuf;
+        char        filename_buf[MAX_MEM_USAGE_REPORT_CMD_SIZE];
+        char        cmd_buf[MAX_MEM_USAGE_REPORT_CMD_SIZE];
+        int         i;
+
+        for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
+            snprintf(filename_buf, MAX_MEM_USAGE_REPORT_CMD_SIZE,
+                "%s%02d", MR_mem_usage_report_prefix, i);
+
+            if (stat(filename_buf, &statbuf) == 0) {
+                /* Filename_buf exists; try next name. */
+                continue;
+            }
+
+            snprintf(cmd_buf, MAX_MEM_USAGE_REPORT_CMD_SIZE,
+                "cp /proc/%d/status %s", getpid(), filename_buf);
+            system(cmd_buf);
+            break;
+        }
+
+#if 0
+        /* XXX This alternative implementation breaks on Win32 and Linux. */
+        char    buf[MAX_MEM_USAGE_REPORT_CMD_SIZE];
+        int     i;
+        int     fd;
         FILE    *fp;
 
         fp = NULL;
         for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
-            sprintf(buf, ".mem_usage_report%02d", i);
+            sprintf(buf, "%s%02d", MR_mem_usage_report_prefix, i);
 
             do {
                 fd = open(buf, O_WRONLY | O_CREAT | O_EXCL, 0600);
@@ -2688,8 +2712,9 @@ mercury_runtime_terminate(void)
 
             (void) fclose(fp);
         }
-    }
 #endif /* breaks on Win32 */
+    }
+#endif /* MR_HAVE_SYS_STAT_H */
 
     MR_terminate_engine();
 

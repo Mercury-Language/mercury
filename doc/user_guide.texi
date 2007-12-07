@@ -9665,13 +9665,14 @@ symbol @samp{MR_DEBUG_THREADS} defined.
 Prints statistics about tabling when the program terminates.
 
 @sp 1
-@item --mem-usage-report
-@findex --mem-usage-report
+@item --mem-usage-report @var{prefix}
+@findex --mem-usage-report @var{prefix}
 Print a report about the memory usage of the program
 when the program terminates.
 The report is printed to a new file named @file{.mem_usage_report@var{N}}
 for the lowest value of @var{N} (up to 99)
 which doesn't overwrite an existing file.
+Note that this capability is not supported on all operating systems.
 
 @sp 1
 @item --trace-count
