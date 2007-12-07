@@ -515,6 +515,8 @@ case $HOST in
 	
 	eris)
 		# The asm_fast grades don't work on Darwin.
+		# The reg grades don't work with the default gcc compiler
+		# on this machine either.
 		# XXX Install more grades on this machine.
 		CONFIG_OPTS=""
 		DEFAULT_GRADE="hlc.gc"
@@ -522,8 +524,10 @@ case $HOST in
 		INSTALL_GRADE="hlc.gc"
 		INSTALL_LIBGRADES="hlc.gc		\
 			hlc.gc.tr			\
-			reg.gc.tr			\
-			reg.gc.tr.debug"		
+			hlc.par.gc			\
+			hlc.gc.tr.ll_debug		\
+			hlc.gc.tr.prof			\
+			hlc.gc.tr.memprof
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
