@@ -43,6 +43,12 @@ unsigned int        MR_rbmmp_snapshots_saved_at_disj = 0;
 double              MR_rbmmp_page_utilized;
 unsigned int        MR_rbmmp_words_snapshot_instant_reclaimed = 0;
 unsigned int        MR_rbmmp_pages_snapshot_instant_reclaimed = 0;
+MR_RegionProfUnit   MR_rbmmp_num_ite_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_num_disj_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_num_commit_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_words_used_by_ite_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_words_used_by_disj_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_words_used_by_commit_frames = {0, 0, 0};
 
 #endif
 
@@ -877,6 +883,41 @@ MR_region_get_number_of_pages(MR_RegionPage *from_page, MR_RegionPage *to_page)
     return number_of_pages;
 }
 
+int
+MR_region_get_ite_frame_size(MR_RegionIteFixedFrame *ite_frame)
+{
+    int     size;
+
+    size = 0;
+    size += MR_REGION_ITE_FRAME_FIXED_SIZE;
+    size += (ite_frame->MR_riff_num_prot_regions * MR_REGION_ITE_PROT_SIZE);
+    size += (ite_frame->MR_riff_num_snapshots * MR_REGION_ITE_SNAPSHOT_SIZE);
+    return size;
+}
+
+int
+MR_region_get_disj_frame_size(MR_RegionDisjFixedFrame *disj_frame)
+{
+    int     size;
+
+    size = 0;
+    size += MR_REGION_DISJ_FRAME_FIXED_SIZE;
+    size += (disj_frame->MR_rdff_num_snapshots * MR_REGION_DISJ_SNAPSHOT_SIZE);
+    return size;
+};
+
+int
+MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *commit_frame)
+{
+    int     size;
+
+    size = 0;
+    size += MR_REGION_COMMIT_FRAME_FIXED_SIZE;
+    size += (commit_frame->MR_rcff_num_saved_regions *
+        MR_REGION_COMMIT_FRAME_FIXED_SIZE);
+    return size;
+}
+
 void
 MR_region_print_profiling_unit(const char *str,
     MR_RegionProfUnit *profiling_unit)
@@ -910,6 +951,18 @@ MR_region_print_profiling_info(void)
         MR_rbmmp_words_snapshot_instant_reclaimed);
     printf("Pages instant reclaimed thanks to snapshot: %d.\n",
         MR_rbmmp_pages_snapshot_instant_reclaimed);
+    MR_region_print_profiling_unit("Ite frames used:",
+            &MR_rbmmp_num_ite_frames);
+    MR_region_print_profiling_unit("Disj frames used:",
+            &MR_rbmmp_num_disj_frames);
+    MR_region_print_profiling_unit("Commit frames used:",
+            &MR_rbmmp_num_commit_frames);
+    MR_region_print_profiling_unit("Words used by ite frames:",
+            &MR_rbmmp_words_used_by_ite_frames);
+    MR_region_print_profiling_unit("Words used by disj frames:",
+            &MR_rbmmp_words_used_by_disj_frames);
+    MR_region_print_profiling_unit("Words used by commit frames:",
+            &MR_rbmmp_words_used_by_commit_frames);
 }
 
 #else /* Not define MR_RBMM_PROFILING. */

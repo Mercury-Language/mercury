@@ -263,6 +263,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                 new_ite_frame->MR_riff_saved_sequence_number =              \
                     MR_region_sequence_number;                              \
                 MR_region_ite_sp = new_ite_frame;                           \
+                MR_region_profile_push_ite_frame;                           \
                 MR_region_debug_push_ite_frame(new_ite_frame);              \
             } while (0)
 
@@ -276,6 +277,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                 new_disj_frame->MR_rdff_saved_sequence_number =             \
                     MR_region_sequence_number;                              \
                 MR_region_disj_sp = new_disj_frame;                         \
+                MR_region_profile_push_disj_frame;                          \
                 MR_region_debug_push_disj_frame(new_disj_frame);            \
             } while (0)
 
@@ -291,6 +293,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                     MR_region_sequence_number;                              \
                 new_commit_frame->MR_rcff_saved_disj_sp = MR_region_disj_sp;\
                 MR_region_commit_sp = new_commit_frame;                     \
+                MR_region_profile_push_commit_frame;                        \
                 MR_region_debug_push_commit_frame(new_commit_frame);        \
             } while (0)
 
@@ -322,8 +325,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                     (region_slot_reg) = (MR_Word)(ite_prot + 1);            \
                     region->MR_region_ite_protected =                       \
                         (MR_RegionIteFixedFrame *) (ite_sp);                \
-                    MR_region_profile_increase_counter(                     \
-                        &MR_rbmmp_regions_protected_at_ite);                \
+                    MR_region_profile_fill_ite_protect;                     \
                     MR_region_debug_fill_ite_protect(ite_prot, region);     \
                 } else {                                                    \
                     MR_region_debug_fill_ite_protect(NULL, region);         \
@@ -361,8 +363,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                     MR_region_is_disj_protected(region))                    \
                 {                                                           \
                     MR_save_snapshot(region, snapshot);                     \
-                    MR_region_profile_increase_counter(                     \
-                        &MR_rbmmp_snapshots_saved_at_ite);                  \
+                    MR_region_profile_fill_ite_snapshot;                    \
                     (snapshot_block) = (MR_Word) (snapshot + 1);            \
                     (num_snapshots)++;                                      \
                     MR_region_debug_fill_ite_snapshot_removed(snapshot,     \
@@ -385,8 +386,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                 region = (MR_Region *) (region_ptr);                        \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 MR_save_snapshot(region, snapshot);                         \
-                MR_region_profile_increase_counter(                         \
-                    &MR_rbmmp_snapshots_saved_at_ite);                      \
+                MR_region_profile_fill_ite_snapshot;                        \
                 (snapshot_block) = (MR_Word) (snapshot + 1);                \
                 (num_snapshots)++;                                          \
                 MR_region_debug_fill_ite_snapshot_not_removed(snapshot,     \
@@ -410,8 +410,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                 region = (MR_Region *) (region_ptr);                        \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 MR_save_snapshot(region, snapshot);                         \
-                MR_region_profile_increase_counter(                         \
-                    &MR_rbmmp_snapshots_saved_at_disj);                     \
+                MR_region_profile_fill_disj_snapshot;                       \
                 (snapshot_block) = (MR_Word) (snapshot + 1);                \
                 (num_snapshots)++;                                          \
                 MR_region_debug_fill_disj_snapshot(snapshot, region);       \
@@ -440,8 +439,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                     (region_slot_reg) = (MR_Word) (commit_save + 1);        \
                     region->MR_region_commit_frame =                        \
                         (MR_RegionCommitFixedFrame *) (commit_sp);          \
-                    MR_region_profile_increase_counter(                     \
-                        &MR_rbmmp_regions_saved_at_commit);                 \
+                    MR_region_profile_fill_commit;                          \
                     MR_region_debug_fill_commit(commit_save, region);       \
                 } else {                                                    \
                     MR_region_debug_fill_commit(NULL, region);              \
@@ -633,6 +631,8 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
                 MR_commit_success_destroy_marked_saved_regions(             \
                     top_commit_frame->MR_rcff_num_saved_regions,            \
                     first_commit_save);                                     \
+                MR_region_profile_pop_disj_frame(MR_region_disj_sp,         \
+                    top_commit_frame->MR_rcff_saved_disj_sp);               \
                 MR_region_disj_sp = top_commit_frame->MR_rcff_saved_disj_sp;\
                 MR_pop_region_commit_frame(top_commit_frame);               \
                 MR_region_debug_end("use_region_commit_success");           \
@@ -679,18 +679,22 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
             do {                                                            \
                 MR_region_ite_sp =                                          \
                     top_ite_frame->MR_riff_previous_ite_frame;              \
+                MR_region_profile_pop_ite_frame(top_ite_frame);             \
             } while (0)
 
 #define     MR_pop_region_disj_frame(top_disj_frame)                        \
             do {                                                            \
                 MR_region_disj_sp =                                         \
                     top_disj_frame->MR_rdff_previous_disj_frame;            \
+                MR_region_profile_pop_disj_frame(top_disj_frame,            \
+                    top_disj_frame->MR_rdff_previous_disj_frame);           \
             } while (0)
 
 #define     MR_pop_region_commit_frame(top_commit_frame)                    \
             do {                                                            \
                 MR_region_commit_sp =                                       \
                     top_commit_frame->MR_rcff_previous_commit_frame;        \
+                MR_region_profile_pop_commit_frame(top_commit_frame);       \
             } while (0)
 
 /*---------------------------------------------------------------------------*/
@@ -960,7 +964,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
     #define     MR_region_debug_restore_from_snapshot(snapshot)             \
                 MR_region_restore_from_snapshot_msg(snapshot)
 
-#else   /* MR_RBMM_DEBUG */
+#else   /* Not define MR_RBMM_DEBUG */
     #define     MR_region_debug_create_region(region)                       \
                 ((void) 0)
 
@@ -982,10 +986,10 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
     #define     MR_region_debug_ite_frame(ite_sp);                          \
                 ((void) 0)
 
-    #define     MR_region_debug_ite_frame_protected_regions(ite_sp);        \
+    #define     MR_region_debug_ite_frame_protected_regions(ite_sp)         \
                 ((void) 0)
 
-    #define     MR_region_debug_ite_frame_snapshots(ite_sp);                \
+    #define     MR_region_debug_ite_frame_snapshots(ite_sp)                 \
                 ((void) 0)
 
     #define     MR_region_debug_push_disj_frame(disj_sp)                    \
@@ -994,7 +998,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
     #define     MR_region_debug_disj_frame(frame)                           \
                 ((void) 0)
 
-    #define     MR_region_debug_disj_frame_snapshots(disj_sp);              \
+    #define     MR_region_debug_disj_frame_snapshots(disj_sp)               \
                 ((void) 0)
 
     #define     MR_region_debug_push_commit_frame(frame)                    \
@@ -1012,7 +1016,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
     #define     MR_region_debug_end(name)                                   \
                 ((void) 0)
 
-    #define     MR_region_debug_fill_ite_protect(ite_prot, region);         \
+    #define     MR_region_debug_fill_ite_protect(ite_prot, region)          \
                 ((void) 0)
 
     #define     MR_region_debug_fill_ite_snapshot_not_removed(snapshot,     \
@@ -1025,16 +1029,16 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
     #define     MR_region_debug_fill_disj_snapshot(snapshot, region)        \
                 ((void) 0)
 
-    #define     MR_region_debug_fill_commit(commit_save, region);           \
+    #define     MR_region_debug_fill_commit(commit_save, region)            \
                 ((void) 0)
 
     #define     MR_region_debug_ite_unprotect(protected_region)             \
                 ((void) 0)
 
-    #define     MR_region_debug_restore_from_snapshot(snapshot);            \
+    #define     MR_region_debug_restore_from_snapshot(snapshot)             \
                 ((void) 0)
 
-#endif /* MR_RBMM_DEBUG */
+#endif /* End of not define MR_RBMM_DEBUG */
 
 extern  void    MR_region_create_region_msg(MR_Region *region);
 extern  void    MR_region_try_remove_region_msg(MR_Region *region);
@@ -1115,11 +1119,156 @@ extern unsigned int         MR_rbmmp_biggest_region_size;
 extern unsigned int         MR_rbmmp_regions_saved_at_commit;
 extern unsigned int         MR_rbmmp_regions_protected_at_ite;
 extern unsigned int         MR_rbmmp_snapshots_saved_at_ite;
-extern unsigned int         MR_rbmmp_regions_protected_at_disj;
 extern unsigned int         MR_rbmmp_snapshots_saved_at_disj;
 extern double               MR_rbmmp_page_utilized;
+extern unsigned int         MR_rbmmp_words_snapshot_instant_reclaimed;
+extern unsigned int         MR_rbmmp_pages_snapshot_instant_reclaimed;
+extern MR_RegionProfUnit    MR_rbmmp_num_ite_frames;
+extern MR_RegionProfUnit    MR_rbmmp_num_disj_frames;
+extern MR_RegionProfUnit    MR_rbmmp_num_commit_frames;
+extern MR_RegionProfUnit    MR_rbmmp_words_used_by_ite_frames;
+extern MR_RegionProfUnit    MR_rbmmp_words_used_by_disj_frames;
+extern MR_RegionProfUnit    MR_rbmmp_words_used_by_commit_frames;
 
-#endif /* MR_RBMM_PROFILING. */
+extern  int     MR_region_get_ite_frame_size(MR_RegionIteFixedFrame *);
+extern  int     MR_region_get_disj_frame_size(MR_RegionDisjFixedFrame *);
+extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
+
+#define     MR_region_profile_push_ite_frame                                \
+            do {                                                            \
+                MR_region_update_profiling_unit(&MR_rbmmp_num_ite_frames,   \
+                    1);                                                     \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_ite_frames,                     \
+                    MR_REGION_ITE_FRAME_FIXED_SIZE);                        \
+            } while (0)
+
+#define     MR_region_profile_push_disj_frame                               \
+            do {                                                            \
+                MR_region_update_profiling_unit(&MR_rbmmp_num_disj_frames,  \
+                    1);                                                     \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_disj_frames,                    \
+                    MR_REGION_DISJ_FRAME_FIXED_SIZE);                       \
+            } while (0)
+
+
+#define     MR_region_profile_push_commit_frame                             \
+            do {                                                            \
+                MR_region_update_profiling_unit(&MR_rbmmp_num_commit_frames,\
+                    1);                                                     \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_commit_frames,                  \
+                    MR_REGION_COMMIT_FRAME_FIXED_SIZE);                     \
+            } while (0)
+
+#define     MR_region_profile_pop_ite_frame(top_ite_frame)                  \
+            do {                                                            \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_ite_frames,                     \
+                    -MR_region_get_ite_frame_size(top_ite_frame));          \
+                MR_region_update_profiling_unit(&MR_rbmmp_num_ite_frames,   \
+                    -1);                                                    \
+            } while (0) 
+
+#define     MR_region_profile_pop_disj_frame(top_disj_frame,                \
+                new_top_disj_frame)                                         \
+            do {                                                            \
+                int                         num_popped_frames;              \
+                MR_RegionDisjFixedFrame     *disj_frame;                    \
+                                                                            \
+                num_popped_frames = 0;                                      \
+                disj_frame = top_disj_frame;                                \
+                while (disj_frame != new_top_disj_frame) {                  \
+                    num_popped_frames += 1;                                 \
+                    MR_region_update_profiling_unit(                        \
+                        &MR_rbmmp_words_used_by_disj_frames,                \
+                        -MR_region_get_disj_frame_size(disj_frame));        \
+                    disj_frame = disj_frame->MR_rdff_previous_disj_frame;   \
+                }                                                           \
+                MR_region_update_profiling_unit(&MR_rbmmp_num_disj_frames,  \
+                    -num_popped_frames);                                    \
+            } while (0)
+
+#define     MR_region_profile_pop_commit_frame(top_commit_frame)            \
+            do {                                                            \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_commit_frames,                  \
+                    -MR_region_get_commit_frame_size(top_commit_frame));    \
+                MR_region_update_profiling_unit(&MR_rbmmp_num_commit_frames,\
+                    -1);                                                    \
+            } while (0)
+
+#define     MR_region_profile_fill_ite_protect                              \
+            do {                                                            \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_ite_frames,                     \
+                    MR_REGION_ITE_PROT_SIZE);                               \
+                MR_region_profile_increase_counter(                         \
+                    &MR_rbmmp_regions_protected_at_ite);                    \
+            } while (0)
+            
+#define     MR_region_profile_fill_commit                                   \
+            do {                                                            \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_commit_frames,                  \
+                    MR_REGION_COMMIT_SAVE_SIZE);                            \
+                MR_region_profile_increase_counter(                         \
+                    &MR_rbmmp_regions_saved_at_commit);                     \
+            } while (0)
+            
+#define     MR_region_profile_fill_ite_snapshot                             \
+            do {                                                            \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_ite_frames,                     \
+                    MR_REGION_ITE_SNAPSHOT_SIZE);                           \
+                MR_region_profile_increase_counter(                         \
+                    &MR_rbmmp_snapshots_saved_at_ite);                      \
+            } while (0)
+
+#define     MR_region_profile_fill_disj_snapshot                            \
+            do {                                                            \
+                MR_region_update_profiling_unit(                            \
+                    &MR_rbmmp_words_used_by_disj_frames,                    \
+                    MR_REGION_DISJ_SNAPSHOT_SIZE);                          \
+                MR_region_profile_increase_counter(                         \
+                    &MR_rbmmp_snapshots_saved_at_disj);                     \
+            } while (0)
+
+#else   /* Not define MR_RBMM_PROFILING */
+
+#define     MR_region_profile_push_ite_frame                                \
+            ((void) 0)
+
+#define     MR_region_profile_push_disj_frame                               \
+            ((void) 0)
+
+#define     MR_region_profile_push_commit_frame                             \
+            ((void) 0)
+
+#define     MR_region_profile_pop_ite_frame(top_ite_frame);                 \
+            ((void) 0)
+
+#define     MR_region_profile_pop_disj_frame(top_disj_frame,                \
+                new_top_disj_frame)                                         \
+            ((void) 0)
+
+#define     MR_region_profile_pop_commit_frame(top_commit_frame);           \
+            ((void) 0)
+ 
+#define     MR_region_profile_fill_ite_protect                              \
+            ((void) 0)
+
+#define     MR_region_profile_fill_commit                                   \
+            ((void) 0)
+
+#define     MR_region_profile_fill_ite_snapshot                             \
+            ((void) 0)
+
+#define     MR_region_profile_fill_disj_snapshot                            \
+            ((void) 0)
+ 
+#endif  /* End of not define MR_RBMM_PROFILING. */
 
 extern  void    MR_region_update_profiling_unit(
                     MR_RegionProfUnit *profiling_unit, int quantity);
@@ -1128,6 +1277,7 @@ extern  void    MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *);
 extern  void    MR_region_profile_increase_counter(unsigned int *);
 extern  int     MR_region_get_number_of_pages(MR_RegionPage *,
                     MR_RegionPage *);
+
 extern  void    MR_region_print_profiling_info(void);
 /*---------------------------------------------------------------------------*/
 
