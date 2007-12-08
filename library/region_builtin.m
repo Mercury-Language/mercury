@@ -47,7 +47,7 @@
 
 :- implementation.
 
-:- pragma foreign_decl("C", "#include ""mercury_region.h""").
+:- pragma foreign_decl("C", "#include \"mercury_region.h\"").
 
 :- pragma foreign_type("C", region, "MR_Region *",
     [can_pass_as_mercury_type]).
@@ -59,7 +59,7 @@
 #ifdef MR_USE_REGIONS
     Region = MR_region_create_region();
 #else
-    MR_fatal_error(""create_region: non-rbmm grade"");
+    MR_fatal_error(\"create_region: non-rbmm grade\");
 #endif
 ").
 
@@ -70,7 +70,7 @@
 #ifdef MR_USE_REGIONS
     MR_region_remove_region(Region);
 #else
-    MR_fatal_error(""remove_region: non-rbmm grade"");
+    MR_fatal_error(\"remove_region: non-rbmm grade\");
 #endif
 ").
 
@@ -81,7 +81,8 @@
 #ifdef MR_USE_REGIONS
     MR_region_print_profiling_info();
 #else
-    printf(""There is no rbmm profiling info to print in a non-rbmm grade.\n"");
+    printf(
+        \"There is no rbmm profiling info to print in a non-rbmm grade.\\n\");
 #endif
 ").
 
