@@ -527,7 +527,7 @@ case $HOST in
 			hlc.par.gc			\
 			hlc.gc.tr.ll_debug		\
 			hlc.gc.tr.prof			\
-			hlc.gc.tr.memprof
+			hlc.gc.tr.memprof"
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
