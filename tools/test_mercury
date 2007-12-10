@@ -314,6 +314,7 @@ PATH="$INSTALL_DIR/bin:$PATH"
 PARALLEL=
 case $HOST in
 	saturn|pluto)	PARALLEL="-j2" ;;
+	eris)		PARALLEL="-j2" ;;
 	*)		PARALLEL= ;;
 esac
 
@@ -523,10 +524,7 @@ case $HOST in
 		INSTALL_GRADE="hlc.gc"
 		INSTALL_LIBGRADES="hlc.gc		\
 			hlc.gc.tr			\
-			hlc.par.gc			\
-			hlc.gc.tr.ll_debug		\
-			hlc.gc.tr.prof			\
-			hlc.gc.tr.memprof"
+			hlc.gc.tr.ll_debug"
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
