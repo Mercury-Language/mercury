@@ -9314,11 +9314,15 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pragma foreign_decl("C", "
 
-#ifdef MR_HAVE_ENVIRON
+#if defined(MR_HAVE_ENVIRON) && !defined(MR_MAC_OSX)
     #include <unistd.h>
 
     /* The man page says that this should be declared by the user program. */
     extern char **environ;
+#endif
+
+#if defined(MR_MAC_OSX)
+    #include <crt_externs.h>
 #endif
 
 #ifdef MR_HAVE_SPAWN_H
@@ -9353,7 +9357,17 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     /* Protect `environ' from concurrent modifications. */
     MR_OBTAIN_GLOBAL_LOCK(MR_PROC_LABEL);
 
-    err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv, environ);
+    /*
+    ** On Mac OS X shared libraries do not have direct access to environ.
+    ** The man page for environ(7) says that we should look it up at
+    ** runtime using _NSGetEnviron().
+    */
+    #if defined(MR_MAC_OSX)
+        err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv,
+            *_NSGetEnviron());
+    #else
+        err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv, environ);
+    #endif
 
     MR_RELEASE_GLOBAL_LOCK(MR_PROC_LABEL);
 
