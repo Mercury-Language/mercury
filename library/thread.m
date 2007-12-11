@@ -58,7 +58,7 @@
 
 :- pragma foreign_decl("C", "
 #ifndef MR_HIGHLEVEL_CODE
-  #if !defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)
+  #if (!defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)) || !defined(MR_USE_GCC_NONLOCAL_GOTOS)
     /*
     ** In calling thread.yield, semaphore.wait or semaphore.signal, the
     ** calling context may need to suspend and yield to another context.
