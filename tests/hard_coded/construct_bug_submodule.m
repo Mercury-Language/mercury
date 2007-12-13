@@ -1,4 +1,7 @@
+% vim: ft=mercury ts=4 sw=4 et
+%
 % This is part of the construct_bug test case.
+
 :- module construct_bug_submodule.
 
 :- interface.
@@ -39,7 +42,6 @@
 :- func to_string(stat::in) = (string::out) is det.
 :- func subs_to_string(stat::in) = (string::out) is det.
 
-
 %% Other useful predicates for evaluating something
 
 :- func minavgmax_string(list(int)::in) = (string::out) is det.
@@ -52,13 +54,13 @@
 
 :- type stat == bag(list(string)).
 
-init = bag__init.
-blank = construct_bug_submodule__init.
+init = bag.init.
+blank = construct_bug_submodule.init.
 
 count(Elem, InStat, OutStat) :-
-  bag__insert(InStat, Elem, OutStat).
+  bag.insert(InStat, Elem, OutStat).
 count(Count, Elem, InStat, OutStat) :-
-  bag__insert_list(InStat, list__duplicate(Count, Elem), OutStat).
+  bag.insert_list(InStat, list.duplicate(Count, Elem), OutStat).
 
 count_more(Elem, Count, InStat, OutStat) :-
   count(Count, Elem, InStat, OutStat).
@@ -69,8 +71,8 @@ count(Elem, InStat) = OutStat :-
 count(Count, Elem, InStat) = OutStat :-
   count(Count, Elem, InStat, OutStat).
 
-union(A, B) = bag__union(A, B).
-to_assoc_list(Stat) = bag__to_assoc_list(Stat).
+union(A, B) = bag.union(A, B).
+to_assoc_list(Stat) = bag.to_assoc_list(Stat).
 
 to_string(Stat) =
   "% Base Counts:\n"
@@ -81,51 +83,50 @@ subs_to_string(Stat) =
   plain_to_string(calc_subtotals(Stat)).
 
 plain_to_string(Stat) = Out :-
-  Counts = bag__to_assoc_list(Stat),
-  list__sort(comparator(Stat,0), Counts, CountsS),
-  list__map(
-    (pred((Name-Count)::in, Line::out) is det :-
-      Line = string__int_to_string(Count)++"\t"++join_list("-", Name)
+  Counts = bag.to_assoc_list(Stat),
+  list.sort(comparator(Stat,0), Counts, CountsS),
+  list.map(
+    (pred((Name - Count)::in, Line::out) is det :-
+      Line = string.int_to_string(Count) ++ "\t" ++ join_list("-", Name)
     ), CountsS, Lines),
-  Out = join_list("\n", Lines)++"\n"
-  .
+  Out = join_list("\n", Lines) ++ "\n".
 
-:- pred comparator(stat, int, pair(statkey, int), pair(statkey, int), comparison_result).
-:- mode comparator(in, in, in, in, out) is det.
+:- pred comparator(stat::in, int::in,
+    pair(statkey, int)::in, pair(statkey, int)::in, comparison_result::out)
+    is det.
 
 comparator(Stats, Level, (ADescr-ANum), (BDescr-BNum), Out) :-
-  if take(Level, ADescr, ALevel)
-  then
-    (
-    if take(Level, BDescr, BLevel)
-    then
-      (
-      if count_value(Stats, ALevel) < count_value(Stats, BLevel)
-      then Out = (>)
-      else
-        if count_value(Stats, ALevel) > count_value(Stats, BLevel)
-        then Out = (<)
-        else
-          % same value
-          if ALevel = BLevel
-          then comparator(Stats, Level+1, (ADescr-ANum), (BDescr-BNum), Out)
-          else
-            if compare((<), ALevel, BLevel)
-            then Out = (>)
-            else Out = (<)
-      )
-    else
-      Out = (>)
-    )
-  else
-    if take(Level, BDescr, _BLevel)
-    then Out = (<)
-    else Out = (=).
+    ( take(Level, ADescr, ALevel) ->
+        ( take(Level, BDescr, BLevel) ->
+            ( count_value(Stats, ALevel) < count_value(Stats, BLevel) ->
+                Out = (>)
+            ; count_value(Stats, ALevel) > count_value(Stats, BLevel) ->
+                Out = (<)
+            ;
+                % same value
+                ( ALevel = BLevel ->
+                    comparator(Stats, Level+1, (ADescr-ANum), (BDescr-BNum),
+                        Out)
+                ; compare((<), ALevel, BLevel) ->
+                    Out = (>)
+                ;
+                    Out = (<)
+                )
+            )
+        ;
+            Out = (>)
+        )
+    ; take(Level, BDescr, _BLevel) ->
+        Out = (<)
+    ;
+        Out = (=)
+    ).
 
 :- func calc_subtotals(stat::in) = (stat::out) is det.
+
 calc_subtotals(Stat) = OutStat :-
-  Counts = bag__to_assoc_list(Stat),
-  list__foldl(
+  Counts = bag.to_assoc_list(Stat),
+  list.foldl(
     (pred((Name - Count)::in, InBag::in, OutBag::out) is det :-
       aggregate(substarts(Name), count(Count), InBag, OutBag)
     ), Counts, Stat, OutStat).
@@ -133,9 +134,9 @@ calc_subtotals(Stat) = OutStat :-
 /*
  ** buggy pprint, do not use.
 to_string(Stat) = Str :-
-  Str = pprint__to_string(150, construct_bug_submodule__to_doc(Stat)).
+  Str = pprint.to_string(150, construct_bug_submodule.to_doc(Stat)).
 
-to_doc(Stat) = 
+to_doc(Stat) =
   text("% Base Counts:\n")
   `<>` plain_to_doc(Stat)
   `</>`
@@ -146,19 +147,19 @@ to_doc(Stat) =
 :- func subtotals_to_doc(stat::in) = (doc::out) is det.
 
 plain_to_doc(Stat) = Out :-
-  Counts = bag__to_assoc_list(Stat),
-  Out = 
+  Counts = bag.to_assoc_list(Stat),
+  Out =
     % text("% Statistiky") `</>`
     separated(
       (func((Name-Count)::in) = (Doc::out) is det :-
         Doc = to_doc(Count) `<>` text("\t")
           `<>` text(join("-", Name))
-      ), line, Counts) 
+      ), line, Counts)
     `<>` line.
 
 subtotals_to_doc(Stat) = Out :-
-  Counts = bag__to_assoc_list(Stat),
-  list__foldl(
+  Counts = bag.to_assoc_list(Stat),
+  list.foldl(
     (pred((Name - Count)::in, InBag::in, OutBag::out) is det :-
       aggregate(substarts(Name), count(Count), InBag, OutBag)
     ), Counts, Stat, Subtotals),
@@ -168,30 +169,34 @@ subtotals_to_doc(Stat) = Out :-
 
 substarts([], []).
 substarts([_LastElem], []).
-substarts([Elem1, Elem2|Rest], Out) :-
-  Out = []
-  ;
-  substarts([Elem2|Rest], TOut),
-  Out = [Elem1|TOut].
-
+substarts([Elem1, Elem2 | Rest], Out) :-
+    (
+        Out = []
+    ;
+        substarts([Elem2 | Rest], TOut),
+        Out = [Elem1 | TOut]
+    ).
 
 :- import_module float.
 
-minavgmax_string(List) = int_to_string(length(List))++":"++Min++"/"++Avg++"/"++Max :-
-  List = [],
-    Min = "-", Avg = "-", Max = "-"
-  ;
-  List = [H|Tail],
-    list__foldl3(
-      (pred(N::in, MinSoFar::in, NewMin::out, MaxSoFar::in, NewMax::out, SumSoFar::in, NewSum::out) is det:-
-        NewSum = SumSoFar + N,
-        NewMin = (if N < MinSoFar then N else MinSoFar),
-        NewMax = (if N > MaxSoFar then N else MaxSoFar)
-      ), Tail, H, MinN, H, MaxN, H, SumN),
-    Min = int_to_string(MinN),
-    Max = int_to_string(MaxN),
-    Prec = float(10),
-    Avg = float_to_string(float(round_to_int(
-                      (float(SumN)/float(length(List)))*Prec
-                      ))/Prec)
-  .
+minavgmax_string(List) = Str :-
+    (
+        List = [],
+        Min = "-", Avg = "-", Max = "-"
+    ;
+        List = [H | Tail],
+        list.foldl3(
+            (pred(N::in, MinSoFar::in, NewMin::out, MaxSoFar::in, NewMax::out,
+                    SumSoFar::in, NewSum::out) is det:-
+                NewSum = SumSoFar + N,
+                NewMin = (if N < MinSoFar then N else MinSoFar),
+                NewMax = (if N > MaxSoFar then N else MaxSoFar)
+            ), Tail, H, MinN, H, MaxN, H, SumN),
+        Min = int_to_string(MinN),
+        Max = int_to_string(MaxN),
+        Prec = float(10),
+        Avg = float_to_string(float(round_to_int(
+            (float(SumN) / float(length(List))) * Prec)) / Prec)
+    ),
+    Str = int_to_string(length(List)) ++ ":"
+        ++ Min ++ "/" ++ Avg ++ "/" ++ Max.

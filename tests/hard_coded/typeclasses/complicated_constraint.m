@@ -1,9 +1,13 @@
+% vim: ft=mercury ts=4 sw=4 et
+
 :- module complicated_constraint.
+
 :- interface.
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- typeclass printable(A) where [
-	pred p(A::in, io__state::di, io__state::uo) is det
+	pred p(A::in, io.state::di, io.state::uo) is det
 ].
 :- typeclass foo(A) <= printable(A) where [
 	pred b(A::in) is semidet
@@ -14,13 +18,13 @@
 :- instance printable(list(T)) <= foo(T).
 :- instance foo(list(T)) <= foo(T).
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 
 :- instance printable(int) where [
-	pred(p/3) is io__write_int
+	pred(p/3) is io.write_int
 ].
 
 :- instance foo(int) where [
@@ -35,29 +39,32 @@
 
 :- pred p_list(list(T), state, state) <= printable(T).
 :- mode p_list(in, di, uo) is det.
-p_list(Xs) --> list__foldl(p, Xs).
+
+p_list(Xs) -->
+	list.foldl(p, Xs).
 
 main -->
-	p(42), 
-	io__write_string("\n"),
-	p_list([1,2,3]), 
-	io__write_string("\n"),
-	p([1,2,3]), 
-	io__write_string("\n"),
+	p(42),
+	io.write_string("\n"),
+	p_list([1,2,3]),
+	io.write_string("\n"),
+	p([1,2,3]),
+	io.write_string("\n"),
 	blah(101),
-	io__write_string("\n").
-
+	io.write_string("\n").
 
 :- pred list_b(list(T)::in) is semidet <= foo(T).
+
 list_b(List) :-
-	list__map((pred(A::in, A::out) is semidet :- b(A)), List, _).
+	list.map((pred(A::in, A::out) is semidet :- b(A)), List, _).
 
 :- pred foo_b(int::in) is semidet.
+
 foo_b(1).
 
 % This tests complicated constraints of the form `foo(bar(T))'.
 
-:- pred blah(T, io__state, io__state) <= (foo(list(T)), printable(list(T))).
+:- pred blah(T, io, io) <= (foo(list(T)), printable(list(T))).
 :- mode blah(in, di, uo) is det.
 
 blah(X) -->
@@ -69,5 +76,4 @@ blah(X) -->
 	;
 		io__write_string("false\n")
 	),
-
 	p([X]).
