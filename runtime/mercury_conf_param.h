@@ -548,6 +548,9 @@
 #endif
 
 /*
+** NOTE: MR_PIC_REG is currently unused and does not have any affect. 
+** The following describes what it was previously used for:
+**
 ** Should we keep the GOT register (e.g. ebx on i386) free for PIC code?
 ** We need to do this if we are generating position independent code
 ** (MR_PIC), or if we are linking with position independent Mercury code
