@@ -353,7 +353,8 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
     (
         OpenResult = ok(FileData),
         MaybeFileData = yes(FileData),
-        ( ReturnTimestamp = yes ->
+        (
+            ReturnTimestamp = yes,
             io.input_stream_name(InputStreamName, !IO),
             io.file_modification_time(InputStreamName, TimestampResult, !IO),
             (
@@ -364,6 +365,7 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
                 MaybeModuleTimestamp = yes(error(IOError))
             )
         ;
+            ReturnTimestamp = no,
             MaybeModuleTimestamp = no
         ),
         (
@@ -413,26 +415,35 @@ search_for_file(Dirs, FileName, Result, !IO) :-
         Result = error(Message)
     ).
 
-search_for_file_returning_dir(Dirs, FileName, R, !IO) :-
-    search_for_file_returning_dir(Dirs, Dirs, FileName, R, !IO).
+search_for_file_returning_dir(Dirs, FileName, Result, !IO) :-
+    search_for_file_returning_dir_2(Dirs, FileName, MaybeDir, !IO),
+    (
+        MaybeDir = yes(Dir),
+        Result = ok(Dir)
+    ;
+        MaybeDir = no,
+        Msg = "cannot find `" ++ FileName ++ "' in directories " ++
+            string.join_list(", ", Dirs),
+        Result = error(Msg)
+    ).
 
-:- pred search_for_file_returning_dir(list(dir_name)::in, list(dir_name)::in,
-    file_name::in, maybe_error(dir_name)::out, io::di, io::uo) is det.
+:- pred search_for_file_returning_dir_2(list(dir_name)::in,
+    file_name::in, maybe(dir_name)::out, io::di, io::uo) is det.
 
-search_for_file_returning_dir([], AllDirs, FileName, error(Msg), !IO) :-
-    Msg = "cannot find `" ++ FileName ++ "' in directories " ++
-        string.join_list(", ", AllDirs).
-search_for_file_returning_dir([Dir | Dirs], AllDirs, FileName, R, !IO) :-
+search_for_file_returning_dir_2([], _FileName, no, !IO).
+search_for_file_returning_dir_2([Dir | Dirs], FileName, MaybeDir, !IO) :-
     ( dir.this_directory(Dir) ->
         ThisFileName = FileName
     ;
         ThisFileName = dir.make_path_name(Dir, FileName)
     ),
-    io.see(ThisFileName, R0, !IO),
-    ( R0 = ok ->
-        R = ok(Dir)
+    io.see(ThisFileName, SeeResult0, !IO),
+    (
+        SeeResult0 = ok,
+        MaybeDir = yes(Dir)
     ;
-        search_for_file_returning_dir(Dirs, AllDirs, FileName, R, !IO)
+        SeeResult0 = error(_),
+        search_for_file_returning_dir_2(Dirs, FileName, MaybeDir, !IO)
     ).
 
 search_for_module_source(Dirs, InterfaceDirs,
