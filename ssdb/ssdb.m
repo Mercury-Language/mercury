@@ -39,7 +39,6 @@
     ;       ssdb_fail_nondet
     .
 
-    %
     % Type to determine if it is necessary to do a retry.
     %
 :- type ssdb_retry
@@ -47,13 +46,10 @@
     ;       do_not_retry
     .
 
-
-    %
     % The list of all variables in use in a procedure.
     %
 :- type list_var_value == list(var_value).
 
-    %
     % Record the instantiatedness and value of each variable used in a
     % procedure.
     %
@@ -62,54 +58,45 @@
     ;       some [T] bound_head_var(var_name, pos, T)
     ;       some [T] bound_other_var(var_name, T).
 
-    %
     % Variable name.
     %
 :- type var_name == string.
     
-    %
     % The argument position of the head variable.
     % Positions are numbered from 0.
     %
 :- type pos == int.
 
 
-    %
     % This routine is called at each call event that occurs.
     %
 :- impure pred handle_event_call(ssdb_proc_id::in, list_var_value::in) is det.
 
-    %
     % This routine is called at each call event in a nondet procedure.
     %
 :- impure pred handle_event_call_nondet(ssdb_proc_id::in, 
     list_var_value::in) is det.
 
-    %
     % This routine is called at each exit event that occurs.
     %
 :- impure pred handle_event_exit(ssdb_proc_id::in, list_var_value::in, 
     ssdb_retry::out) is det.
 
-    %
     % This routine is called at each exit event in a nondet procedure.
     %
 :- impure pred handle_event_exit_nondet(ssdb_proc_id::in, 
     list_var_value::in) is det.
 
-    %
     % This routine is called at each fail event that occurs.
     %
 :- impure pred handle_event_fail(ssdb_proc_id::in, list_var_value::in, 
     ssdb_retry::out) is det.
 
-    %
     % This routine is called at each fail event in a nondet procedure.
     %
 :- impure pred handle_event_fail_nondet(ssdb_proc_id::in, list_var_value::in, 
     ssdb_retry::out) is det.
 
-    %
     % This routine is called at each redo event in a nondet procedure.
     %
 :- impure pred handle_event_redo_nondet(ssdb_proc_id::in, 
@@ -128,7 +115,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module pretty_printer.
+:- import_module pprint.
 :- import_module require.
 :- import_module set.
 :- import_module stack.
@@ -142,7 +129,6 @@
 
 %----------------------------------------------------------------------------%
 
-    %
     % These variables are all mutable, they are used to record the diffrents 
     % state of the debugger.
     %
@@ -155,7 +141,6 @@
 
 :- type cur_ssdb_shadow_stack_nondet == stack(stack_elem).
 
-    %
     % Note: debugger_disabled must be first because io.init_state/2 is called
     % before the `do_nothing' mutable is initialised.  At that time `do_nothing'
     % will have a value of zero.  By putting debugger_disabled first, it will
@@ -168,7 +153,6 @@
     ;       debugger_on
     ;       debugger_off.
 
-    %
     % Frame of the current call procedure.
     %
 :- type stack_elem
@@ -189,10 +173,8 @@
                 se_list_var_value   :: list(var_value)
             ).
 
-
 %----------------------------------------------------------------------------%
 
-    %
     % Type used by the prompt predicate to configure the next step in the
     % handle_event predicate.
     %
@@ -213,7 +195,6 @@
     ;       wn_goto(ground).
 
 
-    %
     % Type used by the handle_event predicate to determine the next stop of
     % the prompt predicate.
     %
@@ -238,7 +219,6 @@
             % Stop at the Event Number given in argument.
 
 
-    %
     % A breakpoint is represented by his module and procedure name.
     %
 :- type breakpoint
@@ -253,11 +233,8 @@
     --->    bp_state_enabled
     ;       bp_state_disabled.
 
-
 %----------------------------------------------------------------------------%
 
-
-    %
     % Initialization of the mutable variables.
     %
 
@@ -286,6 +263,7 @@
 :- mutable(debugger_state, debugger_state, init_debugger_state, ground, 
     [untrailed, attach_to_io_state]).
 
+
 :- func init_debugger_state = debugger_state is det.
 
 init_debugger_state = DebuggerState :-
@@ -304,10 +282,8 @@ init_debugger_state = DebuggerState :-
         DebuggerState = debugger_disabled
     ).
 
-
 %----------------------------------------------------------------------------%
 
-    %
     % Call at call port. It writes the event out and call the prompt.
     %
 handle_event_call(ProcId, ListVarValue) :-
@@ -353,7 +329,6 @@ handle_event_call(ProcId, ListVarValue) :-
     ).
 
 
-    %
     % Call at call port of nondet procedure. It writes the event out and call 
     % the prompt.
     %
@@ -405,7 +380,6 @@ handle_event_call_nondet(ProcId, ListVarValue) :-
     ).
 
 
-    %
     % Call at exit port. Write the event out and call the prompt.
     %
 handle_event_exit(ProcId, ListVarValue, Retry) :-
@@ -415,7 +389,7 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
         
         Event = ssdb_exit,
         impure get_ssdb_event_number_inc(EventNum),
-        impure get_ssdb_depth_dec(PrintDepth),
+        semipure get_cur_ssdb_depth(PrintDepth),
         impure set_list_var_value_in_shadow_stack(ListVarValue),
 
         % Just get the top stack frame. It will be popped at the end of
@@ -433,14 +407,18 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
             (
                 impure invent_io(!:IO),
                 
-                print_event_info(Event, EventNum, ProcId, PrintDepth + 1, CSN, 
-                    !IO),
-             
                 (
                     AutoRetry = do_retry,
+                    EventNumF = StackFrame ^ se_event_number,
+                    CSNF = StackFrame ^ se_csn,
+                    impure set_cur_ssdb_event_number(EventNumF-1),
+                    impure set_cur_ssdb_csn(CSNF-1),
                     WhatNext = wn_retry(CSN)
                 ;
                     AutoRetry = do_not_retry,
+                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
+                        !IO),
+             
                     impure prompt(Event, ShadowStack0, 0, WhatNext, !IO)
                 ),
 
@@ -452,7 +430,8 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
             Stop = no,
             Retry = do_not_retry
         ),
-        
+
+        impure get_ssdb_depth_dec(_Depth),
         stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
         impure set_cur_ssdb_shadow_stack(ShadowStack)
     ;
@@ -463,7 +442,6 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
     ).
 
 
-    %
     % Call at exit port of nondet procedure only.
     %
 handle_event_exit_nondet(ProcId, ListVarValue) :-
@@ -473,7 +451,7 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
         
         Event = ssdb_exit_nondet,
         impure get_ssdb_event_number_inc(EventNum),
-        impure get_ssdb_depth_dec(PrintDepth),
+        semipure get_cur_ssdb_depth(PrintDepth),
         impure set_list_var_value_in_shadow_stack(ListVarValue),
 
         % Just get the top stack frame. It will be popped at the end of
@@ -491,14 +469,14 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
             (
                 impure invent_io(!:IO),
                 
-                print_event_info(Event, EventNum, ProcId, PrintDepth + 1, CSN, 
-                    !IO),
-             
                 (
                     AutoRetry = do_retry,
                     WhatNext = wn_retry(CSN)
                 ;
                     AutoRetry = do_not_retry,
+                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
+                        !IO),
+             
                     impure prompt(Event, ShadowStack0, 0, WhatNext, !IO)
                 ),
 
@@ -510,6 +488,7 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
             Stop = no
         ),
         
+        impure get_ssdb_depth_dec(_Depth),
         stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
         impure set_cur_ssdb_shadow_stack(ShadowStack)
     ;
@@ -519,7 +498,6 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
     ).
 
 
-    %
     % Call at fail port. Write the event out and call the prompt.
     %
 handle_event_fail(ProcId, _ListVarValue, Retry) :-
@@ -529,7 +507,7 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
 
         Event = ssdb_fail,
         impure get_ssdb_event_number_inc(EventNum),
-        impure get_ssdb_depth_dec(PrintDepth),
+        semipure get_cur_ssdb_depth(PrintDepth),
         semipure get_cur_ssdb_shadow_stack(ShadowStack0),
         stack.top_det(ShadowStack0, StackFrame),
         CSN = StackFrame ^ se_csn,
@@ -542,14 +520,18 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
             (
                 impure invent_io(!:IO),
                 
-                print_event_info(Event, EventNum, ProcId, PrintDepth + 1, CSN, 
-                    !IO),
-             
                 (
                     AutoRetry = do_retry,
+                    EventNumF = StackFrame ^ se_event_number,
+                    CSNF = StackFrame ^ se_csn,
+                    impure set_cur_ssdb_event_number(EventNumF-1),
+                    impure set_cur_ssdb_csn(CSNF-1),
                     WhatNext = wn_retry(CSN)
                 ;
                     AutoRetry = do_not_retry,
+                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
+                        !IO),
+             
                     impure prompt(Event, ShadowStack0, 0, WhatNext, !IO)
                 ),
 
@@ -562,6 +544,7 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
             Retry = do_not_retry
         ),
         
+        impure get_ssdb_depth_dec(_Depth),
         stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
         impure set_cur_ssdb_shadow_stack(ShadowStack)
     ;
@@ -572,7 +555,6 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
     ).
 
 
-    %
     % Call at fail port of nondet procedure only.
     %
 handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
@@ -586,7 +568,7 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
         semipure get_cur_ssdb_shadow_stack(ShadowStack0),
         stack.top_det(ShadowStack0, StackFrame),
         CSN = StackFrame ^ se_csn,
-        impure get_ssdb_depth_dec(PrintDepth),
+        semipure get_cur_ssdb_depth(PrintDepth),
         semipure get_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet0),
         
         semipure should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop, 
@@ -598,17 +580,14 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
             (
                 impure invent_io(!:IO),
                 
-                print_event_info(Event, EventNum, ProcId, PrintDepth + 1, CSN, 
-                    !IO),
-             
                 (
                     AutoRetry = do_retry,
                     (
-                        semipure get_correct_frame_nondet(ProcId, PrintDepth+1, 
-                            StackFrame)
+                        semipure get_correct_frame_nondet(ProcId, PrintDepth, 
+                            StackFrameFound)
                     ->
-                        EventNumF = StackFrame ^ se_event_number,
-                        CSNF = StackFrame ^ se_csn,
+                        EventNumF = StackFrameFound ^ se_event_number,
+                        CSNF = StackFrameFound ^ se_csn,
                         impure set_cur_ssdb_event_number(EventNumF-1),
                         impure set_cur_ssdb_csn(CSNF-1)
                     ;
@@ -618,6 +597,8 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
                     WhatNext = wn_retry(CSN)
                 ;
                     AutoRetry = do_not_retry,
+                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, 
+                        !IO),
                     impure prompt(Event, ShadowStack0, 0, WhatNext, !IO)
                 ),
 
@@ -630,6 +611,7 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
             Retry = do_not_retry
         ),
 
+        impure get_ssdb_depth_dec(_Depth),
         stack.pop_det(ShadowStack0, _StackFrame, ShadowStack),
         stack.pop_det(ShadowStackNonDet0, _StackFrameNonDet, ShadowStackNonDet),
         impure set_cur_ssdb_shadow_stack(ShadowStack),
@@ -652,7 +634,6 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
     ).
 
 
-    %
     % Call at redo port in nondet procedure. Write the event out and call 
     % the prompt.
     %
@@ -704,11 +685,8 @@ handle_event_redo_nondet(ProcId, _ListVarValue) :-
         )
     ).
 
-
 %----------------------------------------------------------------------------%
 
-
-    %
     % IsSame is 'yes' iff the two call sequence numbers are equal, 
     % 'no' otherwise.
     %
@@ -718,7 +696,6 @@ is_same_int(IntA, IntB, IsSame) :-
     IsSame = (IntA = IntB -> yes ; no).
 
 
-    %
     % Increment the CSN and return the new value.
     %
 :- impure pred get_ssdb_csn_inc(int::out) is det.
@@ -729,7 +706,6 @@ get_ssdb_csn_inc(CSN) :-
     impure set_cur_ssdb_csn(CSN).
 
 
-    %
     % Increment the Event Number and return the new value.
     %
 :- impure pred get_ssdb_event_number_inc(int::out) is det.
@@ -739,7 +715,6 @@ get_ssdb_event_number_inc(EventNum) :-
     EventNum = EventNum0 + 1,
     impure set_cur_ssdb_event_number(EventNum).
 
-    %
     % Increment the depth and return the new value.
     %
 :- impure pred get_ssdb_depth_inc(int::out) is det.
@@ -750,7 +725,7 @@ get_ssdb_depth_inc(Depth) :-
     Depth = Depth0 + 1,
     impure set_cur_ssdb_depth(Depth).
 
-    %
+    
     % Decrement the depth and return the new value.
     %
 :- impure pred get_ssdb_depth_dec(int::out) is det.
@@ -762,7 +737,6 @@ get_ssdb_depth_dec(Depth) :-
     impure set_cur_ssdb_depth(Depth).
 
     
-    %
     % Setter of the se_list_var_value in the first stack_elem.
     %
 :- impure pred set_list_var_value_in_shadow_stack(list(var_value)::in) is det.
@@ -775,7 +749,6 @@ set_list_var_value_in_shadow_stack(ListVarValue) :-
     impure set_cur_ssdb_shadow_stack(ShadowStack).
 
 
-    %
     % should_stop_at_the_event(Event, CSN, EventNum, ProcId, Stop, AutoRetry).
     %
     % Set Stop, if Stop equals yes, the prompt will be call.
@@ -850,7 +823,6 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
     ).
 
 
-    %
     % what_next_stop(CSN, EventNum, WhatNext, Retry).
     %
     % Set the NextStop and the Retry variable according to the WhatNext value.
@@ -888,12 +860,12 @@ what_next_stop(EventNum, CSN, WhatNext, Retry) :-
             NextStop = ns_final_port(RetryCSN, do_retry),
             Retry = do_not_retry
         )
-    ;
-        WhatNext = wn_retry_nondet(RetryCSN),
-        (
-            NextStop = ns_final_port_nondet(RetryCSN, do_retry),
-            Retry = do_not_retry
-        )
+     ;
+         WhatNext = wn_retry_nondet(RetryCSN),
+         (
+             NextStop = ns_final_port_nondet(RetryCSN, do_retry),
+             Retry = do_not_retry
+         )
     ;
         WhatNext = wn_goto(EventNumToGo),
         (
@@ -909,7 +881,6 @@ what_next_stop(EventNum, CSN, WhatNext, Retry) :-
     impure set_cur_ssdb_next_stop(NextStop).
 
 
-    %
     % This two following predicates get the right informations in the 
     % shadow_stack_nondet about the current procedure.
     %
@@ -942,46 +913,6 @@ get_correct_frame_nondet_2(ProcId, Depth, ShadowStackNonDet0, StackFrame) :-
                 StackFrame)
         )
     ).
-
-
-    %
-    % Print the current informations at this event point.
-    %
-:- pred print_event_info(ssdb_event_type::in, int::in, ssdb_proc_id::in, 
-    int::in, int::in, io::di, io::uo) is det.
-    
-print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
-    io.write_string("       ", !IO),
-    io.write_int(EventNum, !IO),
-    io.write_string("\t", !IO),
-    io.write_int(CSN, !IO),
-    io.write_string("\t", !IO),
-    io.write_int(PrintDepth, !IO),
-    io.write_string("\t", !IO),
-    ( 
-        ( Event = ssdb_call
-        ; Event = ssdb_call_nondet
-        ),
-        io.write_string("CALL", !IO)
-    ;
-        ( Event = ssdb_exit
-        ; Event = ssdb_exit_nondet
-        ),
-        io.write_string("EXIT", !IO)
-    ;
-        ( Event = ssdb_fail
-        ; Event = ssdb_fail_nondet
-        ),
-        io.write_string("FAIL", !IO)
-    ;
-        Event = ssdb_redo_nondet,
-        io.write_string("REDO", !IO)
-    ),
-    io.write_string("\t\t", !IO),
-    io.write_string(ProcId ^ module_name, !IO),
-    io.write_string(".", !IO),
-    io.write_string(ProcId ^ proc_name, !IO),
-    io.nl(!IO).
 
 
 %----------------------------------------------------------------------------%
@@ -1024,30 +955,7 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
             ; Words = ["help"]
             )
         ->
-                io.nl(!IO),
-                io.write_string("\nPrincipal Commands", !IO),
-                io.write_string("\n------------------", !IO),
-                io.nl(!IO),
-                io.write_string("\n<step> or <s> or < >", !IO),
-                io.write_string("\n<next> or <n>n", !IO),
-                io.write_string("\n<continue> or <c>", !IO),
-                io.write_string("\n<finish> or <f>", !IO),
-                io.write_string("\n<retry> or <r>", !IO),
-                io.write_string("\n<break X Y> or <b X Y>", !IO),
-                io.write_string("\n<break info> or <b info>", !IO),
-                io.write_string("\n<enable / disable / delete *>", !IO),
-                io.write_string("\n<enable / disable / delete N>", !IO),
-                io.write_string("\n<print> or <p>", !IO),
-                io.write_string("\n<stack> or <st>", !IO),
-                io.write_string("\n<up> or <u>", !IO),
-                io.write_string("\n<down> or <d>", !IO),
-                io.write_string("\n<goto N> or <g N>", !IO),
-                io.write_string("\n<help> or <h>", !IO),
-                io.nl(!IO),
-                io.nl(!IO),
-                io.write_string("\nConsult the file : " ++
-                    "/ssdb/SSDB_COMMAND_HELP.txt for details", !IO),
-                io.nl(!IO),
+                print_help(!IO),
                 impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
 
         ; 
@@ -1055,7 +963,7 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
             ; Words = ["print"]
             )
         ->
-                CurrentFrame = stack.top_det(ShadowStack),
+                get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
                 ListVarValue = CurrentFrame ^ se_list_var_value,
                 print_vars(ListVarValue, !IO),
                 impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
@@ -1065,7 +973,7 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
             ; Words = ["stack"] 
             )
         ->
-                print_frames_list(ShadowStack, Depth, !IO),
+                print_frames_list(0, ShadowStack, Depth, !IO),
                 impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
 
         ; 
@@ -1086,7 +994,6 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                 )
 
         ;
-%             ( list.is_empty(Words)
             ( Words = []
             ; Words = ["s"]
             ; Words = ["step"]
@@ -1154,8 +1061,8 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                     semipure get_cur_ssdb_depth(CurDepth)
                 ->
                     (
-                        Num >= 1,
-                        Num =< CurDepth 
+                        Num >= 0,
+                        Num =< CurDepth - 1
                     ->
                         get_correct_frame_with_num(Num, ShadowStack, 
                             StackFrame),
@@ -1180,6 +1087,9 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                     DownDepth = Depth - 1,
                     DownDepth >= 0
                 ->
+                    get_correct_frame_with_num(DownDepth, ShadowStack, 
+                        FrameToPrint),
+                    print_frame_info(FrameToPrint, !IO),
                     impure prompt(Event, ShadowStack, DownDepth, WhatNext, !IO)
                 ;
                     io.write_string("Impossible to go down\n", !IO),
@@ -1195,6 +1105,9 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                     UpDepth = Depth + 1,
                     UpDepth < stack.depth(ShadowStack) 
                 ->
+                    get_correct_frame_with_num(UpDepth, ShadowStack, 
+                        FrameToPrint),
+                    print_frame_info(FrameToPrint, !IO),
                     impure prompt(Event, ShadowStack, UpDepth, WhatNext, !IO)
                 ;
                     io.write_string("Impossible to go up\n", !IO),
@@ -1204,6 +1117,8 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
         ; 
             ( Words = ["r"] 
             ; Words = ["retry"] 
+            ; Words = ["r", "0"] 
+            ; Words = ["retry", "0"] 
             )
         ->
                 (
@@ -1228,7 +1143,7 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                     % value at the event just before the retried procedure.
                     impure set_cur_ssdb_event_number(EventNum-1),
                     impure set_cur_ssdb_csn(CSN-1),
-                    WhatNext = wn_retry_nondet(CSN)
+                    WhatNext = wn_retry(CSN)
                 ;
                     ( Event = ssdb_call
                     ; Event = ssdb_call_nondet
@@ -1248,8 +1163,8 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                     semipure get_cur_ssdb_depth(CurDepth)
                 ->
                     (
-                        Num >= 1,
-                        Num =< CurDepth 
+                        Num >= 0,
+                        Num =< CurDepth - 1
                     ->
                         (
                             ( Event = ssdb_exit
@@ -1267,15 +1182,20 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                             Event = ssdb_exit_nondet,
                             get_correct_frame_with_num(Num, ShadowStack, 
                                 FrameStack),
-                            EventNum = FrameStack ^ se_event_number,
                             CSN = FrameStack ^ se_csn,
-                            impure set_debugger_state(debugger_off),
                             % Set the event number and the CSN minus 1 because 
                             % it will be increment at the next event. So, we 
                             % need to be at the event just before the call.
-                            impure set_cur_ssdb_event_number(EventNum-1),
-                            impure set_cur_ssdb_csn(CSN-1),     
-                            WhatNext = wn_retry_nondet(CSN)
+                            semipure get_cur_ssdb_shadow_stack_nondet(
+                                ShadowStackNonDet),
+                            ( 
+                                csn_is_in_stack(CSN, ShadowStackNonDet)
+                            ->
+                                impure set_debugger_state(debugger_off),
+                                WhatNext = wn_retry_nondet(CSN)
+                            ;
+                                WhatNext = wn_retry(CSN)
+                            )
                         ;
                             ( Event = ssdb_call
                             ; Event = ssdb_call_nondet
@@ -1371,7 +1291,7 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
 
         ; Words = ["browse", VarName] ->
             (
-                get_correct_frame_with_num(1, ShadowStack, CurFrame),
+                get_correct_frame_with_num(0, ShadowStack, CurFrame),
                 ListVarValue = CurFrame ^ se_list_var_value,
                 list_var_value_to_assoc_list(ListVarValue, AssListVarValue),
                 assoc_list.search(AssListVarValue, VarName, Univ)
@@ -1388,6 +1308,11 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
                 io.write_string("\nError in browse command\n", !IO),
                 impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
             )
+        
+        ; Words = ["exit"] ->
+                exit_debugger(!IO),
+                WhatNext = wn_step
+
         ;
             io.write_string("huh?\n", !IO),
             impure prompt(Event, ShadowStack, Depth, WhatNext, !IO)
@@ -1401,7 +1326,23 @@ prompt(Event, ShadowStack, Depth, WhatNext, !IO) :-
     ).
 
 
+    % csn_is_in_stack(CSN, Stack).
     %
+    % Determine if a CSN from a given frame match a frame in the Stack
+    %
+:- pred csn_is_in_stack(int::in, stack(stack_elem)::in) is semidet.
+
+csn_is_in_stack(CSN, ShadowStack0) :-
+    stack.pop(ShadowStack0, Frame, ShadowStack),
+    (
+        CSN = Frame ^ se_csn
+    ->
+        true
+    ;
+        csn_is_in_stack(CSN, ShadowStack)
+    ).
+
+
     % Transform the list(var_value) into a assoc_list. As it is for the browser 
     % use, only the bound variable are put into the assoc_list structure.
     %
@@ -1425,22 +1366,21 @@ list_var_value_to_assoc_list([VarValue | VarValues], AssocListVarValue) :-
         AssocListVarValue = [pair(Name, ValueUniv) | AssocListVarValue0]
     ).
 
-    %
+
     % get_correct_frame_with_num(Num, ShadowStack, Frame).
     %
     % Get the Nth frame from the shadow stack, beginning from the top.
-    % Num should be in the interval of 1 =< Num =< Depth.
-    % If Num = 1, get the top frame. 
-    % If Num = Depth, get the deepest frame.
+    % Num should be in the interval of 0 =< Num =< Depth - 1.
+    % If Num = 0, get the top frame. 
     %
 :- pred get_correct_frame_with_num(int::in, stack(stack_elem)::in, 
     stack_elem::out) is det.
 
 get_correct_frame_with_num(Num, ShadowStack0, StackFrame) :-
-    ( Num = 1 ->
+    ( Num = 0 ->
         stack.top_det(ShadowStack0, StackFrame)
 
-    ; Num > 1 ->
+    ; Num > 0 ->
         stack.pop_det(ShadowStack0, _Frame, ShadowStack),
         get_correct_frame_with_num(Num-1, ShadowStack, StackFrame)
 
@@ -1449,7 +1389,7 @@ get_correct_frame_with_num(Num, ShadowStack0, StackFrame) :-
         error("Unexpected error : get_correct_frame_with_num")
     ).
 
-    %
+
     % Disable or enable all breakpoints.
     %
 :- impure pred modify_state_breakpoints(bp_state::in, io::di, io::uo) is det.
@@ -1462,7 +1402,6 @@ modify_state_breakpoints(State, !IO) :-
     impure set_cur_ssdb_breakpoints(BreakPointsModified).
 
 
-    %
     % Modify state (enable or disable) of one breakpoint.
     %
 :- pred modify_state_breakpoint(bp_state::in, list(breakpoint)::in, 
@@ -1480,7 +1419,6 @@ modify_state_breakpoint(State, [BreakPoint0|BreakPoints], !BreakPoints, !IO) :-
     modify_state_breakpoint(State, BreakPoints, !BreakPoints, !IO).
 
 
-    %
     % modify_state_breakpoint_with_num(State, Num, !IO).
     %
     % Modify the state of the breakpoint with the number which match Num.
@@ -1500,10 +1438,8 @@ modify_state_breakpoint_with_num(State, Num, !IO) :-
     ;
         io.write_string("No breakpoint found.\n", !IO)
     ).
-    
 
 
-    %
     % delete_breakpoint_with_num(Num, !IO).
     %
     % Delete the breakpoint that match with Num.
@@ -1527,7 +1463,6 @@ delete_breakpoint_with_num(Num, !IO) :-
     ).
 
 
-    %
     % find_breakpoint_with_num(Num, ListBreakPoint, BreakPointFound)
     %
     % As the structure of a breakpoint have a Number, this predicate will 
@@ -1546,34 +1481,145 @@ find_breakpoint_with_num(Num, [BP|ListBreakPoint], BreakPointFound) :-
     ).
 
 
+    % Exit the debugger.
+    %
+:- pred exit_debugger(io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    exit_debugger(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    exit(0);
+    IO = IO0;
+").
+
+
 %----------------------------------------------------------------------------%
 
+    % Print the current informations at this event point.
     %
+:- pred print_event_info(ssdb_event_type::in, int::in, ssdb_proc_id::in, 
+    int::in, int::in, io::di, io::uo) is det.
+    
+print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
+    io.write_string("       ", !IO),
+    io.write_int(EventNum, !IO),
+    io.write_string("\t", !IO),
+    io.write_int(CSN, !IO),
+    io.write_string("\t", !IO),
+    io.write_int(PrintDepth, !IO),
+    io.write_string("\t", !IO),
+    ( 
+        ( Event = ssdb_call
+        ; Event = ssdb_call_nondet
+        ),
+        io.write_string("CALL", !IO)
+    ;
+        ( Event = ssdb_exit
+        ; Event = ssdb_exit_nondet
+        ),
+        io.write_string("EXIT", !IO)
+    ;
+        ( Event = ssdb_fail
+        ; Event = ssdb_fail_nondet
+        ),
+        io.write_string("FAIL", !IO)
+    ;
+        Event = ssdb_redo_nondet,
+        io.write_string("REDO", !IO)
+    ),
+    io.write_string("\t\t", !IO),
+    io.write_string(ProcId ^ module_name, !IO),
+    io.write_string(".", !IO),
+    io.write_string(ProcId ^ proc_name, !IO),
+    io.nl(!IO).
+
+
+    % print_frame_info(Frame, !IO).
+    %
+    % Print the information of the frame gave in argument.
+    %
+:- pred print_frame_info(stack_elem::in, io::di, io::uo) is det.
+
+print_frame_info(TopFrame, !IO) :-
+    EventNum = TopFrame ^ se_event_number,
+    CSN = TopFrame ^ se_csn,
+    Depth = TopFrame ^ se_depth,
+    ProcId = TopFrame ^ se_proc_id, 
+    io.write_string("       ", !IO),
+    io.write_int(EventNum, !IO),
+    io.write_string("\t", !IO),
+    io.write_int(CSN, !IO),
+    io.write_string("\t", !IO),
+    io.write_int(Depth, !IO),
+    io.write_string("\t\t", !IO),
+    io.write_string(ProcId ^ module_name, !IO),
+    io.write_string(".", !IO),
+    io.write_string(ProcId ^ proc_name, !IO),
+    io.nl(!IO).
+
+
+
+    % Print a summary of the commands.
+    %
+:- pred print_help(io::di, io::uo) is det.
+
+print_help(!IO) :-
+    io.nl(!IO),
+    io.write_string("\nPrincipal Commands", !IO),
+    io.write_string("\n------------------", !IO),
+    io.nl(!IO),
+    io.write_string("\n<step> or <s> or < >", !IO),
+    io.write_string("\n<next> or <n>", !IO),
+    io.write_string("\n<continue> or <c>", !IO),
+    io.write_string("\n<finish> or <f>", !IO),
+    io.write_string("\n<retry> or <r>", !IO),
+    io.write_string("\n<break X Y> or <b X Y>", !IO),
+    io.write_string("\n<break info> or <b info>", !IO),
+    io.write_string("\n<enable / disable / delete *>", !IO),
+    io.write_string("\n<enable / disable / delete N>", !IO),
+    io.write_string("\n<print> or <p>", !IO),
+    io.write_string("\n<stack> or <st>", !IO),
+    io.write_string("\n<up> or <u>", !IO),
+    io.write_string("\n<down> or <d>", !IO),
+    io.write_string("\n<goto N> or <g N>", !IO),
+    io.write_string("\n<help> or <h>", !IO),
+    io.write_string("\n<exit>", !IO),
+    io.nl(!IO),
+    io.nl(!IO),
+    io.write_string("\nConsult the file : " ++
+        "/ssdb/SSDB_COMMAND_HELP.txt for details", !IO),
+    io.nl(!IO).
+
+
     % Print the Stack Trace. Predicate call at the 'stack' command.
     %
-:- pred print_frames_list(stack(stack_elem)::in, int::in, 
+:- pred print_frames_list(int::in, stack(stack_elem)::in, int::in, 
     io::di, io::uo) is det.
 
-print_frames_list(ShadowStack0, Depth, !IO) :-
+print_frames_list(Level, ShadowStack0, Depth, !IO) :-
     ( if not stack.is_empty(ShadowStack0) then
         stack.pop_det(ShadowStack0, PopFrame, ShadowStack),
         (if Depth = 0 then
-            print_stack_frame(yes, PopFrame, !IO)
+            print_stack_frame(yes, Level, PopFrame, !IO)
         else
-            print_stack_frame(no, PopFrame, !IO)
+            print_stack_frame(no, Level, PopFrame, !IO)
         ),
-        print_frames_list(ShadowStack, Depth - 1, !IO)
+        print_frames_list(Level + 1, ShadowStack, Depth - 1, !IO)
     else
         true
     ).
 
 
+    % print_stack_frame(Starred, Level, Frame, !IO).
     %
-    % Print one frame.
+    % Print the given Frame. The Level is the place of this frame in the 
+    % stack.
     %
-:- pred print_stack_frame(bool::in, stack_elem::in, io::di, io::uo) is det.
+:- pred print_stack_frame(bool::in, int::in, stack_elem::in, 
+    io::di, io::uo) is det.
 
-print_stack_frame(Starred, Frame, !IO) :-
+print_stack_frame(Starred, Level, Frame, !IO) :-
     Module = Frame ^ se_proc_id ^ module_name ,
     Procedure = Frame ^ se_proc_id ^ proc_name ,
 
@@ -1584,15 +1630,31 @@ print_stack_frame(Starred, Frame, !IO) :-
         Starred = no,
         io.write_char(' ', !IO)
     ),
-    io.format("  %s.%s(\n", [s(Module), s(Procedure)], !IO),
+    io.format(" %i \t%s.%s(\n", [i(Level), s(Module), s(Procedure)], !IO),
     ListVarValue = Frame ^ se_list_var_value,
     print_vars(ListVarValue, !IO),
     io.write_string("   )\n", !IO).
 
 
-    %
     % Print the given list of variables and their values, if bound.
     % XXX We should treat the io.state better.
+    % XXX The pprint.write predicate is used for the moment instead of 
+    % pretty_printer because this last one had a strange behavior
+    % The terms would always appear after io.write_string output in the ssdb
+    % 'p' command. Somehting like:
+    %
+    % Var1 = 
+    % Var2 =
+    % Var3 =
+    % <term of Var1>
+    % <term of Var2>
+    % <term of Var3>
+    %
+    % whereas it should be:
+    %
+    % Var1 = <term of Var1>
+    % etc.
+    %
 :- pred print_vars(list(var_value)::in, io::di, io::uo) is det.
 
 print_vars(Vars, !IO) :-
@@ -1602,7 +1664,6 @@ print_vars(Vars, !IO) :-
 
 print_var(unbound_head_var(Name, Pos), !IO) :-
     io.write_char('\t', !IO),
-    io.write_string("unbound_head\t", !IO),
     io.write_string(Name, !IO),
     io.write_string(":\t", !IO),
     io.write_int(Pos, !IO),
@@ -1612,27 +1673,26 @@ print_var(unbound_head_var(Name, Pos), !IO) :-
 
 print_var(bound_head_var(Name, Pos, T), !IO) :-
     io.write_char('\t', !IO),
-    io.write_string("bound_head\t", !IO),
     io.write_string(Name, !IO),
     io.write_string(":\t", !IO),
     io.write_int(Pos, !IO),
     io.write_string("\t=\t", !IO),
-    Doc = pretty_printer.format(T),
-    write_doc(Doc, !IO),
-    io.nl(!IO).
-    
+    io.flush_output(!IO),
+    pprint.write(80, to_doc(T), !IO),
+    io.nl(!IO),
+    io.flush_output(!IO).
+
 print_var(bound_other_var(Name, T), !IO) :-
     io.write_char('\t', !IO),
-    io.write_string("bound_other\t", !IO),
     io.write_string(Name, !IO),
     io.write_string(":\t_\t", !IO),
     io.write_string("=\t", !IO),
-    Doc = pretty_printer.format(T),
-    write_doc(Doc, !IO),
-    io.nl(!IO).
+    io.flush_output(!IO),
+    pprint.write(80, to_doc(T), !IO),
+    io.nl(!IO),
+    io.flush_output(!IO).
 
-
-    %
+    
     % Print the current list of breakpoints with their details.
     % 
 :- pred print_breakpoints(list(breakpoint)::in, io::di, io::uo) is det.

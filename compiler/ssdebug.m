@@ -12,7 +12,9 @@
 % The ssdebug module does a source to source tranformation on each procedure
 % which allows the procedure to be debugged.
 %
-% Here is the transformation (note currently we don't do all of this)
+% XXX Only user-made procedures are debugged, not yet the library procedures.
+%
+% Here is the transformation:
 %
 % original:
 %
@@ -123,11 +125,9 @@
 %
 %   p(...) :-
 %       promise_<original_purity> (
-%           (
-%               CallVarDescs = [ ... ],
-%               impure call_port(ProcId, CallVarDescs),
-%               <original body>,
-%           )
+%           CallVarDescs = [ ... ],
+%           impure call_port(ProcId, CallVarDescs),
+%           <original body>
 %       ).
 %
 % 
@@ -255,7 +255,7 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         % Make the ssdb_proc_id.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, ProcIdGoals, ProcIdVar, !Varset, 
-	    !Vartypes),
+            !Vartypes),
         
         % Get the list of head variables and their instantiation state.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
@@ -316,7 +316,7 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             GoalInfoImpureDet, SwitchGoal),
 
         ConjGoals = ProcIdGoals ++ CallArgListGoals ++ 
-            [HandleEventCallGoal | BodyGoalList] ++ 
+            [HandleEventCallGoal | BodyGoalList] ++
             ExitArgListGoals ++ [HandleEventExitGoal, SwitchGoal],
  
         conj_list_to_goal(ConjGoals, GoalInfoImpureDet, GoalWithoutPurity),
@@ -354,7 +354,7 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             % Make the ssdb_proc_id.
             module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
             make_proc_id_construction(!.PredInfo, ProcIdGoals, ProcIdVar, 
-		!Varset, !Vartypes),
+                !Varset, !Vartypes),
             
             % Make a list which records the value for each of the head 
             % variables at the call port.
@@ -461,7 +461,7 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 
             CallVarGoal = ProcIdGoals ++ CallArgListGoals ++ 
                 [HandleEventCallGoal],
-            % XXX not sure about determinism.
+            % XXX not sure about determinism in an if-then-else.
             GoalITE = hlds_goal(if_then_else(IteExistVars, CondGoal, ThenGoal, 
                 ElseGoal), GoalInfoCondPurDet),
 
@@ -501,7 +501,7 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         % Make the ssdb_proc_id.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, ProcIdGoals, ProcIdVar, !Varset, 
-	    !Vartypes),
+            !Vartypes),
         
         % Get the list of head variables and their instantiation state.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
@@ -633,7 +633,7 @@ process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         % Make the ssdb_proc_id.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, ProcIdGoals, ProcIdVar, !Varset, 
-	    !Vartypes),
+            !Vartypes),
         
         % Get the list of head variables and their instantiation state.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
@@ -724,7 +724,7 @@ process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         % Make the ssdb_proc_id.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         make_proc_id_construction(!.PredInfo, ProcIdGoals, ProcIdVar, !Varset, 
-	    !Vartypes),
+            !Vartypes),
         
         % Get the list of head variables and their instantiation state.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
@@ -777,6 +777,7 @@ make_retry_var(VarName, RetryVar, !VarSet, !VarTypes) :-
     svvarset.new_named_var(VarName, RetryVar, !VarSet),
     svmap.det_insert(RetryVar, RetryType, !VarTypes).
 
+
     % Create the goal for recursive call in the case of a retry.
     %
 :- pred make_recursive_call(pred_info::in, module_info::in, pred_id::in,
@@ -790,6 +791,7 @@ make_recursive_call(PredInfo, ModuleInfo, PredId, ProcId, HeadVars, Goal) :-
     GoalExpr = plain_call(PredId, ProcId, HeadVars, BuiltIn, no, SymName),
     goal_info_init(GoalInfoHG),
     Goal = hlds_goal(GoalExpr, GoalInfoHG).
+
 
     % make_switch_goal(SwitchVar, SwitchCase1, SwitchCase2, GoalInfo, Goal).
     %
@@ -860,7 +862,7 @@ commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, !ModuleInfo,
     vartypes::in, vartypes::out) is det.
 
 make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo, 
-	!Varset, !Vartypes) :-
+        !Varset, !Vartypes) :-
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     InstMapSrc = [],
@@ -869,6 +871,7 @@ make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
         pf_predicate, only_mode, detism_det, purity_impure, 
         Arguments, Features, InstMapSrc, !.ModuleInfo, Context, 
         HandleEventGoal).
+
 
     % make_proc_id_construction(PredInfo, Goals, Var, !Varset, !Vartypes)
     %
@@ -903,7 +906,9 @@ make_proc_id_construction(PredInfo, Goals, ProcIdVar, !Varset, !Vartypes) :-
 
     Goals = [ConstructModuleName, ConstructPredName, ConstructProcIdGoal].
 
+
     % make_fail_call(FailGoal, ModuleInfo)
+    % 
     % Construct the fail goal.
     %
 :- pred make_fail_call(hlds_goal::out, module_info::in) is det.
@@ -917,9 +922,8 @@ make_fail_call(FailGoal, ModuleInfo) :-
         [], Features, InstMapSrc, ModuleInfo, Context, FailGoal).
 
 
-    %
     % Detect if all argument's mode are fully input or output.
-    % XXX Other mode than fully input or output are not managed for the 
+    % XXX Other mode than fully input or output are not handled for the 
     % moment. So the code of these procedures will not be generated.
     %
 :- pred check_arguments_modes(module_info::in, list(mer_mode)::in) 
@@ -999,6 +1003,7 @@ make_arg_list(Pos0, InstMap, [VarToInspect | ListVar], Renaming, Var,
     %XXX Optimize me: repeated appends are slow.
     Goals = Goals0 ++ ValueGoals ++ [Goal].
 
+
     % Return the type list(var_value).
     %
 :- func list_var_value_type = mer_type.
@@ -1010,6 +1015,7 @@ list_var_value_type = ListVarValueType :-
 
     ListTypeCtor = type_ctor(qualified(unqualified("list"), "list"), 1),
     construct_type(ListTypeCtor, [VarValueType], ListVarValueType).
+
 
     % Create the goal's argument description :
     % -> unbound_head_var(Name, Pos) if it is an unbound argument
@@ -1024,7 +1030,7 @@ list_var_value_type = ListVarValueType :-
 
 make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes, 
-	!BoundVarDescs) :-
+        !BoundVarDescs) :-
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
     varset.lookup_name(!.VarSet, VarToInspect, VarName),
