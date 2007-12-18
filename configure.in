@@ -2500,14 +2500,11 @@ case "$host" in
         ;;
 esac
 
+mercury_cv_cgi_dir_must_exist=no
 case "$enable_deep_profiler" in
 	default)
-		if test -d $mercury_cv_default_cgi_dir; then
-			mercury_cv_enable_deep_profiler=$mercury_cv_can_enable_deep_profiler
-			mercury_cv_cgi_dir=$mercury_cv_default_cgi_dir
-		else
-			mercury_cv_enable_deep_profiler=no
-		fi
+		mercury_cv_enable_deep_profiler=$mercury_cv_can_enable_deep_profiler
+		mercury_cv_cgi_dir=$mercury_cv_default_cgi_dir
 		;;
 	no)
 		mercury_cv_enable_deep_profiler=no
@@ -2517,6 +2514,7 @@ case "$enable_deep_profiler" in
 			mercury_cv_cgi_dir=$mercury_cv_default_cgi_dir
 		else
 			mercury_cv_cgi_dir=$enable_deep_profiler
+			mercury_cv_cgi_dir_must_exist=yes
 		fi
 
 		if test $mercury_cv_can_enable_deep_profiler = no; then
@@ -2530,16 +2528,22 @@ case "$enable_deep_profiler" in
 		;;
 esac
 
+AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
+
 if test $mercury_cv_enable_deep_profiler = yes; then
+	AC_MSG_CHECKING([where to install deep profiler CGI script])
+	AC_MSG_RESULT([$mercury_cv_cgi_dir])
 	if test -d $mercury_cv_cgi_dir; then
 		true
 	else
-		AC_MSG_RESULT($enable_deep_profiler)
-		AC_MSG_ERROR(CGI script directory $mercury_cv_cgi_dir does not exist)
+		if test $mercury_cv_cgi_dir_must_exist = yes; then
+			AC_MSG_ERROR([$mercury_cv_cgi_dir does not exist.])
+		else
+			AC_MSG_WARN([$mercury_cv_cgi_dir does not exist.])
+		fi
 	fi
 fi
 
-AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
 ENABLE_DEEP_PROFILER=$mercury_cv_enable_deep_profiler
 AC_SUBST(ENABLE_DEEP_PROFILER)
 CGIDIR=$mercury_cv_cgi_dir

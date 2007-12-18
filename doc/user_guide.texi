@@ -5969,8 +5969,8 @@ start up your browser and give it a URL of the form
 The @file{server.domain.name} part should be the name of a machine
 with the following qualifications:
 it should have a web server running on it,
-and it should have the @samp{mdprof_cgi} program installed
-in its @file{/usr/lib/cgi-bin} directory.
+and it should have the @samp{mdprof_cgi} program installed in
+the web server's CGI program directory.
 The @file{/full/path/name/Deep.data} part
 should be the full path name of the deep profiling data file
 whose data you wish to explore.
