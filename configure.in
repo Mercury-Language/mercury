@@ -4647,6 +4647,7 @@ scripts/c2init
 scripts/mmake
 scripts/mdb
 scripts/mdprof
+scripts/mtags
 scripts/canonical_grade
 scripts/mkfifo_using_mknod
 scripts/mercury_config

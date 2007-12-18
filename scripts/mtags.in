@@ -1,12 +1,5 @@
-
+#!@PERL@ -w
 # vim: ts=4 sw=4 et
-#
-# Leave the first line of this file blank!
-# This is a Perl script; the following two lines allow us to avoid
-# embedding the path of the perl interpreter in the script.
-eval 'exec perl -w -S $0 ${1+"$@"}'
-    if $_running_under_some_shell;
-
 #---------------------------------------------------------------------------#
 # Copyright (C) 1994-2001, 2003, 2005-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
