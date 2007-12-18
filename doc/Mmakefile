@@ -75,7 +75,7 @@ endif
 .SUFFIXES: .in .texi_pp .texi .dvi_log .ps .pdf .text
 
 %.dvi_log: %.texi_pp
-	$(TEXI2DVI) $< > $*.dvi_log
+	-$(TEXI2DVI) $< > $*.dvi_log
 
 %.ps: %.dvi
 	$(DVIPS) -f < $< > $@
