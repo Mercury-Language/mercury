@@ -213,6 +213,7 @@
             % grade.
 
     ;       stack_trace_higher_order
+    ;       force_disable_ssdebug
     ;       generate_bytecode
     ;       line_numbers
     ;       auto_comments
@@ -1046,6 +1047,7 @@ option_defaults_2(aux_output_option, [
     force_disable_tracing               -   bool(no),
     delay_death                         -   bool(yes),
     stack_trace_higher_order            -   bool(no),
+    force_disable_ssdebug               -   bool(no),
     generate_bytecode                   -   bool(no),
     line_numbers                        -   bool(yes),
     auto_comments                       -   bool(no),
@@ -1840,6 +1842,7 @@ long_option("suppress-trace",       suppress_trace).
 long_option("force-disable-tracing",    force_disable_tracing).
 long_option("delay-death",          delay_death).
 long_option("stack-trace-higher-order", stack_trace_higher_order).
+long_option("force-disable-ssdebug",    force_disable_ssdebug).
 long_option("generate-bytecode",    generate_bytecode).
 long_option("line-numbers",         line_numbers).
 long_option("auto-comments",        auto_comments).
@@ -3426,6 +3429,9 @@ options_help_aux_output -->
         "\tEnable stack traces through predicates and functions with",
         "\thigher-order arguments, even if stack tracing is not",
         "\tsupported in general.",
+%       This is a developer-only option:
+%       "--force-disable-ssdebug",
+%       "\tDisable ssdebug transformation even in ssdebug grades.",
 %       "--tabling-via-extra-args",
 %       "\tGenerate output via extra_args in foreign_procs.",
 %       "--allow-table-reset",

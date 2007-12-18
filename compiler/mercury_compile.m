@@ -3193,8 +3193,12 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
     globals.io_lookup_bool_option(source_to_source_debug, SSDB, !IO),
+    globals.io_lookup_bool_option(force_disable_ssdebug, ForceDisableSSDB,
+        !IO),
     (
         SSDB = yes,
+        ForceDisableSSDB = no
+    ->
         maybe_write_string(Verbose,
             "% Apply debugging source to source transformation ...\n", !IO),
         process_all_nonimported_procs(
@@ -3205,7 +3209,7 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         % XXX Must be remove to manage the determinsim by hand
         determinism_pass(!HLDS, _Specs)
     ;
-        SSDB = no
+        true
     ).
 
 :- pred maybe_analyse_trail_usage(bool::in, bool::in,
