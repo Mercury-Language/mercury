@@ -149,15 +149,14 @@ MR_region_create_region(void)
     page = MR_region_get_free_page();
 
     /*
-    ** In the first page we will store region information, which occupies
-    ** word_sizeof(MR_Region) words from the start of the first page.
+    ** In the first page, we will store the region header, which occupies
+    ** word_sizeof(MR_Region) words from the start of the data area of the
+    ** page.
     */
     region = (MR_Region *) (page->MR_regionpage_space);
     region->MR_region_next_available_word = (MR_Word *)
         (page->MR_regionpage_space + word_sizeof(MR_Region));
     region->MR_region_last_page = page;
-    region->MR_region_available_space =
-        MR_REGION_PAGE_SPACE_SIZE - word_sizeof(MR_Region);
     region->MR_region_removal_counter = 1;
     region->MR_region_sequence_number = MR_region_sequence_number++;
     region->MR_region_logical_removed = 0;
@@ -279,12 +278,19 @@ MR_region_destroy_region(MR_Region *region)
 /*
 ** This method is to be called at the start of the then part of an ite with
 ** semidet condition (most of the times).
-** At that point we will only check if the region is disj-protected or not.
+** XXX At that point we will only check if the region is disj-protected or not.
+** At that point we do not have to check whether this ite-protected region is 
+** disj-protected or not. It is because the region is protected for this ite
+** only if it has not been protected before the ite and from the start of
+** this ite to the point when this method is called, i.e., the condition, the
+** region cannot be disj-protected by any disjunctions because this condition
+** is semidet.
 */
 
 void
 MR_remove_undisjprotected_region_ite_then_semidet(MR_Region *region)
 {
+    /*
     MR_region_debug_try_remove_region(region);
     if ( !MR_region_is_disj_protected(region) ) {
         MR_region_destroy_region(region);
@@ -293,6 +299,9 @@ MR_remove_undisjprotected_region_ite_then_semidet(MR_Region *region)
         region->MR_region_logical_removed = 1;
         MR_region_debug_logically_remove_region(region);
     }
+    */
+    MR_region_destroy_region(region);
+    MR_region_debug_destroy_region(region);
 }
 
 /*
@@ -343,9 +352,7 @@ MR_region_remove_region(MR_Region *region)
             region->MR_region_destroy_at_commit = 1;
         }*/
 
-#if defined(MR_RBMM_DEBUG)
-        MR_region_logically_remove_region_msg(region);
-#endif
+        MR_region_debug_logically_remove_region(region);
     }
 }
 
@@ -354,14 +361,14 @@ MR_region_alloc(MR_Region *region, unsigned int words)
 {
     MR_Word *allocated_cell;
 
-    if (region->MR_region_available_space < words) {
+    if (MR_region_available_space(region->MR_region_last_page,
+                region->MR_region_next_available_word) < words) {
         MR_region_extend_region(region);
     }
 
     allocated_cell = region->MR_region_next_available_word;
     /* Allocate in the increasing direction of address. */
     region->MR_region_next_available_word += words;
-    region->MR_region_available_space -= words;
 #if defined(MR_RBMM_PROFILING)
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, words);
     ((MR_RegionPage *) region)->MR_regionpage_allocated_size += words;
@@ -374,12 +381,10 @@ static void
 MR_region_extend_region(MR_Region *region)
 {
     MR_RegionPage   *page;
-
     page = MR_region_get_free_page();
     region->MR_region_last_page->MR_regionpage_next = page;
     region->MR_region_last_page = page;
     region->MR_region_next_available_word = page->MR_regionpage_space;
-    region->MR_region_available_space = MR_REGION_PAGE_SPACE_SIZE;
 }
 
 /* Destroy any marked regions allocated before the commit. */
@@ -484,7 +489,7 @@ MR_region_destroy_region_msg(MR_Region *region)
 void
 MR_region_logically_remove_region_msg(MR_Region *region)
 {
-    printf("Logically removed region #%d.\n",
+    printf("Logically remove region #%d.\n",
         region->MR_region_sequence_number);
 }
 
@@ -1018,12 +1023,14 @@ MR_region_get_new_pages_and_new_words(MR_RegionSnapshot *snapshot,
         *new_pages = MR_region_get_number_of_pages(first_new_page,
              restoring_region->MR_region_last_page);
         *new_words = (*new_pages * MR_REGION_PAGE_SPACE_SIZE -
-             restoring_region->MR_region_available_space +
-             snapshot->MR_snapshot_saved_available_space);
+             MR_region_available_space(restoring_region->MR_region_last_page,
+                restoring_region->MR_region_next_available_word) +
+             MR_region_available_space(snapshot->MR_snapshot_saved_last_page,
+                 snapshot->MR_snapshot_saved_next_available_word));
     } else {
         *new_pages = 0;
-        *new_words = snapshot->MR_snapshot_saved_available_space -
-            restoring_region->MR_region_available_space;
+        *new_words = restoring_region->MR_region_next_available_word - 
+            snapshot->MR_snapshot_saved_next_available_word;
     }
 }
 

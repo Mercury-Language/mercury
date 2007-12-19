@@ -1222,13 +1222,13 @@ option_defaults_2(internal_use_option, [
     size_region_disj_fixed              -   int(3),
     size_region_commit_fixed            -   int(4),
     size_region_ite_protect             -   int(1),
-    size_region_ite_snapshot            -   int(4),
+    size_region_ite_snapshot            -   int(3),
     size_region_disj_protect            -   int(0),
                                         % size_region_disj_protect is no longer
                                         % used. It should be removed when the
                                         % runtime support for RBMM is more
                                         % stable.
-    size_region_disj_snapshot           -   int(4),
+    size_region_disj_snapshot           -   int(3),
     size_region_commit_entry            -   int(1),
     solver_type_auto_init               -   bool(no)
 ]).

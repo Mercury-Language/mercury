@@ -48,21 +48,19 @@
 #define     MR_REGION_DISJ_FRAME_FIXED_SIZE                 3
 #define     MR_REGION_COMMIT_FRAME_FIXED_SIZE               4
 #define     MR_REGION_ITE_PROT_SIZE                         1
-#define     MR_REGION_ITE_SNAPSHOT_SIZE                     4
+#define     MR_REGION_ITE_SNAPSHOT_SIZE                     3
 /*
-** The MR_REGION_DISJ_PROT_SIZE is no longer used. It should be removed when
-** the runtime support for RBMM becomes more stable. When removing it
+** XXX The MR_REGION_DISJ_PROT_SIZE is no longer used. It should be removed
+** when the runtime support for RBMM becomes more stable. When removing it
 ** remember to make the compiler/options.m consistent with the removal here.
 */
 #define     MR_REGION_DISJ_PROT_SIZE                        0
-#define     MR_REGION_DISJ_SNAPSHOT_SIZE                    4
+#define     MR_REGION_DISJ_SNAPSHOT_SIZE                    3
 #define     MR_REGION_COMMIT_SAVE_SIZE                      1
 
 /*
 ** A region page contains an array (of MR_Word) to store program data and
-** a pointer to the next to form a single-linked-list.  Note: the order of
-** fields in this struct is important. We make use of the order for several
-** computations (such as the address of a region).
+** a pointer to the next to form a single-linked-list.
 */
 struct MR_RegionPage_Struct {
     /* The space to store program data. */
@@ -101,14 +99,7 @@ struct MR_Region_Struct {
     MR_Word                             *MR_region_next_available_word;
 
     /*
-    ** The current number of words (in the last page) available for allocation
-    ** into the region. When an allocation requires more words than what is
-    ** available the region is extended by adding a new page.
-    */
-    MR_Word                             MR_region_available_space;
-
-    /*
-    ** Currently not used. To be used for implementing conditional removals
+    ** XXX Currently not used. To be used for implementing conditional removals
     ** of regions, i.e., the region is only actually removed when the counter
     ** equals to one.
     */
@@ -118,6 +109,7 @@ struct MR_Region_Struct {
     MR_Word                             MR_region_sequence_number;
 
     /* If the region has been removed in forward execution. */
+    /* XXX Currently it is not used for anything, we just maintain it */
     MR_Word                             MR_region_logical_removed;
 
     /*
@@ -178,7 +170,6 @@ struct MR_RegionSnapshot_Struct {
     MR_Region           *MR_snapshot_region;
     MR_RegionPage       *MR_snapshot_saved_last_page;
     MR_Word             *MR_snapshot_saved_next_available_word;
-    MR_Word             MR_snapshot_saved_available_space;
 };
 
 /* Protection information in an ite frame. */
@@ -245,6 +236,10 @@ extern  MR_Word         *MR_region_alloc(MR_Region *, unsigned int);
                 (dest) = (MR_Word) MR_mkword((tag), (MR_Word)               \
                     MR_region_alloc((MR_Region *) (region), (num)));        \
             } while (0)
+
+#define     MR_region_available_space(region_last_page, next_available_word)\
+            ((region_last_page->MR_regionpage_space) +                      \
+             MR_REGION_PAGE_SPACE_SIZE - next_available_word)               \
 
 extern  int             MR_region_is_disj_protected(MR_Region *region);
 
@@ -733,8 +728,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                     protected_region = ite_prot->MR_ite_prot_region;        \
                     MR_region_debug_ite_unprotect(protected_region);        \
                     /* Try to protect the region by an outer condition. */  \
-                    protected_region->MR_region_ite_protected =             \
-                        top_ite_frame->MR_riff_previous_ite_frame;          \
+                    protected_region->MR_region_ite_protected = NULL;       \
                 }                                                           \
                 MR_region_debug_end("ite_unprotect");                       \
             } while (0)
@@ -811,8 +805,6 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                     (region)->MR_region_last_page;                          \
                 snapshot->MR_snapshot_saved_next_available_word =           \
                     (region)->MR_region_next_available_word;                \
-                snapshot->MR_snapshot_saved_available_space =               \
-                    (region)->MR_region_available_space;                    \
             } while (0)
 
                 
@@ -851,8 +843,6 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                     } /* else no new page added. */                         \
                     restoring_region->MR_region_next_available_word =       \
                         snapshot->MR_snapshot_saved_next_available_word;    \
-                    restoring_region->MR_region_available_space =           \
-                        snapshot->MR_snapshot_saved_available_space;        \
                 }                                                           \
             } while(0)
 
