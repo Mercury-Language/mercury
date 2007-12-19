@@ -34,6 +34,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
@@ -883,9 +884,10 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         AddedImpurity = no
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        deep_prof_transform_conj(0, Path, Goals0, Goals, AddedImpurity,
+        deep_prof_transform_conj(0, Path, Goals0, Goals1, AddedImpurity,
             !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        flatten_conj(Goals1, Goals),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
