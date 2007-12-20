@@ -295,7 +295,7 @@ typedef struct MR_TableStepStats_Struct         MR_TableStepStats;
 typedef struct MR_ProcTableInfo_Struct          MR_ProcTableInfo;
 typedef MR_ProcTableInfo                        *MR_ProcTableInfoPtr;
 
-typedef struct MR_Region_Struct                 MR_Region;
+typedef struct MR_RegionHeader_Struct           MR_RegionHeader;
 typedef struct MR_RegionPage_Struct             MR_RegionPage;
 typedef struct MR_RegionSnapshot_Struct         MR_RegionSnapshot;
 typedef struct MR_RegionIteFixedFrame_Struct    MR_RegionIteFixedFrame;

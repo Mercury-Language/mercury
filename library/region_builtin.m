@@ -49,7 +49,7 @@
 
 :- pragma foreign_decl("C", "#include \"mercury_region.h\"").
 
-:- pragma foreign_type("C", region, "MR_Region *",
+:- pragma foreign_type("C", region, "MR_RegionHeader *",
     [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",

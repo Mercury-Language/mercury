@@ -51,7 +51,7 @@
 #define     MR_REGION_ITE_SNAPSHOT_SIZE                     3
 /*
 ** XXX The MR_REGION_DISJ_PROT_SIZE is no longer used. It should be removed
-** when the runtime support for RBMM becomes more stable. When removing it
+** when the runtime support for RBMM becomes more stable. When removing it,
 ** remember to make the compiler/options.m consistent with the removal here.
 */
 #define     MR_REGION_DISJ_PROT_SIZE                        0
@@ -80,11 +80,12 @@ struct MR_RegionPage_Struct {
 };
 
 /*
-** A region is implemented as a single-linked list of (region) pages.
-** The information of the region itself (pointer to next available word,
-** removal counter, some other operational data) is stored in its first page.
+** A region is implemented as a singly-linked list of region pages.
+** All the information about the region itself is contained in the
+** region's header, which is stored at the start of the region's first page.
 */
-struct MR_Region_Struct {
+
+struct MR_RegionHeader_Struct {
     /*
     ** Pointer to the last page of the region, i.e., the newest or last added
     ** page. This is needed when we need to enlarge the region.
@@ -128,8 +129,8 @@ struct MR_Region_Struct {
     */
     MR_Word                             MR_region_destroy_at_commit;
 
-    MR_Region                           *MR_region_previous_region;
-    MR_Region                           *MR_region_next_region;
+    MR_RegionHeader                     *MR_region_previous_region;
+    MR_RegionHeader                     *MR_region_next_region;
 };
 
 /*---------------------------------------------------------------------------*/
@@ -167,24 +168,24 @@ struct MR_RegionCommitFixedFrame_Struct {
 */
 
 struct MR_RegionSnapshot_Struct {
-    MR_Region           *MR_snapshot_region;
+    MR_RegionHeader     *MR_snapshot_region;
     MR_RegionPage       *MR_snapshot_saved_last_page;
     MR_Word             *MR_snapshot_saved_next_available_word;
 };
 
 /* Protection information in an ite frame. */
 struct MR_RegionIteProtect_Struct {
-    MR_Region           *MR_ite_prot_region;
+    MR_RegionHeader     *MR_ite_prot_region;
 };
 
 /* Protection information in a disj frame. */
 struct MR_RegionDisjProtect_Struct {
-    MR_Region           *MR_disj_prot_region;
+    MR_RegionHeader     *MR_disj_prot_region;
 };
 
 /* Save information in a commit frame */
 struct MR_RegionCommitSave_Struct {
-    MR_Region           *MR_commit_save_region;
+    MR_RegionHeader     *MR_commit_save_region;
 };
 
 /*---------------------------------------------------------------------------*/
@@ -196,7 +197,7 @@ struct MR_RegionCommitSave_Struct {
 extern MR_RegionPage    *MR_region_free_page_list;
 
 /* The live regions are linked in a list. */
-extern MR_Region        *MR_live_region_list;
+extern MR_RegionHeader  *MR_live_region_list;
 
 extern MR_Word          MR_region_sequence_number;
 
@@ -208,10 +209,10 @@ extern MR_RegionCommitFixedFrame    *MR_region_commit_sp;
 /*---------------------------------------------------------------------------*/
 
 /* Create a region. */
-extern  MR_Region       *MR_region_create_region(void);
+extern  MR_RegionHeader *MR_region_create_region(void);
 
 /* Destroy a region, i.e., physically deallocate the region. */
-extern  void            MR_region_destroy_region(MR_Region *);
+extern  void            MR_region_destroy_region(MR_RegionHeader *);
 
 /*
 ** Remove a region.
@@ -219,14 +220,14 @@ extern  void            MR_region_destroy_region(MR_Region *);
 ** logically removed, i.e., we mark it as removed but not actually deallocate.
 */
 
-extern  void            MR_region_remove_region(MR_Region *);
+extern  void            MR_region_remove_region(MR_RegionHeader *);
 extern  void            MR_remove_undisjprotected_region_ite_then_semidet(
-                            MR_Region *);
+                            MR_RegionHeader *);
 extern  void            MR_remove_undisjprotected_region_ite_then_nondet(
-                            MR_Region *);
+                            MR_RegionHeader *);
 
 /* Allocate a number of words into a region. */
-extern  MR_Word         *MR_region_alloc(MR_Region *, unsigned int);
+extern  MR_Word         *MR_region_alloc(MR_RegionHeader *, unsigned int);
 
 #define     MR_alloc_in_region(dest, region, num)                           \
             MR_tag_alloc_in_region(dest, 0, region, num)                    \
@@ -234,14 +235,16 @@ extern  MR_Word         *MR_region_alloc(MR_Region *, unsigned int);
 #define     MR_tag_alloc_in_region(dest, tag, region, num)                  \
             do {                                                            \
                 (dest) = (MR_Word) MR_mkword((tag), (MR_Word)               \
-                    MR_region_alloc((MR_Region *) (region), (num)));        \
+                    MR_region_alloc((MR_RegionHeader *) (region), (num)));  \
             } while (0)
 
-#define     MR_region_available_space(region_last_page, next_available_word)\
-            ((region_last_page->MR_regionpage_space) +                      \
-             MR_REGION_PAGE_SPACE_SIZE - next_available_word)               \
+#define     MR_region_page_end(region_page)                                 \
+            ((region_page)->MR_regionpage_space + MR_REGION_PAGE_SPACE_SIZE)
 
-extern  int             MR_region_is_disj_protected(MR_Region *region);
+#define     MR_region_available_space(region_last_page, next_available_word)\
+            (MR_region_page_end(region_last_page) - next_available_word)
+
+extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -306,11 +309,11 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
 #define     MR_region_fill_ite_protect(ite_sp, region_ptr,                  \
                 num_protected_regions, region_slot_reg)                     \
             do {                                                            \
-                MR_Region               *region;                            \
+                MR_RegionHeader         *region;                            \
                 MR_RegionIteProtect     *ite_prot;                          \
                                                                             \
                 MR_region_debug_start("fill_ite_protect");                  \
-                region = (MR_Region *) (region_ptr);                        \
+                region = (MR_RegionHeader *) (region_ptr);                  \
                 if (!MR_region_is_disj_protected(region) &&                 \
                     region->MR_region_ite_protected == NULL)                \
                 {                                                           \
@@ -347,12 +350,12 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
 #define     MR_region_fill_ite_snapshot_removed(ite_sp, region_ptr,         \
                 num_snapshots, snapshot_block)                              \
             do {                                                            \
-                MR_Region               *region;                            \
+                MR_RegionHeader         *region;                            \
                 MR_RegionSnapshot       *snapshot;                          \
                                                                             \
                 MR_region_debug_start(                                      \
                     "fill_ite_snapshot_removed");                           \
-                region = (MR_Region *) (region_ptr);                        \
+                region = (MR_RegionHeader *) (region_ptr);                  \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 if (region->MR_region_ite_protected != NULL ||              \
                     MR_region_is_disj_protected(region))                    \
@@ -373,12 +376,12 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
 #define     MR_region_fill_ite_snapshot_not_removed(ite_sp, region_ptr,     \
                 num_snapshots, snapshot_block)                              \
             do {                                                            \
-                MR_Region               *region;                            \
+                MR_RegionHeader         *region;                            \
                 MR_RegionSnapshot       *snapshot;                          \
                                                                             \
                 MR_region_debug_start(                                      \
                     "fill_ite_snapshot_not_removed");                       \
-                region = (MR_Region *) (region_ptr);                        \
+                region = (MR_RegionHeader *) (region_ptr);                  \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 MR_save_snapshot(region, snapshot);                         \
                 MR_region_profile_fill_ite_snapshot;                        \
@@ -398,11 +401,11 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
 #define     MR_region_fill_disj_snapshot(disj_sp, region_ptr,               \
                 num_snapshots, snapshot_block)                              \
             do {                                                            \
-                MR_Region               *region;                            \
+                MR_RegionHeader         *region;                            \
                 MR_RegionSnapshot       *snapshot;                          \
                                                                             \
                 MR_region_debug_start("fill_disj_snapshot");                \
-                region = (MR_Region *) (region_ptr);                        \
+                region = (MR_RegionHeader *) (region_ptr);                  \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 MR_save_snapshot(region, snapshot);                         \
                 MR_region_profile_fill_disj_snapshot;                       \
@@ -420,11 +423,11 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
 #define     MR_region_fill_commit(commit_sp, region_ptr,                    \
                     num_saved_region_reg, region_slot_reg)                  \
             do {                                                            \
-                MR_Region               *region;                            \
+                MR_RegionHeader         *region;                            \
                 MR_RegionCommitSave     *commit_save;                       \
                                                                             \
                 MR_region_debug_start("fill_commit");                       \
-                region = (MR_Region *) (region_ptr);                        \
+                region = (MR_RegionHeader *) (region_ptr);                  \
                 if (!MR_region_is_disj_protected(region) &&                 \
                     region->MR_region_ite_protected == NULL)                \
                 {                                                           \
@@ -642,7 +645,7 @@ extern  int             MR_region_is_disj_protected(MR_Region *region);
             do {                                                            \
                 MR_RegionCommitFixedFrame       *top_commit_frame;          \
                 MR_RegionCommitSave             *commit_save;               \
-                MR_Region                       *region;                    \
+                MR_RegionHeader                 *region;                    \
                 int                             i;                          \
                                                                             \
                 MR_region_debug_start("use_region_commit_failure");         \
@@ -716,7 +719,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 #define     MR_region_ite_unprotect(top_ite_frame)                          \
             do {                                                            \
                 MR_RegionIteProtect     *ite_prot;                          \
-                MR_Region               *protected_region;                  \
+                MR_RegionHeader         *protected_region;                  \
                 int                     i;                                  \
                                                                             \
                 MR_region_debug_start("ite_unprotect");                     \
@@ -821,7 +824,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 #define     MR_restore_snapshots(num_snapshots, first_snapshot)             \
             do {                                                            \
                 MR_RegionSnapshot   *snapshot;                              \
-                MR_Region           *restoring_region;                      \
+                MR_RegionHeader     *restoring_region;                      \
                 MR_RegionPage       *saved_last_page;                       \
                 MR_RegionPage       *first_new_page;                        \
                 int                 i;                                      \
@@ -848,7 +851,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 
 #define     MR_region_frame_destroy_new_regions(saved_sequence_number)      \
             do {                                                            \
-                MR_Region       *region;                                    \
+                MR_RegionHeader *region;                                    \
                                                                             \
                 region = MR_live_region_list;                               \
                 while (region != NULL &&                                    \
@@ -1030,11 +1033,11 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 
 #endif /* End of not define MR_RBMM_DEBUG */
 
-extern  void    MR_region_create_region_msg(MR_Region *region);
-extern  void    MR_region_try_remove_region_msg(MR_Region *region);
-extern  void    MR_region_region_struct_removal_info_msg(MR_Region *region);
-extern  void    MR_region_destroy_region_msg(MR_Region *region);
-extern  void    MR_region_logically_remove_region_msg(MR_Region *region);
+extern  void    MR_region_create_region_msg(MR_RegionHeader *region);
+extern  void    MR_region_try_remove_region_msg(MR_RegionHeader *region);
+extern  void    MR_region_region_struct_removal_info_msg(MR_RegionHeader *region);
+extern  void    MR_region_destroy_region_msg(MR_RegionHeader *region);
+extern  void    MR_region_logically_remove_region_msg(MR_RegionHeader *region);
 
 extern  void    MR_region_push_ite_frame_msg(MR_RegionIteFixedFrame *ite_frame);
 extern  void    MR_region_ite_frame_msg(MR_RegionIteFixedFrame *ite_frame);
@@ -1063,15 +1066,16 @@ extern  void    MR_region_start_msg(const char *);
 extern  void    MR_region_end_msg(const char *);
 
 extern  void    MR_region_fill_ite_protect_msg(MR_RegionIteProtect *,
-                    MR_Region *);
+                    MR_RegionHeader *);
 extern  void    MR_region_fill_ite_snapshot_not_removed_msg(
-                    MR_RegionSnapshot *, MR_Region *);
+                    MR_RegionSnapshot *, MR_RegionHeader *);
 extern  void    MR_region_fill_ite_snapshot_removed_msg(MR_RegionSnapshot *,
-                    MR_Region *);
+                    MR_RegionHeader *);
 extern  void    MR_region_fill_disj_snapshot_msg(MR_RegionSnapshot *,
-                    MR_Region *);
-extern  void    MR_region_fill_commit_msg(MR_RegionCommitSave *, MR_Region *);
-extern  void    MR_region_ite_unprotect_msg(MR_Region *);
+                    MR_RegionHeader *);
+extern  void    MR_region_fill_commit_msg(MR_RegionCommitSave *,
+                    MR_RegionHeader *);
+extern  void    MR_region_ite_unprotect_msg(MR_RegionHeader *);
 extern  void    MR_region_restore_from_snapshot_msg(MR_RegionSnapshot *);
 
 /*---------------------------------------------------------------------------*/
@@ -1262,7 +1266,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
 
 extern  void    MR_region_update_profiling_unit(
                     MR_RegionProfUnit *profiling_unit, int quantity);
-extern  void    MR_region_profile_destroyed_region(MR_Region *);
+extern  void    MR_region_profile_destroyed_region(MR_RegionHeader *);
 extern  void    MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *);
 extern  void    MR_region_profile_increase_counter(unsigned int *);
 extern  int     MR_region_get_number_of_pages(MR_RegionPage *,
