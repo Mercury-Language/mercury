@@ -155,7 +155,7 @@ MR_region_create_region(void)
     ** word_sizeof(MR_RegionHeader) words from the start of the data area
     ** of the page.
     */
-    region = (MR_RegionHeader *) (page->MR_regionpage_space);
+    region = MR_regionpage_to_region(page);
     region->MR_region_next_available_word = (MR_Word *)
         (page->MR_regionpage_space + word_sizeof(MR_RegionHeader));
     region->MR_region_last_page = page;
@@ -178,7 +178,7 @@ MR_region_create_region(void)
 
 #if defined(MR_RBMM_PROFILING)
     MR_region_update_profiling_unit(&MR_rbmmp_regions_used, 1);
-    ((MR_RegionPage *) region)->MR_regionpage_allocated_size = 0;
+    region->MR_region_allocated_size = 0;
 #endif
 
     return region;
@@ -271,7 +271,7 @@ MR_region_destroy_region(MR_RegionHeader *region)
     }
 
     /* Return the page list of the region to the free page list. */
-    MR_region_return_page_list((MR_RegionPage *) region,
+    MR_region_return_page_list(MR_region_to_first_regionpage(region),
         region->MR_region_last_page);
 
     /* Collect profiling information. */
@@ -281,28 +281,20 @@ MR_region_destroy_region(MR_RegionHeader *region)
 /*
 ** This method is to be called at the start of the then part of an ite with
 ** semidet condition (most of the times).
-** XXX At that point we will only check if the region is disj-protected or not.
-** At that point we do not have to check whether this ite-protected region is
-** disj-protected or not. It is because the region is protected for this ite
-** only if it has not been protected before the ite and from the start of
-** this ite to the point when this method is called, i.e., the condition, the
-** region cannot be disj-protected by any disjunctions because this condition
-** is semidet.
+** At this point, we do not have to check whether this ite-protected region is
+** disj-protected or not because we know for sure that it is not:
+**  - the region is protected for this ite only if it has not been protected
+**  before the ite, which means that it is not disj-protected before the ite
+**  - from the start of this ite to this point (i.e., during the condition) it 
+**  cannot be disj-protected by any disjunctions. This is because this
+**  condition is semidet and cannot contain nondet disjuncitons. If it contains
+**  semidet disjunctions, at this point they must succeed and therefore the
+**  region is not disj-protected for them.
 */
 
 void
 MR_remove_undisjprotected_region_ite_then_semidet(MR_RegionHeader *region)
 {
-    /*
-    MR_region_debug_try_remove_region(region);
-    if ( !MR_region_is_disj_protected(region) ) {
-        MR_region_destroy_region(region);
-        MR_region_debug_destroy_region(region);
-    } else {
-        region->MR_region_logical_removed = 1;
-        MR_region_debug_logically_remove_region(region);
-    }
-    */
     MR_region_destroy_region(region);
     MR_region_debug_destroy_region(region);
 }
@@ -376,7 +368,7 @@ MR_region_alloc(MR_RegionHeader *region, unsigned int words)
     region->MR_region_next_available_word += words;
 #if defined(MR_RBMM_PROFILING)
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, words);
-    ((MR_RegionPage *) region)->MR_regionpage_allocated_size += words;
+    region->MR_region_allocated_size += words;
 #endif
 
     return allocated_cell;
@@ -843,10 +835,9 @@ MR_region_profile_destroyed_region(MR_RegionHeader *region)
 
     MR_region_update_profiling_unit(&MR_rbmmp_regions_used, -1);
     MR_region_update_profiling_unit(&MR_rbmmp_pages_used,
-        -MR_region_get_number_of_pages((MR_RegionPage *) region,
+        -MR_region_get_number_of_pages(MR_region_to_first_regionpage(region),
         region->MR_region_last_page));
-    allocated_size_of_region =
-        ((MR_RegionPage *) region)->MR_regionpage_allocated_size;
+    allocated_size_of_region = region->MR_region_allocated_size;
     MR_region_update_profiling_unit(&MR_rbmmp_words_used,
         -allocated_size_of_region);
     if (allocated_size_of_region > MR_rbmmp_biggest_region_size) {
@@ -864,7 +855,7 @@ MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *snapshot)
     MR_region_get_new_pages_and_new_words(snapshot, &new_pages, &new_words);
     MR_region_update_profiling_unit(&MR_rbmmp_pages_used, -new_pages);
     restoring_region = snapshot->MR_snapshot_region;
-    ((MR_RegionPage *) restoring_region)->MR_regionpage_allocated_size
+    restoring_region->MR_region_allocated_size
         -= new_words;
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, -new_words);
     MR_rbmmp_pages_snapshot_instant_reclaimed += new_pages;

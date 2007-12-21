@@ -37,7 +37,7 @@
 
 /* XXX This should be made configurable when compiling a program. */
 #define     MR_REGION_NUM_PAGES_TO_REQUEST                  100
-#define     MR_REGION_PAGE_SPACE_SIZE                       256
+#define     MR_REGION_PAGE_SPACE_SIZE                       255
 
 /*
 ** NOTE: The following constants *must match* the values of the Mercury
@@ -61,22 +61,17 @@
 /*
 ** A region page contains an array (of MR_Word) to store program data and
 ** a pointer to the next to form a single-linked-list.
+** Note:
+**  We use conversion macros to cast between MR_RegionPage and
+**  MR_RegionHeader. We likely will need to update these macros when the
+**  structure of MR_RegionPage changes.
 */
 struct MR_RegionPage_Struct {
-    /* The space to store program data. */
-    MR_Word             MR_regionpage_space[MR_REGION_PAGE_SPACE_SIZE];
-
     /* Pointer to the next page to form the linked list. */
     MR_RegionPage       *MR_regionpage_next;
 
-#ifdef MR_RBMM_PROFILING
-    /*
-    ** This is to count the number of words which are currently allocated into
-    ** the region. It means that it will be reset at backtracking if the region
-    ** is restored from its snapshot.
-    */
-    int                 MR_regionpage_allocated_size;
-#endif
+    /* The space to store program data. */
+    MR_Word             MR_regionpage_space[MR_REGION_PAGE_SPACE_SIZE];
 };
 
 /*
@@ -131,6 +126,15 @@ struct MR_RegionHeader_Struct {
 
     MR_RegionHeader                     *MR_region_previous_region;
     MR_RegionHeader                     *MR_region_next_region;
+
+#ifdef MR_RBMM_PROFILING
+    /*
+    ** This is to count the number of words which are currently allocated into
+    ** the region. It means that it will be reset at backtracking if the region
+    ** is restored from its snapshot.
+    */
+    int                 MR_region_allocated_size;
+#endif
 };
 
 /*---------------------------------------------------------------------------*/
@@ -237,6 +241,13 @@ extern  MR_Word         *MR_region_alloc(MR_RegionHeader *, unsigned int);
                 (dest) = (MR_Word) MR_mkword((tag), (MR_Word)               \
                     MR_region_alloc((MR_RegionHeader *) (region), (num)));  \
             } while (0)
+
+#define     MR_regionpage_to_region(region_page)                            \
+            ( (MR_RegionHeader *) (region_page->MR_regionpage_space) )
+
+/* Minus one due to the MR_regionpage_next field */
+#define     MR_region_to_first_regionpage(region)                           \
+            ( (MR_RegionPage *) ( ( (MR_Word *)region ) - 1 ) ) 
 
 #define     MR_region_page_end(region_page)                                 \
             ((region_page)->MR_regionpage_space + MR_REGION_PAGE_SPACE_SIZE)
