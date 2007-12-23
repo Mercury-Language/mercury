@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2006 The University of Melbourne.
+# Copyright (C) 2002-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -123,9 +123,9 @@ endif
 # XXX browser.init and mdbcomp.init might need to be included even if tracing
 # is disabled if ssdb uses code from the browser or mdbcomp libraries
 C2INITFLAGS  += --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
-		--trace-init-file $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
-C2INITARGS   += $(SSDB_DIR)/$(SSDB_LIB_NAME).init \
-		$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
+		--trace-init-file $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init \
+		--ssdb-init-file $(SSDB_DIR)/$(SSDB_LIB_NAME).init
+C2INITARGS   += $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
 MLFLAGS      += --no-mercury-stdlib-dir
 

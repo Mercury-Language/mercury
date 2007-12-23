@@ -1695,6 +1695,8 @@ MR_unwritten_pl_handler(FILE *fp, const void *pl)
         MR_fatal_error("MR_write_out_proc_layout_from_void: no proc_id\n");
     }
 
+    fprintf(stderr, "UNWRITTEN proc layout %p:\n", pl);
+
     procid = &proc_layout->MR_sle_proc_id;
     if (MR_PROC_ID_IS_UCI(*procid)) {
         fprintf(stderr, "uci %s/%s/%s/%s/%d/%d\n",
@@ -1713,8 +1715,6 @@ MR_unwritten_pl_handler(FILE *fp, const void *pl)
             procid->MR_proc_user.MR_user_arity,
             procid->MR_proc_user.MR_user_mode);
     }
-
-    fprintf(stderr, "UNWRITTEN proc layout %p\n", pl);
 }
 
 static void

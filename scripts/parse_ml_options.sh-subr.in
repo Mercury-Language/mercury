@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001-2006 The University of Melbourne.
+# Copyright (C) 2001-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -25,6 +25,7 @@ mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
 verbose=false
 allow_undef=false
 trace=false
+ssdb=false
 readline=true
 case $FULLARCH in
 	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
@@ -57,11 +58,13 @@ maxcalls=40	# maximum number of calls to put in a single function
 defentry_opt=""
 init_opt=""
 trace_opt=""
+ssdb_opt=""
 library_opt=""
 extra_inits_opt=""
 always_exec_init_opts=""
 extra_init_dirs=""
 trace_init_files=""
+ssdb_init_files=""
 init_c_file="-"
 runtime_flags=""
 experimental_complexity=""
@@ -259,6 +262,14 @@ while : ; do
 		trace=false
 		trace_opt=""
 		;;
+	--ssdb)
+		ssdb=true
+		ssdb_opt="--ssdb"
+		;;
+	--no-ssdb)
+		ssdb=false
+		ssdb_opt=""
+		;;
 	-r|--readline)
 		readline=true
 		;;
@@ -437,6 +448,9 @@ EOF
 
 	--trace-init-file)
 		trace_init_files="$trace_init_files $2"; shift;;
+
+	--ssdb-init-file)
+		ssdb_init_files="$ssdb_init_files $2"; shift;;
 
 	--runtime-flags)
 		runtime_flags="$runtime_flags $2"; shift;;

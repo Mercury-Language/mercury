@@ -13,7 +13,8 @@ include $(MERCURY_DIR)/Mmake.common
 # Override the settings in ../Mmake.workspace so that in debugging grades we
 # do not include mer_mdbcomp.init twice in the list of files passed to mkinit.
 #
-C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
+C2INITFLAGS = \
+	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
 	--trace-init-file $(SSDB_DIR)/$(SSDB_LIB_NAME).init
 
 -include Mmake.compiler.params
@@ -34,7 +35,11 @@ MAIN_TARGET=all
 
 MERCURY_MAIN_MODULES = top_level mlds_to_gcc
 
-VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR) $(BROWSER_DIR) $(SSDB_DIR) \
+VPATH = \
+	$(LIBRARY_DIR) \
+	$(MDBCOMP_DIR) \
+	$(BROWSER_DIR) \
+	$(SSDB_DIR) \
 	$(ANALYSIS_DIR)
 
 #-----------------------------------------------------------------------------#

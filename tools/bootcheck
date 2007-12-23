@@ -151,6 +151,13 @@ Options:
         Keep the Deep.data files resulting from the bootcheck. The
         usual behavior is to delete them in the interest of conserving
         disk space.
+    --deep-all-write
+        In deep profiling grades, write out the profiling tree on every
+        invocation. (The default is to write it out only for every 25th
+        invocation, on average.
+    --deep-debug
+        Turn on the flag that enables debugging output from the deep
+        profiling runtime.
     --progress
         Create a timestamp file when finishing the execution of each test case,
         to allow the user to monitor the bootcheck's progress. The timestamp
@@ -208,6 +215,8 @@ trace_count=false
 coverage_test=false
 disable_debug_libs=false
 delete_deep_data=true
+deep_write_sample=true
+deep_debug=false
 progress=false
 
 if test -f .KEEP_OBJS
@@ -387,6 +396,12 @@ while test $# -gt 0; do
     --keep-deep-data)
         delete_deep_data=false ;;
 
+    --deep-all-write)
+        deep_write_sample=false ;;
+
+    --deep-debug)
+        deep_debug=true ;;
+
     --progress)
         progress=true ;;
 
@@ -555,14 +570,22 @@ fi
 #
 # When the profiling data is written out, however, we also want to test
 # writing out the program representation.
-MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-random-write=25 --deep-procrep-file"
+if $deep_write_sample
+then
+    MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-random-write=25"
+fi
+
+if $deep_debug
+then
+    MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-debug-file"
+fi
+
+MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-procrep-file"
 
 if $trace_count
 then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-if-exec=mercury_compile"
     export MERCURY_OPTIONS
-else
-    true
 fi
 
 if $coverage_test
@@ -574,8 +597,6 @@ then
     export MERCURY_OPTIONS
     # Check whether we can compile the slice directory.
     copy_slice=true
-else
-    true
 fi
 
 NEW_MERCURY_OPTIONS="$MERCURY_OPTIONS --mdb-disable-progress"

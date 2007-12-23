@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2006 The University of Melbourne.
+# Copyright (C) 1995-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -90,34 +90,42 @@ then
 		$mercury_stdlib_dir/modules/$GRADE/$SSDB_LIB_NAME.init"
 fi
 MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
+MERCURY_SSDB_LIB_MODS="$MERCURY_SSDB_LIB_MODS $ssdb_init_files"
 
+MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS"
+
+# XXX why does this test $trace_opt instead of $trace?
 case "$trace_opt" in
 	-t)
 		init_opt="-i"
-		MERCURY_ALL_LIB_MODS0="$MERCURY_MOD_LIB_MODS\
+		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
 			$MERCURY_TRACE_LIB_MODS"
-		;;
-	*)
-		MERCURY_ALL_LIB_MODS0="$MERCURY_MOD_LIB_MODS"
 		;;
 esac
 
 case $ss_debug in
 	true)
-		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS0\
-			$MERCURY_SSDB_LIB_MODS"
-		;;
-	false)
-		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS0"
+		ssdb=true
 		;;
 esac
+
+case $ssdb in
+	true)
+		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
+			$MERCURY_SSDB_LIB_MODS"
+		;;
+esac
+
+# XXX: $EXTRA_INIT_FILES is not set or used anywhere by our code, and users
+# can't set it since it is not documented anywhere, so its value should
+# always be the empty string.
 
 case $# in
 	0) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
 		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
 		$extra_init_dirs $always_exec_init_opts \
-		$EXTRA_INIT_FILES $TRACE_INIT_FILES $MERCURY_ALL_LIB_MODS
+		$EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
@@ -125,6 +133,6 @@ case $# in
 		-r "$runtime_flags" \
 		$extra_init_dirs $always_exec_init_opts \
 		"$@" \
-		$EXTRA_INIT_FILES $TRACE_INIT_FILES $MERCURY_ALL_LIB_MODS
+		$EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 esac
