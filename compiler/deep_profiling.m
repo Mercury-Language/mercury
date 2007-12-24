@@ -34,7 +34,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
@@ -884,10 +883,9 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         AddedImpurity = no
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        deep_prof_transform_conj(0, Path, Goals0, Goals1, AddedImpurity,
-            !DeepInfo),
+        deep_prof_transform_conj(0, ConjType, Path, Goals0, Goals,
+            AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
-        flatten_conj(Goals1, Goals),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -984,18 +982,28 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             "deep_prof_transform_goal: shorthand should have gone by now")
     ).
 
-:- pred deep_prof_transform_conj(int::in, goal_path::in,
+:- pred deep_prof_transform_conj(int::in,
+    conj_type::in, goal_path::in,
     list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
-deep_prof_transform_conj(_, _, [], [], no, !DeepInfo).
-deep_prof_transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals],
+deep_prof_transform_conj(_, _, _, [], [], no, !DeepInfo).
+deep_prof_transform_conj(N, ConjType, Path, [Goal0 | Goals0], Goals,
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
     deep_prof_transform_goal(cord.snoc(Path, step_conj(N1)), Goal0, Goal,
         AddedImpurityFirst, !DeepInfo),
-    deep_prof_transform_conj(N1, Path, Goals0, Goals, AddedImpurityLater,
-        !DeepInfo),
+    deep_prof_transform_conj(N1, ConjType, Path, Goals0,
+        TailGoals, AddedImpurityLater, !DeepInfo),
+    Goal = hlds_goal(GoalExpr, _),
+    (
+        GoalExpr = conj(plain_conj, Conjunct),
+        ConjType = plain_conj
+    ->
+        Goals = Conjuncts ++ TailGoals
+    ;
+        Goals = [Goal | TailGoals]
+    ),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
 :- pred deep_prof_transform_disj(int::in, goal_path::in,
