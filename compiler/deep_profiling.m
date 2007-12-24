@@ -997,7 +997,7 @@ deep_prof_transform_conj(N, ConjType, Path, [Goal0 | Goals0], Goals,
         TailGoals, AddedImpurityLater, !DeepInfo),
     Goal = hlds_goal(GoalExpr, _),
     (
-        GoalExpr = conj(plain_conj, Conjunct),
+        GoalExpr = conj(plain_conj, Conjuncts),
         ConjType = plain_conj
     ->
         Goals = Conjuncts ++ TailGoals
