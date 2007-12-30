@@ -811,8 +811,9 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
         ),
         unexpected(this_file, "invalid type for foreign_export_enum")
     ;
-        TypeBody = hlds_du_type(Ctors, TagValues, IsEnumOrDummy,
-            _MaybeUserEq, _ReservedTag, _ReservedAddr, _IsForeignType),
+        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
+            IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
+            _IsForeignType),
         (
             IsEnumOrDummy = not_enum_or_dummy,
             unexpected(this_file, "d.u. is not an enumeration.")

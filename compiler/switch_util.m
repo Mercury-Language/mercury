@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: switch_util.m.
-% Author: fjh.
-% 
+% Authors: fjh, zs.
+%
 % This module defines stuff for generating switches that is shared
 % between the MLDS and LLDS back-ends.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.switch_util.
@@ -30,18 +30,39 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for categorizing switches
+% General stuff, for adding tags to cons_ids in switches and for representing
+% switch arms.
 %
 
-% An extended_case is an HLDS case annotated with some additional info.
-% The first (int) field is the priority, as computed by switch_priority/2.
+:- type maybe_int_switch_info
+    --->    int_switch(
+                lower_limit     :: int,
+                upper_limit     :: int,
+                num_values      :: int
+            )
+    ;       not_int_switch.
 
-:- type extended_case
-    --->    extended_case(int, cons_tag, cons_id, hlds_goal).
-:- type cases_list == list(extended_case).
+    % tag_cases(ModuleInfo, Type, Cases, TaggedCases, MaybeIntSwitchInfo):
+    %
+    % Given a switch on a variable of type Type, tag each case in Cases
+    % with the tags corresponding to its cons_ids. If all tags are integers,
+    % return the lower and upper limits on these integers, as well as a count
+    % of how many of them there are.
+    %
+:- pred tag_cases(module_info::in, mer_type::in, list(case)::in,
+    list(tagged_case)::out, maybe_int_switch_info::out) is det.
+
+:- pred represent_tagged_case_by_itself(tagged_case::in, tagged_case::out,
+    unit::in, unit::out, unit::in, unit::out, unit::in, unit::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for categorizing switches.
+%
 
 :- type switch_category
     --->    atomic_switch   % a switch on int/char/enum
@@ -53,21 +74,27 @@
     %
 :- func type_cat_to_switch_cat(type_category) = switch_category.
 
-    % Return the priority of a constructor test.
-    % A low number here indicates a high priority.
-    % We prioritize the tag tests so that the cheapest
-    % (most efficient) ones come first.
+    % Return an estimate of the runtime cost of a constructor test for the
+    % given tag. We try to put the cheap tests first.
     %
-:- func switch_priority(cons_tag) = int.
+    % Abort on cons_tags that should never be switched on.
+    %
+:- func estimate_switch_tag_test_cost(cons_tag) = int.
 
-    % type_range(TypeCategory, Type, ModuleInfo, Min, Max):
+%-----------------------------------------------------------------------------%
+%
+% Stuff for dense switches.
+%
+
+    % type_range(ModuleInfo, TypeCategory, Type, Min, Max, NumValues):
     %
-    % Determine the range [Min..Max] of an atomic type.
+    % Determine the range [Min..Max] of an atomic type, and the number of
+    % values in that range (including both endpoints).
     % Fail if the type isn't the sort of type that has a range
     % or if the type's range is too big to switch on (e.g. int).
     %
-:- pred type_range(type_category::in, mer_type::in, module_info::in,
-    int::out, int::out) is semidet.
+:- pred type_range(module_info::in, type_category::in, mer_type::in,
+    int::out, int::out, int::out) is semidet.
 
     % Calculate the percentage density given the range and the number of cases.
     %
@@ -75,19 +102,22 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for string hash switches
+% Stuff for string hash switches.
 %
 
     % For a string switch, compute the hash value for each case in the list
     % of cases, and store the cases in a map from hash values to cases.
     %
-:- pred string_hash_cases(cases_list::in, int::in, map(int, cases_list)::out)
-    is det.
+:- pred string_hash_cases(list(tagged_case)::in, int::in,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
+        ::in(pred(in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    map(int, assoc_list(string, CaseRep))::out) is det.
 
-:- type hash_slot
-    --->    hash_slot(extended_case, int).
+:- type string_hash_slot(CaseRep)
+    --->    string_hash_slot(int, string, CaseRep).
 
-    % calc_hash_slots(AssocList, HashMap, Map):
+    % calc_string_hash_slots(AssocList, HashMap, Map):
     %
     % For each (HashVal - Case) pair in AssocList, allocate a hash slot in Map
     % for the case. If the hash slot corresponding to HashVal is not already
@@ -96,55 +126,77 @@
     % hash value for one of the other cases), and use it instead.
     % Keep track of the hash chains as we do this.
     %
-:- pred calc_hash_slots(assoc_list(int, cases_list)::in,
-    map(int, cases_list)::in, map(int, hash_slot)::out) is det.
+    % XXX
+:- pred calc_string_hash_slots(
+    assoc_list(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for tag switches
+% Stuff for tag switches.
 %
 
-% Map secondary tag values (-1 stands for none) to their goal.
-:- type stag_goal ---> stag_goal(cons_id, hlds_goal).
-:- type stag_goal_map   ==  map(int, stag_goal).
-:- type stag_goal_list  ==  assoc_list(int, stag_goal).
+% Map secondary tag values (-1 stands for none) to information about their
+% switch arm. This "information about the switch arm" is polymorphic, because
+% in the presence of switch arms that correspond to more than one cons_id,
+% cons_ids whose tags may not all use the same primary tag, we will need to
+% duplicate this information, with at least one copy per primary tag.
+%
+% In the LLDS backend, we can (and do) give a label to each goal. The
+% predicates in this module will duplicate only the label, and our caller
+% has the responsibility of ensuring that each label/goal pair is defined
+% only once.
+%
+% With the MLDS, we don't (yet) do this, because some MLDS backends (e.g. Java)
+% don't support labels. Instead, if need be we duplicate the HLDS goal, which
+% means we will generate MLDS code for it more than once.
 
-% Map primary tag values to the set of their goals.
-:- type ptag_case ---> ptag_case(sectag_locn, stag_goal_map).
-:- type ptag_case_map   ==  map(tag_bits, ptag_case).
-:- type ptag_case_list  ==  assoc_list(tag_bits, ptag_case).
+:- type stag_goal_map(CaseRep)   ==  map(int, CaseRep).
+:- type stag_goal_list(CaseRep)  ==  assoc_list(int, CaseRep).
+
+% Map primary tag values to the set of their switch arms.
+
+:- type ptag_case(CaseRep)
+    --->    ptag_case(sectag_locn, stag_goal_map(CaseRep)).
+:- type ptag_case_map(CaseRep)   ==  map(tag_bits, ptag_case(CaseRep)).
+:- type ptag_case_list(CaseRep)  ==  assoc_list(tag_bits, ptag_case(CaseRep)).
 
 % Map primary tag values to the number of constructors sharing them.
+
 :- type ptag_count_map  ==  map(tag_bits, pair(sectag_locn, int)).
 :- type ptag_count_list ==  assoc_list(tag_bits, pair(sectag_locn, int)).
 
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
     %
-:- pred group_cases_by_ptag(cases_list::in, ptag_case_map::in,
-    ptag_case_map::out) is det.
+    % XXX
+:- pred group_cases_by_ptag(list(tagged_case)::in,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
+        ::in(pred(in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
-    % Order the primary tags based on the number of secondary tags
-    % associated with them, putting the ones with the most secondary tags
-    % first.
+    % Order the primary tags based on the number of secondary tags associated
+    % with them, putting the ones with the most secondary tags first.
     %
     % Note that it is not an error for a primary tag to have no case list;
     % this can happen in semidet switches, or in det switches where the
     % initial inst of the switch variable is a bound(...) inst representing
     % a subtype.
     %
-:- pred order_ptags_by_count(ptag_count_list::in, ptag_case_map::in,
-    ptag_case_list::out) is det.
+:- pred order_ptags_by_count(ptag_count_list::in,
+    ptag_case_map(CaseRep)::in, ptag_case_list(CaseRep)::out) is det.
 
-    % order_ptags_by_value(FirstPtag, MaxPtag, PtagCaseMap0, PtagCaseList):
+    % order_ptags_by_value(FirstPtag, MaxPtag, !PtagCaseList):
     %
     % Order the primary tags based on their value, lowest value first.
     % We scan through the primary tags values from zero to maximum.
     % Note that it is not an error for a primary tag to have no case list,
-    % since this can happen in semidet switches.
+    % for the reason documented in the comment above for order_ptags_by_count.
     %
-:- pred order_ptags_by_value(int::in, int::in, ptag_case_map::in,
-    ptag_case_list::out) is det.
+:- pred order_ptags_by_value(int::in, int::in,
+    ptag_case_map(CaseRep)::in, ptag_case_list(CaseRep)::out) is det.
 
     % Find out how many secondary tags share each primary tag
     % of the given variable.
@@ -156,99 +208,122 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_out.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module char.
+:- import_module cord.
 :- import_module int.
 :- import_module string.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%
+%
+% General stuff, for adding tags to cons_ids in switches and for representing
+% switch arms.
+%
 
-string_hash_cases([], _, Map) :-
-    map.init(Map).
-string_hash_cases([Case | Cases], HashMask, Map) :-
-    string_hash_cases(Cases, HashMask, Map0),
-    ( Case = extended_case(_, string_tag(String0), _, _) ->
-        String = String0
+:- type is_int_switch
+    --->    is_int_switch
+    ;       is_not_int_switch.
+
+tag_cases(_ModuleInfo, _SwitchType, [], [], _) :-
+    unexpected(this_file, "tag_cases: no cases").
+tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
+        [TaggedCase | TaggedCases], MaybeIntSwitchLimits) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    MainConsTag = cons_id_to_tag(ModuleInfo, SwitchVarType, MainConsId),
+    TaggedMainConsId = tagged_cons_id(MainConsId, MainConsTag),
+    ( MainConsTag = int_tag(IntTag) ->
+        list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType),
+            OtherConsIds, TaggedOtherConsIds,
+            IntTag, LowerLimit1, IntTag, UpperLimit1,
+            1, NumValues1, is_int_switch, IsIntSwitch1),
+        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+        tag_cases_in_int_switch(ModuleInfo, SwitchVarType, Cases, TaggedCases,
+            LowerLimit1, LowerLimit, UpperLimit1, UpperLimit,
+            NumValues1, NumValues, IsIntSwitch1, IsIntSwitch),
+        (
+            IsIntSwitch = is_int_switch,
+            MaybeIntSwitchLimits = int_switch(LowerLimit, UpperLimit,
+                NumValues)
+        ;
+            IsIntSwitch = is_not_int_switch,
+            MaybeIntSwitchLimits = not_int_switch
+        )
     ;
-        unexpected(this_file, "string_hash_cases: non-string case?")
-    ),
-    string.hash(String, HashVal0),
-    HashVal = HashVal0 /\ HashMask,
-    ( map.search(Map0, HashVal, CaseList0) ->
-        map.det_update(Map0, HashVal, [Case | CaseList0], Map)
-    ;
-        map.det_insert(Map0, HashVal, [Case], Map)
+        list.map(tag_cons_id(ModuleInfo, SwitchVarType), OtherConsIds,
+            TaggedOtherConsIds),
+        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+        tag_cases_plain(ModuleInfo, SwitchVarType, Cases, TaggedCases),
+        MaybeIntSwitchLimits = not_int_switch
     ).
 
-calc_hash_slots(HashValList, HashMap, Map) :-
-    calc_hash_slots_1(HashValList, HashMap, map.init, Map, 0, _).
+:- pred tag_cases_plain(module_info::in, mer_type::in, list(case)::in,
+    list(tagged_case)::out) is det.
 
-:- pred calc_hash_slots_1(assoc_list(int, cases_list)::in,
-    map(int, cases_list)::in, map(int, hash_slot)::in,
-    map(int, hash_slot)::out, int::in, int::out) is det.
+tag_cases_plain(_, _, [], []).
+tag_cases_plain(ModuleInfo, SwitchVarType, [Case | Cases],
+        [TaggedCase | TaggedCases]) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    tag_cons_id(ModuleInfo, SwitchVarType, MainConsId, TaggedMainConsId),
+    list.map(tag_cons_id(ModuleInfo, SwitchVarType),
+        OtherConsIds, TaggedOtherConsIds),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+    tag_cases_plain(ModuleInfo, SwitchVarType, Cases, TaggedCases).
 
-calc_hash_slots_1([], _, !Map, !LastUsed).
-calc_hash_slots_1([HashVal - Cases | Rest], HashMap, !Map, !LastUsed) :-
-    calc_hash_slots_2(Cases, HashVal, HashMap, !Map, !LastUsed),
-    calc_hash_slots_1(Rest, HashMap, !Map, !LastUsed).
+:- pred tag_cases_in_int_switch(module_info::in, mer_type::in, list(case)::in,
+    list(tagged_case)::out, int::in, int::out, int::in, int::out,
+    int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
 
-:- pred calc_hash_slots_2(cases_list::in, int::in, map(int, cases_list)::in,
-    map(int, hash_slot)::in, map(int, hash_slot)::out, int::in, int::out)
-    is det.
+tag_cases_in_int_switch(_, _, [], [], !LowerLimit, !UpperLimit, !NumValues,
+        !IsIntSwitch).
+tag_cases_in_int_switch(ModuleInfo, SwitchVarType, [Case | Cases],
+        [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit, !NumValues,
+        !IsIntSwitch) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType,
+        MainConsId, TaggedMainConsId, !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch),
+    list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType),
+        OtherConsIds, TaggedOtherConsIds, !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+    tag_cases_in_int_switch(ModuleInfo, SwitchVarType, Cases, TaggedCases,
+        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch).
 
-calc_hash_slots_2([], _HashVal, _HashMap, !Map, !LastUsed).
-calc_hash_slots_2([Case | Cases], HashVal, HashMap, !Map, !LastUsed) :-
-    calc_hash_slots_2(Cases, HashVal, HashMap, !Map, !LastUsed),
-    ( map.contains(!.Map, HashVal) ->
-        follow_hash_chain(!.Map, HashVal, ChainEnd),
-        next_free_hash_slot(!.Map, HashMap, !LastUsed),
-        map.lookup(!.Map, ChainEnd, hash_slot(PrevCase, _)),
-        svmap.det_update(ChainEnd, hash_slot(PrevCase, !.LastUsed), !Map),
-        svmap.det_insert(!.LastUsed, hash_slot(Case, -1), !Map)
+:- pred tag_cons_id(module_info::in, mer_type::in, cons_id::in,
+    tagged_cons_id::out) is det.
+
+tag_cons_id(ModuleInfo, SwitchVarType, ConsId, TaggedConsId) :-
+    ConsTag = cons_id_to_tag(ModuleInfo, SwitchVarType, ConsId),
+    TaggedConsId = tagged_cons_id(ConsId, ConsTag).
+
+:- pred tag_cons_id_in_int_switch(module_info::in, mer_type::in, cons_id::in,
+    tagged_cons_id::out, int::in, int::out, int::in, int::out,
+    int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
+
+tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType, ConsId, TaggedConsId,
+        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch) :-
+    ConsTag = cons_id_to_tag(ModuleInfo, SwitchVarType, ConsId),
+    TaggedConsId = tagged_cons_id(ConsId, ConsTag),
+    ( ConsTag = int_tag(IntTag) ->
+        int.min(IntTag, !LowerLimit),
+        int.max(IntTag, !UpperLimit),
+        !:NumValues = !.NumValues + 1
     ;
-        svmap.det_insert(HashVal, hash_slot(Case, -1), !Map)
+        !:IsIntSwitch = is_not_int_switch
     ).
 
-:- pred follow_hash_chain(map(int, hash_slot)::in, int::in, int::out) is det.
-
-follow_hash_chain(Map, Slot, LastSlot) :-
-    map.lookup(Map, Slot, hash_slot(_, NextSlot)),
-    (
-        NextSlot >= 0,
-        map.contains(Map, NextSlot)
-    ->
-        follow_hash_chain(Map, NextSlot, LastSlot)
-    ;
-        LastSlot = Slot
-    ).
-
-    % next_free_hash_slot(M, H_M, LastUsed, FreeSlot):
-    %
-    % Find the next available slot FreeSlot in the hash table which is not
-    % already used (contained in M) and which is not going to be used a
-    % primary slot (contained in H_M), starting at the slot after LastUsed.
-    %
-:- pred next_free_hash_slot(map(int, hash_slot)::in,
-    map(int, cases_list)::in, int::in, int::out) is det.
-
-next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
-    NextSlot = LastUsed + 1,
-    (
-        \+ map.contains(Map, NextSlot),
-        \+ map.contains(H_Map, NextSlot)
-    ->
-        FreeSlot = NextSlot
-    ;
-        next_free_hash_slot(Map, H_Map, NextSlot, FreeSlot)
-    ).
+represent_tagged_case_by_itself(TaggedCase, TaggedCase,
+    !StateA, !StateB, !StateC).
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for categorizing switches
+% Stuff for categorizing switches.
 %
 
 type_cat_to_switch_cat(type_cat_enum) = atomic_switch.
@@ -275,72 +350,224 @@ type_cat_to_switch_cat(type_cat_typeclass_info) = _ :-
 type_cat_to_switch_cat(type_cat_base_typeclass_info) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: base_typeclass_info").
 
-switch_priority(no_tag) = 0.       % should never occur
-switch_priority(int_tag(_)) = 1.
-switch_priority(foreign_tag(_, _)) = 1.
-switch_priority(reserved_address_tag(_)) = 1.
-switch_priority(shared_local_tag(_, _)) = 1.
-switch_priority(single_functor_tag) = 2.
-switch_priority(unshared_tag(_)) = 2.
-switch_priority(float_tag(_)) = 3.
-switch_priority(shared_remote_tag(_, _)) = 4.
-switch_priority(string_tag(_)) = 5.
-switch_priority(shared_with_reserved_addresses_tag(RAs, Tag)) =
-    switch_priority(Tag) + list.length(RAs).
-    % The following tags should all never occur in switches.
-switch_priority(pred_closure_tag(_, _, _)) = 6.
-switch_priority(type_ctor_info_tag(_, _, _)) = 6.
-switch_priority(base_typeclass_info_tag(_, _, _)) = 6.
-switch_priority(tabling_info_tag(_, _)) = 6.
-switch_priority(deep_profiling_proc_layout_tag(_, _)) = 6.
-switch_priority(table_io_decl_tag(_, _)) = 6.
-
-type_range(type_cat_char, _, _, MinChar, MaxChar) :-
-    % XXX the following code uses the host's character size,
-    % not the target's, so it won't work if cross-compiling
-    % to a machine with a different character size.
-    % Note also that the code in dense_switch.m and the code
-    % in lookup_switch.m assume that char.min_char_value is 0.
-    char.min_char_value(MinChar),
-    char.max_char_value(MaxChar).
-type_range(type_cat_enum, Type, ModuleInfo, 0, MaxEnum) :-
-    ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
-        TypeCtor = TypeCtorPrime
-    ;
-        unexpected(this_file, "dense_switch.type_range: invalid enum type?")
-    ),
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+estimate_switch_tag_test_cost(Tag) = Cost :-
     (
-        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _),
-        map.count(ConsTable, TypeRange),
-        MaxEnum = TypeRange - 1
-    ;
-        ( TypeBody = hlds_eqv_type(_)
-        ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
-        ; TypeBody = hlds_abstract_type(_)
+        ( Tag = int_tag(_)
+        ; Tag = foreign_tag(_, _)
+        ; Tag = reserved_address_tag(_)
+        ; Tag = shared_local_tag(_, _)
         ),
-        unexpected(this_file, "type_range: enum type is not d.u. type?")
+        % You need only a single word compare.
+        Cost = 1
+    ;
+        Tag = single_functor_tag,
+        % There is no cost incurred here except the cost of testing for all the
+        % reserved addresses this tag is shared with; the Cost = 2 is an
+        % estimate (XXX probably not very accurate) of the fixed cost
+        % of the scan over them.
+        Cost = 2
+    ;
+        Tag = unshared_tag(_),
+        % You need to compute the primary tag and compare it.
+        Cost = 2
+    ;
+        Tag = float_tag(_),
+        % You need to follow a pointer and then compare 64 bits
+        % (two words on 32 bit machines, which are still the most common).
+        Cost = 3
+    ;
+        Tag = shared_remote_tag(_, _),
+        % You need to compute the primary tag, compare it, follow a pointer
+        % and then compare the remote secondary tag.
+        Cost = 4
+    ;
+        Tag = string_tag(String),
+        % You need to follow a pointer and then compare all the characters to
+        % the end of the string. The multiplication is an attempt to factor in
+        % the fact that each character comparison is in a loop, and thus takes
+        % more than one instruction.
+        Cost = 1 + 2 * string.length(String)
+    ;
+        Tag = shared_with_reserved_addresses_tag(RAs, SubTag),
+        % You need to rule out all reserved addresses before testing SubTag.
+        Cost = 2 * list.length(RAs) + estimate_switch_tag_test_cost(SubTag)
+    ;
+        ( Tag = no_tag
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ),
+        unexpected(this_file, "estimate_switch_tag_test_cost: non-switch tag")
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for dense switches.
+%
+
+type_range(ModuleInfo, TypeCat, Type, Min, Max, NumValues) :-
+    (
+        TypeCat = type_cat_char,
+        % XXX The following code uses the host's character size, not the
+        % target's, so it won't work if cross-compiling to a machine with
+        % a different character size. Note also that some code in both
+        % dense_switch.m and in lookup_switch.m assumes that
+        % char.min_char_value is 0.
+        char.min_char_value(Min),
+        char.max_char_value(Max)
+    ;
+        TypeCat = type_cat_enum,
+        Min = 0,
+        type_to_ctor_det(Type, TypeCtor),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        (
+            TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _),
+            map.count(ConsTable, TypeRange),
+            Max = TypeRange - 1
+        ;
+            ( TypeBody = hlds_eqv_type(_)
+            ; TypeBody = hlds_foreign_type(_)
+            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_abstract_type(_)
+            ),
+            unexpected(this_file, "type_range: enum type is not d.u. type?")
+        )
+    ),
+    NumValues = Max - Min + 1.
 
 switch_density(NumCases, Range) = Density :-
     Density = (NumCases * 100) // Range.
 
 %-----------------------------------------------------------------------------%
+%
+% Stuff for string hash switches.
+%
+
+string_hash_cases([], _, _, !StateA, !StateB, !StateC, !:HashMap) :-
+    map.init(!:HashMap).
+string_hash_cases([TaggedCase | TaggedCases], HashMask, RepresentCase,
+        !StateA, !StateB, !StateC, !:HashMap) :-
+    string_hash_cases(TaggedCases, HashMask, RepresentCase,
+        !StateA, !StateB, !StateC, !:HashMap),
+    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _Goal),
+    TaggedConsIds = [MainTaggedConsId | OtherTaggedConsIds],
+    list.foldl(string_hash_cons_id(CaseRep, HashMask), TaggedConsIds,
+        !HashMap).
+
+:- pred string_hash_cons_id(CaseRep::in, int::in, tagged_cons_id::in,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out) is det.
+
+string_hash_cons_id(CaseRep, HashMask, TaggedConsId, !HashMap) :-
+    TaggedConsId = tagged_cons_id(_ConsId, Tag),
+    ( Tag = string_tag(StringPrime) ->
+        String = StringPrime
+    ;
+        unexpected(this_file, "string_hash_cases: non-string case?")
+    ),
+    string.hash(String, StringHashVal),
+    HashVal = StringHashVal /\ HashMask,
+    ( map.search(!.HashMap, HashVal, OldStringCaseReps) ->
+        svmap.det_update(HashVal, [String - CaseRep | OldStringCaseReps],
+            !HashMap)
+    ;
+        svmap.det_insert(HashVal, [String - CaseRep], !HashMap)
+    ).
+
+calc_string_hash_slots(HashValList, HashMap, SlotMap) :-
+    calc_string_hash_slots_1(HashValList, HashMap, map.init, SlotMap, 0, _).
+
+:- pred calc_string_hash_slots_1(
+    assoc_list(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::out,
+    int::in, int::out) is det.
+
+calc_string_hash_slots_1([], _, !SlotMap, !LastUsed).
+calc_string_hash_slots_1([HashVal - StringCaseReps | Rest], HashMap,
+        !SlotMap, !LastUsed) :-
+    calc_string_hash_slots_2(StringCaseReps, HashVal, HashMap,
+        !SlotMap, !LastUsed),
+    calc_string_hash_slots_1(Rest, HashMap, !SlotMap, !LastUsed).
+
+:- pred calc_string_hash_slots_2(assoc_list(string, CaseRep)::in, int::in,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::out,
+    int::in, int::out) is det.
+
+calc_string_hash_slots_2([], _HashVal, _HashMap, !SlotMap, !LastUsed).
+calc_string_hash_slots_2([StringCaseRep | StringCaseReps], HashVal, HashMap,
+        !SlotMap, !LastUsed) :-
+    calc_string_hash_slots_2(StringCaseReps, HashVal, HashMap,
+        !SlotMap, !LastUsed),
+    StringCaseRep = String - CaseRep,
+    NewSlot = string_hash_slot(-1, String, CaseRep),
+    ( map.contains(!.SlotMap, HashVal) ->
+        follow_hash_chain(!.SlotMap, HashVal, ChainEnd),
+        next_free_hash_slot(!.SlotMap, HashMap, !LastUsed),
+        map.lookup(!.SlotMap, ChainEnd, ChainEndSlot0),
+        ChainEndSlot0 = string_hash_slot(_, PrevString, PrevCaseRep),
+        ChainEndSlot = string_hash_slot(!.LastUsed, PrevString, PrevCaseRep),
+        svmap.det_update(ChainEnd, ChainEndSlot, !SlotMap),
+        svmap.det_insert(!.LastUsed, NewSlot, !SlotMap)
+    ;
+        svmap.det_insert(HashVal, NewSlot, !SlotMap)
+    ).
+
+:- pred follow_hash_chain(map(int, string_hash_slot(CaseRep))::in,
+    int::in, int::out) is det.
+
+follow_hash_chain(Map, Slot, LastSlot) :-
+    map.lookup(Map, Slot, string_hash_slot(NextSlot, _, _)),
+    (
+        NextSlot >= 0,
+        map.contains(Map, NextSlot)
+    ->
+        follow_hash_chain(Map, NextSlot, LastSlot)
+    ;
+        LastSlot = Slot
+    ).
+
+    % next_free_hash_slot(M, H_M, LastUsed, FreeSlot):
+    %
+    % Find the next available slot FreeSlot in the hash table which is not
+    % already used (contained in M) and which is not going to be used a
+    % primary slot (contained in H_M), starting at the slot after LastUsed.
+    %
+:- pred next_free_hash_slot(map(int, string_hash_slot(CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::in, int::in, int::out) is det.
+
+next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
+    NextSlot = LastUsed + 1,
+    (
+        \+ map.contains(Map, NextSlot),
+        \+ map.contains(H_Map, NextSlot)
+    ->
+        FreeSlot = NextSlot
+    ;
+        next_free_hash_slot(Map, H_Map, NextSlot, FreeSlot)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for tag switches.
+%
 
 get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
-    ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
-        TypeCtor = TypeCtorPrime
-    ;
-        unexpected(this_file, "unknown type in get_ptag_counts")
-    ),
+    type_to_ctor_det(Type, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _),
         map.to_assoc_list(ConsTable, ConsList),
         assoc_list.values(ConsList, TagList)
     ;
@@ -426,10 +653,21 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
 
 %-----------------------------------------------------------------------------%
 
-group_cases_by_ptag([], !PtagCaseMap).
-group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
-    Case0 = extended_case(_Priority, Tag, ConsId, Goal),
-    ConsIdGoal = stag_goal(ConsId, Goal),
+group_cases_by_ptag([], _, !StateA, !StateB, !StateC, !PtagCaseMap).
+group_cases_by_ptag([TaggedCase | TaggedCases], RepresentCase,
+        !StateA, !StateB, !StateC, !PtagCaseMap) :-
+    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, _Goal),
+    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
+    group_case_by_ptag(CaseRep, MainTaggedConsId, !PtagCaseMap),
+    list.foldl(group_case_by_ptag(CaseRep), OtherConsIds, !PtagCaseMap),
+    group_cases_by_ptag(TaggedCases, RepresentCase, !StateA, !StateB, !StateC,
+        !PtagCaseMap).
+
+:- pred group_case_by_ptag(CaseRep::in, tagged_cons_id::in,
+    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
+
+group_case_by_ptag(CaseRep, TaggedConsId, !PtagCaseMap) :-
+    TaggedConsId = tagged_cons_id(_ConsId, Tag),
     (
         ( Tag = single_functor_tag, Primary = 0
         ; Tag = unshared_tag(Primary)
@@ -438,7 +676,7 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
             unexpected(this_file, "unshared tag is shared")
         ;
             map.init(StagGoalMap0),
-            map.det_insert(StagGoalMap0, -1, ConsIdGoal, StagGoalMap),
+            map.det_insert(StagGoalMap0, -1, CaseRep, StagGoalMap),
             svmap.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
                 !PtagCaseMap)
         )
@@ -448,12 +686,12 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, sectag_remote), this_file,
                 "remote tag is shared with non-remote"),
-            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
             svmap.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         ;
             map.init(StagGoalMap0),
-            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
             svmap.det_insert(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         )
@@ -463,12 +701,12 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, sectag_local), this_file,
                 "local tag is shared with non-local"),
-            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
             svmap.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         ;
             map.init(StagGoalMap0),
-            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
             svmap.det_insert(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         )
@@ -487,9 +725,8 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file, "non-du tag in group_cases_by_ptag")
-    ),
-    group_cases_by_ptag(Cases0, !PtagCaseMap).
+        unexpected(this_file, "non-du tag in group_case_by_ptag")
+    ).
 
 %-----------------------------------------------------------------------------%
 

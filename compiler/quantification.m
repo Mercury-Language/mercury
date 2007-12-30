@@ -893,9 +893,11 @@ implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals], !Info,
     list(set_of_var)::in, list(set_of_var)::out) is det.
 
 implicitly_quantify_cases([], [], !Info, !NonLocalVarSets).
-implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
-        [case(Cons, Goal) | Cases], !Info, !NonLocalVarSets) :-
+implicitly_quantify_cases([Case0 | Cases0], [Case | Cases],
+        !Info, !NonLocalVarSets) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     implicitly_quantify_goal_quant_info(Goal0, Goal, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
     get_nonlocals(!.Info, GoalNonLocalVars),
     !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
     implicitly_quantify_cases(Cases0, Cases, !Info, !NonLocalVarSets).
@@ -1043,10 +1045,10 @@ case_vars(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
 
 compute_case_vars(_, [], !Sets, !LambdaSets).
 compute_case_vars(NonLocalsToRecompute, [Case | Cases], !Sets, !LambdaSets) :-
-    Case = case(_Cons, hlds_goal(Goal, _GoalInfo)),
+    Case = case(_MainConsId, _OtherConsIds, hlds_goal(GoalExpr, _GoalInfo)),
     EmptySet = init,
     EmptyLambdaSet = init,
-    goal_vars_2(NonLocalsToRecompute, Goal,
+    goal_vars_2(NonLocalsToRecompute, GoalExpr,
         EmptySet, GoalSet, EmptyLambdaSet, GoalLambdaSet),
     !:Sets = [GoalSet | !.Sets],
     !:LambdaSets = [GoalLambdaSet | !.LambdaSets],

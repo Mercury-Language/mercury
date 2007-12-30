@@ -240,12 +240,14 @@ propagate_in_independent_goals([Goal0 | Goals0], Constraints, [Goal | Goals],
     constraint_info::in, constraint_info::out, io::di, io::uo) is det.
 
 propagate_cases(_, _, [], [], !Info, !IO).
-propagate_cases(Var, Constraints, [case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) | Cases], !Info, !IO) :-
+propagate_cases(Var, Constraints, [Case0 | Cases0], [Case | Cases],
+        !Info, !IO) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     InstMap0 = !.Info ^ instmap,
-    constraint_info_bind_var_to_functor(Var, ConsId, !Info),
+    constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info),
     propagate_goal(Goal0, Constraints, Goal, !Info, !IO),
     !:Info = !.Info ^ instmap := InstMap0,
+    Case = case(MainConsId, OtherConsIds, Goal),
     propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -751,16 +753,16 @@ constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     !:Info = !.Info ^ instmap := InstMap.
 
-:- pred constraint_info_bind_var_to_functor(prog_var::in, cons_id::in,
-    constraint_info::in, constraint_info::out) is det.
+:- pred constraint_info_bind_var_to_functors(prog_var::in, cons_id::in,
+    list(cons_id)::in, constraint_info::in, constraint_info::out) is det.
 
-constraint_info_bind_var_to_functor(Var, ConsId, !Info) :-
+constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info) :-
     InstMap0 = !.Info ^ instmap,
     ModuleInfo0 = !.Info ^ module_info,
     VarTypes = !.Info ^ vartypes,
     map.lookup(VarTypes, Var, Type),
-    instmap.bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
-        ModuleInfo0, ModuleInfo),
+    bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
+        InstMap0, InstMap, ModuleInfo0, ModuleInfo),
     !:Info = !.Info ^ instmap := InstMap,
     !:Info = !.Info ^ module_info := ModuleInfo.
 
@@ -803,8 +805,8 @@ strip_constraint_markers_expr(disj(Goals)) =
 strip_constraint_markers_expr(switch(Var, CanFail, Cases0)) =
         switch(Var, CanFail, Cases) :-
     Cases = list.map(
-        (func(case(ConsId, Goal)) =
-            case(ConsId, strip_constraint_markers(Goal))
+        (func(case(MainConsId, OtherConsIds, Goal)) =
+            case(MainConsId, OtherConsIds, strip_constraint_markers(Goal))
         ), Cases0).
 strip_constraint_markers_expr(negation(Goal)) =
         negation(strip_constraint_markers(Goal)).

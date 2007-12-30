@@ -510,9 +510,9 @@ search_disj_for_par_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, !Info) :-
 
 search_cases_for_par_conj([], [], _InstMap0, !Info).
 search_cases_for_par_conj([Case0 | Cases0], [Case | Cases], InstMap0, !Info) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     search_goal_for_par_conj(Goal0, Goal, InstMap0, _, !Info),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     search_cases_for_par_conj(Cases0, Cases, InstMap0, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -869,10 +869,10 @@ insert_wait_in_cases(_ModuleInfo, _FutureMap, _ConsumedVar,
         [], [], !VarSet, !VarTypes).
 insert_wait_in_cases(ModuleInfo, FutureMap, ConsumedVar,
         [Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     insert_wait_in_cases(ModuleInfo, FutureMap, ConsumedVar,
         Cases0, Cases, !VarSet, !VarTypes).
 
@@ -1017,10 +1017,10 @@ insert_signal_in_cases(_ModuleInfo, _FutureMap, _ProducedVar,
         [], [], !VarSet, !VarTypes).
 insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
         [Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
         Goal0, Goal, !VarSet, !VarTypes),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
         Cases0, Cases, !VarSet, !VarTypes).
 
@@ -1142,9 +1142,9 @@ replace_sequences_in_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
 
 replace_sequences_in_cases([], [], !Info).
 replace_sequences_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     replace_sequences_in_goal(Goal0, Goal, !Info),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     replace_sequences_in_cases(Cases0, Cases, !Info).
 
 :- inst call_goal_expr
@@ -1531,12 +1531,11 @@ rename_apart_in_goals(ModuleInfo,
 rename_apart_in_cases(_ModuleInfo,
         [], [], _InstMap0, !VarSet, !VarTypes).
 rename_apart_in_cases(ModuleInfo,
-        [Case0 | Cases0], [Case | Cases], InstMap0,
-        !VarSet, !VarTypes) :-
-    Case0 = case(Functor, Goal0),
+        [Case0 | Cases0], [Case | Cases], InstMap0, !VarSet, !VarTypes) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     rename_apart_in_goal(ModuleInfo,
         Goal0, Goal, InstMap0, !VarSet, !VarTypes),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     rename_apart_in_cases(ModuleInfo,
         Cases0, Cases, InstMap0, !VarSet, !VarTypes).
 

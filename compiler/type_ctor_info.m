@@ -360,8 +360,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 UnivTvars, ExistTvars, MaybePseudoTypeInfo),
             Details = eqv(MaybePseudoTypeInfo)
         ;
-            TypeBody = hlds_du_type(Ctors, ConsTagMap, EnumDummy,
-                MaybeUserEqComp, ReservedTag, ReservedAddr, _),
+            TypeBody = hlds_du_type(Ctors, ConsTagMap, _CheaperTagTest,
+                EnumDummy, MaybeUserEqComp, ReservedTag, ReservedAddr,
+                _IsForeignType),
             (
                 MaybeUserEqComp = yes(_),
                 EqualityAxioms = user_defined
@@ -400,7 +401,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     some [!Flags] (
         !:Flags = set.init,
         (
-            TypeBody = hlds_du_type(_, _, _, _, BodyReservedTag, _, _),
+            TypeBody = hlds_du_type(_, _, _, _, _, BodyReservedTag, _, _),
             svset.insert(kind_of_du_flag, !Flags),
             (
                 BodyReservedTag = uses_reserved_tag,

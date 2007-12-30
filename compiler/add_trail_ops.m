@@ -388,11 +388,10 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
         )
     ),
     goal_add_trail_ops(Goal0, Goal1, !Info),
-    %
+
     % For model_semi and model_det disjunctions, once we reach the end of
     % the disjunct goal, we're committing to this disjunct, so we need to
     % prune the trail ticket.
-    %
     (
         CodeModel = model_non,
         PruneList = []
@@ -405,14 +404,12 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
         gen_prune_ticket(Context, PruneTicketGoal, !.Info),
         PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
     ),
-    %
+
     % Package up the stuff we built earlier.
-    %
     Goal1 = hlds_goal(_, GoalInfo1),
     conj_list_to_goal(UndoList ++ [Goal1] ++ PruneList, GoalInfo1, Goal),
-    %
+
     % Recursively handle the remaining disjuncts.
-    %
     disj_add_trail_ops(Goals0, no, CodeModel, TicketVar, Goals, !Info).
 
 :- pred cases_add_trail_ops(list(case)::in, list(case)::out,
@@ -420,9 +417,9 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
 
 cases_add_trail_ops([], [], !Info).
 cases_add_trail_ops([Case0 | Cases0], [Case | Cases], !Info) :-
-    Case0 = case(ConsId, Goal0),
-    Case = case(ConsId, Goal),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     goal_add_trail_ops(Goal0, Goal, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
     cases_add_trail_ops(Cases0, Cases, !Info).
 
 %-----------------------------------------------------------------------------%

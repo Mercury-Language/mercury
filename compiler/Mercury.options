@@ -51,6 +51,9 @@ MCFLAGS-transform_hlds.smm_fixpoint_table = --no-warn-nothing-exported
 
 # Bug workarounds
 
+# This works around bug 32 in Mantis.
+MCFLAGS-check_hlds.check_typeclass = --no-loop-invariants
+
 # This is the same bug as tests/valid/ho_and_type_spec_bug2.
 MCFLAGS-mode_robdd.tfeirn = -O3
 MCFLAGS-mode_robdd.implications = -O0

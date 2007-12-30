@@ -289,7 +289,7 @@ instr_to_x86_64(!RegMap, computed_goto(Rval, Labels), Instrs) :-
                 "instr_to_x86_64: computed_goto: unexpected: Rval")
         )
     ),
-    labels_to_string(Labels, "", LabelStr),
+    maybe_labels_to_string(Labels, "", LabelStr),
     ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
     ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
     TempReg = operand_reg(ScratchReg),
@@ -978,12 +978,19 @@ last_instr_dest(xor(_, Dest), Dest).
 
     % Get a string representation of llds labels.
     %
-:- pred labels_to_string(list(label)::in, string::in, string::out) is det.
+:- pred maybe_labels_to_string(list(maybe(label))::in, string::in, string::out)
+    is det.
 
-labels_to_string([], Str, Str).
-labels_to_string([Label | Labels], Str0, Str) :-
-    LabelStr = ll_backend.llds_out.label_to_c_string(Label, no),
-    labels_to_string(Labels, Str0 ++ LabelStr, Str).
+maybe_labels_to_string([], Str, Str).
+maybe_labels_to_string([MaybeLabel | MaybeLabels], Str0, Str) :-
+    (
+        MaybeLabel = yes(Label),
+        LabelStr = ll_backend.llds_out.label_to_c_string(Label, no)
+    ;
+        MaybeLabel = no,
+        LabelStr = "<<do_not_reached>>"
+    ),
+    maybe_labels_to_string(MaybeLabels, Str0 ++ LabelStr, Str).
 
 %----------------------------------------------------------------------------%
 

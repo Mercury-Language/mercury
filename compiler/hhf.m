@@ -390,10 +390,10 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
     VarTypes0 = !.HI ^ vartypes,
     (
         map.search(VarTypes0, Var, Type),
-        type_constructors(Type, ModuleInfo, Constructors),
-        type_to_ctor_and_args(Type, TypeId, _)
+        type_constructors(ModuleInfo, Type, Constructors),
+        type_to_ctor_and_args(Type, TypeCtor, _)
     ->
-        list.foldl(maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId),
+        list.foldl(maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor),
             Constructors, !HI)
     ;
         true
@@ -402,9 +402,9 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
 :- pred maybe_add_cons_id(prog_var::in, module_info::in, list(prog_var)::in,
     type_ctor::in, constructor::in, hhf_info::in, hhf_info::out) is det.
 
-maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId, Ctor, !HI) :-
+maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, Ctor, !HI) :-
     Ctor = ctor(_, _, Name, Args, _),
-    ConsId = make_cons_id(Name, Args, TypeId),
+    ConsId = make_cons_id(Name, Args, TypeCtor),
     map.lookup(!.HI ^ inst_graph, Var, node(Functors0, MaybeParent)),
     ( map.contains(Functors0, ConsId) ->
         true

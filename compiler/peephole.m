@@ -102,17 +102,18 @@ peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
     % Build a map that associates each label in a computed goto with the
     % values of the switch rval that cause a jump to it.
     %
-:- pred build_peephole_jump_label_map(list(label)::in, int::in,
-    map(label, list(int))::in, map(label, list(int))::out) is det.
+:- pred build_peephole_jump_label_map(list(maybe(label))::in, int::in,
+    map(label, list(int))::in, map(label, list(int))::out) is semidet.
 
 build_peephole_jump_label_map([], _, !LabelMap).
-build_peephole_jump_label_map([Label | Labels], Val, !LabelMap) :-
+build_peephole_jump_label_map([MaybeLabel | MaybeLabels], Val, !LabelMap) :-
+    MaybeLabel = yes(Label),
     ( map.search(!.LabelMap, Label, Vals0) ->
         map.det_update(!.LabelMap, Label, [Val | Vals0], !:LabelMap)
     ;
         map.det_insert(!.LabelMap, Label, [Val], !:LabelMap)
     ),
-    build_peephole_jump_label_map(Labels, Val + 1, !LabelMap).
+    build_peephole_jump_label_map(MaybeLabels, Val + 1, !LabelMap).
 
     % If one of the two labels has only one associated value, return it and
     % the associated value as the first two output arguments, and the

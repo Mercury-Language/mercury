@@ -755,8 +755,8 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 
     TB = mercury_table_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TB, "loop_active"), 0), ActiveGoal),
-        case(cons(qualified(TB, "loop_inactive"), 0), InactiveGoal)
+        case(cons(qualified(TB, "loop_active"), 0), [], ActiveGoal),
+        case(cons(qualified(TB, "loop_inactive"), 0), [], InactiveGoal)
     ],
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
     set.insert_list(InactiveNonLocals, [StatusVar, TableTipVar],
@@ -956,9 +956,12 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 
         TB = mercury_table_builtin_module,
         SwitchArms = [
-            case(cons(qualified(TB, "memo_det_active"), 0), ActiveGoal),
-            case(cons(qualified(TB, "memo_det_inactive"), 0), InactiveGoal),
-            case(cons(qualified(TB, "memo_det_succeeded"), 0), SucceededGoal)
+            case(cons(qualified(TB, "memo_det_active"), 0), [],
+                ActiveGoal),
+            case(cons(qualified(TB, "memo_det_inactive"), 0), [],
+                InactiveGoal),
+            case(cons(qualified(TB, "memo_det_succeeded"), 0), [],
+                SucceededGoal)
         ]
     ;
         CodeModel = model_semi,
@@ -994,10 +997,14 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 
         TB = mercury_table_builtin_module,
         SwitchArms = [
-            case(cons(qualified(TB, "memo_semi_active"), 0), ActiveGoal),
-            case(cons(qualified(TB, "memo_semi_inactive"), 0), InactiveGoal),
-            case(cons(qualified(TB, "memo_semi_succeeded"), 0), SucceededGoal),
-            case(cons(qualified(TB, "memo_semi_failed"), 0), FailedGoal)
+            case(cons(qualified(TB, "memo_semi_active"), 0), [],
+                ActiveGoal),
+            case(cons(qualified(TB, "memo_semi_inactive"), 0), [],
+                InactiveGoal),
+            case(cons(qualified(TB, "memo_semi_succeeded"), 0), [],
+                SucceededGoal),
+            case(cons(qualified(TB, "memo_semi_failed"), 0), [],
+                FailedGoal)
         ]
     ),
 
@@ -1112,10 +1119,14 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 
     TB = mercury_table_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TB, "memo_non_active"), 0), InfiniteRecursionGoal),
-        case(cons(qualified(TB, "memo_non_inactive"), 0), InactiveGoal),
-        case(cons(qualified(TB, "memo_non_incomplete"), 0), NeedMinModelGoal),
-        case(cons(qualified(TB, "memo_non_complete"), 0), RestoreAllAnswerGoal)
+        case(cons(qualified(TB, "memo_non_active"), 0), [],
+            InfiniteRecursionGoal),
+        case(cons(qualified(TB, "memo_non_inactive"), 0), [],
+            InactiveGoal),
+        case(cons(qualified(TB, "memo_non_incomplete"), 0), [],
+            NeedMinModelGoal),
+        case(cons(qualified(TB, "memo_non_complete"), 0), [],
+            RestoreAllAnswerGoal)
     ],
 
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
@@ -1508,9 +1519,12 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 
     TB = mercury_table_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TB, "mm_inactive"), 0), InactiveGoal),
-        case(cons(qualified(TB, "mm_complete"), 0), RestoreAllAnswerGoal),
-        case(cons(qualified(TB, "mm_active"), 0), SuspendGoal)
+        case(cons(qualified(TB, "mm_inactive"), 0), [],
+            InactiveGoal),
+        case(cons(qualified(TB, "mm_complete"), 0), [],
+            RestoreAllAnswerGoal),
+        case(cons(qualified(TB, "mm_active"), 0), [],
+            SuspendGoal)
     ],
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
     goal_info_add_feature(feature_hide_debug_event,
@@ -2437,7 +2451,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
             ;
                 ( ArgTablingMethod = arg_addr
                 ; ArgTablingMethod = arg_promise_implied
-                ) 
+                )
             )
         ;
             TypeCat = type_cat_base_typeclass_info,

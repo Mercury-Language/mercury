@@ -125,8 +125,8 @@ apply_tail_recursion_to_proc(PredProcId, !ModuleInfo) :-
         ClonePredProcId = proc(PredId, CloneProcId),
         ApplyInfo = apply_tail_recursion_info(!.ModuleInfo,
             [PredProcId - ClonePredProcId], Detism, Outputs),
-        apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, no,
-            FoundTailCall, _),
+        apply_tail_recursion_to_goal(Goal0, Goal, ApplyInfo, no, FoundTailCall,
+            _),
         FoundTailCall = yes
     ->
         proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
@@ -189,11 +189,11 @@ find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
                 outputs     :: list(prog_var)
             ).
 
-:- pred apply_tail_recursion_to_goal(hlds_goal::in,
-    apply_tail_recursion_info::in, hlds_goal::out, bool::in, bool::out,
+:- pred apply_tail_recursion_to_goal(hlds_goal::in, hlds_goal::out,
+    apply_tail_recursion_info::in, bool::in, bool::out,
     maybe(list(prog_var))::out) is det.
 
-apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
+apply_tail_recursion_to_goal(Goal0, Goal, ApplyInfo, !FoundTailCall,
         Continue) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
@@ -252,7 +252,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            apply_tail_recursion_to_conj(Goals0, ApplyInfo, Goals,
+            apply_tail_recursion_to_conj(Goals0, Goals, ApplyInfo,
                 !FoundTailCall, Continue),
             GoalExpr = conj(ConjType, Goals),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -263,22 +263,22 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         )
     ;
         GoalExpr0 = disj(Goals0),
-        apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals, !FoundTailCall),
+        apply_tail_recursion_to_disj(Goals0, Goals, ApplyInfo, !FoundTailCall),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
         Continue = no
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases,
+        apply_tail_recursion_to_cases(Cases0, Cases, ApplyInfo,
             !FoundTailCall),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
         Continue = no
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
-        apply_tail_recursion_to_goal(Then0, ApplyInfo, Then,
+        apply_tail_recursion_to_goal(Then0, Then, ApplyInfo,
             !FoundTailCall, _),
-        apply_tail_recursion_to_goal(Else0, ApplyInfo, Else,
+        apply_tail_recursion_to_goal(Else0, Else, ApplyInfo,
             !FoundTailCall, _),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
@@ -310,48 +310,46 @@ apply_tail_recursion_process_assign([Output0 | Outputs0], ToVar, FromVar,
     apply_tail_recursion_process_assign(Outputs0, ToVar, FromVar, Outputs).
 
 :- pred apply_tail_recursion_to_conj(list(hlds_goal)::in,
-    apply_tail_recursion_info::in, list(hlds_goal)::out,
+    list(hlds_goal)::out, apply_tail_recursion_info::in,
     bool::in, bool::out, maybe(list(prog_var))::out) is det.
 
-apply_tail_recursion_to_conj([], ApplyInfo, [],
+apply_tail_recursion_to_conj([], [], ApplyInfo,
         !FoundTailCall, yes(ApplyInfo ^ outputs)).
-apply_tail_recursion_to_conj([Goal0 | Goals0], ApplyInfo0, [Goal | Goals],
+apply_tail_recursion_to_conj([Goal0 | Goals0], [Goal | Goals], ApplyInfo0,
         !FoundTailCall, Continue) :-
-    apply_tail_recursion_to_conj(Goals0, ApplyInfo0, Goals,
-        !FoundTailCall, Continue1),
+    apply_tail_recursion_to_conj(Goals0, Goals, ApplyInfo0, !FoundTailCall,
+        Continue1),
     (
         Continue1 = yes(Outputs),
-        apply_tail_recursion_to_goal(Goal0,
-            ApplyInfo0 ^ outputs := Outputs, Goal,
-            !FoundTailCall, Continue)
+        apply_tail_recursion_to_goal(Goal0, Goal,
+            ApplyInfo0 ^ outputs := Outputs, !FoundTailCall, Continue)
     ;
         Continue1 = no,
         Goal = Goal0,
         Continue = no
     ).
 
-:- pred apply_tail_recursion_to_disj(list(hlds_goal)::in,
-    apply_tail_recursion_info::in, list(hlds_goal)::out,
-    bool::in, bool::out) is det.
+:- pred apply_tail_recursion_to_disj(list(hlds_goal)::in, list(hlds_goal)::out,
+    apply_tail_recursion_info::in, bool::in, bool::out) is det.
 
-apply_tail_recursion_to_disj([], _, [], !FoundTailCall).
-apply_tail_recursion_to_disj([Goal0], ApplyInfo, [Goal],
-        !FoundTailCall) :-
-    apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall, _).
-apply_tail_recursion_to_disj([Goal0 | Goals0], ApplyInfo, [Goal0 | Goals],
+apply_tail_recursion_to_disj([], [], _, !FoundTailCall).
+apply_tail_recursion_to_disj([Goal0], [Goal], ApplyInfo, !FoundTailCall) :-
+    apply_tail_recursion_to_goal(Goal0, Goal, ApplyInfo, !FoundTailCall, _).
+apply_tail_recursion_to_disj([Goal0 | Goals0], [Goal0 | Goals], ApplyInfo,
         !FoundTailCall) :-
     Goals0 = [_ | _],
-    apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals, !FoundTailCall).
+    apply_tail_recursion_to_disj(Goals0, Goals, ApplyInfo, !FoundTailCall).
 
-:- pred apply_tail_recursion_to_cases(list(case)::in,
-    apply_tail_recursion_info::in, list(case)::out,
-    bool::in, bool::out) is det.
+:- pred apply_tail_recursion_to_cases(list(case)::in, list(case)::out,
+    apply_tail_recursion_info::in, bool::in, bool::out) is det.
 
-apply_tail_recursion_to_cases([], _, [], !FoundTailCall).
-apply_tail_recursion_to_cases([case(ConsId, Goal0) | Cases0], ApplyInfo,
-        [case(ConsId, Goal) | Cases], !FoundTailCall) :-
-    apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall, _),
-    apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases, !FoundTailCall).
+apply_tail_recursion_to_cases([], [], _, !FoundTailCall).
+apply_tail_recursion_to_cases([Case0 | Cases0], [Case | Cases], ApplyInfo,
+        !FoundTailCall) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    apply_tail_recursion_to_goal(Goal0, Goal, ApplyInfo, !FoundTailCall, _),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    apply_tail_recursion_to_cases(Cases0, Cases, ApplyInfo, !FoundTailCall).
 
 %-----------------------------------------------------------------------------%
 
@@ -375,7 +373,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         ;
             true
         ),
-        ( 
+        (
             ( BuiltinState = out_of_line_builtin
             ; BuiltinState = not_builtin
             ),
@@ -426,7 +424,7 @@ figure_out_rec_call_numbers_in_goal_list([Goal|Goals], !N, !TailCallSites) :-
 
 figure_out_rec_call_numbers_in_case_list([], !N, !TailCallSites).
 figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     figure_out_rec_call_numbers(Goal, !N, !TailCallSites),
     figure_out_rec_call_numbers_in_case_list(Cases, !N, !TailCallSites).
 
@@ -1025,12 +1023,14 @@ deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
     deep_info::in, deep_info::out) is det.
 
 deep_prof_transform_switch(_, _, _, [], [], no, !DeepInfo).
-deep_prof_transform_switch(MaybeNumCases, N, Path, [case(Id, Goal0) | Goals0],
-        [case(Id, Goal) | Goals], AddedImpurity, !DeepInfo) :-
+deep_prof_transform_switch(MaybeNumCases, N, Path,
+        [Case0 | Cases0], [Case | Cases], AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     deep_prof_transform_goal(cord.snoc(Path, step_switch(N1, MaybeNumCases)),
         Goal0, Goal, AddedImpurityFirst, !DeepInfo),
-    deep_prof_transform_switch(MaybeNumCases, N1, Path, Goals0, Goals,
+    Case = case(MainConsId, OtherConsIds, Goal),
+    deep_prof_transform_switch(MaybeNumCases, N1, Path, Cases0, Cases,
         AddedImpurityLater, !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 

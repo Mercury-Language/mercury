@@ -359,8 +359,8 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
 
     TSPB = mercury_term_size_prof_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TSPB, "is_inactive"), 0), TransformedGoal),
-        case(cons(qualified(TSPB, "is_active"), 0), OrigGoal)
+        case(cons(qualified(TSPB, "is_inactive"), 0), [], TransformedGoal),
+        case(cons(qualified(TSPB, "is_active"), 0), [], OrigGoal)
     ],
 
     SwitchExpr = switch(IsActiveVar, cannot_fail, SwitchArms),

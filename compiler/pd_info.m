@@ -107,8 +107,8 @@
 
 :- pred pd_info_update_goal(hlds_goal::in, pd_info::in, pd_info::out) is det.
 
-:- pred pd_info_bind_var_to_functor(prog_var::in, cons_id::in,
-    pd_info::in, pd_info::out) is det.
+:- pred pd_info_bind_var_to_functors(prog_var::in,
+    cons_id::in, list(cons_id)::in, pd_info::in, pd_info::out) is det.
 
 :- pred pd_info_unset_unfold_info(pd_info::in, pd_info::out) is det.
 
@@ -203,14 +203,14 @@ pd_info_update_goal(hlds_goal(_, GoalInfo), !PDInfo) :-
     instmap.apply_instmap_delta(InstMap0, Delta, InstMap),
     pd_info_set_instmap(InstMap, !PDInfo).
 
-pd_info_bind_var_to_functor(Var, ConsId, !PDInfo) :-
+pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    instmap.bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
-        ModuleInfo0, ModuleInfo),
+    bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
+        InstMap0, InstMap, ModuleInfo0, ModuleInfo),
     pd_info_set_instmap(InstMap, !PDInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 

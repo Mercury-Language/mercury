@@ -57,8 +57,8 @@
 match_and_generate(Goal, Instrs, !CI) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
-    Case1 = case(ConsId1, Goal1),
-    Case2 = case(ConsId2, Goal2),
+    Case1 = case(ConsId1, [], Goal1),
+    Case2 = case(ConsId2, [], Goal2),
     (
         contains_only_builtins(Goal1) = yes,
         contains_simple_recursive_call(Goal2, !.CI)
@@ -200,7 +200,7 @@ contains_only_builtins_expr(shorthand(_)) = no.
 :- func contains_only_builtins_cases(list(case)) = bool.
 
 contains_only_builtins_cases([]) = yes.
-contains_only_builtins_cases([case(_ConsId, Goal) | Cases]) = OnlyBuiltins :-
+contains_only_builtins_cases([case(_, _, Goal) | Cases]) = OnlyBuiltins :-
     ( contains_only_builtins(Goal) = yes ->
         OnlyBuiltins = contains_only_builtins_cases(Cases)
     ;
@@ -234,17 +234,19 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
 
     pre_goal_update(SwitchGoalInfo, no, !CI),
-    unify_gen.generate_tag_test(Var, BaseConsId, branch_on_success,
+    VarType = variable_type(!.CI, Var),
+    CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
+    generate_tag_test(Var, BaseConsId, CheaperTagTest, branch_on_success,
         BaseLabel, EntryTestCode, !CI),
     tree.flatten(EntryTestCode, EntryTestListList),
     list.condense(EntryTestListList, EntryTestList),
 
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     remember_position(!.CI, BranchStart),
-    code_gen.generate_goal(model_det, Base, BaseGoalCode, !CI),
+    generate_goal(model_det, Base, BaseGoalCode, !CI),
     generate_branch_end(StoreMap, no, MaybeEnd1, BaseSaveCode, !CI),
     reset_to_position(BranchStart, !CI),
-    code_gen.generate_goal(model_det, Recursive, RecGoalCode, !CI),
+    generate_goal(model_det, Recursive, RecGoalCode, !CI),
     generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd, RecSaveCode, !CI),
 
     post_goal_update(SwitchGoalInfo, !CI),
@@ -255,8 +257,8 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
     setup_return(Args, LiveArgs, EpilogCode, !CI),
 
-    BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)),
-    RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)),
+    BaseCode = tree_list([BaseGoalCode, BaseSaveCode, EpilogCode]),
+    RecCode = tree_list([RecGoalCode, RecSaveCode, EpilogCode]),
     LiveValCode = [llds_instr(livevals(LiveArgs), "")],
 
     tree.flatten(BaseCode, BaseListList),

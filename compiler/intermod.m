@@ -527,7 +527,8 @@ intermod_traverse_goal_expr(shorthand(_), _, _, _, _) :-
     bool::out, intermod_info::in, intermod_info::out) is det.
 
 intermod_traverse_list_of_goals([], [], yes, !Info).
-intermod_traverse_list_of_goals([Goal0 | Goals0], [Goal | Goals], !:DoWrite, !Info) :-
+intermod_traverse_list_of_goals([Goal0 | Goals0], [Goal | Goals], !:DoWrite,
+        !Info) :-
     intermod_traverse_goal(Goal0, Goal, !:DoWrite, !Info),
     (
         !.DoWrite = yes,
@@ -541,9 +542,10 @@ intermod_traverse_list_of_goals([Goal0 | Goals0], [Goal | Goals], !:DoWrite, !In
     intermod_info::in, intermod_info::out) is det.
 
 intermod_traverse_cases([], [], yes, !Info).
-intermod_traverse_cases([case(F, Goal0) | Cases0],
-        [case(F, Goal) | Cases], !:DoWrite, !Info) :-
+intermod_traverse_cases([Case0 | Cases0], [Case | Cases], !:DoWrite, !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     intermod_traverse_goal(Goal0, Goal, !:DoWrite, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
     (
         !.DoWrite = yes,
         intermod_traverse_cases(Cases0, Cases, !:DoWrite, !Info)
@@ -973,8 +975,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
     ( should_write_type(ModuleName, TypeCtor, TypeDefn0) ->
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
-            TypeBody0 = hlds_du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
-                ReservedTag, ReservedAddr, MaybeForeign0),
+            TypeBody0 = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
+                MaybeUserEqComp0, ReservedTag, ReservedAddr, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1004,8 +1006,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
                     MaybeUserEqComp0, MaybeUserEqComp, !Info),
                 MaybeForeign = MaybeForeign0
             ),
-            TypeBody = hlds_du_type(Ctors, Tags, Enum, MaybeUserEqComp,
-                ReservedTag, ReservedAddr, MaybeForeign),
+            TypeBody = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
+                MaybeUserEqComp, ReservedTag, ReservedAddr, MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
@@ -1270,7 +1272,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     TypeCtor = type_ctor(Name, Arity),
     (
-        Body = hlds_du_type(Ctors, _, _, MaybeUserEqComp, _, _, _),
+        Body = hlds_du_type(Ctors, _, _, _, MaybeUserEqComp, _, _, _),
         TypeBody = parse_tree_du_type(Ctors, MaybeUserEqComp)
     ;
         Body = hlds_eqv_type(EqvType),
@@ -1361,7 +1363,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         true
     ),
     (
-        Body = hlds_du_type(_, ConsTagVals, EnumOrDummy, _, _, _, _),
+        Body = hlds_du_type(_, ConsTagVals, _, EnumOrDummy, _, _, _, _),
         EnumOrDummy = is_foreign_enum(Lang)
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [], 

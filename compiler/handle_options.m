@@ -1076,6 +1076,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(highlevel_code, mutable_always_boxed, bool(no),
             !Globals),
 
+        option_implies(highlevel_code, allow_multi_arm_switches, bool(no),
+            !Globals),
+
         option_implies(target_debug, strip, bool(no), !Globals),
 
         % Inlining happens before the deep profiling transformation, so if
@@ -2752,6 +2755,7 @@ convert_dump_alias("allD", "abcdfgilmnprstuvzBCDMPT").
 convert_dump_alias("all", "abcdfgilmnprstuvzBCMPSTZ").
 convert_dump_alias("most", "bcdfgilmnprstuvzP").
 convert_dump_alias("trans", "bcdglmnstuvz").
+convert_dump_alias("mintrans", "bcdglmnstvz").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("min", "ilv").

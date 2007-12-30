@@ -211,7 +211,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         StdInstr = goto(StdTarget)
     ;
         Instr = computed_goto(Rval, Targets),
-        standardize_labels(Targets, StdTargets, DupProcMap),
+        standardize_maybe_labels(Targets, StdTargets, DupProcMap),
         StdInstr = computed_goto(Rval, StdTargets)
     ;
         Instr = if_val(Rval, Target),
@@ -293,13 +293,21 @@ standardize_label(Label, StdLabel, DupProcMap) :-
 
     % Compute the standard form of a list(label).
     %
-:- pred standardize_labels(list(label)::in, list(label)::out,
-    map(proc_label, proc_label)::in) is det.
+:- pred standardize_maybe_labels(list(maybe(label))::in,
+    list(maybe(label))::out, map(proc_label, proc_label)::in) is det.
 
-standardize_labels([], [], _DupProcMap).
-standardize_labels([Label | Labels], [StdLabel | StdLabels], DupProcMap) :-
-    standardize_label(Label, StdLabel, DupProcMap),
-    standardize_labels(Labels, StdLabels, DupProcMap).
+standardize_maybe_labels([], [], _DupProcMap).
+standardize_maybe_labels([MaybeLabel | MaybeLabels],
+        [StdMaybeLabel | StdMaybeLabels], DupProcMap) :-
+    (
+        MaybeLabel = yes(Label),
+        standardize_label(Label, StdLabel, DupProcMap),
+        StdMaybeLabel = yes(StdLabel)
+    ;
+        MaybeLabel = no,
+        StdMaybeLabel = no
+    ),
+    standardize_maybe_labels(MaybeLabels, StdMaybeLabels, DupProcMap).
 
     % Compute the standard form of a code_addr.
     %

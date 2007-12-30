@@ -1055,7 +1055,8 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 :- pred find_items_used_by_type_body(hlds_type_body::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_type_body(hlds_du_type(Ctors, _, _, _, _, _, _), !Info) :-
+find_items_used_by_type_body(hlds_du_type(Ctors, _, _, _, _, _, _, _),
+        !Info) :-
     list.foldl(find_items_used_by_ctor, Ctors, !Info).
 find_items_used_by_type_body(hlds_eqv_type(Type), !Info) :-
     find_items_used_by_type(Type, !Info).

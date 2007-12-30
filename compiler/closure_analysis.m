@@ -268,10 +268,10 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
 process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal0 = hlds_goal(switch(SwitchVar, SwitchCanFail, Cases0), GoalInfo),
     ProcessCase = (func(Case0) = Case - CaseInfo :-
-        Case0 = case(ConsId, CaseGoal0),
+        Case0 = case(MainConsId, OtherConsIds, CaseGoal0),
         process_goal(VarTypes, ModuleInfo, CaseGoal0, CaseGoal,
           !.ClosureInfo, CaseInfo),
-        Case = case(ConsId, CaseGoal)
+        Case = case(MainConsId, OtherConsIds, CaseGoal)
     ),
     CasesAndInfos = list.map(ProcessCase, Cases0),
     assoc_list.keys_and_values(CasesAndInfos, Cases, CasesInfo),
@@ -442,7 +442,7 @@ dump_closure_info_expr(Varset, generic_call(_,_,_,_), GoalInfo, !IO) :-
 dump_closure_info_expr(Varset, scope(_, Goal), _, !IO) :-
     dump_closure_info(Varset, Goal, !IO).
 dump_closure_info_expr(Varset, switch(_, _, Cases), _, !IO) :-
-    CaseToGoal = (func(case(_, Goal)) = Goal),
+    CaseToGoal = (func(case(_, _, Goal)) = Goal),
     Goals = list.map(CaseToGoal, Cases),
     list.foldl(dump_closure_info(Varset), Goals, !IO).
 dump_closure_info_expr(Varset, if_then_else(_, Cond, Then, Else), _, !IO) :-

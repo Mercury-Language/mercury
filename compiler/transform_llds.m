@@ -46,6 +46,7 @@
 :- import_module counter.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -171,12 +172,12 @@ transform_instructions([], [], !C, _, _).
 transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
     transform_instructions(Instrs0, InstrsTail, !C, ProcLabel, MaxSize),
     (
-        Instr0 = llds_instr(computed_goto(Rval, Labels), Comment),
-        list.length(Labels, NumLabels),
-        NumLabels > MaxSize
+        Instr0 = llds_instr(computed_goto(Rval, Targets), Comment),
+        list.length(Targets, NumTargets),
+        NumTargets > MaxSize
     ->
-        split_computed_goto(Rval, Labels, Comment, InstrsHead, !C,
-            MaxSize, NumLabels, ProcLabel),
+        split_computed_goto(Rval, Targets, Comment, InstrsHead, !C,
+            MaxSize, NumTargets, ProcLabel),
         list.append(InstrsHead, InstrsTail, Instrs)
     ;
         Instrs = [Instr0 | InstrsTail]
@@ -188,20 +189,20 @@ transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
     % in half as many times as necessary to bring the jump table size
     % below MaxSize, doing a binary search on the way.
     %
-:- pred split_computed_goto(rval::in, list(label)::in, string::in,
+:- pred split_computed_goto(rval::in, list(maybe(label))::in, string::in,
     list(instruction)::out, counter::in, counter::out, int::in, int::in,
     proc_label::in) is det.
 
-split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
+split_computed_goto(Rval, Targets, Comment, Instrs, !C, MaxSize, NumTargets,
         ProcLabel) :-
-    ( NumLabels =< MaxSize ->
-        Instrs = [llds_instr(computed_goto(Rval, Labels), Comment)]
+    ( NumTargets =< MaxSize ->
+        Instrs = [llds_instr(computed_goto(Rval, Targets), Comment)]
     ;
         counter.allocate(LabelNum, !C),
-        Mid = NumLabels // 2,
-        ( list.split_list(Mid, Labels, StartPrime, EndPrime) ->
-            Start = StartPrime,
-            End = EndPrime
+        Mid = NumTargets // 2,
+        ( list.split_list(Mid, Targets, StartTargetsPrime, EndTargetsPrime) ->
+            StartTargets = StartTargetsPrime,
+            EndTargets = EndTargetsPrime
         ;
             unexpected(this_file, "split_computed_goto: list.split_list")
         ),
@@ -212,10 +213,10 @@ split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
         IfInstr   = llds_instr(if_val(Test, ElseAddr), "binary search"),
         ElseInstr = llds_instr(label(internal_label(LabelNum, ProcLabel)), ""),
 
-        split_computed_goto(Rval, Start, Comment ++ " then",
+        split_computed_goto(Rval, StartTargets, Comment ++ " then",
             ThenInstrs, !C, MaxSize, Mid, ProcLabel),
-        split_computed_goto(Index, End, Comment ++ " else",
-            ElseInstrs, !C, MaxSize, NumLabels - Mid, ProcLabel),
+        split_computed_goto(Index, EndTargets, Comment ++ " else",
+            ElseInstrs, !C, MaxSize, NumTargets - Mid, ProcLabel),
 
         Instrs = [IfInstr | ThenInstrs] ++ [ElseInstr | ElseInstrs]
     ).

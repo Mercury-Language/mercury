@@ -214,8 +214,8 @@
     % (deconstruction unification) to the case goal.
     % This aborts if the constructor is existentially typed.
     %
-:- pred case_to_disjunct(prog_var::in, cons_id::in, hlds_goal::in,
-    instmap::in, hlds_goal::out, prog_varset::in, prog_varset::out,
+:- pred case_to_disjunct(prog_var::in, hlds_goal::in, instmap::in,
+    cons_id::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
 
     % Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
@@ -552,7 +552,7 @@ goals_goal_vars([Goal | Goals], !Set) :-
     set(prog_var)::in, set(prog_var)::out) is det.
 
 cases_goal_vars([], !Set).
-cases_goal_vars([case(_, Goal) | Cases], !Set) :-
+cases_goal_vars([case(_, _, Goal) | Cases], !Set) :-
     goal_vars_2(Goal ^ hlds_goal_expr, !Set),
     cases_goal_vars(Cases, !Set).
 
@@ -587,8 +587,10 @@ attach_features_to_all_goals(Features, Goal0, Goal) :-
 :- pred attach_features_to_case(list(goal_feature)::in,
     case::in, case::out) is det.
 
-attach_features_to_case(Features, case(ConsId, Goal0), case(ConsId, Goal)) :-
-    attach_features_to_all_goals(Features, Goal0, Goal).
+attach_features_to_case(Features, Case0, Case) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    attach_features_to_all_goals(Features, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred attach_features_goal_expr(list(goal_feature)::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is det.
@@ -759,7 +761,7 @@ proc_body_is_leaf_goals([Goal | Goals]) = IsLeaf :-
 
 proc_body_is_leaf_cases([]) = is_leaf.
 proc_body_is_leaf_cases([Case | Cases]) = IsLeaf :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     (
         proc_body_is_leaf(Goal) = is_leaf,
         proc_body_is_leaf_cases(Cases) = is_leaf
@@ -805,7 +807,7 @@ clause_size_increment(Clause, Size0, Size) :-
 :- pred cases_size(list(case)::in, int::out) is det.
 
 cases_size([], 0).
-cases_size([case(_, Goal) | Cases], Size) :-
+cases_size([case(_, _, Goal) | Cases], Size) :-
     goal_size(Goal, Size1),
     cases_size(Cases, Size2),
     Size = Size1 + Size2.
@@ -879,7 +881,7 @@ goals_calls([Goal | Goals], PredProcId) :-
 :- mode cases_calls(in, in) is semidet.
 :- mode cases_calls(in, out) is nondet.
 
-cases_calls([case(_, Goal) | Cases], PredProcId) :-
+cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
     (
         goal_calls(Goal, PredProcId)
     ;
@@ -937,7 +939,7 @@ goals_calls_pred_id([Goal | Goals], PredId) :-
 :- mode cases_calls_pred_id(in, in) is semidet.
 :- mode cases_calls_pred_id(in, out) is nondet.
 
-cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
+cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
     (
         goal_calls_pred_id(Goal, PredId)
     ;
@@ -1035,7 +1037,7 @@ goal_list_calls_proc_in_list_2([Goal | Goals], PredProcIds, !CalledSet) :-
 
 case_list_calls_proc_in_list([], _, !CalledSet).
 case_list_calls_proc_in_list([Case | Cases], PredProcIds, !CalledSet) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet),
     case_list_calls_proc_in_list(Cases, PredProcIds, !CalledSet).
 
@@ -1054,7 +1056,7 @@ goal_expr_contains_reconstruction(disj(Goals)) :-
     goals_contain_reconstruction(Goals).
 goal_expr_contains_reconstruction(switch(_, _, Cases)) :-
     list.member(Case, Cases),
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
     goals_contain_reconstruction([Cond, Then, Else]).
@@ -1092,19 +1094,23 @@ direct_subgoal(disj(DisjList), Goal) :-
     list.member(Goal, DisjList).
 direct_subgoal(switch(_, _, CaseList), Goal) :-
     list.member(Case, CaseList),
-    Case = case(_, Goal).
+    Case = case(_, _, Goal).
 
 %-----------------------------------------------------------------------------%
 
 switch_to_disjunction(_, [], _, [], !VarSet, !VarTypes, !ModuleInfo).
-switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap,
-        [Goal | Goals], !VarSet, !VarTypes, !ModuleInfo) :-
-    case_to_disjunct(Var, ConsId, Goal0, InstMap, Goal, !VarSet, !VarTypes,
+switch_to_disjunction(Var, [Case | Cases], InstMap, Goals,
+        !VarSet, !VarTypes, !ModuleInfo) :-
+    Case = case(MainConsId, OtherConsIds, CaseGoal),
+    case_to_disjunct(Var, CaseGoal, InstMap, MainConsId, MainDisjunctGoal,
+        !VarSet, !VarTypes, !ModuleInfo),
+    list.map_foldl3(case_to_disjunct(Var, CaseGoal, InstMap),
+        OtherConsIds, OtherDisjunctGoals, !VarSet, !VarTypes, !ModuleInfo),
+    switch_to_disjunction(Var, Cases, InstMap, CasesGoals, !VarSet, !VarTypes,
         !ModuleInfo),
-    switch_to_disjunction(Var, Cases, InstMap, Goals, !VarSet, !VarTypes,
-        !ModuleInfo).
+    Goals = [MainDisjunctGoal | OtherDisjunctGoals] ++ CasesGoals.
 
-case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
+case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
         !ModuleInfo) :-
     ConsArity = cons_id_arity(ConsId),
     svvarset.new_vars(ConsArity, ArgVars, !VarSet),
@@ -1630,9 +1636,9 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
 :- func maybe_strip_equality_pretest_case(case) = case.
 
 maybe_strip_equality_pretest_case(Case0) = Case :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     Goal = maybe_strip_equality_pretest(Goal0),
-    Case = case(ConsId, Goal).
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 

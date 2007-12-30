@@ -1625,7 +1625,7 @@ inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType, Result, !ModuleInfo) :-
         % just "any".
         (
             MaybeType = yes(Type),
-            type_constructors(Type, !.ModuleInfo, Constructors),
+            type_constructors(!.ModuleInfo, Type, Constructors),
             constructors_to_bound_insts(!.ModuleInfo, UniqB, Constructors,
                 ListB0),
             list.sort_and_remove_dups(ListB0, ListB),

@@ -1690,9 +1690,9 @@ polymorphism_process_goal_list([Goal0 | Goals0], [Goal | Goals], !Info) :-
 
 polymorphism_process_case_list([], [], !Info).
 polymorphism_process_case_list([Case0 | Cases0], [Case | Cases], !Info) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     polymorphism_process_goal(Goal0, Goal, !Info),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     polymorphism_process_case_list(Cases0, Cases, !Info).
 
 %-----------------------------------------------------------------------------%

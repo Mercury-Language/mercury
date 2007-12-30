@@ -20,15 +20,18 @@
 :- module ml_backend.ml_string_switch.
 :- interface.
 
-:- import_module backend_libs.switch_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
-:- pred generate(cases_list::in, prog_var::in, code_model::in, can_fail::in,
-    prog_context::in, mlds_defns::out, statements::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- import_module list.
+
+:- pred ml_generate_string_switch(list(tagged_case)::in, prog_var::in,
+    code_model::in, can_fail::in, prog_context::in,
+    mlds_defns::out, statements::out, ml_gen_info::in, ml_gen_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,6 +39,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module ml_backend.ml_code_gen.
@@ -43,15 +47,16 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
-generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
+ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
+        Decls, Statements, !Info) :-
     MLDS_Context = mlds_make_context(Context),
     % Compute the value we're going to switch on.
 
@@ -98,9 +103,12 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     HashMask = TableSize - 1,
 
     % Compute the hash table.
-    switch_util.string_hash_cases(Cases, HashMask, HashValsMap),
+    switch_util.string_hash_cases(Cases, HashMask,
+        represent_tagged_case_by_itself, unit, _, unit, _, unit, _,
+        HashValsMap),
     map.to_assoc_list(HashValsMap, HashValsList),
-    switch_util.calc_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
+    switch_util.calc_string_hash_slots(HashValsList, HashValsMap,
+        HashSlotsMap),
 
     % Generate the code for when the hash lookup fails.
     (
@@ -120,7 +128,7 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     ),
 
     % Generate the code etc. for the hash table.
-    gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
+    ml_gen_string_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
         Context, Strings, NextSlots, SlotsCases, !Info),
 
     % Generate the following local constant declarations:
@@ -223,48 +231,52 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_hash_slots(int::in, int::in,
-    map(int, hash_slot)::in, code_model::in, prog_context::in,
-    list(mlds_initializer)::out, list(mlds_initializer)::out,
+:- pred ml_gen_string_hash_slots(int::in, int::in,
+    map(int, string_hash_slot(tagged_case))::in, code_model::in,
+    prog_context::in, list(mlds_initializer)::out, list(mlds_initializer)::out,
     list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context, Strings,
-        NextSlots, MLDS_Cases, !Info) :-
+ml_gen_string_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context,
+        Strings, NextSlots, MLDS_Cases, !Info) :-
     ( Slot = TableSize ->
         Strings = [],
         NextSlots = [],
         MLDS_Cases = []
     ;
         MLDS_Context = mlds_make_context(Context),
-        gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context, String,
-            NextSlot, SlotCases, !Info),
-        gen_hash_slots(Slot + 1, TableSize, HashSlotMap, CodeModel, Context,
-            Strings0, NextSlots0, MLDS_Cases0, !Info),
+        ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
+            String, NextSlot, SlotCases, !Info),
+        ml_gen_string_hash_slots(Slot + 1, TableSize, HashSlotMap, CodeModel,
+            Context, Strings0, NextSlots0, MLDS_Cases0, !Info),
         Strings = [String | Strings0],
         NextSlots = [NextSlot | NextSlots0],
         MLDS_Cases = SlotCases ++ MLDS_Cases0
     ).
 
-:- pred gen_hash_slot(int::in, map(int, hash_slot)::in,
-    code_model::in, mlds_context::in, mlds_initializer::out,
-    mlds_initializer::out, list(mlds_switch_case)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_string_hash_slot(int::in,
+    map(int, string_hash_slot(tagged_case))::in, code_model::in,
+    mlds_context::in, mlds_initializer::out, mlds_initializer::out,
+    list(mlds_switch_case)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
+ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         init_obj(StringRval), init_obj(NextSlotRval), MLDS_Cases, !Info) :-
-    ( map.search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
+    ( map.search(HashSlotMap, Slot, string_hash_slot(Next, String, Case)) ->
         NextSlotRval = const(mlconst_int(Next)),
-        Case = extended_case(_, ConsTag, _, Goal),
-        ( ConsTag = string_tag(String0) ->
-            String = String0
+        Case = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+        expect(unify(TaggedOtherConsIds, []), this_file,
+            "ml_gen_string_hash_slot: other cons_ids"),
+        TaggedMainConsId = tagged_cons_id(_ConsId, ConsTag),
+        ( ConsTag = string_tag(StringPrime) ->
+            expect(unify(String, StringPrime), this_file,
+                "ml_gen_string_hash_slot: string mismatch")
         ;
-            unexpected(this_file, "gen_hash_slots: string expected")
+            unexpected(this_file, "ml_gen_string_hash_slot: string expected")
         ),
         StringRval = const(mlconst_string(String)),
         ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),
 
-        string.append_list(["case """, String, """"], CommentString),
+        CommentString = "case """ ++ String ++ """",
         Comment = statement(ml_stmt_atomic(comment(CommentString)),
             MLDS_Context),
         CaseStatement = statement(ml_stmt_block([], [Comment, GoalStatement]),

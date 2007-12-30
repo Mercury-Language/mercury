@@ -408,13 +408,13 @@ indirect_reuse_analyse_disj(BaseInfo, AnalysisInfo0, Goal0, Goal, AnalysisInfo,
 
 indirect_reuse_analyse_case(BaseInfo, AnalysisInfo0, Case0, Case, AnalysisInfo,
         !FixpointTable, !IO) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     % Replace the state of the fixpoint_table in AnalysisInfo0:
     NewAnalysisInfo = AnalysisInfo0 ^ fptable := !.FixpointTable,
     indirect_reuse_analyse_goal(BaseInfo, Goal0, Goal, NewAnalysisInfo,
         AnalysisInfo, !IO),
     !:FixpointTable = AnalysisInfo ^ fptable,
-    Case = case(ConsId, Goal).
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 

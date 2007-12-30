@@ -301,7 +301,7 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
         proc_info_get_goal(ProcInfo0, Goal),
 
         digraph.lookup_key(!.DepGraph, proc(PredId, ProcId), Caller),
-        add_dependency_arcs_in_goal(Goal, Caller, !DepGraph)
+        add_dependency_arcs_in_goal(Caller, Goal, !DepGraph)
     ;
         IncludeImported = include_imported,
         pred_info_get_import_status(PredInfo0, ImportStatus),
@@ -312,7 +312,7 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
             Imported = no,
             proc_info_get_goal(ProcInfo0, Goal),
             digraph.lookup_key(!.DepGraph, proc(PredId, ProcId), Caller),
-            add_dependency_arcs_in_goal(Goal, Caller, !DepGraph)
+            add_dependency_arcs_in_goal(Caller, Goal, !DepGraph)
         )
     ),
     add_proc_arcs(ProcIds, PredId, ModuleInfo, IncludeImported, !DepGraph).
@@ -337,7 +337,7 @@ add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
         get_clause_list_any_order(ClausesRep, Clauses),
         Goals = list.map(func(clause(_, Goal, _, _)) = Goal, Clauses),
         digraph.lookup_key(!.DepGraph, PredId, Caller),
-        add_dependency_arcs_in_list(Goals, Caller, !DepGraph)
+        add_dependency_arcs_in_list(Caller, Goals, !DepGraph)
     ),
     add_pred_arcs(PredIds, ModuleInfo, IncludeImported, !DepGraph).
 
@@ -351,29 +351,29 @@ pred_proc_id_get_pred_id(proc(PredId, _)) = PredId.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_goal(hlds_goal::in, digraph_key(T)::in,
+:- pred add_dependency_arcs_in_goal(digraph_key(T)::in, hlds_goal::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
+add_dependency_arcs_in_goal(Caller, hlds_goal(GoalExpr, _), !DepGraph) :-
     (
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        add_dependency_arcs_in_list(Goals, Caller, !DepGraph)
+        add_dependency_arcs_in_list(Caller, Goals, !DepGraph)
     ;
         GoalExpr = switch(_Var, _Det, Cases),
-        add_dependency_arcs_in_cases(Cases, Caller, !DepGraph)
+        add_dependency_arcs_in_cases(Caller, Cases, !DepGraph)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        add_dependency_arcs_in_goal(Cond, Caller, !DepGraph),
-        add_dependency_arcs_in_goal(Then, Caller, !DepGraph),
-        add_dependency_arcs_in_goal(Else, Caller, !DepGraph)
+        add_dependency_arcs_in_goal(Caller, Cond, !DepGraph),
+        add_dependency_arcs_in_goal(Caller, Then, !DepGraph),
+        add_dependency_arcs_in_goal(Caller, Else, !DepGraph)
     ;
         ( GoalExpr = negation(Goal)
         ; GoalExpr = scope(_, Goal)
         ),
-        add_dependency_arcs_in_goal(Goal, Caller, !DepGraph)
+        add_dependency_arcs_in_goal(Caller, Goal, !DepGraph)
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;
@@ -402,11 +402,11 @@ add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
         ;
             Unify = simple_test(_, _)
         ;
-            Unify = construct(_, Cons, _, _, _, _, _),
-            add_dependency_arcs_in_cons(Cons, Caller, !DepGraph)
+            Unify = construct(_, ConsId, _, _, _, _, _),
+            add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph)
         ;
-            Unify = deconstruct(_, Cons, _, _, _, _),
-            add_dependency_arcs_in_cons(Cons, Caller, !DepGraph)
+            Unify = deconstruct(_, ConsId, _, _, _, _),
+            add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph)
         ;
             Unify = complicated_unify(_, _, _)
         )
@@ -415,63 +415,67 @@ add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
     ;
         GoalExpr = shorthand(ShorthandGoal),
         ShorthandGoal = bi_implication(LHS, RHS),
-        add_dependency_arcs_in_list([LHS, RHS], Caller, !DepGraph)
+        add_dependency_arcs_in_list(Caller, [LHS, RHS], !DepGraph)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_list(list(hlds_goal)::in, digraph_key(T)::in,
+:- pred add_dependency_arcs_in_list(digraph_key(T)::in, list(hlds_goal)::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_list([], _Caller, !DepGraph).
-add_dependency_arcs_in_list([Goal|Goals], Caller, !DepGraph) :-
-    add_dependency_arcs_in_goal(Goal, Caller, !DepGraph),
-    add_dependency_arcs_in_list(Goals, Caller, !DepGraph).
+add_dependency_arcs_in_list(_Caller, [], !DepGraph).
+add_dependency_arcs_in_list(Caller, [Goal | Goals], !DepGraph) :-
+    add_dependency_arcs_in_goal(Caller, Goal, !DepGraph),
+    add_dependency_arcs_in_list(Caller, Goals, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_cases(list(case)::in, digraph_key(T)::in,
+:- pred add_dependency_arcs_in_cases(digraph_key(T)::in, list(case)::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_cases([], _Caller, !DepGraph).
-add_dependency_arcs_in_cases([case(Cons, Goal) | Goals], Caller, !DepGraph) :-
-    add_dependency_arcs_in_cons(Cons, Caller, !DepGraph),
-    add_dependency_arcs_in_goal(Goal, Caller, !DepGraph),
-    add_dependency_arcs_in_cases(Goals, Caller, !DepGraph).
+add_dependency_arcs_in_cases(_Caller, [], !DepGraph).
+add_dependency_arcs_in_cases(Caller, [Case | Cases], !DepGraph) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    add_dependency_arcs_in_cons(Caller, MainConsId, !DepGraph),
+    list.foldl(add_dependency_arcs_in_cons(Caller), OtherConsIds, !DepGraph),
+    add_dependency_arcs_in_goal(Caller, Goal, !DepGraph),
+    add_dependency_arcs_in_cases(Caller, Cases, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_cons(cons_id::in, digraph_key(T)::in,
+:- pred add_dependency_arcs_in_cons(digraph_key(T)::in, cons_id::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_cons(cons(_, _), _Caller, !DepGraph).
-add_dependency_arcs_in_cons(int_const(_), _Caller, !DepGraph).
-add_dependency_arcs_in_cons(string_const(_), _Caller, !DepGraph).
-add_dependency_arcs_in_cons(float_const(_), _Caller, !DepGraph).
-add_dependency_arcs_in_cons(pred_const(ShroudedPredProcId, _), Caller,
-        !DepGraph) :-
-    PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
     (
-        % If the node isn't in the graph, then we didn't insert it
-        % because it was imported, and we don't consider it.
-        digraph.search_key(!.DepGraph, dependency_node(PredProcId), Callee)
-    ->
-        digraph.add_edge(Caller, Callee, !DepGraph)
+        ConsId = pred_const(ShroudedPredProcId, _),
+        PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+        (
+            % If the node isn't in the graph, then we didn't insert it
+            % because it was imported, and we don't consider it.
+            digraph.search_key(!.DepGraph, dependency_node(PredProcId), Callee)
+        ->
+            digraph.add_edge(Caller, Callee, !DepGraph)
+        ;
+            true
+        )
     ;
-        true
+        ( ConsId = cons(_, _)
+        ; ConsId = int_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = table_io_decl(_)
+        )
     ).
-add_dependency_arcs_in_cons(type_ctor_info_const(_, _, _), _, !DepGraph).
-add_dependency_arcs_in_cons(base_typeclass_info_const(_, _, _, _), _,
-    !DepGraph).
-add_dependency_arcs_in_cons(type_info_cell_constructor(_), _, !DepGraph).
-add_dependency_arcs_in_cons(typeclass_info_cell_constructor, _,
-    !DepGraph).
-add_dependency_arcs_in_cons(tabling_info_const(_), _Caller, !DepGraph).
-add_dependency_arcs_in_cons(deep_profiling_proc_layout(_), _, !DepGraph).
-add_dependency_arcs_in_cons(table_io_decl(_), _Caller, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 

@@ -411,7 +411,7 @@ invariant_goal_candidates_keeping_path_candidates(PPId, Goal, IGCs) =
 :- func case_goals(list(case)) = hlds_goals.
 
 case_goals(Cases) =
-    list.map(func(case(_ConsId, Goal)) = Goal, Cases).
+    list.map(func(case(_MainConsId, _OtherConsIds, Goal)) = Goal, Cases).
 
 %-----------------------------------------------------------------------------%
 
@@ -933,7 +933,8 @@ gen_aux_proc_list(Info, Goals) = list.map(gen_aux_proc_2(Info), Goals).
 
 gen_aux_proc_switch(Info, Cases) =
     list.map(
-        func(case(CaseId, Goal)) = case(CaseId, gen_aux_proc_2(Info, Goal)),
+        func(case(MainCaseId, OtherConsIds, Goal)) =
+            case(MainCaseId, OtherConsIds, gen_aux_proc_2(Info, Goal)),
         Cases
     ).
 
@@ -1028,8 +1029,9 @@ gen_out_proc_2(PPId, CallAux,
     hlds_goal(switch(Var, CanFail, list.map(GOPCase, Cases)), GoalInfo)
  :-
     GOPCase =
-        ( func(case(ConsId, Goal)) =
-                case(ConsId, gen_out_proc_2(PPId, CallAux, Goal)) ).
+        ( func(case(MainConsId, OtherConsIds, Goal)) =
+                case(MainConsId, OtherConsIds,
+                    gen_out_proc_2(PPId, CallAux, Goal)) ).
 
 gen_out_proc_2(PPId, CallAux,
         hlds_goal(negation(NegatedGoal), GoalInfo)) =

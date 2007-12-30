@@ -692,9 +692,9 @@ traverse_cases_2(_, [], [], !PostInfos, !Info).
 traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
         !Info) :-
     set_pre_branch_info(PreInfo, !Info),
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     traverse_goal_2(Goal0, Goal, !Info),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     get_post_branch_info(!.Info, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
     traverse_cases_2(PreInfo, Cases0, Cases, !PostInfos, !Info).

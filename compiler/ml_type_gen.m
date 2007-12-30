@@ -148,35 +148,42 @@ ml_gen_type_defn(ModuleInfo, TypeTable, TypeCtor, MLDS_Defns0, MLDS_Defns) :-
 :- pred ml_gen_type_2(hlds_type_body::in, module_info::in, type_ctor::in,
     hlds_type_defn::in, mlds_defns::in, mlds_defns::out) is det.
 
-ml_gen_type_2(hlds_abstract_type(_), _, _, _, !Defns).
-ml_gen_type_2(hlds_eqv_type(_EqvType), _, _, _, !Defns).
-    % XXX Fixme!
-    % For a description of the problems with equivalence types,
-    % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-ml_gen_type_2(hlds_du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
-        _ReservedTag, _, _), ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
-    % XXX we probably shouldn't ignore _ReservedTag
-    ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
+ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     (
-        ( EnumDummy = is_mercury_enum
-        ; EnumDummy = is_foreign_enum(_)
-        ),
-        ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
-            MaybeEqualityMembers, !Defns)
+        TypeBody = hlds_abstract_type(_)
     ;
-        EnumDummy = is_dummy,
-        % XXX We shouldn't have to generate an MLDS type for these types,
-        % but it is not easy to ensure that we never refer to that type.
-        ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
-            MaybeEqualityMembers, !Defns)
+        TypeBody = hlds_eqv_type(_EqvType)
+        % XXX Fixme!
+        % For a description of the problems with equivalence types,
+        % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
+        % The same issue arises for some of the cases below.
     ;
-        EnumDummy = not_enum_or_dummy,
-        ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn,
-            Ctors, TagValues, MaybeEqualityMembers, !Defns)
+        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest, EnumDummy,
+            MaybeUserEqComp, _ReservedTag, _, _),
+        % XXX We probably shouldn't ignore _ReservedTag.
+        ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
+        (
+            ( EnumDummy = is_mercury_enum
+            ; EnumDummy = is_foreign_enum(_)
+            ),
+            ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
+                MaybeEqualityMembers, !Defns)
+        ;
+            EnumDummy = is_dummy,
+            % XXX We shouldn't have to generate an MLDS type for these types,
+            % but it is not easy to ensure that we never refer to that type.
+            ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
+                MaybeEqualityMembers, !Defns)
+        ;
+            EnumDummy = not_enum_or_dummy,
+            ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn,
+                Ctors, TagValues, MaybeEqualityMembers, !Defns)
+        )
+    ;
+        TypeBody = hlds_foreign_type(_)
+    ;
+        TypeBody = hlds_solver_type(_, _)
     ).
-    % XXX Fixme!  Same issues here as for eqv_type/1.
-ml_gen_type_2(hlds_foreign_type(_), _, _, _, !Defns).
-ml_gen_type_2(hlds_solver_type(_, _), _, _, _, !Defns).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1068,8 +1075,9 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         ),
         unexpected(this_file, "ml_gen_exported_enum - invalid type (2).")
     ;
-        TypeBody = hlds_du_type(Ctors, TagValues, _IsEnumOrDummy, _MaybeUserEq,
-            _ReservedTag, _ReservedAddr, _IsForeignType),
+        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
+            _IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
+            _IsForeignType),
         list.foldl(generate_foreign_enum_constant(Mapping, TagValues),
             Ctors, [], NamesAndTags),
         MLDS_ExportedEnum = mlds_exported_enum(Lang, Context,

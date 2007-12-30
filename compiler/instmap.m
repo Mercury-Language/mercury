@@ -149,8 +149,7 @@
 
     % Set an entry in an instmap.
     %
-:- pred set(prog_var::in, mer_inst::in, instmap::in, instmap::out)
-    is det.
+:- pred set(prog_var::in, mer_inst::in, instmap::in, instmap::out) is det.
 
     % Set multiple entries in an instmap.
     %
@@ -167,8 +166,17 @@
     cons_id::in, instmap::in, instmap_delta::in, instmap_delta::out,
     module_info::in, module_info::out) is det.
 
+:- pred instmap_delta_bind_var_to_functors(prog_var::in, mer_type::in,
+    cons_id::in, list(cons_id)::in, instmap::in,
+    instmap_delta::in, instmap_delta::out,
+    module_info::in, module_info::out) is det.
+
 :- pred bind_var_to_functor(prog_var::in, mer_type::in, cons_id::in,
     instmap::in, instmap::out, module_info::in, module_info::out) is det.
+
+:- pred bind_var_to_functors(prog_var::in, mer_type::in,
+    cons_id::in, list(cons_id)::in, instmap::in, instmap::out,
+    module_info::in, module_info::out) is det.
 
     % Update the given instmap to include the initial insts of the
     % lambda variables.
@@ -538,7 +546,7 @@ instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap, !InstmapDelta,
     ;
         !.InstmapDelta = reachable(InstmappingDelta0),
 
-        % Get the initial inst from the InstMap
+        % Get the initial inst from the InstMap.
         lookup_var(InstMap, Var, OldInst),
 
         % Compute the new inst by taking the old inst, applying the instmap
@@ -558,9 +566,44 @@ instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap, !InstmapDelta,
         )
     ).
 
+instmap_delta_bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
+        InstMap, !InstmapDelta, !ModuleInfo) :-
+    (
+        !.InstmapDelta = unreachable
+    ;
+        !.InstmapDelta = reachable(InstmappingDelta0),
+
+        % Get the initial inst from the InstMap.
+        lookup_var(InstMap, Var, OldInst),
+
+        % Compute the new inst by taking the old inst, applying the instmap
+        % delta to it, and then unifying with bound(MainConsId, ...).
+        ( map.search(InstmappingDelta0, Var, NewInst0) ->
+            NewInst1 = NewInst0
+        ;
+            NewInst1 = OldInst
+        ),
+        bind_inst_to_functors(Type, MainConsId, OtherConsIds,
+            NewInst1, NewInst, !ModuleInfo),
+
+        % Add `Var :: OldInst -> NewInst' to the instmap delta.
+        ( NewInst \= OldInst ->
+            instmap_delta_set(Var, NewInst, !InstmapDelta)
+        ;
+            true
+        )
+    ).
+
 bind_var_to_functor(Var, Type, ConsId, !InstMap, !ModuleInfo) :-
     lookup_var(!.InstMap, Var, Inst0),
     bind_inst_to_functor(Type, ConsId, Inst0, Inst, !ModuleInfo),
+    set(Var, Inst, !InstMap).
+
+bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
+        !InstMap, !ModuleInfo) :-
+    lookup_var(!.InstMap, Var, Inst0),
+    bind_inst_to_functors(Type, MainConsId, OtherConsIds, Inst0, Inst,
+        !ModuleInfo),
     set(Var, Inst, !InstMap).
 
 :- pred bind_inst_to_functor(mer_type::in, cons_id::in,
@@ -578,6 +621,41 @@ bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
     ;
         unexpected(this_file, "bind_inst_to_functor: mode error")
     ).
+
+:- pred bind_inst_to_functors(mer_type::in, cons_id::in, list(cons_id)::in,
+    mer_inst::in, mer_inst::out, module_info::in, module_info::out) is det.
+
+bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
+        !ModuleInfo) :-
+    bind_inst_to_functor(Type, MainConsId, InitInst,
+        MainFinalInst, !ModuleInfo),
+    bind_inst_to_functors_others(Type, OtherConsIds, InitInst,
+        OtherFinalInsts, !ModuleInfo),
+    merge_var_insts([MainFinalInst | OtherFinalInsts], Type, !ModuleInfo,
+        MaybeMergedInst),
+    (
+        MaybeMergedInst = yes(FinalInst)
+    ;
+        MaybeMergedInst = no,
+        % bind_inst_to_functors should be called only when multi-cons-id
+        % switches are being or have been introduced into the HLDS, which
+        % should come only after mode checking has been done without finding
+        % any errors. Finding an error now would mean that some compiler pass
+        % executed between mode checking and how has screwed up.
+        unexpected(this_file,
+            "bind_inst_to_functors: no MaybeMergedInst")
+    ).
+
+:- pred bind_inst_to_functors_others(mer_type::in, list(cons_id)::in,
+    mer_inst::in, list(mer_inst)::out, module_info::in, module_info::out)
+    is det.
+
+bind_inst_to_functors_others(_Type, [], _InitInst, [], !ModuleInfo).
+bind_inst_to_functors_others(Type, [ConsId | ConsIds], InitInst,
+        [FinalInst | FinalInsts], !ModuleInfo) :-
+    bind_inst_to_functor(Type, ConsId, InitInst, FinalInst, !ModuleInfo),
+    bind_inst_to_functors_others(Type, ConsIds, InitInst, FinalInsts,
+        !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -662,7 +740,7 @@ instmap_merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
     ->
         set.to_sorted_list(NonLocals, NonLocalsList),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
-        merge_2(NonLocalsList, InstMapList, VarTypes,
+        merge_insts_of_vars(NonLocalsList, InstMapList, VarTypes,
             InstMapping0, InstMapping, ModuleInfo0, ModuleInfo, ErrorList),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         (
@@ -696,8 +774,8 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 
 %-----------------------------------------------------------------------------%
 
-    % merge_2(Vars, InstMapList, VarTypes, !InstMapping, !ModuleInfo,
-    %   Errors):
+    % merge_insts_of_vars(Vars, InstMapList, VarTypes, !InstMapping,
+    %   !ModuleInfo, Errors):
     %
     % Given Vars, a list of variables, and InstMapList, a list of instmaps
     % giving the insts of those variables (and possibly others) at the ends of
@@ -713,18 +791,18 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
     % If some variables in Vars have incompatible insts in two or more instmaps
     % in InstMapList, return them in `Errors'.
     %
-:- pred merge_2(list(prog_var)::in, list(instmap)::in, vartypes::in,
-    instmapping::in, instmapping::out, module_info::in, module_info::out,
-    merge_errors::out) is det.
+:- pred merge_insts_of_vars(list(prog_var)::in, list(instmap)::in,
+    vartypes::in, instmapping::in, instmapping::out,
+    module_info::in, module_info::out, merge_errors::out) is det.
 
-merge_2([], _, _, !InstMap, !ModuleInfo, []).
-merge_2([Var | Vars], InstMapList, VarTypes, !InstMapping,
+merge_insts_of_vars([], _, _, !InstMap, !ModuleInfo, []).
+merge_insts_of_vars([Var | Vars], InstMapList, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList) :-
-    merge_2(Vars, InstMapList, VarTypes, !InstMapping, !ModuleInfo,
-        !:ErrorList),
+    merge_insts_of_vars(Vars, InstMapList, VarTypes, !InstMapping,
+        !ModuleInfo, !:ErrorList),
     map.lookup(VarTypes, Var, VarType),
     list.map(lookup_var_in_instmap(Var), InstMapList, InstList),
-    merge_var(InstList, Var, VarType, !ModuleInfo, MaybeInst),
+    merge_var_insts(InstList, VarType, !ModuleInfo, MaybeInst),
     (
         MaybeInst = no,
         !:ErrorList = [merge_error(Var, InstList) | !.ErrorList],
@@ -739,22 +817,21 @@ merge_2([Var | Vars], InstMapList, VarTypes, !InstMapping,
 lookup_var_in_instmap(Var, InstMap, Inst) :-
     lookup_var(InstMap, Var, Inst).
 
-    % merge_var(Insts, Var, Type, Inst, !ModuleInfo, !Error):
+    % merge_var_insts:(Insts, Type, !ModuleInfo, MaybeMergedInst):
     %
-    % Given a list of insts of the given variable that reflect the inst of that
+    % Given a list of insts of a given variable that reflect the inst of that
     % variable at the ends of a branched control structure such as a
-    % disjunction or if-then-else, return the final inst of that variable
-    % after the branched control structure as a whole.
-    %
-    % Set !:Error to yes if two insts of the variable are incompatible.
+    % disjunction or if-then-else, return either `yes(MergedInst)' where
+    % MergedInst is the final inst of that variable after the branched control
+    % structure as a whole, or `no' if some of the insts are not compatible.
     %
     % We used to use a straightforward algorithm that, given a list of N insts,
     % merged the tail N-1 insts, and merged the result with the head inst.
     % While this is simple and efficient for small N, it has very bad
     % performance for large N. The reason is that its complexity can be N^2,
     % since in many cases each arm of the branched control structure binds
-    % Var to a different function symbol, and this means that the inst of Var
-    % evolves like this:
+    % the variable to a different function symbol, and this means that the
+    % merged inst evolves like this:
     %
     %   bound(f)
     %   bound(f; g)
@@ -765,13 +842,13 @@ lookup_var_in_instmap(Var, InstMap, Inst) :-
     % number of insts by four by merging groups of four adjacent insts.
     % The overall complexity is thus closer to N log N than N^2.
     %
-:- pred merge_var(list(mer_inst)::in, prog_var::in, mer_type::in,
+:- pred merge_var_insts(list(mer_inst)::in, mer_type::in,
     module_info::in, module_info::out, maybe(mer_inst)::out) is det.
 
-merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
-    % Construct yes(Type) here once per merge_var pass to avoid merge_var_2 
+merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst) :-
+    % Construct yes(Type) here once per merge_var pass to avoid merge_var_inst 
     % constructing the yes(Type) cell N times per pass.
-    merge_var_2(Insts, Var, yes(Type), [], MergedInsts, !ModuleInfo,
+    merge_var_insts_pass(Insts, yes(Type), [], MergedInsts, !ModuleInfo,
         no, Error),
     (
         Error = yes,
@@ -786,15 +863,15 @@ merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
             MaybeMergedInst = yes(MergedInst)
         ;
             MergedInsts = [_, _ | _],
-            merge_var(MergedInsts, Var, Type, !ModuleInfo, MaybeMergedInst)
+            merge_var_insts(MergedInsts, Type, !ModuleInfo, MaybeMergedInst)
         )
     ).
 
-:- pred merge_var_2(list(mer_inst)::in, prog_var::in, maybe(mer_type)::in,
+:- pred merge_var_insts_pass(list(mer_inst)::in, maybe(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::out, module_info::in, module_info::out,
     bool::in, bool::out) is det.
 
-merge_var_2(Insts, Var, YesType, !MergedInsts, !ModuleInfo, !Error) :-
+merge_var_insts_pass(Insts, MaybeType, !MergedInsts, !ModuleInfo, !Error) :-
     (
         Insts = []
     ;
@@ -803,7 +880,7 @@ merge_var_2(Insts, Var, YesType, !MergedInsts, !ModuleInfo, !Error) :-
     ;
         Insts = [Inst1, Inst2],
         (
-            inst_merge(Inst1, Inst2, YesType, Inst12, !ModuleInfo)
+            inst_merge(Inst1, Inst2, MaybeType, Inst12, !ModuleInfo)
         ->
             !:MergedInsts = [Inst12 | !.MergedInsts]
         ;
@@ -812,8 +889,8 @@ merge_var_2(Insts, Var, YesType, !MergedInsts, !ModuleInfo, !Error) :-
     ;
         Insts = [Inst1, Inst2, Inst3],
         (
-            inst_merge(Inst1, Inst2, YesType, Inst12, !ModuleInfo),
-            inst_merge(Inst12, Inst3, YesType, Inst123, !ModuleInfo)
+            inst_merge(Inst1, Inst2, MaybeType, Inst12, !ModuleInfo),
+            inst_merge(Inst12, Inst3, MaybeType, Inst123, !ModuleInfo)
         ->
             !:MergedInsts = [Inst123 | !.MergedInsts]
         ;
@@ -822,13 +899,13 @@ merge_var_2(Insts, Var, YesType, !MergedInsts, !ModuleInfo, !Error) :-
     ;
         Insts = [Inst1, Inst2, Inst3, Inst4 | MoreInsts],
         (
-            inst_merge(Inst1, Inst2, YesType, Inst12, !ModuleInfo),
-            inst_merge(Inst3, Inst4, YesType, Inst34, !ModuleInfo),
-            inst_merge(Inst12, Inst34, YesType, Inst1234, !ModuleInfo)
+            inst_merge(Inst1, Inst2, MaybeType, Inst12, !ModuleInfo),
+            inst_merge(Inst3, Inst4, MaybeType, Inst34, !ModuleInfo),
+            inst_merge(Inst12, Inst34, MaybeType, Inst1234, !ModuleInfo)
         ->
             !:MergedInsts = [Inst1234 | !.MergedInsts],
-            merge_var_2(MoreInsts, Var, YesType, !MergedInsts, !ModuleInfo,
-                !Error)
+            merge_var_insts_pass(MoreInsts, MaybeType, !MergedInsts,
+                !ModuleInfo, !Error)
         ;
             !:Error = yes
         )
@@ -909,11 +986,11 @@ instmap_unify(NonLocals, InstMapList, !ModeInfo) :-
         InstMap0 = reachable(InstMapping0)
     ->
         % Having got the first instmapping, to use as an accumulator,
-        % all unify_2 which unifies each of the nonlocals from
+        % call unify_insts_of_vars which unifies each of the nonlocals from
         % each instmap with the corresponding inst in the accumulator.
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         set.to_sorted_list(NonLocals, NonLocalsList),
-        unify_2(NonLocalsList, InstMap0, InstMapList1,
+        unify_insts_of_vars(NonLocalsList, InstMap0, InstMapList1,
             ModuleInfo0, ModuleInfo, InstMapping0, InstMapping, ErrorList),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
 
@@ -935,49 +1012,49 @@ instmap_unify(NonLocals, InstMapList, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % unify_2(Vars, InitialInstMap, InstMaps, !ModuleInfo,
+    % unify_insts_of_vars(Vars, InitialInstMap, InstMaps, !ModuleInfo,
     %   !Instmap, ErrorList):
     %
     % Let `ErrorList' be the list of variables in `Vars' for which there are
     % two instmaps in `InstMaps' for which the insts of the variable is
     % incompatible.
     %
-:- pred unify_2(list(prog_var)::in, instmap::in,
+:- pred unify_insts_of_vars(list(prog_var)::in, instmap::in,
     list(pair(instmap, set(prog_var)))::in, module_info::in, module_info::out,
     map(prog_var, mer_inst)::in, map(prog_var, mer_inst)::out,
     merge_errors::out) is det.
 
-unify_2([], _, _, !ModuleInfo, !InstMap, []).
-unify_2([Var|Vars], InitialInstMap, InstMapList,
+unify_insts_of_vars([], _, _, !ModuleInfo, !InstMap, []).
+unify_insts_of_vars([Var | Vars], InitialInstMap, InstMapList,
         !ModuleInfo, !InstMap, ErrorList) :-
-    unify_2(Vars, InitialInstMap, InstMapList, !ModuleInfo, !InstMap,
-        ErrorListTail),
+    unify_insts_of_vars(Vars, InitialInstMap, InstMapList, !ModuleInfo,
+        !InstMap, ErrorListTail),
     lookup_var(InitialInstMap, Var, InitialVarInst),
-    unify_var(InstMapList, Var, [], Insts, InitialVarInst, Inst,
+    unify_var_insts(InstMapList, Var, [], Insts, InitialVarInst, Inst,
         !ModuleInfo, no, Error),
     (
         Error = yes,
-        ErrorList = [ merge_error(Var, Insts) | ErrorListTail]
+        ErrorList = [merge_error(Var, Insts) | ErrorListTail]
     ;
         Error = no,
         ErrorList = ErrorListTail
     ),
     map.set(!.InstMap, Var, Inst, !:InstMap).
 
-    % unify_var(InstMaps, Var, InitialInstMap, ModuleInfo,
+    % unify_var_insts(InstMaps, Var, InitialInstMap, ModuleInfo,
     %   Insts, Error):
     %
     % Let `Insts' be the list of the inst of `Var' in each of the
     % corresponding `InstMaps'. Let `Error' be yes iff there are two
     % instmaps for which the inst of `Var' is incompatible.
     %
-:- pred unify_var(list(pair(instmap, set(prog_var)))::in,
+:- pred unify_var_insts(list(pair(instmap, set(prog_var)))::in,
     prog_var::in, list(mer_inst)::in, list(mer_inst)::out,
     mer_inst::in, mer_inst::out, module_info::in, module_info::out,
     bool::in, bool::out) is det.
 
-unify_var([], _, !Insts, !Inst, !ModuleInfo, !Error).
-unify_var([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
+unify_var_insts([], _, !Insts, !Inst, !ModuleInfo, !Error).
+unify_var_insts([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
         !ModuleInfo, !Error) :-
     ( set.member(Var, Nonlocals) ->
         lookup_var(InstMap, Var, VarInst),
@@ -997,7 +1074,7 @@ unify_var([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
         VarInst = free
     ),
     !:InstList = [VarInst | !.InstList],
-    unify_var(Rest, Var, !InstList, !Inst, !ModuleInfo, !Error).
+    unify_var_insts(Rest, Var, !InstList, !Inst, !ModuleInfo, !Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -1019,7 +1096,7 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
     ( InstA = InstB ->
         AssocList1 = AssocList
     ;
-        AssocList = [ Var - InstB | AssocList1 ]
+        AssocList = [Var - InstB | AssocList1]
     ),
     compute_instmap_delta_2(Vars, InstMapA, InstMapB, AssocList1).
 
@@ -1035,8 +1112,7 @@ no_output_vars(InstMap0, reachable(InstMapDelta), Vars, VT, M) :-
     instmapping::in, vartypes::in, module_info::in) is semidet.
 
 no_output_vars_2([], _, _, _, _).
-no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
-        ModuleInfo) :-
+no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes, ModuleInfo) :-
     % We use `inst_matches_binding' to check that the new inst has only
     % added information or lost uniqueness, not bound anything.
     % If the instmap delta contains the variable, the variable may still

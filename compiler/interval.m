@@ -514,9 +514,10 @@ build_interval_info_in_disj([Goal | Goals], MaybeNeedsFlush,
     T::in, T::out) is det <= build_interval_info_acc(T).
 
 build_interval_info_in_cases([], _, _, _, _, [], !IntervalInfo, !Acc).
-build_interval_info_in_cases([case(_Var, Goal) | Cases],
+build_interval_info_in_cases([Case | Cases],
         StartAnchor, EndAnchor, BeforeId, AfterId,
         [OpenIntervals | OpenIntervalsList], !IntervalInfo, !Acc) :-
+    Case = case(_MainConsId, _OtherConsIds, Goal),
     enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
     build_interval_info_in_goal(Goal, !IntervalInfo, !Acc),
     reached_branch_start(doesnt_need_flush, StartAnchor, BeforeId,
@@ -1180,11 +1181,12 @@ record_decisions_in_disj([Goal0 | Goals0], [Goal | Goals], !VarInfo,
         maybe(goal_feature)::in) is det.
 
 record_decisions_in_cases([], [], !VarInfo, _, _, _).
-record_decisions_in_cases([case(Var, Goal0) | Cases0],
-        [case(Var, Goal) | Cases], !VarInfo, VarRename0, InsertMap,
-        MaybeFeature) :-
+record_decisions_in_cases([Case0 | Cases0], [Case | Cases],
+        !VarInfo, VarRename0, InsertMap, MaybeFeature) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     record_decisions_in_goal(Goal0, Goal, !VarInfo, VarRename0, _,
         InsertMap, MaybeFeature),
+    Case = case(MainConsId, OtherConsIds, Goal),
     record_decisions_in_cases(Cases0, Cases, !VarInfo, VarRename0,
         InsertMap, MaybeFeature).
 

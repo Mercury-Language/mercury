@@ -282,7 +282,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     ;
         % The process here is similar to the above code for disjunctions.
         Cases = [Case | _],
-        Case = case(_, Goal),
+        Case = case(_, _, Goal),
         Goal = hlds_goal(_, CaseInfo),
         CaseRbmmInfo = goal_info_get_rbmm(CaseInfo),
         CaseRbmmInfo = rbmm_goal_info(Created, Removed, Carried, _, _),
@@ -290,8 +290,8 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
             set.init),
         list.foldl(
             (pred(C::in, Gs0::in, Gs::out) is det :-
-                    C = case(_, G),
-                    Gs = [G | Gs0]
+                C = case(_, _, G),
+                Gs = [G | Gs0]
             ), Cases, [], Goals),
         compute_rbmm_info_goals(Goals, SwitchRbmmInfo0, SwitchRbmmInfo),
         goal_info_set_maybe_rbmm(yes(SwitchRbmmInfo), !Info)
@@ -489,11 +489,11 @@ is_create_region_call(plain_call(PredId, _ProcId, Args, _, _, _),
 collect_rbmm_goal_info_case(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc, !Case) :-
-    !.Case = case(Functor, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc, Goal0, Goal),
-    !:Case = case(Functor, Goal).
+    !:Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 

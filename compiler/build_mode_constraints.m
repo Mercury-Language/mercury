@@ -314,7 +314,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
         GoalExpr = generic_call(_, _, _, _)
     ;
         GoalExpr = switch(_, _, Cases),
-        Goals = list.map(func(case(_, Goal)) = Goal, Cases),
+        Goals = list.map(func(case(_, _, Goal)) = Goal, Cases),
         list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
     ;
         GoalExpr = unify(_, _, _, _, _)

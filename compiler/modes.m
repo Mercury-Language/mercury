@@ -251,7 +251,7 @@
 :- pred mode_info_remove_goals_live_vars(list(hlds_goal)::in,
     mode_info::in, mode_info::out) is det.
 
-    % modecheck_functor_test(ConsId, Var):
+    % modecheck_functor_test(Var, ConsId, !ModeInfo):
     %
     % Update the instmap to reflect the fact that Var was bound to ConsId.
     % This is used for the functor tests in `switch' statements.
@@ -259,11 +259,20 @@
 :- pred modecheck_functor_test(prog_var::in, cons_id::in,
     mode_info::in, mode_info::out) is det.
 
-    % compute_goal_instmap_delta(InstMap0, Goal,
-    %   GoalInfo0, GoalInfo, ModeInfo0, ModeInfo):
+    % modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo):
     %
-    % Work out the instmap_delta for a goal from
-    % the instmaps before and after the goal.
+    % Update the instmap to reflect the fact that Var was bound to either
+    % MainConsId or one of the OtherConsIds.
+    % This is used for the functor tests in `switch' statements.
+    %
+:- pred modecheck_functors_test(prog_var::in, cons_id::in, list(cons_id)::in,
+    mode_info::in, mode_info::out) is det.
+
+    % compute_goal_instmap_delta(InstMap0, GoalExpr, GoalInfo0, GoalInfo,
+    %   !ModeInfo):
+    %
+    % Work out the instmap_delta for a goal from the instmaps before and after
+    % the goal.
     %
 :- pred compute_goal_instmap_delta(instmap::in, hlds_goal_expr::in,
     hlds_goal_info::in, hlds_goal_info::out,
@@ -1000,10 +1009,10 @@ modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, Disjunct0, Disjunct,
 
 modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
         !ModeInfo, !IO) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
-    modecheck_functor_test(Var, ConsId, !ModeInfo),
+    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     % Modecheck this case (if it is reachable).
     mode_info_get_instmap(!.ModeInfo, InstMap1),
@@ -1024,7 +1033,7 @@ modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(HeadVars, no, ArgFinalInsts0,
         _ArgFinalInsts, Goal2, Goal, !ModeInfo),
-    Case = case(ConsId, Goal).
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred unique_modecheck_clause_disj(list(prog_var)::in, instmap::in,
     list(mer_inst)::in, determinism::in, set(prog_var)::in, bag(prog_var)::in,
@@ -1049,10 +1058,10 @@ unique_modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, DisjDetism,
 
 unique_modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var,
         Case0, Case, !ModeInfo, !IO) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
-    modecheck_functor_test(Var, ConsId, !ModeInfo),
+    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     ( instmap.is_reachable(InstMap1) ->
@@ -1071,7 +1080,7 @@ unique_modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var,
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(HeadVars, no, ArgFinalInsts0, _ArgFinalInsts,
         Goal2, Goal, !ModeInfo),
-    Case = case(ConsId, Goal).
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -2756,12 +2765,12 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps],
 modecheck_case_list([], _Var, [], [], !ModeInfo, !IO).
 modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
         [InstMap | InstMaps], !ModeInfo, !IO) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     % Record the fact that Var was bound to ConsId in the
     % instmap before processing this case.
-    modecheck_functor_test(Var, ConsId, !ModeInfo),
+    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     % Modecheck this case (if it is reachable).
     mode_info_get_instmap(!.ModeInfo, InstMap1),
@@ -2778,28 +2787,41 @@ modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
 
     % Don't lose the information added by the functor test above.
     fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
 
     mode_info_set_instmap(InstMap0, !ModeInfo),
     modecheck_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo, !IO).
 
-    % modecheck_functor_test(ConsId, Var):
-    %
-    % Update the instmap to reflect the fact that Var was bound to ConsId.
-    % This is used for the functor tests in `switch' statements.
-    %
 modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     % Figure out the arity of this constructor, _including_ any type-infos
     % or typeclass-infos inserted for existential data types.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    AdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId),
+    BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
 
-    % record the fact that Var was bound to ConsId in the instmap
-    list.duplicate(AdjustedArity, free, ArgInsts),
-    modecheck_set_var_inst(Var,
-        bound(unique, [bound_functor(ConsId, ArgInsts)]), no, !ModeInfo).
+    % Record the fact that Var was bound to ConsId.
+    modecheck_set_var_inst(Var, bound(unique, [BoundInst]), no, !ModeInfo).
+
+modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
+    % Figure out the arity of this constructor, _including_ any type-infos
+    % or typeclass-infos inserted for existential data types.
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    mode_info_get_var_types(!.ModeInfo, VarTypes),
+    map.lookup(VarTypes, Var, Type),
+    BoundInsts = list.map(cons_id_to_bound_inst(ModuleInfo, Type),
+        [MainConsId | OtherConsIds]),
+
+    % Record the fact that Var was bound to MainConsId or one of the
+    % OtherConsIds.
+    modecheck_set_var_inst(Var, bound(unique, BoundInsts), no, !ModeInfo).
+
+:- func cons_id_to_bound_inst(module_info, mer_type, cons_id) = bound_inst.
+
+cons_id_to_bound_inst(ModuleInfo, Type, ConsId) = BoundInst :-
+    ConsIdAdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId),
+    list.duplicate(ConsIdAdjustedArity, free, ArgInsts),
+    BoundInst = bound_functor(ConsId, ArgInsts).
 
 %-----------------------------------------------------------------------------%
 

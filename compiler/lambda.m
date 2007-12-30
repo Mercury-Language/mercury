@@ -271,9 +271,10 @@ lambda_process_goal_list([Goal0 | Goals0], [Goal | Goals], !Info) :-
     lambda_info::in, lambda_info::out) is det.
 
 lambda_process_cases([], [], !Info).
-lambda_process_cases([case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) | Cases], !Info) :-
+lambda_process_cases([Case0 | Cases0], [Case | Cases], !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     lambda_process_goal(Goal0, Goal, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
     lambda_process_cases(Cases0, Cases, !Info).
 
 :- pred lambda_process_unify_goal(prog_var::in, unify_rhs::in, unify_mode::in,

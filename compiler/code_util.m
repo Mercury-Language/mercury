@@ -282,7 +282,7 @@ goal_list_may_alloc_temp_frame([Goal | Goals], May) :-
 :- pred cases_may_alloc_temp_frame(list(case)::in, bool::out) is det.
 
 cases_may_alloc_temp_frame([], no).
-cases_may_alloc_temp_frame([case(_, Goal) | Cases], May) :-
+cases_may_alloc_temp_frame([case(_, _, Goal) | Cases], May) :-
     ( goal_may_alloc_temp_frame(Goal, yes) ->
         May = yes
     ;

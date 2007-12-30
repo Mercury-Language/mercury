@@ -22,10 +22,13 @@
 :- interface.
 
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
+
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -36,8 +39,14 @@
 :- pred generate_unification(code_model::in, unification::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
 
-:- pred generate_tag_test(prog_var::in, cons_id::in, test_sense::in,
-    label::out, code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_tag_test(prog_var::in, cons_id::in,
+    maybe_cheaper_tag_test::in, test_sense::in, label::out, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+:- pred generate_raw_tag_test_case(rval::in, mer_type::in, string::in,
+    tagged_cons_id::in, list(tagged_cons_id)::in, maybe_cheaper_tag_test::in,
+    test_sense::in, label::out, code_tree::out, code_info::in, code_info::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -50,7 +59,6 @@
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
@@ -71,7 +79,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -193,58 +200,95 @@ generate_test(VarA, VarB, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
-    produce_variable(Var, VarCode, Rval, !CI),
+generate_raw_tag_test_case(VarRval, VarType, VarName,
+        MainTaggedConsId, OtherTaggedConsIds, CheaperTagTest,
+        Sense, ElseLabel, Code, !CI) :-
+    (
+        OtherTaggedConsIds = [],
+        MainTaggedConsId = tagged_cons_id(MainConsId, MainConsTag),
+        generate_raw_tag_test(VarRval, VarType, VarName,
+            MainConsId, yes(MainConsTag), CheaperTagTest, Sense, ElseLabel,
+            Code, !CI)
+    ;
+        OtherTaggedConsIds = [_ | _],
+        % The cheaper tag test optimization doesn't apply.
+        project_cons_name_and_tag(MainTaggedConsId, MainConsName, MainConsTag),
+        list.map2(project_cons_name_and_tag, OtherTaggedConsIds,
+            OtherConsNames, OtherConsTags),
+        Comment = branch_sense_comment(Sense) ++
+            case_comment(VarName, MainConsName, OtherConsNames),
+        raw_tag_test(VarRval, MainConsTag, MainTagTestRval),
+        list.map(raw_tag_test(VarRval), OtherConsTags, OtherTagTestRvals),
+        disjoin_tag_tests(MainTagTestRval, OtherTagTestRvals, TestRval),
+        get_next_label(ElseLabel, !CI),
+        (
+            Sense = branch_on_success,
+            TheRval = TestRval
+        ;
+            Sense = branch_on_failure,
+            code_util.neg_rval(TestRval, TheRval)
+        ),
+        Code = node([
+            llds_instr(if_val(TheRval, code_label(ElseLabel)), Comment)
+        ])
+    ).
+
+:- pred disjoin_tag_tests(rval::in, list(rval)::in, rval::out) is det.
+
+disjoin_tag_tests(CurTestRval, OtherTestRvals, TestRval) :-
+    (
+        OtherTestRvals = [],
+        TestRval = CurTestRval
+    ;
+        OtherTestRvals = [HeadTestRval | TailTestRvals],
+        NextTestRval = binop(logical_or, CurTestRval, HeadTestRval),
+        disjoin_tag_tests(NextTestRval, TailTestRvals, TestRval)
+    ).
+
+%---------------------------------------------------------------------------%
+
+generate_tag_test(Var, ConsId, CheaperTagTest, Sense, ElseLabel, Code, !CI) :-
+    produce_variable(Var, VarCode, VarRval, !CI),
+    VarType = variable_type(!.CI, Var),
+    VarName = variable_name(!.CI, Var),
+    generate_raw_tag_test(VarRval, VarType, VarName, ConsId, no,
+        CheaperTagTest, Sense, ElseLabel, TestCode, !CI),
+    Code = tree(VarCode, TestCode).
+
+:- pred generate_raw_tag_test(rval::in, mer_type::in, string::in,
+    cons_id::in, maybe(cons_tag)::in,
+    maybe_cheaper_tag_test::in, test_sense::in, label::out, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+generate_raw_tag_test(VarRval, VarType, VarName, ConsId, MaybeConsTag,
+        CheaperTagTest, Sense, ElseLabel, Code, !CI) :-
+    ConsIdName = hlds_out.cons_id_to_string(ConsId),
     % As an optimization, for data types with exactly two alternatives,
     % one of which is a constant, we make sure that we test against the
     % constant (negating the result of the test, if needed),
     % since a test against a constant is cheaper than a tag test.
     (
-        ConsId = cons(_, Arity),
-        Arity > 0
+        CheaperTagTest = cheaper_tag_test(ExpensiveConsId, _ExpensiveConsTag,
+            _CheapConsId, CheapConsTag),
+        ConsId = ExpensiveConsId
     ->
-        Type = variable_type(!.CI, Var),
-        TypeDefn = lookup_type_defn(!.CI, Type),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        ( ConsTable = TypeBody ^ du_type_cons_tag_values ->
-            map.to_assoc_list(ConsTable, ConsList),
-            (
-                ConsList = [ConsId - _, OtherConsId - _],
-                OtherConsId = cons(_, 0)
-            ->
-                Reverse = yes(OtherConsId)
-            ;
-                ConsList = [OtherConsId - _, ConsId - _],
-                OtherConsId = cons(_, 0)
-            ->
-                Reverse = yes(OtherConsId)
-            ;
-                Reverse = no
-            )
-        ;
-            Reverse = no
-        )
-    ;
-        Reverse = no
-    ),
-    VarName = variable_to_string(!.CI, Var),
-    ConsIdName = hlds_out.cons_id_to_string(ConsId),
-    Comment0 = "checking that " ++ VarName ++ " has functor " ++ ConsIdName,
-    (
-        Reverse = no,
-        Comment = Comment0,
-        CommentCode = node([llds_instr(comment(Comment), "")]),
-        Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
-        generate_tag_test_rval_2(Tag, Rval, TestRval)
-    ;
-        Reverse = yes(TestConsId),
-        Comment = Comment0 ++ " (inverted test)",
-        CommentCode = node([llds_instr(comment(Comment), "")]),
-        Tag = cons_id_to_tag_for_var(!.CI, Var, TestConsId),
-        generate_tag_test_rval_2(Tag, Rval, NegTestRval),
+        Comment = branch_sense_comment(Sense) ++ VarName ++
+            " has functor " ++ ConsIdName ++ " (inverted test)",
+        raw_tag_test(VarRval, CheapConsTag, NegTestRval),
         code_util.neg_rval(NegTestRval, TestRval)
+    ;
+        Comment = branch_sense_comment(Sense) ++ VarName ++
+            " has functor " ++ ConsIdName,
+        (
+            MaybeConsTag = yes(ConsTag)
+            % Our caller has already computed ConsTag.
+        ;
+            MaybeConsTag = no,
+            ConsTag = cons_id_to_tag_for_type(!.CI, VarType, ConsId)
+        ),
+        raw_tag_test(VarRval, ConsTag, TestRval)
     ),
-    get_next_label(ElseLab, !CI),
+    get_next_label(ElseLabel, !CI),
     (
         Sense = branch_on_success,
         TheRval = TestRval
@@ -252,25 +296,22 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
         Sense = branch_on_failure,
         code_util.neg_rval(TestRval, TheRval)
     ),
-    TestCode = node([
-        llds_instr(if_val(TheRval, code_label(ElseLab)), "tag test")
-    ]),
-    Code = tree_list([VarCode, CommentCode, TestCode]).
+    Code = node([
+        llds_instr(if_val(TheRval, code_label(ElseLabel)), Comment)
+    ]).
+
+:- func branch_sense_comment(test_sense) = string.
+
+branch_sense_comment(branch_on_success) =
+    "branch away if ".
+branch_sense_comment(branch_on_failure) =
+    "branch away unless ".
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_tag_test_rval(prog_var::in, cons_id::in,
-    rval::out, code_tree::out, code_info::in, code_info::out) is det.
+:- pred raw_tag_test(rval::in, cons_tag::in, rval::out) is det.
 
-generate_tag_test_rval(Var, ConsId, TestRval, Code, !CI) :-
-    produce_variable(Var, Code, Rval, !CI),
-    Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
-    generate_tag_test_rval_2(Tag, Rval, TestRval).
-
-:- pred generate_tag_test_rval_2(cons_tag::in, rval::in, rval::out)
-    is det.
-
-generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
+raw_tag_test(Rval, ConsTag, TestRval) :-
     (
         ConsTag = string_tag(String),
         TestRval = binop(str_eq, Rval, const(llconst_string(String)))
@@ -338,11 +379,11 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         % We first check that the Rval doesn't match any of the ReservedAddrs,
         % and then check that it matches ThisTag.
         CheckReservedAddrs = (func(RA, InnerTestRval0) = InnerTestRval :-
-            generate_tag_test_rval_2(reserved_address_tag(RA), Rval, EqualRA),
+            raw_tag_test(Rval, reserved_address_tag(RA), EqualRA),
             InnerTestRval = binop(logical_and,
                 unop(logical_not, EqualRA), InnerTestRval0)
         ),
-        generate_tag_test_rval_2(ThisTag, Rval, MatchesThisTag),
+        raw_tag_test(Rval, ThisTag, MatchesThisTag),
         TestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
             MatchesThisTag)
     ).
@@ -1026,12 +1067,15 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     code_info::in, code_info::out) is det.
 
 generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
-    generate_tag_test(Var, Tag, branch_on_success, SuccLab, TagTestCode, !CI),
+    VarType = variable_type(!.CI, Var),
+    CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
+    generate_tag_test(Var, Tag, CheaperTagTest, branch_on_success, SuccLabel,
+        TagTestCode, !CI),
     remember_position(!.CI, AfterUnify),
     generate_failure(FailCode, !CI),
     reset_to_position(AfterUnify, !CI),
     generate_det_deconstruction(Var, Tag, Args, Modes, DeconsCode, !CI),
-    SuccessLabelCode = node([llds_instr(label(SuccLab), "")]),
+    SuccessLabelCode = node([llds_instr(label(SuccLabel), "")]),
     Code = tree_list([TagTestCode, FailCode, SuccessLabelCode, DeconsCode]).
 
 %---------------------------------------------------------------------------%

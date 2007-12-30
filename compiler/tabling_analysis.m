@@ -363,7 +363,7 @@ check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, _,
         Goals = [If, Then, Else]
     ;
         Goal = switch(_, _, Cases),
-        Goals = list.map((func(case(_, CaseGoal)) = CaseGoal), Cases)
+        Goals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases)
     ),
     check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result,
         MaybeAnalysisStatus, !ModuleInfo, !IO).
@@ -707,9 +707,9 @@ annotate_cases(VarTypes, !Cases, Status, !ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 annotate_case(VarTypes, !Case, Status, !ModuleInfo, !IO) :-
-    !.Case = case(ConsId, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     annotate_goal(VarTypes, Goal0, Goal, Status, !ModuleInfo, !IO),
-    !:Case = case(ConsId, Goal).
+    !:Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred annotate_call(pred_proc_id::in, prog_vars::in, vartypes::in,
     mm_tabling_status::out, module_info::in, module_info::out, io::di, io::uo)

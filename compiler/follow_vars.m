@@ -387,16 +387,17 @@ find_follow_vars_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
     int::in, int::out) is det.
 
 find_follow_vars_in_cases([], [], _, _, !FollowVarsMap, !NextNonReserved).
-find_follow_vars_in_cases([case(Cons, Goal0) | Goals0],
-        [case(Cons, Goal) | Goals], VarTypes, ModuleInfo,
-        FollowVarsMap0, FollowVarsMap,
+find_follow_vars_in_cases([Case0 | Cases0], [Case | Cases],
+        VarTypes, ModuleInfo, FollowVarsMap0, FollowVarsMap,
         NextNonReserved0, NextNonReserved) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
         FollowVarsMap0, FollowVarsMap,
         NextNonReserved0, NextNonReserved),
     FollowVars = abs_follow_vars(FollowVarsMap, NextNonReserved),
     goal_set_follow_vars(yes(FollowVars), Goal1, Goal),
-    find_follow_vars_in_cases(Goals0, Goals, VarTypes, ModuleInfo,
+    Case = case(MainConsId, OtherConsIds, Goal),
+    find_follow_vars_in_cases(Cases0, Cases, VarTypes, ModuleInfo,
         FollowVarsMap0, _FollowVarsMap,
         NextNonReserved, _NextNonReserved).
 

@@ -49,7 +49,8 @@
     ;       byte_endof_disjunct(byte_label_id)
     ;       byte_enter_switch(byte_var, byte_label_id)
     ;       byte_endof_switch
-    ;       byte_enter_switch_arm(byte_cons_id, byte_label_id)
+    ;       byte_enter_switch_arm(byte_cons_id, list(byte_cons_id),
+                byte_label_id)
     ;       byte_endof_switch_arm(byte_label_id)
     ;       byte_enter_if(byte_label_id, byte_label_id, byte_temp)
     ;       byte_enter_then(byte_temp)
@@ -258,8 +259,12 @@ output_args(byte_enter_switch(Var, LabelId), !IO) :-
     output_var(Var, !IO),
     output_label_id(LabelId, !IO).
 output_args(byte_endof_switch, !IO).
-output_args(byte_enter_switch_arm(ConsId, NextLabelId), !IO) :-
-    output_cons_id(ConsId, !IO),
+output_args(byte_enter_switch_arm(MainConsId, OtherConsIds, NextLabelId),
+        !IO) :-
+    output_cons_id(MainConsId, !IO),
+    % The interpreter doesn't yet implement switch arms with more than one
+    % function symbol.
+    expect(unify(OtherConsIds, []), this_file, "output_args: OtherConsIds"),
     output_label_id(NextLabelId, !IO).
 output_args(byte_endof_switch_arm(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
@@ -388,8 +393,10 @@ debug_args(byte_enter_switch(Var, LabelId), !IO) :-
     debug_var(Var, !IO),
     debug_label_id(LabelId, !IO).
 debug_args(byte_endof_switch, !IO).
-debug_args(byte_enter_switch_arm(ConsId, NextLabelId), !IO) :-
-    debug_cons_id(ConsId, !IO),
+debug_args(byte_enter_switch_arm(MainConsId, OtherConsIds,
+        NextLabelId), !IO) :-
+    debug_cons_id(MainConsId, !IO),
+    list.foldl(debug_cons_id, OtherConsIds, !IO),
     debug_label_id(NextLabelId, !IO).
 debug_args(byte_endof_switch_arm(LabelId), !IO) :-
     debug_label_id(LabelId, !IO).
@@ -922,7 +929,7 @@ byte_code(byte_enter_disjunct(_),                 7).
 byte_code(byte_endof_disjunct(_),                 8).
 byte_code(byte_enter_switch(_, _),                9).
 byte_code(byte_endof_switch,                     10).
-byte_code(byte_enter_switch_arm(_, _),           11).
+byte_code(byte_enter_switch_arm(_, _, _),        11).
 byte_code(byte_endof_switch_arm(_),              12).
 byte_code(byte_enter_if(_, _, _),                13).
 byte_code(byte_enter_then(_),                    14).
@@ -967,7 +974,7 @@ byte_debug(byte_enter_disjunct(_),               "enter_disjunct").
 byte_debug(byte_endof_disjunct(_),               "endof_disjunct").
 byte_debug(byte_enter_switch(_, _),              "enter_switch").
 byte_debug(byte_endof_switch,                    "endof_switch").
-byte_debug(byte_enter_switch_arm(_, _),          "enter_switch_arm").
+byte_debug(byte_enter_switch_arm(_, _, _),       "enter_switch_arm").
 byte_debug(byte_endof_switch_arm(_),             "endof_switch_arm").
 byte_debug(byte_enter_if(_, _, _),               "enter_if").
 byte_debug(byte_enter_then(_),                   "enter_then").

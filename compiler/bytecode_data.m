@@ -22,7 +22,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % XXX this assumes strings contain 8-bit characters
+    % XXX This assumes strings contain 8-bit characters.
 :- pred output_string(string::in, io::di, io::uo) is det.
 :- pred string_to_byte_list(string::in, list(int)::out) is det.
 
@@ -77,12 +77,11 @@ output_string(Val, !IO) :-
     io.write_byte(0, !IO).
 
 string_to_byte_list(Val, List) :-
-    % XXX this assumes strings contain 8-bit characters
-    %     Using char.to_int here is wrong; the output will depend
-    %     on the Mercury implementation's representation of chars,
-    %     so it may be different for different Mercury implementations.
-    %     In particular, it will do the wrong thing for Mercury
-    %     implementations which represent characters in Unicode.
+    % XXX This assumes strings contain 8-bit characters.
+    % Using char.to_int here is wrong; the output will depend on the Mercury
+    % implementation's representation of chars, so it may be different for
+    % different Mercury implementations. In particular, it will do the wrong
+    % thing for Mercury implementations which represent characters in Unicode.
     string.to_char_list(Val, Chars),
     ToInt = (pred(C::in, I::out) is det :- char.to_int(C, I)),
     list.map(ToInt, Chars, List0),

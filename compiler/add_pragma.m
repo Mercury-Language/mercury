@@ -548,12 +548,13 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             ]
         ;
             (
-                TypeBody0 = hlds_du_type(Body, _CtorTags0, _IsEnum0,
-                    MaybeUserEqComp, ReservedTag0, _ReservedAddr, IsForeign),
+                TypeBody0 = hlds_du_type(Body, _CtorTags0, _CheaperTagTest,
+                    _IsEnum0, MaybeUserEqComp, ReservedTag0, _ReservedAddr,
+                    IsForeign),
                 (
                     ReservedTag0 = uses_reserved_tag,
                     % Make doubly sure that we don't get any spurious warnings
-                    % with intermodule optimization...
+                    % with intermodule optimization ...
                     TypeStatus \= status_opt_imported
                 ->
                     MaybeSeverity = yes(severity_warning),
@@ -573,8 +574,9 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 module_info_get_globals(!.ModuleInfo, Globals),
                 assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
                     ReservedTag, Globals, CtorTags, ReservedAddr, EnumDummy),
-                TypeBody = hlds_du_type(Body, CtorTags, EnumDummy,
-                    MaybeUserEqComp, ReservedTag, ReservedAddr, IsForeign),
+                TypeBody = hlds_du_type(Body, CtorTags, no_cheaper_tag_test,
+                    EnumDummy, MaybeUserEqComp, ReservedTag, ReservedAddr,
+                    IsForeign),
                 hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
                 map.set(Types0, TypeCtor, TypeDefn, Types),
                 module_info_set_type_table(Types, !ModuleInfo)
@@ -659,8 +661,9 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                 ]
             ;
                 % XXX How should we handle IsForeignType here?
-                TypeBody = hlds_du_type(Ctors, _TagValues, IsEnumOrDummy,
-                    _MaybeUserEq, _ReservedTag, _ReservedAddr, _IsForeignType),
+                TypeBody = hlds_du_type(Ctors, _TagValues, _CheaperTagTest,
+                    IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
+                    _IsForeignType),
                 (
                     ( IsEnumOrDummy = is_mercury_enum
                     ; IsEnumOrDummy = is_foreign_enum(_)
@@ -1006,8 +1009,9 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                 suffix(".")
             ]
         ;
-            TypeBody0 = hlds_du_type(Ctors, OldTagValues, IsEnumOrDummy0,
-                MaybeUserEq, ReservedTag, ReservedAddr, IsForeignType),
+            TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
+                IsEnumOrDummy0, MaybeUserEq, ReservedTag, ReservedAddr,
+                IsForeignType),
             %
             % Work out what language's foreign_enum pragma we should be
             % looking at for the the current compilation target language.
@@ -1052,8 +1056,8 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                         (
                             UnmappedCtors = [],
                             TypeBody = hlds_du_type(Ctors, TagValues,
-                                IsEnumOrDummy, MaybeUserEq, ReservedTag,
-                                ReservedAddr, IsForeignType),
+                                CheaperTagTest, IsEnumOrDummy, MaybeUserEq,
+                                ReservedTag, ReservedAddr, IsForeignType),
                             set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
                             svmap.set(TypeCtor, TypeDefn, TypeTable0,
                                 TypeTable),

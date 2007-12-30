@@ -102,9 +102,23 @@ while [ $# -gt 0 ]; do
         dependency_only="-d" ;;
 
     -D|--dir)
-        alldirs="$2"; shift ;;
+        if test "$alldirs" = ""
+        then
+            alldirs="$2"; shift
+        else
+            echo "You can specify only one directory." 1>&2
+            exit 1
+        fi
+        ;;
     -D*)
-        alldirs="` expr $1 : '-d\(.*\)' `"; ;;
+        if test "$alldirs" = ""
+        then
+            alldirs="` expr $1 : '-d\(.*\)' `"
+        else
+            echo "You can specify only one directory." 1>&2
+            exit 1
+        fi
+        ;;
 
     -f|--file)
         allmodules="$allmodules $2"; shift ;;
@@ -502,6 +516,13 @@ then
         exit 1
     fi
 else
+    for subdir in library mdbcomp analysis compiler
+    do
+        echo linking stage2/$subdir from stage2.ok/$subdir 1>&2
+        cp stage2.ok/$subdir/*.[co] stage2/$subdir
+        cp stage2.ok/$subdir/*.pic_o stage2/$subdir
+    done
+
     testeddir=$alldirs
     if test ! -d stage2/$testeddir
     then

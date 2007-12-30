@@ -182,9 +182,9 @@ move_follow_code_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
 
 move_follow_code_in_cases([], [], !Changed).
 move_follow_code_in_cases([Case0 | Cases0], [Case | Cases], !Changed) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     move_follow_code_in_goal(Goal0, Goal, !Changed),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     move_follow_code_in_cases(Cases0, Cases, !Changed).
 
 %-----------------------------------------------------------------------------%
@@ -304,10 +304,10 @@ move_follow_code_move_goals(Goal0, FollowGoals, FollowPurity, Goal) :-
 move_follow_code_move_goals_cases([], _FollowGoals, _FollowPurity, []).
 move_follow_code_move_goals_cases([Case0 | Cases0], FollowGoals, FollowPurity,
         [Case | Cases]) :-
-    Case0 = case(Cons, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
         Goal),
-    Case = case(Cons, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     move_follow_code_move_goals_cases(Cases0, FollowGoals, FollowPurity,
         Cases).
 

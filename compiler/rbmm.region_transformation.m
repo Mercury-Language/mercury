@@ -628,13 +628,16 @@ annotate_constructions_unification(_, _, _, _, !Unification, !VarSet,
 region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
         IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
         ResurRenamingAnnoProc, IteRenamingAnnoProc, Switch,
-        case(ConsId, !.Goal), case(ConsId, !:Goal),
+        case(MainConsId, OtherConsIds, !.Goal),
+        case(MainConsId, OtherConsIds, !:Goal),
         !NameToVar, !VarSet, !VarTypes) :-
+    expect(unify(OtherConsIds, []), this_file,
+        "NYI: region_transform_case for multi-cons-id cases"),
     (
-        ( ConsId = cons(_, 0)
-        ; ConsId = int_const(_)
-        ; ConsId = string_const(_)
-        ; ConsId = float_const(_)
+        ( MainConsId = cons(_, 0)
+        ; MainConsId = int_const(_)
+        ; MainConsId = string_const(_)
+        ; MainConsId = float_const(_)
         ),
         Switch = hlds_goal(switch(_, _, _), Info)
     ->

@@ -167,6 +167,8 @@
                 % Their tag values.
                 du_type_cons_tag_values :: cons_tag_values,
 
+                du_type_chaper_tag_test :: maybe_cheaper_tag_test,
+
                 % Is this type an enumeration?
                 du_type_is_enum         :: enum_or_dummy,
 
@@ -187,6 +189,15 @@
     ;       hlds_foreign_type(foreign_type_body)
     ;       hlds_solver_type(solver_type_details, maybe(unify_compare))
     ;       hlds_abstract_type(is_solver_type).
+
+:- type maybe_cheaper_tag_test
+    --->    no_cheaper_tag_test
+    ;       cheaper_tag_test(
+                more_expensive_cons_id  :: cons_id,
+                more_expensive_cons_tag :: cons_tag,
+                less_expensive_cons_id  :: cons_id,
+                less_expensive_cons_tag :: cons_tag
+            ).
 
 :- type enum_or_dummy
     --->    is_mercury_enum
@@ -220,6 +231,15 @@
     % represented.
     %
 :- type cons_tag_values == map(cons_id, cons_tag).
+
+    % A cons_id together with its tag.
+    %
+:- type tagged_cons_id
+    --->    tagged_cons_id(cons_id, cons_tag).
+
+    % Return the tag inside a tagged_cons_id.
+    %
+:- func project_tagged_cons_id_tag(tagged_cons_id) = cons_tag.
 
     % A `cons_tag' specifies how a functor and its arguments (if any) are
     % represented. Currently all values are represented as a single word;
@@ -359,6 +379,8 @@
 
 :- type no_tag_type_table == map(type_ctor, no_tag_type).
 
+:- func get_maybe_cheaper_tag_test(hlds_type_body) = maybe_cheaper_tag_test.
+
     % Return the primary tag, if any, for a cons_tag.
     % A return value of `no' means the primary tag is unknown.
     % A return value of `yes(N)' means the primary tag is N.
@@ -385,6 +407,21 @@
     ;       may_not_use_atomic_alloc.
 
 :- implementation.
+
+project_tagged_cons_id_tag(TaggedConsId) = Tag :-
+    TaggedConsId = tagged_cons_id(_, Tag).
+
+get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
+    (
+        TypeBody = hlds_du_type(_, _, CheaperTagTest, _, _, _, _, _)
+    ;
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
+        CheaperTagTest = no_cheaper_tag_test
+    ).
 
 % In some of the cases where we return `no' here,
 % it would probably be OK to return `yes(0)'.

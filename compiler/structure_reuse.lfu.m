@@ -181,9 +181,9 @@ forward_use_in_cases(VarTypes, !Cases, !InstantiatedVars, !DeadVars) :-
 
 forward_use_in_case(VarTypes, Inst0, Dead0, !Case,
         !InstantiatedVars, !DeadVars) :-
-    !.Case = case(Cons, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     forward_use_in_goal(VarTypes, Goal0, Goal, Inst0, Inst, Dead0, Dead),
-    !:Case = case(Cons, Goal),
+    !:Case = case(MainConsId, OtherConsIds, Goal),
     set.union(Inst, !InstantiatedVars),
     set.union(Dead, !DeadVars).
 

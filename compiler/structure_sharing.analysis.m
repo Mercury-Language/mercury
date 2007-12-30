@@ -439,7 +439,7 @@ analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, SharingBeforeDisj,
 
 analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
         Case, !FixpointTable, !Sharing, !IO) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         !FixpointTable, Sharing0, CaseSharing, !IO),
     !:Sharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, !.Sharing,

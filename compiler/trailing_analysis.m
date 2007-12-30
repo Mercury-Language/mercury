@@ -465,7 +465,7 @@ check_goal_for_trail_mods_2(_, _, shorthand(_), _, _, _, !ModuleInfo, !IO) :-
 check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
     GoalExpr = switch(_, _, Cases),
-    CaseGoals = list.map((func(case(_, CaseGoal)) = CaseGoal), Cases),
+    CaseGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
     check_goals_for_trail_mods(SCC, VarTypes, CaseGoals,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO).
 check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
@@ -1023,9 +1023,9 @@ annotate_cases(VarTypes, !Cases, Status, !ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 annotate_case(VarTypes, !Case, Status, !ModuleInfo, !IO) :-
-    !.Case = case(ConsId, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     annotate_goal(VarTypes, Goal0, Goal, Status, !ModuleInfo, !IO),
-    !:Case = case(ConsId, Goal).
+    !:Case = case(MainConsId, OtherConsIds, Goal).
 
 %----------------------------------------------------------------------------%
 %

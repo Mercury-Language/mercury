@@ -384,7 +384,7 @@ traverse_disj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
 
 traverse_switch([], _, _, ok(Empty, []), !ModuleInfo, !IO) :-
     set.init(Empty).
-traverse_switch([case(_, Goal) | Cases], Params, !Info, !ModuleInfo, !IO) :-
+traverse_switch([case(_, _, Goal) | Cases], Params, !Info, !ModuleInfo, !IO) :-
     traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
     traverse_switch(Cases, Params, !.Info, CasesInfo, !ModuleInfo, !IO),
     combine_paths(GoalInfo, CasesInfo, Params, !:Info).

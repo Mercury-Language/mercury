@@ -19,6 +19,7 @@
 
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_data.
 :- import_module hlds.instmap.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -825,14 +826,28 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Information for switches
+% Information for switches.
 %
 
 :- type case
     --->    case(
-                case_functor    :: cons_id,    % functor to match with,
-                case_goal       :: hlds_goal   % goal to execute if match
-                                               % succeeds.
+                % The list of functors for which this case arm is applicable.
+                case_first_functor          :: cons_id,
+                case_later_functors         :: list(cons_id),
+
+                % The code of the switch arm.
+                case_goal           :: hlds_goal
+            ).
+
+:- type tagged_case
+    --->    tagged_case(
+                % The list of functors, and their tags, for which
+                % this case arm is applicable.
+                tagged_case_first_functor   :: tagged_cons_id,
+                tagged_case_later_functors  :: list(tagged_cons_id),
+
+                % The code of the switch arm.
+                tagged_case_goal            :: hlds_goal
             ).
 
 %-----------------------------------------------------------------------------%
@@ -1564,7 +1579,7 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 
 %-----------------------------------------------------------------------------%
 %
-% Information stored with all kinds of goals
+% Information stored with all kinds of goals.
 %
 
     % This type has eight fields, which means that the Boehm collector
@@ -2201,10 +2216,11 @@ rename_arg(Must, Subn, Arg0, Arg) :-
     list(case)::in, list(case)::out) is det.
 
 rename_vars_in_cases(_Must, _Subn, [], []).
-rename_vars_in_cases(Must, Subn,
-        [case(Cons, G0) | Gs0], [case(Cons, G) | Gs]) :-
-    rename_vars_in_goal(Must, Subn, G0, G),
-    rename_vars_in_cases(Must, Subn, Gs0, Gs).
+rename_vars_in_cases(Must, Subn, [Case0 | Cases0], [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    rename_vars_in_goal(Must, Subn, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    rename_vars_in_cases(Must, Subn, Cases0, Cases).
 
 :- pred rename_unify_rhs(must_rename::in, prog_var_renaming::in,
     unify_rhs::in, unify_rhs::out) is det.
@@ -2690,50 +2706,55 @@ goal_list_purity(Goals, GoalsPurity) :-
 
 %-----------------------------------------------------------------------------%
 
-set_goal_contexts(Context, hlds_goal(GoalExpr0, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo)) :-
+set_goal_contexts(Context, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
-    set_goal_contexts_2(Context, GoalExpr0, GoalExpr).
+    set_goal_contexts_expr(Context, GoalExpr0, GoalExpr),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred set_goal_contexts_2(prog_context::in, hlds_goal_expr::in,
+:- pred set_goal_contexts_case(prog_context::in, case::in, case::out) is det.
+
+set_goal_contexts_case(Context, Case0, Case) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    set_goal_contexts(Context, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal).
+
+:- pred set_goal_contexts_expr(prog_context::in, hlds_goal_expr::in,
     hlds_goal_expr::out) is det.
 
-set_goal_contexts_2(Context, conj(ConjType, Goals0), conj(ConjType, Goals)) :-
+set_goal_contexts_expr(Context, conj(ConjType, Goals0), conj(ConjType, Goals)) :-
     list.map(set_goal_contexts(Context), Goals0, Goals).
-set_goal_contexts_2(Context, disj(Goals0), disj(Goals)) :-
+set_goal_contexts_expr(Context, disj(Goals0), disj(Goals)) :-
     list.map(set_goal_contexts(Context), Goals0, Goals).
-set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0),
+set_goal_contexts_expr(Context, if_then_else(Vars, Cond0, Then0, Else0),
         if_then_else(Vars, Cond, Then, Else)) :-
     set_goal_contexts(Context, Cond0, Cond),
     set_goal_contexts(Context, Then0, Then),
     set_goal_contexts(Context, Else0, Else).
-set_goal_contexts_2(Context, switch(Var, CanFail, Cases0),
+set_goal_contexts_expr(Context, switch(Var, CanFail, Cases0),
         switch(Var, CanFail, Cases)) :-
-    list.map(
-        (pred(case(ConsId, Goal0)::in, case(ConsId, Goal)::out) is det :-
-            set_goal_contexts(Context, Goal0, Goal)
-        ), Cases0, Cases).
-set_goal_contexts_2(Context, scope(Reason, Goal0), scope(Reason, Goal)) :-
+    list.map(set_goal_contexts_case(Context), Cases0, Cases).
+set_goal_contexts_expr(Context, scope(Reason, Goal0), scope(Reason, Goal)) :-
     set_goal_contexts(Context, Goal0, Goal).
-set_goal_contexts_2(Context, negation(Goal0), negation(Goal)) :-
+set_goal_contexts_expr(Context, negation(Goal0), negation(Goal)) :-
     set_goal_contexts(Context, Goal0, Goal).
-set_goal_contexts_2(_, Goal, Goal) :-
+set_goal_contexts_expr(_, Goal, Goal) :-
     Goal = plain_call(_, _, _, _, _, _).
-set_goal_contexts_2(_, Goal, Goal) :-
+set_goal_contexts_expr(_, Goal, Goal) :-
     Goal = generic_call(_, _, _, _).
-set_goal_contexts_2(_, Goal, Goal) :-
+set_goal_contexts_expr(_, Goal, Goal) :-
     Goal = unify(_, _, _, _, _).
-set_goal_contexts_2(_, Goal, Goal) :-
+set_goal_contexts_expr(_, Goal, Goal) :-
     Goal = call_foreign_proc(_, _, _, _, _, _, _).
-set_goal_contexts_2(Context, shorthand(ShorthandGoal0),
-        shorthand(ShorthandGoal)) :-
-    set_goal_contexts_2_shorthand(Context, ShorthandGoal0, ShorthandGoal).
+set_goal_contexts_expr(Context,
+        shorthand(ShorthandGoal0), shorthand(ShorthandGoal)) :-
+    set_goal_contexts_shorthand(Context, ShorthandGoal0, ShorthandGoal).
 
-:- pred set_goal_contexts_2_shorthand(prog_context::in,
+:- pred set_goal_contexts_shorthand(prog_context::in,
     shorthand_goal_expr::in, shorthand_goal_expr::out) is det.
 
-set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
-        bi_implication(LHS, RHS)) :-
+set_goal_contexts_shorthand(Context,
+        bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) :-
     set_goal_contexts(Context, LHS0, LHS),
     set_goal_contexts(Context, RHS0, RHS).
 

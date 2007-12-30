@@ -745,11 +745,16 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
     %
 :- func lookup_type_defn(code_info, mer_type) = hlds_type_defn.
 
+:- func lookup_cheaper_tag_test(code_info, mer_type) = maybe_cheaper_tag_test.
+
 :- func filter_region_vars(code_info, set(prog_var)) = set(prog_var).
 
-    % Given a constructor id, and a variable (so that we can work out the
-    % type of the constructor), determine correct tag (representation)
-    % of that constructor.
+    % Given a constructor id, and the type to which it belongs, determine
+    % the tag representing that constructor.
+    %
+:- func cons_id_to_tag_for_type(code_info, mer_type, cons_id) = cons_tag.
+
+    % As cons_id_to_tag_for_type, but get the type from the variable.
     %
 :- func cons_id_to_tag_for_var(code_info, prog_var, cons_id) = cons_tag.
 
@@ -774,7 +779,7 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
     %
 :- func current_resume_point_vars(code_info) = set(prog_var).
 
-:- func variable_to_string(code_info, prog_var) = string.
+:- func variable_name(code_info, prog_var) = string.
 
     % Create a code address which holds the address of the specified
     % procedure.
@@ -934,14 +939,28 @@ lookup_type_defn(CI, Type) = TypeDefn :-
         unexpected(this_file, "lookup_type_defn: type ctor has no definition")
     ).
 
+lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
+    (
+        search_type_defn(CI, Type, TypeDefn),
+        get_type_defn_body(TypeDefn, TypeBody),
+        TypeBody = hlds_du_type(_, _, CheaperTagTestPrime, _, _, _, _, _)
+    ->
+        CheaperTagTest = CheaperTagTestPrime
+    ;
+        CheaperTagTest = no_cheaper_tag_test
+    ).
+
 filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
     VarTypes = code_info.get_var_types(CI),
     RegionVars = set.filter(is_region_var(VarTypes),
         ForwardLiveVarsBeforeGoal).
 
-cons_id_to_tag_for_var(CI, Var, ConsId) = ConsTag :-
+cons_id_to_tag_for_type(CI, Type, ConsId) = ConsTag :-
     get_module_info(CI, ModuleInfo),
-    ConsTag = cons_id_to_tag(ConsId, variable_type(CI, Var), ModuleInfo).
+    ConsTag = cons_id_to_tag(ModuleInfo, Type, ConsId).
+
+cons_id_to_tag_for_var(CI, Var, ConsId) =
+    cons_id_to_tag_for_type(CI, variable_type(CI, Var), ConsId).
 
 %---------------------------------------------------------------------------%
 
@@ -974,7 +993,7 @@ current_resume_point_vars(CI) = ResumeVars :-
     map.keys(ResumeMap, ResumeMapVarList),
     set.list_to_set(ResumeMapVarList, ResumeVars).
 
-variable_to_string(CI, Var) = Name :-
+variable_name(CI, Var) = Name :-
     get_varset(CI, Varset),
     varset.lookup_name(Varset, Var, Name).
 
@@ -1121,8 +1140,8 @@ add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
 :- pred reset_resume_known(position_info::in,
     code_info::in, code_info::out) is det.
 
-:- pred generate_branch_end(abs_store_map::in, branch_end::in,
-    branch_end::out, code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_branch_end(abs_store_map::in, branch_end::in, branch_end::out,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred after_all_branches(abs_store_map::in, branch_end::in,
     code_info::in, code_info::out) is det.
@@ -1198,8 +1217,8 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
     ;
         MaybeEnd0 = yes(branch_end_info(EndCodeInfo0)),
 
-        % Make sure the left context we leave the branched structure
-        % with is valid for all branches.
+        % Make sure the left context we leave the branched structure with
+        % is valid for all branches.
         get_fail_info(EndCodeInfo0, FailInfo0),
         get_fail_info(EndCodeInfo1, FailInfo1),
         FailInfo0 = fail_info(_, ResumeKnown0, CurfrMaxfr0, CondEnv0, Hijack0),
@@ -4420,11 +4439,11 @@ get_variable_slot(CI, Var, Slot) :-
     ( map.search(StackSlots, Var, SlotLocn) ->
         Slot = stack_slot_to_lval(SlotLocn)
     ;
-        Name = variable_to_string(CI, Var),
+        Name = variable_name(CI, Var),
         term.var_to_int(Var, Num),
         string.int_to_string(Num, NumStr),
-        string.append_list(["get_variable_slot: variable `",
-            Name, "' (", NumStr, ") not found"], Str),
+        Str = "get_variable_slot: variable `" ++ Name ++ "' " ++
+            "(" ++ NumStr ++ ") not found",
         unexpected(this_file, Str)
     ).
 

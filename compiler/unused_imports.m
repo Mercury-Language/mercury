@@ -195,7 +195,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
     ( status_defined_in_this_module(ImportStatus) = yes ->
         Visibility = item_visibility(ImportStatus),
         (
-            TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _),
             list.foldl(ctor_used_modules(Visibility), Ctors, !UsedModules)
         ;
             TypeBody = hlds_eqv_type(EqvType),
@@ -407,11 +407,7 @@ hlds_goal_expr_used_modules(conj(_, Goals), !UsedModules) :-
 hlds_goal_expr_used_modules(disj(Goals), !UsedModules) :-
     list.foldl(hlds_goal_used_modules, Goals, !UsedModules).
 hlds_goal_expr_used_modules(switch(_, _, Cases), !UsedModules) :-
-    list.foldl(
-        (pred(case(ConsId, Goal)::in, !.M::in, !:M::out) is det :-
-            cons_id_used_modules(visibility_private, ConsId, !M),
-            hlds_goal_used_modules(Goal, !M)
-        ), Cases, !UsedModules).
+    list.foldl(case_used_modules, Cases, !UsedModules).
 hlds_goal_expr_used_modules(negation(Goal), !UsedModules) :-
     hlds_goal_used_modules(Goal, !UsedModules).
 hlds_goal_expr_used_modules(scope(_, Goal), !UsedModules) :-
@@ -424,6 +420,16 @@ hlds_goal_expr_used_modules(shorthand(bi_implication(GoalA, GoalB)),
         !UsedModules) :-
     hlds_goal_used_modules(GoalA, !UsedModules),
     hlds_goal_used_modules(GoalB, !UsedModules).
+
+:- pred case_used_modules(case::in, used_modules::in, used_modules::out)
+    is det.
+
+case_used_modules(Case, !UsedModules) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    cons_id_used_modules(visibility_private, MainConsId, !UsedModules),
+    list.foldl(cons_id_used_modules(visibility_private), OtherConsIds,
+        !UsedModules),
+    hlds_goal_used_modules(Goal, !UsedModules).
 
 :- pred unify_rhs_used_modules(unify_rhs::in,
     used_modules::in, used_modules::out) is det.

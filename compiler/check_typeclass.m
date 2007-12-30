@@ -1338,7 +1338,7 @@ is_valid_instance_type(MI, ClassId, InstanceDefn,
                 is_valid_instance_type(MI, ClassId, InstanceDefn, EqvType, N,
                     _, !SeenTypes, !Specs)
             ;
-                ( TypeBody = hlds_du_type(_, _, _, _, _, _, _)
+                ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _)
                 ; TypeBody = hlds_foreign_type(_)
                 ; TypeBody = hlds_solver_type(_, _)
                 ; TypeBody = hlds_abstract_type(_)
@@ -1577,7 +1577,7 @@ check_ctor_constraints(TypeTable, TypeCtor, !ModuleInfo, !Specs) :-
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, Body),
     (
-        Body = hlds_du_type(Ctors, _, _, _, _, _, _),
+        Body = hlds_du_type(Ctors, _, _, _, _, _, _, _),
         list.foldl2(check_ctor_type_ambiguities(TypeCtor, TypeDefn), Ctors,
             !ModuleInfo, !Specs)
     ;

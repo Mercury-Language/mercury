@@ -399,7 +399,7 @@ check_goal_expr_non_term_calls(_, _, shorthand(_), _, _, _, _, _, _, _) :-
     termination_error_contexts::in, termination_error_contexts::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_cases_non_term_calls(PPId, VarTypes, case(_, Goal), !Errors,
+check_cases_non_term_calls(PPId, VarTypes, case(_, _, Goal), !Errors,
         !ModuleInfo, !IO) :-
     check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO).
 

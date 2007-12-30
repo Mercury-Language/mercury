@@ -694,15 +694,17 @@ gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
     byte_info::in, byte_info::out, byte_tree::out) is det.
 
 gen_switch([], _, _, !ByteInfo, empty).
-gen_switch([case(ConsId, Goal) | Cases], Var, EndLabel,
-        !ByteInfo, Code) :-
-    map_cons_id(!.ByteInfo, Var, ConsId, ByteConsId),
-    gen_goal(Goal, !ByteInfo, ThisCode),
-    gen_switch(Cases, Var, EndLabel, !ByteInfo, OtherCode),
+gen_switch([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    map_cons_id(!.ByteInfo, Var, MainConsId, ByteMainConsId),
+    list.map(map_cons_id(!.ByteInfo, Var), OtherConsIds, ByteOtherConsIds),
+    gen_goal(Goal, !ByteInfo, GoalCode),
+    gen_switch(Cases, Var, EndLabel, !ByteInfo, CasesCode),
     get_next_label(NextLabel, !ByteInfo),
-    EnterCode = node([byte_enter_switch_arm(ByteConsId, NextLabel)]),
+    EnterCode = node([
+        byte_enter_switch_arm(ByteMainConsId, ByteOtherConsIds, NextLabel)]),
     EndofCode = node([byte_endof_switch_arm(EndLabel), byte_label(NextLabel)]),
-    Code = tree_list([EnterCode, ThisCode, EndofCode, OtherCode]).
+    Code = tree_list([EnterCode, GoalCode, EndofCode, CasesCode]).
 
 %---------------------------------------------------------------------------%
 
@@ -734,7 +736,7 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
             ;
                 Functor = qualified(ModuleName, FunctorName)
             ),
-            ConsTag = cons_id_to_tag(ConsId, Type, ModuleInfo),
+            ConsTag = cons_id_to_tag(ModuleInfo, Type, ConsId),
             map_cons_tag(ConsTag, ByteConsTag),
             ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
         )

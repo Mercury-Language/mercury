@@ -136,10 +136,10 @@ disj_mark_static_terms([Goal0 | Goals0], [Goal | Goals], SI0) :-
 
 cases_mark_static_terms([], [], _SI0).
 cases_mark_static_terms([Case0 | Cases0], [Case | Cases], SI0) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     % We throw away the static_info obtained after each branch.
     goal_mark_static_terms(Goal0, Goal, SI0, _SI),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     cases_mark_static_terms(Cases0, Cases, SI0).
 
 :- pred unification_mark_static_terms(unification::in, unification::out,

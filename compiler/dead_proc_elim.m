@@ -457,7 +457,7 @@ dead_proc_examine_goals([Goal | Goals], CurrProc, !Queue, !Needed) :-
     is det.
 
 dead_proc_examine_cases([], _CurrProc, !Queue, !Needed).
-dead_proc_examine_cases([case(_, Goal) | Cases], CurrProc,
+dead_proc_examine_cases([case(_, _, Goal) | Cases], CurrProc,
         !Queue, !Needed) :-
     dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed),
     dead_proc_examine_cases(Cases, CurrProc, !Queue, !Needed).
@@ -1037,7 +1037,7 @@ pre_modecheck_examine_goal_expr(if_then_else(_, If, Then, Else), !DeadInfo) :-
     list.foldl(pre_modecheck_examine_goal, [If, Then, Else], !DeadInfo).
 pre_modecheck_examine_goal_expr(switch(_, _, Cases), !DeadInfo) :-
     ExamineCase = (pred(Case::in, Info0::in, Info::out) is det :-
-        Case = case(_, Goal),
+        Case = case(_, _, Goal),
         pre_modecheck_examine_goal(Goal, Info0, Info)
     ),
     list.foldl(ExamineCase, Cases, !DeadInfo).

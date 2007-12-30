@@ -203,9 +203,9 @@ backward_use_in_cases(VarTypes, !Cases, !LBU) :-
     case::out, set(prog_var)::in, set(prog_var)::out) is det.
 
 backward_use_in_case(LBU0, VarTypes, !Case, !LBU):-
-    !.Case = case(Cons, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     backward_use_in_goal(VarTypes, Goal0, Goal, LBU0, NewLBU),
-    !:Case = case(Cons, Goal),
+    !:Case = case(MainConsId, OtherConsIds, Goal),
     set.union(NewLBU, !LBU).
 
 :- pred backward_use_in_disj(vartypes::in, list(hlds_goal)::in,

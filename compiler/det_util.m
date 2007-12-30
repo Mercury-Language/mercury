@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,9 +41,7 @@
 
     % Given a list of cases, and a list of the possible cons_ids
     % that the switch variable could be bound to, select out only
-    % those cases whose cons_id occurs in the list of cases
-    % We assume that the list of cases and the list of cons_ids
-    % are sorted, so that we can do this using a simple sorted merge.
+    % those cases whose cons_id occurs in the list of possible cons_ids.
     %
 :- pred delete_unreachable_cases(list(case)::in, list(cons_id)::in,
     list(case)::out) is det.
@@ -78,9 +76,9 @@
 :- pred det_info_get_fully_strict(det_info::in, bool::out) is det.
 :- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
 
-:- pred det_info_set_module_info(det_info::in, module_info::in, det_info::out)
+:- pred det_info_set_module_info(module_info::in, det_info::in, det_info::out)
     is det.
-:- pred det_info_set_vartypes(det_info::in, vartypes::in, det_info::out)
+:- pred det_info_set_vartypes(vartypes::in, det_info::in, det_info::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -96,22 +94,42 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
+:- import_module set_tree234.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
 
-delete_unreachable_cases([], _, []).
-delete_unreachable_cases([_ | _], [], []).
-delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
-    Case = case(CaseConsId, _DisjList),
-    ( CaseConsId = ConsId ->
-        Cases = [Case | Cases1],
-        delete_unreachable_cases(Cases0, ConsIds, Cases1)
-    ; compare(<, CaseConsId, ConsId) ->
-        delete_unreachable_cases(Cases0, [ConsId | ConsIds], Cases)
+delete_unreachable_cases(Cases0, PossibleConsIds, Cases) :-
+    PossibleConsIdSet = set_tree234.list_to_set(PossibleConsIds),
+    % We use a reverse list accumulator because we want to avoid requiring
+    % O(n) stack space.
+    delete_unreachable_cases_2(Cases0, PossibleConsIdSet, [], RevCases),
+    list.reverse(RevCases, Cases).
+
+:- pred delete_unreachable_cases_2(list(case)::in, set_tree234(cons_id)::in,
+    list(case)::in, list(case)::out) is det.
+
+delete_unreachable_cases_2([], _PossibleConsIdSet, !RevCases).
+delete_unreachable_cases_2([Case0 | Cases0], PossibleConsIdSet, !RevCases) :-
+    Case0 = case(MainConsId0, OtherConsIds0, Goal),
+    ( set_tree234.member(PossibleConsIdSet, MainConsId0) ->
+        list.filter(set_tree234.contains(PossibleConsIdSet),
+            OtherConsIds0, OtherConsIds),
+        Case = case(MainConsId0, OtherConsIds, Goal),
+        !:RevCases = [Case | !.RevCases]
     ;
-        delete_unreachable_cases([Case | Cases0], ConsIds, Cases)
-    ).
+        list.filter(set_tree234.contains(PossibleConsIdSet),
+            OtherConsIds0, OtherConsIds1),
+        (
+            OtherConsIds1 = []
+            % We don't add Case to !RevCases, effectively deleting it.
+        ;
+            OtherConsIds1 = [MainConsId | OtherConsIds],
+            Case = case(MainConsId, OtherConsIds, Goal),
+            !:RevCases = [Case | !.RevCases]
+        )
+    ),
+    delete_unreachable_cases_2(Cases0, PossibleConsIdSet, !RevCases).
 
 interpret_unify(X, rhs_var(Y), !Subst) :-
     unify_term(variable(X, context_init), variable(Y, context_init), !Subst).
@@ -185,8 +203,8 @@ det_info_get_reorder_disj(DI, DI ^ di_reorder_disj).
 det_info_get_fully_strict(DI, DI ^ di_fully_strict).
 det_info_get_vartypes(DI, DI ^ di_vartypes).
 
-det_info_set_module_info(DI, ModuleInfo, DI ^ di_module_info := ModuleInfo).
-det_info_set_vartypes(DI, VarTypes, DI ^ di_vartypes := VarTypes).
+det_info_set_module_info(ModuleInfo, DI, DI ^ di_module_info := ModuleInfo).
+det_info_set_vartypes(VarTypes, DI, DI ^ di_vartypes := VarTypes).
 
 %-----------------------------------------------------------------------------%
 

@@ -2398,7 +2398,7 @@ output_instruction(computed_goto(Rval, Labels), _, !IO) :-
     io.write_string("\tMR_COMPUTED_GOTO(", !IO),
     output_rval_as_type(Rval, unsigned, !IO),
     io.write_string(",\n\t\t", !IO),
-    output_label_list(Labels, !IO),
+    output_label_list_or_not_reached(Labels, !IO),
     io.write_string(");\n", !IO).
 
 output_instruction(if_val(Rval, Target), ProfInfo, !IO) :-
@@ -4579,24 +4579,35 @@ label_as_code_addr_to_string(Label, Str) :-
         Str = "MR_LABEL_AP(" ++ LabelStr ++ ")"
     ).
 
-:- pred output_label_list(list(label)::in, io::di, io::uo) is det.
+:- pred output_label_list_or_not_reached(list(maybe(label))::in,
+    io::di, io::uo) is det.
 
-output_label_list([], !IO).
-output_label_list([Label | Labels], !IO) :-
-    io.write_string("MR_LABEL_AP(", !IO),
-    output_label(Label, no, !IO),
-    io.write_string(")", !IO),
-    output_label_list_2(Labels, !IO).
+output_label_list_or_not_reached([], !IO).
+output_label_list_or_not_reached([MaybeLabel | MaybeLabels], !IO) :-
+    output_label_or_not_reached(MaybeLabel, !IO),
+    output_label_list_or_not_reached_2(MaybeLabels, !IO).
 
-:- pred output_label_list_2(list(label)::in, io::di, io::uo) is det.
+:- pred output_label_list_or_not_reached_2(list(maybe(label))::in,
+    io::di, io::uo) is det.
 
-output_label_list_2([], !IO).
-output_label_list_2([Label | Labels], !IO) :-
+output_label_list_or_not_reached_2([], !IO).
+output_label_list_or_not_reached_2([MaybeLabel | MaybeLabels], !IO) :-
     io.write_string(" MR_AND\n\t\t", !IO),
-    io.write_string("MR_LABEL_AP(", !IO),
-    output_label(Label, no, !IO),
-    io.write_string(")", !IO),
-    output_label_list_2(Labels, !IO).
+    output_label_or_not_reached(MaybeLabel, !IO),
+    output_label_list_or_not_reached_2(MaybeLabels, !IO).
+
+:- pred output_label_or_not_reached(maybe(label)::in, io::di, io::uo) is det.
+
+output_label_or_not_reached(MaybeLabel, !IO) :-
+    (
+        MaybeLabel = yes(Label),
+        io.write_string("MR_LABEL_AP(", !IO),
+        output_label(Label, no, !IO),
+        io.write_string(")", !IO)
+    ;
+        MaybeLabel = no,
+        io.write_string("MR_ENTRY(MR_do_not_reached)", !IO)
+    ).
 
 :- pred output_label_defn(label::in, io::di, io::uo) is det.
 

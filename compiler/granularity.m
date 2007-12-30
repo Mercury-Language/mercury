@@ -225,9 +225,9 @@ runtime_granularity_test_in_goals([Goal0 | Goals0], [Goal | Goals], !Changed,
 runtime_granularity_test_in_cases([], [], !Changed, _, _).
 runtime_granularity_test_in_cases([Case0 | Cases0], [Case | Cases], !Changed,
         SCC, ModuleInfo) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     runtime_granularity_test_in_cases(Cases0, Cases, !Changed, SCC,
         ModuleInfo).
 

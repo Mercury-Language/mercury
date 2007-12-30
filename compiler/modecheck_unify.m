@@ -1302,7 +1302,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         ;
             % If the type has only one constructor, then the unification
             % cannot fail.
-            type_constructors(TypeOfX, ModuleInfo, Constructors),
+            type_constructors(ModuleInfo, TypeOfX, Constructors),
             Constructors = [_]
         ->
             CanFail = cannot_fail

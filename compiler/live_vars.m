@@ -596,13 +596,14 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
 
 build_live_sets_in_cases([], [], _, _,
         !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars).
-build_live_sets_in_cases([case(Cons, Goal0) | Cases0],
-        [case(Cons, Goal) | Cases], ResumeVars0, AllocData,
-        !StackAlloc, Liveness0, Liveness, NondetLiveness0, NondetLiveness,
-        !ParStackVars) :-
+build_live_sets_in_cases([Case0 | Cases0], [Case | Cases],
+        ResumeVars0, AllocData, !StackAlloc,
+        Liveness0, Liveness, NondetLiveness0, NondetLiveness, !ParStackVars) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
         !StackAlloc, Liveness0, Liveness, NondetLiveness0, NondetLiveness1,
         !ParStackVars),
+    Case = case(MainConsId, OtherConsIds, Goal),
     build_live_sets_in_cases(Cases0, Cases, ResumeVars0, AllocData,
         !StackAlloc, Liveness0, _Liveness2, NondetLiveness0, NondetLiveness2,
         !ParStackVars),

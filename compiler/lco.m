@@ -421,9 +421,10 @@ lco_in_disj([Goal0 | Goals0], [Goal | Goals], !Info, ConstInfo) :-
     lco_info::in, lco_info::out, lco_const_info::in) is det.
 
 lco_in_cases([], [], !Info, _ConstInfo).
-lco_in_cases([case(Cons, Goal0) | Cases0], [case(Cons, Goal) | Cases],
-        !Info, ConstInfo) :-
+lco_in_cases([Case0 | Cases0], [Case | Cases], !Info, ConstInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     lco_in_goal(Goal0, Goal, !Info, ConstInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
     lco_in_cases(Cases0, Cases, !Info, ConstInfo).
 
 %-----------------------------------------------------------------------------%
@@ -468,7 +469,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         ),
         all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
         map.lookup(VarTypes, ConstructedVar, ConstructedType),
-        ConsTag = cons_id_to_tag(ConsId, ConstructedType, ModuleInfo),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConstructedType, ConsId),
         % The code generator can't handle the other tags. For example, it
         % doesn't make sense to take the address of the field of a function
         % symbol of a `notag' type.
@@ -965,10 +966,12 @@ transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
 :- pred transform_variant_case(module_info::in, assoc_list(prog_var)::in,
     instmap::in, case::in, case::out, bool::out) is det.
 
-transform_variant_case(ModuleInfo, VarToAddr, InstMap0,
-        case(ConsId, Goal0), case(ConsId, Goal), Changed) :-
+transform_variant_case(ModuleInfo, VarToAddr, InstMap0, Case0, Case,
+        Changed) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        Changed).
+        Changed),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred transform_variant_atomic_goal(module_info::in,
     assoc_list(prog_var)::in, instmap::in, hlds_goal_info::in,

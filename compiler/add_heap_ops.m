@@ -301,9 +301,9 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
 
 cases_add_heap_ops([], [], !Info).
 cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
-    Case0 = case(ConsId, Goal0),
-    Case = case(ConsId, Goal),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     goal_add_heap_ops(Goal0, Goal, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
     cases_add_heap_ops(Cases0, Cases, !Info).
 
 %-----------------------------------------------------------------------------%

@@ -1007,7 +1007,7 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
     (
         map.lookup(VarTypes, Var, Type),
         type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-        TypeBody = hlds_du_type(_, ConsTagValues, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, ConsTagValues, _, _, _, _, _, _),
         map.search(ConsTagValues, ConsId, ConsTag),
         MaybeSecondaryTag = get_secondary_tag(ConsTag),
         MaybeSecondaryTag = yes(_)
@@ -1139,9 +1139,9 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
 :- pred annotate_reuses_in_case(background_info::in, match::in,
     case::in, case::out) is det.
 annotate_reuses_in_case(Background, Match, !Case) :-
-    !.Case = case(A, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     annotate_reuses_in_goal(Background, Match, Goal0, Goal),
-    !:Case = case(A, Goal).
+    !:Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred annotate_reuse_for_unification(background_info::in, match::in,
     unification::in, hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -1414,9 +1414,9 @@ check_for_cell_caching_2(DeadCellTable, !Goal):-
     case::in, case::out) is det.
 
 check_for_cell_caching_in_case(DeadCellTable, !Case) :-
-    !.Case = case(A, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     check_for_cell_caching_2(DeadCellTable, Goal0, Goal),
-    !:Case = case(A, Goal).
+    !:Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred check_for_cell_caching_in_unification(dead_cell_table::in,
     unification::in, unification::out,

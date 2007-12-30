@@ -1219,7 +1219,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         ;
             LastUinstr0 = computed_goto(Rval, GotoTargets0)
         ->
-            replace_labels_label_list(GotoTargets0, GotoTargets, 
+            replace_labels_maybe_label_list(GotoTargets0, GotoTargets, 
                 PreExitDummyLabelMap),
             LastUinstr = computed_goto(Rval, GotoTargets),
             LastInstr = llds_instr(LastUinstr, Comment),

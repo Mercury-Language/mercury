@@ -371,14 +371,15 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        ModuleInfo0, ModuleInfo),
-    pd_info_set_module_info(ModuleInfo, !PDInfo),
+        ModuleInfo0, ModuleInfo1),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    det_info_init(ModuleInfo, VarTypes, PredId, ProcId, DetInfo),
+    det_info_init(ModuleInfo1, VarTypes, PredId, ProcId, DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
-    det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, DetInfo, _, _,
-        [], Specs),
+    det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, _, _,
+        DetInfo0, DetInfo, [], Specs),
+    det_info_get_module_info(DetInfo, ModuleInfo2),
+    pd_info_set_module_info(ModuleInfo2, !PDInfo),
 
     % Make sure there were no errors.
     globals.io_get_globals(Globals, !IO),
@@ -574,7 +575,7 @@ get_branch_instmap_deltas(Goal, [CondDelta, ThenDelta, ElseDelta]) :-
 get_branch_instmap_deltas(hlds_goal(switch(_, _, Cases), _), InstMapDeltas) :-
     GetCaseInstMapDelta =
         (pred(Case::in, InstMapDelta::out) is det :-
-            Case = case(_, hlds_goal(_, CaseInfo)),
+            Case = case(_, _, hlds_goal(_, CaseInfo)),
             InstMapDelta = goal_info_get_instmap_delta(CaseInfo)
         ),
     list.map(GetCaseInstMapDelta, Cases, InstMapDeltas).
@@ -715,17 +716,18 @@ examine_branch_list(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
     module_info::in, module_info::out) is det.
 
 examine_case_list(_, _, _, [], _, _, !Vars, !ModuleInfo).
-examine_case_list(ProcArgInfo, BranchNo, Var,
-        [case(ConsId, Goal) | Goals], VarTypes, InstMap, !Vars, !ModuleInfo) :-
+examine_case_list(ProcArgInfo, BranchNo, Var, [Case | Cases],
+        VarTypes, InstMap0, !Vars, !ModuleInfo) :-
     map.lookup(VarTypes, Var, Type),
-    instmap.bind_var_to_functor(Var, Type, ConsId, InstMap, InstMap1,
-        !ModuleInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
+        InstMap0, InstMap1, !ModuleInfo),
     goal_to_conj_list(Goal, GoalList),
     examine_branch(!.ModuleInfo, ProcArgInfo, BranchNo, GoalList,
         VarTypes, InstMap1, !Vars),
     NextBranch = BranchNo + 1,
-    examine_case_list(ProcArgInfo, NextBranch, Var, Goals,
-        VarTypes, InstMap, !Vars, !ModuleInfo).
+    examine_case_list(ProcArgInfo, NextBranch, Var, Cases,
+        VarTypes, InstMap0, !Vars, !ModuleInfo).
 
 :- pred examine_branch(module_info::in, pd_arg_info::in, int::in,
     hlds_goals::in, vartypes::in, instmap::in,

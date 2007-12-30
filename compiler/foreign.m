@@ -551,7 +551,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
                 ForeignTypeName, _, Assertions),
             ExportType = exported_type_foreign(ForeignTypeName, Assertions)
         ;
-            ( Body = hlds_du_type(_, _, _, _, _, _, _)
+            ( Body = hlds_du_type(_, _, _, _, _, _, _, _)
             ; Body = hlds_eqv_type(_)
             ; Body = hlds_solver_type(_, _)
             ; Body = hlds_abstract_type(_)

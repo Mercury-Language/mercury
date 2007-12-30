@@ -836,10 +836,11 @@ process_switch_cases_for_implicit_parallelism([], !CasesAcc, _ProcInfo,
         !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter).
 process_switch_cases_for_implicit_parallelism([Case0 | Cases], !CasesAcc,
         ProcInfo, !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
         !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized, !SiteNumCounter),
-    !:CasesAcc = !.CasesAcc ++ [case(Functor, Goal)],
+    Case = case(MainConsId, OtherConsIds, Goal),
+    !:CasesAcc = !.CasesAcc ++ [Case],
     process_switch_cases_for_implicit_parallelism(Cases, !CasesAcc,
         ProcInfo, !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter).
 

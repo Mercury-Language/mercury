@@ -211,14 +211,16 @@ execution_paths_covered_disj(ProcInfo, [Disj | Disjs], !ExecPaths) :-
 
 execution_paths_covered_cases(_, _, [], _, []).
 execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
-    Case = case(ConsId, CaseGoal),
+    Case = case(MainConsId, OtherConsIds, CaseGoal),
+    expect(unify(OtherConsIds, []), this_file,
+        "NYI: execution_paths_covered_cases for multi-cons-id cases"),
     Switch = hlds_goal(_SwitchExpr, Info),
     ProgPoint = program_point_init(Info),
 
     % Handle the unification on the switch var if it has been removed.
     % We add a dummy program point for this unification.
     (
-        ConsId = cons(_SymName, Arity),
+        MainConsId = cons(_SymName, Arity),
         ( Arity = 0 ->
             append_to_each_execution_path(!.ExecPaths,
                 [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
@@ -226,25 +228,25 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
                 ExecPathsBeforeCase = !.ExecPaths
         )
     ;
-        ( ConsId = int_const(_Int)
-        ; ConsId = string_const(_String)
-        ; ConsId = float_const(_Float)
+        ( MainConsId = int_const(_Int)
+        ; MainConsId = string_const(_String)
+        ; MainConsId = float_const(_Float)
         ),
         % need to add a dummy pp
         append_to_each_execution_path(!.ExecPaths,
             [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
     ;
-        ( ConsId = pred_const(_, _)
-        ; ConsId = type_ctor_info_const(_, _, _)
-        ; ConsId = base_typeclass_info_const(_, _, _, _)
-        ; ConsId = type_info_cell_constructor(_)
-        ; ConsId = typeclass_info_cell_constructor
-        ; ConsId = tabling_info_const(_)
-        ; ConsId = deep_profiling_proc_layout(_)
-        ; ConsId = table_io_decl(_)
+        ( MainConsId = pred_const(_, _)
+        ; MainConsId = type_ctor_info_const(_, _, _)
+        ; MainConsId = base_typeclass_info_const(_, _, _, _)
+        ; MainConsId = type_info_cell_constructor(_)
+        ; MainConsId = typeclass_info_cell_constructor
+        ; MainConsId = tabling_info_const(_)
+        ; MainConsId = deep_profiling_proc_layout(_)
+        ; MainConsId = table_io_decl(_)
         ),
-        unexpected(this_file, "execution_paths_covered_cases: new cons_id "
-            ++ "encountered")
+        unexpected(this_file,
+            "execution_paths_covered_cases: new cons_id encountered")
     ),
     execution_paths_covered_goal(ProcInfo, CaseGoal,
         ExecPathsBeforeCase, ExecPathsCase),
@@ -252,8 +254,8 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         !.ExecPaths, ExecPathsCases),
     !:ExecPaths = ExecPathsCase ++ ExecPathsCases.
 
-    % extend each execution path in the first list with each in the
-    % second list, all the extended execution paths are put in the third list
+    % Extend each execution path in the first list with each in the
+    % second list, all the extended execution paths are put in the third list.
     %
 :- pred append_to_each_execution_path(list(execution_path)::in,
     list(execution_path)::in, list(execution_path)::out) is det.

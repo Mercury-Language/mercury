@@ -1054,7 +1054,7 @@ mode_context_to_pieces(mode_context_call(CallId, ArgNum), Markers) =
         suffix(":"), nl].
 mode_context_to_pieces(mode_context_unify(UnifyContext, _Side), _Markers)
         = Pieces :-
-    unify_context_first_to_pieces(no, _, UnifyContext, [], Pieces).
+    unify_context_first_to_pieces(is_not_first, _, UnifyContext, [], Pieces).
 
 %-----------------------------------------------------------------------------%
 

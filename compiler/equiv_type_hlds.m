@@ -104,7 +104,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
             IsExported = no
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _, _, _, _)
+        ( Body = hlds_du_type(_, _, _, _, _, _, _, _)
         ; Body = hlds_foreign_type(_)
         ; Body = hlds_solver_type(_, _)
         ; Body = hlds_abstract_type(_)
@@ -148,7 +148,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     equiv_type.maybe_record_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _),
+        Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _, _),
         equiv_type.replace_in_ctors(EqvMap, Ctors0, Ctors,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = Body0 ^ du_type_ctors := Ctors
@@ -735,6 +735,17 @@ replace_in_goal(EqvMap, Goal0 @ hlds_goal(GoalExpr0, GoalInfo0), Goal,
         Goal = Goal0
     ).
 
+:- pred replace_in_case(eqv_map::in)
+    `with_type` replacer(case, replace_info)
+    `with_inst` replacer.
+
+replace_in_case(EqvMap, Case0, Case, Changed, !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, CaseGoal0),
+    replace_in_goal(EqvMap, CaseGoal0, CaseGoal, Changed, !Info),
+    ( Changed = yes, Case = case(MainConsId, OtherConsIds, CaseGoal)
+    ; Changed = no, Case = Case0
+    ).
+
 :- pred replace_in_goal_expr(eqv_map::in)
     `with_type` replacer(hlds_goal_expr, replace_info)
     `with_inst` replacer.
@@ -755,14 +766,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0 @ disj(Goals0), GoalExpr,
     ).
 replace_in_goal_expr(EqvMap, GoalExpr0 @ switch(A, B, Cases0), GoalExpr,
         Changed, !Info) :-
-    replace_in_list(
-        (pred((Case0 @ case(ConsId, CaseGoal0))::in, Case::out,
-                CaseChanged::out, !.Info::in, !:Info::out) is det :-
-            replace_in_goal(EqvMap, CaseGoal0, CaseGoal, CaseChanged, !Info),
-            ( CaseChanged = yes, Case = case(ConsId, CaseGoal)
-            ; CaseChanged = no, Case = Case0
-            )
-        ), Cases0, Cases, Changed, !Info),
+    replace_in_list(replace_in_case(EqvMap), Cases0, Cases, Changed, !Info),
     ( Changed = yes, GoalExpr = switch(A, B, Cases)
     ; Changed = no, GoalExpr = GoalExpr0
     ).

@@ -481,9 +481,11 @@ push_into_goals_rename([Goal0 | Goals0], [Goal | Goals], Construct, Var,
     prog_var::in, slot_info::in, slot_info::out) is det.
 
 push_into_cases_rename([], [], _Construct, _Var, !SlotInfo).
-push_into_cases_rename([case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) | Cases], Construct, Var, !SlotInfo) :-
+push_into_cases_rename([Case0 | Cases0], [Case | Cases], Construct, Var,
+        !SlotInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
     push_into_cases_rename(Cases0, Cases, Construct, Var, !SlotInfo).
 
 %-----------------------------------------------------------------------------%
@@ -505,9 +507,10 @@ saved_vars_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
     slot_info::in, slot_info::out) is det.
 
 saved_vars_in_switch([], [], !SlotInfo).
-saved_vars_in_switch([case(Cons, Goal0) | Cases0],
-        [case(Cons, Goal) | Cases], !SlotInfo) :-
+saved_vars_in_switch([Case0 | Cases0], [Case | Cases], !SlotInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     saved_vars_in_goal(Goal0, Goal, !SlotInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
     saved_vars_in_switch(Cases0, Cases, !SlotInfo).
 
 %-----------------------------------------------------------------------------%

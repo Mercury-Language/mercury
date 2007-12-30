@@ -72,6 +72,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 :- import_module svmulti_map.
@@ -90,7 +91,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         (
             Body0 = hlds_abstract_type(_)
         ;
-            Body0 = hlds_du_type(_, _, _, _, _, _, _),
+            Body0 = hlds_du_type(_, _, _, _, _, _, _, _),
             string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then
             % we need to treat it as abstract.  The constructors
@@ -365,7 +366,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
     get_type_defn_need_qualifier(TypeDefn, NeedQual),
     module_info_get_globals(!.ModuleInfo, Globals),
     (
-        Body = hlds_du_type(ConsList, _, _, UserEqCmp, ReservedTag, _, _),
+        Body = hlds_du_type(ConsList, _, _, _, UserEqCmp, ReservedTag, _, _),
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
@@ -495,7 +496,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
         Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
     ).
 merge_foreign_type_bodies(Target, MakeOptInterface,
-        Body0 @ hlds_du_type(_, _, _, _, _, _, _),
+        Body0 @ hlds_du_type(_, _, _, _, _, _, _, _),
         Body1 @ hlds_foreign_type(_), Body) :-
     merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
 merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
@@ -613,10 +614,35 @@ convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
     % with ReservedTagPragma = uses_reserved_tag, when processing the pragma.)
     ReservedTagPragma = does_not_use_reserved_tag,
     assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor, ReservedTagPragma,
-        Globals, CtorTags, ReservedAddr, IsEnum),
+        Globals, CtorTagMap, ReservedAddr, IsEnum),
     IsForeign = no,
-    HLDSBody = hlds_du_type(Body, CtorTags, IsEnum, MaybeUserEqComp,
-        ReservedTagPragma, ReservedAddr, IsForeign).
+    (
+        ReservedAddr = does_not_use_reserved_address,
+        map.to_assoc_list(CtorTagMap, CtorTagList),
+        CtorTagList = [ConsIdA - ConsTagA, ConsIdB - ConsTagB],
+        ConsIdA = cons(_, ArityA),
+        ConsIdB = cons(_, ArityB)
+    ->
+        (
+            ArityB = 0,
+            ArityA > 0
+        ->
+            CheaperTagTest = cheaper_tag_test(ConsIdA, ConsTagA,
+                ConsIdB, ConsTagB)
+        ;
+            ArityA = 0,
+            ArityB > 0
+        ->
+            CheaperTagTest = cheaper_tag_test(ConsIdB, ConsTagB,
+                ConsIdA, ConsTagA)
+        ;
+            CheaperTagTest = no_cheaper_tag_test
+        )
+    ;
+        CheaperTagTest = no_cheaper_tag_test
+    ),
+    HLDSBody = hlds_du_type(Body, CtorTagMap, CheaperTagTest, IsEnum,
+        MaybeUserEqComp, ReservedTagPragma, ReservedAddr, IsForeign).
 convert_type_defn(parse_tree_eqv_type(Body), _, _, hlds_eqv_type(Body)).
 convert_type_defn(parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         _, _, hlds_solver_type(SolverTypeDetails, MaybeUserEqComp)).

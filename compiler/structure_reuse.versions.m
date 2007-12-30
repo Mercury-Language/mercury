@@ -313,9 +313,9 @@ determine_reuse_version(ReuseMap, PredId, ProcId, PredName,
     io::di, io::uo) is det.
 
 process_case(ReuseMap, !Case, !IO) :-
-    !.Case = case(ConsId, Goal0),
+    !.Case = case(MainConsId, OtherConsIds, Goal0),
     process_goal(ReuseMap, Goal0, Goal, !IO),
-    !:Case = case(ConsId, Goal).
+    !:Case = case(MainConsId, OtherConsIds, Goal).
 
 %------------------------------------------------------------------------------%
 

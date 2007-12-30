@@ -562,7 +562,7 @@ traverse_unify(Unification, CurId, !ConjMaps, !PredMap, !RelevantVars) :-
 
 :- func project_case_goal(case) = hlds_goal.
 
-project_case_goal(case(_, Goal)) = Goal.
+project_case_goal(case(_, _, Goal)) = Goal.
 
 :- pred traverse_disj(list(hlds_goal)::in, conj_id::in,
     list(format_call_site)::in, list(format_call_site)::out,

@@ -771,7 +771,7 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
     %
 
     % Get the union of all nonlocal variables bound in all cases.
-    CasesGoals = list.map((func(case(_, Goal)) = Goal), CasesList),
+    CasesGoals = list.map((func(case(_, _, Goal)) = Goal), CasesList),
     union_bound_nonlocals_in_goals(!.Info, InstMap0, CasesGoals,
         NonLocalsBoundInCases),
 
@@ -805,7 +805,14 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
         % less, so we don't use the workaround if any cases are longer than
         % that.
         all [String] (
-            list.member(case(string_const(String), _), CasesList)
+            (
+                list.member(case(MainConsId, OtherConsIds, _), CasesList),
+                (
+                    MainConsId = string_const(String)
+                ;
+                    list.member(string_const(String), OtherConsIds)
+                )
+            )
         =>
             string.length(String) =< 255
         )
@@ -849,11 +856,14 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
-        case(ConsId, Goal), ELDSCase, !Info) :-
+        Case, ELDSCase, !Info) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    expect(unify(OtherConsIds, []), this_file,
+        "erl_gen_case: multi-cons-id switch arms NYI"),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    Size = cons_id_size(ModuleInfo, Type, ConsId),
+    Size = cons_id_size(ModuleInfo, Type, MainConsId),
     erl_gen_info_new_anonymous_vars(Size, DummyVars, !Info),
-    ( cons_id_to_term(ConsId, DummyVars, elds_anon_var, Pattern0, !Info) ->
+    ( cons_id_to_term(MainConsId, DummyVars, elds_anon_var, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
         unexpected(this_file, "erl_gen_case: cannot pattern match on object")
@@ -862,16 +872,15 @@ erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
         MaybeSuccessExprForCase, !Info),
     erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExprForCase, Statement0,
         !Info),
-    %
+
     % To prevent warnings from the Erlang compiler we must make sure all cases
     % bind the same set of variables.  This might not be true if the Mercury
     % compiler knows that a case calls a procedure which throws an exception.
-    %
+
     erl_bind_unbound_vars(!.Info, MustBindNonLocals, Goal, InstMap,
         Statement0, Statement),
     ELDSCase = elds_case(Pattern, Statement).
 
-    %
     % cons_id_size(ModuleInfo, Type, ConsId)
     %
     % Returns the size - 1 of the tuple which represents the
@@ -885,11 +894,10 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
         get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
     ->
 
-            %
-            % There will be a cell for each existential type variable
-            % which isn't mentioned in a typeclass constraint and
-            % a cell for each constraint and for each arg.
-            %
+        % There will be a cell for each existential type variable
+        % which isn't mentioned in a typeclass constraint and
+        % a cell for each constraint and for each arg.
+
         Constraints = ConsDefn ^ cons_constraints,
         constraint_list_get_tvars(Constraints, ConstrainedTVars),
         ExistTVars = ConsDefn ^ cons_exist_tvars,
@@ -906,8 +914,11 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
-        case(ConsId, Goal), ELDSCase, !Info) :-
-    ( ConsId = string_const(String0) ->
+        Case, ELDSCase, !Info) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    expect(unify(OtherConsIds, []), this_file,
+        "erl_gen_case_on_atom: multi-cons-id switch arms NYI"),
+    ( MainConsId = string_const(String0) ->
         String = String0
     ;
         unexpected(this_file, "erl_gen_case_on_atom: non-string const")
@@ -916,11 +927,11 @@ erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
         MaybeSuccessExprForCase, !Info),
     erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExprForCase, Statement0,
         !Info),
-    %
+
     % To prevent warnings from the Erlang compiler we must make sure all cases
     % bind the same set of variables.  This might not be true if the Mercury
     % compiler knows that a case calls a procedure which throws an exception.
-    %
+
     erl_bind_unbound_vars(!.Info, MustBindNonLocals, Goal, InstMap,
         Statement0, Statement),
     ELDSCase = elds_case(elds_atom_raw(String), Statement).

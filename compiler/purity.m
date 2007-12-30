@@ -927,9 +927,11 @@ compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !ContainsTrace,
     purity_info::in, purity_info::out) is det.
 
 compute_cases_purity([], [], !Purity, !ContainsTrace, !Info).
-compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
-        !Purity, !ContainsTrace, !Info) :-
+compute_cases_purity([Case0 | Cases0], [Case | Cases], !Purity, !ContainsTrace,
+        !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
     !:Purity = worst_purity(GoalPurity, !.Purity),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
     compute_cases_purity(Cases0, Cases, !Purity, !ContainsTrace, !Info).

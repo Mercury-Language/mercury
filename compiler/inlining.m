@@ -835,10 +835,11 @@ inlining_in_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
     inline_info::in, inline_info::out) is det.
 
 inlining_in_cases([], [], !Info).
-inlining_in_cases([case(Cons, Goal0) | Goals0], [case(Cons, Goal) | Goals],
-        !Info) :-
+inlining_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     inlining_in_goal(Goal0, Goal, !Info),
-    inlining_in_cases(Goals0, Goals, !Info).
+    Case = case(MainConsId, OtherConsIds, Goal),
+    inlining_in_cases(Cases0, Cases, !Info).
 
 %-----------------------------------------------------------------------------%
 

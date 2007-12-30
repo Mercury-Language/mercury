@@ -236,11 +236,19 @@ print_switch(Indent, [CaseRep | CaseReps], PrintSemi, !IO) :-
         indent(Indent, !IO),
         io.write_string(";\n", !IO)
     ),
-    CaseRep = case_rep(ConsIdRep, Arity, GoalRep),
-    indent(Indent + 1, !IO),
-    io.format("%% case %s/%d\n", [s(ConsIdRep), i(Arity)], !IO),
+    CaseRep = case_rep(MainConsIdArityRep, OtherConsIdArityRep, GoalRep),
+    print_cons_id_and_arity(Indent + 1, MainConsIdArityRep, !IO),
+    list.foldl(print_cons_id_and_arity(Indent + 1), OtherConsIdArityRep, !IO),
     print_goal(Indent + 1, GoalRep, !IO),
     print_switch(Indent, CaseReps, yes, !IO).
+
+:- pred print_cons_id_and_arity(int::in, cons_id_arity_rep::in,
+    io::di, io::uo) is det.
+
+print_cons_id_and_arity(Indent, ConsIdArityRep, !IO) :-
+    ConsIdArityRep = cons_id_arity_rep(ConsIdRep, Arity),
+    indent(Indent + 1, !IO),
+    io.format("%% case %s/%d\n", [s(ConsIdRep), i(Arity)], !IO).
 
 %-----------------------------------------------------------------------------%
 

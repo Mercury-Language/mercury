@@ -512,14 +512,14 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = usual_case
         )
     ;
-        Uinstr0 = computed_goto(Index, LabelList0),
+        Uinstr0 = computed_goto(Index, Targets0),
         % Short-circuit all the destination labels.
-        short_labels(Instrmap, LabelList0, LabelList),
-        ( LabelList = LabelList0 ->
+        short_maybe_labels(Instrmap, Targets0, Targets),
+        ( Targets = Targets0 ->
             NewRemain = usual_case
         ;
             Shorted = Comment0 ++ " (some shortcircuits)",
-            NewInstrs = [llds_instr(computed_goto(Index, LabelList), Shorted)],
+            NewInstrs = [llds_instr(computed_goto(Index, Targets), Shorted)],
             NewRemain = specified(NewInstrs, Instrs0)
         )
     ;
@@ -968,12 +968,21 @@ short_label(Instrmap, Label0, Label) :-
         Label = Label0
     ).
 
-:- pred short_labels(instrmap::in, list(label)::in, list(label)::out) is det.
+:- pred short_maybe_labels(instrmap::in,
+    list(maybe(label))::in, list(maybe(label))::out) is det.
 
-short_labels(_Instrmap, [], []).
-short_labels(Instrmap, [Label0 | Labels0], [Label | Labels]) :-
-    short_label(Instrmap, Label0, Label),
-    short_labels(Instrmap, Labels0, Labels).
+short_maybe_labels(_Instrmap, [], []).
+short_maybe_labels(Instrmap, [MaybeLabel0 | MaybeLabels0],
+        [MaybeLabel | MaybeLabels]) :-
+    (
+        MaybeLabel0 = yes(Label0),
+        short_label(Instrmap, Label0, Label),
+        MaybeLabel = yes(Label)
+    ;
+        MaybeLabel0 = no,
+        MaybeLabel = no
+    ),
+    short_maybe_labels(Instrmap, MaybeLabels0, MaybeLabels).
 
 %-----------------------------------------------------------------------------%
 

@@ -173,7 +173,7 @@ intra_analyse_goal_expr(shorthand(_), _, _) :-
 :- pred intra_analyse_case(case::in, rpta_info::in, rpta_info::out) is det.
 
 intra_analyse_case(Case, !RptaInfo) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     intra_analyse_goal(Goal, !RptaInfo).
 
 %-----------------------------------------------------------------------------%
@@ -432,7 +432,7 @@ inter_analyse_goal_expr(switch(_, _, Cases), _, ModuleInfo, InfoTable,
     rpta_fixpoint_table::out, rpta_info::in, rpta_info::out) is det.
 
 inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPtable, !RptaInfo).
 
     % Unifications are ignored in interprocedural analysis

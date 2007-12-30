@@ -151,9 +151,12 @@
 
 :- type case_rep
     --->    case_rep(
-                cons_id_rep,        % The function symbol unified with the
-                                    % switched-on in this switch arm.
-                int,                % The arity of the function symbol.
+                cons_id_arity_rep,  % The name and arity of the first
+                                    % function symbol for which this switch arm
+                                    % is applicable.
+                list(cons_id_arity_rep),
+                                    % The names and arities of any other
+                                    % function symbols for this switch arm.
                 goal_rep            % The code of the switch arm.
             ).
 
@@ -232,6 +235,12 @@
             ).
 
 :- type var_rep ==  int.
+
+:- type cons_id_arity_rep
+    --->    cons_id_arity_rep(
+                cons_id_rep,
+                int
+            ).
 
 :- type cons_id_rep ==  string.
 
@@ -1113,15 +1122,37 @@ read_cases(VarNumRep, ByteCode, StringTable, Info, Cases, !Pos) :-
 
 read_cases_2(VarNumRep, ByteCode, StringTable, Info, N, Cases, !Pos) :-
     ( N > 0 ->
-        read_cons_id(ByteCode, StringTable, ConsId, !Pos),
-        read_short(ByteCode, ConsIdArity, !Pos),
+        read_cons_id_arity(ByteCode, StringTable, MainConsId, !Pos),
+        read_length(ByteCode, NumOtherConsIds, !Pos),
+        read_n_cons_id_arities(ByteCode, StringTable, NumOtherConsIds,
+            OtherConsIds, !Pos),
         read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-        Head = case_rep(ConsId, ConsIdArity, Goal),
+        Head = case_rep(MainConsId, OtherConsIds, Goal),
         read_cases_2(VarNumRep, ByteCode, StringTable, Info, N - 1, Tail,
             !Pos),
         Cases = [Head | Tail]
     ;
         Cases = []
+    ).
+
+:- pred read_cons_id_arity(bytecode::in, string_table::in,
+    cons_id_arity_rep::out, int::in, int::out) is semidet.
+
+read_cons_id_arity(ByteCode, StringTable, ConsId, !Pos) :-
+    read_cons_id(ByteCode, StringTable, ConsIdFunctor, !Pos),
+    read_short(ByteCode, ConsIdArity, !Pos),
+    ConsId = cons_id_arity_rep(ConsIdFunctor, ConsIdArity).
+
+:- pred read_n_cons_id_arities(bytecode::in, string_table::in, int::in,
+    list(cons_id_arity_rep)::out, int::in, int::out) is semidet.
+
+read_n_cons_id_arities(ByteCode, StringTable, N, ConsIds, !Pos) :-
+    ( N > 0 ->
+        read_cons_id_arity(ByteCode, StringTable, Head, !Pos),
+        read_n_cons_id_arities(ByteCode, StringTable, N - 1, Tail, !Pos),
+        ConsIds = [Head | Tail]
+    ;
+        ConsIds = []
     ).
 
 :- pred read_vars(var_num_rep::in, bytecode::in, list(var_rep)::out,

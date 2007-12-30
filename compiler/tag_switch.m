@@ -16,7 +16,6 @@
 :- module ll_backend.tag_switch.
 :- interface.
 
-:- import_module backend_libs.switch_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
@@ -29,8 +28,8 @@
 
     % Generate intelligent indexing code for tag based switches.
     %
-:- pred generate_tag_switch(list(extended_case)::in, prog_var::in,
-    code_model::in, can_fail::in, hlds_goal_info::in, label::in,
+:- pred generate_tag_switch(list(tagged_case)::in, rval::in, mer_type::in,
+    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
     branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
@@ -41,6 +40,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
+:- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
@@ -50,6 +50,7 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
+:- import_module ll_backend.switch_case.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
@@ -59,6 +60,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -125,16 +127,17 @@
     % Note that for a det switch with two tag values, try-me-else chains
     % and try chains are equivalent.
     %
-    % Which method is best depends on the number of possible tag values,
-    % on the costs of taken/untaken branches and table lookups on the given
-    % architecture, and on the frequency with which the various
-    % alternatives are taken.
+    % Which method is best depends
+    % - on the number of possible tag values,
+    % - on the costs of taken/untaken branches and table lookups on the given
+    %   architecture, and
+    % - on the frequency with which the various alternatives are taken.
     %
-    % While the first two are in principle known at compile time,
-    % the third is not. Nevertheless, for switches on primary tags
-    % we can use the heuristic that the more secondary tags assigned to
-    % a primary tag, the more likely that the switch variable will have
-    % that primary tag at runtime.
+    % While the first two are in principle known at compile time, the third
+    % is not (at least not without feedback from a profiler). Nevertheless,
+    % for switches on primary tags we can use the heuristic that the more
+    % secondary tags assigned to a primary tag, the more likely that the
+    % switch variable will have that primary tag at runtime.
     %
     % Try chains are good for switches with small numbers of alternatives
     % on architectures where untaken branches are cheaper than taken
@@ -159,7 +162,7 @@
     % expected cost of a jump table lookup and dispatch.
 
     % For try-me-else chains, we want tag1 to be the most frequent case,
-    % tag 2 the next most frequent case, etc.
+    % tag2 the next most frequent case, etc.
     %
     % For det try chains, we want the last tag value to be the most
     % frequent case, since it can be reached without taken jumps.
@@ -191,19 +194,42 @@
     ;       jump_table
     ;       binary_search.
 
-generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
-        !MaybeEnd, Code, !CI) :-
+%-----------------------------------------------------------------------------%
+
+generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
+        SwitchGoalInfo, EndLabel, !MaybeEnd, Code, !CI) :-
+
+    % We get registers for holding the primary and (if needed) the secondary
+    % tag. The tags needed only by the switch, and no other code gets control
+    % between producing the tag values and all their uses, so we can release
+    % the registers for use by the code of the various cases.
+    %
+    % We forgo using the primary tag register if the primary tag is needed
+    % only once, or if the "register" we get is likely to be slower than
+    % recomputing the tag from scratch.
+    %
+    % We need to get and release the registers before we generate the code
+    % of the switch arms, since the set of free registers will in general be
+    % different before and after that action.
+    acquire_reg(reg_r, PtagReg, !CI),
+    acquire_reg(reg_r, StagReg, !CI),
+    release_reg(PtagReg, !CI),
+    release_reg(StagReg, !CI),
+
     % Group the cases based on primary tag value and find out how many
     % constructors share each primary tag value.
-
     get_module_info(!.CI, ModuleInfo),
-    get_proc_info(!.CI, ProcInfo),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
-    switch_util.get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap),
+    get_ptag_counts(VarType, ModuleInfo, MaxPrimary, PtagCountMap),
     map.to_assoc_list(PtagCountMap, PtagCountList),
+    remember_position(!.CI, BranchStart),
+    Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
+        EndLabel),
+    map.init(CaseLabelMap0),
     map.init(PtagCaseMap0),
-    switch_util.group_cases_by_ptag(Cases, PtagCaseMap0, PtagCaseMap),
+    group_cases_by_ptag(TaggedCases,
+        represent_tagged_case_for_llds(Params),
+        CaseLabelMap0, CaseLabelMap1, !MaybeEnd, !CI,
+        PtagCaseMap0, PtagCaseMap),
 
     map.count(PtagCaseMap, PtagsUsed),
     get_globals(!.CI, Globals),
@@ -220,19 +246,6 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
         PrimaryMethod = try_me_else_chain
     ),
 
-    % We get a register for holding the tag. The tag is needed only
-    % by the switch, and no other code gets control between producing
-    % the tag value and all uses of it, so we can release the register
-    % for use by the code of the various cases.
-
-    % We forgo using the register if the primary tag is needed only once,
-    % or if the "register" we get is likely to be slower than
-    % recomputing the tag from scratch.
-
-    produce_variable_in_reg(Var, VarCode, VarLval, !CI),
-    VarRval = lval(VarLval),
-    acquire_reg(reg_r, PtagReg, !CI),
-    release_reg(PtagReg, !CI),
     (
         PrimaryMethod \= jump_table,
         PtagsUsed >= 2,
@@ -257,232 +270,258 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
         PtagRval = unop(tag, VarRval)
     ),
 
-    % We generate FailCode and EndCode here because the last case within
-    % a primary tag may not be the last case overall.
-
-    get_next_label(FailLabel, !CI),
-    FailLabelCode = node([
-        llds_instr(label(FailLabel), "switch has failed")
-    ]),
+    % We generate EndCode (and if needed, FailCode) here because the last
+    % case within a primary tag may not be the last case overall.
+    EndCode = node([llds_instr(label(EndLabel), "end of tag switch")]),
     (
         CanFail = cannot_fail,
-        FailCode = node([
-            llds_instr(goto(do_not_reached), "oh-oh, det switch failed")
-        ])
+        MaybeFailLabel = no,
+        FailCode = empty
     ;
         CanFail = can_fail,
-        generate_failure(FailCode, !CI)
+        get_next_label(FailLabel, !CI),
+        MaybeFailLabel = yes(FailLabel),
+        FailLabelCode = node([
+            llds_instr(label(FailLabel), "switch has failed")
+        ]),
+        % We must generate the failure code in the context in which none of the
+        % switch arms have been executed yet.
+        reset_to_position(BranchStart, !CI),
+        generate_failure(FailureCode, !CI),
+        FailCode = tree(FailLabelCode, FailureCode)
     ),
-    LabelledFailCode = tree(FailLabelCode, FailCode),
-
-    EndCode = node([llds_instr(label(EndLabel), "end of tag switch")]),
 
     (
         PrimaryMethod = binary_search,
-        switch_util.order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
-            PtagCaseList),
+        order_ptags_by_value(0, MaxPrimary, PtagCaseMap, PtagCaseList),
         generate_primary_binary_search(PtagCaseList, 0, MaxPrimary, PtagRval,
-            VarRval, CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
-            PtagCountMap, !MaybeEnd, CasesCode, !CI)
+            StagReg, VarRval, MaybeFailLabel, PtagCountMap, CasesCode,
+            CaseLabelMap1, CaseLabelMap, !CI)
     ;
         PrimaryMethod = jump_table,
-        switch_util.order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
-            PtagCaseList),
-        generate_primary_jump_table(PtagCaseList, 0, MaxPrimary, VarRval,
-            CodeModel, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-            !MaybeEnd, Labels, TableCode, !CI),
+        order_ptags_by_value(0, MaxPrimary, PtagCaseMap, PtagCaseList),
+        generate_primary_jump_table(PtagCaseList, 0, MaxPrimary, StagReg,
+            VarRval, MaybeFailLabel, PtagCountMap, Targets, TableCode,
+            CaseLabelMap1, CaseLabelMap, !CI),
         SwitchCode = node([
-            llds_instr(computed_goto(PtagRval, Labels),
+            llds_instr(computed_goto(PtagRval, Targets),
                 "switch on primary tag")
         ]),
         CasesCode = tree(SwitchCode, TableCode)
     ;
         PrimaryMethod = try_chain,
-        switch_util.order_ptags_by_count(PtagCountList, PtagCaseMap,
-            PtagCaseList0),
+        order_ptags_by_count(PtagCountList, PtagCaseMap, PtagCaseList0),
         (
             CanFail = cannot_fail,
             PtagCaseList0 = [MostFreqCase | OtherCases]
         ->
-            list.append(OtherCases, [MostFreqCase], PtagCaseList)
+            PtagCaseList = OtherCases ++ [MostFreqCase]
         ;
             PtagCaseList = PtagCaseList0
         ),
-        generate_primary_try_chain(PtagCaseList, PtagRval, VarRval, CodeModel,
-            CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-            empty, empty, !MaybeEnd, CasesCode, !CI)
+        generate_primary_try_chain(PtagCaseList, PtagRval, StagReg, VarRval,
+            MaybeFailLabel, PtagCountMap, empty, empty, CasesCode,
+            CaseLabelMap1, CaseLabelMap, !CI)
     ;
         PrimaryMethod = try_me_else_chain,
-        switch_util.order_ptags_by_count(PtagCountList, PtagCaseMap,
-            PtagCaseList),
-        generate_primary_try_me_else_chain(PtagCaseList, PtagRval, VarRval,
-            CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
-            PtagCountMap, !MaybeEnd, CasesCode, !CI)
+        order_ptags_by_count(PtagCountList, PtagCaseMap, PtagCaseList),
+        generate_primary_try_me_else_chain(PtagCaseList, PtagRval, StagReg,
+            VarRval, MaybeFailLabel, PtagCountMap, CasesCode,
+            CaseLabelMap1, CaseLabelMap, !CI)
     ),
-    Code = tree_list([VarCode, PtagCode, CasesCode, LabelledFailCode,
+    map.foldl(add_remaining_case, CaseLabelMap, empty, RemainingCasesCode),
+    Code = tree_list([PtagCode, CasesCode, RemainingCasesCode, FailCode,
         EndCode]).
 
 %-----------------------------------------------------------------------------%
 
     % Generate a switch on a primary tag value using a try-me-else chain.
     %
-:- pred generate_primary_try_me_else_chain(ptag_case_list::in,
-    rval::in, rval::in, code_model::in, can_fail::in, hlds_goal_info::in,
-    label::in, label::in, ptag_count_map::in,
-    branch_end::in, branch_end::out, code_tree::out,
+:- pred generate_primary_try_me_else_chain(ptag_case_list(label)::in,
+    rval::in, lval::in, rval::in, maybe(label)::in,
+    ptag_count_map::in, code_tree::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_me_else_chain([], _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_primary_try_me_else_chain([], _, _, _, _, _, _,
+        !CaseLabelMap, !CI) :-
     unexpected(this_file, "generate_primary_try_me_else_chain: empty switch").
-generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
-        CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-        !MaybeEnd, Code, !CI) :-
-    PtagGroup = Primary - ptag_case(StagLoc, StagGoalMap),
+generate_primary_try_me_else_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
+        VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
+    PtagGroup = Primary - PtagCase,
+    PtagCase = ptag_case(StagLoc, StagGoalMap),
     map.lookup(PtagCountMap, Primary, CountInfo),
-    CountInfo = StagLoc1 - MaxSecondary,
-    expect(unify(StagLoc, StagLoc1), this_file,
+    CountInfo = StagLocPrime - MaxSecondary,
+    expect(unify(StagLoc, StagLocPrime), this_file,
         "generate_primary_try_me_else_chain: secondary tag locations differ"),
     (
-        ( PtagGroups = [_ | _]
-        ; CanFail = can_fail
-        )
-    ->
-        remember_position(!.CI, BranchStart),
-        get_next_label(ElseLabel, !CI),
-        TestRval = binop(ne, TagRval,
-            unop(mktag, const(llconst_int(Primary)))),
-        TestCode = node([
-            llds_instr(if_val(TestRval, code_label(ElseLabel)),
-                "test primary tag only")
-        ]),
-        generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc,
-            VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-            TagCode, !CI),
-        ElseCode = node([
-            llds_instr(label(ElseLabel), "handle next primary tag")
-        ]),
-        ThisTagCode = tree_list([TestCode, TagCode, ElseCode]),
+        PtagGroups = [_ | _],
+        generate_primary_try_me_else_chain_case(PtagRval, StagReg, Primary,
+            PtagCase, MaxSecondary, VarRval, MaybeFailLabel, ThisTagCode,
+            !CaseLabelMap, !CI),
+        generate_primary_try_me_else_chain(PtagGroups, PtagRval, StagReg,
+            VarRval, MaybeFailLabel, PtagCountMap, OtherTagsCode,
+            !CaseLabelMap, !CI),
+        Code = tree(ThisTagCode, OtherTagsCode)
+    ;
+        PtagGroups = [],
         (
-            PtagGroups = [_ | _],
-            reset_to_position(BranchStart, !CI),
-            generate_primary_try_me_else_chain(PtagGroups, TagRval, VarRval,
-                CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
-                PtagCountMap, !MaybeEnd, OtherTagsCode, !CI),
-            Code = tree(ThisTagCode, OtherTagsCode)
-        ;
-            PtagGroups = [],
-            % FailLabel ought to be the next label anyway,
-            % so this goto will be optimized away (unless the
-            % layout of the failcode in the caller changes).
+            MaybeFailLabel = yes(FailLabel),
+            generate_primary_try_me_else_chain_case(PtagRval, StagReg, Primary,
+                PtagCase, MaxSecondary, VarRval, MaybeFailLabel, ThisTagCode,
+                !CaseLabelMap, !CI),
+            % FailLabel ought to be the next label anyway, so this goto
+            % will be optimized away (unless the layout of the failcode
+            % in the caller changes).
             FailCode = node([
                 llds_instr(goto(code_label(FailLabel)),
                     "primary tag with no code to handle it")
             ]),
             Code = tree(ThisTagCode, FailCode)
+        ;
+            MaybeFailLabel = no,
+            generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary,
+                StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
+                !CaseLabelMap, !CI)
         )
-    ;
-        generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc,
-            VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-            Code, !CI)
     ).
+
+:- pred generate_primary_try_me_else_chain_case(rval::in, lval::in, int::in,
+    ptag_case(label)::in, int::in, rval::in, maybe(label)::in,
+    code_tree::out,
+    case_label_map::in, case_label_map::out,
+    code_info::in, code_info::out) is det.
+
+generate_primary_try_me_else_chain_case(PtagRval, StagReg, Primary, PtagCase,
+        MaxSecondary, VarRval, MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
+    get_next_label(ElseLabel, !CI),
+    TestRval = binop(ne, PtagRval,
+        unop(mktag, const(llconst_int(Primary)))),
+    TestCode = node([
+        llds_instr(if_val(TestRval, code_label(ElseLabel)),
+            "test primary tag only")
+    ]),
+    PtagCase = ptag_case(StagLoc, StagGoalMap),
+    generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary,
+        StagReg, StagLoc, VarRval, MaybeFailLabel, TagCode,
+        !CaseLabelMap, !CI),
+    ElseCode = node([
+        llds_instr(label(ElseLabel), "handle next primary tag")
+    ]),
+    Code = tree_list([TestCode, TagCode, ElseCode]).
 
 %-----------------------------------------------------------------------------%
 
     % Generate a switch on a primary tag value using a try chain.
     %
-:- pred generate_primary_try_chain(ptag_case_list::in,
-    rval::in, rval::in, code_model::in, can_fail::in, hlds_goal_info::in,
-    label::in, label::in, ptag_count_map::in, code_tree::in, code_tree::in,
-    branch_end::in, branch_end::out, code_tree::out,
+:- pred generate_primary_try_chain(ptag_case_list(label)::in,
+    rval::in, lval::in, rval::in, maybe(label)::in,
+    ptag_count_map::in, code_tree::in, code_tree::in, code_tree::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_chain([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_primary_try_chain([], _, _, _, _, _, _, _, _, !CaseLabelMap, !CI) :-
      unexpected(this_file, "empty list in generate_primary_try_chain").
-generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
-        CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-        PrevTests0, PrevCases0, !MaybeEnd, Code, !CI) :-
-    PtagGroup = Primary - ptag_case(StagLoc, StagGoalMap),
+generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
+        VarRval, MaybeFailLabel, PtagCountMap, PrevTestsCode0, PrevCasesCode0,
+        Code, !CaseLabelMap, !CI) :-
+    PtagGroup = Primary - PtagCase,
+    PtagCase = ptag_case(StagLoc, StagGoalMap),
     map.lookup(PtagCountMap, Primary, CountInfo),
-    CountInfo = StagLoc1 - MaxSecondary,
-    expect(unify(StagLoc, StagLoc1), this_file,
+    CountInfo = StagLocPrime - MaxSecondary,
+    expect(unify(StagLoc, StagLocPrime), this_file,
         "secondary tag locations differ in generate_primary_try_chain"),
     (
-        ( PtagGroups = [_ | _]
-        ; CanFail = can_fail
-        )
-    ->
-        remember_position(!.CI, BranchStart),
-        get_next_label(ThisPtagLabel, !CI),
-        TestRval = binop(eq, TagRval,
-            unop(mktag, const(llconst_int(Primary)))),
-        TestCode = node([
-            llds_instr(if_val(TestRval, code_label(ThisPtagLabel)),
-                "test primary tag only")
-        ]),
-        LabelCode = node([
-            llds_instr(label(ThisPtagLabel), "this primary tag")
-        ]),
-        generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc,
-            VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-            TagCode, !CI),
-        PrevTests = tree(PrevTests0, TestCode),
-        PrevCases = tree(tree(LabelCode, TagCode), PrevCases0),
+        PtagGroups = [_ | _],
+        generate_primary_try_chain_case(PtagRval, StagReg, Primary,
+            PtagCase, MaxSecondary, VarRval, MaybeFailLabel,
+            PrevTestsCode0, PrevTestsCode1, PrevCasesCode0, PrevCasesCode1,
+            !CaseLabelMap, !CI),
+        generate_primary_try_chain(PtagGroups, PtagRval, StagReg, VarRval,
+            MaybeFailLabel, PtagCountMap, PrevTestsCode1, PrevCasesCode1,
+            Code, !CaseLabelMap, !CI)
+    ;
+        PtagGroups = [],
         (
-            PtagGroups = [_ | _],
-            reset_to_position(BranchStart, !CI),
-            generate_primary_try_chain(PtagGroups, TagRval, VarRval, CodeModel,
-                CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-                PrevTests, PrevCases, !MaybeEnd, Code, !CI)
-        ;
-            PtagGroups = [],
+            MaybeFailLabel = yes(FailLabel),
+            generate_primary_try_chain_case(PtagRval, StagReg, Primary,
+                PtagCase, MaxSecondary, VarRval, MaybeFailLabel,
+                PrevTestsCode0, PrevTestsCode1, PrevCasesCode0, PrevCasesCode1,
+                !CaseLabelMap, !CI),
             FailCode = node([
                 llds_instr(goto(code_label(FailLabel)),
                     "primary tag with no code to handle it")
             ]),
-            Code = tree(PrevTests, tree(FailCode, PrevCases))
+            Code = tree_list([PrevTestsCode1, FailCode, PrevCasesCode1])
+        ;
+            MaybeFailLabel = no,
+            Comment = "fallthrough to last primary tag value: " ++
+                string.int_to_string(Primary),
+            CommentCode = node([
+                llds_instr(comment(Comment), "")
+            ]),
+            generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary,
+                StagReg, StagLoc, VarRval, MaybeFailLabel, TagCode,
+                !CaseLabelMap, !CI),
+            Code = tree_list([PrevTestsCode0, CommentCode,
+                TagCode, PrevCasesCode0])
         )
-    ;
-        Comment = node([
-            llds_instr(comment("fallthrough to last tag value"), "")
-        ]),
-        generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc,
-            VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-            TagCode, !CI),
-        Code = tree_list([PrevTests0, Comment, TagCode, PrevCases0])
     ).
+
+:- pred generate_primary_try_chain_case(rval::in, lval::in, int::in,
+    ptag_case(label)::in, int::in, rval::in, maybe(label)::in,
+    code_tree::in, code_tree::out, code_tree::in, code_tree::out,
+    case_label_map::in, case_label_map::out,
+    code_info::in, code_info::out) is det.
+
+generate_primary_try_chain_case(PtagRval, StagReg, Primary, PtagCase,
+        MaxSecondary, VarRval, MaybeFailLabel,
+        PrevTestsCode0, PrevTestsCode, PrevCasesCode0, PrevCasesCode,
+        !CaseLabelMap, !CI) :-
+    get_next_label(ThisPtagLabel, !CI),
+    TestRval = binop(eq, PtagRval,
+        unop(mktag, const(llconst_int(Primary)))),
+    TestCode = node([
+        llds_instr(if_val(TestRval, code_label(ThisPtagLabel)),
+            "test primary tag only")
+    ]),
+    Comment = "primary tag value: " ++ string.int_to_string(Primary),
+    LabelCode = node([
+        llds_instr(label(ThisPtagLabel), Comment)
+    ]),
+    PtagCase = ptag_case(StagLoc, StagGoalMap),
+    generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary,
+        StagReg, StagLoc, VarRval, MaybeFailLabel, TagCode,
+        !CaseLabelMap, !CI),
+    PrevTestsCode = tree(PrevTestsCode0, TestCode),
+    PrevCasesCode = tree_list([LabelCode, TagCode, PrevCasesCode0]).
 
 %-----------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible primary tag values.
     %
-:- pred generate_primary_jump_table(ptag_case_list::in, int::in,
-    int::in, rval::in, code_model::in, hlds_goal_info::in,
-    label::in, label::in, ptag_count_map::in,
-    branch_end::in, branch_end::out, list(label)::out, code_tree::out,
+:- pred generate_primary_jump_table(ptag_case_list(label)::in, int::in,
+    int::in, lval::in, rval::in, maybe(label)::in, ptag_count_map::in,
+    list(maybe(label))::out, code_tree::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, VarRval,
-        CodeModel, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-        !MaybeEnd, Labels, Code, !CI) :-
+generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
+        VarRval, MaybeFailLabel, PtagCountMap, Targets, Code,
+        !CaseLabelMap, !CI) :-
     ( CurPrimary > MaxPrimary ->
-        (
-            PtagGroups = []
-        ;
-            PtagGroups = [_ | _],
-            unexpected(this_file,
-                "generate_primary_jump_table: " ++
-                "caselist not empty when reaching limiting primary tag")
-        ),
-        Labels = [],
+        expect(unify(PtagGroups, []), this_file,
+            "generate_primary_jump_table: PtagGroups != [] when Cur > Max"),
+        Targets = [],
         Code = empty
     ;
         NextPrimary = CurPrimary + 1,
-        ( PtagGroups = [CurPrimary - PrimaryInfo | PtagGroups1] ->
+        ( PtagGroups = [CurPrimary - PrimaryInfo | PtagGroupsTail] ->
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
-            CountInfo = StagLoc1 - MaxSecondary,
-            expect(unify(StagLoc, StagLoc1), this_file,
+            CountInfo = StagLocPrime - MaxSecondary,
+            expect(unify(StagLoc, StagLocPrime), this_file,
                 "secondary tag locations differ " ++
                 "in generate_primary_jump_table"),
             get_next_label(NewLabel, !CI),
@@ -490,29 +529,20 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, VarRval,
                 llds_instr(label(NewLabel),
                     "start of a case in primary tag switch")
             ]),
-            (
-                PtagGroups1 = [],
-                generate_primary_tag_code(StagGoalMap, CurPrimary,
-                    MaxSecondary, StagLoc, VarRval, CodeModel, SwitchGoalInfo,
-                    EndLabel, FailLabel, !MaybeEnd, ThisTagCode, !CI)
-            ;
-                PtagGroups1 = [_ | _],
-                remember_position(!.CI, BranchStart),
-                generate_primary_tag_code(StagGoalMap, CurPrimary,
-                    MaxSecondary, StagLoc, VarRval, CodeModel, SwitchGoalInfo,
-                    EndLabel, FailLabel, !MaybeEnd, ThisTagCode, !CI),
-                reset_to_position(BranchStart, !CI)
-            ),
-            generate_primary_jump_table(PtagGroups1, NextPrimary, MaxPrimary,
-                VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel,
-                PtagCountMap, !MaybeEnd, OtherLabels, OtherCode, !CI),
-            Labels = [NewLabel | OtherLabels],
-            Code = tree_list([LabelCode, ThisTagCode, OtherCode])
+            generate_primary_tag_code(StagGoalMap, CurPrimary, MaxSecondary,
+                StagReg, StagLoc, VarRval, MaybeFailLabel, ThisTagCode,
+                !CaseLabelMap, !CI),
+            generate_primary_jump_table(PtagGroupsTail, NextPrimary,
+                MaxPrimary, StagReg, VarRval, MaybeFailLabel, PtagCountMap,
+                TailTargets, TailCode, !CaseLabelMap, !CI),
+            Targets = [yes(NewLabel) | TailTargets],
+            Code = tree_list([LabelCode, ThisTagCode, TailCode])
         ;
             generate_primary_jump_table(PtagGroups, NextPrimary, MaxPrimary,
-                VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel,
-                PtagCountMap, !MaybeEnd, OtherLabels, Code, !CI),
-            Labels = [FailLabel | OtherLabels]
+                StagReg, VarRval, MaybeFailLabel, PtagCountMap,
+                TailTargets, TailCode, !CaseLabelMap, !CI),
+            Targets = [MaybeFailLabel | TailTargets],
+            Code = TailCode
         )
     ).
 
@@ -522,27 +552,28 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, VarRval,
     % This invocation looks after primary tag values in the range
     % MinPtag to MaxPtag (including both boundary values).
     %
-:- pred generate_primary_binary_search(ptag_case_list::in, int::in,
-    int::in, rval::in, rval::in, code_model::in, can_fail::in,
-    hlds_goal_info::in, label::in, label::in, ptag_count_map::in,
-    branch_end::in, branch_end::out, code_tree::out,
+:- pred generate_primary_binary_search(ptag_case_list(label)::in, int::in,
+    int::in, rval::in, lval::in, rval::in, maybe(label)::in,
+    ptag_count_map::in, code_tree::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
-        CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
-        !MaybeEnd, Code, !CI) :-
+generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
+        VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
     ( MinPtag = MaxPtag ->
         CurPrimary = MinPtag,
         (
             PtagGroups = [],
             % There is no code for this tag.
             (
-                CanFail = can_fail,
+                MaybeFailLabel = yes(FailLabel),
                 string.int_to_string(CurPrimary, PtagStr),
-                string.append("no code for ptag ", PtagStr, Comment),
+                Comment = "no code for ptag " ++ PtagStr,
                 Code = node([llds_instr(goto(code_label(FailLabel)), Comment)])
             ;
-                CanFail = cannot_fail,
+                MaybeFailLabel = no,
+                % The switch is cannot_fail, which means this case cannot
+                % happen.
                 Code = empty
             )
         ;
@@ -551,13 +582,12 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
                 "generate_primary_binary_search: cur_primary mismatch"),
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
-            CountInfo = StagLoc1 - MaxSecondary,
-            expect(unify(StagLoc, StagLoc1), this_file,
-                "secondary tag locations differ " ++
-                "in generate_primary_jump_table"),
+            CountInfo = StagLocPrime - MaxSecondary,
+            expect(unify(StagLoc, StagLocPrime), this_file,
+                "generate_primary_jump_table: secondary tag locations differ"),
             generate_primary_tag_code(StagGoalMap, CurPrimary, MaxSecondary,
-                StagLoc, VarRval, CodeModel, SwitchGoalInfo,
-                EndLabel, FailLabel, !MaybeEnd, Code, !CI)
+                StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
+                !CaseLabelMap, !CI)
         ;
             PtagGroups = [_, _ | _],
             unexpected(this_file,
@@ -576,10 +606,10 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
         string.int_to_string(LowRangeEnd, LowEndStr),
         string.int_to_string(HighRangeStart, HighStartStr),
         string.int_to_string(MaxPtag, HighEndStr),
-        IfComment = "fallthrough for ptags " ++ LowStartStr ++
-            " to " ++ LowEndStr,
-        LabelComment = "code for ptags " ++ HighStartStr ++
-            " to " ++ HighEndStr,
+        IfComment = "fallthrough for ptags " ++
+            LowStartStr ++ " to " ++ LowEndStr,
+        LabelComment = "code for ptags " ++
+            HighStartStr ++ " to " ++ HighEndStr,
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, PtagRval, LowRangeEndConst),
         IfCode = node([
@@ -587,15 +617,12 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
         ]),
         LabelCode = node([llds_instr(label(NewLabel), LabelComment)]),
 
-        remember_position(!.CI, BranchStart),
         generate_primary_binary_search(LowGroups, MinPtag, LowRangeEnd,
-            PtagRval, VarRval, CodeModel, CanFail, SwitchGoalInfo,
-            EndLabel, FailLabel, PtagCountMap, !MaybeEnd, LowRangeCode, !CI),
-        reset_to_position(BranchStart, !CI),
+            PtagRval, StagReg, VarRval, MaybeFailLabel, PtagCountMap,
+            LowRangeCode, !CaseLabelMap, !CI),
         generate_primary_binary_search(HighGroups, HighRangeStart, MaxPtag,
-            PtagRval, VarRval, CodeModel, CanFail, SwitchGoalInfo,
-            EndLabel, FailLabel, PtagCountMap, !MaybeEnd, HighRangeCode, !CI),
-
+            PtagRval, StagReg, VarRval, MaybeFailLabel, PtagCountMap,
+            HighRangeCode, !CaseLabelMap, !CI),
         Code = tree_list([IfCode, LowRangeCode, LabelCode, HighRangeCode])
     ).
 
@@ -605,14 +632,13 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
     % If this primary tag has secondary tags, decide whether we should
     % use a jump table to implement the secondary switch.
     %
-:- pred generate_primary_tag_code(stag_goal_map::in, tag_bits::in,
-    int::in, sectag_locn::in, rval::in, code_model::in, hlds_goal_info::in,
-    label::in, label::in, branch_end::in, branch_end::out, code_tree::out,
+:- pred generate_primary_tag_code(stag_goal_map(label)::in, tag_bits::in,
+    int::in, lval::in, sectag_locn::in, rval::in, maybe(label)::in,
+    code_tree::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc, Rval,
-        CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Code,
-        !CI) :-
+generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagReg, StagLoc,
+        Rval, MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
     map.to_assoc_list(StagGoalMap, StagGoalList),
     (
         StagLoc = sectag_none,
@@ -622,20 +648,8 @@ generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc, Rval,
             unexpected(this_file, "no goal for non-shared tag")
         ;
             StagGoalList = [StagGoal],
-            ( StagGoal = -1 - stag_goal(ConsId, Goal) ->
-                Comment = "case " ++ cons_id_to_string(ConsId),
-                CommentCode = node([llds_instr(comment(Comment), "")]),
-                maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-                    TraceCode, !CI),
-                code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-                goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-                generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-                GotoCode = node([
-                    llds_instr(goto(code_label(EndLabel)),
-                        "skip to end of primary tag switch")
-                ]),
-                Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode,
-                    GotoCode])
+            ( StagGoal = -1 - CaseLabel ->
+                generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
             ;
                 unexpected(this_file, "badly formed goal for non-shared tag")
             )
@@ -676,8 +690,6 @@ generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc, Rval,
             Comment = "compute local sec tag to switch on"
         ),
 
-        acquire_reg(reg_r, StagReg, !CI),
-        release_reg(StagReg, !CI),
         (
             SecondaryMethod \= jump_table,
             MaxSecondary >= 2,
@@ -701,41 +713,42 @@ generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc, Rval,
             StagRval = OrigStagRval
         ),
         (
-            list.length(StagGoalList, StagGoalCount),
-            FullGoalCount = MaxSecondary + 1,
-            FullGoalCount = StagGoalCount
-        ->
-            CanFail = cannot_fail
+            MaybeFailLabel = yes(FailLabel),
+            (
+                list.length(StagGoalList, StagGoalCount),
+                FullGoalCount = MaxSecondary + 1,
+                FullGoalCount = StagGoalCount
+            ->
+                MaybeSecFailLabel = no
+            ;
+                MaybeSecFailLabel = yes(FailLabel)
+            )
         ;
-            CanFail = can_fail
+            MaybeFailLabel = no,
+            MaybeSecFailLabel = no
         ),
 
         (
             SecondaryMethod = jump_table,
             generate_secondary_jump_table(StagGoalList, 0, MaxSecondary,
-                CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-                Labels, CasesCode, !CI),
-            SwitchCode = node([
-                llds_instr(computed_goto(StagRval, Labels),
+                MaybeSecFailLabel, Targets),
+            Code = node([
+                llds_instr(computed_goto(StagRval, Targets),
                     "switch on secondary tag")
-            ]),
-            Code = tree(SwitchCode, CasesCode)
+            ])
         ;
             SecondaryMethod = binary_search,
             generate_secondary_binary_search(StagGoalList, 0, MaxSecondary,
-                StagRval, CodeModel, CanFail, SwitchGoalInfo,
-                EndLabel, FailLabel, !MaybeEnd, Code, !CI)
+                StagRval, MaybeSecFailLabel, Code, !CaseLabelMap, !CI)
         ;
             SecondaryMethod = try_chain,
-            generate_secondary_try_chain(StagGoalList, StagRval, CodeModel,
-                CanFail, SwitchGoalInfo, EndLabel, FailLabel, empty, empty,
-                !MaybeEnd, Codes, !CI),
+            generate_secondary_try_chain(StagGoalList, StagRval,
+                MaybeSecFailLabel, empty, Codes, !CaseLabelMap),
             Code = tree(StagCode, Codes)
         ;
             SecondaryMethod = try_me_else_chain,
             generate_secondary_try_me_else_chain(StagGoalList, StagRval,
-                CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
-                !MaybeEnd, Codes, !CI),
+                MaybeSecFailLabel, Codes, !CaseLabelMap, !CI),
             Code = tree(StagCode, Codes)
         )
     ).
@@ -744,199 +757,137 @@ generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc, Rval,
 
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
-:- pred generate_secondary_try_me_else_chain(stag_goal_list::in,
-    rval::in, code_model::in, can_fail::in, hlds_goal_info::in,
-    label::in, label::in, branch_end::in, branch_end::out, code_tree::out,
+:- pred generate_secondary_try_me_else_chain(stag_goal_list(label)::in,
+    rval::in, maybe(label)::in, code_tree::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain([], _, _, _, _, _, _, _, _, _, !CI) :-
+generate_secondary_try_me_else_chain([], _, _, _, !CaseLabelMap, !CI) :-
     unexpected(this_file,
         "generate_secondary_try_me_else_chain: empty switch").
-generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
-        CanFail, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Code, !CI) :-
-    Case0 = Secondary - stag_goal(ConsId, Goal),
-    Comment = "case " ++ cons_id_to_string(ConsId),
-    CommentCode = node([llds_instr(comment(Comment), "")]),
-    goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+generate_secondary_try_me_else_chain([Case | Cases], StagRval,
+        MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
+    Case = Secondary - CaseLabel,
     (
-        ( Cases0 = [_ | _]
-        ; CanFail = can_fail
-        )
-    ->
-        remember_position(!.CI, BranchStart),
-        get_next_label(ElseLabel, !CI),
-        TestCode = node([
-            llds_instr(
-                if_val(binop(ne, StagRval, const(llconst_int(Secondary))),
-                    code_label(ElseLabel)),
-                "test remote sec tag only")
-        ]),
-        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-            !CI),
-        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-        GotoLabelCode = node([
-            llds_instr(goto(code_label(EndLabel)),
-                "skip to end of secondary tag switch"),
-            llds_instr(label(ElseLabel), "handle next secondary tag")
-        ]),
-        ThisCode = tree_list([TestCode, CommentCode, TraceCode, GoalCode,
-            SaveCode, GotoLabelCode]),
+        Cases = [_ | _],
+        generate_secondary_try_me_else_chain_case(CaseLabel, StagRval,
+            Secondary, ThisCode, !CaseLabelMap, !CI),
+        generate_secondary_try_me_else_chain(Cases, StagRval,
+            MaybeFailLabel, OtherCode, !CaseLabelMap, !CI),
+        Code = tree(ThisCode, OtherCode)
+    ;
+        Cases = [],
         (
-            Cases0 = [_ | _],
-            reset_to_position(BranchStart, !CI),
-            generate_secondary_try_me_else_chain(Cases0, StagRval, CodeModel,
-                CanFail, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-                OtherCode, !CI),
-            Code = tree(ThisCode, OtherCode)
-        ;
-            Cases0 = [],
+            MaybeFailLabel = yes(FailLabel),
+            generate_secondary_try_me_else_chain_case(CaseLabel, StagRval,
+                Secondary, ThisCode, !CaseLabelMap, !CI),
             FailCode = node([
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag does not match")
             ]),
             Code = tree(ThisCode, FailCode)
+        ;
+            MaybeFailLabel = no,
+            generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
         )
-    ;
-        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-            !CI),
-        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-        GotoCode = node([
-            llds_instr(goto(code_label(EndLabel)),
-                "skip to end of secondary tag switch")
-        ]),
-        Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode,
-            GotoCode])
     ).
+
+:- pred generate_secondary_try_me_else_chain_case(label::in, rval::in, int::in,
+    code_tree::out, case_label_map::in, case_label_map::out,
+    code_info::in, code_info::out) is det.
+
+generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
+        Code, !CaseLabelMap, !CI) :-
+    generate_case_code_or_jump(CaseLabel, CaseCode, !CaseLabelMap),
+    % XXX Optimize what we generate when CaseCode = goto(CaseLabel).
+    get_next_label(ElseLabel, !CI),
+    TestCode = node([
+        llds_instr(
+            if_val(binop(ne, StagRval, const(llconst_int(Secondary))),
+                code_label(ElseLabel)),
+            "test remote sec tag only")
+    ]),
+    ElseLabelCode = node([
+        llds_instr(label(ElseLabel), "handle next secondary tag")
+    ]),
+    Code = tree_list([TestCode, CaseCode, ElseLabelCode]).
 
 %-----------------------------------------------------------------------------%
 
     % Generate a switch on a secondary tag value using a try chain.
     %
-:- pred generate_secondary_try_chain(stag_goal_list::in, rval::in,
-    code_model::in, can_fail::in, hlds_goal_info::in, label::in, label::in,
-    code_tree::in, code_tree::in, branch_end::in, branch_end::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_secondary_try_chain(stag_goal_list(label)::in, rval::in,
+    maybe(label)::in, code_tree::in, code_tree::out,
+    case_label_map::in, case_label_map::out) is det.
 
-generate_secondary_try_chain([], _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_secondary_try_chain([], _, _, _, _, !CaseLabelMap) :-
     unexpected(this_file, "generate_secondary_try_chain: empty switch").
-generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
-        SwitchGoalInfo, EndLabel, FailLabel, PrevTests0, PrevCases0, !MaybeEnd,
-        Code, !CI) :-
-    Case0 = Secondary - stag_goal(ConsId, Goal),
-    Comment = "case " ++ cons_id_to_string(ConsId),
-    goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+generate_secondary_try_chain([Case | Cases], StagRval, MaybeFailLabel,
+        PrevTestsCode0, Code, !CaseLabelMap) :-
+    Case = Secondary - CaseLabel,
     (
-        ( Cases0 = [_ | _]
-        ; CanFail = can_fail
-        )
-    ->
-        remember_position(!.CI, BranchStart),
-        get_next_label(ThisStagLabel, !CI),
-        TestCode = node([
-            llds_instr(
-                if_val(binop(eq, StagRval, const(llconst_int(Secondary))),
-                code_label(ThisStagLabel)),
-                "test remote sec tag only for " ++ Comment)
-        ]),
-        LabelCode = node([
-            llds_instr(label(ThisStagLabel),
-                "handle next secondary tag for " ++ Comment)
-        ]),
-        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-            !CI),
-        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-        GotoCode = node([
-            llds_instr(goto(code_label(EndLabel)),
-                "skip to end of secondary tag switch")
-        ]),
-        ThisCode = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
-            GotoCode]),
-        PrevTests = tree(PrevTests0, TestCode),
-        PrevCases = tree(ThisCode, PrevCases0),
+        Cases = [_ | _],
+        generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
+            PrevTestsCode0, PrevTestsCode1, !.CaseLabelMap),
+        generate_secondary_try_chain(Cases, StagRval,
+            MaybeFailLabel, PrevTestsCode1, Code, !CaseLabelMap)
+    ;
+        Cases = [],
         (
-            Cases0 = [_ | _],
-            reset_to_position(BranchStart, !CI),
-            generate_secondary_try_chain(Cases0, StagRval, CodeModel, CanFail,
-                SwitchGoalInfo, EndLabel, FailLabel, PrevTests, PrevCases,
-                !MaybeEnd, Code, !CI)
-        ;
-            Cases0 = [],
+            MaybeFailLabel = yes(FailLabel),
+            generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
+                PrevTestsCode0, PrevTestsCode1, !.CaseLabelMap),
             FailCode = node([
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag with no code to handle it")
             ]),
-            Code = tree(PrevTests, tree(FailCode, PrevCases))
+            Code = tree(PrevTestsCode1, FailCode)
+        ;
+            MaybeFailLabel = no,
+            generate_case_code_or_jump(CaseLabel, ThisCode, !CaseLabelMap),
+            Code = tree(PrevTestsCode0, ThisCode)
         )
-    ;
-        CommentCode = node([llds_instr(comment(Comment), "")]),
-        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-            !CI),
-        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-        GotoCode = node([
-            llds_instr(goto(code_label(EndLabel)),
-                "skip to end of secondary tag switch")
-        ]),
-        Code = tree_list([PrevTests0, CommentCode, TraceCode, GoalCode,
-            SaveCode, GotoCode, PrevCases0])
     ).
+
+:- pred generate_secondary_try_chain_case(label::in, rval::in, int::in,
+    code_tree::in, code_tree::out, case_label_map::in) is det.
+
+generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
+        PrevTestsCode0, PrevTestsCode, CaseLabelMap) :-
+    map.lookup(CaseLabelMap, CaseLabel, CaseInfo0),
+    CaseInfo0 = case_label_info(Comment, _CaseCode, _CaseGenerated),
+    TestCode = node([
+        llds_instr(
+            if_val(binop(eq, StagRval, const(llconst_int(Secondary))),
+                code_label(CaseLabel)),
+            "test remote sec tag only for " ++ Comment)
+    ]),
+    PrevTestsCode = tree(PrevTestsCode0, TestCode).
 
 %-----------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible secondary tag values.
     %
-:- pred generate_secondary_jump_table(stag_goal_list::in, int::in,
-    int::in, code_model::in, hlds_goal_info::in, label::in, label::in,
-    branch_end::in, branch_end::out, list(label)::out, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_secondary_jump_table(stag_goal_list(label)::in, int::in,
+    int::in, maybe(label)::in, list(maybe(label))::out) is det.
 
-generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary, CodeModel,
-        SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Labels, Code, !CI) :-
+generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
+        MaybeFailLabel, Targets) :-
     ( CurSecondary > MaxSecondary ->
         expect(unify(CaseList, []), this_file,
             "caselist not empty when reaching limiting secondary tag"),
-        Labels = [],
-        Code = empty
+        Targets = []
     ;
         NextSecondary = CurSecondary + 1,
-        ( CaseList = [CurSecondary - stag_goal(ConsId, Goal) | CaseList1] ->
-            Comment = "case " ++ cons_id_to_string(ConsId),
-            get_next_label(NewLabel, !CI),
-            LabelCode = node([
-                llds_instr(label(NewLabel),
-                    "start of " ++ Comment ++ " in secondary tag switch")
-            ]),
-            remember_position(!.CI, BranchStart),
-            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-                !CI),
-            code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-            goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-            generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-            (
-                CaseList1 = []
-            ;
-                CaseList1 = [_ | _],
-                reset_to_position(BranchStart, !CI)
-            ),
-            GotoCode = node([
-                llds_instr(goto(code_label(EndLabel)),
-                    "branch to end of tag switch")
-            ]),
-            generate_secondary_jump_table(CaseList1, NextSecondary,
-                MaxSecondary, CodeModel, SwitchGoalInfo, EndLabel, FailLabel,
-                !MaybeEnd, OtherLabels, OtherCode, !CI),
-            Labels = [NewLabel | OtherLabels],
-            Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
-                GotoCode, OtherCode])
+        ( CaseList = [CurSecondary - CaseLabel | CaseListTail] ->
+            generate_secondary_jump_table(CaseListTail, NextSecondary,
+                MaxSecondary, MaybeFailLabel, OtherTargets),
+            Targets = [yes(CaseLabel) | OtherTargets]
         ;
-            generate_secondary_jump_table(CaseList,
-                NextSecondary, MaxSecondary, CodeModel, SwitchGoalInfo,
-                EndLabel, FailLabel, !MaybeEnd, OtherLabels, Code, !CI),
-            Labels = [FailLabel | OtherLabels]
+            generate_secondary_jump_table(CaseList, NextSecondary,
+                MaxSecondary, MaybeFailLabel, OtherTargets),
+            Targets = [MaybeFailLabel | OtherTargets]
         )
     ).
 
@@ -946,41 +897,32 @@ generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary, CodeModel,
     % This invocation looks after secondary tag values in the range
     % MinPtag to MaxPtag (including both boundary values).
     %
-:- pred generate_secondary_binary_search(stag_goal_list::in,
-    int::in, int::in, rval::in, code_model::in, can_fail::in,
-    hlds_goal_info::in, label::in, label::in,
-    branch_end::in, branch_end::out, code_tree::out,
+:- pred generate_secondary_binary_search(stag_goal_list(label)::in,
+    int::in, int::in, rval::in, maybe(label)::in, code_tree::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
 generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
-        CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
-        Code, !CI) :-
+        MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
     ( MinStag = MaxStag ->
         CurSec = MinStag,
         (
             StagGoals = [],
             % There is no code for this tag.
             (
-                CanFail = can_fail,
+                MaybeFailLabel = yes(FailLabel),
                 string.int_to_string(CurSec, StagStr),
-                string.append("no code for ptag ", StagStr, Comment),
+                Comment = "no code for ptag " ++ StagStr,
                 Code = node([llds_instr(goto(code_label(FailLabel)), Comment)])
             ;
-                CanFail = cannot_fail,
+                MaybeFailLabel = no,
                 Code = empty
             )
         ;
-            StagGoals = [CurSecPrime - stag_goal(ConsId, Goal)],
-            Comment = "case " ++ cons_id_to_string(ConsId),
-            CommentCode = node([llds_instr(comment(Comment), "")]),
+            StagGoals = [CurSecPrime - CaseLabel],
             expect(unify(CurSec, CurSecPrime), this_file,
                 "generate_secondary_binary_search: cur_secondary mismatch"),
-            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-                !CI),
-            code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-            goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-            generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-            Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode])
+            generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
         ;
             StagGoals = [_, _ | _],
             unexpected(this_file,
@@ -1000,10 +942,10 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
         string.int_to_string(LowRangeEnd, LowEndStr),
         string.int_to_string(HighRangeStart, HighStartStr),
         string.int_to_string(MaxStag, HighEndStr),
-        string.append_list(["fallthrough for stags ",
-            LowStartStr, " to ", LowEndStr], IfComment),
-        string.append_list(["code for stags ", HighStartStr,
-            " to ", HighEndStr], LabelComment),
+        IfComment = "fallthrough for stags " ++
+            LowStartStr ++ " to " ++ LowEndStr,
+        LabelComment = "code for stags " ++
+            HighStartStr ++ " to " ++ HighEndStr,
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, StagRval, LowRangeEndConst),
         IfCode = node([
@@ -1011,14 +953,10 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
         ]),
         LabelCode = node([llds_instr(label(NewLabel), LabelComment)]),
 
-        remember_position(!.CI, BranchStart),
         generate_secondary_binary_search(LowGoals, MinStag, LowRangeEnd,
-            StagRval, CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
-            !MaybeEnd, LowRangeCode, !CI),
-        reset_to_position(BranchStart, !CI),
+            StagRval, MaybeFailLabel, LowRangeCode, !CaseLabelMap, !CI),
         generate_secondary_binary_search(HighGoals, HighRangeStart, MaxStag,
-            StagRval, CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
-            !MaybeEnd, HighRangeCode, !CI),
+            StagRval, MaybeFailLabel, HighRangeCode, !CaseLabelMap, !CI),
 
         Code = tree_list([IfCode, LowRangeCode, LabelCode, HighRangeCode])
     ).

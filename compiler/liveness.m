@@ -536,15 +536,17 @@ detect_liveness_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, NonLocals,
     set(prog_var)::in, set(prog_var)::out) is det.
 
 detect_liveness_in_cases([], [], _Liveness, _NonLocals, _LiveInfo, !Union).
-detect_liveness_in_cases([case(Cons, Goal0) | Goals0],
-        [case(Cons, Goal) | Goals], Liveness0, NonLocals, LiveInfo, !Union) :-
+detect_liveness_in_cases([Case0 | Cases0], [Case | Cases], Liveness0,
+        NonLocals, LiveInfo, !Union) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     detect_liveness_in_goal(Goal0, Goal1, Liveness0, Liveness1, LiveInfo),
     set.union(Liveness1, !Union),
-    detect_liveness_in_cases(Goals0, Goals, Liveness0, NonLocals, LiveInfo,
+    detect_liveness_in_cases(Cases0, Cases, Liveness0, NonLocals, LiveInfo,
         !Union),
     set.intersect(!.Union, NonLocals, NonLocalUnion),
     set.difference(NonLocalUnion, Liveness1, Residue),
-    add_liveness_after_goal(Goal1, Residue, Goal).
+    add_liveness_after_goal(Goal1, Residue, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -785,9 +787,10 @@ detect_deadness_in_cases(SwitchVar, [], [], _Deadness0, _Liveness,
     % it must be put in the pre-death set of that case.
     set.insert(!.Union, SwitchVar, !:Union),
     set.intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
-detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0],
-        [case(Cons, Goal) | Goals], Deadness0, Liveness0,
-        CompletedNonLocals, LiveInfo, !Union, CompletedNonLocalUnion) :-
+detect_deadness_in_cases(SwitchVar, [Case0 | Cases0], [Case | Cases],
+        Deadness0, Liveness0, CompletedNonLocals, LiveInfo, !Union,
+        CompletedNonLocalUnion) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     detect_deadness_in_goal(Goal0, Goal1, Deadness0, DeadnessGoal,
         Liveness0, LiveInfo),
     Goal1 = hlds_goal(_, GoalInfo1),
@@ -798,11 +801,12 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0],
         InstmapReachable = no
     ),
     union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable, !Union),
-    detect_deadness_in_cases(SwitchVar, Goals0, Goals, Deadness0,
+    detect_deadness_in_cases(SwitchVar, Cases0, Cases, Deadness0,
         Liveness0, CompletedNonLocals, LiveInfo, !Union,
         CompletedNonLocalUnion),
     add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
-        InstmapReachable, Goal1, Goal).
+        InstmapReachable, Goal1, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -988,7 +992,7 @@ find_reachable_goal([Goal | Goals], ReachableGoal) :-
 
 :- pred find_reachable_case(list(case)::in, hlds_goal::out) is semidet.
 
-find_reachable_case([case(_, Goal) | Cases], ReachableGoal) :-
+find_reachable_case([case(_, _, Goal) | Cases], ReachableGoal) :-
     Goal = hlds_goal(_, GoalInfo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_unreachable(InstmapDelta) ->
@@ -1200,11 +1204,12 @@ delay_death_disj([Goal0 | Goals0], [Goal - DelayedDeadGoal | Goals],
     maybe(pair(set(prog_var)))::out) is det.
 
 delay_death_cases([], [], _, _, _, no).
-delay_death_cases([case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) - DelayedDeadGoal | Cases],
+delay_death_cases([Case0 | Cases0], [Case - DelayedDeadGoal | Cases],
         BornVars0, DelayedDead0, VarSet, yes(BornVars - DelayedDead)) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     delay_death_goal(Goal0, Goal, BornVars0, BornVarsGoal,
         DelayedDead0, DelayedDeadGoal, VarSet),
+    Case = case(MainConsId, OtherConsIds, Goal),
     delay_death_cases(Cases0, Cases, BornVars0, DelayedDead0, VarSet,
         MaybeBornVarsDelayedDead),
     (
@@ -1235,14 +1240,15 @@ kill_excess_delayed_dead_goal(FinalDelayedDead, Goal0 - DelayedDead0) = Goal :-
 :- func kill_excess_delayed_dead_case(set(prog_var),
     pair(case, set(prog_var))) = case.
 
-kill_excess_delayed_dead_case(FinalDelayedDead,
-        case(ConsId, Goal0) - DelayedDead0) = case(ConsId, Goal) :-
+kill_excess_delayed_dead_case(FinalDelayedDead, Case0 - DelayedDead0) = Case :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     set.difference(DelayedDead0, FinalDelayedDead, ToBeKilled),
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_get_post_deaths(GoalInfo0, PostDeath0),
     set.union(PostDeath0, ToBeKilled, PostDeath),
     goal_info_set_post_deaths(PostDeath, GoalInfo0, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1549,11 +1555,12 @@ detect_resume_points_in_last_disjunct(Goal0, Goal, Liveness0, Liveness,
     live_info::in, set(prog_var)::in) is det.
 
 detect_resume_points_in_cases([], [], !Liveness, _, _).
-detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) | Cases], Liveness0, LivenessFirst,
-        LiveInfo, ResumeVars0) :-
+detect_resume_points_in_cases([Case0 | Cases0], [Case | Cases],
+        Liveness0, LivenessFirst, LiveInfo, ResumeVars0) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     detect_resume_points_in_goal(Goal0, Goal, Liveness0, LivenessFirst,
         LiveInfo, ResumeVars0),
+    Case = case(MainConsId, OtherConsIds, Goal),
     (
         Cases0 = [_ | _],
         detect_resume_points_in_cases(Cases0, Cases,

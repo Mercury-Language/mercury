@@ -379,12 +379,14 @@ deforest_disj([Goal0 | Goals0], [Goal | Goals], !PDInfo, !IO) :-
     pd_info::in, pd_info::out, io::di, io::uo) is det.
 
 deforest_cases(_, [], [], !PDInfo, !IO).
-deforest_cases(Var, [case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) | Cases], !PDInfo, !IO) :-
-    % Bind Var to ConsId in the instmap before processing this case.
+deforest_cases(Var, [Case0 | Cases0], [Case | Cases], !PDInfo, !IO) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    % Bind Var to MainConsId or one of the OtherConsIds in the instmap
+    % before processing this case.
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    pd_info_bind_var_to_functor(Var, ConsId, !PDInfo),
+    pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo),
     deforest_goal(Goal0, Goal, !PDInfo, !IO),
+    Case = case(MainConsId, OtherConsIds, Goal),
     pd_info_set_instmap(InstMap0, !PDInfo),
     deforest_cases(Var, Cases0, Cases, !PDInfo, !IO).
 
@@ -1715,12 +1717,13 @@ append_goal_to_disjuncts(BetweenGoals, GoalToAppend, NonLocals,
 
 append_goal_to_cases(_, _, _, _, _, _, [], [], !PDInfo, !IO).
 append_goal_to_cases(Var, BetweenGoals, GoalToAppend, NonLocals,
-        CurrCase, Branches, [case(ConsId, Goal0) | Cases0],
-        [case(ConsId, Goal) | Cases], !PDInfo, !IO) :-
+        CurrCase, Branches, [Case0 | Cases0], [Case | Cases], !PDInfo, !IO) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    pd_info_bind_var_to_functor(Var, ConsId, !PDInfo),
+    pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo),
     append_goal(Goal0, BetweenGoals, GoalToAppend, NonLocals,
         CurrCase, Branches, Goal, !PDInfo, !IO),
+    Case = case(MainConsId, OtherConsIds, Goal),
     NextCase = CurrCase + 1,
     pd_info_set_instmap(InstMap0, !PDInfo),
     append_goal_to_cases(Var, BetweenGoals, GoalToAppend,

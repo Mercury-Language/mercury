@@ -1299,7 +1299,7 @@ count_load_stores_in_disj([Goal | Goals], CountInfo, !CountState) :-
 
 count_load_stores_in_cases([], _CountInfo, !CountState).
 count_load_stores_in_cases([Case | Cases], CountInfo, !CountState) :-
-    Case = case(_ConsId, Goal),
+    Case = case(_MainConsId, _OtherConsIds, Goal),
     GoalInfo = Goal ^ hlds_goal_info,
     goal_info_get_resume_point(GoalInfo, ResumePoint),
     (
@@ -1825,10 +1825,10 @@ fix_calls_in_goal_list([Goal0 | Goals0], [Goal | Goals], !VarSet, !VarTypes,
 fix_calls_in_cases([], [], !VarSet, !VarTypes, !RttiVarMaps, _).
 fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
         !RttiVarMaps, TransformMap) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
         TransformMap),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes,
         !RttiVarMaps, TransformMap).
 

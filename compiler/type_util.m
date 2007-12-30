@@ -164,7 +164,7 @@
     % If the type is a du type or a tuple type, return the list of its
     % constructors.
     %
-:- pred type_constructors(mer_type::in, module_info::in,
+:- pred type_constructors(module_info::in, mer_type::in,
     list(constructor)::out) is semidet.
 
     % Given a type on which it is possible to have a complete switch,
@@ -175,8 +175,8 @@
     % and equivalence types will have been expanded out by the time
     % we consider switches.)
     %
-:- pred switch_type_num_functors(module_info::in, mer_type::in,
-    int::out) is semidet.
+:- pred switch_type_num_functors(module_info::in, mer_type::in, int::out)
+    is semidet.
 
     % Work out the types of the arguments of a functor, given the cons_id
     % and type of the functor. Aborts if the functor is existentially typed.
@@ -395,7 +395,7 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -463,7 +463,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -473,7 +473,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
         ;
             TypeBody ^ du_type_usereq = no,
             % type_constructors does substitution of types variables.
-            type_constructors(Type, ModuleInfo, Ctors),
+            type_constructors(ModuleInfo, Type, Ctors),
             list.foldl(ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo),
                 Ctors, !SeenTypes)
         )
@@ -573,8 +573,8 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
         is_solver_type(ModuleInfo, Type)
     ).
 
-is_existq_type(Module, Type) :-
-    type_constructors(Type, Module, Constructors),
+is_existq_type(ModuleInfo, Type) :-
+    type_constructors(ModuleInfo, Type, Constructors),
     some [Constructor] (
         list.member(Constructor, Constructors),
         Constructor ^ cons_exist = [_ | _]
@@ -609,7 +609,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     ; Name = "typeclass_info"
     ; Name = "base_typeclass_info"
     ),
-    \+ ( Body = hlds_du_type(_, _, _, _, _, _, yes(_))
+    \+ ( Body = hlds_du_type(_, _, _, _, _, _, _, yes(_))
        ; Body = hlds_foreign_type(_)
        ; Body = hlds_solver_type(_, _)
        ).
@@ -737,7 +737,7 @@ type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
 
 %-----------------------------------------------------------------------------%
 
-type_constructors(Type, ModuleInfo, Constructors) :-
+type_constructors(ModuleInfo, Type, Constructors) :-
     type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
     ( type_ctor_is_tuple(TypeCtor) ->
         % Tuples are never existentially typed.
@@ -745,7 +745,7 @@ type_constructors(Type, ModuleInfo, Constructors) :-
         ClassConstraints = [],
         Context = term.context_init,
         CtorArgs = list.map(
-                (func(ArgType) = ctor_arg(no, ArgType, Context)), TypeArgs),
+            (func(ArgType) = ctor_arg(no, ArgType, Context)), TypeArgs),
         Constructors = [ctor(ExistQVars, ClassConstraints, unqualified("{}"),
             CtorArgs, Context)]
     ;

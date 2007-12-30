@@ -290,7 +290,7 @@ goals_can_throw([Goal | Goals], Result, !ModuleInfo, !IO) :-
 
 cases_can_throw([], cannot_throw, !ModuleInfo, !IO).
 cases_can_throw([Case | Cases], Result, !ModuleInfo, !IO) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     goal_can_throw(Goal, Result0, !ModuleInfo, !IO),
     (
         Result0 = cannot_throw,
@@ -301,8 +301,8 @@ cases_can_throw([Case | Cases], Result, !ModuleInfo, !IO) :-
     ).
 
 goal_can_loop_or_throw(Goal, Result, !ModuleInfo, !IO) :-
-    % XXX this will need to change after the termination analyses are
-    %     converted to use the intermodule-analysis framework.
+    % XXX This will need to change after the termination analyses are converted
+    % to use the intermodule-analysis framework.
     ( goal_cannot_loop(!.ModuleInfo, Goal) ->
         goal_can_throw(Goal, ThrowResult, !ModuleInfo, !IO),
         (
@@ -442,7 +442,7 @@ goal_list_can_loop(MaybeModuleInfo, [Goal | Goals]) =
 :- func case_list_can_loop(maybe(module_info), list(case)) = bool.
 
 case_list_can_loop(_, []) = no.
-case_list_can_loop(MaybeModuleInfo, [case(_, Goal) | Cases]) =
+case_list_can_loop(MaybeModuleInfo, [case(_, _, Goal) | Cases]) =
     ( goal_can_loop_func(MaybeModuleInfo, Goal) = yes ->
         yes
     ;
@@ -550,7 +550,7 @@ goal_list_can_throw(MaybeModuleInfo, [Goal | Goals]) =
 :- func case_list_can_throw(maybe(module_info), list(case)) = bool.
 
 case_list_can_throw(_, []) = no.
-case_list_can_throw(MaybeModuleInfo, [case(_, Goal) | Cases]) =
+case_list_can_throw(MaybeModuleInfo, [case(_, _, Goal) | Cases]) =
     ( goal_can_throw_func(MaybeModuleInfo, Goal) = yes ->
         yes
     ;
@@ -683,7 +683,7 @@ goal_list_may_allocate_heap([Goal | Goals], May) :-
 :- pred cases_may_allocate_heap(list(case)::in, bool::out) is det.
 
 cases_may_allocate_heap([], no).
-cases_may_allocate_heap([case(_, Goal) | Cases], May) :-
+cases_may_allocate_heap([case(_, _, Goal) | Cases], May) :-
     ( goal_may_allocate_heap(Goal, yes) ->
         May = yes
     ;
@@ -719,7 +719,7 @@ cannot_stack_flush_goals([Goal | Goals]) :-
 :- pred cannot_stack_flush_cases(list(case)::in) is semidet.
 
 cannot_stack_flush_cases([]).
-cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
+cannot_stack_flush_cases([case(_, _, Goal) | Cases]) :-
     cannot_stack_flush(Goal),
     cannot_stack_flush_cases(Cases).
 
@@ -841,7 +841,7 @@ count_recursive_calls_disj([Goal | Goals], PredId, ProcId, Min, Max) :-
 
 count_recursive_calls_cases([], _, _, _, _) :-
     unexpected(this_file, "empty cases in count_recursive_calls_cases").
-count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
+count_recursive_calls_cases([case(_, _, Goal) | Cases], PredId, ProcId,
         Min, Max) :-
     (
         Cases = [],

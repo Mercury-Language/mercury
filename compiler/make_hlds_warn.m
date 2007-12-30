@@ -242,7 +242,7 @@ warn_singletons_in_goal_list([Goal | Goals], QuantVars, VarSet, CallPredId,
 warn_singletons_in_cases([], _, _, _, _, !IO).
 warn_singletons_in_cases([Case | Cases], QuantVars, VarSet, CallPredId,
         ModuleInfo, !Specs) :-
-    Case = case(_ConsId, Goal),
+    Case = case(_MainConsId, _OtherConsIds, Goal),
     warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId,
         ModuleInfo, !Specs),
     warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId,

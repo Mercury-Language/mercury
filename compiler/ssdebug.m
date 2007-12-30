@@ -812,8 +812,8 @@ make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, GoalInfo,
     SSDBModule = mercury_ssdb_builtin_module,
     ConsIdDoRetry = cons(qualified(SSDBModule, "do_retry"), 0),
     ConsIdDoNotRetry = cons(qualified(SSDBModule, "do_not_retry"), 0),
-    CaseDoRetry = case(ConsIdDoRetry, DoRetryGoal),
-    CaseDoNotRetry = case(ConsIdDoNotRetry, DoNotRetryGoal),
+    CaseDoRetry = case(ConsIdDoRetry, [], DoRetryGoal),
+    CaseDoNotRetry = case(ConsIdDoNotRetry, [], DoNotRetryGoal),
     SwitchGoal = hlds_goal(
         switch(SwitchVar, cannot_fail, [CaseDoRetry, CaseDoNotRetry]),
         GoalInfo).

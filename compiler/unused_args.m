@@ -839,7 +839,7 @@ add_construction_aliases(Alias, [Var | Vars], !VarDep) :-
 :- pred list_case_to_list_goal(list(case)::in, list(hlds_goal)::out) is det.
 
 list_case_to_list_goal([], []).
-list_case_to_list_goal([case(_, Goal) | Cases], [Goal | Goals]) :-
+list_case_to_list_goal([case(_, _, Goal) | Cases], [Goal | Goals]) :-
     list_case_to_list_goal(Cases, Goals).
 
 :- pred traverse_list_of_goals(traverse_info::in, list(hlds_goal)::in,
@@ -1601,9 +1601,10 @@ fixup_disjuncts([Goal0 | Goals0], [Goal | Goals], !Info, !Changed) :-
     fixup_info::in, fixup_info::out, bool::in, bool::out) is det.
 
 fixup_cases([], [], !Info, !Changed).
-fixup_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases],
-        !Info, !Changed) :-
+fixup_cases([Case0 | Cases0], [Case | Cases], !Info, !Changed) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     fixup_goal(Goal0, Goal, !Info, LocalChanged),
+    Case = case(MainConsId, OtherConsIds, Goal),
     (
         LocalChanged = yes,
         !:Changed = yes

@@ -450,7 +450,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = switch(_Var, _CanFail, Cases),
-        Cases = [case(_IdA, GoalA), case(_IdB, GoalB)],
+        Cases = [case(_IdA, [], GoalA), case(_IdB, [], GoalB)],
         goal_to_conj_list(GoalA, GoalAList),
         goal_to_conj_list(GoalB, GoalBList)
     ->
@@ -1686,12 +1686,12 @@ top_level(switch_base_rec, Goal, OrigBaseGoal, OrigRecGoal,
         NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
         Goal = hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
-        Cases0 = [case(IdA, _), case(IdB, _)]
+        Cases0 = [case(IdA, [], _), case(IdB, [], _)]
     ->
-        OrigCases = [case(IdA, OrigBaseGoal), case(IdB, OrigRecGoal)],
+        OrigCases = [case(IdA, [], OrigBaseGoal), case(IdB, [], OrigRecGoal)],
         OrigGoal = hlds_goal(switch(Var, CanFail, OrigCases), GoalInfo),
 
-        NewCases = [case(IdA, NewBaseGoal), case(IdB, NewRecGoal)],
+        NewCases = [case(IdA, [], NewBaseGoal), case(IdB, [], NewRecGoal)],
         NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
@@ -1700,12 +1700,12 @@ top_level(switch_rec_base, Goal, OrigBaseGoal, OrigRecGoal,
         NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
         Goal = hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
-        Cases0 = [case(IdA, _), case(IdB, _)]
+        Cases0 = [case(IdA, [], _), case(IdB, [], _)]
     ->
-        OrigCases = [case(IdA, OrigRecGoal), case(IdB, OrigBaseGoal)],
+        OrigCases = [case(IdA, [], OrigRecGoal), case(IdB, [], OrigBaseGoal)],
         OrigGoal = hlds_goal(switch(Var, CanFail, OrigCases), GoalInfo),
 
-        NewCases = [case(IdA, NewRecGoal), case(IdB, NewBaseGoal)],
+        NewCases = [case(IdA, [], NewRecGoal), case(IdB, [], NewBaseGoal)],
         NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")

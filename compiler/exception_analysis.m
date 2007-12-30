@@ -519,7 +519,7 @@ check_goal_for_exceptions_2(_, _, shorthand(_), _, _, _, _, _, _, _) :-
 check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo,
         !IO) :-
     Goal = switch(_, _, Cases),
-    CaseGoals = list.map((func(case(_, CaseGoal)) = CaseGoal), Cases),
+    CaseGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
     check_goals_for_exceptions(SCC, VarTypes, CaseGoals, !Result, !ModuleInfo,
         !IO).
 check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result,

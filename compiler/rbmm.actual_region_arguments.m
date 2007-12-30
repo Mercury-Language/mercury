@@ -200,7 +200,7 @@ record_actual_region_arguments_expr(shorthand(_), _, _, _, _, _, _, _,
 
 record_actual_region_arguments_case(ModuleInfo, PPId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, Case, !ActualRegionArgProc) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, Goal, !ActualRegionArgProc).
 

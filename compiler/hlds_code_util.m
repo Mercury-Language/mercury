@@ -31,7 +31,7 @@
     % Find out how a function symbol (constructor) is represented
     % in the given type.
     %
-:- func cons_id_to_tag(cons_id, mer_type, module_info) = cons_tag.
+:- func cons_id_to_tag(module_info, mer_type, cons_id) = cons_tag.
 
     % Given a list of types, mangle the names so into a string which
     % identifies them. The types must all have their top level functor
@@ -76,63 +76,82 @@ are_equivalence_types_expanded(ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-cons_id_to_tag(int_const(I), _, _) = int_tag(I).
-cons_id_to_tag(float_const(F), _, _) = float_tag(F).
-cons_id_to_tag(string_const(S), _, _) = string_tag(S).
-cons_id_to_tag(pred_const(ShroudedPredProcId, EvalMethod), _, _) =
-        pred_closure_tag(PredId, ProcId, EvalMethod) :-
-    proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
-cons_id_to_tag(type_ctor_info_const(M,T,A), _, _) =
-        type_ctor_info_tag(M,T,A).
-cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _) =
-        base_typeclass_info_tag(M,C,N).
-cons_id_to_tag(type_info_cell_constructor(_), _, _) = unshared_tag(0).
-cons_id_to_tag(typeclass_info_cell_constructor, _, _) = unshared_tag(0).
-cons_id_to_tag(tabling_info_const(ShroudedPredProcId), _, _) =
-        tabling_info_tag(PredId, ProcId) :-
-    proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
-cons_id_to_tag(deep_profiling_proc_layout(ShroudedPredProcId), _, _) =
-        deep_profiling_proc_layout_tag(PredId, ProcId) :-
-    proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
-cons_id_to_tag(table_io_decl(ShroudedPredProcId), _, _) =
-        table_io_decl_tag(PredId, ProcId) :-
-    proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
-cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
+cons_id_to_tag(ModuleInfo, Type, ConsId) = Tag:-
     (
-        % Handle the `character' type specially.
-        Type = builtin_type(builtin_type_character),
-        Name = unqualified(ConsName),
-        string.char_to_string(Char, ConsName)
-    ->
-        char.to_int(Char, CharCode),
-        Tag = int_tag(CharCode)
+        ConsId = int_const(I),
+        Tag = int_tag(I)
     ;
-        % Tuples do not need a tag. Note that unary tuples are not treated
-        % as no_tag types. There's no reason why they couldn't be, it's just
-        % not worth the effort.
-        type_is_tuple(Type, _)
-    ->
-        Tag = single_functor_tag
+        ConsId = float_const(F),
+        Tag = float_tag(F)
     ;
-        type_to_ctor_det(Type, TypeCtor),
-        % Given the type_ctor, lookup up the constructor tag table
-        % for that type.
-        module_info_get_type_table(ModuleInfo, TypeTable),
-        map.lookup(TypeTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        (
-            TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _)
-        ;
-            ( TypeBody = hlds_eqv_type(_)
-            ; TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_solver_type(_, _)
-            ; TypeBody = hlds_abstract_type(_)
-            ),
-            unexpected(this_file, "cons_id_to_tag: type is not d.u. type?")
+        ConsId = string_const(S),
+        Tag = string_tag(S)
+    ;
+        ConsId = pred_const(ShroudedPredProcId, EvalMethod),
+        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
+        Tag = pred_closure_tag(PredId, ProcId, EvalMethod)
+    ;
+        ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
+        Tag = type_ctor_info_tag(ModuleName, TypeName, Arity)
+    ;
+        ConsId = base_typeclass_info_const(ModuleName, ClassName, _Instance,
+            EncodedArgs),
+        Tag = base_typeclass_info_tag(ModuleName, ClassName, EncodedArgs)
+    ;
+        ( ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
         ),
+        Tag = unshared_tag(0)
+    ;
+        ConsId = tabling_info_const(ShroudedPredProcId),
+        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
+        Tag = tabling_info_tag(PredId, ProcId)
+    ;
+        ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
+        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
+        Tag = deep_profiling_proc_layout_tag(PredId, ProcId)
+    ;
+        ConsId = table_io_decl(ShroudedPredProcId),
+        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
+        Tag = table_io_decl_tag(PredId, ProcId)
+    ;
+        ConsId = cons(Name, Arity),
+        (
+            % Handle the `character' type specially.
+            Type = builtin_type(builtin_type_character),
+            Name = unqualified(ConsName),
+            string.char_to_string(Char, ConsName)
+        ->
+            char.to_int(Char, CharCode),
+            Tag = int_tag(CharCode)
+        ;
+            % Tuples do not need a tag. Note that unary tuples are not treated
+            % as no_tag types. There's no reason why they couldn't be, it is
+            % just not worth the effort.
+            type_is_tuple(Type, _)
+        ->
+            Tag = single_functor_tag
+        ;
+            type_to_ctor_det(Type, TypeCtor),
+            % Given the type_ctor, lookup up the constructor tag table
+            % for that type.
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            map.lookup(TypeTable, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            (
+                TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _, _)
+            ;
+                ( TypeBody = hlds_eqv_type(_)
+                ; TypeBody = hlds_foreign_type(_)
+                ; TypeBody = hlds_solver_type(_, _)
+                ; TypeBody = hlds_abstract_type(_)
+                ),
+                unexpected(this_file, "cons_id_to_tag: type is not d.u. type?")
+            ),
 
-        % Finally look up the cons_id in the table.
-        map.lookup(ConsTagTable, cons(Name, Arity), Tag)
+            % Finally look up the cons_id in the table.
+            map.lookup(ConsTagTable, cons(Name, Arity), Tag)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

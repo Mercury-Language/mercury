@@ -593,9 +593,10 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
             PredInfo, ProcInfo, ModuleInfo2, ModuleInfo3),
         simplify_info_set_module_info(ModuleInfo3, !Info),
 
-        simplify_info_get_det_info(!.Info, DetInfo),
-        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], no, DetInfo,
-            _, _, [], _)
+        simplify_info_get_det_info(!.Info, DetInfo0),
+        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], no,
+            _, _, DetInfo0, DetInfo, [], _),
+        simplify_info_set_det_info(DetInfo, !Info)
     ;
         Goal = Goal3
     ).
@@ -1024,13 +1025,14 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
         Context = goal_info_get_context(GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
-        Cases = [case(ConsId, SingleGoal)],
+        Cases = [case(MainConsId, OtherConsIds, SingleGoal)],
         % A singleton switch is equivalent to the goal itself with a
         % possibly can_fail unification with the functor on the front.
-        Arity = cons_id_arity(ConsId),
+        MainConsIdArity = cons_id_arity(MainConsId),
         (
             SwitchCanFail = can_fail,
-            MaybeConsIds \= yes([ConsId])
+            OtherConsIds = [],
+            MaybeConsIds \= yes([MainConsId])
         ->
             % Don't optimize in the case of an existentially typed constructor
             % because currently create_test_unification does not handle the
@@ -1040,7 +1042,7 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
             simplify_info_get_var_types(!.Info, VarTypes1),
             map.lookup(VarTypes1, Var, Type),
             simplify_info_get_module_info(!.Info, ModuleInfo1),
-            ( type_util.is_existq_cons(ModuleInfo1, Type, ConsId) ->
+            ( type_util.is_existq_cons(ModuleInfo1, Type, MainConsId) ->
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
                 NonLocals = goal_info_get_nonlocals(GoalInfo0),
                 simplify_info_get_var_types(!.Info, VarTypes),
@@ -1049,7 +1051,8 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
                 simplify_info_set_module_info(ModuleInfo2, !Info),
                 goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
             ;
-                create_test_unification(Var, ConsId, Arity, UnifyGoal, !Info),
+                create_test_unification(Var, MainConsId, MainConsIdArity,
+                    UnifyGoal, !Info),
 
                 % Conjoin the test and the rest of the case.
                 goal_to_conj_list(SingleGoal, SingleGoalConj),
@@ -1061,8 +1064,9 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
                 set.insert(NonLocals0, Var, NonLocals),
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                 simplify_info_get_instmap(!.Info, InstMap),
-                instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap,
-                    InstMapDelta0, InstMapDelta, ModuleInfo1, ModuleInfo),
+                instmap_delta_bind_var_to_functor(Var, Type, MainConsId,
+                    InstMap, InstMapDelta0, InstMapDelta,
+                    ModuleInfo1, ModuleInfo),
                 simplify_info_set_module_info(ModuleInfo, !Info),
                 CaseDetism = goal_info_get_determinism(GoalInfo0),
                 det_conjunction_detism(detism_semi, CaseDetism, Detism),
@@ -1101,7 +1105,7 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
     list.length(Cases, CasesLength),
     ( CasesLength \= Cases0Length ->
         % If we pruned some cases, variables used by those cases may no longer
-        % be non-local to the switch. Also, the determinism may have changed
+        % be nonlocal to the switch. Also, the determinism may have changed
         % (especially if we pruned all the cases). If the switch now can't
         % succeed, it is necessary to recompute instmap_deltas and rerun
         % determinism analysis to avoid aborts in the code generator because
@@ -1616,8 +1620,9 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
 
 can_switch_on_type(TypeBody) = CanSwitchOnType :-
     (
-        TypeBody = hlds_du_type(_Ctors, _TagValues, IsEnumOrDummy,
-            _UserEq, _ReservedTag, _ReservedAddr, _MaybeForeignType),
+        TypeBody = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
+            IsEnumOrDummy, _UserEq, _ReservedTag, _ReservedAddr,
+            _MaybeForeignType),
         % We don't care about _UserEq, since the unification with *any* functor
         % of the type indicates that we are deconstructing the physical
         % representation, not the logical value.
@@ -2997,12 +3002,12 @@ simplify_switch(_, [], RevCases, Cases, !InstMaps, !CanFail, _, !Info, !IO) :-
 simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
         !CanFail, Info0, !Info, !IO) :-
     simplify_info_get_instmap(Info0, InstMap0),
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     simplify_info_get_var_types(!.Info, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    instmap.bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap1,
-        ModuleInfo0, ModuleInfo1),
+    bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
+        InstMap0, InstMap1, ModuleInfo0, ModuleInfo1),
     simplify_info_set_module_info(ModuleInfo1, !Info),
     simplify_info_set_instmap(InstMap1, !Info),
     simplify_goal(Goal0, Goal, !Info, !IO),
@@ -3012,7 +3017,7 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
         RevCases = RevCases0,
         !:CanFail = can_fail
     ;
-        Case = case(ConsId, Goal),
+        Case = case(MainConsId, OtherConsIds, Goal),
         Goal = hlds_goal(_, GoalInfo),
 
         % Make sure the switched on variable appears in the instmap delta.
@@ -3023,7 +3028,7 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
 
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo),
         simplify_info_get_module_info(!.Info, ModuleInfo2),
-        instmap_delta_bind_var_to_functor(Var, Type, ConsId,
+        instmap_delta_bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
             InstMap0, InstMapDelta0, InstMapDelta, ModuleInfo2, ModuleInfo),
         simplify_info_set_module_info(ModuleInfo, !Info),
 
@@ -3340,9 +3345,9 @@ goal_list_contains_trace([Goal0 | Goals0], [Goal | Goals], !ContainsTrace) :-
 
 case_list_contains_trace([], [], !ContainsTrace).
 case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     goal_contains_trace(Goal0, Goal, GoalContainsTrace),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
     case_list_contains_trace(Cases0, Cases, !ContainsTrace).
 
@@ -3561,7 +3566,7 @@ simplify_info_set_instmap(InstMap, Info, Info ^ instmap := InstMap).
 simplify_info_set_common_info(Common, Info, Info ^ common_info := Common).
 simplify_info_set_varset(VarSet, Info, Info ^ varset := VarSet).
 simplify_info_set_var_types(VarTypes, Info, Info ^ det_info := DetInfo) :-
-    det_info_set_vartypes(Info  ^  det_info, VarTypes, DetInfo).
+    det_info_set_vartypes(VarTypes, Info  ^  det_info, DetInfo).
 simplify_info_set_requantify(Info, Info ^ requantify := yes).
 simplify_info_set_recompute_atomic(Info, Info ^ recompute_atomic := yes).
 simplify_info_set_rerun_det(Info, Info ^ rerun_det := yes).
@@ -3605,7 +3610,7 @@ simplify_info_inside_lambda(Info) :-
 
 simplify_info_set_module_info(ModuleInfo, !Info) :-
     simplify_info_get_det_info(!.Info, DetInfo0),
-    det_info_set_module_info(DetInfo0, ModuleInfo, DetInfo),
+    det_info_set_module_info(ModuleInfo, DetInfo0, DetInfo),
     simplify_info_set_det_info(DetInfo, !Info).
 
 simplify_info_apply_type_substitution(TSubst, !Info) :-

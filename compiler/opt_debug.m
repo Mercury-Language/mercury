@@ -83,6 +83,9 @@
 
 :- func dump_label(maybe(proc_label), label) = string.
 
+:- func dump_labels_or_not_reached(maybe(proc_label), list(maybe(label)))
+    = string.
+
 :- func dump_labels(maybe(proc_label), list(label)) = string.
 
 :- func dump_label_pairs(maybe(proc_label), list(pair(label))) = string.
@@ -630,6 +633,18 @@ dump_label(yes(CurProcLabel), entry_label(_, ProcLabel)) = Str :-
         Str = dump_proclabel(ProcLabel)
     ).
 
+dump_labels_or_not_reached(_, []) = "".
+dump_labels_or_not_reached(MaybeProcLabel, [MaybeLabel | MaybeLabels]) = Str :-
+    (
+        MaybeLabel = yes(Label),
+        LabelStr = dump_label(MaybeProcLabel, Label)
+    ;
+        MaybeLabel = no,
+        LabelStr = dump_code_addr(MaybeProcLabel, do_not_reached)
+    ),
+    Str = " " ++ LabelStr ++
+        dump_labels_or_not_reached(MaybeProcLabel, MaybeLabels).
+
 dump_labels(_, []) = "".
 dump_labels(MaybeProcLabel, [Label | Labels]) =
     " " ++ dump_label(MaybeProcLabel, Label) ++
@@ -761,7 +776,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
     ;
         Instr = computed_goto(Rval, Labels),
         Str = "computed_goto " ++ dump_rval(yes(ProcLabel), Rval) ++ ":"
-            ++ dump_labels(yes(ProcLabel), Labels)
+            ++ dump_labels_or_not_reached(yes(ProcLabel), Labels)
     ;
         Instr = arbitrary_c_code(AL, _, Code),
         Str = "arbitrary_c_code(" ++ dump_affects_liveness(AL) ++ "\n" ++

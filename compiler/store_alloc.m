@@ -317,13 +317,14 @@ store_alloc_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
     set(prog_var)::in, store_alloc_info::in) is det.
 
 store_alloc_in_cases([], [], !Liveness, _, [], _, _).
-store_alloc_in_cases([case(Cons, Goal0) | Goals0], [case(Cons, Goal) | Goals],
-        Liveness0, Liveness,
+store_alloc_in_cases([Case0 | Cases0], [Case | Cases], Liveness0, Liveness,
         LastLocns0, [LastLocnsGoal | LastLocnsCases],
         ResumeVars0, StoreAllocInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     store_alloc_in_goal(Goal0, Goal, Liveness0, Liveness,
         LastLocns0, LastLocnsGoal, ResumeVars0, StoreAllocInfo),
-    store_alloc_in_cases(Goals0, Goals, Liveness0, _Liveness1,
+    Case = case(MainConsId, OtherConsIds, Goal),
+    store_alloc_in_cases(Cases0, Cases, Liveness0, _Liveness1,
         LastLocns0, LastLocnsCases, ResumeVars0, StoreAllocInfo).
 
 %-----------------------------------------------------------------------------%

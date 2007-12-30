@@ -619,8 +619,10 @@ equal_goals_list([GoalA | GoalAs], [GoalB | GoalBs], !Subst) :-
 
 equal_goals_cases([], [], !Subst).
 equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
-    CaseA = case(ConsId, GoalA),
-    CaseB = case(ConsId, GoalB),
+    CaseA = case(MainConsIdA, OtherConsIdsA, GoalA),
+    CaseB = case(MainConsIdB, OtherConsIdsB, GoalB),
+    list.sort([MainConsIdA | OtherConsIdsA], SortedConsIds),
+    list.sort([MainConsIdB | OtherConsIdsB], SortedConsIds),
     equal_goals(GoalA, GoalB, !Subst),
     equal_goals_cases(CaseAs, CaseBs, !Subst).
 
@@ -733,9 +735,9 @@ normalise_conj([Goal0 | Goals0], Goals) :-
 
 normalise_cases([], []).
 normalise_cases([Case0 | Cases0], [Case | Cases]) :-
-    Case0 = case(ConsId, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     normalise_goal(Goal0, Goal),
-    Case = case(ConsId, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     normalise_cases(Cases0, Cases).
 
 :- pred normalise_goals(hlds_goals::in, hlds_goals::out) is det.

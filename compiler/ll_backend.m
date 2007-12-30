@@ -46,6 +46,7 @@
       :- include_module lookup_switch.
       :- include_module string_switch.
       :- include_module tag_switch.
+      :- include_module switch_case.
    :- include_module pragma_c_gen.
    :- include_module par_conj_gen.
    :- include_module middle_rec.

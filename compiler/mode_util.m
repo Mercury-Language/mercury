@@ -1210,15 +1210,15 @@ recompute_instmap_delta_cases_2(_Atomic, _Var, [], [],
         _VarTypes, _InstMap, _NonLocals, [], !RI).
 recompute_instmap_delta_cases_2(Atomic, Var, [Case0 | Cases0], [Case | Cases],
         VarTypes, InstMap0, NonLocals, [InstMapDelta | InstMapDeltas], !RI) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     map.lookup(VarTypes, Var, Type),
-    update_module_info(instmap.bind_var_to_functor(Var, Type, Functor,
-        InstMap0), InstMap1, !RI),
+    update_module_info(bind_var_to_functors(Var, Type,
+        MainConsId, OtherConsIds, InstMap0), InstMap1, !RI),
     recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap1,
         InstMapDelta0, !RI),
-    update_module_info(instmap_delta_bind_var_to_functor(Var, Type,
-        Functor, InstMap0, InstMapDelta0), InstMapDelta, !RI),
-    Case = case(Functor, Goal),
+    update_module_info(instmap_delta_bind_var_to_functors(Var, Type,
+        MainConsId, OtherConsIds, InstMap0, InstMapDelta0), InstMapDelta, !RI),
+    Case = case(MainConsId, OtherConsIds, Goal),
     recompute_instmap_delta_cases_2(Atomic, Var, Cases0, Cases,
         VarTypes, InstMap0, NonLocals, InstMapDeltas, !RI).
 

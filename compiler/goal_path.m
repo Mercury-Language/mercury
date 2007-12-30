@@ -240,10 +240,12 @@ fill_disj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
 
 fill_switch_slots(_, _, _, _, [], []).
 fill_switch_slots(Path0, N0, MaybeNumFunctors, SlotInfo,
-        [case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases]) :-
+        [Case0 | Cases0], [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     N1 = N0 + 1,
     fill_goal_slots(cord.snoc(Path0, step_switch(N1, MaybeNumFunctors)),
         SlotInfo, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     fill_switch_slots(Path0, N1, MaybeNumFunctors, SlotInfo, Cases0, Cases).
 
 %-----------------------------------------------------------------------------%

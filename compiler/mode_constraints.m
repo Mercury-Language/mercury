@@ -554,9 +554,11 @@ number_robdd_variables_in_goals(InstGraph, NonLocals, Occurring,
 number_robdd_variables_in_cases(_, _, Occurring, [], [], !RInfo) :-
     set.init(Occurring).
 number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring,
-        [case(C, Goal0) | Cases0], [case(C, Goal) | Cases], !RInfo) :-
+        [Case0 | Cases0], [Case | Cases], !RInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     number_robdd_variables_in_goal(InstGraph, NonLocals, Occurring0,
         Goal0, Goal, !RInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
     number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring1,
         Cases0, Cases, !RInfo),
     Occurring = Occurring0 `set.union` Occurring1.

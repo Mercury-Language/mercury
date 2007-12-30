@@ -42,7 +42,6 @@
 :- module ll_backend.lookup_switch.
 :- interface.
 
-:- import_module backend_libs.switch_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
@@ -50,21 +49,22 @@
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
+
 %-----------------------------------------------------------------------------%
 
 :- type lookup_switch_info.
 
     % Decide whether we can generate code for this switch using a lookup table.
-    % The cases_list must be sorted on the index values.
     %
-:- pred is_lookup_switch(prog_var::in, cases_list::in,
-    hlds_goal_info::in, can_fail::in, int::in, abs_store_map::in,
-    branch_end::in, branch_end::out, code_model::in, lookup_switch_info::out,
-    code_info::in, code_info::out) is semidet.
+:- pred is_lookup_switch(mer_type::in, list(tagged_case)::in,
+    int::in, int::in, int::in, hlds_goal_info::in, can_fail::in, int::in,
+    abs_store_map::in, branch_end::in, branch_end::out, code_model::in,
+    lookup_switch_info::out, code_info::in, code_info::out) is semidet.
 
     % Generate code for the switch that the lookup_switch_info came from.
     %
-:- pred generate_lookup_switch(prog_var::in, abs_store_map::in, branch_end::in,
+:- pred generate_lookup_switch(rval::in, abs_store_map::in, branch_end::in,
     lookup_switch_info::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
@@ -74,6 +74,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.switch_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
@@ -90,12 +91,12 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -152,8 +153,9 @@
 
     % Most of this predicate is taken from dense_switch.m.
     %
-is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
-        StoreMap, !MaybeEnd, CodeModel, LookupSwitchInfo, !CI) :-
+is_lookup_switch(Type, TaggedCases0, LowerLimit, UpperLimit, NumValues,
+        GoalInfo, SwitchCanFail0, ReqDensity, StoreMap, !MaybeEnd, CodeModel,
+        LookupSwitchInfo, !CI) :-
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
     % end because we may have allocated some new static ground terms.
@@ -189,19 +191,15 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     % We want to generate a lookup switch for any switch that is dense enough
     % - we don't care how many cases it has. A memory lookup tends to be
     % cheaper than a branch.
-    list.length(TaggedCases, NumCases),
-    TaggedCases = [FirstCase | _],
-    FirstCase = extended_case(_, int_tag(FirstCaseVal), _, _),
-    list.index1_det(TaggedCases, NumCases, LastCase),
-    LastCase = extended_case(_, int_tag(LastCaseVal), _, _),
-    Span = LastCaseVal - FirstCaseVal,
+
+    Span = UpperLimit - LowerLimit,
     Range = Span + 1,
-    Density = switch_density(NumCases, Range),
+    Density = switch_density(NumValues, Range),
     Density > ReqDensity,
 
     % If there are going to be no gaps in the lookup table then we won't need
     % a bitvector test to see if this switch has a value for this case.
-    ( NumCases = Range ->
+    ( NumValues = Range ->
         NeedBitVecCheck0 = dont_need_bit_vec_check
     ;
         NeedBitVecCheck0 = need_bit_vec_check
@@ -213,12 +211,11 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         % range of the type is sufficiently small, we can make the jump table
         % large enough to hold all of the values for the type, but then we
         % will need to do the bitvector test.
-        Type = variable_type(!.CI, CaseVar),
         get_module_info(!.CI, ModuleInfo),
         classify_type(ModuleInfo, Type) = TypeCategory,
         (
-            dense_switch.type_range(!.CI, TypeCategory, Type, TypeRange),
-            DetDensity = switch_density(NumCases, TypeRange),
+            type_range(ModuleInfo, TypeCategory, Type, _, _, TypeRange),
+            DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
         ->
             NeedRangeCheck = dont_need_range_check,
@@ -228,21 +225,22 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         ;
             NeedRangeCheck = need_range_check,
             NeedBitVecCheck = NeedBitVecCheck0,
-            FirstVal = FirstCaseVal,
-            LastVal = LastCaseVal
+            FirstVal = LowerLimit,
+            LastVal = UpperLimit
         )
     ;
         SwitchCanFail = cannot_fail,
         NeedRangeCheck = dont_need_range_check,
         NeedBitVecCheck = NeedBitVecCheck0,
-        FirstVal = FirstCaseVal,
-        LastVal = LastCaseVal
+        FirstVal = LowerLimit,
+        LastVal = UpperLimit
     ),
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
     remember_position(!.CI, CurPos),
     generate_constants_for_lookup_switch(TaggedCases, OutVars, StoreMap,
-        CaseSolns, !MaybeEnd, MaybeLiveness, set.init, ResumeVars,
-        no, GoalsMayModifyTrail, !CI),
+        MaybeLiveness, map.init, CaseSolnMap, !MaybeEnd,
+        set.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
+    map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
     (
         MaybeLiveness = yes(Liveness)
@@ -296,12 +294,13 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred filter_out_failing_cases(cases_list::in,
-    cases_list::in, cases_list::out, can_fail::in, can_fail::out) is det.
+:- pred filter_out_failing_cases(list(tagged_case)::in,
+    list(tagged_case)::in, list(tagged_case)::out,
+    can_fail::in, can_fail::out) is det.
 
 filter_out_failing_cases([], !RevTaggedCases, !SwitchCanFail).
 filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
-    Case = extended_case(_, _, _, Goal),
+    Case = tagged_case(_, _, Goal),
     Goal = hlds_goal(GoalExpr, _),
     ( GoalExpr = disj([]) ->
         !:SwitchCanFail = can_fail
@@ -312,18 +311,18 @@ filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_constants_for_lookup_switch(cases_list::in,
-    list(prog_var)::in, abs_store_map::in, assoc_list(int, soln_consts)::out,
-    branch_end::in, branch_end::out, maybe(set(prog_var))::out,
-    set(prog_var)::in, set(prog_var)::out, bool::in, bool::out,
-    code_info::in, code_info::out) is semidet.
+:- pred generate_constants_for_lookup_switch(list(tagged_case)::in,
+    list(prog_var)::in, abs_store_map::in, maybe(set(prog_var))::out,
+    map(int, soln_consts)::in, map(int, soln_consts)::out,
+    branch_end::in, branch_end::out, set(prog_var)::in, set(prog_var)::out,
+    bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
-generate_constants_for_lookup_switch([], _Vars, _StoreMap, [], !MaybeEnd, no,
-        !ResumeVars, !GoalTrailOps, !CI).
-generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
-        [CaseVal | Rest], !MaybeEnd, MaybeLiveness, !ResumeVars,
+generate_constants_for_lookup_switch([], _Vars, _StoreMap, no, !IndexMap,
+        !MaybeEnd, !ResumeVars, !GoalTrailOps, !CI).
+generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
+        StoreMap, MaybeLiveness, !IndexMap, !MaybeEnd, !ResumeVars,
         !GoalsMayModifyTrail, !CI) :-
-    Case = extended_case(_, int_tag(CaseTag), _, Goal),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % Goals with these features need special treatment in generate_goal.
@@ -361,7 +360,7 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
             !MaybeEnd, MaybeLiveness, !CI),
         set_instmap(InstMap, !CI),
         post_goal_update(GoalInfo, !CI),
-        CaseVal = CaseTag - several_solns(Solns)
+        SolnConsts = several_solns(Solns)
     ;
         goal_is_conj_of_unify(Goal),
         % The pre- and post-goal updates for the goals themselves
@@ -370,27 +369,39 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
         generate_constants_for_arm(Goal, Vars, StoreMap, Soln,
             !MaybeEnd, Liveness, !CI),
         MaybeLiveness = yes(Liveness),
-        CaseVal = CaseTag - one_soln(Soln)
+        SolnConsts = one_soln(Soln)
     ),
-    generate_constants_for_lookup_switch(Cases, Vars, StoreMap, Rest,
-        !MaybeEnd, _, !ResumeVars, !GoalsMayModifyTrail, !CI).
+    record_lookup_for_tagged_cons_id(SolnConsts, TaggedMainConsId, !IndexMap),
+    list.foldl(record_lookup_for_tagged_cons_id(SolnConsts),
+        TaggedOtherConsIds, !IndexMap),
+    generate_constants_for_lookup_switch(TaggedCases, Vars,
+        StoreMap, _MaybeLivenessRest, !IndexMap, !MaybeEnd, !ResumeVars,
+        !GoalsMayModifyTrail, !CI).
+
+:- pred record_lookup_for_tagged_cons_id(soln_consts::in, tagged_cons_id::in,
+    map(int, soln_consts)::in, map(int, soln_consts)::out) is det.
+
+record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    ( ConsTag = int_tag(Index) ->
+        svmap.det_insert(Index, SolnConsts, !IndexMap)
+    ;
+        unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
+    ).
 
 %---------------------------------------------------------------------------%
 
-generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
+generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
         !CI) :-
     LookupSwitchInfo = lookup_switch_info(StartVal, EndVal, CaseConsts,
         OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, Liveness),
 
-    % Evaluate the variable which we are going to be switching on.
-    produce_variable(Var, VarCode, Rval, !CI),
-
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
     ( StartVal = 0 ->
-        IndexRval = Rval
+        IndexRval = VarRval
     ;
-        IndexRval = binop(int_sub, Rval, const(llconst_int(StartVal)))
+        IndexRval = binop(int_sub, VarRval, const(llconst_int(StartVal)))
     ),
 
     % If the switch is not locally deterministic, we may need to check that
@@ -430,7 +441,7 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
             LLDSTypes, NeedBitVecCheck, Liveness, RestCode, !CI)
     ),
-    Code = tree_list([Comment, VarCode, RangeCheckCode, RestCode]).
+    Code = tree_list([Comment, RangeCheckCode, RestCode]).
 
 :- pred generate_simple_lookup_switch(rval::in, abs_store_map::in,
     branch_end::in, int::in, int::in, assoc_list(int, list(rval))::in,

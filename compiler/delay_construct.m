@@ -269,9 +269,11 @@ delay_construct_in_goals([Goal0 | Goals0], InstMap0, DelayInfo,
     delay_construct_info::in, list(case)::out) is det.
 
 delay_construct_in_cases([], _, _, []).
-delay_construct_in_cases([case(Cons, Goal0) | Cases0], InstMap0, DelayInfo,
-        [case(Cons, Goal) | Cases]) :-
+delay_construct_in_cases([Case0 | Cases0], InstMap0, DelayInfo,
+        [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     delay_construct_in_cases(Cases0, InstMap0, DelayInfo, Cases).
 
 %-----------------------------------------------------------------------------%

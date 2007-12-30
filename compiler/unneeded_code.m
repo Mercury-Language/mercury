@@ -667,7 +667,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         (
-            Cases0 = [case(_, hlds_goal(_, FirstCaseGoalInfo)) | _],
+            Cases0 = [case(_, _, hlds_goal(_, FirstCaseGoalInfo)) | _],
             FirstCaseGoalPath = goal_info_get_goal_path(FirstCaseGoalInfo),
             cord.get_last(FirstCaseGoalPath, FirstCaseLastStep),
             FirstCaseLastStep = step_switch(_, MaybeNumAltPrime)
@@ -813,13 +813,14 @@ process_disj([Goal0 | Goals0], [Goal | Goals], InitInstMap, FinalInstMap,
 
 process_cases([], [], _, _, _, _, _, _, _, _, _,
         !WhereNeededMap, !RefinedGoals, !Changed).
-process_cases([case(Var, Goal0) | Cases0], [case(Var, Goal) | Cases],
-        BranchPoint, BranchNum, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, CurrentPath, StartWhereNeededMap,
-        !WhereNeededMap, !RefinedGoals, !Changed) :-
+process_cases([Case0 | Cases0], [Case | Cases], BranchPoint, BranchNum,
+        InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, CurrentPath,
+        StartWhereNeededMap, !WhereNeededMap, !RefinedGoals, !Changed) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
         Options, StartWhereNeededMap, WhereNeededMapFirst, !RefinedGoals,
         !Changed),
+    Case = case(MainConsId, OtherConsIds, Goal),
     map.to_assoc_list(WhereNeededMapFirst, WhereNeededList),
     add_alt_start(WhereNeededList, BranchPoint, BranchNum, CurrentPath,
         !WhereNeededMap),
@@ -1006,8 +1007,9 @@ refine_conj([Goal0 | Goals0], Goals, !RefinedGoals) :-
     goal_path::in, int::in) is det.
 
 refine_cases([], [], !RefinedGoals, _, _).
-refine_cases([case(Var, Goal0) | Cases0], [case(Var, Goal) | Cases],
-        !RefinedGoals, GoalPath, BranchNum) :-
+refine_cases([Case0 | Cases0], [Case | Cases], !RefinedGoals, GoalPath,
+        BranchNum) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     refine_goal(Goal0, Goal1, !RefinedGoals),
     ( map.search(!.RefinedGoals, GoalPath - BranchNum, ToInsertGoals) ->
         insert_refine_goals(ToInsertGoals, Goal1, Goal),
@@ -1015,6 +1017,7 @@ refine_cases([case(Var, Goal0) | Cases0], [case(Var, Goal) | Cases],
     ;
         Goal = Goal1
     ),
+    Case = case(MainConsId, OtherConsIds, Goal),
     refine_cases(Cases0, Cases, !RefinedGoals, GoalPath, BranchNum + 1).
 
 :- pred refine_disj(list(hlds_goal)::in, list(hlds_goal)::out,

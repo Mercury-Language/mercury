@@ -626,10 +626,10 @@ fix_calls_in_goal_list([Goal0 | Goals0], [Goal | Goals], !VarSet, !VarTypes,
 fix_calls_in_cases([], [], !VarSet, !VarTypes, _, _).
 fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
         TransformMap, ModuleInfo) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes,
         TransformMap, ModuleInfo),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes,
         TransformMap, ModuleInfo).
 

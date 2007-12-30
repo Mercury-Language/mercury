@@ -2018,16 +2018,12 @@ mode_contains_inst_var(Mode, InstVar) :-
 
 maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
     \+ type_util.is_solver_type(ModuleInfo, Type),
-    (
-        type_constructors(Type, ModuleInfo, Constructors)
-    ->
+    ( type_constructors(ModuleInfo, Type, Constructors) ->
         constructors_to_bound_any_insts(ModuleInfo, Uniq,
             Constructors, BoundInsts0),
         list.sort_and_remove_dups(BoundInsts0, BoundInsts),
         Inst = bound(Uniq, BoundInsts)
-    ;
-        type_may_contain_solver_type(Type, ModuleInfo)
-    ->
+    ; type_may_contain_solver_type(ModuleInfo, Type) ->
         % For a type for which constructors are not available (e.g. an
         % abstract type) and which may contain solver types, we fail, meaning
         % that we will use `any' for this type.
@@ -2036,9 +2032,9 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
         Inst = ground(Uniq, none)
     ).
 
-:- pred type_may_contain_solver_type(mer_type::in, module_info::in) is semidet.
+:- pred type_may_contain_solver_type(module_info::in, mer_type::in) is semidet.
 
-type_may_contain_solver_type(Type, ModuleInfo) :-
+type_may_contain_solver_type(ModuleInfo, Type) :-
     type_may_contain_solver_type_2(classify_type(ModuleInfo, Type)) = yes.
 
 :- func type_may_contain_solver_type_2(type_category) = bool.

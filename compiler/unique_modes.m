@@ -815,16 +815,15 @@ prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
 unique_modes_check_case_list([], _Var, [], [], !ModeInfo, !IO).
 unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
         [InstMap | InstMaps], !ModeInfo, !IO) :-
-    Case0 = case(ConsId, Goal0),
-    Case = case(ConsId, Goal),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     % If you modify this code, you may also need to modify
     % unique_modecheck_clause_switch or the code that calls it.
 
-    % Record the fact that Var was bound to ConsId in the instmap before
-    % processing this case.
-    modecheck_functor_test(Var, ConsId, !ModeInfo),
+    % Update the instmap to reflect the binding of Var to MainConsId or
+    % one of the OtherConsIds before processing this case.
+    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     ( instmap.is_reachable(InstMap1) ->
@@ -838,6 +837,7 @@ unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
 
     mode_info_get_instmap(!.ModeInfo, InstMap),
     fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
 
     mode_info_set_instmap(InstMap0, !ModeInfo),
     unique_modes_check_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo, !IO).

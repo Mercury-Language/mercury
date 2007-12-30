@@ -409,9 +409,9 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 detect_cse_in_cases_2([], _, !CseInfo, no, []).
 detect_cse_in_cases_2([Case0 | Cases0], InstMap, !CseInfo, Redo,
         [Case | Cases]) :-
-    Case0 = case(Functor, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo1, Goal),
-    Case = case(Functor, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     detect_cse_in_cases_2(Cases0, InstMap, !CseInfo, Redo2, Cases),
     bool.or(Redo1, Redo2, Redo).
 
@@ -491,7 +491,7 @@ common_deconstruct_2([], _Var, !CseState, !CseInfo, []).
 common_deconstruct_2([Goal0 | Goals0], Var, !CseState, !CseInfo,
         [Goal | Goals]) :-
     find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
-        !CseState, !CseInfo, yes),
+        !CseState, !CseInfo, did_find_deconstruct),
     !.CseState = have_candidate(_, _, _),
     common_deconstruct_2(Goals0, Var, !CseState, !CseInfo, Goals).
 
@@ -512,10 +512,12 @@ common_deconstruct_cases(Cases0, Var, !CseInfo, Unify,
     list(case)::out) is semidet.
 
 common_deconstruct_cases_2([], _Var, !CseState, !CseInfo, []).
-common_deconstruct_cases_2([case(ConsId, Goal0) | Cases0], Var,
-        !CseState, !CseInfo, [case(ConsId, Goal) | Cases]) :-
+common_deconstruct_cases_2([Case0 | Cases0], Var, !CseState, !CseInfo,
+        [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
-        !CseState, !CseInfo, yes),
+        !CseState, !CseInfo, did_find_deconstruct),
+    Case = case(MainConsId, OtherConsIds, Goal),
     !.CseState = have_candidate(_, _, _),
     common_deconstruct_cases_2(Cases0, Var, !CseState, !CseInfo, Cases).
 

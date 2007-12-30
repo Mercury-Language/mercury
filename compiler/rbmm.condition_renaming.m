@@ -320,7 +320,7 @@ collect_non_local_and_in_cond_regions_expr(_, _, _, _, _, shorthand(_),
 collect_non_local_and_in_cond_regions_case(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Case,
         !NonLocalRegionProc, !InCondRegionsProc) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     collect_non_local_and_in_cond_regions_goal(Graph,
         LRBeforeProc, LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
         Goal, !NonLocalRegionProc, !InCondRegionsProc).
@@ -538,7 +538,7 @@ collect_non_local_regions_in_ite_compound_goal(Graph, LRBeforeProc,
 
 collect_non_local_regions_in_ite_case(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Case, !NonLocalRegionProc) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Goal, !NonLocalRegionProc).
 
@@ -711,7 +711,7 @@ collect_regions_created_in_condition_compound_goal(Graph,
 collect_regions_created_in_condition_case(Graph,
         LRBeforeProc, LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc,
         Case, !InCondRegionsProc) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Goal, !InCondRegionsProc).
 
@@ -859,7 +859,7 @@ collect_ite_renaming_expr(Expr, IteRenamedRegionProc, Graph,
 
 collect_ite_renaming_case(IteRenamedRegionProc, Graph, Case,
         !IteRenamingProc) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     collect_ite_renaming_goal(IteRenamedRegionProc, Graph, Goal,
         !IteRenamingProc).
 
@@ -969,7 +969,7 @@ collect_ite_renaming_in_condition_compound_goal(IteRenamedRegionProc,
 
 collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
         !IteRenamingProc) :-
-    Case = case(_, Goal),
+    Case = case(_, _, Goal),
     collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Goal,
         !IteRenamingProc).
 

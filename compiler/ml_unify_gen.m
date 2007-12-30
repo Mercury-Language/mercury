@@ -556,7 +556,7 @@ target_supports_inheritence(target_erlang) =
     %
 ml_cons_id_to_tag(Info, ConsId, Type, Tag) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    Tag = cons_id_to_tag(ConsId, Type, ModuleInfo).
+    Tag = cons_id_to_tag(ModuleInfo, Type, ConsId).
 
     % Generate code to construct a new object.
     %
@@ -1820,7 +1820,7 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
         TypeDefnBody =
-            hlds_du_type(Ctors, TagValues, _, _, _ReservedTag, _, _),
+            hlds_du_type(Ctors, TagValues, _, _, _, _ReservedTag, _, _),
         % XXX we probably shouldn't ignore ReservedTag here
         (
             some [Ctor] (

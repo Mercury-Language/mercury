@@ -302,10 +302,11 @@
             % do_redo, etc., can get optimized into the invocations of macros
             % fail(), redo(), etc..
 
-    ;       computed_goto(rval, list(label))
+    ;       computed_goto(rval, list(maybe(label)))
             % Evaluate rval, which should be an integer, and jump to the
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
-            % will branch to label C.
+            % will branch to label C. A label that isn't there implicitly means
+            % "not reached".
 
     ;       arbitrary_c_code(proc_affects_liveness, c_code_live_lvals, string)
             % Do whatever is specified by the string, which can be any piece

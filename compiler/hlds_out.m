@@ -35,6 +35,7 @@
 
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -85,6 +86,14 @@
     %
 :- func call_arg_id_to_string(call_id, int, pred_markers) = string.
 
+:- type is_first
+    --->    is_first
+    ;       is_not_first.
+
+:- type is_last
+    --->    is_last
+    ;       is_not_last.
+
     % unify_context_to_pieces generates a message such as
     %   foo.m:123:   in argument 3 of functor `foo/5':
     %   foo.m:123:   in unification of `X' and `blah':
@@ -103,7 +112,8 @@
     % The bool returned as the second argument will be `no' unless nothing
     % was generated, in which case it will be the same as the first arg.
     %
-:- pred unify_context_first_to_pieces(bool::in, bool::out, unify_context::in,
+:- pred unify_context_first_to_pieces(is_first::in, is_first::out,
+    unify_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 :- func determinism_to_string(determinism) = string.
@@ -245,6 +255,20 @@
     module_info::in, io::di, io::uo) is det.
 :- func mercury_expanded_inst_to_string(mer_inst, inst_varset, module_info)
     = string.
+
+%-----------------------------------------------------------------------------%
+
+    % Given a tagged cons_id, return the name of the cons_id and the tag.
+    %
+:- pred project_cons_name_and_tag(tagged_cons_id::in, string::out,
+    cons_tag::out) is det.
+
+    % case_comment(VarName, MainConsName, OtherConsNames) = Comment:
+    %
+    % Create a comment describing the arm of the switch on VarName that covers
+    % MainConsName and OtherConsNames.
+    %
+:- func case_comment(string, string, list(string)) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -514,7 +538,7 @@ arg_number_to_string(generic_call_id(gcid_cast(_)), ArgNum) =
 %-----------------------------------------------------------------------------%
 
 unify_context_to_pieces(UnifyContext, !Pieces) :-
-    unify_context_first_to_pieces(no, _, UnifyContext, !Pieces).
+    unify_context_first_to_pieces(is_not_first, _, UnifyContext, !Pieces).
 
 unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
     UnifyContext = unify_context(MainContext, RevSubContexts),
@@ -522,25 +546,25 @@ unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
     unify_main_context_to_pieces(!First, MainContext, !Pieces),
     unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces).
 
-:- pred unify_main_context_to_pieces(bool::in, bool::out,
+:- pred unify_main_context_to_pieces(is_first::in, is_first::out,
     unify_main_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 unify_main_context_to_pieces(!First, umc_explicit, !Pieces).
 unify_main_context_to_pieces(!First, umc_head(ArgNum), !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
-    !:First = no,
+    !:First = is_not_first,
     ArgNumStr = int_to_string(ArgNum),
     !:Pieces = !.Pieces ++
         [words("argument"), fixed(ArgNumStr), words("of clause head:"), nl].
 unify_main_context_to_pieces(!First, umc_head_result, !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
-    !:First = no,
+    !:First = is_not_first,
     !:Pieces = !.Pieces ++ [words("function result term of clause head:"), nl].
 unify_main_context_to_pieces(!First, umc_call(CallId, ArgNum),
         !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
-    !:First = no,
+    !:First = is_not_first,
     % The markers argument below is used only for type class method
     % implementations defined using the named syntax rather than
     % the clause syntax, and the bodies of such procedures should
@@ -556,7 +580,7 @@ unify_main_context_to_pieces(!First, umc_implicit(Source), !Pieces) :-
     string.format("implicit %s unification:\n", [s(Source)], Msg),
     !:Pieces = !.Pieces ++ [words(Msg), nl].
 
-:- pred unify_sub_contexts_to_pieces(bool::in, bool::out,
+:- pred unify_sub_contexts_to_pieces(is_first::in, is_first::out,
     unify_sub_contexts::in,
     list(format_component)::in, list(format_component)::out) is det.
 
@@ -567,11 +591,11 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts], !Pieces) :-
             0, ElementNum, AfterContexts)
     ->
         in_element_to_pieces(!.First, ElementNum, !Pieces),
-        !:First = no,
+        !:First = is_not_first,
         unify_sub_contexts_to_pieces(!First, AfterContexts, !Pieces)
     ;
         in_argument_to_pieces(!.First, SubContext, !Pieces),
-        !:First = no,
+        !:First = is_not_first,
         unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces)
     ).
 
@@ -598,7 +622,7 @@ contexts_describe_list_element([SubContext | SubContexts],
             NumElementsBefore + 1, ElementNum, AfterContexts)
     ).
 
-:- pred in_argument_to_pieces(bool::in, pair(cons_id, int)::in,
+:- pred in_argument_to_pieces(is_first::in, pair(cons_id, int)::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 in_argument_to_pieces(First, SubContext, !Pieces) :-
@@ -609,7 +633,7 @@ in_argument_to_pieces(First, SubContext, !Pieces) :-
         words("of functor"),
         prefix("`"), fixed(cons_id_to_string(ConsId)), suffix("':"), nl].
 
-:- pred in_element_to_pieces(bool::in, int::in,
+:- pred in_element_to_pieces(is_first::in, int::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 in_element_to_pieces(First, ElementNum, !Pieces) :-
@@ -618,17 +642,17 @@ in_element_to_pieces(First, ElementNum, !Pieces) :-
     !:Pieces = !.Pieces ++ [words("list element"),
         prefix("#"), fixed(ElementNumStr), suffix(":"), nl].
 
-:- pred start_in_message_to_pieces(bool::in,
+:- pred start_in_message_to_pieces(is_first::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 start_in_message_to_pieces(First, !Pieces) :-
     (
-        First = yes,
+        First = is_first,
         % It is possible for First to be yes and !.Pieces to be nonempty,
         % since !.Pieces may contain stuff from before the unify context.
         !:Pieces = !.Pieces ++ [words("In")]
     ;
-        First = no,
+        First = is_not_first,
         !:Pieces = !.Pieces ++ [words("in")]
     ).
 
@@ -2383,66 +2407,72 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
     io.write_string(" := ", !IO),
     write_functor_and_submodes(ConsId, ArgVars, ArgModes, ModuleInfo,
         ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO),
-    (
-        Uniqueness = cell_is_unique,
-        write_indent(Indent, !IO),
-        io.write_string("% cell_is_unique\n", !IO)
-    ;
-        Uniqueness = cell_is_shared
-    ),
-    (
-        SubInfo = no_construct_sub_info
-    ;
-        SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
+
+    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+    ( string.contains_char(Verbose, 'u') ->
         (
-            MaybeTakeAddr = yes(TakeAddressFields),
+            Uniqueness = cell_is_unique,
             write_indent(Indent, !IO),
-            io.write_string("% take address fields: ", !IO),
-            write_intlist(TakeAddressFields, !IO),
-            io.write_string("\n", !IO)
+            io.write_string("% cell_is_unique\n", !IO)
         ;
-            MaybeTakeAddr = no
+            Uniqueness = cell_is_shared
         ),
         (
-            MaybeSize = yes(SizeSource),
-            write_indent(Indent, !IO),
-            io.write_string("% term size ", !IO),
+            SubInfo = no_construct_sub_info
+        ;
+            SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
             (
-                SizeSource = known_size(KnownSize),
-                io.write_string("const ", !IO),
-                io.write_int(KnownSize, !IO),
+                MaybeTakeAddr = yes(TakeAddressFields),
+                write_indent(Indent, !IO),
+                io.write_string("% take address fields: ", !IO),
+                write_intlist(TakeAddressFields, !IO),
                 io.write_string("\n", !IO)
             ;
-                SizeSource = dynamic_size(SizeVar),
-                io.write_string("var ", !IO),
-                mercury_output_var(ProgVarSet, AppendVarNums, SizeVar, !IO),
-                io.write_string("\n", !IO)
+                MaybeTakeAddr = no
+            ),
+            (
+                MaybeSize = yes(SizeSource),
+                write_indent(Indent, !IO),
+                io.write_string("% term size ", !IO),
+                (
+                    SizeSource = known_size(KnownSize),
+                    io.write_string("const ", !IO),
+                    io.write_int(KnownSize, !IO),
+                    io.write_string("\n", !IO)
+                ;
+                    SizeSource = dynamic_size(SizeVar),
+                    io.write_string("var ", !IO),
+                    mercury_output_var(ProgVarSet, AppendVarNums, SizeVar, !IO),
+                    io.write_string("\n", !IO)
+                )
+            ;
+                MaybeSize = no
             )
+        ),
+        (
+            ConstructHow = construct_dynamically
         ;
-            MaybeSize = no
+            ConstructHow = construct_statically(StaticConsList),
+            write_indent(Indent, !IO),
+            io.write_string("% construct statically\n", !IO),
+            list.foldl(write_static_cons(Indent, 1, ProgVarSet, AppendVarNums),
+                StaticConsList, !IO)
+        ;
+            ConstructHow = reuse_cell(CellToReuse),
+            CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds, _FieldAssigns),
+            write_indent(Indent, !IO),
+            io.write_string("% reuse cell: ", !IO),
+            mercury_output_var(ProgVarSet, AppendVarNums, ReuseVar, !IO),
+            io.write_string("\n", !IO)
+        ;
+            ConstructHow = construct_in_region(RegVar),
+            write_indent(Indent, !IO),
+            io.write_string("% construct in region: ", !IO),
+            mercury_output_var(ProgVarSet, AppendVarNums, RegVar, !IO),
+            io.write_string("\n", !IO)
         )
-    ),
-    (
-        ConstructHow = construct_dynamically
     ;
-        ConstructHow = construct_statically(StaticConsList),
-        write_indent(Indent, !IO),
-        io.write_string("% construct statically\n", !IO),
-        list.foldl(write_static_cons(Indent, 1, ProgVarSet, AppendVarNums),
-            StaticConsList, !IO)
-    ;
-        ConstructHow = reuse_cell(CellToReuse),
-        CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds, _FieldAssigns),
-        write_indent(Indent, !IO),
-        io.write_string("% reuse cell: ", !IO),
-        mercury_output_var(ProgVarSet, AppendVarNums, ReuseVar, !IO),
-        io.write_string("\n", !IO)
-    ;
-        ConstructHow = construct_in_region(RegVar),
-        write_indent(Indent, !IO),
-        io.write_string("% construct in region: ", !IO),
-        mercury_output_var(ProgVarSet, AppendVarNums, RegVar, !IO),
-        io.write_string("\n", !IO)
+        true
     ).
 
 write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, CanCGC),
@@ -2903,13 +2933,14 @@ write_goal_list(GoalList, ModuleInfo, VarSet, AppendVarNums, Indent, Separator,
 :- pred write_case(case::in, prog_var::in, module_info::in, prog_varset::in,
     bool::in, int::in, maybe_vartypes::in, io::di, io::uo) is det.
 
-write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet, AppendVarNums, Indent,
-        VarTypes, !IO) :-
+write_case(case(MainConsId, OtherConsIds, Goal), Var, ModuleInfo,
+        VarSet, AppendVarNums, Indent, VarTypes, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" has functor ", !IO),
-    write_cons_id(ConsId, !IO),
+    write_cons_id(MainConsId, !IO),
+    list.foldl(write_alternative_cons_id, OtherConsIds, !IO),
     io.write_string("\n", !IO),
     % XXX if the output of this is to be used, e.g. in
     % inter-module optimization, output a unification to bind the
@@ -2918,6 +2949,12 @@ write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet, AppendVarNums, Indent,
     % intermod.m works on the unoptimized clauses.
     write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, "\n",
         VarTypes, !IO).
+
+:- pred write_alternative_cons_id(cons_id::in, io::di, io::uo) is det.
+
+write_alternative_cons_id(ConsId, !IO) :-
+    io.write_string(" or ", !IO),
+    write_cons_id(ConsId, !IO).
 
 :- pred write_cases(list(case)::in, prog_var::in, module_info::in,
     prog_varset::in, bool::in, int::in, maybe_vartypes::in, io::di, io::uo)
@@ -3318,9 +3355,25 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
 :- pred write_type_body(int::in, tvarset::in, hlds_type_body::in,
     io::di, io::uo) is det.
 
-write_type_body(Indent, TVarSet, hlds_du_type(Ctors, Tags, EnumDummy,
-        MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign), !IO) :-
+write_type_body(Indent, TVarSet, DuType, !IO) :-
+    DuType = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, EnumDummy,
+        MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign),
     io.write_string(" --->\n", !IO),
+    (
+        CheaperTagTest = no_cheaper_tag_test
+    ;
+        CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
+            CheapConsId, CheapConsTag),
+        io.write_string("/* cheaper tag test: ", !IO),
+        write_cons_id(ExpConsId, !IO),
+        io.write_string(" tag ", !IO),
+        io.print(ExpConsTag, !IO),
+        io.write_string(" -> ", !IO),
+        write_cons_id(CheapConsId, !IO),
+        io.write_string(" tag ", !IO),
+        io.print(CheapConsTag, !IO),
+        io.write_string(" */\n", !IO)
+    ),
     (
         EnumDummy = is_mercury_enum,
         write_indent(Indent, !IO),
@@ -3352,7 +3405,7 @@ write_type_body(Indent, TVarSet, hlds_du_type(Ctors, Tags, EnumDummy,
     ;
         ReservedAddr = does_not_use_reserved_address
     ),
-    write_constructors(Indent, TVarSet, Ctors, Tags, !IO),
+    write_constructors(Indent, TVarSet, Ctors, ConsTagMap, !IO),
     mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
     (
         Foreign = yes(_),
@@ -4549,6 +4602,23 @@ write_is_conditional(IsConditional, !IO) :-
         IsConditional = unconditional_reuse,
         io.write_string("always safe", !IO)
     ).
+
+%-----------------------------------------------------------------------------%
+
+project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
+    TaggedConsId = tagged_cons_id(ConsId, ConsTag),
+    ConsName = hlds_out.cons_id_to_string(ConsId).
+
+case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
+    (
+        OtherConsNames = [],
+        Comment = VarName ++ " has the functor " ++ MainConsName
+    ;
+        OtherConsNames = [_ | _],
+        Comment = VarName ++ " has one of the functors " ++
+            string.join_list(", ", [MainConsName | OtherConsNames])
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

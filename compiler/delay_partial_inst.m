@@ -539,11 +539,12 @@ delay_partial_inst_in_goals(InstMap0,
     delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
 
 delay_partial_inst_in_cases(_, [], [], !ConstructMap, !DelayInfo).
-delay_partial_inst_in_cases(InstMap0,
-        [case(Cons, Goal0) | Cases0], [case(Cons, Goal) | Cases],
+delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
         !ConstructMap, !DelayInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
         !DelayInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
     delay_partial_inst_in_cases(InstMap0, Cases0, Cases, !ConstructMap,
         !DelayInfo).
 

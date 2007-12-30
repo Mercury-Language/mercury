@@ -309,8 +309,8 @@
 :- pred replace_labels_code_addr(code_addr::in, code_addr::out,
     map(label, label)::in) is det.
 
-:- pred replace_labels_label_list(list(label)::in, list(label)::out,
-    map(label, label)::in) is det.
+:- pred replace_labels_maybe_label_list(list(maybe(label))::in,
+    list(maybe(label))::out, map(label, label)::in) is det.
 
 :- pred replace_labels_label(label::in, label::out, map(label, label)::in)
     is det.
@@ -1256,7 +1256,9 @@ instr_labels_2(mkframe(_, yes(Addr)), [], [Addr]).
 instr_labels_2(mkframe(_, no), [], []).
 instr_labels_2(label(_), [], []).
 instr_labels_2(goto(Addr), [], [Addr]).
-instr_labels_2(computed_goto(_, Labels), Labels, []).
+instr_labels_2(computed_goto(_, MaybeLabels), Labels, []) :-
+    possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
+    list.reverse(RevLabels, Labels).
 instr_labels_2(arbitrary_c_code(_, _, _), [], []).
 instr_labels_2(if_val(_, Addr), [], [Addr]).
 instr_labels_2(save_maxfr(_), [], []).
@@ -1315,7 +1317,9 @@ possible_targets(goto(CodeAddr), Labels, CodeAddrs) :-
         Labels = [],
         CodeAddrs = [CodeAddr]
     ).
-possible_targets(computed_goto(_, Labels), Labels, []).
+possible_targets(computed_goto(_, MaybeLabels), Labels, []) :-
+    possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
+    list.reverse(RevLabels, Labels).
 possible_targets(arbitrary_c_code(_, _, _), [], []).
 possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
     ( CodeAddr = code_label(Label) ->
@@ -1353,6 +1357,19 @@ possible_targets(foreign_proc_code(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
         _, MaybeSubLabel, _, _), Labels, []) :-
     foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
         no, MaybeSubLabel, Labels).
+
+:- pred possible_targets_maybe_labels(list(maybe(label))::in,
+    list(label)::in, list(label)::out) is det.
+
+possible_targets_maybe_labels([], !RevLabels).
+possible_targets_maybe_labels([MaybeLabel | MaybeLabels], !RevLabels) :-
+    (
+        MaybeLabel = yes(Label),
+        !:RevLabels = [Label | !.RevLabels]
+    ;
+        MaybeLabel = no
+    ),
+    possible_targets_maybe_labels(MaybeLabels, !RevLabels).
 
 :- pred foreign_proc_labels(maybe(label)::in, maybe(label)::in,
     maybe(label)::in, maybe(label)::in, list(label)::out) is det.
@@ -2151,7 +2168,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         replace_labels_code_addr(Target0, Target, ReplMap),
         Uinstr = goto(Target)
     ;
-        Uinstr0 = computed_goto(Rval0, Labels0),
+        Uinstr0 = computed_goto(Rval0, MaybeLabels0),
         (
             ReplData = yes,
             replace_labels_rval(Rval0, Rval, ReplMap)
@@ -2159,8 +2176,8 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             ReplData = no,
             Rval = Rval0
         ),
-        replace_labels_label_list(Labels0, Labels, ReplMap),
-        Uinstr = computed_goto(Rval, Labels)
+        replace_labels_maybe_label_list(MaybeLabels0, MaybeLabels, ReplMap),
+        Uinstr = computed_goto(Rval, MaybeLabels)
     ;
         Uinstr0 = arbitrary_c_code(AffectsLiveness, Lvals0, Code),
         (
@@ -2581,10 +2598,18 @@ replace_labels_code_addr(Addr0, Addr, ReplMap) :-
         Addr = Addr0
     ).
 
-replace_labels_label_list([], [], _ReplMap).
-replace_labels_label_list([Label0 | Labels0], [Label | Labels], ReplMap) :-
-    replace_labels_label(Label0, Label, ReplMap),
-    replace_labels_label_list(Labels0, Labels, ReplMap).
+replace_labels_maybe_label_list([], [], _ReplMap).
+replace_labels_maybe_label_list([MaybeLabel0 | MaybeLabels0],
+        [MaybeLabel | MaybeLabels], ReplMap) :-
+    (
+        MaybeLabel0 = yes(Label0),
+        replace_labels_label(Label0, Label, ReplMap),
+        MaybeLabel = yes(Label)
+    ;
+        MaybeLabel0 = no,
+        MaybeLabel = no
+    ),
+    replace_labels_maybe_label_list(MaybeLabels0, MaybeLabels, ReplMap).
 
 replace_labels_label(Label0, Label, ReplMap) :-
     ( map.search(ReplMap, Label0, NewLabel) ->

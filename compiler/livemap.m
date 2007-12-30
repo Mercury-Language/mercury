@@ -206,9 +206,9 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
             MaybeSpecial = no
         )
     ;
-        Uinstr0 = computed_goto(Rval, Labels),
+        Uinstr0 = computed_goto(Rval, MaybeLabels),
         livemap.make_live_in_rvals([Rval], set.init, !:Livevals),
-        list.foldl(livemap_insert_label_livevals(!.Livemap), Labels,
+        list.foldl(livemap_insert_maybe_label_livevals(!.Livemap), MaybeLabels,
             !Livevals)
     ;
         Uinstr0 = if_val(Rval, CodeAddr),
@@ -523,6 +523,17 @@ livemap_filter_livevals(Livevals0, Livevals) :-
     set.to_sorted_list(Livevals0, Livelist),
     set.init(Livevals1),
     livemap_insert_proper_livevals(Livelist, Livevals1, Livevals).
+
+:- pred livemap_insert_maybe_label_livevals(livemap::in, maybe(label)::in,
+    lvalset::in, lvalset::out) is det.
+
+livemap_insert_maybe_label_livevals(Livemap, MaybeLabel, !Livevals) :-
+    (
+        MaybeLabel = yes(Label),
+        livemap_insert_label_livevals(Livemap, Label, !Livevals)
+    ;
+        MaybeLabel = no
+    ).
 
 :- pred livemap_insert_label_livevals(livemap::in, label::in,
     lvalset::in, lvalset::out) is det.
