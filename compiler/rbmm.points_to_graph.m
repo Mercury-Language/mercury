@@ -27,70 +27,68 @@
 :- import_module set.
 :- import_module string.
 
-    % A region points-to graph rpt_graph(Node, Arc) represents a directed
-    % graph with information type Node associated with each node, and
-    % information of type Arc associated with each arc.
-    %
-:- type rpt_graph
-        --->    rpt_graph(
-                    rptg_node_supply, % the counter for node
-                    rptg_arc_supply,  % the counter for arc
-                    map(rptg_node, rptg_node_content),
-                    map(rptg_arc, rptg_arc_info),
-                    map(rptg_node, map(rptg_arc, rptg_node))
-                ).
+:- type rpt_graph.
 
-:- type rptg_node_supply    == int.
-:- type rptg_arc_supply     == int.
+:- func rptg_get_nodemap(rpt_graph) = map(rptg_node, rptg_node_content).
+:- func rptg_get_arcmap(rpt_graph) = map(rptg_arc, rptg_arc_info).
+:- func rptg_get_edgemap(rpt_graph) = map(rptg_node, map(rptg_arc, rptg_node)).
+
+:- pred rptg_set_nodemap(map(rptg_node, rptg_node_content)::in,
+    rpt_graph::in, rpt_graph::out) is det.
+:- pred rptg_set_arcmap(map(rptg_arc, rptg_arc_info)::in,
+    rpt_graph::in, rpt_graph::out) is det.
+:- pred rptg_set_edgemap(map(rptg_node, map(rptg_arc, rptg_node))::in,
+    rpt_graph::in, rpt_graph::out) is det.
+
+    % XXX: This function should be unnecessary.
+:- func rptg_get_next_node_number(rpt_graph) = int.
 
 :- type rptg_node
         --->    rptg_node(int).
 
 :- type rptg_node_content
         --->    rptg_node_content(
-                    % set of procedure variables assigned to this node
-                    varset          :: set(prog_var),
-                    % the region variable that names this node
-                    reg_var_name    :: string,
-                    merged_from     :: set(rptg_node),
-                    node_type       :: mer_type
+                    % The set of procedure variables assigned to this node.
+                    rptg_nc_vars            :: set(prog_var),
+
+                    % The region variable that names this node.
+                    rptg_nc_reg_var_name    :: string,
+
+                    rptg_nc_merged_from     :: set(rptg_node),
+                    rptg_nc_node_type       :: mer_type
                 ).
 
-:- pred rptg_node_content_get_varset(rptg_node_content::in,
-    set(prog_var)::out) is det.
-:- pred rptg_node_content_get_region_name(rptg_node_content::in,
-    string::out) is det.
-:- pred rptg_node_content_get_merged_from(rptg_node_content::in,
-    set(rptg_node)::out) is det.
-:- pred rptg_node_content_get_node_type(rptg_node_content::in,
-    mer_type::out) is det.
+:- func rptg_node_content_get_vars(rptg_node_content) = set(prog_var).
+:- func rptg_node_content_get_region_name(rptg_node_content) = string.
+:- func rptg_node_content_get_merged_from(rptg_node_content) = set(rptg_node).
+:- func rptg_node_content_get_node_type(rptg_node_content) = mer_type.
 
-:- pred rptg_node_content_set_varset(set(prog_var)::in,
+:- pred rptg_node_content_set_vars(set(prog_var)::in,
     rptg_node_content::in, rptg_node_content::out) is det.
-:- pred rptg_node_content_set_region_name(string::in, rptg_node_content::in,
-    rptg_node_content::out) is det.
+:- pred rptg_node_content_set_region_name(string::in,
+    rptg_node_content::in, rptg_node_content::out) is det.
 :- pred rptg_node_content_set_merged_from(set(rptg_node)::in,
     rptg_node_content::in, rptg_node_content::out) is det.
-:- pred rptg_node_content_set_node_type(mer_type::in, rptg_node_content::in,
-    rptg_node_content::out) is det.
+:- pred rptg_node_content_set_node_type(mer_type::in,
+    rptg_node_content::in, rptg_node_content::out) is det.
 
 :- type rptg_arc
         --->    rptg_arc(int).
 
 :- type rptg_arc_content
         --->    rptg_arc_content(
-                    label   :: selector % the label of an edge
+                    rptg_ac_label       :: selector % the label of an edge
                 ).
 
-:- pred rptg_arc_content_get_label(rptg_arc_content::in, selector::out) is det.
-:- pred rptg_arc_content_set_label(selector::in, rptg_arc_content::in,
-    rptg_arc_content::out) is det.
+:- func rptg_arc_content_get_label(rptg_arc_content) = selector.
+:- pred rptg_arc_content_set_label(selector::in,
+    rptg_arc_content::in, rptg_arc_content::out) is det.
 
 :- type rptg_arc_info
         --->    rptg_arc_info(
-                    rptg_node,  % the from node
-                    rptg_node,  % the to node
-                    rptg_arc_content    % the label
+                    rptg_ai_from_node   :: rptg_node,
+                    rptg_ai_to_node     :: rptg_node,
+                    rptg_ai_label       :: rptg_arc_content
                 ).
 
     % rpt_graph_init(Graph) binds Graph to an empty graph containing
@@ -99,8 +97,6 @@
     % no nodes or arcs and still fail to unify with the binding of Graph from
     % rpt_graph_init.)
     %
-:- pred rpt_graph_init(rpt_graph::out) is det.
-
 :- func rpt_graph_init = rpt_graph.
 
     % rptg_set_node(NodeInfo, Node, OldGraph, NewGraph) takes OldGraph and
@@ -120,8 +116,6 @@
     %
     % This operation is O(lgN) for a graph containing N nodes.
     %
-:- pred rptg_node_contents(rpt_graph::in,
-    rptg_node::in, rptg_node_content::out) is det.
 :- func rptg_node_contents(rpt_graph, rptg_node) = rptg_node_content.
 
     % rptg_successors(Graph, Node, Nodes) takes a graph Graph and a node Node
@@ -130,13 +124,10 @@
     %
     % This operation is O(NlgN) for a graph containing N nodes.
     %
-:- pred rptg_successors(rpt_graph::in, rptg_node::in, set(rptg_node)::out)
-    is det.
 :- func rptg_successors(rpt_graph, rptg_node) = set(rptg_node).
 
     % rptg_get_nodes(Graph, Nodes) binds Nodes to the set of nodes in Graph.
     %
-:- pred rptg_get_nodes(rpt_graph::in, list(rptg_node)::out) is det.
 :- func rptg_get_nodes(rpt_graph) = list(rptg_node).
 
     % rptg_set_edge(Start, End, ArcInfo, Arc, OldGraph, NewGraph)
@@ -169,27 +160,7 @@
 :- pred reachable_and_having_type(rpt_graph::in, rptg_node::in, mer_type::in,
     rptg_node::out) is semidet.
 
-:- pred rptg_get_node_supply(rpt_graph::in, rptg_node_supply::out) is det.
-:- pred rptg_get_arc_supply(rpt_graph::in, rptg_arc_supply::out) is det.
-:- pred rptg_get_nodemap(rpt_graph::in,
-    map(rptg_node, rptg_node_content)::out) is det.
-:- pred rptg_get_arcmap(rpt_graph::in, map(rptg_arc, rptg_arc_info)::out)
-    is det.
-:- pred rptg_get_edgemap(rpt_graph::in,
-    map(rptg_node, map(rptg_arc, rptg_node))::out) is det.
-
-:- pred rptg_set_node_supply(rptg_node_supply::in,
-    rpt_graph::in, rpt_graph::out)is det.
-:- pred rptg_set_arc_supply(rptg_arc_supply::in,
-    rpt_graph::in, rpt_graph::out) is det.
-:- pred rptg_set_nodemap(map(rptg_node, rptg_node_content)::in,
-    rpt_graph::in, rpt_graph::out) is det.
-:- pred rptg_set_arcmap(map(rptg_arc, rptg_arc_info)::in,
-    rpt_graph::in, rpt_graph::out) is det.
-:- pred rptg_set_edgemap(map(rptg_node, map(rptg_arc, rptg_node))::in,
-    rpt_graph::in, rpt_graph::out) is det.
-
-    % get a node given the region name (region variable) assigned to it.
+    % Get a node given the region name (region variable) assigned to it.
     % There is one and only one node with a given region name.
     % Therefore the predicate returns the node as soon as it finds.
     %
@@ -200,7 +171,7 @@
     % There is one and only one node corresponding to a set of variables.
     % Therefore the predicate returns the node as soon as it finds.
     %
-:- pred get_node_by_varset(rpt_graph::in, set(prog_var)::in,
+:- pred get_node_by_vars(rpt_graph::in, set(prog_var)::in,
     rptg_node::out) is det.
 
     % Get a node given a Mercury variable assigned to it.
@@ -262,6 +233,7 @@
 :- import_module libs.compiler_util.
 :- import_module transform_hlds.smm_common.
 
+:- import_module counter.
 :- import_module assoc_list.
 :- import_module pair.
 :- import_module solutions.
@@ -269,14 +241,65 @@
 :- import_module svset.
 :- import_module term.
 
-rpt_graph_init(Graph) :-
-    Graph = rpt_graph(0, 0, Nodes, Arcs, Edges),
+    % A region points-to graph rpt_graph(Node, Arc) represents a directed
+    % graph with information type Node associated with each node, and
+    % information of type Arc associated with each arc.
+    %
+:- type rpt_graph
+        --->    rpt_graph(
+                    % The source of node ids.
+                    rptg_node_supply    :: counter,
+
+                    % The source of arc ids.
+                    rptg_arc_supply     :: counter,
+
+                    rptg_nodemap        :: map(rptg_node, rptg_node_content),
+                    rptg_arcmap         :: map(rptg_arc, rptg_arc_info),
+                    rptg_edgemap        :: map(rptg_node,
+                                                map(rptg_arc, rptg_node))
+                ).
+
+rpt_graph_init = Graph :-
+    counter.init(1, NodeSupply),
+    counter.init(1, ArcSupply),
+    Graph = rpt_graph(NodeSupply, ArcSupply, Nodes, Arcs, Edges),
     map.init(Nodes),
     map.init(Arcs),
     map.init(Edges).
 
-rpt_graph_init = G :-
-    rpt_graph_init(G).
+:- func rptg_get_node_supply(rpt_graph) = counter.
+:- func rptg_get_arc_supply(rpt_graph) = counter.
+
+:- pred rptg_set_node_supply(counter::in,
+    rpt_graph::in, rpt_graph::out)is det.
+:- pred rptg_set_arc_supply(counter::in,
+    rpt_graph::in, rpt_graph::out) is det.
+
+rptg_get_node_supply(G) = G ^ rptg_node_supply.
+rptg_get_arc_supply(G) = G ^ rptg_arc_supply.
+rptg_get_nodemap(G) = G ^ rptg_nodemap.
+rptg_get_arcmap(G) = G ^ rptg_arcmap.
+rptg_get_edgemap(G) = G ^ rptg_edgemap.
+
+rptg_set_node_supply(NS, !G) :-
+    !:G = !.G ^ rptg_node_supply := NS.
+rptg_set_arc_supply(AS, !G) :-
+    !:G = !.G ^ rptg_arc_supply := AS.
+rptg_set_nodemap(N, !G) :-
+    !:G = !.G ^ rptg_nodemap := N.
+rptg_set_arcmap(A, !G) :-
+    !:G = !.G ^ rptg_arcmap := A.
+rptg_set_edgemap(E, !G) :-
+    !:G = !.G ^ rptg_edgemap := E.
+
+rptg_node_content_get_vars(NC) = NC ^ rptg_nc_vars.
+rptg_node_content_get_region_name(NC) = NC ^ rptg_nc_reg_var_name.
+rptg_node_content_get_merged_from(NC) = NC ^ rptg_nc_merged_from.
+rptg_node_content_get_node_type(NC) = NC ^ rptg_nc_node_type.
+
+rptg_get_next_node_number(G) = NextNodeNumber :-
+    NodeSupply = rptg_get_node_supply(G),
+    counter.allocate(NextNodeNumber, NodeSupply, _).
 
     % After adding a node with Content into the graph, we need to update the
     % Content so that the merged_from set of the node contains itself.
@@ -285,68 +308,57 @@ rpt_graph_init = G :-
     % But without adding the node first, the node is nonexistant and we
     % cannot make add it to the merged_from set.
     %
-rptg_set_node(Content0, rptg_node(N), G0, G) :-
-    rptg_get_node_supply(G0, NS0),
-    NS = NS0 + 1,
-    N = NS,
-    rptg_set_node_supply(NS, G0, G1),
+rptg_set_node(Content0, rptg_node(N), !G) :-
+    NS0 = rptg_get_node_supply(!.G),
+    counter.allocate(N, NS0, NS),
+    rptg_set_node_supply(NS, !G),
 
     % make the merged_from set contain this node
     set.init(MergedFrom0),
-    svset.insert(rptg_node(NS), MergedFrom0, MergedFrom1),
+    svset.insert(rptg_node(N), MergedFrom0, MergedFrom1),
     rptg_node_content_set_merged_from(MergedFrom1, Content0, Content),
 
-    rptg_get_nodemap(G1, NodeMap0),
+    NodeMap0 = rptg_get_nodemap(!.G),
     svmap.set(rptg_node(N), Content, NodeMap0, NodeMap),
-    rptg_set_nodemap(NodeMap, G1, G2),
+    rptg_set_nodemap(NodeMap, !G),
 
     % set edge
-    rptg_get_edgemap(G2, EdgeMap0),
+    EdgeMap0 = rptg_get_edgemap(!.G),
     svmap.set(rptg_node(N), map.init, EdgeMap0, EdgeMap),
-    rptg_set_edgemap(EdgeMap, G2, G).
+    rptg_set_edgemap(EdgeMap, !G).
 
-rptg_node_contents(G, N, Content) :-
-    rptg_get_nodemap(G, NodeMap),
-    map.lookup(NodeMap, N, Content).
+rptg_node_contents(G, N) = NodeContents :-
+    map.lookup(rptg_get_nodemap(G), N, NodeContents).
 
-rptg_node_contents(G, N) = NC :-
-    rptg_node_contents(G, N, NC).
+rptg_get_nodes(G) = Nodes :-
+    map.keys(rptg_get_nodemap(G), Nodes).
 
-rptg_get_nodes(G, Ns) :-
-    rptg_get_nodemap(G, NodeMap),
-    map.keys(NodeMap, Ns).
-
-rptg_get_nodes(G) = Ns :-
-    rptg_get_nodes(G,Ns).
-
-rptg_successors(G, N, Ss) :-
-    rptg_get_edgemap(G, EdgeMap),
+rptg_successors(G, N) = Successors :-
+    EdgeMap = rptg_get_edgemap(G),
     map.lookup(EdgeMap, N, OutEdges),
-    map.values(OutEdges, SsList),
-    set.list_to_set(SsList, Ss).
+    map.values(OutEdges, SuccessorList),
+    set.list_to_set(SuccessorList, Successors).
 
-rptg_successors(G, N) = S :-
-    rptg_successors(G, N, S).
+rptg_set_edge(Start, End, Info, Arc, !G) :-
+    AS0 = rptg_get_arc_supply(!.G),
+    counter.allocate(A, AS0, AS),
+    rptg_set_arc_supply(AS, !G),
 
-rptg_set_edge(Start, End, Info, Arc, G0, G) :-
-    rptg_get_arc_supply(G0, AS0),
-    AS = AS0 + 1,
-    Arc = rptg_arc(AS),
-    rptg_set_arc_supply(AS, G0, G1),
+    Arc = rptg_arc(A),
 
-    rptg_get_arcmap(G1, ArcMap0),
+    ArcMap0 = rptg_get_arcmap(!.G),
     map.set(ArcMap0, Arc, rptg_arc_info(Start, End, Info), ArcMap),
-    rptg_set_arcmap(ArcMap, G1, G2),
+    rptg_set_arcmap(ArcMap, !G),
 
     % register into edge set of the Start node
-    rptg_get_edgemap(G2, EdgeMap0),
+    EdgeMap0 = rptg_get_edgemap(!.G),
     map.lookup(EdgeMap0, Start, OutEdges0),
     map.set(OutEdges0, Arc, End, OutEdges),
     map.set(EdgeMap0, Start, OutEdges, EdgeMap),
-    rptg_set_edgemap(EdgeMap, G2, G).
+    rptg_set_edgemap(EdgeMap, !G).
 
 rptg_arc_contents(G, Arc, S, E, Content) :-
-    rptg_get_arcmap(G, ArcMap),
+    ArcMap = rptg_get_arcmap(G),
     map.lookup(ArcMap, Arc, I),
     I = rptg_arc_info(S, E, Content).
 
@@ -359,7 +371,7 @@ rptg_path(G, S, E, Path) :-
 :- mode rptg_path_2(in, in, out, in, out) is nondet.
 
 rptg_path_2(G, S, E, Nodes0, Path) :-
-    rptg_get_edgemap(G, EdgeMap),
+    EdgeMap = rptg_get_edgemap(G),
     map.lookup(EdgeMap, S, OutEdgesOfS),
     (
         map.member(OutEdgesOfS, A, E),
@@ -393,7 +405,7 @@ reachable_and_having_type(Graph, Start, EType, E) :-
 
 reachable_and_having_type_2(Graph, [StartNode | StartNodes0], VisitedNodes0,
         EType, E) :-
-    rptg_get_edgemap(Graph, EdgeMap),
+    EdgeMap = rptg_get_edgemap(Graph),
     map.lookup(EdgeMap, StartNode, OutArcs),
     map.values(OutArcs, Ends),
     ( if
@@ -427,61 +439,27 @@ find_node_with_same_type([N | Ns], Graph, Type, End) :-
         find_node_with_same_type(Ns, Graph, Type, End)
     ).
 
-rptg_get_node_supply(G, NS) :-
-    G = rpt_graph(NS, _AS, _N, _A, _E).
-rptg_get_arc_supply(G, AS) :-
-    G = rpt_graph(_NS, AS, _N, _A, _E).
-rptg_get_nodemap(G, N) :-
-    G = rpt_graph(_NS, _AS, N, _A, _E).
-rptg_get_arcmap(G, A) :-
-    G = rpt_graph(_NS, _AS, _N, A, _E).
-rptg_get_edgemap(G, E) :-
-    G = rpt_graph(_NS, _AS, _N, _A, E).
-rptg_set_node_supply(NS, !G) :-
-    !.G = rpt_graph(_, AS, N, A, E),
-    !:G = rpt_graph(NS, AS, N, A, E).
-
-rptg_set_arc_supply(AS, !G) :-
-    !.G = rpt_graph(NS, _, N, A, E),
-    !:G = rpt_graph(NS, AS, N, A, E).
-rptg_set_nodemap(N, !G) :-
-    !.G = rpt_graph(NS, AS, _, A, E),
-    !:G = rpt_graph(NS, AS, N, A, E).
-rptg_set_arcmap(A, !G) :-
-    !.G = rpt_graph(NS, AS, N, _, E),
-    !:G = rpt_graph(NS, AS, N, A, E).
-rptg_set_edgemap(E, !G) :-
-    !.G= rpt_graph(NS, AS, N, A, _),
-    !:G = rpt_graph(NS, AS, N, A, E).
-
-rptg_node_content_get_varset(NC, NC ^ varset).
-rptg_node_content_get_region_name(NC, NC ^ reg_var_name).
-rptg_node_content_get_merged_from(NC, NC ^ merged_from).
-rptg_node_content_get_node_type(NC, NC ^ node_type).
-
-rptg_node_content_set_varset(VarSet, !NC) :-
-    !.NC ^ varset := VarSet = !:NC.
+rptg_node_content_set_vars(Vars, !NC) :-
+    !:NC = !.NC ^ rptg_nc_vars := Vars.
 rptg_node_content_set_region_name(Name, !NC) :-
-    !.NC ^ reg_var_name := Name = !:NC.
+    !:NC = !.NC ^ rptg_nc_reg_var_name := Name.
 rptg_node_content_set_merged_from(Nodes, !NC) :-
-    !.NC ^ merged_from := Nodes = !:NC.
+    !:NC = !.NC ^ rptg_nc_merged_from := Nodes.
 rptg_node_content_set_node_type(NodeType, !NC) :-
-    !.NC ^ node_type := NodeType = !:NC.
+    !:NC = !.NC ^ rptg_nc_node_type := NodeType.
 
-rptg_arc_content_get_label(AC, AC ^ label).
+rptg_arc_content_get_label(AC) = AC ^ rptg_ac_label.
 rptg_arc_content_set_label(Label, !AC) :-
-    !.AC ^ label := Label = !:AC.
+    !.AC ^ rptg_ac_label := Label = !:AC.
 
-    % find a node in the graph using its region name
-    %
 get_node_by_region_name(Graph, RegName, Node) :-
     % from all nodes in the graph find a node corresponding to the
     % region name
-    rptg_get_nodes(Graph, AllNodes),
+    AllNodes = rptg_get_nodes(Graph),
     ( if
-        get_node_by_region_name_from_list(Graph, AllNodes, RegName, Node0)
+        get_node_by_region_name_from_list(Graph, AllNodes, RegName, NodePrime)
       then
-        Node = Node0
+        Node = NodePrime
       else
         unexpected(this_file, "get_node_by_region_name: No such a node exists")
     ).
@@ -491,9 +469,9 @@ get_node_by_region_name(Graph, RegName, Node) :-
 
 get_node_by_region_name_from_list(Graph, List, RegName, Node) :-
     List = [ANode | Rest],
-    rptg_node_contents(Graph, ANode, NodeInfo),
+    NodeContents = rptg_node_contents(Graph, ANode),
     ( if
-        NodeInfo ^ reg_var_name = RegName
+        NodeContents ^ rptg_nc_reg_var_name = RegName
       then
         Node = ANode
       else
@@ -503,46 +481,46 @@ get_node_by_region_name_from_list(Graph, List, RegName, Node) :-
     % find a node in the graph using a set of variables.
     % Because a variable is assigned to only one node.
     %
-get_node_by_varset(Graph, Varset, Node) :-
-    rptg_get_nodes(Graph, AllNodes),
+get_node_by_vars(Graph, Vars, Node) :-
+    AllNodes = rptg_get_nodes(Graph),
     ( if
-        get_node_by_varset_from_list(Graph, AllNodes, Varset, Node0)
+        get_node_by_vars_from_list(Graph, AllNodes, Vars, NodePrime)
       then
-        Node = Node0
+        Node = NodePrime
       else
-        unexpected(this_file, "get_node_by_varset: No such a node exists")
+        unexpected(this_file, "get_node_by_vars: No such a node exists")
     ).
 
-:- pred get_node_by_varset_from_list(rpt_graph::in, list(rptg_node)::in,
+:- pred get_node_by_vars_from_list(rpt_graph::in, list(rptg_node)::in,
     set(prog_var)::in, rptg_node::out) is semidet.
 
-get_node_by_varset_from_list(Graph, List, Varset, Node) :-
+get_node_by_vars_from_list(Graph, List, Vars, Node) :-
     List = [ANode | Rest],
-    rptg_node_contents(Graph, ANode, NodeInfo),
-    ( set.subset(Varset, NodeInfo ^ varset) ->
+    NodeContents = rptg_node_contents(Graph, ANode),
+    ( set.subset(Vars, NodeContents ^ rptg_nc_vars) ->
         Node = ANode
     ;
-        get_node_by_varset_from_list(Graph, Rest, Varset, Node)
+        get_node_by_vars_from_list(Graph, Rest, Vars, Node)
     ).
 
     % find a node in the graph using a variable assigned to it.
-    % simply call get_node_by_varset.
+    % simply call get_node_by_vars.
     %
 get_node_by_variable(Graph, Var, Node) :-
     % make a set(prog_var) containing the variable
-    set.init(Varset0),
-    set.insert(Varset0, Var, Varset),
+    set.init(Vars0),
+    set.insert(Vars0, Var, Vars),
     % find the node
-    get_node_by_varset(Graph, Varset, Node).
+    get_node_by_vars(Graph, Vars, Node).
 
 get_node_by_node(Graph, Node, MergedNode) :-
     % first the node in the NodeMap
-    rptg_get_nodemap(Graph, NodeMap),
+    NodeMap = rptg_get_nodemap(Graph),
     ( map.search(NodeMap, Node, _NodeContent) ->
         MergedNode = Node
     ;
         % not directly in the NodeMap, checked if it has been merged
-        rptg_get_nodes(Graph, AllNodes),
+        AllNodes = rptg_get_nodes(Graph),
         ( get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0) ->
             MergedNode = MergedNode0
         ;
@@ -554,20 +532,18 @@ get_node_by_node(Graph, Node, MergedNode) :-
     rptg_node::in, rptg_node::out) is semidet.
 
 get_node_by_node_from_list(Graph, [N | Ns], Node, MergedNode) :-
-    rptg_node_contents(Graph, N, NContent),
-    ( set.member(Node, NContent ^ merged_from) ->
+    NodeContent = rptg_node_contents(Graph, N),
+    ( set.member(Node, NodeContent ^ rptg_nc_merged_from) ->
         MergedNode = N
     ;
         get_node_by_node_from_list(Graph, Ns, Node, MergedNode)
     ).
 
-rptg_lookup_region_name(Graph, Node) = RegionName :-
-    rptg_node_contents(Graph, Node, Content),
-    Content ^ reg_var_name = RegionName.
+rptg_lookup_region_name(Graph, Node) =
+    rptg_node_contents(Graph, Node) ^ rptg_nc_reg_var_name.
 
-rptg_lookup_node_type(Graph, Node) = NodeType :-
-    rptg_node_contents(Graph, Node, Content),
-    Content ^ node_type = NodeType.
+rptg_lookup_node_type(Graph, Node) =
+    rptg_node_contents(Graph, Node) ^ rptg_nc_node_type.
 
 %-----------------------------------------------------------------------------%
 %
@@ -575,16 +551,17 @@ rptg_lookup_node_type(Graph, Node) = NodeType :-
 %
 
 unify_operator(Node1, Node2, !Graph) :-
-    % The varset need to be unioned.
-    rptg_get_nodemap(!.Graph, NodeMap0),
-    rptg_node_contents(!.Graph, Node1, NodeContent1),
-    rptg_node_contents(!.Graph, Node2, NodeContent2),
+    % The vars need to be unioned.
+    NodeMap0 = rptg_get_nodemap(!.Graph),
+    NodeContent1 = rptg_node_contents(!.Graph, Node1),
+    NodeContent2 = rptg_node_contents(!.Graph, Node2),
 
-    rptg_node_content_set_varset(
-        set.union(NodeContent1 ^ varset, NodeContent2 ^ varset),
-        NodeContent1, NewContent0),
-    rptg_node_content_set_merged_from(
-        set.union(NodeContent1 ^ merged_from, NodeContent2 ^ merged_from),
+    set.union(NodeContent1 ^ rptg_nc_vars, NodeContent2 ^ rptg_nc_vars,
+        UnionVars),
+    rptg_node_content_set_vars(UnionVars, NodeContent1, NewContent0),
+    set.union(NodeContent1 ^ rptg_nc_merged_from,
+        NodeContent2 ^ rptg_nc_merged_from, UnionMergedFrom),
+    rptg_node_content_set_merged_from(UnionMergedFrom,
         NewContent0, NewContent1),
     map.det_update(NodeMap0, Node1, NewContent1, NodeMap1),
 
@@ -608,7 +585,7 @@ unify_operator(Node1, Node2, !Graph) :-
 
 transfer_out_edges(Node1, Node2, !Graph) :-
     % Out-edges from node 2.
-    rptg_get_edgemap(!.Graph, EdgeMap),
+    EdgeMap = rptg_get_edgemap(!.Graph),
     map.lookup(EdgeMap, Node2, OutEdges2Map),
     map.keys(OutEdges2Map, OutArcs),
     % Transfer them to node 1
@@ -660,7 +637,7 @@ transfer_in_edges(Node1, Node2, !Graph) :-
     is det.
 
 rptg_get_in_arcs(Graph, Node, Arcs) :-
-    rptg_get_arcmap(Graph, ArcMap),
+    ArcMap = rptg_get_arcmap(Graph),
     map.foldl(arc_points_to_node(Node), ArcMap, [], Arcs).
 
 :- pred arc_points_to_node(rptg_node::in, rptg_arc::in, rptg_arc_info::in,
@@ -769,8 +746,9 @@ edge_operator(Start, End, Info, !G) :-
 %
 % For finding and checking edges in graph.
 %
+
 find_arc_from_node_with_same_label(N, ArcContent, G, M) :-
-    rptg_get_edgemap(G, EdgeMap),
+    EdgeMap = rptg_get_edgemap(G),
     map.lookup(EdgeMap, N, OutEdges),
     map.keys(OutEdges, OutArcs),
     find_arc_with_same_label(ArcContent, OutArcs, G, M).
@@ -787,7 +765,7 @@ find_arc_with_same_label(ArcContent, [Arc | Arcs], G, M) :-
     ).
 
 edge_in_graph(Start, Label, End, Graph) :-
-    rptg_get_edgemap(Graph, EdgeMap),
+    EdgeMap = rptg_get_edgemap(Graph),
     map.lookup(EdgeMap, Start, OutEdges),
     solutions(map.inverse_search(OutEdges, End), ArcList),
     find_arc_with_same_label(Label, ArcList, Graph, _).
@@ -828,8 +806,8 @@ simple_map_equal(Map1, Map2) :-
     simple_map_equal_2(Ks1, Map1, Map2).
 
     % With the condition that the two maps have the same number of entries,
-    % verify that all keys in map 1 are also in map 2 and
-    % their corresponding values are equal.
+    % verify that all keys in map 1 are also in map 2 and that their
+    % corresponding values are equal.
     %
 :- pred simple_map_equal_2(list(K1)::in,
     map(K1, V1)::in, map(K1, V1)::in) is semidet.
@@ -913,7 +891,7 @@ reach_from_a_variable_2([Node_Selector | Node_Selectors0],
     Processed = [Node | Processed0],
 
     % Take out-arcs of the Node and update the remembered list
-    rptg_get_edgemap(Graph, EdgeMap),
+    EdgeMap = rptg_get_edgemap(Graph),
     map.lookup(EdgeMap, Node, OutEdges),
     map.keys(OutEdges, OutArcs),
     list.foldl(
@@ -934,7 +912,7 @@ reach_from_a_variable_2([Node_Selector | Node_Selectors0],
 update_remembered_list(Selector0, HLDS, TypeX, Graph, Processed, OutArc,
         !List) :-
     rptg_arc_contents(Graph, OutArc, _Start, End, ArcContent),
-    ArcSelector = ArcContent ^ label,
+    ArcSelector = ArcContent ^ rptg_ac_label,
     Selector = Selector0 ++ ArcSelector,
     ( check_type_of_node(HLDS, TypeX, Selector) ->
         % The arc's selector is a valid one.

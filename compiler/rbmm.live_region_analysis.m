@@ -178,7 +178,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
             set.difference(InputR, OutputR, DeadR),
             svmap.set(PPId, DeadR, !DeadRTable),
             % localR
-            rptg_get_nodes(Graph, Nodes),
+            Nodes = rptg_get_nodes(Graph),
             set.difference(
                 set.difference(set.from_list(Nodes), InputR),
                 OutputR, LocalR),
