@@ -149,17 +149,17 @@
 check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    
+
     trace [io(!IO1)] (
     maybe_write_string(Verbose,
         "% Checking instance declaration types...\n", !IO1)
     ),
     check_instance_declaration_types(!ModuleInfo, !Specs),
-  
+
     % If we encounter any errors while checking that the types in an
     % instance declaration are valid then don't attempt the remaining
     % passes.  Pass 2 cannot be run since the name mangling scheme we
-    % use to generate the names of the method wrapper predicates may 
+    % use to generate the names of the method wrapper predicates may
     % abort if the types in an instance are not valid, e.g. if an
     % instance head contains a type variable that is not wrapped inside
     % a functor.  Most of the other passes also depend upon information
@@ -175,7 +175,7 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
                 "% Checking typeclass instances...\n", !IO2)
         ),
         check_instance_decls(!ModuleInfo, !QualInfo, !Specs),
-    
+
         trace [io(!IO3)] (
             maybe_write_string(Verbose,
                 "% Checking for cyclic classes...\n", !IO3)
@@ -201,7 +201,7 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
         check_typeclass_constraints(!ModuleInfo, !Specs)
     ;
         !.Specs = [_ | _]
-    ). 
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1261,22 +1261,23 @@ check_instance_declaration_types(!ModuleInfo, !Specs) :-
     module_info_get_instance_table(!.ModuleInfo, InstanceTable),
     map.foldl(check_instance_declaration_types(!.ModuleInfo),
         InstanceTable, !Specs).
-    
+
 :- pred check_instance_declaration_types(module_info::in,
     class_id::in, list(hlds_instance_defn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_instance_declaration_types(MI, ClassId, InstanceDefns, !Specs) :-
-    list.foldl(check_one_instance_declaration_types(MI, ClassId),
+check_instance_declaration_types(ModuleInfo, ClassId, InstanceDefns, !Specs) :-
+    list.foldl(check_one_instance_declaration_types(ModuleInfo, ClassId),
         InstanceDefns, !Specs).
 
 :- pred check_one_instance_declaration_types(module_info::in,
     class_id::in, hlds_instance_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_one_instance_declaration_types(MI, ClassId, InstanceDefn, !Specs) :-
+check_one_instance_declaration_types(ModuleInfo, ClassId, InstanceDefn,
+        !Specs) :-
     Types = InstanceDefn ^ instance_types,
-    list.foldl3(is_valid_instance_type(MI, ClassId, InstanceDefn),
+    list.foldl3(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
         Types, 1, _, set.init, _, !Specs).
 
     % Each of these types in the instance declaration must be either a
@@ -1288,75 +1289,76 @@ check_one_instance_declaration_types(MI, ClassId, InstanceDefn, !Specs) :-
     int::in, int::out, set(mer_type)::in, set(mer_type)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-is_valid_instance_type(_MI, _ClassId, _InstanceDefn,
-        builtin_type(_), N, N+1, !SeenTypes, !Specs).
-is_valid_instance_type(_MI, ClassId, InstanceDefn,
-        higher_order_type(_, _, _, _), N, N+1, !SeenTypes, !Specs) :-
-    Err = [words("is a higher order type")],
-    Spec = error_message_2(ClassId, InstanceDefn, N, Err), 
-    !:Specs = [Spec | !.Specs].
-is_valid_instance_type(_MI, ClassId, InstanceDefn,
-        tuple_type(Args, _), N, N+1, !SeenTypes, !Specs) :-
-    each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
+        N, N+1, !SeenTypes, !Specs) :-
     (
-        Result = no_error,
-        svset.insert_list(Args, !SeenTypes)
+        Type = builtin_type(_)
     ;
-        ( Result = local_non_distinct
-        ; Result = global_non_distinct
-        ; Result = arg_not_type_variable(_)
-        ),
-        Spec = error_message(ClassId, InstanceDefn, N, Result),
-        !:Specs = [Spec | !.Specs]
-    ).
-is_valid_instance_type(_MI, ClassId, InstanceDefn,
-        apply_n_type(_, _, _), N, N+1, !SeenTypes, !Specs) :-
-    Err = [words("is an apply/N type")],
-    Spec = error_message_2(ClassId, InstanceDefn, N, Err),
-    !:Specs = [Spec | !.Specs].
-is_valid_instance_type(_MI, _ClassId, _InstanceDefn,
-        kinded_type(_, _), N, N+1, !SeenTypes, !Specs) :-
-    unexpected("check_typeclass", "kinded_type").
-is_valid_instance_type(_MI, ClassId, InstanceDefn,
-        type_variable(_, _), N, N+1, !SeenTypes, !Specs) :-
-    Err = [words("is a type variable")],
-    Spec = error_message_2(ClassId, InstanceDefn, N, Err),
-    !:Specs = [Spec | !.Specs].
-is_valid_instance_type(MI, ClassId, InstanceDefn,
-        Type @ defined_type(TypeName, Args, _), N, N+1, !SeenTypes, !Specs) :-
-    each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
-    (   
-        Result = no_error,
-        svset.insert_list(Args, !SeenTypes),
-        ( type_to_type_defn(MI, Type, TypeDefn) ->
-            list.length(Args, TypeArity),
-            is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
-                InstanceDefn, !Specs),
-            get_type_defn_body(TypeDefn, TypeBody),
-            (
-                TypeBody = hlds_eqv_type(EqvType),
-                is_valid_instance_type(MI, ClassId, InstanceDefn, EqvType, N,
-                    _, !SeenTypes, !Specs)
-            ;
-                ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _)
-                ; TypeBody = hlds_foreign_type(_)
-                ; TypeBody = hlds_solver_type(_, _)
-                ; TypeBody = hlds_abstract_type(_)
-                )
-            )
+        (
+            Type = higher_order_type(_, _, _, _),
+            Pieces = [words("is a higher order type")]
         ;
-            % The type is either a builtin type or a type variable.
-            true
+            Type = apply_n_type(_, _, _),
+            Pieces = [words("is an apply/N type")]
+        ;
+            Type = type_variable(_, _),
+            Pieces = [words("is a type variable")]
+        ),
+        Spec = error_message_2(ClassId, InstanceDefn, N, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ;
+        Type = tuple_type(Args, _),
+        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+        (
+            Result = no_error,
+            svset.insert_list(Args, !SeenTypes)
+        ;
+            ( Result = local_non_distinct
+            ; Result = global_non_distinct
+            ; Result = arg_not_type_variable(_)
+            ),
+            Spec = error_message(ClassId, InstanceDefn, N, Result),
+            !:Specs = [Spec | !.Specs]
         )
     ;
-        ( Result = local_non_distinct
-        ; Result = global_non_distinct
-        ; Result = arg_not_type_variable(_)
-        ),
-        Spec = error_message(ClassId, InstanceDefn, N, Result),
-        !:Specs = [Spec | !.Specs]
+        Type = kinded_type(_, _),
+        unexpected("check_typeclass", "kinded_type")
+    ;
+        Type = defined_type(TypeName, Args, _),
+        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+        (
+            Result = no_error,
+            svset.insert_list(Args, !SeenTypes),
+            ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
+                list.length(Args, TypeArity),
+                is_visible_instance_type(TypeName, TypeArity, TypeDefn,
+                    ClassId, InstanceDefn, !Specs),
+                get_type_defn_body(TypeDefn, TypeBody),
+                (
+                    TypeBody = hlds_eqv_type(EqvType),
+                    is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
+                        EqvType, N, _, !SeenTypes, !Specs)
+                ;
+                    ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _)
+                    ; TypeBody = hlds_foreign_type(_)
+                    ; TypeBody = hlds_solver_type(_, _)
+                    ; TypeBody = hlds_abstract_type(_)
+                    )
+                )
+            ;
+                % The type is either a builtin type or a type variable.
+                true
+            )
+        ;
+            ( Result = local_non_distinct
+            ; Result = global_non_distinct
+            ; Result = arg_not_type_variable(_)
+            ),
+            Spec = error_message(ClassId, InstanceDefn, N, Result),
+            !:Specs = [Spec | !.Specs]
+        )
     ).
-    
+
     % Check that types that are referred to in an abstract instance
     % declaration in a module interface are visible in the module
     % interface, i.e they are either exported by the module or imported
@@ -1365,7 +1367,7 @@ is_valid_instance_type(MI, ClassId, InstanceDefn,
 :- pred is_visible_instance_type(sym_name::in, arity::in, hlds_type_defn::in,
     class_id::in, hlds_instance_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
-   
+
 is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
         InstanceDefn, !Specs) :-
     InstanceBody = InstanceDefn ^ instance_body,
@@ -1385,7 +1387,7 @@ is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
                 Pieces = [
                     words("Error: abstract instance declaration for"),
                     words("type class"),
-                    sym_name_and_arity(ClassName / ClassArity), 
+                    sym_name_and_arity(ClassName / ClassArity),
                     words("contains the type"),
                     sym_name_and_arity(TypeName / TypeArity),
                     words("but that type is not visible in the"),
@@ -1450,21 +1452,20 @@ each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
 error_message(ClassId, InstanceDefn, N, Error) = Spec :-
     (
         Error = local_non_distinct,
-        Err = 
-            [words("is not a type whose arguments are distinct type variables")]
+        Err = [words("is not a type"),
+            words("whose arguments are distinct type variables")]
     ;
         Error = global_non_distinct,
         Err = [words("contains a type variable which is used in another arg")]
     ;
         Error = arg_not_type_variable(ArgNum),
-        Err = [
-            words("is a type whose"), nth_fixed(ArgNum),
+        Err = [words("is a type whose"), nth_fixed(ArgNum),
             words("arg is not a variable")]
     ),
     Spec = error_message_2(ClassId, InstanceDefn, N, Err).
 
-:- func error_message_2(
-    class_id, hlds_instance_defn, int, format_components) = error_spec.
+:- func error_message_2(class_id, hlds_instance_defn, int, format_components)
+    = error_spec.
 
 error_message_2(ClassId, InstanceDefn, N, Pieces) = Spec :-
     ClassId = class_id(ClassName, _),
