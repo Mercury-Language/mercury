@@ -866,9 +866,12 @@ arc_module_id(CallA, imdg_arc(CallB0, ModuleId)) = ModuleId :-
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
 taint_module_overall_status(Status, ModuleId, !Info, !IO) :-
-    ( Status = optimal ->
-        true
+    (
+        Status = optimal
     ;
+        ( Status = suboptimal
+        ; Status = invalid
+        ),
         ensure_old_module_analysis_results_loaded(ModuleId, !Info, !IO),
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
             io.print("Tainting the overall module status of ", !IO),

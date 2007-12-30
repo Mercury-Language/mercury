@@ -1440,11 +1440,25 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 ;
                     % Perhaps this is a closure and the argument was passed in
                     % when the closure was created.
-                    ( AtomicGoal = higher_order_call_rep(Closure, _) ->
+                    (
+                        AtomicGoal = higher_order_call_rep(Closure, _),
                         Var = Closure,
                         MaybePrims = yes(
                             primitive_list_and_var(Primitives0, Var, yes))
                     ;
+                        ( AtomicGoal = unify_construct_rep(_, _, _)
+                        ; AtomicGoal = unify_deconstruct_rep(_, _, _)
+                        ; AtomicGoal = partial_deconstruct_rep(_, _, _)
+                        ; AtomicGoal = partial_construct_rep(_, _, _)
+                        ; AtomicGoal = unify_assign_rep(_, _)
+                        ; AtomicGoal = cast_rep(_, _)
+                        ; AtomicGoal = unify_simple_test_rep(_, _)
+                        ; AtomicGoal = pragma_foreign_code_rep(_)
+                        ; AtomicGoal = method_call_rep(_, _, _)
+                        ; AtomicGoal = plain_call_rep(_, _, _)
+                        ; AtomicGoal = builtin_call_rep(_, _, _)
+                        ; AtomicGoal = event_call_rep(_, _)
+                        ),
                         throw(internal_error("make_primitive_list",
                             "argument number mismatch"))
                     )

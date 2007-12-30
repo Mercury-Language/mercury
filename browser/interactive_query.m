@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -216,19 +216,22 @@ term_to_list(term.functor(term.atom("[|]"),
 
 run_query(Options, Program, !IO) :-
     SourceFile = query_module_name ++ ".m",
-    io.get_environment_var("MERCURY_OPTIONS", MAYBE_MERCURY_OPTIONS, !IO),
-    ( MAYBE_MERCURY_OPTIONS = yes(MERCURY_OPTIONS) ->
+    io.get_environment_var("MERCURY_OPTIONS", MaybeMercuryOptions, !IO),
+    (
+        MaybeMercuryOptions = yes(MercuryOptions),
         io.set_environment_var("MERCURY_OPTIONS", "", !IO),
         write_prog_to_file(Program, SourceFile, !IO),
         compile_file(Options, Succeeded, !IO),
-        ( Succeeded = yes ->
+        (
+            Succeeded = yes,
             dynamically_load_and_run(!IO)
         ;
-            true
+            Succeeded = no
         ),
         cleanup_query(Options, !IO),
-        io.set_environment_var("MERCURY_OPTIONS", MERCURY_OPTIONS, !IO)
+        io.set_environment_var("MERCURY_OPTIONS", MercuryOptions, !IO)
     ;
+        MaybeMercuryOptions = no,
         print("Unable to unset MERCURY_OPTIONS environment variable", !IO)
     ).
 
@@ -540,17 +543,21 @@ invoke_system_command(Command, Succeeded, !IO) :-
         true
     ),
     io.call_system(Command, Result, !IO),
-    ( Result = ok(0) ->
-        ( verbose = yes ->
-            print("% done.\n", !IO)
+    (
+        Result = ok(Status),
+        ( Status = 0 ->
+            ( verbose = yes ->
+                print("% done.\n", !IO)
+            ;
+                true
+            ),
+            Succeeded = yes
         ;
-            true
-        ),
-        Succeeded = yes
-    ; Result = ok(_) ->
-        print("Compilation error(s) occurred.\n", !IO),
-        Succeeded = no
+            print("Compilation error(s) occurred.\n", !IO),
+            Succeeded = no
+        )
     ;
+        Result = error(_),
         print("Error: unable to invoke the compiler.\n", !IO),
         Succeeded = no
     ).

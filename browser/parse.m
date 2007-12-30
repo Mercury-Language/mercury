@@ -1,21 +1,21 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2006 The University of Melbourne.
+% Copyright (C) 1998-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: parse.m.
 % Author: aet.
-% 
+%
 % This file contains the parser for the term browser command language.
 % If the term browser is called from mdb, it parses the stuff you type
 % at the "browser> " prompt after typing "browse" from the mdb prompt.
 % If it is called from the external debugger, then it parses the stuff
 % contained in a term `external_request(<string to parse>)' send by the
 % external debugger.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -421,29 +421,30 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         )
     ->
         (
-            ArgTokens = []
-        ->
+            ArgTokens = [],
             HowTrack = track_fast,
             MaybePath = no
         ;
-            ( ArgTokens = [arg("accurate")] 
-            ; ArgTokens = [arg("a")] 
-            ) 
-        ->
-            HowTrack = track_accurate,
-            MaybePath = no
-        ; 
-            ( ArgTokens = [arg("accurate") | Rest] 
-            ; ArgTokens = [arg("a") | Rest]
+            ArgTokens = [HeadArgToken | TailArgTokens],
+            (
+                ( HeadArgToken = arg("accurate")
+                ; HeadArgToken = arg("a")
+                )
+            ->
+                HowTrack = track_accurate,
+                (
+                    TailArgTokens = [],
+                    MaybePath = no
+                ;
+                    TailArgTokens = [_ | _],
+                    parse_path(TailArgTokens, Path),
+                    MaybePath = yes(Path)
+                )
+            ;
+                HowTrack = track_fast,
+                parse_path(ArgTokens, Path),
+                MaybePath = yes(Path)
             )
-        ->
-            HowTrack = track_accurate,
-            parse_path(Rest, Path),
-            MaybePath = yes(Path)
-        ;
-            HowTrack = track_fast,
-            parse_path(ArgTokens, Path),
-            MaybePath = yes(Path)
         ),
         Command = track(HowTrack, AssertInvalid, MaybePath)
     ;
@@ -744,7 +745,7 @@ format_param_cmd_option_defaults(set_pretty,     bool(no)).
 % The commented out code is not currently used.
 
 % :- pred show_command(command::in, io::di, io::uo) is det.
-% 
+%
 % show_command(ls(Path)) -->
 %   io.write_string("ls "),
 %   show_path(Path),
@@ -779,17 +780,17 @@ format_param_cmd_option_defaults(set_pretty,     bool(no)).
 %   io.write_string("empty\n").
 % show_command(unknown) -->
 %   io.write_string("unknown\n").
-% 
+%
 % :- pred show_path(path::in, io::di, io::uo) is det.
-% 
+%
 % show_path(root_rel(Dirs)) -->
 %   io.write_string("/"),
 %   show_dirs(Dirs).
 % show_path(dot_rel(Dirs)) -->
 %   show_dirs(Dirs).
-% 
+%
 % :- pred show_dirs(list(dir)::in, io::di, io::uo) is det.
-% 
+%
 % show_dirs([]) -->
 %   io.nl.
 % show_dirs([child_num(Num) | Dirs]) -->
@@ -803,9 +804,9 @@ format_param_cmd_option_defaults(set_pretty,     bool(no)).
 % show_dirs([parent | Dirs]) -->
 %   io.write_string("../"),
 %   show_dirs(Dirs).
-% 
+%
 % :- pred show_setting(setting::in, io::di, io::uo) is det.
-% 
+%
 % show_setting(depth(Depth)) -->
 %   io.write_string("depth "),
 %   io.write_int(Depth),
@@ -830,9 +831,9 @@ format_param_cmd_option_defaults(set_pretty,     bool(no)).
 %   io.write_string("num_io_actions "),
 %   io.write_int(N),
 %   io.nl.
-% 
+%
 % :- pred show_format(portray_format::in, io::di, io::uo) is det.
-% 
+%
 % show_format(flat) -->
 %   io.write_string("flat").
 % show_format(raw_pretty) -->

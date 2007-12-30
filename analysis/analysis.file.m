@@ -641,7 +641,8 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
         io.nl(!IO)
     ), !IO),
     io.open_input(AnalysisFileName, InputResult, !IO),
-    ( InputResult = ok(InputStream) ->
+    (
+        InputResult = ok(InputStream),
         % Request file already exists.  Check it has the right version
         % number, then append the new requests to the end.
 
@@ -654,7 +655,8 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
                 term.integer(version_number), [], _))
         ->
             io.open_append(AnalysisFileName, AppendResult, !IO),
-            ( AppendResult = ok(AppendStream) ->
+            (
+                AppendResult = ok(AppendStream),
                 io.set_output_stream(AppendStream, OldOutputStream, !IO),
                 write_analysis_entries(write_request_entry(Compiler),
                     ModuleRequests, !IO),
@@ -662,12 +664,14 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
                 io.close_output(AppendStream, !IO),
                 Appended = yes
             ;
+                AppendResult = error(_),
                 Appended = no
             )
         ;
             Appended = no
         )
     ;
+        InputResult = error(_),
         Appended = no
     ),
     (

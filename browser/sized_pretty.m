@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -510,7 +510,8 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, !Used) :-
         HeadArg = yes(X),
         X = _ - STerm,
         Size = extract_size_from_annotation(STerm),
-        ( STerm = exact(_, _, _, _, _) ->
+        (
+            STerm = exact(_, _, _, _, _),
             ( compare_measures(ArgLimit, Size) = (<) ->
                 check_args(Params, Rest, ArgLimit, Passed, !Used)
             ;
@@ -519,6 +520,7 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, !Used) :-
                 check_args(Params, Rest, ArgLimit, PassedRest, !Used)
             )
         ;
+            STerm = at_least(_, _, _),
             check_args(Params, Rest, ArgLimit, Passed, !Used)
         )
     ;
@@ -947,10 +949,12 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
     deconstruct_browser_term_cc(BrowserDb, BrowserTerm, Functor, ActualArity,
         Args, MaybeReturn),
     FSize = string.length(Functor) + 2 * (ActualArity),
-    ( Check = yes ->
+    (
+        Check = yes,
         get_arg_length(Args, TotalLength, MaxArgLength),
         int.max(MaxArgLength, (string.length(Functor) + 1), MaxLength)
     ;
+        Check = no,
         TotalLength = 0,
         MaxLength = 0
     ),

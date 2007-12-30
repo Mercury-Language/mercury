@@ -1074,24 +1074,46 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
         !.User ^ testing = no,
         write_decl_bug(Bug, !.User, !IO),
         get_command("Is this a bug? ", Command, !User, !IO),
-        ( Command = user_cmd_yes ->
+        (
+            Command = user_cmd_yes,
             Response = confirm_bug
-        ; Command = user_cmd_no ->
+        ;
+            Command = user_cmd_no,
             Response = overrule_bug
-        ; Command = user_cmd_quit ->
+        ;
+            Command = user_cmd_quit,
             Response = abort_diagnosis
-        ; Command = user_cmd_browse_arg(MaybeArgNum) ->
+        ;
+            Command = user_cmd_browse_arg(MaybeArgNum),
             browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
-        ; Command = user_cmd_browse_xml_arg(MaybeArgNum) ->
+        ;
+            Command = user_cmd_browse_xml_arg(MaybeArgNum),
             browse_xml_decl_bug(Bug, MaybeArgNum, !.User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
-        ; Command = user_cmd_browse_io(ActionNum) ->
+        ;
+            Command = user_cmd_browse_io(ActionNum),
             decl_bug_io_actions(Bug, MaybeIoActions),
             browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeTrack,
                 !User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
         ;
+            ( Command = user_cmd_ask
+            ; Command = user_cmd_change_search(_)
+            ; Command = user_cmd_empty
+            ; Command = user_cmd_help(_)
+            ; Command = user_cmd_illegal
+            ; Command = user_cmd_inadmissible
+            ; Command = user_cmd_info
+            ; Command = user_cmd_param_command(_)
+            ; Command = user_cmd_pd
+            ; Command = user_cmd_print_arg(_, _)
+            ; Command = user_cmd_print_io(_, _)
+            ; Command = user_cmd_skip
+            ; Command = user_cmd_trust_module
+            ; Command = user_cmd_trust_predicate
+            ; Command = user_cmd_undo
+            ),
             user_confirm_bug_help(!.User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
         )

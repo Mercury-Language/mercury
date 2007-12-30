@@ -591,54 +591,68 @@ get_trace_call_atom(node_call(_, _, AtomArgs, _, _, _, _, Label, _, _))
 
 %-----------------------------------------------------------------------------%
 
-step_left_in_contour(Store, node_exit(_, Call, _, _, _, _, _, _)) = Prec :-
-    call_node_from_id(Store, Call, CallNode),
-    Prec = CallNode ^ call_preceding.
-step_left_in_contour(Store, node_excp(_, Call, _, _, _, _, _)) = Prec :-
-    call_node_from_id(Store, Call, CallNode),
-    Prec = CallNode ^ call_preceding.
-step_left_in_contour(_, node_switch(Prec, _)) = Prec.
-step_left_in_contour(_, node_first_disj(Prec, _)) = Prec.
-step_left_in_contour(Store, node_later_disj(_, _, FirstDisj)) = Prec :-
-    first_disj_node_from_id(Store, FirstDisj, node_first_disj(Prec, _)).
-step_left_in_contour(_, node_cond(Prec, _, Status)) = Node :-
-    ( Status = failed ->
-        throw(internal_error("step_left_in_contour", "failed COND node"))
+step_left_in_contour(Store, Node) = Prec :-
+    (
+        Node = node_exit(_, Call, _, _, _, _, _, _),
+        call_node_from_id(Store, Call, CallNode),
+        Prec = CallNode ^ call_preceding
     ;
-        Node = Prec
-    ).
-step_left_in_contour(_, node_then(Prec, _, _)) = Prec.
-step_left_in_contour(Store, node_else(_, Cond, _)) = Prec :-
-    cond_node_from_id(Store, Cond, node_cond(Prec, _, _)).
-step_left_in_contour(Store, node_neg_succ(_, Neg, _)) = Prec :-
-    neg_node_from_id(Store, Neg, node_neg(Prec, _, _)).
-    %
-    % The following cases are possibly at the left end of a contour,
-    % where we cannot step any further.
-    %
-step_left_in_contour(_, node_call(_, _, _, _, _, _, _, _, _, _)) = _ :-
-    throw(internal_error("step_left_in_contour", "unexpected CALL node")).
-step_left_in_contour(_, node_neg(Prec, _, Status)) = Next :-
-    ( Status = undecided ->
-        % An exception must have been thrown inside the negation,
-        % so we don't consider it a separate context.
-        Next = Prec
+        Node = node_excp(_, Call, _, _, _, _, _),
+        call_node_from_id(Store, Call, CallNode),
+        Prec = CallNode ^ call_preceding
     ;
-        throw(internal_error("step_left_in_contour", "unexpected NEGE node"))
+        Node = node_switch(Prec, _)
+    ;
+        Node = node_first_disj(Prec, _)
+    ;
+        Node = node_later_disj(_, _, FirstDisj),
+        first_disj_node_from_id(Store, FirstDisj, node_first_disj(Prec, _))
+    ;
+        Node = node_cond(Prec, _, Status),
+        (
+            Status = failed,
+            throw(internal_error("step_left_in_contour", "failed COND node"))
+        ;
+            ( Status = undecided
+            ; Status = succeeded
+            )
+        )
+    ;
+        Node = node_then(Prec, _, _)
+    ;
+        Node = node_else(_, Cond, _),
+        cond_node_from_id(Store, Cond, node_cond(Prec, _, _))
+    ;
+        Node = node_neg_succ(_, Neg, _),
+        neg_node_from_id(Store, Neg, node_neg(Prec, _, _))
+    ;
+        Node = node_call(_, _, _, _, _, _, _, _, _, _),
+        % We are at the left end of a contour, so we cannot step any further.
+        throw(internal_error("step_left_in_contour", "unexpected CALL node"))
+    ;
+        Node = node_neg(Prec, _, Status),
+        (
+            Status = undecided
+            % An exception must have been thrown inside the negation,
+            % so we don't consider it a separate context.
+        ;
+            ( Status = failed
+            ; Status = succeeded
+            ),
+            % We are at the left end of a contour, so we cannot step any
+            % further.
+            throw(internal_error("step_left_in_contour",
+                "unexpected NEGE node"))
+        )
+    ;
+        % In these cases we have reached a dead end, so we step to the
+        % previous contour instead.
+        ( Node = node_fail(_, _, _, _, _, _)
+        ; Node = node_redo(_, _, _, _, _)
+        ; Node = node_neg_fail(_, _, _)
+        ),
+        find_prev_contour(Store, Node, Prec)
     ).
-    %
-    % In the remaining cases we have reached a dead end, so we
-    % step to the previous contour instead.
-    %
-step_left_in_contour(Store, Node) = Prec :-
-    Node = node_fail(_, _, _, _, _, _),
-    find_prev_contour(Store, Node, Prec).
-step_left_in_contour(Store, Node) = Prec :-
-    Node = node_redo(_, _, _, _, _),
-    find_prev_contour(Store, Node, Prec).
-step_left_in_contour(Store, Node) = Prec :-
-    Node = node_neg_fail(_, _, _),
-    find_prev_contour(Store, Node, Prec).
 
     % Given any node which is not on a contour, find a node on
     % the previous contour in the same stratum.
@@ -652,58 +666,85 @@ step_left_in_contour(Store, Node) = Prec :-
     ;       node_redo(ground, ground, ground, ground, ground)
     ;       node_neg_fail(ground, ground, ground).
 
-find_prev_contour(Store, node_fail(_, Call, _, _, _, _), OnContour) :-
-    call_node_from_id(Store, Call, CallNode),
-    OnContour = CallNode ^ call_preceding.
-find_prev_contour(Store, node_redo(_, Exit, _, _, _), OnContour) :-
-    exit_node_from_id(Store, Exit, ExitNode),
-    OnContour = ExitNode ^ exit_preceding.
-find_prev_contour(Store, node_neg_fail(_, Neg, _), OnContour) :-
-    neg_node_from_id(Store, Neg, node_neg(OnContour, _, _)).
-    %
-    % The following cases are at the left end of a contour,
-    % so there are no previous contours in the same stratum.
-    %
-find_prev_contour(_, node_call(_, _, _, _, _, _, _, _, _, _), _) :-
-    throw(internal_error("find_prev_contour", "reached CALL node")).
-find_prev_contour(_, node_cond(_, _, _), _) :-
-    throw(internal_error("find_prev_contour", "reached COND node")).
-find_prev_contour(_, node_neg(_, _, _), _) :-
-    throw(internal_error("find_prev_contour", "reached NEGE node")).
-
-step_in_stratum(Store, node_exit(_, Call, MaybeRedo, _, _, _, _, _)) =
-    step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, node_fail(_, Call, MaybeRedo, _, _, _)) =
-    step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, node_excp(_, Call, MaybeRedo, _, _, _, _)) =
-    step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, node_redo(_, Exit, _, _, _)) = Next :-
-    exit_node_from_id(Store, Exit, ExitNode),
-    Next = ExitNode ^ exit_preceding.
-step_in_stratum(_, node_switch(Next, _)) = Next.
-step_in_stratum(_, node_first_disj(Next, _)) = Next.
-step_in_stratum(_, node_later_disj(Next, _, _)) = Next.
-step_in_stratum(_, node_cond(Prec, _, Status)) = Next :-
-    ( Status = failed ->
-        throw(internal_error("step_in_stratum", "failed COND node"))
+find_prev_contour(Store, Node, OnContour) :-
+    (
+        Node = node_fail(_, Call, _, _, _, _),
+        call_node_from_id(Store, Call, CallNode),
+        OnContour = CallNode ^ call_preceding
     ;
-        Next = Prec
+        Node = node_redo(_, Exit, _, _, _),
+        exit_node_from_id(Store, Exit, ExitNode),
+        OnContour = ExitNode ^ exit_preceding
+    ;
+        Node = node_neg_fail(_, Neg, _),
+        neg_node_from_id(Store, Neg, node_neg(OnContour, _, _))
+    ;
+        % These cases are at the left end of a contour, so there are
+        % no previous contours in the same stratum.
+        (
+            Node = node_call(_, _, _, _, _, _, _, _, _, _),
+            throw(internal_error("find_prev_contour", "reached CALL node"))
+        ;
+            Node = node_cond(_, _, _),
+            throw(internal_error("find_prev_contour", "reached COND node"))
+        ;
+            Node = node_neg(_, _, _),
+            throw(internal_error("find_prev_contour", "reached NEGE node"))
+        )
     ).
-step_in_stratum(_, node_then(Next, _, _)) = Next.
-step_in_stratum(Store, node_else(_, Cond, _)) = Next :-
-    cond_node_from_id(Store, Cond, node_cond(Next, _, _)).
-step_in_stratum(Store, node_neg_succ(_, Neg, _)) = Next :-
-    neg_node_from_id(Store, Neg, node_neg(Next, _, _)).
-step_in_stratum(Store, node_neg_fail(_, Neg, _)) = Next :-
-    neg_node_from_id(Store, Neg, node_neg(Next, _, _)).
-    %
-    % The following cases mark the boundary of the stratum,
-    % so we cannot step any further.
-    %
-step_in_stratum(_, node_call(_, _, _, _, _, _, _, _, _, _)) = _ :-
-    throw(internal_error("step_in_stratum", "unexpected CALL node")).
-step_in_stratum(_, node_neg(_, _, _)) = _ :-
-    throw(internal_error("step_in_stratum", "unexpected NEGE node")).
+
+step_in_stratum(Store, Node) = Next :-
+    (
+        Node = node_exit(_, Call, MaybeRedo, _, _, _, _, _),
+        Next = step_over_redo_or_call(Store, Call, MaybeRedo)
+    ;
+        Node = node_fail(_, Call, MaybeRedo, _, _, _),
+        Next = step_over_redo_or_call(Store, Call, MaybeRedo)
+    ;
+        Node = node_excp(_, Call, MaybeRedo, _, _, _, _),
+        Next = step_over_redo_or_call(Store, Call, MaybeRedo)
+    ;
+        Node = node_redo(_, Exit, _, _, _),
+        exit_node_from_id(Store, Exit, ExitNode),
+        Next = ExitNode ^ exit_preceding
+    ;
+        ( Node = node_switch(Next, _)
+        ; Node = node_first_disj(Next, _)
+        ; Node = node_later_disj(Next, _, _)
+        )
+    ;
+        Node = node_cond(Prec, _, Status),
+        (
+            Status = failed,
+            throw(internal_error("step_in_stratum", "failed COND node"))
+        ;
+            ( Status = succeeded
+            ; Status = undecided
+            ),
+            Next = Prec
+        )
+    ;
+        Node = node_then(Next, _, _)
+    ;
+        Node = node_else(_, Cond, _),
+        cond_node_from_id(Store, Cond, node_cond(Next, _, _))
+    ;
+        Node = node_neg_succ(_, Neg, _),
+        neg_node_from_id(Store, Neg, node_neg(Next, _, _))
+    ;
+        Node = node_neg_fail(_, Neg, _),
+        neg_node_from_id(Store, Neg, node_neg(Next, _, _))
+    ;
+        % These cases mark the boundary of the stratum,
+        % so we cannot step any further.
+        (
+            Node = node_call(_, _, _, _, _, _, _, _, _, _),
+            throw(internal_error("step_in_stratum", "unexpected CALL node"))
+        ;
+            Node = node_neg(_, _, _),
+            throw(internal_error("step_in_stratum", "unexpected NEGE node"))
+        )
+    ).
 
 :- func step_over_redo_or_call(S, R, R) = R <= annotated_trace(S, R).
 
@@ -864,7 +905,6 @@ call_node_set_last_interface(Call0, Last) = Call :-
     ),
     % The last interface is the second field, so we pass 1
     % (since argument numbers start from 0).
-    %
     set_trace_node_arg(Call1, 1, Last, Call).
 
 :- func call_node_update_implicit_tree_info(trace_node(trace_node_id)::di,
@@ -883,7 +923,6 @@ call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
     ),
     % call_at_max_depth is the sixth field, so we pass 5
     % (since argument numbers start from 0).
-    %
     set_trace_node_arg(Call1, 5, yes(implicit_tree_info(IdealDepth)), Call).
 
 :- func get_implicit_tree_ideal_depth(trace_node(trace_node_id)) = int.
@@ -919,7 +958,6 @@ cond_node_set_status(Cond0, Status) = Cond :-
     ),
     % The goal status is the third field, so we pass 2
     % (since argument numbers start from 0).
-    %
     set_trace_node_arg(Cond1, 2, Status, Cond).
 
 :- func neg_node_set_status(trace_node(trace_node_id)::di, goal_status::di)
@@ -936,7 +974,6 @@ neg_node_set_status(Neg0, Status) = Neg :-
     ),
     % The goal status is the third field, so we pass 2
     % (since argument numbers start from 0).
-    %
     set_trace_node_arg(Neg1, 2, Status, Neg).
 
 :- pred set_trace_node_arg(trace_node(trace_node_id)::di, int::in, T::di,
@@ -1404,17 +1441,16 @@ node_id_to_key(_, _) :-
 convert_node(_, _) :-
     private_builtin.sorry("convert_node").
 
-    % Given a node in an annotated trace, return a reference to
-    % the preceding node in the trace, or a NULL reference if
-    % it is the first.
+    % Given a node in an annotated trace, return a reference to the preceding
+    % node in the trace, or a NULL reference if it is the first.
     %
 :- func preceding_node(trace_node(T)) = T.
 
 preceding_node(node_call(P, _, _, _, _, _, _, _, _, _))  = P.
 preceding_node(node_exit(P, _, _, _, _, _, _, _))        = P.
 preceding_node(node_redo(P, _, _, _, _))         = P.
-preceding_node(node_fail(P, _, _, _, _, _))          = P.
-preceding_node(node_excp(P, _, _, _, _, _, _))       = P.
+preceding_node(node_fail(P, _, _, _, _, _))      = P.
+preceding_node(node_excp(P, _, _, _, _, _, _))   = P.
 preceding_node(node_switch(P, _))                = P.
 preceding_node(node_first_disj(P, _))            = P.
 preceding_node(node_later_disj(P, _, _))         = P.
@@ -1501,8 +1537,7 @@ arg_num_to_head_var_num([Arg | Args], ArgNum, CurArgNum, UserArgNum) :-
     Arg = arg_info(UserVis, _, _),
     (
         UserVis = no,
-        arg_num_to_head_var_num(Args, ArgNum - 1, CurArgNum,
-            UserArgNum)
+        arg_num_to_head_var_num(Args, ArgNum - 1, CurArgNum, UserArgNum)
     ;
         UserVis = yes,
         ( ArgNum = 1 ->
