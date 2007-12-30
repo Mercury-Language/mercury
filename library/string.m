@@ -4577,6 +4577,7 @@ split_at_string(Needle, Total) =
     split_at_string(0, length(Needle), Needle, Total).
 
 :- func split_at_string(int, int, string, string) = list(string).
+
 split_at_string(StartAt, NeedleLen, Needle, Total) = Out :-
     ( sub_string_search_start(Total, Needle, StartAt, NeedlePos) ->
         BeforeNeedle = substring(Total, StartAt, NeedlePos-StartAt),
@@ -4741,12 +4742,11 @@ value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 :- mode value_to_revstrings_prio(in, in, in, in, in, out) is cc_multi.
 
 value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
-    %
     % We need to special-case the builtin types:
     %   int, char, float, string
     %   type_info, univ, c_pointer, array
     %   and private_builtin.type_info
-    %
+
     ( dynamic_cast(X, String) ->
         add_revstring(term_io.quoted_string(String), !Rs)
     ; dynamic_cast(X, Char) ->
@@ -4840,103 +4840,133 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     ->
         add_revstring("[]", !Rs)
     ;
-        Functor = "{}",
-        Args = [BracedTerm]
+        Functor = "{}"
     ->
-        add_revstring("{ ", !Rs),
-        value_to_revstrings(NonCanon, OpsTable, univ_value(BracedTerm), !Rs),
-        add_revstring(" }", !Rs)
-    ;
-        Functor = "{}",
-        Args = [BracedHead | BracedTail]
-    ->
-        add_revstring("{", !Rs),
-        arg_to_revstrings(NonCanon, OpsTable, BracedHead, !Rs),
-        term_args_to_revstrings(NonCanon, OpsTable, BracedTail, !Rs),
-        add_revstring("}", !Rs)
-    ;
-        Args = [PrefixArg],
-        ops.lookup_prefix_op(OpsTable, Functor, OpPriority, OpAssoc)
-    ->
-        maybe_add_revstring("(", Priority, OpPriority, !Rs),
-        add_revstring(term_io.quoted_atom(Functor), !Rs),
-        add_revstring(" ", !Rs),
-        adjust_priority(OpPriority, OpAssoc, NewPriority),
-        value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
-            univ_value(PrefixArg), !Rs),
-        maybe_add_revstring(")", Priority, OpPriority, !Rs)
-    ;
-        Args = [PostfixArg],
-        ops.lookup_postfix_op(OpsTable, Functor, OpPriority, OpAssoc)
-    ->
-        maybe_add_revstring("(", Priority, OpPriority, !Rs),
-        adjust_priority(OpPriority, OpAssoc, NewPriority),
-        value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
-            univ_value(PostfixArg), !Rs),
-        add_revstring(" ", !Rs),
-        add_revstring(term_io.quoted_atom(Functor), !Rs),
-        maybe_add_revstring(")", Priority, OpPriority, !Rs)
-    ;
-        Args = [Arg1, Arg2],
-        ops.lookup_infix_op(OpsTable, Functor, OpPriority,
-            LeftAssoc, RightAssoc)
-    ->
-        maybe_add_revstring("(", Priority, OpPriority, !Rs),
-        adjust_priority(OpPriority, LeftAssoc, LeftPriority),
-        value_to_revstrings_prio(NonCanon, OpsTable, LeftPriority,
-            univ_value(Arg1), !Rs),
-        ( Functor = "," ->
-            add_revstring(", ", !Rs)
-        ;
-            add_revstring(" ", !Rs),
-            add_revstring(term_io.quoted_atom(Functor), !Rs),
-            add_revstring(" ", !Rs)
-        ),
-        adjust_priority(OpPriority, RightAssoc, RightPriority),
-        value_to_revstrings_prio(NonCanon, OpsTable, RightPriority,
-            univ_value(Arg2), !Rs),
-        maybe_add_revstring(")", Priority, OpPriority, !Rs)
-    ;
-        Args = [Arg1, Arg2],
-        ops.lookup_binary_prefix_op(OpsTable, Functor,
-            OpPriority, FirstAssoc, SecondAssoc)
-    ->
-        maybe_add_revstring("(", Priority, OpPriority, !Rs),
-        add_revstring(term_io.quoted_atom(Functor), !Rs),
-        add_revstring(" ", !Rs),
-        adjust_priority(OpPriority, FirstAssoc, FirstPriority),
-        value_to_revstrings_prio(NonCanon, OpsTable, FirstPriority,
-            univ_value(Arg1), !Rs),
-        add_revstring(" ", !Rs),
-        adjust_priority(OpPriority, SecondAssoc, SecondPriority),
-        value_to_revstrings_prio(NonCanon, OpsTable, SecondPriority,
-            univ_value(Arg2), !Rs),
-        maybe_add_revstring(")", Priority, OpPriority, !Rs)
-    ;
         (
             Args = [],
-            ops.lookup_op(OpsTable, Functor),
-            Priority =< ops.max_priority(OpsTable)
-        ->
-            add_revstring("(", !Rs),
-            add_revstring(term_io.quoted_atom(Functor), !Rs),
-            add_revstring(")", !Rs)
+            add_revstring("{}", !Rs)
         ;
-            add_revstring(
-                term_io.quoted_atom_agt(Functor,
-                    term_io.maybe_adjacent_to_graphic_token),
-                !Rs
-            )
-        ),
-        (
-            Args = [Y | Ys],
-            add_revstring("(", !Rs),
-            arg_to_revstrings(NonCanon, OpsTable, Y, !Rs),
-            term_args_to_revstrings(NonCanon, OpsTable, Ys, !Rs),
-            add_revstring(")", !Rs)
+            Args = [BracedTerm],
+            add_revstring("{ ", !Rs),
+            value_to_revstrings(NonCanon, OpsTable, univ_value(BracedTerm),
+                !Rs),
+            add_revstring(" }", !Rs)
         ;
-            Args = []
+            Args = [BracedHead | BracedTail],
+            BracedTail = [_ | _],
+            add_revstring("{", !Rs),
+            arg_to_revstrings(NonCanon, OpsTable, BracedHead, !Rs),
+            term_args_to_revstrings(NonCanon, OpsTable, BracedTail, !Rs),
+            add_revstring("}", !Rs)
         )
+    ;
+        Args = [Arg]
+    ->
+        (
+            ops.lookup_prefix_op(OpsTable, Functor, OpPriority, OpAssoc)
+        ->
+            maybe_add_revstring("(", Priority, OpPriority, !Rs),
+            add_revstring(term_io.quoted_atom(Functor), !Rs),
+            add_revstring(" ", !Rs),
+            adjust_priority(OpPriority, OpAssoc, NewPriority),
+            value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
+                univ_value(Arg), !Rs),
+            maybe_add_revstring(")", Priority, OpPriority, !Rs)
+        ;
+            ops.lookup_postfix_op(OpsTable, Functor, OpPriority, OpAssoc)
+        ->
+            maybe_add_revstring("(", Priority, OpPriority, !Rs),
+            adjust_priority(OpPriority, OpAssoc, NewPriority),
+            value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
+                univ_value(Arg), !Rs),
+            add_revstring(" ", !Rs),
+            add_revstring(term_io.quoted_atom(Functor), !Rs),
+            maybe_add_revstring(")", Priority, OpPriority, !Rs)
+        ;
+            plain_term_to_revstrings(NonCanon, OpsTable, Priority,
+                Functor, Args, !Rs)
+        )
+    ;
+        Args = [Arg1, Arg2]
+    ->
+        (
+            ops.lookup_infix_op(OpsTable, Functor, OpPriority,
+                LeftAssoc, RightAssoc)
+        ->
+            maybe_add_revstring("(", Priority, OpPriority, !Rs),
+            adjust_priority(OpPriority, LeftAssoc, LeftPriority),
+            value_to_revstrings_prio(NonCanon, OpsTable, LeftPriority,
+                univ_value(Arg1), !Rs),
+            ( Functor = "," ->
+                add_revstring(", ", !Rs)
+            ;
+                add_revstring(" ", !Rs),
+                add_revstring(term_io.quoted_atom(Functor), !Rs),
+                add_revstring(" ", !Rs)
+            ),
+            adjust_priority(OpPriority, RightAssoc, RightPriority),
+            value_to_revstrings_prio(NonCanon, OpsTable, RightPriority,
+                univ_value(Arg2), !Rs),
+            maybe_add_revstring(")", Priority, OpPriority, !Rs)
+        ;
+            ops.lookup_binary_prefix_op(OpsTable, Functor,
+                OpPriority, FirstAssoc, SecondAssoc)
+        ->
+            maybe_add_revstring("(", Priority, OpPriority, !Rs),
+            add_revstring(term_io.quoted_atom(Functor), !Rs),
+            add_revstring(" ", !Rs),
+            adjust_priority(OpPriority, FirstAssoc, FirstPriority),
+            value_to_revstrings_prio(NonCanon, OpsTable, FirstPriority,
+                univ_value(Arg1), !Rs),
+            add_revstring(" ", !Rs),
+            adjust_priority(OpPriority, SecondAssoc, SecondPriority),
+            value_to_revstrings_prio(NonCanon, OpsTable, SecondPriority,
+                univ_value(Arg2), !Rs),
+            maybe_add_revstring(")", Priority, OpPriority, !Rs)
+        ;
+            plain_term_to_revstrings(NonCanon, OpsTable, Priority,
+                Functor, Args, !Rs)
+        )
+    ;
+        plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args,
+            !Rs)
+    ).
+
+:- pred plain_term_to_revstrings(noncanon_handling, ops.table,
+    ops.priority, string, list(univ), revstrings, revstrings).
+:- mode plain_term_to_revstrings(in(do_not_allow), in, in, in, in, in, out)
+    is det.
+:- mode plain_term_to_revstrings(in(canonicalize), in, in, in, in, in, out)
+    is det.
+:- mode plain_term_to_revstrings(in(include_details_cc), in, in, in, in,
+    in, out) is cc_multi.
+:- mode plain_term_to_revstrings(in, in, in, in, in, in, out)
+    is cc_multi.
+
+plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
+    (
+        Args = [],
+        ops.lookup_op(OpsTable, Functor),
+        Priority =< ops.max_priority(OpsTable)
+    ->
+        add_revstring("(", !Rs),
+        add_revstring(term_io.quoted_atom(Functor), !Rs),
+        add_revstring(")", !Rs)
+    ;
+        add_revstring(
+            term_io.quoted_atom_agt(Functor,
+                term_io.maybe_adjacent_to_graphic_token),
+            !Rs
+        )
+    ),
+    (
+        Args = [Y | Ys],
+        add_revstring("(", !Rs),
+        arg_to_revstrings(NonCanon, OpsTable, Y, !Rs),
+        term_args_to_revstrings(NonCanon, OpsTable, Ys, !Rs),
+        add_revstring(")", !Rs)
+    ;
+        Args = []
     ).
 
 :- pred maybe_add_revstring(string::in, ops.priority::in, ops.priority::in,
