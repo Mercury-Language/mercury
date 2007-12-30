@@ -788,6 +788,7 @@
     ;       region_ite_nondet_cond_fail         % pops
     ;       region_disj_later                   % uses
     ;       region_disj_last                    % uses and pops
+    ;       region_disj_nonlast_semi_commit     % uses and pops
     ;       region_commit_success               % uses and pops
     ;       region_commit_failure.              % only pops
 

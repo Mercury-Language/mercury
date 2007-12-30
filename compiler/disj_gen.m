@@ -362,8 +362,9 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
         maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
-            FirstRegionCode, LaterRegionCode, LastRegionCode,
-            _RegionStackVars, !CI),
+            do_not_commit_at_end_of_disjunct,
+            BeforeEnterRegionCode, LaterRegionCode, LastRegionCode,
+            _RegionStackVars, RegionCommitDisjCleanup, !CI),
         % We can't release any of the stack slots holding the embedded stack
         % frame, since we can't let code to the right of the disjunction reuse
         % any of those slots.
@@ -385,10 +386,11 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         MaybeRbmmInfo = goal_info_get_maybe_rbmm(DisjGoalInfo),
         (
             MaybeRbmmInfo = no,
-            FirstRegionCode = empty,
+            BeforeEnterRegionCode = empty,
             LaterRegionCode = empty,
             LastRegionCode = empty,
-            RegionStackVarsToRelease = []
+            RegionStackVarsToRelease = [],
+            RegionCommitDisjCleanup = no_commit_disj_region_cleanup
         ;
             MaybeRbmmInfo = yes(RbmmInfo),
             RbmmInfo = rbmm_goal_info(DisjCreatedRegionVars,
@@ -399,16 +401,18 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
                 set.empty(DisjRemovedRegionVars),
                 set.empty(DisjAllocRegionVars)
             ->
-                FirstRegionCode = empty,
+                BeforeEnterRegionCode = empty,
                 LaterRegionCode = empty,
                 LastRegionCode = empty,
-                RegionStackVarsToRelease = []
+                RegionStackVarsToRelease = [],
+                RegionCommitDisjCleanup = no_commit_disj_region_cleanup
             ;
                 % We only need region support for backtracking if some disjunct
                 % performs some region operations (allocation or removal).
                 maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
-                    FirstRegionCode, LaterRegionCode, LastRegionCode,
-                    RegionStackVars, !CI),
+                    commit_at_end_of_disjunct,
+                    BeforeEnterRegionCode, LaterRegionCode, LastRegionCode,
+                    RegionStackVars, RegionCommitDisjCleanup, !CI),
                 RegionStackVarsToRelease = RegionStackVars
             )
         )
@@ -422,9 +426,9 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
 
     remember_position(!.CI, BranchStart),
     generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
-        DisjGoalInfo, EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
-        LaterRegionCode, LastRegionCode, BranchStart, no, MaybeEnd, GoalsCode,
-        !CI),
+        DisjGoalInfo, RegionCommitDisjCleanup, EndLabel, ReclaimHeap,
+        MaybeHpSlot, MaybeTicketSlot, LaterRegionCode, LastRegionCode,
+        BranchStart, no, MaybeEnd, GoalsCode, !CI),
 
     goal_info_get_store_map(DisjGoalInfo, StoreMap),
     after_all_branches(StoreMap, MaybeEnd, !CI),
@@ -444,22 +448,23 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         FlushCode,
         SaveTicketCode,
         SaveHpCode,
-        FirstRegionCode,
+        BeforeEnterRegionCode,
         PrepareHijackCode,
         GoalsCode
     ]).
 
 :- pred generate_disjuncts(list(hlds_goal)::in, code_model::in,
     resume_map::in, maybe(resume_point_info)::in, disj_hijack_info::in,
-    hlds_goal_info::in, label::in, bool::in, maybe(lval)::in,
-    maybe(lval)::in, code_tree::in, code_tree::in,
+    hlds_goal_info::in, commit_disj_region_cleanup::in, label::in, bool::in,
+    maybe(lval)::in, maybe(lval)::in, code_tree::in, code_tree::in,
     position_info::in, maybe(branch_end_info)::in, maybe(branch_end_info)::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
-generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
     unexpected(this_file, "generate_disjuncts: empty disjunction!").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
-        MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel, ReclaimHeap,
+        MaybeEntryResumePoint, HijackInfo, DisjGoalInfo,
+        RegionCommitDisjCleanup, EndLabel, ReclaimHeap,
         MaybeHpSlot0, MaybeTicketSlot, LaterRegionCode, LastRegionCode,
         BranchStart0, MaybeEnd0, MaybeEnd, Code, !CI) :-
 
@@ -582,14 +587,25 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
         generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1, SaveCode, !CI),
 
-        BranchCode = node([
-            llds_instr(goto(code_label(EndLabel)),
-                "skip to end of nondet disj")
-        ]),
+        (
+            RegionCommitDisjCleanup = no_commit_disj_region_cleanup,
+            BranchCode = node([
+                llds_instr(goto(code_label(EndLabel)),
+                    "skip to end of disjunction")
+            ])
+        ;
+            RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
+                _CleanupCode),
+            BranchCode = node([
+                llds_instr(goto(code_label(CleanupLabel)),
+                    "skip to end of disjunction after nonlast region disjunct")
+            ])
+        ),
 
         generate_disjuncts(Goals, CodeModel, FullResumeMap,
             yes(NextResumePoint), HijackInfo, DisjGoalInfo,
-            EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
+            RegionCommitDisjCleanup, EndLabel,
+            ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
             LaterRegionCode, LastRegionCode, BranchStart,
             MaybeEnd1, MaybeEnd, RestCode, !CI),
 
@@ -626,9 +642,26 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
         generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode, !CI),
 
-        EndCode = node([
-            llds_instr(label(EndLabel), "End of nondet disj")
+        (
+            RegionCommitDisjCleanup = no_commit_disj_region_cleanup,
+            RegionCleanupCode = empty
+        ;
+            RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
+                CleanupCode),
+            RegionCleanupStartCode = node([
+                llds_instr(goto(code_label(EndLabel)),
+                    "Skip over cleanup code at end of disjunction"),
+                llds_instr(label(CleanupLabel),
+                    "Cleanup at end of disjunction")
+            ]),
+            RegionCleanupCode = tree(RegionCleanupStartCode, CleanupCode)
+        ),
+
+        EndLabelCode = node([
+            llds_instr(label(EndLabel),
+                "End of disjunction")
         ]),
+
         Code = tree_list([
             EntryResumePointCode,
             TraceCode,      % XXX Should this be after LastRegionCode?
@@ -638,24 +671,39 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             UndoCode,
             GoalCode,
             SaveCode,
-            EndCode
+            RegionCleanupCode,
+            EndLabelCode
         ])
     ).
 
 %-----------------------------------------------------------------------------%
 
+:- type commit_at_end_of_disjunct
+    --->    commit_at_end_of_disjunct
+    ;       do_not_commit_at_end_of_disjunct.
+
+:- type commit_disj_region_cleanup
+    --->    no_commit_disj_region_cleanup
+    ;       commit_disj_region_cleanup(
+                cleanup_label       :: label,
+                cleanup_code        :: code_tree
+            ).
+
 :- pred maybe_create_disj_region_frame(add_region_ops::in, hlds_goal_info::in,
+    commit_at_end_of_disjunct::in,
     code_tree::out, code_tree::out, code_tree::out, list(lval)::out,
-    code_info::in, code_info::out) is det.
+    commit_disj_region_cleanup::out, code_info::in, code_info::out) is det.
 
 maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
-        FirstCode, LaterCode, LastCode, StackVars, !CI) :-
+        CommitAtEndOfDisjunct, BeforeEnterCode, LaterCode, LastCode,
+        StackVars, RegionCommitDisjCleanup, !CI) :-
     (
         DisjRegionOps = do_not_add_region_ops,
-        FirstCode = empty,
+        BeforeEnterCode = empty,
         LaterCode = empty,
         LastCode = empty,
-        StackVars = []
+        StackVars = [],
+        RegionCommitDisjCleanup = no_commit_disj_region_cleanup
     ;
         DisjRegionOps = add_region_ops,
         get_forward_live_vars(!.CI, ForwardLiveVars),
@@ -735,7 +783,7 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
         release_reg(SnapshotNumRegLval, !CI),
         release_reg(AddrRegLval, !CI),
 
-        FirstCode = tree_list([
+        BeforeEnterCode = tree_list([
             PushInitCode,
             ProtectRegionCode,
             SnapshotRegionCode,
@@ -752,7 +800,23 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
                 use_and_maybe_pop_region_frame(region_disj_last,
                     EmbeddedStackFrame),
                 "region enter last disjunct")
-        ])
+        ]),
+
+        (
+            CommitAtEndOfDisjunct = do_not_commit_at_end_of_disjunct,
+            RegionCommitDisjCleanup = no_commit_disj_region_cleanup
+        ;
+            CommitAtEndOfDisjunct = commit_at_end_of_disjunct,
+            get_next_label(CleanupLabel, !CI),
+            CleanupCode = node([
+                llds_instr(
+                    use_and_maybe_pop_region_frame(
+                        region_disj_nonlast_semi_commit, EmbeddedStackFrame),
+                    "region cleanup commit for nonlast disjunct")
+            ]),
+            RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
+                CleanupCode)
+        )
     ).
 
 :- pred disj_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,

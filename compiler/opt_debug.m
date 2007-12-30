@@ -892,6 +892,9 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             UseOp = region_disj_last,
             UseOpStr = "region_disj_last"
         ;
+            UseOp = region_disj_nonlast_semi_commit,
+            UseOpStr = "region_disj_nonlast_semi_commit"
+        ;
             UseOp = region_commit_success,
             UseOpStr = "region_commit_success"
         ;

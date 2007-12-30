@@ -2668,6 +2668,9 @@ output_instruction(use_and_maybe_pop_region_frame(UseOp, EmbeddedFrame),
         UseOp = region_disj_last,
         io.write_string("\tMR_use_region_disj_last", !IO)
     ;
+        UseOp = region_disj_nonlast_semi_commit,
+        io.write_string("\tMR_use_region_disj_nonlast_semi_commit", !IO)
+    ;
         UseOp = region_commit_success,
         io.write_string("\tMR_use_region_commit_success", !IO)
     ;

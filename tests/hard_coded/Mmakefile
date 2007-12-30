@@ -11,8 +11,8 @@ ORDINARY_PROGS=	\
 	array_test \
 	backquoted_qualified_ops \
 	bag_various \
-	big_array_from_list \
 	bidirectional \
+	big_array_from_list \
 	boyer \
 	brace \
 	builtin_inst_rename \
@@ -191,6 +191,7 @@ ORDINARY_PROGS=	\
 	rtree_test \
 	rtti_strings \
 	seek_test \
+	semi_disj \
 	setjmp_test \
 	shift_test \
 	solve_quadratic \

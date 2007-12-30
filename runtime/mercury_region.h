@@ -613,6 +613,17 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_disj_later");               \
             } while (0)
 
+#define     MR_use_region_disj_nonlast_semi_commit(disj_sp)                 \
+            do {                                                            \
+                MR_RegionDisjFixedFrame     *top_disj_frame;                \
+                                                                            \
+                MR_region_debug_start("use_region_disj_nonlast_semi_commit"); \
+                top_disj_frame = (MR_RegionDisjFixedFrame *) (disj_sp);     \
+                /* XXX destroy any regions protected by the disj frame */   \
+                MR_pop_region_disj_frame(top_disj_frame);                   \
+                MR_region_debug_end("use_region_disj_nonlast_semi_commit"); \
+            } while (0)
+
 #define     MR_use_region_disj_last(disj_sp)                                \
             do {                                                            \
                 MR_RegionDisjFixedFrame     *top_disj_frame;                \
