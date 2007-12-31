@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2004, 2006 The University of Melbourne.
+** Copyright (C) 2004, 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,13 +17,15 @@
     table_type          *slot;
     MR_Integer          abs_hash;
     MR_Integer          home;
-    DECLARE_PROBE_COUNT
+    MR_TABLE_DECLARE_KEY_COMPARE_COUNT
 
     debug_key_msg(key, key_format, key_cast);
 
     /* Has the table been built? */
     table = t->MR_hash_table; /* Deref the table pointer */
     if (table == NULL) {
+        MR_table_record_hash_table_alloc_count(sizeof(MR_HashTable) +
+            (HASH_TABLE_START_SIZE * sizeof(MR_HashTableSlotPtr)));
         MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,
             table_field, HASH_TABLE_START_SIZE);
         table = t->MR_hash_table; /* Deref the table pointer */
@@ -44,7 +46,7 @@
         new_size = next_prime(old_size);
         new_threshold = (MR_Integer) ((float) new_size  * MAX_LOAD_FACTOR);
         debug_resize_msg(old_size, new_size, new_threshold);
-        record_resize_count(old_size, new_size);
+        MR_table_record_hash_resize_count(old_size, new_size);
 
         new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr, new_size);
         for (new_bucket = 0; new_bucket < new_size; new_bucket++) {
@@ -88,11 +90,11 @@
     hash_table = table->hash_table;
     slot = hash_table[home].table_field;
     while (slot != NULL) {
-        debug_probe_msg(home);
-        record_probe_count();
+        debug_key_compare_msg(home);
+        MR_table_record_hash_key_compare_count();
 
         if (equal_keys(key, slot->key)) {
-            record_lookup_count();
+            MR_table_record_hash_dupl_count();
             debug_lookup_msg(home);
             return &slot->data;
         }
@@ -107,7 +109,7 @@
 
     /* Add the element. */
     debug_insert_msg(home);
-    record_insert_count();
+    MR_table_record_hash_not_dupl_count();
 
     if (table->freeleft == 0) {
         MR_AllocRecord  *record;
@@ -121,7 +123,8 @@
         record->next = table->allocrecord;
         table->allocrecord = record;
 
-        record_alloc_count();
+        MR_table_record_hash_links_alloc_count(sizeof(MR_AllocRecord) +
+            (CHUNK_SIZE * sizeof(table_type)));
     }
 
     slot = table->freespace.table_field;

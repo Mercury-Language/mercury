@@ -2906,41 +2906,42 @@ get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
     list(module_name)::in, list(module_name)::out) is det.
 
 add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
-    MercuryPublicBuiltin = mercury_public_builtin_module,
-    MercuryPrivateBuiltin = mercury_private_builtin_module,
-    MercuryTableBuiltin = mercury_table_builtin_module,
-    MercuryProfilingBuiltin = mercury_profiling_builtin_module,
-    MercuryTermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
-    MercuryParBuiltin = mercury_par_builtin_module,
-    MercuryRegionBuiltin = mercury_region_builtin_module,
-    !:ImportDeps = [MercuryPublicBuiltin | !.ImportDeps],
-    !:UseDeps = [MercuryPrivateBuiltin | !.UseDeps],
+    !:ImportDeps = [mercury_public_builtin_module | !.ImportDeps],
+    !:UseDeps = [mercury_private_builtin_module | !.UseDeps],
     (
-        %
-        % We should include MercuryTableBuiltin if the Items contain
+        % We should include mercury_table_builtin_module if the Items contain
         % a tabling pragma, or if one of --use-minimal-model and
         % --trace-table-io is specified.
-        %
-        (
-            contains_tabling_pragma(Items)
+
+        ( contains_tabling_pragma(Items, HasStatsPrime) ->
+            HasStats = HasStatsPrime
         ;
-            globals.lookup_bool_option(Globals,
-                use_minimal_model_stack_copy, yes)
-        ;
-            globals.lookup_bool_option(Globals,
-                use_minimal_model_own_stacks, yes)
-        ;
-            globals.lookup_bool_option(Globals, trace_table_io, yes)
+            (
+                globals.lookup_bool_option(Globals,
+                    use_minimal_model_stack_copy, yes)
+            ;
+                globals.lookup_bool_option(Globals,
+                    use_minimal_model_own_stacks, yes)
+            ;
+                globals.lookup_bool_option(Globals, trace_table_io, yes)
+            ),
+            HasStats = table_dont_gather_statistics
         )
     ->
-        !:UseDeps = [MercuryTableBuiltin | !.UseDeps]
+        !:UseDeps = [mercury_table_builtin_module | !.UseDeps],
+        (
+            HasStats = table_dont_gather_statistics
+        ;
+            HasStats = table_gather_statistics,
+            !:UseDeps = [mercury_table_statistics_module | !.UseDeps]
+        )
     ;
         true
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
         Deep = yes,
-        !:UseDeps = [MercuryProfilingBuiltin | !.UseDeps]
+        !:UseDeps = [mercury_profiling_builtin_module | !.UseDeps]
     ;
         Deep = no
     ),
@@ -2953,7 +2954,7 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
                 record_term_sizes_as_cells, yes)
         )
     ->
-        !:UseDeps = [MercuryTermSizeProfBuiltin | !.UseDeps]
+        !:UseDeps = [mercury_term_size_prof_builtin_module | !.UseDeps]
     ;
         true
     ),
@@ -2965,14 +2966,14 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         HighLevelCode = no,
         Parallel = yes
     ->
-        !:UseDeps = [MercuryParBuiltin | !.UseDeps]
+        !:UseDeps = [mercury_par_builtin_module | !.UseDeps]
     ;
         true
     ),
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
-        !:UseDeps = [MercuryRegionBuiltin | !.UseDeps]
+        !:UseDeps = [mercury_region_builtin_module | !.UseDeps]
     ;
         UseRegions = no
     ),
@@ -2984,14 +2985,45 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         SSDB = no
     ).
 
-:- pred contains_tabling_pragma(item_list::in) is semidet.
+:- pred contains_tabling_pragma(item_list::in, table_attr_statistics::out)
+    is semidet.
 
-contains_tabling_pragma([ItemAndContext | ItemAndContexts]) :-
+contains_tabling_pragma(ItemAndContexts, HasStats) :-
+    contains_tabling_pragma_2(ItemAndContexts, no, HasTabling,
+        table_dont_gather_statistics, HasStats),
+    HasTabling = yes.
+
+:- pred contains_tabling_pragma_2(item_list::in, bool::in, bool::out,
+    table_attr_statistics::in, table_attr_statistics::out) is det.
+
+contains_tabling_pragma_2([], !HasTabling, !HasStats).
+contains_tabling_pragma_2([ItemAndContext | ItemAndContexts],
+        !HasTabling, !HasStats) :-
+    ItemAndContext = item_and_context(Item, _Context),
     (
-        ItemAndContext = item_and_context(item_pragma(_, Pragma), _Context),
-        Pragma = pragma_tabled(_, _, _, _, _, _)
+        Item = item_pragma(_, Pragma),
+        Pragma = pragma_tabled(_, _, _, _, _, MaybeAttributes)
+    ->
+        !:HasTabling = yes,
+        (
+            MaybeAttributes = no,
+            contains_tabling_pragma_2(ItemAndContexts, !HasTabling, !HasStats)
+        ;
+            MaybeAttributes = yes(Attributes),
+            StatsAttr = Attributes ^ table_attr_statistics,
+            (
+                StatsAttr = table_gather_statistics,
+                !:HasStats = table_gather_statistics
+                % We can stop recursing; later items cannot change the result.
+            ;
+                StatsAttr = table_dont_gather_statistics,
+                % Leave !HasStats as it is.
+                contains_tabling_pragma_2(ItemAndContexts,
+                    !HasTabling, !HasStats)
+            )
+        )
     ;
-        contains_tabling_pragma(ItemAndContexts)
+        contains_tabling_pragma_2(ItemAndContexts, !HasTabling, !HasStats)
     ).
 
     % Warn if a module imports itself, or an ancestor.

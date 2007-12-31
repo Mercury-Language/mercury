@@ -564,6 +564,7 @@ rename_const(mlconst_foreign(L, F, T)) = mlconst_foreign(L, F, T).
 rename_const(mlconst_float(F)) = mlconst_float(F).
 rename_const(mlconst_string(S)) = mlconst_string(S).
 rename_const(mlconst_multi_string(S)) = mlconst_multi_string(S).
+rename_const(mlconst_named_const(NC)) = mlconst_named_const(NC).
 rename_const(mlconst_code_addr(C)) = mlconst_code_addr(rename_code_addr(C)).
 rename_const(mlconst_data_addr(A)) = mlconst_data_addr(rename_data_addr(A)).
 rename_const(mlconst_null(T)) = mlconst_null(T).
@@ -2402,6 +2403,9 @@ load(const(Const), Instrs, !Info) :-
         Const = mlconst_multi_string(_MultiString),
         Instrs = throw_unimplemented("load multi_string_const")
     ;
+        Const = mlconst_named_const(_NamedConst),
+        Instrs = throw_unimplemented("load named_const")
+    ;
         Const = mlconst_code_addr(CodeAddr),
         MethodRef = code_addr_constant_to_methodref(DataRep, CodeAddr),
         Instrs = instr_node(ldftn(MethodRef))
@@ -3741,6 +3745,8 @@ rval_const_to_type(mlconst_string(_))
 rval_const_to_type(mlconst_multi_string(_))
         = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
     StrType = builtin_type(builtin_type_string).
+rval_const_to_type(mlconst_named_const(_))
+        = sorry(this_file, "IL backend and named const."). 
 rval_const_to_type(mlconst_null(MldsType)) = MldsType.
 
 %-----------------------------------------------------------------------------%

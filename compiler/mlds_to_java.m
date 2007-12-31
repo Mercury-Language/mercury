@@ -1549,12 +1549,12 @@ output_initializer_body(ModuleInfo, init_struct(StructType, FieldInits),
     io.write_string("new ", !IO),
     output_type(StructType, !IO),
     IsArray = type_is_array(StructType),
-    io.write_string(if IsArray = yes then " {" else "(", !IO),
+    io.write_string(if IsArray = is_array then " {" else "(", !IO),
     io.write_list(FieldInits, ",\n\t\t",
         (pred(FieldInit::in, !.IO::di, !:IO::uo) is det :-
             output_initializer_body(ModuleInfo, FieldInit, no, ModuleName, !IO)
         ), !IO),
-    io.write_char(if IsArray = yes then '}' else ')', !IO).
+    io.write_char(if IsArray = is_array then '}' else ')', !IO).
 output_initializer_body(ModuleInfo, init_array(ElementInits), MaybeType,
         ModuleName, !IO) :-
     io.write_string("new ", !IO),
@@ -1908,19 +1908,19 @@ output_type(mlds_rtti_type(RttiIdMaybeElement), !IO) :-
     rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName, IsArray),
     io.write_string(JavaTypeName, !IO),
     (
-        IsArray = yes,
+        IsArray = is_array,
         io.write_string("[]", !IO)
     ;
-        IsArray = no
+        IsArray = not_array
     ).
 output_type(mlds_tabling_type(TablingId), !IO) :-
     tabling_id_java_type(TablingId, JavaTypeName, IsArray),
     io.write_string(JavaTypeName, !IO),
     (
-        IsArray = yes,
+        IsArray = is_array,
         io.write_string("[]", !IO)
     ;
-        IsArray = no
+        IsArray = not_array
     ).
 output_type(mlds_unknown_type, !IO) :-
     unexpected(this_file, "output_type: unknown type").
@@ -1996,43 +1996,44 @@ output_mercury_user_type(Type, TypeCategory, !IO) :-
         unexpected(this_file, "output_mercury_user_type: not a user type")
     ).
 
-    % return yes if the corresponding Java type is an array type.
-:- func type_is_array(mlds_type) = bool.
+    % Return is_array if the corresponding Java type is an array type.
+    %
+:- func type_is_array(mlds_type) = is_array.
 
 type_is_array(Type) = IsArray :-
     ( Type = mlds_array_type(_) ->
-        IsArray = yes
+        IsArray = is_array
     ; Type = mlds_mercury_array_type(_) ->
-        IsArray = yes
+        IsArray = is_array
     ; Type = mercury_type(_, TypeCategory, _) ->
         IsArray = type_category_is_array(TypeCategory)
     ; Type = mlds_rtti_type(RttiIdMaybeElement) ->
         rtti_id_maybe_element_java_type(RttiIdMaybeElement,
             _JavaTypeName, IsArray)
     ;
-        IsArray = no
+        IsArray = not_array
     ).
 
-    % Return yes if the corresponding Java type is an array type.
+    % Return is_array if the corresponding Java type is an array type.
     %
-:- func type_category_is_array(type_category) = bool.
+:- func type_category_is_array(type_category) = is_array.
 
-type_category_is_array(type_cat_int) = no.
-type_category_is_array(type_cat_char) = no.
-type_category_is_array(type_cat_string) = no.
-type_category_is_array(type_cat_float) = no.
-type_category_is_array(type_cat_higher_order) = yes.
-type_category_is_array(type_cat_tuple) = yes.
-type_category_is_array(type_cat_enum) = no.
-type_category_is_array(type_cat_foreign_enum) = no.
-type_category_is_array(type_cat_dummy) = no.
-type_category_is_array(type_cat_variable) = no.
-type_category_is_array(type_cat_type_info) = no.
-type_category_is_array(type_cat_type_ctor_info) = no.
-type_category_is_array(type_cat_typeclass_info) = yes.
-type_category_is_array(type_cat_base_typeclass_info) = yes.
-type_category_is_array(type_cat_void) = no.
-type_category_is_array(type_cat_user_ctor) = no.
+type_category_is_array(type_cat_int) = not_array.
+type_category_is_array(type_cat_char) = not_array.
+type_category_is_array(type_cat_string) = not_array.
+type_category_is_array(type_cat_float) = not_array.
+type_category_is_array(type_cat_higher_order) = is_array.
+type_category_is_array(type_cat_tuple) = is_array.
+type_category_is_array(type_cat_enum) = not_array.
+type_category_is_array(type_cat_foreign_enum) = not_array.
+type_category_is_array(type_cat_dummy) = not_array.
+type_category_is_array(type_cat_variable) = not_array.
+type_category_is_array(type_cat_type_info) = not_array.
+type_category_is_array(type_cat_type_ctor_info) = not_array.
+type_category_is_array(type_cat_typeclass_info) = is_array.
+type_category_is_array(type_cat_base_typeclass_info) = is_array.
+type_category_is_array(type_cat_void) = not_array.
+type_category_is_array(type_cat_user_ctor) = not_array.
 
     % hand_defined_type(Type, SubstituteName):
     %
@@ -2830,7 +2831,9 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
     ;
         output_type(Type, !IO)
     ),
-    ( type_is_array(Type) = yes ->
+    IsArray = type_is_array(Type),
+    (
+        IsArray = is_array,
         % The new object will be an array, so we need to initialise it
         % using array literals syntax.
         io.write_string(" {", !IO),
@@ -2838,6 +2841,7 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
             !IO),
         io.write_string("};\n", !IO)
     ;
+        IsArray = not_array,
         % Generate constructor arguments.
         io.write_string("(", !IO),
         output_init_args(ModuleInfo, Args, ArgTypes, 0, HasSecTag, ModuleName,
@@ -3322,6 +3326,9 @@ output_rval_const(mlconst_multi_string(String), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_multi_string(String, !IO),
     io.write_string("""", !IO).
+
+output_rval_const(mlconst_named_const(NamedConst), !IO) :-
+    io.write_string(NamedConst, !IO).
 
 output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-
     IsCall = no,

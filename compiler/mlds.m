@@ -602,9 +602,9 @@
     % variables for the predicate (used when generating closures).
     %
 :- type mlds_gc_statement
-    ---> gc_trace_code(statement)
-    ;    gc_initialiser(statement)
-    ;    gc_no_stmt.
+    --->    gc_trace_code(statement)
+    ;       gc_initialiser(statement)
+    ;       gc_no_stmt.
 
     % It is possible for the function to be defined externally
     % (i.e. the original Mercury procedure was declared `:- external').
@@ -618,7 +618,7 @@
     % Note that `one_copy' variables *must* have an initializer
     % (the GCC back-end relies on this).
     % XXX Currently we only record the type for structs.
-    %     We should do the same for objects and arrays.
+    % We should do the same for objects and arrays.
     %
 :- type mlds_initializer
     --->    init_obj(mlds_rval)
@@ -1596,6 +1596,15 @@
     ;       mlconst_multi_string(list(string))
             % A multi_string_const is a string containing embedded NULs
             % between each substring in the list.
+
+    ;       mlconst_named_const(string)
+            % A constant with the given name, such as a value of an enum type
+            % in C.
+            % It is the responsibility of the code that creates named constants
+            % to ensure that the constant's name is meaningful for the target
+            % language. This includes making sure that the name is acceptable
+            % as an identifier, does not need quoting, and the constant it
+            % refers to is accessible.
 
     ;       mlconst_code_addr(mlds_code_addr)
     ;       mlconst_data_addr(mlds_data_addr)

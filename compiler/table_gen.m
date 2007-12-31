@@ -453,7 +453,9 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             PredId, ProcId, HeadVars, NumberedInputVars, NumberedOutputVars,
             VarSet0, VarSet, VarTypes0, VarTypes,
             TableInfo0, TableInfo, CallTableTip, Goal, InputSteps),
-        generate_gen_proc_table_info(TableInfo, PredId, ProcId, InputSteps, no,
+        MaybeOutputSteps = no,
+        generate_gen_proc_table_info(TableInfo, PredId, ProcId,
+            InputSteps, MaybeOutputSteps,
             InputVarModeMethods, OutputVarModeMethods, ProcTableStructInfo),
         MaybeCallTableTip = yes(CallTableTip),
         MaybeProcTableIOInfo = no,
@@ -655,7 +657,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
-    list(table_trie_step)::out) is det.
+    list(table_step_desc)::out) is det.
 
 create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         HeadVars, NumberedInputVars, NumberedOutputVars, !VarSet, !VarTypes,
@@ -896,7 +898,7 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
-    list(table_trie_step)::out) is det.
+    list(table_step_desc)::out) is det.
 
 create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         PredId, ProcId, HeadVars, NumberedInputVars, NumberedOutputVars,
@@ -1025,7 +1027,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
-    list(table_trie_step)::out, list(table_trie_step)::out) is det.
+    list(table_step_desc)::out, list(table_step_desc)::out) is det.
 
 create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         PredId, ProcId, HeadVars, NumberedInputVars, NumberedOutputVars,
@@ -1475,7 +1477,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
-    list(table_trie_step)::out, list(table_trie_step)::out) is det.
+    list(table_step_desc)::out, list(table_step_desc)::out) is det.
 
 create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         HeadVars, NumberedInputVars, NumberedOutputVars, !VarSet, !VarTypes,
@@ -1593,7 +1595,7 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, generator_map::in, generator_map::out,
-    hlds_goal::out, list(table_trie_step)::out, list(table_trie_step)::out)
+    hlds_goal::out, list(table_step_desc)::out, list(table_step_desc)::out)
     is det.
 
 do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
@@ -1769,7 +1771,7 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     set(prog_var)::in, instmap_delta::in,
     vartypes::in, prog_varset::in, table_info::in, table_info::out,
-    list(table_trie_step)::in, list(table_trie_step)::out) is det.
+    list(table_step_desc)::in, list(table_step_desc)::out) is det.
 
 do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         Statistics, Context, GeneratorVar, DebugArgStr, PickupVarCode,
@@ -1996,7 +1998,7 @@ keep_marker(marker_mutable_access_pred) = yes.
 %-----------------------------------------------------------------------------%
 
 :- pred generate_gen_proc_table_info(table_info::in, pred_id::in, proc_id::in,
-    list(table_trie_step)::in, maybe(list(table_trie_step))::in,
+    list(table_step_desc)::in, maybe(list(table_step_desc))::in,
     list(var_mode_method)::in, list(var_mode_method)::in,
     proc_table_struct_info::out) is det.
 
@@ -2034,7 +2036,7 @@ generate_gen_proc_table_info(TableInfo, PredId, ProcId,
     pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, prog_var::out,
-    hlds_goal::out, list(table_trie_step)::out) is det.
+    hlds_goal::out, list(table_step_desc)::out) is det.
 
 generate_simple_call_table_lookup_goal(StatusType, PredName,
         SetupMacroName, NumberedVars, PredId, ProcId, Statistics, Context,
@@ -2084,7 +2086,7 @@ generate_simple_call_table_lookup_goal(StatusType, PredName,
     pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, prog_var::out,
-    hlds_goal::out, list(table_trie_step)::out) is det.
+    hlds_goal::out, list(table_step_desc)::out) is det.
 
 generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
         Statistics, Context, !VarSet, !VarTypes, !TableInfo,
@@ -2141,7 +2143,7 @@ generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, prog_var::out,
-    hlds_goal::out, list(table_trie_step)::out) is det.
+    hlds_goal::out, list(table_step_desc)::out) is det.
 
 generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
         Statistics, Context, !VarSet, !VarTypes, !TableInfo,
@@ -2197,7 +2199,7 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
 :- pred generate_call_table_lookup_goals(list(var_mode_pos_method)::in,
     pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    table_info::in, table_info::out, list(table_trie_step)::out,
+    table_info::in, table_info::out, list(table_step_desc)::out,
     prog_var::out, foreign_arg::out, foreign_arg::out, list(foreign_arg)::out,
     list(hlds_goal)::out, string::out, string::out) is det.
 
@@ -2209,17 +2211,18 @@ generate_call_table_lookup_goals(NumberedVars, PredId, ProcId,
         "&" ++ proc_table_info_name ++ "->MR_pt_tablenode;\n",
     generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
         proc_table_info_name, InfoArg, GetTableInfoGoal),
+    MaybeStatsRef = stats_ref(Statistics, call_table),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
     BackArgStr = get_back_arg_string(!.TableInfo),
-    generate_table_lookup_goals(NumberedVars, Statistics, call_table,
+    generate_table_lookup_goals(NumberedVars, MaybeStatsRef,
         DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
         InputSteps, LookupArgs, LookupPrefixGoals, LookupCodeStr),
     PrefixGoals = [GetTableInfoGoal] ++ LookupPrefixGoals,
     % We ignore _StatsPrefixGoals and _StatsExtraArgs because we always
     % include ProcTableInfoVar in the arguments.
-    maybe_lookup_not_dupl_code_args(PredId, ProcId,
+    maybe_record_overall_stats(PredId, ProcId,
         proc_table_info_name, cur_table_node_name,
-        Statistics, call_table, !VarSet, !VarTypes,
+        MaybeStatsRef, !VarSet, !VarTypes,
         _StatsPrefixGoals, _StatsExtraArgs, StatsCodeStr),
     MainCodeStr = InfoToPtrCodeStr ++ LookupCodeStr ++ StatsCodeStr,
     CallTableTipVarName = "CallTableTipVar",
@@ -2234,59 +2237,51 @@ generate_call_table_lookup_goals(NumberedVars, PredId, ProcId,
 :- pred generate_answer_table_lookup_goals(list(var_mode_pos_method)::in,
     pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    table_info::in, table_info::out, list(table_trie_step)::out,
+    table_info::in, table_info::out, list(table_step_desc)::out,
     list(foreign_arg)::out, list(hlds_goal)::out, string::out) is det.
 
 generate_answer_table_lookup_goals(NumberedVars, PredId, ProcId, Statistics,
         Context, !VarSet, !VarTypes, !TableInfo, OutputSteps, ForeignArgs,
         PrefixGoals, CodeStr) :-
+    MaybeStatsRef = stats_ref(Statistics, answer_table),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
     BackArgStr = "MR_FALSE",
-    generate_table_lookup_goals(NumberedVars, Statistics, answer_table,
+    generate_table_lookup_goals(NumberedVars, MaybeStatsRef,
         DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
         OutputSteps, LookupArgs, LookupPrefixGoals, LookupCodeStr),
-    maybe_lookup_not_dupl_code_args(PredId, ProcId,
+    maybe_record_overall_stats(PredId, ProcId,
         proc_table_info_name, cur_table_node_name,
-        Statistics, call_table, !VarSet, !VarTypes,
+        MaybeStatsRef, !VarSet, !VarTypes,
         StatsPrefixGoals, StatsExtraArgs, StatsCodeStr),
     CodeStr = LookupCodeStr ++ StatsCodeStr,
     ForeignArgs = StatsExtraArgs ++ LookupArgs,
     PrefixGoals = StatsPrefixGoals ++ LookupPrefixGoals.
 
-:- pred maybe_lookup_not_dupl_code_args(pred_id::in, proc_id::in,
-    string::in, string::in, table_attr_statistics::in,
-    call_or_answer_table::in,
+:- pred maybe_record_overall_stats(pred_id::in, proc_id::in,
+    string::in, string::in, maybe(string)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     list(hlds_goal)::out, list(foreign_arg)::out, string::out) is det.
 
-maybe_lookup_not_dupl_code_args(PredId, ProcId, InfoVarName, TipVarName,
-        Statistics, Kind, !VarSet, !VarTypes, PrefixGoals, Args, CodeStr) :-
+maybe_record_overall_stats(PredId, ProcId, InfoVarName, TipVarName,
+        MaybeStatsRef, !VarSet, !VarTypes, PrefixGoals, Args, StatsCodeStr) :-
     (
-        Statistics = table_dont_gather_statistics,
+        MaybeStatsRef = no,
         PrefixGoals = [],
         Args = [],
-        CodeStr = ""
+        StatsCodeStr = ""
     ;
-        Statistics = table_gather_statistics,
+        MaybeStatsRef = yes(StatsRef),
         generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
             InfoVarName, Arg, Goal),
         PrefixGoals = [Goal],
         Args = [Arg],
-        CodeStr = lookup_not_dupl_code(InfoVarName, TipVarName, Kind)
+        StatsCodeStr =
+            "\t" ++ StatsRef ++ ".MR_ts_num_lookups++;\n" ++
+            "\t" ++ "if (MR_trie_node_seen_before(" ++ TipVarName ++ ")) " ++
+                "{\n" ++
+            "\t\t" ++ StatsRef ++ ".MR_ts_num_lookups_is_dupl++;\n" ++
+            "\t" ++ "}\n"
     ).
-
-:- func lookup_not_dupl_code(string, string, call_or_answer_table) = string.
-
-lookup_not_dupl_code(InfoVar, TipVar, call_table) =
-    "\t" ++ InfoVar ++ "->MR_pt_call_table_lookups++;\n" ++
-    "\tif (" ++ TipVar ++ "->MR_integer != 0) {\n" ++
-    "\t\t" ++ InfoVar ++ "->MR_pt_call_table_not_dupl++;\n" ++
-    "\t}\n".
-lookup_not_dupl_code(InfoVar, TipVar, answer_table) =
-    "\t" ++ InfoVar ++ "->MR_pt_answer_table_lookups++;\n" ++
-    "\tif (" ++ TipVar ++ "->MR_integer != 0) {\n" ++
-    "\t\t" ++ InfoVar ++ "->MR_pt_answer_table_not_dupl++;\n" ++
-    "\t}\n".
 
 :- pred generate_get_table_info_goal(pred_id::in, proc_id::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
@@ -2321,19 +2316,19 @@ attach_call_table_tip(hlds_goal(GoalExpr, GoalInfo0),
     % and answer tables.
     %
 :- pred generate_table_lookup_goals(list(var_mode_pos_method)::in,
-    table_attr_statistics::in, call_or_answer_table::in,
-    string::in, string::in, term.context::in,
+    maybe(string)::in, string::in, string::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    table_info::in, table_info::out, list(table_trie_step)::out,
+    table_info::in, table_info::out, list(table_step_desc)::out,
     list(foreign_arg)::out, list(hlds_goal)::out, string::out) is det.
 
-generate_table_lookup_goals([], _, _, _, _, _, !VarSet, !VarTypes, !TableInfo,
+generate_table_lookup_goals([], _, _, _, _, !VarSet, !VarTypes, !TableInfo,
         [], [], [], "").
-generate_table_lookup_goals([VarModePos | NumberedVars], Statistics,
-        Kind, DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
-        [Step | Steps], ForeignArgs ++ RestForeignArgs,
+generate_table_lookup_goals([VarModePos | NumberedVars], MaybeStatsRef,
+        DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
+        [StepDesc | StepDescs], ForeignArgs ++ RestForeignArgs,
         PrefixGoals ++ RestPrefixGoals, CodeStr ++ RestCodeStr) :-
     VarModePos = var_mode_pos_method(Var, _, VarSeqNum, ArgMethod),
+    varset.lookup_name(!.VarSet, Var, VarName),
     ModuleInfo = !.TableInfo ^ table_module_info,
     map.lookup(!.VarTypes, Var, VarType),
     classify_type(ModuleInfo, VarType) = TypeCat,
@@ -2348,174 +2343,257 @@ generate_table_lookup_goals([VarModePos | NumberedVars], Statistics,
         ; ArgMethod = arg_addr
         ),
         gen_lookup_call_for_type(ArgMethod, TypeCat, VarType, Var,
-            VarSeqNum, Statistics, Kind, DebugArgStr, BackArgStr, Context,
+            VarSeqNum, MaybeStatsRef, DebugArgStr, BackArgStr, Context,
             !VarSet, !VarTypes, !TableInfo, Step, ForeignArgs,
             PrefixGoals, CodeStr)
     ),
-    generate_table_lookup_goals(NumberedVars, Statistics, Kind,
+    StepDesc = table_step_desc(VarName, Step),
+    generate_table_lookup_goals(NumberedVars, MaybeStatsRef,
         DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
-        Steps, RestForeignArgs, RestPrefixGoals, RestCodeStr).
+        StepDescs, RestForeignArgs, RestPrefixGoals, RestCodeStr).
 
 :- pred gen_lookup_call_for_type(arg_tabling_method::in, type_category::in,
-    mer_type::in, prog_var::in, int::in, table_attr_statistics::in,
-    call_or_answer_table::in, string::in, string::in, term.context::in,
+    mer_type::in, prog_var::in, int::in, maybe(string)::in,
+    string::in, string::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out,
     table_trie_step::out, list(foreign_arg)::out, list(hlds_goal)::out,
     string::out) is det.
 
-gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, VarSeqNum,
-        Statistics, Kind, DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes,
+gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
+        MaybeStatsRef, DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes,
         !TableInfo, Step, ExtraArgs, PrefixGoals, CodeStr) :-
     ModuleInfo = !.TableInfo ^ table_module_info,
     ArgName = arg_name(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type,
         native_if_possible),
     (
-        TypeCat = type_cat_enum,
-        type_to_ctor_det(Type, TypeCtor),
-        module_info_get_type_table(ModuleInfo, TypeDefnTable),
-        map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        (
-            Ctors = TypeBody ^ du_type_ctors,
-            TypeBody ^ du_type_is_enum = is_mercury_enum,
-            TypeBody ^ du_type_usereq  = no
-        ->
-            list.length(Ctors, EnumRange)
-        ;
-            unexpected(this_file,
-                "gen_lookup_call_for_type: enum type is not du_type?")
+        ( TypeCat = type_cat_enum
+        ; TypeCat = type_cat_foreign_enum
+        ; TypeCat = type_cat_int
+        ; TypeCat = type_cat_char
+        ; TypeCat = type_cat_void
         ),
-        LookupMacroName = "MR_tbl_lookup_insert_enum",
-        Step = table_trie_step_enum(EnumRange),
-        PrefixGoals = [],
-        ExtraArgs = [ForeignArg],
-        StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
-        CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
-            DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
-            cur_table_node_name ++ ", " ++ int_to_string(EnumRange) ++
-            ", " ++ ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+        % Values in these type categories don't have an address.
+        ( ArgTablingMethod0 = arg_addr ->
+            ArgTablingMethod = arg_value
+        ;
+            ArgTablingMethod = ArgTablingMethod0
+        )
     ;
-        TypeCat = type_cat_foreign_enum,
-        sorry(this_file, "tabling and foreign enumerations NYI.")
-    ;
-        (
-            TypeCat = type_cat_int,
-            CatString = "int",
-            Step = table_trie_step_int
-        ;
-            TypeCat = type_cat_char,
-            CatString = "char",
-            Step = table_trie_step_char
-        ;
-            TypeCat = type_cat_string,
-            CatString = "string",
-            Step = table_trie_step_string
-        ;
-            TypeCat = type_cat_float,
-            CatString = "float",
-            Step = table_trie_step_float
-        ;
-            TypeCat = type_cat_type_info,
-            CatString = "typeinfo",
-            Step = table_trie_step_typeinfo
-        ;
-            TypeCat = type_cat_type_ctor_info,
-            CatString = "typeinfo",
-            Step = table_trie_step_typeinfo
+        ( TypeCat = type_cat_string
+        ; TypeCat = type_cat_float
+        ; TypeCat = type_cat_type_info
+        ; TypeCat = type_cat_type_ctor_info
+        ; TypeCat = type_cat_higher_order
+        ; TypeCat = type_cat_tuple
+        ; TypeCat = type_cat_variable
+        ; TypeCat = type_cat_user_ctor
+        ; TypeCat = type_cat_dummy
+        ; TypeCat = type_cat_typeclass_info
+        ; TypeCat = type_cat_base_typeclass_info
         ),
-        LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
-        PrefixGoals = [],
-        ExtraArgs = [ForeignArg],
-        StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
-        CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
-            DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
-            cur_table_node_name ++ ", " ++ ArgName ++ ", " ++
-            next_table_node_name ++ ");\n"
-    ;
+        ArgTablingMethod = ArgTablingMethod0
+    ),
+    MaybeStepStatsArgStr = maybe_step_stats_arg_addr(MaybeStatsRef, VarSeqNum),
+    (
+        ArgTablingMethod = arg_value,
         (
-            TypeCat = type_cat_higher_order
+            TypeCat = type_cat_enum,
+            type_to_ctor_det(Type, TypeCtor),
+            module_info_get_type_table(ModuleInfo, TypeDefnTable),
+            map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            (
+                Ctors = TypeBody ^ du_type_ctors,
+                TypeBody ^ du_type_is_enum = is_mercury_enum,
+                TypeBody ^ du_type_usereq  = no
+            ->
+                list.length(Ctors, EnumRange)
+            ;
+                unexpected(this_file,
+                    "gen_lookup_call_for_type: enum type is not du_type?")
+            ),
+            LookupMacroName = "MR_tbl_lookup_insert_enum",
+            Step = table_trie_step_enum(EnumRange),
+            PrefixGoals = [],
+            ExtraArgs = [ForeignArg],
+            LookupCodeStr = "\t" ++ LookupMacroName ++ "(" ++
+                MaybeStepStatsArgStr ++ ", " ++ DebugArgStr ++ ", " ++
+                BackArgStr ++ ", " ++ cur_table_node_name ++ ", " ++
+                int_to_string(EnumRange) ++ ", " ++ ArgName ++ ", " ++
+                next_table_node_name ++ ");\n"
         ;
-            TypeCat = type_cat_tuple
+            (
+                % Mercury doesn't know the specific values of the foreign
+                % enums, so we cannot use an array as a trie (since we don't
+                % know how big the array would have to be). However, hashing
+                % the enum as an int will work.
+                TypeCat = type_cat_foreign_enum,
+                CatString = "int",
+                Step = table_trie_step_int
+            ;
+                TypeCat = type_cat_int,
+                CatString = "int",
+                Step = table_trie_step_int
+            ;
+                TypeCat = type_cat_char,
+                CatString = "char",
+                Step = table_trie_step_char
+            ;
+                TypeCat = type_cat_string,
+                CatString = "string",
+                Step = table_trie_step_string
+            ;
+                TypeCat = type_cat_float,
+                CatString = "float",
+                Step = table_trie_step_float
+            ;
+                TypeCat = type_cat_type_info,
+                CatString = "typeinfo",
+                Step = table_trie_step_typeinfo
+            ;
+                TypeCat = type_cat_type_ctor_info,
+                CatString = "typeinfo",
+                Step = table_trie_step_typeinfo
+            ),
+            LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
+            PrefixGoals = [],
+            ExtraArgs = [ForeignArg],
+            LookupCodeStr = "\t" ++ LookupMacroName ++ "(" ++
+                MaybeStepStatsArgStr ++ ", " ++ DebugArgStr ++ ", " ++
+                BackArgStr ++ ", " ++ cur_table_node_name ++ ", " ++
+                ArgName ++ ", " ++ next_table_node_name ++ ");\n"
         ;
-            TypeCat = type_cat_variable
+            ( TypeCat = type_cat_higher_order
+            ; TypeCat = type_cat_tuple
+            ; TypeCat = type_cat_variable
+            ; TypeCat = type_cat_user_ctor
+            ),
+            MaybeAddrString = "",
+            IsAddr = table_value,
+            gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg,
+                ArgName, VarSeqNum, MaybeStatsRef, DebugArgStr, BackArgStr,
+                Context, !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs,
+                PrefixGoals, LookupCodeStr)
         ;
-            TypeCat = type_cat_user_ctor
+            TypeCat = type_cat_dummy,
+            Step = table_trie_step_dummy,
+            PrefixGoals = [],
+            ExtraArgs = [],
+            LookupCodeStr = "\t" ++ next_table_node_name ++ " = " ++
+                cur_table_node_name ++ ";\n"
+        ;
+            TypeCat = type_cat_void,
+            unexpected(this_file, "gen_lookup_call_for_type: void")
         ;
             TypeCat = type_cat_typeclass_info,
-            (
-                ArgTablingMethod = arg_value,
-                unexpected(this_file,
-                    "gen_lookup_call_for_type: typeclass_info_type")
-            ;
-                ( ArgTablingMethod = arg_addr
-                ; ArgTablingMethod = arg_promise_implied
-                )
-            )
+            unexpected(this_file,
+                "gen_lookup_call_for_type: typeclass_info_type")
         ;
             TypeCat = type_cat_base_typeclass_info,
-            (
-                ArgTablingMethod = arg_value,
-                unexpected(this_file,
-                    "gen_lookup_call_for_type: base_typeclass_info_type")
-            ;
-                ( ArgTablingMethod = arg_addr
-                ; ArgTablingMethod = arg_promise_implied
-                )
-            )
-        ),
-        type_vars(Type, TypeVars),
-        (
-            TypeVars = [],
-            MaybePolyString = "",
-            IsPoly = table_is_mono
-        ;
-            TypeVars = [_ | _],
-            MaybePolyString = "_poly",
-            IsPoly = table_is_poly
-        ),
-        (
-            ArgTablingMethod = arg_value,
-            MaybeAddrString = "",
-            IsAddr = table_value
-        ;
-            ArgTablingMethod = arg_addr,
-            MaybeAddrString = "_addr",
-            IsAddr = table_addr
-        ;
-            ArgTablingMethod = arg_promise_implied,
             unexpected(this_file,
-            "gen_lookup_call_for_type: arg_promise_implied")
-        ),
-        Step = table_trie_step_general(Type, IsPoly, IsAddr),
-        LookupMacroName = "MR_tbl_lookup_insert_gen" ++
-            MaybePolyString ++ MaybeAddrString,
-        table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
-            !TableInfo, TypeInfoVar, PrefixGoals),
-        TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
-        map.lookup(!.VarTypes, TypeInfoVar, TypeInfoType),
-        ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
-            yes(TypeInfoArgName - in_mode), TypeInfoType, native_if_possible),
-        ExtraArgs = [ForeignTypeInfoArg, ForeignArg],
-        StatsArgStr = stats_arg(Statistics, Kind, VarSeqNum),
-        CodeStr0 = "\t" ++ LookupMacroName ++ "(" ++ StatsArgStr ++ ", " ++
-            DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
-            cur_table_node_name ++ ", " ++ TypeInfoArgName ++ ", " ++
-            ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+                "gen_lookup_call_for_type: base_typeclass_info_type")
+        )
     ;
-        TypeCat = type_cat_dummy,
-        Step = table_trie_step_dummy,
-        PrefixGoals = [],
-        ExtraArgs = [],
-        CodeStr0 = "\t" ++ next_table_node_name ++ " = " ++
-            cur_table_node_name ++ ";\n"
+        ArgTablingMethod = arg_addr,
+        (
+            TypeCat = type_cat_enum,
+            unexpected(this_file, "tabling enums by addr")
+        ;
+            TypeCat = type_cat_foreign_enum,
+            unexpected(this_file, "tabling foreign enums by addr")
+        ;
+            TypeCat = type_cat_int,
+            unexpected(this_file, "tabling ints by addr")
+        ;
+            TypeCat = type_cat_char,
+            unexpected(this_file, "tabling chars by addr")
+        ;
+            ( TypeCat = type_cat_string
+            ; TypeCat = type_cat_float
+            ; TypeCat = type_cat_type_info
+            ; TypeCat = type_cat_type_ctor_info
+            ; TypeCat = type_cat_typeclass_info
+            ; TypeCat = type_cat_base_typeclass_info
+            ; TypeCat = type_cat_higher_order
+            ; TypeCat = type_cat_tuple
+            ; TypeCat = type_cat_variable
+            ; TypeCat = type_cat_user_ctor
+            ),
+            MaybeAddrString = "_addr",
+            IsAddr = table_addr,
+            gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg,
+                ArgName, VarSeqNum, MaybeStatsRef, DebugArgStr, BackArgStr,
+                Context, !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs,
+                PrefixGoals, LookupCodeStr)
+        ;
+            TypeCat = type_cat_dummy,
+            unexpected(this_file, "tabling dummies by addr")
+        ;
+            TypeCat = type_cat_void,
+            unexpected(this_file, "gen_lookup_call_for_type: void")
+        )
     ;
-        TypeCat = type_cat_void,
-        unexpected(this_file, "gen_lookup_call_for_type: void")
+        ArgTablingMethod = arg_promise_implied,
+        unexpected(this_file, "gen_lookup_call_for_type: arg_promise_implied")
     ),
-    CodeStr = CodeStr0 ++ "\t" ++ cur_table_node_name ++ " = " ++
-        next_table_node_name ++ ";\n".
+    UpdateCurNodeCodeStr = "\t" ++ cur_table_node_name ++ " = " ++
+        next_table_node_name ++ ";\n",
+    (
+        MaybeStatsRef = no,
+        CodeStr = LookupCodeStr ++ UpdateCurNodeCodeStr
+    ;
+        MaybeStatsRef = yes(StatsRef),
+        StepStatsArgStr = step_stats_arg_addr(StatsRef, VarSeqNum),
+        NextVarName = next_table_node_name,
+        LookupStatsCodeStr =
+            "\t" ++ StepStatsArgStr ++ ".MR_tss_num_lookups++;\n" ++
+            "\t" ++ "if (MR_trie_node_seen_before(" ++ NextVarName ++ "))" ++
+                "{\n" ++
+            "\t\t" ++ StepStatsArgStr ++ ".MR_tss_num_lookups_is_dupl++;\n" ++
+            "\t" ++ "}\n",
+        CodeStr = LookupCodeStr ++ LookupStatsCodeStr ++ UpdateCurNodeCodeStr
+    ).
+
+:- pred gen_general_lookup_call(table_value_or_addr::in, string::in,
+    mer_type::in, foreign_arg::in, string::in, int::in, maybe(string)::in,
+    string::in, string::in, term.context::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    table_info::in, table_info::out,
+    table_trie_step::out, list(foreign_arg)::out, list(hlds_goal)::out,
+    string::out) is det.
+
+gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg, ArgName,
+        VarSeqNum, MaybeStatsRef, DebugArgStr, BackArgStr, Context,
+        !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs, PrefixGoals,
+        LookupCodeStr) :-
+    type_vars(Type, TypeVars),
+    (
+        TypeVars = [],
+        MaybePolyString = "",
+        IsPoly = table_is_mono
+    ;
+        TypeVars = [_ | _],
+        MaybePolyString = "_poly",
+        IsPoly = table_is_poly
+    ),
+    Step = table_trie_step_general(Type, IsPoly, IsAddr),
+    LookupMacroName = "MR_tbl_lookup_insert_gen" ++
+        MaybePolyString ++ MaybeAddrString,
+    table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
+        !TableInfo, TypeInfoVar, PrefixGoals),
+    TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
+    map.lookup(!.VarTypes, TypeInfoVar, TypeInfoType),
+    ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
+        yes(TypeInfoArgName - in_mode), TypeInfoType,
+        native_if_possible),
+    ExtraArgs = [ForeignTypeInfoArg, ForeignArg],
+    StepStatsArgStr = maybe_step_stats_arg_addr(MaybeStatsRef, VarSeqNum),
+    LookupCodeStr = "\t" ++ LookupMacroName ++ "(" ++
+        StepStatsArgStr ++ ", " ++ DebugArgStr ++ ", " ++ BackArgStr ++ ", " ++
+        cur_table_node_name ++ ", " ++ TypeInfoArgName ++ ", " ++
+        ArgName ++ ", " ++ next_table_node_name ++ ");\n".
 
 %-----------------------------------------------------------------------------%
 
@@ -2564,7 +2642,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
     pred_id::in, proc_id::in, prog_var::in, int::in,
     table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    table_info::in, table_info::out, list(table_trie_step)::out,
+    table_info::in, table_info::out, list(table_step_desc)::out,
     list(hlds_goal)::out) is det.
 
 generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
@@ -2620,7 +2698,7 @@ generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
     prog_var::in, pred_id::in, proc_id::in, int::in,
     table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    table_info::in, table_info::out, list(table_trie_step)::out,
+    table_info::in, table_info::out, list(table_step_desc)::out,
     list(hlds_goal)::out) is det.
 
 generate_mm_save_goals(NumberedSaveVars, SubgoalVar, PredId, ProcId, BlockSize,
@@ -2698,7 +2776,7 @@ generate_all_save_goals(NumberedSaveVars, BaseVarName, BlockSize,
     prog_var::in, pred_id::in, proc_id::in, int::in,
     table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    table_info::in, table_info::out, list(table_trie_step)::out,
+    table_info::in, table_info::out, list(table_step_desc)::out,
     list(hlds_goal)::out) is det.
 
 generate_own_stack_save_return_goal(NumberedOutputVars, GeneratorVar,
@@ -3340,8 +3418,7 @@ add_proc_table_struct(PredProcId, ProcTableStructInfo, ProcInfo,
         MaybeTableAttributes = no,
         TableAttributes = default_memo_table_attributes
     ),
-    TableStructInfo = table_struct_info(ProcTableStructInfo,
-        TableAttributes),
+    TableStructInfo = table_struct_info(ProcTableStructInfo, TableAttributes),
     map.det_insert(TableStructMap0, PredProcId, TableStructInfo,
         TableStructMap),
     module_info_set_table_struct_map(TableStructMap, !ModuleInfo).
@@ -3573,24 +3650,41 @@ get_back_arg_string(TableInfo) = BackArgStr :-
     --->    call_table
     ;       answer_table.
 
-:- func stats_arg(table_attr_statistics, call_or_answer_table, int) = string.
+:- func stats_ref(table_attr_statistics, call_or_answer_table) = maybe(string).
 
-stats_arg(Statistics, Kind, SeqNum) = ArgStr :-
+stats_ref(Statistics, Kind) = MaybeStatsRef :-
     (
         Statistics = table_dont_gather_statistics,
-        ArgStr = "NULL"
+        MaybeStatsRef = no
     ;
         Statistics = table_gather_statistics,
         (
             Kind = call_table,
-            ArgStr = "&" ++ proc_table_info_name ++
-                "->MR_pt_call_table_stats[" ++ int_to_string(SeqNum) ++ "]"
+            KindStr = "MR_TABLE_CALL_TABLE"
         ;
             Kind = answer_table,
-            ArgStr = "&" ++ proc_table_info_name ++
-                "->MR_pt_answer_table_stats[" ++ int_to_string(SeqNum) ++ "]"
-        )
+            KindStr = "MR_TABLE_ANSWER_TABLE"
+        ),
+        StatsRef = proc_table_info_name ++ "->MR_pt_stats" ++
+            "[" ++ KindStr ++ "][MR_TABLE_STATS_CURR]",
+        MaybeStatsRef = yes(StatsRef)
     ).
+
+:- func maybe_step_stats_arg_addr(maybe(string), int) = string.
+
+maybe_step_stats_arg_addr(MaybeStatsRef, SeqNum) = ArgStr :-
+    (
+        MaybeStatsRef = no,
+        ArgStr = "NULL"
+    ;
+        MaybeStatsRef = yes(StatsRef),
+        ArgStr = "&(" ++ step_stats_arg_addr(StatsRef, SeqNum) ++ ")"
+    ).
+
+:- func step_stats_arg_addr(string, int) = string.
+
+step_stats_arg_addr(StatsRef, SeqNum) = ArgStr :-
+    ArgStr = StatsRef ++ ".MR_ts_steps" ++ "[" ++ int_to_string(SeqNum) ++ "]".
 
 %-----------------------------------------------------------------------------%
 
@@ -3606,8 +3700,7 @@ table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes, !TableInfo,
     ( TypeInfoVars = [TypeInfoVar0] ->
         TypeInfoVar = TypeInfoVar0
     ;
-        unexpected(this_file,
-            "table_gen_make_type_info_var: list length != 1")
+        unexpected(this_file, "table_gen_make_type_info_var: list length != 1")
     ).
 
 :- pred table_gen_make_type_info_vars(list(mer_type)::in, term.context::in,
@@ -3615,8 +3708,8 @@ table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes, !TableInfo,
     table_info::in, table_info::out, list(prog_var)::out,
     list(hlds_goal)::out) is det.
 
-table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes, !TableInfo,
-        TypeInfoVars, TypeInfoGoals) :-
+table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
+        !TableInfo, TypeInfoVars, TypeInfoGoals) :-
     % Extract the information from table_info.
     table_info_extract(!.TableInfo, ModuleInfo0, PredInfo0, ProcInfo0),
 
@@ -3636,8 +3729,7 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes, !TableInfo,
     proc_info_get_vartypes(ProcInfo, !:VarTypes),
     proc_info_get_varset(ProcInfo, !:VarSet),
 
-    % Put the new module_info, pred_info, and proc_info back in the
-    % table_info.
+    % Put the new module_info, pred_info, and proc_info back in the table_info.
     table_info_init(ModuleInfo, PredInfo, ProcInfo, !:TableInfo).
 
 %-----------------------------------------------------------------------------%
@@ -3733,11 +3825,11 @@ returning_generator_locn = "MR_mmos_returning_generator".
 %-----------------------------------------------------------------------------%
 
 :- type table_info
-    ---> table_info(
-            table_module_info   :: module_info,
-            table_cur_pred_info :: pred_info,
-            table_cur_proc_info :: proc_info
-        ).
+    --->    table_info(
+                table_module_info   :: module_info,
+                table_cur_pred_info :: pred_info,
+                table_cur_proc_info :: proc_info
+            ).
 
 :- pred table_info_init(module_info::in,
     pred_info::in, proc_info::in, table_info::out) is det.

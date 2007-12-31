@@ -91,8 +91,8 @@
 
                 tis_num_inputs              :: int,
                 tis_num_outputs             :: int,
-                tis_input_steps             :: list(table_trie_step),
-                tis_maybe_output_steps      :: maybe(list(table_trie_step)),
+                tis_input_steps             :: list(table_step_desc),
+                tis_maybe_output_steps      :: maybe(list(table_step_desc)),
                 tis_ptis                    :: rval,
                                             % Pseudo-typeinfos for headvars.
                 tis_type_params             :: rval,

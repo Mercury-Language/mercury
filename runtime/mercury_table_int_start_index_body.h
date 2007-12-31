@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2006 The University of Melbourne.
+** Copyright (C) 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,9 +23,9 @@
 #endif
 
     if (table->MR_start_table == NULL) {
-        record_alloc();
         size = MR_max(MR_START_TABLE_INIT_SIZE, diff + 1);
         table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode, size + 1);
+        MR_table_record_start_alloc(sizeof(MR_TableNode) * (size + 1));
         MR_memset(table->MR_start_table + 1, 0, sizeof(MR_TableNode) * size);
         table->MR_start_table[0].MR_integer = size;
     } else {
@@ -38,6 +38,7 @@
 
         new_size = MR_max(2 * size, diff + 1);
         new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
+        MR_table_record_start_alloc(sizeof(MR_TableNode) * (new_size + 1));
 
         new_array[0].MR_integer = new_size;
 

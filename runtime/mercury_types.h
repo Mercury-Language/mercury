@@ -292,6 +292,8 @@ typedef	MR_Consumer	                            *MR_ConsumerPtr;
 typedef	MR_Generator	                        *MR_GeneratorPtr;
 
 typedef struct MR_TableStepStats_Struct         MR_TableStepStats;
+typedef struct MR_TableStats_Struct             MR_TableStats;
+typedef struct MR_TableStepDesc_Struct          MR_TableStepDesc;
 typedef struct MR_ProcTableInfo_Struct          MR_ProcTableInfo;
 typedef MR_ProcTableInfo                        *MR_ProcTableInfoPtr;
 

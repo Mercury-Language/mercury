@@ -37,18 +37,18 @@
 #define MR_RAW_TABLE_ANY_ADDR_STATS(stats, table, type_info, value)         \
     MR_word_hash_lookup_or_add_stats((stats), (table), (value))
 
-#define MR_RAW_TABLE_TAG(table, tag)                                        \
-    MR_int_fix_index_lookup_or_add((table), 1 << MR_TAGBITS, (tag))
-
-#define MR_RAW_TABLE_TAG_STATS(stats, table, tag)                           \
-    MR_int_fix_index_lookup_or_add_stats((stats), (table),                  \
-        1 << MR_TAGBITS, (tag))
-
 #define MR_RAW_TABLE_ENUM(table, range, value)                              \
-    MR_int_fix_index_lookup_or_add((table), (range), (value))
+    MR_int_fix_index_enum_lookup_or_add((table), (range), (value))
 
 #define MR_RAW_TABLE_ENUM_STATS(stats, table, range, value)                 \
-    MR_int_fix_index_lookup_or_add_stats((stats), (table),                  \
+    MR_int_fix_index_enum_lookup_or_add_stats((stats), (table),             \
+        (range), (value))
+
+#define MR_RAW_TABLE_DU(table, range, value)                                \
+    MR_int_fix_index_du_lookup_or_add((table), (range), (value))
+
+#define MR_RAW_TABLE_DU_STATS(stats, table, range, value)                   \
+    MR_int_fix_index_du_lookup_or_add_stats((stats), (table),               \
         (range), (value))
 
 #define MR_RAW_TABLE_START_INT(table, start, value)                         \
@@ -136,25 +136,26 @@
         }                                                                   \
     } while (0)
 
-#define MR_TABLE_TAG(stats, debug, back, t, t0, value)                      \
-    do {                                                                    \
-        if (stats != NULL) {                                                \
-            (t) = MR_RAW_TABLE_TAG_STATS((stats), (t0), (value));           \
-        } else {                                                            \
-            (t) = MR_RAW_TABLE_TAG((t0), (value));                          \
-        }                                                                   \
-        if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: tag %d => %p\n",                              \
-                (t0), (value), (t))                                         \
-        }                                                                   \
-    } while (0)
-
 #define MR_TABLE_ENUM(stats, debug, back, t, t0, count, value)              \
     do {                                                                    \
         if (stats != NULL) {                                                \
             (t) = MR_RAW_TABLE_ENUM_STATS((stats), (t0), (count), (value)); \
         } else {                                                            \
             (t) = MR_RAW_TABLE_ENUM((t0), (count), (value));                \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: enum %ld of %ld => %p\n",                     \
+                (t0), (long) (value), (long) (count), (t));                 \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_DU(stats, debug, back, t, t0, count, value)                \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_DU_STATS((stats), (t0), (count),             \
+                (value));                                                   \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_DU((t0), (count), (value));                  \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
             printf("TABLE %p: enum %ld of %ld => %p\n",                     \

@@ -214,6 +214,14 @@
     %
 :- func mercury_table_builtin_module = sym_name.
 
+    % Returns the name of the module that handles tabling statistics.
+    % This is separate from table_builtin, since its contents need to be
+    % visible to users, while the contents of table_builtin are private.
+    % This module is automatically imported iff any tabled predicate
+    % gather statistics.
+    %
+:- func mercury_table_statistics_module = sym_name.
+
     % Returns the name of the module containing the builtins for deep
     % profiling. This module is automatically imported iff deep profiling
     % is enabled.
@@ -323,6 +331,7 @@ all_builtin_modules = [
         mercury_region_builtin_module,
         mercury_stm_builtin_module,
         mercury_table_builtin_module,
+        mercury_table_statistics_module,
         mercury_profiling_builtin_module,
         mercury_term_size_prof_builtin_module,
         mercury_par_builtin_module,
@@ -337,6 +346,7 @@ mercury_private_builtin_module = unqualified("private_builtin").
 mercury_region_builtin_module = unqualified("region_builtin").
 mercury_stm_builtin_module = unqualified("stm_builtin").
 mercury_table_builtin_module = unqualified("table_builtin").
+mercury_table_statistics_module = unqualified("table_statistics").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").

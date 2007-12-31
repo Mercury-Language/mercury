@@ -481,6 +481,8 @@ write_rval_const(mlconst_multi_string(S), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_multi_string(S, !IO),
     io.write_string("""", !IO).
+write_rval_const(mlconst_named_const(NamedConst), !IO) :-
+    io.write_string(NamedConst, !IO).
 write_rval_const(mlconst_code_addr(CodeAddrConst), !IO) :-
     (
         CodeAddrConst = code_addr_proc(ProcLabel, _FuncSignature),

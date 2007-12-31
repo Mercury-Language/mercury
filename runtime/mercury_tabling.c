@@ -21,6 +21,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+static  void    MR_table_assert_failed(const char *file, unsigned line);
+
+#ifdef MR_TABLE_DEBUG
+#define MR_table_assert(cond)                                               \
+    do {                                                                    \
+        if (! (cond)) {                                                     \
+            MR_table_assert_failed(__FILE__, __LINE__);                     \
+        }                                                                   \
+    }
+#else
+#define MR_table_assert(cond)  ((void) 0)
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -203,10 +216,10 @@ next_prime(MR_Integer old_size)
 ** It in turn relies on three groups of macros to perform part of the task.
 **
 ** The first group optionally records statistics about the number of successful
-** and unsuccessful searches, and the number of probes they needed. From this
-** information, one can compute the average successful and unsuccessful
-** search lengths. These macros are defined and undefined in the files
-** mercury_tabling_stats_{defs,nodefs,undefs}.h.
+** and unsuccessful searches, and the number of key comparisons they needed.
+** From this information, one can compute the average successful and
+** unsuccessful search lengths. These macros are defined and undefined in the
+** files mercury_tabling_stats_{defs,nodefs,undefs}.h.
 **
 ** The second optionally prints debugging messages.
 **
@@ -216,55 +229,56 @@ next_prime(MR_Integer old_size)
 #ifdef  MR_TABLE_DEBUG
   #define debug_key_msg(keyvalue, keyformat, keycast)                         \
         do {                                                                  \
-                if (MR_hashdebug) {                                           \
-                        printf("HT search key " keyformat "\n",               \
-                                (keycast) keyvalue);                          \
-                }                                                             \
+            if (MR_hashdebug) {                                               \
+                printf("HT search key " keyformat "\n",                       \
+                    (keycast) keyvalue);                                      \
+            }                                                                 \
         } while (0)
 
   #define debug_resize_msg(oldsize, newsize, newthreshold)                    \
         do {                                                                  \
-                if (MR_hashdebug) {                                           \
-                        printf("HT expanding table from %d to %d(%d)\n",      \
-                                (oldsize), (newsize), (newthreshold));        \
-                }                                                             \
+            if (MR_hashdebug) {                                               \
+                printf("HT expanding table from %d to %d(%d)\n",              \
+                    (oldsize), (newsize), (newthreshold));                    \
+            }                                                                 \
         } while (0)
 
   #define debug_rehash_msg(rehash_bucket)                                     \
         do {                                                                  \
-                if (MR_hashdebug) {                                           \
-                        printf("HT rehashing bucket: %d\n",                   \
-                                (rehash_bucket));                             \
-                }                                                             \
+            if (MR_hashdebug) {                                               \
+                printf("HT rehashing bucket: %d\n",                           \
+                    (rehash_bucket));                                         \
+            }                                                                 \
         } while (0)
 
-  #define debug_probe_msg(probe_bucket)                                       \
+  #define debug_key_compare_msg(home_bucket)                                  \
         do {                                                                  \
-                if (MR_hashdebug) {                                           \
-                        printf("HT probing bucket: %d\n", (probe_bucket));    \
-                }                                                             \
+            if (MR_hashdebug) {                                               \
+                printf("HT comparing keys in bucket: %d\n",                   \
+                    (home_bucket));                                           \
+            }                                                                 \
         } while (0)
 
   #define debug_lookup_msg(home_bucket)                                       \
         do {                                                                  \
-                if (MR_hashdebug) {                                           \
-                        printf("HT search successful in bucket: %d\n",        \
-                                (home_bucket));                               \
-                }                                                             \
+            if (MR_hashdebug) {                                               \
+                printf("HT search successful in bucket: %d\n",                \
+                    (home_bucket));                                           \
+            }                                                                 \
         } while (0)
 
   #define debug_insert_msg(home_bucket)                                       \
         do {                                                                  \
-                if (MR_hashdebug) {                                           \
-                        printf("HT search unsuccessful in bucket: %d\n",      \
-                                (home_bucket));                               \
-                }                                                             \
+            if (MR_hashdebug) {                                               \
+                printf("HT search unsuccessful in bucket: %d\n",              \
+                    (home_bucket));                                           \
+            }                                                                 \
         } while (0)
 #else
   #define debug_key_msg(keyvalue, keyformat, keycast)           ((void) 0)
   #define debug_resize_msg(oldsize, newsize, newthreshold)      ((void) 0)
   #define debug_rehash_msg(rehash_bucket)                       ((void) 0)
-  #define debug_probe_msg(probe_bucket)                         ((void) 0)
+  #define debug_key_compare_msg(home_bucket)                    ((void) 0)
   #define debug_lookup_msg(home_bucket)                         ((void) 0)
   #define debug_insert_msg(home_bucket)                         ((void) 0)
 #endif
@@ -299,7 +313,7 @@ next_prime(MR_Integer old_size)
         newtable->freeleft = 0;                                             \
         newtable->allocrecord = NULL;                                       \
         newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
-                        table_size);                                        \
+            table_size);                                                    \
                                                                             \
         for (i = 0; i < table_size; i++) {                                  \
             newtable->hash_table[i].table_field = NULL;                     \
@@ -798,25 +812,54 @@ MR_HASH_CONTENTS_FUNC_BODY
 
 /*
 ** This part deals with tabling using fixed size tables simply indexed
-** by a given integer. t->MR_fix_table[i] contains the trie node for
-** key i.
+** by a given integer. t->MR_fix_table[i] contains the trie node for key i.
+**
+** The enum and the du_functor versions differ only in what statistics field
+** we increment.
 */
 
 MR_TrieNode
-MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
+MR_int_fix_index_enum_lookup_or_add(MR_TrieNode t, MR_Integer range,
+    MR_Integer key)
 {
-#define record_alloc()  ((void) 0)
+#define MR_table_record_fix_alloc(numbytes)         ((void) 0)
 #include "mercury_table_int_fix_index_body.h"
-#undef  record_alloc
+#undef  MR_table_record_fix_alloc
 }
 
 MR_TrieNode
-MR_int_fix_index_lookup_or_add_stats(MR_TableStepStats *stats,
+MR_int_fix_index_enum_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode t, MR_Integer range, MR_Integer key)
 {
-#define record_alloc()  do { stats->MR_tss_num_allocs++; } while(0)
+#define MR_table_record_fix_alloc(numbytes)                                 \
+        do {                                                                \
+            stats->MR_tss_enum_num_node_allocs++;                           \
+            stats->MR_tss_enum_num_node_alloc_bytes += (numbytes);          \
+        } while(0)
 #include "mercury_table_int_fix_index_body.h"
-#undef  record_alloc
+#undef  MR_table_record_fix_alloc
+}
+
+MR_TrieNode
+MR_int_fix_index_du_lookup_or_add(MR_TrieNode t, MR_Integer range,
+    MR_Integer key)
+{
+#define MR_table_record_fix_alloc(numbytes)         ((void) 0)
+#include "mercury_table_int_fix_index_body.h"
+#undef  MR_table_record_fix_alloc
+}
+
+MR_TrieNode
+MR_int_fix_index_du_lookup_or_add_stats(MR_TableStepStats *stats,
+    MR_TrieNode t, MR_Integer range, MR_Integer key)
+{
+#define MR_table_record_fix_alloc(numbytes)                                 \
+        do {                                                                \
+            stats->MR_tss_du_num_node_allocs++;                             \
+            stats->MR_tss_du_num_node_alloc_bytes += (numbytes);            \
+        } while(0)
+#include "mercury_table_int_fix_index_body.h"
+#undef  MR_table_record_fix_alloc
 }
 
 /*---------------------------------------------------------------------------*/
@@ -835,18 +878,22 @@ MR_TrieNode
 MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start,
     MR_Integer key)
 {
-#define record_alloc()  ((void) 0)
+#define MR_table_record_start_alloc(numbytes)   ((void) 0)
 #include "mercury_table_int_start_index_body.h"
-#undef  record_alloc
+#undef  MR_table_record_start_alloc
 }
 
 MR_TrieNode
 MR_int_start_index_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode table, MR_Integer start, MR_Integer key)
 {
-#define record_alloc()  do { stats->MR_tss_num_allocs++; } while(0)
+#define MR_table_record_start_alloc(numbytes)                               \
+        do {                                                                \
+            stats->MR_tss_start_num_allocs++;                               \
+            stats->MR_tss_start_num_alloc_bytes += (numbytes);              \
+        } while(0)
 #include "mercury_table_int_start_index_body.h"
-#undef  record_alloc
+#undef  MR_table_record_start_alloc
 }
 
 /*---------------------------------------------------------------------------*/
@@ -896,11 +943,15 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 #define STATS   NULL
 #define DEBUG   MR_FALSE
 #define BACK    MR_FALSE
+#define MR_table_record_exist_lookup()      ((void) 0)
+#define MR_table_record_arg_lookup()        ((void) 0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -910,11 +961,15 @@ MR_table_type_debug(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 #define STATS   NULL
 #define DEBUG   MR_TRUE
 #define BACK    MR_FALSE
+#define MR_table_record_exist_lookup()      ((void) 0)
+#define MR_table_record_arg_lookup()        ((void) 0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -925,11 +980,21 @@ MR_table_type_stats(MR_TableStepStats *stats, MR_TrieNode table,
 #define STATS   stats
 #define DEBUG   MR_FALSE
 #define BACK    MR_FALSE
+#define MR_table_record_exist_lookup()                                      \
+        do {                                                                \
+            stats->MR_tss_du_num_exist_lookups++;                           \
+        } while(0)
+#define MR_table_record_arg_lookup()                                        \
+        do {                                                                \
+            stats->MR_tss_du_num_arg_lookups++;                             \
+        } while(0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -940,11 +1005,21 @@ MR_table_type_stats_debug(MR_TableStepStats *stats, MR_TrieNode table,
 #define STATS   stats
 #define DEBUG   MR_TRUE
 #define BACK    MR_FALSE
+#define MR_table_record_exist_lookup()                                      \
+        do {                                                                \
+            stats->MR_tss_du_num_exist_lookups++;                           \
+        } while(0)
+#define MR_table_record_arg_lookup()                                        \
+        do {                                                                \
+            stats->MR_tss_du_num_arg_lookups++;                             \
+        } while(0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -954,11 +1029,15 @@ MR_table_type_back(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 #define STATS   NULL
 #define DEBUG   MR_FALSE
 #define BACK    MR_TRUE
+#define MR_table_record_exist_lookup()      ((void) 0)
+#define MR_table_record_arg_lookup()        ((void) 0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -969,11 +1048,15 @@ MR_table_type_debug_back(MR_TrieNode table, MR_TypeInfo type_info,
 #define STATS   NULL
 #define DEBUG   MR_TRUE
 #define BACK    MR_TRUE
+#define MR_table_record_exist_lookup()      ((void) 0)
+#define MR_table_record_arg_lookup()        ((void) 0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -984,11 +1067,21 @@ MR_table_type_stats_back(MR_TableStepStats *stats, MR_TrieNode table,
 #define STATS   stats
 #define DEBUG   MR_FALSE
 #define BACK    MR_TRUE
+#define MR_table_record_exist_lookup()                                      \
+        do {                                                                \
+            stats->MR_tss_du_num_exist_lookups++;                           \
+        } while(0)
+#define MR_table_record_arg_lookup()                                        \
+        do {                                                                \
+            stats->MR_tss_du_num_arg_lookups++;                             \
+        } while(0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 MR_TrieNode
@@ -999,11 +1092,21 @@ MR_table_type_stats_debug_back(MR_TableStepStats *stats, MR_TrieNode table,
 #define STATS   stats
 #define DEBUG   MR_TRUE
 #define BACK    MR_TRUE
+#define MR_table_record_exist_lookup()                                      \
+        do {                                                                \
+            stats->MR_tss_du_num_exist_lookups++;                           \
+        } while(0)
+#define MR_table_record_arg_lookup()                                        \
+        do {                                                                \
+            stats->MR_tss_du_num_arg_lookups++;                             \
+        } while(0)
 #include "mercury_table_type_body.h"
 #undef  func
 #undef  STATS
 #undef  DEBUG
 #undef  BACK
+#undef  MR_table_record_exist_lookup
+#undef  MR_table_record_arg_lookup
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1487,5 +1590,16 @@ void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
     /* of model_non memo tabled predicates */
 }
 #endif
+
+/*---------------------------------------------------------------------------*/
+
+static void
+MR_table_assert_failed(const char *file, unsigned line)
+{
+    char    buf[256];
+
+    snprintf(buf, 256, "assertion failed: file %s, line %d", file, line);
+    MR_fatal_error(buf);
+}
 
 /*---------------------------------------------------------------------------*/

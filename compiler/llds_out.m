@@ -883,52 +883,40 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     InfoDataAddr = data_addr(ModuleName,
         proc_tabling_ref(ProcLabel, tabling_info)),
     InputStepsDataAddr = data_addr(ModuleName,
-        proc_tabling_ref(ProcLabel, tabling_input_steps)),
-    InputEnumParamsDataAddr = data_addr(ModuleName,
-        proc_tabling_ref(ProcLabel, tabling_input_enum_params)),
+        proc_tabling_ref(ProcLabel, tabling_steps_desc(call_table))),
     OutputStepsDataAddr = data_addr(ModuleName,
-        proc_tabling_ref(ProcLabel, tabling_output_steps)),
-    OutputEnumParamsDataAddr = data_addr(ModuleName,
-        proc_tabling_ref(ProcLabel, tabling_output_enum_params)),
+        proc_tabling_ref(ProcLabel, tabling_steps_desc(answer_table))),
     TipsDataAddr = data_addr(ModuleName,
         proc_tabling_ref(ProcLabel, tabling_tips)),
 
-    CallStatsDataName =
-        proc_tabling_ref(ProcLabel, tabling_call_stats),
-    PrevCallStatsDataName =
-        proc_tabling_ref(ProcLabel, tabling_prev_call_stats),
+    CallStatsDataName = proc_tabling_ref(ProcLabel,
+        tabling_stat_steps(call_table, curr_table)),
+    PrevCallStatsDataName = proc_tabling_ref(ProcLabel,
+        tabling_stat_steps(call_table, prev_table)),
     CallStatsDataAddr = data_addr(ModuleName, CallStatsDataName),
     PrevCallStatsDataAddr = data_addr(ModuleName, PrevCallStatsDataName),
 
-    AnswerStatsDataName =
-        proc_tabling_ref(ProcLabel, tabling_answer_stats),
-    PrevAnswerStatsDataName =
-        proc_tabling_ref(ProcLabel, tabling_prev_answer_stats),
+    AnswerStatsDataName = proc_tabling_ref(ProcLabel,
+        tabling_stat_steps(answer_table, curr_table)),
+    PrevAnswerStatsDataName = proc_tabling_ref(ProcLabel,
+        tabling_stat_steps(answer_table, prev_table)),
     AnswerStatsDataAddr = data_addr(ModuleName, AnswerStatsDataName),
     PrevAnswerStatsDataAddr = data_addr(ModuleName, PrevAnswerStatsDataName),
 
     InputStepsDataName =
-        proc_tabling_ref(ProcLabel, tabling_input_steps),
+        proc_tabling_ref(ProcLabel, tabling_steps_desc(call_table)),
     output_table_steps_table(ModuleName, InputStepsDataName, InputSteps,
-        MaybeInputStepEnumParams, !DeclSet, !IO),
-    InputEnumParamsDataName =
-        proc_tabling_ref(ProcLabel, tabling_input_enum_params),
-    output_table_enum_params_table(ModuleName, InputEnumParamsDataName,
-        MaybeInputStepEnumParams, !DeclSet, !IO),
+        !DeclSet, !IO),
     output_rval_decls(PTIVectorRval, !DeclSet, !IO),
 
     (
         MaybeOutputSteps = no
     ;
-        MaybeOutputSteps = yes(OutputSteps),
+        MaybeOutputSteps = yes(OutputStepsA),
         OutputStepsDataName =
-            proc_tabling_ref(ProcLabel, tabling_output_steps),
-        output_table_steps_table(ModuleName, OutputStepsDataName, OutputSteps,
-            MaybeOutputStepEnumParams, !DeclSet, !IO),
-        OutputEnumParamsDataName =
-            proc_tabling_ref(ProcLabel, tabling_output_enum_params),
-        output_table_enum_params_table(ModuleName, OutputEnumParamsDataName,
-            MaybeOutputStepEnumParams, !DeclSet, !IO),
+            proc_tabling_ref(ProcLabel, tabling_steps_desc(answer_table)),
+        output_table_steps_table(ModuleName, OutputStepsDataName, OutputStepsA,
+            !DeclSet, !IO),
         output_rval_decls(PTIVectorRval, !DeclSet, !IO)
     ),
 
@@ -943,18 +931,18 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
         Stats = table_dont_gather_statistics
     ;
         Stats = table_gather_statistics,
-        output_table_stats(ModuleName, CallStatsDataName, NumInputs,
-            !DeclSet, !IO),
-        output_table_stats(ModuleName, PrevCallStatsDataName, NumInputs,
-            !DeclSet, !IO),
+        output_table_step_stats(ModuleName, CallStatsDataName,
+            InputSteps, !DeclSet, !IO),
+        output_table_step_stats(ModuleName, PrevCallStatsDataName,
+            InputSteps, !DeclSet, !IO),
         (
             MaybeOutputSteps = no
         ;
-            MaybeOutputSteps = yes(_),
-            output_table_stats(ModuleName, AnswerStatsDataName, NumOutputs,
-                !DeclSet, !IO),
-            output_table_stats(ModuleName, PrevAnswerStatsDataName, NumOutputs,
-                !DeclSet, !IO)
+            MaybeOutputSteps = yes(OutputStepsB),
+            output_table_step_stats(ModuleName, AnswerStatsDataName,
+                OutputStepsB, !DeclSet, !IO),
+            output_table_step_stats(ModuleName, PrevAnswerStatsDataName,
+                OutputStepsB, !DeclSet, !IO)
         )
     ),
 
@@ -974,21 +962,6 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
         MaybeOutputSteps = yes(_),
         io.write_string("1,\n", !IO)
     ),
-    output_data_addr(InputStepsDataAddr, !IO),
-    io.write_string(",\n", !IO),
-    output_data_addr(InputEnumParamsDataAddr, !IO),
-    io.write_string(",\n", !IO),
-    (
-        MaybeOutputSteps = no,
-        io.write_string("NULL,\n", !IO),
-        io.write_string("NULL,\n", !IO)
-    ;
-        MaybeOutputSteps = yes(_),
-        output_data_addr(OutputStepsDataAddr, !IO),
-        io.write_string(",\n", !IO),
-        output_data_addr(OutputEnumParamsDataAddr, !IO),
-        io.write_string(",\n", !IO)
-    ),
     io.write_string("(const MR_PseudoTypeInfo *) ", !IO),
     output_rval(PTIVectorRval, !IO),
     io.write_string(",\n", !IO),
@@ -996,49 +969,72 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     output_rval(TypeParamsRval, !IO),
     io.write_string(",\n", !IO),
     io.write_string("{ 0 },\n", !IO),
+    io.write_string("{\n", !IO),
+    output_data_addr(InputStepsDataAddr, !IO),
+    io.write_string(",\n", !IO),
+    (
+        MaybeOutputSteps = no,
+        io.write_string("NULL\n", !IO)
+    ;
+        MaybeOutputSteps = yes(_),
+        output_data_addr(OutputStepsDataAddr, !IO),
+        io.write_string("\n", !IO)
+    ),
+    io.write_string("},\n", !IO),
     (
         Stats = table_dont_gather_statistics,
+        io.write_string("{{{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
-        io.write_string("NULL,\n", !IO),
+        io.write_string("NULL\n", !IO),
+        io.write_string("},{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
-        io.write_string("NULL,\n", !IO),
+        io.write_string("NULL\n", !IO),
+        io.write_string("}},{{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
-        io.write_string("NULL,\n", !IO),
+        io.write_string("NULL\n", !IO),
+        io.write_string("},{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
-        io.write_string("NULL,\n", !IO)
+        io.write_string("NULL\n", !IO),
+        io.write_string("}}},\n", !IO)
     ;
         Stats = table_gather_statistics,
+        io.write_string("{{{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
         output_data_addr(CallStatsDataAddr, !IO),
-        io.write_string(",\n", !IO),
+        io.write_string("\n", !IO),
+        io.write_string("},{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
         output_data_addr(PrevCallStatsDataAddr, !IO),
-        io.write_string(",\n", !IO),
+        io.write_string("\n", !IO),
+        io.write_string("}},{{\n", !IO),
         (
             MaybeOutputSteps = no,
             io.write_string("0,\n", !IO),
             io.write_string("0,\n", !IO),
-            io.write_string("NULL,\n", !IO),
+            io.write_string("NULL\n", !IO),
+            io.write_string("},{\n", !IO),
             io.write_string("0,\n", !IO),
             io.write_string("0,\n", !IO),
-            io.write_string("NULL,\n", !IO)
+            io.write_string("NULL\n", !IO)
         ;
             MaybeOutputSteps = yes(_),
             io.write_string("0,\n", !IO),
             io.write_string("0,\n", !IO),
             output_data_addr(AnswerStatsDataAddr, !IO),
-            io.write_string(",\n", !IO),
+            io.write_string("\n", !IO),
+            io.write_string("},{\n", !IO),
             io.write_string("0,\n", !IO),
             io.write_string("0,\n", !IO),
             output_data_addr(PrevAnswerStatsDataAddr, !IO),
-            io.write_string(",\n", !IO)
-        )
+            io.write_string("\n", !IO)
+        ),
+        io.write_string("}}},\n", !IO)
     ),
     (
         MaybeSizeLimit = no,
@@ -1058,58 +1054,39 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     decl_set_insert(decl_data_addr(InfoDataAddr), !DeclSet).
 
 :- pred output_table_steps_table(module_name::in, data_name::in,
-    list(table_trie_step)::in, list(maybe(int))::out,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+    list(table_step_desc)::in, decl_set::in, decl_set::out, io::di, io::uo)
+    is det.
 
-output_table_steps_table(ModuleName, DataName, Steps, MaybeEnumParams,
-        !DeclSet, !IO) :-
+output_table_steps_table(ModuleName, DataName, StepDescs, !DeclSet, !IO) :-
     DataAddr = data_addr(ModuleName, DataName),
     io.write_string("\n", !IO),
-    io.write_string("static const MR_TableTrieStep ", !IO),
+    io.write_string("static const MR_TableStepDesc ", !IO),
     output_data_addr(DataAddr, !IO),
     io.write_string("[] = {\n", !IO),
-    output_table_steps(Steps, MaybeEnumParams, !IO),
+    output_table_steps(StepDescs, !IO),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
 
-:- pred output_table_steps(list(table_trie_step)::in,
-    list(maybe(int))::out, io::di, io::uo) is det.
+:- pred output_table_steps(list(table_step_desc)::in, io::di, io::uo) is det.
 
-output_table_steps([], [], !IO).
-output_table_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
-        !IO) :-
-    table_trie_step_to_c(Step, StepType, MaybeEnumParam),
+output_table_steps([], !IO).
+output_table_steps([StepDesc | StepDescs], !IO) :-
+    StepDesc = table_step_desc(VarName, Step),
+    io.write_string("{ """, !IO),
+    c_util.output_quoted_string(VarName, !IO),
+    io.write_string(""", ", !IO),
+    table_trie_step_to_c(Step, StepType, MaybeEnumRange),
     io.write_string(StepType, !IO),
-    io.write_string(",\n", !IO),
-    output_table_steps(Steps, MaybeEnumParams, !IO).
-
-:- pred output_table_enum_params_table(module_name::in, data_name::in,
-    list(maybe(int))::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_table_enum_params_table(ModuleName, DataName, MaybeEnumParams,
-        !DeclSet, !IO) :-
-    DataAddr = data_addr(ModuleName, DataName),
-    io.write_string("\n", !IO),
-    io.write_string("static const MR_Integer ", !IO),
-    output_data_addr(DataAddr, !IO),
-    io.write_string("[] = {\n", !IO),
-    output_table_enum_params(MaybeEnumParams, !IO),
-    io.write_string("};\n", !IO),
-    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
-
-:- pred output_table_enum_params(list(maybe(int))::in, io::di, io::uo) is det.
-
-output_table_enum_params([], !IO).
-output_table_enum_params([MaybeEnumParam | MaybeEnumParams], !IO) :-
+    io.write_string(", ", !IO),
     (
-        MaybeEnumParam = no,
+        MaybeEnumRange = no,
         io.write_int(-1, !IO)
     ;
-        MaybeEnumParam = yes(EnumRange),
+        MaybeEnumRange = yes(EnumRange),
         io.write_int(EnumRange, !IO)
     ),
-    io.write_string(",\n", !IO),
-    output_table_enum_params(MaybeEnumParams, !IO).
+    io.write_string(" },\n", !IO),
+    output_table_steps(StepDescs, !IO).
 
 :- pred output_table_tips(module_name::in, proc_label::in, int::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1128,10 +1105,11 @@ output_table_tips(ModuleName, ProcLabel, SizeLimit, !DeclSet, !IO) :-
     io.write_string("];\n", !IO),
     decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
 
-:- pred output_table_stats(module_name::in, data_name::in, int::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+:- pred output_table_step_stats(module_name::in, data_name::in,
+    list(table_step_desc)::in, decl_set::in, decl_set::out, io::di, io::uo)
+    is det.
 
-output_table_stats(ModuleName, DataName, NumInputs, !DeclSet, !IO) :-
+output_table_step_stats(ModuleName, DataName, Steps, !DeclSet, !IO) :-
     % We don't need to initialize the elements of the array, because
     % we want to initialize all members of the array to structures
     % that contain all zeros, and C does that for us.
@@ -1139,10 +1117,31 @@ output_table_stats(ModuleName, DataName, NumInputs, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     io.write_string("static MR_TableStepStats ", !IO),
     output_data_addr(DataAddr, !IO),
-    io.write_string("[", !IO),
-    io.write_int(NumInputs, !IO),
-    io.write_string("];\n", !IO),
+    io.write_string("[] = \n", !IO),
+    io.write_string("{\n", !IO),
+    output_table_step_stats_2(Steps, !IO),
+    io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+
+:- pred output_table_step_stats_2(list(table_step_desc)::in, io::di, io::uo)
+    is det.
+
+output_table_step_stats_2([], !IO).
+output_table_step_stats_2([StepDesc | StepDescs], !IO) :-
+    StepDesc = table_step_desc(_VarName, Step),
+    io.write_string("{ 0, 0, ", !IO),
+    KindStr = table_step_stats_kind(Step),
+    io.write_string(KindStr, !IO),
+    io.write_string(",\n", !IO),
+    % Initialize the fields about hash tables.
+    io.write_string("0, 0, 0, 0, 0, 0, 0, 0, 0, ", !IO),
+    % Initialize the fields about enums.
+    io.write_string("0, 0, ", !IO),
+    % Initialize the fields about du types.
+    io.write_string("0, 0, 0, 0, ", !IO),
+    % Initialize the fields about start tables.
+    io.write_string("0, 0 },\n", !IO),
+    output_table_step_stats_2(StepDescs, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1293,7 +1292,7 @@ common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 
 output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         !IO) :-
-    ( 
+    (
         Lang = lang_c,
         globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
         globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
@@ -1332,7 +1331,7 @@ output_foreign_header_include_lines(Decls, !IO) :-
 
 output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
-    ( 
+    (
         Lang = lang_c,
         ( set.member(Code, !.AlreadyDone) ->
             true
@@ -2879,7 +2878,7 @@ output_foreign_proc_inputs([Input | Inputs], !IO) :-
         _MaybeForeignTypeInfo, _BoxPolicy),
     (
         IsDummy = yes,
-        ( 
+        (
             % Avoid outputting an assignment for builtin dummy types.
             % For other dummy types we must output an assignment because
             % code in the foreign_proc body may examine the value.

@@ -16,6 +16,7 @@ SIMPLE_NONLOOP_PROGS = \
 	fib \
 	fib_float \
 	fib_list \
+	fib_stats \
 	fib_string \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
@@ -42,7 +43,8 @@ else
 endif
 
 NONLOOP_SPECIFIED_PROGS0 = \
-	specified
+	specified \
+	specified_stats
 
 # The above test uses the '--allow-table-reset' option which is not
 # implemented for the MLDS backend.

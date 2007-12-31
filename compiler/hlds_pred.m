@@ -43,7 +43,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module table_builtin.
 
 :- implementation.
 
@@ -323,7 +322,6 @@
     ;       marker_obsolete
                         % Requests warnings if this predicate is used.
                         % Used for pragma(obsolete).
-
 
     ;       marker_user_marked_inline
                         % The user requests that this be predicate should
@@ -621,7 +619,7 @@
 :- pred pred_info_set_name(string::in,
     pred_info::in, pred_info::out) is det.
 
-:- pred pred_info_set_orig_arity(arity::in, 
+:- pred pred_info_set_orig_arity(arity::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_is_pred_or_func(pred_or_func::in,
     pred_info::in, pred_info::out) is det.
@@ -1731,10 +1729,12 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    table_locn_direct(int)
     ;       table_locn_indirect(int, int).
 
-    % This type differs from the type table_step_kind in
-    % library/table_builtin.m in that (a) in gives more information about the
-    % type of the corresponding argument (if this info is needed and
-    % available), and (b) it doesn't have to handle dummy steps.
+    % This type differs from the type table_step_kind in table_statistics.m
+    % in the library in that
+    % (a) in gives more information about the type of the corresponding
+    % argument (if this info is needed and available),
+    % (b) it doesn't have to be an enum, and
+    % (c) it doesn't have to handle dummy steps.
 :- type table_trie_step
     --->    table_trie_step_int
     ;       table_trie_step_char
@@ -1755,6 +1755,21 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       table_trie_step_typeclassinfo
     ;       table_trie_step_promise_implied.
 
+:- type table_is_poly
+    --->    table_is_mono       % The table type is monomorphic.
+    ;       table_is_poly.      % The table type is polymorphic.
+
+:- type table_value_or_addr
+    --->    table_value         % We are tabling the value itself.
+    ;       table_addr.         % We are tabling only the address.
+
+    % Return a description of what kind of statistics we collect for a trie
+    % step of a given kind. The description is the name of a value in the C
+    % enum type MR_TableStepStatsKind. (We will need to generalize this
+    % when we implement tabling for non-C backends.)
+    %
+:- func table_step_stats_kind(table_trie_step) = string.
+
 :- type proc_table_io_info
     --->    proc_table_io_info(
                 % The information we need to display an I/O action to the user.
@@ -1769,6 +1784,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % the proc_table_io_info is stored.
 
                 table_arg_infos
+            ).
+
+:- type table_step_desc
+    --->    table_step_desc(
+                tsd_var_name                :: string,
+                tsd_step                    :: table_trie_step
             ).
 
 :- type proc_table_struct_info
@@ -1801,8 +1822,8 @@ attribute_list_to_attributes(Attributes, Attributes).
                 ptsi_context                :: prog_context,
                 ptsi_num_inputs             :: int,
                 ptsi_num_outputs            :: int,
-                ptsi_input_steps            :: list(table_trie_step),
-                ptsi_maybe_output_steps     :: maybe(list(table_trie_step)),
+                ptsi_input_steps            :: list(table_step_desc),
+                ptsi_maybe_output_steps     :: maybe(list(table_step_desc)),
                 ptsi_gen_arg_infos          :: table_arg_infos,
                 ptsi_eval_method            :: eval_method
             ).
@@ -2336,6 +2357,41 @@ structure_sharing_info_init = structure_sharing_info(no, no).
 :- func structure_reuse_info_init = structure_reuse_info.
 
 structure_reuse_info_init = structure_reuse_info(no, no).
+
+table_step_stats_kind(Step) = KindStr :-
+    (
+        ( Step = table_trie_step_int
+        ; Step = table_trie_step_char
+        ; Step = table_trie_step_string
+        ; Step = table_trie_step_float
+        ; Step = table_trie_step_typeinfo
+        ; Step = table_trie_step_typeclassinfo
+        ),
+        KindStr = "MR_TABLE_STATS_DETAIL_HASH"
+    ;
+        Step = table_trie_step_enum(_),
+        KindStr = "MR_TABLE_STATS_DETAIL_ENUM"
+    ;
+        Step = table_trie_step_general(_Type, IsPoly, ValueOrAddr),
+        (
+            ValueOrAddr = table_addr,
+            KindStr = "MR_TABLE_STATS_DETAIL_HASH"
+        ;
+            ValueOrAddr = table_value,
+            (
+                IsPoly = table_is_mono,
+                KindStr = "MR_TABLE_STATS_DETAIL_DU"
+            ;
+                IsPoly = table_is_poly,
+                KindStr = "MR_TABLE_STATS_DETAIL_POLY"
+            )
+        )
+    ;
+        ( Step = table_trie_step_promise_implied
+        ; Step = table_trie_step_dummy
+        ),
+        KindStr = "MR_TABLE_STATS_DETAIL_NONE"
+    ).
 
 proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         MaybeDet, IsAddressTaken, VarNameRemap, ProcInfo) :-

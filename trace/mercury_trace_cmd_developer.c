@@ -745,6 +745,7 @@ MR_trace_cmd_table(char **words, int word_count,
     MR_ProcSpec             spec;
     MR_ProcTableInfo        *pt;
     MR_TrieNode             table_cur;
+    const MR_TableStepDesc  *input_step_descs;
     int                     num_inputs;
     int                     filtered_num_inputs;
     int                     cur_arg;
@@ -819,14 +820,15 @@ MR_trace_cmd_table(char **words, int word_count,
     }
 
     table_cur = &pt->MR_pt_tablenode;
+    input_step_descs = pt->MR_pt_steps_desc[MR_TABLE_CALL_TABLE];
     for (cur_arg = 0, filtered_cur_arg = 0; cur_arg < num_inputs; cur_arg++) {
-        switch (pt->MR_pt_input_steps[cur_arg]) {
+        switch (input_step_descs[cur_arg].MR_tsd_trie_step) {
             case MR_TABLE_STEP_INT:
             case MR_TABLE_STEP_FLOAT:
             case MR_TABLE_STEP_STRING:
                 /* These are OK. */
                 call_table_args[filtered_cur_arg].MR_cta_step =
-                    pt->MR_pt_input_steps[filtered_cur_arg];
+                    input_step_descs[cur_arg].MR_tsd_trie_step;
                 call_table_args[filtered_cur_arg].MR_cta_valid = MR_FALSE;
                 call_table_args[filtered_cur_arg].MR_cta_unfiltered_arg_num =
                     cur_arg;

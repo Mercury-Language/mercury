@@ -2,13 +2,10 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 %
-% This test case is designed to test the functionality of tabling pragmas
-% that explicitly specify how each input argument should be looked up in the
-% call table:
-%
-% :- pragma memo(p(in, in, out), [value, promise_implied, output]).
+% This is a version of specified.m designed to test the code for collecting
+% and printing tabling statistics.
 
-:- module specified.
+:- module specified_stats.
 
 :- interface.
 
@@ -22,9 +19,11 @@
 :- import_module benchmarking.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module table_statistics.
 
 main(!IO) :-
     perform_trials(aplp_vs_vplp, [1, 4], 14, 3, 0, 0, !IO),
@@ -40,7 +39,7 @@ main(!IO) :-
     int::in, int::in, io::di, io::uo) is cc_multi.
 
 perform_trials(TrialType, ListN, IntN, Incr, NumDouble0, NumTrials0, !IO) :-
-    trial(TrialType, ListN, IntN, Time, MTime, !IO),
+    trial(TrialType, NumTrials0, ListN, IntN, Time, MTime, !IO),
     (
         MTime > 10,
         Time > MTime * 2
@@ -82,26 +81,69 @@ perform_trials(TrialType, ListN, IntN, Incr, NumDouble0, NumTrials0, !IO) :-
             NumDouble, NumTrials0 + 1, !IO)
     ).
 
-:- pred trial(trial_type::in, list(int)::in, int::in,
+:- pred trial(trial_type::in, int::in, list(int)::in, int::in,
     int::out, int::out, io::di, io::uo) is cc_multi.
 
-trial(TrialType, ListN, IntN, Time, MTime, !IO) :-
+trial(TrialType, TrialNum, ListN, IntN, Time, MTime, !IO) :-
     (
         TrialType = aplp_vs_vplp,
         benchmark_det(ap_lp_fib_test, ListN - [42], Res, 1, Time),
-        benchmark_det(vp_lp_fib_test, ListN - [42], MRes, 1, MTime)
+        benchmark_det(vp_lp_fib_test, ListN - [42], MRes, 1, MTime),
+
+        table_statistics_for_ap_lp_fib_3(AP_LP_ProcStats, !IO),
+        maybe_write_table_stats(TrialNum, "ap_lp_fib", AP_LP_ProcStats, !IO),
+
+        table_statistics_for_vp_lp_fib_3(VP_LP_ProcStats, !IO),
+        maybe_write_table_stats(TrialNum, "vp_lp_fib", VP_LP_ProcStats, !IO)
     ;
         TrialType = apli_vs_vpli,
         benchmark_det(ap_li_fib_test, ListN - IntN, Res, 1, Time),
-        benchmark_det(vp_li_fib_test, ListN - IntN, MRes, 1, MTime)
+        benchmark_det(vp_li_fib_test, ListN - IntN, MRes, 1, MTime),
+
+        table_statistics_for_ap_li_fib_3(AP_LI_ProcStats, !IO),
+        maybe_write_table_stats(TrialNum, "ap_li_fib", AP_LI_ProcStats, !IO),
+
+        table_statistics_for_vp_li_fib_3(VP_LI_ProcStats, !IO),
+        maybe_write_table_stats(TrialNum, "vp_li_fib", VP_LI_ProcStats, !IO)
     ;
         TrialType = vvll_vs_vpll,
         table_reset_for_vv_ll_fib_3(!IO),
         table_reset_for_vp_ll_fib_3(!IO),
         benchmark_det(vv_ll_fib_test, ListN - ListN, Res, 1, Time),
-        benchmark_det(vp_ll_fib_test, ListN - ListN, MRes, 1, MTime)
+        benchmark_det(vp_ll_fib_test, ListN - ListN, MRes, 1, MTime),
+
+        table_statistics_for_vv_ll_fib_3(VV_LL_ProcStats, !IO),
+        maybe_write_table_stats(TrialNum, "vv_ll_fib", VV_LL_ProcStats, !IO),
+
+        table_statistics_for_vp_ll_fib_3(VP_LL_ProcStats, !IO),
+        maybe_write_table_stats(TrialNum, "vp_ll_fib", VP_LL_ProcStats, !IO)
     ),
     require(unify(Res, MRes), "tabling produces wrong answer").
+
+:- pred maybe_write_table_stats(int::in, string::in, proc_table_statistics::in,
+    io::di, io::uo) is det.
+
+maybe_write_table_stats(TrialNum, PredName, ProcStats, !IO) :-
+    ( TrialNum = 0 ->
+        ProcStats =
+            proc_table_statistics(CallStatsCurPrev, MaybeAnswerStatsCurPrev),
+        CallStatsCurPrev = table_stats_curr_prev(CallStatsCur, _),
+        io.nl(!IO),
+        io.format("call table statistics for %s\n", [s(PredName)], !IO),
+        write_table_stats(CallStatsCur, !IO),
+        (
+            MaybeAnswerStatsCurPrev = no
+        ;
+            MaybeAnswerStatsCurPrev = yes(AnswerStatsCurPrev),
+            AnswerStatsCurPrev = table_stats_curr_prev(AnswerStatsCur, _),
+            io.nl(!IO),
+            io.format("answer table statistics for %s\n", [s(PredName)], !IO),
+            write_table_stats(AnswerStatsCur, !IO)
+        ),
+        io.nl(!IO)
+    ;
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 

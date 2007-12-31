@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2006 The University of Melbourne.
+** Copyright (C) 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,7 +16,7 @@
 */
 
     if (t->MR_fix_table == NULL) {
-        record_alloc();
+        MR_table_record_fix_alloc(sizeof(MR_TableNode) * range);
         t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
         MR_memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
     }

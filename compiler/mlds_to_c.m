@@ -202,7 +202,7 @@ mlds_output_hdr_imports(_Indent, _Imports, !IO).
 
 mlds_output_src_imports(Indent, Imports, !IO) :-
     globals.io_get_target(Target, !IO),
-    ( 
+    (
         Target = target_asm
         % For --target asm, we don't create the header files for modules that
         % don't contain C code, so we'd better not include them, since they
@@ -369,7 +369,7 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
     % can be #included by C++ programs.
 
     globals.io_get_target(Target, !IO),
-    ( 
+    (
         Target = target_c,
         mlds_indent(Indent, !IO),
         io.write_string("#ifdef __cplusplus\n", !IO),
@@ -479,7 +479,7 @@ mlds_output_src_bootstrap_defines(!IO).
 
 mlds_output_hdr_end(Indent, ModuleName, !IO) :-
     globals.io_get_target(Target, !IO),
-    ( 
+    (
         Target = target_c,
         % Terminate the `extern "C"' wrapper.
         mlds_indent(Indent, !IO),
@@ -790,7 +790,7 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
 mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
     % Only output C code in the C header file.
-    ( 
+    (
         Lang = lang_c,
         (
             (
@@ -1256,13 +1256,13 @@ mlds_output_exported_enum_constant(NameAndTag, !IO) :-
         ;
             unexpected(this_file,
                 "tag for export enumeration is not integer or foreign")
-        ) 
+        )
     ;
         unexpected(this_file,
             "exported enumeration constant is not mlds_data")
     ),
     io.nl(!IO).
-    
+
 %-----------------------------------------------------------------------------%
 %
 % Code to output declarations and definitions
@@ -2061,7 +2061,7 @@ mlds_output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
     (
         PredOrFunc = pf_predicate,
         Suffix = "p",
-        OrigArity = PredArity 
+        OrigArity = PredArity
     ;
         PredOrFunc = pf_function,
         Suffix = "f",
@@ -2367,7 +2367,7 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
 mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO) :-
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     (
-        ( TypeCategory = type_cat_enum 
+        ( TypeCategory = type_cat_enum
         ; TypeCategory = type_cat_foreign_enum
         ),
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
@@ -2453,18 +2453,18 @@ mlds_output_type_suffix(mlds_commit_type, _, !IO).
 mlds_output_type_suffix(mlds_rtti_type(RttiIdMaybeElement), ArraySize, !IO) :-
     IsArrayType = rtti_id_maybe_element_has_array_type(RttiIdMaybeElement),
     (
-        IsArrayType = yes,
+        IsArrayType = is_array,
         mlds_output_array_type_suffix(ArraySize, !IO)
     ;
-        IsArrayType = no
+        IsArrayType = not_array
     ).
 mlds_output_type_suffix(mlds_tabling_type(TablingId), ArraySize, !IO) :-
     IsArrayType = tabling_id_has_array_type(TablingId),
     (
-        IsArrayType = yes,
+        IsArrayType = is_array,
         mlds_output_array_type_suffix(ArraySize, !IO)
     ;
-        IsArrayType = no
+        IsArrayType = not_array
     ).
 mlds_output_type_suffix(mlds_unknown_type, _, !IO) :-
     unexpected(this_file, "mlds_output_type_suffix: unknown_type").
@@ -3313,7 +3313,7 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _, !IO) :-
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo,
     inline_target_code(TargetLang, Components), Context, !IO) :-
-    ( 
+    (
         TargetLang = ml_target_c,
         list.foldl(mlds_output_target_code_component(Context), Components,
             !IO)
@@ -3886,6 +3886,8 @@ mlds_output_rval_const(mlconst_multi_string(String), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_multi_string(String, !IO),
     io.write_string("""", !IO).
+mlds_output_rval_const(mlconst_named_const(NamedConst), !IO) :-
+    io.write_string(NamedConst, !IO).
 mlds_output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-
     mlds_output_code_addr(CodeAddr, !IO).
 mlds_output_rval_const(mlconst_data_addr(DataAddr), !IO) :-
@@ -3933,12 +3935,12 @@ mlds_output_data_addr(data_addr(ModuleName, DataName), !IO) :-
     % prefix the name with `&'.
     (
         DataName = mlds_rtti(RttiId),
-        rtti_id_has_array_type(RttiId) = yes
+        rtti_id_has_array_type(RttiId) = is_array
     ->
         mlds_output_data_var_name(ModuleName, DataName, !IO)
     ;
         DataName = mlds_tabling_ref(_, TablingId),
-        tabling_id_has_array_type(TablingId) = yes
+        tabling_id_has_array_type(TablingId) = is_array
     ->
         mlds_output_data_var_name(ModuleName, DataName, !IO)
     ;

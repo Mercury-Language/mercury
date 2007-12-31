@@ -167,6 +167,8 @@ union MR_TableNode_Union {
 	MR_Dlist		*MR_type_table;
 };
 
+#define	MR_trie_node_seen_before(t) 		((t)->MR_integer != 0)
+
 struct MR_MemoNonRecord_Struct {
 	MR_TrieNode		MR_mn_back_ptr;
 	MR_MemoNonStatus	MR_mn_status;
@@ -259,60 +261,88 @@ typedef enum {
 
 typedef	MR_Unsigned	MR_Counter;
 
+typedef enum {
+	MR_TABLE_STATS_DETAIL_HASH,
+	MR_TABLE_STATS_DETAIL_ENUM,
+	MR_TABLE_STATS_DETAIL_START,
+	MR_TABLE_STATS_DETAIL_DU,
+	MR_TABLE_STATS_DETAIL_POLY,
+	MR_TABLE_STATS_DETAIL_NONE
+} MR_TableStepStatsKind;
+
 struct MR_TableStepStats_Struct {
-	MR_Counter			MR_tss_num_allocs;
-	MR_Counter			MR_tss_num_inserts;
 	MR_Counter			MR_tss_num_lookups;
-	MR_Counter			MR_tss_num_insert_probes;
-	MR_Counter			MR_tss_num_lookup_probes;
-	MR_Counter			MR_tss_num_resizes;
-	MR_Counter			MR_tss_num_resizes_old_entries;
-	MR_Counter			MR_tss_num_resizes_new_entries;
+	MR_Counter			MR_tss_num_lookups_is_dupl;
+	MR_TableStepStatsKind		MR_tss_detail_kind;
+
+	MR_Counter			MR_tss_hash_num_table_allocs;
+	MR_Counter			MR_tss_hash_num_table_alloc_bytes;
+	MR_Counter			MR_tss_hash_num_link_chunk_allocs;
+	MR_Counter			MR_tss_hash_num_link_chunk_alloc_bytes;
+	MR_Counter			MR_tss_hash_num_key_compares_not_dupl;
+	MR_Counter			MR_tss_hash_num_key_compares_dupl;
+	MR_Counter			MR_tss_hash_num_resizes;
+	MR_Counter			MR_tss_hash_resize_old_entries;
+	MR_Counter			MR_tss_hash_resize_new_entries;
+
+	MR_Counter			MR_tss_enum_num_node_allocs;
+	MR_Counter			MR_tss_enum_num_node_alloc_bytes;
+
+	MR_Counter			MR_tss_du_num_node_allocs;
+	MR_Counter			MR_tss_du_num_node_alloc_bytes;
+	MR_Counter			MR_tss_du_num_arg_lookups;
+	MR_Counter			MR_tss_du_num_exist_lookups;
+
+	MR_Counter			MR_tss_start_num_allocs;
+	MR_Counter			MR_tss_start_num_alloc_bytes;
 };
 
-#define	MR_copy_table_step_stats(prev, cur)				\
-	do {								\
-		prev->MR_tss_num_allocs = cur->MR_tss_num_allocs;	\
-		prev->MR_tss_num_inserts = cur->MR_tss_num_inserts;	\
-		prev->MR_tss_num_lookups = cur->MR_tss_num_lookups;	\
-		prev->MR_tss_num_insert_probes = 			\
-			cur->MR_tss_num_insert_probes;			\
-		prev->MR_tss_num_lookup_probes =			\
-			cur->MR_tss_num_lookup_probes;			\
-		prev->MR_tss_num_resizes = cur->MR_tss_num_resizes;	\
-		prev->MR_tss_num_resizes_old_entries =			\
-			cur->MR_tss_num_resizes_old_entries;		\
-		prev->MR_tss_num_resizes_new_entries =			\
-			cur->MR_tss_num_resizes_new_entries;		\
-	} while (0)
+struct MR_TableStats_Struct {
+	MR_Counter			MR_ts_num_lookups;
+	MR_Counter			MR_ts_num_lookups_is_dupl;
+	/*
+	** The number of steps is given by MR_pt_num_inputs for the call table
+	** and MR_pt_num_outputs for the answer table.
+	*/
+	MR_TableStepStats		*MR_ts_steps;
+};
+
+#define	MR_TABLE_CALL_TABLE	0
+#define	MR_TABLE_ANSWER_TABLE	1
+
+#define	MR_TABLE_STATS_CURR	0
+#define	MR_TABLE_STATS_PREV	1
+
+struct MR_TableStepDesc_Struct {
+	MR_ConstString			MR_tsd_var_name;
+	MR_TableTrieStep		MR_tsd_trie_step;
+	MR_Integer			MR_tsd_trie_enum_param;
+};
 
 struct MR_ProcTableInfo_Struct {
 	MR_TableType			MR_pt_table_type;
 	int				MR_pt_num_inputs;
 	int				MR_pt_num_outputs;
 	int				MR_pt_has_answer_table;
-	const MR_TableTrieStep		*MR_pt_input_steps;
-	const MR_Integer		*MR_pt_input_enum_params;
-	const MR_TableTrieStep		*MR_pt_output_steps;
-	const MR_Integer		*MR_pt_output_enum_params;
 	const MR_PseudoTypeInfo		*MR_pt_ptis;
 	const MR_TypeParamLocns		*MR_pt_type_params;
 
 	MR_TableNode			MR_pt_tablenode;
 
-	MR_Counter			MR_pt_call_table_lookups;
-	MR_Counter			MR_pt_call_table_not_dupl;
-	MR_TableStepStats		*MR_pt_call_table_stats;
-	MR_Counter			MR_pt_prev_call_table_lookups;
-	MR_Counter			MR_pt_prev_call_table_not_dupl;
-	MR_TableStepStats		*MR_pt_prev_call_table_stats;
+	/*
+	** The index should be either MR_TABLE_CALL_TABLE or
+	** MR_TABLE_ANSWER_TABLE. The size of the pointed-to array is
+	** MR_pt_num_inputs for MR_TABLE_CALL_TABLE and MR_pt_num_outputs
+	** for MR_TABLE_ANSWER_TABLE.
+	*/
+	const MR_TableStepDesc		*MR_pt_steps_desc[2];
 
-	MR_Counter			MR_pt_answer_table_lookups;
-	MR_Counter			MR_pt_answer_table_not_dupl;
-	MR_TableStepStats		*MR_pt_answer_table_stats;
-	MR_Counter			MR_pt_prev_answer_table_lookups;
-	MR_Counter			MR_pt_prev_answer_table_not_dupl;
-	MR_TableStepStats		*MR_pt_prev_answer_table_stats;
+	/*
+	** The first index should be either MR_TABLE_CALL_TABLE or
+	** MR_TABLE_ANSWER_TABLE, while the second index should be either
+	** MR_TABLE_STATS_CURR or MR_TABLE_STATS_PREV.
+	*/
+	MR_TableStats			MR_pt_stats[2][2];
 
 	MR_Unsigned			MR_pt_size_limit;
 	MR_TrieNode			*MR_pt_call_table_tips;
@@ -373,18 +403,24 @@ extern	MR_TrieNode	MR_word_hash_lookup_or_add_stats(
 				MR_Word key);
 
 /*
-** This function assumes that the table is a statically sized array,
+** These functions assume that the table is a statically sized array,
 ** with the index ranging from 0 to range - 1.
 */
 
-extern	MR_TrieNode	MR_int_fix_index_lookup_or_add(MR_TrieNode table,
+extern	MR_TrieNode	MR_int_fix_index_enum_lookup_or_add(MR_TrieNode table,
 				MR_Integer range, MR_Integer key);
-extern	MR_TrieNode	MR_int_fix_index_lookup_or_add_stats(
+extern	MR_TrieNode	MR_int_fix_index_enum_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_Integer range, MR_Integer key);
+
+extern	MR_TrieNode	MR_int_fix_index_du_lookup_or_add(MR_TrieNode table,
+				MR_Integer range, MR_Integer key);
+extern	MR_TrieNode	MR_int_fix_index_du_lookup_or_add_stats(
 				MR_TableStepStats *stats, MR_TrieNode table,
 				MR_Integer range, MR_Integer key);
 
 /*
-** This function assumes that the table is an expandable array,
+** These functions assume that the table is an expandable array,
 ** with the smallest valid index value being start.
 */
 
@@ -395,7 +431,7 @@ extern	MR_TrieNode	MR_int_start_index_lookup_or_add_stats(
 				MR_Integer start, MR_Integer key);
 
 /*
-** This function tables type_infos in a hash table.
+** These functions table type_infos in a hash table.
 */
 
 extern	MR_TrieNode	MR_type_info_lookup_or_add(MR_TrieNode table,
@@ -405,7 +441,7 @@ extern	MR_TrieNode	MR_type_info_lookup_or_add_stats(
 				MR_TypeInfo type_info);
 
 /*
-** This function tables typeclass_infos in a hash table.
+** These functions table typeclass_infos in a hash table.
 */
 
 extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
@@ -415,7 +451,7 @@ extern	MR_TrieNode	MR_type_class_info_lookup_or_add_stats(
 				MR_Word *type_class_info);
 
 /*
-** This function tables values of arbitrary types; the form of the data
+** These functions table values of arbitrary types; the form of the data
 ** structure depends on the actual type of the value. The tabling is done
 ** by tabling all the function symbols of the value; unlike
 ** MR_word_hash_lookup, this function *does* guarantee that all duplicates

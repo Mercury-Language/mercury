@@ -2001,15 +2001,15 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
 	(
 		RttiIdMaybeElement = item_type(_),
 		(
-			IsArray = no,
+			IsArray = not_array,
 			GCC_Type = BaseType
 		;
-			IsArray = yes,
+			IsArray = is_array,
 			build_sized_array_type(BaseType, Size, GCC_Type, !IO)
 		)
 	;
 		RttiIdMaybeElement = element_type(_),
-		expect(unify(IsArray, yes), this_file,
+		expect(unify(IsArray, is_array), this_file,
 			"build_rtti_type: element of non-array"),
 		GCC_Type = BaseType
 	).
@@ -3681,6 +3681,9 @@ build_rval_const(mlconst_multi_string(_Strings), _, _Expr) -->
 	% multi-strings are only used for the debugger.
 	{ sorry(this_file,
 		"debugging not yet supported with `--target asm'") }.
+build_rval_const(mlconst_named_const(_NamedConst), _, _Expr) -->
+	{ sorry(this_file,
+		"named consts not yet supported with `--target asm'") }.
 build_rval_const(mlconst_code_addr(CodeAddr), GlobalInfo, Expr) -->
 	build_code_addr(CodeAddr, GlobalInfo, Expr).
 build_rval_const(mlconst_data_addr(DataAddr), _, Expr) -->

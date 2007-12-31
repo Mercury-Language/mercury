@@ -125,6 +125,7 @@
 :- import_module svrelation.
 :- import_module svset.
 :- import_module svvarset.
+:- import_module table_statistics.
 :- import_module term.
 :- import_module term_io.
 :- import_module term_to_xml.
@@ -304,6 +305,7 @@ mercury_std_library_module("svrelation").
 mercury_std_library_module("svset").
 mercury_std_library_module("svvarset").
 mercury_std_library_module("table_builtin").
+mercury_std_library_module("table_statistics").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
 mercury_std_library_module("term_size_prof_builtin").

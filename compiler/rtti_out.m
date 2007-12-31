@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: rtti_out.m.
 % Main author: zs.
-% 
+%
 % This module contains code to output the RTTI data structures defined in
 % rtti.m as C code.
 %
@@ -19,7 +19,7 @@
 %
 % The MLDS back-end does not use this module; instead it converts the RTTI
 % data structures to MLDS (and then to C or Java, etc.).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.rtti_out.
@@ -668,7 +668,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = foreign_enum(Lang, _, ForeignEnumFunctors, 
+        TypeCtorDetails = foreign_enum(Lang, _, ForeignEnumFunctors,
             ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
         expect(unify(Lang, lang_c), this_file,
             "language other than C for foreign enumeration"),
@@ -769,7 +769,7 @@ output_enum_functor_defn(RttiTypeCtor, EnumFunctor, !DeclSet, !IO) :-
     foreign_enum_functor::in, decl_set::in, decl_set::out, io::di, io::uo)
     is det.
 
-output_foreign_enum_functor_defn(RttiTypeCtor, ForeignEnumFunctor, !DeclSet, 
+output_foreign_enum_functor_defn(RttiTypeCtor, ForeignEnumFunctor, !DeclSet,
         !IO) :-
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, FunctorOrdinal,
         FunctorValue),
@@ -1096,7 +1096,7 @@ output_enum_name_ordered_table(RttiTypeCtor, FunctorMap, !DeclSet, !IO) :-
     io.write_string(" = {\n", !IO),
     output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames, !IO),
     io.write_string("};\n", !IO).
-        
+
 :- pred output_foreign_enum_ordinal_ordered_table(rtti_type_ctor::in,
     map(int, foreign_enum_functor)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
@@ -1111,7 +1111,7 @@ output_foreign_enum_ordinal_ordered_table(RttiTypeCtor, FunctorMap,
     io.write_string(" = {\n", !IO),
     output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames, !IO),
     io.write_string("};\n", !IO).
-        
+
 :- pred output_foreign_enum_name_ordered_table(rtti_type_ctor::in,
     map(string, foreign_enum_functor)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
@@ -1345,7 +1345,7 @@ output_functor_number_map(RttiTypeCtor, FunctorNumberMap, !DeclSet, !IO) :-
 :- type data_group
     --->    data_group(
                 data_c_type     :: string,
-                data_is_array   :: bool,
+                data_is_array   :: is_array,
                 data_linkage    :: linkage
             ).
 
@@ -1414,7 +1414,7 @@ output_rtti_data_decl_chunk(Group, RttiIds, !DeclSet, !IO) :-
 
     output_rtti_data_decl_chunk_entries(IsArray, RttiIds, !DeclSet, !IO).
 
-:- pred output_rtti_data_decl_chunk_entries(bool::in, list(rtti_id)::in,
+:- pred output_rtti_data_decl_chunk_entries(is_array::in, list(rtti_id)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
@@ -1427,10 +1427,10 @@ output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
     io.write_string("\t", !IO),
     output_rtti_id(RttiId, !IO),
     (
-        IsArray = yes,
+        IsArray = is_array,
         io.write_string("[]", !IO)
     ;
-        IsArray = no
+        IsArray = not_array
     ),
     (
         RttiIds = [_ | _],
@@ -1492,10 +1492,10 @@ output_rtti_id_storage_type_name(RttiId, BeingDefined, !DeclSet, !IO) :-
     io.write_string(" ", !IO),
     output_rtti_id(RttiId, !IO),
     (
-        IsArray = yes,
+        IsArray = is_array,
         io.write_string("[]", !IO)
     ;
-        IsArray = no
+        IsArray = not_array
     ).
 
     % Each type_info and pseudo_type_info may have a different C type,
@@ -1781,15 +1781,21 @@ output_cast_addr_of_rtti_id(Cast, RttiId, !IO) :-
 :- pred output_addr_of_rtti_id(rtti_id::in, io::di, io::uo) is det.
 
 output_addr_of_rtti_id(RttiId, !IO) :-
-    % If the RttiName is not an array, then we need to use `&'
-    % to take its address.
+    % All RttiIds are references to memory, with one exception: type variables.
     ( RttiId = ctor_rtti_id(_, type_ctor_pseudo_type_info(type_var(VarNum))) ->
         io.write_int(VarNum, !IO)
-    ; rtti_id_has_array_type(RttiId) = yes ->
-        output_rtti_id(RttiId, !IO)
     ;
-        io.write_string("&", !IO),
-        output_rtti_id(RttiId, !IO)
+        % If the RttiName is not an array, then we need to use `&'
+        % to take its address.
+        IsArray = rtti_id_has_array_type(RttiId),
+        (
+            IsArray = is_array,
+            output_rtti_id(RttiId, !IO)
+        ;
+            IsArray = not_array,
+            io.write_string("&", !IO),
+            output_rtti_id(RttiId, !IO)
+        )
     ).
 
 :- pred output_addr_of_ctor_rtti_id(rtti_type_ctor::in, ctor_rtti_name::in,
@@ -1879,14 +1885,15 @@ output_static_code_addr(CodeAddr, !IO) :-
 :- pred rtti_id_linkage(rtti_id::in, linkage::out) is det.
 
 rtti_id_linkage(RttiId, Linkage) :-
+    IsArray = rtti_id_has_array_type(RttiId),
     (
+        IsArray = is_array,
         % ANSI/ISO C doesn't allow forward declarations of static data
         % with incomplete types (in this case array types without an explicit
         % array size), so make the declarations extern.
-        yes = rtti_id_has_array_type(RttiId)
-    ->
         Linkage = extern
     ;
+        IsArray = not_array,
         Exported = rtti_id_is_exported(RttiId),
         ( Exported = yes, Linkage = extern
         ; Exported = no, Linkage = static

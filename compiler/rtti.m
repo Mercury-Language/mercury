@@ -704,12 +704,16 @@
             % The type is the type of the elements of the data structure
             % identified by the rtti_id, which must be an array.
 
-    % Return yes iff the specified entity is an array.
+:- type is_array
+    --->    is_array
+    ;       not_array.
+
+    % Return is_array iff the specified entity is an array.
     %
-:- func rtti_id_maybe_element_has_array_type(rtti_id_maybe_element) = bool.
-:- func rtti_id_has_array_type(rtti_id) = bool.
-:- func ctor_rtti_name_has_array_type(ctor_rtti_name) = bool.
-:- func tc_rtti_name_has_array_type(tc_rtti_name) = bool.
+:- func rtti_id_maybe_element_has_array_type(rtti_id_maybe_element) = is_array.
+:- func rtti_id_has_array_type(rtti_id) = is_array.
+:- func ctor_rtti_name_has_array_type(ctor_rtti_name) = is_array.
+:- func tc_rtti_name_has_array_type(tc_rtti_name) = is_array.
 
     % Return yes iff the specified entity should be exported
     % for use by other modules.
@@ -827,21 +831,21 @@
     % after the name.
     %
 :- pred rtti_id_maybe_element_c_type(rtti_id_maybe_element::in, string::out,
-    bool::out) is det.
-:- pred rtti_id_c_type(rtti_id::in, string::out, bool::out) is det.
-:- pred ctor_rtti_name_c_type(ctor_rtti_name::in, string::out, bool::out)
+    is_array::out) is det.
+:- pred rtti_id_c_type(rtti_id::in, string::out, is_array::out) is det.
+:- pred ctor_rtti_name_c_type(ctor_rtti_name::in, string::out, is_array::out)
     is det.
-:- pred tc_rtti_name_c_type(tc_rtti_name::in, string::out, bool::out)
+:- pred tc_rtti_name_c_type(tc_rtti_name::in, string::out, is_array::out)
     is det.
 
     % Analogous to rtti_id_c_type.
     %
 :- pred rtti_id_maybe_element_java_type(rtti_id_maybe_element::in, string::out,
-    bool::out) is det.
-:- pred rtti_id_java_type(rtti_id::in, string::out, bool::out) is det.
-:- pred ctor_rtti_name_java_type(ctor_rtti_name::in, string::out, bool::out)
-    is det.
-:- pred tc_rtti_name_java_type(tc_rtti_name::in, string::out, bool::out)
+    is_array::out) is det.
+:- pred rtti_id_java_type(rtti_id::in, string::out, is_array::out) is det.
+:- pred ctor_rtti_name_java_type(ctor_rtti_name::in, string::out,
+    is_array::out) is det.
+:- pred tc_rtti_name_java_type(tc_rtti_name::in, string::out, is_array::out)
     is det.
 
     % Given a type in a type vector in a type class instance declaration,
@@ -865,30 +869,19 @@
 
 %----------------------------------------------------------------------------%
 
+:- type call_or_answer_table
+    --->    call_table
+    ;       answer_table.
+
+:- type curr_or_prev_table
+    --->    curr_table
+    ;       prev_table.
+
 :- type proc_tabling_struct_id
     --->    tabling_info
             % A reference to the main structure containing the call table
             % used to implement memoization, loop checking or minimal model
             % semantics for the given procedure.
-
-    ;       tabling_input_steps
-            % A reference to the part of the tabling structure for the given
-            % procedure that gives the nature of each step in the call table.
-
-    ;       tabling_output_steps
-            % A reference to the part of the tabling structure for the given
-            % procedure that gives the nature of each step in the answer table
-            % (if any).
-
-    ;       tabling_input_enum_params
-            % A reference to the part of the tabling structure for the given
-            % procedure that gives parameters for the call table steps
-            % corresponding to enums.
-
-    ;       tabling_output_enum_params
-            % A reference to the part of the tabling structure for the given
-            % procedure that gives parameters for the answer table steps
-            % (if any) corresponding to enums.
 
     ;       tabling_ptis
             % A reference to the part of the tabling structure for the given
@@ -905,25 +898,22 @@
             % A reference to the part of the tabling structure for the given
             % procedure that contains the root of the call table.
 
-    ;       tabling_call_stats
+    ;       tabling_steps_desc(call_or_answer_table)
             % A reference to the part of the tabling structure for the given
-            % procedure that refers to the current cumulative statistics
-            % about operations on the call table.
+            % procedure that gives the nature of each step in the call or
+            % answer table.
 
-    ;       tabling_prev_call_stats
+    ;       tabling_stats(call_or_answer_table, curr_or_prev_table)
             % A reference to the part of the tabling structure for the given
-            % procedure that refers to the previous snapshot of statistics
-            % about operations on the call table.
+            % procedure that refers to the either the current or the previous
+            % versions of the statistics about overall operations on the
+            % call or answer table.
 
-    ;       tabling_answer_stats
+    ;       tabling_stat_steps(call_or_answer_table, curr_or_prev_table)
             % A reference to the part of the tabling structure for the given
-            % procedure that refers to the current cumulative statistics
-            % about operations on the answer table.
-
-    ;       tabling_prev_answer_stats
-            % A reference to the part of the tabling structure for the given
-            % procedure that refers to the previous snapshot of statistics
-            % about operations on the answer table.
+            % procedure that refers to the either the current or the previous
+            % versions of the statistics about operations on the steps of the
+            % call or answer table.
 
     ;       tabling_tips.
             % A reference to the part of the tabling structure for the given
@@ -935,16 +925,16 @@
     % tabling_id_c_type(TablingId, Type, IsArray):
     %
     % To declare a variable of the type specified by TablingId, put Type
-    % before the name of the variable; if IsArray is true, also put "[]"
+    % before the name of the variable; if IsArray = is_array, also put "[]"
     % after the name.
     %
 :- pred tabling_id_c_type(proc_tabling_struct_id::in, string::out,
-    bool::out) is det.
+    is_array::out) is det.
 
 :- pred tabling_id_java_type(proc_tabling_struct_id::in, string::out,
-    bool::out) is det.
+    is_array::out) is det.
 
-:- func tabling_id_has_array_type(proc_tabling_struct_id) = bool.
+:- func tabling_id_has_array_type(proc_tabling_struct_id) = is_array.
 
 :- pred table_trie_step_to_c(table_trie_step::in, string::out, maybe(int)::out)
     is det.
@@ -1059,8 +1049,8 @@ var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
 
 rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
     rtti_id_has_array_type(RttiId).
-rtti_id_maybe_element_has_array_type(element_type(RttiId)) = no :-
-    expect(unify(rtti_id_has_array_type(RttiId), yes), this_file,
+rtti_id_maybe_element_has_array_type(element_type(RttiId)) = not_array :-
+    expect(unify(rtti_id_has_array_type(RttiId), is_array), this_file,
         "rtti_id_maybe_element_has_array_type: base is not array").
 
 rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
@@ -1829,12 +1819,12 @@ rtti_id_maybe_element_c_type(item_type(RttiId), CTypeName, IsArray) :-
 rtti_id_maybe_element_c_type(element_type(RttiId), CTypeName, IsArray) :-
     rtti_id_c_type(RttiId, CTypeName, IsArray0),
     (
-        IsArray0 = no,
+        IsArray0 = not_array,
         unexpected(this_file,
             "rtti_id_maybe_element_c_type: base is not array")
     ;
-        IsArray0 = yes,
-        IsArray = no
+        IsArray0 = is_array,
+        IsArray = not_array
     ).
 
 rtti_id_c_type(ctor_rtti_id(_, RttiName), CTypeName, IsArray) :-
@@ -1855,12 +1845,12 @@ rtti_id_maybe_element_java_type(item_type(RttiId), CTypeName, IsArray) :-
 rtti_id_maybe_element_java_type(element_type(RttiId), CTypeName, IsArray) :-
     rtti_id_java_type(RttiId, CTypeName, IsArray0),
     (
-        IsArray0 = no,
+        IsArray0 = not_array,
         unexpected(this_file,
             "rtti_id_maybe_element_java_type: base is not array")
     ;
-        IsArray0 = yes,
-        IsArray = no
+        IsArray0 = is_array,
+        IsArray = not_array
     ).
 
 rtti_id_java_type(ctor_rtti_id(_, RttiName), JavaTypeName, IsArray) :-
@@ -1938,95 +1928,104 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
         JavaTypeName = "mercury.runtime." ++ GenTypeName
     ).
 
-    % ctor_rtti_name_type(RttiName, Type, IsArray):
-:- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, bool::out) is det.
+    % ctor_rtti_name_type(RttiName, Type, IsArray)
+    %
+:- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, is_array::out)
+    is det.
 
 ctor_rtti_name_type(type_ctor_exist_locns(_),
-        "DuExistLocn", yes).
+        "DuExistLocn", is_array).
 ctor_rtti_name_type(type_ctor_exist_locn,
-        "DuExistLocn", no).
+        "DuExistLocn", not_array).
 ctor_rtti_name_type(type_ctor_exist_tc_constr(_, _, N),
-        tc_constraint_type_name(N), no).
+        tc_constraint_type_name(N), not_array).
 ctor_rtti_name_type(type_ctor_exist_tc_constrs(_),
-        "TypeClassConstraint", yes).
+        "TypeClassConstraint", is_array).
 ctor_rtti_name_type(type_ctor_exist_info(_),
-        "DuExistInfo", no).
+        "DuExistInfo", not_array).
 ctor_rtti_name_type(type_ctor_field_names(_),
-        "ConstString", yes).
+        "ConstString", is_array).
 ctor_rtti_name_type(type_ctor_field_types(_),
-        "PseudoTypeInfo", yes).
+        "PseudoTypeInfo", is_array).
 ctor_rtti_name_type(type_ctor_res_addrs,
-        "ReservedAddr", yes).
+        "ReservedAddr", is_array).
 ctor_rtti_name_type(type_ctor_res_addr_functors,
-        "ReservedAddrFunctorDescPtr", yes).
+        "ReservedAddrFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_enum_functor_desc(_),
-        "EnumFunctorDesc", no).
+        "EnumFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_foreign_enum_functor_desc(_),
-        "ForeignEnumFunctorDesc", no).
+        "ForeignEnumFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_notag_functor_desc,
-        "NotagFunctorDesc", no).
+        "NotagFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_du_functor_desc(_),
-        "DuFunctorDesc", no).
+        "DuFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_res_functor_desc(_),
-        "ReservedAddrFunctorDesc", no).
+        "ReservedAddrFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_enum_name_ordered_table,
-        "EnumFunctorDescPtr", yes).
+        "EnumFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_enum_value_ordered_table,
-        "EnumFunctorDescPtr", yes).
+        "EnumFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_foreign_enum_name_ordered_table,
-        "ForeignEnumFunctorDescPtr", yes).
+        "ForeignEnumFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_foreign_enum_ordinal_ordered_table,
-        "ForeignEnumFunctorDescPtr", yes).
+        "ForeignEnumFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_du_name_ordered_table,
-        "DuFunctorDescPtr", yes).
+        "DuFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_du_stag_ordered_table(_),
-        "DuFunctorDescPtr", yes).
+        "DuFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_du_ptag_ordered_table,
-        "DuPtagLayout", yes).
+        "DuPtagLayout", is_array).
 ctor_rtti_name_type(type_ctor_du_ptag_layout(_),
-        "DuPtagLayout", no).
+        "DuPtagLayout", not_array).
 ctor_rtti_name_type(type_ctor_res_value_ordered_table,
-        "ReservedAddrTypeLayout", no).
+        "ReservedAddrTypeLayout", not_array).
 ctor_rtti_name_type(type_ctor_res_name_ordered_table,
-        "MaybeResAddrFunctorDesc", yes).
+        "MaybeResAddrFunctorDesc", is_array).
 ctor_rtti_name_type(type_ctor_maybe_res_addr_functor_desc,
-        "MaybeResAddrFunctorDesc", no).
+        "MaybeResAddrFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_functor_number_map,
-        "Integer", yes).
+        "Integer", is_array).
 ctor_rtti_name_type(type_ctor_type_functors,
-        "TypeFunctors", no).
+        "TypeFunctors", not_array).
 ctor_rtti_name_type(type_ctor_type_layout,
-        "TypeLayout", no).
+        "TypeLayout", not_array).
 ctor_rtti_name_type(type_ctor_type_ctor_info,
-        "TypeCtorInfo_Struct", no).
+        "TypeCtorInfo_Struct", not_array).
 ctor_rtti_name_type(type_ctor_type_hashcons_pointer,
-        "TrieNodePtr", no).
+        "TrieNodePtr", not_array).
 ctor_rtti_name_type(type_ctor_type_info(TypeInfo),
-        type_info_name_type(TypeInfo), no).
+        type_info_name_type(TypeInfo), not_array).
 ctor_rtti_name_type(type_ctor_pseudo_type_info(PseudoTypeInfo),
-        pseudo_type_info_name_type(PseudoTypeInfo), no).
+        pseudo_type_info_name_type(PseudoTypeInfo), not_array).
 
-    % tc_rtti_name_type(RttiName, Type, IsArray):
+    % tc_rtti_name_type(RttiName, Type, IsArray)
     %
-:- pred tc_rtti_name_type(tc_rtti_name::in, string::out, bool::out) is det.
+:- pred tc_rtti_name_type(tc_rtti_name::in, string::out, is_array::out) is det.
 
 tc_rtti_name_type(type_class_base_typeclass_info(_, _),
-                                                "BaseTypeclassInfo", yes).
-tc_rtti_name_type(type_class_id,                "TypeClassId", no).
-tc_rtti_name_type(type_class_id_var_names,      "ConstString", yes).
-tc_rtti_name_type(type_class_id_method_ids,     "TypeClassMethod", yes).
-tc_rtti_name_type(type_class_decl,              "TypeClassDeclStruct", no).
-tc_rtti_name_type(type_class_decl_super(_, N), TypeName, no) :-
+        "BaseTypeclassInfo", is_array).
+tc_rtti_name_type(type_class_id,
+        "TypeClassId", not_array).
+tc_rtti_name_type(type_class_id_var_names,
+        "ConstString", is_array).
+tc_rtti_name_type(type_class_id_method_ids,
+        "TypeClassMethod", is_array).
+tc_rtti_name_type(type_class_decl,
+        "TypeClassDeclStruct", not_array).
+tc_rtti_name_type(type_class_decl_super(_, N), TypeName, not_array) :-
     TypeName = tc_constraint_type_name(N).
-tc_rtti_name_type(type_class_decl_supers,       "TypeClassConstraint", yes).
-tc_rtti_name_type(type_class_instance(_),       "InstanceStruct", no).
+tc_rtti_name_type(type_class_decl_supers,
+        "TypeClassConstraint", is_array).
+tc_rtti_name_type(type_class_instance(_),
+        "InstanceStruct", not_array).
 tc_rtti_name_type(type_class_instance_tc_type_vector(_),
-                                                "PseudoTypeInfo", yes).
-tc_rtti_name_type(type_class_instance_constraint(_, _, N), TypeName, no) :-
+        "PseudoTypeInfo", is_array).
+tc_rtti_name_type(type_class_instance_constraint(_, _, N),
+        TypeName, not_array) :-
     TypeName = tc_constraint_type_name(N).
 tc_rtti_name_type(type_class_instance_constraints(_),
-                                                "TypeClassConstraint", yes).
-tc_rtti_name_type(type_class_instance_methods(_), "CodePtr", yes).
+        "TypeClassConstraint", is_array).
+tc_rtti_name_type(type_class_instance_methods(_), "CodePtr", is_array).
 
 :- func tc_constraint_type_name(int) = string.
 
@@ -2115,17 +2114,27 @@ rtti_id_emits_type_ctor_info(RttiId, TypeCtor) :-
 %-----------------------------------------------------------------------------%
 
 tabling_info_id_str(tabling_info) = "table_info".
-tabling_info_id_str(tabling_input_steps) = "table_input_steps".
-tabling_info_id_str(tabling_output_steps) = "table_output_steps".
-tabling_info_id_str(tabling_input_enum_params) = "table_input_enum_params".
-tabling_info_id_str(tabling_output_enum_params) = "table_output_enum_params".
 tabling_info_id_str(tabling_ptis) = "table_ptis".
 tabling_info_id_str(tabling_type_param_locns) = "tabling_type_param_locns".
 tabling_info_id_str(tabling_root_node) = "table_root_node".
-tabling_info_id_str(tabling_call_stats) = "table_call_stats".
-tabling_info_id_str(tabling_prev_call_stats) = "table_prev_call_stats".
-tabling_info_id_str(tabling_answer_stats) = "table_answer_stats".
-tabling_info_id_str(tabling_prev_answer_stats) = "table_prev_answer_stats".
+tabling_info_id_str(tabling_steps_desc(call_table)) = "table_input_steps".
+tabling_info_id_str(tabling_steps_desc(answer_table)) = "table_output_steps".
+tabling_info_id_str(tabling_stats(call_table, curr_table)) =
+    "table_call_stats".
+tabling_info_id_str(tabling_stats(call_table, prev_table)) =
+    "table_prev_call_stats".
+tabling_info_id_str(tabling_stats(answer_table, curr_table)) =
+    "table_answer_stats".
+tabling_info_id_str(tabling_stats(answer_table, prev_table)) =
+    "table_prev_answer_stats".
+tabling_info_id_str(tabling_stat_steps(call_table, curr_table)) =
+    "table_call_step_stats".
+tabling_info_id_str(tabling_stat_steps(call_table, prev_table)) =
+    "table_prev_call_step_stats".
+tabling_info_id_str(tabling_stat_steps(answer_table, curr_table)) =
+    "table_answer_step_stats".
+tabling_info_id_str(tabling_stat_steps(answer_table, prev_table)) =
+    "table_prev_answer_step_stats".
 tabling_info_id_str(tabling_tips) = "table_tips".
 
 tabling_id_c_type(Id, JavaTypeName, IsArray) :-
@@ -2139,21 +2148,17 @@ tabling_id_java_type(Id, JavaTypeName, IsArray) :-
     JavaTypeName = "mercury.runtime." ++ CTypeName.
 
 :- pred tabling_id_base_type(proc_tabling_struct_id::in, string::out,
-    bool::out) is det.
+    is_array::out) is det.
 
-tabling_id_base_type(tabling_info, "ProcTableInfo", no).
-tabling_id_base_type(tabling_input_steps,  "TableTrieStep", yes).
-tabling_id_base_type(tabling_output_steps, "TableTrieStep", yes).
-tabling_id_base_type(tabling_input_enum_params,  "Integer", yes).
-tabling_id_base_type(tabling_output_enum_params, "Integer", yes).
-tabling_id_base_type(tabling_ptis, "PseudoTypeInfo", yes).
-tabling_id_base_type(tabling_type_param_locns, "MR_TypeParamLocns", yes).
-tabling_id_base_type(tabling_root_node, "TableNode", no).
-tabling_id_base_type(tabling_call_stats,        "TableStepStats", yes).
-tabling_id_base_type(tabling_prev_call_stats,   "TableStepStats", yes).
-tabling_id_base_type(tabling_answer_stats,      "TableStepStats", yes).
-tabling_id_base_type(tabling_prev_answer_stats, "TableStepStats", yes).
-tabling_id_base_type(tabling_tips, "TrieNode", yes).
+% These should be without the MR_ prefix.
+tabling_id_base_type(tabling_info, "ProcTableInfo", not_array).
+tabling_id_base_type(tabling_ptis, "PseudoTypeInfo", is_array).
+tabling_id_base_type(tabling_type_param_locns, "TypeParamLocns", is_array).
+tabling_id_base_type(tabling_root_node, "TableNode", not_array).
+tabling_id_base_type(tabling_steps_desc(_), "TableStepDesc", is_array).
+tabling_id_base_type(tabling_stats(_, _), "TableStats", not_array).
+tabling_id_base_type(tabling_stat_steps(_, _), "TableStepStats", is_array).
+tabling_id_base_type(tabling_tips, "TrieNode", is_array).
 
 tabling_id_has_array_type(Id) = IsArray :-
     tabling_id_base_type(Id, _, IsArray).

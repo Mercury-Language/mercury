@@ -4139,10 +4139,13 @@ write_table_tvar_map_entry(TVarSet, TVar - Locn, !IO) :-
     ).
 
 :- pred write_space_and_table_trie_step(tvarset::in,
-    table_trie_step::in, io::di, io::uo) is det.
+    table_step_desc::in, io::di, io::uo) is det.
 
-write_space_and_table_trie_step(TVarSet, TrieStep, !IO) :-
+write_space_and_table_trie_step(TVarSet, StepDesc, !IO) :-
+    StepDesc = table_step_desc(VarName, TrieStep),
     io.write_string(" ", !IO),
+    io.write_string(VarName, !IO),
+    io.write_string(":", !IO),
     io.write_string(table_trie_step_desc(TVarSet, TrieStep), !IO).
 
 :- func table_trie_step_desc(tvarset, table_trie_step) = string.

@@ -48,8 +48,11 @@
             ** substitute the constant zero, which ought to be the enum value
             ** assigned to the type's only function symbol.
             **
-            ** It would of course be preferable for the compiler to simply
-            ** not insert any arguments of dummy types into tables.
+            ** We would like the compiler to simply not insert any arguments
+            ** of dummy types into tables. Unfortunately, while the compiler
+            ** can filter out any dummy arguments whose type is statically
+            ** known, it cannot do so for arguments whose type becomes known
+            ** only at runtime.
             */
             MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table, 1, 0);
             table = table_next;
@@ -71,7 +74,7 @@
                 if ((MR_Unsigned) data <
                     (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
                 {
-                    MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table,
+                    MR_TABLE_DU(STATS, DEBUG, BACK, table_next, table,
                         MR_type_ctor_num_functors(type_ctor_info),
                         ra_layout->MR_ra_constants[data]->
                             MR_ra_functor_ordinal);
@@ -90,7 +93,7 @@
                         int offset;
 
                         offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
-                        MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table,
+                        MR_TABLE_DU(STATS, DEBUG, BACK, table_next, table,
                             MR_type_ctor_num_functors(type_ctor_info),
                             ra_layout->MR_ra_constants[offset]->
                                 MR_ra_functor_ordinal);
@@ -136,34 +139,38 @@
 
                 switch (ptag_layout->MR_sectag_locn) {
 
-                case MR_SECTAG_NONE:
-                    functor_desc = ptag_layout->MR_sectag_alternatives[0];
-                    arg_vector = (MR_Word *) MR_body(data, ptag);
-                    break;
+                    case MR_SECTAG_NONE:
+                        functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                        arg_vector = (MR_Word *) MR_body(data, ptag);
+                        break;
 
-                case MR_SECTAG_LOCAL:
-                    sectag = MR_unmkbody(data);
-                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
-                    assert(functor_desc->MR_du_functor_orig_arity == 0);
-                    assert(functor_desc->MR_du_functor_exist_info == NULL);
-                    arg_vector = NULL;
-                    break;
+                    case MR_SECTAG_LOCAL:
+                        sectag = MR_unmkbody(data);
+                        functor_desc =
+                            ptag_layout->MR_sectag_alternatives[sectag];
+                        MR_table_assert(
+                            functor_desc->MR_du_functor_orig_arity == 0);
+                        MR_table_assert(
+                            functor_desc->MR_du_functor_exist_info == NULL);
+                        arg_vector = NULL;
+                        break;
 
-                case MR_SECTAG_REMOTE:
-                    sectag = MR_field(ptag, data, 0);
-                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
-                    arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
-                    break;
+                    case MR_SECTAG_REMOTE:
+                        sectag = MR_field(ptag, data, 0);
+                        functor_desc =
+                            ptag_layout->MR_sectag_alternatives[sectag];
+                        arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
+                        break;
 
-                case MR_SECTAG_VARIABLE:
-                    MR_fatal_error("MR_table_type(): unexpected variable");
+                    case MR_SECTAG_VARIABLE:
+                        MR_fatal_error("MR_table_type(): unexpected variable");
 
-                default:
-                    MR_fatal_error("MR_table_type(): unknown sectag_locn");
+                    default:
+                        MR_fatal_error("MR_table_type(): unknown sectag_locn");
 
                 }
 
-                MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table,
+                MR_TABLE_DU(STATS, DEBUG, BACK, table_next, table,
                     MR_type_ctor_num_functors(type_ctor_info),
                     functor_desc->MR_du_functor_ordinal);
                 table = table_next;
@@ -181,6 +188,7 @@
                     locns = exist_info->MR_exist_typeinfo_locns;
 
                     for (i = 0; i < num_ti_plain + num_ti_in_tci; i++) {
+                        MR_table_record_exist_lookup();
                         if (locns[i].MR_exist_offset_in_tci < 0) {
                             MR_TABLE_TYPEINFO(STATS, DEBUG, BACK,
                                 table_next, table, (MR_TypeInfo)
@@ -211,6 +219,7 @@
                             functor_desc->MR_du_functor_arg_types[i]);
                     }
 
+                    MR_table_record_arg_lookup();
                     MR_TABLE_ANY(STATS, DEBUG, BACK, "du arg",
                         table_next, table,
                         arg_type_info, arg_vector[meta_args + i]);
