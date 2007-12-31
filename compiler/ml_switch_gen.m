@@ -383,7 +383,7 @@ ml_switch_generate_if_then_else_chain([TaggedCase | TaggedCases], Var,
     ;
         ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
             TagTestExpression, !Info),
-        ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Goal, GoalStatement, !Info),
         ml_switch_generate_if_then_else_chain(TaggedCases, Var, CodeModel,
             CanFail, Context, RestDecls, RestStatements, !Info),
         Rest = ml_gen_block(RestDecls, RestStatements, Context),
@@ -483,7 +483,7 @@ ml_switch_generate_mlds_case(TaggedCase, CodeModel, MLDS_Case, !Info) :-
         ),
         unexpected(this_file, "ml_switch_gen.m: invalid tag type")
     ),
-    ml_gen_goal(CodeModel, Goal, Statement, !Info),
+    ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
     MLDS_Case = mlds_switch_case([match_value(Rval)], Statement).
 
     % Generate an appropriate default for a switch.

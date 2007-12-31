@@ -727,7 +727,7 @@
     % Return the result as a single statement (which may be a block statement
     % containing nested declarations).
     %
-:- pred ml_gen_goal(code_model::in, hlds_goal::in, statement::out,
+:- pred ml_gen_goal_as_block(code_model::in, hlds_goal::in, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate MLDS code for the specified goal in the specified code model.
@@ -1673,7 +1673,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
     % Return the result as a single statement (which may be a block statement
     % containing nested declarations).
     %
-ml_gen_goal(CodeModel, Goal, Statement, !Info) :-
+ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info) :-
     ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info),
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
@@ -3516,8 +3516,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         %       <Then>
 
         CondCodeModel = model_det,
-        ml_gen_goal(model_det, Cond, CondStatement, !Info),
-        ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
+        ml_gen_goal_as_block(model_det, Cond, CondStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Then, ThenStatement, !Info),
         Decls = [],
         Statements = [CondStatement, ThenStatement]
     ;
@@ -3536,8 +3536,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         CondCodeModel = model_semi,
         ml_gen_goal(model_semi, Cond, CondDecls, CondStatements, !Info),
         ml_gen_test_success(!.Info, Succeeded),
-        ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
-        ml_gen_goal(CodeModel, Else, ElseStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Then, ThenStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Else, ElseStatement, !Info),
         IfStmt = ml_stmt_if_then_else(Succeeded, ThenStatement,
             yes(ElseStatement)),
         IfStatement = statement(IfStmt, mlds_make_context(Context)),
@@ -3594,7 +3594,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ThenContext = goal_info_get_context(ThenGoalInfo),
         ml_gen_set_cond_var(!.Info, CondVar, const(mlconst_true), ThenContext,
             SetCondTrue),
-        ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Then, ThenStatement, !Info),
         ThenFuncBody = ml_gen_block([], [SetCondTrue, ThenStatement],
             ThenContext),
         % pop nesting level
@@ -3603,7 +3603,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
 
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
-        ml_gen_goal(CodeModel, Else, ElseStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Else, ElseStatement, !Info),
         IfStmt = ml_stmt_if_then_else(
             unop(std_unop(logical_not), CondSucceeded),
             ElseStatement, no),

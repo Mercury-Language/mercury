@@ -274,7 +274,7 @@ ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
             unexpected(this_file, "ml_gen_string_hash_slot: string expected")
         ),
         StringRval = const(mlconst_string(String)),
-        ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),
+        ml_gen_goal_as_block(CodeModel, Goal, GoalStatement, !Info),
 
         CommentString = "case """ ++ String ++ """",
         Comment = statement(ml_stmt_atomic(comment(CommentString)),

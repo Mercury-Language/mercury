@@ -2054,7 +2054,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     conj_list_to_goal(HLDS_TypeInfoGoals, GoalInfo, Conj),
 
     % Convert this HLDS code to MLDS.
-    ml_gen_goal(model_det, Conj, MLDS_TypeInfoStatement0, !Info),
+    ml_gen_goal_as_block(model_det, Conj, MLDS_TypeInfoStatement0, !Info),
 
     % Replace all heap allocation (new_object instructions) with stack
     % allocation (local variable declarations) in the code to construct

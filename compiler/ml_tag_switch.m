@@ -129,7 +129,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
             GoalList = [_Stag - TaggedCase],
             TaggedCase = tagged_case(_MainTaggedConsId, _OtherTaggedConsIds,
                 Goal),
-            ml_gen_goal(CodeModel, Goal, Statement, !Info)
+            ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info)
         ;
             GoalList = [_, _ | _],
             unexpected(this_file, "more than one goal for non-shared tag")
@@ -161,7 +161,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
                 Goal),
             % There is only one possible matching goal,
             % so we don't need to switch on it.
-            ml_gen_goal(CodeModel, Goal, Statement, !Info)
+            ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info)
         ;
             gen_stag_switch(GoalList, PrimaryTag, SecTagLocn,
                 Var, CodeModel, CaseCanFail, Context, Statement, !Info)
@@ -220,7 +220,7 @@ gen_stag_cases([Case | Cases], CodeModel, [MLDS_Case | MLDS_Cases], !Info) :-
 gen_stag_case(Case, CodeModel, MLDS_Case, !Info) :-
     Case = Stag - tagged_case(_MainTaggedConsId, _OtherTaggedConsIds, Goal),
     StagRval = const(mlconst_int(Stag)),
-    ml_gen_goal(CodeModel, Goal, Statement, !Info),
+    ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
     MLDS_Case = mlds_switch_case([match_value(StagRval)], Statement).
 
 %-----------------------------------------------------------------------------%
