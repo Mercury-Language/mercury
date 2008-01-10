@@ -75,6 +75,7 @@
 :- type reuse_name == sym_name.
 
 :- func generate_reuse_name(module_info, pred_proc_id) = reuse_name.
+
 generate_reuse_name(ModuleInfo, PPId) = ReuseName :-
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _ProcInfo),
     PPId = proc(_, ProcId),
@@ -104,8 +105,8 @@ create_reuse_procedures(ReuseTable, !ModuleInfo, !IO):-
 
     % Process all the goals to update the reuse annotations:
     module_info_get_structure_reuse_map(!.ModuleInfo, ReuseMap),
-    list.foldl2(process_proc(ReuseMap), list.append(ReuseCondPPIds,
-        UncondPPIds), !ModuleInfo, !IO).
+    ReusePPIds = ReuseCondPPIds ++ UncondPPIds,
+    list.foldl2(process_proc(ReuseMap), ReusePPIds, !ModuleInfo, !IO).
 
 :- pred has_conditional_reuse(reuse_as_table::in, pred_proc_id::in) is semidet.
 
@@ -115,13 +116,14 @@ has_conditional_reuse(ReuseTable, PPId) :-
 
 :- pred has_unconditional_reuse(reuse_as_table::in, pred_proc_id::in)
     is semidet.
+
 has_unconditional_reuse(ReuseTable, PPId) :-
     ReuseAs = reuse_as_table_search(PPId, ReuseTable),
     reuse_as_all_unconditional_reuses(ReuseAs).
 
 %------------------------------------------------------------------------------%
 
-create_fresh_pred_proc_info_copy(PPId, NewPPId, !ModuleInfo):-
+create_fresh_pred_proc_info_copy(PPId, NewPPId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     ReusePredName = generate_reuse_name(!.ModuleInfo, PPId),
     create_fresh_pred_proc_info_copy_2(PredInfo0, ProcInfo0, ReusePredName,
@@ -136,12 +138,11 @@ create_fresh_pred_proc_info_copy(PPId, NewPPId, !ModuleInfo):-
     map.det_insert(ReuseMap0, PPId, NewPPId - ReusePredName, ReuseMap),
     module_info_set_structure_reuse_map(ReuseMap, !ModuleInfo).
 
-
 :- pred create_fresh_pred_proc_info_copy_2(pred_info::in, proc_info::in,
     reuse_name::in, pred_info::out, proc_id::out) is det.
 
 create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
-        ReusePredInfo, ReuseProcId):-
+        ReusePredInfo, ReuseProcId) :-
     ModuleName = pred_info_module(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_context(PredInfo, ProgContext),
@@ -171,7 +172,7 @@ create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
     pred_proc_id::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-process_proc(ReuseMap, PPId, !ModuleInfo, !IO):-
+process_proc(ReuseMap, PPId, !ModuleInfo, !IO) :-
     write_proc_progress_message("(reuse version) ", PPId, !.ModuleInfo, !IO),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
@@ -284,16 +285,12 @@ unification_set_reuse(ShortReuseDescription, !Unification) :-
             CellsToUpdate)
     ->
         CellToReuse = cell_to_reuse(DeadVar, PossibleConsIds,
-            list.map(needs_update_to_bool, CellsToUpdate)),
+            CellsToUpdate),
         HowToConstruct = reuse_cell(CellToReuse),
         !:Unification = construct(A, B, C, D, HowToConstruct, F, G)
     ;
         true
     ).
-
-:- func needs_update_to_bool(needs_update) = bool.
-needs_update_to_bool(needs_update) = no.
-needs_update_to_bool(does_not_need_update) = yes.
 
 :- pred determine_reuse_version(structure_reuse_map::in, pred_id::in,
     proc_id::in, sym_name::in, pred_id::out, proc_id::out,

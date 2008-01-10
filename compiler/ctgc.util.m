@@ -29,8 +29,8 @@
     % current module, as these predicates are not analysed by the CTGC
     % system.
     %
-:- pred preds_requiring_no_analysis(module_info::in, list(pred_proc_id)::in)
-    is semidet.
+:- pred some_preds_requiring_no_analysis(module_info::in,
+    list(pred_proc_id)::in) is semidet.
 
 :- pred pred_requires_no_analysis(module_info::in, pred_id::in) is semidet.
 :- pred pred_requires_analysis(module_info::in, pred_id::in) is semidet.
@@ -76,13 +76,9 @@ pred_requires_no_analysis(ModuleInfo, PredId) :-
 pred_requires_analysis(ModuleInfo, PredId) :-
     \+ pred_requires_no_analysis(ModuleInfo, PredId).
 
-:- func get_pred_id(pred_proc_id) = pred_id.
-get_pred_id(proc(PredId, _)) = PredId.
-
-preds_requiring_no_analysis(ModuleInfo, PPIds) :-
-    list.takewhile(pred_requires_analysis(ModuleInfo),
-        list.map(get_pred_id, PPIds), _RequiresAnalysis, RequiresNoAnalysis),
-    RequiresNoAnalysis = [_|_].
+some_preds_requiring_no_analysis(ModuleInfo, PPIds) :-
+    list.member(proc(PredId, _), PPIds),
+    pred_requires_no_analysis(ModuleInfo, PredId).
 
 :- pred not_defined_in_this_module(module_info::in, pred_proc_id::in)
     is semidet.

@@ -2304,22 +2304,22 @@ attribute_list_to_attributes(Attributes, Attributes).
                     % that, this field is of no use.
             ).
 
-    % Sharing information is expressed in terms of headvariables and the
+    % Sharing information is expressed in terms of head variables and the
     % type variables occurring in their types. In order to correctly process
     % (mainly renaming) this information, we need both the list of head
-    % variables as well as their types. As this list of headvariables may
-    % contain any compiler-added headvariables, the processing of imported
+    % variables as well as their types. As this list of head variables may
+    % contain any compiler-added head variables, the processing of imported
     % structure sharing information needs to be postponed until the actual
     % structure sharing analysis, which explains the need for the type
-    % imported_sharing to temporarely store the imported sharing information.
+    % imported_sharing to temporarily store the imported sharing information.
     %
 :- type imported_sharing
     --->    imported_sharing(
-                % The list of headvars in which terms the imported sharing
-                % is expressed.
+                % The list of head variables in which terms the imported
+                % sharing is expressed.
                 s_headvars        :: prog_vars,
 
-                % The types of the headvars.
+                % The types of the head variables.
                 s_types           :: list(mer_type),
 
                 s_sharing         :: structure_sharing_domain

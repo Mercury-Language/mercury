@@ -956,7 +956,7 @@ parse_pragma_type(ModuleName, "structure_reuse", PragmaTerms, ErrorTerm,
             NameAndModesResult),
         NameAndModesResult = ok2(PredName - PredOrFunc, ModeList),
 
-        % Parse the headvariables:
+        % Parse the head variables:
         HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
         term.vars_list(ListHVTerm, HeadVarsGeneric),
         list.map(term.coerce_var, HeadVarsGeneric, HeadVars),

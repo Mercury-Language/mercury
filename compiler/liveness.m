@@ -380,6 +380,8 @@ detect_liveness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         set.difference(TypeInfos, Liveness0, NewTypeInfos),
         set.union(Births1, NewTypeInfos, Births)
     ),
+    set.union(Liveness0, Births, Liveness),
+
     ( goal_is_atomic(GoalExpr0) ->
         PreDeaths = Empty,
         PreBirths = Births,
@@ -396,7 +398,6 @@ detect_liveness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         set.difference(FinalLiveness, Liveness, PostDeaths),
         set.difference(Liveness, FinalLiveness, PostBirths)
     ),
-    set.union(Liveness0, Births, Liveness),
     % We initialize all the fields in order to obliterate any
     % annotations left by a previous invocation of this module.
     goal_info_initialize_liveness_info(PreBirths, PostBirths,

@@ -151,9 +151,11 @@ datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, [Data | Rest]):-
 
 datastructs_subsumed_by_list(ModuleInfo, ProcInfo, PerhapsSubsumedData, 
         Data) :- 
-    list.takewhile(datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data), 
-        PerhapsSubsumedData, _, NotSubsumed), 
-    NotSubsumed = [].
+    all [X] (
+        list.member(X, PerhapsSubsumedData)
+    =>
+        datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data, X)
+    ).
 
 :- pred datastructs_subsume_datastruct(module_info::in, proc_info::in, 
     list(datastruct)::in, datastruct::in) is semidet.

@@ -9,12 +9,12 @@
 % File: structure_reuse.direct.m.
 % Main authors: nancy.
 %
-% This module efined procedure and type related to the dectection of so called
-% direct reuses within the CTGC system.  A "direct reuse" is a combination of
-% the location of a deconstruction unification (where a datastructure may
-% become garbage under certain conditions) and a set of locations of
-% construction unifications where the garbage datastructure can be reused
-% locally. 
+% This module defines procedures and types related to the detection of so
+% called "direct reuses" within the CTGC system.  A direct reuse is a
+% combination of the location of a deconstruction unification (where a
+% datastructure may become garbage under certain conditions) and a set of
+% locations of construction unifications where the garbage datastructure can
+% be reused locally. 
 %
 % Direct reuse analysis requires two steps: 
 %   - Detecting where datastructures may become garbage.

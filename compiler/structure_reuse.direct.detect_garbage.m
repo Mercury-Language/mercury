@@ -59,14 +59,8 @@ detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable) =
 
 determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
         Goal, DeadCellTable) :- 
-   determine_dead_deconstructions(
-        detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable), 
-        Goal, DeadCellTable). 
- 
-:- pred determine_dead_deconstructions(detect_bg_info::in, hlds_goal::in, 
-    dead_cell_table::out) is det.
-
-determine_dead_deconstructions(Background, Goal, DeadCellTable):- 
+    Background = detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo,
+        SharingTable), 
     % In this process we need to know the sharing at each program point, 
     % which boils down to reconstructing that sharing information based on the
     % sharing recorded in the sharing table. 

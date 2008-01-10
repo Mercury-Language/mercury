@@ -95,7 +95,7 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):-
     reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
 
 indirect_reuse_analyse_scc(SharingTable, SCC, !ModuleInfo, !ReuseTable, !IO) :-
-    ( preds_requiring_no_analysis(!.ModuleInfo, SCC) ->
+    ( some_preds_requiring_no_analysis(!.ModuleInfo, SCC) ->
         true
     ;
         indirect_reuse_analyse_scc_until_fixpoint(SharingTable,
@@ -199,7 +199,7 @@ ir_background_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         ReuseTable) = BG :-
     % We don't need to keep track of any information regarding inserted
     % type-info arguments and alike, so we remove them from the list
-    % of headvariables:
+    % of head variables:
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_vartypes(ProcInfo, Vartypes), 
     HeadVarsOfInterest = 
@@ -528,7 +528,7 @@ verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
     SharingAs = AnalysisInfo ^ sharing_as,
     proc_info_get_vartypes(ProcInfo, ActualVarTypes),
     pred_info_get_typevarset(PredInfo, ActualTVarset),
-    list.map(map.lookup(ActualVarTypes), CalleeArgs, CalleeTypes),
+    map.apply_to_list(CalleeArgs, ActualVarTypes, CalleeTypes),
     reuse_as_rename_using_module_info(ModuleInfo, CalleePPId,
         CalleeArgs, CalleeTypes, ActualTVarset, FormalReuseAs, ActualReuseAs),
     LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo,
@@ -660,7 +660,11 @@ sr_fixpoint_table_get_as(PPId, ReuseAs, !Table) :-
     get_from_fixpoint_table(PPId, ReuseAs, !Table).
 
 sr_fixpoint_table_get_short_description(PPId, Table) = Descr :-
-    ( fixpoint_table.is_recursive(Table) -> Rec = "(r)" ; Rec = "(-)"),
+    ( fixpoint_table.is_recursive(Table) ->
+        Rec = "(rec)"
+    ;
+        Rec = "(non-rec)"
+    ),
     ( As = sr_fixpoint_table_get_final_as_semidet(PPId, Table) ->
         Descr0 = reuse_as_short_description(As)
     ;

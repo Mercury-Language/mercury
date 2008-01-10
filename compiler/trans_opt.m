@@ -103,6 +103,7 @@
 :- import_module transform_hlds.termination.
 :- import_module transform_hlds.trailing_analysis.
 
+:- import_module assoc_list.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -139,13 +140,13 @@ write_trans_opt_file(Module, !IO) :-
         % All predicates to write global items into the .trans_opt
         % file should go here.
 
-        % Select all the predicates for which something should be writting
+        % Select all the predicates for which something should be written
         % into the .trans_opt file. 
         %
         module_info_predids(PredIds, Module, _Module),
         module_info_get_structure_reuse_map(Module, ReuseMap), 
         map.values(ReuseMap, ReuseResults), 
-        list.map(fst, ReuseResults, ReusePredProcIds), 
+        assoc_list.keys(ReuseResults, ReusePredProcIds), 
         list.map(get_pred_id, ReusePredProcIds, ReusePredIds), 
         list.delete_elems(PredIds, ReusePredIds, PredIdsNoReuseVersions), 
 

@@ -223,7 +223,7 @@ save_sharing_in_module_info(PPId, SharingAs, !ModuleInfo) :-
     sharing_as_table::in, sharing_as_table::out, io::di, io::uo) is det.
 
 analyse_scc(ModuleInfo, SCC, !SharingTable, !IO) :-
-    ( preds_requiring_no_analysis(ModuleInfo, SCC) ->
+    ( some_preds_requiring_no_analysis(ModuleInfo, SCC) ->
         true
     ;
         analyse_scc_until_fixpoint(ModuleInfo, SCC, !.SharingTable,
@@ -342,16 +342,17 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
                 "par_conj (" ++ ContextString ++ ")", !.SharingAs)
         )
     ;
-        GoalExpr = plain_call(CalleePredId, CalleeProcId, CalleeArgs,_, _, _),
+        GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs,_, _, _),
         CalleePPId = proc(CalleePredId, CalleeProcId),
         lookup_sharing(ModuleInfo, SharingTable, CalleePPId,
             !FixpointTable, CalleeSharing),
 
         % Rename
-        proc_info_get_vartypes(ProcInfo, AllTypes),
-        list.map(map.lookup(AllTypes), CalleeArgs, ActualTypes),
+        proc_info_get_vartypes(ProcInfo, CallerVarTypes),
+        map.apply_to_list(CallArgs, CallerVarTypes, ActualTypes),
         pred_info_get_typevarset(PredInfo, ActualTVarset),
-        sharing_as_rename_using_module_info(ModuleInfo, CalleePPId, CalleeArgs,
+
+        sharing_as_rename_using_module_info(ModuleInfo, CalleePPId, CallArgs,
             ActualTypes, ActualTVarset, CalleeSharing, RenamedSharing),
 
         % Combine

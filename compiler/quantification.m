@@ -709,7 +709,7 @@ implicitly_quantify_atomic_goal(HeadVars, !Info) :-
     union(NonLocals1, NonLocals2, NonLocals),
     set_nonlocals(NonLocals, !Info).
 
-:- pred implicitly_quantify_unify_rhs(maybe(list(bool))::in,
+:- pred implicitly_quantify_unify_rhs(maybe(list(needs_update))::in,
     hlds_goal_info::in, unify_rhs::in, unify_rhs::out,
     unification::in, unification::out, quant_info::in, quant_info::out) is det.
 
@@ -1284,8 +1284,8 @@ goal_vars_2_shorthand(NonLocalsToRecompute, bi_implication(LHS, RHS), !Set,
         !LambdaSet) :-
     conj_vars(NonLocalsToRecompute, [LHS, RHS], !Set, !LambdaSet).
 
-:- pred unify_rhs_vars(nonlocals_to_recompute, unify_rhs, maybe(list(bool)),
-    set_of_var, set_of_var, set_of_var, set_of_var).
+:- pred unify_rhs_vars(nonlocals_to_recompute, unify_rhs,
+    maybe(list(needs_update)), set_of_var, set_of_var, set_of_var, set_of_var).
 :- mode unify_rhs_vars(in(ordinary_nonlocals), in, in, in, out, in, out)
     is det.
 :- mode unify_rhs_vars(in(code_gen_nonlocals), in, in, in, out, in, out)
@@ -1314,20 +1314,20 @@ unify_rhs_vars(NonLocalsToRecompute,
     delete_list(GoalVars, LambdaVars, GoalVars1),
     union(!.LambdaSet, GoalVars1, !:LambdaSet).
 
-:- pred insert_set_fields(list(bool)::in, list(prog_var)::in,
+:- pred insert_set_fields(list(needs_update)::in, list(prog_var)::in,
     set_of_var::in, set_of_var::out) is det.
 
 insert_set_fields(SetArgs, Args, !Set) :-
     get_updated_fields(SetArgs, Args,  ArgsToSet),
     insert_list(!.Set, ArgsToSet, !:Set).
 
-:- pred get_updated_fields(list(bool)::in,
+:- pred get_updated_fields(list(needs_update)::in,
     list(prog_var)::in, list(prog_var)::out) is det.
 
 get_updated_fields(SetArgs, Args, ArgsToSet) :-
     get_updated_fields(SetArgs, Args, [], ArgsToSet).
 
-:- pred get_updated_fields(list(bool)::in,
+:- pred get_updated_fields(list(needs_update)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
 get_updated_fields([], [], !ArgsToSet).
@@ -1337,10 +1337,10 @@ get_updated_fields([_|_], [], _, _) :-
     unexpected(this_file, "get_updated_fields").
 get_updated_fields([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
     (
-        SetArg = yes,
+        SetArg = needs_update,
         !:ArgsToSet = [Arg | !.ArgsToSet]
     ;
-        SetArg = no,
+        SetArg = does_not_need_update,
         !:ArgsToSet = !.ArgsToSet
     ),
     get_updated_fields(SetArgs, Args, !ArgsToSet).

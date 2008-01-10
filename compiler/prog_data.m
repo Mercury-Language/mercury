@@ -338,6 +338,7 @@
 %
 % Stuff for the `structure_sharing_info' pragma.
 %
+
     % Whenever structure sharing analysis is unable to determine a good
     % approximation of the set of structure sharing pairs that might exist
     % during the execution of a program, it must use "top" as the only safe

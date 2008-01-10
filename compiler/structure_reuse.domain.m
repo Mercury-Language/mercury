@@ -189,8 +189,8 @@
 :- pred reuse_as_table_set(pred_proc_id::in, reuse_as::in, 
     reuse_as_table::in, reuse_as_table::out) is det.
 
-:- pred reuse_as_table_maybe_dump(bool::in, reuse_as_table::in, 
-    io::di, io::uo) is det.
+:- pred reuse_as_table_maybe_dump(bool::in, module_info::in,
+    reuse_as_table::in, io::di, io::uo) is det.
 
     % Load all the structure reuse information present in the HLDS into
     % a reuse table. 
@@ -202,6 +202,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_ctgc.
 :- import_module transform_hlds.ctgc.datastruct.
@@ -357,9 +358,9 @@ reuse_as_init_with_one_condition(ReuseCondition) = ReuseAs :-
         ReuseAs = unconditional
     ).
 
-reuse_as_short_description(no_reuse) = "n".
-reuse_as_short_description(unconditional) = "u".
-reuse_as_short_description(conditional(Conds)) = "c(" ++ Size ++ ")" :- 
+reuse_as_short_description(no_reuse) = "no_reuse".
+reuse_as_short_description(unconditional) = "uncond".
+reuse_as_short_description(conditional(Conds)) = "cond(" ++ Size ++ ")" :- 
     Size = string.int_to_string(list.length(Conds)).
       
 
@@ -676,34 +677,34 @@ reuse_as_table_search(PPId, Table) = Table ^ elem(PPId).
 reuse_as_table_set(PPId, ReuseAs, !Table) :- 
     !:Table = !.Table ^ elem(PPId) := ReuseAs.
 
-reuse_as_table_maybe_dump(DoDump, Table, !IO) :-
+reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-
     (
         DoDump = no
     ;   
         DoDump = yes,
-        reuse_as_table_dump(Table, !IO)
+        reuse_as_table_dump(ModuleInfo, Table, !IO)
     ).
 
-:- pred reuse_as_table_dump(reuse_as_table::in, io::di, io::uo) is det.
+:- pred reuse_as_table_dump(module_info::in, reuse_as_table::in,
+    io::di, io::uo) is det.
 
-reuse_as_table_dump(Table, !IO) :-
-    (
-        map.is_empty(Table)
-    ->
+reuse_as_table_dump(ModuleInfo, Table, !IO) :-
+    ( map.is_empty(Table) ->
         io.write_string("% ReuseTable: Empty", !IO)
     ;
         io.write_string("% ReuseTable: PPId --> Reuse\n", !IO), 
-        io.write_list(map.to_assoc_list(Table), "", dump_entries, !IO)
+        map.foldl(dump_entries(ModuleInfo), Table, !IO)
     ).
 
-:- pred dump_entries(pair(pred_proc_id, reuse_as)::in, io::di, io::uo) is det.
+:- pred dump_entries(module_info::in, pred_proc_id::in, reuse_as::in,
+    io::di, io::uo) is det.
 
-dump_entries(PPId - ReuseAs, !IO) :-
-    PPId = proc(PredId, ProcId), 
-    io.write_string(
-        "% " ++ string.int_to_string(pred_id_to_int(PredId)) ++ ", " ++
-        string.int_to_string(proc_id_to_int(ProcId)) ++ "\t-->" ++
-        reuse_as_short_description(ReuseAs) ++ "\n", !IO).
+dump_entries(ModuleInfo, PPId, ReuseAs, !IO) :-
+    io.write_string("% ", !IO),
+    write_pred_proc_id(ModuleInfo, PPId, !IO),
+    io.write_string("\t--> ", !IO),
+    io.write_string(reuse_as_short_description(ReuseAs), !IO),
+    io.nl(!IO).
 
 load_structure_reuse_table(ModuleInfo) = ReuseTable :- 
     module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
@@ -733,7 +734,7 @@ load_structure_reuse_table_3(ModuleInfo, PredId, ProcId, !ReuseTable) :-
     ;
         MaybePublicReuse = no
     ).
-    
+
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

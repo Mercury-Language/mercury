@@ -764,8 +764,7 @@
     % Information on how to construct the cell for a construction unification.
     % The `construct_statically' alternative is set by the mark_static_terms.m
     % pass, and is currently only used for the MLDS back-end (for the LLDS
-    % back-end, the same optimization is handled by var_locn.m). The
-    % `reuse_cell' alternative is not yet used.
+    % back-end, the same optimization is handled by var_locn.m).
     %
 :- type how_to_construct
     --->    construct_statically(
@@ -802,7 +801,7 @@
                 prog_var,
                 list(cons_id),      % The cell to be reused may be tagged
                                     % with one of these cons_ids.
-                list(bool)          % A `no' entry means that the corresponding
+                list(needs_update)  % Whether the corresponding
                                     % argument already has the correct value
                                     % and does not need to be filled in.
             ).

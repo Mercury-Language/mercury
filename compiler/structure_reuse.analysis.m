@@ -131,14 +131,14 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     direct_reuse_pass(SharingTable, !ModuleInfo, 
         ReuseTable0, ReuseTable1, !IO),
     maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
-    reuse_as_table_maybe_dump(VeryVerbose, ReuseTable1, !IO),
+    reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, ReuseTable1, !IO),
 
     % Determine information about possible indirect reuses.
     maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO), 
     indirect_reuse_pass(SharingTable, !ModuleInfo, ReuseTable1, ReuseTable2, 
        !IO), 
     maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
-    reuse_as_table_maybe_dump(VeryVerbose, ReuseTable2, !IO),
+    reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, ReuseTable2, !IO),
 
     % For every procedure that has some potential (conditional) reuse (either 
     % direct or indirect), create a new procedure that actually implements

@@ -916,7 +916,7 @@ get_type_and_cons_defn(ModuleInfo, Type, ConsId, TypeDefn, ConsDefn) :-
         TypeDefn = TypeDefnPrime,
         ConsDefn = ConsDefnPrime
     ;
-        unexpected(this_file, "gget_type_and_cons_defn")
+        unexpected(this_file, "get_type_and_cons_defn")
     ).
 
 :- pred do_get_type_and_cons_defn(module_info::in, type_ctor::in, cons_id::in,
