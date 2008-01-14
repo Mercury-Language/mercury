@@ -908,21 +908,27 @@ verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
     prog_vars::in, deconstruction_spec::in, reuse_type::out) is semidet.
 
 compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
-            ReuseType) :-
+        ReuseType) :-
     DeconSpec = decon(DeadVar, _, DeadCons, DeadCellArgs, _),
 
     ModuleInfo = Background ^ module_info,
     Vartypes = Background ^ vartypes,
-    NewArity = list.length(NewCellArgs),
-    DeadArity = list.length(DeadCellArgs),
+    NewNumArgs = list.length(NewCellArgs),
+    DeadNumArgs = list.length(DeadCellArgs),
 
     % Cells with arity zero can not reuse heap cells.
-    NewArity \= 0,
+    NewNumArgs \= 0,
+
+    % Include the space needed for secondary tags.
+    has_secondary_tag(ModuleInfo, Vartypes, NewVar, NewCons, SecTag),
+    has_secondary_tag(ModuleInfo, Vartypes, DeadVar, DeadCons, DeadSecTag),
+    NewArity = NewNumArgs + (SecTag = yes -> 1 ; 0),
+    DeadArity = DeadNumArgs + (DeadSecTag = yes -> 1 ; 0),
 
     % The new cell must not be bigger than the dead cell.
     NewArity =< DeadArity,
 
-    % Verify wether the cons_ids and arities match the reuse constraint
+    % Verify whether the cons_ids and arities match the reuse constraint
     % specified by the user.
     Constraint = Background ^ strategy,
     DiffArity = DeadArity - NewArity,
@@ -939,10 +945,8 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     % fields that do not require an update if the construction unification
     % would reuse the deconstructed cell.
     %
-    has_secondary_tag(ModuleInfo, Vartypes, NewVar, NewCons, SecTag),
-    has_secondary_tag(ModuleInfo, Vartypes, DeadVar, DeadCons, DeadSecTag),
     ReuseFields = already_correct_fields(SecTag, NewCellArgs,
-        DeadSecTag - DeadCellArgs),
+        DeadSecTag, DeadCellArgs),
     UpToDateFields = list.length(
         list.delete_all(ReuseFields, needs_update)),
     %
@@ -996,10 +1000,10 @@ needs_update_and(does_not_need_update, does_not_need_update) =
 
 %-----------------------------------------------------------------------------%
 
-        % has_secondary_tag(Var, ConsId, HasSecTag) returns `yes' iff the
-        % variable, Var, with cons_id, ConsId, requires a remote
-        % secondary tag to distinguish between its various functors.
-        %
+    % has_secondary_tag(Var, ConsId, HasSecTag) returns `yes' iff the
+    % variable, Var, with cons_id, ConsId, requires a remote
+    % secondary tag to distinguish between its various functors.
+    %
 :- pred has_secondary_tag(module_info::in, vartypes::in,
     prog_var::in, cons_id::in, bool::out) is det.
 
@@ -1017,7 +1021,7 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
         SecondaryTag = no
     ).
 
-    % already_correct_fields(HasSecTagC, VarsC, HasSecTagR - VarsR)
+    % already_correct_fields(HasSecTagC, VarsC, HasSecTagR, VarsR)
     % takes a list of variables, VarsC, which are the arguments for the cell to
     % be constructed and the list of variables, VarsR, which are the arguments
     % for the cell to be reused and returns a list of 'needs_update' values.
@@ -1026,13 +1030,13 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
     % correct value stored in it.  To do this correctly we
     % need to know whether each cell has a secondary tag field.
     %
-:- func already_correct_fields(bool, prog_vars, pair(bool, prog_vars)) =
+:- func already_correct_fields(bool, prog_vars, bool, prog_vars) =
     list(needs_update).
 
-already_correct_fields(SecTagC, CurrentCellVars, SecTagR - ReuseCellVars)
+already_correct_fields(HasSecTagC, CurrentCellVars, HasSecTagR, ReuseCellVars)
         = NeedsNoUpdate ++ list.duplicate(LengthC - LengthB, needs_update) :-
-    NeedsNoUpdate = already_correct_fields_2(SecTagC, CurrentCellVars,
-        SecTagR, ReuseCellVars),
+    NeedsNoUpdate = already_correct_fields_2(HasSecTagC, CurrentCellVars,
+        HasSecTagR, ReuseCellVars),
     LengthC = list.length(CurrentCellVars),
     LengthB = list.length(NeedsNoUpdate).
 
@@ -1138,6 +1142,7 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
 
 :- pred annotate_reuses_in_case(background_info::in, match::in,
     case::in, case::out) is det.
+
 annotate_reuses_in_case(Background, Match, !Case) :-
     !.Case = case(MainConsId, OtherConsIds, Goal0),
     annotate_reuses_in_goal(Background, Match, Goal0, Goal),
