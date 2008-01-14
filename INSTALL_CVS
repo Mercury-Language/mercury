@@ -6,7 +6,7 @@
 #	Note: you need a previous version of Mercury already installed
 #	(the CVS archive doesn't have all the necessary files for
 #	bootstrapping).
-#	You also need autoconf (version 2.50 or later) (and hence GNU m4)
+#	You also need autoconf (version 2.58 or later) (and hence GNU m4)
 #	installed.
 #
 # Step 0.  autoconf
