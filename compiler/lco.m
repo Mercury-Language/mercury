@@ -246,11 +246,22 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
     transform_variant_proc(!.ModuleInfo, AddrOutArgPosns,
         ProcInfo, VariantProcInfo),
 
+    proc_info_get_headvars(VariantProcInfo, HeadVars),
+    proc_info_get_vartypes(VariantProcInfo, VarTypes),
+    map.apply_to_list(HeadVars, VarTypes, ArgTypes),
+
     some [!VariantPredInfo, !PredTable] (
         module_info_preds(!.ModuleInfo, !:PredTable),
         map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
         pred_info_set_name(VariantName, !VariantPredInfo),
         pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
+
+        % Update the argument types for the variant's pred_info.
+        pred_info_get_arg_types(!.VariantPredInfo, TVarSet, ExistQVars,
+            _ArgTypes0),
+        pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
+            !VariantPredInfo),
+
         pred_info_get_origin(!.VariantPredInfo, Origin0),
         Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
         Origin = origin_transformed(Transform, Origin0, PredId),
