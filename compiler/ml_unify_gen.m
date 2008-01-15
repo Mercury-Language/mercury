@@ -764,9 +764,9 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
             MaybeConsId = no,
             unexpected(this_file, "ml_gen_new_object: unknown cons id")
         ),
+        ml_variable_type(!.Info, ReuseVar, ReuseType),
         list.map(
             (pred(ReuseConsId::in, ReusePrimTag::out) is det :-
-                ml_variable_type(!.Info, ReuseVar, ReuseType),
                 ml_cons_id_to_tag(!.Info, ReuseConsId,
                     ReuseType, ReuseConsIdTag),
                 ml_tag_offset_and_argnum(ReuseConsIdTag, ReusePrimTag,
@@ -799,18 +799,21 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
                 unop(std_unop(strip_tag), lval(Var2Lval)))
         ),
 
-        Statement = ml_gen_assign(Var1Lval, Var2Rval, Context),
+        ml_gen_type(!.Info, Type, MLDS_DestType),
+        CastVar2Rval = unop(cast(MLDS_DestType), Var2Rval),
+        Statement = ml_gen_assign(Var1Lval, CastVar2Rval, Context),
 
         % For each field in the construction unification we need to generate
-        % an rval.
+        % an rval.  ExtraRvals need to be inserted at the start of the object.
+        ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, Type, VarLval,
+            0, ConsIdTag, Context, ExtraRvalStatements, !Info),
         % XXX we do more work than we need to here, as some of the cells
         % may already contain the correct values.
-        %
         ml_gen_unify_args(ConsId, ArgVars, ArgModes, ArgTypes, Fields, Type,
             VarLval, OffSet, ArgNum, ConsIdTag, Context, Statements0, !Info),
 
         Decls = [],
-        Statements = [Statement | Statements0]
+        Statements = [Statement | ExtraRvalStatements] ++ Statements0
     ;
         HowToConstruct = construct_in_region(_RegVar),
         sorry(this_file, "ml_gen_new_object: " ++
@@ -1302,6 +1305,43 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
             FirstOffset, CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals,
             MLDS_Types, TakeAddrInfos, !MayUseAtomic, !Info)
     ).
+
+    % Generate assignment statements for each of ExtraRvals into the object at
+    % VarLval, beginning at Offset.
+    %
+:- pred ml_gen_extra_arg_assign(list(mlds_rval)::in,
+    list(mlds_type)::in, mer_type::in, mlds_lval::in, int::in, cons_tag::in,
+    prog_context::in, statements::out, ml_gen_info::in, ml_gen_info::out)
+    is det.
+
+ml_gen_extra_arg_assign([], [], _, _, _, _, _, [], !Info).
+ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
+        VarType, VarLval, Offset, ConsIdTag, Context,
+        [Statement | Statements], !Info) :-
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    (
+        HighLevelData = no
+    ;
+        HighLevelData = yes,
+        sorry(this_file, "ml_gen_extra_arg_assign: high-level data")
+    ),
+
+    ml_gen_type(!.Info, VarType, MLDS_VarType),
+    FieldId = offset(const(mlconst_int(Offset))),
+    MaybePrimaryTag = get_primary_tag(ConsIdTag),
+    FieldLval = field(MaybePrimaryTag, lval(VarLval), FieldId,
+        ExtraType, MLDS_VarType),
+    Statement = ml_gen_assign(FieldLval, ExtraRval, Context),
+
+    ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, VarType, VarLval,
+        Offset + 1, ConsIdTag, Context, Statements, !Info).
+
+ml_gen_extra_arg_assign([_ | _], [], _, _, _, _, _, _, !Info) :-
+    unexpected(this_file, "ml_gen_extra_arg_assign: length mismatch").
+ml_gen_extra_arg_assign([], [_ | _], _, _, _, _, _, _, !Info) :-
+    unexpected(this_file, "ml_gen_extra_arg_assign: length mismatch").
 
 %-----------------------------------------------------------------------------%
 
