@@ -66,10 +66,8 @@ forward_use_information(!ProcInfo) :-
     set(prog_var)::in, set(prog_var)::out) is det.
 
 forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
-    (
-        !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
-        goal_is_atomic(GoalExpr0)
-    ->
+    !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
+    ( goal_is_atomic(GoalExpr0) ->
         InstantiatedVars0 = !.InstantiatedVars,
         compute_instantiated_and_dead_vars(VarTypes, GoalInfo0,
             !InstantiatedVars, !DeadVars),
@@ -77,6 +75,8 @@ forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
         goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
         !:Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
+        goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
+        set.union(PreDeaths, !DeadVars),
         forward_use_in_composite_goal(VarTypes, !Goal,
             !InstantiatedVars, !DeadVars)
     ).
