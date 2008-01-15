@@ -57,9 +57,12 @@
 
 :- implementation.
 
+:- import_module check_hlds.
+:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -174,11 +177,23 @@ create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
 
 process_proc(ReuseMap, PPId, !ModuleInfo, !IO) :-
     write_proc_progress_message("(reuse version) ", PPId, !.ModuleInfo, !IO),
-    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
-    proc_info_get_goal(ProcInfo0, Goal0),
-    process_goal(ReuseMap, Goal0, Goal, !IO),
-    proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
-    module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo).
+    some [!ProcInfo] (
+        module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, !:ProcInfo),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        process_goal(ReuseMap, Goal0, Goal, !IO),
+        proc_info_set_goal(Goal, !ProcInfo),
+
+        % A dead variable needs to appear in the non-local set of the
+        % construction unification in which its space is reused, so we
+        % requantify.  Then we recompute instmap deltas with the updated
+        % non-local sets.
+        requantify_proc(!ProcInfo),
+        RecomputeAtomic = no,
+        recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo),
+
+        module_info_set_pred_proc_info(PPId, PredInfo0, !.ProcInfo,
+            !ModuleInfo)
+    ).
 
 :- pred process_goal(structure_reuse_map::in, hlds_goal::in, hlds_goal::out,
     io::di, io::uo) is det.
