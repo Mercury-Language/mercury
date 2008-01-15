@@ -42,6 +42,7 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
+:- import_module ll_backend.var_locn.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
@@ -60,8 +61,8 @@
 
 :- implementation.
 
-:- import_module backend_libs.proc_label.
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.proc_label.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_code_util.
@@ -71,7 +72,6 @@
 :- import_module libs.trace_params.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.var_locn.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -221,6 +221,9 @@
 
 :- pred get_auto_comments(code_info::in, bool::out) is det.
 
+:- pred get_static_ground_terms(code_info::in,
+    may_use_static_ground_terms::out) is det.
+
 :- pred get_lcmc_null(code_info::in, bool::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -364,6 +367,9 @@
 
                 auto_comments       :: bool,
                                     % The setting of --auto-comments.
+
+                static_ground_terms :: may_use_static_ground_terms,
+                                    % The setting of --static-ground-terms.
 
                 lcmc_null           :: bool
                                     % The setting of --optimize-constructor-
@@ -544,6 +550,15 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         EmitRegionOps = do_not_add_region_ops
     ),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, static_ground_terms,
+        StaticGroundTerms),
+    (
+        StaticGroundTerms = yes,
+        MayUseStaticGroundTerms = may_use_static_ground_terms
+    ;
+        StaticGroundTerms = no,
+        MayUseStaticGroundTerms = may_not_use_static_ground_terms
+    ),
     globals.lookup_bool_option(Globals, optimize_constructor_last_call_null,
         LCMCNull),
     CodeInfo0 = code_info(
@@ -563,6 +578,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             EmitRegionOps,
             OptRegionOps,
             AutoComments,
+            MayUseStaticGroundTerms,
             LCMCNull
         ),
         code_info_loc_dep(
@@ -629,6 +645,7 @@ get_opt_trail_ops(CI, CI ^ code_info_static ^ opt_trail_ops).
 get_emit_region_ops(CI, CI ^ code_info_static ^ emit_region_ops).
 get_opt_region_ops(CI, CI ^ code_info_static ^ opt_region_ops).
 get_auto_comments(CI, CI ^ code_info_static ^ auto_comments).
+get_static_ground_terms(CI, CI ^ code_info_static ^ static_ground_terms).
 get_lcmc_null(CI, CI ^ code_info_static ^ lcmc_null).
 get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ forward_live_vars).
 get_instmap(CI, CI ^ code_info_loc_dep ^ instmap).
@@ -3703,9 +3720,11 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
+    get_static_ground_terms(!.CI, MayUseStaticGroundTerms),
     var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
-        MayUseAtomic, Code, StaticCellInfo0, StaticCellInfo,
+        MayUseStaticGroundTerms, MayUseAtomic, Code,
+        StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CI).

@@ -40,6 +40,10 @@
 
 :- type var_locn_info.
 
+:- type may_use_static_ground_terms
+    --->    may_use_static_ground_terms
+    ;       may_not_use_static_ground_terms.
+
     % init_var_locn_state(Arguments, Liveness, VarSet, VarTypes, StackSlots,
     %   FollowVars, Opts, VarLocnInfo):
     %
@@ -167,8 +171,8 @@
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-    %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code,
-    %   !StaticCellInfo, !VarLocnInfo):
+    %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseStaticGroundTerms,
+    %   MayUseAtomic, Code, !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
     % whose contents are given by the other arguments, and updates the state
@@ -184,9 +188,9 @@
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, prog_var::in, bool::in,
     tag::in, list(maybe(rval))::in, how_to_construct::in,
-    maybe(term_size_value)::in, list(int)::in,
-    string::in, may_use_atomic_alloc::in, code_tree::out,
-    static_cell_info::in, static_cell_info::out,
+    maybe(term_size_value)::in, list(int)::in, string::in,
+    may_use_static_ground_terms::in, may_use_atomic_alloc::in,
+    code_tree::out, static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_place_var(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
@@ -820,7 +824,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 
 var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
-        MayUseAtomic, Code, !StaticCellInfo, !VLI) :-
+        MayUseStaticGroundTerms, MayUseAtomic, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
         (
@@ -842,6 +846,7 @@ var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     % We can make the cell a constant only if all its fields are filled in,
     % and they are all constants.
     (
+        MayUseStaticGroundTerms = may_use_static_ground_terms,
         FieldAddrs = [],
         cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes)
     ->

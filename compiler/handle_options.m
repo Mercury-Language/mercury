@@ -1976,15 +1976,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 :- pred postprocess_options_lowlevel(globals::in, globals::out) is det.
 
 postprocess_options_lowlevel(!Globals) :-
-        % The low level code generator assumes that const(_) rvals are
-        % really constant, and that create(_) rvals with constant
-        % arguments can be materialized in an assignable rval without
-        % further code. For float_consts, the former is true only if
-        % either static_ground_terms or unboxed_floats is true, and
-        % the latter cannot be true without static_ground_terms.
-    option_neg_implies(highlevel_code, static_ground_terms, bool(yes),
-        !Globals),
-
         % --optimize-saved-vars-cell requires --use-local-vars for
         % acceptable performance.
     option_implies(optimize_saved_vars_cell, use_local_vars, bool(yes),
