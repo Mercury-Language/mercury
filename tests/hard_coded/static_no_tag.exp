@@ -1,0 +1,7 @@
+get_no_tag_floats = [no_tag_float(3.0), no_tag_float(4.0)]
+get_no_tag_ints = [no_tag_int(777), no_tag_int(888)]
+get_no_tag_strings = [no_tag_string("foo"), no_tag_string("bar"), no_tag_string("baz")]
+get_no_tag_chars = [no_tag_char('a'), no_tag_char('b'), no_tag_char('c')]
+get_no_tag_poly_float = [no_tag_poly(5.5), no_tag_poly(6.6), no_tag_poly(7.7)]
+get_float_list = [1.1, 2.2, 3.3, 4.4]
+get_list_float_pair = [float_pair(6.6, 6.6), float_pair(7.7, 7.7)]

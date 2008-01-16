@@ -336,10 +336,10 @@
     %
 :- func ml_gen_field_name(maybe(ctor_field_name), int) = mlds_field_name.
 
-    % Succeed iff the specified type must be boxed when used as a field.
+    % Succeeds iff the specified type must be boxed when used as a field.
     % For the MLDS->C and MLDS->asm back-ends, we need to box types that
-    % are not word-sized, because the code % for `arg' etc. in std_util.m
-    % rely on all arguments being word-sized.
+    % are not word-sized, because the code for `arg' etc. in std_util.m
+    % relies on all arguments being word-sized.
     %
 :- pred ml_must_box_field_type(mer_type::in, module_info::in) is semidet.
 

@@ -328,20 +328,23 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
     % Note that any changes here may require similar changes to
     % ml_gen_construct.
     %
-:- pred ml_gen_static_const_arg(prog_var::in, static_cons::in, mlds_rval::out,
+:- pred ml_gen_static_const_arg(prog_var::in, static_cons::in, prog_context::in,
+    mlds_defns::out, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_static_const_arg(Var, StaticCons, Rval, !Info) :-
+ml_gen_static_const_arg(Var, StaticCons, Context, Defns, Rval, !Info) :-
     % Figure out how this argument is represented.
     StaticCons = static_cons(ConsId, _ArgVars, _StaticArgs),
     ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, VarType, Tag),
-    ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info).
+    ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Context, Defns,
+        Rval, !Info).
 
 :- pred ml_gen_static_const_arg_2(cons_tag::in, mer_type::in, prog_var::in,
-    static_cons::in, mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
+    static_cons::in, prog_context::in, mlds_defns::out, mlds_rval::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
+ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Context, Defns, Rval, !Info) :-
     StaticCons = static_cons(ConsId, ArgVars, StaticArgs),
     (
         % Types for which some other constructor has a reserved_address
@@ -350,7 +353,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         % this constructor.
         Tag = shared_with_reserved_addresses_tag(_, ThisTag),
         ml_gen_static_const_arg_2(ThisTag, VarType, Var, StaticCons,
-            Rval, !Info)
+            Context, Defns, Rval, !Info)
     ;
         Tag = no_tag,
         (
@@ -359,10 +362,14 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         ->
             % Construct (statically) the argument, and then convert it
             % to the appropriate type.
-            ml_gen_static_const_arg(Arg, StaticArg, ArgRval, !Info),
+            ml_gen_static_const_arg(Arg, StaticArg, Context, ArgDefns, ArgRval,
+                !Info),
             ml_variable_type(!.Info, Arg, ArgType),
-            ml_gen_box_or_unbox_rval(ArgType, VarType, native_if_possible,
-                ArgRval, Rval, !Info)
+            ml_gen_info_get_module_info(!.Info, ModuleInfo),
+            MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+            ml_gen_box_const_rval(MLDS_ArgType, ArgRval, Context, BoxDefns,
+                Rval, !Info),
+            Defns = ArgDefns ++ BoxDefns
         ;
             unexpected(this_file, "ml_code_gen: no_tag: arity != 1")
         )
@@ -389,7 +396,8 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         ;
             TaggedRval = mkword(TagVal, ConstAddrRval)
         ),
-        Rval = unop(cast(MLDS_VarType), TaggedRval)
+        Rval = unop(cast(MLDS_VarType), TaggedRval),
+        Defns = []
     ;
         ( Tag = string_tag(_)
         ; Tag = int_tag(_)
@@ -407,7 +415,8 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
             % If this argument is just a constant, then generate the rval
             % for the constant.
             StaticArgs = [],
-            ml_gen_constant(Tag, VarType, Rval, !Info)
+            ml_gen_constant(Tag, VarType, Rval, !Info),
+            Defns = []
         ;
             StaticArgs = [_ | _],
             unexpected(this_file,
@@ -639,7 +648,6 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 
     (
         HowToConstruct = construct_dynamically,
-
         % Find out the types of the constructor arguments and generate rvals
         % for them (boxing/unboxing if needed).
         ml_gen_var_list(!.Info, ArgVars, ArgLvals),
@@ -694,7 +702,8 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 
         % Generate rvals for the arguments.
         list.map(ml_gen_type(!.Info), ArgTypes, MLDS_ArgTypes0),
-        ml_gen_static_const_arg_list(ArgVars, StaticArgs, ArgRvals0, !Info),
+        ml_gen_static_const_arg_list(ArgVars, StaticArgs, Context,
+            StaticArgDefns, ArgRvals0, !Info),
 
         % Box or unbox the arguments, if needed, and insert the extra rvals
         % at the start.
@@ -752,7 +761,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         ),
         Rval = unop(cast(MLDS_Type), TaggedRval),
         AssignStatement = ml_gen_assign(VarLval, Rval, Context),
-        Decls = BoxConstDefns ++ [ConstDefn],
+        Decls = StaticArgDefns ++ BoxConstDefns ++ [ConstDefn],
         Statements = [AssignStatement]
     ;
         HowToConstruct = reuse_cell(CellToReuse),
@@ -1153,16 +1162,20 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
     ).
 
 :- pred ml_gen_static_const_arg_list(list(prog_var)::in, list(static_cons)::in,
-    list(mlds_rval)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    prog_context::in, mlds_defns::out, list(mlds_rval)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_static_const_arg_list([], [], [], !Info).
+ml_gen_static_const_arg_list([], [], _, [], [], !Info).
 ml_gen_static_const_arg_list([Var | Vars], [StaticCons | StaticConses],
-        [Rval | Rvals], !Info) :-
-    ml_gen_static_const_arg(Var, StaticCons, Rval, !Info),
-    ml_gen_static_const_arg_list(Vars, StaticConses, Rvals, !Info).
-ml_gen_static_const_arg_list([_|_], [], _, !Info) :-
+        Context, Defns, [Rval | Rvals], !Info) :-
+    ml_gen_static_const_arg(Var, StaticCons, Context, VarDefns,
+        Rval, !Info),
+    ml_gen_static_const_arg_list(Vars, StaticConses, Context, VarsDefns,
+        Rvals, !Info),
+    Defns = VarDefns ++ VarsDefns.
+ml_gen_static_const_arg_list([_ | _], [], _, _, _, !Info) :-
     unexpected(this_file, "ml_gen_static_const_arg_list: length mismatch").
-ml_gen_static_const_arg_list([], [_|_], _, !Info) :-
+ml_gen_static_const_arg_list([], [_ | _], _, _, _, !Info) :-
     unexpected(this_file, "ml_gen_static_const_arg_list: length mismatch").
 
     % Generate the name of the local static constant for a given variable.

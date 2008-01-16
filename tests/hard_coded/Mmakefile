@@ -197,6 +197,7 @@ ORDINARY_PROGS=	\
 	solve_quadratic \
 	space \
 	stable_sort \
+	static_no_tag \
 	stream_format \
 	stream_ignore_ws \
 	stream_test \
