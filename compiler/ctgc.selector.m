@@ -83,7 +83,26 @@
 
 top_selector = [].
 
-selector_init(Cons, Index) = [termsel(Cons, Index)].
+selector_init(Cons, Index) = [TermSel] :-
+    (
+        Cons = cons(_, _),
+        TermSel = termsel(Cons, Index)
+    ;
+        ( Cons = int_const(_)
+        ; Cons = string_const(_)
+        ; Cons = float_const(_)
+        ; Cons = pred_const(_, _)
+        ; Cons = type_ctor_info_const(_, _, _)
+        ; Cons = base_typeclass_info_const(_, _, _, _)
+        ; Cons = type_info_cell_constructor(_)
+        ; Cons = typeclass_info_cell_constructor
+        ; Cons = tabling_info_const(_)
+        ; Cons = deep_profiling_proc_layout(_)
+        ; Cons = table_io_decl(_)
+        ),
+        unexpected(this_file, "selector_init: cannot handle cons_id")
+    ).
+
 selector_init_from_list(Types)
     = list.map((func(T) = typesel(T)), Types).
 
@@ -116,8 +135,8 @@ subsumed_by_2(ModuleInfo, S1, S2, MainType, Extension):-
         % such that S2_part1.Rest = S1) lead through a node with type
         % "SubType".
         %
-        type_on_path(ModuleInfo, type_of_node(ModuleInfo, MainType, S2_part1),
-            SubType, Rest, Remainder),
+        S2_part1_type = type_of_node(ModuleInfo, MainType, S2_part1),
+        type_on_path(ModuleInfo, S2_part1_type, SubType, Rest, Remainder),
 
         % step 3:
         % % S2_part1.TS.S1_part2 should be more general than S1.
@@ -150,19 +169,19 @@ type_of_node(ModuleInfo, StartType, Selector) = SubType :-
         SubType = StartType
     ).
 
-    % SubType = select_subtype(ModuleInfo, Type, ConsID, Position, SubType).
+    % select_subtype(ModuleInfo, Type, ConsID, Position) = SubType.
     % Determine the type of the type node selected from the type tree Type,
     % selecting the specific constructor (ConsId), at position Position.
     % Position counts starting from 1.
     %
 :- func select_subtype(module_info, mer_type, cons_id, int) = mer_type.
 
-select_subtype(ModuleInfo, Type, ConsID, Choice) = SubType :-
+select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
     (
         get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsID,
             ArgTypes)
     ->
-        ( list.index1(ArgTypes, Choice, SubType0) ->
+        ( list.index1(ArgTypes, Position, SubType0) ->
             SubType = SubType0
         ;
             unexpected(this_file, "get_type_of_node: selection failed.")
@@ -291,19 +310,20 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
         !.Selector = [UnitSelector | SelRest],
         Class = classify_type(ModuleInfo, VarType),
         ( Class = type_cat_user_ctor ->
-            % If it is either a term-selector of a non existentially typed
-            % functor or a type-selector, construct the branch map and proceed
-            % with normalization. If it is a term-selector of an existentially
-            % typed functor, than normalization stops.
+            % If it is either a term-selector of a non-existentially typed
+            % functor or is a type-selector, construct the branch map and
+            % proceed with normalization. If it is a term-selector of an
+            % existentially typed functor, then normalization stops.
             (
                 (
                     UnitSelector = termsel(ConsId, Index),
                     get_cons_id_non_existential_arg_types(ModuleInfo,
-                    VarType, ConsId, ArgTypes),
+                        VarType, ConsId, ArgTypes),
                     ( list.index1(ArgTypes, Index, SubType) ->
                         CType = SubType
                     ;
-                        unexpected(this_file, "normalize_wti: " ++
+                        unexpected(this_file,
+                            "do_normalize_selector: " ++
                             "accessing non-existing index.")
                     )
                 ;
@@ -326,7 +346,7 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
                 % Existentially typed functor.
                 append(SelectorAcc0, !Selector)
             )
-            ;
+        ;
             % If it is not a user type, SelRest is empty anyhow, and
             % normalization stops.
             % Resulting selector = accumulator.sel0
