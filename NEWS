@@ -207,6 +207,8 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* Shared libraries are now used by default on Linux/x86 systems.
+
 * Support for the reserve tag grades has been removed.
 
 * We have added an Erlang back-end.

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2007 The University of Melbourne.
+# Copyright (C) 1995-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -3547,17 +3547,6 @@ case "$host" in
 				AC_MSG_RESULT(no)
 				;;
 			esac
-		esac
-		# Shared libraries are not the default on x86 systems that
-		# use ELF -- see README.Linux
-		# They are the default on x86_64 systems that use ELF.
-		case "$host" in
-			i*86-*-linux|i*86-*-linux-gnu)
-				DEFAULT_LINKAGE=static
-				;;
-			*)
-				DEFAULT_LINKAGE=shared
-				;;
 		esac
 		
 		EXT_FOR_LINK_WITH_PIC_OBJECTS=o

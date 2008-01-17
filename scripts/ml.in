@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 noet
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2007 The University of Melbourne.
+# Copyright (C) 1995-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -146,9 +146,9 @@ case $mercury_libs in
 	default)
 		mercury_libs=shared
 		case $FULLARCH in
-			i*86-*-linux*|i*86-*-freebsd*|i*86-*-cygwin*|i*86-*-solaris*)
-				# shared libraries are not the default on x86
-				#systems that use ELF -- see README.Linux
+			i*86-*-freebsd*|i*86-*-cygwin*|i*86-*-solaris*)
+				# Shared libraries are not the default on the above systems.
+				# See configure.in for details.
 				case $make_shared_lib in
 					false)
 						mercury_libs=static
@@ -164,9 +164,9 @@ case $all_libs in
 	default)
 		all_libs=shared
 		case $FULLARCH in
-			i*86-*-linux*|i*86-*-freebsd*|i*86-*-cygwin*)
-				# Shared libraries are not the default on Linux
-				# -- see README.Linux. Likewise for FreeBSD and Cygwin.
+			i*86-*-freebsd*|i*86-*-cygwin*)
+				# Shared libraries are not the default on the above systems.
+				# See configure.in for details.
 				#
 				# We don't do this for Solaris/x86 because -ldl is
 				# only available for dynamically linked executables
