@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1819,7 +1819,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
     ;
         type_to_ctor_and_args(Type, TypeCtor, [RefType]),
         TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
-            "store_by_ref_type"), 1)
+            "store_at_ref_type"), 1)
     ->
         MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
         MLDSType = mlds_ptr_type(MLDSRefType)

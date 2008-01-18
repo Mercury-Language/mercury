@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
 %       app'(T, B, AddrHT)
 %   )
 %
-% app'(list(T)::in, list(T)::in, store_by_ref_type(T)::in)
+% app'(list(T)::in, list(T)::in, store_at_ref_type(T)::in)
 % app'(A, B, AddrC) :-
 %   (
 %       A == [],
@@ -77,7 +77,7 @@
 % transformation
 %
 % 3 replaces the output arguments with input arguments of type
-%   store_by_ref_type(T), where T is type of the field pointed to, and
+%   store_at_ref_type(T), where T is type of the field pointed to, and
 %
 % 4 follows each primitive goal that binds one of the output arguments
 %   with a store to the memory location indicated by the corresponding pointer.
@@ -646,7 +646,7 @@ make_address_var(Var, AddrVar, !Info) :-
 
 make_ref_type(FieldType) = PtrType :-
     RefTypeName = qualified(mercury_private_builtin_module,
-        "store_by_ref_type"),
+        "store_at_ref_type"),
     PtrType = defined_type(RefTypeName, [FieldType], kind_star).
 
 %-----------------------------------------------------------------------------%
