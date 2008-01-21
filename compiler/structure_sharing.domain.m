@@ -111,18 +111,18 @@
     sharing_as::in, sharing_as::out) is det.
 
     % sharing_as_rename_using_module_info(ModuleInfo, PPId,
-    %   ActualVars, ActualTypes, ActualTVarset, FormalSharing, ActualSharing):
+    %   ActualVars, ActualTypes, CallerTVarset, CallerHeadVarParams,
+    %   FormalSharing, ActualSharing):
     %
     % Renaming of the formal description of data structure sharing to the
     % actual description of the sharing. The information about the formal
     % variables needs to be extracted from the module information. 
     % A list of variables and types is used as the actual variables and types.
     % The type variables set in the actual context must also be specified.
-    % 
     %
 :- pred sharing_as_rename_using_module_info(module_info::in,
     pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
-    sharing_as::in, sharing_as::out) is det.
+    head_type_params::in, sharing_as::in, sharing_as::out) is det.
 
     % One of the cornerstone operations of using the program analysis system
     % is to provide a "comb" (combination) operation that combines new
@@ -379,11 +379,12 @@ sharing_as_rename(MapVar, TypeSubst, !SharingAs) :-
     ).
 
 sharing_as_rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
-        ActualTVarset, FormalSharing, ActualSharing):-
+        CallerTypeVarSet, CallerHeadTypeParams,
+        FormalSharing, ActualSharing) :-
     VarRenaming = get_variable_renaming(ModuleInfo, PPId, ActualVars),
-    TypeRenaming = get_type_substitution(ModuleInfo, PPId, ActualTypes,
-        ActualTVarset), 
-    sharing_as_rename(VarRenaming, TypeRenaming, FormalSharing, ActualSharing).
+    TypeSubst = get_type_substitution(ModuleInfo, PPId, ActualTypes,
+        CallerTypeVarSet, CallerHeadTypeParams),
+    sharing_as_rename(VarRenaming, TypeSubst, FormalSharing, ActualSharing).
 
 sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) = ResultSharing :-
     (
@@ -772,12 +773,13 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing),
 
     proc_info_get_vartypes(ProcInfo, VarTypes), 
-    list.map(map.lookup(VarTypes), ActualVars, ActualTypes), 
+    map.apply_to_list(ActualVars, VarTypes, ActualTypes),
        
-    pred_info_get_typevarset(PredInfo, ActualTVarset), 
+    pred_info_get_typevarset(PredInfo, CallerTypeVarSet), 
+    pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams), 
     sharing_as_rename_using_module_info(ModuleInfo, PPId, 
-        ActualVars, ActualTypes, ActualTVarset, FormalSharing,
-        ActualSharing),
+        ActualVars, ActualTypes, CallerTypeVarSet, CallerHeadTypeParams,
+        FormalSharing, ActualSharing),
 
     !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo, 
         ActualSharing, !.Sharing).
@@ -1788,24 +1790,19 @@ basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet,
 selector_sharing_set_extend_datastruct(ModuleInfo, VarType, Selector,
         SelectorSharingSet) = Datastructures :-
     SelectorSharingSet = selector_sharing_set(_, SelectorMap),
-    Datastructures =
-        list.condense(
-            map.values(
-                map.map_values(
-                    selector_sharing_set_extend_datastruct_2(ModuleInfo,
-                        VarType, Selector),
-                    SelectorMap)
-            )
-        ).
+    DoExtend = selector_sharing_set_extend_datastruct_2(ModuleInfo, VarType,
+        Selector),
+    Datastructures0 = map.map_values(DoExtend, SelectorMap),
+    Datastructures = list.condense(map.values(Datastructures0)).
 
 :- func selector_sharing_set_extend_datastruct_2(module_info,
     mer_type, selector, selector, data_set) = list(datastruct).
 
 selector_sharing_set_extend_datastruct_2(ModuleInfo, VarType, BaseSelector,
         Selector, Dataset0) = Datastructures :-
-    % If Sel is more general than Selector, i.e.
-    % Selector = Sel.Extension, apply this extension
-    % to all the datastructs associated with Sel, and add them
+    % If Selector is more general than BaseSelector, i.e.
+    % BaseSelector = Selector.Extension, apply this extension
+    % to all the datastructs associated with Selector, and add them
     % to the set of datastructs collected.
     (
         ctgc.selector.subsumed_by(ModuleInfo, BaseSelector,

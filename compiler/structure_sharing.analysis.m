@@ -55,6 +55,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
@@ -350,10 +351,11 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         % Rename
         proc_info_get_vartypes(ProcInfo, CallerVarTypes),
         map.apply_to_list(CallArgs, CallerVarTypes, ActualTypes),
-        pred_info_get_typevarset(PredInfo, ActualTVarset),
-
+        pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
+        pred_info_get_univ_quant_tvars(PredInfo, CallerHeadParams),
         sharing_as_rename_using_module_info(ModuleInfo, CalleePPId, CallArgs,
-            ActualTypes, ActualTVarset, CalleeSharing, RenamedSharing),
+            ActualTypes, CallerTypeVarSet, CallerHeadParams,
+            CalleeSharing, RenamedSharing),
 
         % Combine
         !:SharingAs = sharing_as_comb(ModuleInfo, ProcInfo,

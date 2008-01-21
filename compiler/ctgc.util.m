@@ -43,22 +43,28 @@
 :- func get_variable_renaming(module_info, pred_proc_id, prog_vars) =
     prog_var_renaming.
 
-    % Same as above, but then in the context of the types of the called
-    % procedures.
+    % get_type_substitution(ModuleInfo, PPId, ActualTypes,
+    %   CallerTypeVarSet, CallerHeadTypeParams) = TypeSubst
     %
-:- func get_type_substitution(module_info, pred_proc_id,
-    list(mer_type), tvarset) = tsubst.
+    % Work out a type substitution to map the callee's argument types into the
+    % caller's.
+    %
+:- func get_type_substitution(module_info, pred_proc_id, list(mer_type),
+    tvarset, head_type_params) = tsubst.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -95,30 +101,72 @@ get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     proc_info_get_headvars(ProcInfo, FormalVars),
     map.from_corresponding_lists(FormalVars, ActualArgs, VariableRenaming).
 
-get_type_substitution(ModuleInfo, PPId, ActualTypes, _TVarSet) =
-        TypeSubstitution :-
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _ProcInfo),
+get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
+        CallerHeadTypeParams) = TypeSubst :-
+    PPId = proc(PredId, _),
+    module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
+    pred_info_get_typevarset(CalleePredInfo, CalleeTypeVarSet),
+    pred_info_get_arg_types(CalleePredInfo, CalleeArgTypes0),
+    pred_info_get_exist_quant_tvars(CalleePredInfo, CalleeExistQVars),
 
-    % types of the head variables.
-    pred_info_get_arg_types(PredInfo, FormalTypes),
+    % Rename apart the type variables.  We don't care about the merged
+    % typevarset.
+    tvarset_merge_renaming(CallerTypeVarSet, CalleeTypeVarSet, _TypeVarSet,
+        CalleeTypeVarRenaming),
+    apply_variable_renaming_to_type_list(CalleeTypeVarRenaming,
+        CalleeArgTypes0, CalleeArgTypes),
 
     (
-        type_list_subsumes(FormalTypes, ActualTypes, TypeSubstitution0)
-    ->
-        TypeSubstitution = TypeSubstitution0
+        CalleeExistQVars = [],
+        ( type_list_subsumes(CalleeArgTypes, ActualTypes, TypeSubst0) ->
+            TypeSubst1 = TypeSubst0
+        ;
+            unexpected(this_file,
+                "ctgc.util.get_type_substitution: type unification failed")
+        )
     ;
-        % XXX Sharing analysis of compiler generated procedures fails due
-        % to the fact that type_list_subsumes fails; I assume that the
-        % same reasoning as in inlining.get_type_substitution/5 is applicable
-        % here: "The head types should always be unifiable with the actual
-        % argument types, otherwise it is a type error that should have
-        % been detected by typechecking. [...]"
-        TypeSubstitution = map.init
-    ).
+        CalleeExistQVars = [_ | _],
+        % XXX from inlining.m:
+        % "For calls to existentially type preds, we may need to bind
+        % type variables in the caller, not just those in the callee."
+        % We don't do that (yet?).
+        (
+            map.init(TypeSubstPrime),
+            type_unify_list(CalleeArgTypes, ActualTypes,
+                CallerHeadTypeParams, TypeSubstPrime, TypeSubst0)
+        ->
+            TypeSubst1 = TypeSubst0
+        ;
+            unexpected(this_file,
+                "ctgc.util.get_type_substitution: type unification failed")
+        )
+    ),
+
+    % TypeSubst1 is a substitition for the merged typevarset.  We apply the
+    % reverse of CalleeTypeVarRenaming to get TypeSubst, a substitition for
+    % the callee typevarset.
+    % XXX preferably, we wouldn't need to do this reverse renaming
+    map.keys(CalleeTypeVarRenaming, CalleeTypeVarRenamingKeys),
+    map.values(CalleeTypeVarRenaming, CalleeTypeVarRenamingValues),
+    map.from_corresponding_lists(CalleeTypeVarRenamingValues,
+        CalleeTypeVarRenamingKeys, RevCalleeTypeVarRenaming),
+    map.foldl(reverse_renaming(RevCalleeTypeVarRenaming), TypeSubst1,
+        map.init, TypeSubst).
+
+:- pred reverse_renaming(tvar_renaming::in, tvar::in, mer_type::in,
+    tsubst::in, tsubst::out) is det.
+
+reverse_renaming(RevSubst, K0, V0, !Acc) :-
+    apply_variable_renaming_to_tvar(RevSubst, K0, K),
+    apply_variable_renaming_to_type(RevSubst, V0, V),
+    svmap.det_insert(K, V, !Acc).
 
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "ctgc.util.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.util.
+%-----------------------------------------------------------------------------%

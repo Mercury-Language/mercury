@@ -105,7 +105,8 @@
 :- pred reuse_as_conditional_reuses(reuse_as::in) is semidet.
 
     % reuse_as_rename_using_module_info(ModuleInfo, PPId,
-    %   ActualVars, ActualTypes, ActualTVarset, FormalReuse, ActualReuse):
+    %   ActualVars, ActualTypes, CallerTypeVarSet, CallerHeadTypeParams,
+    %   FormalReuse, ActualReuse):
     %
     % Renaming of the formal description of structure reuse conditions to the
     % actual description of these conditions. The information about the formal
@@ -115,7 +116,7 @@
     %
 :- pred reuse_as_rename_using_module_info(module_info::in, 
     pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
-    reuse_as::in, reuse_as::out) is det.
+    head_type_params::in, reuse_as::in, reuse_as::out) is det.
 
     % Given a variable and type variable mapping, rename the reuses 
     % conditions accordingly. 
@@ -390,12 +391,12 @@ reuse_as_all_unconditional_reuses(unconditional).
 reuse_as_conditional_reuses(conditional(_)).
 
 reuse_as_rename_using_module_info(ModuleInfo, PPId, ActualArgs, ActualTypes,
-        ActualTVarset, FormalReuse, ActualReuse) :- 
-    reuse_as_rename(
-        get_variable_renaming(ModuleInfo, PPId, ActualArgs),
-        get_type_substitution(ModuleInfo, PPId, ActualTypes, ActualTVarset),
-        FormalReuse, ActualReuse).
- 
+        CallerTypeVarSet, CallerHeadTypeParams, FormalReuse, ActualReuse) :- 
+    VarRenaming = get_variable_renaming(ModuleInfo, PPId, ActualArgs),
+    TypeSubst = get_type_substitution(ModuleInfo, PPId, ActualTypes,
+        CallerTypeVarSet, CallerHeadTypeParams),
+    reuse_as_rename(VarRenaming, TypeSubst, FormalReuse, ActualReuse).
+
 reuse_as_rename(MapVar, TypeSubst, ReuseAs, RenamedReuseAs) :- 
     (
         ReuseAs = no_reuse,
