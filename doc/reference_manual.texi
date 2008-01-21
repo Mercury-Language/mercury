@@ -8851,6 +8851,12 @@ will be restored.
 
 @end table
 
+Note that @var{address} must be word aligned for both
+both @code{MR_trail_current_value()} and @code{MR_trail_value()}.
+(The address of Mercury data structures that have been passed to
+C via the foreign language interface are guaranteed to be appropriately
+aligned.)
+
 @node Function trailing
 @subsection Function trailing
 
@@ -8921,6 +8927,9 @@ In the @samp{MR_commit} case it may, in some cases, be possible to
 also free resources associated with the trail entry.
 If it is called with anything else (such as @samp{MR_gc}),
 then it should probably abort execution with an error message.
+
+Note that the address of the C function passed as the first argument of
+@code{MR_trail_function()} must be word aligned.
 
 @node Delayed goals and floundering
 @subsection Delayed goals and floundering
