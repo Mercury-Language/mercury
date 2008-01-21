@@ -1,21 +1,21 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_tailcall.m
 % Main author: fjh
-% 
+%
 % This module is an MLDS-to-MLDS transformation that marks function calls
 % as tail calls whenever it is safe to do so, based on the assumptions
 % described below.
-% 
+%
 % This module also contains a pass over the MLDS that detects functions
 % which are directly recursive, but not tail-recursive, and warns about them.
-% 
+%
 % A function call can safely be marked as a tail call if all three of the
 % following conditions are satisfied:
 %
@@ -50,7 +50,7 @@
 % Note that ml_call_gen.m will also mark calls to procedures with determinism
 % `erroneous' as `no_return_call's (a special case of tail calls)
 % when it generates them.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tailcall.
@@ -255,15 +255,6 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         Default = mark_tailcalls_in_default(Default0, AtTail, Locals),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = ml_stmt_label(_),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_goto(_),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_computed_goto(_, _),
-        Stmt = Stmt0
-    ;
         Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
 
         % Check if we can mark this call as a tail call.
@@ -279,11 +270,11 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 
             % The call must not take the address of any local variables
             % or nested functions.
-            check_maybe_rval(Obj, Locals),
-            check_rvals(Args, Locals),
+            check_maybe_rval(Obj, Locals) = will_not_yield_dangling_stack_ref,
+            check_rvals(Args, Locals) = will_not_yield_dangling_stack_ref,
 
             % The call must not be to a function nested within this function.
-            check_rval(Func, Locals)
+            check_rval(Func, Locals) = will_not_yield_dangling_stack_ref
         ->
             % Mark this call as a tail call.
             CallKind = tail_call,
@@ -293,12 +284,6 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
             Stmt = Stmt0
         )
     ;
-        Stmt0 = ml_stmt_return(_Rvals),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_do_commit(_Ref),
-        Stmt = Stmt0
-    ;
         Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
         % Both the statement inside a `try_commit' and the handler are in
         % tail call position iff the `try_commit' statement is in a tail call
@@ -307,7 +292,13 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         Handler = mark_tailcalls_in_statement(Handler0, AtTail, Locals),
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
-        Stmt0 = ml_stmt_atomic(_),
+        ( Stmt0 = ml_stmt_label(_)
+        ; Stmt0 = ml_stmt_goto(_)
+        ; Stmt0 = ml_stmt_computed_goto(_, _)
+        ; Stmt0 = ml_stmt_return(_Rvals)
+        ; Stmt0 = ml_stmt_do_commit(_Ref)
+        ; Stmt0 = ml_stmt_atomic(_)
+        ),
         Stmt = Stmt0
     ).
 
@@ -330,12 +321,17 @@ mark_tailcalls_in_case(Case0, AtTail, Locals) = Case :-
 :- func mark_tailcalls_in_default(mlds_switch_default, at_tail, locals) =
     mlds_switch_default.
 
-mark_tailcalls_in_default(default_do_nothing, _, _) = default_do_nothing.
-mark_tailcalls_in_default(default_is_unreachable, _, _) =
-        default_is_unreachable.
-mark_tailcalls_in_default(default_case(Statement0), AtTail, Locals) =
-        default_case(Statement) :-
-    Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
+mark_tailcalls_in_default(Default0, AtTail, Locals) = Default :-
+    (
+        ( Default0 = default_is_unreachable
+        ; Default0 = default_do_nothing
+        ),
+        Default = Default0
+    ;
+        Default0 = default_case(Statement0),
+        Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals),
+        Default = default_case(Statement)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -357,80 +353,123 @@ match_return_vals([Rval|Rvals], [Lval|Lvals]) :-
 :- pred match_return_val(mlds_rval::in, mlds_lval::in) is semidet.
 
 match_return_val(lval(Lval), Lval) :-
-    lval_is_local(Lval).
+    lval_is_local(Lval) = is_local.
 
-:- pred lval_is_local(mlds_lval::in) is semidet.
+:- type is_local
+    --->    is_local
+    ;       is_not_local.
 
-lval_is_local(var(_, _)) :-
-    % We just assume it is local. (This assumption is true for the code
-    % generated by ml_code_gen.m.)
-    true.
-lval_is_local(field(_Tag, Rval, _Field, _, _)) :-
-    % a field of a local variable is local
-    ( Rval = mem_addr(Lval) ->
-        lval_is_local(Lval)
+:- func lval_is_local(mlds_lval) = is_local.
+
+lval_is_local(Lval) = IsLocal :-
+    (
+        Lval = var(_, _),
+        % We just assume it is local. (This assumption is true for the code
+        % generated by ml_code_gen.m.)
+        IsLocal = is_local
     ;
-        fail
+        Lval = field(_Tag, Rval, _Field, _, _),
+        % A field of a local variable is local.
+        ( Rval = mem_addr(BaseLval) ->
+            IsLocal = lval_is_local(BaseLval)
+        ;
+            IsLocal = is_not_local
+        )
+    ;
+        ( Lval = mem_ref(_Rval, _Type)
+        ; Lval = global_var_ref(_)
+        ),
+        IsLocal = is_not_local
     ).
-lval_is_local(mem_ref(_Rval, _Type)) :-
-    fail.
 
 %-----------------------------------------------------------------------------%
+
+:- type may_yield_dangling_stack_ref
+    --->    may_yield_dangling_stack_ref
+    ;       will_not_yield_dangling_stack_ref.
 
 % check_rvals:
 % check_maybe_rval:
 % check_rval:
-%   Fail if the specified rval(s) might evaluate to the addresses of
+%   Find out if the specified rval(s) might evaluate to the addresses of
 %   local variables (or fields of local variables) or nested functions.
 
-:- pred check_rvals(list(mlds_rval)::in, locals::in) is semidet.
+:- func check_rvals(list(mlds_rval), locals) = may_yield_dangling_stack_ref.
 
-check_rvals([], _).
-check_rvals([Rval|Rvals], Locals) :-
-    check_rval(Rval, Locals),
-    check_rvals(Rvals, Locals).
+check_rvals([], _) = will_not_yield_dangling_stack_ref.
+check_rvals([Rval | Rvals], Locals) = MayYieldDanglingStackRef :-
+    ( check_rval(Rval, Locals) = may_yield_dangling_stack_ref ->
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+    ;
+        MayYieldDanglingStackRef = check_rvals(Rvals, Locals)
+    ).
 
-:- pred check_maybe_rval(maybe(mlds_rval)::in, locals::in) is semidet.
+:- func check_maybe_rval(maybe(mlds_rval), locals)
+    = may_yield_dangling_stack_ref.
 
-check_maybe_rval(no, _).
-check_maybe_rval(yes(Rval), Locals) :-
-    check_rval(Rval, Locals).
+check_maybe_rval(no, _) = will_not_yield_dangling_stack_ref.
+check_maybe_rval(yes(Rval), Locals) = check_rval(Rval, Locals).
 
-:- pred check_rval(mlds_rval::in, locals::in) is semidet.
+:- func check_rval(mlds_rval, locals) = may_yield_dangling_stack_ref.
 
-check_rval(lval(_Lval), _) :-
-    % Passing the _value_ of an lval is fine.
-    true.
-check_rval(mkword(_Tag, Rval), Locals) :-
-    check_rval(Rval, Locals).
-check_rval(const(Const), Locals) :-
-    check_const(Const, Locals).
-check_rval(unop(_Op, Rval), Locals) :-
-    check_rval(Rval, Locals).
-check_rval(binop(_Op, X, Y), Locals) :-
-    check_rval(X, Locals),
-    check_rval(Y, Locals).
-check_rval(mem_addr(Lval), Locals) :-
-    % Passing the address of an lval is a problem,
-    % if that lval names a local variable.
-    check_lval(Lval, Locals).
+check_rval(Rval, Locals) = MayYieldDanglingStackRef :-
+    (
+        Rval = lval(_Lval),
+        % Passing the _value_ of an lval is fine.
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+    ;
+        Rval = mkword(_Tag, SubRval),
+        MayYieldDanglingStackRef = check_rval(SubRval, Locals)
+    ;
+        Rval = const(Const),
+        MayYieldDanglingStackRef = check_const(Const, Locals)
+    ;
+        Rval = unop(_Op, XRval),
+        MayYieldDanglingStackRef = check_rval(XRval, Locals)
+    ;
+        Rval = binop(_Op, XRval, YRval),
+        ( check_rval(XRval, Locals) = may_yield_dangling_stack_ref ->
+            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+        ;
+            MayYieldDanglingStackRef = check_rval(YRval, Locals)
+        )
+    ;
+        Rval = mem_addr(Lval),
+        % Passing the address of an lval is a problem,
+        % if that lval names a local variable.
+        MayYieldDanglingStackRef = check_lval(Lval, Locals)
+    ;
+        Rval = self(_),
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+    ).
 
-    % Fail if the specified lval might be a local variable
+    % Find out if the specified lval might be a local variable
     % (or a field of a local variable).
     %
-:- pred check_lval(mlds_lval::in, locals::in) is semidet.
+:- func check_lval(mlds_lval, locals) = may_yield_dangling_stack_ref.
 
-check_lval(field(_MaybeTag, Rval, _FieldId, _, _), Locals) :-
-    check_rval(Rval, Locals).
-check_lval(mem_ref(_, _), _) :-
-    % We assume that the addresses of local variables are only
-    % ever passed down to other functions, or assigned to,
-    % so a mem_ref lval can never refer to a local variable.
-    true.
-check_lval(var(Var0, _), Locals) :-
-    \+ var_is_local(Var0, Locals).
+check_lval(Lval, Locals) = MayYieldDanglingStackRef :-
+    (
+        Lval = var(Var0, _),
+        ( var_is_local(Var0, Locals) ->
+            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+        ;
+            MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+        )
+    ;
+        Lval = field(_MaybeTag, Rval, _FieldId, _, _),
+        MayYieldDanglingStackRef = check_rval(Rval, Locals)
+    ;
+        ( Lval = mem_ref(_, _)
+        ; Lval = global_var_ref(_)
+        ),
+        % We assume that the addresses of local variables are only ever
+        % passed down to other functions, or assigned to, so a mem_ref lval
+        % can never refer to a local variable.
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+    ).
 
-    % Fail if the specified const might be the address of a local variable
+    % Find out if the specified const might be the address of a local variable
     % or nested function.
     %
     % The addresses of local variables are probably not consts, at least
@@ -438,20 +477,28 @@ check_lval(var(Var0, _), Locals) :-
     % so it might be safe to allow all data_addr_consts here, but currently
     % we just take a conservative approach.
     %
-:- pred check_const(mlds_rval_const::in, locals::in) is semidet.
+:- func check_const(mlds_rval_const, locals) = may_yield_dangling_stack_ref.
 
-check_const(Const, Locals) :-
+check_const(Const, Locals) = MayYieldDanglingStackRef :-
     ( Const = mlconst_code_addr(CodeAddr) ->
-        \+ function_is_local(CodeAddr, Locals)
+        ( function_is_local(CodeAddr, Locals) ->
+            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+        ;
+            MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+        )
     ; Const = mlconst_data_addr(DataAddr) ->
         DataAddr = data_addr(ModuleName, DataName),
         ( DataName = var(VarName) ->
-            \+ var_is_local(qual(ModuleName, module_qual, VarName), Locals)
+            ( var_is_local(qual(ModuleName, module_qual, VarName), Locals) ->
+                MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+            ;
+                MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+            )
         ;
-            true
+            MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
-        true
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
     ).
 
     % Check whether the specified variable is defined locally, i.e. in storage

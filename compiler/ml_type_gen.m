@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -424,11 +424,11 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         % otherwise we put it in a separate nested derived class.
         %
         (
-            (all [Ctor] (
+            all [Ctor] (
                 list.member(Ctor, Ctors)
             =>
                 ml_needs_secondary_tag(TagValues, Ctor)
-            ))
+            )
         ->
             TagMembers = TagMembers0,
             TagClassId = BaseClassId

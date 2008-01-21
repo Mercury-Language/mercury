@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,7 +103,6 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo, !IO) :-
     detect_cse_in_procs(ProcIds, PredId, !ModuleInfo, !IO).
 
 detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
-    detect_cse_in_proc_2(ProcId, PredId, Redo, !ModuleInfo),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
@@ -113,6 +112,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
     ;
         VeryVerbose = no
     ),
+    detect_cse_in_proc_pass(ProcId, PredId, Redo, !ModuleInfo),
     globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO),
     (
@@ -168,10 +168,10 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
                 module_info     :: module_info
             ).
 
-:- pred detect_cse_in_proc_2(proc_id::in, pred_id::in, bool::out,
+:- pred detect_cse_in_proc_pass(proc_id::in, pred_id::in, bool::out,
     module_info::in, module_info::out) is det.
 
-detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
+detect_cse_in_proc_pass(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
     module_info_preds(ModuleInfo0, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
@@ -187,7 +187,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
     CseInfo0 = cse_info(Varset0, VarTypes0, RttiVarMaps0, ModuleInfo0),
-    detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
+    detect_cse_in_goal(Goal0, Goal1, CseInfo0, CseInfo, InstMap0, Redo),
 
     (
         Redo = no,
@@ -221,104 +221,120 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
     % and hoist these out of the disjunction. At the moment
     % we only look for cses that are deconstruction unifications.
     %
-:- pred detect_cse_in_goal(hlds_goal::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, hlds_goal::out) is det.
+:- pred detect_cse_in_goal(hlds_goal::in, hlds_goal::out,
+    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
 
-detect_cse_in_goal(Goal0, InstMap0, !CseInfo, Redo, Goal) :-
-    detect_cse_in_goal_1(Goal0, InstMap0, !CseInfo, Redo, Goal, _InstMap).
+detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo) :-
+    detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo,
+        InstMap0, _InstMap, Redo).
 
     % This version is the same as the above except that it returns
     % the resulting instmap on exit from the goal, which is
     % computed by applying the instmap delta specified in the
     % goal's goalinfo.
     %
-:- pred detect_cse_in_goal_1(hlds_goal::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, hlds_goal::out, instmap::out) is det.
+:- pred detect_cse_in_goal_update_instmap(hlds_goal::in, hlds_goal::out,
+    cse_info::in, cse_info::out, instmap::in, instmap::out, bool::out) is det.
 
-detect_cse_in_goal_1(hlds_goal(GoalExpr0, GoalInfo), InstMap0, !CseInfo, Redo,
-        hlds_goal(GoalExpr, GoalInfo), InstMap) :-
-    detect_cse_in_goal_2(GoalExpr0, GoalInfo, InstMap0, !CseInfo, Redo,
-        GoalExpr),
+detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap,
+        Redo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo,
+        InstMap0, Redo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
     % Here we process each of the different sorts of goals.
     %
-:- pred detect_cse_in_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    instmap::in, cse_info::in, cse_info::out, bool::out,
-    hlds_goal_expr::out) is det.
+:- pred detect_cse_in_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
+    cse_info::in, cse_info::out, hlds_goal_info::in,
+    instmap::in, bool::out) is det.
 
-detect_cse_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _), _, _,
-        !CseInfo, no, Goal).
-detect_cse_in_goal_2(Goal @ generic_call(_, _, _, _), _, _, !CseInfo,
-        no, Goal).
-detect_cse_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), _, _, !CseInfo,
-        no, Goal).
-detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
-        !CseInfo, Redo, unify(LHS, RHS, Mode,Unify, UnifyContext)) :-
+detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
+        Redo) :-
     (
-        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-            Vars, Modes, Det, Goal0),
-        ModuleInfo = !.CseInfo ^ module_info,
-        instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap),
-        detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal),
-        RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-            Vars, Modes, Det, Goal)
-    ;
-        ( RHS0 = rhs_var(_)
-        ; RHS0 = rhs_functor(_, _, _)
+        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ),
-        RHS = RHS0,
+        GoalExpr = GoalExpr0,
         Redo = no
-    ).
-detect_cse_in_goal_2(negation(Goal0), _GoalInfo, InstMap, !CseInfo, Redo,
-        negation(Goal)) :-
-    detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal).
-detect_cse_in_goal_2(scope(Reason, Goal0), _GoalInfo, InstMap,
-        !CseInfo, Redo, scope(Reason, Goal)) :-
-    detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal).
-detect_cse_in_goal_2(conj(ConjType, Goals0), _GoalInfo, InstMap, !CseInfo,
-        Redo, conj(ConjType, Goals)) :-
-    detect_cse_in_conj(Goals0, ConjType, InstMap, !CseInfo, Redo, Goals).
-detect_cse_in_goal_2(disj(Goals0), GoalInfo, InstMap, !CseInfo, Redo, Goal) :-
-    (
-        Goals0 = [],
-        Redo = no,
-        Goal = disj([])
     ;
-        Goals0 = [_ | _],
+        GoalExpr0 = unify(LHS, RHS0, Mode, Unify,  UnifyContext),
+        (
+            RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+                Vars, Modes, Det, LambdaGoal0),
+            ModuleInfo = !.CseInfo ^ module_info,
+            instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
+                InstMap0, InstMap1),
+            detect_cse_in_goal(LambdaGoal0, LambdaGoal, !CseInfo,
+                InstMap1, Redo),
+            RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+                Vars, Modes, Det, LambdaGoal)
+        ;
+            ( RHS0 = rhs_var(_)
+            ; RHS0 = rhs_functor(_, _, _)
+            ),
+            RHS = RHS0,
+            Redo = no
+        ),
+        GoalExpr = unify(LHS, RHS, Mode,Unify, UnifyContext)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = conj(ConjType, Goals0),
+        detect_cse_in_conj(Goals0, Goals, !CseInfo, ConjType, InstMap0, Redo),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
+        (
+            Goals0 = [],
+            Redo = no,
+            GoalExpr = disj([])
+        ;
+            Goals0 = [_ | _],
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            set.to_sorted_list(NonLocals, NonLocalsList),
+            detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
+                InstMap0, !CseInfo, Redo, GoalExpr)
+        )
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         set.to_sorted_list(NonLocals, NonLocalsList),
-        detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
-            InstMap, !CseInfo, Redo, Goal)
+        detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
+            InstMap0, !CseInfo, Redo, GoalExpr)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        set.to_sorted_list(NonLocals, NonLocalsList),
+        detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
+            InstMap0, !CseInfo, Redo, GoalExpr)
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "detect_cse_in_goal_expr: unexpected shorthand")
     ).
-detect_cse_in_goal_2(switch(Var, CanFail, Cases0), GoalInfo, InstMap,
-        !CseInfo, Redo, Goal) :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocals, NonLocalsList),
-    detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
-        InstMap, !CseInfo, Redo, Goal).
-detect_cse_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo,
-        InstMap, !CseInfo, Redo, Goal) :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocals, NonLocalsList),
-    detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
-        InstMap, !CseInfo, Redo, Goal).
-
-detect_cse_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "detect_cse_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_cse_in_conj(list(hlds_goal)::in, conj_type::in, instmap::in,
-    cse_info::in, cse_info::out, bool::out, list(hlds_goal)::out) is det.
+:- pred detect_cse_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+    cse_info::in, cse_info::out, conj_type::in, instmap::in, bool::out) is det.
 
-detect_cse_in_conj([], _ConjType, _InstMap, !CseInfo, no, []).
-detect_cse_in_conj([Goal0 | Goals0], ConjType, InstMap0, !CseInfo, Redo,
-        Goals) :-
-    detect_cse_in_goal_1(Goal0, InstMap0, !CseInfo, Redo1, Goal, InstMap1),
-    detect_cse_in_conj(Goals0, ConjType, InstMap1, !CseInfo, Redo2, TailGoals),
+detect_cse_in_conj([], [], !CseInfo, _ConjType, _InstMap, no).
+detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
+        Redo) :-
+    detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, !InstMap, Redo1),
+    detect_cse_in_conj(Goals0, TailGoals, !CseInfo, ConjType, !.InstMap,
+        Redo2),
+    % Flatten any non-flat conjunctions we create.
     (
         Goal = hlds_goal(conj(InnerConjType, ConjGoals), _),
         ConjType = InnerConjType
@@ -341,11 +357,11 @@ detect_cse_in_conj([Goal0 | Goals0], ConjType, InstMap0, !CseInfo, Redo,
     cse_info::out, bool::out, hlds_goal_expr::out) is det.
 
 detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
-    detect_cse_in_disj_2(Goals0, InstMap, !CseInfo, Redo, Goals).
-detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap,
+    detect_cse_in_disjuncts(Goals0, Goals, !CseInfo, InstMap, Redo).
+detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, Redo, GoalExpr) :-
     (
-        instmap.lookup_var(InstMap, Var, VarInst0),
+        instmap.lookup_var(InstMap0, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ module_info,
         % XXX we only need inst_is_bound, but leave this as it is
         % until mode analysis can handle aliasing between free
@@ -360,32 +376,32 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap,
             [Unify, hlds_goal(disj(Goals), GoalInfo0)]),
         Redo = yes
     ;
-        detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap,
+        detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap0,
             !CseInfo, Redo, GoalExpr)
     ).
 
-:- pred detect_cse_in_disj_2(list(hlds_goal)::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, list(hlds_goal)::out) is det.
+:- pred detect_cse_in_disjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
+    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
 
-detect_cse_in_disj_2([], _InstMap, !CseInfo, no, []).
-detect_cse_in_disj_2([Goal0 | Goals0], InstMap0, !CseInfo, Redo,
-        [Goal | Goals]) :-
-    detect_cse_in_goal(Goal0, InstMap0, !CseInfo, Redo1, Goal),
-    detect_cse_in_disj_2(Goals0, InstMap0, !CseInfo, Redo2, Goals),
+detect_cse_in_disjuncts([], [], !CseInfo, _, no).
+detect_cse_in_disjuncts([Goal0 | Goals0], [Goal | Goals], !CseInfo, InstMap0,
+        Redo) :-
+    detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo1),
+    detect_cse_in_disjuncts(Goals0, Goals, !CseInfo, InstMap0, Redo2),
     bool.or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_cases(list(prog_var)::in, prog_var::in, can_fail::in,
     list(case)::in, hlds_goal_info::in, instmap::in,
     cse_info::in, cse_info::out, bool::out, hlds_goal_expr::out) is det.
 
-detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, InstMap,
+detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, InstMap0,
         !CseInfo, Redo, switch(SwitchVar, CanFail, Cases)) :-
-    detect_cse_in_cases_2(Cases0, InstMap, !CseInfo, Redo, Cases).
+    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
-        InstMap, !CseInfo, Redo, GoalExpr) :-
+        InstMap0, !CseInfo, Redo, GoalExpr) :-
     (
         Var \= SwitchVar,
-        instmap.lookup_var(InstMap, Var, VarInst0),
+        instmap.lookup_var(InstMap0, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
@@ -400,19 +416,19 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
         Redo = yes
     ;
         detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
-            InstMap, !CseInfo, Redo, GoalExpr)
+            InstMap0, !CseInfo, Redo, GoalExpr)
     ).
 
-:- pred detect_cse_in_cases_2(list(case)::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, list(case)::out) is det.
+:- pred detect_cse_in_cases_arms(list(case)::in, list(case)::out,
+    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
 
-detect_cse_in_cases_2([], _, !CseInfo, no, []).
-detect_cse_in_cases_2([Case0 | Cases0], InstMap, !CseInfo, Redo,
-        [Case | Cases]) :-
+detect_cse_in_cases_arms([], [], !CseInfo, _, no).
+detect_cse_in_cases_arms([Case0 | Cases0], [Case | Cases], !CseInfo, InstMap0,
+        Redo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo1, Goal),
+    detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo1),
     Case = case(MainConsId, OtherConsIds, Goal),
-    detect_cse_in_cases_2(Cases0, InstMap, !CseInfo, Redo2, Cases),
+    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo2),
     bool.or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_ite(list(prog_var)::in, list(prog_var)::in,
@@ -422,8 +438,8 @@ detect_cse_in_cases_2([Case0 | Cases0], InstMap, !CseInfo, Redo,
 
 detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, !CseInfo,
         Redo, if_then_else(IfVars, Cond, Then, Else)) :-
-    detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap, !CseInfo, Redo,
-        Cond, Then, Else).
+    detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
+        InstMap, Redo).
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, GoalExpr) :-
     (
@@ -446,15 +462,16 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
             InstMap, !CseInfo, Redo, GoalExpr)
     ).
 
-:- pred detect_cse_in_ite_2(hlds_goal::in, hlds_goal::in, hlds_goal::in,
-    instmap::in, cse_info::in, cse_info::out, bool::out,
-    hlds_goal::out, hlds_goal::out, hlds_goal::out) is det.
+:- pred detect_cse_in_ite_arms(hlds_goal::in, hlds_goal::out,
+    hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
+    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
 
-detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap0, !CseInfo, Redo,
-        Cond, Then, Else) :-
-    detect_cse_in_goal_1(Cond0, InstMap0, !CseInfo, Redo1, Cond, InstMap1),
-    detect_cse_in_goal(Then0, InstMap1, !CseInfo, Redo2, Then),
-    detect_cse_in_goal(Else0, InstMap0, !CseInfo, Redo3, Else),
+detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
+        InstMap0, Redo) :-
+    detect_cse_in_goal_update_instmap(Cond0, Cond, !CseInfo,
+        InstMap0, InstMap1, Redo1),
+    detect_cse_in_goal(Then0, Then, !CseInfo, InstMap1, Redo2),
+    detect_cse_in_goal(Else0, Else, !CseInfo, InstMap0, Redo3),
     bool.or(Redo1, Redo2, Redo12),
     bool.or(Redo12, Redo3, Redo).
 

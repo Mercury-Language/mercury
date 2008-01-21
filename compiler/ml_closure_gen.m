@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_closure_gen.m
 % Main author: fjh
-% 
+%
 % This module is part of the MLDS code generator.
 % It handles generation of MLDS code to construct closures.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_closure_gen.
@@ -64,7 +64,7 @@
 :- type closure_kind
     --->    higher_order_proc_closure
     ;       typeclass_info_closure
-    ;       special_pred.
+    ;       special_pred_closure.
 
     % ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context,
     %   LocalVarDefn):
@@ -288,8 +288,7 @@ ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
     ArgInit = init_obj(CastArgRval).
 
 :- pred ml_gen_maybe_pseudo_type_info_defn(module_info::in,
-    rtti_maybe_pseudo_type_info::in, mlds_defns::in, mlds_defns::out)
-    is det.
+    rtti_maybe_pseudo_type_info::in, mlds_defns::in, mlds_defns::out) is det.
 
 ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI, !Defns) :-
     ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type, !Defns).
@@ -321,16 +320,21 @@ ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
     ).
 
 :- pred ml_gen_pseudo_type_info(module_info::in, rtti_pseudo_type_info::in,
-    mlds_rval::out, mlds_type::out,
-    mlds_defns::in, mlds_defns::out) is det.
+    mlds_rval::out, mlds_type::out, mlds_defns::in, mlds_defns::out) is det.
 
 ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
-    ( PseudoTypeInfo = type_var(N) ->
+    (
+        PseudoTypeInfo = type_var(N),
         % Type variables are represented just as integers.
         Rval = const(mlconst_int(N)),
         Type = mlds_native_int_type
     ;
-        ( PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor0) ->
+        ( PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_)
+        ; PseudoTypeInfo = plain_pseudo_type_info(_, _)
+        ; PseudoTypeInfo = var_arity_pseudo_type_info(_, _)
+        ),
+        (
+            PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor0),
             % For zero-arity types, we just generate a reference to the
             % already-existing type_ctor_info.
             RttiName = type_ctor_type_ctor_info,
@@ -339,6 +343,9 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
             RttiTypeCtor = RttiTypeCtor0,
             RttiId = ctor_rtti_id(RttiTypeCtor, RttiName)
         ;
+            ( PseudoTypeInfo = plain_pseudo_type_info(_, _)
+            ; PseudoTypeInfo = var_arity_pseudo_type_info(_, _)
+            ),
             % For other types, we need to generate a definition of the
             % pseudo_type_info for that type, in the the current module.
             module_info_get_name(ModuleInfo, ModuleName),
@@ -362,11 +369,11 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
     ).
 
 :- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
-    mlds_rval::out, mlds_type::out,
-    mlds_defns::in, mlds_defns::out) is det.
+    mlds_rval::out, mlds_type::out, mlds_defns::in, mlds_defns::out) is det.
 
 ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
-    ( TypeInfo = plain_arity_zero_type_info(RttiTypeCtor0) ->
+    (
+        TypeInfo = plain_arity_zero_type_info(RttiTypeCtor0),
         % For zero-arity types, we just generate a reference to the
         % already-existing type_ctor_info.
         RttiName = type_ctor_type_ctor_info,
@@ -374,6 +381,9 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
         ModuleName = fixup_builtin_module(ModuleName0),
         RttiId = ctor_rtti_id(RttiTypeCtor0, RttiName)
     ;
+        ( TypeInfo = plain_type_info(_, _)
+        ; TypeInfo = var_arity_type_info(_, _)
+        ),
         % For other types, we need to generate a definition of the type_info
         % for that type, in the the current module.
         module_info_get_name(ModuleInfo, ModuleName),
@@ -459,8 +469,8 @@ ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector, VectorTypes) :-
     % by the second argument.
     %
 :- pred ml_stack_layout_construct_type_param_locn_vector(
-    assoc_list(tvar, set(layout_locn))::in,
-    int::in, list(mlds_initializer)::out) is det.
+    assoc_list(tvar, set(layout_locn))::in, int::in,
+    list(mlds_initializer)::out) is det.
 
 ml_stack_layout_construct_type_param_locn_vector([], _, []).
 ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
@@ -719,7 +729,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 
     % Then insert the `closure_arg' parameter, if needed.
     (
-        ClosureKind = special_pred,
+        ClosureKind = special_pred_closure,
         MaybeClosureA = no,
         WrapperArgs = WrapperArgs1
     ;
@@ -841,8 +851,9 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
             ClosureKind = typeclass_info_closure,
             Offset = ml_typeclass_info_arg_offset
         ;
-            ClosureKind = special_pred,
-            unexpected(this_file, "ml_gen_closure_wrapper: special_pred")
+            ClosureKind = special_pred_closure,
+            unexpected(this_file,
+                "ml_gen_closure_wrapper: special_pred_closure")
         ),
         ml_gen_closure_field_lvals(ClosureLval1, Offset, 1,
             NumClosureArgs, ClosureArgLvals, !Info)
@@ -951,8 +962,8 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
         ClosureKind = typeclass_info_closure,
         ClosureActualType = sample_typeclass_info_type
     ;
-        ClosureKind = special_pred,
-        unexpected(this_file, "gen_closure_gc_statement: special_pred")
+        ClosureKind = special_pred_closure,
+        unexpected(this_file, "gen_closure_gc_statement: special_pred_closure")
     ),
     ml_gen_gc_statement(ClosureName, ClosureDeclType,
         ClosureActualType, Context, ClosureGCStatement, !Info).
@@ -1014,14 +1025,15 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ml_gen_var_lval(!.Info, Name, MLDS_Type, VarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-        ( ArgMode = top_in ->
+        (
+            ArgMode = top_in,
             Lval = VarLval,
             CopyOutLvals = CopyOutLvalsTail,
             Defns = DefnsTail
         ;
-            % ( ArgMode = top_out
-            % ; ArgMode = top_unused
-            % ),
+            ( ArgMode = top_out
+            ; ArgMode = top_unused
+            ),
             % Handle output variables.
             ml_gen_info_get_globals(!.Info, Globals),
             CopyOut = get_copy_out_option(Globals, CodeModel),
@@ -1154,8 +1166,9 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
             raw_target_code(");\n", [])
         ]
     ;
-        ClosureKind = special_pred,
-        unexpected(this_file, "ml_gen_closure_wrapper_gc_decls: special_pred")
+        ClosureKind = special_pred_closure,
+        unexpected(this_file,
+            "ml_gen_closure_wrapper_gc_decls: special_pred_closure")
 
     ),
     TypeParamsGCInit = statement(ml_stmt_atomic(inline_target_code(

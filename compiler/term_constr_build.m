@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2003, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -62,6 +62,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.lp_rational.
@@ -94,17 +95,15 @@
 
 :- type build_options
     --->    build_options(
-            functor_info    :: functor_info,
-                                    % Which norm we are using.
+                % Which norm we are using.
+                bo_functor_info     :: functor_info,
 
-            failure_constrs :: bool,
-                                    % Whether we are propagating failure
-                                    % constraints is enabled.
+                % Whether propagating failure constraints is enabled.
+                bo_failure_constrs  :: bool,
 
-            arg_size_only   :: bool
-                                    % Whether the `--term2-arg-size-only'
-                                    % is enabled.
-    ).
+                % Whether `--term2-arg-size-only' is enabled.
+                bo_arg_size_only    :: bool
+            ).
 
 build_options_init(Norm, Failure, ArgSizeOnly) =
     build_options(Norm, Failure, ArgSizeOnly).
@@ -118,53 +117,51 @@ build_options_init(Norm, Failure, ArgSizeOnly) =
 % we have finished processing the entire SCC.
 
 :- type scc_info
-    ---> scc_info(
-            scc_ppid       :: pred_proc_id,
-            proc           :: abstract_proc,
-            size_var_map   :: size_var_map,
-            intermod       :: intermod_status,
-            accum_errors   :: term2_errors,
-            non_zero_heads :: list(size_var)
-    ).
+    --->    scc_info(
+                si_scc_ppid         :: pred_proc_id,
+                si_proc             :: abstract_proc,
+                si_size_var_map     :: size_var_map,
+                si_intermod         :: intermod_status,
+                si_accum_errors     :: term2_errors,
+                si_non_zero_heads   :: list(size_var)
+            ).
 
 %-----------------------------------------------------------------------------%
 
 build_abstract_scc(DepOrder, SCC, Options, Errors, !Module, !IO) :-
-    dependency_graph.get_scc_entry_points(SCC, DepOrder, !.Module,
-        EntryProcs),
+    dependency_graph.get_scc_entry_points(SCC, DepOrder, !.Module, EntryProcs),
     list.foldl3(build_abstract_proc(EntryProcs, Options, SCC, !.Module),
-        SCC, varset.init, Varset, [], AbstractSCC, !IO),
+        SCC, varset.init, SizeVarset, [], AbstractSCC, !IO),
     module_info_preds(!.Module, PredTable0),
     RecordInfo = (pred(Info::in, !.Errors::in, !:Errors::out,
             !.PredTable::in, !:PredTable::out) is det :-
         Info = scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
             ProcErrors, HeadSizeVars),
-        %
+
         % Record the proper size_varset.  Each procedure has a copy.
         % XXX It would be nicer to store one copy per SCC.
         %
         % NOTE: although each procedure in the a SCC shares the same
         % size_varset, they should all have separate size_var_maps.
-        %
-        AR = AR0 ^ varset := Varset,
-        PredInfo0 = !.PredTable ^ det_elem(PredId),
+
+        AR = AR0 ^ ap_size_varset := SizeVarset,
+        map.lookup(!.PredTable, PredId, PredInfo0),
         pred_info_get_procedures(PredInfo0, ProcTable0),
-        ProcInfo0 = ProcTable0 ^ det_elem(ProcId),
+        map.lookup(ProcTable0, ProcId, ProcInfo0),
         some [!TermInfo] (
             proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
             !:TermInfo = !.TermInfo ^ intermod_status := yes(Status),
             !:TermInfo = !.TermInfo ^ abstract_rep    := yes(AR),
             !:TermInfo = !.TermInfo ^ size_var_map    := VarMap,
             !:TermInfo = !.TermInfo ^ head_vars       := HeadSizeVars,
-            %
+
             % If the remainder of the analysis is going to depend upon
-            % higher order constructs then set up the information accordingly.
-            %
+            % higher order constructs, then set up the information accordingly.
             ( analysis_depends_on_ho(AR) ->
                 !:TermInfo = !.TermInfo ^ success_constrs :=
                     yes(polyhedron.universe),
                 HorderErrors = list.map((func(ho_call(Context))
-                    = Context - horder_call), AR ^ ho),
+                    = Context - horder_call), AR ^ ap_ho_calls),
                 list.append(HorderErrors, !Errors)
             ;
                 true
@@ -187,11 +184,13 @@ build_abstract_scc(DepOrder, SCC, Options, Errors, !Module, !IO) :-
 
 build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
         !AbstractInfo, !IO) :-
-% XXX For debugging ...
-%   io.write_string("Building procedure: ", !IO),
-%   hlds_out.write_pred_proc_id(Module, PPId, !IO),
-%   io.nl(!IO),
-%   io.flush_output(!IO),
+    trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
+        io.write_string("Building procedure: ", !DebugIO),
+        hlds_out.write_pred_proc_id(Module, PPId, !DebugIO),
+        io.nl(!DebugIO),
+        io.flush_output(!DebugIO)
+    ),
+
     module_info_pred_proc_info(Module, PPId, PredInfo, ProcInfo),
     pred_info_get_context(PredInfo, Context),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -204,30 +203,25 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
     % itself. We therefore analyse only the non-pretest parts of such goals.
     Goal = maybe_strip_equality_pretest(Goal0),
 
-    %
     % Allocate one size_var for each real var. in the procedure.
     % Work out which variables have zero size.
-    %
     allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset),
     Zeros = find_zero_size_vars(Module, SizeVarMap, VarTypes),
-    Info0 = init_traversal_info(Module, Options ^ functor_info, PPId,
+    Info0 = init_traversal_info(Module, Options ^ bo_functor_info, PPId,
         Context, VarTypes, Zeros, SizeVarMap, SCC,
-        Options ^ failure_constrs, Options ^ arg_size_only ),
-    %
+        Options ^ bo_failure_constrs, Options ^ bo_arg_size_only ),
+
     % Traverse the HLDS and construct the abstract version of
     % this procedure.
-    %
     build_abstract_goal(Goal, AbstractBody0, Info0, Info),
-    IntermodStatus = Info ^ intermod_status,
+    IntermodStatus = Info ^ tti_intermod_status,
     HeadSizeVars   = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
     AbstractBody   = simplify_abstract_rep(AbstractBody0),
-    %
+
     % Work out which arguments can be used in termination proofs.
-    % An argument may be used if (a) it is input and (b) it has
-    % non-zero size.
-    %
+    % An argument may be used if (a) it is input and (b) it has non-zero size.
     ChooseArg = (func(Var, Mode) = UseArg :-
-        Type = VarTypes ^ det_elem(Var),
+        map.lookup(VarTypes, Var, Type),
         (
             not zero_size_type(Module, Type),
             mode_util.mode_is_input(Module, Mode)
@@ -237,26 +231,25 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
             UseArg = no
         )
     ),
-    Inputs = list.map_corresponding(ChooseArg, HeadProgVars,
-        ArgModes0),
-    %
+    Inputs = list.map_corresponding(ChooseArg, HeadProgVars, ArgModes0),
+
     % The size_varset for this procedure is set to rubbish here.
-    % When we complete building this SCC we will set it to
-    % the correct value.
-    %
+    % When we complete building this SCC we will set it to the correct value.
     IsEntryPoint = (list.member(PPId, EntryProcs) -> yes ; no),
-    AbstractProc = abstract_proc(real(PPId), Context, Info ^ recursion,
-        SizeVarMap, HeadSizeVars, Inputs, Zeros, AbstractBody,
-        Info ^ maxcalls, !.SizeVarset, Info ^ ho_info, IsEntryPoint),
+    AbstractProc = abstract_proc(real(PPId), IsEntryPoint, Context,
+        HeadSizeVars, Inputs, AbstractBody, SizeVarMap, !.SizeVarset, Zeros,
+        Info ^ tti_recursion, Info ^ tti_maxcalls, Info ^ tti_ho_info),
 
     ThisProcInfo = scc_info(PPId, AbstractProc, SizeVarMap, IntermodStatus,
-        Info ^ errors, HeadSizeVars),
+        Info ^ tti_errors, HeadSizeVars),
 
-    list.cons(ThisProcInfo, !AbstractInfo).
-% XXX For debugging ...
-%   io.write_string("Abstract proc is:\n", !IO),
-%   dump_abstract_proc(AbstractProc, 0, Module, !IO),
-%   io.nl(!IO).
+    list.cons(ThisProcInfo, !AbstractInfo),
+
+    trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
+        io.write_string("Abstract proc is:\n", !DebugIO),
+        dump_abstract_proc(AbstractProc, 0, Module, !DebugIO),
+        io.nl(!DebugIO)
+    ).
 
 %------------------------------------------------------------------------------%
 %
@@ -276,58 +269,58 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
 %   that do not terminate.
 
 :- type traversal_info
-    ---> traversal_info(
-            recursion :: recursion_type,
-                % What type of recursion is present
-                % in the procedure. ie. `none', `direct', `mutual'.
+    --->    traversal_info(
+                % What type of recursion is present in the procedure,
+                % i.e. `none', `direct', `mutual'.
+                tti_recursion                   :: recursion_type,
 
-            intermod_status :: intermod_status,
-                % Record whether this procedure is potentially
-                % involved in mutual recursion across module boundaries.
+                % Record whether this procedure is potentially involved
+                % in mutual recursion across module boundaries.
+                tti_intermod_status             :: intermod_status,
 
-            errors :: term2_errors,
                 % Errors encountered while building the AR.
+                tti_errors                      :: term2_errors,
 
-            module_info :: module_info,
                 % The HLDS.
+                tti_module_info                 :: module_info,
 
-            norm :: functor_info,
                 % The norm we are using.
+                tti_norm                        :: functor_info,
 
-            ppid :: pred_proc_id,
                 % The procedure we are currently processing.
+                tti_ppid                        :: pred_proc_id,
 
-            context :: term.context,
                 % The context of the current procedure.
+                tti_context                     :: term.context,
 
-            types :: vartypes,
                 % Types for all prog_vars in the current procedure.
+                tti_vartypes                    :: vartypes,
 
-            zeros :: set(size_var),
-                % size_vars in the current procedure that
-                % are known to have zero size.
+                % size_vars in the current procedure that are known
+                % to have zero size.
+                tti_zeros                       :: set(size_var),
 
-            var_map :: size_var_map,
                 % Map from prog_vars to size_vars.
+                tti_size_var_map                :: size_var_map,
 
-            scc :: list(pred_proc_id),
-                % The procedures in the same SCC of the call
-                % graph as the one we are current traversing.
+                % The procedures in the SCC of the call graph
+                % we are current traversing.
+                tti_scc                         :: list(pred_proc_id),
 
-            maxcalls :: int,
                 % The number of calls in the procedure.
+                tti_maxcalls                    :: int,
 
-            find_fail_constrs :: bool,
                 % If no then do not bother looking for failure constraints.
                 % The `--no-term2-propagate-failure-constraints' options.
+                tti_find_fail_constrs           :: bool,
 
-            ho_info :: list(abstract_ho_call),
                 % Information about any higher-order calls a procedure makes.
                 % XXX Currently unused.
+                tti_ho_info                     :: list(abstract_ho_call),
 
-            arg_analysis_only :: bool
                 % Do we only want to run IR analysis?
                 % The `--term2-arg-size-analysis-only' option.
+                tti_arg_analysis_only           :: bool
         ).
 
 :- func init_traversal_info(module_info, functor_info, pred_proc_id,
@@ -340,35 +333,36 @@ init_traversal_info(ModuleInfo, Norm, PPId, Context, Types, Zeros,
         PPId, Context, Types, Zeros, VarMap, SCC, 0, FailConstrs, [],
         ArgSizeOnly).
 
-:- pred info_increment_maxcalls(traversal_info::in, traversal_info::out) is det.
+:- pred info_increment_maxcalls(traversal_info::in, traversal_info::out)
+    is det.
 
 info_increment_maxcalls(!Info) :-
-    !:Info = !.Info ^ maxcalls := !.Info ^ maxcalls + 1.
+    !:Info = !.Info ^ tti_maxcalls := !.Info ^ tti_maxcalls + 1.
 
 :- pred info_update_errors(term_constr_errors.error::in, traversal_info::in,
     traversal_info::out) is det.
 
 info_update_errors(Error, !Info) :-
-    !:Info = !.Info ^ errors := [Error | !.Info ^ errors].
+    !:Info = !.Info ^ tti_errors := [Error | !.Info ^ tti_errors].
 
-:- pred info_update_recursion(recursion_type::in, traversal_info::in,
-    traversal_info::out) is det.
+:- pred info_update_recursion(recursion_type::in,
+    traversal_info::in, traversal_info::out) is det.
 
 info_update_recursion(RecType, !Info) :-
-    UpdatedRecType = combine_recursion_types(!.Info ^ recursion, RecType),
-    !:Info = !.Info ^ recursion := UpdatedRecType.
+    UpdatedRecType = combine_recursion_types(!.Info ^ tti_recursion, RecType),
+    !:Info = !.Info ^ tti_recursion := UpdatedRecType.
 
-:- pred info_update_ho_info(context::in, traversal_info::in,
-    traversal_info::out) is det.
+:- pred info_update_ho_info(context::in,
+    traversal_info::in, traversal_info::out) is det.
 
 info_update_ho_info(Context, !Info) :-
-    !:Info = !.Info ^ ho_info := [ho_call(Context) | !.Info ^ ho_info].
+    !:Info = !.Info ^ tti_ho_info := [ho_call(Context) | !.Info ^ tti_ho_info].
 
-:- pred set_intermod_status(intermod_status::in, traversal_info::in,
-    traversal_info::out) is det.
+:- pred set_intermod_status(intermod_status::in,
+    traversal_info::in, traversal_info::out) is det.
 
 set_intermod_status(Status, !TraversalInfo) :-
-    !:TraversalInfo = !.TraversalInfo ^ intermod_status := Status.
+    !:TraversalInfo = !.TraversalInfo ^ tti_intermod_status := Status.
 
 %------------------------------------------------------------------------------%
 %
@@ -386,9 +380,9 @@ build_abstract_goal(Goal, AbstractGoal, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal0, !Info),
     partition_vars(Goal, Locals0, NonLocals0),
-    VarMap = !.Info ^ var_map,
-    Locals = prog_vars_to_size_vars(VarMap, Locals0),
-    NonLocals = prog_vars_to_size_vars(VarMap, NonLocals0),
+    SizeVarMap = !.Info ^ tti_size_var_map,
+    Locals = prog_vars_to_size_vars(SizeVarMap, Locals0),
+    NonLocals = prog_vars_to_size_vars(SizeVarMap, NonLocals0),
     AbstractGoal = update_local_and_nonlocal_vars(AbstractGoal0,
         Locals, NonLocals).
 
@@ -409,20 +403,17 @@ build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
 
 build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
     GoalExpr = if_then_else(_, Cond, Then, Else),
-    %
+
     % Reduce the if-then goals to an abstract conjunction.
-    %
     build_abstract_conj([Cond, Then], AbstractSuccessGoal, !Info),
-    %
+
     % Work out a failure constraint for the Cond and then abstract the else
     % branch.  We won't bother do any other simplifications here as the AR
     % simplification pass will sort all of this out.
-    %
     CondFail = find_failure_constraint_for_goal(Cond, !.Info),
-    %
+
     % XXX FIXME - the local/non-local variable sets end up
     % being incorrect here.
-    %
     build_abstract_goal(Else, AbstractElse, !Info),
     AbstractFailureGoal = term_conj([CondFail, AbstractElse], [], []),
     AbstractDisjuncts = [AbstractSuccessGoal, AbstractFailureGoal],
@@ -433,7 +424,7 @@ build_abstract_goal_2(scope(_, Goal), _, AbstractGoal, !Info) :-
 
 build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
-    CallSizeArgs = prog_vars_to_size_vars(!.Info ^ var_map, CallArgs),
+    CallSizeArgs = prog_vars_to_size_vars(!.Info ^ tti_size_var_map, CallArgs),
     build_abstract_call(proc(CallPredId, CallProcId), CallSizeArgs,
         GoalInfo, AbstractGoal, !Info).
 
@@ -442,17 +433,14 @@ build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
     build_abstract_unification(Unification, AbstractGoal, !Info).
 
 build_abstract_goal_2(negation(Goal), _GoalInfo, AbstractGoal, !Info) :-
-    %
-    % Event though a negated goal cannot have any output we still
-    % need to check it for calls to non-terminating procedures.
-    %
+    % Event though a negated goal cannot have any output we still need
+    % to check it for calls to non-terminating procedures.
     build_abstract_goal(Goal, _, !Info),
-    %
+
     % Find a failure constraint for the goal if
     % `--term2-propagate-failure-constraints' is enabled,
     % otherwise just use the constraint that all non-zero input vars
     % should be non-negative.
-    %
     AbstractGoal = find_failure_constraint_for_goal(Goal, !.Info).
 
     % XXX Eventually we should provide some facility for specifying the
@@ -460,14 +448,13 @@ build_abstract_goal_2(negation(Goal), _GoalInfo, AbstractGoal, !Info) :-
     %
 build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs, _, _),
-    %
+
     % Create non-negativity constraints for each non-zero argument
     % in the foreign proc.
-    %
     ForeignArgToVar = (func(ForeignArg) = ForeignArg ^ arg_var),
     ProgVars = list.map(ForeignArgToVar, Args ++ ExtraArgs),
-    SizeVars = prog_vars_to_size_vars(!.Info ^ var_map, ProgVars),
-    Constraints = make_arg_constraints(SizeVars, !.Info ^ zeros),
+    SizeVars = prog_vars_to_size_vars(!.Info ^ tti_size_var_map, ProgVars),
+    Constraints = make_arg_constraints(SizeVars, !.Info ^ tti_zeros),
     (
         (
             get_terminates(Attrs) = proc_terminates
@@ -527,11 +514,12 @@ build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
 
 build_abstract_call(CalleePPId, CallerArgs, GoalInfo, AbstractGoal, !Info) :-
     Context = goal_info_get_context(GoalInfo),
-    ( if    list.member(CalleePPId, !.Info ^ scc)
-      then  build_recursive_call(CalleePPId, CallerArgs, Context,
-            AbstractGoal, !Info)
-      else  build_non_recursive_call(CalleePPId, CallerArgs, Context,
-            AbstractGoal, !Info)
+    ( list.member(CalleePPId, !.Info ^ tti_scc) ->
+        build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
+            !Info)
+    ;
+        build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
+            !Info)
     ).
 
     % If the call is potentially recursive, we construct an abstract call
@@ -541,11 +529,12 @@ build_abstract_call(CalleePPId, CallerArgs, GoalInfo, AbstractGoal, !Info) :-
     abstract_goal::out, traversal_info::in, traversal_info::out) is det.
 
 build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal, !Info) :-
-    CallerPPId = !.Info ^ ppid,
-    CallerZeros = !.Info ^ zeros,
-    ( if    CallerPPId = CalleePPId
-      then  info_update_recursion(direct_only, !Info)
-      else  info_update_recursion(mutual_only, !Info)
+    CallerPPId = !.Info ^ tti_ppid,
+    CallerZeros = !.Info ^ tti_zeros,
+    ( CallerPPId = CalleePPId ->
+        info_update_recursion(direct_only, !Info)
+    ;
+        info_update_recursion(mutual_only, !Info)
     ),
     CallerArgConstrs = make_arg_constraints(CallerArgs, CallerZeros),
     CallerArgPoly = polyhedron.from_constraints(CallerArgConstrs),
@@ -566,16 +555,15 @@ build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal, !Info) :-
 
 build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
         !Info) :-
-    ModuleInfo = !.Info ^ module_info,
-    CallerPPId = !.Info ^ ppid,
-    ZeroVars = !.Info ^ zeros,
+    ModuleInfo = !.Info ^ tti_module_info,
+    CallerPPId = !.Info ^ tti_ppid,
+    ZeroVars = !.Info ^ tti_zeros,
     module_info_pred_proc_info(ModuleInfo, CalleePPId, _, CalleeProcInfo),
-    %
+
     % Check the termination status of the callee procedure if we are running a
     % full analysis - ignore it if we are only running the IR analysis.
-    %
     proc_info_get_termination2_info(CalleeProcInfo, CalleeTerm2Info),
-    ArgAnalysisOnly = !.Info ^ arg_analysis_only,
+    ArgAnalysisOnly = !.Info ^ tti_arg_analysis_only,
     (
         ArgAnalysisOnly = no,
         MaybeTermStatus = CalleeTerm2Info ^ term_status,
@@ -583,23 +571,21 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
             MaybeTermStatus = yes(TermStatus),
             (
                 TermStatus = can_loop(_),
-                Error = Context - can_loop_proc_called(CallerPPId,
-                    CalleePPId),
+                Error = Context - can_loop_proc_called(CallerPPId, CalleePPId),
                 info_update_errors(Error, !Info)
             ;
                 TermStatus = cannot_loop(_)
             )
         ;
             MaybeTermStatus = no,
-            unexpected(this_file, "Callee procedure has no " ++
-                "termination status.")
+            unexpected(this_file,
+                "Callee procedure has no termination status.")
         )
     ;
         ArgAnalysisOnly = yes
     ),
-    %
+
     % Check the arg_size_info for the procedure being called.
-    %
     ArgSizeInfo = CalleeTerm2Info ^ success_constrs,
     (
         ArgSizeInfo = no,
@@ -650,8 +636,7 @@ build_abstract_disj(Type, AbstractGoal, !Info) :-
         build_abstract_disj_acc(Goals, [], AbstractGoals, !Info)
     ;
         Type = switch(SwitchVar, Cases),
-        build_abstract_switch_acc(SwitchVar, Cases, [], AbstractGoals,
-            !Info)
+        build_abstract_switch_acc(SwitchVar, Cases, [], AbstractGoals, !Info)
     ),
     (
         AbstractGoals = [],
@@ -708,25 +693,26 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
     ->
         AbstractGoal = AbstractGoal0
     ;
-        TypeMap = !.Info ^ types,
-        SizeVarMap  = !.Info ^ var_map,
-        SwitchVarType = TypeMap ^ det_elem(SwitchProgVar),
+        TypeMap = !.Info ^ tti_vartypes,
+        SizeVarMap  = !.Info ^ tti_size_var_map,
+        map.lookup(TypeMap, SwitchProgVar, SwitchVarType),
         SwitchSizeVar = prog_var_to_size_var(SizeVarMap, SwitchProgVar),
         type_to_ctor_and_args_det(SwitchVarType, TypeCtor, _),
-        Size = functor_lower_bound(!.Info ^ norm, TypeCtor, MainConsId,
-            !.Info ^ module_info),
-        ( set.member(SwitchSizeVar, !.Info ^ zeros) ->
+        Size = functor_lower_bound(!.Info ^ tti_norm, TypeCtor, MainConsId,
+            !.Info ^ tti_module_info),
+        ( set.member(SwitchSizeVar, !.Info ^ tti_zeros) ->
             ExtraConstr = []
         ;
             SwitchVarConst = rat(Size),
-            SwitchVarConstr =
-                ( Size = 0 ->
+            ( Size = 0 ->
+                SwitchVarConstr =
                     make_var_const_eq_constraint(SwitchSizeVar,
                         SwitchVarConst)
-                ;
+            ;
+                SwitchVarConstr =
                     make_var_const_gte_constraint(SwitchSizeVar,
                         SwitchVarConst)
-                ),
+            ),
             ExtraConstr = [SwitchVarConstr]
         ),
         ExtraPoly = polyhedron.from_constraints(ExtraConstr),
@@ -764,27 +750,28 @@ detect_switch_var(hlds_goal(shorthand(_), _), _, _) :-
     traversal_info::in, traversal_info::out) is det.
 
 build_abstract_unification(Unification, AbstractGoal, !Info) :-
-    Unification = construct(Var, ConsId, ArgVars, Modes, _, _, _),
-    build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes,
-        Constraints, !Info),
-    AbstractGoal = build_goal_from_unify(Constraints).
-
-build_abstract_unification(Unification, AbstractGoal, !Info) :-
-    Unification = deconstruct(Var, ConsId, ArgVars, Modes, _, _),
-    build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes,
-        Constraints, !Info),
-    AbstractGoal = build_goal_from_unify(Constraints).
-
-build_abstract_unification(assign(LVar, RVar), AbstractGoal, !Info) :-
-    build_abstract_simple_or_assign_unify(LVar, RVar, Constraints, !Info),
-    AbstractGoal = build_goal_from_unify(Constraints).
-
-build_abstract_unification(simple_test(LVar, RVar), AbstractGoal, !Info) :-
-    build_abstract_simple_or_assign_unify(LVar, RVar, Constraints, !Info),
-    AbstractGoal = build_goal_from_unify(Constraints).
-
-build_abstract_unification(complicated_unify(_, _, _), _, _, _) :-
-    unexpected(this_file, "complicated_unify/3 in termination analysis.").
+    (
+        Unification = construct(Var, ConsId, ArgVars, Modes, _, _, _),
+        build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes,
+            Constraints, !Info),
+        AbstractGoal = build_goal_from_unify(Constraints)
+    ;
+        Unification = deconstruct(Var, ConsId, ArgVars, Modes, _, _),
+        build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes,
+            Constraints, !Info),
+        AbstractGoal = build_goal_from_unify(Constraints)
+    ;
+        Unification = assign(LVar, RVar),
+        build_abstract_simple_or_assign_unify(LVar, RVar, Constraints, !Info),
+        AbstractGoal = build_goal_from_unify(Constraints)
+    ;
+        Unification = simple_test(LVar, RVar),
+        build_abstract_simple_or_assign_unify(LVar, RVar, Constraints, !Info),
+        AbstractGoal = build_goal_from_unify(Constraints)
+    ;
+        Unification = complicated_unify(_, _, _),
+        unexpected(this_file, "complicated_unify/3 in termination analysis.")
+    ).
 
     % Used for deconstruction and construction unifications.  e.g. for a
     % unification of the form: X = f(U, V, W), if the norm counts the
@@ -797,45 +784,46 @@ build_abstract_unification(complicated_unify(_, _, _), _, _, _) :-
 
 build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         !Info) :-
-    VarTypes = !.Info ^ types,
-    Type = VarTypes ^ det_elem(Var),
+    VarTypes = !.Info ^ tti_vartypes,
+    map.lookup(VarTypes, Var, Type),
     (
         not type_is_higher_order(Type),
         type_to_ctor_and_args(Type, TypeCtor, _)
     ->
-        Norm   = !.Info ^ norm,
-        ModuleInfo = !.Info ^ module_info,
-        Zeros  = !.Info ^ zeros,
-        %
+        Norm   = !.Info ^ tti_norm,
+        ModuleInfo = !.Info ^ tti_module_info,
+        Zeros  = !.Info ^ tti_zeros,
+
         % We need to strip out any typeinfo related variables before
         % measuring the size of the term; otherwise functor_norm will
         % raise a software error if we are using the `num-data-elems'
         % norm and the term has existential typeclass constraints.
-        %
+
         strip_typeinfos_from_args_and_modes(VarTypes, ArgVars, FixedArgs,
             Modes, FixedModes),
 
         functor_norm(Norm, TypeCtor, ConsId, ModuleInfo, Constant,
             FixedArgs, CountedVars, FixedModes, _),
-        %
+
         % The constraint from this unification is:
         %
         %      |Var| = Constant + sum(CountedVars)
         %
         % |Var| is just the size_var corresponding to Var.  The
         % value of `Constant' will depend upon the norm being used.
-        %
-        SizeVar = prog_var_to_size_var(!.Info ^ var_map, Var),
-        ( if    set.member(SizeVar, Zeros)
-          then  FirstTerm = []
-          else  FirstTerm = [SizeVar - one]
+
+        SizeVar = prog_var_to_size_var(!.Info ^ tti_size_var_map, Var),
+        ( set.member(SizeVar, Zeros) ->
+            FirstTerm = []
+        ;
+            FirstTerm = [SizeVar - one]
         ),
         AddTerms = (func(Var1, Terms0) = Terms1 :-
-            SizeVar1 = prog_var_to_size_var(
-                !.Info ^ var_map, Var1),
-            ( if    set.member(SizeVar1, Zeros)
-              then  Terms1 = Terms0
-              else  Terms1 = [SizeVar1 - (-one) | Terms0]
+            SizeVar1 = prog_var_to_size_var(!.Info ^ tti_size_var_map, Var1),
+            ( set.member(SizeVar1, Zeros) ->
+                Terms1 = Terms0
+            ;
+                Terms1 = [SizeVar1 - (-one) | Terms0]
             )
         ),
         Terms = list.foldl(AddTerms, CountedVars, FirstTerm),
@@ -843,10 +831,10 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         ( is_false(Constraint) ->
             unexpected(this_file, "false constraint from unification.")
         ;
-            SizeVars0 = prog_vars_to_size_vars(!.Info ^ var_map,
+            SizeVars0 = prog_vars_to_size_vars(!.Info ^ tti_size_var_map,
                 ArgVars),
             SizeVars1 = [SizeVar | SizeVars0],
-            SizeVars  = list.filter(isnt(is_zero_size_var(!.Info ^ zeros)),
+            SizeVars  = list.filter(isnt(is_zero_size_var(!.Info ^ tti_zeros)),
                 SizeVars1)
         ),
         NonNegConstraints = list.map(make_nonneg_constr, SizeVars),
@@ -865,8 +853,8 @@ strip_typeinfos_from_args_and_modes(VarTypes, !Args, !Modes) :-
     ( strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes) ->
         true
     ;
-        unexpected(this_file, "unequal length lists in " ++
-           "strip_type_infso_and_modes/5")
+        unexpected(this_file,
+            "unequal length lists in strip_type_infso_and_modes/5")
     ).
 
 :- pred strip_typeinfos_from_args_and_modes_2(vartypes::in,
@@ -874,10 +862,10 @@ strip_typeinfos_from_args_and_modes(VarTypes, !Args, !Modes) :-
     list(uni_mode)::in, list(uni_mode)::out) is semidet.
 
 strip_typeinfos_from_args_and_modes_2(_, [], [], [], []).
-strip_typeinfos_from_args_and_modes_2(VarTypes, [ Arg | !.Args ], !:Args,
-        [ Mode | !.Modes ], !:Modes) :-
+strip_typeinfos_from_args_and_modes_2(VarTypes, [Arg | !.Args], !:Args,
+        [Mode | !.Modes], !:Modes) :-
     strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes),
-    Type = VarTypes ^ det_elem(Arg),
+    map.lookup(VarTypes, Arg, Type),
     ( is_introduced_type_info_type(Type) ->
         true
     ;
@@ -891,10 +879,10 @@ strip_typeinfos_from_args_and_modes_2(VarTypes, [ Arg | !.Args ], !:Args,
 :- pred build_abstract_simple_or_assign_unify(prog_var::in, prog_var::in,
     constraints::out, traversal_info::in, traversal_info::out) is det.
 
-build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar,
-        Constraints, !Info) :-
-    SizeVarMap = !.Info ^ var_map,
-    Zeros = !.Info ^ zeros,
+build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar, Constraints,
+        !Info) :-
+    SizeVarMap = !.Info ^ tti_size_var_map,
+    Zeros = !.Info ^ tti_zeros,
     LeftSizeVar = prog_var_to_size_var(SizeVarMap, LeftProgVar),
     RightSizeVar = prog_var_to_size_var(SizeVarMap, RightProgVar),
     (
@@ -904,12 +892,12 @@ build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar,
         Constraints = []    % `true' constraint.
     ;
         (set.member(LeftSizeVar, Zeros)
-        ; set.member(RightSizeVar, Zeros))
+        ; set.member(RightSizeVar, Zeros)
+        )
     ->
         unexpected(this_file, "zero unified with non-zero.")
     ;
         % Create non-negativity constraints.
-        %
         NonNegConstrs = list.map(make_nonneg_constr,
             [LeftSizeVar, RightSizeVar]),
         Terms = [LeftSizeVar - one, RightSizeVar - (-one)],
@@ -925,9 +913,10 @@ build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar,
 
 build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     Polyhedron = polyhedron.from_constraints(Constraints),
-    ( if    polyhedron.is_empty(Polyhedron)
-      then  unexpected(this_file, "empty polyhedron from unification.")
-      else  true
+    ( polyhedron.is_empty(Polyhedron) ->
+        unexpected(this_file, "empty polyhedron from unification.")
+    ;
+        true
     ).
 
 %------------------------------------------------------------------------------%
@@ -935,8 +924,7 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     % Because quantification returns a conservative estimate of nonlocal
     % vars, this returns a list of local vars that may omit some of the
     % real local vars.  This shouldn't be a problem as everything but
-    % the head_vars will be projected out at the end of each iteration
-    % anyway.
+    % the head_vars will be projected out at the end of each iteration anyway.
     %
 :- func local_vars(hlds_goal) = prog_vars.
 
@@ -975,8 +963,8 @@ partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
 
 allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset) :-
     fill_var_to_sizevar_map(Goal, !SizeVarset, SizeVarMap0),
-    possibly_fix_sizevar_map(HeadProgVars, !SizeVarset, SizeVarMap0,
-        SizeVarMap).
+    possibly_fix_sizevar_map(HeadProgVars, !SizeVarset,
+        SizeVarMap0, SizeVarMap).
 
 :- pred fill_var_to_sizevar_map(hlds_goal::in,
     size_varset::in, size_varset::out, size_var_map::out) is det.
@@ -994,12 +982,12 @@ fill_var_to_sizevar_map(Goal, !SizeVarset, SizeVarMap) :-
 
 possibly_fix_sizevar_map([], !SizeVarset, !SizeVarMap).
 possibly_fix_sizevar_map([ProgVar | ProgVars], !SizeVarset, !SizeVarMap) :-
-    ( if    map.search(!.SizeVarMap, ProgVar, _)
-      then  possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
-      else
-            svvarset.new_var(SizeVar, !SizeVarset),
-            svmap.set(ProgVar, SizeVar, !SizeVarMap),
-            possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
+    ( map.search(!.SizeVarMap, ProgVar, _) ->
+        possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
+    ;
+        svvarset.new_var(SizeVar, !SizeVarset),
+        svmap.set(ProgVar, SizeVar, !SizeVarMap),
+        possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1031,17 +1019,17 @@ possibly_fix_sizevar_map([ProgVar | ProgVars], !SizeVarset, !SizeVarMap) :-
 
 find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
     (
-        Info ^ find_fail_constrs = yes,
+        Info ^ tti_find_fail_constrs = yes,
         find_failure_constraint_for_goal_2(Goal, Info, AbstractGoal0)
     ->
         AbstractGoal = AbstractGoal0
     ;
         NonLocalProgVars0 = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
         NonLocalProgVars = set.to_sorted_list(NonLocalProgVars0),
-        NonLocalSizeVars = prog_vars_to_size_vars(Info ^ var_map,
+        NonLocalSizeVars = prog_vars_to_size_vars(Info ^ tti_size_var_map,
             NonLocalProgVars),
         Constraints = make_arg_constraints(NonLocalSizeVars,
-            Info ^ zeros),
+            Info ^ tti_zeros),
         FailPoly = polyhedron.from_constraints(Constraints),
         AbstractGoal = term_primitive(FailPoly, [], [])
     ).
@@ -1055,10 +1043,10 @@ find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
 find_failure_constraint_for_goal_2(hlds_goal(GoalExpr, _), Info,
         AbstractGoal) :-
     GoalExpr = plain_call(PredId, ProcId, CallArgs, _, _, _),
-    CallSizeArgs0 = prog_vars_to_size_vars(Info ^ var_map, CallArgs),
-    CallSizeArgs = list.filter(isnt(is_zero_size_var(Info ^ zeros)),
+    CallSizeArgs0 = prog_vars_to_size_vars(Info ^ tti_size_var_map, CallArgs),
+    CallSizeArgs = list.filter(isnt(is_zero_size_var(Info ^ tti_zeros)),
         CallSizeArgs0),
-    ModuleInfo = Info ^ module_info,
+    ModuleInfo = Info ^ tti_module_info,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
     MaybeFailureConstrs = TermInfo ^ failure_constrs,
@@ -1098,26 +1086,26 @@ find_failure_constraint_for_goal_2(
 
 find_deconstruct_fail_bound(unify(_, _, _, Kind, _), Info, Polyhedron) :-
     Kind = deconstruct(Var, ConsId, _, _, can_fail, _),
-    Type = Info ^ types ^ det_elem(Var),
+    map.lookup(Info ^ tti_vartypes, Var, Type),
     prog_type.type_to_ctor_and_args(Type, TypeCtor, _),
-    ModuleInfo = Info ^ module_info,
+    ModuleInfo = Info ^ tti_module_info,
     type_util.type_constructors(ModuleInfo, Type, Constructors0),
-    ( if    ConsId = cons(ConsName0, ConsArity0)
-      then  ConsName = ConsName0, ConsArity = ConsArity0
-      else  unexpected(this_file,
-                "find_deconstruct_fail_bound/3: non cons cons_id.")
+    ( ConsId = cons(ConsName, ConsArity) ->
+        FindComplement = (pred(Ctor::in) is semidet :-
+            Ctor = ctor(_, _, SymName, Args, _),
+            list.length(Args, Arity),
+            not (
+                SymName = ConsName,
+                Arity   = ConsArity
+            )
+        ),
+        list.filter(FindComplement, Constructors0, Constructors)
+    ;
+        unexpected(this_file,
+            "find_deconstruct_fail_bound/3: non cons cons_id.")
     ),
-    FindComplement = (pred(Ctor::in) is semidet :-
-        Ctor = ctor(_, _, SymName, Args, _),
-        list.length(Args, Arity),
-        not (
-            SymName = ConsName,
-            Arity   = ConsArity
-        )
-    ),
-    list.filter(FindComplement, Constructors0, Constructors),
-    SizeVar = prog_var_to_size_var(Info ^ var_map, Var),
-    bounds_on_var(Info ^ norm, ModuleInfo, TypeCtor, SizeVar,
+    SizeVar = prog_var_to_size_var(Info ^ tti_size_var_map, Var),
+    bounds_on_var(Info ^ tti_norm, ModuleInfo, TypeCtor, SizeVar,
         Constructors, Polyhedron).
 
     % Given a variable, its type and a list of constructors to which
@@ -1130,29 +1118,31 @@ find_deconstruct_fail_bound(unify(_, _, _, Kind, _), Info, Polyhedron) :-
 bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
     CtorSizes = list.map(lower_bound(Norm, ModuleInfo, TypeCtor),
         Constructors),
-    %
+
     % Split constructors into those that have zero size and
     % those that have non-zero size.
-    %
     list.filter((pred(V::in) is semidet :- V = 0), CtorSizes,
         ZeroSizeCtors, NonZeroSizeCtors),
     (
-        ZeroSizeCtors = [], NonZeroSizeCtors = []
-    ->
-        unexpected(this_file, "bounds_on_var/6: " ++
-            "no other constructors for type.")
+        NonZeroSizeCtors = [],
+        (
+            ZeroSizeCtors = [],
+            unexpected(this_file,
+                "bounds_on_var/6: no other constructors for type.")
+        ;
+            ZeroSizeCtors = [_ | _],
+            Constraints = [constraint([Var - one], (=), zero)]
+        )
     ;
-        ZeroSizeCtors = [_|_], NonZeroSizeCtors = []
-    ->
-        Constraints = [constraint([Var - one], (=), zero)]
-    ;
+        NonZeroSizeCtors = [C | Cs],
         upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor,
             Constructors, UpperBoundConstr),
-
-        ( ZeroSizeCtors = [], NonZeroSizeCtors = [C | Cs] ->
+        (
+            ZeroSizeCtors = [],
             LowerBound = list.foldl(int.min, Cs, C),
             LowerBoundConstr = [constraint([Var - one], (>=), rat(LowerBound))]
         ;
+            ZeroSizeCtors = [_ | _],
             LowerBoundConstr = [constraint([Var - one], (>=), zero)]
         ),
         Constraints = LowerBoundConstr ++ UpperBoundConstr
@@ -1176,28 +1166,30 @@ lower_bound(Norm, Module, TypeCtor, Constructor) = LowerBound :-
     type_ctor::in, list(constructor)::in, constraints::out) is det.
 
 upper_bound_constraints(Norm, Module, Var, TypeCtor, Ctors, Constraints) :-
-    %
     % If all the arguments of a functor are zero sized then we can give
     % an upper bound on its size.  If we have a set of such functors
-    % then the upper bound is the maximum of the individual upper
-    % bounds.
+    % then the upper bound is the maximum of the individual upper bounds.
     %
     % XXX We could extend this to include functors can only have a
     % finite size but I'm not sure that it's worth it.
-    %
+
     FindUpperBound = (pred(Ctor::in, !.B::in, !:B::out) is semidet :-
         Ctor = ctor(_, _, SymName, Args, _),
-        all [Arg] (list.member(Arg, Args) =>
-                zero_size_type(Module, Arg ^ arg_type)),
+        all [Arg] (
+            list.member(Arg, Args)
+        =>
+            zero_size_type(Module, Arg ^ arg_type)
+        ),
         Arity = list.length(Args),
         ConsId = cons(SymName, Arity),
         Bound = functor_lower_bound(Norm, TypeCtor, ConsId, Module),
         ( if Bound > !.B then !:B = Bound else true )
     ),
     ( list.foldl(FindUpperBound, Ctors, 0, Bound0) ->
-        ( if    Bound0 = 0
-          then  unexpected(this_file, "zero upper bound.")
-          else  Constraints = [constraint([Var - one], (=<), rat(Bound0))]
+        ( Bound0 = 0 ->
+            unexpected(this_file, "zero upper bound.")
+        ;
+            Constraints = [constraint([Var - one], (=<), rat(Bound0))]
         )
     ;
         Constraints = []

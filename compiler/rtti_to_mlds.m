@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: rtti_to_mlds.m.
 % Authors: fjh, zs.
-% 
+%
 % This module defines routines to convert from the back-end-independent
 % RTTI data structures into MLDS definitions.
 % The RTTI data structures are used for static data that is used
@@ -33,7 +33,7 @@
 % below which use list.append.  If possible these lists should instead be
 % manipulated through some use of prepending and/or list.reverse instead, so
 % that the algorithm stays O(N).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.rtti_to_mlds.
@@ -652,7 +652,7 @@ gen_foreign_enum_functor_desc(_ModuleInfo, Lang,
         gen_init_foreign(Lang, Value)
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
-            
+
 :- func gen_notag_functor_desc(module_info, rtti_type_ctor, notag_functor)
     = list(mlds_defn).
 
@@ -1431,9 +1431,8 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Init, !ExtraDefns) :-
     gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcLabel,
         typeclass_info_closure, Init, !ExtraDefns).
 
-:- pred gen_init_special_pred(module_info::in, univ::in,
-    mlds_initializer::out, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+:- pred gen_init_special_pred(module_info::in, univ::in, mlds_initializer::out,
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
     % We can't store the address of the special pred procedure directly in the
@@ -1452,7 +1451,7 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
         ;
             NumExtra = 0,
             gen_wrapper_func_and_initializer(ModuleInfo, NumExtra,
-                RttiProcId, special_pred, Init, !ExtraDefns)
+                RttiProcId, special_pred_closure, Init, !ExtraDefns)
         )
     ;
         unexpected(this_file,

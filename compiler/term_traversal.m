@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,225 +133,214 @@ traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     ;
         true
     ),
-    traverse_goal_2(GoalExpr, GoalInfo, Params, !Info, !ModuleInfo, !IO).
-
-:- pred traverse_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    traversal_params::in, traversal_info::in, traversal_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-traverse_goal_2(Goal, _GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = unify(_Var, _RHS, _UniMode, Unification, _Context),
     (
-        Unification = construct(OutVar, ConsId, Args, Modes, _, _, _),
+        GoalExpr = unify(_Var, _RHS, _UniMode, Unification, _Context),
         (
-            unify_change(!.ModuleInfo, OutVar, ConsId, Args, Modes, Params,
-                Gamma, InVars, OutVars0)
-        ->
-            bag.insert(OutVars0, OutVar, OutVars),
-            record_change(InVars, OutVars, Gamma, [], !Info)
+            Unification = construct(OutVar, ConsId, Args, Modes, _, _, _),
+            (
+                unify_change(!.ModuleInfo, OutVar, ConsId, Args, Modes, Params,
+                    Gamma, InVars, OutVars0)
+            ->
+                bag.insert(OutVars0, OutVar, OutVars),
+                record_change(InVars, OutVars, Gamma, [], !Info)
+            ;
+                % length(Args) is not necessarily equal to length(Modes)
+                % for higher order constructions.
+                true
+            )
         ;
-            % length(Args) is not necessarily equal to length(Modes)
-            % for higher order constructions.
+            Unification = deconstruct(InVar, ConsId, Args, Modes, _, _),
+            (
+                unify_change(!.ModuleInfo, InVar, ConsId, Args, Modes, Params,
+                    Gamma0, InVars0, OutVars)
+            ->
+                bag.insert(InVars0, InVar, InVars),
+                Gamma = 0 - Gamma0,
+                record_change(InVars, OutVars, Gamma, [], !Info)
+            ;
+                unexpected(this_file,
+                    "traverse_goal_2/5: higher order deconstruction.")
+            )
+        ;
+            Unification = assign(OutVar, InVar),
+            bag.init(Empty),
+            bag.insert(Empty, InVar, InVars),
+            bag.insert(Empty, OutVar, OutVars),
+            record_change(InVars, OutVars, 0, [], !Info)
+        ;
+            Unification = simple_test(_InVar1, _InVar2)
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(this_file, "traverse_goal: complicated unify.")
+        )
+    ;
+        GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
+        Context = goal_info_get_context(GoalInfo),
+        params_get_ppid(Params, PPId),
+        CallPPId = proc(CallPredId, CallProcId),
+
+        module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
+            CallProcInfo),
+        proc_info_get_argmodes(CallProcInfo, CallArgModes),
+        % XXX intermod
+        proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
+        proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
+
+        partition_call_args(!.ModuleInfo, CallArgModes, Args, InVars, OutVars),
+
+        % Handle existing paths.
+        (
+            CallArgSizeInfo = yes(finite(CallGamma, OutputSuppliers)),
+            remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
+            record_change(UsedInVars, OutVars, CallGamma, [], !Info)
+        ;
+            CallArgSizeInfo = yes(infinite(_)),
+            error_if_intersect(OutVars, Context,
+                inf_termination_const(PPId, CallPPId), !Info)
+        ;
+            CallArgSizeInfo = no,
+            % We should get to this point only in pass 1. In pass 2,
+            % OutputSuppliersMap will be empty, which will lead to
+            % a runtime abort in map.lookup.
+            params_get_output_suppliers(Params, OutputSuppliersMap),
+            map.lookup(OutputSuppliersMap, CallPPId, OutputSuppliers),
+            remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
+            record_change(UsedInVars, OutVars, 0, [CallPPId], !Info)
+        ),
+
+        % Did we call a non-terminating procedure?
+        ( CallTerminationInfo = yes(can_loop(_)) ->
+            called_can_loop(Context, can_loop_proc_called(PPId, CallPPId),
+                Params, !Info)
+        ;
+            true
+        ),
+
+        % Did we call a procedure with some procedure-valued arguments?
+        (
+            % XXX This is an overapproximation, since it includes
+            % higher order outputs.
+            params_get_var_types(Params, VarTypes),
+            horder_vars(Args, VarTypes)
+        ->
+            add_error(Context, horder_args(PPId, CallPPId), Params, !Info)
+        ;
+            true
+        ),
+
+        % Do we start another path?
+        (
+            params_get_rec_input_suppliers(Params, RecInputSuppliersMap),
+            map.search(RecInputSuppliersMap, CallPPId, RecInputSuppliers)
+        ->
+            % We should get to this point only in pass 2, and then
+            % only if this call is to a procedure in the current SCC.
+            % In pass 1, RecInputSuppliersMap will be empty.
+            compute_rec_start_vars(Args, RecInputSuppliers, Bag),
+            PathStart = yes(CallPPId - Context),
+            NewPath = path_info(PPId, PathStart, 0, [], Bag),
+            add_path(NewPath, !Info)
+        ;
             true
         )
     ;
-        Unification = deconstruct(InVar, ConsId, Args, Modes, _, _),
-        (
-            unify_change(!.ModuleInfo, InVar, ConsId, Args, Modes, Params,
-                Gamma0, InVars0, OutVars)
-        ->
-            bag.insert(InVars0, InVar, InVars),
-            Gamma = 0 - Gamma0,
-            record_change(InVars, OutVars, Gamma, [], !Info)
-        ;
-            unexpected(this_file,
-                "traverse_goal_2/5: higher order deconstruction.")
-        )
-    ;
-        Unification = assign(OutVar, InVar),
-        bag.init(Empty),
-        bag.insert(Empty, InVar, InVars),
-        bag.insert(Empty, OutVar, OutVars),
-        record_change(InVars, OutVars, 0, [], !Info)
-    ;
-        Unification = simple_test(_InVar1, _InVar2)
-    ;
-        Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "traverse_goal_2/5: complicated unify.")
-    ).
+        GoalExpr = call_foreign_proc(Attributes, CallPredId, CallProcId, Args,
+            _, _, _),
+        module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
+            CallProcInfo),
+        proc_info_get_argmodes(CallProcInfo, CallArgModes),
+        ArgVars = list.map(foreign_arg_var, Args),
+        partition_call_args(!.ModuleInfo, CallArgModes, ArgVars,
+            _InVars, OutVars),
+        Context = goal_info_get_context(GoalInfo),
 
-traverse_goal_2(conj(_, Goals), _, Params, !Info, !ModuleInfo, !IO) :-
-    list.reverse(Goals, RevGoals),
-    traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO).
-
-traverse_goal_2(switch(_, _, Cases), _, Params, !Info, !ModuleInfo, !IO) :-
-    traverse_switch(Cases, Params, !Info, !ModuleInfo, !IO).
-
-traverse_goal_2(disj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
-    traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO).
-
-traverse_goal_2(negation(Goal), _, Params, !Info, !ModuleInfo, !IO) :-
-    % The negated goal will not affect the argument sizes since it cannot bind
-    % any active variables.  However, we must traverse it during pass 1 to
-    % ensure that it does not call any non-terminating procedures.  Pass 2
-    % relies on pass 1 having done this.
-    traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO).
-
-traverse_goal_2(scope(_, Goal), _GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO).
-
-traverse_goal_2(Goal, _, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = if_then_else(_, Cond, Then, Else),
-    traverse_conj([Then, Cond], Params, !.Info, CondThenInfo, !ModuleInfo,
-        !IO),
-    traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo, !IO),
-    combine_paths(CondThenInfo, ElseInfo, Params, !:Info).
-
-traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = call_foreign_proc(Attributes, CallPredId, CallProcId, Args,
-        _, _, _),
-    module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
-        CallProcInfo),
-    proc_info_get_argmodes(CallProcInfo, CallArgModes),
-    ArgVars = list.map(foreign_arg_var, Args),
-    partition_call_args(!.ModuleInfo, CallArgModes, ArgVars, _InVars, OutVars),
-    Context = goal_info_get_context(GoalInfo),
-
-    ( is_termination_known(!.ModuleInfo, proc(CallPredId, CallProcId)) ->
-        error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
-    ;
-        ( attributes_imply_termination(Attributes) ->
+        ( is_termination_known(!.ModuleInfo, proc(CallPredId, CallProcId)) ->
             error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
         ;
-            add_error(Context, does_not_term_pragma(CallPredId), Params, !Info)
-        )
-    ).
-            
-traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = generic_call(Details, Args, ArgModes, _),
-    Context = goal_info_get_context(GoalInfo),
-    (
-        Details = higher_order(Var, _, _, _),
-        ClosureValueMap = goal_info_get_ho_values(GoalInfo),
-        %
-        % If closure analysis has identified a set of values this higher-order
-        % variable can take, then we can check if they terminate.  We cannot
-        % anything about the size of the arguments of the higher-order call,
-        % so we assume that they are unbounded.
-        %
-        ( ClosureValues0 = ClosureValueMap ^ elem(Var) ->
-            ClosureValues = set.to_sorted_list(ClosureValues0),
-            % XXX intermod
-            list.filter(pred_proc_id_terminates(!.ModuleInfo), ClosureValues,
-                Terminating, NonTerminating),
-            ( 
-                NonTerminating = [],
-                partition_call_args(!.ModuleInfo, ArgModes, Args,
-                    _InVars, OutVars),
-                params_get_ppid(Params, PPId),
-                Error = ho_inf_termination_const(PPId, Terminating),
-                error_if_intersect(OutVars, Context, Error, !Info)
+            ( attributes_imply_termination(Attributes) ->
+                error_if_intersect(OutVars, Context, pragma_foreign_code,
+                    !Info)
             ;
-                NonTerminating = [_ | _],
-                % XXX We should tell the user what the
-                % non-terminating closures are.
-                add_error(Context, horder_call, Params, !Info)
+                add_error(Context, does_not_term_pragma(CallPredId), Params,
+                    !Info)
+            )
+        )
+    ;
+        GoalExpr = generic_call(Details, Args, ArgModes, _),
+        Context = goal_info_get_context(GoalInfo),
+        (
+            Details = higher_order(Var, _, _, _),
+            ClosureValueMap = goal_info_get_ho_values(GoalInfo),
+
+            % If closure analysis has identified a set of values this
+            % higher-order variable can take, then we can check if they all
+            % terminate. We cannot find out anything about the sizes of the
+            % arguments of the higher-order call, so we assume that they are
+            % unbounded.
+            ( map.search(ClosureValueMap, Var, ClosureValues0) ->
+                ClosureValues = set.to_sorted_list(ClosureValues0),
+                % XXX intermod
+                list.filter(pred_proc_id_terminates(!.ModuleInfo),
+                    ClosureValues, Terminating, NonTerminating),
+                ( 
+                    NonTerminating = [],
+                    partition_call_args(!.ModuleInfo, ArgModes, Args,
+                        _InVars, OutVars),
+                    params_get_ppid(Params, PPId),
+                    Error = ho_inf_termination_const(PPId, Terminating),
+                    error_if_intersect(OutVars, Context, Error, !Info)
+                ;
+                    NonTerminating = [_ | _],
+                    % XXX We should tell the user what the
+                    % non-terminating closures are.
+                    add_error(Context, horder_call, Params, !Info)
+                )
+            ;
+                add_error(Context, horder_call, Params, !Info)      
             )
         ;
-            add_error(Context, horder_call, Params, !Info)      
+            Details = class_method(_, _, _, _),
+            % For class method calls, we could probably analyse further
+            % than this, since we know that the method being called must
+            % come from one of the instance declarations, and we could
+            % potentially (globally) analyse these.
+            add_error(Context, method_call, Params, !Info)
+        ;
+            Details = event_call(_)
+        ;
+            Details = cast(_)
         )
     ;
-        Details = class_method(_, _, _, _),
-        %
-        % For class method calls, we could probably analyse further than this,
-        % since we know that the method being called must come from one of the
-        % instance declarations, and we could potentially (globally) analyse
-        % these.
-        %
-        add_error(Context, method_call, Params, !Info)
+        GoalExpr = conj(_, Goals),
+        list.reverse(Goals, RevGoals),
+        traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO)
     ;
-        Details = event_call(_)
+        GoalExpr = disj(Goals),
+        traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO)
     ;
-        Details = cast(_)
+        GoalExpr = switch(_, _, Cases),
+        traverse_switch(Cases, Params, !Info, !ModuleInfo, !IO)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        traverse_conj([Then, Cond], Params, !.Info, CondThenInfo,
+            !ModuleInfo, !IO),
+        traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo, !IO),
+        combine_paths(CondThenInfo, ElseInfo, Params, !:Info)
+    ;
+        GoalExpr = negation(SubGoal),
+        % The negated goal will not affect the argument sizes since
+        % it cannot bind any active variables. However, we must traverse it
+        % during pass 1 to ensure that it does not call any non-terminating
+        % procedures. Pass 2 relies on pass 1 having done this.
+        traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
+    ;
+        GoalExpr = scope(_, SubGoal),
+        traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
+    ;
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "traverse_goal_2/5: shorthand goal.")
     ).
-
-traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = plain_call(CallPredId, CallProcId, Args, _, _, _),
-    Context = goal_info_get_context(GoalInfo),
-    params_get_ppid(Params, PPId),
-    CallPPId = proc(CallPredId, CallProcId),
-
-    module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
-        CallProcInfo),
-    proc_info_get_argmodes(CallProcInfo, CallArgModes),
-    % XXX intermod
-    proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
-    proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
-
-    partition_call_args(!.ModuleInfo, CallArgModes, Args, InVars, OutVars),
-
-    % Handle existing paths
-    (
-        CallArgSizeInfo = yes(finite(CallGamma, OutputSuppliers)),
-        remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
-        record_change(UsedInVars, OutVars, CallGamma, [], !Info)
-    ;
-        CallArgSizeInfo = yes(infinite(_)),
-        error_if_intersect(OutVars, Context,
-            inf_termination_const(PPId, CallPPId), !Info)
-    ;
-        CallArgSizeInfo = no,
-        % We should get to this point only in pass 1.  In pass 2,
-        % OutputSuppliersMap will be empty, which will lead to a runtime abort
-        % in map.lookup.
-        params_get_output_suppliers(Params, OutputSuppliersMap),
-        map.lookup(OutputSuppliersMap, CallPPId, OutputSuppliers),
-        remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
-        record_change(UsedInVars, OutVars, 0, [CallPPId], !Info)
-    ),
-
-    % Did we call a non-terminating procedure?
-    (
-        CallTerminationInfo = yes(can_loop(_))
-    ->
-        called_can_loop(Context, can_loop_proc_called(PPId, CallPPId),
-            Params, !Info)
-    ;
-        true
-    ),
-
-    % Did we call a procedure with some procedure-valued arguments?
-    (
-        % XXX This is an overapproximation, since it includes
-        % higher order outputs.
-        params_get_var_types(Params, VarTypes),
-        horder_vars(Args, VarTypes)
-    ->
-        add_error(Context, horder_args(PPId, CallPPId), Params, !Info)
-    ;
-        true
-    ),
-
-    % Do we start another path?
-    (
-        params_get_rec_input_suppliers(Params, RecInputSuppliersMap),
-        map.search(RecInputSuppliersMap, CallPPId, RecInputSuppliers)
-    ->
-        % We should get to this point only in pass 2, and then
-        % only if this call is to a procedure in the current SCC.
-        % In pass 1, RecInputSuppliersMap will be empty.
-        %
-        compute_rec_start_vars(Args, RecInputSuppliers, Bag),
-        PathStart = yes(CallPPId - Context),
-        NewPath = path_info(PPId, PathStart, 0, [], Bag),
-        add_path(NewPath, !Info)
-    ;
-        true
-    ).
-
-traverse_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "traverse_goal_2/5: shorthand goal.").
 
 %-----------------------------------------------------------------------------%
 
@@ -609,29 +598,29 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 
 :- type traversal_params
     --->    traversal_params(
-                functor_info :: functor_info,
+                term_trav_functor_info      :: functor_info,
                 
-                ppid :: pred_proc_id,
                 % The procedure we are tracing through.
+                term_trav_ppid              :: pred_proc_id,
                 
-                context :: prog_context,
                 % The context of the procedure.
+                term_trav_context           :: prog_context,
                 
-                vartypes :: vartypes,
+                term_trav_vartypes          :: vartypes,
                 
-                output_suppliers :: map(pred_proc_id, list(bool)),
                 % Output suppliers of each procedure.
                 % Empty during pass 2.
+                term_trav_output_suppliers  :: map(pred_proc_id, list(bool)),
                     
-                rec_input_supplier  :: map(pred_proc_id, list(bool)),
                 % Recursive input suppliers of each procedure.
                 % Empty during pass 1.
+                term_trav_rec_input_supplier :: map(pred_proc_id, list(bool)),
                 
-                max_errors :: int,
                 % Maximum number of errors to gather.
+                term_trav_max_errors        :: int,
                 
-                max_paths :: int
                 % Maximum number of paths to analyze.
+                term_trav_max_paths         :: int
         ).
 
 init_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
@@ -656,14 +645,14 @@ init_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
 :- pred params_get_max_errors(traversal_params::in, int::out) is det.
 :- pred params_get_max_paths(traversal_params::in, int::out) is det.
 
-params_get_functor_info(Params, Params ^ functor_info).
-params_get_ppid(Params, Params ^ ppid).
-params_get_context(Params, Params ^ context).
-params_get_var_types(Params, Params ^ vartypes).
-params_get_output_suppliers(Params, Params ^ output_suppliers).
-params_get_rec_input_suppliers(Params, Params ^ rec_input_supplier).
-params_get_max_errors(Params, Params ^ max_errors).
-params_get_max_paths(Params, Params ^ max_paths).
+params_get_functor_info(Params, Params ^ term_trav_functor_info).
+params_get_ppid(Params, Params ^ term_trav_ppid).
+params_get_context(Params, Params ^ term_trav_context).
+params_get_var_types(Params, Params ^ term_trav_vartypes).
+params_get_output_suppliers(Params, Params ^ term_trav_output_suppliers).
+params_get_rec_input_suppliers(Params, Params ^ term_trav_rec_input_supplier).
+params_get_max_errors(Params, Params ^ term_trav_max_errors).
+params_get_max_paths(Params, Params ^ term_trav_max_paths).
 
 %-----------------------------------------------------------------------------%
 

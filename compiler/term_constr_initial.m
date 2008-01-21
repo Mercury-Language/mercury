@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2003, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -306,7 +306,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
             % each procedure.
             %
             ( check_marker(Markers, marker_terminates) ->
-                TermStatus = cannot_loop(pragma_supplied),
+                TermStatus = cannot_loop(term_reason_pragma_supplied),
                 change_procs_constr_termination_info(ProcIds, yes, TermStatus,
                     !ProcTable),
                 ArgSizeInfo = polyhedron.universe,
@@ -336,7 +336,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
                 )
             ->
                 change_procs_constr_termination_info(ProcIds, yes,
-                    cannot_loop(pragma_supplied), !ProcTable)
+                    cannot_loop(term_reason_pragma_supplied), !ProcTable)
             ;
                 change_procs_constr_termination_info(ProcIds, no,
                     can_loop([]), !ProcTable)
@@ -464,7 +464,7 @@ special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
     ),
     Polyhedron  = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = Polyhedron,
-    Termination = cannot_loop(builtin).
+    Termination = cannot_loop(term_reason_builtin).
 special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
         VarTypes, ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
     NumToDrop = list.length(HeadProgVars) - 2,
@@ -494,7 +494,7 @@ make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize, Termination, SizeVarMap,
     Constraints = create_nonneg_constraints(SizeVarMap, Zeros),
     Polyhedron = polyhedron.from_constraints(Constraints),
     ArgSize = Polyhedron,
-    Termination = cannot_loop(builtin),
+    Termination = cannot_loop(term_reason_builtin),
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars).
 
     % Set the termination information for builtin
@@ -530,7 +530,8 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     some [!TermInfo] (
         proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
         !:TermInfo = !.TermInfo ^ success_constrs := ArgSizeInfo,
-        !:TermInfo = !.TermInfo ^ term_status := yes(cannot_loop(builtin)),
+        !:TermInfo = !.TermInfo ^ term_status :=
+            yes(cannot_loop(term_reason_builtin)),
         !:TermInfo = !.TermInfo ^ intermod_status :=
             yes(not_mutually_recursive),
         !:TermInfo = !.TermInfo ^ size_var_map := SizeVarMap,
@@ -548,10 +549,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     (
         HeadVars = [HVar1, HVar2],
         (
-            (
-                PredName = "unsafe_type_cast"
-            ;
-                PredName = "unsafe_promise_unique"
+            ( PredName = "unsafe_type_cast"
+            ; PredName = "unsafe_promise_unique"
             )
         ->
             SizeVar1 = prog_var_to_size_var(SizeVarMap, HVar1),

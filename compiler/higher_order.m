@@ -1,29 +1,29 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: higher_order.m.
 % Main author: stayl.
-% 
+%
 % Specializes calls to higher order or polymorphic predicates where the value
 % of one or more higher order, type_info or typeclass_info arguments are known.
-% 
+%
 % Since this creates a new copy of the called procedure I have limited the
 % specialization to cases where the called procedure's goal contains less than
 % 20 calls and unifications. For predicates above this size the overhead of
 % the higher order call becomes less significant while the increase in code
 % size becomes significant. The limit can be changed using
 % `--higher-order-size-limit'.
-% 
+%
 % If a specialization creates new opportunities for specialization, the
 % specialization process will be iterated until no further opportunities
 % arise.  The specialized version for predicate 'foo' is named 'foo.ho<n>',
 % where n is a number that uniquely identifies this specialized version.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -111,13 +111,13 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         module_info_predids(PredIds0, !ModuleInfo),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
-        %
+
         % Make sure the user requested specializations are processed first,
         % since we don't want to create more versions if one of these
         % matches. We need to process these even if specialization is
         % not being performed in case any of the specialized versions
         % are called from other modules.
-        %
+
         ( set.empty(UserSpecPreds) ->
             PredIds = PredIds0,
             UserSpecPredList = []
@@ -127,28 +127,25 @@ specialize_higher_order(!ModuleInfo, !IO) :-
             set.to_sorted_list(PredIdSet, PredIds),
 
             set.to_sorted_list(UserSpecPreds, UserSpecPredList),
-            !:Info = !.Info ^ ho_params ^ user_type_spec := yes,
+            !:Info = !.Info ^ hogi_params ^ param_do_user_type_spec := yes,
             list.foldl(get_specialization_requests, UserSpecPredList, !Info),
             process_requests(!Info, !IO)
         ),
 
         ( bool.or_list([HigherOrder, TypeSpec, UserTypeSpec], yes) ->
-            %
             % Process all other specializations until no more requests
             % are generated.
-            %
             list.foldl(get_specialization_requests, PredIds, !Info),
             recursively_process_requests(!Info, !IO)
         ;
             true
         ),
-        %
+
         % Remove the predicates which were used to force the production of
         % user-requested type specializations, since they are not called
         % from anywhere and are no longer needed.
-        %
         list.foldl(module_info_remove_predicate,
-            UserSpecPredList, !.Info ^ module_info, !:ModuleInfo)
+            UserSpecPredList, !.Info ^ hogi_module_info, !:ModuleInfo)
     ).
 
     % Process one lot of requests, returning requests for any
@@ -177,9 +174,9 @@ process_requests(!Info, !IO) :-
             NewPredList = [_ | _],
             % The dependencies may have changed, so the dependency graph
             % needs to rebuilt for inlining to work properly.
-            module_info_clobber_dependency_info(!.Info ^ module_info,
-                ModuleInfo),
-            !:Info = !.Info ^ module_info := ModuleInfo
+            ModuleInfo0 = !.Info ^ hogi_module_info,
+            module_info_clobber_dependency_info(ModuleInfo0, ModuleInfo),
+            !:Info = !.Info ^ hogi_module_info := ModuleInfo
         ;
             NewPredList = []
         )
@@ -191,7 +188,7 @@ process_requests(!Info, !IO) :-
     higher_order_global_info::out, io::di, io::uo) is det.
 
 recursively_process_requests(!Info, !IO) :-
-    ( set.empty(!.Info ^ requests) ->
+    ( set.empty(!.Info ^ hogi_requests) ->
         true
     ;
         process_requests(!Info, !IO),
@@ -202,22 +199,22 @@ recursively_process_requests(!Info, !IO) :-
 
 :- type higher_order_global_info
     --->    higher_order_global_info(
-                requests            :: set(request),
+                hogi_requests       :: set(request),
                                     % Requested versions.
 
-                new_preds           :: new_preds,
+                hogi_new_preds      :: new_preds,
                                     % Specialized versions for each predicate
-                                    % not changed by traverse_goal.
+                                    % not changed by traverse_proc_body.
 
-                version_info        :: map(pred_proc_id, version_info),
+                hogi_version_info   :: map(pred_proc_id, version_info),
                                     % Extra information about each specialized
                                     % version.
 
-                module_info         :: module_info,
-                goal_sizes          :: goal_sizes,
-                ho_params           :: ho_params,
+                hogi_module_info    :: module_info,
+                hogi_goal_sizes     :: goal_sizes,
+                hogi_params         :: ho_params,
 
-                next_ho_id          :: counter
+                hogi_next_id        :: counter
                                     % Number identifying a specialized
                                     % version.
             ).
@@ -226,21 +223,21 @@ recursively_process_requests(!Info, !IO) :-
     %
 :- type higher_order_info
     --->    higher_order_info(
-                global_info         :: higher_order_global_info,
+                hoi_global_info         :: higher_order_global_info,
 
-                pred_vars           :: pred_vars,
-                                    % higher_order variables.
+                hoi_pred_vars           :: pred_vars,
+                                        % higher_order variables.
 
-                pred_proc_id        :: pred_proc_id,
-                                    % pred_proc_id of goal being traversed.
+                hoi_pred_proc_id        :: pred_proc_id,
+                                        % pred_proc_id of goal being traversed.
 
-                pred_info           :: pred_info,
-                                    % pred_info of goal being traversed.
+                hoi_pred_info           :: pred_info,
+                                        % pred_info of goal being traversed.
 
-                proc_info           :: proc_info,
-                                    % proc_info of goal being traversed.
+                hoi_proc_info           :: proc_info,
+                                        % proc_info of goal being traversed.
 
-                changed             :: changed
+                hoi_changed             :: changed
             ).
 
 :- type request
@@ -342,17 +339,18 @@ recursively_process_requests(!Info, !IO) :-
 
 :- type ho_params
     --->    ho_params(
-                optimize_higher_order :: bool,
-                                      % Propagate higher-order constants.
-                type_spec             :: bool,
-                                      % Propagate type-info constants.
-                user_type_spec        :: bool,
-                                      % User-guided type specialization.
-                size_limit            :: int,
-                                      % Size limit on requested version.
-                arg_limit             :: int
-                                      % The maximum size of the higher-order
-                                      % arguments of a specialized version.
+                param_do_higher_order_spec  :: bool,
+                                            % Propagate higher-order constants.
+                param_do_type_spec          :: bool,
+                                            % Propagate type-info constants.
+                param_do_user_type_spec     :: bool,
+                                            % User-guided type specialization.
+                param_size_limit            :: int,
+                                            % Size limit on requested version.
+                param_arg_limit             :: int
+                                            % The maximum size of the higher
+                                            % order arguments of a specialized
+                                            % version.
             ).
 
 :- type version_info
@@ -416,7 +414,7 @@ recursively_process_requests(!Info, !IO) :-
                                         % specialization?
             ).
 
-    % Returned by traverse_goal.
+    % Returned by traverse_proc_body.
     %
 :- type changed
     --->    changed     % Need to requantify goal + check other procs
@@ -433,80 +431,62 @@ get_np_version_ppid(NewPred) = NewPred ^ np_version_ppid.
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 get_specialization_requests(PredId, !GlobalInfo) :-
-    module_info_pred_info(!.GlobalInfo ^ module_info, PredId, PredInfo0),
+    ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
+    module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
     NonImportedProcs = pred_info_non_imported_procids(PredInfo0),
     (
         NonImportedProcs = []
     ;
         NonImportedProcs = [ProcId | _],
-        MustRecompute = no,
-        list.foldl(traverse_proc(MustRecompute, PredId), NonImportedProcs,
+        list.foldl(traverse_proc(need_not_recompute, PredId), NonImportedProcs,
             !GlobalInfo),
-        module_info_proc_info(!.GlobalInfo ^ module_info, PredId, ProcId,
-            ProcInfo),
+
+        ModuleInfo1 = !.GlobalInfo ^ hogi_module_info,
+        module_info_proc_info(ModuleInfo1, PredId, ProcId, ProcInfo),
         proc_info_get_goal(ProcInfo, Goal),
         goal_size(Goal, GoalSize),
-        map.set(!.GlobalInfo ^ goal_sizes, PredId, GoalSize, GoalSizes),
-        !:GlobalInfo = !.GlobalInfo ^ goal_sizes := GoalSizes
+        GoalSizes1 = !.GlobalInfo ^ hogi_goal_sizes,
+        map.set(GoalSizes1, PredId, GoalSize, GoalSizes),
+        !:GlobalInfo = !.GlobalInfo ^ hogi_goal_sizes := GoalSizes
     ).
 
     % This is called when the first procedure of a predicate was changed.
     % It fixes up all the other procedures, ignoring the goal_size and requests
     % that come out, since that information has already been collected.
     %
-:- pred traverse_proc(bool::in, pred_id::in, proc_id::in,
+:- pred traverse_proc(must_recompute::in, pred_id::in, proc_id::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
     map.init(PredVars0),
-    module_info_pred_proc_info(!.GlobalInfo ^ module_info,
+    module_info_pred_proc_info(!.GlobalInfo ^ hogi_module_info,
         PredId, ProcId, PredInfo0, ProcInfo0),
     Info0 = higher_order_info(!.GlobalInfo, PredVars0, proc(PredId, ProcId),
         PredInfo0, ProcInfo0, unchanged),
-    traverse_goal(MustRecompute, Info0, Info),
+    traverse_proc_body(MustRecompute, Info0, Info),
     Info = higher_order_info(!:GlobalInfo, _, _, PredInfo, ProcInfo, _),
+    ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        !.GlobalInfo ^ module_info, ModuleInfo),
-    !:GlobalInfo = !.GlobalInfo ^ module_info := ModuleInfo.
+        ModuleInfo0, ModuleInfo),
+    !:GlobalInfo = !.GlobalInfo ^ hogi_module_info := ModuleInfo.
 
 %-----------------------------------------------------------------------------%
 %
 % Goal traversal
 %
 
-:- pred traverse_goal(bool::in,
-    higher_order_info::in, higher_order_info::out) is det.
-
-traverse_goal(MustRecompute, !Info) :-
-    VersionInfoMap = !.Info ^ global_info ^ version_info,
-    %
-    % Lookup the initial known bindings of the variables if this
-    % procedure is a specialised version.
-    %
-    (
-        map.search(VersionInfoMap, !.Info ^ pred_proc_id, VersionInfo),
-        VersionInfo = version_info(_, _, PredVars, _)
-    ->
-        !:Info = !.Info ^ pred_vars := PredVars
-    ;
-        true
-    ),
-    proc_info_get_goal(!.Info ^ proc_info, Goal0),
-    traverse_goal_2(Goal0, Goal, !Info),
-    fixup_proc_info(MustRecompute, Goal, !Info).
-
-:- pred fixup_proc_info(bool::in, hlds_goal::in,
+:- pred fixup_proc_info(must_recompute::in, hlds_goal::in,
     higher_order_info::in, higher_order_info::out) is det.
 
 fixup_proc_info(MustRecompute, Goal0, !Info) :-
     (
-        ( !.Info ^ changed = changed
-        ; MustRecompute = yes
+        ( !.Info ^ hoi_changed = changed
+        ; MustRecompute = must_recompute
         )
     ->
         some [!ModuleInfo, !ProcInfo] (
-            !:ModuleInfo = !.Info ^ global_info ^ module_info,
-            !:ProcInfo   = !.Info ^ proc_info,
+            !:ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+            !:ProcInfo   = !.Info ^ hoi_proc_info,
             proc_info_set_goal(Goal0, !ProcInfo),
             requantify_proc(!ProcInfo),
             proc_info_get_goal(!.ProcInfo, Goal2),
@@ -517,12 +497,31 @@ fixup_proc_info(MustRecompute, Goal0, !Info) :-
             recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
                 VarTypes, InstVarSet, InstMap, !ModuleInfo),
             proc_info_set_goal(Goal3, !ProcInfo),
-            !:Info = !.Info ^ proc_info := !.ProcInfo,
-            !:Info = !.Info ^ global_info ^ module_info := !.ModuleInfo
+            !Info ^ hoi_proc_info := !.ProcInfo,
+            !Info ^ hoi_global_info ^ hogi_module_info := !.ModuleInfo
         )
     ;
         true
     ).
+
+:- pred traverse_proc_body(must_recompute::in,
+    higher_order_info::in, higher_order_info::out) is det.
+
+traverse_proc_body(MustRecompute, !Info) :-
+    % Lookup the initial known bindings of the variables if this procedure
+    % is a specialised version.
+    VersionInfoMap = !.Info ^ hoi_global_info ^ hogi_version_info,
+    (
+        map.search(VersionInfoMap, !.Info ^ hoi_pred_proc_id, VersionInfo),
+        VersionInfo = version_info(_, _, PredVars, _)
+    ->
+        !:Info = !.Info ^ hoi_pred_vars := PredVars
+    ;
+        true
+    ),
+    proc_info_get_goal(!.Info ^ hoi_proc_info, Goal0),
+    traverse_goal(Goal0, Goal, !Info),
+    fixup_proc_info(MustRecompute, Goal, !Info).
 
     % Traverses the goal collecting higher order variables for which the value
     % is known, and specializing calls and adding specialization requests
@@ -530,102 +529,104 @@ fixup_proc_info(MustRecompute, Goal0, !Info) :-
     % we can specialize is call/N. The pred_proc_id is that of the current
     % procedure, used to find out which procedures need fixing up later.
     %
-:- pred traverse_goal_2(hlds_goal::in, hlds_goal::out,
+:- pred traverse_goal(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_goal_2(hlds_goal(conj(ConjType, Goals0), GoalInfo),
-        hlds_goal(conj(ConjType, Goals), GoalInfo), !Info) :-
-    (
-        ConjType = plain_conj,
-        list.map_foldl(traverse_goal_2, Goals0, Goals, !Info)
-    ;
-        ConjType = parallel_conj,
-        traverse_independent_goals(Goals0, Goals, !Info)
-    ).
-
-traverse_goal_2(hlds_goal(disj(Goals0), GoalInfo),
-        hlds_goal(disj(Goals), GoalInfo), !Info) :-
-    traverse_independent_goals(Goals0, Goals, !Info).
-
-traverse_goal_2(hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
-        hlds_goal(switch(Var, CanFail, Cases), GoalInfo), !Info) :-
-    % A switch is treated as a disjunction.
-    %
-    traverse_cases(Cases0, Cases, !Info).
-
-    % Check whether this call could be specialized.
-    %
-traverse_goal_2(Goal0, Goal, !Info) :-
-    Goal0 = hlds_goal(generic_call(GenericCall, Args, _, _), GoalInfo),
-    (
-        (
-            GenericCall = higher_order(Var, _, _, _),
-            MaybeMethod = no
-        ;
-            GenericCall = class_method(Var, Method, _, _),
-            MaybeMethod = yes(Method)
-        )
-    ->
-        maybe_specialize_higher_order_call(Var, MaybeMethod, Args,
-            Goal0, Goals, !Info),
-        conj_list_to_goal(Goals, GoalInfo, Goal)
-    ;
-        Goal = Goal0
-    ).
-
-traverse_goal_2(Goal0, Goal, !Info) :-
-    % Check whether this call can be specialized.
-    %
+traverse_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    GoalExpr0 = plain_call(_, _, _, _, _, _),
-    % XXX Due to the absence of alias tracking, assing Goal0 instead of Goal1
-    % would result in a mode error.
-    Goal1 = hlds_goal(GoalExpr0, GoalInfo0),
-    maybe_specialize_call(Goal1, Goal, !Info).
-
-traverse_goal_2(Goal0, Goal, !Info) :-
-    % if-then-elses are handled as disjunctions.
-    %
-    Goal0 = hlds_goal(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo),
-    get_pre_branch_info(!.Info, PreInfo),
-    traverse_goal_2(Cond0, Cond, !Info),
-    traverse_goal_2(Then0, Then, !Info),
-    get_post_branch_info(!.Info, PostThenInfo),
-    set_pre_branch_info(PreInfo, !Info),
-    traverse_goal_2(Else0, Else, !Info),
-    get_post_branch_info(!.Info, PostElseInfo),
-    Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo),
-    merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
-    set_post_branch_info(PostInfo, !Info).
-
-traverse_goal_2(hlds_goal(negation(NegGoal0), GoalInfo),
-        hlds_goal(negation(NegGoal), GoalInfo), !Info) :-
-    traverse_goal_2(NegGoal0, NegGoal, !Info).
-
-traverse_goal_2(hlds_goal(scope(Reason, Goal0), GoalInfo),
-        hlds_goal(scope(Reason, Goal), GoalInfo), !Info) :-
-    traverse_goal_2(Goal0, Goal, !Info).
-
-traverse_goal_2(Goal, Goal, !Info) :-
-    Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _).
-
-traverse_goal_2(Goal0, Goal, !Info) :-
-    Goal0 = hlds_goal(GoalExpr0, _),
-    GoalExpr0 = unify(_, _, _, Unify0, _),
-    ( Unify0 = construct(_, pred_const(_, _), _, _, _, _, _) ->
-        maybe_specialize_pred_const(Goal0, Goal, !Info)
+    (
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            list.map_foldl(traverse_goal, Goals0, Goals, !Info)
+        ;
+            ConjType = parallel_conj,
+            traverse_independent_goals(Goals0, Goals, !Info)
+        ),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
+        GoalExpr0 = disj(Goals0),
+        traverse_independent_goals(Goals0, Goals, !Info),
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        % A switch is treated as a disjunction.
+        traverse_cases(Cases0, Cases, !Info),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = generic_call(GenericCall, Args, _, _),
+        % Check whether this call could be specialized.
+        (
+            (
+                GenericCall = higher_order(Var, _, _, _),
+                MaybeMethod = no
+            ;
+                GenericCall = class_method(Var, Method, _, _),
+                MaybeMethod = yes(Method)
+            ),
+            maybe_specialize_higher_order_call(Var, MaybeMethod, Args,
+                Goal0, Goals, !Info),
+            conj_list_to_goal(Goals, GoalInfo0, Goal)
+        ;
+            ( GenericCall = event_call(_)
+            ; GenericCall = cast(_)
+            ),
+            Goal = Goal0
+        )
+    ;
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        % Check whether this call can be specialized.
+        % XXX Due to the absence of alias tracking, passing Goal0 instead
+        % of Goal1 to maybe_specialize_call would result in a mode error.
+        Goal1 = hlds_goal(GoalExpr0, GoalInfo0),
+        maybe_specialize_call(Goal1, Goal, !Info)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        % If-then-elses are handled as disjunctions.
+        get_pre_branch_info(!.Info, PreInfo),
+        traverse_goal(Cond0, Cond, !Info),
+        traverse_goal(Then0, Then, !Info),
+        get_post_branch_info(!.Info, PostThenInfo),
+        set_pre_branch_info(PreInfo, !Info),
+        traverse_goal(Else0, Else, !Info),
+        get_post_branch_info(!.Info, PostElseInfo),
+        merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
+        set_post_branch_info(PostInfo, !Info),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        traverse_goal(SubGoal0, SubGoal, !Info),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        traverse_goal(SubGoal0, SubGoal, !Info),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0
-    ),
-    ( Goal = hlds_goal(unify(_, _, _, Unify, _), _) ->
-        check_unify(Unify, !Info)
     ;
-        true
+        GoalExpr0 = unify(_, _, _, Unification0, _),
+        ( Unification0 = construct(_, pred_const(_, _), _, _, _, _, _) ->
+            maybe_specialize_pred_const(Goal0, Goal, !Info)
+        ;
+            Goal = Goal0
+        ),
+        ( Goal = hlds_goal(unify(_, _, _, Unification, _), _) ->
+            check_unify(Unification, !Info)
+        ;
+            true
+        )
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "traverse_goal: unexpected shorthand")
     ).
-
-traverse_goal_2(hlds_goal(shorthand(_), _), _, !Info) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "traverse_goal_2: unexpected shorthand").
 
     % To process a disjunction, we process each disjunct with the
     % specialization information before the goal, then merge the
@@ -660,7 +661,7 @@ traverse_independent_goals_2(_, [], [], !PostInfos, !Info).
 traverse_independent_goals_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
-    traverse_goal_2(Goal0, Goal, !Info),
+    traverse_goal(Goal0, Goal, !Info),
     get_post_branch_info(!.Info, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
     traverse_independent_goals_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
@@ -693,7 +694,7 @@ traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
         !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    traverse_goal_2(Goal0, Goal, !Info),
+    traverse_goal(Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
     get_post_branch_info(!.Info, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
@@ -708,24 +709,24 @@ traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
 :- pred get_pre_branch_info(higher_order_info::in, pre_branch_info::out)
     is det.
 
-get_pre_branch_info(Info, pre_branch_info(Info ^ pred_vars)).
+get_pre_branch_info(Info, pre_branch_info(Info ^ hoi_pred_vars)).
 
 :- pred set_pre_branch_info(pre_branch_info::in,
     higher_order_info::in, higher_order_info::out) is det.
 
 set_pre_branch_info(pre_branch_info(PreInfo),
-    Info, Info ^ pred_vars := PreInfo).
+    Info, Info ^ hoi_pred_vars := PreInfo).
 
 :- pred get_post_branch_info(higher_order_info::in, post_branch_info::out)
     is det.
 
-get_post_branch_info(Info, post_branch_info(Info ^ pred_vars)).
+get_post_branch_info(Info, post_branch_info(Info ^ hoi_pred_vars)).
 
 :- pred set_post_branch_info(post_branch_info::in,
     higher_order_info::in, higher_order_info::out) is det.
 
 set_post_branch_info(post_branch_info(PostInfo),
-    Info, Info ^ pred_vars := PostInfo).
+    Info, Info ^ hoi_pred_vars := PostInfo).
 
     % Merge a bunch of post_branch_infos into one.
     %
@@ -826,60 +827,77 @@ merge_common_var_const_list([VarA - ValueA | ListA], [VarB - ValueB | ListB],
 :- pred check_unify(unification::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-check_unify(simple_test(_, _), !Info).
-    % Testing two higher order terms for equality is not allowed.
-check_unify(assign(Var1, Var2), !Info) :-
-    maybe_add_alias(Var1, Var2, !Info).
-check_unify(deconstruct(_, _, _, _, _, _), !Info).
-    % Deconstructing a higher order term is not allowed.
-check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), !Info) :-
-    ( is_interesting_cons_id(!.Info ^ global_info ^ ho_params, ConsId) = yes ->
-        ( map.search(!.Info ^ pred_vars, LVar, Specializable) ->
-            (
-                % We cannot specialize calls involving a variable with
-                % more than one possible value.
-                Specializable = constant(_, _),
-                map.det_update(!.Info ^ pred_vars, LVar,
-                    multiple_values, PredVars),
-                !:Info = !.Info ^ pred_vars := PredVars
+check_unify(Unification, !Info) :-
+    (
+        Unification = simple_test(_, _)
+        % Testing two higher order terms for equality is not allowed.
+    ;
+        Unification = assign(Var1, Var2),
+        maybe_add_alias(Var1, Var2, !Info)
+    ;
+        Unification = deconstruct(_, _, _, _, _, _)
+        % Deconstructing a higher order term is not allowed.
+    ;
+        Unification = construct(LVar, ConsId, Args, _Modes, _, _, _),
+        Params = !.Info ^ hoi_global_info ^ hogi_params,
+        IsInteresting = is_interesting_cons_id(Params, ConsId),
+        (
+            IsInteresting = yes,
+            PredVars0 = !.Info ^ hoi_pred_vars,
+            ( map.search(PredVars0, LVar, Specializable) ->
+                (
+                    % We cannot specialize calls involving a variable with
+                    % more than one possible value.
+                    Specializable = constant(_, _),
+                    map.det_update(PredVars0, LVar, multiple_values, PredVars),
+                    !:Info = !.Info ^ hoi_pred_vars := PredVars
+                ;
+                    % If a variable is already non-specializable, it can't
+                    % become specializable.
+                    Specializable = multiple_values
+                )
             ;
-                % If a variable is already non-specializable, it can't
-                % become specializable.
-                Specializable = multiple_values
+                map.det_insert(PredVars0, LVar, constant(ConsId, Args),
+                    PredVars),
+                !:Info = !.Info ^ hoi_pred_vars := PredVars
             )
         ;
-            map.det_insert(!.Info ^ pred_vars, LVar,
-                constant(ConsId, Args), PredVars),
-            !:Info = !.Info ^ pred_vars := PredVars
+            IsInteresting = no
         )
     ;
-        true
+        Unification = complicated_unify(_, _, _),
+        unexpected(this_file, "check_unify: complicated unification")
     ).
-check_unify(complicated_unify(_, _, _), !Info) :-
-    unexpected(this_file, "check_unify - complicated unification").
 
 :- func is_interesting_cons_id(ho_params, cons_id) = bool.
 
-is_interesting_cons_id(_Params, cons(_, _)) = no.
-    % We need to keep track of int_consts so we can interpret
-    % superclass_info_from_typeclass_info and
-    % typeinfo_from_typeclass_info.  We don't specialize based on them.
-is_interesting_cons_id(Params, int_const(_)) = Params ^ user_type_spec.
-is_interesting_cons_id(_Params, string_const(_)) = no.
-is_interesting_cons_id(_Params, float_const(_)) = no.
-is_interesting_cons_id(Params, pred_const(_, _)) =
-    Params ^ optimize_higher_order.
-is_interesting_cons_id(Params, type_ctor_info_const(_, _, _)) =
-    Params ^ user_type_spec.
-is_interesting_cons_id(Params, base_typeclass_info_const(_, _, _, _)) =
-    Params ^ user_type_spec.
-is_interesting_cons_id(Params, type_info_cell_constructor(_)) =
-    Params ^ user_type_spec.
-is_interesting_cons_id(Params, typeclass_info_cell_constructor) =
-    Params ^ user_type_spec.
-is_interesting_cons_id(_Params, tabling_info_const(_)) = no.
-is_interesting_cons_id(_Params, deep_profiling_proc_layout(_)) = no.
-is_interesting_cons_id(_Params, table_io_decl(_)) = no.
+is_interesting_cons_id(Params, ConsId) = IsInteresting :-
+    (
+        ( ConsId = cons(_, _)
+        ; ConsId = string_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = table_io_decl(_)
+        ),
+        IsInteresting = no
+    ;
+        ConsId = int_const(_),
+        % We need to keep track of int_consts so we can interpret
+        % superclass_info_from_typeclass_info and
+        % typeinfo_from_typeclass_info.  We don't specialize based on them.
+        IsInteresting = Params ^ param_do_user_type_spec
+    ;
+        ( ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ),
+        IsInteresting = Params ^ param_do_user_type_spec
+    ;
+        ConsId = pred_const(_, _),
+        IsInteresting = Params ^ param_do_higher_order_spec
+    ).
 
     % Process a higher-order call or class_method_call to see if it
     % could possibly be specialized.
@@ -890,11 +908,12 @@ is_interesting_cons_id(_Params, table_io_decl(_)) = no.
 
 maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
         hlds_goal(GoalExpr0, GoalInfo), Goals, !Info) :-
-    ModuleInfo = !.Info ^ global_info ^ module_info,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     % We can specialize calls to call/N and class_method_call/N
     % if the closure or typeclass_info has a known value.
     (
-        map.search(!.Info ^ pred_vars, PredVar, constant(ConsId, CurriedArgs)),
+        map.search(!.Info ^ hoi_pred_vars, PredVar,
+            constant(ConsId, CurriedArgs)),
         (
             ConsId = pred_const(ShroudedPredProcId, _),
             MaybeMethod = no
@@ -904,10 +923,10 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
         ;
             % A typeclass_info variable should consist of a known
             % base_typeclass_info and some argument typeclass_infos.
-            %
+
             ConsId = typeclass_info_cell_constructor,
             CurriedArgs = [BaseTypeClassInfo | OtherTypeClassArgs],
-            map.search(!.Info ^ pred_vars, BaseTypeClassInfo,
+            map.search(!.Info ^ hoi_pred_vars, BaseTypeClassInfo,
                 constant(BaseConsId, _)),
             BaseConsId = base_typeclass_info_const(_, ClassId, Instance, _),
             MaybeMethod = yes(Method),
@@ -947,11 +966,11 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
         % instance declarations are visible in the imported module, so we
         % don't know which class constraints are redundant after type
         % specialization.
-        %
+
         MaybeMethod = yes(Method),
 
-        CallerProcInfo0 = !.Info ^ proc_info,
-        CallerPredInfo0 = !.Info ^ pred_info,
+        CallerProcInfo0 = !.Info ^ hoi_proc_info,
+        CallerPredInfo0 = !.Info ^ hoi_pred_info,
         proc_info_get_rtti_varmaps(CallerProcInfo0, CallerRttiVarMaps),
         rtti_varmaps_var_info(CallerRttiVarMaps, PredVar,
             typeclass_info_var(ClassConstraint)),
@@ -987,8 +1006,8 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
                 AllArgs),
             list.append(ArgTypeInfoGoals, ArgTypeClassInfoGoals, ExtraGoals)
         ),
-        !:Info = !.Info ^ pred_info := CallerPredInfo,
-        !:Info = !.Info ^ proc_info := CallerProcInfo,
+        !:Info = !.Info ^ hoi_pred_info := CallerPredInfo,
+        !:Info = !.Info ^ hoi_proc_info := CallerProcInfo,
         construct_specialized_higher_order_call(PredId, ProcId,
             AllArgs, GoalInfo, Goal, !Info),
         list.append(ExtraGoals, [Goal], Goals)
@@ -1130,18 +1149,18 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
 
 construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    ModuleInfo = !.Info ^ global_info ^ module_info,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     SymName = qualified(ModuleName, PredName),
-    proc(CallerPredId, _) = !.Info ^ pred_proc_id,
+    proc(CallerPredId, _) = !.Info ^ hoi_pred_proc_id,
     Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
 
     MaybeContext = no,
     GoalExpr1 = plain_call(PredId, ProcId, AllArgs, Builtin, MaybeContext,
         SymName),
-    !:Info = !.Info ^ changed := changed,
+    !:Info = !.Info ^ hoi_changed := changed,
     maybe_specialize_call(hlds_goal(GoalExpr1, GoalInfo),
         hlds_goal(GoalExpr, _), !Info).
 
@@ -1150,7 +1169,7 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
 
 maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    ModuleInfo0 = !.Info ^ global_info ^ module_info,
+    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     GoalExpr0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
         MaybeContext, _SymName0),
     module_info_pred_proc_info(ModuleInfo0, CalledPred, CalledProc,
@@ -1163,7 +1182,7 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
             MaybeContext, GoalInfo, HaveSpecialPreds, GoalExpr1, !Info)
     ->
         GoalExpr = GoalExpr1,
-        !:Info = !.Info ^ changed := changed
+        !:Info = !.Info ^ hoi_changed := changed
     ;
         polymorphism.is_typeclass_info_manipulator(ModuleInfo0,
             CalledPred, Manipulator)
@@ -1185,8 +1204,7 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
     ->
         GoalExpr = GoalExpr0
     ;
-        CanRequest = yes,
-        maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
+        maybe_specialize_ordinary_call(can_request, CalledPred, CalledProc,
             CalleePredInfo, CalleeProcInfo, Args0, IsBuiltin, MaybeContext,
             GoalInfo, Result, !Info),
         (
@@ -1216,9 +1234,9 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
 
 maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    NewPreds   = !.Info ^ global_info ^ new_preds,
-    ModuleInfo = !.Info ^ global_info ^ module_info,
-    ProcInfo0  = !.Info ^ proc_info,
+    NewPreds   = !.Info ^ hoi_global_info ^ hogi_new_preds,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ProcInfo0  = !.Info ^ hoi_proc_info,
     (
         GoalExpr0 = unify(_, _, UniMode, Unify0, Context),
         Unify0 = construct(LVar, ConsId0, Args0, _,
@@ -1240,21 +1258,20 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         proc_info_create_vars_from_types(ArgTypes, UncurriedArgs,
             ProcInfo0, ProcInfo1),
         list.append(Args0, UncurriedArgs, Args1),
-        !:Info = !.Info ^ proc_info := ProcInfo1,
+        !:Info = !.Info ^ hoi_proc_info := ProcInfo1,
 
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             CalleePredInfo, CalleeProcInfo),
-        %
+
         % We don't create requests for higher-order terms because that would
         % result in duplication of effort if all uses of the constant end up
         % being specialized.  For parser combinator programs it would also
         % result in huge numbers of requests with no easy way to control which
         % ones should be created.
-        %
-        CanRequest = no,
+
         IsBuiltin = not_builtin,
         MaybeContext = no,
-        maybe_specialize_ordinary_call(CanRequest, PredId, ProcId,
+        maybe_specialize_ordinary_call(can_not_request, PredId, ProcId,
             CalleePredInfo, CalleeProcInfo, Args1, IsBuiltin, MaybeContext,
             GoalInfo, Result, !Info),
         (
@@ -1286,11 +1303,11 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
                 CurriedArgModes, UniModes),
 
             % The dummy arguments can't be used anywhere.
-            ProcInfo2 = !.Info ^ proc_info,
+            ProcInfo2 = !.Info ^ hoi_proc_info,
             proc_info_get_vartypes(ProcInfo2, VarTypes2),
             map.delete_list(VarTypes2, UncurriedArgs, VarTypes),
             proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo),
-            !:Info = !.Info ^ proc_info := ProcInfo,
+            !:Info = !.Info ^ hoi_proc_info := ProcInfo,
 
             NewPredProcId = proc(NewPredId, NewProcId),
             NewShroudedPredProcId = shroud_pred_proc_id(NewPredProcId),
@@ -1301,7 +1318,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
                 UniMode, Unify, Context),
 
             % Make sure any constants in the ExtraTypeInfoGoals are recorded.
-            list.map_foldl(traverse_goal_2, ExtraTypeInfoGoals0,
+            list.map_foldl(traverse_goal, ExtraTypeInfoGoals0,
                 ExtraTypeInfoGoals, !Info),
             (
                 ExtraTypeInfoGoals = [],
@@ -1314,7 +1331,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         ;
             Result = not_specialized,
             % The dummy arguments can't be used anywhere.
-            !:Info = !.Info ^ proc_info := ProcInfo0,
+            !:Info = !.Info ^ hoi_proc_info := ProcInfo0,
             GoalExpr = GoalExpr0
         )
     ;
@@ -1329,29 +1346,33 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             )
     ;       not_specialized.
 
-:- pred maybe_specialize_ordinary_call(bool::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, list(prog_var)::in, builtin_state::in,
-    maybe(call_unify_context)::in, hlds_goal_info::in,
-    specialization_result::out, higher_order_info::in, higher_order_info::out)
-    is det.
+:- type can_request
+    --->    can_request
+    ;       can_not_request.
+
+:- pred maybe_specialize_ordinary_call(can_request::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+    list(prog_var)::in, builtin_state::in, maybe(call_unify_context)::in,
+    hlds_goal_info::in, specialization_result::out,
+    higher_order_info::in, higher_order_info::out) is det.
 
 maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo, Args0, IsBuiltin,
         MaybeContext, GoalInfo, Result, !Info) :-
-    ModuleInfo0 = !.Info ^ global_info ^ module_info,
+    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     pred_info_get_import_status(CalleePredInfo, CalleeStatus),
     proc_info_get_vartypes(CalleeProcInfo, CalleeVarTypes),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
     map.apply_to_list(CalleeHeadVars, CalleeVarTypes, CalleeArgTypes),
 
-    CallerProcInfo0 = !.Info ^ proc_info,
+    CallerProcInfo0 = !.Info ^ hoi_proc_info,
     proc_info_get_vartypes(CallerProcInfo0, VarTypes),
     proc_info_get_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
     find_higher_order_args(ModuleInfo0, CalleeStatus, Args0,
-        CalleeArgTypes, VarTypes, RttiVarMaps, !.Info ^ pred_vars, 1,
+        CalleeArgTypes, VarTypes, RttiVarMaps, !.Info ^ hoi_pred_vars, 1,
         [], HigherOrderArgs0),
 
-    proc(CallerPredId, _) = !.Info ^ pred_proc_id,
+    proc(CallerPredId, _) = !.Info ^ hoi_pred_proc_id,
     module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, ForceVersions, _, _),
     IsUserSpecProc = ( set.member(CallerPredId, ForceVersions) -> yes ; no ),
@@ -1363,7 +1384,8 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             % to avoid link errors.
             IsUserSpecProc = yes
         ;
-            !.Info ^ global_info ^ ho_params ^ user_type_spec = yes,
+            !.Info ^ hoi_global_info ^ hogi_params ^ param_do_user_type_spec
+                = yes,
             map.apply_to_list(Args0, VarTypes, ArgTypes),
 
             % Check whether any typeclass constraints now match an instance.
@@ -1371,7 +1393,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             CalleeClassContext = constraints(CalleeUnivConstraints0, _),
             pred_info_get_typevarset(CalleePredInfo, CalleeTVarSet),
             pred_info_get_exist_quant_tvars(CalleePredInfo, CalleeExistQTVars),
-            CallerPredInfo0 = !.Info ^ pred_info,
+            CallerPredInfo0 = !.Info ^ hoi_pred_info,
             pred_info_get_typevarset(CallerPredInfo0, TVarSet),
             pred_info_get_univ_quant_tvars(CallerPredInfo0, CallerUnivQTVars),
             type_subst_makes_instance_known(ModuleInfo0,
@@ -1398,20 +1420,22 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             CallGoal = plain_call(NewCalledPred, NewCalledProc, Args,
                 IsBuiltin, MaybeContext, NewName),
             Result = specialized(ExtraTypeInfoGoals, CallGoal),
-            !:Info = !.Info ^ changed := changed
+            !:Info = !.Info ^ hoi_changed := changed
         ;
             % There is a known higher order variable in the call, so we
             % put in a request for a specialized version of the pred.
             FindResult = find_result_request(Request),
             Result = not_specialized,
             (
-                CanRequest = yes,
-                set.insert(!.Info ^ global_info ^ requests, Request, Requests),
-                update_changed_status(!.Info ^ changed, request, Changed),
-                !:Info = !.Info ^ global_info ^ requests := Requests,
-                !:Info = !.Info ^ changed := Changed
+                CanRequest = can_request,
+                Requests0 = !.Info ^ hoi_global_info ^ hogi_requests,
+                Changed0 = !.Info ^ hoi_changed,
+                set.insert(Requests0, Request, Requests),
+                update_changed_status(Changed0, request, Changed),
+                !:Info = !.Info ^ hoi_global_info ^ hogi_requests := Requests,
+                !:Info = !.Info ^ hoi_changed := Changed
             ;
-                CanRequest = no
+                CanRequest = can_not_request
             )
         ;
             FindResult = find_result_no_request,
@@ -1571,12 +1595,12 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     % Args is the original list of arguments with the curried arguments
     % of known higher-order arguments added.
 
-    ModuleInfo = Info ^ global_info ^ module_info,
-    NewPreds = Info ^ global_info ^ new_preds,
-    Caller = Info ^ pred_proc_id,
-    PredInfo = Info ^ pred_info,
-    ProcInfo = Info ^ proc_info,
-    Params = Info ^ global_info ^ ho_params,
+    ModuleInfo = Info ^ hoi_global_info ^ hogi_module_info,
+    NewPreds = Info ^ hoi_global_info ^ hogi_new_preds,
+    Caller = Info ^ hoi_pred_proc_id,
+    PredInfo = Info ^ hoi_pred_info,
+    ProcInfo = Info ^ hoi_proc_info,
+    Params = Info ^ hoi_global_info ^ hogi_params,
 
     % WARNING - do not filter out higher-order arguments after this step,
     % except when partially matching against a previously produced
@@ -1606,9 +1630,9 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     ->
         Result = find_result_match(Match)
     ;
-        HigherOrder = Params ^ optimize_higher_order,
-        TypeSpec = Params ^ type_spec,
-        UserTypeSpec = Params ^ user_type_spec,
+        HigherOrder = Params ^ param_do_higher_order_spec,
+        TypeSpec = Params ^ param_do_type_spec,
+        UserTypeSpec = Params ^ param_do_user_type_spec,
         (
             UserTypeSpec = yes,
             IsUserSpecProc = yes
@@ -1659,7 +1683,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     % version (`goal_util.extra_nonlocal_typeinfos' is not used here
     % because the type variables are returned sorted by variable number,
     % which will vary between calls).
-    ProcInfo = Info ^ proc_info,
+    ProcInfo = Info ^ hoi_proc_info,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Args, VarTypes, ArgTypes),
     type_vars_list(ArgTypes, AllTVars),
@@ -1668,7 +1692,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
         ExtraTypeInfoTVars = []
     ;
         AllTVars = [_ | _],
-        proc_info_get_rtti_varmaps(Info ^ proc_info, RttiVarMaps),
+        proc_info_get_rtti_varmaps(Info ^ hoi_proc_info, RttiVarMaps),
         list.foldl(arg_contains_type_info_for_tvar(RttiVarMaps),
             Args, [], TypeInfoTVars),
         list.delete_elems(AllTVars, TypeInfoTVars, ExtraTypeInfoTVars0),
@@ -1690,8 +1714,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     ;
         VarInfo = typeclass_info_var(Constraint),
         Constraint = constraint(_ClassName, ClassArgTypes),
-        % Find out what tvars the typeclass-info contains the type-infos
-        % for.
+        % Find out what tvars the typeclass-info contains the type-infos for.
         list.filter_map(
             (pred(ClassArgType::in, ClassTVar::out) is semidet :-
                 ClassArgType = type_variable(ClassTVar, _)
@@ -1706,16 +1729,16 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     higher_order_info::in, higher_order_info::out) is det.
 
 construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
-    create_poly_info(!.Info ^ global_info ^ module_info,
-        !.Info ^ pred_info, !.Info ^ proc_info, PolyInfo0),
+    create_poly_info(!.Info ^ hoi_global_info ^ hogi_module_info,
+        !.Info ^ hoi_pred_info, !.Info ^ hoi_proc_info, PolyInfo0),
     term.context_init(Context),
     polymorphism_make_type_info_vars(Types, Context,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, !.Info ^ pred_info, PredInfo,
-        !.Info ^ proc_info, ProcInfo, ModuleInfo),
-    !:Info = !.Info ^ pred_info := PredInfo,
-    !:Info = !.Info ^ proc_info := ProcInfo,
-    !:Info = !.Info ^ global_info ^ module_info := ModuleInfo.
+    poly_info_extract(PolyInfo, !.Info ^ hoi_pred_info, PredInfo,
+        !.Info ^ hoi_proc_info, ProcInfo, ModuleInfo),
+    !:Info = !.Info ^ hoi_pred_info := PredInfo,
+    !:Info = !.Info ^ hoi_proc_info := ProcInfo,
+    !:Info = !.Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo.
 
 :- pred search_for_version(higher_order_info::in, ho_params::in,
     module_info::in, request::in, list(new_pred)::in,
@@ -1775,14 +1798,14 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         VersionExtraTypeInfoTVars, VersionArgTypes0, _,
         VersionTVarSet, _),
     higher_order_args_match(RequestHigherOrderArgs,
-        VersionHigherOrderArgs, HigherOrderArgs, MatchIsPartial),
+        VersionHigherOrderArgs, HigherOrderArgs, FullOrPartial),
     (
         % Don't accept partial matches unless the predicate is imported
         % or we are only doing user-guided type specialization.
-        MatchIsPartial = no,
+        FullOrPartial = match_is_partial,
         PartialMatch = no
     ;
-        MatchIsPartial = yes,
+        FullOrPartial = match_is_full,
         list.length(HigherOrderArgs, NumHOArgs),
         PartialMatch = yes(NumHOArgs),
         pred_info_get_markers(CalleePredInfo, Markers),
@@ -1791,7 +1814,7 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         \+ check_marker(Markers, marker_class_method),
         \+ check_marker(Markers, marker_class_instance_method),
         (
-            Params ^ type_spec = no
+            Params ^ param_do_type_spec = no
         ;
             pred_info_is_imported(CalleePredInfo)
         )
@@ -1818,12 +1841,16 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         ExtraTypeInfoTypes),
     get_extra_arguments(HigherOrderArgs, Args0, Args).
 
-:- pred higher_order_args_match(list(higher_order_arg)::in,
-    list(higher_order_arg)::in, list(higher_order_arg)::out, bool::out)
-    is semidet.
+:- type match_is_full
+    --->    match_is_full
+    ;       match_is_partial.
 
-higher_order_args_match([], [], [], no).
-higher_order_args_match(RequestArgs, [], [], yes) :-
+:- pred higher_order_args_match(list(higher_order_arg)::in,
+    list(higher_order_arg)::in, list(higher_order_arg)::out,
+    match_is_full::out) is semidet.
+
+higher_order_args_match([], [], [], match_is_full).
+higher_order_args_match(RequestArgs, [], [], match_is_partial) :-
     RequestArgs = [_ | _],
     \+ (
         list.member(RequestArg, RequestArgs),
@@ -1831,7 +1858,7 @@ higher_order_args_match(RequestArgs, [], [], yes) :-
         RequestConsId = pred_const(_, _)
     ).
 higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
-        Args, PartialMatch) :-
+        Args, FullOrPartial) :-
     RequestArg = higher_order_arg(ConsId1, ArgNo1, _, _, _, _, _,
         RequestIsConst),
     VersionArg = higher_order_arg(ConsId2, ArgNo2, _, _, _, _, _,
@@ -1844,7 +1871,7 @@ higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
         VersionArg = higher_order_arg(_, _, NumArgs,
             _, _, _, HOCurriedArgs2, _),
         higher_order_args_match(HOCurriedArgs1, HOCurriedArgs2,
-            NewHOCurriedArgs, PartialMatch),
+            NewHOCurriedArgs, FullOrPartial),
         higher_order_args_match(Args1, Args2, Args3, _),
         NewRequestArg = higher_order_arg(ConsId1, ArgNo1, NumArgs,
             CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
@@ -1859,8 +1886,8 @@ higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
         % All the higher-order arguments must be present in the version
         % otherwise we should create a new one.
         ConsId1 \= pred_const(_, _),
-        PartialMatch = yes,
-        higher_order_args_match(Args1, [VersionArg | Args2], Args, _)
+        higher_order_args_match(Args1, [VersionArg | Args2], Args, _),
+        FullOrPartial = match_is_partial
     ).
 
     % Add the curried arguments of the higher-order terms to the argument list.
@@ -1901,9 +1928,10 @@ get_extra_arguments_2([HOArg | HOArgs], Args) :-
     higher_order_info::in, higher_order_info::out) is det.
 
 maybe_add_alias(LVar, RVar, !Info) :-
-    ( map.search(!.Info ^ pred_vars, RVar, constant(A, B)) ->
-        map.set(!.Info ^ pred_vars, LVar, constant(A, B), PredVars),
-        !:Info = !.Info ^ pred_vars := PredVars
+    PredVars0 = !.Info ^ hoi_pred_vars,
+    ( map.search(PredVars0, RVar, constant(A, B)) ->
+        map.set(PredVars0, LVar, constant(A, B), PredVars),
+        !:Info = !.Info ^ hoi_pred_vars := PredVars
     ;
         true
     ).
@@ -1929,8 +1957,8 @@ update_changed_status(unchanged, Changed, Changed).
     higher_order_info::in, higher_order_info::out) is det.
 
 interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
-    ModuleInfo = !.Info ^ global_info ^ module_info,
-    PredVars = !.Info ^ pred_vars,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    PredVars = !.Info ^ hoi_pred_vars,
     (
         Args = [TypeClassInfoVar, IndexVar, TypeInfoVar],
         map.search(PredVars, TypeClassInfoVar,
@@ -1967,7 +1995,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         Uni = assign(TypeInfoVar, TypeInfoArg),
         Goal = unify(TypeInfoVar, rhs_var(TypeInfoArg), out_mode - in_mode,
             Uni, unify_context(umc_explicit, [])),
-        !:Info = !.Info ^ changed := changed
+        !:Info = !.Info ^ hoi_changed := changed
     ;
         Goal = Goal0
     ).
@@ -1984,9 +2012,9 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
 
 specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
         OrigGoalInfo, HaveSpecialPreds, Goal, !Info) :-
-    ModuleInfo = !.Info ^ global_info ^ module_info,
-    ProcInfo0 = !.Info ^ proc_info,
-    PredVars = !.Info ^ pred_vars,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ProcInfo0 = !.Info ^ hoi_proc_info,
+    PredVars = !.Info ^ hoi_pred_vars,
     proc_info_get_vartypes(ProcInfo0, VarTypes),
     module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
     mercury_public_builtin_module = pred_info_module(CalledPredInfo),
@@ -2131,8 +2159,8 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
 
 specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
         Arg1, Arg2, MaybeContext, OrigGoalInfo, GoalExpr, !Info) :-
-    ModuleInfo = !.Info ^ global_info ^ module_info,
-    ProcInfo0 = !.Info ^ proc_info,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ProcInfo0 = !.Info ^ hoi_proc_info,
     (
         MaybeResult = no,
         in_mode(In),
@@ -2167,7 +2195,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
                 Context, GoalInfo),
             GoalExpr = conj(plain_conj,
                 [CastGoal1, CastGoal2, hlds_goal(Call, GoalInfo)]),
-            !:Info = !.Info ^ proc_info := ProcInfo
+            !:Info = !.Info ^ hoi_proc_info := ProcInfo
         )
     ).
 
@@ -2179,8 +2207,8 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
 specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
         MaybeResult, Arg1, Arg2, MaybeContext, OrigGoalInfo, GoalExpr,
         !Info) :-
-    ModuleInfo = !.Info ^ global_info ^ module_info,
-    ProcInfo0 = !.Info ^ proc_info,
+    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ProcInfo0 = !.Info ^ hoi_proc_info,
     Context = goal_info_get_context(OrigGoalInfo),
     unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg1,
         UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
@@ -2200,7 +2228,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             Context, GoalInfo),
         GoalExpr = conj(plain_conj,
             [ExtractGoal1, ExtractGoal2, hlds_goal(SpecialGoal, GoalInfo)]),
-        !:Info = !.Info ^ proc_info := ProcInfo2
+        !:Info = !.Info ^ hoi_proc_info := ProcInfo2
     ;
         MaybeResult = yes(ComparisonResult),
         set.insert(NonLocals0, ComparisonResult, NonLocals),
@@ -2221,7 +2249,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
                 Context, GoalInfo),
             GoalExpr = conj(plain_conj, [ExtractGoal1, ExtractGoal2,
                 hlds_goal(SpecialGoal, GoalInfo)]),
-            !:Info = !.Info ^ proc_info := ProcInfo2
+            !:Info = !.Info ^ hoi_proc_info := ProcInfo2
         ;
             NeedIntCast = yes,
             generate_unsafe_type_cast(Context, CompareType,
@@ -2236,7 +2264,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             GoalExpr = conj(plain_conj,
                 [ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
                 hlds_goal(SpecialGoal, GoalInfo)]),
-            !:Info = !.Info ^ proc_info := ProcInfo4
+            !:Info = !.Info ^ hoi_proc_info := ProcInfo4
         )
     ).
 
@@ -2245,7 +2273,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
     higher_order_info::in, higher_order_info::out) is semidet.
 
 find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
-    ModuleInfo0 = !.Info ^ global_info ^ module_info,
+    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     (
         polymorphism.get_special_proc(Type, SpecialId, ModuleInfo0, SymName0,
             PredId0, ProcId0)
@@ -2286,7 +2314,7 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
         SymName = qualified(ModuleName, Name),
-        !:Info = !.Info ^ global_info ^ module_info := ModuleInfo
+        !:Info = !.Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo
     ).
 
 :- pred find_builtin_type_with_equivalent_compare(module_info::in,
@@ -2296,19 +2324,11 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         NeedIntCast) :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
-        TypeCategory = type_cat_int,
-        EqvType = Type,
-        NeedIntCast = no
-    ;
-        TypeCategory = type_cat_char,
-        EqvType = Type,
-        NeedIntCast = no
-    ;
-        TypeCategory = type_cat_string,
-        EqvType = Type,
-        NeedIntCast = no
-    ;
-        TypeCategory = type_cat_float,
+        ( TypeCategory = type_cat_int
+        ; TypeCategory = type_cat_char
+        ; TypeCategory = type_cat_string
+        ; TypeCategory = type_cat_float
+        ),
         EqvType = Type,
         NeedIntCast = no
     ;
@@ -2408,8 +2428,8 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg, Goal,
     io::di, io::uo) is det.
 
 filter_requests(FilteredRequests, LoopRequests, !Info, !IO) :-
-    Requests0 = set.to_sorted_list(!.Info ^ requests),
-    !:Info = !.Info ^ requests := set.init,
+    Requests0 = set.to_sorted_list(!.Info ^ hogi_requests),
+    !:Info = !.Info ^ hogi_requests := set.init,
     list.foldl3(filter_requests_2(!.Info), Requests0,
         [], FilteredRequests, [], LoopRequests, !IO).
 
@@ -2418,7 +2438,7 @@ filter_requests(FilteredRequests, LoopRequests, !Info, !IO) :-
     list(request)::in, list(request)::out, io::di, io::uo) is det.
 
 filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
-    ModuleInfo = Info ^ module_info,
+    ModuleInfo = Info ^ hogi_module_info,
     Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
         _, _, _, IsUserTypeSpec, Context),
     CalledPredProcId = proc(CalledPredId, _),
@@ -2440,19 +2460,20 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         list.cons(Request, !AcceptedRequests)
     ;
         IsUserTypeSpec = no,
-        ( map.search(Info ^ goal_sizes, CalledPredId, GoalSize0) ->
+        ( map.search(Info ^ hogi_goal_sizes, CalledPredId, GoalSize0) ->
             GoalSize = GoalSize0
         ;
             % This can happen for a specialized version.
             GoalSize = 0
         ),
         (
-            GoalSize > Info ^ ho_params ^ size_limit
+            GoalSize > Info ^ hogi_params ^ param_size_limit
         ->
             maybe_write_string(VeryVerbose,
                 "%    not specializing (goal too large).\n", !IO)
         ;
-            higher_order_args_size(HOArgs) > Info ^ ho_params ^ arg_limit
+            higher_order_args_size(HOArgs) >
+                Info ^ hogi_params ^ param_arg_limit
         ->
             % If the arguments are too large, we can end up producing a
             % specialized version with massive numbers of arguments, because
@@ -2465,7 +2486,7 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
             % To ensure termination of the specialization process, the depth
             % of the higher-order arguments must strictly decrease compared
             % to parents with the same original pred_proc_id.
-            VersionInfoMap = Info ^ version_info,
+            VersionInfoMap = Info ^ hogi_version_info,
             (
                 map.search(VersionInfoMap, CalledPredProcId, CalledVersionInfo)
             ->
@@ -2504,13 +2525,13 @@ create_new_preds([Request | Requests], !NewPredList, !PredsToFix, !Info,
     Request = ho_request(CallingPredProcId, CalledPredProcId, _HOArgs,
         _CallArgs, _, _CallerArgTypes, _, _, _, _),
     set.insert(!.PredsToFix, CallingPredProcId, !:PredsToFix),
-    ( map.search(!.Info ^ new_preds, CalledPredProcId, SpecVersions0) ->
+    ( map.search(!.Info ^ hogi_new_preds, CalledPredProcId, SpecVersions0) ->
         (
             % Check that we aren't redoing the same pred.
             % SpecVersions0 are pred_proc_ids of the specialized versions
             % of the current pred.
             set.member(Version, SpecVersions0),
-            version_matches(!.Info ^ ho_params, !.Info ^ module_info,
+            version_matches(!.Info ^ hogi_params, !.Info ^ hogi_module_info,
                 Request, Version, _)
         ->
             true
@@ -2535,10 +2556,10 @@ check_loop_request(Info, Request, !PredsToFix) :-
     CallingPredProcId = Request ^ rq_caller,
     CalledPredProcId = Request ^ rq_callee,
     (
-        map.search(Info ^ new_preds, CalledPredProcId, SpecVersions0),
+        map.search(Info ^ hogi_new_preds, CalledPredProcId, SpecVersions0),
         some [Version] (
             set.member(Version, SpecVersions0),
-            version_matches(Info ^ ho_params, Info ^ module_info,
+            version_matches(Info ^ hogi_params, Info ^ hogi_module_info,
                 Request, Version, _)
         )
     ->
@@ -2558,7 +2579,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         HOArgs, ArgTypes, TypeInfoLiveness, CallerTVarSet,
         IsUserTypeSpec, Context),
     Caller = proc(CallerPredId, CallerProcId),
-    ModuleInfo0 = !.Info ^ module_info,
+    ModuleInfo0 = !.Info ^ hogi_module_info,
     module_info_pred_proc_info(ModuleInfo0, CalledPredProc,
         PredInfo0, ProcInfo0),
 
@@ -2600,9 +2621,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     ;
         IsUserTypeSpec = no,
         NewProcId = hlds_pred.initial_proc_id,
-        IdCounter0 = !.Info ^ next_ho_id,
+        IdCounter0 = !.Info ^ hogi_next_id,
         counter.allocate(Id, IdCounter0, IdCounter),
-        !:Info = !.Info ^ next_ho_id := IdCounter,
+        !:Info = !.Info ^ hogi_next_id := IdCounter,
         string.int_to_string(Id, IdStr),
         string.append_list([Name0, "__ho", IdStr], PredName),
         SymName = qualified(PredModule, PredName),
@@ -2645,7 +2666,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     predicate_table_insert(NewPredInfo1, NewPredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo1),
 
-    !:Info = !.Info ^ module_info := ModuleInfo1,
+    !:Info = !.Info ^ hogi_module_info := ModuleInfo1,
 
     NewPred = new_pred(proc(NewPredId, NewProcId), CalledPredProc, Caller,
         SymName, HOArgs, CallArgs, ExtraTypeInfoTVars, ArgTypes,
@@ -2654,21 +2675,23 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     add_new_pred(CalledPredProc, NewPred, !Info),
 
     create_new_proc(NewPred, ProcInfo0, NewPredInfo1, NewPredInfo, !Info),
-    module_info_set_pred_info(NewPredId, NewPredInfo,
-        !.Info ^ module_info, ModuleInfo),
-    !:Info = !.Info ^ module_info := ModuleInfo.
+    ModuleInfo2 = !.Info ^ hogi_module_info,
+    module_info_set_pred_info(NewPredId, NewPredInfo, ModuleInfo2, ModuleInfo),
+    !:Info = !.Info ^ hogi_module_info := ModuleInfo.
 
 :- pred add_new_pred(pred_proc_id::in, new_pred::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 add_new_pred(CalledPredProcId, NewPred, !Info) :-
-    ( map.search(!.Info ^ new_preds, CalledPredProcId, SpecVersions0) ->
-        set.insert(SpecVersions0, NewPred, SpecVersions)
+    NewPreds0 = !.Info ^ hogi_new_preds,
+    ( map.search(NewPreds0, CalledPredProcId, SpecVersions0) ->
+        set.insert(SpecVersions0, NewPred, SpecVersions),
+        map.det_update(NewPreds0, CalledPredProcId, SpecVersions, NewPreds)
     ;
-        set.singleton_set(SpecVersions, NewPred)
+        set.singleton_set(SpecVersions, NewPred),
+        map.det_insert(NewPreds0, CalledPredProcId, SpecVersions, NewPreds)
     ),
-    map.set(!.Info ^ new_preds, CalledPredProcId, SpecVersions, NewPreds),
-    !:Info = !.Info ^ new_preds := NewPreds.
+    !:Info = !.Info ^ hogi_new_preds := NewPreds.
 
 :- pred maybe_write_request(bool::in, module_info::in, string::in,
     sym_name::in, arity::in, arity::in, maybe(string)::in,
@@ -2753,15 +2776,18 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
 
 %-----------------------------------------------------------------------------%
 
+:- type must_recompute
+    --->    must_recompute
+    ;       need_not_recompute.
+
 :- pred fixup_preds(list(pred_proc_id)::in, higher_order_global_info::in,
     higher_order_global_info::out) is det.
 
 fixup_preds(PredProcIds, !Info) :-
-    MustRecompute = no,
-    Requests0 = !.Info ^ requests,
-    list.foldl(fixup_pred(MustRecompute), PredProcIds, !Info),
+    Requests0 = !.Info ^ hogi_requests,
+    list.foldl(fixup_pred(need_not_recompute), PredProcIds, !Info),
     % Any additional requests must have already been denied.
-    !:Info = !.Info ^ requests := Requests0.
+    !:Info = !.Info ^ hogi_requests := Requests0.
 
 :- pred fixup_specialized_versions(list(new_pred)::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
@@ -2770,12 +2796,11 @@ fixup_specialized_versions(NewPredList, !Info) :-
     NewPredProcIds = list.map(get_np_version_ppid, NewPredList),
     % Reprocess the goals to find any new specializations made
     % possible by the specializations performed in this pass.
-    MustRecompute = yes,
-    list.foldl(fixup_pred(MustRecompute), NewPredProcIds, !Info).
+    list.foldl(fixup_pred(must_recompute), NewPredProcIds, !Info).
 
     % Fixup calls to specialized predicates.
     %
-:- pred fixup_pred(bool::in, pred_proc_id::in,
+:- pred fixup_pred(must_recompute::in, pred_proc_id::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
@@ -2790,7 +2815,7 @@ fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
     higher_order_global_info::out) is det.
 
 create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
-    ModuleInfo = !.Info ^ module_info,
+    ModuleInfo = !.Info ^ hogi_module_info,
 
     NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
         HOArgs0, CallArgs, ExtraTypeInfoTVars0, CallerArgTypes0, _, _, _),
@@ -2906,14 +2931,14 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
         ArgModes0, ExtraArgModes, HOArgs, !NewProcInfo,
         VarRenaming0, _, PredVars0, PredVars, ConstGoals),
 
-    % XXX the substitutions used to be applied to the typeclass_info_varmap
-    % here rather than at the XXX above.  Any new entries added in the code
+    % XXX The substitutions used to be applied to the typeclass_info_varmap
+    % here rather than at the XXX above. Any new entries added in the code
     % between these two points should therefore be transformed as well?
     % The new entries come from HOArgs, which have already had TypeSubn
-    % applied, but not TypeRenaming.  Perhaps this is enough?
+    % applied, but not TypeRenaming. Perhaps this is enough?
 
     % Record extra information about this version.
-    VersionInfoMap0 = !.Info ^ version_info,
+    VersionInfoMap0 = !.Info ^ hogi_version_info,
     ArgsDepth = higher_order_args_depth(HOArgs),
 
     ( map.search(VersionInfoMap0, OldPredProcId, OldProcVersionInfo) ->
@@ -2934,7 +2959,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
         PredVars, ParentVersions),
     map.det_insert(VersionInfoMap0, NewPredProcId, VersionInfo,
         VersionInfoMap),
-    !:Info = !.Info ^ version_info := VersionInfoMap,
+    !:Info = !.Info ^ hogi_version_info := VersionInfoMap,
 
     % Fix up the argument vars, types and modes.
     in_mode(InMode),
@@ -2974,7 +2999,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     % XXX We should apply this substitution to the variable types in any
     % callers of this predicate, which may introduce other opportunities
     % for specialization.
-    %
+
     (
         ExistQVars = []
     ;
@@ -2992,8 +3017,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
                 VarTypes7, VarTypes8),
             proc_info_set_vartypes(VarTypes8, !NewProcInfo)
         ;
-            unexpected(this_file, "create_new_proc: " ++
-                "type_list_subsumes failed")
+            unexpected(this_file,
+                "create_new_proc: type_list_subsumes failed")
         )
     ),
 
@@ -3023,7 +3048,7 @@ update_var_types(VarAndType, !Map) :-
     % specialised. If not, unused_args.m can clean them up.
     %
     % Build the initial pred_vars map which records higher-order and
-    % type_info constants for a call to traverse_goal.
+    % type_info constants for a call to traverse_proc_body.
     %
     % Build a var-var renaming from the requesting call's arguments to
     % the headvars of the specialized version.
@@ -3064,8 +3089,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             NonCurriedArgModes = NonCurriedArgModes0,
             CurriedArgModes1 = CurriedArgModes0
         ;
-            unexpected(this_file, "construct_higher_order_terms/13:" ++
-                "call to list.split_list failed.")
+            unexpected(this_file,
+                "construct_higher_order_terms: list.split_list failed.")
         ),
         proc_info_interface_determinism(CalledProcInfo, ProcDetism),
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
@@ -3086,9 +3111,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 
     (
         IsConst = no,
-        % Make traverse_goal pretend that the input higher-order
-        % argument is built using the new arguments as its curried
-        % arguments.
+        % Make traverse_proc_body pretend that the input higher-order argument
+        % is built using the new arguments as its curried arguments.
         svmap.det_insert(LVar, constant(ConsId, CurriedHeadVars1),
             !PredVars)
     ;

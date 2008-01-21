@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,156 +111,150 @@ find_follow_vars_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     abs_follow_vars_map::in, abs_follow_vars_map::out,
     int::in, int::out) is det.
 
-find_follow_vars_in_goal_expr(conj(ConjType, Goals0), conj(ConjType, Goals),
-        GoalInfo, GoalInfo, VarTypes, ModuleInfo, !FollowVarsMap,
-        !NextNonReserved) :-
-    (
-        ConjType = plain_conj,
-        find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,
-            no, !FollowVarsMap, !NextNonReserved)
-    ;
-        ConjType = parallel_conj,
-        find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes,
-            ModuleInfo, !FollowVarsMap, !NextNonReserved)
-    ).
-
-find_follow_vars_in_goal_expr(disj(Goals0), disj(Goals), GoalInfo0, GoalInfo,
+find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
-    % We record that at the end of each disjunct, live variables should
-    % be in the locations given by the initial follow_vars, which reflects
-    % the requirements of the code following the disjunction.
-
-    goal_info_set_store_map(!.FollowVarsMap, GoalInfo0, GoalInfo),
-    find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved).
-
-find_follow_vars_in_goal_expr(negation(Goal0), negation(Goal),
-        GoalInfo, GoalInfo, VarTypes, ModuleInfo, !FollowVarsMap,
-        !NextNonReserved) :-
-    find_follow_vars_in_goal(Goal0, Goal, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved).
-
-find_follow_vars_in_goal_expr(switch(Var, Det, Cases0),
-        switch(Var, Det, Cases), GoalInfo0, GoalInfo, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
-    % We record that at the end of each arm of the switch, live variables
-    % should be in the locations given by the initial follow_vars, which
-    % reflects the requirements of the code following the switch.
-
-    goal_info_set_store_map(!.FollowVarsMap, GoalInfo0, GoalInfo),
-    find_follow_vars_in_cases(Cases0, Cases, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved).
-
-find_follow_vars_in_goal_expr(
-        if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else),
-        GoalInfo0, GoalInfo, VarTypes, ModuleInfo,
-        FollowVarsMap0, FollowVarsMapCond,
-        NextNonReserved0, NextNonReservedCond) :-
-
-    % Set the follow_vars field for the condition, the then-part and the
-    % else-part, since in general they have requirements about where
-    % variables should be.
-
-    % We use the requirement of the condition as the requirement of
-    % the if-then-else itself, since the condition will definitely
-    % be entered first. Since part of the condition may fail early,
-    % taking into account the preferences of the else part may be
-    % worthwhile. The preferences of the then part are already taken
-    % into account, since they are an input to the computation of
-    % the follow_vars for the condition.
-
-    % We record that at the end of both the then-part and the else-part,
-    % live variables should be in the locations given by the initial
-    % follow_vars, which reflects the requirements of the code
-    % following the if-then-else.
-    find_follow_vars_in_goal(Then0, Then1, VarTypes, ModuleInfo,
-        FollowVarsMap0, FollowVarsMapThen,
-        NextNonReserved0, NextNonReservedThen),
-    FollowVarsThen =
-        abs_follow_vars(FollowVarsMapThen, NextNonReservedThen),
-    goal_set_follow_vars(yes(FollowVarsThen), Then1, Then),
-
-    find_follow_vars_in_goal(Cond0, Cond1, VarTypes, ModuleInfo,
-        FollowVarsMapThen, FollowVarsMapCond,
-        NextNonReservedThen, NextNonReservedCond),
-    FollowVarsCond =
-        abs_follow_vars(FollowVarsMapCond, NextNonReservedCond),
-    goal_set_follow_vars(yes(FollowVarsCond), Cond1, Cond),
-
-    find_follow_vars_in_goal(Else0, Else1, VarTypes, ModuleInfo,
-        FollowVarsMap0, FollowVarsMapElse,
-        NextNonReserved0, NextNonReservedElse),
-    FollowVarsElse =
-        abs_follow_vars(FollowVarsMapElse, NextNonReservedElse),
-    goal_set_follow_vars(yes(FollowVarsElse), Else1, Else),
-
-    goal_info_set_store_map(FollowVarsMap0, GoalInfo0, GoalInfo).
-
-find_follow_vars_in_goal_expr(scope(Reason, Goal0), scope(Reason, Goal),
-        GoalInfo, GoalInfo, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
-    find_follow_vars_in_goal(Goal0, Goal, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved).
-
-find_follow_vars_in_goal_expr(Goal @ unify(_, _, _, Unify, _), Goal,
-        GoalInfo, GoalInfo, _VarTypes, _ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
     (
-        Unify = assign(LVar, RVar),
-        map.search(!.FollowVarsMap, LVar, DesiredLoc)
-    ->
-        svmap.set(RVar, DesiredLoc, !FollowVarsMap)
-    ;
-        true
-    ).
-
-find_follow_vars_in_goal_expr(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
-        Goal, GoalInfo, GoalInfo, _, _, !FollowVarsMap, !NextNonReserved).
-
-find_follow_vars_in_goal_expr(shorthand(_), _, _, _, _, _, _, _, _, _) :-
-    % these should have been expanded out by now
-    unexpected(this_file, "find_follow_vars_in_goal_2: unexpected shorthand").
-
-find_follow_vars_in_goal_expr(
-        Call @ generic_call(GenericCall, Args, Modes, Det), Call,
-        GoalInfo, GoalInfo, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
-    (
-        GenericCall = cast(_)
-        % Casts are generated inline.
-    ;
-        ( GenericCall = higher_order(_, _, _, _)
-        ; GenericCall = class_method(_, _, _, _)
-        ; GenericCall = event_call(_)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,
+                no, !FollowVarsMap, !NextNonReserved)
+        ;
+            ConjType = parallel_conj,
+            find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes,
+                ModuleInfo, !FollowVarsMap, !NextNonReserved)
         ),
-        determinism_to_code_model(Det, CodeModel),
-        map.apply_to_list(Args, VarTypes, Types),
-        make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos),
-        assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
-        arg_info.partition_args(ArgsInfos, InVarInfos, _),
-        assoc_list.keys(InVarInfos, InVars),
-        module_info_get_globals(ModuleInfo, Globals),
-        call_gen.generic_call_info(Globals, GenericCall,
-            length(InVars), _, SpecifierArgInfos, FirstInput, _),
-        find_follow_vars_from_arginfo(SpecifierArgInfos,
-            map.init, !:FollowVarsMap, 1, _),
-        find_follow_vars_from_sequence(InVars, FirstInput,
-            !FollowVarsMap, !:NextNonReserved)
-    ).
-
-find_follow_vars_in_goal_expr(
-        plain_call(PredId, ProcId, Args, State, UC, Name),
-        plain_call(PredId, ProcId, Args, State, UC, Name), GoalInfo, GoalInfo,
-        _, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
-    (
-        State = inline_builtin 
+        GoalExpr = conj(ConjType, Goals)
     ;
-        ( State = out_of_line_builtin
-        ; State = not_builtin
-        ),
-        find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
-            !:FollowVarsMap, !:NextNonReserved)
+        GoalExpr0 = disj(Goals0),
+        % We record that at the end of each disjunct, live variables should
+        % be in the locations given by the initial follow_vars, which reflects
+        % the requirements of the code following the disjunction.
+        goal_info_set_store_map(!.FollowVarsMap, !GoalInfo),
+        find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes,
+            ModuleInfo, !FollowVarsMap, !NextNonReserved),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = switch(Var, Det, Cases0),
+        % We record that at the end of each arm of the switch, live variables
+        % should be in the locations given by the initial follow_vars, which
+        % reflects the requirements of the code following the switch.
+        goal_info_set_store_map(!.FollowVarsMap, !GoalInfo),
+        find_follow_vars_in_cases(Cases0, Cases, VarTypes, ModuleInfo,
+            !FollowVarsMap, !NextNonReserved),
+        GoalExpr = switch(Var, Det, Cases)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        FollowVarsMap0 = !.FollowVarsMap,
+        NextNonReserved0 = !.NextNonReserved,
+
+        % Set the follow_vars field for the condition, the then-part and the
+        % else-part, since in general they have requirements about where
+        % variables should be.
+
+        % We use the requirement of the condition as the requirement of
+        % the if-then-else itself, since the condition will definitely
+        % be entered first. Since part of the condition may fail early,
+        % taking into account the preferences of the else part may be
+        % worthwhile. The preferences of the then part are already taken
+        % into account, since they are an input to the computation of
+        % the follow_vars for the condition.
+
+        % We record that at the end of both the then-part and the else-part,
+        % live variables should be in the locations given by the initial
+        % follow_vars, which reflects the requirements of the code
+        % following the if-then-else.
+        find_follow_vars_in_goal(Then0, Then1, VarTypes, ModuleInfo,
+            FollowVarsMap0, FollowVarsMapThen,
+            NextNonReserved0, NextNonReservedThen),
+        FollowVarsThen =
+            abs_follow_vars(FollowVarsMapThen, NextNonReservedThen),
+        goal_set_follow_vars(yes(FollowVarsThen), Then1, Then),
+
+        find_follow_vars_in_goal(Cond0, Cond1, VarTypes, ModuleInfo,
+            FollowVarsMapThen, FollowVarsMapCond,
+            NextNonReservedThen, NextNonReservedCond),
+        FollowVarsCond =
+            abs_follow_vars(FollowVarsMapCond, NextNonReservedCond),
+        goal_set_follow_vars(yes(FollowVarsCond), Cond1, Cond),
+
+        find_follow_vars_in_goal(Else0, Else1, VarTypes, ModuleInfo,
+            FollowVarsMap0, FollowVarsMapElse,
+            NextNonReserved0, NextNonReservedElse),
+        FollowVarsElse =
+            abs_follow_vars(FollowVarsMapElse, NextNonReservedElse),
+        goal_set_follow_vars(yes(FollowVarsElse), Else1, Else),
+
+        goal_info_set_store_map(FollowVarsMap0, !GoalInfo),
+
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        !:FollowVarsMap = FollowVarsMapCond,
+        !:NextNonReserved = NextNonReservedCond
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
+            !FollowVarsMap, !NextNonReserved),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
+            !FollowVarsMap, !NextNonReserved),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = unify(_, _, _, Unification, _),
+        GoalExpr = GoalExpr0,
+        (
+            Unification = assign(LVar, RVar),
+            map.search(!.FollowVarsMap, LVar, DesiredLoc)
+        ->
+            svmap.set(RVar, DesiredLoc, !FollowVarsMap)
+        ;
+            true
+        )
+    ;
+        GoalExpr0 = plain_call(PredId, ProcId, Args, State, _UC, _Name),
+        GoalExpr = GoalExpr0,
+        (
+            State = inline_builtin
+        ;
+            ( State = out_of_line_builtin
+            ; State = not_builtin
+            ),
+            find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
+                !:FollowVarsMap, !:NextNonReserved)
+        )
+    ;
+        GoalExpr0 = generic_call(GenericCall, Args, Modes, Det),
+        GoalExpr = GoalExpr0,
+        (
+            GenericCall = cast(_)
+            % Casts are generated inline.
+        ;
+            ( GenericCall = higher_order(_, _, _, _)
+            ; GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ),
+            determinism_to_code_model(Det, CodeModel),
+            map.apply_to_list(Args, VarTypes, Types),
+            make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos),
+            assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
+            arg_info.partition_args(ArgsInfos, InVarInfos, _),
+            assoc_list.keys(InVarInfos, InVars),
+            module_info_get_globals(ModuleInfo, Globals),
+            call_gen.generic_call_info(Globals, GenericCall,
+                length(InVars), _, SpecifierArgInfos, FirstInput, _),
+            find_follow_vars_from_arginfo(SpecifierArgInfos,
+                map.init, !:FollowVarsMap, 1, _),
+            find_follow_vars_from_sequence(InVars, FirstInput,
+                !FollowVarsMap, !:NextNonReserved)
+        )
+    ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "find_follow_vars_in_goal_expr: shorthand")
     ).
 
 %-----------------------------------------------------------------------------%

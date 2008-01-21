@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2007 The University of Melbourne.
+% Copyright (C) 2000, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_tag_switch.m.
 % Author: fjh.
-% 
+%
 % Generate switches based on primary and secondary tags, for the MLDS
 % back-end.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tag_switch.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -76,9 +76,9 @@
     %
 :- type heap_ops_info
     --->    heap_ops_info(
-                varset      :: prog_varset,
-                var_types   :: vartypes,
-                module_info :: module_info
+                heap_varset         :: prog_varset,
+                heap_var_types      :: vartypes,
+                heap_module_info    :: module_info
             ).
 
 add_heap_ops(ModuleInfo0, !Proc) :-
@@ -100,143 +100,159 @@ add_heap_ops(ModuleInfo0, !Proc) :-
 :- pred goal_add_heap_ops(hlds_goal::in, hlds_goal::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
-goal_add_heap_ops(hlds_goal(GoalExpr0, GoalInfo), Goal, !Info) :-
+goal_add_heap_ops(Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     goal_expr_add_heap_ops(GoalExpr0, GoalInfo, Goal, !Info).
 
 :- pred goal_expr_add_heap_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, heap_ops_info::in, heap_ops_info::out) is det.
 
-goal_expr_add_heap_ops(conj(ConjType, Goals0), GI,
-        hlds_goal(conj(ConjType, Goals), GI), !Info) :-
-    conj_add_heap_ops(Goals0, Goals, !Info).
-
-goal_expr_add_heap_ops(disj([]), GI, hlds_goal(disj([]), GI), !Info).
-goal_expr_add_heap_ops(disj(Goals0), GoalInfo, hlds_goal(GoalExpr, GoalInfo),
-        !Info) :-
-    Goals0 = [FirstDisjunct | _],
-
-    Context = goal_info_get_context(GoalInfo),
-    CodeModel = goal_info_get_code_model(GoalInfo),
-
-    % If necessary, save the heap pointer so that we can restore it
-    % on back-tracking. We don't need to do this here if it is a model_det
-    % or model_semi disjunction and the first disjunct won't allocate any heap
-    % -- in that case, we delay saving the heap pointer until just before
-    % the first disjunct that might allocate heap.
+goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
     (
-        ( CodeModel = model_non
-        ; goal_may_allocate_heap(FirstDisjunct)
+        GoalExpr0 = conj(ConjType, Goals0),
+        conj_add_heap_ops(Goals0, Goals, !Info),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Disjuncts0),
+        (
+            Disjuncts0 = [],
+            GoalExpr = GoalExpr0
+        ;
+            Disjuncts0 = [FirstDisjunct0 | _],
+            Context = goal_info_get_context(GoalInfo0),
+            CodeModel = goal_info_get_code_model(GoalInfo0),
+
+            % If necessary, save the heap pointer so that we can restore it
+            % on back-tracking. We don't need to do this here if it is a
+            % model_det or model_semi disjunction and the first disjunct
+            % won't allocate any heap -- in that case, we delay saving the heap
+            % pointer until just before the first disjunct that might allocate
+            % heap.
+            (
+                ( CodeModel = model_non
+                ; goal_may_allocate_heap(FirstDisjunct0)
+                )
+            ->
+                new_saved_hp_var(SavedHeapPointerVar, !Info),
+                gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
+                    !Info),
+                disj_add_heap_ops(Disjuncts0, Disjuncts, is_first_disjunct,
+                    yes(SavedHeapPointerVar), GoalInfo0, !Info),
+                GoalExpr = conj(plain_conj,
+                    [MarkHeapPointerGoal,
+                        hlds_goal(disj(Disjuncts), GoalInfo0)])
+            ;
+                disj_add_heap_ops(Disjuncts0, Disjuncts, is_first_disjunct,
+                    no, GoalInfo0, !Info),
+                GoalExpr = disj(Disjuncts)
+            )
+        ),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        cases_add_heap_ops(Cases0, Cases, !Info),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = negation(InnerGoal),
+        OuterGoalInfo = GoalInfo0,
+        % We handle negations by converting them into if-then-elses:
+        %   not(G)  ===>  (if G then fail else true)
+
+        Context = goal_info_get_context(OuterGoalInfo),
+        InnerGoal = hlds_goal(_, InnerGoalInfo),
+        Determinism = goal_info_get_determinism(InnerGoalInfo),
+        determinism_components(Determinism, _CanFail, NumSolns),
+        True = true_goal_with_context(Context),
+        Fail = fail_goal_with_context(Context),
+        ModuleInfo = !.Info ^ heap_module_info,
+        (
+            NumSolns = at_most_zero,
+            % The "then" part of the if-then-else will be unreachable, but to
+            % preserve the invariants that the MLDS back-end relies on, we
+            % need to make sure that it can't fail. So we use a call to
+            % `private_builtin.unused' (which will call error/1) rather than
+            % `fail' for the "then" part.
+            heap_generate_call("unused", detism_det, purity_pure, [], [],
+                ModuleInfo, Context, ThenGoal)
+        ;
+            ( NumSolns = at_most_one
+            ; NumSolns = at_most_many
+            ; NumSolns = at_most_many_cc
+            ),
+            ThenGoal = Fail
+        ),
+        NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
+        goal_expr_add_heap_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        goal_add_heap_ops(SubGoal0, SubGoal, !Info),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        goal_add_heap_ops(Cond0, Cond, !Info),
+        goal_add_heap_ops(Then0, Then, !Info),
+        goal_add_heap_ops(Else0, Else1, !Info),
+
+        % If the condition can allocate heap space, save the heap pointer
+        % so that we can restore it if the condition fails.
+        ( goal_may_allocate_heap(Cond0) ->
+            new_saved_hp_var(SavedHeapPointerVar, !Info),
+            Context = goal_info_get_context(GoalInfo0),
+            gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
+                !Info),
+
+            % Generate code to restore the heap pointer, and insert that code
+            % at the start of the Else branch.
+            gen_restore_hp(SavedHeapPointerVar, Context,
+                RestoreHeapPointerGoal, !Info),
+            Else1 = hlds_goal(_, Else1GoalInfo),
+            Else = hlds_goal(
+                conj(plain_conj, [RestoreHeapPointerGoal, Else1]),
+                Else1GoalInfo),
+            IfThenElseExpr = if_then_else(Vars, Cond, Then, Else),
+            IfThenElse = hlds_goal(IfThenElseExpr, GoalInfo0),
+            GoalExpr = conj(plain_conj, [MarkHeapPointerGoal, IfThenElse])
+        ;
+            GoalExpr = if_then_else(Vars, Cond, Then, Else1)
+        ),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ),
+        Goal = hlds_goal(GoalExpr0, GoalInfo0)
+    ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, Impl),
+        (
+            Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
+            % XXX Implementing heap reclamation for nondet pragma foreign_code
+            % via transformation is difficult, because there's nowhere in the
+            % HLDS pragma_foreign_code goal where we can insert the heap
+            % reclamation operations. For now, we don't support this. Instead,
+            % we just generate a call to a procedure which will at runtime
+            % call error/1 with an appropriate "Sorry, not implemented"
+            % error message.
+            ModuleInfo = !.Info ^ heap_module_info,
+            Context = goal_info_get_context(GoalInfo0),
+            heap_generate_call("reclaim_heap_nondet_pragma_foreign_code",
+                detism_erroneous, purity_pure, [], [], ModuleInfo, Context,
+                SorryNotImplementedCode),
+            Goal = SorryNotImplementedCode
+        ;
+            ( Impl = fc_impl_ordinary(_, _)
+            ; Impl = fc_impl_import(_, _, _, _)
+            ),
+            Goal = hlds_goal(GoalExpr0, GoalInfo0)
         )
-    ->
-        new_saved_hp_var(SavedHeapPointerVar, !Info),
-        gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
-        disj_add_heap_ops(Goals0, yes, yes(SavedHeapPointerVar), GoalInfo,
-            Goals, !Info),
-        GoalExpr = conj(plain_conj,
-            [MarkHeapPointerGoal, hlds_goal(disj(Goals), GoalInfo)])
     ;
-        disj_add_heap_ops(Goals0, yes, no, GoalInfo, Goals, !Info),
-        GoalExpr = disj(Goals)
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "goal_expr_add_heap_ops: unexpected shorthand")
     ).
-
-goal_expr_add_heap_ops(switch(Var, CanFail, Cases0), GI,
-        hlds_goal(switch(Var, CanFail, Cases), GI), !Info) :-
-    cases_add_heap_ops(Cases0, Cases, !Info).
-
-goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
-    % We handle negations by converting them into if-then-elses:
-    %   not(G)  ===>  (if G then fail else true)
-
-    Context = goal_info_get_context(OuterGoalInfo),
-    InnerGoal = hlds_goal(_, InnerGoalInfo),
-    Determinism = goal_info_get_determinism(InnerGoalInfo),
-    determinism_components(Determinism, _CanFail, NumSolns),
-    True = true_goal_with_context(Context),
-    Fail = fail_goal_with_context(Context),
-    ModuleInfo = !.Info ^ module_info,
-    (
-        NumSolns = at_most_zero,
-        % The "then" part of the if-then-else will be unreachable, but to
-        % preserve the invariants that the MLDS back-end relies on, we need to
-        % make sure that it can't fail. So we use a call to
-        % `private_builtin.unused' (which will call error/1) rather than
-        % `fail' for the "then" part.
-        generate_call("unused", detism_det, purity_pure, [], [],
-            ModuleInfo, Context, ThenGoal)
-    ;
-        ( NumSolns = at_most_one
-        ; NumSolns = at_most_many
-        ; NumSolns = at_most_many_cc
-        ),
-        ThenGoal = Fail
-    ),
-    NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
-    goal_expr_add_heap_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info).
-
-goal_expr_add_heap_ops(scope(Reason, Goal0), GoalInfo,
-        hlds_goal(scope(Reason, Goal), GoalInfo), !Info) :-
-    goal_add_heap_ops(Goal0, Goal, !Info).
-
-goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
-        hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    goal_add_heap_ops(Cond0, Cond, !Info),
-    goal_add_heap_ops(Then0, Then, !Info),
-    goal_add_heap_ops(Else0, Else1, !Info),
-
-    % If the condition can allocate heap space, save the heap pointer
-    % so that we can restore it if the condition fails.
-    ( goal_may_allocate_heap(Cond0) ->
-        new_saved_hp_var(SavedHeapPointerVar, !Info),
-        Context = goal_info_get_context(GoalInfo),
-        gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
-
-        % Generate code to restore the heap pointer, and insert that code
-        % at the start of the Else branch.
-        gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal,
-            !Info),
-        Else1 = hlds_goal(_, Else1GoalInfo),
-        Else = hlds_goal(
-            conj(plain_conj, [RestoreHeapPointerGoal, Else1]),
-            Else1GoalInfo),
-        IfThenElse = hlds_goal(if_then_else(A, Cond, Then, Else), GoalInfo),
-        GoalExpr = conj(plain_conj, [MarkHeapPointerGoal, IfThenElse])
-    ;
-        GoalExpr = if_then_else(A, Cond, Then, Else1)
-    ).
-
-goal_expr_add_heap_ops(GoalExpr @ plain_call(_, _, _, _, _, _), GI,
-        hlds_goal(GoalExpr, GI), !Info).
-goal_expr_add_heap_ops(GoalExpr @ generic_call(_, _, _, _), GI,
-        hlds_goal(GoalExpr, GI), !Info).
-goal_expr_add_heap_ops(GoalExpr @ unify(_, _, _, _, _), GI,
-        hlds_goal(GoalExpr, GI), !Info).
-
-goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
-    PragmaForeign = call_foreign_proc(_, _, _, _, _, _, Impl),
-    (
-        Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
-        % XXX Implementing heap reclamation for nondet pragma foreign_code
-        % via transformation is difficult, because there's nowhere in the HLDS
-        % pragma_foreign_code goal where we can insert the heap reclamation
-        % operations. For now, we don't support this. Instead, we just generate
-        % a call to a procedure which will at runtime call error/1 with an
-        % appropriate "Sorry, not implemented" error message.
-        ModuleInfo = !.Info ^ module_info,
-        Context = goal_info_get_context(GoalInfo),
-        generate_call("reclaim_heap_nondet_pragma_foreign_code",
-            detism_erroneous, purity_pure, [], [], ModuleInfo, Context,
-            SorryNotImplementedCode),
-        Goal = SorryNotImplementedCode
-    ;
-        ( Impl = fc_impl_ordinary(_, _)
-        ; Impl = fc_impl_import(_, _, _, _)
-        ),
-        Goal = hlds_goal(PragmaForeign, GoalInfo)
-    ).
-
-goal_expr_add_heap_ops(shorthand(_), _, _, !Info) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "goal_expr_add_heap_ops: unexpected shorthand").
 
 :- pred conj_add_heap_ops(hlds_goals::in, hlds_goals::out,
     heap_ops_info::in, heap_ops_info::out) is det.
@@ -244,13 +260,13 @@ goal_expr_add_heap_ops(shorthand(_), _, _, !Info) :-
 conj_add_heap_ops(Goals0, Goals, !Info) :-
     list.map_foldl(goal_add_heap_ops, Goals0, Goals, !Info).
 
-:- pred disj_add_heap_ops(hlds_goals::in, bool::in, maybe(prog_var)::in,
-    hlds_goal_info::in, hlds_goals::out,
+:- pred disj_add_heap_ops(list(hlds_goal)::in, list(hlds_goal)::out,
+    is_first_disjunct::in, maybe(prog_var)::in, hlds_goal_info::in, 
     heap_ops_info::in, heap_ops_info::out) is det.
 
-disj_add_heap_ops([], _, _, _, [], !Info).
-disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
-        DisjGoalInfo, DisjGoals, !Info) :-
+disj_add_heap_ops([], [], _, _, _, !Info).
+disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
+        MaybeSavedHeapPointerVar, DisjGoalInfo, !Info) :-
     goal_add_heap_ops(Goal0, Goal1, !Info),
     Goal1 = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
@@ -258,7 +274,7 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
     % If needed, reset the heap pointer before executing the goal,
     % to reclaim heap space allocated in earlier branches.
     (
-        IsFirstBranch = no,
+        IsFirstBranch = is_not_first_disjunct,
         MaybeSavedHeapPointerVar = yes(SavedHeapPointerVar0)
     ->
         gen_restore_hp(SavedHeapPointerVar0, Context, RestoreHeapPointerGoal,
@@ -279,8 +295,8 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
         gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
 
         % Recursively handle the remaining disjuncts.
-        disj_add_heap_ops(Goals0, no, yes(SavedHeapPointerVar), DisjGoalInfo,
-            Goals1, !Info),
+        disj_add_heap_ops(Goals0, Goals1, is_not_first_disjunct,
+            yes(SavedHeapPointerVar), DisjGoalInfo, !Info),
         % Put this disjunct and the remaining disjuncts in a nested
         % disjunction, so that the heap pointer variable can scope over
         % these disjuncts.
@@ -291,8 +307,8 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
         DisjGoals = [DisjGoal]
     ;
         % Just recursively handle the remaining disjuncts.
-        disj_add_heap_ops(Goals0, no, MaybeSavedHeapPointerVar, DisjGoalInfo,
-            Goals, !Info),
+        disj_add_heap_ops(Goals0, Goals, is_not_first_disjunct,
+            MaybeSavedHeapPointerVar, DisjGoalInfo, !Info),
         DisjGoals = [Goal | Goals]
     ).
 
@@ -312,16 +328,16 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
-    generate_call("mark_hp", detism_det, purity_impure, [SavedHeapPointerVar],
-        [SavedHeapPointerVar - ground_inst], !.Info ^ module_info, Context,
-        MarkHeapPointerGoal).
+    heap_generate_call("mark_hp", detism_det, purity_impure,
+        [SavedHeapPointerVar], [SavedHeapPointerVar - ground_inst],
+        !.Info ^ heap_module_info, Context, MarkHeapPointerGoal).
 
 :- pred gen_restore_hp(prog_var::in, prog_context::in, hlds_goal::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
-    generate_call("restore_hp", detism_det, purity_impure,
-        [SavedHeapPointerVar], [], !.Info ^ module_info, Context,
+    heap_generate_call("restore_hp", detism_det, purity_impure,
+        [SavedHeapPointerVar], [], !.Info ^ heap_module_info, Context,
         RestoreHeapPointerGoal).
 
 :- func ground_inst = mer_inst.
@@ -340,24 +356,23 @@ new_saved_hp_var(Var, !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 new_var(Name, Type, Var, !Info) :-
-    VarSet0 = !.Info ^ varset,
-    VarTypes0 = !.Info ^ var_types,
+    VarSet0 = !.Info ^ heap_varset,
+    VarTypes0 = !.Info ^ heap_var_types,
     varset.new_named_var(VarSet0, Name, Var, VarSet),
     map.det_insert(VarTypes0, Var, Type, VarTypes),
-    !:Info = !.Info ^ varset := VarSet,
-    !:Info = !.Info ^ var_types := VarTypes.
+    !:Info = !.Info ^ heap_varset := VarSet,
+    !:Info = !.Info ^ heap_var_types := VarTypes.
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_call(string::in, determinism::in, purity::in,
+:- pred heap_generate_call(string::in, determinism::in, purity::in,
     list(prog_var)::in, assoc_list(prog_var, mer_inst)::in, module_info::in,
     term.context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Detism, Purity, Args, InstMap, ModuleInfo, Context,
-        CallGoal) :-
-    BuiltinModule = mercury_private_builtin_module,
-    goal_util.generate_simple_call(BuiltinModule, PredName, pf_predicate,
-        only_mode, Detism, Purity, Args, [], InstMap, ModuleInfo,
+heap_generate_call(PredName, Detism, Purity, Args, InstMap, ModuleInfo,
+        Context, CallGoal) :-
+    goal_util.generate_simple_call(mercury_private_builtin_module, PredName,
+        pf_predicate, only_mode, Detism, Purity, Args, [], InstMap, ModuleInfo,
         Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

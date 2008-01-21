@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_elim_nested.m.
 % Main author: fjh.
-% 
+%
 % This module is an MLDS-to-MLDS transformation
 % that has two functions:
 % (1) eliminating nested functions
@@ -24,26 +24,26 @@
 % The word "environment" (as in "environment struct" or "environment pointer")
 % is used to refer to both the environment structs used when eliminating
 % nested functions and also to the frame structs used for accurate GC.
-% 
+%
 % XXX Would it be possible to do both in a single pass?
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % (1) eliminating nested functions
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% 
+%
 % Note that this module does not attempt to handle arbitrary MLDS as input;
 % it will only work with the output of the current MLDS code generator.
 % In particular, it assumes that local variables in nested functions can be
 % hoisted into the outermost function's environment. That's not true
 % in general (e.g. if the nested functions are recursive), but it's true
 % for the code that ml_code_gen generates.
-% 
+%
 % As well as eliminating nested functions, this transformation also has
 % the effect of fixing up the dangling `env_ptr' references that ml_code_gen.m
 % leaves in the code.
-% 
+%
 %-----------------------------------------------------------------------------%
 % TRANSFORMATION SUMMARY
 %-----------------------------------------------------------------------------%
@@ -132,7 +132,7 @@
 % The `env_ptr' variables generated here serve as definitions for
 % the (previously dangling) references to such variables that
 % ml_code_gen puts in calls to the nested functions.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % (2) accurate GC
@@ -229,7 +229,7 @@
 %   any heap pointers held by user-written C code; we need to provide an API
 %   for registering pointers on the stack. (MR_agc_add_root() only works
 %   for globals, really, since there's no MR_agc_remove_root()).
-% 
+%
 % Various optional features of Mercury are not yet supported, e.g.
 %
 % - `--high-level-data' (fixup_newobj_in_atomic_statement
@@ -696,8 +696,7 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
         EnvPtrTypeName, Context, ArgsToCopy0, CodeToCopyArgs0),
     ModuleName = elim_info_get_module_name(ElimInfo),
     (
-        Arg = mlds_argument(entity_data(var(VarName)), FieldType,
-            GCStatement),
+        Arg = mlds_argument(entity_data(var(VarName)), FieldType, GCStatement),
         ml_should_add_local_data(ElimInfo, var(VarName), GCStatement,
             [], [FuncBody])
     ->
@@ -1730,83 +1729,133 @@ ml_need_to_hoist(ModuleName, DataName,
 :- pred fixup_initializer(mlds_initializer::in, mlds_initializer::out,
     elim_info::in, elim_info::out) is det.
 
-fixup_initializer(no_initializer, no_initializer, !Info).
-fixup_initializer(init_obj(Rval0), init_obj(Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_initializer(init_struct(Type, Members0), init_struct(Type, Members),
-        !Info) :-
-    list.map_foldl(fixup_initializer, Members0, Members, !Info).
-fixup_initializer(init_array(Elements0), init_array(Elements), !Info) :-
-    list.map_foldl(fixup_initializer, Elements0, Elements, !Info).
+fixup_initializer(Initializer0, Initializer, !Info) :-
+    (
+        Initializer0 = no_initializer,
+        Initializer = Initializer0
+    ;
+        Initializer0 = init_obj(Rval0),
+        fixup_rval(Rval0, Rval, !Info),
+        Initializer = init_obj(Rval)
+    ;
+        Initializer0 = init_struct(Type, Members0),
+        list.map_foldl(fixup_initializer, Members0, Members, !Info),
+        Initializer = init_struct(Type, Members)
+    ;
+        Initializer0 = init_array(Elements0),
+        list.map_foldl(fixup_initializer, Elements0, Elements, !Info),
+        Initializer = init_array(Elements)
+    ).
 
 :- pred fixup_atomic_stmt(mlds_atomic_statement::in,
     mlds_atomic_statement::out, elim_info::in, elim_info::out) is det.
 
-fixup_atomic_stmt(comment(C), comment(C), !Info).
-fixup_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info),
-    fixup_rval(Rval0, Rval, !Info).
-fixup_atomic_stmt(delete_object(Lval0), delete_object(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
+fixup_atomic_stmt(Atomic0, Atomic, !Info) :-
+    (
+        ( Atomic0 = comment(_)
+        ; Atomic0 = gc_check
+        ),
+        Atomic = Atomic0
+    ;
+        Atomic0 = assign(Lval0, Rval0),
+        fixup_lval(Lval0, Lval, !Info),
+        fixup_rval(Rval0, Rval, !Info),
+        Atomic = assign(Lval, Rval)
+    ;
+        Atomic0 = delete_object(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Atomic = delete_object(Lval)
+    ;
+        Atomic0 = new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
             MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
-        new_object(Target, MaybeTag, HasSecTag, Type, MaybeSize,
-            MaybeCtorName, Args, ArgTypes, MayUseAtomic), !Info) :-
-    fixup_lval(Target0, Target, !Info),
-    fixup_rvals(Args0, Args, !Info).
-fixup_atomic_stmt(gc_check, gc_check, !Info).
-fixup_atomic_stmt(mark_hp(Lval0), mark_hp(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_atomic_stmt(restore_hp(Rval0), restore_hp(Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp), !Info) :-
-    fixup_trail_op(TrailOp0, TrailOp, !Info).
-fixup_atomic_stmt(inline_target_code(Lang, Components0),
-        inline_target_code(Lang, Components), !Info) :-
-    list.map_foldl(fixup_target_code_component,
-        Components0, Components, !Info).
-fixup_atomic_stmt(outline_foreign_proc(Lang, Vs, Lvals0, Code),
-        outline_foreign_proc(Lang, Vs, Lvals, Code), !Info) :-
-    list.map_foldl(fixup_lval, Lvals0, Lvals, !Info).
+        fixup_lval(Target0, Target, !Info),
+        fixup_rvals(Args0, Args, !Info),
+        Atomic = new_object(Target, MaybeTag, HasSecTag, Type, MaybeSize,
+            MaybeCtorName, Args, ArgTypes, MayUseAtomic)
+    ;
+        Atomic0 = mark_hp(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Atomic = mark_hp(Lval)
+    ;
+        Atomic0 = restore_hp(Rval0),
+        fixup_rval(Rval0, Rval, !Info),
+        Atomic = restore_hp(Rval)
+    ;
+        Atomic0 = trail_op(TrailOp0),
+        fixup_trail_op(TrailOp0, TrailOp, !Info),
+        Atomic = trail_op(TrailOp)
+    ;
+        Atomic0 = inline_target_code(Lang, Components0),
+        list.map_foldl(fixup_target_code_component,
+            Components0, Components, !Info),
+        Atomic = inline_target_code(Lang, Components)
+    ;
+        Atomic0 = outline_foreign_proc(Lang, Vs, Lvals0, Code),
+        list.map_foldl(fixup_lval, Lvals0, Lvals, !Info),
+        Atomic = outline_foreign_proc(Lang, Vs, Lvals, Code)
+    ).
 
 :- pred fixup_case_cond(mlds_case_match_cond::in, mlds_case_match_cond::out,
     elim_info::in, elim_info::out) is det.
 
-fixup_case_cond(match_value(Rval0), match_value(Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_case_cond(match_range(Low0, High0), match_range(Low, High), !Info) :-
-    fixup_rval(Low0, Low, !Info),
-    fixup_rval(High0, High, !Info).
+fixup_case_cond(Cond0, Cond, !Info) :-
+    (
+        Cond0 = match_value(Rval0),
+        fixup_rval(Rval0, Rval, !Info),
+        Cond = match_value(Rval)
+    ;
+        Cond0 = match_range(Low0, High0),
+        fixup_rval(Low0, Low, !Info),
+        fixup_rval(High0, High, !Info),
+        Cond = match_range(Low, High)
+    ).
 
 :- pred fixup_target_code_component(target_code_component::in,
     target_code_component::out, elim_info::in, elim_info::out) is det.
 
-fixup_target_code_component(raw_target_code(Code, Attrs),
-        raw_target_code(Code, Attrs), !Info).
-fixup_target_code_component(user_target_code(Code, Context, Attrs),
-        user_target_code(Code, Context, Attrs), !Info).
-fixup_target_code_component(target_code_input(Rval0),
-        target_code_input(Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_target_code_component(target_code_output(Lval0),
-        target_code_output(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_target_code_component(name(Name), name(Name), !Info).
+fixup_target_code_component(Component0, Component, !Info) :-
+    (
+        ( Component0 = raw_target_code(_Code, _Attrs)
+        ; Component0 = user_target_code(_Code, _Context, _Attrs)
+        ; Component0 = name(_Name)
+        ),
+        Component = Component0
+    ;
+        Component0 = target_code_input(Rval0),
+        fixup_rval(Rval0, Rval, !Info),
+        Component = target_code_input(Rval)
+    ;
+        Component0 = target_code_output(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Component = target_code_output(Lval)
+    ).
 
 :- pred fixup_trail_op(trail_op::in, trail_op::out,
     elim_info::in, elim_info::out) is det.
 
-fixup_trail_op(store_ticket(Lval0), store_ticket(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_trail_op(reset_ticket(Rval0, Reason), reset_ticket(Rval, Reason),
-        !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_trail_op(discard_ticket, discard_ticket, !Info).
-fixup_trail_op(prune_ticket, prune_ticket, !Info).
-fixup_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_trail_op(prune_tickets_to(Rval0), prune_tickets_to(Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
+fixup_trail_op(Op0, Op, !Info) :-
+    (
+        Op0 = store_ticket(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Op = store_ticket(Lval)
+    ;
+        Op0 = reset_ticket(Rval0, Reason),
+        fixup_rval(Rval0, Rval, !Info),
+        Op = reset_ticket(Rval, Reason)
+    ;
+        ( Op0 = discard_ticket
+        ; Op0 = prune_ticket
+        ),
+        Op = Op0
+    ;
+        Op0 = mark_ticket_stack(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Op = mark_ticket_stack(Lval)
+    ;
+        Op0 = prune_tickets_to(Rval0),
+        fixup_rval(Rval0, Rval, !Info),
+        Op = prune_tickets_to(Rval)
+    ).
 
 :- pred fixup_rvals(list(mlds_rval)::in, list(mlds_rval)::out,
     elim_info::in, elim_info::out) is det.
@@ -1826,19 +1875,34 @@ fixup_maybe_rval(yes(Rval0), yes(Rval), !Info) :-
 :- pred fixup_rval(mlds_rval::in, mlds_rval::out,
     elim_info::in, elim_info::out) is det.
 
-fixup_rval(lval(Lval0), lval(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_rval(mkword(Tag, Rval0), mkword(Tag, Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_rval(const(Const), const(Const), !Info).
-fixup_rval(unop(Op, Rval0), unop(Op, Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_rval(binop(Op, X0, Y0), binop(Op, X, Y), !Info) :-
-    fixup_rval(X0, X, !Info),
-    fixup_rval(Y0, Y, !Info).
-fixup_rval(mem_addr(Lval0), mem_addr(Lval), !Info) :-
-    fixup_lval(Lval0, Lval, !Info).
-fixup_rval(self(T), self(T), !Info).
+fixup_rval(Rval0, Rval, !Info) :-
+    (
+        Rval0 = lval(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Rval = lval(Lval)
+    ;
+        Rval0 = mem_addr(Lval0),
+        fixup_lval(Lval0, Lval, !Info),
+        Rval = mem_addr(Lval)
+    ;
+        Rval0 = mkword(Tag, BaseRval0),
+        fixup_rval(BaseRval0, BaseRval, !Info),
+        Rval = mkword(Tag, BaseRval)
+    ;
+        Rval0 = unop(UnOp, XRval0),
+        fixup_rval(XRval0, XRval, !Info),
+        Rval = unop(UnOp, XRval)
+    ;
+        Rval0 = binop(BinOp, XRval0, YRval0),
+        fixup_rval(XRval0, XRval, !Info),
+        fixup_rval(YRval0, YRval, !Info),
+        Rval = binop(BinOp, XRval, YRval)
+    ;
+        ( Rval0 = const(_)
+        ; Rval0 = self(_)
+        ),
+        Rval = Rval0
+    ).
 
 :- pred fixup_lvals(list(mlds_lval)::in, list(mlds_lval)::out,
     elim_info::in, elim_info::out) is det.
@@ -1851,14 +1915,22 @@ fixup_lvals([X0 | Xs0], [X | Xs], !Info) :-
 :- pred fixup_lval(mlds_lval::in, mlds_lval::out,
     elim_info::in, elim_info::out) is det.
 
-fixup_lval(field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
-        field(MaybeTag, Rval, FieldId, FieldType, PtrType), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_lval(mem_ref(Rval0, Type), mem_ref(Rval, Type), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
-fixup_lval(global_var_ref(Ref), global_var_ref(Ref), !Info).
-fixup_lval(var(Var0, VarType), VarLval, !Info) :-
-    fixup_var(Var0, VarType, VarLval, !Info).
+fixup_lval(Lval0, Lval, !Info) :-
+    (
+        Lval0 = field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
+        fixup_rval(Rval0, Rval, !Info),
+        Lval = field(MaybeTag, Rval, FieldId, FieldType, PtrType)
+    ;
+        Lval0 = mem_ref(Rval0, Type),
+        fixup_rval(Rval0, Rval, !Info),
+        Lval = mem_ref(Rval, Type)
+    ;
+        Lval0 = global_var_ref(_Ref),
+        Lval = Lval0
+    ;
+        Lval0 = var(Var0, VarType),
+        fixup_var(Var0, VarType, Lval, !Info)
+    ).
 
 % fixup_gc_statements:
 %   Process the trace code in the locals that have been hoisted
@@ -1877,7 +1949,7 @@ fixup_gc_statements(!Info) :-
     elim_info::in, elim_info::out) is det.
 
 fixup_gc_statements_defns([], !Info).
-fixup_gc_statements_defns([ Defn0 | Defns ], !Info) :-
+fixup_gc_statements_defns([Defn0 | Defns], !Info) :-
     (
         Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
         DefnBody0 = mlds_data(Type, Init, GCStatement0)
@@ -2062,8 +2134,7 @@ defn_body_contains_defn(mlds_class(ClassDefn), Name) :-
     ; defns_contains_defn(CtorDefns, Name)
     ).
 
-:- pred statements_contains_defn(statements::in, mlds_defn::out)
-    is nondet.
+:- pred statements_contains_defn(statements::in, mlds_defn::out) is nondet.
 
 statements_contains_defn(Statements, Defn) :-
     list.member(Statement, Statements),
@@ -2083,8 +2154,7 @@ maybe_statement_contains_defn(yes(Statement), Defn) :-
 function_body_contains_defn(body_defined_here(Statement), Defn) :-
     statement_contains_defn(Statement, Defn).
 
-:- pred statement_contains_defn(statement::in, mlds_defn::out)
-    is nondet.
+:- pred statement_contains_defn(statement::in, mlds_defn::out) is nondet.
 
 statement_contains_defn(Statement, Defn) :-
     Statement = statement(Stmt, _Context),
@@ -2112,30 +2182,19 @@ stmt_contains_defn(Stmt, Defn) :-
         ; default_contains_defn(Default, Defn)
         )
     ;
-        Stmt = ml_stmt_label(_Label),
-        fail
-    ;
-        Stmt = ml_stmt_goto(_),
-        fail
-    ;
-        Stmt = ml_stmt_computed_goto(_Rval, _Labels),
-        fail
-    ;
-        Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
-        fail
-    ;
-        Stmt = ml_stmt_return(_Rvals),
-        fail
-    ;
-        Stmt = ml_stmt_do_commit(_Ref),
-        fail
-    ;
         Stmt = ml_stmt_try_commit(_Ref, Statement, Handler),
         ( statement_contains_defn(Statement, Defn)
         ; statement_contains_defn(Handler, Defn)
         )
     ;
-        Stmt = ml_stmt_atomic(_AtomicStmt),
+        ( Stmt = ml_stmt_label(_Label)
+        ; Stmt = ml_stmt_goto(_)
+        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels)
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall)
+        ; Stmt = ml_stmt_return(_Rvals)
+        ; Stmt = ml_stmt_do_commit(_Ref)
+        ; Stmt = ml_stmt_atomic(_AtomicStmt)
+        ),
         fail
     ).
 
@@ -2207,15 +2266,6 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info) :-
         add_unchain_stack_to_default(Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = ml_stmt_label(_),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_goto(_),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_computed_goto(_Rval, _Labels),
-        Stmt = Stmt0
-    ;
         Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind),
         add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
             Stmt, !Info)
@@ -2223,15 +2273,17 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info) :-
         Stmt0 = ml_stmt_return(_Rvals),
         Stmt = prepend_unchain_frame(Stmt0, Context, !.Info)
     ;
-        Stmt0 = ml_stmt_do_commit(_Ref),
-        Stmt = Stmt0
-    ;
         Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
         add_unchain_stack_to_statement(Statement0, Statement, !Info),
         add_unchain_stack_to_statement(Handler0, Handler, !Info),
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
-        Stmt0 = ml_stmt_atomic(_AtomicStmt0),
+        ( Stmt0 = ml_stmt_label(_)
+        ; Stmt0 = ml_stmt_goto(_)
+        ; Stmt0 = ml_stmt_computed_goto(_Rval, _Labels)
+        ; Stmt0 = ml_stmt_do_commit(_Ref)
+        ; Stmt0 = ml_stmt_atomic(_AtomicStmt0)
+        ),
         Stmt = Stmt0
     ).
 

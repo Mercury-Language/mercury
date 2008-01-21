@@ -1,53 +1,53 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2007 The University of Melbourne.
+% Copyright (C) 2002, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_constr_data.m.
 % Main author: juliensf.
-% 
+%
 % This module defines data structures that are common to all modules in the
 % termination analyser.
 %
 % The main data structure defined here is the abstract representation (AR),
 % which is an abstraction of a Mercury program in terms of linear arithmetic
 % constraints on term sizes.
-% 
+%
 %------------------------------------------------------------------------------%
 %
-% AR Goals. 
+% AR Goals.
 %
 % The AR has four kinds of goal:
 %
-% * primitives      - a set of primitive constraints representing the 
+% * primitives      - a set of primitive constraints representing the
 %                     abstraction variable size relationships in some
-%                     HLDS goal. 
-%                     
+%                     HLDS goal.
+%
 % * conjunction     - a conjunction of AR goals.
-% 
+%
 % * disjunction     - a disjunction of AR goals.
 %
 % * calls           - an abstraction of intra-SCC calls.  Calls to
 %                     procedures lower down the call-graph are abstracted
 %                     as primitive AR goals.
-% 
+%
 % XXX In order to handle higher-order we need to either modify the
 % exiting AR call goal or add a new AR goal type.
-% 
+%
 %------------------------------------------------------------------------------%
 %
 % Mapping the HLDS to the AR
 %
-% 
+%
 % 1. unification
 %
-% A HLDS unification of the form: 
-%   
-%       X = f(A, B, C) 
-%   
+% A HLDS unification of the form:
+%
+%       X = f(A, B, C)
+%
 % is converted to a AR primitive goal of the form:
 %
 %       { |X| = |A| + |B| + |C| + |f| }
@@ -59,7 +59,7 @@
 % represent polymorphic types are included.  The code in
 % term_constr_fixpoint.m and term_constr_pass2.m that processes calls is
 % responsible for dealing with the situation where a polymorphic
-% procedure is called with zero sized arguments.   
+% procedure is called with zero sized arguments.
 %
 % 2. conjunction and parallel conjunction
 %
@@ -79,30 +79,30 @@
 %
 % 5. negation.
 %
-% A HLDS negation is abstracted as an AR primitive. 
+% A HLDS negation is abstracted as an AR primitive.
 % The analyser tries to infer bounds upon the sizes of any input variables
 % of the negated goal when if fails.
 %
-% 6. scopes 
+% 6. scopes
 %
 % Scope goals, such as existential quantifications, that do not
 % affect term size are ignored.
-% 
+%
 % 8. if-then-else.
-% 
+%
 % ( Cond -> Then ; Else ) is abstracted as
-%  
+%
 %  disj(conj(|Cond|, |Then|), conj(neg(|Cond|), |Else|))
-% 
+%
 % (using |Goal| to represent the abstraction of Goal).
-% 
+%
 % 9. foreign_procs
 %
 % Currently these map onto a primitive whose variables are unconstrained.
 % XXX Could do better with user supplied information.
-% 
+%
 % 10. generic call.
-% 
+%
 % XXX As above, need HO analysis to make these work.
 %
 %-----------------------------------------------------------------------------%
@@ -112,7 +112,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred. 
+:- import_module hlds.hlds_pred.
 :- import_module libs.lp_rational.
 :- import_module libs.polyhedron.
 :- import_module parse_tree.prog_data.
@@ -132,7 +132,7 @@
 
     % A size_var is a variable that represents the size (according
     % to some measure) of a program variable.
-    % 
+    %
 :- type size_var    == lp_var.
 :- type size_vars   == list(size_var).
 :- type size_varset == lp_varset.
@@ -147,7 +147,8 @@
     % The widening strategy used in the fixpoint calculation.
     % (At present there is only one but we may add others in the future).
     %
-:- type widening ---> after_fixed_cutoff(int).
+:- type widening
+    --->    after_fixed_cutoff(int).
 
     % The result of the argument size analysis.
     %
@@ -155,9 +156,9 @@
     % argument size constraint derived will be stored in the
     % termination2_info structure.
     %
-:- type arg_size_result 
-    --->    ok      
-    ;       error(term2_errors).
+:- type arg_size_result
+    --->    arg_size_ok
+    ;       arg_size_error(term2_errors).
 
 %-----------------------------------------------------------------------------%
 %
@@ -183,65 +184,66 @@
     % This is the main reason that we try a eliminate, as much as
     % possible, dependencies between the AR and the HLDS.
     %
-:- type abstract_ppid ---> real(pred_proc_id).
+:- type abstract_ppid
+    --->    real(pred_proc_id).
 
-:- type abstract_proc  
-    ---> abstract_proc(
-        ppid :: abstract_ppid,
-            % The procedure that this is an abstraction of.     
+:- type abstract_proc
+    --->    abstract_proc(
+                % The procedure that this is an abstraction of.
+                ap_ppid             :: abstract_ppid,
 
-        context :: prog_context,
-            % The context of the procedure.
-    
-        recursion :: recursion_type,
-            % The type of recursion present in the procedure.
+                % Is this procedure called from outside the SCC?
+                ap_is_entry         :: bool,
 
-        size_var_map :: size_var_map,
-            % Map from prog_vars to size_vars for the procedure.
-        
-        head_vars :: head_vars,
-            % The procedure's arguments (as size_vars).     
+                % The context of the procedure.
+                ap_context          :: prog_context,
 
-        inputs :: list(bool),
-            % `yes' if the corresponding argument can be used
-            % as part of a termination proof, `no' otherwise.
-    
-        zeros :: zero_vars,
-            % The size_vars that have zero size.
+                % The procedure's arguments (as size_vars).
+                ap_head_vars        :: head_vars,
 
-        body :: abstract_goal,
-            % An abstraction of the body of the procedure. 
-        
-        calls :: int,
-            % The number of calls made in the body of the
-            % procedure.  This is useful for short-circuiting
-            % pass 2.
-         
-        varset :: size_varset,
-            % The varset from which the size_vars were
-            % allocated.  The linear solver needs this.
+                % `yes' if the corresponding argument can be used
+                % as part of a termination proof, `no' otherwise.
+                ap_inputs           :: list(bool),
 
-        ho :: list(abstract_ho_call),
-            % A list of higher-order calls made by the 
-            % procedure.  XXX Currently not used.
-            
-        is_entry :: bool
-            % Is this procedure called from outside the SCC?
-    ).
+                % An abstraction of the body of the procedure.
+                ap_body             :: abstract_goal,
+
+                % Map from prog_vars to size_vars for the procedure.
+                ap_size_var_map     :: size_var_map,
+
+                % The varset from which the size_vars were allocated.
+                % The linear solver needs this.
+                ap_size_varset      :: size_varset,
+
+                % The size_vars that have zero size.
+                ap_zeros            :: zero_vars,
+
+                % The type of recursion present in the procedure.
+                ap_recursion        :: recursion_type,
+
+                % The number of calls made in the body of the procedure.
+                % This is useful for short-circuiting pass 2.
+                ap_num_calls        :: int,
+
+                % A list of higher-order calls made by the procedure.
+                % XXX Currently not used.
+                ap_ho_calls         :: list(abstract_ho_call)
+            ).
 
     % This is like an error message (and is treated as such
     % at the moment).  It's here because we want to treat information
     % regarding higher-order constructs differently from other errors.
     % In particular higher-order constructs will not always be errors
-    % (ie. when we can analyse them properly).  
+    % (ie. when we can analyse them properly).
     %
-:- type abstract_ho_call ---> ho_call(prog_context).
+:- type abstract_ho_call
+    --->    ho_call(prog_context).
 
     % NOTE: the AR's notion of local/non-local variables may not
     % correspond directly to that in the HLDS because of various
     % transformations performed on the the AR.
     %
-:- type local_vars == size_vars. 
+:- type local_vars == size_vars.
 :- type nonlocal_vars == size_vars.
 
 :- type call_vars == size_vars.
@@ -250,7 +252,7 @@
     % `zero_vars' are those variables in a procedure that have
     % zero size type (as defined in term_norm.m).
     %
-:- type zero_vars == set(size_var).  
+:- type zero_vars == set(size_var).
 
     % This is the representation of goals that the termination analyser
     % works with.
@@ -262,34 +264,34 @@
                         % We keep track of the number of disjuncts for use
                         % in heuristics that may speed up the convex hull
                         % calculation.
-                        
+
                 disj_locals    :: local_vars,
                 disj_nonlocals :: nonlocal_vars
             )
-        
+
     ;       term_conj(
-                conj_goals     :: abstract_goals, 
-                conj_locals    :: local_vars, 
+                conj_goals     :: abstract_goals,
+                conj_locals    :: local_vars,
                 conj_nonlocals :: nonlocal_vars
             )
-        
+
     ;       term_call(
-                call_ppid      :: abstract_ppid, 
-                call_context   :: prog_context, 
-                call_vars      :: call_vars, 
-                call_zeros     :: zero_vars, 
-                call_locals    :: local_vars, 
+                call_ppid      :: abstract_ppid,
+                call_context   :: prog_context,
+                call_vars      :: call_vars,
+                call_zeros     :: zero_vars,
+                call_locals    :: local_vars,
                 call_nonlocals :: nonlocal_vars,
                 call_constrs   :: polyhedron
             )
-        
+
     ;       term_primitive(
                 prim_constrs   :: polyhedron,
                 prim_locals    :: local_vars,
                 prim_nonlocals :: nonlocal_vars
-            ). 
+            ).
 
-:- type abstract_goals == list(abstract_goal). 
+:- type abstract_goals == list(abstract_goal).
 
     % This type is used to keep track of intramodule recursion during
     % the build pass.
@@ -299,12 +301,9 @@
     %
 :- type recursion_type
     --->    none        % Procedure is not recursive.
-    
     ;       direct_only % Only recursion is self-calls.
-    
     ;       mutual_only % Only recursion is calls to other procs
                         % in the same SCC.
-
     ;       both.       % Both types of recursion.
 
 %-----------------------------------------------------------------------------%
@@ -315,18 +314,18 @@
     % Update the local and nonlocal variable sets associated with an
     % abstract goal.
     %
-:- func update_local_and_nonlocal_vars(abstract_goal, local_vars, 
+:- func update_local_and_nonlocal_vars(abstract_goal, local_vars,
     nonlocal_vars) = abstract_goal.
 
     % For any two goals whose recursion types are known return the
     % recursion type of the conjunction of the two goals.
     %
-:- func combine_recursion_types(recursion_type, recursion_type) 
+:- func combine_recursion_types(recursion_type, recursion_type)
     = recursion_type.
 
     % Combines the constraints contained in two primitive goals
     % into a single primitive goal.  It is an error to pass
-    % any other kind of abstract goal as an argument to this 
+    % any other kind of abstract goal as an argument to this
     % function.
     %
 :- func combine_primitive_goals(abstract_goal, abstract_goal) = abstract_goal.
@@ -338,25 +337,25 @@
 :- func simplify_conjuncts(abstract_goals) = abstract_goals.
 
     % Succeeds iff the given SCC contains recursion.
-    % 
+    %
 :- pred scc_contains_recursion(abstract_scc::in) is semidet.
 
     % Succeeds iff the given procedure is recursive (either directly
     % or otherwise).
-    % 
+    %
 :- pred proc_is_recursive(abstract_proc::in) is semidet.
 
-    % Returns the size_varset for this given SCC. 
+    % Returns the size_varset for this given SCC.
     %
-:- func varset_from_abstract_scc(abstract_scc) = size_varset.
+:- func size_varset_from_abstract_scc(abstract_scc) = size_varset.
 
-    % Succeeds iff the results of the analysis depend upon the 
+    % Succeeds iff the results of the analysis depend upon the
     % values of some higher-order variables.
     %
 :- pred analysis_depends_on_ho(abstract_proc::in) is semidet.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Predicates for printing out debugging traces, etc.
 %
 
@@ -364,8 +363,8 @@
     %
 :- pred dump_abstract_scc(abstract_scc::in, module_info::in, io::di,
     io::uo) is det.
-    
-    % As above.  The extra argument specifies the indentation level.    
+
+    % As above.  The extra argument specifies the indentation level.
     %
 :- pred dump_abstract_scc(abstract_scc::in, int::in, module_info::in, io::di,
     io::uo) is det.
@@ -377,7 +376,7 @@
 
     % Write an abstract_goal to stdout.
     %
-:- pred dump_abstract_goal(module_info::in, size_varset::in, int::in, 
+:- pred dump_abstract_goal(module_info::in, size_varset::in, int::in,
     abstract_goal::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -385,7 +384,7 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred. 
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
@@ -424,22 +423,22 @@ update_local_and_nonlocal_vars(Goal0, Locals0, NonLocals0) = Goal :-
         Locals    = Locals0 ++ Locals1,
         NonLocals = NonLocals0 ++ NonLocals1,
         Goal      = term_primitive(Polyhedron, Locals, NonLocals)
-    ).  
+    ).
 
 scc_contains_recursion([]) :-
     unexpected(this_file, "empty SCC.").
 scc_contains_recursion([Proc | _]) :-
-    Proc ^ recursion \= none. 
+    Proc ^ ap_recursion \= none.
 
 proc_is_recursive(Proc) :-
-    not Proc ^ recursion = none.
+    not Proc ^ ap_recursion = none.
 
-varset_from_abstract_scc([]) = _ :-
+size_varset_from_abstract_scc([]) = _ :-
     unexpected(this_file, "empty SCC.").
-varset_from_abstract_scc([Proc | _]) = Proc ^ varset.
+size_varset_from_abstract_scc([Proc | _]) = Proc ^ ap_size_varset.
 
 analysis_depends_on_ho(Proc) :-
-    list.is_not_empty(Proc ^ ho).
+    list.is_not_empty(Proc ^ ap_ho_calls).
 
 %-----------------------------------------------------------------------------%
 %
@@ -449,51 +448,58 @@ analysis_depends_on_ho(Proc) :-
 % XXX We should keep running the simplifications until we arrive at a
 % fixpoint.
 
-simplify_abstract_rep(Goal0) = Goal :- simplify_abstract_rep(Goal0, Goal).
+simplify_abstract_rep(Goal0) = Goal :-
+    simplify_abstract_rep(Goal0, Goal).
 
 :- pred simplify_abstract_rep(abstract_goal::in, abstract_goal::out) is det.
 
-simplify_abstract_rep(term_disj(!.Disjuncts, _Size0, Locals, NonLocals),
-        Goal) :-
-    % Begin by simplifying each disjunct.
-
-    list.map(simplify_abstract_rep, !Disjuncts),
-    ( 
-        !.Disjuncts = [] ,
-        Goal = term_primitive(polyhedron.universe, [], [])
+simplify_abstract_rep(Goal0, Goal) :-
+    (
+        Goal0 = term_disj(Disjuncts0, _Size0, Locals, NonLocals),
+        % Begin by simplifying each disjunct.
+        list.map(simplify_abstract_rep, Disjuncts0, Disjuncts),
+        (
+            Disjuncts = [] ,
+            Goal = term_primitive(polyhedron.universe, [], [])
+        ;
+            Disjuncts = [Disjunct] ,
+            % We need to merge the set of locals with the locals from the
+            % disjunct otherwise we will end up throwing away the locals
+            % from the enclosing goal.
+            Goal = update_local_and_nonlocal_vars(Disjunct, Locals, NonLocals)
+        ;
+            Disjuncts = [_, _ | _] ,
+            Size = list.length(Disjuncts),
+            Goal = term_disj(Disjuncts, Size, Locals, NonLocals)
+        )
     ;
-        !.Disjuncts = [Disjunct] ,
-        % We need to merge the set of locals with the locals from the 
-        % disjunct otherwise we will end up throwing away the locals
-        % from the enclosing goal.
-        %
-        Goal = update_local_and_nonlocal_vars(Disjunct, Locals, NonLocals)
-    ;   
-        !.Disjuncts = [_, _ | _] ,
-        Size = list.length(!.Disjuncts),
-        Goal = term_disj(!.Disjuncts, Size, Locals, NonLocals) 
+        Goal0 = term_conj(Conjuncts0, Locals, NonLocals),
+        some [!Conjuncts] (
+            !:Conjuncts = Conjuncts0,
+            list.map(simplify_abstract_rep, !Conjuncts),
+            list.filter(isnt(is_empty_primitive), !Conjuncts),
+            flatten_conjuncts(!Conjuncts),
+            list.filter(isnt(is_empty_conj), !Conjuncts),
+            Conjuncts = !.Conjuncts
+        ),
+        ( Conjuncts = [Conjunct] ->
+            % The local/non-local var sets need to be updated for similar
+            % reasons as we do with disjunctions.
+            Goal = update_local_and_nonlocal_vars(Conjunct, Locals,
+                NonLocals)
+        ;
+            Goal = term_conj(Conjuncts, Locals, NonLocals)
+        )
+    ;
+        ( Goal0 = term_primitive(_, _, _)
+        ; Goal0 = term_call(_, _, _, _, _, _, _)
+        ),
+        Goal = Goal0
     ).
-
-simplify_abstract_rep(term_conj(!.Conjuncts, Locals, NonLocals), Goal) :-
-    list.map(simplify_abstract_rep, !Conjuncts),
-    list.filter(isnt(is_empty_primitive), !Conjuncts),
-    flatten_conjuncts(!Conjuncts),
-    list.filter(isnt(is_empty_conj), !Conjuncts),
-    ( !.Conjuncts = [Conjunct] ->
-        % The local/non-local var sets need to be updated for similar
-        % reasons as we do with disjunctions.
-
-        Goal = update_local_and_nonlocal_vars(Conjunct, Locals, NonLocals) 
-    ; 
-        Goal = term_conj(!.Conjuncts, Locals, NonLocals)
-    ).
-
-simplify_abstract_rep(Goal @ term_primitive(_,_,_),      Goal).
-simplify_abstract_rep(Goal @ term_call(_,_,_,_,_,_,_), Goal).
 
     % Given a conjuntion of abstract goals take the intersection
     % of all consecutive primitive goals in the list of abstract goals.
-    % 
+    %
     % e.g if we have
     %
     %   [ P1, P2, P3, NP1, NP2, P4, P5, NP3, P6, P7 ]
@@ -502,9 +508,9 @@ simplify_abstract_rep(Goal @ term_call(_,_,_,_,_,_,_), Goal).
     %
     %   then simplify this to:
     %
-    %   [ ( P1 /\ P2 /\ P3), NP1, NP2, ( P4 /\ P5), NP3, (P6 /\ P7) ] 
+    %   [ ( P1 /\ P2 /\ P3), NP1, NP2, ( P4 /\ P5), NP3, (P6 /\ P7) ]
     %
-    %   where `/\' is the intersection of the primitive goals. 
+    %   where `/\' is the intersection of the primitive goals.
     %
     % Note: because intersection is commutative we could go further
     % and take the intersection of all the primitive goals in a
@@ -516,14 +522,14 @@ simplify_abstract_rep(Goal @ term_call(_,_,_,_,_,_,_), Goal).
 flatten_conjuncts([], []).
 flatten_conjuncts([Goal], [Goal]).
 flatten_conjuncts(Goals0 @ [_, _ | _], Goals) :-
-    flatten_conjuncts_2(Goals0, [], Goals1),
-    Goals = list.reverse(Goals1).
+    flatten_conjuncts_2(Goals0, [], RevGoals),
+    Goals = list.reverse(RevGoals).
 
 :- pred flatten_conjuncts_2(abstract_goals::in, abstract_goals::in,
     abstract_goals::out) is det.
 
-flatten_conjuncts_2([], !Goals).
-flatten_conjuncts_2([Goal0 | Goals0], !Goals) :-
+flatten_conjuncts_2([], !RevGoals).
+flatten_conjuncts_2([Goal0 | Goals0], !RevGoals) :-
     ( Goal0 = term_primitive(_, _, _) ->
         list.takewhile(is_primitive, Goals0, Primitives, NextNonPrimitive),
         (
@@ -533,12 +539,12 @@ flatten_conjuncts_2([Goal0 | Goals0], !Goals) :-
             Primitives = [_ | _],
             NewPrimitive = list.foldl(combine_primitives, Primitives, Goal0)
         ),
-        list.cons(NewPrimitive, !Goals)
+        list.cons(NewPrimitive, !RevGoals)
     ;
-        list.cons(Goal0, !Goals),
+        list.cons(Goal0, !RevGoals),
         NextNonPrimitive = Goals0
     ),
-    flatten_conjuncts_2(NextNonPrimitive, !Goals).
+    flatten_conjuncts_2(NextNonPrimitive, !RevGoals).
 
     % Test whether an abstract goal is a primtive.
     %
@@ -552,15 +558,15 @@ combine_primitives(GoalA, GoalB) = Goal :-
     (
         GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
         GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
-    -> 
+    ->
         Poly = polyhedron.intersection(PolyA, PolyB),
         Locals = LocalsA ++ LocalsB,
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal = term_primitive(Poly, Locals, NonLocals)
     ;
-        unexpected(this_file, "intersect_primitives called with "
-            ++ "non-primitive goals.")
-    ).     
+        unexpected(this_file,
+            "intersect_primitives called with non-primitive goals.")
+    ).
 
     % We end up with `empty' primitives by abstracting unifications
     % that involve variables that have zero size.
@@ -568,7 +574,7 @@ combine_primitives(GoalA, GoalB) = Goal :-
 :- pred is_empty_primitive(abstract_goal::in) is semidet.
 
 is_empty_primitive(term_primitive(Poly, _, _)) :-
-    polyhedron.is_universe(Poly).  
+    polyhedron.is_universe(Poly).
 
     % We end up with `empty' conjunctions by abstracting conjunctions
     % that involve variables that have zero size.
@@ -610,13 +616,13 @@ combine_primitive_goals(GoalA, GoalB) = Goal :-
     (
         GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
         GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
-    ->  
-        Poly      = polyhedron.intersection(PolyA, PolyB),  
+    ->
+        Poly      = polyhedron.intersection(PolyA, PolyB),
         Locals    = LocalsA ++ LocalsB,
-        NonLocals = NonLocalsA ++ NonLocalsB, 
+        NonLocals = NonLocalsA ++ NonLocalsB,
         Goal      = term_primitive(Poly, Locals, NonLocals)
     ;
-        unexpected(this_file, 
+        unexpected(this_file,
             "non-primitive goals passed to combine_primitive_goals")
     ).
 
@@ -630,24 +636,27 @@ dump_abstract_scc(SCC, Module, !IO) :-
     dump_abstract_scc(SCC, 0, Module, !IO).
 
 dump_abstract_scc(SCC, Indent, Module, !IO) :-
-    list.foldl((pred(Proc::in, !.IO::di, !:IO::uo) is det :-
+    list.foldl(
+        (pred(Proc::in, !.IO::di, !:IO::uo) is det :-
             dump_abstract_proc(Proc, Indent, Module, !IO)
         ), SCC, !IO).
 
 dump_abstract_proc(Proc, Indent, Module, !IO) :-
-    Proc = abstract_proc(AbstractPPId, _, _, _, HeadVars, _, _,
-        Body, _, Varset, _, _),
+    AbstractPPId = Proc ^ ap_ppid,
+    HeadVars = Proc ^ ap_head_vars,
+    Body = Proc ^ ap_body,
+    SizeVarSet = Proc ^ ap_size_varset,
     indent_line(Indent, !IO),
     AbstractPPId = real(PPId),
     hlds_out.write_pred_proc_id(Module, PPId, !IO),
     io.write_string(" : [", !IO),
     WriteHeadVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
-        varset.lookup_name(Varset, Var, VarName),
+        varset.lookup_name(SizeVarSet, Var, VarName),
         io.format(VarName ++ "[%d]", [i(term.var_id(Var))], !IO)
     ),
-    io.write_list(HeadVars, ", ", WriteHeadVars, !IO), 
+    io.write_list(HeadVars, ", ", WriteHeadVars, !IO),
     io.write_string(" ] :- \n", !IO),
-    dump_abstract_goal(Module, Varset, Indent + 1, Body, !IO).
+    dump_abstract_goal(Module, SizeVarSet, Indent + 1, Body, !IO).
 
 :- func recursion_type_to_string(recursion_type) = string.
 
@@ -666,7 +675,7 @@ dump_abstract_disjuncts([Goal | Goals], Varset, Indent, Module, !IO) :-
         Goals = [_ | _],
         indent_line(Indent, !IO),
         io.write_string(";\n", !IO)
-    ;   
+    ;
         Goals = []
     ),
     dump_abstract_disjuncts(Goals, Varset, Indent, Module, !IO).
@@ -682,11 +691,11 @@ dump_abstract_goal(Module, Varset, Indent,
     ),
     indent_line(Indent, !IO),
     io.write_string(" Locals: ", !IO),
-    io.write_list(Locals, ", ", WriteVars, !IO), 
+    io.write_list(Locals, ", ", WriteVars, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string(" Non-Locals: ", !IO),
-    io.write_list(NonLocals, ", ", WriteVars, !IO), 
+    io.write_list(NonLocals, ", ", WriteVars, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string(")\n", !IO).
@@ -702,11 +711,11 @@ dump_abstract_goal(Module, Varset, Indent, term_conj(Goals, Locals, NonLocals),
     ),
     indent_line(Indent, !IO),
     io.write_string(" Locals: ", !IO),
-    io.write_list(Locals, ", ", WriteVars, !IO), 
+    io.write_list(Locals, ", ", WriteVars, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string(" Non-Locals: ", !IO),
-    io.write_list(NonLocals, ", ", WriteVars, !IO), 
+    io.write_list(NonLocals, ", ", WriteVars, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string(")\n", !IO).
@@ -722,14 +731,14 @@ dump_abstract_goal(Module, Varset, Indent,
         varset.lookup_name(Varset, Var, VarName),
         io.write_string(VarName, !IO)
     ),
-    io.write_list(CallVars, ", ", WriteVars, !IO), 
+    io.write_list(CallVars, ", ", WriteVars, !IO),
     io.write_string("]\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("Other call constraints:[\n", !IO),
     polyhedron.write_polyhedron(CallPoly, Varset, !IO),
     indent_line(Indent, !IO),
     io.write_string("]\n", !IO).
-    
+
 dump_abstract_goal(_, Varset, Indent, term_primitive(Poly, _, _), !IO) :-
     indent_line(Indent, !IO),
     io.write_string("[\n", !IO),
@@ -742,7 +751,7 @@ dump_abstract_goal(_, Varset, Indent, term_primitive(Poly, _, _), !IO) :-
 % Predicates for simplifying conjuncts.
 %
 
-% XXX Make this part of the other AR simplification predicates.  
+% XXX Make this part of the other AR simplification predicates.
 
 simplify_conjuncts(Goals0) = Goals :-
     simplify_conjuncts(Goals0, Goals).
@@ -750,30 +759,30 @@ simplify_conjuncts(Goals0) = Goals :-
 :- pred simplify_conjuncts(abstract_goals::in, abstract_goals::out) is det.
 
 simplify_conjuncts(Goals0, Goals) :-
-    ( 
+    (
         Goals0 = [],
         Goals = []
-    ;   
+    ;
         Goals0 = [Goal],
         Goals = [Goal]
-    ;   
+    ;
         % If the list of conjuncts starts with two primitives
         % join them together into a single primitive.
         Goals0 = [GoalA, GoalB | OtherGoals],
         (
             GoalA = term_primitive(PolyA,  LocalsA, NonLocalsA),
             GoalB = term_primitive(PolyB,  LocalsB, NonLocalsB)
-        ->  
+        ->
             Poly = polyhedron.intersection(PolyA, PolyB),
             Locals = LocalsA ++ LocalsB,
-            NonLocals = NonLocalsA ++ NonLocalsB, 
+            NonLocals = NonLocalsA ++ NonLocalsB,
             Goal = term_primitive(Poly, Locals, NonLocals),
             Goals1 = [Goal | OtherGoals],
             simplify_conjuncts(Goals1, Goals)
         ;
-            Goals = Goals0  
+            Goals = Goals0
         )
-    ). 
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -782,10 +791,11 @@ simplify_conjuncts(Goals0, Goals) :-
 
 :- pred indent_line(int::in, io::di, io::uo) is det.
 
-indent_line(N, !IO) :- 
-    ( if    N > 0
-      then  io.write_string("  ", !IO), indent_line(N - 1, !IO)
-      else  true    
+indent_line(N, !IO) :-
+    ( N > 0 ->
+        io.write_string("  ", !IO), indent_line(N - 1, !IO)
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%

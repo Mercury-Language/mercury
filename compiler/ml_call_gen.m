@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,27 +142,34 @@
 % Code for procedure calls
 %
 
+ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
+        Decls, Statements, !Info) :-
     % XXX For typeclass method calls, we do some unnecessary
     % boxing/unboxing of the arguments.
-ml_gen_generic_call(higher_order(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
-        Determinism, Context, Decls, Statements, !Info) :-
-    ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
-        Context, Decls, Statements, !Info).
-ml_gen_generic_call(class_method(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
-        Determinism, Context, Decls, Statements, !Info) :-
-    ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
-        Context, Decls, Statements, !Info).
-ml_gen_generic_call(event_call(_), _ArgVars, _ArgModes, _Determinism, _Context,
-        Decls, Statements, !Info) :-
-    % XXX For now, we can't generate events from the MLDS backend.
-    Decls = [],
-    Statements = [].
-ml_gen_generic_call(cast(_), ArgVars, _ArgModes, _Determinism, Context,
-        Decls, Statements, !Info) :-
-    ml_gen_cast(Context, ArgVars, Decls, Statements, !Info).
+    (
+        GenericCall = higher_order(_, _, _, _),
+        ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
+            Context, Decls, Statements, !Info)
+    ;
+        GenericCall = class_method(_, _, _, _),
+        ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
+            Context, Decls, Statements, !Info)
+    ;
+        GenericCall = event_call(_),
+        % XXX For now, we can't generate events from the MLDS backend.
+        Decls = [],
+        Statements = []
+    ;
+        GenericCall = cast(_),
+        ml_gen_cast(Context, ArgVars, Decls, Statements, !Info)
+    ).
 
-:- pred ml_gen_main_generic_call(generic_call::in, list(prog_var)::in,
-    list(mer_mode)::in, determinism::in, prog_context::in,
+:- inst main_generic_call
+    --->    higher_order(ground, ground, ground, ground)
+    ;       class_method(ground, ground, ground, ground).
+
+:- pred ml_gen_main_generic_call(generic_call::in(main_generic_call),
+    list(prog_var)::in, list(mer_mode)::in, determinism::in, prog_context::in,
     mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -231,12 +238,6 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
             MethodFieldId, mlds_generic_type, mlds_generic_type),
         FuncType = mlds_func_type(Params),
         FuncRval = unop(unbox(FuncType), lval(FuncLval))
-    ;
-        GenericCall = event_call(_),
-        unexpected(this_file, "ml_gen_main_generic_call: event_call")
-    ;
-        GenericCall = cast(_),
-        unexpected(this_file, "ml_gen_main_generic_call: cast")
     ),
 
     % Assign the function address rval to a new local variable. This makes

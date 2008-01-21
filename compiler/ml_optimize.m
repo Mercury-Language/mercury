@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_optimize.m.
 % Main author: trd, fjh.
 %
@@ -28,7 +28,7 @@
 % It would probably be a good idea to make each transformation optional.
 % Previously the tailcall transformation depended on emit_c_loops, but
 % this is a bit misleading given the documentation of emit_c_loops.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_optimize.
@@ -168,27 +168,18 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
             list.map(optimize_in_case(OptInfo), Cases0),
             optimize_in_default(OptInfo, Default0))
     ;
-        Stmt0 = ml_stmt_do_commit(_),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_return(_),
-        Stmt = Stmt0
-    ;
         Stmt0 = ml_stmt_try_commit(Ref, TryGoal0, HandlerGoal0),
         TryGoal = optimize_in_statement(OptInfo, TryGoal0),
         HandlerGoal = optimize_in_statement(OptInfo, HandlerGoal0),
         Stmt = ml_stmt_try_commit(Ref, TryGoal, HandlerGoal)
     ;
-        Stmt0 = ml_stmt_label(_Label),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_goto(_Label),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_computed_goto(_Rval, _Label),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_atomic(_Atomic),
+        ( Stmt0 = ml_stmt_do_commit(_)
+        ; Stmt0 = ml_stmt_return(_)
+        ; Stmt0 = ml_stmt_label(_Label)
+        ; Stmt0 = ml_stmt_goto(_Label)
+        ; Stmt0 = ml_stmt_computed_goto(_Rval, _Label)
+        ; Stmt0 = ml_stmt_atomic(_Atomic)
+        ),
         Stmt = Stmt0
     ).
 
@@ -219,13 +210,13 @@ optimize_in_default(OptInfo, default_case(Statement0)) =
 optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
     Stmt0 = ml_stmt_call(_Signature, FuncRval, _MaybeObject, CallArgs,
         _Results, _IsTailCall),
-        % If we have a self-tailcall, assign to the arguments and
-        % then goto the top of the tailcall loop.
+    % If we have a self-tailcall, assign to the arguments and
+    % then goto the top of the tailcall loop.
     (
-        globals.lookup_bool_option(OptInfo ^ globals,
-            optimize_tailcalls, yes),
-        can_optimize_tailcall(qual(OptInfo ^ module_name, module_qual,
-            OptInfo ^ entity_name), Stmt0)
+        globals.lookup_bool_option(OptInfo ^ globals, optimize_tailcalls, yes),
+        can_optimize_tailcall(
+            qual(OptInfo ^ module_name, module_qual, OptInfo ^ entity_name),
+            Stmt0)
     ->
         CommentStatement = statement(
             ml_stmt_atomic(comment("direct tailcall eliminated")),
@@ -333,7 +324,6 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             generate_assign_args(OptInfo, Args, ArgRvals,
                 Statements, TempDefns)
         ;
-
             % Declare a temporary variable, initialized it to the arg,
             % recursively process the remaining args, and then assign the
             % temporary to the parameter:
@@ -876,9 +866,9 @@ find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
     % Invalidated = yes if any of the statements or definitions take
     % the address of the variable, or assign to it; in that case, the
     % transformation should not be performed.
+    %
 :- pred eliminate_var(mlds_var::in, mlds_rval::in,
-    mlds_defns::in, mlds_defns::out,
-    statements::in, statements::out,
+    mlds_defns::in, mlds_defns::out, statements::in, statements::out,
     int::out, bool::out) is det.
 
 eliminate_var(QualVarName, VarRval, !Defns, !Statements, Count, Invalidated) :-
@@ -1148,101 +1138,138 @@ eliminate_var_in_case(Case0, Case, !VarElimInfo) :-
     mlds_switch_default::in, mlds_switch_default::out,
     var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_default(default_is_unreachable, default_is_unreachable,
-        !VarElimInfo).
-eliminate_var_in_default(default_do_nothing, default_do_nothing,
-        !VarElimInfo).
-eliminate_var_in_default(default_case(Statement0), default_case(Statement),
-        !VarElimInfo) :-
-    eliminate_var_in_statement(Statement0, Statement, !VarElimInfo).
+eliminate_var_in_default(Default0, Default, !VarElimInfo) :-
+    (
+        ( Default0 = default_is_unreachable
+        ; Default0 = default_do_nothing
+        ),
+        Default = Default0
+    ;
+        Default0 = default_case(Statement0),
+        eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
+        Default = default_case(Statement)
+    ).
 
 :- pred eliminate_var_in_atomic_stmt(
     mlds_atomic_statement::in, mlds_atomic_statement::out,
     var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_atomic_stmt(comment(C), comment(C), !VarElimInfo).
-eliminate_var_in_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval),
-        !VarElimInfo) :-
-    eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-eliminate_var_in_atomic_stmt(delete_object(Lval0), delete_object(Lval),
-        !VarElimInfo) :-
-    eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
-eliminate_var_in_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type,
+eliminate_var_in_atomic_stmt(Stmt0, Stmt, !VarElimInfo) :-
+    (
+        ( Stmt0 = comment(_)
+        ; Stmt0 = gc_check
+        ),
+        Stmt = Stmt0
+    ;
+        Stmt0 = assign(Lval0, Rval0),
+        eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Stmt = assign(Lval, Rval)
+    ;
+        Stmt0 = delete_object(Lval0),
+        eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+        Stmt = delete_object(Lval)
+    ;
+        Stmt0 = new_object(Target0, MaybeTag, HasSecTag, Type,
             MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
-        new_object(Target, MaybeTag, HasSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic),
-        !VarElimInfo) :-
-    eliminate_var_in_lval(Target0, Target, !VarElimInfo),
-    eliminate_var_in_rvals(Args0, Args, !VarElimInfo).
-eliminate_var_in_atomic_stmt(gc_check, gc_check, !VarElimInfo).
-eliminate_var_in_atomic_stmt(mark_hp(Lval0), mark_hp(Lval), !VarElimInfo) :-
-    eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
-eliminate_var_in_atomic_stmt(restore_hp(Rval0), restore_hp(Rval),
-        !VarElimInfo) :-
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-eliminate_var_in_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp),
-        !VarElimInfo) :-
-    eliminate_var_in_trail_op(TrailOp0, TrailOp, !VarElimInfo).
-eliminate_var_in_atomic_stmt(inline_target_code(Lang, Components0),
-        inline_target_code(Lang, Components), !VarElimInfo) :-
-    list.map_foldl(eliminate_var_in_target_code_component,
-        Components0, Components, !VarElimInfo).
-eliminate_var_in_atomic_stmt(outline_foreign_proc(Lang, Vs, Lvals0, Code),
-        outline_foreign_proc(Lang, Vs, Lvals, Code), !VarElimInfo) :-
-    eliminate_var_in_lvals(Lvals0, Lvals, !VarElimInfo).
+        eliminate_var_in_lval(Target0, Target, !VarElimInfo),
+        eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
+        Stmt = new_object(Target, MaybeTag, HasSecTag, Type,
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
+    ;
+        Stmt0 = mark_hp(Lval0),
+        eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+        Stmt = mark_hp(Lval)
+    ;
+        Stmt0 = restore_hp(Rval0),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Stmt = restore_hp(Rval)
+    ;
+        Stmt0 = trail_op(TrailOp0),
+        eliminate_var_in_trail_op(TrailOp0, TrailOp, !VarElimInfo),
+        Stmt = trail_op(TrailOp)
+    ;
+        Stmt0 = inline_target_code(Lang, Components0),
+        list.map_foldl(eliminate_var_in_target_code_component,
+            Components0, Components, !VarElimInfo),
+        Stmt = inline_target_code(Lang, Components)
+    ;
+        Stmt0 = outline_foreign_proc(Lang, Vs, Lvals0, Code),
+        eliminate_var_in_lvals(Lvals0, Lvals, !VarElimInfo),
+        Stmt = outline_foreign_proc(Lang, Vs, Lvals, Code)
+    ).
 
 :- pred eliminate_var_in_case_cond(
     mlds_case_match_cond::in, mlds_case_match_cond::out,
     var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_case_cond(match_value(Rval0), match_value(Rval),
-        !VarElimInfo) :-
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-eliminate_var_in_case_cond(match_range(Low0, High0), match_range(Low, High),
-        !VarElimInfo) :-
-    eliminate_var_in_rval(Low0, Low, !VarElimInfo),
-    eliminate_var_in_rval(High0, High, !VarElimInfo).
+eliminate_var_in_case_cond(Cond0, Cond, !VarElimInfo) :-
+    (
+        Cond0 = match_value(Rval0),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Cond = match_value(Rval)
+    ;
+        Cond0 = match_range(Low0, High0),
+        eliminate_var_in_rval(Low0, Low, !VarElimInfo),
+        eliminate_var_in_rval(High0, High, !VarElimInfo),
+        Cond = match_range(Low, High)
+    ).
 
 :- pred eliminate_var_in_target_code_component(
     target_code_component::in, target_code_component::out,
     var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_target_code_component(raw_target_code(Code, Attrs),
-        raw_target_code(Code, Attrs), !VarElimInfo).
-eliminate_var_in_target_code_component(user_target_code(Code, Context, Attrs),
-        user_target_code(Code, Context, Attrs), !VarElimInfo).
-eliminate_var_in_target_code_component(target_code_input(Rval0),
-        target_code_input(Rval), !VarElimInfo) :-
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-eliminate_var_in_target_code_component(target_code_output(Lval0),
-        target_code_output(Lval), !VarElimInfo) :-
-    eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
-eliminate_var_in_target_code_component(name(Name), name(Name), !VarElimInfo).
+eliminate_var_in_target_code_component(Component0, Component, !VarElimInfo) :-
+    (
+        ( Component0 = raw_target_code(_Code, _Attrs)
+        ; Component0 = user_target_code(_Code, _Context, _Attrs)
+        ; Component0 = name(_Name)
+        ),
+        Component = Component0
+    ;
+        Component0 = target_code_input(Rval0),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Component = target_code_input(Rval)
+    ;
+        Component0 = target_code_output(Lval0),
+        eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+        Component = target_code_output(Lval)
+    ).
 
 :- pred eliminate_var_in_trail_op(trail_op::in, trail_op::out,
     var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_trail_op(store_ticket(Lval0), store_ticket(Lval),
-        !VarElimInfo) :-
-    eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
-eliminate_var_in_trail_op(reset_ticket(Rval0, Reason),
-        reset_ticket(Rval, Reason), !VarElimInfo) :-
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-eliminate_var_in_trail_op(discard_ticket, discard_ticket, !VarElimInfo).
-eliminate_var_in_trail_op(prune_ticket, prune_ticket, !VarElimInfo).
-eliminate_var_in_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval),
-        !VarElimInfo) :-
-    eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
-eliminate_var_in_trail_op(prune_tickets_to(Rval0), prune_tickets_to(Rval),
-        !VarElimInfo) :-
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
+eliminate_var_in_trail_op(Op0, Op, !VarElimInfo) :-
+    (
+        Op0 = store_ticket(Lval0),
+        eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+        Op = store_ticket(Lval)
+    ;
+        Op0 = reset_ticket(Rval0, Reason),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Op = reset_ticket(Rval, Reason)
+    ;
+        ( Op0 = discard_ticket
+        ; Op0 = prune_ticket
+        ),
+        Op = Op0
+    ;
+        Op0 = mark_ticket_stack(Lval0),
+        eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+        Op = mark_ticket_stack(Lval)
+    ;
+        Op0 = prune_tickets_to(Rval0),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Op = prune_tickets_to(Rval)
+    ).
 
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "ml_optimize.m".
+
+%-----------------------------------------------------------------------------%
 
 :- end_module ml_optimize.
 

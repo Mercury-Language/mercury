@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -466,151 +466,154 @@ dead_proc_examine_cases([case(_, _, Goal) | Cases], CurrProc,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_examine_goal(hlds_goal(GoalExpr, _), CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_expr(GoalExpr, CurrProc, !Queue, !Needed).
-
-:- pred dead_proc_examine_expr(hlds_goal_expr::in, pred_proc_id::in,
-    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
-    is det.
-
-dead_proc_examine_expr(disj(Goals), CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_goals(Goals, CurrProc, !Queue, !Needed).
-dead_proc_examine_expr(conj(_ConjType, Goals), CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_goals(Goals, CurrProc, !Queue, !Needed).
-dead_proc_examine_expr(negation(Goal), CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed).
-dead_proc_examine_expr(scope(_, Goal), CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed).
-dead_proc_examine_expr(switch(_, _, Cases), CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_cases(Cases, CurrProc, !Queue, !Needed).
-dead_proc_examine_expr(if_then_else(_, Cond, Then, Else), CurrProc, !Queue,
-        !Needed) :-
-    dead_proc_examine_goal(Cond, CurrProc, !Queue, !Needed),
-    dead_proc_examine_goal(Then, CurrProc, !Queue, !Needed),
-    dead_proc_examine_goal(Else, CurrProc, !Queue, !Needed).
-dead_proc_examine_expr(generic_call(_,_,_,_), _, !Queue, !Needed).
-dead_proc_examine_expr(plain_call(PredId, ProcId, _,_,_,_), CurrProc, !Queue,
-        !Needed) :-
-    Entity = entity_proc(PredId, ProcId),
-    queue.put(!.Queue, Entity, !:Queue),
-    ( proc(PredId, ProcId) = CurrProc ->
-        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-            io.write_string("plain_call recursive ", !IO),
-            io.write_int(pred_id_to_int(PredId), !IO),
-            io.write_string(" ", !IO),
-            io.write_int(proc_id_to_int(ProcId), !IO),
-            io.nl(!IO)
-        ),
-        % If it's reachable and recursive, then we can't eliminate it
-        % or inline it.
-        NewNotation = not_eliminable,
-        svmap.set(Entity, NewNotation, !Needed)
-    ; map.search(!.Needed, Entity, OldNotation) ->
-        (
-            OldNotation = not_eliminable,
-            NewNotation = not_eliminable,
-            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                io.write_string("plain_call old not_eliminable ", !IO),
-                io.write_int(pred_id_to_int(PredId), !IO),
-                io.write_string(" ", !IO),
-                io.write_int(proc_id_to_int(ProcId), !IO),
-                io.nl(!IO)
-            )
-        ;
-            OldNotation = maybe_eliminable(Count),
-            NewNotation = maybe_eliminable(Count + 1),
-            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                io.write_string("plain_call incr maybe_eliminable ", !IO),
-                io.write_int(pred_id_to_int(PredId), !IO),
-                io.write_string(" ", !IO),
-                io.write_int(proc_id_to_int(ProcId), !IO),
-                io.nl(!IO)
-            )
-        ),
-        svmap.det_update(Entity, NewNotation, !Needed)
-    ;
-        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-            io.write_string("plain_call init maybe_eliminable ", !IO),
-            io.write_int(pred_id_to_int(PredId), !IO),
-            io.write_string(" ", !IO),
-            io.write_int(proc_id_to_int(ProcId), !IO),
-            io.nl(!IO)
-        ),
-        NewNotation = maybe_eliminable(1),
-        svmap.set(Entity, NewNotation, !Needed)
-    ).
-dead_proc_examine_expr(call_foreign_proc(_, PredId, ProcId, _, _, _, _),
-        _CurrProc, !Queue, !Needed) :-
-    Entity = entity_proc(PredId, ProcId),
-    trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-        io.write_string("foreign_proc ", !IO),
-        io.write_int(pred_id_to_int(PredId), !IO),
-        io.write_string(" ", !IO),
-        io.write_int(proc_id_to_int(ProcId), !IO),
-        io.nl(!IO)
-    ),
-    svqueue.put(Entity, !Queue),
-    svmap.set(Entity, not_eliminable, !Needed).
-dead_proc_examine_expr(unify(_,_,_, Uni, _), _CurrProc, !Queue, !Needed) :-
+dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
+    Goal = hlds_goal(GoalExpr, _),
     (
-        Uni = construct(_, ConsId, _, _, _, _, _),
-        (
+        ( GoalExpr = conj(_ConjType, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        dead_proc_examine_goals(Goals, CurrProc, !Queue, !Needed)
+    ;
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        dead_proc_examine_cases(Cases, CurrProc, !Queue, !Needed)
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_Reason, SubGoal)
+        ),
+        dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        dead_proc_examine_goal(Cond, CurrProc, !Queue, !Needed),
+        dead_proc_examine_goal(Then, CurrProc, !Queue, !Needed),
+        dead_proc_examine_goal(Else, CurrProc, !Queue, !Needed)
+    ;
+        GoalExpr = generic_call(_, _, _, _)
+    ;
+        GoalExpr = plain_call(PredId, ProcId, _,_,_,_),
+        Entity = entity_proc(PredId, ProcId),
+        queue.put(!.Queue, Entity, !:Queue),
+        ( proc(PredId, ProcId) = CurrProc ->
+            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                io.write_string("plain_call recursive ", !IO),
+                io.write_int(pred_id_to_int(PredId), !IO),
+                io.write_string(" ", !IO),
+                io.write_int(proc_id_to_int(ProcId), !IO),
+                io.nl(!IO)
+            ),
+            % If it's reachable and recursive, then we can't eliminate it
+            % or inline it.
+            NewNotation = not_eliminable,
+            svmap.set(Entity, NewNotation, !Needed)
+        ; map.search(!.Needed, Entity, OldNotation) ->
             (
-                ConsId = pred_const(ShroudedPredProcId, _),
-                proc(PredId, ProcId) =
-                    unshroud_pred_proc_id(ShroudedPredProcId),
-                Entity = entity_proc(PredId, ProcId),
+                OldNotation = not_eliminable,
+                NewNotation = not_eliminable,
                 trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                    io.write_string("pred_const ", !IO),
+                    io.write_string("plain_call old not_eliminable ", !IO),
                     io.write_int(pred_id_to_int(PredId), !IO),
                     io.write_string(" ", !IO),
                     io.write_int(proc_id_to_int(ProcId), !IO),
                     io.nl(!IO)
                 )
             ;
-                ConsId = type_ctor_info_const(Module, TypeName, Arity),
-                Entity = entity_type_ctor(Module, TypeName, Arity)
-            ;
-                ConsId = tabling_info_const(ShroudedPredProcId),
-                proc(PredId, ProcId) =
-                    unshroud_pred_proc_id(ShroudedPredProcId),
-                Entity = entity_table_struct(PredId, ProcId),
+                OldNotation = maybe_eliminable(Count),
+                NewNotation = maybe_eliminable(Count + 1),
                 trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                    io.write_string("table struct const ", !IO),
+                    io.write_string("plain_call incr maybe_eliminable ", !IO),
                     io.write_int(pred_id_to_int(PredId), !IO),
                     io.write_string(" ", !IO),
                     io.write_int(proc_id_to_int(ProcId), !IO),
                     io.nl(!IO)
                 )
             ),
-            svqueue.put(Entity, !Queue),
-            svmap.set(Entity, not_eliminable, !Needed)
+            svmap.det_update(Entity, NewNotation, !Needed)
         ;
-            ( ConsId = cons(_, _)
-            ; ConsId = int_const(_)
-            ; ConsId = string_const(_)
-            ; ConsId = float_const(_)
-            ; ConsId = base_typeclass_info_const(_, _, _, _)
-            ; ConsId = type_info_cell_constructor(_)
-            ; ConsId = typeclass_info_cell_constructor
-            ; ConsId = deep_profiling_proc_layout(_)
-            ; ConsId = table_io_decl(_)
+            trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                io.write_string("plain_call init maybe_eliminable ", !IO),
+                io.write_int(pred_id_to_int(PredId), !IO),
+                io.write_string(" ", !IO),
+                io.write_int(proc_id_to_int(ProcId), !IO),
+                io.nl(!IO)
+            ),
+            NewNotation = maybe_eliminable(1),
+            svmap.set(Entity, NewNotation, !Needed)
+        )
+    ;
+        GoalExpr = call_foreign_proc(_, PredId, ProcId, _, _, _, _),
+        Entity = entity_proc(PredId, ProcId),
+        trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+            io.write_string("foreign_proc ", !IO),
+            io.write_int(pred_id_to_int(PredId), !IO),
+            io.write_string(" ", !IO),
+            io.write_int(proc_id_to_int(ProcId), !IO),
+            io.nl(!IO)
+        ),
+        svqueue.put(Entity, !Queue),
+        svmap.set(Entity, not_eliminable, !Needed)
+    ;
+        GoalExpr = unify(_LHS, _RHS, _UniModes, Unification, _UnifyContext),
+        (
+            Unification = construct(_, ConsId, _, _, _, _, _),
+            (
+                (
+                    ConsId = pred_const(ShroudedPredProcId, _),
+                    proc(PredId, ProcId) =
+                        unshroud_pred_proc_id(ShroudedPredProcId),
+                    Entity = entity_proc(PredId, ProcId),
+                    trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                        io.write_string("pred_const ", !IO),
+                        io.write_int(pred_id_to_int(PredId), !IO),
+                        io.write_string(" ", !IO),
+                        io.write_int(proc_id_to_int(ProcId), !IO),
+                        io.nl(!IO)
+                    )
+                ;
+                    ConsId = type_ctor_info_const(Module, TypeName, Arity),
+                    Entity = entity_type_ctor(Module, TypeName, Arity)
+                ;
+                    ConsId = tabling_info_const(ShroudedPredProcId),
+                    proc(PredId, ProcId) =
+                        unshroud_pred_proc_id(ShroudedPredProcId),
+                    Entity = entity_table_struct(PredId, ProcId),
+                    trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
+                        io.write_string("table struct const ", !IO),
+                        io.write_int(pred_id_to_int(PredId), !IO),
+                        io.write_string(" ", !IO),
+                        io.write_int(proc_id_to_int(ProcId), !IO),
+                        io.nl(!IO)
+                    )
+                ),
+                svqueue.put(Entity, !Queue),
+                svmap.set(Entity, not_eliminable, !Needed)
+            ;
+                ( ConsId = cons(_, _)
+                ; ConsId = int_const(_)
+                ; ConsId = string_const(_)
+                ; ConsId = float_const(_)
+                ; ConsId = base_typeclass_info_const(_, _, _, _)
+                ; ConsId = type_info_cell_constructor(_)
+                ; ConsId = typeclass_info_cell_constructor
+                ; ConsId = deep_profiling_proc_layout(_)
+                ; ConsId = table_io_decl(_)
+                )
+                % Do nothing.
+            )
+        ;
+            ( Unification = deconstruct(_, _, _, _, _, _)
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
             )
             % Do nothing.
+        ;
+            Unification = complicated_unify(_, _, _),
+            % These should have been replaced with calls by now.
+            unexpected(this_file, "dead_proc_examine_goal: complicated_unify")
         )
     ;
-        ( Uni = deconstruct(_, _, _, _, _, _)
-        ; Uni = assign(_, _)
-        ; Uni = simple_test(_, _)
-        )
-        % Do nothing.
-    ;
-        Uni = complicated_unify(_, _, _),
-        unexpected(this_file, "dead_proc_examine_expr: complicated_unify")
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "dead_proc_examine_goal: shorthand")
     ).
-dead_proc_examine_expr(shorthand(_), _, !Queue, !Needed) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "detect_cse_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

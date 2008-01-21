@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,246 +188,255 @@ resume_locs_include_stack(resume_locs_stack_and_orig, yes).
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
-build_live_sets_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
-        GoalInfo0, GoalInfo, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    (
-        ConjType = plain_conj,
-        GoalInfo = GoalInfo0,
-        build_live_sets_in_conj(Goals0, Goals, ResumeVars0, AllocData,
-            !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars)
-    ;
-        ConjType = parallel_conj,
-        !.ParStackVars = parallel_stackvars(OuterNonLocals,
-            OuterLocalStackVars, OuterAccStackVars0),
-
-        % Since each parallel conjunct may be run in a different Mercury context
-        % to the current context, we must save all the variables that are live
-        % or nonlocal to the parallel conjunction. Nonlocal variables that are
-        % currently free, but are bound inside one of the conjuncts need a
-        % stackslot because they are passed out by reference to that stackslot.
-        % Variables needed on backtracking must be available in a stackslot
-        % past the parallel conjunction as well.
-        NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
-        LiveSet = set.union_list([NonLocals, !.Liveness, ResumeVars0]),
-
-        InnerNonLocals = LiveSet `set.union` OuterNonLocals,
-        InnerParStackVars0 = parallel_stackvars(InnerNonLocals, [], set.init),
-        build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
-            !StackAlloc, !Liveness, !NondetLiveness,
-            InnerParStackVars0, InnerParStackVars),
-        InnerParStackVars = parallel_stackvars(_, InnerStackVars, _),
-
-        % This is safe but suboptimal.  It causes all variables which need
-        % stack slots in a parallel conjunction to have distinct stack slots.
-        % Variables local to a single conjunct could share stack slots, as
-        % long as the _sets_ of stack slots allocated to different parallel
-        % conjuncts are distinct.
-        NeedInParConj = need_in_par_conj(InnerNonLocals `set.union`
-            set.union_list(InnerStackVars)),
-        record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
-
-        % All the local variables which needed stack slots in the parallel
-        % conjuncts (InnerStackVars) become part of the accumulating set of
-        % variables that have stack slots.  Variables which are not local to
-        % but are needed in the parallel conjunctions also become part of the
-        % accumulating set.
-        OuterAccStackVars = OuterAccStackVars0
-            `set.union` set.union_list(InnerStackVars)
-            `set.union` (LiveSet `set.difference` OuterNonLocals),
-        !:ParStackVars = parallel_stackvars(OuterNonLocals,
-            OuterLocalStackVars, OuterAccStackVars)
-    ).
-
-build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
+build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         !ParStackVars) :-
-    build_live_sets_in_disj(Goals0, Goals, GoalInfo, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
     (
-        Goals = [First | _],
-        First = hlds_goal(_, FirstGoalInfo),
-        goal_info_get_resume_point(FirstGoalInfo, ResumePoint),
+        GoalExpr0 = conj(ConjType, Goals0),
         (
-            ResumePoint = resume_point(ResumeVars, _Locs),
-            % If we can backtrack into the disjunction, we must protect the
-            % stack slots needed by any of its resumption points from being
-            % reused in the following code. The first resumption point's vars
-            % include all the vars needed by all the resumption points.
-            % However, the first disjunct can be orig_only while later
-            % disjuncts are include the stack.
+            ConjType = plain_conj,
+            GoalInfo = GoalInfo0,
+            build_live_sets_in_conj(Goals0, Goals, ResumeVars0, AllocData,
+                !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars)
+        ;
+            ConjType = parallel_conj,
+            !.ParStackVars = parallel_stackvars(OuterNonLocals,
+                OuterLocalStackVars, OuterAccStackVars0),
 
-            % Note that we must check the disjunction's code model, not any
-            % disjuncts'; the disjunction as a whole can be model_non
-            % without any disjunct being model_non.
+            % Since each parallel conjunct may be run in a different Mercury
+            % context to the current context, we must save all the variables
+            % that are live or nonlocal to the parallel conjunction. Nonlocal
+            % variables that are currently free, but are bound inside one of
+            % the conjuncts need a stackslot because they are passed out
+            % by reference to that stackslot. Variables needed on backtracking
+            % must be available in a stackslot past the parallel conjunction
+            % as well.
+            NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
+            LiveSet = set.union_list([NonLocals, !.Liveness, ResumeVars0]),
+
+            InnerNonLocals = LiveSet `set.union` OuterNonLocals,
+            InnerParStackVars0 =
+                parallel_stackvars(InnerNonLocals, [], set.init),
+            build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
+                !StackAlloc, !Liveness, !NondetLiveness,
+                InnerParStackVars0, InnerParStackVars),
+            InnerParStackVars = parallel_stackvars(_, InnerStackVars, _),
+
+            % This is safe but suboptimal. It causes all variables which need
+            % stack slots in a parallel conjunction to have distinct stack
+            % slots. Variables local to a single conjunct could share stack
+            % slots, as long as the _sets_ of stack slots allocated to
+            % different parallel conjuncts are distinct.
+            NeedInParConj = need_in_par_conj(InnerNonLocals `set.union`
+                set.union_list(InnerStackVars)),
+            record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
+
+            % All the local variables which needed stack slots in the parallel
+            % conjuncts (InnerStackVars) become part of the accumulating set of
+            % variables that have stack slots.  Variables which are not local
+            % to but are needed in the parallel conjunctions also become part
+            % of the accumulating set.
+            OuterAccStackVars = OuterAccStackVars0
+                `set.union` set.union_list(InnerStackVars)
+                `set.union` (LiveSet `set.difference` OuterNonLocals),
+            !:ParStackVars = parallel_stackvars(OuterNonLocals,
+                OuterLocalStackVars, OuterAccStackVars)
+        ),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
+        build_live_sets_in_disj(Goals0, Goals, GoalInfo0,
+            ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
+            !ParStackVars),
+        (
+            Goals = [FirstGoal | _],
+            FirstGoal = hlds_goal(_, FirstGoalInfo),
+            goal_info_get_resume_point(FirstGoalInfo, ResumePoint),
             (
-                goal_info_get_code_model(GoalInfo) = model_non,
-                some [Disjunct] (
-                    list.member(Disjunct, Goals),
-                    Disjunct = hlds_goal(_, DisjunctGoalInfo),
-                    goal_info_get_resume_point(DisjunctGoalInfo,
-                        DisjunctResumePoint),
-                    DisjunctResumePoint = resume_point(_, Locs),
-                    resume_locs_include_stack(Locs, yes)
+                ResumePoint = resume_point(ResumeVars, _Locs),
+                % If we can backtrack into the disjunction, we must protect the
+                % stack slots needed by any of its resumption points from being
+                % reused in the following code. The first resumption point's
+                % variables include all the variables needed by all the
+                % resumption points. However, the first disjunct can be
+                % orig_only while later disjuncts are include the stack.
+
+                % Note that we must check the disjunction's code model, not any
+                % disjuncts'; the disjunction as a whole can be model_non
+                % without any disjunct being model_non.
+                (
+                    goal_info_get_code_model(GoalInfo0) = model_non,
+                    some [Disjunct] (
+                        list.member(Disjunct, Goals),
+                        Disjunct = hlds_goal(_, DisjunctGoalInfo),
+                        goal_info_get_resume_point(DisjunctGoalInfo,
+                            DisjunctResumePoint),
+                        DisjunctResumePoint = resume_point(_, Locs),
+                        resume_locs_include_stack(Locs, yes)
+                    )
+                ->
+                    set.union(!.NondetLiveness, ResumeVars, !:NondetLiveness)
+                ;
+                    true
                 )
-            ->
-                set.union(!.NondetLiveness, ResumeVars, !:NondetLiveness)
             ;
-                true
+                % We can get here if the disjunction is not really a
+                % disjunction, because the first alternative cannot fail
+                % and will be committed to (e.g. in a first-solution context).
+                % Simplification should eliminate such disjunctions, replacing
+                % them with the first disjunct, but until that is done,
+                % we must handle them here.
+                ResumePoint = no_resume_point
             )
         ;
-            % We can get here if the disjunction is not really a disjunction,
-            % because the first alternative cannot fail and will be committed
-            % to (e.g. in a first-solution context). Simplification should
-            % eliminate such disjunctions, replacing them with the first
-            % disjunct, but until that is done, we must handle them here.
-            ResumePoint = no_resume_point
-        )
-    ;
-        Goals = []
-    ).
-
-build_live_sets_in_goal_2(switch(Var, CanFail, Cases0),
-        switch(Var, CanFail, Cases), GoalInfo, GoalInfo, ResumeVars0,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    build_live_sets_in_cases(Cases0, Cases, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars).
-
-build_live_sets_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), GoalInfo, GoalInfo,
-        ResumeVars0, AllocData, !StackAlloc,
-        Liveness0, Liveness, NondetLiveness0, NondetLiveness, !ParStackVars) :-
-    build_live_sets_in_goal(Cond0, Cond, ResumeVars0, AllocData, !StackAlloc,
-        Liveness0, LivenessCond, NondetLiveness0, NondetLivenessCond,
-        !ParStackVars),
-    build_live_sets_in_goal(Then0, Then, ResumeVars0, AllocData, !StackAlloc,
-        LivenessCond, _LivenessThen, NondetLivenessCond, NondetLivenessThen,
-        !ParStackVars),
-    build_live_sets_in_goal(Else0, Else, ResumeVars0, AllocData, !StackAlloc,
-        Liveness0, Liveness, NondetLiveness0, NondetLivenessElse,
-        !ParStackVars),
-    set.union(NondetLivenessThen, NondetLivenessElse, NondetLiveness).
-
-build_live_sets_in_goal_2(negation(Goal0), negation(Goal), GoalInfo, GoalInfo,
-        ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
-        !ParStackVars) :-
-    build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars).
-
-build_live_sets_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
-        GoalInfo, GoalInfo, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    NondetLiveness0 = !.NondetLiveness,
-    build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
-
-    % If the "some" goal cannot succeed more than once, then execution cannot
-    % backtrack into the inner goal once control has left it. Therefore the
-    % code following the "some" can reuse any stack slots needed by nondet
-    % code in the inner goal.
-
-    CodeModel = goal_info_get_code_model(GoalInfo),
-    (
-        CodeModel = model_non
-    ;
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
+            Goals = []
         ),
-        !:NondetLiveness = NondetLiveness0
-    ).
-
-build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    Goal = generic_call(GenericCall, ArgVars, Modes, _Det),
-    (
-        GenericCall = cast(_),
+        GoalExpr = disj(Goals),
         GoalInfo = GoalInfo0
     ;
-        ( GenericCall = higher_order(_, _, _, _)
-        ; GenericCall = class_method(_, _, _, _)
-        ; GenericCall = event_call(_)
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        build_live_sets_in_cases(Cases0, Cases, ResumeVars0, AllocData,
+            !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
+        GoalExpr = switch(Var, CanFail, Cases),
+        GoalInfo = GoalInfo0
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        Liveness0 = !.Liveness,
+        NondetLiveness0 = !.NondetLiveness,
+        build_live_sets_in_goal(Cond0, Cond, ResumeVars0, AllocData,
+            !StackAlloc, Liveness0, LivenessCond,
+            NondetLiveness0, NondetLivenessCond, !ParStackVars),
+        build_live_sets_in_goal(Then0, Then, ResumeVars0, AllocData,
+            !StackAlloc, LivenessCond, _LivenessThen,
+            NondetLivenessCond, NondetLivenessThen, !ParStackVars),
+        build_live_sets_in_goal(Else0, Else, ResumeVars0, AllocData,
+            !StackAlloc, Liveness0, Liveness,
+            NondetLiveness0, NondetLivenessElse, !ParStackVars),
+        set.union(NondetLivenessThen, NondetLivenessElse, NondetLiveness),
+        !:Liveness = Liveness,
+        !:NondetLiveness = NondetLiveness,
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        GoalInfo = GoalInfo0
+    ;
+        GoalExpr0 = negation(Goal0),
+        build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
+            !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
+        GoalExpr = negation(Goal),
+        GoalInfo = GoalInfo0
+    ;
+        GoalExpr0 = scope(Reason, Goal0),
+        NondetLiveness0 = !.NondetLiveness,
+        build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
+            !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
+        % If the "some" goal cannot succeed more than once, then execution
+        % cannot backtrack into the inner goal once control has left it.
+        % Therefore the code following the scope can reuse any stack slots
+        % needed by nondet code in the inner goal.
+        CodeModel = goal_info_get_code_model(GoalInfo0),
+        (
+            CodeModel = model_non
+        ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
+            !:NondetLiveness = NondetLiveness0
         ),
-        ProcInfo = AllocData ^ proc_info,
-        proc_info_get_vartypes(ProcInfo, VarTypes),
-        map.apply_to_list(ArgVars, VarTypes, Types),
+        GoalExpr = scope(Reason, Goal),
+        GoalInfo = GoalInfo0
+    ;
+        GoalExpr0 = generic_call(GenericCall, ArgVars, Modes, _Det),
+        GoalExpr = GoalExpr0,
+        (
+            GenericCall = cast(_),
+            GoalInfo = GoalInfo0
+        ;
+            ( GenericCall = higher_order(_, _, _, _)
+            ; GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ),
+            ProcInfo = AllocData ^ proc_info,
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            map.apply_to_list(ArgVars, VarTypes, Types),
+            ModuleInfo = AllocData ^ module_info,
+            arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
+                Types, Modes, _InVars, OutVars, _UnusedVars),
+            build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
+                ResumeVars0, AllocData, !StackAlloc, !.Liveness,
+                !NondetLiveness, !ParStackVars)
+        )
+    ;
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
+        GoalExpr = GoalExpr0,
         ModuleInfo = AllocData ^ module_info,
-        arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
-            Types, Modes, _InVars, OutVars, _UnusedVars),
-        build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0,
-            AllocData, !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
-    ).
-
-build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    Goal = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
-    ModuleInfo = AllocData ^ module_info,
-    CallerProcInfo = AllocData ^ proc_info,
-    proc_info_get_vartypes(CallerProcInfo, VarTypes),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
-        ArgVars, _InVars, OutVars, _UnusedVars),
-    (
-        Builtin = inline_builtin,
-        GoalInfo = GoalInfo0
-    ;
-        ( Builtin = out_of_line_builtin
-        ; Builtin = not_builtin
-        ),
-        build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
-            ResumeVars0, AllocData, !StackAlloc, !.Liveness, !NondetLiveness,
-            !ParStackVars)
-    ).
-
-build_live_sets_in_goal_2(Goal, Goal, GoalInfo, GoalInfo,
-        _ResumeVars0, _AllocData, !StackAlloc, !Liveness, !NondetLiveness,
-        !ParStackVars) :-
-    Goal = unify(_, _, _, Unification, _),
-    (
-        ( Unification = construct(_, _, _, _, _, _, _)
-        ; Unification = deconstruct(_, _, _, _, _, _)
-        ; Unification = assign(_, _)
-        ; Unification = simple_test(_, _)
+        CallerProcInfo = AllocData ^ proc_info,
+        proc_info_get_vartypes(CallerProcInfo, VarTypes),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+        arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
+            ArgVars, _InVars, OutVars, _UnusedVars),
+        (
+            Builtin = inline_builtin,
+            GoalInfo = GoalInfo0
+        ;
+            ( Builtin = out_of_line_builtin
+            ; Builtin = not_builtin
+            ),
+            build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
+                ResumeVars0, AllocData, !StackAlloc, !.Liveness,
+                !NondetLiveness, !ParStackVars)
         )
     ;
-        Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "build_live_sets_in_goal_2: complicated_unify")
-    ).
-
-build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    Goal = call_foreign_proc(Attributes, PredId, ProcId, Args, _, _, _),
-    ModuleInfo = AllocData ^ module_info,
-    CallerProcInfo = AllocData ^ proc_info,
-    proc_info_get_vartypes(CallerProcInfo, VarTypes),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    ArgVars = list.map(foreign_arg_var, Args),
-    arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
-        ArgVars, _InVars, OutVars, _UnusedVars),
-    CodeModel = goal_info_get_code_model(GoalInfo0),
-    (
-        % We don't need to save any variables onto the stack before a
-        % foreign_proc if we know that it can't succeed more than once
-        % and that it is not going to call back Mercury code, because
-        % such pragma C code won't clobber the registers.
-
-        CodeModel \= model_non,
-        get_may_call_mercury(Attributes) = proc_will_not_call_mercury
-    ->
-        GoalInfo = GoalInfo0
+        GoalExpr0 = unify(_, _, _, Unification, _),
+        GoalExpr = GoalExpr0,
+        GoalInfo = GoalInfo0,
+        (
+            ( Unification = construct(_, _, _, _, _, _, _)
+            ; Unification = deconstruct(_, _, _, _, _, _)
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
+            )
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(this_file,
+                "build_live_sets_in_goal_2: complicated_unify")
+        )
     ;
-        % The variables which need to be saved onto the stack before the call
-        % are all the variables that are live after the call (except for the
-        % output arguments produced by the call), plus all the variables
-        % that may be needed at an enclosing resumption point.
+        GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId, Args,
+            _, _, _),
+        GoalExpr = GoalExpr0,
+        ModuleInfo = AllocData ^ module_info,
+        CallerProcInfo = AllocData ^ proc_info,
+        proc_info_get_vartypes(CallerProcInfo, VarTypes),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+        ArgVars = list.map(foreign_arg_var, Args),
+        arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
+            ArgVars, _InVars, OutVars, _UnusedVars),
+        CodeModel = goal_info_get_code_model(GoalInfo0),
+        (
+            % We don't need to save any variables onto the stack before a
+            % foreign_proc if we know that it can't succeed more than once
+            % and that it is not going to call back Mercury code, because
+            % such pragma C code won't clobber the registers.
 
-        build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
-            ResumeVars0, AllocData, !StackAlloc, !.Liveness, !NondetLiveness,
-            !ParStackVars)
+            CodeModel \= model_non,
+            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+        ->
+            GoalInfo = GoalInfo0
+        ;
+            % The variables which need to be saved onto the stack before
+            % the call are all the variables that are live after the call
+            % (except for the output arguments produced by the call), plus
+            % all the variables that may be needed at an enclosing resumption
+            % point.
+            build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
+                ResumeVars0, AllocData, !StackAlloc, !.Liveness,
+                !NondetLiveness, !ParStackVars)
+        )
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file,
+            "build_live_sets_in_goal_2: unexpected shorthand")
     ).
-
-build_live_sets_in_goal_2(shorthand(_), _,_,_,_,_,_,_,_,_,_,_,_,_) :-
-    % these should have been expanded out by now
-    unexpected(this_file, "build_live_sets_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

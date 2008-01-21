@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_code_util.m.
 % Main author: fjh.
-% 
+%
 % This module is part of the MLDS code generator.
 % It defines the ml_gen_info type and its access routines.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_code_util.
@@ -69,8 +69,7 @@
     mlds_defns::in, statements::in, prog_context::in,
     mlds_defns::out, statements::out) is det.
 
-:- type gen_pred == pred(mlds_defns, statements,
-        ml_gen_info, ml_gen_info).
+:- type gen_pred == pred(mlds_defns, statements, ml_gen_info, ml_gen_info).
 :- inst gen_pred == (pred(out, out, in, out) is det).
 
     % Given closures to generate code for two conjuncts, generate code
@@ -816,8 +815,10 @@ ml_gen_block(VarDecls, Statements, Context) =
 ml_join_decls(FirstDecls, FirstStatements, RestDecls, RestStatements, Context,
         Decls, Statements) :-
     (
-        list.member(mlds_defn(Name, _, _, _), FirstDecls),
-        list.member(mlds_defn(Name, _, _, _), RestDecls)
+        some [Name] (
+            list.member(mlds_defn(Name, _, _, _), FirstDecls),
+            list.member(mlds_defn(Name, _, _, _), RestDecls)
+        )
     ->
         First = ml_gen_block(FirstDecls, FirstStatements, Context),
         Rest = ml_gen_block(RestDecls, RestStatements, Context),
@@ -1049,7 +1050,8 @@ ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
     PredOrFunc = RttiProcId^pred_or_func,
     Detism = RttiProcId^proc_interface_detism,
     determinism_to_code_model(Detism, CodeModel),
-    HeadVarNames = list.map((func(Var - Name) = Result :-
+    HeadVarNames = list.map(
+        (func(Var - Name) = Result :-
             term.var_to_int(Var, N),
             Result = mlds_var_name(Name, yes(N))
         ), HeadVars),
@@ -1881,22 +1883,20 @@ ml_declare_env_ptr_arg(mlds_argument(Name, Type, GCStatement)) :-
 % Code to handle accurate GC
 %
 
-ml_gen_gc_statement(VarName, Type, Context, GCStatement,
-        !Info) :-
-    ml_gen_gc_statement(VarName, Type, Type, Context,
-        GCStatement, !Info).
+ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info) :-
+    ml_gen_gc_statement(VarName, Type, Type, Context, GCStatement, !Info).
 
 ml_gen_gc_statement(VarName, DeclType, ActualType, Context,
         GCStatement, !Info) :-
     HowToGetTypeInfo = construct_from_type(ActualType),
-    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo,
-        Context, GCStatement, !Info).
+    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
+        GCStatement, !Info).
 
-ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval,
-        Context, GCStatement, !Info) :-
+ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
+        GCStatement, !Info) :-
     HowToGetTypeInfo = already_provided(TypeInfoRval),
-    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo,
-        Context, GCStatement, !Info).
+    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
+        GCStatement, !Info).
 
 :- type how_to_get_type_info
     --->    construct_from_type(mer_type)
@@ -2446,25 +2446,25 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
     EnvVarNames = set.init,
 
     Info = ml_gen_info(
-            ModuleInfo,
-            PredId,
-            ProcId,
-            VarSet,
-            VarTypes,
-            ByRefOutputVars,
-            ValueOutputVars,
-            FuncLabelCounter,
-            CommitLabelCounter,
-            LabelCounter,
-            CondVarCounter,
-            ConvVarCounter,
-            ConstCounter,
-            ConstNumMap,
-            SuccContStack,
-            VarLvals,
-            ExtraDefns,
-            EnvVarNames
-        ).
+        ModuleInfo,
+        PredId,
+        ProcId,
+        VarSet,
+        VarTypes,
+        ByRefOutputVars,
+        ValueOutputVars,
+        FuncLabelCounter,
+        CommitLabelCounter,
+        LabelCounter,
+        CondVarCounter,
+        ConvVarCounter,
+        ConstCounter,
+        ConstNumMap,
+        SuccContStack,
+        VarLvals,
+        ExtraDefns,
+        EnvVarNames
+    ).
 
 ml_gen_info_get_module_info(Info, Info ^ module_info).
 

@@ -1,25 +1,25 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_simplify_switch.m.
 % Main author: fjh.
-% 
+%
 % This module, which is invoked by the various parts of the MLDS code generator
 % that generate switches, converts MLDS switches into computed gotos
 % or if-then-else chains.
-% 
+%
 % We should eventually also handle lookup switches and binary search switches
 % here too.
-% 
+%
 % The choice of which exactly which simplifications will get
 % performed depends on the target (e.g. whether it understands
 % switches) and the --prefer-switch option.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_simplify_switch.
@@ -324,16 +324,15 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-generate_cases([], _EndLabel, CaseLabelsMap, CaseLabelsMap, [], [], !Info).
-generate_cases([Case | Cases], EndLabel, CaseLabelsMap0,
-        CaseLabelsMap, Decls, Statements, !Info) :-
-    generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap1,
+generate_cases([], _EndLabel, !CaseLabelsMap, [], [], !Info).
+generate_cases([Case | Cases], EndLabel, !CaseLabelsMap, Decls, Statements,
+        !Info) :-
+    generate_case(Case, EndLabel, !CaseLabelsMap,
         CaseDecls, CaseStatements, !Info),
-    generate_cases(Cases, EndLabel,
-        CaseLabelsMap1, CaseLabelsMap,
-        Decls1, Statements1, !Info),
-    Decls = CaseDecls ++ Decls1,
-    Statements = CaseStatements ++ Statements1.
+    generate_cases(Cases, EndLabel, !CaseLabelsMap,
+        CasesDecls, CasesStatements, !Info),
+    Decls = CaseDecls ++ CasesDecls,
+    Statements = CaseStatements ++ CasesStatements.
 
     % This converts an MLDS switch case into code for a dense switch case,
     % by adding a label at the front and a `goto <EndLabel>' at the end.

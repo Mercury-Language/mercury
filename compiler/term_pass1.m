@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_pass1.m.
 % Main author: crs.
 % Significant parts rewritten by zs.
-% 
+%
 % This file contains the first pass of the termination analysis, whose job is
 % to discover an upper bound on the difference between the sizes of the output
 % arguments of a procedure on the one hand and the sizes of a selected set of
@@ -17,7 +17,7 @@
 % selected set of input arguments as the "output suppliers".
 %
 % For details, please refer to the papers mentioned in termination.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass1.
@@ -38,7 +38,7 @@
     --->    ok(
                 list(pair(pred_proc_id, int)),
                 % Gives the gamma of each procedure in the SCC.
-                
+
                 used_args
                 % Gives the output suppliers of each procedure in the SCC.
             )
@@ -193,13 +193,13 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
     (
         Result1 = error(_),
         Result = Result1,
-        %
+
         % The error does not necessarily mean that this SCC is nonterminating.
         % We need to check that the remainder of this SCC does not make any
         % nonterminating calls otherwise we might get a software error during
         % pass 2.
         % (See below for details).
-        % 
+
         list.foldl3(check_proc_non_term_calls, PPIds, [],
             OtherTermErrors, !ModuleInfo, !IO),
         list.append(OtherTermErrors, !TermErrors)
@@ -318,81 +318,69 @@ check_proc_non_term_calls(PPId, !Errors, !ModuleInfo, !IO) :-
 
 check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    check_goal_expr_non_term_calls(PPId, VarTypes, GoalExpr, GoalInfo,
-        !Errors, !ModuleInfo, !IO).
-
-:- pred check_goal_expr_non_term_calls(pred_proc_id::in,
-    vartypes::in, hlds_goal_expr::in, hlds_goal_info::in,
-    termination_error_contexts::in, termination_error_contexts::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors,
-        !ModuleInfo, !IO):-
-    ( Goal = conj(_, Goals)
-    ; Goal = disj(Goals)
-    ),
-    list.foldl3(check_goal_non_term_calls(PPId, VarTypes), Goals,
-        !Errors, !ModuleInfo, !IO).
-check_goal_expr_non_term_calls(PPId, VarTypes, Goal, GoalInfo,
-       !Errors, !ModuleInfo, !IO) :-
-    Goal = plain_call(CallPredId, CallProcId, Args, _, _, _),
-    CallPPId = proc(CallPredId, CallProcId),
-    module_info_pred_proc_info(!.ModuleInfo, CallPPId, _, ProcInfo),
-    proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
-    Context = goal_info_get_context(GoalInfo),
     (
-        TerminationInfo = yes(can_loop(_)),
-        CanLoopError = can_loop_proc_called(PPId, CallPPId),
-        CanLoopErrorContext = termination_error_context(CanLoopError, Context),
-        list.cons(CanLoopErrorContext, !Errors)
+        GoalExpr = unify(_, _, _, _, _)
+        % Do nothing.
     ;
-        ( TerminationInfo = yes(cannot_loop(_))
-        ; TerminationInfo = no
+        GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
+        CallPPId = proc(CallPredId, CallProcId),
+        module_info_pred_proc_info(!.ModuleInfo, CallPPId, _, ProcInfo),
+        proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
+        Context = goal_info_get_context(GoalInfo),
+        (
+            TerminationInfo = yes(can_loop(_)),
+            CanLoopError = can_loop_proc_called(PPId, CallPPId),
+            CanLoopErrorContext =
+                termination_error_context(CanLoopError, Context),
+            list.cons(CanLoopErrorContext, !Errors)
+        ;
+            ( TerminationInfo = yes(cannot_loop(_))
+            ; TerminationInfo = no
+            )
+        ),
+        ( horder_vars(Args, VarTypes) ->
+            HigherOrderError = horder_args(PPId, CallPPId),
+            HigherOrderErrorContext =
+                termination_error_context(HigherOrderError, Context),
+            list.cons(HigherOrderErrorContext, !Errors)
+        ;
+            true
         )
-    ),
-    ( horder_vars(Args, VarTypes) ->
-        HigherOrderError = horder_args(PPId, CallPPId),
-        HigherOrderErrorContext = termination_error_context(HigherOrderError,
-            Context),
-        list.cons(HigherOrderErrorContext, !Errors)
     ;
-        true
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        % XXX This looks incomplete - juliensf.
+    ;
+        GoalExpr = generic_call(_, _, _, _),
+        % XXX We should use any results from closure analysis here.
+        Context = goal_info_get_context(GoalInfo),
+        Error = termination_error_context(horder_call, Context),
+        list.cons(Error, !Errors)
+    ;
+        ( GoalExpr = conj(_, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        list.foldl3(check_goal_non_term_calls(PPId, VarTypes), Goals,
+            !Errors, !ModuleInfo, !IO)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.foldl3(check_cases_non_term_calls(PPId, VarTypes), Cases,
+            !Errors, !ModuleInfo, !IO)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        Goals = [Cond, Then, Else],
+        list.foldl3(check_goal_non_term_calls(PPId, VarTypes), Goals,
+            !Errors, !ModuleInfo, !IO)
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        check_goal_non_term_calls(PPId, VarTypes, SubGoal,
+            !Errors, !ModuleInfo, !IO)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file,
+            "shorthand goal encountered during termination analysis.")
     ).
-check_goal_expr_non_term_calls(_, _, Goal, GoalInfo, !Errors, !ModuleInfo,
-        !IO) :-
-    % XXX Use closure analysis results here.
-    Goal = generic_call(_, _, _, _),
-    Context = goal_info_get_context(GoalInfo),
-    Error = termination_error_context(horder_call, Context),
-    list.cons(Error, !Errors).
-check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
-        !IO) :-
-    Goal = switch(_, _, Cases),
-    list.foldl3(check_cases_non_term_calls(PPId, VarTypes), Cases,
-        !Errors, !ModuleInfo, !IO).
-check_goal_expr_non_term_calls(_, _, unify(_, _, _, _, _), _, !Errors,
-        !ModuleInfo, !IO).
-check_goal_expr_non_term_calls(PPId, VarTypes, negation(Goal), _,
-        !Errors, !ModuleInfo, !IO) :-
-    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo,
-        !IO).
-check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
-        !IO) :-
-    Goal = scope(_, ScopeGoal),
-    check_goal_non_term_calls(PPId, VarTypes, ScopeGoal, !Errors, !ModuleInfo,
-        !IO).
-check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
-        !IO) :-
-    Goal = if_then_else(_, Cond, Then, Else),
-    Goals = [Cond, Then, Else],
-    list.foldl3(check_goal_non_term_calls(PPId, VarTypes), Goals,
-        !Errors, !ModuleInfo, !IO).
-check_goal_expr_non_term_calls(_, _, Goal, _, !Errors, !ModuleInfo, !IO) :-
-    % XXX This looks incomplete - juliensf.
-    Goal = call_foreign_proc(_, _, _, _, _, _, _).
-check_goal_expr_non_term_calls(_, _, shorthand(_), _, _, _, _, _, _, _) :-
-    unexpected(this_file,
-        "shorthand goal encountered during termination analysis.").
 
 :- pred check_cases_non_term_calls(
     pred_proc_id::in, vartypes::in, case::in,
@@ -412,9 +400,7 @@ check_cases_non_term_calls(PPId, VarTypes, case(_, _, Goal), !Errors,
     maybe(list(pair(pred_proc_id, int)))::out, io::di, io::uo) is det.
 
 solve_equations(Paths, PPIds, Result, !IO) :-
-    (
-        convert_equations(Paths, Varset, Equations, Objective, PPVars)
-    ->
+    ( convert_equations(Paths, Varset, Equations, Objective, PPVars) ->
         map.values(PPVars, AllVars0),
         list.sort_and_remove_dups(AllVars0, AllVars),
         lp_solve(Equations, min, Objective, Varset, AllVars, Soln, !IO),
@@ -456,8 +442,8 @@ convert_equations_2([Path | Paths], !PPVars, !Varset, !Eqns) :-
     Eqn = eqn(Coeffs, (>=), FloatGamma),
     pred_proc_var(ThisPPId, ThisVar, !Varset, !PPVars),
     Coeffs = [ThisVar - 1.0 | RestCoeffs],
-    Convert = (pred(PPId::in, Coeff::out, !.VS::in, !:VS::out, !.PPV::in,
-            !:PPV::out) is det :-
+    Convert = (pred(PPId::in, Coeff::out, !.VS::in, !:VS::out,
+            !.PPV::in, !:PPV::out) is det :-
         pred_proc_var(PPId, Var, !VS, !PPV),
         Coeff = Var - (-1.0)
     ),

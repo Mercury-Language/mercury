@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -237,14 +237,12 @@ detect_liveness_preds_parallel(!HLDS) :-
     module_info::in, module_info::in, module_info::out) is det.
 
 detect_liveness_preds_parallel_2(PredIds, HLDS0, !HLDS) :-
-    (if
-        list.split_list(1000, PredIds, HeadPredIds, TailPredIds)
-    then
+    ( list.split_list(1000, PredIds, HeadPredIds, TailPredIds) ->
         ( detect_liveness_preds_parallel_3(HeadPredIds, HLDS0, !HLDS)
-        % XXX the following should be a parallel conjunction
+        % XXX The following should be a parallel conjunction.
         , detect_liveness_preds_parallel_2(TailPredIds, HLDS0, !HLDS)
         )
-    else
+    ;
         detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS)
     ).
 
@@ -411,83 +409,91 @@ detect_liveness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
     live_info::in) is det.
 
-detect_liveness_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
-        !Liveness, NonLocals, LiveInfo) :-
-    (
-        ConjType = plain_conj,
-        detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo)
-    ;
-        ConjType = parallel_conj,
-        set.init(Union0),
-        detect_liveness_in_par_conj(Goals0, Goals, !.Liveness, NonLocals,
-            LiveInfo, Union0, Union),
-        set.union(Union, !Liveness)
-    ).
-
-detect_liveness_in_goal_2(disj(Goals0), disj(Goals), !Liveness,
+detect_liveness_in_goal_2(GoalExpr0, GoalExpr, !Liveness,
         NonLocals, LiveInfo) :-
-    set.init(Union0),
-    detect_liveness_in_disj(Goals0, Goals, !.Liveness, NonLocals,
-        LiveInfo, Union0, Union),
-    set.union(Union, !Liveness).
-
-detect_liveness_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
-        !Liveness, NonLocals, LiveInfo) :-
-    detect_liveness_in_cases(Cases0, Cases, !.Liveness, NonLocals,
-        LiveInfo, !Liveness).
-
-detect_liveness_in_goal_2(negation(Goal0), negation(Goal), !Liveness, _,
-        LiveInfo) :-
-    detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo).
-
-detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else),
-        Liveness0, Liveness, NonLocals, LiveInfo) :-
-    detect_liveness_in_goal(Cond0, Cond, Liveness0, LivenessCond, LiveInfo),
-
-    % If the condition cannot succeed, any variables which become live
-    % in the else part should be put in the post-birth set of the then part
-    % by add_liveness_after_goal, and the other sets should be empty.
-    Cond = hlds_goal(_, CondInfo),
-    CondDelta = goal_info_get_instmap_delta(CondInfo),
-    ( instmap_delta_is_unreachable(CondDelta) ->
-        LivenessThen = LivenessCond,
-        Then1 = Then0
+    (
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo)
+        ;
+            ConjType = parallel_conj,
+            set.init(Union0),
+            detect_liveness_in_par_conj(Goals0, Goals, !.Liveness, NonLocals,
+                LiveInfo, Union0, Union),
+            set.union(Union, !Liveness)
+        ),
+        GoalExpr = conj(ConjType, Goals)
     ;
-        detect_liveness_in_goal(Then0, Then1,
-            LivenessCond, LivenessThen, LiveInfo)
-    ),
+        GoalExpr0 = disj(Goals0),
+        set.init(Union0),
+        detect_liveness_in_disj(Goals0, Goals, !.Liveness, NonLocals,
+            LiveInfo, Union0, Union),
+        set.union(Union, !Liveness),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = switch(Var, Det, Cases0),
+        detect_liveness_in_cases(Cases0, Cases, !.Liveness, NonLocals,
+            LiveInfo, !Liveness),
+        GoalExpr = switch(Var, Det, Cases)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        Liveness0 = !.Liveness,
 
-    detect_liveness_in_goal(Else0, Else1, Liveness0, LivenessElse, LiveInfo),
+        detect_liveness_in_goal(Cond0, Cond, Liveness0, LivenessCond,
+            LiveInfo),
 
-    set.union(LivenessThen, LivenessElse, Liveness),
-    set.intersect(Liveness, NonLocals, NonLocalLiveness),
+        % If the condition cannot succeed, any variables which become live
+        % in the else part should be put in the post-birth set of the then part
+        % by add_liveness_after_goal, and the other sets should be empty.
+        Cond = hlds_goal(_, CondInfo),
+        CondDelta = goal_info_get_instmap_delta(CondInfo),
+        ( instmap_delta_is_unreachable(CondDelta) ->
+            LivenessThen = LivenessCond,
+            Then1 = Then0
+        ;
+            detect_liveness_in_goal(Then0, Then1,
+                LivenessCond, LivenessThen, LiveInfo)
+        ),
 
-    set.difference(NonLocalLiveness, LivenessThen, ResidueThen),
-    set.difference(NonLocalLiveness, LivenessElse, ResidueElse),
+        detect_liveness_in_goal(Else0, Else1, Liveness0, LivenessElse,
+            LiveInfo),
 
-    add_liveness_after_goal(Then1, ResidueThen, Then),
-    add_liveness_after_goal(Else1, ResidueElse, Else).
+        set.union(LivenessThen, LivenessElse, Liveness),
+        set.intersect(Liveness, NonLocals, NonLocalLiveness),
 
-detect_liveness_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
-        !Liveness, _, LiveInfo) :-
-    detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo).
+        set.difference(NonLocalLiveness, LivenessThen, ResidueThen),
+        set.difference(NonLocalLiveness, LivenessElse, ResidueElse),
 
-detect_liveness_in_goal_2(generic_call(_, _, _, _), _, _, _, _, _) :-
-    unexpected(this_file, "higher-order-call in detect_liveness_in_goal_2").
+        add_liveness_after_goal(Then1, ResidueThen, Then),
+        add_liveness_after_goal(Else1, ResidueElse, Else),
 
-detect_liveness_in_goal_2(plain_call(_, _, _, _, _, _), _, _, _, _, _) :-
-    unexpected(this_file, "call in detect_liveness_in_goal_2").
-
-detect_liveness_in_goal_2(unify(_, _, _, _, _), _, _, _, _, _) :-
-    unexpected(this_file, "unify in detect_liveness_in_goal_2").
-
-detect_liveness_in_goal_2(call_foreign_proc(_, _, _, _, _, _, _),
-        _, _, _, _, _) :-
-    unexpected(this_file, "foreign_proc in detect_liveness_in_goal_2").
-
-detect_liveness_in_goal_2(shorthand(_), _, _, _, _, _) :-
-    unexpected(this_file, "shorthand in detect_liveness_in_goal_2").
+        !:Liveness = Liveness,
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        detect_liveness_in_goal(SubGoal0, SubGoal, !Liveness, LiveInfo),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        detect_liveness_in_goal(SubGoal0, SubGoal, !Liveness, LiveInfo),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        unexpected(this_file, "detect_liveness_in_goal_2: plain_call")
+    ;
+        GoalExpr0 = generic_call(_, _, _, _),
+        unexpected(this_file, "detect_liveness_in_goal_2: generic_call")
+    ;
+        GoalExpr0 = call_foreign_proc(_,_,  _, _, _, _, _),
+        unexpected(this_file, "detect_liveness_in_goal_2: call_foreign_proc")
+    ;
+        GoalExpr0 = unify(_, _, _, _, _),
+        unexpected(this_file, "detect_liveness_in_goal_2: unify")
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "detect_liveness_in_goal_2: shorthand")
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -611,122 +617,131 @@ detect_deadness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     hlds_goal_info::in, set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, live_info::in) is det.
 
-detect_deadness_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
-        GoalInfo, !Deadness, Liveness0, LiveInfo) :-
+detect_deadness_in_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Deadness,
+        Liveness0, LiveInfo) :-
     (
-        ConjType = plain_conj,
-        detect_deadness_in_conj(Goals0, Goals, !Deadness, Liveness0, LiveInfo)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            detect_deadness_in_conj(Goals0, Goals, !Deadness,
+                Liveness0, LiveInfo)
+        ;
+            ConjType = parallel_conj,
+            liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+                _, CompletedNonLocals),
+            set.init(Union0),
+            detect_deadness_in_par_conj(Goals0, Goals, !.Deadness, Liveness0,
+                CompletedNonLocals, LiveInfo, Union0, Union,
+                _CompletedNonLocalUnion),
+            !:Deadness = Union
+        ),
+        GoalExpr = conj(ConjType, Goals)
     ;
-        ConjType = parallel_conj,
+        GoalExpr0 = disj(Goals0),
+        set.init(Union0),
         liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
             _, CompletedNonLocals),
-        set.init(Union0),
-        detect_deadness_in_par_conj(Goals0, Goals, !.Deadness, Liveness0,
-            CompletedNonLocals, LiveInfo, Union0, Union,
-            _CompletedNonLocalUnion),
-        !:Deadness = Union
-    ).
-
-detect_deadness_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, !Deadness,
-        Liveness0, LiveInfo) :-
-    set.init(Union0),
-    liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
-        _, CompletedNonLocals),
-    detect_deadness_in_disj(Goals0, Goals, !.Deadness, Liveness0,
-        CompletedNonLocals, LiveInfo, Union0, Union, _),
-    !:Deadness = Union.
-
-detect_deadness_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
-        GoalInfo, !Deadness, Liveness0, LiveInfo) :-
-    set.init(Union0),
-    liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
-        _, CompletedNonLocals),
-    detect_deadness_in_cases(Var, Cases0, Cases, !.Deadness, Liveness0,
-        CompletedNonLocals, LiveInfo, Union0, Union, _),
-    !:Deadness = Union.
-
-detect_deadness_in_goal_2(negation(Goal0), negation(Goal), _,
-        !Deadness, Liveness0, LiveInfo) :-
-    detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo).
-
-detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), GoalInfo,
-        Deadness0, Deadness, Liveness0, LiveInfo) :-
-    update_liveness_goal(Cond0, LiveInfo, Liveness0, LivenessCond),
-
-    detect_deadness_in_goal(Else0, Else1, Deadness0, DeadnessElse,
-        Liveness0, LiveInfo),
-    detect_deadness_in_goal(Then0, Then, Deadness0, DeadnessThen,
-        LivenessCond, LiveInfo),
-    detect_deadness_in_goal(Cond0, Cond1, DeadnessThen, DeadnessCond,
-        Liveness0, LiveInfo),
-
-    liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
-        _, CompletedNonLocals),
-    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    ( instmap_delta_is_reachable(InstmapDelta) ->
-        Cond0 = hlds_goal(_, CondGoalInfo),
-        CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
-        Then0 = hlds_goal(_, ThenGoalInfo),
-        ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
-        Else0 = hlds_goal(_, ElseGoalInfo),
-        ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
-        (
-            instmap_delta_is_reachable(CondInstmapDelta),
-            instmap_delta_is_reachable(ThenInstmapDelta)
-        ->
-            CondThenInstmapReachable = yes
-        ;
-            CondThenInstmapReachable = no
-        ),
-        (
-            instmap_delta_is_reachable(ElseInstmapDelta)
-        ->
-            ElseInstmapReachable = yes
-        ;
-            ElseInstmapReachable = no
-        ),
-        set.init(Union0),
-        union_branch_deadness(DeadnessCond, Deadness0,
-            CondThenInstmapReachable, Union0, Union1),
-        union_branch_deadness(DeadnessElse, Deadness0,
-            ElseInstmapReachable, Union1, Union),
-        Deadness = Union,
-        set.intersect(Deadness, CompletedNonLocals,
-            CompletedNonLocalDeadness),
-        add_branch_pre_deaths(DeadnessCond, Deadness0,
-            CompletedNonLocalDeadness, CondThenInstmapReachable, Cond1, Cond),
-        add_branch_pre_deaths(DeadnessElse, Deadness0,
-            CompletedNonLocalDeadness, ElseInstmapReachable, Else1, Else)
+        detect_deadness_in_disj(Goals0, Goals, !.Deadness, Liveness0,
+            CompletedNonLocals, LiveInfo, Union0, Union, _),
+        !:Deadness = Union,
+        GoalExpr = disj(Goals)
     ;
-        set.union(DeadnessCond, DeadnessElse, Deadness),
-        set.intersect(Deadness, CompletedNonLocals,
-            CompletedNonLocalDeadness),
-        add_branch_pre_deaths(DeadnessCond, Deadness0,
-            CompletedNonLocalDeadness, yes, Cond1, Cond),
-        add_branch_pre_deaths(DeadnessElse, Deadness0,
-            CompletedNonLocalDeadness, yes, Else1, Else)
+        GoalExpr0 = switch(Var, Det, Cases0),
+        set.init(Union0),
+        liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+            _, CompletedNonLocals),
+        detect_deadness_in_cases(Var, Cases0, Cases, !.Deadness, Liveness0,
+            CompletedNonLocals, LiveInfo, Union0, Union, _),
+        !:Deadness = Union,
+        GoalExpr = switch(Var, Det, Cases)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        Deadness0 = !.Deadness,
+
+        update_liveness_goal(Cond0, LiveInfo, Liveness0, LivenessCond),
+
+        detect_deadness_in_goal(Else0, Else1, Deadness0, DeadnessElse,
+            Liveness0, LiveInfo),
+        detect_deadness_in_goal(Then0, Then, Deadness0, DeadnessThen,
+            LivenessCond, LiveInfo),
+        detect_deadness_in_goal(Cond0, Cond1, DeadnessThen, DeadnessCond,
+            Liveness0, LiveInfo),
+
+        liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+            _, CompletedNonLocals),
+        InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+        ( instmap_delta_is_reachable(InstmapDelta) ->
+            Cond0 = hlds_goal(_, CondGoalInfo),
+            CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
+            Then0 = hlds_goal(_, ThenGoalInfo),
+            ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
+            Else0 = hlds_goal(_, ElseGoalInfo),
+            ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
+            (
+                instmap_delta_is_reachable(CondInstmapDelta),
+                instmap_delta_is_reachable(ThenInstmapDelta)
+            ->
+                CondThenInstmapReachable = yes
+            ;
+                CondThenInstmapReachable = no
+            ),
+            (
+                instmap_delta_is_reachable(ElseInstmapDelta)
+            ->
+                ElseInstmapReachable = yes
+            ;
+                ElseInstmapReachable = no
+            ),
+            set.init(Union0),
+            union_branch_deadness(DeadnessCond, Deadness0,
+                CondThenInstmapReachable, Union0, Union1),
+            union_branch_deadness(DeadnessElse, Deadness0,
+                ElseInstmapReachable, Union1, Union),
+            Deadness = Union,
+            set.intersect(Deadness, CompletedNonLocals,
+                CompletedNonLocalDeadness),
+            add_branch_pre_deaths(DeadnessCond, Deadness0,
+                CompletedNonLocalDeadness, CondThenInstmapReachable,
+                Cond1, Cond),
+            add_branch_pre_deaths(DeadnessElse, Deadness0,
+                CompletedNonLocalDeadness, ElseInstmapReachable, Else1, Else)
+        ;
+            set.union(DeadnessCond, DeadnessElse, Deadness),
+            set.intersect(Deadness, CompletedNonLocals,
+                CompletedNonLocalDeadness),
+            add_branch_pre_deaths(DeadnessCond, Deadness0,
+                CompletedNonLocalDeadness, yes, Cond1, Cond),
+            add_branch_pre_deaths(DeadnessElse, Deadness0,
+                CompletedNonLocalDeadness, yes, Else1, Else)
+        ),
+        !:Deadness = Deadness,
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        detect_deadness_in_goal(SubGoal0, SubGoal, !Deadness,
+            Liveness0, LiveInfo),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        detect_deadness_in_goal(SubGoal0, SubGoal, !Deadness,
+            Liveness0, LiveInfo),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        unexpected(this_file, "detect_deadness_in_goal_2: plain_call")
+    ;
+        GoalExpr0 = generic_call(_, _, _, _),
+        unexpected(this_file, "detect_deadness_in_goal_2: generic_call")
+    ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        unexpected(this_file, "detect_deadness_in_goal_2: call_foreign_proc")
+    ;
+        GoalExpr0 = unify(_, _, _, _, _),
+        unexpected(this_file, "detect_deadness_in_goal_2: unify")
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "detect_deadness_in_goal_2: shorthand")
     ).
-
-detect_deadness_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal), _,
-        !Deadness, Liveness0, LiveInfo) :-
-    detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo).
-
-detect_deadness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _, _) :-
-    unexpected(this_file, "higher-order-call in detect_deadness_in_goal_2").
-
-detect_deadness_in_goal_2(plain_call(_,_,_,_,_,_), _, _, _, _, _, _) :-
-    unexpected(this_file, "call in detect_deadness_in_goal_2").
-
-detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _, _) :-
-    unexpected(this_file, "unify in detect_deadness_in_goal_2").
-
-detect_deadness_in_goal_2(call_foreign_proc(_, _, _, _, _, _, _),
-        _, _, _, _, _, _) :-
-    unexpected(this_file, "foreign_proc in detect_deadness_in_goal_2").
-
-detect_deadness_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
-    unexpected(this_file, "shorthand in detect_deadness_in_goal_2").
 
 %-----------------------------------------------------------------------------%
 
@@ -912,7 +927,7 @@ update_liveness_goal(hlds_goal(GoalExpr, GoalInfo), LiveInfo, !Liveness) :-
     Liveness0 = !.Liveness,
     set.difference(!.Liveness, PreDeaths, !:Liveness),
     set.union(PreBirths, !Liveness),
-    update_liveness_expr(GoalExpr, GoalInfo, LiveInfo, !Liveness),
+    update_liveness_expr(GoalExpr, LiveInfo, !Liveness),
     set.difference(!.Liveness, PostDeaths, !:Liveness),
     set.union(PostBirths, !Liveness),
 
@@ -922,55 +937,64 @@ update_liveness_goal(hlds_goal(GoalExpr, GoalInfo), LiveInfo, !Liveness) :-
     set.intersect(NewLiveness0, CompletedNonLocals, NewLiveness),
     set.union(OldLiveness, NewLiveness, !:Liveness).
 
-:- pred update_liveness_expr(hlds_goal_expr::in, hlds_goal_info::in,
-    live_info::in, set(prog_var)::in, set(prog_var)::out) is det.
+:- pred update_liveness_expr(hlds_goal_expr::in, live_info::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
 
-update_liveness_expr(plain_call(_, _, _, _, _, _), _, _, !Liveness).
-update_liveness_expr(generic_call(_, _, _, _), _, _, !Liveness).
-update_liveness_expr(unify(_, _, _, _, _), _, _, !Liveness).
-update_liveness_expr(call_foreign_proc(_, _, _, _, _, _, _), _, _, !Liveness).
-update_liveness_expr(conj(_ConjType, Goals), _, LiveInfo, !Liveness) :-
-    % XXX Do parallel conjunctions need special treatment?
-    update_liveness_conj(Goals, LiveInfo, !Liveness).
-update_liveness_expr(disj(Goals), _GoalInfo, LiveInfo, !Liveness) :-
-    ( find_reachable_goal(Goals, Goal) ->
-        update_liveness_goal(Goal, LiveInfo, !Liveness)
-    ;
-        true
-    ).
-update_liveness_expr(switch(_, _, Cases), _GoalInfo, LiveInfo, !Liveness) :-
-    ( find_reachable_case(Cases, Goal) ->
-        update_liveness_goal(Goal, LiveInfo, !Liveness)
-    ;
-        true
-    ).
-update_liveness_expr(if_then_else(_, Cond, Then, Else), _GoalInfo, LiveInfo,
-        !Liveness) :-
-    Else = hlds_goal(_, ElseGoalInfo),
-    ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
-    Cond = hlds_goal(_, CondGoalInfo),
-    CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
-    Then = hlds_goal(_, ThenGoalInfo),
-    ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
+update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
     (
-        instmap_delta_is_reachable(ElseInstmapDelta)
-    ->
-        update_liveness_goal(Else, LiveInfo, !Liveness)
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        )
     ;
-        instmap_delta_is_reachable(CondInstmapDelta),
-        instmap_delta_is_reachable(ThenInstmapDelta)
-    ->
-        update_liveness_goal(Cond, LiveInfo, !Liveness),
-        update_liveness_goal(Then, LiveInfo, !Liveness)
+        GoalExpr = conj(_ConjType, Goals),
+        % XXX Do parallel conjunctions need special treatment?
+        update_liveness_conj(Goals, LiveInfo, !Liveness)
     ;
-        true
+        GoalExpr = disj(Goals),
+        ( find_reachable_goal(Goals, Goal) ->
+            update_liveness_goal(Goal, LiveInfo, !Liveness)
+        ;
+            true
+        )
+    ;
+        GoalExpr = switch(_, _, Cases),
+        ( find_reachable_case(Cases, Goal) ->
+            update_liveness_goal(Goal, LiveInfo, !Liveness)
+        ;
+            true
+        )
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        Else = hlds_goal(_, ElseGoalInfo),
+        ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
+        Cond = hlds_goal(_, CondGoalInfo),
+        CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
+        Then = hlds_goal(_, ThenGoalInfo),
+        ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
+        (
+            instmap_delta_is_reachable(ElseInstmapDelta)
+        ->
+            update_liveness_goal(Else, LiveInfo, !Liveness)
+        ;
+            instmap_delta_is_reachable(CondInstmapDelta),
+            instmap_delta_is_reachable(ThenInstmapDelta)
+        ->
+            update_liveness_goal(Cond, LiveInfo, !Liveness),
+            update_liveness_goal(Then, LiveInfo, !Liveness)
+        ;
+            true
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_Reason, SubGoal)
+        ),
+        update_liveness_goal(SubGoal, LiveInfo, !Liveness)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "update_liveness_expr: shorthand")
     ).
-update_liveness_expr(negation(Goal), _, LiveInfo, !Liveness) :-
-    update_liveness_goal(Goal, LiveInfo, !Liveness).
-update_liveness_expr(scope(_, Goal), _, LiveInfo, !Liveness) :-
-    update_liveness_goal(Goal, LiveInfo, !Liveness).
-update_liveness_expr(shorthand(_), _, _, _, _) :-
-    unexpected(this_file, "update_liveness_expr: shorthand").
 
 :- pred update_liveness_conj(list(hlds_goal)::in, live_info::in,
     set(prog_var)::in, set(prog_var)::out) is det.
@@ -1278,138 +1302,143 @@ detect_resume_points_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     set(prog_var)::in, set(prog_var)::out, hlds_goal_info::in,
     live_info::in, set(prog_var)::in) is det.
 
-detect_resume_points_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
-        !Liveness, _, LiveInfo, ResumeVars0) :-
+detect_resume_points_in_goal_2(GoalExpr0, GoalExpr,
+        !Liveness, GoalInfo0, LiveInfo, ResumeVars0) :-
     (
-        ConjType = plain_conj,
-        detect_resume_points_in_conj(Goals0, Goals, !Liveness,
-            LiveInfo, ResumeVars0)
-    ;
-        ConjType = parallel_conj,
-        detect_resume_points_in_par_conj(Goals0, Goals, !Liveness,
-            LiveInfo, ResumeVars0)
-    ).
-
-detect_resume_points_in_goal_2(disj(Goals0), disj(Goals), !Liveness, GoalInfo,
-        LiveInfo, ResumeVars0) :-
-    CodeModel = goal_info_get_code_model(GoalInfo),
-    (
-        CodeModel = model_non,
-        detect_resume_points_in_non_disj(Goals0, Goals, !Liveness,
-            LiveInfo, ResumeVars0, _)
-    ;
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            detect_resume_points_in_conj(Goals0, Goals, !Liveness,
+                LiveInfo, ResumeVars0)
+        ;
+            ConjType = parallel_conj,
+            detect_resume_points_in_par_conj(Goals0, Goals, !Liveness,
+                LiveInfo, ResumeVars0)
         ),
-        detect_resume_points_in_pruned_disj(Goals0, Goals, !Liveness,
-            LiveInfo, ResumeVars0, _)
-    ).
-
-detect_resume_points_in_goal_2(switch(Var, CF, Cases0), switch(Var, CF, Cases),
-        !Liveness, _, LiveInfo, ResumeVars0) :-
-    detect_resume_points_in_cases(Cases0, Cases, !Liveness,
-        LiveInfo, ResumeVars0).
-
-detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), Liveness0, LivenessThen,
-        GoalInfo0, LiveInfo, ResumeVars0) :-
-    % Compute the set of variables that may be needed at the start
-    % of the else part and attach this set to the condition.
-    Else0 = hlds_goal(_ElseExpr0, ElseInfo0),
-    goal_info_get_pre_deaths(ElseInfo0, ElsePreDeath0),
-    set.difference(Liveness0, ElsePreDeath0, CondResumeVars0),
-    liveness.maybe_complete_with_typeinfos(LiveInfo, CondResumeVars0,
-        CondResumeVars1),
-    % ResumeVars0 should already have been completed.
-    set.union(CondResumeVars1, ResumeVars0, CondResumeVars),
-
-    detect_resume_points_in_goal(Cond0, Cond1, Liveness0, LivenessCond,
-        LiveInfo, CondResumeVars),
-    detect_resume_points_in_goal(Then0, Then, LivenessCond, LivenessThen,
-        LiveInfo, ResumeVars0),
-    detect_resume_points_in_goal(Else0, Else, Liveness0, LivenessElse,
-        LiveInfo, ResumeVars0),
-
-    % Figure out which entry labels we need at the resumption point.
-    % By minimizing the number of labels we use, we also minimize
-    % the amount of data movement code we emit between such labels.
-    (
-        cannot_stack_flush(Cond1),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
         CodeModel = goal_info_get_code_model(GoalInfo0),
-        CodeModel \= model_non
-    ->
-        CondResumeLocs = resume_locs_orig_only
+        (
+            CodeModel = model_non,
+            detect_resume_points_in_non_disj(Goals0, Goals, !Liveness,
+                LiveInfo, ResumeVars0, _)
+        ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
+            detect_resume_points_in_pruned_disj(Goals0, Goals, !Liveness,
+                LiveInfo, ResumeVars0, _)
+        ),
+        GoalExpr = disj(Goals)
     ;
-        set.empty(CondResumeVars)
-    ->
-        % There is no difference between orig_only and stack_only when
-        % there are no resume variables, but some parts of code_info
-        % insist on a stack label if e.g. the condition contains
-        % commits, which is why we choose to use stack_only here.
-        CondResumeLocs = resume_locs_stack_only
+        GoalExpr0 = switch(Var, CF, Cases0),
+        detect_resume_points_in_cases(Cases0, Cases, !Liveness,
+            LiveInfo, ResumeVars0),
+        GoalExpr = switch(Var, CF, Cases)
     ;
-        cannot_fail_before_stack_flush(Cond1)
-    ->
-        CondResumeLocs = resume_locs_stack_only
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        Liveness0 = !.Liveness,
+
+        % Compute the set of variables that may be needed at the start
+        % of the else part and attach this set to the condition.
+        Else0 = hlds_goal(_ElseExpr0, ElseInfo0),
+        goal_info_get_pre_deaths(ElseInfo0, ElsePreDeath0),
+        set.difference(Liveness0, ElsePreDeath0, CondResumeVars0),
+        liveness.maybe_complete_with_typeinfos(LiveInfo, CondResumeVars0,
+            CondResumeVars1),
+        % ResumeVars0 should already have been completed.
+        set.union(CondResumeVars1, ResumeVars0, CondResumeVars),
+
+        detect_resume_points_in_goal(Cond0, Cond1, Liveness0, LivenessCond,
+            LiveInfo, CondResumeVars),
+        detect_resume_points_in_goal(Then0, Then, LivenessCond, LivenessThen,
+            LiveInfo, ResumeVars0),
+        detect_resume_points_in_goal(Else0, Else, Liveness0, LivenessElse,
+            LiveInfo, ResumeVars0),
+
+        % Figure out which entry labels we need at the resumption point.
+        % By minimizing the number of labels we use, we also minimize
+        % the amount of data movement code we emit between such labels.
+        (
+            cannot_stack_flush(Cond1),
+            CodeModel = goal_info_get_code_model(GoalInfo0),
+            CodeModel \= model_non
+        ->
+            CondResumeLocs = resume_locs_orig_only
+        ;
+            set.empty(CondResumeVars)
+        ->
+            % There is no difference between orig_only and stack_only when
+            % there are no resume variables, but some parts of code_info
+            % insist on a stack label if e.g. the condition contains
+            % commits, which is why we choose to use stack_only here.
+            CondResumeLocs = resume_locs_stack_only
+        ;
+            cannot_fail_before_stack_flush(Cond1)
+        ->
+            CondResumeLocs = resume_locs_stack_only
+        ;
+            CondResumeLocs = resume_locs_stack_and_orig
+        ),
+
+        % Attach the set of variables needed after the condition
+        % as the resume point set of the condition.
+        CondResume = resume_point(CondResumeVars, CondResumeLocs),
+        goal_set_resume_point(CondResume, Cond1, Cond),
+
+        require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo),
+
+        !:Liveness = LivenessThen,
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        CondResumeLocs = resume_locs_stack_and_orig
-    ),
+        GoalExpr0 = negation(SubGoal0),
+        Liveness0 = !.Liveness,
 
-    % Attach the set of variables needed after the condition
-    % as the resume point set of the condition.
-    CondResume = resume_point(CondResumeVars, CondResumeLocs),
-    goal_set_resume_point(CondResume, Cond1, Cond),
+        detect_resume_points_in_goal(SubGoal0, _, Liveness0, Liveness,
+            LiveInfo, ResumeVars0),
+        liveness.maybe_complete_with_typeinfos(LiveInfo, Liveness,
+            CompletedLiveness),
+        % ResumeVars0 should already have been completed.
+        set.union(CompletedLiveness, ResumeVars0, ResumeVars1),
+        detect_resume_points_in_goal(SubGoal0, SubGoal1, Liveness0, _Liveness,
+            LiveInfo, ResumeVars1),
 
-    require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo).
+        % Figure out which entry labels we need at the resumption point.
+        % By minimizing the number of labels we use, we also minimize
+        % the amount of data movement code we emit between such labels.
+        ( cannot_stack_flush(SubGoal1) ->
+            ResumeLocs = resume_locs_orig_only
+        ; cannot_fail_before_stack_flush(SubGoal1) ->
+            ResumeLocs = resume_locs_stack_only
+        ;
+            ResumeLocs = resume_locs_stack_and_orig
+        ),
 
-detect_resume_points_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
-        !Liveness, _, LiveInfo, ResumeVars0) :-
-    detect_resume_points_in_goal(Goal0, Goal, !Liveness,
-        LiveInfo, ResumeVars0).
+        % Attach the set of variables alive after the negation
+        % as the resume point set of the negated goal.
+        Resume = resume_point(ResumeVars1, ResumeLocs),
+        goal_set_resume_point(Resume, SubGoal1, SubGoal),
 
-detect_resume_points_in_goal_2(negation(Goal0), negation(Goal),
-        Liveness0, Liveness, _, LiveInfo, ResumeVars0) :-
-    detect_resume_points_in_goal(Goal0, _, Liveness0, Liveness,
-        LiveInfo, ResumeVars0),
-    liveness.maybe_complete_with_typeinfos(LiveInfo, Liveness,
-        CompletedLiveness),
-    % ResumeVars0 should already have been completed.
-    set.union(CompletedLiveness, ResumeVars0, ResumeVars1),
-    detect_resume_points_in_goal(Goal0, Goal1, Liveness0, _Liveness,
-        LiveInfo, ResumeVars1),
-
-    % Figure out which entry labels we need at the resumption point.
-    % By minimizing the number of labels we use, we also minimize
-    % the amount of data movement code we emit between such labels.
-    ( cannot_stack_flush(Goal1) ->
-        ResumeLocs = resume_locs_orig_only
-    ; cannot_fail_before_stack_flush(Goal1) ->
-        ResumeLocs = resume_locs_stack_only
+        !:Liveness = Liveness,
+        GoalExpr = negation(SubGoal)
     ;
-        ResumeLocs = resume_locs_stack_and_orig
-    ),
-
-    % Attach the set of variables alive after the negation
-    % as the resume point set of the negated goal.
-    Resume = resume_point(ResumeVars1, ResumeLocs),
-    goal_set_resume_point(Resume, Goal1, Goal).
-
-detect_resume_points_in_goal_2(Goal @ generic_call(_, _, _, _), Goal,
-        !Liveness, _, _, _).
-
-detect_resume_points_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), Goal,
-        !Liveness, _, _, _).
-
-detect_resume_points_in_goal_2(Goal @ unify(_, _, _, _, _), Goal,
-        !Liveness, _, _, _).
-
-detect_resume_points_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
-        Goal, !Liveness, _, _, _).
-
-detect_resume_points_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file,
-        "detect_resume_points_in_goal_2: unexpected shorthand").
+        GoalExpr0 = scope(Reason, SubGoal0),
+        detect_resume_points_in_goal(SubGoal0, SubGoal, !Liveness,
+            LiveInfo, ResumeVars0),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "detect_resume_points_in_goal_2: shorthand")
+    ).
 
 :- pred detect_resume_points_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     set(prog_var)::in, set(prog_var)::out,

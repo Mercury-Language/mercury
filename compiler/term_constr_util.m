@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -291,7 +291,7 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
 
 add_context_to_constr_termination_info(no, _, no).
 add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
-        yes(cannot_loop(import_supplied))).
+        yes(cannot_loop(term_reason_import_supplied))).
 add_context_to_constr_termination_info(yes(can_loop(_)), Context,
         yes(can_loop([Context - imported_pred]))).
 

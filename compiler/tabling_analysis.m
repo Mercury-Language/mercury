@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -230,13 +230,19 @@ combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
     (
         % If none of the procedures calls tabled procedures or is conditional
         % then the SCC cannot call tabled procedures.
-        all [ProcResult] list.member(ProcResult, ProcResults) =>
+        all [ProcResult] (
+            list.member(ProcResult, ProcResults)
+        =>
             ProcResult ^ status = mm_tabled_will_not_call
+        )
     ->
         SCC_Result = mm_tabled_will_not_call
     ;
-        all [ProcResult] list.member(ProcResult, ProcResults) =>
-                ProcResult ^ status \= mm_tabled_may_call,
+        all [ProcResult] (
+            list.member(ProcResult, ProcResults)
+        =>
+            ProcResult ^ status \= mm_tabled_may_call
+        ),
         some [ConditionalResult] (
             list.member(ConditionalResult, ProcResults),
             ConditionalResult ^ status = mm_tabled_conditional
@@ -302,71 +308,75 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo, !IO) :-
     mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_goal_for_mm_tabling(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
-        Result, MaybeStatus, !ModuleInfo, !IO) :-
-    check_goal_for_mm_tabling_2(SCC, VarTypes, GoalExpr, GoalInfo, Result,
-        MaybeStatus, !ModuleInfo, !IO).
-
-:- pred check_goal_for_mm_tabling_2(scc::in, vartypes::in, hlds_goal_expr::in,
-    hlds_goal_info::in, mm_tabling_status::out, maybe(analysis_status)::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-check_goal_for_mm_tabling_2(_, _, Goal, _, mm_tabled_will_not_call,
-        yes(optimal), !ModuleInfo, !IO) :-
-    Goal = unify(_, _, _, Kind, _),
-    (
-        Kind = complicated_unify(_, _, _),
-        unexpected(this_file, "complicated unify during mm tabling analysis.")
-    ;
-        ( Kind = construct(_, _, _, _, _, _, _)
-        ; Kind = deconstruct(_, _, _, _, _, _)
-        ; Kind = assign(_, _)
-        ; Kind = simple_test(_, _)
-        )
-    ).
-check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, _, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
-    CalleePPId = proc(CalleePredId, CalleeProcId),
-    check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO).
-check_goal_for_mm_tabling_2(_, _VarTypes, Goal, _GoalInfo, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = generic_call(Details, _Args, _ArgModes, _),
-    check_generic_call_for_mm_tabling(Details, Result, MaybeAnalysisStatus,
-        !ModuleInfo, !IO).
-check_goal_for_mm_tabling_2(SCC, VarTypes, negation(Goal), _, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO).
-check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, _, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = scope(_, InnerGoal),
-    check_goal_for_mm_tabling(SCC, VarTypes, InnerGoal, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO).
-check_goal_for_mm_tabling_2(_, _, Goal, _, Result, MaybeAnalysisStatus,
+check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO) :-
-    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    Result = get_mm_tabling_status_from_attributes(Attributes),
-    MaybeAnalysisStatus = yes(optimal).
-check_goal_for_mm_tabling_2(_, _, shorthand(_), _, _, _, !ModuleInfo, !IO) :-
-    unexpected(this_file,
-        "shorthand goal encountered during mm tabling analysis.").
-check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, _,
-        Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
-        Goal = conj(_, Goals)
+        GoalExpr = unify(_, _, _, Kind, _),
+        Result = mm_tabled_will_not_call,
+        MaybeAnalysisStatus = yes(optimal),
+        (
+            ( Kind = construct(_, _, _, _, _, _, _)
+            ; Kind = deconstruct(_, _, _, _, _, _)
+            ; Kind = assign(_, _)
+            ; Kind = simple_test(_, _)
+            )
+        ;
+            Kind = complicated_unify(_, _, _),
+            unexpected(this_file,
+                "complicated unify during mm tabling analysis.")
+        )
     ;
-        Goal = disj(Goals)
+        GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
+        CalleePPId = proc(CalleePredId, CalleeProcId),
+        check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
+            MaybeAnalysisStatus, !ModuleInfo, !IO)
     ;
-        Goal = if_then_else(_, If, Then, Else),
-        Goals = [If, Then, Else]
+        GoalExpr = generic_call(Details, _Args, _ArgModes, _),
+        (
+            % XXX We should use any results from closure analysis here.
+            Details = higher_order(_Var, _, _, _),
+            Result  = mm_tabled_may_call
+        ;
+            Details = class_method(_, _, _, _),
+            Result  = mm_tabled_may_call
+        ;
+            Details = event_call(_),
+            Result = mm_tabled_will_not_call
+        ;
+            Details = cast(_),
+            Result = mm_tabled_will_not_call
+        ),
+        MaybeAnalysisStatus = yes(optimal)
     ;
-        Goal = switch(_, _, Cases),
-        Goals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases)
-    ),
-    check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result,
-        MaybeAnalysisStatus, !ModuleInfo, !IO).
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        Result = get_mm_tabling_status_from_attributes(Attributes),
+        MaybeAnalysisStatus = yes(optimal)
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        check_goal_for_mm_tabling(SCC, VarTypes, SubGoal, Result,
+            MaybeAnalysisStatus, !ModuleInfo, !IO)
+    ;
+        (
+            GoalExpr = conj(_, Goals)
+        ;
+            GoalExpr = disj(Goals)
+        ;
+            GoalExpr = if_then_else(_, Cond, Then, Else),
+            Goals = [Cond, Then, Else]
+        ;
+            GoalExpr = switch(_, _, Cases),
+            Goals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases)
+        ),
+        check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result,
+            MaybeAnalysisStatus, !ModuleInfo, !IO)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file,
+            "shorthand goal encountered during mm tabling analysis.")
+    ).
 
 :- pred check_goals_for_mm_tabling(scc::in, vartypes::in,
     hlds_goals::in, mm_tabling_status::out, maybe(analysis_status)::out,
@@ -390,9 +400,9 @@ check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result, MaybeAnalysisStatus,
     scc::in, vartypes::in, mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_call_for_mm_tabling(CalleePPId @ proc(CalleePredId, _),
-        CallArgs, SCC, VarTypes, Result, MaybeAnalysisStatus, !ModuleInfo,
-        !IO) :-
+check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
+        MaybeAnalysisStatus, !ModuleInfo, !IO) :-
+    CalleePPId = proc(CalleePredId, _),
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
     (
         % Handle (mutually-)recursive calls.
@@ -409,9 +419,9 @@ check_call_for_mm_tabling(CalleePPId @ proc(CalleePredId, _),
     ;
         % Handle builtin unify and compare.
         %
-        % NOTE: the type specific unify and compare predicates are just
-        %       treated as though they were normal predicates.
-        %
+        % NOTE: The type specific unify and compare predicates are just
+        % treated as though they were normal predicates.
+
         ModuleName = pred_info_module(CalleePredInfo),
         any_mercury_builtin_module(ModuleName),
         Name = pred_info_name(CalleePredInfo),
@@ -422,7 +432,6 @@ check_call_for_mm_tabling(CalleePPId @ proc(CalleePredId, _),
         special_pred_name_arity(SpecialPredId, GenericPredName,
             _TypeSpecificPredName, Arity),
         Name = GenericPredName
-
     ->
         % XXX user-defined uc
         Result = mm_tabled_may_call,
@@ -453,7 +462,6 @@ check_call_for_mm_tabling(CalleePPId @ proc(CalleePredId, _),
         ;
             % Otherwise, the information (if we have any) will be in the
             % mm_tabling_info table.
-            %
             check_call_for_mm_tabling_calls(!.ModuleInfo, VarTypes,
                 CalleePPId, CallArgs, MaybeResult),
             (
@@ -474,36 +482,6 @@ check_call_for_mm_tabling(CalleePPId @ proc(CalleePredId, _),
                 )
             )
         )
-    ).
-
-%----------------------------------------------------------------------------%
-%
-% Code for checking generic calls
-%
-
-:- pred check_generic_call_for_mm_tabling(generic_call::in,
-    mm_tabling_status::out, maybe(analysis_status)::out, module_info::in,
-    module_info::out, io::di, io::uo) is det.
-
-check_generic_call_for_mm_tabling(Details, Result, MaybeAnalysisStatus,
-        !ModuleInfo, !IO) :-
-    (
-        % XXX use results of closure analysis here.
-        Details = higher_order(_Var, _, _, _),
-        Result  = mm_tabled_may_call,
-        MaybeAnalysisStatus = yes(optimal)
-    ;
-        Details = class_method(_, _, _, _),
-        Result  = mm_tabled_may_call,
-        MaybeAnalysisStatus = yes(optimal)
-    ;
-        Details = event_call(_),
-        Result = mm_tabled_will_not_call,
-        MaybeAnalysisStatus = yes(optimal)
-    ;
-        Details = cast(_),
-        Result = mm_tabled_will_not_call,
-        MaybeAnalysisStatus = yes(optimal)
     ).
 
 %----------------------------------------------------------------------------%
@@ -552,8 +530,7 @@ check_call_for_mm_tabling_calls(ModuleInfo, _VarTypes, PPId, _CallArgs,
     mm_tabling_status::in, mm_tabling_status::out) is det.
 
 combine_mm_tabling_status(mm_tabled_will_not_call, Status, Status).
-combine_mm_tabling_status(mm_tabled_may_call, _,
-        mm_tabled_may_call).
+combine_mm_tabling_status(mm_tabled_may_call, _, mm_tabled_may_call).
 combine_mm_tabling_status(mm_tabled_conditional, mm_tabled_will_not_call,
         mm_tabled_conditional).
 combine_mm_tabling_status(mm_tabled_conditional, mm_tabled_conditional,
@@ -619,76 +596,92 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     mm_tabling_status::out, module_info::in, module_info::out, io::di, io::uo)
     is det.
 
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = conj(ConjType, Conjuncts0),
-    annotate_goal_list(VarTypes, Conjuncts0, Conjuncts, Status, !ModuleInfo,
-        !IO),
-    !:Goal = conj(ConjType, Conjuncts).
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
-    CalleePPId = proc(CalleePredId, CalleeProcId),
-    annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo, !IO).
-annotate_goal_2(_VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = generic_call(Details, _Args, _Modes, _Detism),
-    annotate_generic_call(Details, Status, !ModuleInfo, !IO).
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = switch(Var, CanFail, Cases0),
-    annotate_cases(VarTypes, Cases0, Cases, Status, !ModuleInfo, !IO),
-    !:Goal = switch(Var, CanFail, Cases).
-annotate_goal_2(_VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = unify(_, _, _, Kind, _),
+annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo, !IO) :-
     (
-        Kind = complicated_unify(_, _, _),
-        unexpected(this_file, "complicated unify during tabling analysis.")
-    ;
-        ( Kind = construct(_, _, _, _, _, _, _)
-        ; Kind = deconstruct(_, _, _, _, _, _)
-        ; Kind = assign(_, _)
-        ; Kind = simple_test(_, _)
-        )
-    ),
-    Status = mm_tabled_will_not_call.
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = disj(Disjuncts0),
-    annotate_goal_list(VarTypes, Disjuncts0, Disjuncts, Status, !ModuleInfo,
-        !IO),
-    !:Goal = disj(Disjuncts).
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = negation(NegGoal0),
-    annotate_goal(VarTypes, NegGoal0, NegGoal, Status, !ModuleInfo, !IO),
-    !:Goal = negation(NegGoal).
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = scope(Reason, InnerGoal0),
-    annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status, !ModuleInfo, !IO),
-    !:Goal = scope(Reason, InnerGoal).
-annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = if_then_else(Vars, If0, Then0, Else0),
-    annotate_goal(VarTypes, If0, If, IfStatus, !ModuleInfo, !IO),
-    annotate_goal(VarTypes, Then0, Then, ThenStatus, !ModuleInfo, !IO),
-    annotate_goal(VarTypes, Else0, Else, ElseStatus, !ModuleInfo, !IO),
-    (
-        IfStatus   = mm_tabled_will_not_call,
-        ThenStatus = mm_tabled_will_not_call,
-        ElseStatus = mm_tabled_will_not_call
-    ->
+        !.GoalExpr = unify(_, _, _, Kind, _),
+        (
+            Kind = complicated_unify(_, _, _),
+            unexpected(this_file, "complicated unify during tabling analysis.")
+        ;
+            ( Kind = construct(_, _, _, _, _, _, _)
+            ; Kind = deconstruct(_, _, _, _, _, _)
+            ; Kind = assign(_, _)
+            ; Kind = simple_test(_, _)
+            )
+        ),
         Status = mm_tabled_will_not_call
     ;
-        Status = mm_tabled_may_call
-    ),
-    !:Goal = if_then_else(Vars, If, Then, Else).
-annotate_goal_2(_, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    Status = get_mm_tabling_status_from_attributes(Attributes).
-annotate_goal_2(_, shorthand(_), _, _, _, _, _, _) :-
-    unexpected(this_file, "shorthand goal").
+        !.GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
+        CalleePPId = proc(CalleePredId, CalleeProcId),
+        annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo, !IO)
+    ;
+        !.GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        Status = get_mm_tabling_status_from_attributes(Attributes)
+    ;
+        !.GoalExpr = generic_call(GenericCall, _Args, _Modes, _Detism),
+        (
+            % XXX We should use any results from closure analysis here.
+            GenericCall = higher_order(_Var, _, _, _),
+            Status = mm_tabled_may_call
+        ;
+            GenericCall = class_method(_, _, _, _),
+            Status = mm_tabled_may_call
+        ;
+            GenericCall = event_call(_),
+            Status = mm_tabled_will_not_call
+        ;
+            GenericCall = cast(_),
+            Status = mm_tabled_will_not_call
+        )
+    ;
+        !.GoalExpr = conj(ConjType, Conjuncts0),
+        annotate_goal_list(VarTypes, Conjuncts0, Conjuncts, Status,
+            !ModuleInfo, !IO),
+        !:GoalExpr = conj(ConjType, Conjuncts)
+    ;
+        !.GoalExpr = disj(Disjuncts0),
+        annotate_goal_list(VarTypes, Disjuncts0, Disjuncts, Status,
+            !ModuleInfo, !IO),
+        !:GoalExpr = disj(Disjuncts)
+    ;
+        !.GoalExpr = switch(Var, CanFail, Cases0),
+        annotate_cases(VarTypes, Cases0, Cases, Status, !ModuleInfo, !IO),
+        !:GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        !.GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
+        annotate_goal(VarTypes, Cond0, Cond, CondStatus, !ModuleInfo, !IO),
+        annotate_goal(VarTypes, Then0, Then, ThenStatus, !ModuleInfo, !IO),
+        annotate_goal(VarTypes, Else0, Else, ElseStatus, !ModuleInfo, !IO),
+        (
+            CondStatus = mm_tabled_will_not_call,
+            ThenStatus = mm_tabled_will_not_call,
+            ElseStatus = mm_tabled_will_not_call
+        ->
+            Status = mm_tabled_will_not_call
+        ;
+            Status = mm_tabled_may_call
+        ),
+        !:GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        !.GoalExpr = negation(SubGoal0),
+        annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo, !IO),
+        !:GoalExpr = negation(SubGoal)
+    ;
+        !.GoalExpr = scope(Reason, SubGoal0),
+        annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo, !IO),
+        !:GoalExpr = scope(Reason, SubGoal)
+    ;
+        !.GoalExpr = shorthand(_),
+        unexpected(this_file, "shorthand goal")
+    ).
 
 :- pred annotate_goal_list(vartypes::in, hlds_goals::in, hlds_goals::out,
     mm_tabling_status::out, module_info::in, module_info::out, io::di, io::uo)
     is det.
 
 annotate_goal_list(VarTypes, !Goals, Status, !ModuleInfo, !IO) :-
-    list.map2_foldl2(annotate_goal(VarTypes), !Goals, Statuses, !ModuleInfo,
-        !IO),
+    list.map2_foldl2(annotate_goal(VarTypes), !Goals, Statuses,
+        !ModuleInfo, !IO),
     list.foldl(combine_mm_tabling_status, Statuses, mm_tabled_will_not_call,
         Status).
 
@@ -715,8 +708,8 @@ annotate_case(VarTypes, !Case, Status, !ModuleInfo, !IO) :-
     mm_tabling_status::out, module_info::in, module_info::out, io::di, io::uo)
     is det.
 
-annotate_call(CalleePPId @ proc(CalleePredId, _), CallArgs, VarTypes, Status,
-        !ModuleInfo, !IO) :-
+annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo, !IO) :-
+    CalleePPId = proc(CalleePredId, _),
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
     (
         pred_info_is_builtin(CalleePredInfo)
@@ -751,7 +744,6 @@ annotate_call(CalleePPId @ proc(CalleePredId, _), CallArgs, VarTypes, Status,
             SCC = [],
             search_analysis_status(CalleePPId, Result, AnalysisStatus, SCC,
                 !ModuleInfo, !IO),
-
             (
                 AnalysisStatus = invalid,
                 unexpected(this_file,
@@ -782,25 +774,6 @@ annotate_call(CalleePPId @ proc(CalleePredId, _), CallArgs, VarTypes, Status,
                 Status = mm_tabled_may_call
             )
         )
-    ).
-
-:- pred annotate_generic_call(generic_call::in, mm_tabling_status::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-annotate_generic_call(GenericCall, Status, !ModuleInfo, !IO) :-
-    (
-        % XXX use results of closure analysis here.
-        GenericCall = higher_order(_Var, _, _, _),
-        Status = mm_tabled_may_call
-    ;
-        GenericCall = class_method(_, _, _, _),
-        Status = mm_tabled_may_call
-    ;
-        GenericCall = event_call(_),
-        Status = mm_tabled_will_not_call
-    ;
-        GenericCall = cast(_),
-        Status = mm_tabled_will_not_call
     ).
 
 %----------------------------------------------------------------------------%

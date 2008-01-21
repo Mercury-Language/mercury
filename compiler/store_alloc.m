@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: store_alloc.m.
 % Original author: conway.
 % Extensive modification by zs.
-% 
+%
 % Allocates the storage location for each live variable at the end of
 % each branched structure, so that the code generator will generate code
 % which puts the variable in the same place in each branch.
@@ -22,7 +22,7 @@
 %
 % See compiler/notes/allocation.html for a description of the framework that
 % this pass operates within.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.store_alloc.
@@ -144,7 +144,7 @@ store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     set.difference(Liveness0,  PreDeaths, Liveness1),
     set.union(Liveness1, PreBirths, Liveness2),
     store_alloc_in_goal_2(GoalExpr0, GoalExpr, Liveness2, Liveness3,
-        !LastLocns, ResumeVars0, PostDeaths, StoreAllocInfo),
+        !LastLocns, ResumeVars0, StoreAllocInfo),
     set.difference(Liveness3, PostDeaths, Liveness4),
     % If any variables magically become live in the PostBirths,
     % then they have to mundanely become live in a parallel goal,
@@ -174,76 +174,79 @@ store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     %
 :- pred store_alloc_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     liveness_info::in, liveness_info::out,
-    last_locns::in, last_locns::out, set(prog_var)::in, set(prog_var)::in,
+    last_locns::in, last_locns::out, set(prog_var)::in,
     store_alloc_info::in) is det.
 
-store_alloc_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
-        !Liveness, !LastLocns, ResumeVars0, _, StoreAllocInfo) :-
+store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
+        ResumeVars0, StoreAllocInfo) :-
     (
-        ConjType = plain_conj,
-        store_alloc_in_conj(Goals0, Goals, !Liveness, !LastLocns,
-            ResumeVars0, StoreAllocInfo)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            store_alloc_in_conj(Goals0, Goals, !Liveness, !LastLocns,
+                ResumeVars0, StoreAllocInfo)
+        ;
+            ConjType = parallel_conj,
+            store_alloc_in_par_conj(Goals0, Goals, !Liveness, !LastLocns,
+                ResumeVars0, StoreAllocInfo)
+        ),
+        GoalExpr = conj(ConjType, Goals)
     ;
-        ConjType = parallel_conj,
-        store_alloc_in_par_conj(Goals0, Goals, !Liveness, !LastLocns,
-            ResumeVars0, StoreAllocInfo)
+        GoalExpr0 = disj(Goals0),
+        store_alloc_in_disj(Goals0, Goals, !Liveness,
+            !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
+        merge_last_locations(LastLocnsList, !:LastLocns),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        SubGoal0 = hlds_goal(_, SubGoalInfo0),
+        goal_info_get_resume_point(SubGoalInfo0, ResumeNot),
+        goal_info_resume_vars_and_loc(ResumeNot, ResumeNotVars, _),
+        store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !.LastLocns, _,
+            ResumeNotVars, StoreAllocInfo),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = switch(Var, Det, Cases0),
+        store_alloc_in_cases(Cases0, Cases, !Liveness,
+            !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
+        merge_last_locations(LastLocnsList, !:LastLocns),
+        GoalExpr = switch(Var, Det, Cases)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        Liveness0 = !.Liveness,
+        LastLocns0 = !.LastLocns,
+
+        Cond0 = hlds_goal(_, CondGoalInfo0),
+        goal_info_get_resume_point(CondGoalInfo0, ResumeCond),
+        goal_info_resume_vars_and_loc(ResumeCond, ResumeCondVars, _),
+        store_alloc_in_goal(Cond0, Cond, Liveness0, Liveness1,
+            LastLocns0, LastLocnsCond, ResumeCondVars, StoreAllocInfo),
+        store_alloc_in_goal(Then0, Then, Liveness1, Liveness,
+            LastLocnsCond, LastLocnsThen, ResumeVars0, StoreAllocInfo),
+        store_alloc_in_goal(Else0, Else, Liveness0, _Liveness2,
+            LastLocns0, LastLocnsElse, ResumeVars0, StoreAllocInfo),
+        merge_last_locations([LastLocnsThen, LastLocnsElse], LastLocns),
+
+        !:Liveness = Liveness,
+        !:LastLocns = LastLocns,
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = scope(Remove, SubGoal0),
+        store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !LastLocns,
+            ResumeVars0, StoreAllocInfo),
+        GoalExpr = scope(Remove, SubGoal)
+    ;
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "store_alloc_in_goal_2: shorthand")
     ).
-
-store_alloc_in_goal_2(disj(Goals0), disj(Goals), !Liveness, !LastLocns,
-        ResumeVars0, _, StoreAllocInfo) :-
-    store_alloc_in_disj(Goals0, Goals, !Liveness,
-        !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
-    merge_last_locations(LastLocnsList, !:LastLocns).
-
-store_alloc_in_goal_2(negation(Goal0), negation(Goal), !Liveness, !LastLocns,
-        _ResumeVars0, _, StoreAllocInfo) :-
-    Goal0 = hlds_goal(_, GoalInfo0),
-    goal_info_get_resume_point(GoalInfo0, ResumeNot),
-    goal_info_resume_vars_and_loc(ResumeNot, ResumeNotVars, _),
-    store_alloc_in_goal(Goal0, Goal, !Liveness, !.LastLocns, _,
-        ResumeNotVars, StoreAllocInfo).
-
-store_alloc_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
-        !Liveness, !LastLocns, ResumeVars0, _, StoreAllocInfo) :-
-    store_alloc_in_cases(Cases0, Cases, !Liveness,
-        !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
-    merge_last_locations(LastLocnsList, !:LastLocns).
-
-store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else),
-        Liveness0, Liveness, LastLocns0, LastLocns,
-        ResumeVars0, _, StoreAllocInfo) :-
-    Cond0 = hlds_goal(_, CondGoalInfo0),
-    goal_info_get_resume_point(CondGoalInfo0, ResumeCond),
-    goal_info_resume_vars_and_loc(ResumeCond, ResumeCondVars, _),
-    store_alloc_in_goal(Cond0, Cond, Liveness0, Liveness1,
-        LastLocns0, LastLocnsCond, ResumeCondVars, StoreAllocInfo),
-    store_alloc_in_goal(Then0, Then, Liveness1, Liveness,
-        LastLocnsCond, LastLocnsThen, ResumeVars0, StoreAllocInfo),
-    store_alloc_in_goal(Else0, Else, Liveness0, _Liveness2,
-        LastLocns0, LastLocnsElse, ResumeVars0, StoreAllocInfo),
-    merge_last_locations([LastLocnsThen, LastLocnsElse], LastLocns).
-
-store_alloc_in_goal_2(scope(Remove, Goal0), scope(Remove, Goal),
-        !Liveness, !LastLocns, ResumeVars0, _, StoreAllocInfo) :-
-    store_alloc_in_goal(Goal0, Goal, !Liveness, !LastLocns,
-        ResumeVars0, StoreAllocInfo).
-
-store_alloc_in_goal_2(Goal @ generic_call(_, _, _, _), Goal,
-        !Liveness, !LastLocns, _, _, _).
-
-store_alloc_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), Goal,
-        !Liveness, !LastLocns, _, _, _).
-
-store_alloc_in_goal_2(Goal @ unify(_, _, _, _, _), Goal,
-        !Liveness, !LastLocns, _, _, _).
-
-store_alloc_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _), Goal,
-        !Liveness, !LastLocns, _, _, _).
-
-store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "store_alloc_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -361,18 +364,17 @@ merge_last_locations(LastLocnsList, LastLocns) :-
 
 store_alloc_allocate_storage(LiveVars, StoreAllocInfo, FollowVars,
         !:StoreMap) :-
-
-    % This addresses point 1
+    % This addresses point 1.
     map.keys(FollowVars, FollowKeys),
     store_alloc_remove_nonlive(FollowKeys, LiveVars, FollowVars, !:StoreMap),
 
-    % This addresses points 3 and 4
+    % This addresses points 3 and 4.
     map.keys(!.StoreMap, StoreVars),
     set.init(SeenLvals0),
     store_alloc_handle_conflicts_and_nonreal(StoreVars, 1, N,
         SeenLvals0, SeenLvals, !StoreMap),
 
-    % This addresses point 2
+    % This addresses point 2.
     store_alloc_allocate_extras(LiveVars, N, SeenLvals, StoreAllocInfo,
         !StoreMap).
 

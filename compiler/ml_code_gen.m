@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -881,32 +881,45 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 :- func foreign_type_required_imports(compilation_target, hlds_type_defn)
     = list(mlds_import).
 
-foreign_type_required_imports(target_c, _) = [].
-foreign_type_required_imports(target_il, TypeDefn) = Imports :-
-    hlds_data.get_type_defn_body(TypeDefn, Body),
+foreign_type_required_imports(Target, TypeDefn) = Imports :-
     (
-        Body = hlds_foreign_type(
-            foreign_type_body(MaybeIL, _MaybeC, _MaybeJava, _MaybeErlang))
-    ->
+        ( Target = target_c
+        ; Target = target_java
+        ; Target = target_asm
+        ),
+        Imports = []
+    ;
+        Target = target_il,
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            MaybeIL = yes(Data),
-            Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
-        ->
-            Name = il_assembly_name(mercury_module_name_to_mlds(
-                unqualified(Location))),
-            Imports = [foreign_import(Name)]
+            TypeBody = hlds_foreign_type(ForeignTypeBody),
+            ForeignTypeBody = foreign_type_body(MaybeIL,
+                _MaybeC, _MaybeJava, _MaybeErlang),
+            (
+                MaybeIL = yes(Data),
+                Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
+            ->
+                Name = il_assembly_name(mercury_module_name_to_mlds(
+                    unqualified(Location))),
+                Imports = [foreign_import(Name)]
+            ;
+                unexpected(this_file, "no IL type")
+            )
         ;
-            unexpected(this_file, "no IL type")
+            ( TypeBody = hlds_du_type(_, _, _,_,  _, _, _, _)
+            ; TypeBody = hlds_eqv_type(_)
+            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_abstract_type(_)
+            ),
+            Imports = []
         )
     ;
-        Imports = []
+        Target = target_x86_64,
+        unexpected(this_file, "target x86_64 and --high-level-code")
+    ;
+        Target = target_erlang,
+        unexpected(this_file, "foreign_type_required_imports: target erlang")
     ).
-foreign_type_required_imports(target_java, _) = [].
-foreign_type_required_imports(target_asm, _) = [].
-foreign_type_required_imports(target_x86_64, _) = _ :-
-    unexpected(this_file, "target x86_64 and --high-level-code").
-foreign_type_required_imports(target_erlang, _) = _ :-
-    unexpected(this_file, "foreign_type_required_imports: target erlang").
 
 :- pred ml_gen_defns(module_info::in, mlds_defns::out, io::di, io::uo) is det.
 
@@ -2152,114 +2165,108 @@ ml_gen_commit_var_decl(Context, VarName) =
     mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, Context,
-        Decls, Statements, !Info) :-
-    ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context,
-        Decls, Statements, !Info).
-
-ml_gen_goal_expr(scope(_, Goal), CodeModel, Context, Decls, Statements,
-        !Info) :-
-    ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info).
-
-ml_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else),
-        CodeModel, Context, Decls, Statements, !Info) :-
-    ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info).
-
-ml_gen_goal_expr(negation(Goal), CodeModel, Context,
-        Decls, Statements, !Info) :-
-    ml_gen_negation(Goal, CodeModel, Context, Decls, Statements, !Info).
-
-ml_gen_goal_expr(conj(_ConjType, Goals), CodeModel, Context,
-        Decls, Statements, !Info) :-
-    % XXX Currently we treat parallel conjunction the same as
-    % sequential conjunction -- parallelism is not yet implemented.
-    ml_gen_conj(Goals, CodeModel, Context, Decls, Statements, !Info).
-
-ml_gen_goal_expr(disj(Goals), CodeModel, Context,
-        Decls, Statements, !Info) :-
-    ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info).
-
-ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
-        Context, Decls, Statements, !Info) :-
-    determinism_to_code_model(Detism, CallCodeModel),
-    expect(unify(CodeModel, CallCodeModel), this_file,
-        "ml_gen_generic_call: code model mismatch"),
-    ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
-        Decls, Statements, !Info).
-
-ml_gen_goal_expr(plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
-        CodeModel, Context, Decls, Statements, !Info) :-
+ml_gen_goal_expr(GoalExpr, CodeModel, Context, Decls, Statements, !Info) :-
     (
-        BuiltinState = not_builtin,
-        ml_gen_var_list(!.Info, ArgVars, ArgLvals),
-        ml_gen_info_get_varset(!.Info, VarSet),
-        ArgNames = ml_gen_var_names(VarSet, ArgVars),
-        ml_variable_types(!.Info, ArgVars, ActualArgTypes),
-        ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
-            CodeModel, Context, no, Decls, Statements, !Info)
+        GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
+        ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
+            !Info)
     ;
-        ( BuiltinState = inline_builtin
-        ; BuiltinState = out_of_line_builtin
-        ),
-        ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
-            Decls, Statements, !Info)
-    ).
-
-ml_gen_goal_expr(unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
-        CodeModel, Context, Decls, Statements, !Info) :-
-    ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
-        !Info).
-
-ml_gen_goal_expr(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaImpl), CodeModel, OuterContext,
-        Decls, Statements, !Info) :-
-    (
-        PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         (
-            MaybeContext = yes(Context)
+            BuiltinState = not_builtin,
+            ml_gen_var_list(!.Info, ArgVars, ArgLvals),
+            ml_gen_info_get_varset(!.Info, VarSet),
+            ArgNames = ml_gen_var_names(VarSet, ArgVars),
+            ml_variable_types(!.Info, ArgVars, ActualArgTypes),
+            ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
+                CodeModel, Context, no, Decls, Statements, !Info)
         ;
-            MaybeContext = no,
-            Context = OuterContext
-        ),
-        (
-            MaybeTraceRuntimeCond = no,
-            ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-                PredId, ProcId, Args, ExtraArgs, ForeignCode,
-                Context, Decls, Statements, !Info)
-        ;
-            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-            ml_gen_trace_runtime_cond(TraceRuntimeCond, Context,
+            ( BuiltinState = inline_builtin
+            ; BuiltinState = out_of_line_builtin
+            ),
+            ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 Decls, Statements, !Info)
         )
     ;
-        PragmaImpl = fc_impl_model_non(LocalVarsDecls, LocalVarsContext,
-            FirstCode, FirstContext, LaterCode, LaterContext,
-            _Treatment, SharedCode, SharedContext),
-        expect(unify(ExtraArgs, []), this_file,
-            "ml_gen_goal_expr: extra args"),
-        expect(unify(MaybeTraceRuntimeCond, no), this_file,
-            "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
-        ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
-            PredId, ProcId, Args, OuterContext,
-            LocalVarsDecls, LocalVarsContext,
-            FirstCode, FirstContext, LaterCode, LaterContext,
-            SharedCode, SharedContext, Decls, Statements, !Info)
+        GoalExpr = generic_call(GenericCall, Vars, Modes, Detism),
+        determinism_to_code_model(Detism, CallCodeModel),
+        expect(unify(CodeModel, CallCodeModel), this_file,
+            "ml_gen_generic_call: code model mismatch"),
+        ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
+            Decls, Statements, !Info)
     ;
-        PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, _Context),
-        expect(unify(ExtraArgs, []), this_file,
-            "ml_gen_goal_expr: extra args"),
-        expect(unify(MaybeTraceRuntimeCond, no), this_file,
-            "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
-        ForeignCode = string.append_list([HandleReturn, " ",
-            Name, "(", Vars, ");"]),
-        ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-            PredId, ProcId, Args, ExtraArgs, ForeignCode,
-            OuterContext, Decls, Statements, !Info)
+        GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
+            Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
+        (
+            PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
+            (
+                MaybeContext = yes(ContextToUse)
+            ;
+                MaybeContext = no,
+                ContextToUse = Context
+            ),
+            (
+                MaybeTraceRuntimeCond = no,
+                ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
+                    PredId, ProcId, Args, ExtraArgs, ForeignCode,
+                    ContextToUse, Decls, Statements, !Info)
+            ;
+                MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+                ml_gen_trace_runtime_cond(TraceRuntimeCond, ContextToUse,
+                    Decls, Statements, !Info)
+            )
+        ;
+            PragmaImpl = fc_impl_model_non(LocalVarsDecls, LocalVarsContext,
+                FirstCode, FirstContext, LaterCode, LaterContext,
+                _Treatment, SharedCode, SharedContext),
+            expect(unify(ExtraArgs, []), this_file,
+                "ml_gen_goal_expr: extra args"),
+            expect(unify(MaybeTraceRuntimeCond, no), this_file,
+                "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
+            ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
+                PredId, ProcId, Args, Context,
+                LocalVarsDecls, LocalVarsContext,
+                FirstCode, FirstContext, LaterCode, LaterContext,
+                SharedCode, SharedContext, Decls, Statements, !Info)
+        ;
+            PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, _Context),
+            expect(unify(ExtraArgs, []), this_file,
+                "ml_gen_goal_expr: extra args"),
+            expect(unify(MaybeTraceRuntimeCond, no), this_file,
+                "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
+            ForeignCode = string.append_list([HandleReturn, " ",
+                Name, "(", Vars, ");"]),
+            ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
+                PredId, ProcId, Args, ExtraArgs, ForeignCode,
+                Context, Decls, Statements, !Info)
+        )
+    ;
+        GoalExpr = conj(_ConjType, Goals),
+        % XXX Currently we treat parallel conjunction the same as
+        % sequential conjunction -- parallelism is not yet implemented.
+        ml_gen_conj(Goals, CodeModel, Context, Decls, Statements, !Info)
+    ;
+        GoalExpr = disj(Goals),
+        ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info)
+    ;
+        GoalExpr = switch(Var, CanFail, CasesList),
+        ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context,
+            Decls, Statements, !Info)
+    ;
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements,
+            !Info)
+    ;
+        GoalExpr = negation(SubGoal),
+        ml_gen_negation(SubGoal, CodeModel, Context, Decls, Statements, !Info)
+    ;
+        GoalExpr = scope(_, SubGoal),
+        ml_gen_commit(SubGoal, CodeModel, Context, Decls, Statements, !Info)
+    ;
+        GoalExpr = shorthand(_),
+        % these should have been expanded out by now
+        unexpected(this_file, "ml_gen_goal_expr: unexpected shorthand")
     ).
-
-ml_gen_goal_expr(shorthand(_), _, _, _, _, !Info) :-
-    % these should have been expanded out by now
-    unexpected(this_file, "ml_gen_goal_expr: unexpected shorthand").
 
     % ml_foreign creates MLDS code to execute foreign language code.
     %
@@ -2404,13 +2411,12 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
     (
         CodeModel = model_non,
 
-        % For IL code, we can't call continutations because there is no syntax
-        % for calling managed function pointers in C#.  Instead we have
-        % to call back into IL and make the continuation call in IL. This is
-        % called an "indirect" success continuation call.
-        %
         (
             Target = target_il,
+            % For IL code, we can't call continutations because there is no
+            % syntax for calling managed function pointers in C#. Instead,
+            % we have to call back into IL and make the continuation call
+            % in IL. This is called an "indirect" success continuation call.
             ml_gen_call_current_success_cont_indirectly(Context, CallCont,
                 !Info)
         ;

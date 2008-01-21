@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_unify_gen.m
 % Main author: fjh
-% 
+%
 % This module is part of the MLDS code generator.
 % It handles MLDS code generation for unifications.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_unify_gen.
@@ -691,7 +691,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         Decls = []
     ;
         HowToConstruct = construct_statically(StaticArgs),
-        expect(unify(TakeAddr, []), this_file, 
+        expect(unify(TakeAddr, []), this_file,
             "ml_gen_new_object: cannot take address of static object's field"),
 
         % Find out the types of the constructor arguments.
@@ -1746,76 +1746,87 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 :- func ml_gen_tag_test_rval(cons_tag, mer_type, module_info, mlds_rval)
     = mlds_rval.
 
-ml_gen_tag_test_rval(string_tag(String), _, _, Rval) =
-    binop(str_eq, Rval, const(mlconst_string(String))).
-ml_gen_tag_test_rval(float_tag(Float), _, _, Rval) =
-    binop(float_eq, Rval, const(mlconst_float(Float))).
-ml_gen_tag_test_rval(int_tag(Int), _, _, Rval) =
-    binop(eq, Rval, const(mlconst_int(Int))).
-ml_gen_tag_test_rval(foreign_tag(ForeignLang, ForeignVal), _, _, Rval) =
-    binop(eq, Rval, const(mlconst_foreign(ForeignLang, ForeignVal,
-        mlds_native_int_type))).
-ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _, _Rval) = _TestRval :-
-    % This should never happen, since the error will be detected
-    % during mode checking.
-    unexpected(this_file, "Attempted higher-order unification").
-ml_gen_tag_test_rval(type_ctor_info_tag(_, _, _), _, _, _) = _ :-
-    unexpected(this_file, "Attempted type_ctor_info unification").
-ml_gen_tag_test_rval(base_typeclass_info_tag(_, _, _), _, _, _) = _ :-
-    unexpected(this_file, "Attempted base_typeclass_info unification").
-ml_gen_tag_test_rval(tabling_info_tag(_, _), _, _, _) = _ :-
-    unexpected(this_file, "Attempted tabling_info unification").
-ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_, _), _, _, _) = _ :-
-    unexpected(this_file, "Attempted deep_profiling_proc_layout unification").
-ml_gen_tag_test_rval(table_io_decl_tag(_, _), _, _, _) = _ :-
-    unexpected(this_file, "Attempted table_io_decl unification").
-ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(mlconst_true).
-ml_gen_tag_test_rval(single_functor_tag, _, _, _Rval) = const(mlconst_true).
-ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
-    binop(eq, unop(std_unop(tag), Rval),
-        unop(std_unop(mktag), const(mlconst_int(UnsharedTag)))).
-ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
-        VarType, ModuleInfo, Rval) = TagTest :-
-    SecondaryTagField = ml_gen_secondary_tag_rval(PrimaryTagVal, VarType,
-        ModuleInfo, Rval),
-    SecondaryTagTest = binop(eq, SecondaryTagField,
-        const(mlconst_int(SecondaryTagVal))),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
-    ( NumTagBits = 0 ->
-        % No need to test the primary tag.
-        TagTest = SecondaryTagTest
+ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
+    (
+        Tag = string_tag(String),
+        TagTestRval = binop(str_eq, Rval, const(mlconst_string(String)))
     ;
-        PrimaryTagTest = binop(eq,
-            unop(std_unop(tag), Rval),
-            unop(std_unop(mktag), const(mlconst_int(PrimaryTagVal)))),
-        TagTest = binop(logical_and, PrimaryTagTest, SecondaryTagTest)
-    ).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
-        TestRval :-
-    MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
-    TestRval = binop(eq, Rval,
-        unop(cast(MLDS_VarType), mkword(Bits,
-        unop(std_unop(mkbody), const(mlconst_int(Num)))))).
-ml_gen_tag_test_rval(reserved_address_tag(ReservedAddr), VarType, ModuleInfo,
-        Rval) = TestRval :-
-    MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
-    ReservedAddrRval = ml_gen_reserved_address(ModuleInfo, ReservedAddr,
-        MLDS_VarType),
-    TestRval = binop(eq, Rval, ReservedAddrRval).
-ml_gen_tag_test_rval(
-        shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
-        VarType, ModuleInfo, Rval) = FinalTestRval :-
-    % We first check that the Rval doesn't match any of the ReservedAddrs,
-    % and then check that it matches ThisTag.
-    CheckReservedAddrs = (func(RA, TestRval0) = TestRval :-
-        EqualRA = ml_gen_tag_test_rval(reserved_address_tag(RA), VarType,
+        Tag = float_tag(Float),
+        TagTestRval = binop(float_eq, Rval, const(mlconst_float(Float)))
+    ;
+        Tag = int_tag(Int),
+        TagTestRval = binop(eq, Rval, const(mlconst_int(Int)))
+    ;
+        Tag = foreign_tag(ForeignLang, ForeignVal),
+        Const = const(mlconst_foreign(ForeignLang, ForeignVal,
+            mlds_native_int_type)),
+        TagTestRval = binop(eq, Rval, Const)
+    ;
+        ( Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ),
+        unexpected(this_file, "ml_gen_tag_test_rval: bad tag")
+    ;
+        Tag = no_tag,
+        TagTestRval = const(mlconst_true)
+    ;
+        Tag = single_functor_tag,
+        TagTestRval = const(mlconst_true)
+    ;
+        Tag = unshared_tag(UnsharedTagNum),
+        RvalTag = unop(std_unop(tag), Rval),
+        UnsharedTag = unop(std_unop(mktag),
+            const(mlconst_int(UnsharedTagNum))),
+        TagTestRval = binop(eq, RvalTag, UnsharedTag)
+    ;
+        Tag = shared_remote_tag(PrimaryTagNum, SecondaryTagNum),
+        SecondaryTagField = ml_gen_secondary_tag_rval(PrimaryTagNum, Type,
             ModuleInfo, Rval),
-        TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
-    ),
-    MatchesThisTag = ml_gen_tag_test_rval(ThisTag, VarType, ModuleInfo, Rval),
-    FinalTestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
-        MatchesThisTag).
+        SecondaryTagTestRval = binop(eq, SecondaryTagField,
+            const(mlconst_int(SecondaryTagNum))),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
+        ( NumTagBits = 0 ->
+            % No need to test the primary tag.
+            TagTestRval = SecondaryTagTestRval
+        ;
+            RvalPTag = unop(std_unop(tag), Rval),
+            PrimaryTagRval = unop(std_unop(mktag),
+                const(mlconst_int(PrimaryTagNum))),
+            PrimaryTagTestRval = binop(eq, RvalPTag, PrimaryTagRval),
+            TagTestRval = binop(logical_and,
+                PrimaryTagTestRval, SecondaryTagTestRval)
+        )
+    ;
+        Tag = shared_local_tag(Bits, Num),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+        TagTestRval = binop(eq, Rval,
+            unop(cast(MLDS_Type),
+                mkword(Bits,
+                    unop(std_unop(mkbody), const(mlconst_int(Num))))))
+    ;
+        Tag = reserved_address_tag(ReservedAddr),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+        ReservedAddrRval = ml_gen_reserved_address(ModuleInfo, ReservedAddr,
+            MLDS_Type),
+        TagTestRval = binop(eq, Rval, ReservedAddrRval)
+    ;
+        Tag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
+        % We first check that the Rval doesn't match any of the ReservedAddrs,
+        % and then check that it matches ThisTag.
+        CheckReservedAddrs = (func(RA, TestRval0) = TestRval :-
+            EqualRA = ml_gen_tag_test_rval(reserved_address_tag(RA), Type,
+                ModuleInfo, Rval),
+            TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
+        ),
+        MatchesThisTag = ml_gen_tag_test_rval(ThisTag, Type, ModuleInfo, Rval),
+        TagTestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
+            MatchesThisTag)
+    ).
 
     % ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
     %
@@ -1855,11 +1866,7 @@ ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
 ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     FieldName = "data_tag",
     % Figure out the type name and arity.
-    ( type_to_ctor_and_args(Type, TypeCtor0, _) ->
-        TypeCtor = TypeCtor0
-    ;
-        unexpected(this_file, "ml_gen_hl_tag_field_id: invalid type")
-    ),
+    type_to_ctor_and_args_det(Type, TypeCtor, _),
     ml_gen_type_name(TypeCtor, QualifiedTypeName, TypeArity),
     QualifiedTypeName = qual(MLDS_Module, TypeQualKind, TypeName),
 
@@ -1919,32 +1926,29 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
 
 ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName, Globals)
         = FieldId :-
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
-        QualTypeName = qual(MLDS_Module, QualKind, TypeName),
-        TypeQualifier = mlds_append_class_qualifier(
-            MLDS_Module, QualKind, Globals, TypeName, TypeArity),
+    type_to_ctor_and_args_det(Type, TypeCtor, _),
+    ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
+    QualTypeName = qual(MLDS_Module, QualKind, TypeName),
+    TypeQualifier = mlds_append_class_qualifier(
+        MLDS_Module, QualKind, Globals, TypeName, TypeArity),
 
-        ( ml_tag_uses_base_class(Tag) ->
-            % In this case, there's only one functor for the type (other than
-            % reserved_address constants), and so the class name is determined
-            % by the type name.
-            ClassPtrType = mlds_ptr_type(mlds_class_type(QualTypeName,
-                TypeArity, mlds_class)),
-            QualifiedFieldName = qual(TypeQualifier, type_qual, FieldName)
-        ;
-            % In this case, the class name is determined by the constructor.
-            QualConsName = qual(TypeQualifier, type_qual, ConsName),
-            ClassPtrType = mlds_ptr_type(mlds_class_type(QualConsName,
-                ConsArity, mlds_class)),
-            FieldQualifier = mlds_append_class_qualifier(TypeQualifier,
-                type_qual, Globals, ConsName, ConsArity),
-            QualifiedFieldName = qual(FieldQualifier, type_qual, FieldName)
-        ),
-        FieldId = named_field(QualifiedFieldName, ClassPtrType)
+    ( ml_tag_uses_base_class(Tag) ->
+        % In this case, there's only one functor for the type (other than
+        % reserved_address constants), and so the class name is determined
+        % by the type name.
+        ClassPtrType = mlds_ptr_type(mlds_class_type(QualTypeName,
+            TypeArity, mlds_class)),
+        QualifiedFieldName = qual(TypeQualifier, type_qual, FieldName)
     ;
-        unexpected(this_file, "ml_gen_field_id: invalid type")
-    ).
+        % In this case, the class name is determined by the constructor.
+        QualConsName = qual(TypeQualifier, type_qual, ConsName),
+        ClassPtrType = mlds_ptr_type(mlds_class_type(QualConsName,
+            ConsArity, mlds_class)),
+        FieldQualifier = mlds_append_class_qualifier(TypeQualifier,
+            type_qual, Globals, ConsName, ConsArity),
+        QualifiedFieldName = qual(FieldQualifier, type_qual, FieldName)
+    ),
+    FieldId = named_field(QualifiedFieldName, ClassPtrType).
 
 %-----------------------------------------------------------------------------%
 
