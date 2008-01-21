@@ -365,6 +365,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
@@ -896,24 +897,63 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
             RegionVarCode, !VLI),
         MaybeRegionRval = yes(RegionRval),
-        LldsComment = "Allocating region for "
+        LldsComment = "Allocating region for ",
+        CellCode = node([
+            llds_instr(
+                incr_hp(Lval, yes(Ptag), TotalOffset,
+                    const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
+                    MaybeRegionRval), LldsComment ++ VarName)
+        ]),
+        SetupReuseCode = empty,
+        TempRegs = []
     ;
-        % XXX  We should probably throw an exception if we find either 
-        % construct_statically or reuse_cell here.
+        % XXX  We should probably throw an exception if we find
+        % construct_statically here.
         ( HowToConstruct = construct_statically(_)
         ; HowToConstruct = construct_dynamically
-        ; HowToConstruct = reuse_cell(_)
         ),
+        SetupReuseCode = empty,
         RegionVarCode = empty,
         MaybeRegionRval = no,
-        LldsComment = "Allocating heap for "
+        LldsComment = "Allocating heap for ",
+        CellCode = node([
+            llds_instr(
+                incr_hp(Lval, yes(Ptag), TotalOffset,
+                    const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
+                    MaybeRegionRval), LldsComment ++ VarName)
+        ]),
+        TempRegs = []
+    ;
+        HowToConstruct = reuse_cell(CellToReuse),
+        CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, _),
+        var_locn_produce_var(ModuleInfo, ReuseVar, ReuseRval, ReuseVarCode,
+            !VLI),
+        ( ReuseRval = lval(ReuseLval0) ->
+            ReuseLval = ReuseLval0
+        ;
+            unexpected(this_file,
+                "var_locn_produce_var: reused cell not an lval")
+        ),
+
+        % Save any variables which are available only in the reused cell into
+        % temporary registers.
+        save_reused_cell_fields(ModuleInfo, ReuseVar, ReuseLval, SaveArgsCode,
+            TempRegs, !VLI),
+        SetupReuseCode = tree(ReuseVarCode, SaveArgsCode),
+
+        % XXX optimise the stripping of the tag when the tags are the same or
+        % the old tag is known, as we do in the high level backend
+        LldsComment = "Reusing cell on heap for ",
+        CellCode = node([
+            llds_instr(
+                assign(Lval,
+                    mkword(Ptag,
+                        unop(strip_tag, lval(ReuseLval)))),
+                LldsComment ++ VarName)
+        ]),
+
+        RegionVarCode = empty
     ),
-    CellCode = node([
-        llds_instr(
-            incr_hp(Lval, yes(Ptag), TotalOffset,
-                const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
-                MaybeRegionRval), LldsComment ++ VarName)
-    ]),
     var_locn_set_magic_var_location(Var, Lval, !VLI),
     (
         MaybeOffset = yes(Offset),
@@ -922,9 +962,11 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeOffset = no,
         StartOffset = 0
     ),
+    % XXX with structure reuse we don't necessarily have to assign all fields
     assign_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval), StartOffset,
         ArgsCode, !VLI),
-    Code = tree_list([CellCode, RegionVarCode, ArgsCode]).
+    list.foldl(var_locn_release_reg, TempRegs, !VLI),
+    Code = tree_list([SetupReuseCode, CellCode, RegionVarCode, ArgsCode]).
 
 :- pred assign_cell_args(module_info::in, list(maybe(rval))::in,
     maybe(tag)::in, rval::in, int::in, code_tree::out,
@@ -979,6 +1021,60 @@ assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
     assign_cell_args(ModuleInfo, MaybeRvals0, Ptag, Base, Offset + 1, RestCode,
         !VLI),
     Code = tree(ThisCode, RestCode).
+
+    % Save any variables which depend on the ReuseLval into temporary
+    % registers so that they are available after ReuseLval is clobbered.
+    %
+:- pred save_reused_cell_fields(module_info::in, prog_var::in, lval::in,
+    code_tree::out, list(lval)::out, var_locn_info::in, var_locn_info::out)
+    is det.
+
+save_reused_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
+    var_locn_get_var_state_map(!.VLI, VarStateMap),
+    map.lookup(VarStateMap, ReuseVar, ReuseVarState0),
+    DepVarsSet = ReuseVarState0 ^ using_vars,
+    DepVars = set.to_sorted_list(DepVarsSet),
+    list.map_foldl2(save_reused_cell_fields_2(ModuleInfo, ReuseLval),
+        DepVars, SaveArgsCode, [], Regs, !VLI),
+    Code = tree_list(SaveArgsCode).
+
+:- pred save_reused_cell_fields_2(module_info::in, lval::in, prog_var::in,
+    code_tree::out, list(lval)::in, list(lval)::out,
+    var_locn_info::in, var_locn_info::out) is det.
+
+save_reused_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
+        !Regs, !VLI) :-
+    find_var_availability(!.VLI, DepVar, no, Avail),
+    (
+        Avail = available(DepVarRval),
+        EvalCode = empty
+    ;
+        Avail = needs_materialization,
+        materialize_var(ModuleInfo, DepVar, no, no, [], DepVarRval, EvalCode,
+            !VLI)
+    ),
+    var_locn_get_vartypes(!.VLI, VarTypes),
+    map.lookup(VarTypes, DepVar, DepVarType),
+    (
+        is_dummy_argument_type(ModuleInfo, DepVarType)
+    ->
+        AssignCode = empty
+    ;
+        rval_depends_on_search_lval(DepVarRval,
+            specific_reg_or_stack(ReuseLval))
+    ->
+        var_locn_acquire_reg(Target, !VLI),
+        add_additional_lval_for_var(DepVar, Target, !VLI),
+        get_var_name(!.VLI, DepVar, DepVarName),
+        AssignCode = node([
+            llds_instr(assign(Target, DepVarRval),
+                "saving " ++ DepVarName)
+        ]),
+        !:Regs = [Target | !.Regs]
+    ;
+        AssignCode = empty
+    ),
+    SaveDepVarCode = tree(EvalCode, AssignCode).
 
 %----------------------------------------------------------------------------%
 
@@ -1296,8 +1392,8 @@ free_up_lval(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
         Code = empty
     ).
 
-    % If we must copy the value in Lval somewhere else to prevent it from
-    % being lost when Lval overwritten, then we try to put it into a location
+    % If we must copy the value in Lval somewhere else to prevent it from being
+    % lost when Lval is overwritten, then we try to put it into a location
     % where it will be needed next. First we find a variable that is stored
     % in Lval directly, and not just in some location whose path includes Lval
     % (the set of all variables affected by the update of Lval is
