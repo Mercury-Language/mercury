@@ -1075,23 +1075,16 @@ sharing_set_rename(Dict, TypeSubst, SharingSet0, SharingSet) :-
     map(prog_var, selector_sharing_set)::out) is det.
 
 do_sharing_set_rename(Dict, TypeSubst, Var0, SelectorSet0, !Map) :-
-    selector_sharing_set_rename(Dict, TypeSubst, SelectorSet0, SelectorSet),
+    selector_sharing_set_rename(Dict, TypeSubst, SelectorSet0, SelectorSet1),
     map.lookup(Dict, Var0, Var),
-    % XXX old code pretends that 2 vars can be renamed to
-    % one and the same new variable. Is that so?
-    % To check.
-    % (
-    %   map.search(!.Map, Var, SelectorSet2)
-    % ->
-    %   % can occur when 2 vars are renamed to
-    %   % the same var (call: append(X,X,Y))
-    %   selector_sharing_set_add(SelectorSet1,
-    %       SelectorSet2, SelectorSet),
-    %   map.det_update(!.Map, Var, SelectorSet, !:Map)
-    % ;
-    %   map.det_insert(!.Map, Var, SelectorSet1, !:Map)
-    % )
-    svmap.det_insert(Var, SelectorSet, !Map).
+    % Two variables can be renamed to the same new variable,
+    % e.g. append(X, X, Y).
+    ( map.search(!.Map, Var, SelectorSet2) ->
+        selector_sharing_set_add(SelectorSet1, SelectorSet2, SelectorSet),
+        svmap.det_update(Var, SelectorSet, !Map)
+    ;
+        svmap.det_insert(Var, SelectorSet1, !Map)
+    ).
 
     % The implementation for combining sharing sets is to compute the
     % alternating closure of those sets.
@@ -1258,7 +1251,7 @@ sharing_set_least_upper_bound_list(ModuleInfo, ProcInfo, ListSharingSet) =
         ListSharingSet, sharing_set_init).
 
 sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
-        = Datastructures :-
+        = [Datastruct | Datastructures] :-
     SharingSet = sharing_set(_, SharingMap),
     Var = Datastruct ^ sc_var,
     Selector = Datastruct ^ sc_selector,
@@ -1625,6 +1618,9 @@ directed_entry_is_member(FromData, ToData, SharingSet) :-
 :- pred selector_sharing_set_rename(prog_var_renaming::in,
     tsubst::in, selector_sharing_set::in, selector_sharing_set::out) is det.
 
+:- pred selector_sharing_set_add(selector_sharing_set::in,
+    selector_sharing_set::in, selector_sharing_set::out) is det.
+
     % selector_sharing_set_new_entry(Selector, Datastruct, SS0, SS):
     % Adds Datastruct into SS0 using Selector as a key. Fails if that
     % Datastructs is already present with that selector.
@@ -1644,7 +1640,7 @@ directed_entry_is_member(FromData, ToData, SharingSet) :-
 
 selector_sharing_set_init = selector_sharing_set(0, map.init).
 selector_sharing_set_is_empty(selector_sharing_set(0, _Map)).
-selector_sharing_set_size(selector_sharing_set(Size,_)) = Size.
+selector_sharing_set_size(selector_sharing_set(Size, _)) = Size.
 
 selector_sharing_set_project(ProjectionType, Vars,
         SelSharingSet0, SelSharingSet):-
@@ -1680,6 +1676,30 @@ selector_sharing_set_rename_2(Dict, Subst, Selector0, DataSet0, !Map) :-
     rename_selector(Subst, Selector0, Selector),
     data_set_rename(Dict, Subst, DataSet0, DataSet),
     svmap.det_insert(Selector, DataSet, !Map).
+
+selector_sharing_set_add(SelectorSetA, SelectorSetB, SelectorSet):-
+    SelectorSetA = selector_sharing_set(_, MapA),
+    SelectorSetB = selector_sharing_set(_, MapB),
+    map.foldl(selector_sharing_set_add_2, MapA, MapB, Map),
+    map.foldl(sum_data_set_sizes, Map, 0, Size),
+    SelectorSet = selector_sharing_set(Size, Map).
+
+:- pred selector_sharing_set_add_2(selector::in, data_set::in,
+    map(selector, data_set)::in, map(selector, data_set)::out) is det.
+
+selector_sharing_set_add_2(Sel, DataSet0, !Map) :-
+    ( map.search(!.Map, Sel, DataSet1) ->
+        data_set_add(DataSet0, DataSet1, DataSet),
+        svmap.det_update(Sel, DataSet, !Map)
+    ;
+        svmap.det_insert(Sel, DataSet0, !Map)
+    ).
+
+:- pred sum_data_set_sizes(selector::in, data_set::in,
+    int::in, int::out) is det.
+
+sum_data_set_sizes(_, DataSet, Size0, Size) :-
+    Size = Size0 + data_set_size(DataSet).
 
 selector_sharing_set_new_entry(Selector, Datastruct,
         SelSharingSet0, SelSharingSet) :-
@@ -1854,6 +1874,8 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
 
 :- pred data_set_termshift(data_set::in, selector::in, data_set::out) is det.
 
+:- pred data_set_add(data_set::in, data_set::in, data_set::out) is det.
+
 :- pred data_set_new_entry(datastruct::in, data_set::in, data_set::out)
     is semidet.
 
@@ -1896,6 +1918,12 @@ data_set_termshift(DataSet0, Selector, DataSet) :-
     DataSet0 = datastructures(Size, Set0),
     Set = set.map(datastruct_termshift(Selector), Set0),
     DataSet = datastructures(Size, Set).
+
+data_set_add(DataSetA, DataSetB, DataSet) :-
+    DataSetA = datastructures(_, DataA),
+    DataSetB = datastructures(_, DataB),
+    Data = set.union(DataA, DataB),
+    DataSet = datastructures(set.count(Data), Data).
 
 data_set_new_entry(Datastruct,  DataSet0, DataSet) :-
     DataSet0 = datastructures(Size0, Datastructs0),
