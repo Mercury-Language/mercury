@@ -285,7 +285,7 @@ struct MR_TrailEntry_Struct {
         (entry)->MR_union.MR_func.MR_datum = (datum);                       \
       } while (0)
 #else /* !MR_USE_TAGGED_TRAIL */
-  #define MR_get_trail_entry_kind(entry) ((entry)->MR_kind)
+  #define MR_get_trail_entry_kind(entry) ((entry)->MR_entry_kind)
 
   #define MR_get_trail_entry_address(entry)                                 \
     ((entry)->MR_union.MR_val.MR_address)
@@ -299,7 +299,7 @@ struct MR_TrailEntry_Struct {
   */
   #define MR_store_value_trail_entry(entry, address, value)                 \
       do {                                                                  \
-        (entry)->MR_kind = MR_val_entry;                                    \
+        (entry)->MR_entry_kind = MR_val_entry;                              \
         (entry)->MR_union.MR_val.MR_address = (address);                    \
         (entry)->MR_union.MR_val.MR_value = (value);                        \
       } while (0)
@@ -310,7 +310,7 @@ struct MR_TrailEntry_Struct {
   */
   #define MR_store_function_trail_entry(entry, func, datum)                 \
       do {                                                                  \
-        (entry)->MR_kind = MR_func_entry;                                   \
+        (entry)->MR_entry_kind = MR_func_entry;                             \
         (entry)->MR_union.MR_func.MR_untrail_func = (func);                 \
         (entry)->MR_union.MR_func.MR_datum = (datum);                       \
       } while (0)
