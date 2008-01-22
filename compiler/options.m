@@ -711,6 +711,8 @@
     ;       object_file_extension
     ;       pic_object_file_extension
     ;       link_with_pic_object_file_extension
+    ;       c_compiler_type_special
+    ;       c_compiler_type
 
     % Java
     ;       java_compiler
@@ -1502,7 +1504,11 @@ option_defaults_2(target_code_compilation_option, [
     object_file_extension               -   string(".o"),
     pic_object_file_extension           -   string(".o"),
     link_with_pic_object_file_extension -   string(".o"),
-
+    c_compiler_type_special             -   string_special,
+    c_compiler_type                     -   string("gcc"),
+                                        % The `mmc' script will override the
+                                        % default with a value determined at
+                                        % configuration time.
     % Java
     java_compiler                       -   string("javac"),
     java_interpreter                    -   string("java"),
@@ -2345,6 +2351,8 @@ long_option("object-file-extension",    object_file_extension).
 long_option("pic-object-file-extension", pic_object_file_extension).
 long_option("link-with-pic-object-file-extension",
                     link_with_pic_object_file_extension).
+long_option("c-compiler-type",      c_compiler_type_special).
+
 
 long_option("java-compiler",        java_compiler).
 long_option("javac",                java_compiler).
@@ -2722,6 +2730,13 @@ special_handler(mercury_linkage_special, string(Flag),
         Result = error("argument of `--mercury-linkage' should be either " ++
             """shared"" or ""static"".")
     ).
+special_handler(c_compiler_type_special, string(Flag), OptionTable0, Result) :-
+    ( ( Flag = "gcc" ; Flag = "lcc" ; Flag = "cl" ; Flag = "unknown" ) ->
+        Result = ok(OptionTable0 ^ elem(c_compiler_type) := string(Flag))
+    ;
+        Result = error("argument of `--c-compiler-type' should be one of " ++
+            """gcc"", ""lcc"", ""cl"" or ""unknown"".")
+    ). 
 
 %-----------------------------------------------------------------------------%
 
