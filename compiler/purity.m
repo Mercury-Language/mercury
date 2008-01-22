@@ -313,7 +313,11 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
     ),
     WorstPurity = Purity,
     perform_pred_purity_checks(!.PredInfo, Purity, DeclPurity,
-        PromisedPurity, PurityCheckResult),
+        PromisedPurity, PurityCheckResult0),
+    % XXX Work around a segfault while purity checking invalid/purity/purity.m.
+    % It seems to be due to gcc 4.1.2 on x86-64 miscompiling the computed
+    % goto following the workaround at gcc -O1 and above.
+    PurityCheckResult = workaround_gcc_bug(PurityCheckResult0),
     (
         PurityCheckResult = inconsistent_promise,
         Spec = error_inconsistent_promise(ModuleInfo, !.PredInfo, PredId,
@@ -338,6 +342,11 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         PredSpecs = GoalSpecs
     ),
     !:Specs = PredSpecs ++ !.Specs.
+
+:- func workaround_gcc_bug(purity_check_result) = purity_check_result.
+:- pragma no_inline(workaround_gcc_bug/1).
+
+workaround_gcc_bug(X) = X.
 
 repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
