@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -524,7 +524,7 @@ add_goal_expr_constraints(_ModuleInfo, ProgVarset, PredId,
             % - it could be a test, so no constraints.
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
         sorry(this_file, "unify with lambda goal")
     ).
 

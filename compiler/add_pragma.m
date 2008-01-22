@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3613,7 +3613,7 @@ match_corresponding_inst_lists_with_renaming(ModuleInfo,
 
 :- pred match_corresponding_bound_inst_lists_with_renaming(module_info::in,
     list(bound_inst)::in, list(bound_inst)::in,
-    inst_var_renaming::in,inst_var_renaming::out) is semidet.
+    inst_var_renaming::in, inst_var_renaming::out) is semidet.
 
 match_corresponding_bound_inst_lists_with_renaming(_, [], [], !Renaming).
 match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
@@ -3629,7 +3629,11 @@ match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
 :- pred match_insts_with_renaming(module_info::in, mer_inst::in, mer_inst::in,
     map(inst_var, inst_var)::out) is semidet.
 
-match_insts_with_renaming(_, any(Uniq), any(Uniq), map.init).
+match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
+    InstA = any(Uniq, HOInstInfoA),
+    InstB = any(Uniq, HOInstInfoB),
+    match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
+        Renaming).
 match_insts_with_renaming(_, free, free, map.init).
 match_insts_with_renaming(_, free(Type), free(Type), map.init).
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
@@ -3638,19 +3642,10 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
     match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
         BoundInstsA, BoundInstsB, map.init, Renaming).
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
-    InstA = ground(Uniq, GroundInstInfoA),
-    InstB = ground(Uniq, GroundInstInfoB),
-    (
-        GroundInstInfoA = none,
-        GroundInstInfoB = none,
-        Renaming = map.init
-    ;
-        GroundInstInfoA = higher_order(PredInstInfoA),
-        GroundInstInfoB = higher_order(PredInstInfoB),
-        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, Det),
-        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, Det),
-        mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo)
-    ).
+    InstA = ground(Uniq, HOInstInfoA),
+    InstB = ground(Uniq, HOInstInfoB),
+    match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
+        Renaming).
 match_insts_with_renaming(_, not_reached, not_reached, map.init).
 match_insts_with_renaming(_, inst_var(VarA), inst_var(VarB), Subst) :-
     svmap.insert(VarA, VarB, map.init, Subst).
@@ -3690,6 +3685,23 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
     InstB = abstract_inst(Name, ArgsB),
     match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
         map.init, Renaming).
+
+:- pred match_ho_inst_infos_with_renaming(module_info::in, ho_inst_info::in,
+    ho_inst_info::in, map(inst_var, inst_var)::out) is semidet.
+
+match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
+        Renaming) :-
+    (
+        HOInstInfoA = none,
+        HOInstInfoB = none,
+        Renaming = map.init
+    ;
+        HOInstInfoA = higher_order(PredInstInfoA),
+        HOInstInfoB = higher_order(PredInstInfoB),
+        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, Det),
+        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, Det),
+        mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo)
+    ).
 
 :- pred match_inst_names_with_renaming(module_info::in,
     inst_name::in, inst_name::in, inst_var_renaming::out) is semidet.

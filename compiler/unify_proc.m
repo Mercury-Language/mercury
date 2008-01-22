@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -731,7 +731,7 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         InitCall = plain_call(PredId, ModeId, [X0], not_builtin, no, InitPred),
         InitGoal = hlds_goal(InitCall, GoalInfo),
 
-        Any = any(shared),
+        Any = any(shared, none),
         generate_cast_with_insts(equiv_type_cast, X0, X, Any, Any, Context,
             CastGoal),
         Goal = hlds_goal(conj(plain_conj, [InitGoal, CastGoal]), GoalInfo),

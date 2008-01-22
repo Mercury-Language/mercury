@@ -101,6 +101,7 @@ SINGLEMODULE= \
 	fundeps_unbound_in_ctor \
 	fundeps_vars \
 	hawkins_mm_fail_reset \
+	ho_any_inst \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \

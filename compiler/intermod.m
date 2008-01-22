@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -712,9 +712,9 @@ module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info) :-
         RHS = RHS0,
         DoWrite = yes
     ;
-        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, Goal0),
+        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, H, Goal0),
         intermod_traverse_goal(Goal0, Goal, DoWrite, !Info),
-        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, Goal)
+        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, H, Goal)
     ;
         RHS0 = rhs_functor(Functor, _Exist, _Vars),
         RHS = RHS0,

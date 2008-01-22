@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -566,7 +566,7 @@ rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_functor(_Functor, _, ArgVars),
     svset.insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
-    RHS = rhs_lambda_goal(_, _, _, NonLocals, LambdaVars, _, _, Goal),
+    RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
     svset.insert_list(NonLocals, !Set),
     svset.insert_list(LambdaVars, !Set),
     goal_vars_2(Goal ^ hlds_goal_expr, !Set).

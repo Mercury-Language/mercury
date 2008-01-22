@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -576,7 +576,7 @@ mer_mode(IVarset, user_defined_mode(Name, Args)) = Xml :-
 
 :- func mer_inst(inst_varset, mer_inst) = xml.
 
-mer_inst(_, any(U)) = elem("any", [], [uniqueness(U)]).
+mer_inst(_, any(U, _)) = elem("any", [], [uniqueness(U)]).
 mer_inst(_, free) = elem("free", [], []).
 mer_inst(_, free(_)) = elem("free", [], []).
 mer_inst(IVarset, bound(U, BoundInsts)) = Xml :-

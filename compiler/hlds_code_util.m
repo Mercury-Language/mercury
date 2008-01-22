@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -184,7 +184,7 @@ is_valid_mutable_inst(ModuleInfo, Inst) :-
 :- pred is_valid_mutable_inst_2(module_info::in, mer_inst::in,
     set(inst_name)::in) is semidet.
 
-is_valid_mutable_inst_2(_, any(shared), _).
+is_valid_mutable_inst_2(_, any(shared, _), _).
 is_valid_mutable_inst_2(ModuleInfo, bound(shared, BoundInsts), Expansions) :-
     list.member(bound_functor(_, Insts), BoundInsts),
     list.member(Inst, Insts),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2451,13 +2451,10 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
     % A var/lambda unification, which can only be deterministic if it is
-    % a construction.  The non-locals in the lambda are *not* candidates
-    % for initialisation because that could permit violations of referential
-    % transparency (executing the lambda could otherwise further constrain
-    % a solver variable that was not supplied as an argument).
+    % a construction.
     %
     Goal = hlds_goal(unify(X, RHS, _, _, _), _),
-    RHS  = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+    RHS  = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
 
     % If this is a construction then X must be free.
     not set.member(X, !.NonFree),
@@ -3177,7 +3174,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         % a partially instantiated deep copy, and we don't know how to do
         % that yet.
 
-        InitialInst = any(_),
+        InitialInst = any(_, _),
         inst_is_free(ModuleInfo0, VarInst1)
     ->
         % This is the simple case of implied `any' modes, where the declared

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,17 +87,26 @@
     % context with an inst any argument then it has an explicit `impure'
     % annotation.
     %
-    % With lambdas, the lambda itself must be marked as impure if it includes
-    % any inst any nonlocals (executing such a lambda may have the side effect
-    % of constraining a nonlocal solver variable).
+    % With lambdas, the lambda itself has a higher-order any inst if it
+    % includes any inst any nonlocals.  The value of the lambda expression
+    % does not become fixed until all of the non-locals become fixed.
+    % Executing such a lambda may constrain nonlocal solver variables,
+    % which in turn constrains the higher-order value itself.  Effectively,
+    % call/N constrains the predicate value to be "some predicate that is
+    % true for the given arguments", and apply/N constrains the function
+    % value to be "some function that returns the given value for the given
+    % arguments".
+    %
+    % But we also allow a ground higher-order inst to be used with non-ground
+    % locals, provided the type of the higher-order value is impure.
     %
 modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
         Unify, !ModeInfo, !IO) :-
     (
-            % If this is a lambda unification containing some inst any
+            % If this is a ground lambda unification containing some inst any
             % nonlocals, then the lambda should be marked as impure.
             %
-        RHS = rhs_lambda_goal(Purity, _, _, NonLocals, _, _, _, _),
+        RHS = rhs_lambda_goal(Purity, ho_ground, _, _, NonLocals, _, _, _, _),
         Purity \= purity_impure,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -107,7 +116,7 @@ modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
     ->
         set.init(WaitingVars),
         mode_info_error(WaitingVars,
-            purity_error_lambda_should_be_impure(AnyVars), !ModeInfo),
+            purity_error_lambda_should_be_any(AnyVars), !ModeInfo),
         Unify = conj(plain_conj, [])
     ;
         modecheck_unification_2(X, RHS, Unification0, UnifyContext,
@@ -263,20 +272,22 @@ modecheck_unification_2(X0,
 
 modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo, !IO) :-
-    LambdaGoal = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+    LambdaGoal = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars, Vars, Modes0, Det, Goal0),
 
     % First modecheck the lambda goal itself:
     %
-    % initialize the initial insts of the lambda variables,
-    % check that the non-local vars are ground (XXX or any),
-    % mark the non-local vars as shared,
-    % lock the non-local vars,
-    % mark the non-clobbered lambda variables as live,
-    % modecheck the goal,
-    % check that the final insts are correct,
-    % unmark the live vars,
-    % unlock the non-local vars,
+    % initialize the initial insts of the lambda variables;
+    % check that the non-local vars are ground or any;
+    % mark the non-local vars as shared;
+    % if the higher-order inst is ground lock the non-local vars,
+    % otherwise if it is `any' lock the non-local vars that themselves
+    % do not match_initial any;
+    % mark the non-clobbered lambda variables as live;
+    % modecheck the goal;
+    % check that the final insts are correct;
+    % unmark the live vars;
+    % unlock the locked vars;
     % restore the original instmap.
     %
     % XXX or should we merge the original and the final instmaps???
@@ -327,12 +338,30 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     set.list_to_set(LiveVarsList, LiveVars),
     mode_info_add_live_vars(LiveVars, !ModeInfo),
 
-    % Lock the non-locals. (A lambda goal is not allowed to bind any of the
-    % non-local variables, since it could get called more than once, or
-    % from inside a negation.)
+    % Lock the non-locals.  A ground lambda goal is not allowed to bind any
+    % of the non-local variables, since it could get called more than once,
+    % or from inside a negation.  So in this case we lock all non-locals
+    % (not counting the lambda quantified vars).
+    %
+    % If the lambda goal is inst `any', we don't lock the non-locals which
+    % match_initial any, since it is safe to bind these any time that it
+    % is safe to bind the lambda goal itself.
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    set.delete_list(NonLocals0, Vars, NonLocals),
+    set.delete_list(NonLocals0, Vars, NonLocals1),
+    (
+        Groundness = ho_ground,
+        NonLocals = NonLocals1
+    ;
+        Groundness = ho_any,
+        mode_info_get_var_types(!.ModeInfo, NonLocalTypes),
+        NonLocals = set.filter((pred(NonLocal::in) is semidet :-
+                map.lookup(NonLocalTypes, NonLocal, NonLocalType),
+                instmap.lookup_var(InstMap1, NonLocal, NonLocalInst),
+                \+ inst_matches_initial(NonLocalInst, any(shared, none),
+                    NonLocalType, ModuleInfo0)
+            ), NonLocals1)
+    ),
     set.to_sorted_list(NonLocals, NonLocalsList),
     instmap.lookup_vars(NonLocalsList, InstMap1, NonLocalInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo2),
@@ -351,15 +380,14 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         % we've mode-checked the lambda body. (See the above comment on
         % merging the initial and final instmaps.)
 
-        % XXX This test is also not conservative enough!
-        %
-        % We should not allow non-local vars to have inst `any'; because that
-        % can lead to unsoundness. However, disallowing that idiom would break
-        % extras/trailed_update/samples/vqueens.m, and would make freeze/3
-        % basically useless... so for now at least, let's not disallow it,
-        % even though it is unsafe.
-
-        inst_list_is_ground_or_any(NonLocalInsts, ModuleInfo2)
+        (
+            Groundness = ho_ground,
+            Purity \= purity_impure
+        ->
+            inst_list_is_ground(NonLocalInsts, ModuleInfo2)
+        ;
+            inst_list_is_ground_or_any(NonLocalInsts, ModuleInfo2)
+        )
     ->
         make_shared_inst_list(NonLocalInsts, SharedNonLocalInsts,
             ModuleInfo2, ModuleInfo3),
@@ -397,8 +425,8 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
 
         % Now modecheck the unification of X with the lambda-expression.
 
-        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
-            Vars, Modes, Det, Goal),
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            ArgVars, Vars, Modes, Det, Goal),
         modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det,
             RHS0, RHS, Unification0, Unification, Mode, !ModeInfo)
     ;
@@ -419,8 +447,8 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
                 "modecheck_unification_2(lambda): very strange var")
         ),
         % Return any old garbage.
-        RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
-            Vars, Modes0, Det, Goal0),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            ArgVars, Vars, Modes0, Det, Goal0),
         Mode = (free -> free) - (free -> free),
         Unification = Unification0
     ).
@@ -1197,7 +1225,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             proc(PredId, ProcId) =
                 unshroud_pred_proc_id(ShroudedPredProcId),
             (
-                RHS0 = rhs_lambda_goal(_, _, EvalMethod, _, _, _, _, Goal),
+                RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, _, Goal),
                 Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
             ->
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1418,8 +1446,8 @@ ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
     mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(any(Uniq), ArgInsts, ArgModes) :-
-    mode_set_args(ArgInsts, any(Uniq), ArgModes).
+get_mode_of_args(any(Uniq, none), ArgInsts, ArgModes) :-
+    mode_set_args(ArgInsts, any(Uniq, none), ArgModes).
 get_mode_of_args(ground(Uniq, none), ArgInsts, ArgModes) :-
     mode_set_args(ArgInsts, ground(Uniq, none), ArgModes).
 get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-

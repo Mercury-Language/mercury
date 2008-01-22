@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,7 +157,7 @@ out_any_mode = make_std_mode("out", [any_inst]).
 
 ground_inst = ground(shared, none).
 free_inst = free.
-any_inst = any(shared).
+any_inst = any(shared, none).
 
 make_std_mode(Name, Args, make_std_mode(Name, Args)).
 
@@ -266,11 +266,14 @@ inst_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
 :- pred inst_apply_substitution(inst_var_sub::in, mer_inst::in, mer_inst::out)
     is det.
 
-inst_apply_substitution(_, any(Uniq), any(Uniq)).
+inst_apply_substitution(Subst, any(Uniq, HOInstInfo0), Inst) :-
+    ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo),
+    Inst = any(Uniq, HOInstInfo).
 inst_apply_substitution(_, free, free).
 inst_apply_substitution(_, free(T), free(T)).
-inst_apply_substitution(Subst, ground(Uniq, GroundInstInfo0), Inst) :-
-    ground_inst_info_apply_substitution(Subst, Uniq, GroundInstInfo0, Inst).
+inst_apply_substitution(Subst, ground(Uniq, HOInstInfo0), Inst) :-
+    ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo),
+    Inst = ground(Uniq, HOInstInfo).
 inst_apply_substitution(Subst, bound(Uniq, Alts0), bound(Uniq, Alts)) :-
     alt_list_apply_substitution(Subst, Alts0, Alts).
 inst_apply_substitution(_, not_reached, not_reached).
@@ -332,14 +335,14 @@ alt_list_apply_substitution(Subst, [Alt0 | Alts0], [Alt | Alts]) :-
     Alt = bound_functor(Name, Args),
     alt_list_apply_substitution(Subst, Alts0, Alts).
 
-:- pred ground_inst_info_apply_substitution(inst_var_sub::in, uniqueness::in,
-    ground_inst_info::in, mer_inst::out) is det.
+:- pred ho_inst_info_apply_substitution(inst_var_sub::in,
+    ho_inst_info::in, ho_inst_info::out) is det.
 
-ground_inst_info_apply_substitution(_, Uniq, none, ground(Uniq, none)).
-ground_inst_info_apply_substitution(Subst, Uniq, GII0, ground(Uniq, GII)) :-
-    GII0 = higher_order(pred_inst_info(PredOrFunc, Modes0, Det)),
+ho_inst_info_apply_substitution(_, none, none).
+ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo) :-
+    HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0, Det)),
     mode_list_apply_substitution(Subst, Modes0, Modes),
-    GII = higher_order(pred_inst_info(PredOrFunc, Modes, Det)).
+    HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)).
 
 mode_list_apply_substitution(Subst, Modes0, Modes) :-
     ( map.is_empty(Subst) ->
@@ -375,7 +378,16 @@ rename_apart_inst_vars_in_mode(Sub, user_defined_mode(Name, Insts0),
 :- pred rename_apart_inst_vars_in_inst(substitution(inst_var_type)::in,
     mer_inst::in, mer_inst::out) is det.
 
-rename_apart_inst_vars_in_inst(_, any(U), any(U)).
+rename_apart_inst_vars_in_inst(Sub, any(Uniq, HOInstInfo0),
+        any(Uniq, HOInstInfo)) :-
+    (
+        HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0, Det)),
+        list.map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes),
+        HOInstInfo = higher_order(pred_inst_info(PorF, Modes, Det))
+    ;
+        HOInstInfo0 = none,
+        HOInstInfo = none
+    ).
 rename_apart_inst_vars_in_inst(_, free, free).
 rename_apart_inst_vars_in_inst(_, free(T), free(T)).
 rename_apart_inst_vars_in_inst(Sub, bound(U, BIs0), bound(U, BIs)) :-
@@ -383,14 +395,15 @@ rename_apart_inst_vars_in_inst(Sub, bound(U, BIs0), bound(U, BIs)) :-
         (pred(bound_functor(C, Is0)::in, bound_functor(C, Is)::out) is det :-
             list.map(rename_apart_inst_vars_in_inst(Sub), Is0, Is)),
         BIs0, BIs).
-rename_apart_inst_vars_in_inst(Sub, ground(U, GI0), ground(U, GI)) :-
+rename_apart_inst_vars_in_inst(Sub, ground(Uniq, HOInstInfo0),
+        ground(Uniq, HOInstInfo)) :-
     (
-        GI0 = higher_order(pred_inst_info(PoF, Modes0, Det)),
+        HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0, Det)),
         list.map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes),
-        GI = higher_order(pred_inst_info(PoF, Modes, Det))
+        HOInstInfo = higher_order(pred_inst_info(PorF, Modes, Det))
     ;
-        GI0 = none,
-        GI = none
+        HOInstInfo0 = none,
+        HOInstInfo = none
     ).
 rename_apart_inst_vars_in_inst(_, not_reached, not_reached).
 rename_apart_inst_vars_in_inst(Sub, inst_var(Var0), inst_var(Var)) :-
@@ -511,8 +524,8 @@ get_arg_insts(free, _ConsId, Arity, ArgInsts) :-
     list.duplicate(Arity, free, ArgInsts).
 get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
     list.duplicate(Arity, free, ArgInsts).
-get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
-    list.duplicate(Arity, any(Uniq), ArgInsts).
+get_arg_insts(any(Uniq, _), _ConsId, Arity, ArgInsts) :-
+    list.duplicate(Arity, any(Uniq, none), ArgInsts).
 
 :- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(mer_inst)::out)
     is semidet.
@@ -576,9 +589,12 @@ strip_builtin_qualifiers_from_inst(constrained_inst_vars(Vars, Inst0),
 strip_builtin_qualifiers_from_inst(not_reached, not_reached).
 strip_builtin_qualifiers_from_inst(free, free).
 strip_builtin_qualifiers_from_inst(free(Type), free(Type)).
-strip_builtin_qualifiers_from_inst(any(Uniq), any(Uniq)).
-strip_builtin_qualifiers_from_inst(ground(Uniq, GII0), ground(Uniq, GII)) :-
-    strip_builtin_qualifiers_from_ground_inst_info(GII0, GII).
+strip_builtin_qualifiers_from_inst(any(Uniq, HOInstInfo0),
+        any(Uniq, HOInstInfo)) :-
+    strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo).
+strip_builtin_qualifiers_from_inst(ground(Uniq, HOInstInfo0),
+        ground(Uniq, HOInstInfo)) :-
+    strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo).
 strip_builtin_qualifiers_from_inst(bound(Uniq, BoundInsts0),
         bound(Uniq, BoundInsts)) :-
     strip_builtin_qualifiers_from_bound_inst_list(BoundInsts0, BoundInsts).
@@ -639,11 +655,11 @@ strip_builtin_qualifiers_from_inst_name(typed_inst(Type, InstName0),
         typed_inst(Type, InstName)) :-
     strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
 
-:- pred strip_builtin_qualifiers_from_ground_inst_info(ground_inst_info::in,
-    ground_inst_info::out) is det.
+:- pred strip_builtin_qualifiers_from_ho_inst_info(ho_inst_info::in,
+    ho_inst_info::out) is det.
 
-strip_builtin_qualifiers_from_ground_inst_info(none, none).
-strip_builtin_qualifiers_from_ground_inst_info(higher_order(Pred0),
+strip_builtin_qualifiers_from_ho_inst_info(none, none).
+strip_builtin_qualifiers_from_ho_inst_info(higher_order(Pred0),
         higher_order(Pred)) :-
     Pred0 = pred_inst_info(PorF, Modes0, Det),
     Pred = pred_inst_info(PorF, Modes, Det),

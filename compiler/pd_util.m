@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2007 University of Melbourne.
+% Copyright (C) 1998-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -835,7 +835,7 @@ inst_MSG_1(InstA, InstB, Expansions, ModuleInfo, Inst) :-
 :- pred inst_MSG_2(mer_inst::in, mer_inst::in, expansions::in, module_info::in,
     mer_inst::out) is semidet.
 
-inst_MSG_2(any(_), any(Uniq), _, _, any(Uniq)).
+inst_MSG_2(any(_, _), any(UniqB, InfoB), _, _, any(UniqB, InfoB)).
 inst_MSG_2(free, free, _M, _, free).
 
 inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), Expansions,
@@ -922,7 +922,7 @@ inst_size(ModuleInfo, Inst, Size) :-
     set(inst_name)::in, int::out) is det.
 
 inst_size_2(_, not_reached, _, 0).
-inst_size_2(_, any(_), _, 0).
+inst_size_2(_, any(_, _), _, 0).
 inst_size_2(_, free, _, 0).
 inst_size_2(_, free(_), _, 0).
 inst_size_2(_, ground(_, _), _, 0).

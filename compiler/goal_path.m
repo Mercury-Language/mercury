@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 University of Melbourne.
+% Copyright (C) 1997-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -192,9 +192,9 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
     ;
         Goal0 = unify(LHS, RHS0, Mode, Kind, Context),
         (
-            RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal0),
+            RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal0),
             fill_goal_slots(Path0, SlotInfo, LambdaGoal0, LambdaGoal),
-            RHS = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal)
+            RHS = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal)
         ;
             ( RHS0 = rhs_var(_)
             ; RHS0 = rhs_functor(_, _, _)

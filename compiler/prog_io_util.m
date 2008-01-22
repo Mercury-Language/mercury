@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -507,6 +507,45 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         Inst = ground(shared, higher_order(FuncInstInfo)),
         Mode = (Inst -> Inst)
     ;
+        % Handle higher-order predicate modes:
+        % a mode of the form
+        %   any_pred(<Mode1>, <Mode2>, ...) is <Det>
+        % is an abbreviation for the inst mapping
+        %   (  any_pred(<Mode1>, <Mode2>, ...) is <Det>
+        %   -> any_pred(<Mode1>, <Mode2>, ...) is <Det>
+        %   )
+
+        Term = term.functor(term.atom("is"), [PredTerm, DetTerm], _),
+        PredTerm = term.functor(term.atom("any_pred"), ArgModesTerms, _)
+    ->
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes),
+        PredInstInfo = pred_inst_info(pf_predicate, ArgModes, Detism),
+        Inst = any(shared, higher_order(PredInstInfo)),
+        Mode = (Inst -> Inst)
+    ;
+        % Handle higher-order function modes:
+        % a mode of the form
+        %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+        % is an abbreviation for the inst mapping
+        %   (  any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+        %   -> any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+        %   )
+
+        Term = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
+        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
+        FuncTerm = term.functor(term.atom("any_func"), ArgModesTerms, _)
+    ->
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
+        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
+        list.append(ArgModes0, [RetMode], ArgModes),
+        FuncInstInfo = pred_inst_info(pf_function, ArgModes, Detism),
+        Inst = any(shared, higher_order(FuncInstInfo)),
+        Mode = (Inst -> Inst)
+    ;
         parse_qualified_term(Term, Term, "mode definition", R),
         R = ok2(Name, Args), % should improve error reporting
         convert_inst_list(AllowConstrainedInstVar, Args, ConvertedArgs),
@@ -527,7 +566,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
     ->
         Result = Result0
     ;
-        % The syntax for a higher-order pred inst is
+        % The syntax for a ground higher-order pred inst is
         %
         %   pred(<Mode1>, <Mode2>, ...) is <Detism>
         %
@@ -543,7 +582,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         PredInst = pred_inst_info(pf_predicate, ArgModes, Detism),
         Result = ground(shared, higher_order(PredInst))
     ;
-        % The syntax for a higher-order func inst is
+        % The syntax for a ground higher-order func inst is
         %
         %   func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
         %
@@ -561,6 +600,41 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         list.append(ArgModes0, [RetMode], ArgModes),
         FuncInst = pred_inst_info(pf_function, ArgModes, Detism),
         Result = ground(shared, higher_order(FuncInst))
+    ;
+        % The syntax for an `any' higher-order pred inst is
+        %
+        %   any_pred(<Mode1>, <Mode2>, ...) is <Detism>
+        %
+        % where <Mode1>, <Mode2>, ... are a list of modes,
+        % and <Detism> is a determinism.
+
+        Name = "is", Args0 = [PredTerm, DetTerm],
+        PredTerm = term.functor(term.atom("any_pred"), ArgModesTerm, _)
+    ->
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes),
+        PredInst = pred_inst_info(pf_predicate, ArgModes, Detism),
+        Result = any(shared, higher_order(PredInst))
+    ;
+        % The syntax for an `any' higher-order func inst is
+        %
+        %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
+        %
+        % where <Mode1>, <Mode2>, ... are a list of modes,
+        % <RetMode> is a mode, and <Detism> is a determinism.
+
+        Name = "is", Args0 = [EqTerm, DetTerm],
+        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
+        FuncTerm = term.functor(term.atom("any_func"), ArgModesTerm, _)
+    ->
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes0),
+        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
+        list.append(ArgModes0, [RetMode], ArgModes),
+        FuncInst = pred_inst_info(pf_function, ArgModes, Detism),
+        Result = any(shared, higher_order(FuncInst))
 
     ; Name = "bound", Args0 = [Disj] ->
         % `bound' insts
@@ -620,11 +694,12 @@ convert_simple_builtin_inst(Name, [], Inst) :-
 convert_simple_builtin_inst_2("free", free).
 
     % `any' insts
-convert_simple_builtin_inst_2("any",                    any(shared)).
-convert_simple_builtin_inst_2("unique_any",             any(unique)).
-convert_simple_builtin_inst_2("mostly_unique_any",      any(mostly_unique)).
-convert_simple_builtin_inst_2("clobbered_any",          any(clobbered)).
-convert_simple_builtin_inst_2("mostly_clobbered_any",   any(mostly_clobbered)).
+convert_simple_builtin_inst_2("any",                any(shared, none)).
+convert_simple_builtin_inst_2("unique_any",         any(unique, none)).
+convert_simple_builtin_inst_2("mostly_unique_any",  any(mostly_unique, none)).
+convert_simple_builtin_inst_2("clobbered_any",      any(clobbered, none)).
+convert_simple_builtin_inst_2("mostly_clobbered_any",
+    any(mostly_clobbered, none)).
 
     % `ground' insts
 convert_simple_builtin_inst_2("ground",         ground(shared, none)).

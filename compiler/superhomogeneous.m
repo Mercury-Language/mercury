@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -554,14 +554,19 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
         term.coerce(HeadTerm0, HeadTerm1),
         parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
-        ( parse_pred_expression(HeadTerm, EvalMethod0, Vars0, Modes0, Det0) ->
+        (
+            parse_pred_expression(HeadTerm, Groundness0, EvalMethod0, Vars0,
+                Modes0, Det0)
+        ->
             PredOrFunc = pf_predicate,
             EvalMethod = EvalMethod0,
+            Groundness = Groundness0,
             Vars1 = Vars0,
             Modes1 = Modes0,
             Det1 = Det0
         ;
-            parse_func_expression(HeadTerm, EvalMethod, Vars1, Modes1, Det1),
+            parse_func_expression(HeadTerm, Groundness, EvalMethod, Vars1,
+                Modes1, Det1),
             PredOrFunc = pf_function
         )
     ->
@@ -572,8 +577,8 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         parse_goal(GoalTerm, MaybeParsedGoal, !VarSet),
         (
             MaybeParsedGoal = ok1(ParsedGoal),
-            build_lambda_expression(X, Purity, LambdaPurity, PredOrFunc,
-                EvalMethod, Vars1, Modes, Det, ParsedGoal,
+            build_lambda_expression(X, Purity, LambdaPurity, Groundness,
+                PredOrFunc, EvalMethod, Vars1, Modes, Det, ParsedGoal,
                 Context, MainContext, SubContext, Goal, NumAdded,
                 !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs)
         ;
@@ -592,7 +597,8 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         Args = [PredTerm0, GoalTerm0],
         term.coerce(PredTerm0, PredTerm1),
         parse_purity_annotation(PredTerm1, DCGLambdaPurity, PredTerm),
-        parse_dcg_pred_expression(PredTerm, EvalMethod, Vars0, Modes0, Det)
+        parse_dcg_pred_expression(PredTerm, Groundness, EvalMethod, Vars0,
+            Modes0, Det)
     ->
         qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
             !QualInfo, !Specs),
@@ -602,10 +608,10 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             MaybeParsedGoal = ok1(ParsedGoal),
             Vars1 = Vars0 ++
                 [term.variable(DCG0, Context), term.variable(DCGn, Context)],
-            build_lambda_expression(X, Purity, DCGLambdaPurity, pf_predicate,
-                EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
-                SubContext, Goal0, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-                !.SInfo, !Specs),
+            build_lambda_expression(X, Purity, DCGLambdaPurity, Groundness,
+                pf_predicate, EvalMethod, Vars1, Modes, Det, ParsedGoal,
+                Context, MainContext, SubContext, Goal0, NumAdded, !VarSet,
+                !ModuleInfo, !QualInfo, !.SInfo, !Specs),
             Goal0 = hlds_goal(GoalExpr, GoalInfo0),
             goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo)
@@ -811,15 +817,15 @@ report_error_in_type_qualification(GenericVarSet, Context, Error, !Specs) :-
 %
 
 :- pred build_lambda_expression(prog_var::in, purity::in, purity::in,
-    pred_or_func::in, lambda_eval_method::in, list(prog_term)::in,
-    list(mer_mode)::in, determinism::in, goal::in, prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in,
+    ho_groundness::in, pred_or_func::in, lambda_eval_method::in,
+    list(prog_term)::in, list(mer_mode)::in, determinism::in, goal::in,
+    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
     hlds_goal::out, num_added_goals::out, prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
-        EvalMethod, Args0, Modes, Det, ParsedGoal,
+build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
+        PredOrFunc, EvalMethod, Args0, Modes, Det, ParsedGoal,
         Context, MainContext, SubContext, Goal, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs) :-
     % In the parse tree, the lambda arguments can be any terms, but in the HLDS
@@ -958,8 +964,8 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
             LambdaNonLocals = set.to_sorted_list(!.LambdaGoalVars)
         ),
 
-        LambdaRHS = rhs_lambda_goal(LambdaPurity, PredOrFunc, EvalMethod,
-            LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
+        LambdaRHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
+            EvalMethod, LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
         make_atomic_unification(X, LambdaRHS, Context, MainContext,
             SubContext, UnificationPurity, Goal, !QualInfo)
     ).

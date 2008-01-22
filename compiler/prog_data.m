@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1402,16 +1402,19 @@
     % This is how instantiatednesses and modes are represented.
     %
 :- type mer_inst
-    --->        any(uniqueness)
-    ;           free
+    --->        free
     ;           free(mer_type)
+
+    ;           any(uniqueness, ho_inst_info)
+                % The ho_inst_info holds extra information
+                % about higher-order values.
 
     ;           bound(uniqueness, list(bound_inst))
                 % The list(bound_inst) must be sorted.
 
-    ;           ground(uniqueness, ground_inst_info)
-                % The ground_inst_info holds extra information
-                % about the ground inst.
+    ;           ground(uniqueness, ho_inst_info)
+                % The ho_inst_info holds extra information
+                % about higher-order values.
 
     ;           not_reached
     ;           inst_var(inst_var)
@@ -1444,19 +1447,33 @@
                                     % on backtracking, so we will need to
                                     % restore the old value on backtracking.
 
-    % The ground_inst_info type gives extra information about ground insts.
+    % Was the lambda goal created with pred/func or any_pred/any_func?
     %
-:- type ground_inst_info
+:- type ho_groundness
+    --->    ho_ground
+    ;       ho_any.
+
+    % The ho_inst_info type gives extra information about `ground' and `any'
+    % insts relating to higher-order values.
+    %
+:- type ho_inst_info
     --->    higher_order(pred_inst_info)
-            % The ground inst is higher-order.
+            % The inst is higher-order, and we have mode/determinism
+            % information for the value.
     ;       none.
             % No extra information is available.
 
     % higher-order predicate terms are given the inst
-    %   `ground(shared, higher_order(PredInstInfo))'
+    %   `ground(shared, higher_order(PredInstInfo))' or
+    %   `any(shared, higher_order(PredInstInfo))'
     % where the PredInstInfo contains the extra modes and the determinism
-    % for the predicate.  Note that the higher-order predicate term
-    % itself must be ground.
+    % for the predicate.  The higher-order predicate term itself cannot be
+    % free.  If it contains non-local variables with inst `any' then it
+    % must be in the latter form, otherwise it may be in the former.
+    %
+    % Note that calling/applying a higher-order value that has the `any'
+    % inst may bind that variable further, hence these values cannot safely
+    % be called/applied in a negated context.
     %
 :- type pred_inst_info
     --->    pred_inst_info(

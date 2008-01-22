@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -437,7 +437,7 @@ case_used_modules(Case, !UsedModules) :-
 unify_rhs_used_modules(rhs_var(_), !UsedModules).
 unify_rhs_used_modules(rhs_functor(ConsId, _, _), !UsedModules) :-
     cons_id_used_modules(visibility_private, ConsId, !UsedModules).
-unify_rhs_used_modules(rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
+unify_rhs_used_modules(rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
         !UsedModules) :-
     hlds_goal_used_modules(Goal, !UsedModules).
 
@@ -519,15 +519,16 @@ mer_mode_used_modules(Visibility, user_defined_mode(Name, Insts),
 :- pred mer_inst_used_modules(item_visibility::in, mer_inst::in,
     used_modules::in, used_modules::out) is det.
 
-mer_inst_used_modules(_, any(_), !UsedModules).
+mer_inst_used_modules(Visibility, any(_, HOInstInfo), !UsedModules) :-
+    ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules).
 mer_inst_used_modules(_, free, !UsedModules).
 mer_inst_used_modules(Visibility, free(Type), !UsedModules) :-
     mer_type_used_modules(Visibility, Type, !UsedModules).
 mer_inst_used_modules(Visibility, bound(_, BoundInsts), !UsedModules) :-
     list.foldl(bound_inst_info_used_modules(Visibility), BoundInsts,
         !UsedModules).
-mer_inst_used_modules(Visibility, ground(_, GroundInstInfo), !UsedModules) :-
-    ground_inst_info_used_modules(Visibility, GroundInstInfo, !UsedModules).
+mer_inst_used_modules(Visibility, ground(_, HOInstInfo), !UsedModules) :-
+    ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules).
 mer_inst_used_modules(_, not_reached, !UsedModules).
 mer_inst_used_modules(_, inst_var(_), !UsedModules).
 mer_inst_used_modules(Visibility, constrained_inst_vars(_InstVars, Inst),
@@ -549,13 +550,13 @@ bound_inst_info_used_modules(Visibility, bound_functor(ConsId, Insts),
     cons_id_used_modules(Visibility, ConsId, !UsedModules),
     list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).
 
-:- pred ground_inst_info_used_modules(item_visibility::in,
-    ground_inst_info::in, used_modules::in, used_modules::out) is det.
+:- pred ho_inst_info_used_modules(item_visibility::in,
+    ho_inst_info::in, used_modules::in, used_modules::out) is det.
 
-ground_inst_info_used_modules(Visibility,
+ho_inst_info_used_modules(Visibility,
         higher_order(pred_inst_info(_, Modes, _)), !UsedModules) :-
     list.foldl(mer_mode_used_modules(Visibility), Modes, !UsedModules).
-ground_inst_info_used_modules(_, none, !UsedModules).
+ho_inst_info_used_modules(_, none, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 

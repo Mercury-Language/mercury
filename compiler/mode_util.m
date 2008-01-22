@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -349,7 +349,7 @@ get_single_arg_inst(bound(_Uniq, List), _, ConsId, ArgInst) :-
     ).
 get_single_arg_inst(free, _, _, free).
 get_single_arg_inst(free(_Type), _, _, free).   % XXX loses type info
-get_single_arg_inst(any(Uniq), _, _, any(Uniq)).
+get_single_arg_inst(any(Uniq, _), _, _, any(Uniq, none)).
 get_single_arg_inst(abstract_inst(_, _), _, _, _) :-
     unexpected(this_file,
         "get_single_arg_inst: abstract insts not supported").
@@ -570,8 +570,33 @@ propagate_type_into_inst_lazily(ModuleInfo, Subst, Type, Inst0, Inst) :-
 
 propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
     (
-        Inst0 = any(_Uniq),
-        Inst = Inst0            % XXX loses type info!
+        Inst0 = any(Uniq, none),
+        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+            default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
+            Inst = any(Uniq, higher_order(PredInstInfo))
+        ;
+            constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors,
+                BoundInsts0),
+            list.sort_and_remove_dups(BoundInsts0, BoundInsts),
+            Inst = bound(Uniq, BoundInsts)
+        )
+    ;
+        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+        (
+            type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+            list.same_length(ArgTypes, Modes0)
+        ->
+            propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
+        ;
+            % The inst is not a valid inst for the type, so leave it alone.
+            % This can only happen if the user has made a mistake.  A mode
+            % error should hopefully be reported if anything tries to match
+            % with the inst.
+            Modes = Modes0
+        ),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+        Inst = any(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = free,
         % Inst = free(Type)
@@ -643,8 +668,32 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
 
 propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     (
-        Inst0 = any(_Uniq),
-        Inst = Inst0            % XXX loses type info!
+        Inst0 = any(Uniq, none),
+        apply_type_subst(Type0, Subst, Type),
+        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+            default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
+            Inst = any(Uniq, higher_order(PredInstInfo))
+        ;
+            Inst = any(Uniq, none)
+        )
+    ;
+        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+        apply_type_subst(Type0, Subst, Type),
+        (
+            type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+            list.same_length(ArgTypes, Modes0)
+        ->
+            propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
+        ;
+            % The inst is not a valid inst for the type, so leave it alone.
+            % This can only happen if the user has made a mistake. A mode error
+            % should hopefully be reported if anything tries to match with the
+            % inst.
+            Modes = Modes0
+        ),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+        Inst = any(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = free,
         % Inst = free(Type0)
@@ -756,7 +805,7 @@ constructors_to_bound_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
 
 constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
     constructors_to_bound_insts_2(ModuleInfo, Uniq,
-        Constructors, any(Uniq), BoundInsts).
+        Constructors, any(Uniq, none), BoundInsts).
 
 :- pred constructors_to_bound_insts_2(module_info::in, uniqueness::in,
     list(constructor)::in, mer_inst::in, list(bound_inst)::out) is det.
@@ -963,7 +1012,10 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal,
     (
         RecomputeAtomic = no,
         goal_is_atomic(GoalExpr0),
-        GoalExpr0 \= unify(_, rhs_lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
+        \+ (
+            GoalExpr0 = unify(_, RHS, _, _, _),
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
+        )
         % Lambda expressions always need to be processed.
     ->
         GoalExpr = GoalExpr0,
@@ -1082,7 +1134,7 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
         GoalInfo, unify(LHS, RHS, UniMode, Uni, Context), VarTypes,
         InstMap0, InstMapDelta, !RI) :-
     (
-        RHS0 = rhs_lambda_goal(Purity, PorF, EvalMethod, NonLocals,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PorF, EvalMethod, NonLocals,
             LambdaVars, Modes, Det, Goal0)
     ->
         ModuleInfo0 = !.RI ^ module_info,
@@ -1090,7 +1142,7 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
             InstMap0, InstMap),
         recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes,
             InstMap, _, !RI),
-        RHS = rhs_lambda_goal(Purity, PorF, EvalMethod, NonLocals,
+        RHS = rhs_lambda_goal(Purity, Groundness, PorF, EvalMethod, NonLocals,
             LambdaVars, Modes, Det, Goal)
     ;
         RHS = RHS0

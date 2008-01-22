@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,11 +138,9 @@
             % contained an inst any non-local, but was not inside a
             % promise_purity scope.
 
-    ;       purity_error_lambda_should_be_impure(list(prog_var)).
-            % A lambda term containing inst any non-locals should have been
-            % declared impure, but hasn't been (executing such a lambda may
-            % further constrain the inst any variables, thereby violating
-            % referential transparency).
+    ;       purity_error_lambda_should_be_any(list(prog_var)).
+            % A ground lambda term contains inst any non-locals, and is not
+            % marked impure.
 
 :- type negated_context_desc
     --->    if_then_else
@@ -336,8 +334,8 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         Spec = purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxt,
             ModeInfo, Var)
     ;
-        ModeError = purity_error_lambda_should_be_impure(Vars),
-        Spec = purity_error_lambda_should_be_impure_to_spec(ModeInfo, Vars)
+        ModeError = purity_error_lambda_should_be_any(Vars),
+        Spec = purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars)
     ).
 
 mode_warning_info_to_spec(!.ModeInfo, Warning) = Spec :-
@@ -1127,22 +1125,30 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
 
 %-----------------------------------------------------------------------------%
 
-:- func purity_error_lambda_should_be_impure_to_spec(mode_info, list(prog_var))
+:- func purity_error_lambda_should_be_any_to_spec(mode_info, list(prog_var))
     = error_spec.
 
-purity_error_lambda_should_be_impure_to_spec(ModeInfo, Vars) = Spec :-
+purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [
-        words("purity error: lambda should be impure because it"),
-        words("contains the following non-local variables"),
-        words("whose insts contain `any':"),
+        words("purity error: lambda is `ground' but contains the"),
+        words("following non-local variables whose insts contain `any':"),
         words(mercury_vars_to_string(VarSet, no, Vars)),
         suffix("."), nl
     ],
+    Always = always(Preamble ++ Pieces),
+    VerboseOnly = verbose_only([
+        words("Predicate expressions with inst `any' can be written"),
+        quote("any_pred(Args) is det :- ..."),
+        suffix("."),
+        words("Function expressions with inst `any' can be written"),
+        quote("any_func(Args) = Result is det :- ..."),
+        suffix(".")
+    ]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+        [simple_msg(Context, [Always, VerboseOnly])]).
 
 %-----------------------------------------------------------------------------%
 

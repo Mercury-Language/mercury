@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,13 +225,17 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
     inst_expand(ModuleInfo0, PredVarInst0, PredVarInst),
     list.length(Args0, Arity),
     (
-        PredVarInst = ground(_Uniq, GroundInstInfo),
         (
-            GroundInstInfo = higher_order(PredInstInfo)
+            PredVarInst = ground(_Uniq, HOInstInfo)
+        ;
+            PredVarInst = any(_Uniq, HOInstInfo)
+        ),
+        (
+            HOInstInfo = higher_order(PredInstInfo)
         ;
             % If PredVar has no higher-order inst information, but is
             % a function type, then assume the default function mode.
-            GroundInstInfo = none,
+            HOInstInfo = none,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             map.lookup(VarTypes, PredVar, Type),
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes),
@@ -241,17 +245,33 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, DetPrime),
         list.length(ModesPrime, Arity)
     ->
-        Det = DetPrime,
-        Modes = ModesPrime,
-        ArgOffset = 1,
-        modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
-            !ModeInfo),
-
-        ( determinism_components(Det, _, at_most_zero) ->
-            instmap.init_unreachable(Instmap),
-            mode_info_set_instmap(Instmap, !ModeInfo)
+        (
+            % If PredVar is inst `any' then it gets bound.  If it is locked,
+            % this is a mode error.
+            PredVarInst = any(A, B),
+            mode_info_var_is_locked(!.ModeInfo, PredVar, Reason)
+        ->
+            BetterPredVarInst = ground(A, B),
+            set.singleton_set(WaitingVars, PredVar),
+            mode_info_error(WaitingVars, mode_error_bind_var(Reason, PredVar,
+                    PredVarInst, BetterPredVarInst), !ModeInfo),
+            Modes = [],
+            Det = detism_erroneous,
+            Args = Args0,
+            ExtraGoals = no_extra_goals
         ;
-            true
+            Det = DetPrime,
+            Modes = ModesPrime,
+            ArgOffset = 1,
+            modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
+                !ModeInfo),
+
+            ( determinism_components(Det, _, at_most_zero) ->
+                instmap.init_unreachable(Instmap),
+                mode_info_set_instmap(Instmap, !ModeInfo)
+            ;
+                true
+            )
         )
     ;
         % The error occurred in argument 1, i.e. the pred term.

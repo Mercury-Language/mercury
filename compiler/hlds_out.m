@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2610,20 +2610,27 @@ write_unify_rhs_3(rhs_functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
     ;
         true
     ).
-write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
-        Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet,
+write_unify_rhs_3(rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
+        NonLocals, Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet,
         AppendVarNums, Indent, MaybeType, TypeQual, !IO) :-
     Indent1 = Indent + 1,
     write_purity_prefix(Purity, !IO),
     (
         PredOrFunc = pf_predicate,
+        (
+            Groundness = ho_ground,
+            Functor = "pred"
+        ;
+            Groundness = ho_any,
+            Functor = "any_pred"
+        ),
         io.write_string("(", !IO),
         (
             Vars = [],
-            io.write_string("(pred)", !IO)
+            io.write_strings(["(", Functor, ")"], !IO)
         ;
             Vars = [_ | _],
-            io.write_string("pred(", !IO),
+            io.write_strings([Functor, "("], !IO),
             write_var_modes(Vars, Modes, VarSet, InstVarSet, AppendVarNums,
                 !IO),
             io.write_string(")", !IO)
@@ -2637,15 +2644,22 @@ write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
         io.write_string(")", !IO)
     ;
         PredOrFunc = pf_function,
+        (
+            Groundness = ho_ground,
+            Functor = "func"
+        ;
+            Groundness = ho_any,
+            Functor = "any_func"
+        ),
         pred_args_to_func_args(Modes, ArgModes, RetMode),
         pred_args_to_func_args(Vars, ArgVars, RetVar),
         io.write_string("(", !IO),
         (
             ArgVars = [],
-            io.write_string("(func)", !IO)
+            io.write_strings(["(", Functor, ")"], !IO)
         ;
             ArgVars = [_ | _],
-            io.write_string("func(", !IO),
+            io.write_strings([Functor, "("], !IO),
             write_var_modes(ArgVars, ArgModes, VarSet, InstVarSet,
                 AppendVarNums, !IO),
             io.write_string(")", !IO)
@@ -2699,7 +2713,7 @@ unify_rhs_to_string(rhs_functor(ConsId0, IsExistConstruct, ArgVars),
     ),
     Str = functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo,
         AppendVarNums).
-unify_rhs_to_string(rhs_lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
+unify_rhs_to_string(rhs_lambda_goal(_, _, _, _, _, _, _, _, _), _, _, _)
     = "lambda goal".
 
 :- pred write_sym_name_and_args(sym_name::in, list(prog_var)::in,
@@ -4329,8 +4343,14 @@ inst_to_term(Inst) = inst_to_term_with_context(Inst, term.context_init).
 
 :- func inst_to_term_with_context(mer_inst, prog_context) = prog_term.
 
-inst_to_term_with_context(any(Uniq), Context) =
-    make_atom(any_inst_uniqueness(Uniq), Context).
+inst_to_term_with_context(any(Uniq, HOInstInfo), Context) = Term :-
+    (
+        HOInstInfo = higher_order(PredInstInfo),
+        Term = any_pred_inst_info_to_term(Uniq, PredInstInfo, Context)
+    ;
+        HOInstInfo = none,
+        Term = make_atom(any_inst_uniqueness(Uniq), Context)
+    ).
 inst_to_term_with_context(free, Context) =
     make_atom("free", Context).
 inst_to_term_with_context(free(Type), Context) = Term :-
@@ -4340,29 +4360,12 @@ inst_to_term_with_context(free(Type), Context) = Term :-
 inst_to_term_with_context(bound(Uniq, BoundInsts), Context) = Term :-
     construct_qualified_term(unqualified(inst_uniqueness(Uniq, "bound")),
         [bound_insts_to_term(BoundInsts, Context)], Context, Term).
-inst_to_term_with_context(ground(Uniq, GroundInstInfo), Context) = Term :-
+inst_to_term_with_context(ground(Uniq, HOInstInfo), Context) = Term :-
     (
-        GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
-        % XXX we ignore Uniq
-        (
-            PredOrFunc = pf_predicate,
-            construct_qualified_term(unqualified("pred"),
-                list.map(mode_to_term_with_context(Context), Modes),
-                Context, ModesTerm)
-        ;
-            PredOrFunc = pf_function,
-            pred_args_to_func_args(Modes, ArgModes, RetMode),
-            construct_qualified_term(unqualified("func"),
-                list.map(mode_to_term_with_context(Context), ArgModes),
-                Context, ArgModesTerm),
-            construct_qualified_term(unqualified("="),
-                [ArgModesTerm, mode_to_term_with_context(Context, RetMode)],
-                Context, ModesTerm)
-        ),
-        construct_qualified_term(unqualified("is"), [
-            ModesTerm, det_to_term(Det, Context)], Context, Term)
+        HOInstInfo = higher_order(PredInstInfo),
+        Term = ground_pred_inst_info_to_term(Uniq, PredInstInfo, Context)
     ;
-        GroundInstInfo = none,
+        HOInstInfo = none,
         Term = make_atom(inst_uniqueness(Uniq, "ground"), Context)
     ).
 inst_to_term_with_context(inst_var(Var), _) =
@@ -4378,6 +4381,54 @@ inst_to_term_with_context(defined_inst(InstName), Context) =
     inst_name_to_term(InstName, Context).
 inst_to_term_with_context(not_reached, Context) =
     make_atom("not_reached", Context).
+
+:- func ground_pred_inst_info_to_term(uniqueness, pred_inst_info, prog_context)
+    = prog_term.
+
+ground_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
+    % XXX we ignore Uniq
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    (
+        PredOrFunc = pf_predicate,
+        construct_qualified_term(unqualified("pred"),
+            list.map(mode_to_term_with_context(Context), Modes),
+            Context, ModesTerm)
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(Modes, ArgModes, RetMode),
+        construct_qualified_term(unqualified("func"),
+            list.map(mode_to_term_with_context(Context), ArgModes),
+            Context, ArgModesTerm),
+        construct_qualified_term(unqualified("="),
+            [ArgModesTerm, mode_to_term_with_context(Context, RetMode)],
+            Context, ModesTerm)
+    ),
+    construct_qualified_term(unqualified("is"),
+        [ModesTerm, det_to_term(Det, Context)], Context, Term).
+
+:- func any_pred_inst_info_to_term(uniqueness, pred_inst_info, prog_context)
+    = prog_term.
+
+any_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
+    % XXX we ignore Uniq
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    (
+        PredOrFunc = pf_predicate,
+        construct_qualified_term(unqualified("any_pred"),
+            list.map(mode_to_term_with_context(Context), Modes),
+            Context, ModesTerm)
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(Modes, ArgModes, RetMode),
+        construct_qualified_term(unqualified("any_func"),
+            list.map(mode_to_term_with_context(Context), ArgModes),
+            Context, ArgModesTerm),
+        construct_qualified_term(unqualified("="),
+            [ArgModesTerm, mode_to_term_with_context(Context, RetMode)],
+            Context, ModesTerm)
+    ),
+    construct_qualified_term(unqualified("is"),
+        [ModesTerm, det_to_term(Det, Context)], Context, Term).
 
 :- func inst_name_to_term(inst_name, prog_context) = prog_term.
 

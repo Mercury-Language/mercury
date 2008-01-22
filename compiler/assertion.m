@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -598,9 +598,9 @@ equal_unification(rhs_functor(ConsId, E, VarsA), rhs_functor(ConsId, E, VarsB),
         !Subst) :-
     equal_vars(VarsA, VarsB, !Subst).
 equal_unification(LambdaGoalA, LambdaGoalB, !Subst) :-
-    LambdaGoalA = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+    LambdaGoalA = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         NLVarsA, LVarsA, Modes, Det, GoalA),
-    LambdaGoalB = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+    LambdaGoalB = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         NLVarsB, LVarsB, Modes, Det, GoalB),
     equal_vars(NLVarsA, NLVarsB, !Subst),
     equal_vars(LVarsA, LVarsB, !Subst),

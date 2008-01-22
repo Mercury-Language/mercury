@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1231,7 +1231,7 @@ goal_expr_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _)) = Inputs :-
             UnifyRHS = rhs_functor(_, _, _),
             Inputs = [LHS]
         ;
-            UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+            UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
             % These should have been expanded out by now.
             unexpected(this_file, "goal_expr_inputs: lambda goal")
         )

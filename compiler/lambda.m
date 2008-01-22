@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -284,15 +284,16 @@ lambda_process_cases([Case0 | Cases0], [Case | Cases], !Info) :-
 lambda_process_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         !Info) :-
     (
-        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocalVars, Vars, Modes, Det, LambdaGoal0),
         % First, process the lambda goal recursively, in case it contains
         % some nested lambda expressions.
         lambda_process_goal(LambdaGoal0, LambdaGoal, !Info),
 
         % Then, convert the lambda expression into a new predicate.
-        lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Det,
-            NonLocalVars, LambdaGoal, Unification0, Y, Unification, !Info),
+        lambda_process_lambda(Purity, Groundness, PredOrFunc, EvalMethod, Vars,
+            Modes, Det, NonLocalVars, LambdaGoal, Unification0, Y, Unification,
+            !Info),
         GoalExpr = unify(LHS, Y, Mode, Unification, Context)
     ;
         ( RHS0 = rhs_var(_)
@@ -302,15 +303,15 @@ lambda_process_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         GoalExpr = unify(LHS, RHS0, Mode, Unification0, Context)
     ).
 
-:- pred lambda_process_lambda(purity::in, pred_or_func::in,
-    lambda_eval_method::in,
+:- pred lambda_process_lambda(purity::in, ho_groundness::in,
+    pred_or_func::in, lambda_eval_method::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
     list(prog_var)::in, hlds_goal::in, unification::in, unify_rhs::out,
     unification::out, lambda_info::in, lambda_info::out) is det.
 
-lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
-        OrigNonLocals0, LambdaGoal, Unification0, Functor,
-        Unification, LambdaInfo0, LambdaInfo) :-
+lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
+        Detism, OrigNonLocals0, LambdaGoal, Unification0, Functor, Unification,
+        LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
         ModuleInfo0, MustRecomputeNonLocals0),

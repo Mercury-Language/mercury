@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,7 @@ interpret_unify(X, rhs_functor(ConsId, _, ArgVars), !Subst) :-
     term.var_list_to_term_list(ArgVars, ArgTerms),
     cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
     unify_term(variable(X, context_init), RhsTerm, !Subst).
-interpret_unify(_X, rhs_lambda_goal(_, _, _, _, _, _, _, _), !Subst).
+interpret_unify(_X, rhs_lambda_goal(_, _, _, _, _, _, _, _, _), !Subst).
     % For ease of implementation we just ignore unifications with lambda terms.
     % This is a safe approximation, it just prevents us from optimizing them
     % as well as we would like.

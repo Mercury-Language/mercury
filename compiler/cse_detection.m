@@ -263,15 +263,15 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify,  UnifyContext),
         (
-            RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-                Vars, Modes, Det, LambdaGoal0),
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+                NonLocalVars, Vars, Modes, Det, LambdaGoal0),
             ModuleInfo = !.CseInfo ^ module_info,
             instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
                 InstMap0, InstMap1),
             detect_cse_in_goal(LambdaGoal0, LambdaGoal, !CseInfo,
                 InstMap1, Redo),
-            RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-                Vars, Modes, Det, LambdaGoal)
+            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+                NonLocalVars, Vars, Modes, Det, LambdaGoal)
         ;
             ( RHS0 = rhs_var(_)
             ; RHS0 = rhs_functor(_, _, _)
@@ -617,7 +617,7 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
             GoalExpr1 = unify(Var, RHS, Umode, Unif, Ucontext)
         ;
             ( RHS = rhs_var(_)
-            ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+            ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
             ),
             unexpected(this_file,
                 "non-functor unify in construct_common_unify")

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -339,16 +339,16 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             else
                 (
                     % Tranform lambda goals as well. Non-local variables in
-                    % lambda goals must be ground so we don't carry the
+                    % lambda goals must be any or ground so we don't carry the
                     % construct map into the lambda goal.
-                    RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
-                        NonLocals, LambdaQuantVars, Modues, Detism,
+                    RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
+                        EvalMethod, NonLocals, LambdaQuantVars, Modues, Detism,
                         LambdaGoal0),
                     delay_partial_inst_in_goal(InstMap0,
                         LambdaGoal0, LambdaGoal, map.init, _ConstructMap,
                         !DelayInfo),
-                    RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
-                        NonLocals, LambdaQuantVars, Modues, Detism,
+                    RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
+                        EvalMethod, NonLocals, LambdaQuantVars, Modues, Detism,
                         LambdaGoal),
                     GoalExpr = unify(LHS, RHS, Mode, Unify, Context),
                     Goal = hlds_goal(GoalExpr, GoalInfo0)

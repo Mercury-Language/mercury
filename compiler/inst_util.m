@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -128,11 +128,11 @@
 :- pred pred_inst_info_is_nonstandard_func_mode(module_info::in,
     pred_inst_info::in) is semidet.
 
-    % Succeed iff the first argument is a function ground_inst_info
+    % Succeed iff the first argument is a function ho_inst_info
     % whose mode does not match the standard func mode.
     %
-:- pred ground_inst_info_is_nonstandard_func_mode(module_info::in,
-    ground_inst_info::in) is semidet.
+:- pred ho_inst_info_is_nonstandard_func_mode(module_info::in,
+    ho_inst_info::in) is semidet.
 
     % Return the standard mode for a function of the given arity.
     %
@@ -256,12 +256,8 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, UnifyIsReal, Inst, Det,
 abstractly_unify_inst_3(is_live, not_reached, _, _, not_reached, detism_det,
         !ModuleInfo).
 
-abstractly_unify_inst_3(is_live, any(Uniq), Inst0, Real, Inst, Det,
-        !ModuleInfo) :-
-    make_any_inst(Inst0, is_live, Uniq, Real, Inst, Det, !ModuleInfo).
-
-abstractly_unify_inst_3(is_live, free, any(UniqY), Real, any(Uniq), detism_det,
-        !ModuleInfo) :-
+abstractly_unify_inst_3(is_live, free, any(UniqY, HOInstInfo), Real,
+        any(Uniq, HOInstInfo), detism_det, !ModuleInfo) :-
     unify_uniq(is_live, Real, detism_det, unique, UniqY, Uniq).
 
 % abstractly_unify_inst_3(is_live, free, free, _, _, _, _, _) :- fail.
@@ -286,7 +282,7 @@ abstractly_unify_inst_3(is_live, free, ground(UniqY, PredInst), Real,
 % abstractly_unify_inst_3(is_live, free, abstract_inst(_,_), _, _, _, _) :-
 %   fail.
 
-abstractly_unify_inst_3(is_live, bound(UniqX, List0), any(UniqY), Real,
+abstractly_unify_inst_3(is_live, bound(UniqX, List0), any(UniqY, _), Real,
         bound(Uniq, List), Det, !ModuleInfo) :-
     allow_unify_bound_any(Real),
     unify_uniq(is_live, Real, detism_semi, UniqX, UniqY, Uniq),
@@ -321,7 +317,7 @@ abstractly_unify_inst_3(is_live, bound(UniqX, BoundInsts0), ground(UniqY, _),
 %   bound_inst_list_is_ground(List, !.ModuleInfo).
 
 abstractly_unify_inst_3(is_live, ground(UniqX, higher_order(PredInst)),
-        any(UniqY), Real, ground(Uniq, higher_order(PredInst)),
+        any(UniqY, _), Real, ground(Uniq, higher_order(PredInst)),
         detism_semi, !ModuleInfo) :-
     Real = fake_unify,
     unify_uniq(is_live, Real, detism_det, UniqX, UniqY, Uniq).
@@ -340,22 +336,56 @@ abstractly_unify_inst_3(is_live, ground(UniqX, higher_order(_)),
     det_par_conjunction_detism(Det1, detism_semi, Det).
 
 abstractly_unify_inst_3(is_live, ground(UniqA, higher_order(PredInstA)),
-        ground(UniqB, _GroundInstInfoB), Real,
-        ground(Uniq, GroundInstInfo), detism_semi, !ModuleInfo) :-
+        ground(UniqB, _HOInstInfoB), Real, ground(Uniq, HOInstInfo),
+        detism_semi, !ModuleInfo) :-
     % It is an error to unify higher-order preds,
     % so if Real \= fake_unify, then we must fail.
     Real = fake_unify,
     % In theory we should choose take the union of the information specified
-    % by PredInstA and _GroundInstInfoB. However, since our data representation
+    % by PredInstA and _HOInstInfoB. However, since our data representation
     % provides no way of doing that, and since this will only happen for
     % fake_unifys, for which it shouldn't make any difference, we just choose
     % the information specified by PredInstA.
-    GroundInstInfo = higher_order(PredInstA),
+    HOInstInfo = higher_order(PredInstA),
     unify_uniq(is_live, Real, detism_semi, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(is_live, ground(Uniq, none), Inst0, Real, Inst, Det,
         !ModuleInfo) :-
     make_ground_inst(Inst0, is_live, Uniq, Real, Inst, Det, !ModuleInfo).
+
+abstractly_unify_inst_3(is_live, any(Uniq0, higher_order(PredInst)), free,
+        Real, any(Uniq, higher_order(PredInst)), detism_det, !ModuleInfo) :-
+    unify_uniq(is_live, Real, detism_det, unique, Uniq0, Uniq).
+
+abstractly_unify_inst_3(is_live, any(UniqX, higher_order(_)),
+        bound(UniqY, BoundInsts0), Real, bound(Uniq, BoundInsts),
+        Det, !ModuleInfo) :-
+    % check `Real = fake_unify' ?
+    unify_uniq(is_live, Real, detism_semi, UniqX, UniqY, Uniq),
+    make_any_bound_inst_list(BoundInsts0, is_live, UniqX, Real, BoundInsts,
+        Det1, !ModuleInfo),
+    det_par_conjunction_detism(Det1, detism_semi, Det).
+
+abstractly_unify_inst_3(is_live, any(UniqA, higher_order(PredInstA)),
+        ground(UniqB, _HOInstInfoB), Real, ground(Uniq, HOInstInfo),
+        detism_semi, !ModuleInfo) :-
+    % See comment for the ground(_, higher_order(_)), ground(_, _) case.
+    Real = fake_unify,
+    HOInstInfo = higher_order(PredInstA),
+    unify_uniq(is_live, Real, detism_semi, UniqA, UniqB, Uniq).
+
+abstractly_unify_inst_3(is_live, any(UniqA, higher_order(PredInstA)),
+        any(UniqB, _HOInstInfoB), Real, any(Uniq, HOInstInfo), detism_semi,
+        !ModuleInfo) :-
+    % See comment for the ground(_, higher_order(_)), ground(_, _) case.
+    Real = fake_unify,
+    HOInstInfo = higher_order(PredInstA),
+    unify_uniq(is_live, Real, detism_semi, UniqA, UniqB, Uniq).
+
+abstractly_unify_inst_3(is_live, any(Uniq, none), Inst0, Real, Inst, Det,
+        !ModuleInfo) :-
+    make_any_inst(Inst0, is_live, Uniq, Real, Inst, Det, !ModuleInfo).
+
 
 % abstractly_unify_inst_3(is_live, abstract_inst(_,_), free, _, _, _, _, _)
 %       :- fail.
@@ -379,13 +409,9 @@ abstractly_unify_inst_3(is_live, ground(Uniq, none), Inst0, Real, Inst, Det,
 abstractly_unify_inst_3(is_dead, not_reached, _, _, not_reached, detism_det,
         !ModuleInfo).
 
-abstractly_unify_inst_3(is_dead, any(Uniq), Inst0, Real, Inst, Det,
-        !ModuleInfo) :-
-    make_any_inst(Inst0, is_dead, Uniq, Real, Inst, Det, !ModuleInfo).
-
 abstractly_unify_inst_3(is_dead, free, Inst, _, Inst, detism_det, !ModuleInfo).
 
-abstractly_unify_inst_3(is_dead, bound(UniqX, List0), any(UniqY), Real,
+abstractly_unify_inst_3(is_dead, bound(UniqX, List0), any(UniqY, _), Real,
         bound(Uniq, List), Det, !ModuleInfo) :-
     allow_unify_bound_any(Real),
     unify_uniq(is_dead, Real, detism_semi, UniqX, UniqY, Uniq),
@@ -424,7 +450,7 @@ abstractly_unify_inst_3(is_dead, bound(UniqX, BoundInsts0), ground(UniqY, _),
 %   ).
 
 abstractly_unify_inst_3(is_dead, ground(UniqX, higher_order(PredInst)),
-        any(UniqY), Real, ground(Uniq, higher_order(PredInst)),
+        any(UniqY, _), Real, ground(Uniq, higher_order(PredInst)),
         detism_semi, !ModuleInfo) :-
     allow_unify_bound_any(Real),
     unify_uniq(is_dead, Real, detism_semi, UniqX, UniqY, Uniq).
@@ -441,15 +467,42 @@ abstractly_unify_inst_3(is_dead, ground(UniqA, higher_order(_)),
     det_par_conjunction_detism(Det1, detism_semi, Det).
 
 abstractly_unify_inst_3(is_dead, ground(UniqA, higher_order(PredInstA)),
-        ground(UniqB, _GroundInstInfoB), Real,
-        ground(Uniq, GroundInstInfo), detism_det, !ModuleInfo) :-
+        ground(UniqB, _HOInstInfoB), Real, ground(Uniq, HOInstInfo),
+        detism_det, !ModuleInfo) :-
     Real = fake_unify,
-    GroundInstInfo = higher_order(PredInstA),
+    HOInstInfo = higher_order(PredInstA),
     unify_uniq(is_dead, Real, detism_det, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(is_dead, ground(Uniq, none), Inst0, Real, Inst, Det,
         !ModuleInfo) :-
     make_ground_inst(Inst0, is_dead, Uniq, Real, Inst, Det, !ModuleInfo).
+
+abstractly_unify_inst_3(is_dead, any(UniqX, higher_order(PredInst)),
+        any(UniqY, _), Real, any(Uniq, higher_order(PredInst)),
+        detism_semi, !ModuleInfo) :-
+    unify_uniq(is_dead, Real, detism_semi, UniqX, UniqY, Uniq).
+
+abstractly_unify_inst_3(is_dead, any(Uniq, higher_order(PredInst)), free,
+        _Real, any(Uniq, higher_order(PredInst)), detism_det, !ModuleInfo).
+
+abstractly_unify_inst_3(is_dead, any(UniqA, higher_order(_)),
+        bound(UniqB, BoundInsts0), Real, bound(Uniq, BoundInsts),
+        Det, !ModuleInfo) :-
+    unify_uniq(is_dead, Real, detism_semi, UniqA, UniqB, Uniq),
+    make_any_bound_inst_list(BoundInsts0, is_dead, UniqA, Real, BoundInsts,
+        Det1, !ModuleInfo),
+    det_par_conjunction_detism(Det1, detism_semi, Det).
+
+abstractly_unify_inst_3(is_dead, any(UniqA, higher_order(PredInstA)),
+        ground(UniqB, _HOInstInfoB), Real, ground(Uniq, HOInstInfo),
+        detism_det, !ModuleInfo) :-
+    Real = fake_unify,
+    HOInstInfo = higher_order(PredInstA),
+    unify_uniq(is_dead, Real, detism_det, UniqA, UniqB, Uniq).
+
+abstractly_unify_inst_3(is_dead, any(Uniq, none), Inst0, Real, Inst, Det,
+        !ModuleInfo) :-
+    make_any_inst(Inst0, is_dead, Uniq, Real, Inst, Det, !ModuleInfo).
 
 % abstract insts aren't really supported
 % abstractly_unify_inst_3(is_dead, abstract_inst(N,As), bound(List), Real,
@@ -538,7 +591,7 @@ abstractly_unify_inst_functor_2(is_live, free, ConsId, Args0, ArgLives, _Real,
     inst_list_is_ground_or_any_or_dead(Args0, ArgLives, !.ModuleInfo),
     maybe_make_shared_inst_list(Args0, ArgLives, Args, !ModuleInfo).
 
-abstractly_unify_inst_functor_2(is_live, any(Uniq), ConsId, ArgInsts,
+abstractly_unify_inst_functor_2(is_live, any(Uniq, _), ConsId, ArgInsts,
         ArgLives, Real, Type, Inst, Det, !ModuleInfo) :-
     % We only allow `any' to unify with a functor if we know that
     % the type is not a solver type.
@@ -570,7 +623,7 @@ abstractly_unify_inst_functor_2(is_dead, free, ConsId, Args, _ArgLives,
         _Real, _, bound(unique, [bound_functor(ConsId, Args)]), detism_det,
         !ModuleInfo).
 
-abstractly_unify_inst_functor_2(is_dead, any(Uniq), ConsId, ArgInsts,
+abstractly_unify_inst_functor_2(is_dead, any(Uniq, _), ConsId, ArgInsts,
         _ArgLives, Real, Type, Inst, Det, !ModuleInfo) :-
     \+ type_util.is_solver_type(!.ModuleInfo, Type),
     make_any_inst_list(ArgInsts, is_dead, Uniq, Real, AnyArgInsts, Det,
@@ -879,8 +932,8 @@ make_ground_inst_list([Inst0 | Insts0], Live, Uniq, Real, [Inst | Insts], Det,
 
 make_ground_inst(not_reached, _, _, _, not_reached, detism_erroneous,
         !ModuleInfo).
-make_ground_inst(any(Uniq0), IsLive, Uniq1, Real, ground(Uniq, none),
-        detism_semi, !ModuleInfo) :-
+make_ground_inst(any(Uniq0, HOInstInfo), IsLive, Uniq1, Real,
+        ground(Uniq, HOInstInfo), detism_semi, !ModuleInfo) :-
     unify_uniq(IsLive, Real, detism_semi, Uniq0, Uniq1, Uniq).
 make_ground_inst(free, IsLive, Uniq0, Real, ground(Uniq, none), detism_det,
         !ModuleInfo) :-
@@ -894,8 +947,8 @@ make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real,
     make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, Real,
         BoundInsts, Det1, !ModuleInfo),
     det_par_conjunction_detism(Det1, detism_semi, Det).
-make_ground_inst(ground(Uniq0, GroundInstInfo), IsLive, Uniq1, Real,
-        ground(Uniq, GroundInstInfo), detism_semi, !ModuleInfo) :-
+make_ground_inst(ground(Uniq0, HOInstInfo), IsLive, Uniq1, Real,
+        ground(Uniq, HOInstInfo), detism_semi, !ModuleInfo) :-
     unify_uniq(IsLive, Real, detism_semi, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _, _) :-
     unexpected(this_file, "make_ground_inst: free inst var").
@@ -979,11 +1032,12 @@ make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real,
     module_info::in, module_info::out) is semidet.
 
 make_any_inst(not_reached, _, _, _, not_reached, detism_erroneous, !ModuleInfo).
-make_any_inst(any(Uniq0), IsLive, Uniq1, Real, any(Uniq), detism_semi,
-        !ModuleInfo) :-
+make_any_inst(any(Uniq0, HOInstInfo), IsLive, Uniq1, Real,
+        any(Uniq, HOInstInfo), detism_semi, !ModuleInfo) :-
     allow_unify_bound_any(Real),
     unify_uniq(IsLive, Real, detism_semi, Uniq0, Uniq1, Uniq).
-make_any_inst(free, IsLive, Uniq0, Real, any(Uniq), detism_det, !ModuleInfo) :-
+make_any_inst(free, IsLive, Uniq0, Real, any(Uniq, none), detism_det,
+        !ModuleInfo) :-
     unify_uniq(IsLive, Real, detism_det, unique, Uniq0, Uniq).
 make_any_inst(free(T), IsLive, Uniq, Real, defined_inst(Any), detism_det,
         !ModuleInfo) :-
@@ -991,7 +1045,7 @@ make_any_inst(free(T), IsLive, Uniq, Real, defined_inst(Any), detism_det,
     %   unify_uniq(IsLive, Real, detism_det, unique, Uniq0, Uniq),
     %   Any = typed_any(Uniq, T).
     % without the need for a `typed_any' inst.
-    Any = typed_inst(T, unify_inst(IsLive, free, any(Uniq), Real)).
+    Any = typed_inst(T, unify_inst(IsLive, free, any(Uniq, none), Real)).
 make_any_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real,
         bound(Uniq, BoundInsts), Det, !ModuleInfo) :-
     allow_unify_bound_any(Real),
@@ -1008,8 +1062,8 @@ make_any_inst(inst_var(_), _, _, _, _, _, _, _) :-
 make_any_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
         Uniq, Real, Inst, Det, !ModuleInfo) :-
     abstractly_unify_constrained_inst_vars(IsLive, InstVars,
-        InstConstraint, any(Uniq), Real, Inst, Det, !ModuleInfo).
-make_any_inst(abstract_inst(_,_), _, _, _, any(shared), detism_semi,
+        InstConstraint, any(Uniq, none), Real, Inst, Det, !ModuleInfo).
+make_any_inst(abstract_inst(_,_), _, _, _, any(shared, none), detism_semi,
         !ModuleInfo).
 make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         !ModuleInfo) :-
@@ -1136,7 +1190,7 @@ make_shared_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 make_shared_inst(not_reached, not_reached, !ModuleInfo).
-make_shared_inst(any(Uniq0), any(Uniq), !ModuleInfo) :-
+make_shared_inst(any(Uniq0, HOInstInfo), any(Uniq, HOInstInfo), !ModuleInfo) :-
     make_shared(Uniq0, Uniq).
 make_shared_inst(free, free, !ModuleInfo) :-
     % The caller should ensure that this never happens.
@@ -1252,7 +1306,8 @@ make_shared_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
     % change the insts of semidet-live or nondet-live insts.)
     %
 make_mostly_uniq_inst(not_reached, not_reached, !ModuleInfo).
-make_mostly_uniq_inst(any(Uniq0), any(Uniq), !ModuleInfo) :-
+make_mostly_uniq_inst(any(Uniq0, HOInstInfo), any(Uniq, HOInstInfo),
+        !ModuleInfo) :-
     make_mostly_uniq(Uniq0, Uniq).
 make_mostly_uniq_inst(free, free, !ModuleInfo).
 make_mostly_uniq_inst(free(T), free(T), !ModuleInfo).
@@ -1449,12 +1504,16 @@ inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
 % too weak -- it might not be able to detect bugs as well
 % as it can currently.
 
-inst_merge_4(any(UniqA), any(UniqB), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(any(UniqA, HOInstInfoA), any(UniqB, HOInstInfoB), _,
+        any(Uniq, HOInstInfo), !ModuleInfo) :-
+    merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
     merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_4(any(Uniq), free, _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(any(Uniq, HOInstInfo), free, _, any(Uniq, HOInstInfo),
+        !ModuleInfo) :-
     % We do not yet allow merge of any with free, except for clobbered anys.
     ( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_4(any(UniqA), bound(UniqB, ListB), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(any(UniqA, _), bound(UniqB, ListB), _, any(Uniq, none),
+        !ModuleInfo) :-
     merge_uniq_bound(UniqA, UniqB, ListB, !.ModuleInfo, Uniq),
     % We do not yet allow merge of any with free, except for clobbered anys.
     ( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
@@ -1462,16 +1521,21 @@ inst_merge_4(any(UniqA), bound(UniqB, ListB), _, any(Uniq), !ModuleInfo) :-
     ;
         bound_inst_list_is_ground_or_any(ListB, !.ModuleInfo)
     ).
-inst_merge_4(any(UniqA), ground(UniqB, _), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(any(UniqA, HOInstInfoA), ground(UniqB, HOInstInfoB), _,
+        any(Uniq, HOInstInfo), !ModuleInfo) :-
+    merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
     merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_4(any(UniqA), abstract_inst(_, _), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(any(UniqA, _), abstract_inst(_, _), _, any(Uniq, none),
+        !ModuleInfo) :-
     merge_uniq(UniqA, shared, Uniq),
     % We do not yet allow merge of any with free, except for clobbered anys.
     ( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_4(free, any(Uniq), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(free, any(Uniq, HOInstInfo), _, any(Uniq, HOInstInfo),
+        !ModuleInfo) :-
     % We do not yet allow merge of any with free, except for clobbered anys.
     ( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_4(bound(UniqA, ListA), any(UniqB), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(bound(UniqA, ListA), any(UniqB, _), _, any(Uniq, none),
+        !ModuleInfo) :-
     merge_uniq_bound(UniqB, UniqA, ListA, !.ModuleInfo, Uniq),
     % We do not yet allow merge of any with free, except for clobbered anys.
     ( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
@@ -1479,9 +1543,12 @@ inst_merge_4(bound(UniqA, ListA), any(UniqB), _, any(Uniq), !ModuleInfo) :-
     ;
         bound_inst_list_is_ground_or_any(ListA, !.ModuleInfo)
     ).
-inst_merge_4(ground(UniqA, _), any(UniqB), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(ground(UniqA, HOInstInfoA), any(UniqB, HOInstInfoB), _,
+        any(Uniq, HOInstInfo), !ModuleInfo) :-
+    merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
     merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_4(abstract_inst(_, _), any(UniqB), _, any(Uniq), !ModuleInfo) :-
+inst_merge_4(abstract_inst(_, _), any(UniqB, _), _, any(Uniq, none),
+        !ModuleInfo) :-
     merge_uniq(shared, UniqB, Uniq),
     % We do not yet allow merge of any with free, except for clobbered anys.
     ( Uniq = clobbered ; Uniq = mostly_clobbered ).
@@ -1498,33 +1565,9 @@ inst_merge_4(ground(UniqA, _), bound(UniqB, ListB), MaybeType, Result,
         !ModuleInfo) :-
     inst_merge_bound_ground(UniqB, ListB, UniqA, MaybeType, Result,
         !ModuleInfo).
-inst_merge_4(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
-        _, ground(Uniq, GroundInstInfo), !ModuleInfo) :-
-    (
-        GroundInstInfoA = higher_order(PredA),
-        GroundInstInfoB = higher_order(PredB)
-    ->
-        % If they specify matching pred insts, but one is more precise
-        % (specifies more info) than the other, then we want to choose
-        % the least precise one.
-        ( pred_inst_matches(PredA, PredB, !.ModuleInfo) ->
-            GroundInstInfo = higher_order(PredB)
-        ; pred_inst_matches(PredB, PredA, !.ModuleInfo) ->
-            GroundInstInfo = higher_order(PredA)
-        ;
-            % If either is a function inst with non-standard modes,
-            % don't allow the higher-order information to be lost.
-            \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredA),
-            \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredB),
-            GroundInstInfo = none
-        )
-    ;
-        \+ ground_inst_info_is_nonstandard_func_mode(!.ModuleInfo,
-            GroundInstInfoA),
-        \+ ground_inst_info_is_nonstandard_func_mode(!.ModuleInfo,
-            GroundInstInfoB),
-        GroundInstInfo = none
-    ),
+inst_merge_4(ground(UniqA, HOInstInfoA), ground(UniqB, HOInstInfoB), _,
+        ground(Uniq, HOInstInfo), !ModuleInfo) :-
+    merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
     merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_4(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
         _, abstract_inst(Name, Args), !ModuleInfo) :-
@@ -1543,6 +1586,34 @@ merge_uniq(UniqA, UniqB, Merged) :-
         Merged = UniqB
     ;
         Merged = UniqA
+    ).
+
+:- pred merge_ho_inst_info(ho_inst_info::in, ho_inst_info::in,
+    ho_inst_info::out, module_info::in, module_info::out) is semidet.
+
+merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
+    (
+        HOInstInfoA = higher_order(PredA),
+        HOInstInfoB = higher_order(PredB)
+    ->
+        % If they specify matching pred insts, but one is more precise
+        % (specifies more info) than the other, then we want to choose
+        % the least precise one.
+        ( pred_inst_matches(PredA, PredB, !.ModuleInfo) ->
+            HOInstInfo = higher_order(PredB)
+        ; pred_inst_matches(PredB, PredA, !.ModuleInfo) ->
+            HOInstInfo = higher_order(PredA)
+        ;
+            % If either is a function inst with non-standard modes,
+            % don't allow the higher-order information to be lost.
+            \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredA),
+            \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredB),
+            HOInstInfo = none
+        )
+    ;
+        \+ ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoA),
+        \+ ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoB),
+        HOInstInfo = none
     ).
 
     % merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq) succeeds iff
@@ -1581,7 +1652,7 @@ merge_inst_list_uniq([Inst | Insts], Uniq0, ModuleInfo, !Expansions, Uniq) :-
 :- pred merge_inst_uniq(mer_inst::in, uniqueness::in, module_info::in,
     set(inst_name)::in, set(inst_name)::out, uniqueness::out) is det.
 
-merge_inst_uniq(any(UniqA), UniqB, _, !Expansions, Uniq) :-
+merge_inst_uniq(any(UniqA, _), UniqB, _, !Expansions, Uniq) :-
     merge_uniq(UniqA, UniqB, Uniq).
 merge_inst_uniq(free, Uniq, _, !Expansions, Uniq).
 merge_inst_uniq(free(_), Uniq, _, !Expansions, Uniq).
@@ -1634,7 +1705,7 @@ inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType, Result, !ModuleInfo) :-
         ;
             MaybeType = no,
             merge_uniq_bound(UniqB, UniqA, ListA, !.ModuleInfo, Uniq),
-            Result = any(Uniq)
+            Result = any(Uniq, none)
         )
     ).
 
@@ -1697,9 +1768,9 @@ inst_contains_nonstandard_func_mode(ModuleInfo, Inst) :-
 :- pred inst_contains_nonstandard_func_mode_2(module_info::in, mer_inst::in,
     set(mer_inst)::in) is semidet.
 
-inst_contains_nonstandard_func_mode_2(ModuleInfo, ground(_, GroundInstInfo),
+inst_contains_nonstandard_func_mode_2(ModuleInfo, ground(_, HOInstInfo),
         _Expansions) :-
-    ground_inst_info_is_nonstandard_func_mode(ModuleInfo, GroundInstInfo).
+    ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo).
 inst_contains_nonstandard_func_mode_2(ModuleInfo, bound(_, BoundInsts),
         Expansions) :-
     list.member(bound_functor(_, Insts), BoundInsts),
@@ -1723,7 +1794,7 @@ inst_contains_any(ModuleInfo, Inst) :-
 :- pred inst_contains_any_2(module_info::in, (mer_inst)::in,
     set(inst_name)::in) is semidet.
 
-inst_contains_any_2(_ModuleInfo, any(_), _Expansions).
+inst_contains_any_2(_ModuleInfo, any(_, _), _Expansions).
 
 inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
     list.member(bound_functor(_, Insts), BoundInsts),
@@ -1753,8 +1824,8 @@ pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo) :-
     \+ pred_inst_matches(PredInstInfo,
         pred_inst_info_standard_func_mode(Arity), ModuleInfo).
 
-ground_inst_info_is_nonstandard_func_mode(ModuleInfo, GroundInstInfo) :-
-    GroundInstInfo = higher_order(PredInstInfo),
+ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo) :-
+    HOInstInfo = higher_order(PredInstInfo),
     pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo).
 
 pred_inst_info_standard_func_mode(Arity) =
@@ -1797,7 +1868,7 @@ cons_ids_match(ConsIdA, ConsIdB) :-
 
 inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
     (
-        Inst = any(_),
+        Inst = any(_, _),
         MayRestrict = yes
     ;
         Inst = free,

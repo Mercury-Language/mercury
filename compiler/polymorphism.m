@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1171,8 +1171,8 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         polymorphism_process_unify_functor(XVar, ConsId, Args, Mode,
             Unification0, UnifyContext, GoalInfo0, Goal, !Info)
     ;
-        Y = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
-            LambdaVars, Modes, Det, LambdaGoal0),
+        Y = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            ArgVars0, LambdaVars, Modes, Det, LambdaGoal0),
 
         % For lambda expressions, we must recursively traverse the lambda goal.
         polymorphism_process_goal(LambdaGoal0, LambdaGoal1, !Info),
@@ -1183,8 +1183,8 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
         set.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
         list.append(NonLocalTypeInfosList, ArgVars0, ArgVars),
-        Y1 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
-            LambdaVars, Modes, Det, LambdaGoal),
+        Y1 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            ArgVars, LambdaVars, Modes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set.union(NonLocals0, NonLocalTypeInfos, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
@@ -1418,8 +1418,10 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % Construct the lambda expression.
 
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Functor = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
-        LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
+    % Higher-order values created in this fashion are always ground.
+    Groundness = ho_ground,
+    Functor = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
 :- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.

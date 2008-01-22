@@ -702,8 +702,9 @@ check_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % goal have addresses taken. This is not always to case, but
             % should be a suitable approximation for the stratification
             % analysis.
-            RHS = rhs_lambda_goal(_Purity, _PredOrFunc, _EvalMethod,
-                _NonLocals, _Vars, _Modes, _Determinism, LambdaGoal),
+            RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
+                _EvalMethod, _NonLocals, _Vars, _Modes, _Determinism,
+                LambdaGoal),
             get_called_procs(LambdaGoal, [], CalledProcs),
             set.insert_list(!.HasAT, CalledProcs, !:HasAT)
         ;
@@ -807,8 +808,9 @@ get_called_procs(Goal, !Calls) :-
             % goal have addresses taken. This is not always to case, but
             % should be a suitable approximation for the stratification
             % analysis.
-            RHS = rhs_lambda_goal(_Purity, _PredOrFunc, _EvalMethod,
-                _NonLocals, _Vars, _Modes, _Determinism, LambdaGoal),
+            RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
+                _EvalMethod, _NonLocals, _Vars, _Modes, _Determinism,
+                LambdaGoal),
             get_called_procs(LambdaGoal, !Calls)
         ;
             RHS = rhs_var(_)

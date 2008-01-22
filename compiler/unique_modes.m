@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -247,7 +247,7 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
         inst_expand(ModuleInfo0, Inst0, Inst1),
         ( Inst1 = ground(unique, _)
         ; Inst1 = bound(unique, _)
-        ; Inst1 = any(unique)
+        ; Inst1 = any(unique, _)
         )
     ->
         make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),

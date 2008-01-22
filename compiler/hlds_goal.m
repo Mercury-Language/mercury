@@ -509,6 +509,9 @@
             )
     ;       rhs_lambda_goal(
                 rhs_purity          :: purity,
+                rhs_groundness      :: ho_groundness,
+                                    % Whether this closure is `ground' or
+                                    % `any'.
                 rhs_p_or_f          :: pred_or_func,
                 rhs_eval_method     :: lambda_eval_method,
                                     % Currently, we don't support any other
@@ -2234,9 +2237,9 @@ rename_unify_rhs(Must, Subn,
         rhs_functor(Functor, E, ArgVars0), rhs_functor(Functor, E, ArgVars)) :-
     rename_var_list(Must, Subn, ArgVars0, ArgVars).
 rename_unify_rhs(Must, Subn,
-        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals0, Vars0, Modes, Det, Goal0),
-        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal)) :-
     rename_var_list(Must, Subn, NonLocals0, NonLocals),
     rename_var_list(Must, Subn, Vars0, Vars),

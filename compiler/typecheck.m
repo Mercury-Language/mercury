@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1760,9 +1760,9 @@ typecheck_unification(X, rhs_functor(Functor, ExistConstraints, Args),
     typecheck_unify_var_functor(X, Functor, Args, GoalPath, !Info),
     perform_context_reduction(!Info).
 typecheck_unification(X,
-        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal0),
-        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal), _, !Info) :-
     typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars,
         !Info),

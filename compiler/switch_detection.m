@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -284,7 +284,7 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
     ;
         GoalExpr0 = unify(_, RHS0, _, _, _),
         (
-            RHS0 = rhs_lambda_goal(_, _, _, _, Vars, Modes, _, LambdaGoal0),
+            RHS0 = rhs_lambda_goal(_, _, _, _, _, Vars, Modes, _, LambdaGoal0),
             % We need to insert the initial insts for the lambda variables
             % in the instmap before processing the lambda goal.
             instmap.pre_lambda_update(!.ModuleInfo, Vars, Modes,

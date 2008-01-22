@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -263,8 +263,8 @@ warn_singletons_in_unify(X, rhs_functor(_ConsId, _, Vars), GoalInfo,
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     warn_singletons_goal_vars([X | Vars], GoalInfo, NonLocals, QuantVars,
         VarSet, CallPredId, !Specs).
-warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
-        _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
+warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
+        _Eval, _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
         GoalInfo, QuantVars, VarSet, CallPredId, ModuleInfo, !Specs) :-
     % Warn if any lambda-quantified variables occur only in the quantifier.
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),

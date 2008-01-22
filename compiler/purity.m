@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -536,11 +536,11 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         ContainsTrace, !Info) :-
     Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
     (
-        RHS0 = rhs_lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
-            Modes, K, hlds_goal(LambdaGoalExpr0, LambdaGoalInfo0)),
+        RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, F, EvalMethod, H,
+            Vars, Modes, K, hlds_goal(LambdaGoalExpr0, LambdaGoalInfo0)),
         compute_expr_purity(LambdaGoalExpr0, LambdaGoalExpr, LambdaGoalInfo0,
             GoalPurity, _, !Info),
-        RHS = rhs_lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
+        RHS = rhs_lambda_goal(LambdaPurity, Groundness, F, EvalMethod, H, Vars,
             Modes, K, hlds_goal(LambdaGoalExpr, LambdaGoalInfo0)),
         check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
         GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),

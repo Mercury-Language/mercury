@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -680,7 +680,7 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
                 "in_interface_check_unify_rhs: type_to_ctor_and_args failed.")
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
         in_interface_check(ModuleInfo, PredInfo, Goal, !Specs)
     ).
 

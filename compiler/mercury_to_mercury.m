@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1145,9 +1145,15 @@ mercury_structured_inst_to_string(Inst, Indent, VarSet) = String :-
 :- pred mercury_format_structured_inst(mer_inst::in, int::in, inst_varset::in,
     U::di, U::uo) is det <= output(U).
 
-mercury_format_structured_inst(any(Uniq), Indent, _, !U) :-
+mercury_format_structured_inst(any(Uniq, HOInstInfo), Indent, VarSet, !U) :-
     mercury_format_tabs(Indent, !U),
-    mercury_format_any_uniqueness(Uniq, !U),
+    (
+        HOInstInfo = higher_order(PredInstInfo),
+        mercury_format_any_pred_inst_info(Uniq, PredInstInfo, VarSet, !U)
+    ;
+        HOInstInfo = none,
+        mercury_format_any_uniqueness(Uniq, !U)
+    ),
     add_string("\n", !U).
 mercury_format_structured_inst(free, Indent, _, !U) :-
     mercury_format_tabs(Indent, !U),
@@ -1162,61 +1168,16 @@ mercury_format_structured_inst(bound(Uniq, BoundInsts), Indent, VarSet, !U) :-
     mercury_format_structured_bound_insts(BoundInsts, Indent, VarSet, !U),
     mercury_format_tabs(Indent, !U),
     add_string(")\n", !U).
-mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet,
-        !U) :-
+mercury_format_structured_inst(ground(Uniq, HOInstInfo), Indent, VarSet, !U) :-
     mercury_format_tabs(Indent, !U),
     (
-        GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
-        (
-            Uniq = shared
-        ;
-            ( Uniq = unique
-            ; Uniq = mostly_unique
-            ; Uniq = clobbered
-            ; Uniq = mostly_clobbered
-            ),
-            add_string("/* ", !U),
-            mercury_format_uniqueness(Uniq, "ground", !U),
-            add_string(" */", !U)
-        ),
-        (
-            PredOrFunc = pf_predicate,
-            (
-                Modes = [],
-                add_string("((pred) is ", !U),
-                mercury_format_det(Det, !U),
-                add_string(")\n", !U)
-            ;
-                Modes = [_ | _],
-                add_string("(pred(", !U),
-                mercury_format_mode_list(Modes, simple_inst_info(VarSet), !U),
-                add_string(") is ", !U),
-                mercury_format_det(Det, !U),
-                add_string(")\n", !U)
-            )
-        ;
-            PredOrFunc = pf_function,
-            pred_args_to_func_args(Modes, ArgModes, RetMode),
-            (
-                Modes = [],
-                add_string("((func) = ", !U)
-            ;
-                Modes = [_ | _],
-                add_string("(func(", !U),
-                mercury_format_mode_list(ArgModes, simple_inst_info(VarSet),
-                    !U),
-                add_string(") = ", !U)
-            ),
-            mercury_format_mode(RetMode, simple_inst_info(VarSet), !U),
-            add_string(" is ", !U),
-            mercury_format_det(Det, !U),
-            add_string(")\n", !U)
-        )
+        HOInstInfo = higher_order(PredInstInfo),
+        mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U)
     ;
-        GroundInstInfo = none,
-        mercury_format_uniqueness(Uniq, "ground", !U),
-        add_string("\n", !U)
-    ).
+        HOInstInfo = none,
+        mercury_format_uniqueness(Uniq, "ground", !U)
+    ),
+    add_string("\n", !U).
 mercury_format_structured_inst(inst_var(Var), Indent, VarSet, !U) :-
     mercury_format_tabs(Indent, !U),
     mercury_format_var(VarSet, no, Var, !U),
@@ -1237,6 +1198,108 @@ mercury_format_structured_inst(not_reached, Indent, _, !U) :-
     mercury_format_tabs(Indent, !U),
     add_string("not_reached\n", !U).
 
+:- pred mercury_format_ground_pred_inst_info(uniqueness::in,
+    pred_inst_info::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    (
+        Uniq = shared
+    ;
+        ( Uniq = unique
+        ; Uniq = mostly_unique
+        ; Uniq = clobbered
+        ; Uniq = mostly_clobbered
+        ),
+        add_string("/* ", !U),
+        mercury_format_uniqueness(Uniq, "ground", !U),
+        add_string(" */", !U)
+    ),
+    (
+        PredOrFunc = pf_predicate,
+        (
+            Modes = [],
+            add_string("((pred) is ", !U),
+            mercury_format_det(Det, !U),
+            add_string(")", !U)
+        ;
+            Modes = [_ | _],
+            add_string("(pred(", !U),
+            mercury_format_mode_list(Modes, simple_inst_info(VarSet), !U),
+            add_string(") is ", !U),
+            mercury_format_det(Det, !U),
+            add_string(")", !U)
+        )
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(Modes, ArgModes, RetMode),
+        (
+            ArgModes = [],
+            add_string("((func) = ", !U)
+        ;
+            ArgModes = [_ | _],
+            add_string("(func(", !U),
+            mercury_format_mode_list(ArgModes, simple_inst_info(VarSet),
+                !U),
+            add_string(") = ", !U)
+        ),
+        mercury_format_mode(RetMode, simple_inst_info(VarSet), !U),
+        add_string(" is ", !U),
+        mercury_format_det(Det, !U),
+        add_string(")", !U)
+    ).
+
+:- pred mercury_format_any_pred_inst_info(uniqueness::in, pred_inst_info::in,
+    inst_varset::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_any_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    (
+        Uniq = shared
+    ;
+        ( Uniq = unique
+        ; Uniq = mostly_unique
+        ; Uniq = clobbered
+        ; Uniq = mostly_clobbered
+        ),
+        add_string("/* ", !U),
+        mercury_format_uniqueness(Uniq, "any", !U),
+        add_string(" */", !U)
+    ),
+    (
+        PredOrFunc = pf_predicate,
+        (
+            Modes = [],
+            add_string("(any_pred is ", !U),
+            mercury_format_det(Det, !U),
+            add_string(")", !U)
+        ;
+            Modes = [_ | _],
+            add_string("(any_pred(", !U),
+            mercury_format_mode_list(Modes, simple_inst_info(VarSet), !U),
+            add_string(") is ", !U),
+            mercury_format_det(Det, !U),
+            add_string(")", !U)
+        )
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(Modes, ArgModes, RetMode),
+        (
+            Modes = [],
+            add_string("(any_func = ", !U)
+        ;
+            Modes = [_ | _],
+            add_string("(any_func(", !U),
+            mercury_format_mode_list(ArgModes, simple_inst_info(VarSet),
+                !U),
+            add_string(") = ", !U)
+        ),
+        mercury_format_mode(RetMode, simple_inst_info(VarSet), !U),
+        add_string(" is ", !U),
+        mercury_format_det(Det, !U),
+        add_string(")", !U)
+    ).
+
 :- instance inst_info(simple_inst_info) where [
     func(instvarset/1) is sii_varset,
     pred(format_defined_inst/4) is mercury_format_inst_name
@@ -1248,8 +1311,15 @@ mercury_output_inst(Inst, VarSet, !IO) :-
 mercury_inst_to_string(Inst, VarSet) = String :-
     mercury_format_inst(Inst, simple_inst_info(VarSet), "", String).
 
-mercury_format_inst(any(Uniq), _, !U) :-
-    mercury_format_any_uniqueness(Uniq, !U).
+mercury_format_inst(any(Uniq, HOInstInfo), InstInfo, !U) :-
+    (
+        HOInstInfo = higher_order(PredInstInfo),
+        mercury_format_any_pred_inst_info(Uniq, PredInstInfo,
+            instvarset(InstInfo), !U)
+    ;
+        HOInstInfo = none,
+        mercury_format_any_uniqueness(Uniq, !U)
+    ).
 mercury_format_inst(free, _, !U) :-
     add_string("free", !U).
 mercury_format_inst(free(_T), _, !U) :-
@@ -1259,56 +1329,13 @@ mercury_format_inst(bound(Uniq, BoundInsts), InstInfo, !U) :-
     add_string("(", !U),
     mercury_format_bound_insts(BoundInsts, InstInfo, !U),
     add_string(")", !U).
-mercury_format_inst(ground(Uniq, GroundInstInfo), InstInfo, !U) :-
+mercury_format_inst(ground(Uniq, HOInstInfo), InstInfo, !U) :-
     (
-        GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
-        (
-            Uniq = shared
-        ;
-            ( Uniq = unique
-            ; Uniq = mostly_unique
-            ; Uniq = clobbered
-            ; Uniq = mostly_clobbered
-            ),
-            add_string("/* ", !U),
-            mercury_format_uniqueness(Uniq, "ground", !U),
-            add_string(" */", !U)
-        ),
-        (
-            PredOrFunc = pf_predicate,
-            (
-                Modes = [],
-                add_string("((pred) is ", !U),
-                mercury_format_det(Det, !U),
-                add_string(")", !U)
-            ;
-                Modes = [_ | _],
-                add_string("(pred(", !U),
-                mercury_format_mode_list(Modes, InstInfo, !U),
-                add_string(") is ", !U),
-                mercury_format_det(Det, !U),
-                add_string(")", !U)
-            )
-        ;
-            PredOrFunc = pf_function,
-            pred_args_to_func_args(Modes, ArgModes, RetMode),
-            (
-                ArgModes = [],
-                add_string("((func)", !U)
-            ;
-                ArgModes = [_ | _],
-                add_string("(func(", !U),
-                mercury_format_mode_list(ArgModes, InstInfo, !U),
-                add_string(")", !U)
-            ),
-            add_string(" = ", !U),
-            mercury_format_mode(RetMode, InstInfo, !U),
-            add_string(" is ", !U),
-            mercury_format_det(Det, !U),
-            add_string(")", !U)
-        )
+        HOInstInfo = higher_order(PredInstInfo),
+        mercury_format_ground_pred_inst_info(Uniq, PredInstInfo,
+            instvarset(InstInfo), !U)
     ;
-        GroundInstInfo = none,
+        HOInstInfo = none,
         mercury_format_uniqueness(Uniq, "ground", !U)
     ).
 mercury_format_inst(inst_var(Var), InstInfo, !U) :-

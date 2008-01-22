@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2007 The University of Melbourne.
+% Copyright (C) 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -481,7 +481,10 @@ replace_in_inst(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     %
 :- func type_may_occur_in_inst(mer_inst) = bool.
 
-type_may_occur_in_inst(any(_)) = no.
+type_may_occur_in_inst(any(_, none)) = no.
+type_may_occur_in_inst(any(_, higher_order(_PredInstInfo))) = no.
+    % This is a conservative approximation; the mode in _PredInstInfo
+    % may contain a reference to a type.
 type_may_occur_in_inst(free) = no.
 type_may_occur_in_inst(free(_)) = yes.
 type_may_occur_in_inst(bound(_, BoundInsts)) =
@@ -532,15 +535,26 @@ type_may_occur_in_insts([Inst | Insts]) =
 :- pred replace_in_inst_2(eqv_map::in, mer_inst::in, mer_inst::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_2(_, any(_) @ Inst, Inst, no, !TVarSet, !Cache).
+replace_in_inst_2(_, any(_, none) @ Inst, Inst, no, !TVarSet, !Cache).
+replace_in_inst_2(EqvMap, any(Uniq, higher_order(PredInstInfo0)) @ Inst0, Inst,
+        Changed, !TVarSet, !Cache) :-
+    PredInstInfo0 = pred_inst_info(PorF, Modes0, Det),
+    replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
+    (
+        Changed = yes,
+        Inst = any(Uniq, higher_order(pred_inst_info(PorF, Modes, Det)))
+    ;
+        Changed = no,
+        Inst = Inst0
+    ).
 replace_in_inst_2(_, free @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap, Inst0 @ free(Type0), Inst, Changed,
+replace_in_inst_2(EqvMap, free(Type0) @ Inst0, Inst, Changed,
         !TVarSet, !Cache) :-
     equiv_type.replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
     ( Changed = yes, Inst = free(Type)
     ; Changed = no, Inst = Inst0
     ).
-replace_in_inst_2(EqvMap, Inst0 @ bound(Uniq, BoundInsts0), Inst,
+replace_in_inst_2(EqvMap, bound(Uniq, BoundInsts0) @ Inst0, Inst,
         Changed, !TVarSet, !Cache) :-
     replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts, Changed, !TVarSet,
         !Cache),
@@ -548,10 +562,9 @@ replace_in_inst_2(EqvMap, Inst0 @ bound(Uniq, BoundInsts0), Inst,
     ; Changed = no, Inst = Inst0
     ).
 replace_in_inst_2(_, ground(_, none) @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap,
-        Inst0 @ ground(Uniq,
-            higher_order(pred_inst_info(PorF, Modes0, Det))),
+replace_in_inst_2(EqvMap, ground(Uniq, higher_order(PredInstInfo0)) @ Inst0,
         Inst, Changed, !TVarSet, !Cache) :-
+    PredInstInfo0 = pred_inst_info(PorF, Modes0, Det),
     replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
     (
         Changed = yes,
@@ -562,7 +575,7 @@ replace_in_inst_2(EqvMap,
     ).
 replace_in_inst_2(_, not_reached @ Inst, Inst, no, !TVarSet, !Cache).
 replace_in_inst_2(_, inst_var(_) @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap, Inst0 @ constrained_inst_vars(Vars, CInst0), Inst,
+replace_in_inst_2(EqvMap, constrained_inst_vars(Vars, CInst0) @ Inst0, Inst,
         Changed, !TVarSet, !Cache) :-
     replace_in_inst(EqvMap, CInst0, CInst, Changed, !TVarSet, !Cache),
     ( Changed = yes, Inst = constrained_inst_vars(Vars, CInst)

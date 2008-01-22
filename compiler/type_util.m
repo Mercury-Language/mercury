@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,8 +83,11 @@
 :- pred type_definitely_has_no_user_defined_equality_pred(module_info::in,
     mer_type::in) is semidet.
 
-    % Succeed iff the principal type constructor for the given type
-    % is a solver type.
+    % Succeed iff the principal type constructor for the given type is
+    % declared a solver type, or if the type is a pred or func type.  Pred
+    % and func types are considered solver types because higher-order terms
+    % that contain non-local solver variables are not ground unless all of
+    % the non-locals are ground.
     %
     % If the type is a type variable and thus has no principal type
     % constructor, fail.
@@ -526,14 +529,18 @@ type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
     SolverTypeDetails ^ init_pred = solver_init_automatic(_).
 
 type_is_solver_type(ModuleInfo, Type) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
     (
-        TypeBody = hlds_solver_type(_, _)
+        type_is_higher_order(Type)
     ;
-        TypeBody = hlds_abstract_type(solver_type)
-    ;
-        TypeBody = hlds_eqv_type(EqvType),
-        type_is_solver_type(ModuleInfo, EqvType)
+        type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+        (
+            TypeBody = hlds_solver_type(_, _)
+        ;
+            TypeBody = hlds_abstract_type(solver_type)
+        ;
+            TypeBody = hlds_eqv_type(EqvType),
+            type_is_solver_type(ModuleInfo, EqvType)
+        )
     ).
 
 type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-

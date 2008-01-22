@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1154,8 +1154,8 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         !DetInfo, !Specs) :-
     % Unifications are either deterministic or semideterministic.
     (
-        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-            Vars, Modes, LambdaDeclaredDet, Goal0),
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal0),
         ( determinism_components(LambdaDeclaredDet, _, at_most_many_cc) ->
             LambdaSolnContext = first_soln
         ;
@@ -1167,8 +1167,8 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
             no, LambdaInferredDet, _LambdaFailingContexts, !DetInfo, !Specs),
         det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
             Goal, GoalInfo, InstMap1, !DetInfo, !Specs),
-        RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-            Vars, Modes, LambdaDeclaredDet, Goal)
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal)
     ;
         ( RHS0 = rhs_var(_)
         ; RHS0 = rhs_functor(_, _, _)
@@ -1199,7 +1199,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
                 GoalFailingContexts = [FailingContext]
             ;
                 ( RHS = rhs_functor(_, _, _)
-                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
                 ),
                 unexpected(this_file, "complicated_unify but no var")
             )

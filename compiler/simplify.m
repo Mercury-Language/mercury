@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1206,8 +1206,8 @@ simplify_goal_2_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
     GoalExpr0 = unify(LT0, RT0, M, U0, C),
     (
-        RT0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
-            Vars, Modes, LambdaDeclaredDet, LambdaGoal0),
+        RT0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal0),
         simplify_info_enter_lambda(!Info),
         simplify_info_get_common_info(!.Info, Common1),
         simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -1224,8 +1224,8 @@ simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info, !IO) :-
         simplify_goal(LambdaGoal0, LambdaGoal, !Info, !IO),
         simplify_info_set_common_info(Common1, !Info),
         simplify_info_set_instmap(InstMap1, !Info),
-        RT = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
-            Vars, Modes, LambdaDeclaredDet, LambdaGoal),
+        RT = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal),
         simplify_info_leave_lambda(!Info),
         GoalExpr = unify(LT0, RT, M, U0, C),
         GoalInfo = GoalInfo0

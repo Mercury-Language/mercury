@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,7 +490,7 @@ number_robdd_variables_in_rhs(_, _, Vars, !RHS, !NRInfo) :-
     !.RHS = rhs_functor(_, _, Args),
     Vars = Args.
 number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
-    !.RHS = rhs_lambda_goal(_, _, _, LambdaNonLocals, LambdaVars, _, _,
+    !.RHS = rhs_lambda_goal(_, _, _, _, LambdaNonLocals, LambdaVars, _, _,
         LambdaGoal0),
     Vars = LambdaNonLocals,
     VarTypes = !.NRInfo ^ vartypes,
@@ -960,7 +960,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
         Inst, Seen, Var, !Constraint, !MDI) :-
     update_mc_info((pred(C::out, S0::in, S::out) is det :-
         (
-            ( Inst = any(_)
+            ( Inst = any(_, _)
             ; Inst = bound(_, _)
             ; Inst = ground(_, _)
             )
@@ -1619,7 +1619,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     ).
 
 unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
-    RHS0 = rhs_lambda_goal(_, _, _, NonLocals, LambdaVars, Modes, _, Goal0),
+    RHS0 = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, Modes, _, Goal0),
     InstGraph = !.GCInfo ^ inst_graph,
 
     % Variable Var is made ground by this goal.

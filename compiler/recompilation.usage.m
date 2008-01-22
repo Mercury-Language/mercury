@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 University of Melbourne.
+% Copyright (C) 2001-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1320,17 +1320,23 @@ find_items_used_by_insts(Modes, !Info) :-
 :- pred find_items_used_by_inst(mer_inst::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_inst(any(_), !Info).
+find_items_used_by_inst(any(_, HOInstInfo), !Info) :-
+    (
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+        find_items_used_by_modes(Modes, !Info)
+    ;
+        HOInstInfo = none
+    ).
 find_items_used_by_inst(free, !Info).
 find_items_used_by_inst(free(_), !Info).
 find_items_used_by_inst(bound(_, BoundInsts), !Info) :-
     list.foldl(find_items_used_by_bound_inst, BoundInsts, !Info).
-find_items_used_by_inst(ground(_, GroundInstInfo), !Info) :-
+find_items_used_by_inst(ground(_, HOInstInfo), !Info) :-
     (
-        GroundInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
         find_items_used_by_modes(Modes, !Info)
     ;
-        GroundInstInfo = none
+        HOInstInfo = none
     ).
 find_items_used_by_inst(not_reached, !Info).
 find_items_used_by_inst(inst_var(_), !Info).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -726,7 +726,7 @@ traverse_goal(Info, Goal, !VarDep) :-
                 set_var_used(LHS, !VarDep)
             ;
                 ( RHS = rhs_functor(_, _, _)
-                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
                 ),
                 unexpected(this_file,
                     "complicated unifications should only be var-var")

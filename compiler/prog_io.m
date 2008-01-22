@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3444,7 +3444,12 @@ constrain_inst_vars_in_mode(InstConstraints, user_defined_mode(Name, Args0),
 :- pred constrain_inst_vars_in_inst(inst_var_sub::in,
     mer_inst::in, mer_inst::out) is det.
 
-constrain_inst_vars_in_inst(_, any(U), any(U)).
+constrain_inst_vars_in_inst(_, any(U, none), any(U, none)).
+constrain_inst_vars_in_inst(InstConstraints,
+        any(U, higher_order(PredInstInfo0)),
+        any(U, higher_order(PredInstInfo))) :-
+    constrain_inst_vars_in_pred_inst_info(InstConstraints, PredInstInfo0,
+        PredInstInfo).
 constrain_inst_vars_in_inst(_, free, free).
 constrain_inst_vars_in_inst(_, free(T), free(T)).
 constrain_inst_vars_in_inst(InstConstraints, bound(U, BIs0), bound(U, BIs)) :-
@@ -3543,7 +3548,13 @@ inst_var_constraints_are_consistent_in_insts(Insts, !Sub) :-
 :- pred inst_var_constraints_are_consistent_in_inst(mer_inst::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
-inst_var_constraints_are_consistent_in_inst(any(_), !Sub).
+inst_var_constraints_are_consistent_in_inst(any(_, HOInstInfo), !Sub) :-
+    (
+        HOInstInfo = none
+    ;
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+        inst_var_constraints_are_consistent_in_modes(Modes, !Sub)
+    ).
 inst_var_constraints_are_consistent_in_inst(free, !Sub).
 inst_var_constraints_are_consistent_in_inst(free(_), !Sub).
 inst_var_constraints_are_consistent_in_inst(bound(_, BoundInsts), !Sub) :-
@@ -3551,11 +3562,11 @@ inst_var_constraints_are_consistent_in_inst(bound(_, BoundInsts), !Sub) :-
         (pred(bound_functor(_, Insts)::in, in, out) is semidet -->
             inst_var_constraints_are_consistent_in_insts(Insts)),
         BoundInsts, !Sub).
-inst_var_constraints_are_consistent_in_inst(ground(_, GroundInstInfo), !Sub) :-
+inst_var_constraints_are_consistent_in_inst(ground(_, HOInstInfo), !Sub) :-
     (
-        GroundInstInfo = none
+        HOInstInfo = none
     ;
-        GroundInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
         inst_var_constraints_are_consistent_in_modes(Modes, !Sub)
     ).
 inst_var_constraints_are_consistent_in_inst(not_reached, !Sub).

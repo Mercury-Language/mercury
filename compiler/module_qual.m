@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -974,7 +974,8 @@ qualify_inst_list([Inst0 | Insts0], [Inst | Insts], !Info, !Specs) :-
 :- pred qualify_inst(mer_inst::in, mer_inst::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_inst(any(A), any(A), !Info, !Specs).
+qualify_inst(any(Uniq, HOInstInfo0), any(Uniq, HOInstInfo), !Info, !Specs) :-
+    qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs).
 qualify_inst(free, free, !Info, !Specs).
 qualify_inst(not_reached, not_reached, !Info, !Specs).
 qualify_inst(free(_), _, !Info, !Specs) :-
@@ -982,16 +983,9 @@ qualify_inst(free(_), _, !Info, !Specs) :-
 qualify_inst(bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts), !Info,
         !Specs) :-
     qualify_bound_inst_list(BoundInsts0, BoundInsts, !Info, !Specs).
-qualify_inst(ground(Uniq, GroundInstInfo0), ground(Uniq, GroundInstInfo),
+qualify_inst(ground(Uniq, HOInstInfo0), ground(Uniq, HOInstInfo),
         !Info, !Specs) :-
-    (
-        GroundInstInfo0 = higher_order(pred_inst_info(A, Modes0, Det)),
-        qualify_mode_list(Modes0, Modes, !Info, !Specs),
-        GroundInstInfo = higher_order(pred_inst_info(A, Modes, Det))
-    ;
-        GroundInstInfo0 = none,
-        GroundInstInfo = none
-    ).
+    qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs).
 qualify_inst(inst_var(Var), inst_var(Var), !Info, !Specs).
 qualify_inst(constrained_inst_vars(Vars, Inst0),
         constrained_inst_vars(Vars, Inst), !Info, !Specs) :-
@@ -1001,6 +995,20 @@ qualify_inst(defined_inst(InstName0), defined_inst(InstName), !Info, !Specs) :-
 qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args), !Info,
         !Specs) :-
     qualify_inst_list(Args0, Args, !Info, !Specs).
+
+:- pred qualify_ho_inst_info(ho_inst_info::in, ho_inst_info::out,
+    mq_info::in, mq_info::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs) :-
+    (
+        HOInstInfo0 = higher_order(pred_inst_info(A, Modes0, Det)),
+        qualify_mode_list(Modes0, Modes, !Info, !Specs),
+        HOInstInfo = higher_order(pred_inst_info(A, Modes, Det))
+    ;
+        HOInstInfo0 = none,
+        HOInstInfo = none
+    ).
 
     % Find the unique inst_id that matches this inst, and qualify
     % the argument insts.
