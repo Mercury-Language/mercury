@@ -21,6 +21,7 @@ Changes to the Mercury language:
   with inst any that may be constrained by the goal.
 * We now support !X ^ field_list := Term as a synonym for
   !:X = !.X ^ field_list := Term.
+* We now support higher-order `any' insts.
 
 Changes to the Mercury standard library:
 
@@ -367,6 +368,28 @@ Changes to the Mercury language:
 		),
 		...
 		% perform the actual task
+
+* Higher-order terms can now have an `any' inst, which means that they can
+  legally use non-local solver variables even though these variables may
+  become further bound when in it is called.  Higher-order terms with an
+  `any' inst cannot be called or applied in a negated context (a negation,
+  the condition of an if-then-else, or the body of a higher-order expression
+  that does not itself have an `any' inst).
+
+  Such terms can be expressed by using `any_pred' and `any_func' in place of
+  `pred' and `func', as in the following examples:
+
+	AnyPred = (any_pred(X::ia, C::in) is semidet :-
+			geqc(X, A, C)		% X >= A + C
+		),
+	...
+	call(AnyPred, Z, 5)			% Z >= A + 5
+
+	AnyFunc = (any_func(X::ia) = (Y::ia) is semidet :-
+			X = Y + A
+		),
+	...
+	Z = apply(AnyFunc, W)			% W = Z + A
 
 Changes to the Mercury compiler:
 
