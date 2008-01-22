@@ -37,6 +37,26 @@
     --->    changed
     ;       unchanged.
 
+    % Should we emit an error message about extra variables in the head
+    % of a promise_equivalent_solutions scope?  Extra variables are
+    % those non-locals that are not further bound or (potentially) constrained
+    % by the goal inside the scope.
+    %
+    % We ignore such extra variables when re-running determinism
+    % analysis after optimisations such as inlining have been performed
+    % because not doing so results in spurious error messages.
+    % (Inlining can cause variables that had inst any to become ground.)
+    %
+:- type report_pess_extra_vars
+    --->    pess_extra_vars_report
+            % Emit an error message if the head of a
+            % promise_equivalent_solutions scope contains variables that
+            % are not further bound or (potentially) further constrained
+            % by the goal inside the scope.
+
+    ;       pess_extra_vars_ignore.
+            % Do not emit an error message if the above occurs.
+
 :- type det_info.
 
     % Given a list of cases, and a list of the possible cons_ids
@@ -66,7 +86,7 @@
     det_info::in) is semidet.
 
 :- pred det_info_init(module_info::in, vartypes::in, pred_id::in, proc_id::in,
-    det_info::out) is det.
+    report_pess_extra_vars::in, det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
 :- pred det_info_get_pred_id(det_info::in, pred_id::out) is det.
@@ -75,6 +95,8 @@
 :- pred det_info_get_reorder_disj(det_info::in, bool::out) is det.
 :- pred det_info_get_fully_strict(det_info::in, bool::out) is det.
 :- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
+:- pred det_info_get_pess_extra_vars(det_info::in,
+    report_pess_extra_vars::out) is det.
 
 :- pred det_info_set_module_info(module_info::in, det_info::in, det_info::out)
     is det.
@@ -184,16 +206,18 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
                 di_proc_id         :: proc_id,     % currently processed
                 di_reorder_conj    :: bool,        % --reorder-conj
                 di_reorder_disj    :: bool,        % --reorder-disj
-                di_fully_strict    :: bool         % --fully-strict
+                di_fully_strict    :: bool,        % --fully-strict
+                di_pess_extra_vars :: report_pess_extra_vars
             ).
 
-det_info_init(ModuleInfo, VarTypes, PredId, ProcId, DetInfo) :-
+det_info_init(ModuleInfo, VarTypes, PredId, ProcId, PessExtraVars,
+        DetInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
     globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
-        ReorderConj, ReorderDisj, FullyStrict).
+        ReorderConj, ReorderDisj, FullyStrict, PessExtraVars).
 
 det_info_get_module_info(DI, DI ^ di_module_info).
 det_info_get_pred_id(DI, DI ^ di_pred_id).
@@ -202,6 +226,7 @@ det_info_get_reorder_conj(DI, DI ^ di_reorder_conj).
 det_info_get_reorder_disj(DI, DI ^ di_reorder_disj).
 det_info_get_fully_strict(DI, DI ^ di_fully_strict).
 det_info_get_vartypes(DI, DI ^ di_vartypes).
+det_info_get_pess_extra_vars(DI, DI ^ di_pess_extra_vars).
 
 det_info_set_module_info(ModuleInfo, DI, DI ^ di_module_info := ModuleInfo).
 det_info_set_vartypes(VarTypes, DI, DI ^ di_vartypes := VarTypes).

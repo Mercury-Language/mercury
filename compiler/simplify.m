@@ -380,7 +380,8 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     ;
         Simplifications = Simplifications0
     ),
-    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, DetInfo0),
+    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId,
+        pess_extra_vars_report, DetInfo0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
     proc_info_get_goal(!.ProcInfo, Goal0),

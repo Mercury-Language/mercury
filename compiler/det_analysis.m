@@ -284,7 +284,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !:Specs) :-
     proc_info_get_goal(Proc0, Goal0),
     proc_info_get_initial_instmap(Proc0, !.ModuleInfo, InstMap0),
     proc_info_get_vartypes(Proc0, VarTypes),
-    det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, DetInfo0),
+    det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId,
+        pess_extra_vars_report, DetInfo0),
     det_infer_goal(Goal0, Goal, InstMap0, SolnContext, [], no,
         InferDetism, _,  DetInfo0, DetInfo, [], !:Specs),
     det_info_get_module_info(DetInfo, !:ModuleInfo),
@@ -1490,7 +1491,12 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         % Which vars were listed in the promise_equivalent_solutions
         % but not bound inside the scope?
         set.difference(set.list_to_set(Vars), BoundVars, ExtraVars),
-        ( set.empty(ExtraVars) ->
+        det_info_get_pess_extra_vars(!.DetInfo, IgnoreExtraVars),
+        ( 
+            ( set.empty(ExtraVars)
+            ; IgnoreExtraVars = pess_extra_vars_ignore
+            )
+        ->
             true
         ;
             ExtraVarNames = list.map(lookup_var_name_in_varset(VarSet),

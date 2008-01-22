@@ -35,6 +35,7 @@ MCFLAGS-deforest_bug		= -O3
 MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
 MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4
+MCFLAGS-equiv_solns_ia		= --inlining --local-constraint-propagation
 MCFLAGS-exists_cast_bug		= --trace rep -O0 --optimize-saved-vars-const
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-func_class		= --no-warn-nothing-exported
