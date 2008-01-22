@@ -4405,6 +4405,21 @@ else
 fi
 
 #-----------------------------------------------------------------------------#
+#
+# Check whether to disable the use of tagged trail entries
+#
+
+AC_ARG_ENABLE([tagged-trail],
+    AC_HELP_STRING([--disable-tagged-trail],
+        [do not use tagged trail entries, even if they are supported.]),
+	[ac_tagged_trail="$enableval"], [ac_tagged_trail=yes])
+
+if test "$ac_tagged_trail" = "no"
+then
+	AC_DEFINE(MR_FORCE_NO_TAGGED_TRAIL)
+fi
+
+#-----------------------------------------------------------------------------#
 
 AC_ARG_WITH(msvcrt,
     AC_HELP_STRING([--with-msvcrt],

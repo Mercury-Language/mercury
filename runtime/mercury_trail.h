@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2000, 2004-2005, 2007 The University of Melbourne.
+** Copyright (C) 1997-2000, 2004-2005, 2007-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,7 @@
 #ifndef MERCURY_TRAIL_H
 #define MERCURY_TRAIL_H
 
+#include "mercury_conf.h"
 #include "mercury_memory.h"
 
 #ifdef MR_USE_TRAIL
@@ -207,9 +208,11 @@ typedef enum {
 
 /*
 ** MR_USE_TAGGED_TRAIL is true iff we have enough tag bits to store
-** an MR_trail_entry_kind as a pointer tag.
+** an MR_trail_entry_kind as a pointer tag and MR_FORCE_NO_TAGGED_TRAIL
+** is undefined.
 */
-#define MR_USE_TAGGED_TRAIL ((1<<MR_TAGBITS) > MR_LAST_TRAIL_ENTRY_KIND)
+#define MR_USE_TAGGED_TRAIL (!defined(MR_FORCE_NO_TAGGED_TRAIL) && \
+    ((1<<MR_TAGBITS) > MR_LAST_TRAIL_ENTRY_KIND))
 
 typedef void MR_untrail_func_type(void *datum, MR_untrail_reason);
 
@@ -235,7 +238,7 @@ struct MR_TrailEntry_Struct {
 */
 
 #if MR_USE_TAGGED_TRAIL
-  #define MR_func_trail_tag MR_mktag(MR_func_entry)
+  #define MR_func_trail_tag     MR_mktag(MR_func_entry)
   #define MR_value_trail_tag    MR_mktag(MR_val_entry)
 
   /*

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003, 2005-2007 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -521,6 +521,14 @@
 **	override the pointers to provide IO streams with extra functionality.
 */
 #undef	MR_NEW_MERCURYFILE_STRUCT
+
+/*
+** MR_FORCE_NO_TAGGED_TRAIL
+**	Set this if you _do not_ want to use tagged trail entries, even if
+**	there are sufficient tag bits to support a tagged trail.
+**	See runtime/mercury_trail.h for further details.
+*/
+#undef	MR_FORCE_NO_TAGGED_TRAIL
 
 /*---------------------------------------------------------------------------*/
 
