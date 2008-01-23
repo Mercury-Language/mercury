@@ -144,7 +144,8 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     AddRegionOps = should_add_region_ops(!.CI, IteGoalInfo),
     IteRegionOps = AddRegionOps,
     goal_to_conj_list(ElseGoal, ElseGoals),
-    maybe_create_ite_region_frame(IteRegionOps, CondInfo, ElseGoals,
+    goal_to_conj_list(CondGoal, CondGoals),
+    maybe_create_ite_region_frame(IteRegionOps, CondInfo, CondGoals, ElseGoals,
         RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars,
         MaybeEmbeddedStackFrameId, !CI),
 
@@ -365,7 +366,8 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     AddRegionOps = should_add_region_ops(!.CI, NotGoalInfo),
     IteRegionOps = AddRegionOps,
     Goal = hlds_goal(_, GoalInfo),
-    maybe_create_ite_region_frame(IteRegionOps, GoalInfo, [],
+    goal_to_conj_list(Goal, CondGoals),
+    maybe_create_ite_region_frame(IteRegionOps, GoalInfo, CondGoals, [],
         RegionCondCode, RegionThenCode, RegionElseCode, RegionStackVars,
         MaybeRegionSuccRecordSlot, !CI),
     % MaybeRegionSuccRecordSlot should be yes only for nondet conditions,
@@ -540,11 +542,11 @@ wrap_transient(Code) =
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_create_ite_region_frame(add_region_ops::in,
-    hlds_goal_info::in, list(hlds_goal)::in,
+    hlds_goal_info::in, list(hlds_goal)::in, list(hlds_goal)::in,
     code_tree::out, code_tree::out, code_tree::out, list(lval)::out,
     maybe(embedded_stack_frame_id)::out, code_info::in, code_info::out) is det.
 
-maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
+maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
         CondCode, ThenCode, ElseCode, StackVars, MaybeEmbeddedStackFrameId,
         !CI) :-
     (
@@ -572,9 +574,15 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
             RbmmInfo = rbmm_goal_info(CondCreatedRegionVars,
                 CondRemovedRegionVars, CondCarriedRegionVars, 
                 CondAllocRegionVars, _CondUsedRegionVars),
+            list.reverse(CondGoals, ReversedCondGoals),
+            code_info.get_module_info(!.CI, ModuleInfo),
+            find_regions_removed_at_start_of_goals(ReversedCondGoals,
+                ModuleInfo, set.init, RemovedAtEndOfThen),
+            set.difference(CondRemovedRegionVars, RemovedAtEndOfThen,
+                NeedToBeProtectedRegionVars),
             (
                 set.empty(CondCreatedRegionVars),
-                set.empty(CondRemovedRegionVars),
+                set.empty(NeedToBeProtectedRegionVars),
                 set.empty(CondAllocRegionVars)
             ->
                 % When no region-related operations occur in the
@@ -585,8 +593,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
                 StackVars = [],
                 MaybeEmbeddedStackFrameId = no
             ;
-                code_info.get_module_info(!.CI, ModuleInfo),
-                find_regions_removed_at_start_of_else(ElseGoals, ModuleInfo,
+                find_regions_removed_at_start_of_goals(ElseGoals, ModuleInfo,
                     set.init, RemovedAtStartOfElse),
 
                 % The UnprotectedRemovedAtStartOfElse is the
@@ -599,7 +606,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
                     RemovedAtStartOfElse, CondCarriedRegionVars),
 
                 ProtectRegionVars = set.intersect(LiveRegionVars,
-                    CondRemovedRegionVars),
+                    NeedToBeProtectedRegionVars),
                 SnapshotRegionVars0 = set.intersect(LiveRegionVars,
                     CondAllocRegionVars),
                 SnapshotRegionVars = set.difference(SnapshotRegionVars0,
@@ -718,11 +725,11 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, ElseGoals,
     % Given the list of goals in the else branch, accumulate the region
     % variables whose regions are removed at the start of that list.
     %
-:- pred find_regions_removed_at_start_of_else(list(hlds_goal)::in,
+:- pred find_regions_removed_at_start_of_goals(list(hlds_goal)::in,
     module_info::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-find_regions_removed_at_start_of_else([], _, !Removed).
-find_regions_removed_at_start_of_else([Goal | Goals], ModuleInfo, !Removed) :-
+find_regions_removed_at_start_of_goals([], _, !Removed).
+find_regions_removed_at_start_of_goals([Goal | Goals], ModuleInfo, !Removed) :-
     Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = plain_call(PredId, _ProcId, Args, _Builtin, _UC, _SymName),
@@ -732,7 +739,7 @@ find_regions_removed_at_start_of_else([Goal | Goals], ModuleInfo, !Removed) :-
         Args = [RegionVar]
     ->
         set.insert(!.Removed, RegionVar, !:Removed),
-        find_regions_removed_at_start_of_else(Goals, ModuleInfo, !Removed)
+        find_regions_removed_at_start_of_goals(Goals, ModuleInfo, !Removed)
     ;
         true
     ).

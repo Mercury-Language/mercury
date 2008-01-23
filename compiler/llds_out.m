@@ -2600,8 +2600,8 @@ output_instruction(region_fill_frame(FillOp, EmbeddedFrame, IdRval,
         FillOp = region_fill_ite_snapshot(not_removed_at_start_of_else),
         io.write_string("\tMR_region_fill_ite_snapshot_not_removed", !IO)
     ;
-        FillOp = region_fill_disj_protect,
-        io.write_string("\tMR_region_fill_disj_protect", !IO)
+        FillOp = region_fill_semi_disj_protect,
+        io.write_string("\tMR_region_fill_semi_disj_protect", !IO)
     ;
         FillOp = region_fill_disj_snapshot,
         io.write_string("\tMR_region_fill_disj_snapshot", !IO)

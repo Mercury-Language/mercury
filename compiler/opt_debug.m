@@ -846,8 +846,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             FillOp = region_fill_ite_snapshot(not_removed_at_start_of_else),
             FillOpStr = "ite_snapshot(not_removed_at_start_of_else)"
         ;
-            FillOp = region_fill_disj_protect,
-            FillOpStr = "disj_protect"
+            FillOp = region_fill_semi_disj_protect,
+            FillOpStr = "semi_disj_protect"
         ;
             FillOp = region_fill_disj_snapshot,
             FillOpStr = "disj_snapshot"

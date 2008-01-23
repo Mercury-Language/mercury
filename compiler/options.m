@@ -471,11 +471,12 @@
 
     ;       size_region_ite_fixed
     ;       size_region_disj_fixed
+    ;       size_region_semi_disj_fixed
     ;       size_region_commit_fixed
 
     ;       size_region_ite_protect
     ;       size_region_ite_snapshot
-    ;       size_region_disj_protect
+    ;       size_region_semi_disj_protect
     ;       size_region_disj_snapshot
     ;       size_region_commit_entry
 
@@ -1223,15 +1224,11 @@ option_defaults_2(internal_use_option, [
     % The size_* values below *must* be consistent with the corresponding
     % values or data structures in mercury_region.h.
     size_region_ite_fixed               -   int(4),
-    size_region_disj_fixed              -   int(3),
+    size_region_disj_fixed              -   int(4),
     size_region_commit_fixed            -   int(4),
     size_region_ite_protect             -   int(1),
     size_region_ite_snapshot            -   int(3),
-    size_region_disj_protect            -   int(0),
-                                        % size_region_disj_protect is no longer
-                                        % used. It should be removed when the
-                                        % runtime support for RBMM is more
-                                        % stable.
+    size_region_semi_disj_protect       -   int(1),
     size_region_disj_snapshot           -   int(3),
     size_region_commit_entry            -   int(1),
     solver_type_auto_init               -   bool(no),
@@ -2023,14 +2020,14 @@ long_option("rtti-line-numbers",    rtti_line_numbers).
 long_option("disable-mm-pneg",      disable_minimal_model_stack_copy_pneg).
 long_option("disable-mm-cut",       disable_minimal_model_stack_copy_cut).
 long_option("disable-trail-ops",    disable_trail_ops).
-long_option("size-region-ite-fixed",        size_region_ite_fixed).
-long_option("size-region-disj-fixed",       size_region_disj_fixed).
-long_option("size-region-commit-fixed",     size_region_commit_fixed).
-long_option("size-region-ite-protect",      size_region_ite_protect).
-long_option("size-region-ite-snapshot",     size_region_ite_snapshot).
-long_option("size-region-disj-protect",     size_region_disj_protect).
-long_option("size-region-disj-snapshot",    size_region_disj_snapshot).
-long_option("size-region-commit-entry",     size_region_commit_entry).
+long_option("size-region-ite-fixed",            size_region_ite_fixed).
+long_option("size-region-disj-fixed",           size_region_disj_fixed).
+long_option("size-region-commit-fixed",         size_region_commit_fixed).
+long_option("size-region-ite-protect",          size_region_ite_protect).
+long_option("size-region-ite-snapshot",         size_region_ite_snapshot).
+long_option("size-region-semi-disj-protect",    size_region_semi_disj_protect).
+long_option("size-region-disj-snapshot",        size_region_disj_snapshot).
+long_option("size-region-commit-entry",         size_region_commit_entry).
 long_option("solver-type-auto-init",        solver_type_auto_init).
 long_option("allow-multi-arm-switches",     allow_multi_arm_switches).
 

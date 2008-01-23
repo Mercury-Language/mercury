@@ -768,7 +768,7 @@
 :- type region_fill_frame_op
     --->    region_fill_ite_protect
     ;       region_fill_ite_snapshot(removed_at_start_of_else)
-    ;       region_fill_disj_protect
+    ;       region_fill_semi_disj_protect
     ;       region_fill_disj_snapshot
     ;       region_fill_commit.
 

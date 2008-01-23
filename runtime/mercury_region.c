@@ -30,25 +30,44 @@ MR_Word             MR_region_sequence_number = 1;
 
 #if defined(MR_RBMM_PROFILING)
 
-MR_RegionProfUnit   MR_rbmmp_words_used = {0, 0, 0};
 MR_RegionProfUnit   MR_rbmmp_regions_used = {0, 0, 0};
+unsigned int        MR_rbmmp_biggest_region_size = 0;
+int                 MR_rbmmp_biggest_region = 0;
+unsigned int        MR_rbmmp_regions_instant_reclaimed_at_disj = 0;
+unsigned int        MR_rbmmp_regions_instant_reclaimed_at_ite = 0;
+unsigned int        MR_rbmmp_regions_reclaimed_by_remove_instr = 0;
+unsigned int        MR_rbmmp_regions_reclaimed_at_then_part = 0;
+unsigned int        MR_rbmmp_regions_reclaimed_at_commit = 0;
+
+MR_RegionProfUnit   MR_rbmmp_words_used = {0, 0, 0};
+unsigned int        MR_rbmmp_words_instant_reclaimed_new_alloc = 0;
+unsigned int        MR_rbmmp_words_instant_reclaimed_new_regions = 0;
+unsigned int        MR_rbmmp_words_reclaimed_by_remove_instr = 0;
+unsigned int        MR_rbmmp_words_reclaimed_at_then_part = 0;
+unsigned int        MR_rbmmp_words_reclaimed_at_commit = 0;
+
 MR_RegionProfUnit   MR_rbmmp_pages_used = {0, 0, 0};
 unsigned int        MR_rbmmp_pages_requested = 0;
-unsigned int        MR_rbmmp_biggest_region_size = 0;
-unsigned int        MR_rbmmp_regions_saved_at_commit = 0;
+double              MR_rbmmp_page_utilized;
+unsigned int        MR_rbmmp_pages_instant_reclaimed_new_alloc = 0;
+unsigned int        MR_rbmmp_pages_instant_reclaimed_new_regions = 0;
+unsigned int        MR_rbmmp_pages_reclaimed_by_remove_instr = 0;
+unsigned int        MR_rbmmp_pages_reclaimed_at_then_part = 0;
+unsigned int        MR_rbmmp_pages_reclaimed_at_commit = 0;
+
+MR_RegionProfUnit   MR_rbmmp_num_disj_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_words_used_by_disj_frames = {0, 0, 0};
+unsigned int        MR_rbmmp_regions_protected_at_semi_disj = 0;
+unsigned int        MR_rbmmp_snapshots_saved_at_disj = 0;
+
+MR_RegionProfUnit   MR_rbmmp_num_ite_frames = {0, 0, 0};
+MR_RegionProfUnit   MR_rbmmp_words_used_by_ite_frames = {0, 0, 0};
 unsigned int        MR_rbmmp_regions_protected_at_ite = 0;
 unsigned int        MR_rbmmp_snapshots_saved_at_ite = 0;
-unsigned int        MR_rbmmp_regions_protected_at_disj;
-unsigned int        MR_rbmmp_snapshots_saved_at_disj = 0;
-double              MR_rbmmp_page_utilized;
-unsigned int        MR_rbmmp_words_snapshot_instant_reclaimed = 0;
-unsigned int        MR_rbmmp_pages_snapshot_instant_reclaimed = 0;
-MR_RegionProfUnit   MR_rbmmp_num_ite_frames = {0, 0, 0};
-MR_RegionProfUnit   MR_rbmmp_num_disj_frames = {0, 0, 0};
+
 MR_RegionProfUnit   MR_rbmmp_num_commit_frames = {0, 0, 0};
-MR_RegionProfUnit   MR_rbmmp_words_used_by_ite_frames = {0, 0, 0};
-MR_RegionProfUnit   MR_rbmmp_words_used_by_disj_frames = {0, 0, 0};
 MR_RegionProfUnit   MR_rbmmp_words_used_by_commit_frames = {0, 0, 0};
+unsigned int        MR_rbmmp_regions_saved_at_commit = 0;
 
 #endif
 
@@ -296,6 +315,12 @@ void
 MR_remove_undisjprotected_region_ite_then_semidet(MR_RegionHeader *region)
 {
     MR_region_destroy_region(region);
+#if defined(MR_RBMM_PROFILING)
+    MR_region_profile_reclaim_region(region,
+        &MR_rbmmp_regions_reclaimed_at_then_part,
+        &MR_rbmmp_pages_reclaimed_at_then_part,
+        &MR_rbmmp_words_reclaimed_at_then_part);
+#endif
     MR_region_debug_destroy_region(region);
 }
 
@@ -314,6 +339,12 @@ MR_remove_undisjprotected_region_ite_then_nondet(MR_RegionHeader *region)
     if ( !MR_region_is_disj_protected(region) ) {
         MR_region_nullify_in_ite_frame(region);
         MR_region_destroy_region(region);
+#if defined(MR_RBMM_PROFILING)
+        MR_region_profile_reclaim_region(region,
+            &MR_rbmmp_regions_reclaimed_at_then_part,
+            &MR_rbmmp_pages_reclaimed_at_then_part,
+            &MR_rbmmp_words_reclaimed_at_then_part);
+#endif
         MR_region_debug_destroy_region(region);
     } else {
         region->MR_region_logical_removed = 1;
@@ -330,6 +361,12 @@ MR_region_remove_region(MR_RegionHeader *region)
         !(MR_region_is_disj_protected(region)) )
     {
         MR_region_destroy_region(region);
+#if defined(MR_RBMM_PROFILING)
+        MR_region_profile_reclaim_region(region,
+            &MR_rbmmp_regions_reclaimed_by_remove_instr,
+            &MR_rbmmp_pages_reclaimed_by_remove_instr,
+            &MR_rbmmp_words_reclaimed_by_remove_instr);
+#endif
     } else {
         region->MR_region_logical_removed = 1;
 
@@ -369,6 +406,10 @@ MR_region_alloc(MR_RegionHeader *region, unsigned int words)
 #if defined(MR_RBMM_PROFILING)
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, words);
     region->MR_region_allocated_size += words;
+    if (region->MR_region_allocated_size > MR_rbmmp_biggest_region_size) {
+        MR_rbmmp_biggest_region_size = region->MR_region_allocated_size;
+        MR_rbmmp_biggest_region = region->MR_region_sequence_number;
+    }
 #endif
 
     return allocated_cell;
@@ -406,6 +447,12 @@ MR_commit_success_destroy_marked_saved_regions(MR_Word num_saved_regions,
             ** region, So just need to destroy it at commit.
             */
             MR_region_destroy_region(region);
+#if defined(MR_RBMM_PROFILING)
+            MR_region_profile_reclaim_region(region,
+                &MR_rbmmp_regions_reclaimed_at_commit,
+                &MR_rbmmp_pages_reclaimed_at_commit,
+                &MR_rbmmp_words_reclaimed_at_commit);
+#endif
         }
     }
 }
@@ -425,6 +472,12 @@ MR_commit_success_destroy_marked_new_regions(MR_Word saved_region_seq_number)
     {
         if (region->MR_region_destroy_at_commit) {
             MR_region_destroy_region(region);
+#if defined(MR_RBMM_PROFILING)
+            MR_region_profile_reclaim_region(region,
+                &MR_rbmmp_regions_reclaimed_at_commit,
+                &MR_rbmmp_pages_reclaimed_at_commit,
+                &MR_rbmmp_words_reclaimed_at_commit);
+#endif
         }
         /*
         ** XXX It is fine to destroy the region and then still use it to find
@@ -761,6 +814,19 @@ MR_region_fill_ite_snapshot_not_removed_msg(MR_RegionSnapshot *snapshot,
 }
 
 void
+MR_region_fill_semi_disj_protect_msg(MR_RegionSemiDisjProtect *semi_disj_prot,
+    MR_RegionHeader *region)
+{
+    if (semi_disj_prot == NULL) {
+        printf("\tNot protect region #%d.\n",
+            region->MR_region_sequence_number);
+    } else {
+        printf("\tAt slot: %d, protect region #%d.\n", semi_disj_prot,
+            region->MR_region_sequence_number);
+    }
+}
+
+void
 MR_region_fill_disj_snapshot_msg(MR_RegionSnapshot *snapshot,
     MR_RegionHeader *region)
 {
@@ -840,9 +906,6 @@ MR_region_profile_destroyed_region(MR_RegionHeader *region)
     allocated_size_of_region = region->MR_region_allocated_size;
     MR_region_update_profiling_unit(&MR_rbmmp_words_used,
         -allocated_size_of_region);
-    if (allocated_size_of_region > MR_rbmmp_biggest_region_size) {
-        MR_rbmmp_biggest_region_size = allocated_size_of_region;
-    }
 }
 
 void
@@ -858,8 +921,28 @@ MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *snapshot)
     restoring_region->MR_region_allocated_size
         -= new_words;
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, -new_words);
-    MR_rbmmp_pages_snapshot_instant_reclaimed += new_pages;
-    MR_rbmmp_words_snapshot_instant_reclaimed += new_words;
+    MR_rbmmp_pages_instant_reclaimed_new_alloc += new_pages;
+    MR_rbmmp_words_instant_reclaimed_new_alloc += new_words;
+}
+
+void
+MR_region_profile_reclaim_region(MR_RegionHeader *region,
+    unsigned int *regions_reclaimed, unsigned int *pages_reclaimed,
+    unsigned int *words_reclaimed)
+{
+    MR_region_profile_increase_counter(regions_reclaimed);
+    MR_region_profile_reclaim_pages_and_words(region, pages_reclaimed,
+        words_reclaimed);
+}
+
+void
+MR_region_profile_reclaim_pages_and_words(MR_RegionHeader *region,
+    unsigned int *pages_reclaimed, unsigned int *words_reclaimed)
+{
+    *pages_reclaimed += MR_region_get_number_of_pages(
+        MR_region_to_first_regionpage(region),
+        region->MR_region_last_page);
+    *words_reclaimed += region->MR_region_allocated_size;
 }
 
 void
@@ -935,36 +1018,75 @@ void
 MR_region_print_profiling_info(void)
 {
     printf("\n---------- Profiling information ----------\n");
+    /* Info about regions */
     MR_region_print_profiling_unit("Regions:", &MR_rbmmp_regions_used);
     printf("Biggest region size: %d.\n", MR_rbmmp_biggest_region_size);
+    printf("Biggest region's sequence number: %d.\n", MR_rbmmp_biggest_region);
+    printf("Reclaimed as follows:\n");
+    printf("\tThanks to reclaiming new regions at ite: %d.\n",
+        MR_rbmmp_regions_instant_reclaimed_at_ite);
+    printf("\tThanks to reclaiming new regions at disj: %d.\n",
+        MR_rbmmp_regions_instant_reclaimed_at_disj);
+    printf("\tAt the start of then part: %d.\n",
+        MR_rbmmp_regions_reclaimed_at_then_part);
+    printf("\tAt commit point: %d.\n",
+        MR_rbmmp_regions_reclaimed_at_commit);
+    printf("\tBy remove instruction: %d.\n",
+        MR_rbmmp_regions_reclaimed_by_remove_instr);
+
+    /* Info about words used*/
     MR_region_print_profiling_unit("Words:", &MR_rbmmp_words_used);
-    MR_region_print_profiling_unit("Pages used:", &MR_rbmmp_pages_used);
+    printf("Reclaimed as follows:\n");
+    printf("\tInstant reclaiming of new allocations: %d.\n",
+        MR_rbmmp_words_instant_reclaimed_new_alloc);
+    printf("\tInstant reclaiming of new regions: %d.\n",
+        MR_rbmmp_words_instant_reclaimed_new_regions);
+    printf("\tAt the start of then part: %d.\n",
+        MR_rbmmp_words_reclaimed_at_then_part);
+    printf("\tAt commit point: %d.\n",
+        MR_rbmmp_words_reclaimed_at_commit);
+    printf("\tBy remove instruction: %d.\n",
+        MR_rbmmp_words_reclaimed_by_remove_instr);
+
+    /* Info about pages used*/
+    MR_region_print_profiling_unit("Pages:", &MR_rbmmp_pages_used);
     printf("Pages requested: %d.\n", MR_rbmmp_pages_requested);
     printf("Pages utilized: %lf.\n",
         MR_rbmmp_pages_used.MR_rbmmpu_total / (double)MR_rbmmp_pages_requested);
-    printf("Regions protected at ite frames: %d.\n",
-        MR_rbmmp_regions_protected_at_ite);
-    printf("Regions saved at commit frames: %d.\n",
-        MR_rbmmp_regions_saved_at_commit);
-    printf("Snapshots at ite frames: %d.\n", MR_rbmmp_snapshots_saved_at_ite);
-    printf("Snapshots at disj frames: %d.\n",
-        MR_rbmmp_snapshots_saved_at_disj);
-    printf("Words instant reclaimed thanks to snapshot: %d.\n",
-        MR_rbmmp_words_snapshot_instant_reclaimed);
-    printf("Pages instant reclaimed thanks to snapshot: %d.\n",
-        MR_rbmmp_pages_snapshot_instant_reclaimed);
-    MR_region_print_profiling_unit("Ite frames used:",
-        &MR_rbmmp_num_ite_frames);
+    printf("\tInstant reclaiming of new allocations: %d.\n",
+        MR_rbmmp_pages_instant_reclaimed_new_alloc);
+    printf("\tInstant reclaiming of new regions: %d.\n",
+        MR_rbmmp_pages_instant_reclaimed_new_regions);
+    printf("\tAt the start of then part: %d.\n",
+        MR_rbmmp_pages_reclaimed_at_then_part);
+    printf("\tAt commit point: %d.\n",
+        MR_rbmmp_pages_reclaimed_at_commit);
+    printf("\tBy remove instruction: %d.\n",
+        MR_rbmmp_pages_reclaimed_by_remove_instr);
+
+    /* Info about embedded frames */
     MR_region_print_profiling_unit("Disj frames used:",
         &MR_rbmmp_num_disj_frames);
-    MR_region_print_profiling_unit("Commit frames used:",
-        &MR_rbmmp_num_commit_frames);
-    MR_region_print_profiling_unit("Words used by ite frames:",
-        &MR_rbmmp_words_used_by_ite_frames);
     MR_region_print_profiling_unit("Words used by disj frames:",
         &MR_rbmmp_words_used_by_disj_frames);
+    printf("Regions protected at (semi) disj frames: %d.\n",
+        MR_rbmmp_regions_protected_at_semi_disj);
+    printf("Region size records saved at disj frames: %d.\n",
+        MR_rbmmp_snapshots_saved_at_disj);
+    MR_region_print_profiling_unit("Ite frames used:",
+        &MR_rbmmp_num_ite_frames);
+    MR_region_print_profiling_unit("Words used by ite frames:",
+        &MR_rbmmp_words_used_by_ite_frames);
+    printf("Regions protected at ite frames: %d.\n",
+        MR_rbmmp_regions_protected_at_ite);
+    printf("Region size records saved at ite frames: %d.\n",
+        MR_rbmmp_snapshots_saved_at_ite);
+    MR_region_print_profiling_unit("Commit frames used:",
+        &MR_rbmmp_num_commit_frames);
     MR_region_print_profiling_unit("Words used by commit frames:",
         &MR_rbmmp_words_used_by_commit_frames);
+    printf("Regions saved at commit frames: %d.\n",
+        MR_rbmmp_regions_saved_at_commit);
 }
 
 #else /* Not define MR_RBMM_PROFILING. */
@@ -983,6 +1105,21 @@ MR_region_profile_destroyed_region(MR_RegionHeader *r)
 
 void
 MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *s)
+{
+    /* do nothing */
+}
+
+void
+MR_region_profile_reclaim_region(MR_RegionHeader *region,
+    unsigned int *regions_reclaimed, unsigned int *pages_reclaimed,
+    unsigned int *words_reclaimed)
+{
+    /* do nothing */
+}
+
+void
+MR_region_profile_reclaim_pages_and_words(MR_RegionHeader *region,
+    unsigned int *pages_reclaimed, unsigned int *words_reclaimed)
 {
     /* do nothing */
 }

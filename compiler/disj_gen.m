@@ -361,14 +361,13 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
             ReclaimHeap),
         maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
-        maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
-            do_not_commit_at_end_of_disjunct,
-            BeforeEnterRegionCode, LaterRegionCode, LastRegionCode,
-            _RegionStackVars, RegionCommitDisjCleanup, !CI),
+        maybe_create_disj_region_frame_nondet(AddRegionOps, DisjGoalInfo,
+            BeforeEnterRegionCode, LaterRegionCode, LastRegionCode, !CI),
         % We can't release any of the stack slots holding the embedded stack
         % frame, since we can't let code to the right of the disjunction reuse
         % any of those slots.
-        RegionStackVarsToRelease = []
+        RegionStackVarsToRelease = [],
+        RegionCommitDisjCleanup = no_commit_disj_region_cleanup
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
@@ -409,8 +408,8 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
             ;
                 % We only need region support for backtracking if some disjunct
                 % performs some region operations (allocation or removal).
-                maybe_create_disj_region_frame(AddRegionOps, DisjGoalInfo,
-                    commit_at_end_of_disjunct,
+                maybe_create_disj_region_frame_semi(AddRegionOps,
+                    DisjRemovedRegionVars, DisjAllocRegionVars,
                     BeforeEnterRegionCode, LaterRegionCode, LastRegionCode,
                     RegionStackVars, RegionCommitDisjCleanup, !CI),
                 RegionStackVarsToRelease = RegionStackVars
@@ -678,10 +677,6 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
 %-----------------------------------------------------------------------------%
 
-:- type commit_at_end_of_disjunct
-    --->    commit_at_end_of_disjunct
-    ;       do_not_commit_at_end_of_disjunct.
-
 :- type commit_disj_region_cleanup
     --->    no_commit_disj_region_cleanup
     ;       commit_disj_region_cleanup(
@@ -689,14 +684,101 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 cleanup_code        :: code_tree
             ).
 
-:- pred maybe_create_disj_region_frame(add_region_ops::in, hlds_goal_info::in,
-    commit_at_end_of_disjunct::in,
-    code_tree::out, code_tree::out, code_tree::out, list(lval)::out,
-    commit_disj_region_cleanup::out, code_info::in, code_info::out) is det.
+:- pred maybe_create_disj_region_frame_nondet(add_region_ops::in,
+    hlds_goal_info::in, code_tree::out, code_tree::out, code_tree::out, 
+    code_info::in, code_info::out) is det.
 
-maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
-        CommitAtEndOfDisjunct, BeforeEnterCode, LaterCode, LastCode,
-        StackVars, RegionCommitDisjCleanup, !CI) :-
+maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
+        BeforeEnterCode, LaterCode, LastCode, !CI) :-
+    (
+        DisjRegionOps = do_not_add_region_ops,
+        BeforeEnterCode = empty,
+        LaterCode = empty,
+        LastCode = empty
+    ;
+        DisjRegionOps = add_region_ops,
+        get_forward_live_vars(!.CI, ForwardLiveVars),
+        LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
+
+        % Protection of backward live regions for nondet disjunction is by
+        % saving the sequence number to the disj frame, therefore we do not
+        % need to save any protected regions.
+
+        % XXX In computing SnapshotRegionVars,
+        % we should intersect LiveRegionVars with the set of region variables
+        % whose regions (the regions themselves, not their variables) are live
+        % at the starts of some later disjuncts (i.e. aren't used only in the
+        % first disjunct). We don't yet gather this information.
+        SnapshotRegionVars = LiveRegionVars,
+        SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
+        list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
+
+        get_globals(!.CI, Globals),
+        globals.lookup_int_option(Globals, size_region_disj_fixed,
+            FixedSize),
+        globals.lookup_int_option(Globals, size_region_disj_snapshot,
+            SnapshotSize),
+        FrameSize = FixedSize + SnapshotSize * NumSnapshotRegionVars,
+
+        Items = list.duplicate(FrameSize, slot_region_disj),
+        acquire_several_temp_slots(Items, non_persistent_temp_slot,
+            _StackVars, MainStackId, FirstSlotNum, LastSlotNum, !CI),
+        EmbeddedStackFrame = embedded_stack_frame_id(MainStackId,
+            FirstSlotNum, LastSlotNum),
+        FirstNonFixedAddr =
+            first_nonfixed_embedded_slot_addr(EmbeddedStackFrame, FixedSize),
+        acquire_reg(reg_r, SnapshotNumRegLval, !CI),
+        acquire_reg(reg_r, AddrRegLval, !CI),
+        PushInitCode = node([
+            llds_instr(
+                push_region_frame(region_stack_disj, EmbeddedStackFrame),
+                "Save stack pointer of embedded region nondet stack"),
+            llds_instr(
+                assign(SnapshotNumRegLval, const(llconst_int(0))),
+                "Initialize number of snapshot_infos"),
+            llds_instr(
+                assign(AddrRegLval, FirstNonFixedAddr),
+                "Initialize pointer to nonfixed part of embedded frame")
+        ]),
+        disj_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
+            EmbeddedStackFrame, SnapshotRegionVarList, SnapshotRegionCode,
+            !CI),
+        SetCode = node([
+            llds_instr(
+                region_set_fixed_slot(region_set_disj_num_snapshots,
+                    EmbeddedStackFrame, lval(SnapshotNumRegLval)),
+                "Store the number of snapshot_infos")
+        ]),
+        release_reg(SnapshotNumRegLval, !CI),
+        release_reg(AddrRegLval, !CI),
+
+        BeforeEnterCode = tree_list([
+            PushInitCode,
+            SnapshotRegionCode,
+            SetCode
+        ]),
+        LaterCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(region_disj_later,
+                    EmbeddedStackFrame),
+                "region enter later disjunct")
+        ]),
+        LastCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(region_disj_last,
+                    EmbeddedStackFrame),
+                "region enter last disjunct")
+        ])
+    ).
+
+:- pred maybe_create_disj_region_frame_semi(add_region_ops::in,
+    set(prog_var)::in, set(prog_var)::in, code_tree::out, code_tree::out,
+    code_tree::out, list(lval)::out, commit_disj_region_cleanup::out,
+    code_info::in, code_info::out) is det.
+
+maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
+        DisjAllocRegionVars, BeforeEnterCode, LaterCode, LastCode, StackVars,
+        RegionCommitDisjCleanup, !CI) :-
     (
         DisjRegionOps = do_not_add_region_ops,
         BeforeEnterCode = empty,
@@ -706,21 +788,21 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
         RegionCommitDisjCleanup = no_commit_disj_region_cleanup
     ;
         DisjRegionOps = add_region_ops,
-        get_forward_live_vars(!.CI, ForwardLiveVars),
-        LiveRegionVars = filter_region_vars(!.CI, ForwardLiveVars),
 
-        % XXX In computing both ProtectRegionVars and SnapshotRegionVars,
-        % we should intersect LiveRegionVars with the set of region variables
-        % whose regions (the regions themselves, not their variables) are live
-        % at the starts of some later disjuncts (i.e. aren't used only in the
-        % first disjunct). We don't yet gather this information.
+        % For a semidet disjunction, we need to save the protected regions,
+        % i.e., those removed in the scope of the semidet disjunction,
+        % into the disj frame so that if a non-last disjunct succeeds,
+        % we can reclaim such regions. We will only save ones which
+        % are currently not protected (this is checked at runtime).
+        ProtectRegionVars = DisjRemovedRegionVars,
+
+        % XXX In computing SnapshotRegionVars,
+        % we should intersect DisjAllocRegionVars with the set of region
+        % variables whose regions (the regions themselves, not their variables)
+        % are live at the starts of some later disjuncts (i.e. aren't used only
+        % in the first disjunct). We don't yet gather this information.
         %
-        % XXX In computing ProtectRegionVars, we should also delete any
-        % variables that are statically known to be already protected by
-        % an outer disjunction, but we don't yet have the program analysis
-        % required to gather such information.
-        ProtectRegionVars = LiveRegionVars,
-        SnapshotRegionVars = LiveRegionVars,
+        SnapshotRegionVars = DisjAllocRegionVars,
 
         ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
         SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
@@ -731,7 +813,7 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
         get_globals(!.CI, Globals),
         globals.lookup_int_option(Globals, size_region_disj_fixed,
             FixedSize),
-        globals.lookup_int_option(Globals, size_region_disj_protect,
+        globals.lookup_int_option(Globals, size_region_semi_disj_protect,
             ProtectSize),
         globals.lookup_int_option(Globals, size_region_disj_snapshot,
             SnapshotSize),
@@ -802,21 +884,15 @@ maybe_create_disj_region_frame(DisjRegionOps, _DisjGoalInfo,
                 "region enter last disjunct")
         ]),
 
-        (
-            CommitAtEndOfDisjunct = do_not_commit_at_end_of_disjunct,
-            RegionCommitDisjCleanup = no_commit_disj_region_cleanup
-        ;
-            CommitAtEndOfDisjunct = commit_at_end_of_disjunct,
-            get_next_label(CleanupLabel, !CI),
-            CleanupCode = node([
-                llds_instr(
-                    use_and_maybe_pop_region_frame(
-                        region_disj_nonlast_semi_commit, EmbeddedStackFrame),
-                    "region cleanup commit for nonlast disjunct")
-            ]),
-            RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
-                CleanupCode)
-        )
+        get_next_label(CleanupLabel, !CI),
+        CleanupCode = node([
+            llds_instr(
+                use_and_maybe_pop_region_frame(
+                    region_disj_nonlast_semi_commit, EmbeddedStackFrame),
+                "region cleanup commit for nonlast disjunct")
+        ]),
+        RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
+            CleanupCode)
     ).
 
 :- pred disj_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,
@@ -828,7 +904,7 @@ disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
     SaveCode = node([
         llds_instr(
-            region_fill_frame(region_fill_disj_protect,
+            region_fill_frame(region_fill_semi_disj_protect,
                 EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
             "disj protect the region if needed")
     ]),

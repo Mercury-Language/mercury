@@ -304,7 +304,7 @@ typedef struct MR_RegionIteFixedFrame_Struct    MR_RegionIteFixedFrame;
 typedef struct MR_RegionDisjFixedFrame_Struct   MR_RegionDisjFixedFrame;
 typedef struct MR_RegionCommitFixedFrame_Struct MR_RegionCommitFixedFrame;
 typedef struct MR_RegionIteProtect_Struct       MR_RegionIteProtect;
-typedef struct MR_RegionDisjProtect_Struct      MR_RegionDisjProtect;
+typedef struct MR_RegionSemiDisjProtect_Struct  MR_RegionSemiDisjProtect;
 typedef struct MR_RegionCommitSave_Struct       MR_RegionCommitSave;
 typedef struct MR_RegionProfUnit_Struct         MR_RegionProfUnit;
 
