@@ -120,6 +120,14 @@
     ;       norm_num_data_elems
     ;       norm_size_data_elems.
 
+    % For the C backends, what type of C compiler are we using?
+    %     
+:- type c_compiler_type
+    --->    cc_gcc
+    ;       cc_lcc
+    ;       cc_cl
+    ;       cc_unknown.
+
     % Map from module name to file name.
     %
 :- type source_file_map == map(module_name, string).
@@ -133,16 +141,18 @@
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
 :- pred convert_maybe_thread_safe(string::in, may_be_thread_safe::out)
     is semidet.
+:- pred convert_c_compiler_type(string::in, c_compiler_type::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 %
 % Access predicates for the `globals' structure
 %
 
-:- pred globals_init(option_table::in, compilation_target::di, gc_method::di,
-    tags_method::di, termination_norm::di, termination_norm::di,
-    trace_level::di, trace_suppress_items::di,
-    may_be_thread_safe::di, globals::out) is det.
+:- pred globals_init(option_table::in, compilation_target::in, gc_method::in,
+    tags_method::in, termination_norm::in, termination_norm::in,
+    trace_level::in, trace_suppress_items::in,
+    may_be_thread_safe::in, c_compiler_type::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -156,6 +166,7 @@
 :- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
 :- pred get_source_file_map(globals::in, maybe(source_file_map)::out) is det.
 :- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
+:- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
@@ -224,7 +235,7 @@
 :- pred globals_io_init(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, io::di, io::uo) is det.
+    may_be_thread_safe::in, c_compiler_type::in, io::di, io::uo) is det.
 
 :- pred io_get_target(compilation_target::out, io::di, io::uo) is det.
 :- pred io_get_backend_foreign_languages(list(foreign_language)::out,
@@ -243,8 +254,11 @@
 
 :- pred io_get_trace_suppress(trace_suppress_items::out, io::di, io::uo)
     is det.
+
 :- pred io_get_maybe_thread_safe(may_be_thread_safe::out, io::di, io::uo)
     is det.
+
+:- pred io_get_c_compiler_type(c_compiler_type::out, io::di, io::uo) is det.
 
 :- pred io_get_extra_error_info(bool::out, io::di, io::uo) is det.
 
@@ -342,6 +356,11 @@ convert_termination_norm("size-data-elems", norm_size_data_elems).
 convert_maybe_thread_safe("yes", yes).
 convert_maybe_thread_safe("no",  no).
 
+convert_c_compiler_type("gcc",      cc_gcc).
+convert_c_compiler_type("lcc",      cc_lcc).
+convert_c_compiler_type("cl",       cc_cl).
+convert_c_compiler_type("unknown",  cc_unknown).
+
 compilation_target_string(target_c)    = "C".
 compilation_target_string(target_il)   = "IL".
 compilation_target_string(target_java) = "Java".
@@ -382,7 +401,8 @@ gc_is_conservative(gc_automatic) = no.
                 trace_suppress_items    :: trace_suppress_items,
                 source_file_map         :: maybe(source_file_map),
                 have_printed_usage      :: bool,
-                may_be_thread_safe      :: bool
+                may_be_thread_safe      :: bool,
+                c_compiler_type         :: c_compiler_type
             ).
 
 :- mutable(globals, univ, univ(0), ground,
@@ -409,10 +429,10 @@ gc_is_conservative(gc_automatic) = no.
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe,
-    globals(Options, Target, GC_Method, TagsMethod,
+        MaybeThreadSafe, C_CompilerType, Globals) :-
+    Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        no, no, MaybeThreadSafe)).
+        no, no, MaybeThreadSafe, C_CompilerType).
 
 get_options(Globals, Globals ^ options).
 get_target(Globals, Globals ^ target).
@@ -424,6 +444,7 @@ get_trace_level(Globals, Globals ^ trace_level).
 get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 get_source_file_map(Globals, Globals ^ source_file_map).
 get_maybe_thread_safe(Globals, Globals ^ may_be_thread_safe).
+get_c_compiler_type(Globals, Globals ^ c_compiler_type).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
@@ -620,18 +641,11 @@ imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
 %-----------------------------------------------------------------------------%
 
 globals_io_init(Options, Target, GC_Method, TagsMethod, TerminationNorm,
-        Termination2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe, !IO) :-
-    copy(Target, Target1),
-    copy(GC_Method, GC_Method1),
-    copy(TagsMethod, TagsMethod1),
-    copy(TerminationNorm, TerminationNorm1),
-    copy(Termination2Norm, Termination2Norm1),
-    copy(TraceLevel, TraceLevel1),
-    copy(TraceSuppress, TraceSuppress1),
-    copy(MaybeThreadSafe, MaybeThreadSafe1),
-    globals_init(Options, Target1, GC_Method1, TagsMethod1,
-        TerminationNorm1, Termination2Norm1, TraceLevel1,
-        TraceSuppress1, MaybeThreadSafe1, Globals),
+        Termination2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+        C_CompilerType, !IO) :-
+    globals_init(Options, Target, GC_Method, TagsMethod,
+        TerminationNorm, Termination2Norm, TraceLevel,
+        TraceSuppress, MaybeThreadSafe, C_CompilerType, Globals),
     io_set_globals(Globals, !IO),
     getopt_io.lookup_bool_option(Options, solver_type_auto_init,
         AutoInitSupported),
@@ -668,6 +682,10 @@ io_get_trace_suppress(TraceSuppress, !IO) :-
 io_get_maybe_thread_safe(MaybeThreadSafe, !IO) :-
     io_get_globals(Globals, !IO),
     get_maybe_thread_safe(Globals, MaybeThreadSafe).
+
+io_get_c_compiler_type(C_CompilerType, !IO) :-
+    io_get_globals(Globals, !IO),
+    get_c_compiler_type(Globals,  C_CompilerType).
 
 io_get_extra_error_info(ExtraErrorInfo, !IO) :-
     get_extra_error_info(ExtraErrorInfo, !IO).

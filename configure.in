@@ -3830,11 +3830,17 @@ case "$host" in
 esac
 
 #-----------------------------------------------------------------------------#
-# Note that changes here may require changes in scripts/mgnuc.in.
+#
+# Note that changes here may require changes in scripts/mgnuc.in and
+# compiler/compile_target_code.m.
+#
+
+# XXX we should not just rely on pattern matching against the executable
+# name to determine the C compiler type.
 
 case "$CC" in
 	*gcc*)
-		COMPILER=gcc
+		C_COMPILER_TYPE=gcc
 		CFLAGS_FOR_ANSI="-ansi"
 
 		# For a full list of the other gcc warnings that we don't
@@ -3845,19 +3851,21 @@ case "$CC" in
 		CFLAGS_FOR_DEBUG="-g"
 		MCFLAGS_FOR_CC=
 		;;
+	
 	*lcc*)
-		COMPILER=lcc
+		C_COMPILER_TYPE=lcc
 		CFLAGS_FOR_ANSI=
 
-		# turn off all warnings due to spurious warnings.
+		# Turn off all warnings due to spurious warnings.
 		CFLAGS_FOR_WARNINGS="-w"
 
 		CFLAGS_FOR_OPT=
 		CFLAGS_FOR_DEBUG="-g"
 		MCFLAGS_FOR_CC=
 		;;
+	
 	*cl* | *CL*)
-		COMPILER=cl
+		C_COMPILER_TYPE=cl
 		CFLAGS_FOR_ANSI=
 		CFLAGS_FOR_WARNINGS=
 		CFLAGS_FOR_OPT=
@@ -3868,16 +3876,18 @@ case "$CC" in
 		# in the compiler.
 		MCFLAGS_FOR_CC="--max-jump-table-size 512"
 		;;
+	
 	cc* | */cc*)
-		COMPILER=cc
+		C_COMPILER_TYPE=unknown
 		CFLAGS_FOR_ANSI=
 		CFLAGS_FOR_OPT="-O"
 		CFLAGS_FOR_WARNINGS=
 		CFLAGS_FOR_DEBUG="-g"
 		MCFLAGS_FOR_CC=
 		;;
+	
 	*)
-		COMPILER=unknown
+		C_COMPILER_TYPE=unknown
 		CFLAGS_FOR_ANSI=
 		CFLAGS_FOR_OPT="-O"
 		CFLAGS_FOR_WARNINGS=
@@ -3888,11 +3898,12 @@ esac
 
 CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT $CFLAGS_FOR_NO_STRICT_ALIASING"
 
-AC_SUBST(CFLAGS_FOR_ANSI)
-AC_SUBST(CFLAGS_FOR_WARNINGS)
-AC_SUBST(CFLAGS_FOR_OPT)
-AC_SUBST(CFLAGS_FOR_DEBUG)
-AC_SUBST(MCFLAGS_FOR_CC)
+AC_SUBST([CFLAGS_FOR_ANSI])
+AC_SUBST([CFLAGS_FOR_WARNINGS])
+AC_SUBST([CFLAGS_FOR_OPT])
+AC_SUBST([CFLAGS_FOR_DEBUG])
+AC_SUBST([MCFLAGS_FOR_CC])
+AC_SUBST([C_COMPILER_TYPE])
 
 #-----------------------------------------------------------------------------#
 #
@@ -3902,7 +3913,7 @@ AC_SUBST(MCFLAGS_FOR_CC)
 # Note that changes here may require changes in scripts/ml.in.
 
 LD_STATIC_FLAGS=
-case "$COMPILER" in gcc|lcc)
+case "$C_COMPILER_TYPE" in gcc|lcc)
 	LD_STATIC_FLAGS=-static
 	;;
 esac
@@ -3914,7 +3925,7 @@ case "$FULLARCH" in
 		# boehm_gc/dyn_load.c.
 		# (We might eventually need similar treatment
 		# for other OSs too.)
-		case "$COMPILER" in
+		case "$C_COMPILER_TYPE" in
 		gcc)
 			LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
 			;;
@@ -3922,7 +3933,7 @@ case "$FULLARCH" in
 			# for lcc 4.1, we need to use "-Wl,".
 			# for lcc 4.2, we need to use "-Wl" without the comma,
 			# like we do for gcc.
-			AC_MSG_CHECKING(whether lcc requires comma after -Wl)
+			AC_MSG_CHECKING([whether lcc requires comma after -Wl])
 			LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
 			rm -f conftest*
 			echo "int main() { return 0; }" > conftest.c

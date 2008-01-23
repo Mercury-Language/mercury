@@ -187,12 +187,13 @@ postprocess_options(error(ErrorMessage), [ErrorMessage], !IO).
 postprocess_options(ok(OptionTable0), Errors, !IO) :-
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, [], CheckErrors),
+        MaybeThreadSafe, C_CompilerType, [], CheckErrors),
     (
         CheckErrors = [],
         postprocess_options_2(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
-            TraceSuppress, MaybeThreadSafe, [], Errors, !IO)
+            TraceSuppress, MaybeThreadSafe, C_CompilerType,
+            [], Errors, !IO)
     ;
         CheckErrors = [_ | _],
         Errors = CheckErrors
@@ -202,11 +203,12 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
     compilation_target::out, gc_method::out, tags_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, may_be_thread_safe::out,
+    c_compiler_type::out,
     list(string)::in, list(string)::out) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        !Errors) :-
+        C_CompilerType, !Errors) :-
     map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
@@ -340,8 +342,20 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         svmap.set(dump_hlds_options, string(DumpOptions), !OptionTable)
     ;
         add_error("Invalid argument to option `--hlds-dump-alias'.", !Errors)
-    ).
-
+    ),
+    map.lookup(!.OptionTable, c_compiler_type, C_CompilerType0),
+    (
+        C_CompilerType0 = string(C_CompilerTypeStr),
+        convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime)
+    ->
+        C_CompilerType = C_CompilerTypePrime
+    ;
+        C_CompilerType = cc_unknown,   % dummy
+        add_error("Invalid argument to option " ++
+            "`--c-compiler-type'\n\t(must be" ++
+            "`gcc', `lcc', `cl, or `unknown').", !Errors)
+    ). 
+        
 :- pred add_error(string::in, list(string)::in, list(string)::out) is det.
 
 add_error(Error, Errors0, Errors) :-
@@ -354,14 +368,15 @@ add_error(Error, Errors0, Errors) :-
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, list(string)::in, list(string)::out,
-    io::di, io::uo) is det.
+    may_be_thread_safe::in, c_compiler_type::in,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        !Errors, !IO) :-
+        C_CompilerType, !Errors, !IO) :-
     globals_io_init(OptionTable0, Target, GC_Method, TagsMethod0,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe, !IO),
+        TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+        C_CompilerType, !IO),
 
     some [!Globals] (
         globals.io_get_globals(!:Globals, !IO),
@@ -403,10 +418,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.lookup_int_option(!.Globals, num_tag_bits, NumTagBits0)
         ),
 
-        % if --tags low but --num-tag-bits not specified,
+        % If --tags low but --num-tag-bits not specified,
         % use the autoconf-determined value for --num-tag-bits
         % (the autoconf-determined value is passed from the `mc' script
-        % using the undocumented --conf-low-tag-bits option)
+        % using the undocumented --conf-low-tag-bits option).
         (
             TagsMethod0 = tags_low,
             NumTagBits0 = -1
@@ -417,8 +432,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             NumTagBits1 = NumTagBits0
         ),
 
-        % if --num-tag-bits negative or unspecified, issue a warning
-        % and assume --num-tag-bits 0
+        % If --num-tag-bits negative or unspecified, issue a warning
+        % and assume --num-tag-bits 0.
         ( NumTagBits1 < 0 ->
             io.progname_base("mercury_compile", ProgName, !IO),
             report_warning(ProgName, !IO),

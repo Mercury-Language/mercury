@@ -26,6 +26,7 @@ CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 CFLAGS_FOR_NO_STRICT_ALIASING="@CFLAGS_FOR_NO_STRICT_ALIASING@"
 AS="@AS@"
+BYTES_PER_WORD="@BYTES_PER_WORD@"
 
 case "$CC" in
     *gcc*)
@@ -350,8 +351,20 @@ case $record_term_sizes_as_words,$record_term_sizes_as_cells in
 esac
 
 case $use_trail in
-    true)           TRAIL_OPTS="-DMR_USE_TRAIL" ;;
-    false)          TRAIL_OPTS="" ;;
+    true)
+        TRAIL_OPTS="-DMR_USE_TRAIL"
+        # See the comment in compile_c_file/7 in compiler/comipler_target_code.m
+        # for an explanation of this.
+        case $COMPILER in
+            gcc)    FN_ALIGN_OPTS="-falign-functions=$BYTES_PER_WORD" ;;
+            *)      FN_ALIGN_OPTS="" ;;
+        esac
+        ;;
+
+    false)
+        TRAIL_OPTS=""
+        FN_ALIGN_OPTS=""
+    ;;
 esac
 
 case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks in
@@ -630,6 +643,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $PICREG_OPTS\
     $ARCH_OPTS\
     $ARG_OPTS\
+    $FN_ALIGN_OPTS\
     $INVISIBLE_OPTS"
 
 case $verbose in true)

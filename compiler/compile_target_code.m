@@ -345,12 +345,6 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
-:- type compiler_type
-    --->    gcc
-    ;       lcc
-    ;       cl
-    ;       unknown_compiler.
-
 compile_c_file(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name(ModuleName, ".c", yes, C_File, !IO),
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
@@ -626,10 +620,37 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
     (
         UseTrail = yes,
-        UseTrailOpt = "-DMR_USE_TRAIL "
+        UseTrailOpt = "-DMR_USE_TRAIL ",
+        % With tagged trail entries function trailing will not work unless the
+        % C functions stored on the trail are aligned on word boundaries (or a
+        % multiple thereof).  The assemblers on some systems, and some gcc
+        % optimisation settings, do not align functions, so we need to
+        % explicitly pass -falign-functions in trailing grades to ensure that
+        % C functions are appropriately aligned.
+        %
+        % Note that this will also affect the untagged version of the trail,
+        % but that shouldn't matter.
+        %
+        io_get_c_compiler_type(C_CompilerType, !IO),
+        (
+            C_CompilerType = cc_gcc,
+            globals.io_lookup_int_option(bytes_per_word, BytesPerWord, !IO),
+            C_FnAlignOpt = string.format("-falign-functions=%d ",
+                [i(BytesPerWord)])
+        ;
+            % XXX Check whether we need to do anything for these C compilers?
+            ( C_CompilerType = cc_lcc
+            ; C_CompilerType = cc_cl
+            ),
+            C_FnAlignOpt = ""
+        ;
+            C_CompilerType = cc_unknown,
+            C_FnAlignOpt = ""
+        )
     ;
         UseTrail = no,
-        UseTrailOpt = ""
+        UseTrailOpt = "",
+        C_FnAlignOpt = ""
     ),
     globals.io_lookup_bool_option(use_minimal_model_stack_copy,
         MinimalModelStackCopy, !IO),
@@ -795,6 +816,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         InlineAllocOpt,
         AnsiOpt, " ", 
         AppleGCCRegWorkaroundOpt,
+        C_FnAlignOpt, 
         WarningOpt, " ", 
         CFLAGS, 
         " -c ", C_File, " ",
