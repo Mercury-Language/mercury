@@ -2702,27 +2702,70 @@ fi
 # In particular, choose the default grade for compiling applications.
 #
 
-# BEST_LLDS_BASE_GRADE is the most efficient of the LLDS->C base grades.
+# BEST_LLDS_BASE_GRADE is the most efficient of the LLDS->C base grades
+# that can be supported.  If the user explicitly chooses a base grade
+# using --with-llds-base-grade then we use that instead.
 
-if test $mercury_cv_asm_labels = yes; then
-	if test $mercury_cv_gcc_model_fast = yes; then
-		BEST_LLDS_BASE_GRADE=asm_fast
-	else
-		BEST_LLDS_BASE_GRADE=asm_jump
-	fi
-elif test $mercury_cv_gcc_labels = yes; then
-	if test $mercury_cv_gcc_model_fast = yes; then
-		BEST_LLDS_BASE_GRADE=fast
-	else
-		BEST_LLDS_BASE_GRADE=jump
-	fi
-else
-	if test $mercury_cv_gcc_model_reg = yes; then
-		BEST_LLDS_BASE_GRADE=reg
-	else
-		BEST_LLDS_BASE_GRADE=none
-	fi
-fi
+AC_ARG_WITH([llds-base-grade],
+   AC_HELP_STRING([--with-llds-base-grade=<base_grade>],
+   		  [Force the use of <base_grade> as the base LLDS grade.
+                   This is mainly useful for forcing the source distribution to
+                   compile in a grade other than the one which is chosen
+		   automatically.
+                   <base_grade> must be one of asm_fast, asm_jump, fast, jump,
+                   reg or none]),
+   [user_llds_base_grade="$withval";mercury_cv_user_base_grade=yes],
+   [mercury_cv_user_base_grade=no]
+)
+
+case "$mercury_cv_user_base_grade" in
+
+    yes)
+        case "$user_llds_base_grade" in
+	    asm_fast|asm_jump|fast|jump|reg|none)
+	        BEST_LLDS_BASE_GRADE="$user_llds_base_grade"
+            ;;
+           
+            yes)
+	        AC_MSG_ERROR(
+[missing argument to --with-llds-base-grade=... option])
+            ;;
+
+            no)
+	       AC_MSG_ERROR(
+[invalid option --without-llds-base-grade])
+            ;;
+
+            *)
+                AC_MSG_ERROR(
+[invalid argument to --with-llds-base-grade: $user_llds_base_grade])
+	    ;;
+        esac
+    ;;
+
+    no)
+
+        if test $mercury_cv_asm_labels = yes; then
+            if test $mercury_cv_gcc_model_fast = yes; then
+                BEST_LLDS_BASE_GRADE=asm_fast
+	    else
+                BEST_LLDS_BASE_GRADE=asm_jump
+            fi
+        elif test $mercury_cv_gcc_labels = yes; then
+            if test $mercury_cv_gcc_model_fast = yes; then
+                BEST_LLDS_BASE_GRADE=fast
+            else
+                BEST_LLDS_BASE_GRADE=jump
+            fi
+        else
+            if test $mercury_cv_gcc_model_reg = yes; then
+                BEST_LLDS_BASE_GRADE=reg
+            else
+                BEST_LLDS_BASE_GRADE=none
+            fi
+        fi
+     ;;
+esac
 
 # Force the use of the none grade on Apple x86/Darwin 9 (Leopard)
 # systems, since the default gcc supplied with that system doesn't
