@@ -9908,7 +9908,7 @@ A stand-alone interface is created by invoking the compiler with the
 The set of Mercury libraries to be included in the stand-alone interface
 is given via one of the usual mechanisms for specifying what libraries to link
 against, e.g. the @samp{--ml} and @samp{--mld} options.
-(See @pxref{Libraries} for further details).
+(@pxref{Libraries}).
 The Mercury standard library is always included in this set.
 
 In C grades the @samp{--generate-standalone-interface} option causes
