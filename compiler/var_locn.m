@@ -889,6 +889,10 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         TotalOffset = MaybeOffset,
         TotalSize = Size
     ),
+    % This must appear before the call to `save_reused_cell_fields', otherwise
+    % `save_reused_cell_fields' won't know not to use Lval as a temporary
+    % register (if Lval is a register).
+    var_locn_set_magic_var_location(Var, Lval, !VLI),
     (
         HowToConstruct = construct_in_region(RegionVar),
         var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
@@ -951,7 +955,6 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
 
         RegionVarCode = empty
     ),
-    var_locn_set_magic_var_location(Var, Lval, !VLI),
     (
         MaybeOffset = yes(Offset),
         StartOffset = -Offset
