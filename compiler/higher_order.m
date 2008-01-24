@@ -2979,6 +2979,11 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     conj_list_to_goal(list.append(ConstGoals, GoalList6), GoalInfo6, Goal),
     proc_info_set_goal(Goal, !NewProcInfo),
 
+    % Remove any imported structure sharing and reuse information for the
+    % original procedure as they won't be (directly) applicable.
+    proc_info_reset_imported_structure_sharing(!NewProcInfo),
+    proc_info_reset_imported_structure_reuse(!NewProcInfo),
+
     proc_info_get_vartypes(!.NewProcInfo, VarTypes7),
     map.apply_to_list(ExtraHeadVars, VarTypes7, ExtraHeadVarTypes0),
     remove_const_higher_order_args(1, OriginalArgTypes,
