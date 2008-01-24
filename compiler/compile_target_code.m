@@ -1033,7 +1033,7 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
             io.close_output(TmpStream, !IO),
 
             MkInitCmd = string.append_list([MkInit, " -k -f ", TmpFile]),
-            invoke_system_command(InitFileStream, cmd_verbose,
+            invoke_system_command(InitFileStream, cmd_verbose_commands,
                 MkInitCmd, MkInitOK0, !IO),
 
             io.remove_file(TmpFile, RemoveResult, !IO),
@@ -1408,7 +1408,8 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
             " ", TargetFileNames,
             ModuleNameOption
         ]),
-    invoke_system_command(ErrorStream, cmd_verbose, MkInitCmd, MkInitOk, !IO),
+    invoke_system_command(ErrorStream, cmd_verbose_commands, MkInitCmd,
+        MkInitOk, !IO),
     maybe_report_stats(Stats, !IO),
     (
         MkInitOk = yes,
@@ -2571,6 +2572,9 @@ make_standalone_int_body(Basename, !IO) :-
     globals.lookup_accumulating_option(Globals, runtime_flags,
         RuntimeFlagsList),
     join_quoted_string_list(RuntimeFlagsList, "-r ", "", " ", RuntimeFlags),
+    globals.io_lookup_accumulating_option(init_file_directories,
+        InitFileDirsList, !IO),
+    join_quoted_string_list(InitFileDirsList, "-I ", "", " ", InitFileDirs),
     globals.lookup_string_option(Globals, experimental_complexity,
         ExperimentalComplexity),
     ( ExperimentalComplexity = "" ->
@@ -2589,10 +2593,11 @@ make_standalone_int_body(Basename, !IO) :-
             " ", ExperimentalComplexityOpt,
             " ", RuntimeFlags,
             " -o ", quote_arg(CFileName),
+            " ", InitFileDirs,
             " -s ", InitFilesList
         ]),
-    invoke_system_command(ErrorStream, cmd_verbose, MkInitCmd, MkInitCmdOk,
-        !IO),
+    invoke_system_command(ErrorStream, cmd_verbose_commands,
+        MkInitCmd, MkInitCmdOk, !IO),
     (
         MkInitCmdOk = yes,
         get_object_code_type(executable, PIC, !IO),
