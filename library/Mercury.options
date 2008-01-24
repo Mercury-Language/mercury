@@ -19,6 +19,11 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 MCFLAGS-sparse_bitset += --use-atomic-cells --optimize-constant-propagation
 MCFLAGS-tree_bitset += --use-atomic-cells --optimize-constant-propagation
 
+# Speed up structure sharing analysis.
+MCFLAGS-set_ctree234 += --structure-sharing-widening 1
+MCFLAGS-set_tree234 += --structure-sharing-widening 1
+MCFLAGS-tree234 += --structure-sharing-widening 1
+
 # Bug workarounds.
 MCFLAGS-std_util += --no-halt-at-warn
 MCFLAGS-dir += --no-halt-at-warn
