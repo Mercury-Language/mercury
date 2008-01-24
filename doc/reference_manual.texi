@@ -861,7 +861,7 @@ good programming style requires these side effects
 to not have any affect on the execution of the program itself,
 but to be confined to the provision of extra information
 for the user of the program.
-See @pxref{Trace goals} for the details.
+See @ref{Trace goals} for the details.
 
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
@@ -7336,7 +7336,7 @@ to that of the constructor to which the symbolic name corresponds in
 the mapping established by the @samp{pragma foreign_export_enum}
 declaration.
 
-As noted in the @pxref{C data passing conventions}, the type of these
+As noted in the @ref{C data passing conventions}, the type of these
 values is @samp{MR_Word}.
 
 The default mapping used by @samp{pragma foreign_export_enum}
