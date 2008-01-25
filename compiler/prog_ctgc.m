@@ -354,8 +354,8 @@ parse_structure_sharing_domain(Term) = SharingAs :-
         ;
             Cons = "top",
             context_to_string(Context, ContextMsg),
-            SharingAs0 = structure_sharing_top(["imported top: " 
-                ++ ContextMsg ++ "."])
+            SharingAs0 = structure_sharing_top(
+                set.make_singleton_set("imported top: " ++ ContextMsg ++ "."))
         )
     ->
         SharingAs = SharingAs0
@@ -442,7 +442,8 @@ parse_user_annotated_sharing(Varset, Term, UserSharing) :-
         Term = term.functor(term.atom("unknown_sharing"), [], Context),
         context_to_string(Context, ContextString), 
         Msg = "user declared top(" ++ ContextString ++ ")",
-        UserSharing = user_sharing(structure_sharing_top([Msg]), no)
+        UserSharing = user_sharing(structure_sharing_top(
+            set.make_singleton_set(Msg)), no)
     ;
         Term = term.functor(term.atom("sharing"), 
             [TypesTerm, UserSharingTerm], _),
@@ -624,7 +625,8 @@ do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
         ;
             VerboseTop = yes,
             io.write_string("top([", !IO),
-            io.write_list(Msgs, Separator, io.write_string, !IO),
+            io.write_list(set.to_sorted_list(Msgs), Separator, io.write_string,
+                !IO),
             io.write_string("])", !IO)
         )
     ;

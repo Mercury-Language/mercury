@@ -356,7 +356,7 @@
 :- type structure_sharing_domain
     --->    structure_sharing_bottom
     ;       structure_sharing_real(structure_sharing)
-    ;       structure_sharing_top(list(top_feedback)).
+    ;       structure_sharing_top(set(top_feedback)).
 
     % Public representation of structure sharing.
     %

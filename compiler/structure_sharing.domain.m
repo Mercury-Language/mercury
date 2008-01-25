@@ -307,28 +307,30 @@
 :- type sharing_as
     --->    sharing_as_real_as(sharing_set)
     ;       sharing_as_bottom
-    ;       sharing_as_top(list(string)).
+    ;       sharing_as_top(set(string)).
 
 sharing_as_init = sharing_as_bottom.
+
 sharing_as_is_bottom(sharing_as_bottom).
-sharing_as_top_sharing(Msg) = sharing_as_top([Msg]).
+
+sharing_as_top_sharing(Msg) = sharing_as_top(set.make_singleton_set(Msg)).
+
 sharing_as_top_sharing_accumulate(Msg, SharingAs) = TopSharing :-
     (
-        SharingAs = sharing_as_real_as(_),
-        Msgs = [Msg]
-    ;
-        SharingAs = sharing_as_bottom,
-        Msgs = [Msg]
+        ( SharingAs = sharing_as_real_as(_)
+        ; SharingAs = sharing_as_bottom
+        ),
+        TopSharing = sharing_as_top_sharing(Msg)
     ;
         SharingAs = sharing_as_top(Msgs0),
-        list.cons(Msg, Msgs0, Msgs)
-    ),
-    TopSharing = sharing_as_top(Msgs).
+        Msgs = set.insert(Msgs0, Msg),
+        TopSharing = sharing_as_top(Msgs)
+    ).
 
 sharing_as_is_top(sharing_as_top(_)).
 
 sharing_as_size(sharing_as_bottom) = 0.
-sharing_as_size(sharing_as_real_as(SharingSet)) =  sharing_set_size(SharingSet).
+sharing_as_size(sharing_as_real_as(SharingSet)) = sharing_set_size(SharingSet).
 
 sharing_as_short_description(sharing_as_bottom) = "b".
 sharing_as_short_description(sharing_as_top(_)) = "t".
@@ -406,7 +408,7 @@ sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) = ResultSharing :-
     ;
         NewSharing = sharing_as_top(MsgNew),
         ( OldSharing = sharing_as_top(MsgOld) ->
-            ResultSharing = sharing_as_top(list.append(MsgNew, MsgOld))
+            ResultSharing = sharing_as_top(set.union(MsgNew, MsgOld))
         ;
             ResultSharing = NewSharing
         )
@@ -661,7 +663,7 @@ sharing_as_least_upper_bound(ModuleInfo, ProcInfo, Sharing1, Sharing2)
     ;
         Sharing1 = sharing_as_top(Msg1),
         ( Sharing2 = sharing_as_top(Msg2) ->
-            Sharing = sharing_as_top(list.append(Msg1, Msg2))
+            Sharing = sharing_as_top(set.union(Msg1, Msg2))
         ;
             Sharing = Sharing1
         )
