@@ -3893,6 +3893,32 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
+    ;
+        Feature = reqf_conservative_gc,
+        globals.get_gc_method(Globals, GC_Method),
+        (
+            % We consider gc_automatic to be conservative even it may not be.
+            % This is okay because this feature is only of interest with the
+            % C or asm backends.  We ignore it if the target language is
+            % something else.
+            %
+            ( GC_Method = gc_automatic
+            ; GC_Method = gc_boehm
+            ; GC_Method = gc_boehm_debug
+            ; GC_Method = gc_mps
+            )
+        ;
+            ( GC_Method = gc_accurate
+            ; GC_Method = gc_none
+            ),
+            Pieces = [
+                words("Error: this module must be compiled in a grade that"),
+                words("uses conservative garbage collection.")
+            ],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs] 
+        )
     ).
 
 %----------------------------------------------------------------------------%

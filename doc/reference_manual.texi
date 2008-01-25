@@ -10540,8 +10540,14 @@ This feature cannot be specified together with the @samp{parallel_conj}
 feature.
 
 @item @samp{strict_sequential}
-This feature specifes that a semantics that is equivalent to the strict
+This feature specifies that a semantics that is equivalent to the strict
 sequential operational semantics must be used.
+
+@item @samp{conservative_gc}
+This feature specifies that a module requires conservative garbage
+collection.
+This feature is only check when using the C backends, it is ignored
+by the non-C backends.  
 
 @end table
 

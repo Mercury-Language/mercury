@@ -637,7 +637,8 @@
     ;       reqf_memo
     ;       reqf_parallel_conj
     ;       reqf_trailing
-    ;       reqf_strict_sequential.
+    ;       reqf_strict_sequential
+    ;       reqf_conservative_gc.
 
 %-----------------------------------------------------------------------------%
 %

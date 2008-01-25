@@ -3816,6 +3816,8 @@ mercury_format_required_feature(reqf_trailing, !U) :-
     add_string("trailing", !U).
 mercury_format_required_feature(reqf_strict_sequential, !U) :-
     add_string("strict_sequential", !U).
+mercury_format_required_feature(reqf_conservative_gc, !U) :-
+    add_string("conservative_gc", !U).
 
 %-----------------------------------------------------------------------------%
 

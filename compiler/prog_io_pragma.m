@@ -2747,6 +2747,7 @@ string_to_required_feature("memo",              reqf_memo).
 string_to_required_feature("parallel_conj",     reqf_parallel_conj).
 string_to_required_feature("trailing",          reqf_trailing).
 string_to_required_feature("strict_sequential", reqf_strict_sequential).
+string_to_required_feature("conservative_gc",   reqf_conservative_gc).
 
 %-----------------------------------------------------------------------------%
 
