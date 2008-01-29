@@ -1020,7 +1020,7 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
         HeadModes, PredOrFunc, CodeModel).
 
 ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
-    ModuleInfo = !.Info ^ module_info,
+    ModuleInfo = !.Info ^ mgi_module_info,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -1047,8 +1047,8 @@ ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
     HeadVars = RttiProcId ^ proc_headvars,
     ArgTypes = RttiProcId ^ proc_arg_types,
     ArgModes = RttiProcId ^ proc_arg_modes,
-    PredOrFunc = RttiProcId^pred_or_func,
-    Detism = RttiProcId^proc_interface_detism,
+    PredOrFunc = RttiProcId ^ pred_or_func,
+    Detism = RttiProcId ^ proc_interface_detism,
     determinism_to_code_model(Detism, CodeModel),
     HeadVarNames = list.map(
         (func(Var - Name) = Result :-
@@ -1066,7 +1066,7 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
 
 ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel, FuncParams, !Info) :-
-    ModuleInfo = !.Info ^ module_info,
+    ModuleInfo = !.Info ^ mgi_module_info,
     modes_to_arg_modes(ModuleInfo, HeadModes, HeadTypes, ArgModes),
     ml_gen_params_base(ModuleInfo, HeadVarNames,
         HeadTypes, ArgModes, PredOrFunc, CodeModel, FuncParams,
@@ -2143,9 +2143,9 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
-    ModuleInfo0 = !.Info ^ module_info,
-    PredId = !.Info ^ pred_id,
-    ProcId = !.Info ^ proc_id,
+    ModuleInfo0 = !.Info ^ mgi_module_info,
+    PredId = !.Info ^ mgi_pred_id,
+    ProcId = !.Info ^ mgi_proc_id,
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo0, ProcInfo0),
 
@@ -2161,27 +2161,25 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
         ModuleInfo1, ModuleInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    !:Info = !.Info ^ module_info := ModuleInfo,
-    !:Info = !.Info ^ varset := VarSet,
-    !:Info = !.Info ^ var_types := VarTypes.
+    !:Info = !.Info ^ mgi_module_info := ModuleInfo,
+    !:Info = !.Info ^ mgi_varset := VarSet,
+    !:Info = !.Info ^ mgi_var_types := VarTypes.
 
 %-----------------------------------------------------------------------------%
 
 :- type fixup_newobj_info
     --->    fixup_newobj_info(
-                module_name :: mlds_module_name,
-                            % the current module
+                % The current module.
+                fnoi_module_name    :: mlds_module_name,
 
-                context     :: mlds_context,
-                            % the current context
+                % The current context.
+                fnoi_context        :: mlds_context,
 
-                locals      :: mlds_defns,
-                            % the local variable declarations
-                            % accumulated so far
+                % The local variable declarations accumulated so far.
+                fnoi_locals         :: mlds_defns,
 
-                next_id     :: counter
-                            % a counter used to allocate
-                            % variable names
+                % A counter used to allocate variable names.
+                fnoi_next_id        :: counter
             ).
 
     % Replace all heap allocation (new_object instructions) with stack
@@ -2197,14 +2195,14 @@ fixup_newobj(Statement0, ModuleName, Statement, Defns) :-
     Info0 = fixup_newobj_info(ModuleName, Context, [], counter.init(0)),
     fixup_newobj_in_stmt(Stmt0, Stmt, Info0, Info),
     Statement = statement(Stmt, Context),
-    Defns = Info ^ locals.
+    Defns = Info ^ fnoi_locals.
 
 :- pred fixup_newobj_in_statement(statement::in, statement::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
 fixup_newobj_in_statement(Statement0, Statement, !Info) :-
     Statement0 = statement(Stmt0, Context),
-    !:Info = !.Info ^ context := Context,
+    !:Info = !.Info ^ fnoi_context := Context,
     fixup_newobj_in_stmt(Stmt0, Stmt, !Info),
     Statement = statement(Stmt, Context).
 
@@ -2303,7 +2301,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % length of the array is. We initialize it with null pointers and then
         % later generate assignment statements to fill in the values properly
         % (see below).
-        counter.allocate(Id, !.Fixup ^ next_id, NextId),
+        counter.allocate(Id, !.Fixup ^ fnoi_next_id, NextId),
         VarName = mlds_var_name("new_obj", yes(Id)),
         VarType = mlds_array_type(mlds_generic_type),
         NullPointers = list.duplicate(list.length(ArgRvals),
@@ -2312,11 +2310,11 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % This is used for the type_infos allocated during tracing,
         % and we don't need to trace them.
         GCStatement = gc_no_stmt,
-        Context = !.Fixup ^ context,
+        Context = !.Fixup ^ fnoi_context,
         VarDecl = ml_gen_mlds_var_decl_init(var(VarName), VarType, Initializer,
             GCStatement, Context),
-        !:Fixup = !.Fixup ^ next_id := NextId,
-        !:Fixup= !.Fixup ^ locals := !.Fixup ^ locals ++ [VarDecl],
+        !:Fixup = !.Fixup ^ fnoi_next_id := NextId,
+        !:Fixup= !.Fixup ^ fnoi_locals := !.Fixup ^ fnoi_locals ++ [VarDecl],
 
         % Generate code to initialize the variable.
         %
@@ -2326,7 +2324,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % atomic_statement occurs, rather than at the local variable
         % declaration.
 
-        VarLval = var(qual(!.Fixup ^ module_name, module_qual, VarName),
+        VarLval = var(qual(!.Fixup ^ fnoi_module_name, module_qual, VarName),
             VarType),
         PtrRval = unop(cast(PointerType), mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
@@ -2381,38 +2379,39 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
                 % fresh variables for type_info variables needed
                 % for calls to private_builtin.gc_trace).
 
-                module_info         :: module_info,
-                pred_id             :: pred_id,
-                proc_id             :: proc_id,
-                varset              :: prog_varset,
-                var_types           :: vartypes,
-                byref_output_vars   :: list(prog_var),
-                                    % output arguments that are passed by
-                                    % reference
-                value_output_vars   :: list(prog_var),
-                                    % output arguments that are returned
-                                    % as values
+                mgi_module_info         :: module_info,
+                mgi_pred_id             :: pred_id,
+                mgi_proc_id             :: proc_id,
+                mgi_varset              :: prog_varset,
+                mgi_var_types           :: vartypes,
+
+                % Output arguments that are passed by reference.
+                mgi_byref_output_vars   :: list(prog_var),
+
+                % Output arguments that are returned as values.
+                mgi_value_output_vars   :: list(prog_var),
 
                 % These fields get updated as we traverse each procedure.
 
-                func_label          :: counter,
-                commit_label        :: counter,
-                label               :: counter,
-                cond_var            :: counter,
-                conv_var            :: counter,
-                const_num           :: counter,
-                const_var_name_map  :: map(prog_var, mlds_var_name),
-                success_cont_stack  :: stack(success_cont),
-                                    % A partial mapping from vars to lvals,
-                                    % used to override the normal lval
-                                    % that we use for a variable.
-                var_lvals           :: map(prog_var, mlds_lval),
-                                    % Definitions of functions or global
-                                    % constants which should be inserted
-                                    % before the definition of the function
-                                    % for the current procedure.
-                extra_defns         :: mlds_defns,
-                env_var_names       :: set(string)
+                mgi_func_label          :: counter,
+                mgi_commit_label        :: counter,
+                mgi_label               :: counter,
+                mgi_cond_var            :: counter,
+                mgi_conv_var            :: counter,
+                mgi_const_num           :: counter,
+                mgi_const_var_name_map  :: map(prog_var, mlds_var_name),
+
+                % A partial mapping from vars to lvals, used to override
+                % the normal lval that we use for a variable.
+                mgi_success_cont_stack  :: stack(success_cont),
+
+                % Definitions of functions or global constants which should be
+                % inserted before the definition of the function for the
+                % current procedure.
+                mgi_var_lvals           :: map(prog_var, mlds_lval),
+
+                mgi_extra_defns         :: mlds_defns,
+                mgi_env_var_names       :: set(string)
             ).
 
 ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
@@ -2426,12 +2425,10 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
         VarTypes),
     ValueOutputVars = [],
 
-    % XXX This needs to start at 1 rather than 0 otherwise the
-    % transformation for adding the shadow stack for accurate garbage
-    % collection does not work properly and we will end up generating
-    % two C functions with the same name.
-    %
-    % ( See ml_elim_nested.gen_gc_trace_func/8 for details).
+    % XXX This needs to start at 1 rather than 0 otherwise the transformation
+    % for adding the shadow stack for accurate garbage collection does not work
+    % properly and we will end up generating two C functions with the same
+    % name (see ml_elim_nested.gen_gc_trace_func/8 for details).
     %
     counter.init(1, FuncLabelCounter),
     counter.init(0, CommitLabelCounter),
@@ -2466,22 +2463,22 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
         EnvVarNames
     ).
 
-ml_gen_info_get_module_info(Info, Info ^ module_info).
+ml_gen_info_get_module_info(Info, Info ^ mgi_module_info).
 
 ml_gen_info_get_module_name(Info, ModuleName) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName).
 
-ml_gen_info_get_pred_id(Info, Info ^ pred_id).
-ml_gen_info_get_proc_id(Info, Info ^ proc_id).
-ml_gen_info_get_varset(Info, Info ^ varset).
-ml_gen_info_get_var_types(Info, Info ^ var_types).
-ml_gen_info_get_byref_output_vars(Info, Info ^ byref_output_vars).
-ml_gen_info_get_value_output_vars(Info, Info ^ value_output_vars).
+ml_gen_info_get_pred_id(Info, Info ^ mgi_pred_id).
+ml_gen_info_get_proc_id(Info, Info ^ mgi_proc_id).
+ml_gen_info_get_varset(Info, Info ^ mgi_varset).
+ml_gen_info_get_var_types(Info, Info ^ mgi_var_types).
+ml_gen_info_get_byref_output_vars(Info, Info ^ mgi_byref_output_vars).
+ml_gen_info_get_value_output_vars(Info, Info ^ mgi_value_output_vars).
 ml_gen_info_set_byref_output_vars(OutputVars, Info,
-        Info ^ byref_output_vars := OutputVars).
+        Info ^ mgi_byref_output_vars := OutputVars).
 ml_gen_info_set_value_output_vars(OutputVars, Info,
-        Info ^ value_output_vars := OutputVars).
+        Info ^ mgi_value_output_vars := OutputVars).
 
 ml_gen_info_use_gcc_nested_functions(Info, UseNestedFuncs) :-
     ml_gen_info_get_globals(Info, Globals),
@@ -2498,85 +2495,85 @@ ml_gen_info_get_globals(Info, Globals) :-
     module_info_get_globals(ModuleInfo, Globals).
 
 ml_gen_info_new_label(Label, !Info) :-
-    Counter0 = !.Info ^ label,
+    Counter0 = !.Info ^ mgi_label,
     counter.allocate(Label, Counter0, Counter),
-    !:Info = !.Info ^ label := Counter.
+    !Info ^ mgi_label := Counter.
 
 ml_gen_info_new_func_label(Label, !Info) :-
-    Counter0 = !.Info ^ func_label,
+    Counter0 = !.Info ^ mgi_func_label,
     counter.allocate(Label, Counter0, Counter),
-    !:Info = !.Info ^ func_label := Counter.
+    !Info ^ mgi_func_label := Counter.
 
 ml_gen_info_bump_counters(!Info) :-
-    FuncLabelCounter0 = !.Info ^ func_label,
-    ConstNumCounter0 = !.Info ^ const_num,
+    FuncLabelCounter0 = !.Info ^ mgi_func_label,
+    ConstNumCounter0 = !.Info ^ mgi_const_num,
     counter.allocate(FuncLabel, FuncLabelCounter0, _),
     counter.allocate(ConstNum, ConstNumCounter0, _),
     FuncLabelCounter = counter.init(FuncLabel + 10000),
     ConstNumCounter = counter.init(ConstNum + 10000),
-    !:Info = !.Info ^ func_label := FuncLabelCounter,
-    !:Info = !.Info ^ const_num := ConstNumCounter.
+    !Info ^ mgi_func_label := FuncLabelCounter,
+    !Info ^ mgi_const_num := ConstNumCounter.
 
 ml_gen_info_new_commit_label(CommitLabel, !Info) :-
-    Counter0 = !.Info ^ commit_label,
+    Counter0 = !.Info ^ mgi_commit_label,
     counter.allocate(CommitLabel, Counter0, Counter),
-    !:Info = !.Info ^ commit_label := Counter.
+    !Info ^ mgi_commit_label := Counter.
 
 ml_gen_info_new_cond_var(CondVar, !Info) :-
-    Counter0 = !.Info ^ cond_var,
+    Counter0 = !.Info ^ mgi_cond_var,
     counter.allocate(CondVar, Counter0, Counter),
-    !:Info = !.Info ^ cond_var := Counter.
+    !Info ^ mgi_cond_var := Counter.
 
 ml_gen_info_new_conv_var(ConvVar, !Info) :-
-    Counter0 = !.Info ^ conv_var,
+    Counter0 = !.Info ^ mgi_conv_var,
     counter.allocate(ConvVar, Counter0, Counter),
-    !:Info = !.Info ^ conv_var := Counter.
+    !Info ^ mgi_conv_var := Counter.
 
 ml_gen_info_new_const(ConstVar, !Info) :-
-    Counter0 = !.Info ^ const_num,
+    Counter0 = !.Info ^ mgi_const_num,
     counter.allocate(ConstVar, Counter0, Counter),
-    !:Info = !.Info ^ const_num := Counter.
+    !Info ^ mgi_const_num := Counter.
 
 ml_gen_info_set_const_var_name(Var, Name, !Info) :-
-    !:Info = !.Info ^ const_var_name_map :=
-        map.set(!.Info ^ const_var_name_map, Var, Name).
+    !Info ^ mgi_const_var_name_map :=
+        map.set(!.Info ^ mgi_const_var_name_map, Var, Name).
 
 ml_gen_info_lookup_const_var_name(Info, Var, Name) :-
-    Name = map.lookup(Info ^ const_var_name_map, Var).
+    Name = map.lookup(Info ^ mgi_const_var_name_map, Var).
 
 ml_gen_info_search_const_var_name(Info, Var, Name) :-
-    Name = map.search(Info ^ const_var_name_map, Var).
+    Name = map.search(Info ^ mgi_const_var_name_map, Var).
 
 ml_gen_info_push_success_cont(SuccCont, !Info) :-
-    !:Info = !.Info ^ success_cont_stack :=
-        stack.push(!.Info ^ success_cont_stack, SuccCont).
+    !Info ^ mgi_success_cont_stack :=
+        stack.push(!.Info ^ mgi_success_cont_stack, SuccCont).
 
 ml_gen_info_pop_success_cont(!Info) :-
-    Stack0 = !.Info ^ success_cont_stack,
+    Stack0 = !.Info ^ mgi_success_cont_stack,
     stack.pop_det(Stack0, _SuccCont, Stack),
-    !:Info = !.Info ^ success_cont_stack := Stack.
+    !Info ^ mgi_success_cont_stack := Stack.
 
 ml_gen_info_current_success_cont(Info, SuccCont) :-
-    stack.top_det(Info ^ success_cont_stack, SuccCont).
+    stack.top_det(Info ^ mgi_success_cont_stack, SuccCont).
 
 ml_gen_info_set_var_lval(Var, Lval, !Info) :-
-    !:Info = !.Info ^ var_lvals := map.set(!.Info ^ var_lvals, Var, Lval).
+    !Info ^ mgi_var_lvals := map.set(!.Info ^ mgi_var_lvals, Var, Lval).
 
-ml_gen_info_get_var_lvals(Info, Info ^ var_lvals).
+ml_gen_info_get_var_lvals(Info, Info ^ mgi_var_lvals).
 ml_gen_info_set_var_lvals(VarLvals, !Info) :-
-    !:Info = !.Info ^ var_lvals := VarLvals.
+    !Info ^ mgi_var_lvals := VarLvals.
 
 ml_gen_info_add_extra_defn(ExtraDefn, !Info) :-
-    !:Info = !.Info ^ extra_defns := [ExtraDefn | !.Info ^ extra_defns].
+    !Info ^ mgi_extra_defns := [ExtraDefn | !.Info ^ mgi_extra_defns].
 
-ml_gen_info_get_extra_defns(Info, Info ^ extra_defns).
+ml_gen_info_get_extra_defns(Info, Info ^ mgi_extra_defns).
 
 ml_gen_info_add_env_var_name(Name, !Info) :-
-    EnvVarNames0 = !.Info ^ env_var_names,
+    EnvVarNames0 = !.Info ^ mgi_env_var_names,
     set.insert(EnvVarNames0, Name, EnvVarNames),
-    !:Info = !.Info ^ env_var_names := EnvVarNames.
+    !Info ^ mgi_env_var_names := EnvVarNames.
 
-ml_gen_info_get_env_vars(Info, Info ^ env_var_names).
+ml_gen_info_get_env_vars(Info, Info ^ mgi_env_var_names).
 
 %-----------------------------------------------------------------------------%
 

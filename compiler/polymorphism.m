@@ -1963,7 +1963,7 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     (
         % Optimize common case.
         ExistQVars = [],
-        rtti_varmaps_no_tvars(!.Info ^ rtti_varmaps)
+        rtti_varmaps_no_tvars(!.Info ^ poly_rtti_varmaps)
     ->
         Goal = Goal0
     ;
@@ -2069,7 +2069,8 @@ make_typeclass_info_vars_2([Constraint | Constraints],
 make_typeclass_info_var(Constraint, Seen, ExistQVars,
         Context, !ExtraGoals, !Info, MaybeVar) :-
     (
-        rtti_search_typeclass_info_var(!.Info ^ rtti_varmaps, Constraint, Var)
+        rtti_search_typeclass_info_var(!.Info ^ poly_rtti_varmaps, Constraint,
+            Var)
     ->
         % We already have a typeclass_info for this constraint, either from
         % a parameter to the pred or from an existentially quantified goal
@@ -2079,7 +2080,7 @@ make_typeclass_info_var(Constraint, Seen, ExistQVars,
         % We don't have the typeclass_info, we must either have a proof that
         % tells us how to make it, or it will be produced by an existentially
         % typed goal that we will process later on.
-        map.search(!.Info ^ proof_map, Constraint, Proof)
+        map.search(!.Info ^ poly_proof_map, Constraint, Proof)
     ->
         make_typeclass_info_from_proof(Constraint, Seen, Proof, ExistQVars,
             Context, MaybeVar, !ExtraGoals, !Info)
@@ -2127,9 +2128,9 @@ make_typeclass_info_from_proof(Constraint, Seen, Proof,
 make_typeclass_info_from_instance(Constraint, Seen, ClassId, InstanceNum,
         ExistQVars, Context, MaybeVar, !ExtraGoals, !Info) :-
     Constraint = constraint(_ClassName, ConstrainedTypes),
-    TypeVarSet = !.Info ^ typevarset,
-    Proofs0 = !.Info ^ proof_map,
-    ModuleInfo = !.Info ^ module_info,
+    TypeVarSet = !.Info ^ poly_typevarset,
+    Proofs0 = !.Info ^ poly_proof_map,
+    ModuleInfo = !.Info ^ poly_module_info,
 
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceList),
@@ -2532,7 +2533,7 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
     % If we have already allocated a location for this type_info, then all
     % we need to do is to extract the type_info variable from its location.
     (
-        rtti_search_type_info_locn(!.Info ^ rtti_varmaps, TypeVar,
+        rtti_search_type_info_locn(!.Info ^ poly_rtti_varmaps, TypeVar,
             TypeInfoLocnPrime)
     ->
         TypeInfoLocn = TypeInfoLocnPrime
@@ -2546,8 +2547,8 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
         % will be stored in the typeclass_info variable produced by the
         % predicate, not in a type_info variable. maybe_extract_type_info
         % will fix this up when the typeclass_info is created.
-        %
-        get_tvar_kind(!.Info ^ tvar_kinds, TypeVar, Kind),
+
+        get_tvar_kind(!.Info ^ poly_tvar_kinds, TypeVar, Kind),
         Type = type_variable(TypeVar, Kind),
         new_type_info_var(Type, type_info, Var, !Info),
         TypeInfoLocn = type_info(Var),
@@ -2804,7 +2805,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
 
 make_head_vars([], _, [], !Info).
 make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
-    get_tvar_kind(!.Info ^ tvar_kinds, TypeVar, Kind),
+    get_tvar_kind(!.Info ^ poly_tvar_kinds, TypeVar, Kind),
     Type = type_variable(TypeVar, Kind),
     new_type_info_var(Type, type_info, Var, !Info),
     ( varset.search_name(TypeVarSet, TypeVar, TypeVarName) ->
@@ -3264,37 +3265,31 @@ get_constrained_vars(Constraint) = CVars :-
 :- type poly_info
     --->    poly_info(
                 % The first two fields are from the proc_info.
-                varset              :: prog_varset,
-                vartypes            :: vartypes,
+                poly_varset             :: prog_varset,
+                poly_vartypes           :: vartypes,
 
                 % The next two fields from the pred_info.
-                typevarset          :: tvarset,
-                tvar_kinds          :: tvar_kind_map,
+                poly_typevarset         :: tvarset,
+                poly_tvar_kinds         :: tvar_kind_map,
 
-                rtti_varmaps        :: rtti_varmaps,
-                                    % Gives information about the locations
-                                    % of type_infos and typeclass_infos.
+                % Gives information about the locations of type_infos
+                % and typeclass_infos.
+                poly_rtti_varmaps       :: rtti_varmaps,
 
-                proof_map           :: constraint_proof_map,
-                                    % Specifies why each constraint
-                                    % that was eliminated from the
-                                    % pred was able to be eliminated
-                                    % (this allows us to efficiently
-                                    % construct the dictionary)
+                % Specifies why each constraint that was eliminated from the
+                % pred was able to be eliminated (this allows us to efficiently
+                % construct the dictionary).
+                % Note that the rtti_varmaps is separate from the
+                % constraint_proof_map, since the second is the information
+                % calculated by typecheck.m, while the first is the information
+                % calculated here in polymorphism.m.
+                poly_proof_map          :: constraint_proof_map,
 
-                                    % Note that the two maps above
-                                    % are separate since the second
-                                    % is the information calculated
-                                    % by typecheck.m, while the
-                                    % first is the information
-                                    % calculated here in polymorphism.m
+                % Specifies the constraints at each location in the goal.
+                poly_constraint_map     :: constraint_map,
 
-                constraint_map      :: constraint_map,
-                                    % Specifies the constraints at each
-                                    % location in the goal.
-
-                pred_info           :: pred_info,
-                module_info         :: module_info
+                poly_pred_info          :: pred_info,
+                poly_module_info        :: module_info
             ).
 
 %---------------------------------------------------------------------------%
@@ -3354,15 +3349,15 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
 :- pred poly_info_get_pred_info(poly_info::in, pred_info::out) is det.
 :- pred poly_info_get_module_info(poly_info::in, module_info::out) is det.
 
-poly_info_get_varset(PolyInfo, PolyInfo ^ varset).
-poly_info_get_var_types(PolyInfo, PolyInfo ^ vartypes).
-poly_info_get_typevarset(PolyInfo, PolyInfo ^ typevarset).
-poly_info_get_tvar_kinds(PolyInfo, PolyInfo ^ tvar_kinds).
-poly_info_get_rtti_varmaps(PolyInfo, PolyInfo ^ rtti_varmaps).
-poly_info_get_proofs(PolyInfo, PolyInfo ^ proof_map).
-poly_info_get_constraint_map(PolyInfo, PolyInfo ^ constraint_map).
-poly_info_get_pred_info(PolyInfo, PolyInfo ^ pred_info).
-poly_info_get_module_info(PolyInfo, PolyInfo ^ module_info).
+poly_info_get_varset(PolyInfo, PolyInfo ^ poly_varset).
+poly_info_get_var_types(PolyInfo, PolyInfo ^ poly_vartypes).
+poly_info_get_typevarset(PolyInfo, PolyInfo ^ poly_typevarset).
+poly_info_get_tvar_kinds(PolyInfo, PolyInfo ^ poly_tvar_kinds).
+poly_info_get_rtti_varmaps(PolyInfo, PolyInfo ^ poly_rtti_varmaps).
+poly_info_get_proofs(PolyInfo, PolyInfo ^ poly_proof_map).
+poly_info_get_constraint_map(PolyInfo, PolyInfo ^ poly_constraint_map).
+poly_info_get_pred_info(PolyInfo, PolyInfo ^ poly_pred_info).
+poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
 
 :- pred poly_info_set_varset(prog_varset::in,
     poly_info::in, poly_info::out) is det.
@@ -3381,16 +3376,23 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ module_info).
 :- pred poly_info_set_module_info(module_info::in,
     poly_info::in, poly_info::out) is det.
 
-poly_info_set_varset(VarSet, PI, PI ^ varset := VarSet).
-poly_info_set_varset_and_types(VarSet, VarTypes, PI,
-    (PI ^ varset := VarSet) ^ vartypes := VarTypes).
-poly_info_set_typevarset(TVarSet, PI, PI ^ typevarset := TVarSet).
-poly_info_set_tvar_kinds(TVarKinds, PI, PI ^ tvar_kinds := TVarKinds).
-poly_info_set_rtti_varmaps(RttiVarMaps, PI, PI ^ rtti_varmaps := RttiVarMaps).
-poly_info_set_proofs(Proofs, PI, PI ^ proof_map := Proofs).
-poly_info_set_constraint_map(ConstraintMap, PI,
-    PI ^ constraint_map := ConstraintMap).
-poly_info_set_module_info(ModuleInfo, PI, PI ^ module_info := ModuleInfo).
+poly_info_set_varset(VarSet, !PI) :-
+    !PI ^ poly_varset := VarSet.
+poly_info_set_varset_and_types(VarSet, VarTypes, !PI) :-
+    !PI ^ poly_varset := VarSet,
+    !PI ^ poly_vartypes := VarTypes.
+poly_info_set_typevarset(TVarSet, !PI) :-
+    !PI ^ poly_typevarset := TVarSet.
+poly_info_set_tvar_kinds(TVarKinds, !PI) :-
+    !PI ^ poly_tvar_kinds := TVarKinds.
+poly_info_set_rtti_varmaps(RttiVarMaps, !PI) :-
+    !PI ^ poly_rtti_varmaps := RttiVarMaps.
+poly_info_set_proofs(Proofs, !PI) :-
+    !PI ^ poly_proof_map := Proofs.
+poly_info_set_constraint_map(ConstraintMap, !PI) :-
+    !PI ^ poly_constraint_map := ConstraintMap.
+poly_info_set_module_info(ModuleInfo, !PI) :-
+    !PI ^ poly_module_info := ModuleInfo.
 
 %---------------------------------------------------------------------------%
 

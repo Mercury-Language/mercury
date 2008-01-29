@@ -499,7 +499,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
             ),
 
             proc_info_get_goal(ProcInfo, Goal),
-            Info = traverse_info(!.ModuleInfo, VarTypes),
+            Info = unused_args_info(!.ModuleInfo, VarTypes),
             traverse_goal(Info, Goal, !VarDep),
             svmap.set(proc(PredId, ProcId), !.VarDep, !VarUsage),
 
@@ -616,13 +616,13 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 % Traversal of goal structure, building up dependencies for all variables
 %
 
-:- type traverse_info
-    --->    traverse_info(
-                module_info :: module_info,
-                vartypes    :: vartypes
+:- type unused_args_info
+    --->    unused_args_info(
+                unarg_module_info   :: module_info,
+                unarg_vartypes      :: vartypes
             ).
 
-:- pred traverse_goal(traverse_info::in, hlds_goal::in,
+:- pred traverse_goal(unused_args_info::in, hlds_goal::in,
     var_dep::in, var_dep::out) is det.
 
 traverse_goal(Info, Goal, !VarDep) :-
@@ -640,7 +640,7 @@ traverse_goal(Info, Goal, !VarDep) :-
         traverse_list_of_goals(Info, Goals, !VarDep)
     ;
         GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
-        module_info_pred_proc_info(Info ^ module_info, PredId, ProcId,
+        module_info_pred_proc_info(Info ^ unarg_module_info, PredId, ProcId,
             _Pred, Proc),
         proc_info_get_headvars(Proc, HeadVars),
         add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars, !VarDep)
@@ -775,7 +775,7 @@ add_arg_dep(Var, PredProc, Arg, !VarDep) :-
     % Partition the arguments to a deconstruction into inputs
     % and outputs.
     %
-:- pred partition_deconstruct_args(traverse_info::in, list(prog_var)::in,
+:- pred partition_deconstruct_args(unused_args_info::in, list(prog_var)::in,
     list(uni_mode)::in, list(prog_var)::out, list(prog_var)::out) is det.
 
 partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
@@ -786,13 +786,13 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
         partition_deconstruct_args(Info, Vars, Modes, InputVars1, OutputVars1),
         Mode = ((InitialInst1 - InitialInst2) -> (FinalInst1 - FinalInst2)),
 
-        map.lookup(Info ^ vartypes, Var, Type),
+        map.lookup(Info ^ unarg_vartypes, Var, Type),
 
         % If the inst of the argument of the LHS is changed,
         % the argument is input.
         (
             inst_matches_binding(InitialInst1, FinalInst1,
-                Type, Info ^ module_info)
+                Type, Info ^ unarg_module_info)
         ->
             InputVars = InputVars1
         ;
@@ -803,7 +803,7 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
         % the argument is output.
         (
             inst_matches_binding(InitialInst2, FinalInst2, Type,
-                Info ^ module_info)
+                Info ^ unarg_module_info)
         ->
             OutputVars = OutputVars1
         ;
@@ -842,7 +842,7 @@ list_case_to_list_goal([], []).
 list_case_to_list_goal([case(_, _, Goal) | Cases], [Goal | Goals]) :-
     list_case_to_list_goal(Cases, Goals).
 
-:- pred traverse_list_of_goals(traverse_info::in, list(hlds_goal)::in,
+:- pred traverse_list_of_goals(unused_args_info::in, list(hlds_goal)::in,
     var_dep::in, var_dep::out) is det.
 
 traverse_list_of_goals(_, [], !VarDep).

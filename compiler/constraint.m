@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,9 +114,9 @@ propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info, !IO) :-
         % recomputed.
         constraint_info_update_changed(Constraints, !Info)
     ),
-    InstMap0 = !.Info ^ instmap,
+    InstMap0 = !.Info ^ constr_instmap,
     propagate_conj_sub_goal_2(Goal0, Constraints, Goals, !Info, !IO),
-    !:Info = !.Info ^ instmap := InstMap0.
+    !:Info = !.Info ^ constr_instmap := InstMap0.
 
 :- pred propagate_conj_sub_goal_2(hlds_goal::in, list(constraint)::in,
     list(hlds_goal)::out, constraint_info::in, constraint_info::out,
@@ -150,14 +150,14 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         FinalGoals = [hlds_goal(switch(Var, CanFail, Cases), GoalInfo)]
     ;
         GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
-        InstMap0 = !.Info ^ instmap,
+        InstMap0 = !.Info ^ constr_instmap,
         % We can't safely propagate constraints into the condition of an
         % if-then-else, because that would change the answers generated
         % by the procedure.
         propagate_goal(Cond0, [], Cond, !Info, !IO),
         constraint_info_update_goal(Cond, !Info),
         propagate_goal(Then0, Constraints, Then, !Info, !IO),
-        !:Info = !.Info ^ instmap := InstMap0,
+        !:Info = !.Info ^ constr_instmap := InstMap0,
         propagate_goal(Else0, Constraints, Else, !Info, !IO),
         FinalGoals =
             [hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo)]
@@ -228,9 +228,9 @@ flatten_constraints(Constraints0, Goals) :-
 propagate_in_independent_goals([], _, [], !Info, !IO).
 propagate_in_independent_goals([Goal0 | Goals0], Constraints, [Goal | Goals],
         !Info, !IO) :-
-    InstMap0 = !.Info ^ instmap,
+    InstMap0 = !.Info ^ constr_instmap,
     propagate_goal(Goal0, Constraints, Goal, !Info, !IO),
-    !:Info = !.Info ^ instmap := InstMap0,
+    !:Info = !.Info ^ constr_instmap := InstMap0,
     propagate_in_independent_goals(Goals0, Constraints, Goals, !Info, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -243,10 +243,10 @@ propagate_cases(_, _, [], [], !Info, !IO).
 propagate_cases(Var, Constraints, [Case0 | Cases0], [Case | Cases],
         !Info, !IO) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    InstMap0 = !.Info ^ instmap,
+    InstMap0 = !.Info ^ constr_instmap,
     constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info),
     propagate_goal(Goal0, Constraints, Goal, !Info, !IO),
-    !:Info = !.Info ^ instmap := InstMap0,
+    !:Info = !.Info ^ constr_instmap := InstMap0,
     Case = case(MainConsId, OtherConsIds, Goal),
     propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO).
 
@@ -274,9 +274,9 @@ propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
         ->
             propagate_conj_sub_goal(Goal0, [], Goals, !Info, !IO)
         ;
-            InstMap0 = !.Info ^ instmap,
-            ModuleInfo = !.Info ^ module_info,
-            VarTypes = !.Info ^ vartypes,
+            InstMap0 = !.Info ^ constr_instmap,
+            ModuleInfo = !.Info ^ constr_module_info,
+            VarTypes = !.Info ^ constr_vartypes,
             annotate_conj_output_vars(Goals0, ModuleInfo,
                 VarTypes, InstMap0, [], RevGoals1),
             annotate_conj_constraints(ModuleInfo, RevGoals1,
@@ -414,10 +414,10 @@ annotate_conj_constraints(ModuleInfo,
         IncompatibleInstVars),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    CI_ModuleInfo0 = !.Info ^ module_info,
+    CI_ModuleInfo0 = !.Info ^ constr_module_info,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo, !IO),
-    !:Info = !.Info ^ module_info := CI_ModuleInfo,
+    !:Info = !.Info ^ constr_module_info := CI_ModuleInfo,
     (
         % Propagate goals that can fail and have no output variables.
         % Propagating cc_nondet goals would be tricky, because we would
@@ -463,7 +463,7 @@ annotate_conj_constraints(ModuleInfo,
 
         % If the constraint was the only use of the constant, the old goal
         % can be removed. We need to rerun quantification to work that out.
-        !:Info = !.Info ^ changed := yes
+        !:Info = !.Info ^ constr_changed := yes
     ;
         % Prune away the constraints after a goal that cannot succeed
         % -- they can never be executed.
@@ -550,13 +550,13 @@ add_constant_construction(ConstructVar, Construct0,
         ConstraintNonLocals = goal_info_get_nonlocals(ConstraintInfo),
         set.member(ConstructVar, ConstraintNonLocals)
     ->
-        VarSet0 = !.Info ^ varset,
-        VarTypes0 = !.Info ^ vartypes,
+        VarSet0 = !.Info ^ constr_varset,
+        VarTypes0 = !.Info ^ constr_vartypes,
         varset.new_var(VarSet0, NewVar, VarSet),
         map.lookup(VarTypes0, ConstructVar, VarType),
         map.det_insert(VarTypes0, NewVar, VarType, VarTypes),
-        !:Info = !.Info ^ varset := VarSet,
-        !:Info = !.Info ^ vartypes := VarTypes,
+        !:Info = !.Info ^ constr_varset := VarSet,
+        !:Info = !.Info ^ constr_vartypes := VarTypes,
         map.from_assoc_list([ConstructVar - NewVar], Subn),
         rename_some_vars_in_goal(Subn, Construct0, Construct),
         Constructs = [Construct | Constructs0],
@@ -729,11 +729,11 @@ goal_is_simple(Goal) :-
 
 :- type constraint_info
     --->    constraint_info(
-                module_info :: module_info,
-                vartypes    :: vartypes,
-                varset      :: prog_varset,
-                instmap     :: instmap,
-                changed     :: bool     % has anything changed.
+                constr_module_info  :: module_info,
+                constr_vartypes     :: vartypes,
+                constr_varset       :: prog_varset,
+                constr_instmap      :: instmap,
+                constr_changed      :: bool     % has anything changed.
             ).
 
 constraint_info_init(ModuleInfo, VarTypes, VarSet, InstMap, ConstraintInfo) :-
@@ -748,23 +748,23 @@ constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
     constraint_info::in, constraint_info::out) is det.
 
 constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
-    InstMap0 = !.Info ^ instmap,
+    InstMap0 = !.Info ^ constr_instmap,
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-    !:Info = !.Info ^ instmap := InstMap.
+    !:Info = !.Info ^ constr_instmap := InstMap.
 
 :- pred constraint_info_bind_var_to_functors(prog_var::in, cons_id::in,
     list(cons_id)::in, constraint_info::in, constraint_info::out) is det.
 
 constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info) :-
-    InstMap0 = !.Info ^ instmap,
-    ModuleInfo0 = !.Info ^ module_info,
-    VarTypes = !.Info ^ vartypes,
+    InstMap0 = !.Info ^ constr_instmap,
+    ModuleInfo0 = !.Info ^ constr_module_info,
+    VarTypes = !.Info ^ constr_vartypes,
     map.lookup(VarTypes, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap, ModuleInfo0, ModuleInfo),
-    !:Info = !.Info ^ instmap := InstMap,
-    !:Info = !.Info ^ module_info := ModuleInfo.
+    !:Info = !.Info ^ constr_instmap := InstMap,
+    !:Info = !.Info ^ constr_module_info := ModuleInfo.
 
     % If a non-empty list of constraints is pushed into a sub-goal,
     % quantification, instmap_deltas and determinism need to be
@@ -778,7 +778,7 @@ constraint_info_update_changed(Constraints, !Info) :-
         Constraints = []
     ;
         Constraints = [_ | _],
-        !:Info = !.Info ^ changed := yes
+        !:Info = !.Info ^ constr_changed := yes
     ).
 
 %-----------------------------------------------------------------------------%

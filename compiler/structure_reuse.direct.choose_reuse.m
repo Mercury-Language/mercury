@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -140,10 +140,10 @@ determine_reuse(Strategy, ModuleInfo, ProcInfo, DeadCellTable, !Goal,
     %
 :- type background_info
     --->    background(
-                strategy    :: reuse_strategy,
-                module_info :: module_info,
-                proc_info   :: proc_info,
-                vartypes    :: vartypes
+                back_strategy       :: reuse_strategy,
+                back_module_info    :: module_info,
+                back_proc_info      :: proc_info,
+                back_vartypes       :: vartypes
             ).
 
 :- func background_info_init(reuse_strategy, module_info, proc_info) =
@@ -218,7 +218,7 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
                     % should represent a 'good' reuse (yielding possibly good
                     % results on the general memory behaviour of the procedure)
                     % compared to a reuse with a lower value.
-        ).
+            ).
 
         % A match is a description of a list of deconstructions and a list of
         % constructions. The deconstructions and constructions can all be coded
@@ -309,21 +309,22 @@ match_get_condition(Background, Match) = Condition :-
     (
         Conditions = [First | Rest],
         list.foldl(
-            reuse_as_least_upper_bound(Background ^ module_info,
-                Background ^ proc_info),
+            reuse_as_least_upper_bound(Background ^ back_module_info,
+                Background ^ back_proc_info),
             Rest, First, Condition)
     ;
         Conditions = [],
-        unexpected(choose_reuse.this_file, "match_get_condition: " ++
-            "no reuse conditions.\n")
+        unexpected(choose_reuse.this_file,
+            "match_get_condition: no reuse conditions.\n")
     ).
 
     % Add a construction as a potential place for reusing the garbage
     % produced by any of the deconstructions listed in the match.
     % This changes the value of the match.
     %
-:- pred match_add_construction(construction_spec::in, match::in,
-        match::out) is det.
+:- pred match_add_construction(construction_spec::in,
+    match::in, match::out) is det.
+
 match_add_construction(ConSpec, Match0, Match) :-
     Match0 = match(DeconSpecs0, ConSpecs0, Value0, Degree0),
     ConSpecs = [ConSpec | ConSpecs0],
@@ -352,7 +353,7 @@ highest_match_degree_ratio(MatchTable) = Match :-
     ).
 
 :- pred compare_matches_value_degree(match::in, match::in,
-        comparison_result::out) is det.
+    comparison_result::out) is det.
 
 compare_matches_value_degree(MatchA, MatchB, Result) :-
     VA = match_value_degree(MatchA),
@@ -360,7 +361,7 @@ compare_matches_value_degree(MatchA, MatchB, Result) :-
     compare(Result, VA, VB).
 
 :- pred reverse_compare_matches_value_degree(match::in, match::in,
-        comparison_result::out) is det.
+    comparison_result::out) is det.
 
 reverse_compare_matches_value_degree(MatchA, MatchB, Result) :-
     compare_matches_value_degree(MatchB, MatchA, Result).
@@ -383,7 +384,7 @@ compare_matches_value(Match1, Match2, Result) :-
     compare(Result, V1, V2).
 
 :- pred reverse_compare_matches_value(match::in, match::in,
-        comparison_result::out) is det.
+    comparison_result::out) is det.
 
 reverse_compare_matches_value(Match1, Match2, Result) :-
     compare_matches_value(Match2, Match1, Result).
@@ -483,8 +484,8 @@ process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
         % Add the conditions involved in the reuses to the existing
         % conditions.
         %
-        ModuleInfo = Background ^ module_info,
-        ProcInfo   = Background ^ proc_info,
+        ModuleInfo = Background ^ back_module_info,
+        ProcInfo   = Background ^ back_proc_info,
         reuse_as_least_upper_bound(ModuleInfo, ProcInfo,
             match_get_condition(Background, Match), !ReuseAs),
 
@@ -552,8 +553,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
 
             ProgramPoint = program_point_init(GoalInfo),
             (
-                Condition = dead_cell_table_search(ProgramPoint,
-                    DeadCellTable)
+                Condition = dead_cell_table_search(ProgramPoint, DeadCellTable)
             ->
                 ReuseAs = reuse_as_init_with_one_condition(Condition),
                 DeconstructionSpec = deconstruction_spec_init(Var,
@@ -601,7 +601,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
             !IO)
     ;
         GoalExpr = negation(Goal),
-        % if Goal contains deconstructions, they should not be reused within
+        % If Goal contains deconstructions, they should not be reused within
         % Cont.
         compute_match_table_with_continuation(Background, DeadCellTable,
             Goal, [], !Table, !IO),
@@ -627,8 +627,8 @@ compute_match_table_with_continuation(Background, DeadCellTable,
             !Table, !IO)
     ;
         GoalExpr = shorthand(_),
-        unexpected(choose_reuse.this_file, "compute_match_table: " ++
-            "shorthand goal.")
+        unexpected(choose_reuse.this_file,
+            "compute_match_table: shorthand goal.")
     ).
 
 :- pred compute_match_table_in_disjs(background_info::in, dead_cell_table::in,
@@ -668,11 +668,11 @@ process_possible_common_dead_vars(Background, Cont, DisjTables,
         ExtraTables, !IO) :-
     CommonDeadVars = common_vars(DisjTables),
     (
-        CommonDeadVars = [_ | _]
-    ->
+        CommonDeadVars = [_ | _],
         list.filter_map(process_common_var(Background, Cont, DisjTables),
             CommonDeadVars, ExtraTables)
     ;
+        CommonDeadVars = [],
         ExtraTables = []
     ).
 
@@ -680,7 +680,7 @@ process_possible_common_dead_vars(Background, Cont, DisjTables,
 
 common_vars(Tables) = CommonVars :-
     (
-        Tables = [ First | RestTables ],
+        Tables = [First | RestTables],
         CommonVars = list.foldl(common_var_with_list, RestTables,
             map.keys(First))
     ;
@@ -791,21 +791,29 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         GoalExpr = unify(_, _, _, Unification, _),
         (
             Unification = construct(Var, Cons, Args, _, _, _, _),
+            (
+                map.lookup(Background ^ back_vartypes, Var, VarType),
+                type_is_reusable(Background ^ back_module_info, VarType),
 
-            map.lookup(Background ^ vartypes, Var, VarType),
-            type_is_reusable(Background ^ module_info, VarType),
-
-            % Is the construction still looking for reuse-possibilities...
-            empty_reuse_description(goal_info_get_reuse(GoalInfo))
-
-        ->
-            % Is it possible for the construction to reuse the dead cell
-            % specified by the match?
-            %
-            verify_match(Background, Var, Cons, Args,
-                program_point_init(GoalInfo), !Match)
+                % Is the construction still looking for reuse-possibilities...
+                empty_reuse_description(goal_info_get_reuse(GoalInfo))
+            ->
+                % Is it possible for the construction to reuse the dead cell
+                % specified by the match?
+                verify_match(Background, Var, Cons, Args,
+                    program_point_init(GoalInfo), !Match)
+            ;
+                true
+            )
         ;
-            true
+            ( Unification = deconstruct(_, _, _, _, _, _)
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
+            )
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(choose_reuse.this_file,
+                "find_match_in_goal: complicated unify")
         )
     ;
         GoalExpr = plain_call(_, _, _, _, _, _)
@@ -824,21 +832,20 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         Goals = list.map((func(C) = C ^ case_goal), Cases),
         find_match_in_disjunction(Background, Goals, !Match)
     ;
+        GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
+        Match0 = !.Match,
+        find_best_match_in_conjunction(Background, [CondGoal, ThenGoal],
+            Match0, MatchThen),
+        find_match_in_goal_2(Background, ElseGoal, Match0, MatchElse),
+        average_match([MatchThen, MatchElse], !:Match)
+    ;
         GoalExpr = negation(_)
     ;
         GoalExpr = scope(_, ScopeGoal),
         find_match_in_goal_2(Background, ScopeGoal, !Match)
     ;
-        GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
-        Match0 = !.Match,
-        find_best_match_in_conjunction(Background, [CondGoal, ThenGoal],
-            !Match),
-        find_match_in_goal_2(Background, ElseGoal, Match0, MatchElse),
-        average_match([!.Match, MatchElse], !:Match)
-    ;
         GoalExpr = shorthand(_),
-        unexpected(choose_reuse.this_file, "find_match_in_goal: " ++
-            "shorthand goal.")
+        unexpected(choose_reuse.this_file, "find_match_in_goal: shorthand")
     ).
 
 :- func count_candidates(list(match)) = int.
@@ -915,8 +922,8 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
         ReuseType) :-
     DeconSpec = decon(DeadVar, _, DeadCons, DeadCellArgs, _),
 
-    ModuleInfo = Background ^ module_info,
-    Vartypes = Background ^ vartypes,
+    ModuleInfo = Background ^ back_module_info,
+    Vartypes = Background ^ back_vartypes,
     NewNumArgs = list.length(NewCellArgs),
     DeadNumArgs = list.length(DeadCellArgs),
 
@@ -934,7 +941,7 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
 
     % Verify whether the cons_ids and arities match the reuse constraint
     % specified by the user.
-    Constraint = Background ^ strategy,
+    Constraint = Background ^ back_strategy,
     DiffArity = DeadArity - NewArity,
     ( NewCons = DeadCons -> SameCons = yes ; SameCons = no),
     (
@@ -964,7 +971,6 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
         - alfa_value * DiffArity ),
     Weight > 0,
     ReuseType = reuse_type(SameCons, ReuseFields, float(Weight)).
-
 
 :- func glb_reuse_types(list(reuse_type)) = reuse_type is semidet.
 
@@ -1000,7 +1006,6 @@ needs_update_and(needs_update, does_not_need_update) = needs_update.
 needs_update_and(does_not_need_update, needs_update) = needs_update.
 needs_update_and(does_not_need_update, does_not_need_update) =
     does_not_need_update.
-
 
 %-----------------------------------------------------------------------------%
 

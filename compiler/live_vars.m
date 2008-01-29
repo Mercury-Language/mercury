@@ -35,10 +35,10 @@
 
 :- type alloc_data
     --->    alloc_data(
-                module_info         ::  module_info,
-                proc_info           ::  proc_info,
-                typeinfo_liveness   ::  bool,
-                opt_no_return_calls ::  bool
+                ad_module_info          ::  module_info,
+                ad_proc_info            ::  proc_info,
+                ad_typeinfo_liveness    ::  bool,
+                ad_opt_no_return_calls  ::  bool
             ).
 
 :- typeclass stack_alloc_info(T) where [
@@ -79,15 +79,17 @@
     %
 :- type parallel_stackvars
     --->    parallel_stackvars(
+                % Variables nonlocal to the parallel conjunction which need
+                % their own stack slots.
                 set(prog_var),
-                    % Variables nonlocal to the parallel conjunction which need
-                    % their own stack slots.
+
+                % Variables local to parallel conjuncts prior to the
+                % current conjunct which need stack slots.
                 list(set(prog_var)),
-                    % Variables local to parallel conjuncts prior to the
-                    % current conjunct which need stack slots.
+
+                % Accumulating set of variables local to the current
+                % parallel conjunct which need stack slots.
                 set(prog_var)
-                    % Accumulating set of variables local to the current
-                    % parallel conjunct which need stack slots.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -354,10 +356,10 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),
-            ProcInfo = AllocData ^ proc_info,
+            ProcInfo = AllocData ^ ad_proc_info,
             proc_info_get_vartypes(ProcInfo, VarTypes),
             map.apply_to_list(ArgVars, VarTypes, Types),
-            ModuleInfo = AllocData ^ module_info,
+            ModuleInfo = AllocData ^ ad_module_info,
             arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
                 Types, Modes, _InVars, OutVars, _UnusedVars),
             build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
@@ -367,8 +369,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     ;
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
         GoalExpr = GoalExpr0,
-        ModuleInfo = AllocData ^ module_info,
-        CallerProcInfo = AllocData ^ proc_info,
+        ModuleInfo = AllocData ^ ad_module_info,
+        CallerProcInfo = AllocData ^ ad_proc_info,
         proc_info_get_vartypes(CallerProcInfo, VarTypes),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
         arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
@@ -403,8 +405,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId, Args,
             _, _, _),
         GoalExpr = GoalExpr0,
-        ModuleInfo = AllocData ^ module_info,
-        CallerProcInfo = AllocData ^ proc_info,
+        ModuleInfo = AllocData ^ ad_module_info,
+        CallerProcInfo = AllocData ^ ad_proc_info,
         proc_info_get_vartypes(CallerProcInfo, VarTypes),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
         ArgVars = list.map(foreign_arg_var, Args),
@@ -460,13 +462,13 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     % Might need to add more live variables with typeinfo liveness
     % calculation.
 
-    maybe_add_typeinfo_liveness(AllocData ^ proc_info,
-        AllocData ^ typeinfo_liveness, OutVars, ForwardVars0, ForwardVars),
+    maybe_add_typeinfo_liveness(AllocData ^ ad_proc_info,
+        AllocData ^ ad_typeinfo_liveness, OutVars, ForwardVars0, ForwardVars),
 
     Detism = goal_info_get_determinism(GoalInfo0),
     (
         Detism = detism_erroneous,
-        AllocData ^ opt_no_return_calls = yes
+        AllocData ^ ad_opt_no_return_calls = yes
     ->
         NeedAcrossCall = need_across_call(set.init, set.init, set.init)
     ;

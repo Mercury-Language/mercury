@@ -118,10 +118,10 @@ initial_last_locns([Var - Lval | VarLvals]) =
 
 :- type store_alloc_info
     --->    store_alloc_info(
-                module_info     :: module_info,
-                stack_slots     :: stack_slots
-                                % Maps each var to its stack slot
-                                % (if it has one).
+                sai_module_info     :: module_info,
+                sai_stack_slots     :: stack_slots
+                                    % Maps each var to its stack slot
+                                    % (if it has one).
             ).
 
 :- type where_stored    == set(lval).   % These lvals may contain var() rvals.

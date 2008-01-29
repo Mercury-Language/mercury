@@ -125,14 +125,14 @@
     %
 :- pred get_proc_id(code_info::in, proc_id::out) is det.
 
-    % Get the HLDS of the procedure we are generating code for.
-    %
-:- pred get_proc_info(code_info::in, proc_info::out) is det.
-
     % Get the HLDS of the predicate containing the procedure
     % we are generating code for.
     %
 :- pred get_pred_info(code_info::in, pred_info::out) is det.
+
+    % Get the HLDS of the procedure we are generating code for.
+    %
+:- pred get_proc_info(code_info::in, proc_info::out) is det.
 
     % Get the variables for the current procedure.
     %
@@ -309,169 +309,144 @@
 
 :- type code_info_static
     --->    code_info_static(
-                globals             :: globals,
-                                    % For the code generation options.
+                % For the code generation options.
+                cis_globals             :: globals,
 
-                module_info         :: module_info,
-                                    % The module_info structure - you just
-                                    % never know when you might need it.
+                % The module_info structure - you just never know
+                % when you might need it.
+                cis_module_info         :: module_info,
 
-                pred_id             :: pred_id,
-                                    % The id of the current predicate.
+                % The id of the current predicate.
+                cis_pred_id             :: pred_id,
 
-                proc_id             :: proc_id,
-                                    % The id of the current procedure.
+                % The id of the current procedure.
+                cis_proc_id             :: proc_id,
 
-                proc_info           :: proc_info,
-                                    % The proc_info for this procedure.
+                % The pred_info for the predicate containing this procedure.
+                cis_pred_info           :: pred_info,
 
-                pred_info           :: pred_info,
-                                    % The pred_info for the predicate containing
-                                    % this procedure.
+                % The proc_info for this procedure.
+                cis_proc_info           :: proc_info,
 
-                varset              :: prog_varset,
-                                    % The variables in this procedure.
+                % The variables in this procedure.
+                cis_varset              :: prog_varset,
 
-                var_slot_count      :: int,
-                                    % The number of stack slots allocated.
-                                    % for storing variables.
-                                    % (Some extra stack slots are used
-                                    % for saving and restoring registers.)
+                % The number of stack slots allocated. for storing variables.
+                % (Some extra stack slots are used for saving and restoring
+                % registers.)
+                cis_var_slot_count      :: int,
 
-                maybe_trace_info    :: maybe(trace_info),
-                                    % Information about which stack slots
-                                    % the call sequence number and depth
-                                    % are stored in, provided tracing is
-                                    % switched on.
+                % Information about which stack slots the call sequence number
+                % and depth are stored in, provided tracing is switched on.
+                cis_maybe_trace_info    :: maybe(trace_info),
 
-                opt_no_resume_calls :: bool,
-                                    % Should we optimize calls that cannot
-                                    % return?
+                % Should we optimize calls that cannot return?
+                cis_opt_no_resume_calls :: bool,
 
-                emit_trail_ops      :: add_trail_ops,
-                                    % Should we emit trail operations?
+                % Should we emit trail operations?
+                cis_emit_trail_ops      :: add_trail_ops,
 
-                opt_trail_ops       :: bool,
-                                    % Should we try to avoid emiting trail
-                                    % operations?
+                % Should we try to avoid generating trail operations?
+                cis_opt_trail_ops       :: bool,
 
-                emit_region_ops     :: add_region_ops,
-                                    % Should we emit region operations?
+                % Should we emit region operations?
+                cis_emit_region_ops     :: add_region_ops,
 
-                opt_region_ops      :: bool,
-                                    % Should we try to avoid emiting region
-                                    % operations?
+                % Should we try to avoid generating region operations?
+                cis_opt_region_ops      :: bool,
 
-                auto_comments       :: bool,
-                                    % The setting of --auto-comments.
+                % The setting of --auto-comments.
+                cis_auto_comments       :: bool,
 
-                lcmc_null           :: bool
-                                    % The setting of --optimize-constructor-
-                                    % last-call-null.
+                % The setting of --optimize-constructor-last-call-null.
+                cis_lcmc_null           :: bool
+
             ).
 
 :- type code_info_loc_dep
     --->    code_info_loc_dep(
-                forward_live_vars   :: set(prog_var),
-                                    % Variables that are forward live
-                                    % after this goal.
+                % Variables that are forward live after this goal.
+                cild_forward_live_vars  :: set(prog_var),
 
-                instmap             :: instmap,
-                                    % Current insts of the live variables.
+                % Current insts of the live variables.
+                cild_instmap            :: instmap,
 
-                zombies             :: set(prog_var),
-                                    % Zombie variables; variables that are not
-                                    % forward live but which are protected by
-                                    % an enclosing resume point.
+                % Zombie variables; variables that are not forward live
+                % but which are protected by an enclosing resume point.
+                cild_zombies            :: set(prog_var),
 
-                var_locn_info       :: var_locn_info,
-                                    % A map storing the information about
-                                    % the status of each known variable.
-                                    % (Known vars = forward live vars
-                                    % + zombies)
+                % A map storing the information about the status of each known
+                % variable. (Known vars = forward live vars + zombies.)
+                cild_var_locn_info      :: var_locn_info,
 
-                temps_in_use        :: set(lval),
-                                    % The set of temporary locations currently
-                                    % in use. These lvals must be all be keys
-                                    % in the map of temporary locations ever
-                                    % used, which is one of the persistent
-                                    % fields below. Any keys in that map which
-                                    % are not in this set are free for reuse.
+                % The set of temporary locations currently in use. These lvals
+                % must be all be keys in the map of temporary locations ever
+                % used, which is one of the persistent fields below. Any keys
+                % in that map which are not in this set are free for reuse.
+                cild_temps_in_use       :: set(lval),
 
-                fail_info           :: fail_info,
-                                    % Information about how to manage failures.
+                % Information about how to manage failures.
+                cild_fail_info          :: fail_info,
 
-                par_conj_depth      :: int
-                                    % How deep in a nested parallel conjunction
-                                    % we are. This is zero at the beginning of
-                                    % a procedure and is incremented as we
-                                    % enter parallel conjunctions.
+                % How deep in a nested parallel conjunction we are.
+                % This is zero at the beginning of a procedure and
+                % is incremented as we enter parallel conjunctions.
+                cild_par_conj_depth     :: int
             ).
 
 :- type code_info_persistent
     --->    code_info_persistent(
-                label_num_src       :: counter,
-                                    % Counter for the local labels used
-                                    % by this procedure.
+                % Counter for the local labels used by this procedure.
+                cip_label_num_src       :: counter,
 
-                store_succip        :: bool,
-                                    % do we need to store succip?
+                % do we need to store succip?
+                cip_store_succip        :: bool,
 
-                label_info          :: proc_label_layout_info,
-                                    % Information on which values
-                                    % are live and where at which labels,
-                                    % for tracing and/or accurate gc.
+                % Information on which values are live and where at which
+                % labels, for tracing and/or accurate gc.
+                cip_label_info          :: proc_label_layout_info,
 
-                proc_trace_events   :: bool,
-                                    % Did the procedure have any trace events?
+                % Did the procedure have any trace events?
+                cip_proc_trace_events   :: bool,
 
-                stackslot_max       :: int,
-                                    % The maximum number of extra
-                                    % temporary stackslots that have been
-                                    % used during the procedure.
+                % The maximum number of extra temporary stackslots that
+                % have been used during the procedure.
+                cip_stackslot_max       :: int,
 
-                temp_contents       :: map(lval, slot_contents),
-                                    % The temporary locations that have ever
-                                    % been used on the stack, and what they
-                                    % contain. Once we have used a stack slot
-                                    % to store e.g. a ticket, we never reuse
-                                    % that slot to hold something else, e.g.
-                                    % a saved hp. This policy prevents us
-                                    % from making such conflicting choices
-                                    % in parallel branches, which would make it
-                                    % impossible to describe to gc what the
-                                    % slot contains after the end of the
-                                    % branched control structure.
+                % The temporary locations that have ever been used on the
+                % stack, and what they contain. Once we have used a stack slot
+                % to store e.g. a ticket, we never reuse that slot to hold
+                % something else, e.g. a saved hp. This policy prevents us
+                % from making such conflicting choices in parallel branches,
+                % which would make it impossible to describe to gc what the
+                % slot contains after the end of the branched control
+                % structure.
+                cip_temp_contents       :: map(lval, slot_contents),
 
-                persistent_temps    :: set(lval),
-                                    % Stack slot locations that should not be
-                                    % released even when the code generator
-                                    % resets its location-dependent state.
+                % Stack slot locations that should not be released even when
+                % the code generator resets its location-dependent state.
+                cip_persistent_temps    :: set(lval),
 
-                closure_layout_seq  :: counter,
+                cip_closure_layout_seq  :: counter,
 
-                closure_layouts     :: list(layout_data),
-                                    % Closure layout structures generated
-                                    % by this procedure.
+                % Closure layout structures generated by this procedure.
+                cip_closure_layouts     :: list(layout_data),
 
-                max_reg_used        :: int,
-                                    % At each call to MR_trace, we compute the
-                                    % highest rN register number that contains
-                                    % a useful value. This slot contains the
-                                    % maximum of these highest values.
-                                    % Therefore at all calls to MR_trace in the
-                                    % procedure, we need only save the
-                                    % registers whose numbers are equal to or
-                                    % smaller than this field. This slot
-                                    % contains -1 if tracing is not enabled.
+                % At each call to MR_trace, we compute the highest rN register
+                % number that contains a useful value. This slot contains the
+                % maximum of these highest values. Therefore at all calls to
+                % MR_trace in the procedure, we need only save the registers
+                % whose numbers are equal to or smaller than this field.
+                % This slot contains -1 if tracing is not enabled.
+                cip_max_reg_used        :: int,
 
-                created_temp_frame  :: bool,
-                                    % True iff the procedure has created one or
-                                    % more temporary nondet frames.
+                % True iff the procedure has created one or more temporary
+                % nondet frames.
+                cip_created_temp_frame  :: bool,
 
-                static_cell_info    :: static_cell_info,
+                cip_static_cell_info    :: static_cell_info,
 
-                used_env_vars       :: set(string)
+                cip_used_env_vars       :: set(string)
             ).
 
 %---------------------------------------------------------------------------%
@@ -552,8 +527,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             ModuleInfo,
             PredId,
             ProcId,
-            ProcInfo,
             PredInfo,
+            ProcInfo,
             VarSet,
             SlotMax,
             no,
@@ -614,73 +589,79 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
 
 %---------------------------------------------------------------------------%
 
-get_globals(CI, CI ^ code_info_static ^ globals).
-get_module_info(CI, CI ^ code_info_static ^ module_info).
-get_pred_id(CI, CI ^ code_info_static ^ pred_id).
-get_proc_id(CI, CI ^ code_info_static ^ proc_id).
-get_proc_info(CI, CI ^ code_info_static ^ proc_info).
-get_pred_info(CI, CI ^ code_info_static ^ pred_info).
-get_varset(CI, CI ^ code_info_static ^ varset).
-get_var_slot_count(CI, CI ^ code_info_static ^ var_slot_count).
-get_maybe_trace_info(CI, CI ^ code_info_static ^ maybe_trace_info).
-get_opt_no_return_calls(CI, CI ^ code_info_static ^ opt_no_resume_calls).
-get_emit_trail_ops(CI, CI ^ code_info_static ^ emit_trail_ops).
-get_opt_trail_ops(CI, CI ^ code_info_static ^ opt_trail_ops).
-get_emit_region_ops(CI, CI ^ code_info_static ^ emit_region_ops).
-get_opt_region_ops(CI, CI ^ code_info_static ^ opt_region_ops).
-get_auto_comments(CI, CI ^ code_info_static ^ auto_comments).
-get_lcmc_null(CI, CI ^ code_info_static ^ lcmc_null).
-get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ forward_live_vars).
-get_instmap(CI, CI ^ code_info_loc_dep ^ instmap).
-get_zombies(CI, CI ^ code_info_loc_dep ^ zombies).
-get_var_locn_info(CI, CI ^ code_info_loc_dep ^ var_locn_info).
-get_temps_in_use(CI, CI ^ code_info_loc_dep ^ temps_in_use).
-get_fail_info(CI, CI ^ code_info_loc_dep ^ fail_info).
-get_par_conj_depth(CI, CI ^ code_info_loc_dep ^ par_conj_depth).
-get_label_counter(CI, CI ^ code_info_persistent ^ label_num_src).
-get_succip_used(CI, CI ^ code_info_persistent ^ store_succip).
-get_layout_info(CI, CI ^ code_info_persistent ^ label_info).
-get_proc_trace_events(CI, CI ^ code_info_persistent ^ proc_trace_events).
-get_max_temp_slot_count(CI, CI ^ code_info_persistent ^ stackslot_max).
-get_temp_content_map(CI, CI ^ code_info_persistent ^ temp_contents).
-get_persistent_temps(CI, CI ^ code_info_persistent ^ persistent_temps).
-get_closure_seq_counter(CI, CI ^ code_info_persistent ^ closure_layout_seq).
-get_closure_layouts(CI, CI ^ code_info_persistent ^ closure_layouts).
-get_max_reg_in_use_at_trace(CI, CI ^ code_info_persistent ^ max_reg_used).
-get_created_temp_frame(CI, CI ^ code_info_persistent ^ created_temp_frame).
-get_static_cell_info(CI, CI ^ code_info_persistent ^ static_cell_info).
-get_used_env_vars(CI, CI ^ code_info_persistent ^ used_env_vars).
+get_globals(CI, CI ^ code_info_static ^ cis_globals).
+get_module_info(CI, CI ^ code_info_static ^ cis_module_info).
+get_pred_id(CI, CI ^ code_info_static ^ cis_pred_id).
+get_proc_id(CI, CI ^ code_info_static ^ cis_proc_id).
+get_pred_info(CI, CI ^ code_info_static ^ cis_pred_info).
+get_proc_info(CI, CI ^ code_info_static ^ cis_proc_info).
+get_varset(CI, CI ^ code_info_static ^ cis_varset).
+get_var_slot_count(CI, CI ^ code_info_static ^ cis_var_slot_count).
+get_maybe_trace_info(CI, CI ^ code_info_static ^ cis_maybe_trace_info).
+get_opt_no_return_calls(CI, CI ^ code_info_static ^ cis_opt_no_resume_calls).
+get_emit_trail_ops(CI, CI ^ code_info_static ^ cis_emit_trail_ops).
+get_opt_trail_ops(CI, CI ^ code_info_static ^ cis_opt_trail_ops).
+get_emit_region_ops(CI, CI ^ code_info_static ^ cis_emit_region_ops).
+get_opt_region_ops(CI, CI ^ code_info_static ^ cis_opt_region_ops).
+get_auto_comments(CI, CI ^ code_info_static ^ cis_auto_comments).
+get_lcmc_null(CI, CI ^ code_info_static ^ cis_lcmc_null).
+get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ cild_forward_live_vars).
+get_instmap(CI, CI ^ code_info_loc_dep ^ cild_instmap).
+get_zombies(CI, CI ^ code_info_loc_dep ^ cild_zombies).
+get_var_locn_info(CI, CI ^ code_info_loc_dep ^ cild_var_locn_info).
+get_temps_in_use(CI, CI ^ code_info_loc_dep ^ cild_temps_in_use).
+get_fail_info(CI, CI ^ code_info_loc_dep ^ cild_fail_info).
+get_par_conj_depth(CI, CI ^ code_info_loc_dep ^ cild_par_conj_depth).
+get_label_counter(CI, CI ^ code_info_persistent ^ cip_label_num_src).
+get_succip_used(CI, CI ^ code_info_persistent ^ cip_store_succip).
+get_layout_info(CI, CI ^ code_info_persistent ^ cip_label_info).
+get_proc_trace_events(CI, CI ^ code_info_persistent ^ cip_proc_trace_events).
+get_max_temp_slot_count(CI, CI ^ code_info_persistent ^ cip_stackslot_max).
+get_temp_content_map(CI, CI ^ code_info_persistent ^ cip_temp_contents).
+get_persistent_temps(CI, CI ^ code_info_persistent ^ cip_persistent_temps).
+get_closure_seq_counter(CI,
+    CI ^ code_info_persistent ^ cip_closure_layout_seq).
+get_closure_layouts(CI, CI ^ code_info_persistent ^ cip_closure_layouts).
+get_max_reg_in_use_at_trace(CI, CI ^ code_info_persistent ^ cip_max_reg_used).
+get_created_temp_frame(CI, CI ^ code_info_persistent ^ cip_created_temp_frame).
+get_static_cell_info(CI, CI ^ code_info_persistent ^ cip_static_cell_info).
+get_used_env_vars(CI, CI ^ code_info_persistent ^ cip_used_env_vars).
 
 %---------------------------------------------------------------------------%
 
-set_maybe_trace_info(TI, CI, CI ^ code_info_static ^ maybe_trace_info := TI).
+set_maybe_trace_info(TI, CI,
+    CI ^ code_info_static ^ cis_maybe_trace_info := TI).
 set_forward_live_vars(LV, CI,
-    CI ^ code_info_loc_dep ^ forward_live_vars := LV).
-set_instmap(IM, CI, CI ^ code_info_loc_dep ^ instmap := IM).
-set_zombies(Zs, CI, CI ^ code_info_loc_dep ^ zombies := Zs).
-set_var_locn_info(EI, CI, CI ^ code_info_loc_dep ^ var_locn_info := EI).
-set_temps_in_use(TI, CI, CI ^ code_info_loc_dep ^ temps_in_use := TI).
-set_fail_info(FI, CI, CI ^ code_info_loc_dep ^ fail_info := FI).
-set_par_conj_depth(N, CI, CI ^ code_info_loc_dep ^ par_conj_depth := N).
-set_label_counter(LC, CI, CI ^ code_info_persistent ^ label_num_src := LC).
-set_succip_used(SU, CI, CI ^ code_info_persistent ^ store_succip := SU).
-set_layout_info(LI, CI, CI ^ code_info_persistent ^ label_info := LI).
+    CI ^ code_info_loc_dep ^ cild_forward_live_vars := LV).
+set_instmap(IM, CI, CI ^ code_info_loc_dep ^ cild_instmap := IM).
+set_zombies(Zs, CI, CI ^ code_info_loc_dep ^ cild_zombies := Zs).
+set_var_locn_info(EI, CI, CI ^ code_info_loc_dep ^ cild_var_locn_info := EI).
+set_temps_in_use(TI, CI, CI ^ code_info_loc_dep ^ cild_temps_in_use := TI).
+set_fail_info(FI, CI, CI ^ code_info_loc_dep ^ cild_fail_info := FI).
+set_par_conj_depth(N, CI, CI ^ code_info_loc_dep ^ cild_par_conj_depth := N).
+set_label_counter(LC, CI, CI ^ code_info_persistent ^ cip_label_num_src := LC).
+set_succip_used(SU, CI, CI ^ code_info_persistent ^ cip_store_succip := SU).
+set_layout_info(LI, CI, CI ^ code_info_persistent ^ cip_label_info := LI).
 set_proc_trace_events(PTE, CI,
-    CI ^ code_info_persistent ^ proc_trace_events := PTE).
+    CI ^ code_info_persistent ^ cip_proc_trace_events := PTE).
 set_max_temp_slot_count(TM, CI,
-    CI ^ code_info_persistent ^ stackslot_max := TM).
-set_temp_content_map(CM, CI, CI ^ code_info_persistent ^ temp_contents := CM).
-set_persistent_temps(PT, CI, CI ^ code_info_persistent ^ persistent_temps := PT).
+    CI ^ code_info_persistent ^ cip_stackslot_max := TM).
+set_temp_content_map(CM, CI,
+    CI ^ code_info_persistent ^ cip_temp_contents := CM).
+set_persistent_temps(PT, CI,
+    CI ^ code_info_persistent ^ cip_persistent_temps := PT).
 set_closure_seq_counter(CLS, CI,
-    CI ^ code_info_persistent ^ closure_layout_seq := CLS).
-set_closure_layouts(CG, CI, CI ^ code_info_persistent ^ closure_layouts := CG).
+    CI ^ code_info_persistent ^ cip_closure_layout_seq := CLS).
+set_closure_layouts(CG, CI,
+    CI ^ code_info_persistent ^ cip_closure_layouts := CG).
 set_max_reg_in_use_at_trace(MR, CI,
-    CI ^ code_info_persistent ^ max_reg_used := MR).
+    CI ^ code_info_persistent ^ cip_max_reg_used := MR).
 set_created_temp_frame(MR, CI,
-    CI ^ code_info_persistent ^ created_temp_frame := MR).
+    CI ^ code_info_persistent ^ cip_created_temp_frame := MR).
 set_static_cell_info(SCI, CI,
-    CI ^ code_info_persistent ^ static_cell_info := SCI).
-set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
+    CI ^ code_info_persistent ^ cip_static_cell_info := SCI).
+set_used_env_vars(UEV, CI,
+    CI ^ code_info_persistent ^ cip_used_env_vars := UEV).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -924,11 +905,7 @@ variable_type(CI, Var) = Type :-
 
 search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),
-    ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
-        TypeCtor = TypeCtorPrime
-    ;
-        unexpected(this_file, "unknown type in search_type_defn")
-    ),
+    type_to_ctor_and_args_det(Type, TypeCtor, _),
     module_info_get_type_table(ModuleInfo, TypeTable),
     map.search(TypeTable, TypeCtor, TypeDefn).
 

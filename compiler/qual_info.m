@@ -24,8 +24,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module recompilation.
 
-:- import_module bool.
 :- import_module list.
+:- import_module bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -111,31 +111,29 @@
     %
 :- type qual_info
     --->    qual_info(
-                eqv_map             :: eqv_map,
-                                    % Used to expand equivalence types.
+                % Used to expand equivalence types.
+                qual_eqv_map            :: eqv_map,
 
-                tvarset             :: tvarset,
-                                    % All type variables for predicate.
+                % All type variables for predicate.
+                qual_tvarset            :: tvarset,
 
-                tvar_renaming       :: tvar_renaming,
-                                    % Map from clause type variable to
-                                    % actual type variable in tvarset.
+                % Map from clause type variable to actual type variable
+                % in tvarset.
+                qual_tvar_renaming      :: tvar_renaming,
 
-                tvar_name_map       :: tvar_name_map,
-                                    % Type variables in tvarset occurring
-                                    % in the predicate's argument types
-                                    % indexed by name.
+                % Type variables in tvarset occurring in the predicate's
+                % argument types indexed by name.
+                qual_tvar_name_map      :: tvar_name_map,
 
-                vartypes            :: vartypes,
+                qual_vartypes           :: vartypes,
 
-                mq_info             :: mq_info,
-                                    % Module qualification info.
+                % Module qualification info.
+                qual_mq_info            :: mq_info,
 
-                import_status       :: import_status,
+                qual_import_status      :: import_status,
 
-                found_syntax_error  :: bool
-                                    % Was there a syntax error in an Aditi
-                                    % update.
+                % Was there a syntax error in a field update?
+                qual_found_syntax_error :: bool
             ).
 
 init_qual_info(MQInfo0, EqvMap, QualInfo) :-
@@ -156,31 +154,31 @@ update_qual_info(TVarNameMap, TVarSet, VarTypes, Status, !QualInfo) :-
     !:QualInfo = qual_info(EqvMap, TVarSet, Renaming, TVarNameMap,
         VarTypes, MQInfo, Status, no).
 
-qual_info_get_tvarset(Info, Info ^ tvarset).
-qual_info_get_var_types(Info, Info ^ vartypes).
-qual_info_get_mq_info(Info, Info ^ mq_info).
-qual_info_get_import_status(Info, Info ^ import_status).
-qual_info_get_found_syntax_error(Info, Info ^ found_syntax_error).
+qual_info_get_tvarset(Info, Info ^ qual_tvarset).
+qual_info_get_var_types(Info, Info ^ qual_vartypes).
+qual_info_get_mq_info(Info, Info ^ qual_mq_info).
+qual_info_get_import_status(Info, Info ^ qual_import_status).
+qual_info_get_found_syntax_error(Info, Info ^ qual_found_syntax_error).
 
-qual_info_set_mq_info(MQInfo, Info, Info ^ mq_info := MQInfo).
-qual_info_set_var_types(VarTypes, Info, Info ^ vartypes := VarTypes).
+qual_info_set_mq_info(MQInfo, Info, Info ^ qual_mq_info := MQInfo).
+qual_info_set_var_types(VarTypes, Info, Info ^ qual_vartypes := VarTypes).
 qual_info_set_found_syntax_error(FoundError, Info,
-    Info ^ found_syntax_error := FoundError).
+    Info ^ qual_found_syntax_error := FoundError).
 
 apply_to_recompilation_info(Pred, !QualInfo) :-
-    MQInfo0 = !.QualInfo ^ mq_info,
+    MQInfo0 = !.QualInfo ^ qual_mq_info,
     mq_info_get_recompilation_info(MQInfo0, MaybeRecompInfo0),
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
         Pred(RecompInfo0, RecompInfo),
         mq_info_set_recompilation_info(yes(RecompInfo), MQInfo0, MQInfo),
-        !:QualInfo = !.QualInfo ^ mq_info := MQInfo
+        !:QualInfo = !.QualInfo ^ qual_mq_info := MQInfo
     ;
         MaybeRecompInfo0 = no
     ).
 
 set_module_recompilation_info(QualInfo, !ModuleInfo) :-
-    mq_info_get_recompilation_info(QualInfo ^ mq_info, RecompInfo),
+    mq_info_get_recompilation_info(QualInfo ^ qual_mq_info, RecompInfo),
     module_info_set_maybe_recompilation_info(RecompInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

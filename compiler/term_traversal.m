@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_traversal.m.
 % Main author: crs.
 % Significant rewrite by zs.
-% 
+%
 % This module contains the code used to traverse procedure bodies
 % for both passes of termination analysis.
 %
 % For details, please refer to the papers mentioned in termination.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_traversal.
@@ -37,75 +37,71 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type traversal_info
-    --->    ok(
-                set(path_info),
-                    % Information about the paths we have followed. With
-                    % a conjunction of length N, each of whose elements
-                    % is a branched control structure, the number of
-                    % paths through the conjunction is 2^N. The reason
-                    % why we use a set of path_infos instead of a list
-                    % is that this can postpone the representation
-                    % getting too big if (as is at least moderately
-                    % likely) many of the paths have identical
-                    % properties.
-                
-                list(termination_error_context)
-                    % Have we processed a call to a procedure whose
-                    % maybe termination info was yes(can_loop(_))?  If
-                    % yes, record the error here.  (This is not an error
-                    % in pass 1, but we want to find this out in pass 1
-                    % so we can avoid doing pass 2.)
-        )
-    ;   
-        error(
-                list(termination_error_context),
-                    % Errors which are fatal in both passes.
-                
-                list(termination_error_context)
-                    % Have we processed a call to a procedure whose
-                    % maybe termination info was yes(can_loop(_))?  If
-                    % yes, record the error here.  (This is not an error
-                    % in pass 1, but we want to find this out in pass 1
-                    % so we can avoid doing pass 2.)
-        ).
+:- type term_traversal_info
+    --->    term_traversal_ok(
+                % Information about the paths we have followed. With a
+                % conjunction of length N, each of whose elements is a
+                % branched control structure, the number of paths through
+                % the conjunction is 2^N. The reason why we use a set of
+                % term_path_infos instead of a list is that this can postpone
+                % the representation getting too big if (as is at least
+                % moderately likely) many of the paths have identical
+                % properties.
+                set(term_path_info),
 
-:- type path_info
-    --->    path_info(
-            
+                % Have we processed a call to a procedure whose maybe
+                % termination info was yes(can_loop(_))? If yes, record
+                % the error here. (This is not an error in pass 1, but
+                % we want to find this out in pass 1 so we can avoid
+                % doing pass 2.)
+                list(termination_error_context)
+            )
+    ;       term_traversal_error(
+                % Errors which are fatal in both passes.
+                list(termination_error_context),
+
+                % Have we processed a call to a procedure whose maybe
+                % termination info was yes(can_loop(_))? If yes, record
+                % the error here. (This is not an error in pass 1, but
+                % we want to find this out in pass 1 so we can avoid
+                % doing pass 2.)
+                list(termination_error_context)
+            ).
+
+:- type term_path_info
+    --->    term_path_info(
+                % The identity of the procedure that this path is within.
                 pred_proc_id,
-                    % The identify of the procedure
-                    % that this path is within.
-            
+
+                % If no, path was started at the end of the procedure
+                % given by field 1. If yes, the arg names the procedure
+                % at the call to which the path started and the context
+                % of the call.
+                %
+                % In pass 1, all starts should be no.
+                % In pass 2, all starts should be yes.
                 maybe(pair(pred_proc_id, prog_context)),
-                    % If no, path was started at the end
-                    % of the procedure given by field 1.
-                    % If yes, the arg names the procedure
-                    % at the call to which the path started
-                    % and the context of the call.
-                    % In pass 1, all starts should be no.
-                    % In pass 2, all starts should be yes.
-            
+
+                % These three fields describe the right hand side
+                % of the inequation we are propagating.
                 int,
                 list(pred_proc_id),
                 bag(prog_var)
-                    % These three fields describe the right hand side
-                    % of the inequation we are propagating.
-        ).
+            ).
 
-:- type traversal_params.
+:- type term_traversal_params.
 
-:- pred init_traversal_params(functor_info::in,
+:- pred init_term_traversal_params(functor_info::in,
     pred_proc_id::in, prog_context::in, vartypes::in,
     used_args::in, used_args::in, int::in, int::in,
-    traversal_params::out) is det.
+    term_traversal_params::out) is det.
 
-:- pred traverse_goal(
-    hlds_goal::in, traversal_params::in,
-    traversal_info::in, traversal_info::out,
+:- pred term_traverse_goal(hlds_goal::in, term_traversal_params::in,
+    term_traversal_info::in, term_traversal_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred upper_bound_active_vars(list(path_info)::in, bag(prog_var)::out) is det.
+:- pred upper_bound_active_vars(list(term_path_info)::in, bag(prog_var)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -123,7 +119,7 @@
 
 %-----------------------------------------------------------------------------%
 
-traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
+term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         Detism = goal_info_get_determinism(GoalInfo),
@@ -238,7 +234,7 @@ traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
             % In pass 1, RecInputSuppliersMap will be empty.
             compute_rec_start_vars(Args, RecInputSuppliers, Bag),
             PathStart = yes(CallPPId - Context),
-            NewPath = path_info(PPId, PathStart, 0, [], Bag),
+            NewPath = term_path_info(PPId, PathStart, 0, [], Bag),
             add_path(NewPath, !Info)
         ;
             true
@@ -313,18 +309,18 @@ traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     ;
         GoalExpr = conj(_, Goals),
         list.reverse(Goals, RevGoals),
-        traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = disj(Goals),
-        traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = switch(_, _, Cases),
-        traverse_switch(Cases, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_switch(Cases, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        traverse_conj([Then, Cond], Params, !.Info, CondThenInfo,
+        term_traverse_conj([Then, Cond], Params, !.Info, CondThenInfo,
             !ModuleInfo, !IO),
-        traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo, !IO),
+        term_traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo, !IO),
         combine_paths(CondThenInfo, ElseInfo, Params, !:Info)
     ;
         GoalExpr = negation(SubGoal),
@@ -332,10 +328,10 @@ traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
         % it cannot bind any active variables. However, we must traverse it
         % during pass 1 to ensure that it does not call any non-terminating
         % procedures. Pass 2 relies on pass 1 having done this.
-        traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = scope(_, SubGoal),
-        traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
@@ -347,114 +343,144 @@ traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     % traverse_conj should be invoked with a reversed list of goals.
     % This is to keep stack consumption down.
     %
-:- pred traverse_conj(hlds_goals::in, traversal_params::in,
-    traversal_info::in, traversal_info::out,
+:- pred term_traverse_conj(hlds_goals::in, term_traversal_params::in,
+    term_traversal_info::in, term_traversal_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-traverse_conj([], _, !Info, !ModuleInfo, !IO).
-traverse_conj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
-    traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO),
-    traverse_conj(Goals, Params, !Info, !ModuleInfo, !IO).
+term_traverse_conj([], _, !Info, !ModuleInfo, !IO).
+term_traverse_conj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
+    term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO),
+    term_traverse_conj(Goals, Params, !Info, !ModuleInfo, !IO).
 
-:- pred traverse_disj(hlds_goals::in, traversal_params::in,
-    traversal_info::in, traversal_info::out, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+:- pred term_traverse_disj(hlds_goals::in, term_traversal_params::in,
+    term_traversal_info::in, term_traversal_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-traverse_disj([], _, _, ok(Empty, []), !ModuleInfo, !IO) :-
+term_traverse_disj([], _, _, term_traversal_ok(Empty, []), !ModuleInfo, !IO) :-
     set.init(Empty).
-traverse_disj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
-    traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
-    traverse_disj(Goals, Params, !.Info, GoalsInfo, !ModuleInfo, !IO),
+term_traverse_disj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
+    term_traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
+    term_traverse_disj(Goals, Params, !.Info, GoalsInfo, !ModuleInfo, !IO),
     combine_paths(GoalInfo, GoalsInfo, Params, !:Info).
 
-:- pred traverse_switch(list(case)::in, traversal_params::in,
-    traversal_info::in, traversal_info::out,
+:- pred term_traverse_switch(list(case)::in, term_traversal_params::in,
+    term_traversal_info::in, term_traversal_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-traverse_switch([], _, _, ok(Empty, []), !ModuleInfo, !IO) :-
+term_traverse_switch([], _, _, term_traversal_ok(Empty, []),
+        !ModuleInfo, !IO) :-
     set.init(Empty).
-traverse_switch([case(_, _, Goal) | Cases], Params, !Info, !ModuleInfo, !IO) :-
-    traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
-    traverse_switch(Cases, Params, !.Info, CasesInfo, !ModuleInfo, !IO),
+term_traverse_switch([case(_, _, Goal) | Cases], Params, !Info,
+        !ModuleInfo, !IO) :-
+    term_traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
+    term_traverse_switch(Cases, Params, !.Info, CasesInfo, !ModuleInfo, !IO),
     combine_paths(GoalInfo, CasesInfo, Params, !:Info).
 
 %-----------------------------------------------------------------------------%
 
-:- pred cannot_succeed(traversal_info::in, traversal_info::out) is det.
+:- pred cannot_succeed(term_traversal_info::in, term_traversal_info::out)
+    is det.
 
-cannot_succeed(error(Errors, CanLoop), error(Errors, CanLoop)).
-cannot_succeed(ok(_, CanLoop), ok(Empty, CanLoop)) :-
-    set.init(Empty).
+cannot_succeed(Info0, Info) :-
+    (
+        Info0 = term_traversal_error(_, _),
+        Info = Info0
+    ;
+        Info0 = term_traversal_ok(_, CanLoop),
+        Info = term_traversal_ok(set.init, CanLoop)
+    ).
 
-:- pred add_path(path_info::in, traversal_info::in, traversal_info::out) is det.
+:- pred add_path(term_path_info::in,
+    term_traversal_info::in, term_traversal_info::out) is det.
 
-add_path(_, error(Errors, CanLoop), error(Errors, CanLoop)).
-add_path(Path, ok(Paths0, CanLoop), ok(Paths, CanLoop)) :-
-    set.insert(Paths0, Path, Paths).
+add_path(Path, Info0, Info) :-
+    (
+        Info0 = term_traversal_error(_, _),
+        Info = Info0
+    ;
+        Info0 = term_traversal_ok(Paths0, CanLoop),
+        set.insert(Paths0, Path, Paths),
+        Info = term_traversal_ok(Paths, CanLoop)
+    ).
 
 :- pred add_error(prog_context::in, termination_error::in,
-    traversal_params::in, traversal_info::in, traversal_info::out) is det.
+    term_traversal_params::in,
+    term_traversal_info::in, term_traversal_info::out) is det.
 
-add_error(Context, Error, Params, error(Errors0, CanLoop),
-        error(Errors, CanLoop)) :-
-    Errors1 = [termination_error_context(Error, Context) | Errors0],
-    params_get_max_errors(Params, MaxErrors),
-    list.take_upto(MaxErrors, Errors1, Errors).
-add_error(Context, Error, _, ok(_, CanLoop),
-        error([termination_error_context(Error, Context)], CanLoop)).
+add_error(Context, Error, Params, Info0, Info) :-
+    (
+        Info0 = term_traversal_error(Errors0, CanLoop),
+        Errors1 = [termination_error_context(Error, Context) | Errors0],
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, Errors1, Errors),
+        Info = term_traversal_error(Errors, CanLoop)
+    ;
+        Info0 = term_traversal_ok(_, CanLoop),
+        ErrorContext = termination_error_context(Error, Context),
+        Info = term_traversal_error([ErrorContext], CanLoop)
+    ).
 
 :- pred called_can_loop(prog_context::in, termination_error::in,
-    traversal_params::in, traversal_info::in, traversal_info::out) is det.
+    term_traversal_params::in,
+    term_traversal_info::in, term_traversal_info::out) is det.
 
-called_can_loop(Context, Error, Params, error(Errors, CanLoop0),
-        error(Errors, CanLoop)) :-
-    CanLoop1 = [termination_error_context(Error, Context) | CanLoop0],
-    params_get_max_errors(Params, MaxErrors),
-    list.take_upto(MaxErrors, CanLoop1, CanLoop).
-called_can_loop(Context, Error, Params, ok(Paths, CanLoop0),
-        ok(Paths, CanLoop)) :-
-    CanLoop1 = [termination_error_context(Error, Context) | CanLoop0],
-    params_get_max_errors(Params, MaxErrors),
-    list.take_upto(MaxErrors, CanLoop1, CanLoop).
-
-:- pred combine_paths(traversal_info::in, traversal_info::in,
-    traversal_params::in, traversal_info::out) is det.
-
-combine_paths(error(Errors1, CanLoop1), error(Errors2, CanLoop2), Params,
-        error(Errors, CanLoop)) :-
-    params_get_max_errors(Params, MaxErrors),
-    list.append(Errors1, Errors2, Errors3),
-    list.take_upto(MaxErrors, Errors3, Errors),
-    list.append(CanLoop1, CanLoop2, CanLoop3),
-    list.take_upto(MaxErrors, CanLoop3, CanLoop).
-combine_paths(error(Errors1, CanLoop1), ok(_, CanLoop2), Params,
-        error(Errors1, CanLoop)) :-
-    params_get_max_errors(Params, MaxErrors),
-    list.append(CanLoop1, CanLoop2, CanLoop3),
-    list.take_upto(MaxErrors, CanLoop3, CanLoop).
-combine_paths(ok(_, CanLoop1), error(Errors2, CanLoop2), Params,
-        error(Errors2, CanLoop)) :-
-    params_get_max_errors(Params, MaxErrors),
-    list.append(CanLoop1, CanLoop2, CanLoop3),
-    list.take_upto(MaxErrors, CanLoop3, CanLoop).
-combine_paths(ok(Paths1, CanLoop1), ok(Paths2, CanLoop2), Params,
-        Info) :-
-    params_get_max_errors(Params, MaxErrors),
-    list.append(CanLoop1, CanLoop2, CanLoop3),
-    list.take_upto(MaxErrors, CanLoop3, CanLoop),
-    set.union(Paths2, Paths1, Paths),
-    params_get_max_paths(Params, MaxPaths),
+called_can_loop(Context, Error, Params, Info0, Info) :-
     (
-        % Don't try to track the state of too many paths;
-        % doing so can require too much memory.
-        set.count(Paths, Count),
-        Count =< MaxPaths
-    ->
-        Info = ok(Paths, CanLoop)
+        Info0 = term_traversal_error(Errors, CanLoop0),
+        CanLoop1 = [termination_error_context(Error, Context) | CanLoop0],
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, CanLoop1, CanLoop),
+        Info = term_traversal_error(Errors, CanLoop)
     ;
-        params_get_context(Params, Context),
-        Info = error([termination_error_context(too_many_paths, Context)],
-            CanLoop)
+        Info0 = term_traversal_ok(Paths, CanLoop0),
+        CanLoop1 = [termination_error_context(Error, Context) | CanLoop0],
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, CanLoop1, CanLoop),
+        Info = term_traversal_ok(Paths, CanLoop)
+    ).
+
+:- pred combine_paths(term_traversal_info::in, term_traversal_info::in,
+    term_traversal_params::in, term_traversal_info::out) is det.
+
+combine_paths(InfoA, InfoB, Params, Info) :-
+    (
+        InfoA = term_traversal_error(ErrorsA, CanLoopA),
+        InfoB = term_traversal_error(ErrorsB, CanLoopB),
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, ErrorsA ++ ErrorsB, Errors),
+        list.take_upto(MaxErrors, CanLoopA ++ CanLoopB, CanLoop),
+        Info = term_traversal_error(Errors, CanLoop)
+    ;
+        InfoA = term_traversal_error(ErrorsA, CanLoopA),
+        InfoB = term_traversal_ok(_, CanLoopB),
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, CanLoopA ++ CanLoopB, CanLoop),
+        Info = term_traversal_error(ErrorsA, CanLoop)
+    ;
+        InfoA = term_traversal_ok(_, CanLoopA),
+        InfoB = term_traversal_error(ErrorsB, CanLoopB),
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, CanLoopA ++ CanLoopB, CanLoop),
+        Info = term_traversal_error(ErrorsB, CanLoop)
+    ;
+        InfoA = term_traversal_ok(PathsA, CanLoopA),
+        InfoB = term_traversal_ok(PathsB, CanLoopB),
+        params_get_max_errors(Params, MaxErrors),
+        list.take_upto(MaxErrors, CanLoopA ++ CanLoopB, CanLoop),
+        set.union(PathsB, PathsA, Paths),
+        params_get_max_paths(Params, MaxPaths),
+        (
+            % Don't try to track the state of too many paths;
+            % doing so can require too much memory.
+            set.count(Paths, Count),
+            Count =< MaxPaths
+        ->
+            Info = term_traversal_ok(Paths, CanLoop)
+        ;
+            params_get_context(Params, Context),
+            ErrorContext = termination_error_context(too_many_paths, Context),
+            Info = term_traversal_error([ErrorContext], CanLoop)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -493,8 +519,8 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
     % order unification.
     %
 :- pred unify_change(module_info::in, prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, traversal_params::in, int::out,
-    bag(prog_var)::out, bag(prog_var)::out) is semidet.
+    list(prog_var)::in, list(uni_mode)::in, term_traversal_params::in,
+    int::out, bag(prog_var)::out, bag(prog_var)::out) is semidet.
 
 unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
         InVars, OutVars) :-
@@ -502,17 +528,15 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
     params_get_var_types(Params, VarTypes),
     map.lookup(VarTypes, OutVar, Type),
     \+ type_is_higher_order(Type),
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
-        functor_norm(FunctorInfo, TypeCtor, ConsId, ModuleInfo,
-            Gamma, Args1, Args, Modes1, Modes),
-        split_unification_vars(Args, Modes, ModuleInfo, InVars, OutVars)
-    ;
-        unexpected(this_file, "unify_change/8: variable type.")
-    ).
+    type_to_ctor_and_args_det(Type, TypeCtor, _),
+    filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
+    functor_norm(FunctorInfo, TypeCtor, ConsId, ModuleInfo,
+        Gamma, Args1, Args, Modes1, Modes),
+    split_unification_vars(Args, Modes, ModuleInfo, InVars, OutVars).
 
-:- pred filter_args_and_modes(vartypes::in, list(prog_var)::in,
-    list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out) is det.
+:- pred filter_args_and_modes(vartypes::in,
+    list(prog_var)::in, list(prog_var)::out,
+    list(uni_mode)::in, list(uni_mode)::out) is det.
 
 filter_args_and_modes(VarTypes, Args0, Args, Modes0, Modes) :-
     assoc_list.from_corresponding_lists(Args0, Modes0, ArgsAndModes0),
@@ -526,31 +550,37 @@ filter_args_and_modes(VarTypes, Args0, Args, Modes0, Modes) :-
 %-----------------------------------------------------------------------------%
 
 :- pred record_change(bag(prog_var)::in, bag(prog_var)::in, int::in,
-    list(pred_proc_id)::in, traversal_info::in, traversal_info::out) is det.
+    list(pred_proc_id)::in, term_traversal_info::in, term_traversal_info::out)
+    is det.
 
-record_change(_, _, _, _, error(Errors, CanLoop), error(Errors, CanLoop)).
-record_change(InVars, OutVars, Gamma, CalledPPIds, ok(Paths0, CanLoop),
-        ok(NewPaths, CanLoop)) :-
-    set.to_sorted_list(Paths0, PathsList0),
-    set.init(NewPaths0),
-    record_change_2(PathsList0, InVars, OutVars, Gamma, CalledPPIds,
-        NewPaths0, NewPaths).
+record_change(InVars, OutVars, Gamma, CalledPPIds, Info0, Info) :-
+    (
+        Info0 = term_traversal_error(_, _),
+        Info = Info0
+    ;
+        Info0 = term_traversal_ok(Paths0, CanLoop),
+        set.to_sorted_list(Paths0, PathsList0),
+        set.init(NewPaths0),
+        record_change_2(PathsList0, InVars, OutVars, Gamma, CalledPPIds,
+            NewPaths0, NewPaths),
+        Info = term_traversal_ok(NewPaths, CanLoop)
+    ).
 
-:- pred record_change_2(list(path_info)::in, bag(prog_var)::in,
+:- pred record_change_2(list(term_path_info)::in, bag(prog_var)::in,
     bag(prog_var)::in, int::in, list(pred_proc_id)::in,
-    set(path_info)::in, set(path_info)::out) is det.
+    set(term_path_info)::in, set(term_path_info)::out) is det.
 
 record_change_2([], _, _, _, _, !PathSet).
 record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
         !PathSet) :-
-    Path0 = path_info(ProcData, Start, Gamma0, PPIds0, Vars0),
+    Path0 = term_path_info(ProcData, Start, Gamma0, PPIds0, Vars0),
     ( bag.intersect(OutVars, Vars0) ->
         % The change produces some active variables.
         Gamma = CallGamma + Gamma0,
         list.append(CallPPIds, PPIds0, PPIds),
         bag.subtract(Vars0, OutVars, Vars1),
         bag.union(InVars, Vars1, Vars),
-        Path = path_info(ProcData, Start, Gamma, PPIds, Vars)
+        Path = term_path_info(ProcData, Start, Gamma, PPIds, Vars)
     ;
         % The change produces no active variables.
         Path = Path0
@@ -561,25 +591,32 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
 %-----------------------------------------------------------------------------%
 
 :- pred error_if_intersect(bag(prog_var)::in, prog_context::in,
-    termination_error::in, traversal_info::in, traversal_info::out) is det.
+    termination_error::in, term_traversal_info::in, term_traversal_info::out)
+    is det.
 
-error_if_intersect(_, _, _, error(Errors, CanLoop), error(Errors, CanLoop)).
-error_if_intersect(OutVars, Context, ErrorMsg, ok(Paths, CanLoop), Info) :-
+error_if_intersect(OutVars, Context, ErrorMsg, Info0, Info) :-
     (
-        set.to_sorted_list(Paths, PathList),
-        some_active_vars_in_bag(PathList, OutVars)
-    ->
-        Info = error([termination_error_context(ErrorMsg, Context)], CanLoop)
+        Info0 = term_traversal_error(_, _),
+        Info = Info0
     ;
-        Info = ok(Paths, CanLoop)
+        Info0 = term_traversal_ok(Paths, CanLoop),
+        (
+            set.to_sorted_list(Paths, PathList),
+            some_active_vars_in_bag(PathList, OutVars)
+        ->
+            ErrorContext = termination_error_context(ErrorMsg, Context),
+            Info = term_traversal_error([ErrorContext], CanLoop)
+        ;
+            Info = term_traversal_ok(Paths, CanLoop)
+        )
     ).
 
-:- pred some_active_vars_in_bag(list(path_info)::in,
+:- pred some_active_vars_in_bag(list(term_path_info)::in,
     bag(prog_var)::in) is semidet.
 
 some_active_vars_in_bag([Path | Paths], OutVars) :-
     (
-        Path = path_info(_, _, _, _, Vars),
+        Path = term_path_info(_, _, _, _, Vars),
         bag.intersect(Vars, OutVars)
     ;
         some_active_vars_in_bag(Paths, OutVars)
@@ -591,13 +628,13 @@ upper_bound_active_vars([], ActiveVars) :-
     bag.init(ActiveVars).
 upper_bound_active_vars([Path | Paths], ActiveVars) :-
     upper_bound_active_vars(Paths, ActiveVars1),
-    Path = path_info(_, _, _, _, ActiveVars2),
+    Path = term_path_info(_, _, _, _, ActiveVars2),
     bag.least_upper_bound(ActiveVars1, ActiveVars2, ActiveVars).
 
 %-----------------------------------------------------------------------------%
 
-:- type traversal_params
-    --->    traversal_params(
+:- type term_traversal_params
+    --->    term_traversal_params(
                 term_trav_functor_info      :: functor_info,
                 
                 % The procedure we are tracing through.
@@ -623,27 +660,27 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
                 term_trav_max_paths         :: int
         ).
 
-init_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
+init_term_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
         OutputSuppliers, RecInputSuppliers, MaxErrors, MaxPaths,
         Params) :-
-    Params = traversal_params(FunctorInfo, PredProcId, Context,
+    Params = term_traversal_params(FunctorInfo, PredProcId, Context,
         VarTypes, OutputSuppliers, RecInputSuppliers,
         MaxErrors, MaxPaths).
 
-:- pred params_get_functor_info(traversal_params::in, functor_info::out)
+:- pred params_get_functor_info(term_traversal_params::in, functor_info::out)
     is det.
-:- pred params_get_ppid(traversal_params::in, pred_proc_id::out)
+:- pred params_get_ppid(term_traversal_params::in, pred_proc_id::out)
     is det.
-:- pred params_get_context(traversal_params::in, prog_context::out)
+:- pred params_get_context(term_traversal_params::in, prog_context::out)
     is det.
-:- pred params_get_var_types(traversal_params::in, vartypes::out)
+:- pred params_get_var_types(term_traversal_params::in, vartypes::out)
     is det.
-:- pred params_get_output_suppliers(traversal_params::in,
+:- pred params_get_output_suppliers(term_traversal_params::in,
     map(pred_proc_id, list(bool))::out) is det.
-:- pred params_get_rec_input_suppliers(traversal_params::in,
+:- pred params_get_rec_input_suppliers(term_traversal_params::in,
     map(pred_proc_id, list(bool))::out) is det.
-:- pred params_get_max_errors(traversal_params::in, int::out) is det.
-:- pred params_get_max_paths(traversal_params::in, int::out) is det.
+:- pred params_get_max_errors(term_traversal_params::in, int::out) is det.
+:- pred params_get_max_paths(term_traversal_params::in, int::out) is det.
 
 params_get_functor_info(Params, Params ^ term_trav_functor_info).
 params_get_ppid(Params, Params ^ term_trav_ppid).

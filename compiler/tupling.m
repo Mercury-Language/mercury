@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1557,7 +1557,7 @@ use_cell(_CellVar, _FieldVarList, _ConsId, _Goal, !IntervalInfo, !Unit).
 build_insert_map(CellVar, FieldVars, IntervalInfo, InsertMap) :-
     FieldVarsSet = set.from_list(FieldVars),
     map.foldl(build_insert_map_2(CellVar, FieldVars, FieldVarsSet),
-        IntervalInfo ^ anchor_follow_map, map.init, InsertMap).
+        IntervalInfo ^ ii_anchor_follow_map, map.init, InsertMap).
 
 :- pred build_insert_map_2(prog_var::in, list(prog_var)::in, set(prog_var)::in,
     anchor::in, anchor_follow_info::in, insert_map::in, insert_map::out)

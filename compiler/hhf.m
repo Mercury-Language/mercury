@@ -184,9 +184,9 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
 
 :- type hhf_info
     --->    hhf_info(
-                inst_graph  :: inst_graph,
-                varset      :: prog_varset,
-                vartypes    :: vartypes
+                hhfi_inst_graph :: inst_graph,
+                hhfi_varset     :: prog_varset,
+                hhfi_vartypes   :: vartypes
             ).
 
 :- pred process_clause(list(prog_var)::in, clause::in, clause::out,
@@ -198,14 +198,16 @@ process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
 
     process_goal(NonLocals, Goal0, Goal, !HI).
-% XXX We probably need to requantify, but it stuffs up the inst_graph to do
-% that.
-%   VarSet1 = !.HI ^ varset,
-%   VarTypes1 = !.HI ^ vartypes,
-%   implicitly_quantify_clause_body(HeadVars, Goal1, VarSet1, VarTypes1,
-%       Goal, VarSet, VarTypes, _Warnings),
-%   !:HI = !.HI varset := VarSet,
-%   !:HI = !.HI vartypes := VarTypes.
+
+    % XXX We probably need to requantify, but doing so stuffs up the
+    % inst_graph.
+    %
+    % VarSet1 = !.HI ^ hhfi_varset,
+    % VarTypes1 = !.HI ^ hhfi_vartypes,
+    % implicitly_quantify_clause_body(HeadVars, Goal1, VarSet1, VarTypes1,
+    %     Goal, VarSet, VarTypes, _Warnings),
+    % !:HI = !.HI ^ hhfi_varset := VarSet,
+    % !:HI = !.HI ^ hhfi_vartypes := VarTypes.
 
 :- pred process_goal(set(prog_var)::in, hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
@@ -298,9 +300,9 @@ process_unify(rhs_lambda_goal(A,B,C,D,E,F,G,H,LambdaGoal0), NonLocals, _, X,
         Unif, Context).
 process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
         GoalInfo0, X, Mode, Unif, Context, GoalExpr, !HI) :-
-    TypeOfX = !.HI ^ vartypes ^ det_elem(X),
+    map.lookup(!.HI ^ hhfi_vartypes, X, TypeOfX),
     qualify_cons_id(TypeOfX, ArgsA, ConsId0, _, ConsId),
-    InstGraph0 = !.HI ^ inst_graph,
+    InstGraph0 = !.HI ^ hhfi_inst_graph,
     map.lookup(InstGraph0, X, node(Functors0, MaybeParent)),
     ( map.search(Functors0, ConsId, ArgsB) ->
         make_unifications(ArgsA, ArgsB, GoalInfo0, Mode, Unif, Context,
@@ -309,12 +311,12 @@ process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
     ;
         add_unifications(ArgsA, NonLocals, GoalInfo0, Mode, Unif, Context,
             Args, Unifications, !HI),
-        InstGraph1 = !.HI ^ inst_graph,
+        InstGraph1 = !.HI ^ hhfi_inst_graph,
         map.det_insert(Functors0, ConsId, Args, Functors),
         map.det_update(InstGraph1, X, node(Functors, MaybeParent),
             InstGraph2),
         list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
-        !:HI = !.HI ^ inst_graph := InstGraph
+        !:HI = !.HI ^ hhfi_inst_graph := InstGraph
     ),
     GINonlocals0 = goal_info_get_nonlocals(GoalInfo0),
     GINonlocals = set.union(GINonlocals0, list_to_set(Args)),
@@ -347,7 +349,7 @@ make_unifications([A | As], [B | Bs], GI0, M, U, C,
 add_unifications([], _, _, _, _, _, [], [], !HI).
 add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
     add_unifications(As, NonLocals, GI0, M, U, C, Vs, Goals0, !HI),
-    InstGraph0 = !.HI ^ inst_graph,
+    InstGraph0 = !.HI ^ hhfi_inst_graph,
     (
         (
             map.lookup(InstGraph0, A, Node),
@@ -356,16 +358,16 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
             set.member(A, NonLocals)
         )
     ->
-        VarSet0 = !.HI ^ varset,
-        VarTypes0 = !.HI ^ vartypes,
+        VarSet0 = !.HI ^ hhfi_varset,
+        VarTypes0 = !.HI ^ hhfi_vartypes,
         varset.new_var(VarSet0, V, VarSet),
         map.lookup(VarTypes0, A, Type),
         map.det_insert(VarTypes0, V, Type, VarTypes),
         map.init(Empty),
         map.det_insert(InstGraph0, V, node(Empty, top_level), InstGraph),
-        !:HI = !.HI ^ varset := VarSet,
-        !:HI = !.HI ^ vartypes := VarTypes,
-        !:HI = !.HI ^ inst_graph := InstGraph,
+        !:HI = !.HI ^ hhfi_varset := VarSet,
+        !:HI = !.HI ^ hhfi_vartypes := VarTypes,
+        !:HI = !.HI ^ hhfi_inst_graph := InstGraph,
         GINonlocals0 = goal_info_get_nonlocals(GI0),
         GINonlocals = set.insert(GINonlocals0, V),
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
@@ -379,7 +381,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
     is det.
 
 complete_inst_graph(ModuleInfo, !HI) :-
-    InstGraph0 = !.HI ^ inst_graph,
+    InstGraph0 = !.HI ^ hhfi_inst_graph,
     map.keys(InstGraph0, Vars),
     list.foldl(complete_inst_graph_node(ModuleInfo, Vars), Vars, !HI).
 
@@ -387,7 +389,7 @@ complete_inst_graph(ModuleInfo, !HI) :-
     prog_var::in, hhf_info::in, hhf_info::out) is det.
 
 complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
-    VarTypes0 = !.HI ^ vartypes,
+    VarTypes0 = !.HI ^ hhfi_vartypes,
     (
         map.search(VarTypes0, Var, Type),
         type_constructors(ModuleInfo, Type, Constructors),
@@ -405,15 +407,15 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
 maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, Ctor, !HI) :-
     Ctor = ctor(_, _, Name, Args, _),
     ConsId = make_cons_id(Name, Args, TypeCtor),
-    map.lookup(!.HI ^ inst_graph, Var, node(Functors0, MaybeParent)),
+    map.lookup(!.HI ^ hhfi_inst_graph, Var, node(Functors0, MaybeParent)),
     ( map.contains(Functors0, ConsId) ->
         true
     ;
         list.map_foldl(add_cons_id(Var, ModuleInfo, BaseVars), Args, NewVars,
             !HI),
         map.det_insert(Functors0, ConsId, NewVars, Functors),
-        !:HI = !.HI ^ inst_graph :=
-            map.det_update(!.HI ^ inst_graph, Var,
+        !:HI = !.HI ^ hhfi_inst_graph :=
+            map.det_update(!.HI ^ hhfi_inst_graph, Var,
                 node(Functors, MaybeParent))
     ).
 

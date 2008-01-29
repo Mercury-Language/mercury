@@ -1406,7 +1406,7 @@ generate_du_unify_case(X, Y, Context, CanCompareAsInt, Ctor, Goal, !Info) :-
 :- func can_compare_constants_as_ints(unify_proc_info) = bool.
 
 can_compare_constants_as_ints(Info) = CanCompareAsInt :-
-    ModuleInfo = Info ^ module_info,
+    ModuleInfo = Info ^ upi_module_info,
     module_info_get_globals(ModuleInfo, Globals),
     lookup_bool_option(Globals, can_compare_constants_as_ints,
         CanCompareAsInt).
@@ -2112,7 +2112,7 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
 :- func should_pretest_equality(unify_proc_info) = bool.
 
 should_pretest_equality(Info) = ShouldPretestEq :-
-    ModuleInfo = Info ^ module_info,
+    ModuleInfo = Info ^ upi_module_info,
     module_info_get_globals(ModuleInfo, Globals),
     lookup_bool_option(Globals, should_pretest_equality, ShouldPretestEq).
 
@@ -2172,10 +2172,10 @@ equal_functor = rhs_functor(equal_cons_id, no, []).
 
 :- type unify_proc_info
     --->    unify_proc_info(
-                varset          ::  prog_varset,
-                vartypes        ::  vartypes,
-                rtti_varmaps    ::  rtti_varmaps,
-                module_info     ::  module_info
+                upi_varset          ::  prog_varset,
+                upi_vartypes        ::  vartypes,
+                upi_rtti_varmaps    ::  rtti_varmaps,
+                upi_module_info     ::  module_info
             ).
 
 info_init(ModuleInfo, UPI) :-
@@ -2185,27 +2185,27 @@ info_init(ModuleInfo, UPI) :-
     UPI = unify_proc_info(VarSet, Types, RttiVarMaps, ModuleInfo).
 
 info_new_var(Type, Var, !UPI) :-
-    varset.new_var(!.UPI ^ varset, Var, VarSet),
-    map.det_insert(!.UPI ^ vartypes, Var, Type, VarTypes),
-    !:UPI = !.UPI ^ varset := VarSet,
-    !:UPI = !.UPI ^ vartypes := VarTypes.
+    varset.new_var(!.UPI ^ upi_varset, Var, VarSet),
+    map.det_insert(!.UPI ^ upi_vartypes, Var, Type, VarTypes),
+    !:UPI = !.UPI ^ upi_varset := VarSet,
+    !:UPI = !.UPI ^ upi_vartypes := VarTypes.
 
 info_new_named_var(Type, Name, Var, !UPI) :-
-    varset.new_named_var(!.UPI ^ varset, Name, Var, VarSet),
-    map.det_insert(!.UPI ^ vartypes, Var, Type, VarTypes),
-    !:UPI = !.UPI ^ varset := VarSet,
-    !:UPI = !.UPI ^ vartypes := VarTypes.
+    varset.new_named_var(!.UPI ^ upi_varset, Name, Var, VarSet),
+    map.det_insert(!.UPI ^ upi_vartypes, Var, Type, VarTypes),
+    !:UPI = !.UPI ^ upi_varset := VarSet,
+    !:UPI = !.UPI ^ upi_vartypes := VarTypes.
 
-info_extract(UPI, UPI ^ varset, UPI ^ vartypes).
+info_extract(UPI, UPI ^ upi_varset, UPI ^ upi_vartypes).
 
-info_get_varset(UPI, UPI ^ varset).
-info_get_types(UPI, UPI ^ vartypes).
-info_get_rtti_varmaps(UPI, UPI ^ rtti_varmaps).
-info_get_module_info(UPI, UPI ^ module_info).
+info_get_varset(UPI, UPI ^ upi_varset).
+info_get_types(UPI, UPI ^ upi_vartypes).
+info_get_rtti_varmaps(UPI, UPI ^ upi_rtti_varmaps).
+info_get_module_info(UPI, UPI ^ upi_module_info).
 
-info_set_varset(VarSet, UPI, UPI ^ varset := VarSet).
-info_set_types(Types, UPI, UPI ^ vartypes := Types).
-info_set_rtti_varmaps(RttiVarMaps, UPI, UPI ^ rtti_varmaps := RttiVarMaps).
+info_set_varset(VarSet, UPI, UPI ^ upi_varset := VarSet).
+info_set_types(Types, UPI, UPI ^ upi_vartypes := Types).
+info_set_rtti_varmaps(RttiVarMaps, UPI, UPI ^ upi_rtti_varmaps := RttiVarMaps).
 
 %-----------------------------------------------------------------------------%
 

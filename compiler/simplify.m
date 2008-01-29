@@ -428,11 +428,9 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     simplify_info_get_module_info(Info, !:ModuleInfo),
     simplify_info_get_error_specs(Info, !:ErrorSpecs),
     (
-        Info ^ format_calls = yes,
-        (
-            Simplifications ^ do_warn_known_bad_format = yes
-        ;
-            Simplifications ^ do_warn_unknown_format = yes
+        Info ^ simp_format_calls = yes,
+        ( Simplifications ^ do_warn_known_bad_format = yes
+        ; Simplifications ^ do_warn_unknown_format = yes
         )
     ->
         % We must use the original goal, Goal0, here. This is because excess
@@ -566,7 +564,7 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
 
         simplify_info_get_module_info(!.Info, ModuleInfo0),
         recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3, VarTypes1,
-            !.Info ^ inst_varset, InstMap0, ModuleInfo0, ModuleInfo1),
+            !.Info ^ simp_inst_varset, InstMap0, ModuleInfo0, ModuleInfo1),
         simplify_info_set_module_info(ModuleInfo1, !Info)
     ;
         Goal3 = Goal1
@@ -1487,7 +1485,7 @@ simplify_goal_2_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             (
                 CanSwitch = cond_can_switch_on(SwitchVar),
                 Context = goal_info_get_context(CondInfo),
-                VarSet = !.Info ^ varset,
+                VarSet = !.Info ^ simp_varset,
                 Pieces0 = [words("Warning: this if-then-else"),
                     words("could be replaced by a switch")],
                 ( varset.search_name(VarSet, SwitchVar, SwitchVarName) ->
@@ -2004,18 +2002,18 @@ evaluate_compile_time_condition(trace_op(Op, ExprA, ExprB), Info) = Result :-
 inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
         !Info) :-
     % Construct the variable to hold the comparison result.
-    VarSet0 = !.Info ^ varset,
+    VarSet0 = !.Info ^ simp_varset,
     varset.new_var(VarSet0, R, VarSet),
-    !:Info = !.Info ^ varset := VarSet,
+    !:Info = !.Info ^ simp_varset := VarSet,
 
     % We have to add the type of R to the var_types.
     simplify_info_get_var_types(!.Info, VarTypes0),
-    VarTypes = VarTypes0 ^ elem(R) := comparison_result_type,
+    map.det_insert(VarTypes0, R, comparison_result_type, VarTypes),
     simplify_info_set_var_types(VarTypes, !Info),
 
     % Construct the call to compare/3.
     Context = hlds_goal.goal_info_get_context(GoalInfo),
-    Args     = [TI, R, X, Y],
+    Args    = [TI, R, X, Y],
 
     simplify_info_get_instmap(!.Info, InstMap),
     instmap.lookup_var(InstMap, X, XInst),
@@ -3356,45 +3354,53 @@ case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
 
 :- type simplify_info
     --->    simplify_info(
-                det_info                :: det_info,
-                error_specs             :: list(error_spec),
-                simplifications         :: simplifications,
-                common_info             :: common_info,
-                                        % Info about common subexpressions.
-                instmap                 :: instmap,
-                varset                  :: prog_varset,
-                inst_varset             :: inst_varset,
-                requantify              :: bool,
-                                        % Does the goal need requantification.
-                recompute_atomic        :: bool,
-                                        % Do we need to recompute
-                                        % instmap_deltas for atomic goals
-                rerun_det               :: bool,
-                                        % Does determinism analysis need to
-                                        % be rerun.
-                cost_delta              :: int,
-                                        % Measure of the improvement in
-                                        % the goal from simplification.
-                lambdas                 :: int,
-                                        % Count of the number of lambdas
-                                        % which enclose the current goal.
-                rtti_varmaps            :: rtti_varmaps,
-                                        % Information about type_infos and
-                                        % typeclass_infos.
-                format_calls            :: bool,
-                                        % Do we have any calls to
-                                        % string.format, stream.format and
-                                        % io.format?
-                inside_dupl_for_switch  :: bool,
-                                        % Are we currently inside a goal
-                                        % that was duplicated for a switch?
-                has_parallel_conj       :: bool,
-                                        % Have we seen a parallel conjunction?
-                found_contains_trace    :: bool,
-                                        % Have we seen a goal with a feature
-                                        % that says it contains a trace goal?
-                has_user_event          :: bool
-                                        % Have we seen an event call?
+                simp_det_info                :: det_info,
+                simp_error_specs             :: list(error_spec),
+                simp_simplifications         :: simplifications,
+
+                % Info about common subexpressions.
+                simp_common_info             :: common_info,
+
+                simp_instmap                 :: instmap,
+                simp_varset                  :: prog_varset,
+                simp_inst_varset             :: inst_varset,
+
+                % Does the goal need requantification?
+                simp_requantify              :: bool,       % ZZZ
+
+                % Do we need to recompute instmap_deltas for atomic goals?
+                simp_recompute_atomic        :: bool,
+
+                % Does determinism analysis need to be rerun?
+                simp_rerun_det               :: bool,
+
+                % Measure of the improvement in the goal from simplification.
+                simp_cost_delta              :: int,
+
+                % Count of the number of lambdas which enclose
+                % the current goal.
+                simp_lambdas                 :: int,
+
+                % Information about type_infos and typeclass_infos.
+                simp_rtti_varmaps            :: rtti_varmaps,
+
+                % Do we have any calls to string.format, stream.format and
+                % io.format?
+                simp_format_calls            :: bool,
+
+                % Are we currently inside a goal that was duplicated
+                % for a switch?
+                simp_inside_dupl_for_switch  :: bool,
+
+                % Have we seen a parallel conjunction?
+                simp_has_parallel_conj       :: bool,
+
+                % Have we seen a goal with a feature that says it contains
+                % a trace goal?
+                simp_found_contains_trace    :: bool,
+
+                % Have we seen an event call?
+                simp_has_user_event          :: bool
             ).
 
 simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
@@ -3411,15 +3417,15 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     simplify_info::in, simplify_info::out) is det.
 
 simplify_info_reinit(Simplifications, InstMap0, !Info) :-
-    !:Info = !.Info ^ simplifications := Simplifications,
-    !:Info = !.Info ^ common_info := common_info_init,
-    !:Info = !.Info ^ instmap := InstMap0,
-    !:Info = !.Info ^ requantify := no,
-    !:Info = !.Info ^ recompute_atomic := no,
-    !:Info = !.Info ^ rerun_det := no,
-    !:Info = !.Info ^ lambdas := 0,
-    !:Info = !.Info ^ has_parallel_conj := no,
-    !:Info = !.Info ^ has_user_event := no.
+    !:Info = !.Info ^ simp_simplifications := Simplifications,
+    !:Info = !.Info ^ simp_common_info := common_info_init,
+    !:Info = !.Info ^ simp_instmap := InstMap0,
+    !:Info = !.Info ^ simp_requantify := no,
+    !:Info = !.Info ^ simp_recompute_atomic := no,
+    !:Info = !.Info ^ simp_rerun_det := no,
+    !:Info = !.Info ^ simp_lambdas := 0,
+    !:Info = !.Info ^ simp_has_parallel_conj := no,
+    !:Info = !.Info ^ simp_has_user_event := no.
 
     % exported for common.m
 :- interface.
@@ -3480,28 +3486,28 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
     is det.
 :- pred simplify_info_get_has_user_event(simplify_info::in, bool::out) is det.
 
-simplify_info_get_det_info(Info, Info ^ det_info).
-simplify_info_get_error_specs(Info, Info ^ error_specs).
-simplify_info_get_simplifications(Info, Info ^ simplifications).
-simplify_info_get_common_info(Info, Info ^ common_info).
-simplify_info_get_instmap(Info, Info ^ instmap).
-simplify_info_get_varset(Info, Info ^ varset).
+simplify_info_get_det_info(Info, Info ^ simp_det_info).
+simplify_info_get_error_specs(Info, Info ^ simp_error_specs).
+simplify_info_get_simplifications(Info, Info ^ simp_simplifications).
+simplify_info_get_common_info(Info, Info ^ simp_common_info).
+simplify_info_get_instmap(Info, Info ^ simp_instmap).
+simplify_info_get_varset(Info, Info ^ simp_varset).
 simplify_info_get_var_types(Info, VarTypes) :-
-    det_info_get_vartypes(Info ^ det_info, VarTypes).
+    det_info_get_vartypes(Info ^ simp_det_info, VarTypes).
 simplify_info_requantify(Info) :-
-    Info ^ requantify = yes.
+    Info ^ simp_requantify = yes.
 simplify_info_recompute_atomic(Info) :-
-    Info ^ recompute_atomic = yes.
+    Info ^ simp_recompute_atomic = yes.
 simplify_info_rerun_det(Info) :-
-    Info ^ rerun_det = yes.
-simplify_info_get_cost_delta(Info, Info ^ cost_delta).
-simplify_info_get_rtti_varmaps(Info, Info ^ rtti_varmaps).
-simplify_info_get_format_calls(Info, Info ^ format_calls).
+    Info ^ simp_rerun_det = yes.
+simplify_info_get_cost_delta(Info, Info ^ simp_cost_delta).
+simplify_info_get_rtti_varmaps(Info, Info ^ simp_rtti_varmaps).
+simplify_info_get_format_calls(Info, Info ^ simp_format_calls).
 simplify_info_get_inside_duplicated_for_switch(Info,
-    Info ^ inside_dupl_for_switch).
-simplify_info_get_has_parallel_conj(Info, Info ^ has_parallel_conj).
-simplify_info_get_found_contains_trace(Info, Info ^ found_contains_trace).
-simplify_info_get_has_user_event(Info, Info ^ has_user_event).
+    Info ^ simp_inside_dupl_for_switch).
+simplify_info_get_has_parallel_conj(Info, Info ^ simp_has_parallel_conj).
+simplify_info_get_found_contains_trace(Info, Info ^ simp_found_contains_trace).
+simplify_info_get_has_user_event(Info, Info ^ simp_has_user_event).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
     simplify_info_get_det_info(Info, DetInfo),
@@ -3560,30 +3566,31 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
 :- pred simplify_info_set_module_info(module_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_info_set_det_info(Det, Info, Info ^ det_info := Det).
-simplify_info_set_error_specs(Specs, Info, Info ^ error_specs := Specs).
-simplify_info_set_simplifications(Simp, Info, Info ^ simplifications := Simp).
-simplify_info_set_instmap(InstMap, Info, Info ^ instmap := InstMap).
-simplify_info_set_common_info(Common, Info, Info ^ common_info := Common).
-simplify_info_set_varset(VarSet, Info, Info ^ varset := VarSet).
-simplify_info_set_var_types(VarTypes, Info, Info ^ det_info := DetInfo) :-
-    det_info_set_vartypes(VarTypes, Info  ^  det_info, DetInfo).
-simplify_info_set_requantify(Info, Info ^ requantify := yes).
-simplify_info_set_recompute_atomic(Info, Info ^ recompute_atomic := yes).
-simplify_info_set_rerun_det(Info, Info ^ rerun_det := yes).
-simplify_info_set_cost_delta(Delta, Info, Info ^ cost_delta := Delta).
-simplify_info_set_rtti_varmaps(Rtti, Info, Info ^ rtti_varmaps := Rtti).
-simplify_info_set_format_calls(FC, Info, Info ^ format_calls := FC).
+simplify_info_set_det_info(Det, Info, Info ^ simp_det_info := Det).
+simplify_info_set_error_specs(Specs, Info, Info ^ simp_error_specs := Specs).
+simplify_info_set_simplifications(Simp, Info,
+    Info ^ simp_simplifications := Simp).
+simplify_info_set_instmap(InstMap, Info, Info ^ simp_instmap := InstMap).
+simplify_info_set_common_info(Common, Info, Info ^ simp_common_info := Common).
+simplify_info_set_varset(VarSet, Info, Info ^ simp_varset := VarSet).
+simplify_info_set_var_types(VarTypes, Info, Info ^ simp_det_info := DetInfo) :-
+    det_info_set_vartypes(VarTypes, Info ^ simp_det_info, DetInfo).
+simplify_info_set_requantify(Info, Info ^ simp_requantify := yes).
+simplify_info_set_recompute_atomic(Info, Info ^ simp_recompute_atomic := yes).
+simplify_info_set_rerun_det(Info, Info ^ simp_rerun_det := yes).
+simplify_info_set_cost_delta(Delta, Info, Info ^ simp_cost_delta := Delta).
+simplify_info_set_rtti_varmaps(Rtti, Info, Info ^ simp_rtti_varmaps := Rtti).
+simplify_info_set_format_calls(FC, Info, Info ^ simp_format_calls := FC).
 simplify_info_set_inside_duplicated_for_switch(IDFS, Info,
-    Info ^ inside_dupl_for_switch := IDFS).
+    Info ^ simp_inside_dupl_for_switch := IDFS).
 simplify_info_set_has_parallel_conj(MHPC, Info,
-    Info ^ has_parallel_conj := MHPC).
+    Info ^ simp_has_parallel_conj := MHPC).
 simplify_info_set_found_contains_trace(FCT, Info,
-    Info ^ found_contains_trace := FCT).
-simplify_info_set_has_user_event(HUE, Info, Info ^ has_user_event := HUE).
+    Info ^ simp_found_contains_trace := FCT).
+simplify_info_set_has_user_event(HUE, Info, Info ^ simp_has_user_event := HUE).
 
 simplify_info_incr_cost_delta(Incr, Info,
-    Info ^ cost_delta := Info ^ cost_delta + Incr).
+    Info ^ simp_cost_delta := Info ^ simp_cost_delta + Incr).
 
 simplify_info_add_error_spec(Spec, !Info) :-
     ( simplify_do_warn_simple_code(!.Info) ->
@@ -3597,17 +3604,20 @@ simplify_info_do_add_error_spec(Spec, !Info) :-
     Specs = [Spec | Specs0],
     simplify_info_set_error_specs(Specs, !Info).
 
-simplify_info_enter_lambda(Info, Info ^ lambdas := Info ^ lambdas + 1).
-simplify_info_leave_lambda(Info, Info ^ lambdas := LambdaCount) :-
-    LambdaCount1 = Info ^ lambdas - 1,
-    ( LambdaCount1 >= 0 ->
-        LambdaCount = LambdaCount1
+simplify_info_enter_lambda(!Info) :-
+    !Info ^ simp_lambdas := !.Info ^ simp_lambdas + 1.
+
+simplify_info_leave_lambda(!Info) :-
+    LambdaCount = !.Info ^ simp_lambdas - 1,
+    ( LambdaCount >= 0 ->
+        !Info ^ simp_lambdas := LambdaCount
     ;
         unexpected(this_file,
             "simplify_info_leave_lambda: Left too many lambdas")
     ).
+
 simplify_info_inside_lambda(Info) :-
-    Info ^ lambdas > 0.
+    Info ^ simp_lambdas > 0.
 
 simplify_info_set_module_info(ModuleInfo, !Info) :-
     simplify_info_get_det_info(!.Info, DetInfo0),
@@ -3629,8 +3639,8 @@ simplify_info_apply_type_substitution(TSubst, !Info) :-
 :- pred simplify_info_update_instmap(hlds_goal::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_info_update_instmap(Goal, Info, Info ^ instmap := InstMap) :-
-    update_instmap(Goal, Info ^ instmap, InstMap).
+simplify_info_update_instmap(Goal, Info, Info ^ simp_instmap := InstMap) :-
+    update_instmap(Goal, Info ^ simp_instmap, InstMap).
 
 :- type before_after
     --->    before

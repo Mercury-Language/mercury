@@ -449,51 +449,41 @@
 
 :- type var_locn_info
     --->    var_locn_info(
-                varset          :: prog_varset,
-                                % The varset from the proc_info.
+                % The varset and vartypes from the proc_info.
+                vli_varset          :: prog_varset,
+                vli_vartypes        :: vartypes,
 
-                vartypes        :: vartypes,
-                                % The vartypes from the proc_info.
+                % Maps each var to its stack slot, if it has one.
+                vli_stack_slots     :: stack_slots,
 
-                stack_slots     :: stack_slots,
-                                % Maps each var to its stack slot,
-                                % if it has one.
+                % The values of the options that are relevant to decisions
+                % about which rvals are constants.
+                vli_exprn_opts      :: exprn_opts,
 
-                exprn_opts      :: exprn_opts,
-                                % The values of the options that are relevant
-                                % to decisions about which rvals are constants.
+                % Where vars are needed next.
+                vli_follow_vars_map :: abs_follow_vars_map,
 
-                follow_vars_map :: abs_follow_vars_map,
-                                % Where vars are needed next.
+                % Next register that isn't reserved in follow_vars_map.
+                vli_next_non_res    :: int,
 
-                next_non_res    :: int,
-                                % Next register that isn't reserved in
-                                % follow_vars_map.
+                % Documented above.
+                vli_var_state_map   :: var_state_map,
+                vli_loc_var_map     :: loc_var_map,
 
-                var_state_map   :: var_state_map,
-                                % Documented above.
+                % Locations that are temporarily reserved for purposes such as
+                % holding the tags of variables during switches.
+                vli_acquired        :: set(lval),
 
-                loc_var_map     :: loc_var_map,
-                                % Documented above.
+                % If this slot contains N, then registers r1 through rN
+                % can only be modified by a place_var operation, or by a
+                % free_up_lval operation that moves a variable to the
+                % (free or freeable) lval associated with it in the exceptions
+                % field. Used to implement calls, foreign_procs and the
+                % store_maps at the ends of branched control structures.
+                vli_locked          :: int,
 
-                acquired        :: set(lval),
-                                % Locations that are temporarily reserved
-                                % for purposes such as holding the tags of
-                                % variables during switches.
-
-                locked          :: int,
-                                % If this slot contains N, then registers
-                                % r1 through rN can only be modified by
-                                % a place_var operation, or by a free_up_lval
-                                % operation that moves a variable to the
-                                % (free or freeable) lval associated with it
-                                % in the exceptions field. Used to implement
-                                % calls, foreign_procs and the store_maps
-                                % at the ends of branched control structures.
-
-                exceptions      :: assoc_list(prog_var, lval)
-                                % See the documentation of the locked field
-                                % above.
+                % See the documentation of the locked field above.
+                vli_exceptions      :: assoc_list(prog_var, lval)
             ).
 
 %----------------------------------------------------------------------------%
@@ -2459,25 +2449,25 @@ nonempty_state(State) :-
 :- pred var_locn_set_exceptions(assoc_list(prog_var, lval)::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-var_locn_get_varset(VI, VI ^ varset).
-var_locn_get_vartypes(VI, VI ^ vartypes).
-var_locn_get_stack_slots(VI, VI ^ stack_slots).
-var_locn_get_exprn_opts(VI, VI ^ exprn_opts).
-var_locn_get_follow_var_map(VI, VI ^ follow_vars_map).
-var_locn_get_next_non_reserved(VI, VI ^ next_non_res).
-var_locn_get_var_state_map(VI, VI ^ var_state_map).
-var_locn_get_loc_var_map(VI, VI ^ loc_var_map).
-var_locn_get_acquired(VI, VI ^ acquired).
-var_locn_get_locked(VI, VI ^ locked).
-var_locn_get_exceptions(VI, VI ^ exceptions).
+var_locn_get_varset(VI, VI ^ vli_varset).
+var_locn_get_vartypes(VI, VI ^ vli_vartypes).
+var_locn_get_stack_slots(VI, VI ^ vli_stack_slots).
+var_locn_get_exprn_opts(VI, VI ^ vli_exprn_opts).
+var_locn_get_follow_var_map(VI, VI ^ vli_follow_vars_map).
+var_locn_get_next_non_reserved(VI, VI ^ vli_next_non_res).
+var_locn_get_var_state_map(VI, VI ^ vli_var_state_map).
+var_locn_get_loc_var_map(VI, VI ^ vli_loc_var_map).
+var_locn_get_acquired(VI, VI ^ vli_acquired).
+var_locn_get_locked(VI, VI ^ vli_locked).
+var_locn_get_exceptions(VI, VI ^ vli_exceptions).
 
-var_locn_set_follow_var_map(FVM, VI, VI ^ follow_vars_map := FVM).
-var_locn_set_next_non_reserved(NNR, VI, VI ^ next_non_res := NNR).
-var_locn_set_var_state_map(VSM, VI, VI ^ var_state_map := VSM).
-var_locn_set_loc_var_map(LVM, VI, VI ^ loc_var_map := LVM).
-var_locn_set_acquired(A, VI, VI ^ acquired := A).
-var_locn_set_locked(L, VI, VI ^ locked := L).
-var_locn_set_exceptions(E, VI, VI ^ exceptions := E).
+var_locn_set_follow_var_map(FVM, VI, VI ^ vli_follow_vars_map := FVM).
+var_locn_set_next_non_reserved(NNR, VI, VI ^ vli_next_non_res := NNR).
+var_locn_set_var_state_map(VSM, VI, VI ^ vli_var_state_map := VSM).
+var_locn_set_loc_var_map(LVM, VI, VI ^ vli_loc_var_map := LVM).
+var_locn_set_acquired(A, VI, VI ^ vli_acquired := A).
+var_locn_set_locked(L, VI, VI ^ vli_locked := L).
+var_locn_set_exceptions(E, VI, VI ^ vli_exceptions := E).
 
 %----------------------------------------------------------------------------%
 

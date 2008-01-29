@@ -171,23 +171,23 @@
 
 :- type lco_info
     --->    lco_info(
-                module_info         :: module_info,
-                cur_scc_variants    :: variant_map,
-                var_set             :: prog_varset,
-                var_types           :: vartypes,
-                permitted           :: permitted,
-                changed             :: changed
+                lco_module_info         :: module_info,
+                lco_cur_scc_variants    :: variant_map,
+                lco_var_set             :: prog_varset,
+                lco_var_types           :: vartypes,
+                lco_permitted           :: permitted,
+                lco_changed             :: changed
             ).
 
 :- type lco_const_info
     --->    lco_const_info(
-                lower_scc_variants  :: variant_map,
-                cur_scc             :: set(pred_proc_id),
-                cur_proc_id         :: pred_proc_id,
-                cur_proc_pred       :: pred_info,
-                cur_proc_proc       :: proc_info,
-                cur_proc_outputs    :: list(prog_var),
-                cur_proc_detism     :: determinism
+                lci_lower_scc_variants  :: variant_map,
+                lci_cur_scc             :: set(pred_proc_id),
+                lci_cur_proc_id         :: pred_proc_id,
+                lci_cur_proc_pred       :: pred_info,
+                lci_cur_proc_proc       :: proc_info,
+                lci_cur_proc_outputs    :: list(prog_var),
+                lci_cur_proc_detism     :: determinism
             ).
 
 %-----------------------------------------------------------------------------%
@@ -380,7 +380,7 @@ lco_in_goal(hlds_goal(GoalExpr0, GoalInfo), hlds_goal(GoalExpr, GoalInfo),
         ;
             ConjType = parallel_conj,
             GoalExpr = GoalExpr0,
-            !:Info = !.Info ^ permitted := not_permitted
+            !:Info = !.Info ^ lco_permitted := not_permitted
         )
     ;
         GoalExpr0 = disj(Goals0),
@@ -466,8 +466,8 @@ lco_in_conj([], _Unifies, _UnifyInputVars, no, !Info, _ConstInfo).
 lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         !Info, ConstInfo) :-
     RevGoal = hlds_goal(RevGoalExpr, RevGoalInfo),
-    ModuleInfo = !.Info ^ module_info,
-    ProcInfo = ConstInfo ^ cur_proc_proc,
+    ModuleInfo = !.Info ^ lco_module_info,
+    ProcInfo = ConstInfo ^ lci_cur_proc_proc,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     (
         RevGoalExpr = unify(_, _, _, Unification, _),
@@ -498,8 +498,9 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
     ;
         RevGoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
             SymName),
-        set.member(proc(PredId, ProcId), ConstInfo ^ cur_scc),
-        goal_info_get_determinism(RevGoalInfo) = ConstInfo ^ cur_proc_detism,
+        set.member(proc(PredId, ProcId), ConstInfo ^ lci_cur_scc),
+        goal_info_get_determinism(RevGoalInfo) =
+            ConstInfo ^ lci_cur_proc_detism,
 
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             _CalleePredInfo, CalleeProcInfo),
@@ -508,7 +509,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             _InArgs, OutArgs, UnusedArgs),
         UnusedArgs = [],
         list.length(OutArgs, NumOutArgs),
-        CurrProcOutArgs = ConstInfo ^ cur_proc_outputs,
+        CurrProcOutArgs = ConstInfo ^ lci_cur_proc_outputs,
         list.length(CurrProcOutArgs, NumCurrProcOutArgs),
         NumOutArgs = NumCurrProcOutArgs,
 
@@ -537,7 +538,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         UpdatedGoal = hlds_goal(UpdatedGoalExpr, UpdatedGoalInfo),
         Goals = list.reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
         MaybeGoals = yes(Goals),
-        !:Info = !.Info ^ changed := changed
+        !:Info = !.Info ^ lco_changed := changed
     ;
         % The reversed conjunction does not follow the pattern we are looking
         % for, so we cannot optimize it.
@@ -632,15 +633,15 @@ find_args_to_pass_by_addr([CallArg - HeadArg | CallHeadArgs], ArgNum,
     lco_info::in, lco_info::out) is det.
 
 make_address_var(Var, AddrVar, !Info) :-
-    VarSet0 = !.Info ^ var_set,
-    VarTypes0 = !.Info ^ var_types,
+    VarSet0 = !.Info ^ lco_var_set,
+    VarTypes0 = !.Info ^ lco_var_types,
     varset.lookup_name(VarSet0, Var, "SCCcallarg", Name),
     AddrName = "Addr" ++ Name,
     varset.new_named_var(VarSet0, AddrName, AddrVar, VarSet),
     map.lookup(VarTypes0, Var, FieldType),
     map.det_insert(VarTypes0, AddrVar, make_ref_type(FieldType), VarTypes),
-    !:Info = !.Info ^ var_set := VarSet,
-    !:Info = !.Info ^ var_types := VarTypes.
+    !:Info = !.Info ^ lco_var_set := VarSet,
+    !:Info = !.Info ^ lco_var_types := VarTypes.
 
 :- func make_ref_type(mer_type) = mer_type.
 
@@ -657,7 +658,7 @@ make_ref_type(FieldType) = PtrType :-
 
 ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
         SymName, VariantSymName, !Info) :-
-    CurSCCVariants0 = !.Info ^ cur_scc_variants,
+    CurSCCVariants0 = !.Info ^ lco_cur_scc_variants,
     ( map.search(CurSCCVariants0, proc(PredId, ProcId), ExistingVariant) ->
         ExistingVariant = variant_id(ExistingAddrArgNums, VariantPredProcId,
             VariantName),
@@ -670,11 +671,11 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
         ),
         AddrArgNums = ExistingAddrArgNums
     ;
-        ModuleInfo0 = !.Info ^ module_info,
+        ModuleInfo0 = !.Info ^ lco_module_info,
         clone_pred_proc(PredId, ClonePredId, PredOrFunc,
             ModuleInfo0, ModuleInfo),
         VariantPredProcId = proc(ClonePredId, ProcId),
-        !:Info = !.Info ^ module_info := ModuleInfo,
+        !:Info = !.Info ^ lco_module_info := ModuleInfo,
         (
             SymName = unqualified(Name),
             create_variant_name(PredOrFunc, AddrArgNums, Name, VariantName),
@@ -688,7 +689,7 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
             VariantName),
         map.det_insert(CurSCCVariants0, proc(PredId, ProcId), NewVariant,
             CurSCCVariants),
-        !:Info = !.Info ^ cur_scc_variants := CurSCCVariants
+        !:Info = !.Info ^ lco_cur_scc_variants := CurSCCVariants
     ).
 
 :- pred clone_pred_proc(pred_id::in, pred_id::out, pred_or_func::out,

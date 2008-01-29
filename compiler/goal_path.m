@@ -78,9 +78,9 @@
 
 :- type slot_info
     --->    slot_info(
-                vartypes                    :: vartypes,
-                module_info                 :: module_info,
-                omit_mode_equiv_prefix      :: bool
+                slot_info_vartypes                  :: vartypes,
+                slot_info_module_info               :: module_info,
+                slot_info_omit_mode_equiv_prefix    :: bool
             ).
 
 fill_goal_path_slots(ModuleInfo, !Proc) :-
@@ -116,7 +116,7 @@ fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
 
 fill_goal_slots(Path0, SlotInfo,
         hlds_goal(Expr0, Info0), hlds_goal(Expr, Info)) :-
-    OmitModeEquivPrefix = SlotInfo ^ omit_mode_equiv_prefix,
+    OmitModeEquivPrefix = SlotInfo ^ slot_info_omit_mode_equiv_prefix,
     (
         OmitModeEquivPrefix = yes,
         PathSteps0 = cord.list(Path0),
@@ -152,8 +152,8 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         Goal = disj(Goals)
     ;
         Goal0 = switch(Var, CanFail, Cases0),
-        VarTypes = SlotInfo ^ vartypes,
-        ModuleInfo = SlotInfo ^ module_info,
+        VarTypes = SlotInfo ^ slot_info_vartypes,
+        ModuleInfo = SlotInfo ^ slot_info_module_info,
         map.lookup(VarTypes, Var, Type),
         ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
             MaybeNumFunctors = yes(NumFunctors)

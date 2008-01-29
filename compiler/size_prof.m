@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2007 The University of Melbourne.
+% Copyright (C) 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -200,17 +200,17 @@
 
 :- type size_prof.info
     --->    size_prof_info(
-                type_ctor_map           :: type_ctor_map,
-                type_info_map           :: type_info_map,
-                rev_type_ctor_map       :: rev_type_ctor_map,
-                rev_type_info_map       :: rev_type_info_map,
-                target_type_info_map    :: type_info_map,
-                known_size_map          :: known_size_map,
-                varset                  :: prog_varset,
-                vartypes                :: vartypes,
-                transform_op            :: construct_transform,
-                rtti_varmaps            :: rtti_varmaps,
-                module_info             :: module_info
+                spi_type_ctor_map           :: type_ctor_map,
+                spi_type_info_map           :: type_info_map,
+                spi_rev_type_ctor_map       :: rev_type_ctor_map,
+                spi_rev_type_info_map       :: rev_type_info_map,
+                spi_target_type_info_map    :: type_info_map,
+                spi_known_size_map          :: known_size_map,
+                spi_varset                  :: prog_varset,
+                spi_vartypes                :: vartypes,
+                spi_transform_op            :: construct_transform,
+                spi_rtti_varmaps            :: rtti_varmaps,
+                spi_module_info             :: module_info
             ).
 
 process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
@@ -266,8 +266,8 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
-        Info ^ varset, VarSet, Info ^ vartypes, VarTypes,
-        Info ^ rtti_varmaps, RttiVarMaps),
+        Info ^ spi_varset, VarSet, Info ^ spi_vartypes, VarTypes,
+        Info ^ spi_rtti_varmaps, RttiVarMaps),
     recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
         InstMap0, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -318,16 +318,16 @@ process_goal(Goal0, Goal, !Info) :-
         % We don't want to save type_ctor_info variables across calls,
         % because saving/restoring them is more expensive than defining
         % them again.
-        !:Info = !.Info ^ type_ctor_map := map.init,
-        !:Info = !.Info ^ rev_type_ctor_map := map.init,
+        !:Info = !.Info ^ spi_type_ctor_map := map.init,
+        !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = generic_call(_, _, _, _),
         % We don't want to save type_ctor_info variables across calls,
         % because saving/restoring them is more expensive than defining
         % them again.
-        !:Info = !.Info ^ type_ctor_map := map.init,
-        !:Info = !.Info ^ rev_type_ctor_map := map.init,
+        !:Info = !.Info ^ spi_type_ctor_map := map.init,
+        !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
@@ -343,42 +343,42 @@ process_goal(Goal0, Goal, !Info) :-
             % optimal. However, it ought to be more robust than any better
             % transformation, and there is no point in spending time on a
             % better transformation while parallel conjunctions are rare.
-            TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-            TypeInfoMap0 = !.Info ^ type_info_map,
-            RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-            TypeCtorMap0 = !.Info ^ type_ctor_map,
-            KnownSizeMap0 = !.Info ^ known_size_map,
+            TargetTypeInfoMap0 = !.Info ^ spi_target_type_info_map,
+            TypeInfoMap0 = !.Info ^ spi_type_info_map,
+            RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
+            TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
+            KnownSizeMap0 = !.Info ^ spi_known_size_map,
             process_par_conj(Goals0, Goals, !Info, TargetTypeInfoMap0,
                 TypeInfoMap0, TypeCtorMap0, KnownSizeMap0),
-            !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
-            !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-            !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
-            !:Info = !.Info ^ type_ctor_map := map.init,
-            !:Info = !.Info ^ rev_type_ctor_map := map.init,
-            !:Info = !.Info ^ known_size_map := KnownSizeMap0
+            !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
+            !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
+            !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
+            !:Info = !.Info ^ spi_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0
         ),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         (
             Cases0 = [First0 | Later0],
-            TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-            TypeInfoMap0 = !.Info ^ type_info_map,
-            RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-            TypeCtorMap0 = !.Info ^ type_ctor_map,
-            RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
-            KnownSizeMap0 = !.Info ^ known_size_map,
+            TargetTypeInfoMap0 = !.Info ^ spi_target_type_info_map,
+            TypeInfoMap0 = !.Info ^ spi_type_info_map,
+            RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
+            TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
+            RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
+            KnownSizeMap0 = !.Info ^ spi_known_size_map,
             process_switch(First0, First, Later0, Later, !Info,
                 TargetTypeInfoMap0,
                 TypeInfoMap0, RevTypeInfoMap0,
                 TypeCtorMap0, RevTypeCtorMap0,
                 TypeInfoMap, KnownSizeMap0, KnownSizeMap),
-            !:Info = !.Info ^ type_info_map := TypeInfoMap,
+            !:Info = !.Info ^ spi_type_info_map := TypeInfoMap,
             % The rev_type_info_map field is updated by
             % the call to update_rev_maps below.
-            !:Info = !.Info ^ type_ctor_map := map.init,
-            !:Info = !.Info ^ rev_type_ctor_map := map.init,
-            !:Info = !.Info ^ known_size_map := KnownSizeMap,
+            !:Info = !.Info ^ spi_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_known_size_map := KnownSizeMap,
             Cases = [First | Later]
         ;
             Cases0 = [],
@@ -391,31 +391,31 @@ process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = disj(Disjuncts0),
         (
             Disjuncts0 = [First0 | Later0],
-            TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-            TypeInfoMap0 = !.Info ^ type_info_map,
-            RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-            TypeCtorMap0 = !.Info ^ type_ctor_map,
-            RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
-            KnownSizeMap0 = !.Info ^ known_size_map,
+            TargetTypeInfoMap0 = !.Info ^ spi_target_type_info_map,
+            TypeInfoMap0 = !.Info ^ spi_type_info_map,
+            RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
+            TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
+            RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
+            KnownSizeMap0 = !.Info ^ spi_known_size_map,
             process_disj(First0, First, Later0, Later, !Info,
                 TargetTypeInfoMap0,
                 TypeInfoMap0, RevTypeInfoMap0,
                 TypeCtorMap0, RevTypeCtorMap0,
                 TypeInfoMap, KnownSizeMap0, KnownSizeMap),
-            !:Info = !.Info ^ type_info_map := TypeInfoMap,
+            !:Info = !.Info ^ spi_type_info_map := TypeInfoMap,
             % The rev_type_info_map field is updated by
             % the call to update_rev_maps below.
-            !:Info = !.Info ^ type_ctor_map := map.init,
-            !:Info = !.Info ^ rev_type_ctor_map := map.init,
-            !:Info = !.Info ^ known_size_map := KnownSizeMap,
+            !:Info = !.Info ^ spi_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_known_size_map := KnownSizeMap,
             Disjuncts = [First | Later]
         ;
             Disjuncts0 = [],
             % An empty disj represents `fail'.
-            !:Info = !.Info ^ type_info_map := map.init,
-            !:Info = !.Info ^ rev_type_ctor_map := map.init,
-            !:Info = !.Info ^ type_info_map := map.init,
-            !:Info = !.Info ^ rev_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_type_info_map := map.init,
+            !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
+            !:Info = !.Info ^ spi_type_info_map := map.init,
+            !:Info = !.Info ^ spi_rev_type_ctor_map := map.init,
             Disjuncts = []
         ),
         update_rev_maps(!Info),
@@ -423,60 +423,59 @@ process_goal(Goal0, Goal, !Info) :-
         GoalExpr = disj(Disjuncts)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
-        TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-        TypeInfoMap0 = !.Info ^ type_info_map,
-        RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-        TypeCtorMap0 = !.Info ^ type_ctor_map,
-        RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
-        KnownSizeMap0 = !.Info ^ known_size_map,
+        TargetTypeInfoMap0 = !.Info ^ spi_target_type_info_map,
+        TypeInfoMap0 = !.Info ^ spi_type_info_map,
+        RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
+        TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
+        RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
+        KnownSizeMap0 = !.Info ^ spi_known_size_map,
 
-        !:Info = !.Info ^ target_type_info_map := map.init,
+        !:Info = !.Info ^ spi_target_type_info_map := map.init,
         process_goal(Cond0, Cond, !Info),
-        !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
+        !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
         process_goal(Then0, Then, !Info),
-        TargetTypeInfoMapThen = !.Info ^ target_type_info_map,
-        TypeInfoMapThen = !.Info ^ type_info_map,
-        KnownSizeMapThen = !.Info ^ known_size_map,
+        TargetTypeInfoMapThen = !.Info ^ spi_target_type_info_map,
+        TypeInfoMapThen = !.Info ^ spi_type_info_map,
+        KnownSizeMapThen = !.Info ^ spi_known_size_map,
 
         map.union(select_first, TargetTypeInfoMapThen,
             TargetTypeInfoMap0, ElseTargetTypeInfoMap),
-        !:Info = !.Info ^ target_type_info_map :=
-            ElseTargetTypeInfoMap,
-        !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-        !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
-        !:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
-        !:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
-        !:Info = !.Info ^ known_size_map := KnownSizeMap0,
+        !:Info = !.Info ^ spi_target_type_info_map := ElseTargetTypeInfoMap,
+        !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
+        !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
+        !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
+        !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
+        !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
         process_goal(Else0, Else, !Info),
-        TypeInfoMapElse = !.Info ^ type_info_map,
-        KnownSizeMapElse = !.Info ^ known_size_map,
+        TypeInfoMapElse = !.Info ^ spi_type_info_map,
+        KnownSizeMapElse = !.Info ^ spi_known_size_map,
 
         TypeInfoMap = map.common_subset(TypeInfoMapThen, TypeInfoMapElse),
         KnownSizeMap = map.common_subset(KnownSizeMapThen, KnownSizeMapElse),
-        !:Info = !.Info ^ type_info_map := TypeInfoMap,
-        !:Info = !.Info ^ type_ctor_map := map.init,
-        !:Info = !.Info ^ known_size_map := KnownSizeMap,
+        !:Info = !.Info ^ spi_type_info_map := TypeInfoMap,
+        !:Info = !.Info ^ spi_type_ctor_map := map.init,
+        !:Info = !.Info ^ spi_known_size_map := KnownSizeMap,
         update_rev_maps(!Info),
         update_target_map(!Info),
         GoalExpr = if_then_else(Quant, Cond, Then, Else)
     ;
         GoalExpr0 = negation(NegGoal0),
-        TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-        TypeInfoMap0 = !.Info ^ type_info_map,
-        RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-        TypeCtorMap0 = !.Info ^ type_ctor_map,
-        RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
-        KnownSizeMap0 = !.Info ^ known_size_map,
+        TargetTypeInfoMap0 = !.Info ^ spi_target_type_info_map,
+        TypeInfoMap0 = !.Info ^ spi_type_info_map,
+        RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
+        TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
+        RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
+        KnownSizeMap0 = !.Info ^ spi_known_size_map,
         process_goal(NegGoal0, NegGoal, !Info),
         % Variables constructed in negated goals are not available after the
         % negated goal fails and the negation succeeds. The sizes we learn
         % in NegGoal0 don't apply after NegGoal0 fails.
-        !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
-        !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-        !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
-        !:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
-        !:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
-        !:Info = !.Info ^ known_size_map := KnownSizeMap0,
+        !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
+        !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
+        !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
+        !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
+        !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
+        !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
         GoalExpr = negation(NegGoal)
     ;
         GoalExpr0 = scope(Reason, SomeGoal0),
@@ -516,10 +515,10 @@ process_conj([Goal0 | Goals0], Conj, !Info) :-
 process_par_conj([], [], !Info, _, _, _, _).
 process_par_conj([Goal0 | Goals0], [Goal | Goals], !Info, TargetTypeInfoMap0,
         TypeInfoMap0, TypeCtorMap0, KnownSizeMap0) :-
-    !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
-    !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-    !:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
-    !:Info = !.Info ^ known_size_map := KnownSizeMap0,
+    !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
+    !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
+    !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
+    !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
     process_goal(Goal0, Goal, !Info),
     process_par_conj(Goals0, Goals, !Info, TargetTypeInfoMap0,
         TypeInfoMap0, TypeCtorMap0, KnownSizeMap0).
@@ -535,25 +534,24 @@ process_par_conj([Goal0 | Goals0], [Goal | Goals], !Info, TargetTypeInfoMap0,
 process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
         TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
         TypeInfoMap, KnownSizeMap0, KnownSizeMap) :-
-    !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-    !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
-    !:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
-    !:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
-    !:Info = !.Info ^ known_size_map := KnownSizeMap0,
+    !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
+    !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
+    !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
+    !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
+    !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
     process_goal(First0, First, !Info),
-    TypeInfoMapFirst = !.Info ^ type_info_map,
-    KnownSizeMapFirst = !.Info ^ known_size_map,
+    TypeInfoMapFirst = !.Info ^ spi_type_info_map,
+    KnownSizeMapFirst = !.Info ^ spi_known_size_map,
     (
         Later0 = [Head0 | Tail0],
         map.union(select_first, TypeInfoMapFirst,
             TargetTypeInfoMap, LaterTargetTypeInfoMap),
-        !:Info = !.Info ^ target_type_info_map := LaterTargetTypeInfoMap,
+        !:Info = !.Info ^ spi_target_type_info_map := LaterTargetTypeInfoMap,
         process_disj(Head0, Head, Tail0, Tail, !Info, TargetTypeInfoMap,
             TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
             TypeInfoMapLater, KnownSizeMap0, KnownSizeMapLater),
         TypeInfoMap = map.common_subset(TypeInfoMapFirst, TypeInfoMapLater),
-        KnownSizeMap = map.common_subset(KnownSizeMapFirst,
-            KnownSizeMapLater),
+        KnownSizeMap = map.common_subset(KnownSizeMapFirst, KnownSizeMapLater),
         Later = [Head | Tail]
     ;
         Later0 = [],
@@ -573,27 +571,26 @@ process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
 process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
         TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
         TypeInfoMap, KnownSizeMap0, KnownSizeMap) :-
-    !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-    !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
-    !:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
-    !:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
-    !:Info = !.Info ^ known_size_map := KnownSizeMap0,
+    !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
+    !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
+    !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
+    !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
+    !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
     First0 = case(FirstMainConsId, FirstOtherConsIds, FirstGoal0),
     process_goal(FirstGoal0, FirstGoal, !Info),
-    TypeInfoMapFirst = !.Info ^ type_info_map,
-    KnownSizeMapFirst = !.Info ^ known_size_map,
+    TypeInfoMapFirst = !.Info ^ spi_type_info_map,
+    KnownSizeMapFirst = !.Info ^ spi_known_size_map,
     First = case(FirstMainConsId, FirstOtherConsIds, FirstGoal),
     (
         Later0 = [Head0 | Tail0],
         map.union(select_first, TargetTypeInfoMap,
             TypeInfoMapFirst, LaterTargetTypeInfoMap),
-        !:Info = !.Info ^ target_type_info_map := LaterTargetTypeInfoMap,
+        !:Info = !.Info ^ spi_target_type_info_map := LaterTargetTypeInfoMap,
         process_switch(Head0, Head, Tail0, Tail, !Info, TargetTypeInfoMap,
             TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
             TypeInfoMapLater, KnownSizeMap0, KnownSizeMapLater),
         TypeInfoMap = map.common_subset(TypeInfoMapFirst, TypeInfoMapLater),
-        KnownSizeMap = map.common_subset(KnownSizeMapFirst,
-            KnownSizeMapLater),
+        KnownSizeMap = map.common_subset(KnownSizeMapFirst, KnownSizeMapLater),
         Later = [Head | Tail]
     ;
         Later0 = [],
@@ -611,15 +608,16 @@ process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
 
 process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
         How, Unique, GoalInfo, GoalExpr, !Info) :-
-    map.lookup(!.Info ^ vartypes, Var, VarType),
+    map.lookup(!.Info ^ spi_vartypes, Var, VarType),
     ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
         VarTypeCtor = VarTypeCtorPrime
     ;
         unexpected(this_file,
             "size_prof.process_construct: constructing term of variable type")
     ),
-    VarTypeCtorModule = type_ctor_module(!.Info ^ module_info, VarTypeCtor),
-    VarTypeCtorName = type_ctor_name(!.Info ^ module_info, VarTypeCtor),
+    ModuleInfo = !.Info ^ spi_module_info,
+    VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
+    VarTypeCtorName = type_ctor_name(ModuleInfo, VarTypeCtor),
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->
@@ -674,15 +672,16 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
     info::in, info::out) is det.
 
 process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
-    map.lookup(!.Info ^ vartypes, Var, VarType),
+    map.lookup(!.Info ^ spi_vartypes, Var, VarType),
     ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
         VarTypeCtor = VarTypeCtorPrime
     ;
         unexpected(this_file,
             "process_deconstruct: deconstructing term of variable type")
     ),
-    VarTypeCtorModule = type_ctor_module(!.Info ^ module_info, VarTypeCtor),
-    VarTypeCtorName = type_ctor_name(!.Info ^ module_info, VarTypeCtor),
+    ModuleInfo = !.Info ^ spi_module_info,
+    VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
+    VarTypeCtorName = type_ctor_name(ModuleInfo, VarTypeCtor),
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->
@@ -771,7 +770,7 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
         TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
         goal_util.generate_simple_call(TermSizeProfBuiltin,
             "increment_size", pf_predicate, only_mode, detism_det,
-            purity_impure, [Var, SizeVar], [], [], !.Info ^ module_info,
+            purity_impure, [Var, SizeVar], [], [], !.Info ^ spi_module_info,
             Context, UpdateGoal),
         % Put UnifyGoal first in case it fails.
         Goals = [UnifyGoal] ++ ArgGoals ++ SizeGoals ++ [UpdateGoal],
@@ -795,11 +794,11 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
 
 process_args([], !KnownSize, !MaybeSizeVar, _, [], !Info).
 process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals, !Info) :-
-    map.lookup(!.Info ^ vartypes, Arg, Type),
-    ( map.search(!.Info ^ known_size_map, Arg, ArgSize) ->
+    map.lookup(!.Info ^ spi_vartypes, Arg, Type),
+    ( map.search(!.Info ^ spi_known_size_map, Arg, ArgSize) ->
         !:KnownSize = !.KnownSize + ArgSize,
         ArgGoals = []
-    ; zero_size_type(!.Info ^ module_info, Type) ->
+    ; zero_size_type(!.Info ^ spi_module_info, Type) ->
         ArgGoals = []
     ;
         make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info),
@@ -825,20 +824,20 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
         SizeVar = SizeVar0,
         Goals = []
     ;
-        VarSet0 = !.Info ^ varset,
-        VarTypes0 = !.Info ^ vartypes,
+        VarSet0 = !.Info ^ spi_varset,
+        VarTypes0 = !.Info ^ spi_vartypes,
         make_int_const_construction_alloc(KnownSize,
             yes("KnownSize"), KnownSizeGoal, KnownSizeVar,
             VarSet0, VarSet1, VarTypes0, VarTypes1),
-        !:Info = !.Info ^ varset := VarSet1,
-        !:Info = !.Info ^ vartypes := VarTypes1,
+        !:Info = !.Info ^ spi_varset := VarSet1,
+        !:Info = !.Info ^ spi_vartypes := VarTypes1,
         get_new_var(int_type, "FinalSizeVar", SizeVar, !Info),
         TermSizeProfModule = mercury_term_size_prof_builtin_module,
         goal_util.generate_simple_call(TermSizeProfModule,
             "term_size_plus", pf_function, mode_no(0), detism_det, purity_pure,
             [SizeVar0, KnownSizeVar, SizeVar], [],
             [SizeVar - ground(shared, none)],
-            !.Info ^ module_info, Context, AddGoal),
+            !.Info ^ spi_module_info, Context, AddGoal),
         Goals = [KnownSizeGoal, AddGoal]
     ).
 
@@ -853,7 +852,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
     list(hlds_goal)::out, info::in, info::out) is det.
 
 make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
-    ( map.search(!.Info ^ type_info_map, Type, TypeInfoVarPrime) ->
+    ( map.search(!.Info ^ spi_type_info_map, Type, TypeInfoVarPrime) ->
         TypeInfoVar = TypeInfoVarPrime,
         TypeInfoGoals = []
     ; type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) ->
@@ -872,37 +871,37 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                 no, TypeInfoVar, TypeInfoGoals, !Info)
         )
     ; Type = type_variable(TVar, _) ->
-        rtti_lookup_type_info_locn(!.Info ^ rtti_varmaps, TVar, TVarLocn),
+        rtti_lookup_type_info_locn(!.Info ^ spi_rtti_varmaps, TVar, TVarLocn),
         (
             TVarLocn = type_info(TypeInfoVar),
             TypeInfoGoals = []
         ;
             TVarLocn = typeclass_info(TypeClassInfoVar, Slot),
-            TargetTypeInfoMap = !.Info ^ target_type_info_map,
-            VarSet0 = !.Info ^ varset,
-            VarTypes0 = !.Info ^ vartypes,
+            TargetTypeInfoMap = !.Info ^ spi_target_type_info_map,
+            VarSet0 = !.Info ^ spi_varset,
+            VarTypes0 = !.Info ^ spi_vartypes,
             ( map.search(TargetTypeInfoMap, Type, TargetVar) ->
                 TypeInfoVar = TargetVar,
                 VarSet1 = VarSet0,
                 VarTypes1 = VarTypes0
             ;
-                RttiVarMaps0 = !.Info ^ rtti_varmaps,
+                RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
                 polymorphism.new_type_info_var_raw(Type, type_info,
                     TypeInfoVar, VarSet0, VarSet1, VarTypes0, VarTypes1,
                     RttiVarMaps0, RttiVarMaps),
-                !:Info = !.Info ^ rtti_varmaps := RttiVarMaps
+                !:Info = !.Info ^ spi_rtti_varmaps := RttiVarMaps
             ),
             make_int_const_construction_alloc(Slot, yes("TypeClassInfoSlot"),
                 SlotGoal, SlotVar, VarSet1, VarSet, VarTypes1, VarTypes),
-            !:Info = !.Info ^ varset := VarSet,
-            !:Info = !.Info ^ vartypes := VarTypes,
+            !:Info = !.Info ^ spi_varset := VarSet,
+            !:Info = !.Info ^ spi_vartypes := VarTypes,
             PrivateBuiltin = mercury_private_builtin_module,
             goal_util.generate_simple_call(PrivateBuiltin,
                 "type_info_from_typeclass_info", pf_predicate, only_mode,
                 detism_det, purity_pure,
                 [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
                 [TypeInfoVar - ground(shared, none)],
-                !.Info ^ module_info, Context, ExtractGoal),
+                !.Info ^ spi_module_info, Context, ExtractGoal),
             record_type_info_var(Type, TypeInfoVar, !Info),
             TypeInfoGoals = [SlotGoal, ExtractGoal]
         )
@@ -931,12 +930,12 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     (
         CtorIsVarArity = yes,
         list.length(ArgTypes, Arity),
-        VarSet0 = !.Info ^ varset,
-        VarTypes0 = !.Info ^ vartypes,
+        VarSet0 = !.Info ^ spi_varset,
+        VarTypes0 = !.Info ^ spi_vartypes,
         make_int_const_construction_alloc(Arity, yes("TupleArity"), ArityGoal,
             ArityVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
-        !:Info = !.Info ^ varset := VarSet1,
-        !:Info = !.Info ^ vartypes := VarTypes1,
+        !:Info = !.Info ^ spi_varset := VarSet1,
+        !:Info = !.Info ^ spi_vartypes := VarTypes1,
         FrontGoals = list.append(TypeCtorGoals, [ArityGoal]),
         ArgVars = [TypeCtorVar, ArityVar | ArgTypeInfoVars]
     ;
@@ -944,10 +943,10 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
         FrontGoals = TypeCtorGoals,
         ArgVars = [TypeCtorVar | ArgTypeInfoVars]
     ),
-    VarSet2 = !.Info ^ varset,
-    VarTypes2 = !.Info ^ vartypes,
-    RttiVarMaps0 = !.Info ^ rtti_varmaps,
-    TargetTypeInfoMap = !.Info ^ target_type_info_map,
+    VarSet2 = !.Info ^ spi_varset,
+    VarTypes2 = !.Info ^ spi_vartypes,
+    RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
+    TargetTypeInfoMap = !.Info ^ spi_target_type_info_map,
     ( map.search(TargetTypeInfoMap, Type, PrefTIVar) ->
         MaybePreferredVar = yes(PrefTIVar)
     ;
@@ -956,11 +955,10 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     polymorphism.init_type_info_var(Type, ArgVars, MaybePreferredVar,
         TypeInfoVar, TypeInfoGoal, VarSet2, VarSet, VarTypes2, VarTypes,
         RttiVarMaps0, RttiVarMaps),
-    !:Info = !.Info ^ varset := VarSet,
-    !:Info = !.Info ^ vartypes := VarTypes,
-    !:Info = !.Info ^ rtti_varmaps := RttiVarMaps,
-    TypeInfoGoals = list.condense([ArgTypeInfoGoals, FrontGoals,
-        [TypeInfoGoal]]).
+    !:Info = !.Info ^ spi_varset := VarSet,
+    !:Info = !.Info ^ spi_vartypes := VarTypes,
+    !:Info = !.Info ^ spi_rtti_varmaps := RttiVarMaps,
+    TypeInfoGoals = ArgTypeInfoGoals ++ FrontGoals ++ [TypeInfoGoal].
 
     % Create a type_ctor_info for a given type constructor as cheaply as
     % possible, with the cheapest method being the reuse of an existing
@@ -971,7 +969,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     list(hlds_goal)::out, info::in, info::out) is det.
 
 make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
-    ( map.search(!.Info ^ type_ctor_map, TypeCtor, TypeCtorVarPrime) ->
+    ( map.search(!.Info ^ spi_type_ctor_map, TypeCtor, TypeCtorVarPrime) ->
         TypeCtorVar = TypeCtorVarPrime,
         TypeCtorGoals = []
     ;
@@ -983,17 +981,17 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
         ;
             construct_type(TypeCtor, [], Type)
         ),
-        VarSet0 = !.Info ^ varset,
-        VarTypes0 = !.Info ^ vartypes,
-        RttiVarMaps0 = !.Info ^ rtti_varmaps,
+        VarSet0 = !.Info ^ spi_varset,
+        VarTypes0 = !.Info ^ spi_vartypes,
+        RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
         polymorphism.init_const_type_ctor_info_var(Type, TypeCtor,
-            TypeCtorVar, TypeCtorGoal, !.Info ^ module_info,
+            TypeCtorVar, TypeCtorGoal, !.Info ^ spi_module_info,
             VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         TypeCtorGoals = [TypeCtorGoal],
-        !:Info = !.Info ^ varset := VarSet,
-        !:Info = !.Info ^ vartypes := VarTypes,
-        !:Info = !.Info ^ rtti_varmaps := RttiVarMaps
+        !:Info = !.Info ^ spi_varset := VarSet,
+        !:Info = !.Info ^ spi_vartypes := VarTypes,
+        !:Info = !.Info ^ spi_rtti_varmaps := RttiVarMaps
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1027,7 +1025,7 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
     goal_util.generate_simple_call(TermSizeProfBuiltin, Pred, pf_predicate,
         only_mode, detism_det, purity_pure, Args,
         [], [SizeVar - ground(shared, none)],
-        !.Info ^ module_info, Context, SizeGoal),
+        !.Info ^ spi_module_info, Context, SizeGoal),
     MaybeSizeVar = yes(SizeVar).
 
 %---------------------------------------------------------------------------%
@@ -1039,16 +1037,16 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
     info::in, info::out) is det.
 
 get_new_var(Type, Prefix, Var, !Info) :-
-    VarSet0 = !.Info ^ varset,
-    VarTypes0 = !.Info ^ vartypes,
+    VarSet0 = !.Info ^ spi_varset,
+    VarTypes0 = !.Info ^ spi_vartypes,
     varset.new_var(VarSet0, Var, VarSet1),
     term.var_to_int(Var, VarNum),
     string.int_to_string(VarNum, VarNumStr),
     string.append(Prefix, VarNumStr, Name),
     varset.name_var(VarSet1, Var, Name, VarSet),
     map.set(VarTypes0, Var, Type, VarTypes),
-    !:Info = !.Info ^ varset := VarSet,
-    !:Info = !.Info ^ vartypes := VarTypes.
+    !:Info = !.Info ^ spi_varset := VarSet,
+    !:Info = !.Info ^ spi_vartypes := VarTypes.
 
 %---------------------------------------------------------------------------%
 
@@ -1077,20 +1075,20 @@ record_known_type_ctor_info(Var, TypeCtorModule, TypeCtorName, TypeCtorArity,
         !Info) :-
     TypeCtor = type_ctor(qualified(TypeCtorModule, TypeCtorName),
         TypeCtorArity),
-    TypeCtorMap0 = !.Info ^ type_ctor_map,
-    RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
+    TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
+    RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
     map.set(TypeCtorMap0, TypeCtor, Var, TypeCtorMap),
     map.set(RevTypeCtorMap0, Var, TypeCtor, RevTypeCtorMap),
-    !:Info = !.Info ^ type_ctor_map := TypeCtorMap,
-    !:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap.
+    !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap,
+    !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap.
 
 :- pred record_known_type_info(prog_var::in, prog_var::in, list(prog_var)::in,
     info::in, info::out) is det.
 
 record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
-    RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
+    RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
     ( map.search(RevTypeCtorMap0, TypeCtorInfoVar, TypeCtor0) ->
-        RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
+        RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
         ( list.map(map.search(RevTypeInfoMap0), ArgTypeInfoVars, ArgTypes) ->
             list.length(ArgTypes, Arity),
             % Just in case TypeCtorInfo0 has fake arity, e.g. if it is a tuple.
@@ -1115,8 +1113,8 @@ record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
     is det.
 
 record_type_info_var(Type, Var, !Info) :-
-    RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-    TypeInfoMap0 = !.Info ^ type_info_map,
+    RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
+    TypeInfoMap0 = !.Info ^ spi_type_info_map,
     map.set(TypeInfoMap0, Type, Var, TypeInfoMap),
     ( map.insert(RevTypeInfoMap0, Var, Type, RevTypeInfoMap1) ->
         RevTypeInfoMap = RevTypeInfoMap1
@@ -1126,15 +1124,15 @@ record_type_info_var(Type, Var, !Info) :-
         % holds the typeinfo for more than one type.
         RevTypeInfoMap = RevTypeInfoMap0
     ),
-    !:Info = !.Info ^ type_info_map := TypeInfoMap,
-    !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap.
+    !:Info = !.Info ^ spi_type_info_map := TypeInfoMap,
+    !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap.
 
 :- pred record_known_size(prog_var::in, int::in, info::in, info::out) is det.
 
 record_known_size(Var, KnownSize, !Info) :-
-    KnownSizeMap0 = !.Info ^ known_size_map,
+    KnownSizeMap0 = !.Info ^ spi_known_size_map,
     map.det_insert(KnownSizeMap0, Var, KnownSize, KnownSizeMap),
-    !:Info = !.Info ^ known_size_map := KnownSizeMap.
+    !:Info = !.Info ^ spi_known_size_map := KnownSizeMap.
 
 :- pred record_typeinfo_in_type_info_varmap(rtti_varmaps::in, tvar::in,
     info::in, info::out) is det.
@@ -1152,10 +1150,10 @@ record_typeinfo_in_type_info_varmap(RttiVarMaps, TVar, !Info) :-
         % We could record this information and then look for calls that
         % extract typeinfos from typeclass_infos, but code that does
         % that is rare enough that it is not worth optimizing.
-        % TypeClassInfoMap0 = !.Info ^ type_class_info_map,
+        % TypeClassInfoMap0 = !.Info ^ spi_type_class_info_map,
         % map.det_insert(TypeClassInfoMap0,
         %   TypeClassInfoVar - Offset, Type, TypeClassInfoMap),
-        % !:Info = !.Info ^ type_class_info_map := TypeClassInfoMap
+        % !:Info = !.Info ^ spi_type_class_info_map := TypeClassInfoMap
     ).
 
 %---------------------------------------------------------------------------%
@@ -1176,15 +1174,15 @@ record_typeinfo_in_type_info_varmap(RttiVarMaps, TVar, !Info) :-
 :- pred update_rev_maps(info::in, info::out) is det.
 
 update_rev_maps(!Info) :-
-    map.to_sorted_assoc_list(!.Info ^ type_info_map, TypeInfoList),
-    map.to_sorted_assoc_list(!.Info ^ type_ctor_map, TypeCtorList),
+    map.to_sorted_assoc_list(!.Info ^ spi_type_info_map, TypeInfoList),
+    map.to_sorted_assoc_list(!.Info ^ spi_type_ctor_map, TypeCtorList),
     map.init(VarCounts0),
     count_appearances(TypeInfoList, VarCounts0, VarCounts1),
     count_appearances(TypeCtorList, VarCounts1, VarCounts),
     construct_rev_map(TypeInfoList, VarCounts, map.init, RevTypeInfoMap),
     construct_rev_map(TypeCtorList, VarCounts, map.init, RevTypeCtorMap),
-    !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap,
-    !:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap.
+    !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap,
+    !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap.
 
 :- pred count_appearances(assoc_list(T, prog_var)::in,
     map(prog_var, int)::in, map(prog_var, int)::out) is det.
@@ -1228,12 +1226,12 @@ construct_rev_map([T - Var | AssocList], VarCounts, RevMap0, RevMap) :-
 :- pred update_target_map(info::in, info::out) is det.
 
 update_target_map(!Info) :-
-    TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-    TypeInfoMap = !.Info ^ type_info_map,
+    TargetTypeInfoMap0 = !.Info ^ spi_target_type_info_map,
+    TypeInfoMap = !.Info ^ spi_type_info_map,
     map.to_sorted_assoc_list(TargetTypeInfoMap0, TargetTypeInfoList),
     list.foldl(include_in_target_map(TypeInfoMap), TargetTypeInfoList,
         map.init, TargetTypeInfoMap),
-    !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap.
+    !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap.
 
 :- pred include_in_target_map(type_info_map::in, pair(mer_type, prog_var)::in,
     type_info_map::in, type_info_map::out) is det.
@@ -1250,7 +1248,7 @@ include_in_target_map(TypeInfoMap, Type - TypeInfoVar, !TargetTypeInfoMap) :-
 :- func compute_functor_size(list(prog_var), info) = int.
 
 compute_functor_size(Args, Info) = FunctorSize :-
-    TransformOp = Info ^ transform_op,
+    TransformOp = Info ^ spi_transform_op,
     (
         TransformOp = term_cells,
         FunctorSize = 1
@@ -1294,7 +1292,7 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
 
 binds_arg_in_cell(Info, (CellInitInst - _ArgInitInst) ->
         (CellFinalInst - _ArgFinalInst)) :-
-    ModuleInfo = Info ^ module_info,
+    ModuleInfo = Info ^ spi_module_info,
     inst_is_free(ModuleInfo, CellInitInst),
     inst_is_bound(ModuleInfo, CellFinalInst).
 

@@ -162,10 +162,10 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 
 :- type cse_info
     --->    cse_info(
-                varset          :: prog_varset,
-                vartypes        :: vartypes,
-                rtti_varmaps    :: rtti_varmaps,
-                module_info     :: module_info
+                csei_varset         :: prog_varset,
+                csei_vartypes       :: vartypes,
+                csei_rtti_varmaps   :: rtti_varmaps,
+                csei_module_info    :: module_info
             ).
 
 :- pred detect_cse_in_proc_pass(proc_id::in, pred_id::in, bool::out,
@@ -265,7 +265,7 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         (
             RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
                 NonLocalVars, Vars, Modes, Det, LambdaGoal0),
-            ModuleInfo = !.CseInfo ^ module_info,
+            ModuleInfo = !.CseInfo ^ csei_module_info,
             instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
                 InstMap0, InstMap1),
             detect_cse_in_goal(LambdaGoal0, LambdaGoal, !CseInfo,
@@ -362,10 +362,9 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, Redo, GoalExpr) :-
     (
         instmap.lookup_var(InstMap0, Var, VarInst0),
-        ModuleInfo = !.CseInfo ^ module_info,
-        % XXX we only need inst_is_bound, but leave this as it is
-        % until mode analysis can handle aliasing between free
-        % variables.
+        ModuleInfo = !.CseInfo ^ csei_module_info,
+        % XXX We only need inst_is_bound, but leave this as it is until
+        % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
         common_deconstruct(Goals0, Var, !CseInfo, Unify,
             FirstOldNew, LaterOldNew, Goals)
@@ -402,7 +401,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
     (
         Var \= SwitchVar,
         instmap.lookup_var(InstMap0, Var, VarInst0),
-        ModuleInfo = !.CseInfo ^ module_info,
+        ModuleInfo = !.CseInfo ^ csei_module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
@@ -443,7 +442,7 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, !CseInfo,
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, GoalExpr) :-
     (
-        ModuleInfo = !.CseInfo ^ module_info,
+        ModuleInfo = !.CseInfo ^ csei_module_info,
         instmap.lookup_var(InstMap, Var, VarInst0),
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
@@ -652,8 +651,8 @@ create_parallel_subterms([OFV | OFV0], Context, UnifyContext, !CseInfo,
 
 create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
         Goal) :-
-    VarSet0 = !.CseInfo ^ varset,
-    VarTypes0 = !.CseInfo ^ vartypes,
+    VarSet0 = !.CseInfo ^ csei_varset,
+    VarTypes0 = !.CseInfo ^ csei_vartypes,
     varset.new_var(VarSet0, NFV, VarSet),
     map.lookup(VarTypes0, OFV, Type),
     map.det_insert(VarTypes0, NFV, Type, VarTypes),
@@ -665,8 +664,8 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     % track of the inst of OFV.
     create_pure_atomic_complicated_unification(OFV, rhs_var(NFV),
         Context, MainCtxt, SubCtxt, Goal),
-    !:CseInfo = !.CseInfo ^ varset := VarSet,
-    !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
+    !:CseInfo = !.CseInfo ^ csei_varset := VarSet,
+    !:CseInfo = !.CseInfo ^ csei_vartypes := VarTypes.
 
 %-----------------------------------------------------------------------------%
 
@@ -788,8 +787,8 @@ maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
     (
         Unify = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
-        ModuleInfo = !.CseInfo ^ module_info,
-        VarTypes = !.CseInfo ^ vartypes,
+        ModuleInfo = !.CseInfo ^ csei_module_info,
+        VarTypes = !.CseInfo ^ csei_vartypes,
         map.lookup(VarTypes, Var, Type),
         type_util.is_existq_cons(ModuleInfo, Type, ConsId)
     ->
@@ -807,14 +806,13 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(FirstOldNew, FirstOldNewMap),
     map.from_assoc_list(LaterOldNew, LaterOldNewMap),
 
-    RttiVarMaps0 = !.CseInfo ^ rtti_varmaps,
-    VarTypes0 = !.CseInfo ^ vartypes,
+    RttiVarMaps0 = !.CseInfo ^ csei_rtti_varmaps,
+    VarTypes0 = !.CseInfo ^ csei_vartypes,
 
     % Build a map for all locations in the rtti_varmaps that are changed
     % by the application of FirstOldNewMap. The keys of this map are the
     % new locations, and the values are the tvars (from the first branch)
     % that have had their locations moved.
-    %
     rtti_varmaps_tvars(RttiVarMaps0, TvarsList),
     list.foldl(find_type_info_locn_tvar_map(RttiVarMaps0, FirstOldNewMap),
         TvarsList, map.init, NewTvarMap),
@@ -823,21 +821,19 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     % branches that merge with locations in the first branch. When we find one,
     % add a type substitution which represents the type variables that were
     % merged.
-    %
     list.foldl(find_merged_tvars(RttiVarMaps0, LaterOldNewMap, NewTvarMap),
         TvarsList, map.init, Renaming),
 
     % Apply the full old->new map and the type substitution to the
     % rtti_varmaps, and apply the type substitution to the vartypes.
-    %
     list.append(FirstOldNew, LaterOldNew, OldNew),
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
     map.map_values(apply_tvar_rename(Renaming), VarTypes0, VarTypes),
 
-    !:CseInfo = !.CseInfo ^ rtti_varmaps := RttiVarMaps,
-    !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
+    !:CseInfo = !.CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
+    !:CseInfo = !.CseInfo ^ csei_vartypes := VarTypes.
 
 :- pred apply_tvar_rename(tvar_renaming::in, prog_var::in,
     mer_type::in, mer_type::out) is det.

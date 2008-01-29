@@ -104,9 +104,9 @@ specialize_higher_order(!ModuleInfo, !IO) :-
     map.init(GoalSizes0),
     set.init(Requests0),
     map.init(VersionInfo0),
-    some [!Info] (
-        !:Info = higher_order_global_info(Requests0, NewPreds0, VersionInfo0,
-            !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
+    some [!GlobalInfo] (
+        !:GlobalInfo = higher_order_global_info(Requests0, NewPreds0,
+            VersionInfo0, !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
 
         module_info_predids(PredIds0, !ModuleInfo),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
@@ -127,16 +127,17 @@ specialize_higher_order(!ModuleInfo, !IO) :-
             set.to_sorted_list(PredIdSet, PredIds),
 
             set.to_sorted_list(UserSpecPreds, UserSpecPredList),
-            !:Info = !.Info ^ hogi_params ^ param_do_user_type_spec := yes,
-            list.foldl(get_specialization_requests, UserSpecPredList, !Info),
-            process_requests(!Info, !IO)
+            !GlobalInfo ^ hogi_params ^ param_do_user_type_spec := yes,
+            list.foldl(get_specialization_requests, UserSpecPredList,
+                !GlobalInfo),
+            process_requests(!GlobalInfo, !IO)
         ),
 
         ( bool.or_list([HigherOrder, TypeSpec, UserTypeSpec], yes) ->
             % Process all other specializations until no more requests
             % are generated.
-            list.foldl(get_specialization_requests, PredIds, !Info),
-            recursively_process_requests(!Info, !IO)
+            list.foldl(get_specialization_requests, PredIds, !GlobalInfo),
+            recursively_process_requests(!GlobalInfo, !IO)
         ;
             true
         ),
@@ -145,7 +146,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         % user-requested type specializations, since they are not called
         % from anywhere and are no longer needed.
         list.foldl(module_info_remove_predicate,
-            UserSpecPredList, !.Info ^ hogi_module_info, !:ModuleInfo)
+            UserSpecPredList, !.GlobalInfo ^ hogi_module_info, !:ModuleInfo)
     ).
 
     % Process one lot of requests, returning requests for any
@@ -154,8 +155,8 @@ specialize_higher_order(!ModuleInfo, !IO) :-
 :- pred process_requests(higher_order_global_info::in,
     higher_order_global_info::out, io::di, io::uo) is det.
 
-process_requests(!Info, !IO) :-
-    filter_requests(Requests, LoopRequests, !Info, !IO),
+process_requests(!GlobalInfo, !IO) :-
+    filter_requests(Requests, LoopRequests, !GlobalInfo, !IO),
     (
         Requests = []
     ;
@@ -163,20 +164,20 @@ process_requests(!Info, !IO) :-
         some [!PredProcsToFix] (
             set.init(!:PredProcsToFix),
             create_new_preds(Requests, [], NewPredList, !PredProcsToFix,
-                !Info, !IO),
-            list.foldl(check_loop_request(!.Info), LoopRequests,
+                !GlobalInfo, !IO),
+            list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
                 !PredProcsToFix),
             set.to_sorted_list(!.PredProcsToFix, PredProcs)
         ),
-        fixup_specialized_versions(NewPredList, !Info),
-        fixup_preds(PredProcs, !Info),
+        fixup_specialized_versions(NewPredList, !GlobalInfo),
+        fixup_preds(PredProcs, !GlobalInfo),
         (
             NewPredList = [_ | _],
             % The dependencies may have changed, so the dependency graph
             % needs to rebuilt for inlining to work properly.
-            ModuleInfo0 = !.Info ^ hogi_module_info,
+            ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
             module_info_clobber_dependency_info(ModuleInfo0, ModuleInfo),
-            !:Info = !.Info ^ hogi_module_info := ModuleInfo
+            !GlobalInfo ^ hogi_module_info := ModuleInfo
         ;
             NewPredList = []
         )
@@ -187,36 +188,34 @@ process_requests(!Info, !IO) :-
 :- pred recursively_process_requests(higher_order_global_info::in,
     higher_order_global_info::out, io::di, io::uo) is det.
 
-recursively_process_requests(!Info, !IO) :-
-    ( set.empty(!.Info ^ hogi_requests) ->
+recursively_process_requests(!GlobalInfo, !IO) :-
+    ( set.empty(!.GlobalInfo ^ hogi_requests) ->
         true
     ;
-        process_requests(!Info, !IO),
-        recursively_process_requests(!Info, !IO)
+        process_requests(!GlobalInfo, !IO),
+        recursively_process_requests(!GlobalInfo, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- type higher_order_global_info
     --->    higher_order_global_info(
+                % Requested versions.
                 hogi_requests       :: set(request),
-                                    % Requested versions.
 
+                % Specialized versions for each predicate
+                % not changed by traverse_proc_body.
                 hogi_new_preds      :: new_preds,
-                                    % Specialized versions for each predicate
-                                    % not changed by traverse_proc_body.
 
+                % Extra information about each specialized version.
                 hogi_version_info   :: map(pred_proc_id, version_info),
-                                    % Extra information about each specialized
-                                    % version.
 
                 hogi_module_info    :: module_info,
                 hogi_goal_sizes     :: goal_sizes,
                 hogi_params         :: ho_params,
 
+                % Number identifying a specialized version.
                 hogi_next_id        :: counter
-                                    % Number identifying a specialized
-                                    % version.
             ).
 
     % Used while traversing goals.
@@ -225,57 +224,49 @@ recursively_process_requests(!Info, !IO) :-
     --->    higher_order_info(
                 hoi_global_info         :: higher_order_global_info,
 
+                % Higher_order variables.
                 hoi_pred_vars           :: pred_vars,
-                                        % higher_order variables.
 
+                % The pred_proc_id, pred_info and proc_info of the procedure
+                % whose body is being traversed.
                 hoi_pred_proc_id        :: pred_proc_id,
-                                        % pred_proc_id of goal being traversed.
-
                 hoi_pred_info           :: pred_info,
-                                        % pred_info of goal being traversed.
-
                 hoi_proc_info           :: proc_info,
-                                        % proc_info of goal being traversed.
 
                 hoi_changed             :: changed
             ).
 
 :- type request
     --->    ho_request(
+                % Calling predicate.
                 rq_caller           :: pred_proc_id,
-                                    % calling pred
 
+                % Called predicate.
                 rq_callee           :: pred_proc_id,
-                                    % called pred
 
+                % The call's arguments.
                 rq_args             :: list(prog_var),
-                                    % call args
 
+                % Type variables for which extra type-infos must be passed
+                % from the caller if --typeinfo-liveness is set.
                 rq_tvars            :: list(tvar),
-                                    % Type variables for which
-                                    % extra type-infos must be
-                                    % passed from the caller if
-                                    % --typeinfo-liveness is set.
 
+                % Argument types in caller.
                 rq_ho_args          :: list(higher_order_arg),
                 rq_caller_types     :: list(mer_type),
-                                    % argument types in caller
 
+                % Should the interface of the specialized procedure
+                % use typeinfo liveness?
                 rq_typeinfo_liveness :: bool,
-                                    % Should the interface of
-                                    % the specialized procedure
-                                    % use typeinfo liveness?
 
+                % Caller's typevarset.
                 rq_caller_tvarset   :: tvarset,
-                                    % Caller's typevarset.
 
+                % Is this a user-requested specialization?
                 rq_user_req_spec    :: bool,
-                                    % Is this a user-requested specialization?
 
+                % Context of the call which caused the request to be generated.
                 rq_call_context     :: context
-                                    % Context of the call which
-                                    % caused the request to be
-                                    % generated.
             ).
 
     % Stores cons_id, index in argument vector, number of
@@ -286,30 +277,29 @@ recursively_process_requests(!Info, !IO) :-
     %
 :- type higher_order_arg
     --->    higher_order_arg(
-                hoa_cons_id         :: cons_id,
-                hoa_index           :: int,
-                                    % Index in argument vector.
+                hoa_cons_id                 :: cons_id,
 
-                hoa_num_curried_args :: int,
-                                    % Number of curried args.
+                % Index in argument vector.
+                hoa_index                   :: int,
 
-                hoa_curry_arg_in_caller :: list(prog_var),
-                                    % Curried arguments in caller.
+                % Number of curried args.
+                hoa_num_curried_args        :: int,
 
-                hoa_curry_type_in_caller :: list(mer_type),
-                                    % Curried argument types in caller.
+                % Curried arguments in caller.
+                hoa_curry_arg_in_caller     :: list(prog_var),
 
-                hoa_curry_rtti_type :: list(rtti_var_info),
-                                    % Types associated with type_infos and
-                                    % constraints associated with
-                                    % typeclass_infos in the arguments.
+                % Curried argument types in caller.
+                hoa_curry_type_in_caller    :: list(mer_type),
 
-                hoa_known_curry_args :: list(higher_order_arg),
-                                    % Higher-order curried arguments
-                                    % with known values.
+                % Types associated with type_infos and constraints associated
+                % with typeclass_infos in the arguments.
+                hoa_curry_rtti_type         :: list(rtti_var_info),
 
-                hoa_is_constant     :: bool
-                                    % Is this higher_order_arg a constant?
+                % Higher-order curried arguments with known values.
+                hoa_known_curry_args        :: list(higher_order_arg),
+
+                % Is this higher_order_arg a constant?
+                hoa_is_constant             :: bool
             ).
 
     % Stores the size of each predicate's goal used in the heuristic
@@ -339,79 +329,88 @@ recursively_process_requests(!Info, !IO) :-
 
 :- type ho_params
     --->    ho_params(
+                % Propagate higher-order constants.
                 param_do_higher_order_spec  :: bool,
-                                            % Propagate higher-order constants.
+
+                % Propagate type-info constants.
                 param_do_type_spec          :: bool,
-                                            % Propagate type-info constants.
+
+                % User-guided type specialization.
                 param_do_user_type_spec     :: bool,
-                                            % User-guided type specialization.
+
+                % Size limit on requested version.
                 param_size_limit            :: int,
-                                            % Size limit on requested version.
+
+                % The maximum size of the higher order arguments
+                % of a specialized version.
                 param_arg_limit             :: int
-                                            % The maximum size of the higher
-                                            % order arguments of a specialized
-                                            % version.
             ).
 
 :- type version_info
     --->    version_info(
+                % The procedure from the original program from which
+                % this version was created.
                 pred_proc_id,
-                        % The procedure from the original program
-                        % from which this version was created.
 
-                int,    % Depth of the higher_order_args for this version.
+                % Depth of the higher_order_args for this version.
+                int,
 
+                % Higher-order or constant input variables for a
+                % specialised version.
                 pred_vars,
-                        % Higher-order or constant input variables
-                        % for a specialised version.
 
+                % The chain of specialized versions which caused this version
+                % to be created. For each element in the list with the same
+                % pred_proc_id, the depth must decrease. This ensures that
+                % the specialization process must terminate.
                 list(parent_version_info)
-                        % The chain of specialized versions which caused this
-                        % version to be created.  For each element in the list
-                        % with the same pred_proc_id, the depth must decrease.
-                        % This ensures that the specialization process must
-                        % terminate.
             ).
 
 :- type parent_version_info
     --->    parent_version_info(
+                % The procedure from the original program from which
+                % this parent was created.
                 pred_proc_id,
-                        % The procedure from the original program from which
-                        % this parent was created.
 
+                % Depth of the higher_order_args for this version.
                 int
-                        % Depth of the higher_order_args for this version.
             ).
 
 :- type new_pred
     --->    new_pred(
+                % version pred_proc_id
                 np_version_ppid         :: pred_proc_id,
-                                        % version pred_proc_id
+
+                % old pred_proc_id
                 np_old_ppid             :: pred_proc_id,
-                                        % old pred_proc_id
+
+                % requesting caller
                 np_req_ppid             :: pred_proc_id,
-                                        % requesting caller
+
+                % name
                 np_name                 :: sym_name,
-                                        % name
+
+                % specialized args
                 np_spec_args            :: list(higher_order_arg),
-                                        % specialized args
+
+                % Unspecialised argument vars in caller.
                 np_unspec_actuals       :: list(prog_var),
-                                        % Unspecialised argument vars in
-                                        % caller.
+
+                % Extra typeinfo tvars in caller.
                 np_extra_act_ti_vars    :: list(tvar),
-                                        % Extra typeinfo tvars in caller.
+
+                % Unspecialised argument types in requesting caller.
                 np_unspec_act_types     :: list(mer_type),
-                                        % Unspecialised argument types
-                                        % in requesting caller.
+
+                % Does the interface of the specialized version use type-info
+                % liveness?
                 np_typeinfo_liveness    :: bool,
-                                        % Does the interface of the
-                                        % specialized version use type-info
-                                        % liveness?
+
+                % Caller's typevarset.
                 np_call_tvarset         :: tvarset,
-                                        % Caller's typevarset.
+
+                % Is this a user-specified type specialization?
                 np_is_user_spec         :: bool
-                                        % Is this a user-specified type
-                                        % specialization?
             ).
 
     % Returned by traverse_proc_body.
@@ -515,7 +514,7 @@ traverse_proc_body(MustRecompute, !Info) :-
         map.search(VersionInfoMap, !.Info ^ hoi_pred_proc_id, VersionInfo),
         VersionInfo = version_info(_, _, PredVars, _)
     ->
-        !:Info = !.Info ^ hoi_pred_vars := PredVars
+        !Info ^ hoi_pred_vars := PredVars
     ;
         true
     ),
@@ -2814,8 +2813,8 @@ fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
     pred_info::out, higher_order_global_info::in,
     higher_order_global_info::out) is det.
 
-create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
-    ModuleInfo = !.Info ^ hogi_module_info,
+create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
+    ModuleInfo = !.GlobalInfo ^ hogi_module_info,
 
     NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
         HOArgs0, CallArgs, ExtraTypeInfoTVars0, CallerArgTypes0, _, _, _),
@@ -2938,7 +2937,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     % applied, but not TypeRenaming. Perhaps this is enough?
 
     % Record extra information about this version.
-    VersionInfoMap0 = !.Info ^ hogi_version_info,
+    VersionInfoMap0 = !.GlobalInfo ^ hogi_version_info,
     ArgsDepth = higher_order_args_depth(HOArgs),
 
     ( map.search(VersionInfoMap0, OldPredProcId, OldProcVersionInfo) ->
@@ -2959,7 +2958,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
         PredVars, ParentVersions),
     map.det_insert(VersionInfoMap0, NewPredProcId, VersionInfo,
         VersionInfoMap),
-    !:Info = !.Info ^ hogi_version_info := VersionInfoMap,
+    !GlobalInfo ^ hogi_version_info := VersionInfoMap,
 
     % Fix up the argument vars, types and modes.
     in_mode(InMode),

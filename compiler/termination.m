@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -95,27 +95,23 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
     globals.io_lookup_int_option(termination_error_limit, MaxErrors, !IO),
     globals.io_lookup_int_option(termination_path_limit, MaxPaths, !IO),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-    %
+
     % Process builtin and compiler-generated predicates, and user-supplied
     % pragmas.
-    %
     module_info_predids(PredIds, !ModuleInfo),
     check_preds(PredIds, !ModuleInfo, !IO),
-    %
+
     % Process all the SCCs of the call graph in a bottom-up order.
-    %
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-    %
+
     % Set the termination status of foreign_procs based on the foreign code
     % attributes.
-    %
     check_foreign_code_attributes(SCCs, !ModuleInfo, !IO),
-    %
+
     % Ensure that termination pragmas for a procedure do not conflict with
     % termination pragmas for other procedures in the SCC.
-    %
     check_pragmas_are_consistent(SCCs, !ModuleInfo, !IO),
 
     list.foldl2(analyse_termination_in_scc(PassInfo), SCCs, !ModuleInfo, !IO),
@@ -294,9 +290,8 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !IO) :-
                 !ModuleInfo)
         ;
             % There is a conflict between the user-supplied termination
-            % information for two or more procedures in this SCC.  Emit a
-            % warning and then assume that they all loop.
-            %
+            % information for two or more procedures in this SCC.
+            % Emit a warning and then assume that they all loop.
             get_context_from_scc(SCCTerminationKnown, !.ModuleInfo,
                 Context),
             NewTermStatus = can_loop([termination_error_context(
@@ -369,12 +364,12 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
         find_arg_sizes_in_scc(SCCArgSizeUnknown, PassInfo, ArgSizeResult,
             TermErrors, !ModuleInfo, !IO),
         (
-            ArgSizeResult = ok(Solutions, OutputSupplierMap),
+            ArgSizeResult = arg_size_ok(Solutions, OutputSupplierMap),
             set_finite_arg_size_infos(Solutions, OutputSupplierMap,
                 !ModuleInfo),
             ArgSizeErrors = []
         ;
-            ArgSizeResult = error(Errors),
+            ArgSizeResult = arg_size_error(Errors),
             set_infinite_arg_size_infos(SCCArgSizeUnknown,
                 infinite(Errors), !ModuleInfo),
             ArgSizeErrors = Errors
@@ -390,7 +385,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
     ;
         SCCTerminationUnknown = [_ | _],
         IsFatal = (pred(ErrorAndContext::in) is semidet :-
-            ErrorAndContext = termination_error_context(Error, _), 
+            ErrorAndContext = termination_error_context(Error, _),
             is_fatal_error(Error) = yes
         ),
         list.filter(IsFatal, ArgSizeErrors, FatalErrors),
@@ -517,17 +512,16 @@ report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
         list.filter(IsNonImported, SCC, NonImportedPPIds),
         NonImportedPPIds = [_|_],
 
-        % Don't emit non-termination warnings for the compiler
-        % generated wrapper predicates for solver type initialisation
-        % predicates.  If they don't terminate there's nothing the user
-        % can do about it anyway - the problem is with the
-        % initialisation predicate specified by the user, not the
-        % wrapper.
+        % Don't emit non-termination warnings for the compiler generated
+        % wrapper predicates for solver type initialisation predicates.
+        % If they don't terminate there's nothing the user can do about it
+        % anyway - the problem is with the initialisation predicate specified
+        % by the user, not the wrapper.
         list.all_false(is_solver_init_wrapper_pred(!.ModuleInfo), SCC),
 
-        % Only output warnings of non-termination for direct errors.  If there
+        % Only output warnings of non-termination for direct errors. If there
         % are no direct errors then output the indirect errors - this is
-        % better than giving no reason at all.  If verbose errors is enabled
+        % better than giving no reason at all. If verbose errors is enabled
         % then output both sorts of error.
         % (See term_errors.m for details of direct and indirect errors.)
 
@@ -828,11 +822,11 @@ change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize, !ProcTable) :-
     ),
     change_procs_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).
 
+    % change_procs_termination_info(ProcList, Override, TerminationInfo,
+    %     !ProcTable):
+    %
     % This predicate sets the termination_info property of the given list of
     % procedures.
-    %
-    % change_procs_termination_info(ProcList, Override, TerminationInfo,
-    %       ProcTable, ProcTable)
     %
     % If Override is yes, then this predicate overrides any existing
     % termination information. If Override is no, then it leaves the proc_info
@@ -911,10 +905,9 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
         ),
         \+ is_unify_or_compare_pred(PredInfo),
 
-        % XXX These should be allowed, but the predicate
-        % declaration for the specialized predicate is not produced
-        % before the termination pragmas are read in, resulting
-        % in an undefined predicate error.
+        % XXX These should be allowed, but the predicate declaration for
+        % the specialized predicate is not produced before the termination
+        % pragmas are read in, resulting in an undefined predicate error.
         \+ set.member(PredId, TypeSpecForcePreds)
     ->
         PredName = pred_info_name(PredInfo),

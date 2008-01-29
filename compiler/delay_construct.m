@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,10 +81,10 @@ delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 
 :- type delay_construct_info
     --->    delay_construct_info(
-                module_info             :: module_info,
-                body_typeinfo_liveness  :: bool,
-                vartypes                :: vartypes,
-                rtti_varmaps            :: rtti_varmaps
+                dci_module_info             :: module_info,
+                dci_body_typeinfo_liveness  :: bool,
+                dci_vartypes                :: vartypes,
+                dci_rtti_varmaps            :: rtti_varmaps
             ).
 
 %-----------------------------------------------------------------------------%
@@ -210,9 +210,9 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         Unif = construct(Var, _, Args, _, _, _, _),
         Args = [_ | _], % We are constructing a cell, not a constant
         instmap.lookup_var(InstMap0, Var, Inst0),
-        inst_is_free(DelayInfo ^ module_info, Inst0),
+        inst_is_free(DelayInfo ^ dci_module_info, Inst0),
         instmap.lookup_var(InstMap1, Var, Inst1),
-        inst_is_ground(DelayInfo ^ module_info, Inst1)
+        inst_is_ground(DelayInfo ^ dci_module_info, Inst1)
     ->
         set.insert(ConstructedVars0, Var, ConstructedVars1),
         RevDelayedGoals1 = [Goal0 | RevDelayedGoals0],
@@ -223,9 +223,9 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         delay_construct_skippable(GoalExpr0, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         maybe_complete_with_typeinfo_vars(NonLocals,
-            DelayInfo ^ body_typeinfo_liveness,
-            DelayInfo ^ vartypes,
-            DelayInfo ^ rtti_varmaps, CompletedNonLocals),
+            DelayInfo ^ dci_body_typeinfo_liveness,
+            DelayInfo ^ dci_vartypes,
+            DelayInfo ^ dci_rtti_varmaps, CompletedNonLocals),
         set.intersect(CompletedNonLocals, ConstructedVars0,
             Intersection),
         set.empty(Intersection),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -73,12 +73,12 @@
 :- type call_weight_graph == map(pred_proc_id, call_weight_dst_map).
 :- type call_weight_dst_map == map(pred_proc_id, pair(prog_context, int)).
 
-:- type pass2_result
-    --->    ok(
+:- type term_pass2_result
+    --->    term_pass2_ok(
                 call_weight_info,
                 used_args
             )
-    ;       error(
+    ;       term_pass2_error(
                 termination_error_contexts
             ).
 
@@ -309,7 +309,7 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
     prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
         InitRecSuppliers, Result, !ModuleInfo, !IO),
     (
-        Result = ok(CallInfo, _),
+        Result = term_pass2_ok(CallInfo, _),
         CallInfo = call_weight_info(InfCalls, CallWeights),
         (
             InfCalls = [_ | _],
@@ -331,14 +331,14 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
             )
         )
     ;
-        Result = error(Errors),
+        Result = term_pass2_error(Errors),
         Termination = can_loop(Errors)
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred prove_termination_in_scc_fixpoint(list(pred_proc_id)::in,
-    fixpoint_dir::in, pass_info::in, used_args::in, pass2_result::out,
+    fixpoint_dir::in, pass_info::in, used_args::in, term_pass2_result::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
@@ -350,7 +350,7 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
         RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1, !ModuleInfo,
         !IO),
     (
-        Result1 = ok(_, RecSupplierMap1),
+        Result1 = term_pass2_ok(_, RecSupplierMap1),
         ( RecSupplierMap1 = RecSupplierMap0 ->
             % We are at a fixed point, so further analysis
             % will not get any better results.
@@ -360,7 +360,7 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
                 PassInfo, RecSupplierMap1, Result, !ModuleInfo, !IO)
         )
     ;
-        Result1 = error(_),
+        Result1 = term_pass2_error(_),
         Result = Result1
     ).
 
@@ -371,11 +371,11 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
     %
 :- pred prove_termination_in_scc_pass(list(pred_proc_id)::in, fixpoint_dir::in,
     pass_info::in, used_args::in, used_args::in,
-    call_weight_info::in, pass2_result::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    call_weight_info::in, term_pass2_result::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 prove_termination_in_scc_pass([], _, _, _, NewRecSupplierMap, CallInfo,
-        ok(CallInfo, NewRecSupplierMap), !ModuleInfo, !IO).
+        term_pass2_ok(CallInfo, NewRecSupplierMap), !ModuleInfo, !IO).
 prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result,
         !ModuleInfo, !IO) :-
@@ -390,13 +390,13 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-    init_traversal_params(FunctorInfo, PPId, Context, VarTypes,
+    init_term_traversal_params(FunctorInfo, PPId, Context, VarTypes,
         EmptyMap, RecSupplierMap, MaxErrors, MaxPaths, Params),
     set.init(PathSet0),
-    Info0 = ok(PathSet0, []),
-    traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
+    Info0 = term_traversal_ok(PathSet0, []),
+    term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
     (
-        Info = ok(Paths, CanLoop),
+        Info = term_traversal_ok(Paths, CanLoop),
         expect(unify(CanLoop, []), this_file,
             "can_loop detected in pass2 but not pass1"),
         set.to_sorted_list(Paths, PathList),
@@ -414,10 +414,10 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
             PassInfo, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result,
             !ModuleInfo, !IO)
     ;
-        Info = error(Errors, CanLoop),
+        Info = term_traversal_error(Errors, CanLoop),
         expect(unify(CanLoop, []), this_file, 
             "can_loop detected in pass2 but not pass1"),
-        Result = error(Errors)
+        Result = term_pass2_error(Errors)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -475,12 +475,12 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
     % p. If there is no finite upper bound, then we insert the details of the
     % call into the list of "infinite" calls.
     %
-:- pred add_call_arcs(list(path_info)::in, bag(prog_var)::in,
+:- pred add_call_arcs(list(term_path_info)::in, bag(prog_var)::in,
     call_weight_info::in, call_weight_info::out) is det.
 
 add_call_arcs([], _RecInputSuppliers, !CallInfo).
 add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
-    Path = path_info(PPId, CallSite, GammaConst, GammaVars, ActiveVars),
+    Path = term_path_info(PPId, CallSite, GammaConst, GammaVars, ActiveVars),
     (
         CallSite = yes(CallPPIdPrime - ContextPrime),
         CallPPId = CallPPIdPrime,

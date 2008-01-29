@@ -1620,7 +1620,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
     ( set.equal(LivenessFirst, LivenessRest) ->
         true
     ;
-        VarSet = LiveInfo ^ varset,
+        VarSet = LiveInfo ^ li_varset,
         set.to_sorted_list(LivenessFirst, FirstVarsList),
         set.to_sorted_list(LivenessRest, RestVarsList),
         list.map(varset.lookup_name(VarSet), FirstVarsList, FirstVarNames),
@@ -1695,8 +1695,8 @@ initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
     % to these.
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    maybe_complete_with_typeinfo_vars(Deadness0, LiveInfo ^ typeinfo_liveness,
-        VarTypes, RttiVarMaps, Deadness).
+    maybe_complete_with_typeinfo_vars(Deadness0,
+        LiveInfo ^ li_typeinfo_liveness, VarTypes, RttiVarMaps, Deadness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1745,11 +1745,11 @@ add_deadness_after_goal(Residue, hlds_goal(GoalExpr, GoalInfo0),
 find_value_giving_occurrences([], _, _, !ValueVars).
 find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
         !ValueVars) :-
-    VarTypes = LiveInfo ^ vartypes,
+    VarTypes = LiveInfo ^ li_vartypes,
     map.lookup(VarTypes, Var, Type),
     (
         instmap_delta_search_var(InstMapDelta, Var, Inst),
-        ModuleInfo = LiveInfo ^ module_info,
+        ModuleInfo = LiveInfo ^ li_module_info,
         mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
     ->
         svset.insert(Var, !ValueVars)
@@ -1777,19 +1777,19 @@ liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
     set(prog_var)::in, set(prog_var)::out) is det.
 
 liveness.maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
-    maybe_complete_with_typeinfo_vars(Vars0, LiveInfo ^ typeinfo_liveness,
-        LiveInfo ^ vartypes, LiveInfo ^ rtti_varmaps, Vars).
+    maybe_complete_with_typeinfo_vars(Vars0, LiveInfo ^ li_typeinfo_liveness,
+        LiveInfo ^ li_vartypes, LiveInfo ^ li_rtti_varmaps, Vars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- type live_info
     --->    live_info(
-                module_info         ::  module_info,
-                typeinfo_liveness   ::  bool,
-                vartypes            ::  vartypes,
-                rtti_varmaps        ::  rtti_varmaps,
-                varset              ::  prog_varset
+                li_module_info          :: module_info,
+                li_typeinfo_liveness    :: bool,
+                li_vartypes             :: vartypes,
+                li_rtti_varmaps         :: rtti_varmaps,
+                li_varset               :: prog_varset
             ).
 
 :- pred live_info_init(module_info::in, bool::in, vartypes::in,

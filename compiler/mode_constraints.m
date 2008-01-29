@@ -296,7 +296,7 @@ process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
     --->    number_robdd_info(
                 n_mc_info       :: mode_constraint_info,
                 n_module_info   :: module_info,
-                vartypes        :: vartypes
+                n_vartypes      :: vartypes
             ).
 
 :- instance has_mc_info(number_robdd_info) where [
@@ -493,7 +493,7 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
     !.RHS = rhs_lambda_goal(_, _, _, _, LambdaNonLocals, LambdaVars, _, _,
         LambdaGoal0),
     Vars = LambdaNonLocals,
-    VarTypes = !.NRInfo ^ vartypes,
+    VarTypes = !.NRInfo ^ n_vartypes,
     ModuleInfo = !.NRInfo ^ module_info,
     fill_goal_path_slots_in_goal(LambdaGoal0, VarTypes, ModuleInfo,
         LambdaGoal1),

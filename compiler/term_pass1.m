@@ -35,14 +35,14 @@
 %-----------------------------------------------------------------------------%
 
 :- type arg_size_result
-    --->    ok(
-                list(pair(pred_proc_id, int)),
+    --->    arg_size_ok(
                 % Gives the gamma of each procedure in the SCC.
+                list(pair(pred_proc_id, int)),
 
-                used_args
                 % Gives the output suppliers of each procedure in the SCC.
+                used_args
             )
-    ;       error(
+    ;       arg_size_error(
                 list(termination_error_context)
             ).
 
@@ -77,8 +77,8 @@
 %-----------------------------------------------------------------------------%
 
 :- type pass1_result
-    --->    ok(
-                list(path_info),
+    --->    term_pass1_ok(
+                list(term_path_info),
                         % One entry for each path through the
                         % code.
                 used_args,
@@ -88,7 +88,7 @@
                         % the SCC in which the set of active vars is not a
                         % subset of the input arguments.
             )
-    ;       error(
+    ;       term_pass1_error(
                 list(termination_error_context)
             ).
 
@@ -97,35 +97,35 @@ find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo, !IO) :-
     find_arg_sizes_in_scc_fixpoint(SCC, PassInfo,
         InitOutputSupplierMap, Result, TermErrors, !ModuleInfo, !IO),
     (
-        Result = ok(Paths, OutputSupplierMap, SubsetErrors),
+        Result = term_pass1_ok(Paths, OutputSupplierMap, SubsetErrors),
         (
             SubsetErrors = [_ | _],
-            ArgSize = error(SubsetErrors)
+            ArgSize = arg_size_error(SubsetErrors)
         ;
             SubsetErrors = [],
             (
                 Paths = [],
                 get_context_from_scc(SCC, !.ModuleInfo, Context),
                 ArgSizeError = termination_error_context(no_eqns, Context),
-                ArgSize = error([ArgSizeError])
+                ArgSize = arg_size_error([ArgSizeError])
             ;
                 Paths = [_ | _],
                 solve_equations(Paths, SCC, MaybeSolution, !IO),
                 (
                     MaybeSolution = yes(Solution),
-                    ArgSize = ok(Solution, OutputSupplierMap)
+                    ArgSize = arg_size_ok(Solution, OutputSupplierMap)
                 ;
                     MaybeSolution = no,
                     get_context_from_scc(SCC, !.ModuleInfo, Context),
                     ArgSizeError = termination_error_context(solver_failed,
                         Context),
-                    ArgSize = error([ArgSizeError])
+                    ArgSize = arg_size_error([ArgSizeError])
                 )
             )
         )
     ;
-        Result = error(Errors),
-        ArgSize = error(Errors)
+        Result = term_pass1_error(Errors),
+        ArgSize = arg_size_error(Errors)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -159,11 +159,11 @@ find_arg_sizes_in_scc_fixpoint(SCC, PassInfo, OutputSupplierMap0,
     find_arg_sizes_in_scc_pass(SCC, PassInfo, OutputSupplierMap0, [], [],
         Result0, [], TermErrors0, !ModuleInfo, !IO),
     (
-        Result0 = error(_),
+        Result0 = term_pass1_error(_),
         Result = Result0,
         TermErrors = TermErrors0
     ;
-        Result0 = ok(_, OutputSupplierMap1, _),
+        Result0 = term_pass1_ok(_, OutputSupplierMap1, _),
         ( OutputSupplierMap1 = OutputSupplierMap0 ->
             Result = Result0,
             TermErrors = TermErrors0
@@ -174,14 +174,14 @@ find_arg_sizes_in_scc_fixpoint(SCC, PassInfo, OutputSupplierMap0,
     ).
 
 :- pred find_arg_sizes_in_scc_pass(list(pred_proc_id)::in,
-    pass_info::in, used_args::in, list(path_info)::in,
+    pass_info::in, used_args::in, list(term_path_info)::in,
     termination_error_contexts::in, pass1_result::out,
     termination_error_contexts::in, termination_error_contexts::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 find_arg_sizes_in_scc_pass([], _, OutputSupplierMap, Paths, SubsetErrors,
         Result, !TermErrors, !ModuleInfo, !IO) :-
-    Result = ok(Paths, OutputSupplierMap, SubsetErrors).
+    Result = term_pass1_ok(Paths, OutputSupplierMap, SubsetErrors).
 find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
         OutputSupplierMap0, Paths0, SubsetErrors0, Result,
         !TermErrors, !ModuleInfo, !IO) :-
@@ -191,7 +191,7 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
     PassInfo = pass_info(_, MaxErrors, _),
     list.take_upto(MaxErrors, !TermErrors),
     (
-        Result1 = error(_),
+        Result1 = term_pass1_error(_),
         Result = Result1,
 
         % The error does not necessarily mean that this SCC is nonterminating.
@@ -204,7 +204,7 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
             OtherTermErrors, !ModuleInfo, !IO),
         list.append(OtherTermErrors, !TermErrors)
     ;
-        Result1 = ok(Paths1, OutputSupplierMap1, SubsetErrors1),
+        Result1 = term_pass1_ok(Paths1, OutputSupplierMap1, SubsetErrors1),
         Paths = Paths0 ++ Paths1,
         SubsetErrors = SubsetErrors0 ++ SubsetErrors1,
         find_arg_sizes_in_scc_pass(PPIds, PassInfo,
@@ -233,17 +233,17 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
     Goal = maybe_strip_equality_pretest(Goal0),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-    init_traversal_params(FunctorInfo, PPId, Context, VarTypes,
+    init_term_traversal_params(FunctorInfo, PPId, Context, VarTypes,
         OutputSupplierMap0, EmptyMap, MaxErrors, MaxPaths, Params),
 
     partition_call_args(!.ModuleInfo, ArgModes, Args, InVars, OutVars),
-    Path0 = path_info(PPId, no, 0, [], OutVars),
+    Path0 = term_path_info(PPId, no, 0, [], OutVars),
     set.singleton_set(PathSet0, Path0),
-    Info0 = ok(PathSet0, []),
-    traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
+    Info0 = term_traversal_ok(PathSet0, []),
+    term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
 
     (
-        Info = ok(Paths, TermErrors),
+        Info = term_traversal_ok(Paths, TermErrors),
         set.to_sorted_list(Paths, PathList),
         upper_bound_active_vars(PathList, AllActiveVars),
         map.lookup(OutputSupplierMap0, PPId, OutputSuppliers0),
@@ -259,10 +259,10 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
                 Context),
             SubsetErrors = [SubsetErrorContext]
         ),
-        Result = ok(PathList, OutputSupplierMap, SubsetErrors)
+        Result = term_pass1_ok(PathList, OutputSupplierMap, SubsetErrors)
     ;
-        Info = error(Errors, TermErrors),
-        Result = error(Errors)
+        Info = term_traversal_error(Errors, TermErrors),
+        Result = term_pass1_error(Errors)
     ).
 
 :- pred update_output_suppliers(list(prog_var)::in, bag(prog_var)::in,
@@ -281,9 +281,9 @@ update_output_suppliers([Arg | Args], ActiveVars,
     ( bag.contains(ActiveVars, Arg) ->
         OutputSupplier = yes
     ;
-        % This guarantees that the set of output suppliers can only
-        % increase, which in turn guarantees that our fixpoint
-        % computation is monotonic and therefore terminates.
+        % This guarantees that the set of output suppliers can only increase,
+        % which in turn guarantees that our fixpoint computation is
+        % monotonic and therefore terminates.
         OutputSupplier = OutputSupplier0
     ),
     update_output_suppliers(Args, ActiveVars,
@@ -396,7 +396,7 @@ check_cases_non_term_calls(PPId, VarTypes, case(_, _, Goal), !Errors,
 % Solve the list of constraints
 %
 
-:- pred solve_equations(list(path_info)::in, list(pred_proc_id)::in,
+:- pred solve_equations(list(term_path_info)::in, list(pred_proc_id)::in,
     maybe(list(pair(pred_proc_id, int)))::out, io::di, io::uo) is det.
 
 solve_equations(Paths, PPIds, Result, !IO) :-
@@ -416,8 +416,8 @@ solve_equations(Paths, PPIds, Result, !IO) :-
         Result = no
     ).
 
-:- pred convert_equations(list(path_info)::in, varset::out, lp.equations::out,
-    objective::out, map(pred_proc_id, var)::out) is semidet.
+:- pred convert_equations(list(term_path_info)::in, varset::out,
+    lp.equations::out, objective::out, map(pred_proc_id, var)::out) is semidet.
 
 convert_equations(Paths, Varset, Equations, Objective, PPVars) :-
     varset.init(Varset0),
@@ -430,14 +430,14 @@ convert_equations(Paths, Varset, Equations, Objective, PPVars) :-
     Convert = (pred(Var::in, Coeff::out) is det :- Coeff = Var - 1.0),
     list.map(Convert, Vars, Objective).
 
-:- pred convert_equations_2(list(path_info)::in,
+:- pred convert_equations_2(list(term_path_info)::in,
     map(pred_proc_id, var)::in, map(pred_proc_id, var)::out,
     varset::in, varset::out,
     set(lp.equation)::in, set(lp.equation)::out) is semidet.
 
 convert_equations_2([], !PPVars, !Varset, !Eqns).
 convert_equations_2([Path | Paths], !PPVars, !Varset, !Eqns) :-
-    Path = path_info(ThisPPId, _, IntGamma, PPIds, _),
+    Path = term_path_info(ThisPPId, _, IntGamma, PPIds, _),
     FloatGamma = float(IntGamma),
     Eqn = eqn(Coeffs, (>=), FloatGamma),
     pred_proc_var(ThisPPId, ThisVar, !Varset, !PPVars),

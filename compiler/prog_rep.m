@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 University of Melbourne.
+% Copyright (C) 2000-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,12 +73,12 @@
 %---------------------------------------------------------------------------%
 
 :- type prog_rep_info
-    --->    info(
-                filename    :: string,
-                vartypes    :: vartypes,
-                var_num_map :: var_num_map,
-                var_num_rep :: var_num_rep,
-                module_info :: module_info
+    --->    prog_rep_info(
+                pri_filename    :: string,
+                pri_vartypes    :: vartypes,
+                pri_var_num_map :: var_num_map,
+                pri_var_num_rep :: var_num_rep,
+                pri_module_info :: module_info
             ).
 
 represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
@@ -92,7 +92,7 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
     ;
         VarNumRep = short
     ),
-    Info = info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo),
+    Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo),
     var_num_rep_byte(VarNumRep, VarNumRepByte),
 
     string_to_byte_list(FileName, FileNameBytes, !StackInfo),
@@ -266,7 +266,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
         GoalExpr = plain_call(PredId, _, Args, Builtin, _, _),
         atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info,
             AtomicBytes, _BoundVars, !StackInfo),
-        module_info_pred_info(Info ^ module_info, PredId, PredInfo),
+        module_info_pred_info(Info ^ pri_module_info, PredId, PredInfo),
         ModuleSymName = pred_info_module(PredInfo),
         ModuleName = sym_name_to_string(ModuleSymName),
         PredName = pred_info_name(PredInfo),
@@ -305,12 +305,12 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
 :- pred lhs_final_is_ground(prog_rep_info::in, uni_mode::in) is semidet.
 
 lhs_final_is_ground(Info, (_ - _) -> (LHSFinalInst - _)) :-
-    inst_is_ground(Info ^ module_info, LHSFinalInst).
+    inst_is_ground(Info ^ pri_module_info, LHSFinalInst).
 
 :- pred rhs_is_input(prog_rep_info::in, uni_mode::in) is semidet.
 
 rhs_is_input(Info, (_ - RHSInitialInst) -> (_ - RHSFinalInst)) :-
-    mode_is_input(Info ^ module_info, RHSInitialInst -> RHSFinalInst).
+    mode_is_input(Info ^ pri_module_info, RHSInitialInst -> RHSFinalInst).
 
 :- pred filter_input_args(prog_rep_info::in, list(uni_mode)::in,
     list(prog_var)::in, list(maybe(prog_var))::out) is det.
@@ -340,7 +340,7 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, Bytes, BoundVars,
     Detism = goal_info_get_determinism(GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName0),
-    ( FileName0 = Info ^ filename ->
+    ( FileName0 = Info ^ pri_filename ->
         FileName = ""
     ;
         FileName = FileName0
@@ -348,8 +348,8 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, Bytes, BoundVars,
     term.context_line(Context, LineNo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-    instmap_changed_vars(InstMap0, InstMap, Info ^ vartypes,
-        Info ^ module_info, ChangedVars),
+    instmap_changed_vars(InstMap0, InstMap, Info ^ pri_vartypes,
+        Info ^ pri_module_info, ChangedVars),
     set.to_sorted_list(ChangedVars, BoundVars),
     string_to_byte_list(FileName, FileNameBytes, !StackInfo),
     Bytes = [represent_determinism(Detism)] ++
@@ -479,12 +479,12 @@ maybe_vars_to_byte_list(Info, Vars) =
 :- func var_to_byte_list(prog_rep_info, prog_var) = list(int).
 
 var_to_byte_list(Info, Var) = Bytes :-
-    map.lookup(Info ^ var_num_map, Var, VarNum - _),
+    map.lookup(Info ^ pri_var_num_map, Var, VarNum - _),
     (
-        Info ^ var_num_rep = byte,
+        Info ^ pri_var_num_rep = byte,
         Bytes = [VarNum]
     ;
-        Info ^ var_num_rep = short,
+        Info ^ pri_var_num_rep = short,
         short_to_byte_list(VarNum, Bytes)
     ).
 
