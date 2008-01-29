@@ -1442,7 +1442,10 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
         SubstOk = yes(RenamedSubst),
         pred_info_get_procedures(PredInfo0, Procs0),
         handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
-            ProcIds, Procs0, Procs, ModesOk, !ModuleInfo, !Specs),
+            ProcIds, Procs0, Procs1, ModesOk, !ModuleInfo, !Specs),
+        % Remove any imported structure sharing and reuse information for the
+        % original procedure as they won't be (directly) applicable.
+        map.map_values(reset_imported_structure_sharing_reuse, Procs1, Procs),
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, user_guided_type_specialization,
             DoTypeSpec),
@@ -1826,6 +1829,13 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
         map.keys(!.Procs, ProcIds),
         ModesOk = yes
     ).
+
+:- pred reset_imported_structure_sharing_reuse(proc_id::in,
+    proc_info::in, proc_info::out) is det.
+
+reset_imported_structure_sharing_reuse(_, !ProcInfo) :-
+    proc_info_reset_imported_structure_sharing(!ProcInfo),
+    proc_info_reset_imported_structure_reuse(!ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
