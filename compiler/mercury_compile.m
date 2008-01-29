@@ -388,6 +388,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
     globals.lookup_bool_option(Globals, output_libgrades,
         OutputLibGrades),
     globals.lookup_bool_option(Globals, output_cc, OutputCC),
+    globals.lookup_bool_option(Globals, output_cflags, OutputCFlags),
     globals.lookup_bool_option(Globals, make, Make),
     globals.lookup_maybe_string_option(Globals, generate_standalone_interface,
         GenerateStandaloneInt),
@@ -429,6 +430,9 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         globals.lookup_string_option(Globals, cc, CC),
         io.stdout_stream(StdOut, !IO),
         io.write_string(StdOut, CC ++ "\n", !IO)
+    ; OutputCFlags = yes ->
+        io.stdout_stream(StdOut, !IO),
+        output_c_compiler_flags(StdOut, !IO)
     ; GenerateMapping = yes ->
         source_file_map.write_source_file_map(Args, !IO)
     ; GenerateStandaloneInt = yes(StandaloneIntBasename) ->

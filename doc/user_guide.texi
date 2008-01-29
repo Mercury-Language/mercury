@@ -6633,6 +6633,12 @@ be installed should be built to the standard output.
 @findex --output-cc
 Print the name of the C compiler to the standard output.
 
+@sp 1
+@item --output-cflags
+@findex --output-cflags
+Print the flags with which the C compiler will be invoked
+to the standard output.
+
 @end table
 
 @node Auxiliary output options

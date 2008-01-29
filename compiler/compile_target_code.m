@@ -195,6 +195,11 @@
     % 
 :- pred make_standalone_interface(string::in, io::di, io::uo) is det.
 
+    % Output the C compiler flags to the given stream.
+    % This predicate is used to implement the `--output-cflags' option.
+    %
+:- pred output_c_compiler_flags(io.output_stream::in, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -359,6 +364,18 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     maybe_write_string(Verbose, C_File, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
     globals.io_lookup_string_option(cc, CC, !IO),
+    gather_c_compiler_flags(PIC, AllCFlags, !IO),
+    string.append_list([
+        CC, " ", 
+        AllCFlags,
+        " -c ", C_File, " ",
+        NameObjectFile, O_File], Command),
+    invoke_system_command(ErrorStream, cmd_verbose_commands,
+        Command, Succeeded, !IO).
+
+:- pred gather_c_compiler_flags(pic::in, string::out, io::di, io::uo) is det.
+
+gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
     globals.io_lookup_accumulating_option(cflags, C_Flags_List, !IO),
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
 
@@ -783,13 +800,12 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     ;
         AppleGCCRegWorkaroundOpt = ""
     ),
-
+    
     % Be careful with the order here!  Some options override others,
     % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
     % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
     % Also be careful that each option is separated by spaces.
     string.append_list([
-        CC, " ", 
         SubDirInclOpt, InclOpt,
         OptimizeOpt, " ",
         HighLevelCodeOpt, 
@@ -818,11 +834,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         AppleGCCRegWorkaroundOpt,
         C_FnAlignOpt, 
         WarningOpt, " ", 
-        CFLAGS, 
-        " -c ", C_File, " ",
-        NameObjectFile, O_File], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands,
-        Command, Succeeded, !IO).
+        CFLAGS], AllCFlags).
 
 %-----------------------------------------------------------------------------%
 
@@ -2623,6 +2635,16 @@ make_standalone_int_body(Basename, !IO) :-
         io.write_string(CFileName, !IO),
         io.write_string("'\n", !IO)
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% C compiler flags
+%
+
+output_c_compiler_flags(Stream, !IO) :-
+    get_object_code_type(executable, PIC, !IO),
+    gather_c_compiler_flags(PIC, CFlags, !IO),
+    io.write_string(Stream, CFlags, !IO).    
 
 %-----------------------------------------------------------------------------%
 
