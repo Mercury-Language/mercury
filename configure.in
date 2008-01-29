@@ -807,12 +807,12 @@ if test "$ac_microsoft" = "yes" ; then
 	esac
 	FIX_PATH_FOR_CC="$CYGPATH"
 
-		# MS doesn't use a ranlib.
+	# MS doesn't use a ranlib.
 	RANLIB="echo"
 	RANLIBFLAGS=""
 	AC_SUBST(RANLIB)
 else
-	# Use Unix-style file names and command-line options
+	# Use Unix-style file names and command-line options.
 	OBJ_SUFFIX="o"
 	LIB_SUFFIX="a"
 	LIB_PREFIX=""
@@ -827,10 +827,17 @@ else
 	AR_LIBFILE_OPT=""
 
 	LD_STRIP_FLAG="-s"
+
+	# Suppress a warning from the linker on Darwin 9.  `-s' is deprecated on it
+	# and has no effect other than causing the linker to emit a warning.
+	#
+	case "$host" in *apple*darwin*9*)
+		LD_STRIP_FLAG="" ;;
+	esac
+	
 	LDFLAGS_FOR_DEBUG="-g"
 	LD_LIBFLAGS_FOR_DEBUG="-g"
 
-	#
 	# On Linux ELF, the linker option `-export-dynamic' is needed to make
 	# symbols exported for use in code linked in with dlopen(),
 	# which is used for interactive queries in the
@@ -861,7 +868,7 @@ else
 	# do not get included in the archive table of contents, and so
 	# don't get found during linking.  Whose !@#$ing idea was it to make
 	# that brain-damaged and non-standard-conforming mode the default?
-
+	#
 	case "$host" in *apple*darwin*)
 		RANLIBFLAGS="-c"
 		;;
