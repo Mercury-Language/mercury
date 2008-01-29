@@ -3354,7 +3354,7 @@ options_help_output -->
         "--output-cc",
         "\tPrint the name of the C compiler to the standard output.",
         "--output-cflags",
-        "\tPrint the flags with which the C compiler will be invoked.",
+        "\tPrint the flags with which the C compiler will be invoked",
         "\tto the standard output."
     ]).
 
