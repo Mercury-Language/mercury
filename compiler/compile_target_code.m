@@ -1727,7 +1727,7 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
             RpathDirs = [],
             RpathOpts = ""
         ;
-            RpathDirs = [_|_],
+            RpathDirs = [_ | _],
             globals.io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
             globals.io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
             RpathOpts0 = string.join_list(RpathSep, RpathDirs),
@@ -1790,16 +1790,24 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         % Note that LDFlags may contain `-l' options so it should come
         % after Objects.
         globals.io_lookup_string_option(CommandOpt, Command, !IO),
-        string.append_list(
-            [Command, " ",
-            StaticOpts, " ", StripOpt, " ", UndefOpt, " ",
-            ThreadOpts, " ", TraceOpts, " ",
-            " -o ", OutputFileName, " ", Objects, " ",
-            LinkOptSep, " ", LinkLibraryDirectories, " ",
-            RpathOpts, " ", InstallNameOpt, " ", DebugOpts,
-            " ", LDFlags, " ", LinkLibraries, " ",
-            MercuryStdLibs, " ", SystemLibs],
-            LinkCmd),
+        string.append_list([
+                Command, " ",
+                StaticOpts, " ",
+                StripOpt, " ",
+                UndefOpt, " ",
+                ThreadOpts, " ",
+                TraceOpts, " ",
+                " -o ", OutputFileName, " ",
+                Objects, " ",
+                LinkOptSep, " ",
+                LinkLibraryDirectories, " ",
+                RpathOpts, " ",
+                InstallNameOpt, " ",
+                DebugOpts, " ",
+                LDFlags, " ",
+                LinkLibraries, " ",
+                MercuryStdLibs, " ",
+                SystemLibs], LinkCmd),
 
         globals.io_lookup_bool_option(demangle, Demangle, !IO),
         (
