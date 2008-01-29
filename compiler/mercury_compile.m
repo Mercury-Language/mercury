@@ -2404,11 +2404,11 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 200, "mm_tabling_analysis", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 210, "structure_sharing", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 190, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 212, "structure_reuse", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 195, "structure_reuse", !DumpInfo, !IO),
     write_trans_opt_file(!.HLDS, !IO).
 
 :- pred output_analysis_file(module_name::in, module_info::in,
