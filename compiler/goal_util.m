@@ -173,7 +173,7 @@
     = list(pred_proc_id).
 
     % Test whether the goal contains a reconstruction
-    % (a construction where the `cell_to_reuse' field is `yes(_)').
+    % (a construction where the `construct_how' field is `cell_to_reuse(_)').
     %
 :- pred goal_contains_reconstruction(hlds_goal::in) is semidet.
 
@@ -1043,10 +1043,8 @@ case_list_calls_proc_in_list([Case | Cases], PredProcIds, !CalledSet) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_contains_reconstruction(_) :-
-    % This will only succeed on the alias branch with structure reuse.
-    semidet_fail.
-    % goal_expr_contains_reconstruction(GoalExpr).
+goal_contains_reconstruction(hlds_goal(GoalExpr, _)) :-
+    goal_expr_contains_reconstruction(GoalExpr).
 
 :- pred goal_expr_contains_reconstruction(hlds_goal_expr::in) is semidet.
 
