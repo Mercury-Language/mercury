@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -479,12 +479,11 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
     IsEmpty = clause_list_is_empty(ClausesRep0),
     (
         IsEmpty = yes,
-        % Create the mapping from type variable name, used to
-        % rename type variables occurring in explicit type
-        % qualifications. The version of this mapping stored
-        % in the clauses_info should only contain type variables
-        % which occur in the argument types of the predicate.
-        % Type variables which only occur in explicit type
+        % Create the mapping from type variable name, used to rename
+        % type variables occurring in explicit type qualifications.
+        % The version of this mapping stored in the clauses_info should
+        % only contain type variables which occur in the argument types
+        % of the predicate. Type variables which only occur in explicit type
         % qualifications are local to the clause in which they appear.
         varset.create_name_var_map(TVarSet0, TVarNameMap)
     ;
@@ -555,7 +554,7 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         !QualInfo, !Specs) :-
     some [!SInfo] (
         HeadVarList = proc_arg_vector_to_list(HeadVars),
-        prepare_for_head(!:SInfo),
+        svar_prepare_for_head(!:SInfo),
         rename_vars_in_term_list(need_not_rename, Renaming, Args0, Args1),
         substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !Specs),
         HeadGoal0 = true_goal,
@@ -569,16 +568,15 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             attach_features_to_all_goals([feature_from_head],
                 HeadGoal1, HeadGoal)
         ),
-        prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
+        svar_prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
         transform_goal(ParseBody, Renaming, BodyGoal, _, !VarSet, !ModuleInfo,
             !QualInfo, !SInfo, !Specs),
-        finish_goals(Context, FinalSVarMap, [HeadGoal, BodyGoal], Goal0,
+        svar_finish_goals(Context, FinalSVarMap, [HeadGoal, BodyGoal], Goal0,
             !.SInfo),
         qual_info_get_var_types(!.QualInfo, VarTypes0),
-        %
-        % The RTTI varmaps here are just a dummy value because the real
-        % ones are not introduced until typechecking and polymorphism.
-        %
+
+        % The RTTI varmaps here are just a dummy value because the real ones
+        % are not introduced until typechecking and polymorphism.
         rtti_varmaps_init(EmptyRttiVarmaps),
         implicitly_quantify_clause_body(HeadVarList, Warnings, Goal0, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
@@ -603,11 +601,11 @@ transform_goal(Goal0 - Context, Renaming, hlds_goal(GoalExpr, GoalInfo),
 transform_goal_2(fail_expr, _, _, hlds_goal(disj([]), GoalInfo), 0,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     goal_info_init(GoalInfo),
-    prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
+    svar_prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
 transform_goal_2(true_expr, _, _, hlds_goal(conj(plain_conj, []), GoalInfo), 0,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     goal_info_init(GoalInfo),
-    prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
+    svar_prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
 transform_goal_2(all_expr(Vars0, Goal0), Context, Renaming, Goal, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     % Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
@@ -720,20 +718,20 @@ transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
     BeforeSInfo = !.SInfo,
     rename_var_list(need_not_rename, Renaming, Vars0, Vars),
     rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
-    prepare_for_if_then_else_goal(StateVars, !VarSet, !SInfo),
+    svar_prepare_for_if_then_else_goal(StateVars, !VarSet, !SInfo),
     transform_goal(Cond0, Renaming, Cond, CondAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs),
-    finish_if_then_else_goal_condition(StateVars,
+    svar_finish_if_then_else_goal_condition(StateVars,
         BeforeSInfo, !.SInfo, AfterCondSInfo, !:SInfo),
     transform_goal(Then0, Renaming, Then1, ThenAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs),
-    finish_if_then_else_goal_then_goal(StateVars, BeforeSInfo, !SInfo),
+    svar_finish_if_then_else_goal_then_goal(StateVars, BeforeSInfo, !SInfo),
     AfterThenSInfo = !.SInfo,
     transform_goal(Else0, Renaming, Else1, ElseAdded, !VarSet, !ModuleInfo,
         !QualInfo, BeforeSInfo, !:SInfo, !Specs),
     NumAdded = CondAdded + ThenAdded + ElseAdded,
     goal_info_init(Context, GoalInfo),
-    finish_if_then_else(Context, Then1, Then, Else1, Else,
+    svar_finish_if_then_else(Context, Then1, Then, Else1, Else,
         BeforeSInfo, AfterCondSInfo, AfterThenSInfo, !SInfo, !VarSet).
 transform_goal_2(not_expr(SubGoal0), _, Renaming,
         hlds_goal(negation(SubGoal), GoalInfo),
@@ -742,7 +740,7 @@ transform_goal_2(not_expr(SubGoal0), _, Renaming,
     transform_goal(SubGoal0, Renaming, SubGoal, NumAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs),
     goal_info_init(GoalInfo),
-    finish_negation(BeforeSInfo, !SInfo).
+    svar_finish_negation(BeforeSInfo, !SInfo).
 transform_goal_2(conj_expr(A0, B0), _, Renaming, Goal, NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     get_rev_conj(A0, Renaming, [], R0, 0, NumAddedA,
@@ -767,7 +765,7 @@ transform_goal_2(disj_expr(A0, B0), Context, Renaming, Goal, NumAdded, !VarSet,
         !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs),
     get_disj(A0, Renaming, L0, L1, NumAddedB, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs),
-    finish_disjunction(Context, !.VarSet, L1, L, !:SInfo),
+    svar_finish_disjunction(Context, !.VarSet, L1, L, !:SInfo),
     goal_info_init(Context, GoalInfo),
     disj_list_to_goal(L, GoalInfo, Goal).
 transform_goal_2(implies_expr(P, Q), Context, Renaming, Goal, NumAdded,
@@ -792,11 +790,11 @@ transform_goal_2(equivalent_expr(P0, Q0), _, Renaming, Goal, NumAdded, !VarSet,
         !SInfo, !Specs),
     NumAdded = NumAddedP + NumAddedQ,
     Goal = hlds_goal(shorthand(bi_implication(P, Q)), GoalInfo),
-    finish_equivalence(BeforeSInfo, !SInfo).
+    svar_finish_equivalence(BeforeSInfo, !SInfo).
 transform_goal_2(event_expr(EventName, Args0), Context, Renaming, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     Args1 = expand_bang_state_var_args(Args0),
-    prepare_for_call(!SInfo),
+    svar_prepare_for_call(!SInfo),
     rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
     make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !Specs),
     list.length(HeadVars, Arity),
@@ -809,7 +807,7 @@ transform_goal_2(event_expr(EventName, Args0), Context, Renaming, Goal,
     insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
         Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs),
-    finish_call(!VarSet, !SInfo).
+    svar_finish_call(!VarSet, !SInfo).
 transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     Args1 = expand_bang_state_var_args(Args0),
@@ -817,12 +815,12 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
         Name = unqualified("\\="),
         Args1 = [LHS, RHS]
     ->
-        prepare_for_call(!SInfo),
+        svar_prepare_for_call(!SInfo),
         % `LHS \= RHS' is defined as `not (LHS = RHS)'
         transform_goal_2(not_expr(unify_expr(LHS, RHS, Purity) - Context),
             Context, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !Specs),
-        finish_call(!VarSet, !SInfo)
+        svar_finish_call(!VarSet, !SInfo)
     ;
         % check for a state var record assignment:
         % !Var ^ field := Value
@@ -830,9 +828,9 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
         Args1 = [LHS0, RHS0],
         LHS0 = functor(atom("^"), [StateVar0, Remainder], FieldListContext),
         StateVar0 = functor(atom("!"), Args @ [variable(_, _)],
-                StateVarContext)
+            StateVarContext)
     ->
-        prepare_for_call(!SInfo),
+        svar_prepare_for_call(!SInfo),
         % !Var ^ field := Value is defined as !:Var = !.Var ^ field := Value.
         LHS = functor(atom("!:"), Args, StateVarContext),
         StateVar = functor(atom("!."), Args, StateVarContext),
@@ -842,7 +840,7 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
         transform_goal_2(unify_expr(LHS, RHS, Purity),
             Context, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !Specs),
-        finish_call(!VarSet, !SInfo)
+        svar_finish_call(!VarSet, !SInfo)
     ;
         % check for a DCG field access goal:
         % get: Field =^ field
@@ -852,13 +850,13 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
         ; Operator = ":="
         )
     ->
-        prepare_for_call(!SInfo),
+        svar_prepare_for_call(!SInfo),
         rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args2),
         transform_dcg_record_syntax(Operator, Args2, Context, Goal, NumAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        finish_call(!VarSet, !SInfo)
+        svar_finish_call(!VarSet, !SInfo)
     ;
-        prepare_for_call(!SInfo),
+        svar_prepare_for_call(!SInfo),
         rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
         make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !Specs),
         list.length(Args, Arity),
@@ -896,7 +894,7 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
         insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
             Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !Specs),
-        finish_call(!VarSet, !SInfo)
+        svar_finish_call(!VarSet, !SInfo)
     ).
 transform_goal_2(unify_expr(A0, B0, Purity), Context, Renaming, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
@@ -913,10 +911,10 @@ transform_goal_2(unify_expr(A0, B0, Purity), Context, Renaming, Goal,
         Goal = true_goal,
         NumAdded = 0
     ;
-        prepare_for_call(!SInfo),
+        svar_prepare_for_call(!SInfo),
         unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
             NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        finish_call(!VarSet, !SInfo)
+        svar_finish_call(!VarSet, !SInfo)
     ).
 
 :- pred extract_trace_mutable_var(prog_context::in, prog_varset::in,
@@ -980,7 +978,7 @@ transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Context, Renaming,
 convert_dot_state_vars(_Context, [], [], !VarSet, !SInfo, !Specs).
 convert_dot_state_vars(Context, [Dot0 | Dots0], [Dot | Dots],
         !VarSet, !SInfo, !Specs) :-
-    dot(Context, Dot0, Dot, !VarSet, !SInfo, !Specs),
+    svar_dot(Context, Dot0, Dot, !VarSet, !SInfo, !Specs),
     convert_dot_state_vars(Context, Dots0, Dots, !VarSet, !SInfo, !Specs).
 
 :- pred convert_colon_state_vars(prog_context::in,
@@ -991,7 +989,7 @@ convert_dot_state_vars(Context, [Dot0 | Dots0], [Dot | Dots],
 convert_colon_state_vars(_Context, [], [], !VarSet, !SInfo, !Specs).
 convert_colon_state_vars(Context, [Colon0 | Colons0], [Colon | Colons],
         !VarSet, !SInfo, !Specs) :-
-    colon(Context, Colon0, Colon, !VarSet, !SInfo, !Specs),
+    svar_colon(Context, Colon0, Colon, !VarSet, !SInfo, !Specs),
     convert_colon_state_vars(Context, Colons0, Colons, !VarSet,
         !SInfo, !Specs).
 

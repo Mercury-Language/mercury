@@ -642,19 +642,20 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         (
             MaybeVarsCond = ok3(Vars, StateVars, CondParseTree),
             BeforeSInfo = !.SInfo,
-            prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
+            svar_prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
 
             map.init(EmptySubst),
             transform_goal(CondParseTree, EmptySubst, CondGoal, CondAdded,
                 !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
 
-            finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
+            svar_finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
 
             do_unravel_unification(term.variable(X, Context), ThenTerm,
                 Context, MainContext, SubContext, Purity, ThenGoal, no,
                 ThenAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
 
-            finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
+            svar_finish_if_then_else_expr_then_goal(StateVars,
+                BeforeSInfo, !SInfo),
 
             do_unravel_unification(term.variable(X, Context), ElseTerm,
                 Context, MainContext, SubContext, Purity, ElseGoal, no,
@@ -883,7 +884,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
         Goal = true_goal,
         NumAdded = 0
     ;
-        prepare_for_lambda(!SInfo),
+        svar_prepare_for_lambda(!SInfo),
         substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !Specs),
 
         list.length(Args, NumArgs),
@@ -926,14 +927,14 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             Context, ArgContext, HeadAfter0, HeadAfter, OutputAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
 
-        prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
+        svar_prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
 
         transform_goal(ParsedGoal, Substitution, Body, BodyAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         NumAdded = NonOutputAdded + OutputAdded + BodyAdded,
 
         % Fix up any state variable unifications.
-        finish_goals(Context, FinalSVarMap, [HeadBefore, Body, HeadAfter],
+        svar_finish_goals(Context, FinalSVarMap, [HeadBefore, Body, HeadAfter],
             HLDS_Goal0, !.SInfo),
 
         % Figure out which variables we need to explicitly existentially
