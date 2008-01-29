@@ -445,7 +445,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
         = Sharing :-
     (
         Unification = construct(Var, ConsId, Args0, _, _, _, _),
-        ( var_has_unsharable_type(ModuleInfo, ProcInfo, Var) ->
+        ( var_has_non_reusable_type(ModuleInfo, ProcInfo, Var) ->
             Sharing = sharing_as_init
         ;
             list.takewhile(is_introduced_typeinfo_arg(ProcInfo), Args0,
@@ -475,7 +475,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
         )
     ;
         Unification = assign(X, Y),
-        ( var_has_unsharable_type(ModuleInfo, ProcInfo, X) ->
+        ( var_has_non_reusable_type(ModuleInfo, ProcInfo, X) ->
             Sharing = sharing_as_init
         ;
             new_entry(ModuleInfo, ProcInfo,
@@ -512,41 +512,13 @@ number_args(Args, NumberedArgs) :-
     sharing_set::in, sharing_set::out) is det.
 
 add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :-
-    ( var_has_unsharable_type(ModuleInfo, ProcInfo, Arg) ->
+    ( var_has_non_reusable_type(ModuleInfo, ProcInfo, Arg) ->
         true
     ;
         Data1 = datastruct_init_with_pos(Var, ConsId, N),
         Data2 = datastruct_init(Arg),
         new_entry(ModuleInfo, ProcInfo, Data1 - Data2, !Sharing)
     ).
-
-:- pred var_has_unsharable_type(module_info::in, proc_info::in,
-    prog_var::in) is semidet.
-
-var_has_unsharable_type(ModuleInfo, ProcInfo, Var):-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
-    TypeCat = classify_type(ModuleInfo, Type),
-    type_category_is_sharable(TypeCat) = no.
-
-:- func type_category_is_sharable(type_category) = bool.
-
-type_category_is_sharable(type_cat_int) = no.
-type_category_is_sharable(type_cat_char) = no.
-type_category_is_sharable(type_cat_string) = no.
-type_category_is_sharable(type_cat_float) = no.
-type_category_is_sharable(type_cat_higher_order) = no.
-type_category_is_sharable(type_cat_tuple) = yes.
-type_category_is_sharable(type_cat_enum) = no.
-type_category_is_sharable(type_cat_foreign_enum) = no.
-type_category_is_sharable(type_cat_dummy) = no.
-type_category_is_sharable(type_cat_variable) = no.
-type_category_is_sharable(type_cat_type_info) = no.
-type_category_is_sharable(type_cat_type_ctor_info) = no.
-type_category_is_sharable(type_cat_typeclass_info) = no.
-type_category_is_sharable(type_cat_base_typeclass_info) = no.
-type_category_is_sharable(type_cat_void) = no.
-type_category_is_sharable(type_cat_user_ctor) = yes.
 
     % When two positions within the constructed term refer to the same variable,
     % this must be recorded as an extra sharing pair.

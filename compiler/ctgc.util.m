@@ -52,11 +52,23 @@
 :- func get_type_substitution(module_info, pred_proc_id, list(mer_type),
     tvarset, head_type_params) = tsubst.
 
+    % var_has_non_reusable_type(ModuleInfo, ProcInfo, Var).
+    %
+    % Succeed iff Var is of a type for which we don't support structure reuse.
+    %
+:- pred var_has_non_reusable_type(module_info::in, proc_info::in,
+    prog_var::in) is semidet.
+
+    % Succeed iff type is one for which we support structure reuse.
+    %
+:- pred type_is_reusable(module_info::in, mer_type::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -160,6 +172,36 @@ reverse_renaming(RevSubst, K0, V0, !Acc) :-
     apply_variable_renaming_to_tvar(RevSubst, K0, K),
     apply_variable_renaming_to_type(RevSubst, V0, V),
     svmap.det_insert(K, V, !Acc).
+
+%-----------------------------------------------------------------------------%
+
+var_has_non_reusable_type(ModuleInfo, ProcInfo, Var):-
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    map.lookup(VarTypes, Var, Type),
+    not type_is_reusable(ModuleInfo, Type).
+
+type_is_reusable(ModuleInfo, Type) :-
+    TypeCat = classify_type(ModuleInfo, Type),
+    type_category_is_reusable(TypeCat) = yes.
+
+:- func type_category_is_reusable(type_category) = bool.
+
+type_category_is_reusable(type_cat_int) = no.
+type_category_is_reusable(type_cat_char) = no.
+type_category_is_reusable(type_cat_string) = no.
+type_category_is_reusable(type_cat_float) = no.
+type_category_is_reusable(type_cat_higher_order) = no.
+type_category_is_reusable(type_cat_tuple) = yes.
+type_category_is_reusable(type_cat_enum) = no.
+type_category_is_reusable(type_cat_foreign_enum) = no.
+type_category_is_reusable(type_cat_dummy) = no.
+type_category_is_reusable(type_cat_variable) = no.
+type_category_is_reusable(type_cat_type_info) = no.
+type_category_is_reusable(type_cat_type_ctor_info) = no.
+type_category_is_reusable(type_cat_typeclass_info) = no.
+type_category_is_reusable(type_cat_base_typeclass_info) = no.
+type_category_is_reusable(type_cat_void) = no.
+type_category_is_reusable(type_cat_user_ctor) = yes.
 
 %-----------------------------------------------------------------------------%
 

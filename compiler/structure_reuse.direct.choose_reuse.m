@@ -791,7 +791,11 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         GoalExpr = unify(_, _, _, Unification, _),
         (
             Unification = construct(Var, Cons, Args, _, _, _, _),
-                % Is the construction still looking for reuse-possibilities...
+
+            map.lookup(Background ^ vartypes, Var, VarType),
+            type_is_reusable(Background ^ module_info, VarType),
+
+            % Is the construction still looking for reuse-possibilities...
             empty_reuse_description(goal_info_get_reuse(GoalInfo))
 
         ->
