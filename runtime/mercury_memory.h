@@ -153,7 +153,7 @@ extern	void	*MR_realloc(void *old, size_t n);
 **	ptr must have be a pointer to space allocated by the garbage collector.
 **	data is a pointer to some user-defined data.
 **	XXX currently this only works with the Boehm collector, i.e. in .gc
-**          grades, it is a non .gc grades.
+**          grades, it is a no-op in non .gc grades.
 **
 **      XXX this interface is subject to change.
 */
