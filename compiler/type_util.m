@@ -231,8 +231,12 @@
 :- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in) is semidet.
 
     % Check whether a type is a no_tag type (i.e. one with only one
-    % constructor, and whose one constructor has only one argument),
-    % and if so, return its constructor symbol and argument type.
+    % constructor, and whose one constructor has only one argument).
+    %
+:- pred type_is_no_tag_type(module_info::in, mer_type::in) is semidet.
+
+    % As above, but return the constructor symbol and argument type on
+    % success.
     %
 :- pred type_is_no_tag_type(module_info::in, mer_type::in, sym_name::out,
     mer_type::out) is semidet.
@@ -969,6 +973,9 @@ is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
     ExistQVars = [_ | _].
 
 %-----------------------------------------------------------------------------%
+
+type_is_no_tag_type(ModuleInfo, Type) :-
+    type_is_no_tag_type(ModuleInfo, Type, _Ctor, _ArgType).
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
     type_to_ctor_and_args(Type, TypeCtor, TypeArgs),

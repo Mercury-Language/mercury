@@ -32,6 +32,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.ctgc.datastruct.
@@ -187,6 +188,11 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             % arity different from 0. 
             ConsId = cons(_, Arity),
             Arity \= 0,
+
+            % No-tag values don't have a cell to reuse.
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            map.lookup(VarTypes, Var, Type),
+            \+ type_is_no_tag_type(ModuleInfo, Type),
 
             % Check if the top cell datastructure of Var is not live.
             % If Sharing is top, then everything should automatically
