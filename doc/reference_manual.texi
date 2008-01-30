@@ -1975,7 +1975,7 @@ It is an error to declare the same predicate or function twice.
 
 There must be at least one clause defined for each declared predicate or
 function, except for those defined using the foreign language interface
-(@pxref{Foreign language interface} and @ref{C interface}).
+(@pxref{Foreign language interface}).
 However, Mercury implementations are permitted to provide a method
 of processing Mercury programs in which such errors are not reported
 until and unless the predicate or function is actually called.
@@ -6245,21 +6245,13 @@ fair search rule; and so forth.
   				       foreign language.
 @end menu
 
-This chapter documents the new foreign language interface.
-This is intended as a successor to the existing C interface for Mercury,
-which is documented in @ref{C interface}.
-However, the new foreign language interface is not yet complete
-(it does not yet include equivalents to
-@samp{pragma import} and @samp{pragma export} in the C interface)
-and is not as well tested as the existing C interface.
-Furthermore, it is possible that incompatible changes will be needed in
-future versions of this interface.
-
-In view of this, we currently support both the old C interface
-and the new foreign language interface.  We advise people writing new
-code to use the new foreign language interface, but existing code
-that uses the old C interface can continue to do so, and we do not
-recommended rewriting such code at this point in time.
+This chapter documents the foreign language interface.
+The current implementation also supports an old C interface for
+Mercury, which is documented in @ref{C interface}.
+Note that the old C interface is deprecated and will be removed in a
+future version.
+We recommend that code written using the old interface be updated to
+use the interface described in this chapter instead.
 
 @node Calling foreign code from Mercury
 @section Calling foreign code from Mercury
@@ -6719,7 +6711,7 @@ MR_list_cons(head,tail)    /* construct a list with the given head and tail */
 @end example
 
 Note that the use of these macros is subject to some caveats
-(@pxref{Memory management}).
+(@pxref{Memory management for C}).
 
 @node IL and C# data passing conventions
 @subsection IL and C# data passing conventions
@@ -7276,6 +7268,8 @@ Use the string @code{"Erlang"} to set the foreign language to Erlang.
 * Using pragma foreign_export for C      :: Calling Mercury code from C
 * Using pragma foreign_decl for C 	 :: Including C declarations in Mercury
 * Using pragma foreign_code for C 	 :: Including C code in Mercury
+* Memory management for C                :: Caveats about passing dynamically
+                                            allocated memory to or from C.
 @end menu
 
 @node Using pragma foreign_type for C
@@ -7316,7 +7310,7 @@ defined using @samp{pragma foreign_proc},
 it will be passed to the foreign_proc's foreign language code
 as @var{CForeignType}.
 
-Furthermore, any Mercury procedure exported with @samp{pragma export}
+Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
 will use @var{CForeignType} as the type for any
 parameters whose Mercury type is @var{MercuryTypeName}.
 
@@ -7506,10 +7500,10 @@ but you should not rely on this, as the set of headers which Mercury
 automatically includes is subject to change.
 
 If a Mercury predicate or function exported using 
-a @samp{pragma export} declaration is to be used within a
+a @samp{pragma foreign_export} declaration is to be used within a
 @samp{:- pragma foreign_code} or @samp{:- pragma foreign_proc}
 declaration the header file for the module containing the
-@samp{pragma export} declaration should be included using a
+@samp{pragma foreign_export} declaration should be included using a
 @samp{pragma foreign_import_module} declaration, for example 
 
 @example
@@ -7536,6 +7530,44 @@ For example,
 @end example
 
 Such code is copied verbatim into the generated C file.
+
+@node Memory management for C
+@subsubsection Memory management for C
+
+Passing pointers to dynamically-allocated memory from Mercury to code
+written in other languages, or vice versa, is in general
+implementation-dependent.
+
+The current Mercury implementation supports two different methods of memory
+management: conservative garbage collection, or no garbage collection.
+(With the latter method, heap storage is reclaimed only on backtracking.)
+
+Conservative garbage collection makes inter-language calls simplest.
+When using conservative garbage collection, heap storage is reclaimed
+automatically.  Pointers to dynamically-allocated memory can be passed
+to and from C without taking any special precautions.
+
+When using no garbage collection, you must be careful not to retain
+pointers to memory on the Mercury heap after Mercury has backtracked
+to before the point where that memory was allocated.
+You must also avoid the use of the macros
+@code{MR_list_empty()} and @code{MR_list_cons()}.
+(The reason for this is that they may access Mercury's @samp{MR_hp} register,
+which might not be valid in C code.  Using them in the bodies of
+procedures defined using @samp{pragma foreign_proc} with
+@samp{will_not_call_mercury} would probably work, but we don't advise it.)
+Instead, you can write Mercury functions to perform these actions
+and use @samp{pragma foreign_export} to access them from C.
+This alternative method also works with conservative garbage collection.
+
+Future Mercury implementations may use non-conservative methods
+of garbage collection.  For such implementations, it will be necessary
+to explicitly register pointers passed to C with the garbage collector.
+The mechanism for doing this has not yet been decided on.
+It would be desirable to provide a single memory management interface
+for use when interfacing with other languages that can work for all
+methods of memory management, but more implementation experience is
+needed before we can formulate such an interface.
 
 @c ----------------------------------------------------------------------------
 
@@ -7683,7 +7715,7 @@ defined using @samp{pragma foreign_proc} for any of the .NET CLR
 languages, it will be passed to the foreign_proc's foreign language code
 as @var{DotNetForeignType}.
 
-Furthermore, any Mercury procedure exported with @samp{pragma export}
+Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
 will use @var{DotNetForeignType} as the .NET CLR parameter type for
 parameters whose Mercury type is @var{MercuryTypeName}.
 
@@ -7875,8 +7907,8 @@ The effect of this declaration is that Mercury values of type
 @var{MercuryTypeName} will be passed to and from Java foreign_procs
 as having type @var{JavaType}.
 
-@c XXX `pragma export' not supported yet for Java
-@c Furthermore, any Mercury procedure exported with @samp{pragma export}
+@c XXX `pragma foreign_export' not supported yet for Java
+@c Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
 @c will use @var{JavaType} as the type for any
 @c parameters whose Mercury type is @var{MercuryTypeName}.
 
@@ -8146,20 +8178,12 @@ For example:
                                         Mercury and C.
 * Using C pointers::                    Maintaining a reference to C data
                                         structures in Mercury code.
-* Memory management::                   Caveats about passing dynamically
-                                        allocated memory to or from C.
-* Trailing::                            Undoing side-effects on backtracking.
 @end menu
 
 This chapter documents the original C interface.
-In the long term we are planning to phase out support for this interface
-in favour of the new foreign language interface documented in
-@ref{Foreign language interface}.
-
-The Mercury distribution includes a number of examples of the
-use of the C interface that show how to interface C++ with Mercury
-and how to set up @samp{Mmake} files to automate the build process.
-See the @samp{samples/c_interface} directory in the Mercury distribution.
+It has been deprecated in favour of the of the new foreign language interface
+documented in @ref{Foreign language interface}.
+Support for this interface will be removed in a future version.
 
 @node Calling C code from Mercury
 @section Calling C code from Mercury
@@ -8780,437 +8804,10 @@ between C functions which are called from Mercury.  For example:
         "Structure = perform_calculation(Value, Structure0);").
 @end example
 
-@node Memory management
-@section Memory management
+We strong recommend the use of @samp{pragma foreign_type} instead of
+@code{c_pointer} as the use of @samp{pragma foreign_type} results in
+more type-safe code.  (@pxref{Using pragma foreign_type for C}.)
 
-Passing pointers to dynamically-allocated memory from Mercury to code
-written in other languages, or vice versa, is in general
-implementation-dependent.
-
-The current Mercury implementation supports two different methods of memory
-management: conservative garbage collection, or no garbage collection.
-(With the latter method, heap storage is reclaimed only on backtracking.)
-
-Conservative garbage collection makes inter-language calls simplest.
-When using conservative garbage collection, heap storage is reclaimed
-automatically.  Pointers to dynamically-allocated memory can be passed
-to and from C without taking any special precautions.
-
-When using no garbage collection, you must be careful not to retain
-pointers to memory on the Mercury heap after Mercury has backtracked
-to before the point where that memory was allocated.
-You must also avoid the use of the macros
-@code{MR_list_empty()} and @code{MR_list_cons()}.
-(The reason for this is that they may access Mercury's @samp{MR_hp} register,
-which might not be valid in C code.  Using them in the bodies of
-procedures defined using @samp{pragma c_code} with
-@samp{will_not_call_mercury} would probably work, but we don't advise it.)
-Instead, you can write Mercury functions to perform these actions
-and use @samp{pragma export} to access them from C.
-This alternative method also works with conservative garbage collection.
-
-Future Mercury implementations may use non-conservative methods
-of garbage collection.  For such implementations, it will be necessary
-to explicitly register pointers passed to C with the garbage collector.
-The mechanism for doing this has not yet been decided on.
-It would be desirable to provide a single memory management interface
-for use when interfacing with other languages that can work for all
-methods of memory management, but more implementation experience is
-needed before we can formulate such an interface.
-
-@node Trailing
-@section Trailing
-
-In certain compilation grades (see the ``Compilation model options''
-section of the Mercury User's Guide), the University of Melbourne
-Mercury implementation supports trailing.  Trailing is a means
-of having side-effects, such as destructive updates to data structures,
-undone on backtracking.  The basic idea is that during forward
-execution, whenever you perform a destructive modification to
-a data structure that may still be live on backtracking,
-you should record whatever information is necessary to restore it
-on a stack-like data structure called the ``trail''.  Then, if
-a computation fails, and execution backtracks to before
-those updates were performed, the Mercury runtime engine will
-traverse the trail back to the most recent choice point,
-undoing all those updates.
-
-The interface used is a set of C functions (which are actually
-implemented as macros) and types.  Typically these will be
-called from C code within @samp{pragma foreign_proc} or
-@samp{pragma foreign_code} declarations in Mercury code.
-
-For an example of the use of this interface, see the module
-@file{extras/trailed_update/tr_array.m} in the Mercury extras distribution.
-
-@menu
-* Choice points::
-* Value trailing::
-* Function trailing::
-* Delayed goals and floundering::
-* Avoiding redundant trailing::
-@end menu
-
-@node Choice points
-@subsection Choice points
-
-A ``choice point'' is a point in the computation to
-which execution might backtrack when a goal fails or
-throws an exception.  The ``current''
-choice point is the one that was most recently
-encountered; that is also the one to which execution
-will branch if the current computation fails.
-
-When you trail an update, the Mercury engine will ensure that if
-execution ever backtracks to the choice point that was current
-at the time of trailing, then the update will be undone.
-
-If the Mercury compiler determines that it will never
-need to backtrack to a particular choice point, then it will
-``prune'' away that choice point.  If a choice point is pruned,
-the trail entries for those updates will not necessarily be discarded,
-because in general they may still be necessary in case we backtrack
-to a prior choice point.
-
-@node Value trailing
-@subsection Value trailing
-
-The simplest form of trailing is value trailing.
-This allows you to trail updates to memory and have
-the Mercury runtime engine automatically undo them
-on backtracking.
-
-@table @b
-@item @bullet{} @code{MR_trail_value()}
-Prototype:
-@example
-void MR_trail_value(MR_Word *@var{address}, MR_Word @var{value});
-@end example
-
-Ensures that if future execution backtracks to the
-current choice point, then @var{value} will be placed in @var{address}.
-@sp 1
-@item @bullet{} @code{MR_trail_current_value()}
-Prototype:
-@example
-void MR_trail_current_value(MR_Word *@var{address});
-@end example
-
-Ensures that if future execution backtracks to the
-current choice point, the value currently in @var{address}
-will be restored.
-
-@samp{MR_trail_current_value(@var{address})} is equivalent to
-@samp{MR_trail_value(@var{address}, *@var{address})}.
-
-@end table
-
-Note that @var{address} must be word aligned for both
-both @code{MR_trail_current_value()} and @code{MR_trail_value()}.
-(The address of Mercury data structures that have been passed to
-C via the foreign language interface are guaranteed to be appropriately
-aligned.)
-
-@node Function trailing
-@subsection Function trailing
-
-For more complicated uses of trailing, you can store the address
-of a C function on the trail and have the Mercury runtime call your
-function back whenever future execution backtracks to the current choice point
-or earlier, or whenever that choice point is pruned, because execution
-commits to never backtracking over that point,
-or whenever that choice point is garbage collected.
-
-Note the garbage collector in the current Mercury implementation
-does not garbage-collect the trail; this case is mentioned
-only so that we can cater for possible future extensions.
-
-@table @b
-@item @bullet{} @code{MR_trail_function()}
-Prototype:
-@example
-typedef enum @{
-        MR_undo,
-        MR_exception,
-        MR_retry,
-        MR_commit,
-        MR_solve,
-        MR_gc
-@} MR_untrail_reason;
-
-void MR_trail_function(
-        void (*@var{untrail_func})(void *, MR_untrail_reason),
-        void *@var{value}
-);
-@end example
-@noindent
-A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
-adds an entry to the function trail.
-The Mercury implementation ensures that
-if future execution ever backtracks to current choicepoint,
-or backtracks past the current choicepoint to some earlier choicepoint,
-then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
-where @var{reason} will be @samp{MR_undo} if the backtracking was due to
-a goal failing, @samp{MR_exception} if the backtracking was due to
-a goal throwing an exception, or @samp{MR_retry} if the backtracking
-was due to the use of the ``retry'' command in @samp{mdb}, the Mercury debugger,
-or any similar user request in a debugger.
-The Mercury implementation also ensures that if the current choice point is
-pruned because execution commits to never backtracking to it,
-then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
-It also ensures that if execution requires that the current goal be
-solvable, then @code{(*@var{untrail_func})(@var{value}, MR_solve)}
-will be called.  This happens in calls to @code{solutions/2}, for example.
-(@code{MR_commit} is used for ``hard'' commits, i.e.@: when we commit
-to a solution and prune away the alternative solutions; @code{MR_solve}
-is used for ``soft'' commits, i.e.@: when we must commit to a solution
-but do not prune away all the alternatives.)
-
-MR_gc is currently not used ---
-it is reserved for future use.
-
-@end table
-
-Typically if the @var{untrail_func} is called with @var{reason} being
-@samp{MR_undo}, @samp{MR_exception}, or @samp{MR_retry}, then it should undo
-the effects of the update(s) specified by @var{value}, and then free any
-resources associated with that trail entry.  If it is called with @var{reason}
-being @samp{MR_commit} or @samp{MR_solve}, then it should not undo the
-update(s); instead, it may check for floundering (see the next section).
-In the @samp{MR_commit} case it may, in some cases, be possible to
-also free resources associated with the trail entry.
-If it is called with anything else (such as @samp{MR_gc}),
-then it should probably abort execution with an error message.
-
-Note that the address of the C function passed as the first argument of
-@code{MR_trail_function()} must be word aligned.
-
-@node Delayed goals and floundering
-@subsection Delayed goals and floundering
-
-Another use for the function trail is check for floundering
-in the presence of delayed goals.
-
-Often, when implementing certain kinds of constraint solvers, it may
-not be possible to actually solve all of the constraints at the time
-they are added.  Instead, it may be necessary to simply delay their
-execution until a later time, in the hope the constraints may become
-solvable when more information is available.  If you do implement a
-constraint solver with these properties, then at certain points in
-the computation --- for example, after executing a negated goal --- it
-is important for the system to check that their are no outstanding
-delayed goals which might cause failure, before execution commits
-to this execution path.  If there are any such delayed goals, the
-computation is said to ``flounder''.  If the check for floundering was
-omitted, then it could lead to unsound behaviour,  such as a negation
-failing even though logically speaking it ought to have succeeded.
-
-The check for floundering can be implemented using the function trail,
-by simply calling @samp{MR_trail_function()} to add a function trail
-entry whenever you create a delayed goal, and putting the appropriate
-check for floundering in the @samp{MR_commit} and @samp{MR_solve} cases
-of your function.
-The Mercury extras distribution includes an example of this:
-see the @samp{ML_var_untrail_func()} function in the file
-@samp{extras/trailed_update/var.m}.)
-If your function does detect floundering, then it should print
-an error message and then abort execution.
-
-@node Avoiding redundant trailing
-@subsection Avoiding redundant trailing
-
-If a mutable data structure is updated multiple times, and each update
-is recorded on the trail using the functions described above, then
-some of this trailing may be redundant.  It is generally not necessary
-to record enough information to recover the original state of the
-data structure for @emph{every} update on the trail; instead, it is
-enough to record the original state of each updated data structure
-just once for each choice point occurring after the data structure
-is allocated, rather than once for each update.
-
-The functions described below provide a means to avoid
-redundant trailing.
-
-@table @b
-@item @bullet{} @code{MR_ChoicepointId}
-Declaration:
-@example
-typedef @dots{} MR_ChoicepointId;
-@end example
-
-The type @code{MR_ChoicepointId} is an abstract type used
-to hold the identity of a choice point.  Values of this
-type can be compared using C's @samp{==} operator
-or using @samp{MR_choicepoint_newer()}.
-@sp 1
-@item @bullet{} @code{MR_current_choicepoint_id()}
-Prototype:
-@example
-MR_ChoicepointId MR_current_choicepoint_id(void);
-@end example
-
-@code{MR_current_choicepoint_id()} returns a value indicating
-the identity of the most recent choice point; that is, the
-point to which execution would backtrack if the current computation
-failed.
-The value remains meaningful if the choicepoint is pruned
-away by a commit, but is not meaningful after backtracking
-past the point where the choicepoint was created (since
-choicepoint ids may be reused after backtracking).
-@sp 1
-@item @bullet{} @code{MR_null_choicepoint_id()}
-Prototype:
-@example
-MR_ChoicepointId MR_null_choicepoint_id(void);
-@end example
-
-@code{MR_null_choicepoint_id()} returns a ``null'' value that is
-distinct from any value ever returned by @code{MR_current_choicepoint_id}.
-(Note that @code{MR_null_choicepoint_id()}
-is a macro that is guaranteed to be suitable for use as a
-static initializer, so that it can for example be used to
-provide the initial value of a C global variable.)
-@sp 1
-@item @bullet{} @code{MR_choicepoint_newer()}
-Prototype:
-@example
-bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
-@end example
-
-@code{MR_choicepoint_newer(x, y)} true iff the choicepoint indicated by
-@samp{x} is newer than (i.e.@: was created more recently than) the
-choicepoint indicated by @samp{y}.  The null ChoicepointId is considered
-older than any non-null ChoicepointId.  If either of the choice points
-have been backtracked over, the behaviour is undefined.
-
-@end table
-
-The way these functions are generally used is as follows.
-When you create a mutable data structure, you should call
-@code{MR_current_choicepoint_id()} and save the value it returns
-as a @samp{prev_choicepoint} field in your data structure.
-When you are about to modify your mutable data structure,
-you can then call @code{MR_current_choicepoint_id()} again and
-compare the result from that call with the value saved in
-the @samp{prev_choicepoint} field in the data structure
-using @code{MR_choicepoint_newer()}.
-If the current choicepoint is newer, then you must trail the update,
-and update the @samp{prev_choicepoint} field with the new value;
-furthermore, you must also take care that on backtracking the
-previous value of the @samp{prev_choicepoint} field in your data
-structure is restored to its previous value, by trailing that update too.
-But if @code{MR_current_choice_id()} is not newer than the
-@code{prev_choicepoint} field, then you can safely perform
-the update to your data structure without trailing it.
-
-If your mutable data structure is a C global variable,
-then you can use @code{MR_null_choicepoint_id()}
-for the initial value of the @samp{prev_choicepoint} field.
-If on the other hand your mutable data structure
-is created by a predicate or function that uses tabled evaluation
-(@pxref{Tabled evaluation}),
-then you @emph{should} use @code{MR_null_choicepoint_id()}
-for the initial value of the field.
-Doing so will ensure that the data will be reset to its initial value
-if execution backtracks to a point before
-the mutable data structure was created,
-which is important because this copy of the mutable data structure
-will be tabled and will therefore be produced again
-if later execution attempts to create another instance of it.
-
-For an example of avoiding redundant trailing, see the sample module below.
-
-Note that there is a cost to this --- you have to include
-an extra field in your data structure for each part of
-the data structure which you might update, you
-need to perform a test for each update to decide whether
-or not to trail it, and if you do need to trail the update,
-then you have an extra field that you need to trail.
-Whether or not the benefits from avoiding redundant trailing
-outweigh these costs will depend on your application.
-
-@example
-:- module trailing_example.
-:- interface.
-
-:- type int_ref.
-
-    % Create a new int_ref with the specified value.
-    %
-:- pred new_int_ref(int_ref::uo, int::in) is det.
-
-    % update_int_ref(Ref0, Ref, OldVal, NewVal).
-    % Ref0 has value OldVal and Ref has value NewVal.
-    %
-:- pred update_int_ref(int_ref::mdi, int_ref::muo, int::out, int::in)
-    is det.
-
-:- implementation.
-
-:- pragma foreign_decl("C", "
-
-typedef struct @{
-    MR_ChoicepointId prev_choicepoint;
-    MR_Integer data;
-@} C_IntRef;
-
-").
-
-:- pragma foreign_type("C", int_ref, "C_IntRef *").
-
-:- pragma foreign_proc("C",
-    new_int_ref(Ref::uo, Value::in),
-    [will_not_call_mercury, promise_pure],
-"
-    C_Intref *x = malloc(sizeof(C_IntRef));
-    x->prev_choicepoint = MR_current_choicepoint_id();
-    x->data = Value;
-    Ref = x;
-").
-
-:- pragma foreign_proc("C",
-    update_int_ref(Ref0::mdi, Ref::muo, OldValue::out, NewValue::in),
-    [will_not_call_mercury, promise_pure],
-"
-    C_IntRef *x = Ref0;
-    OldValue = x->data;
-
-    /* Check whether we need to trail this update. */
-    if (MR_choicepoint_newer(MR_current_choicepoint_id(),
-        x->prev_choicepoint))
-    @{
-        /*
-        ** Trail both x->data and x->prev_choicepoint,
-        ** since we're about to update them both.
-        */
-        assert(sizeof(x->data) == sizeof(MR_Word));
-        assert(sizeof(x->prev_choicepoint) == sizeof(MR_Word));
-        MR_trail_current_value((MR_Word *)&x->data);
-        MR_trail_current_value((MR_Word *)&x->prev_choicepoint);
-
-        /*
-        ** Update x->prev_choicepoint to indicate that
-        ** x->data's previous value has been trailed
-        ** at this choice point.
-        */
-        x->prev_choicepoint = MR_current_choicepoint_id();
-    @}
-    x->data = NewValue;
-    Ref = Ref0;
-").
-
-@end example
-
-@c @item @code{void MR_untrail_to(MR_TrailEntry *@var{old_trail_ptr}, MR_untrail_reason @var{reason});}
-@c 
-@c Apply all the trail entries between @samp{MR_trail_ptr} and
-@c @var{old_trail_ptr}, using the specified @var{reason}.
-@c 
-@c This function is called by the Mercury engine after backtracking,
-@c after a commit, or after catching an exception.
-@c There is probably little need for user code to call this function,
-@c but it might be needed if you're doing certain low-level things
-@c such as implementing your own exception handling.
 
 @node Impurity
 @chapter Impurity declarations
@@ -10023,6 +9620,7 @@ extensions to the Mercury language:
 * Feature sets::                Support for checking that optional features of
                                 the implementation are supported at compile
                                 time.
+* Trailing::                    Undoing side-effects on backtracking.
 
 @end menu
 @c XXX The `reserved tag' pragma is not documented because it is intended to
@@ -10528,7 +10126,7 @@ This feature specifies that the compilation model must support memoisation
 (see @ref{Tabled evaluation}).
 
 @item @samp{parallel_conj}
-This feature specifies that the compilation model must suppport
+This feature specifies that the compilation model must support
 parallel execution of conjunctions.
 This feature cannot be specified together with the @samp{trailing}
 feature.
@@ -10565,6 +10163,400 @@ it occurs; in particular it does not affect any sub-modules
 If a module contains multiple @samp{pragma require_feature_set} declarations
 then the implementation should emit an error if any of them specifies a
 feature that is not supported by the compilation model.
+
+@node Trailing
+@section Trailing
+
+In certain compilation grades (see the ``Compilation model options''
+section of the Mercury User's Guide), the University of Melbourne
+Mercury implementation supports trailing.  Trailing is a means
+of having side-effects, such as destructive updates to data structures,
+undone on backtracking.  The basic idea is that during forward
+execution, whenever you perform a destructive modification to
+a data structure that may still be live on backtracking,
+you should record whatever information is necessary to restore it
+on a stack-like data structure called the ``trail''.  Then, if
+a computation fails, and execution backtracks to before
+those updates were performed, the Mercury runtime engine will
+traverse the trail back to the most recent choice point,
+undoing all those updates.
+
+The interface used is a set of C functions (which are actually
+implemented as macros) and types.  Typically these will be
+called from C code within @samp{pragma foreign_proc} or
+@samp{pragma foreign_code} declarations in Mercury code.
+
+For an example of the use of this interface, see the module
+@file{extras/trailed_update/tr_array.m} in the Mercury extras distribution.
+
+@menu
+* Choice points::
+* Value trailing::
+* Function trailing::
+* Delayed goals and floundering::
+* Avoiding redundant trailing::
+@end menu
+
+@node Choice points
+@subsection Choice points
+
+A ``choice point'' is a point in the computation to
+which execution might backtrack when a goal fails or
+throws an exception.  The ``current''
+choice point is the one that was most recently
+encountered; that is also the one to which execution
+will branch if the current computation fails.
+
+When you trail an update, the Mercury engine will ensure that if
+execution ever backtracks to the choice point that was current
+at the time of trailing, then the update will be undone.
+
+If the Mercury compiler determines that it will never
+need to backtrack to a particular choice point, then it will
+``prune'' away that choice point.  If a choice point is pruned,
+the trail entries for those updates will not necessarily be discarded,
+because in general they may still be necessary in case we backtrack
+to a prior choice point.
+
+@node Value trailing
+@subsection Value trailing
+
+The simplest form of trailing is value trailing.
+This allows you to trail updates to memory and have
+the Mercury runtime engine automatically undo them
+on backtracking.
+
+@table @b
+@item @bullet{} @code{MR_trail_value()}
+Prototype:
+@example
+void MR_trail_value(MR_Word *@var{address}, MR_Word @var{value});
+@end example
+
+Ensures that if future execution backtracks to the
+current choice point, then @var{value} will be placed in @var{address}.
+@sp 1
+@item @bullet{} @code{MR_trail_current_value()}
+Prototype:
+@example
+void MR_trail_current_value(MR_Word *@var{address});
+@end example
+
+Ensures that if future execution backtracks to the
+current choice point, the value currently in @var{address}
+will be restored.
+
+@samp{MR_trail_current_value(@var{address})} is equivalent to
+@samp{MR_trail_value(@var{address}, *@var{address})}.
+
+@end table
+
+Note that @var{address} must be word aligned for
+both @code{MR_trail_current_value()} and @code{MR_trail_value()}.
+(The address of Mercury data structures that have been passed to
+C via the foreign language interface are guaranteed to be appropriately
+aligned.)
+
+@node Function trailing
+@subsection Function trailing
+
+For more complicated uses of trailing, you can store the address
+of a C function on the trail and have the Mercury runtime call your
+function back whenever future execution backtracks to the current choice point
+or earlier, or whenever that choice point is pruned, because execution
+commits to never backtracking over that point,
+or whenever that choice point is garbage collected.
+
+Note the garbage collector in the current Mercury implementation
+does not garbage-collect the trail; this case is mentioned
+only so that we can cater for possible future extensions.
+
+@table @b
+@item @bullet{} @code{MR_trail_function()}
+Prototype:
+@example
+typedef enum @{
+        MR_undo,
+        MR_exception,
+        MR_retry,
+        MR_commit,
+        MR_solve,
+        MR_gc
+@} MR_untrail_reason;
+
+void MR_trail_function(
+        void (*@var{untrail_func})(void *, MR_untrail_reason),
+        void *@var{value}
+);
+@end example
+@noindent
+A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
+adds an entry to the function trail.
+The Mercury implementation ensures that
+if future execution ever backtracks to current choicepoint,
+or backtracks past the current choicepoint to some earlier choicepoint,
+then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
+where @var{reason} will be @samp{MR_undo} if the backtracking was due to
+a goal failing, @samp{MR_exception} if the backtracking was due to
+a goal throwing an exception, or @samp{MR_retry} if the backtracking
+was due to the use of the ``retry'' command in @samp{mdb}, the Mercury debugger,
+or any similar user request in a debugger.
+The Mercury implementation also ensures that if the current choice point is
+pruned because execution commits to never backtracking to it,
+then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
+It also ensures that if execution requires that the current goal be
+solvable, then @code{(*@var{untrail_func})(@var{value}, MR_solve)}
+will be called.  This happens in calls to @code{solutions/2}, for example.
+(@code{MR_commit} is used for ``hard'' commits, i.e.@: when we commit
+to a solution and prune away the alternative solutions; @code{MR_solve}
+is used for ``soft'' commits, i.e.@: when we must commit to a solution
+but do not prune away all the alternatives.)
+
+MR_gc is currently not used ---
+it is reserved for future use.
+
+@end table
+
+Typically if the @var{untrail_func} is called with @var{reason} being
+@samp{MR_undo}, @samp{MR_exception}, or @samp{MR_retry}, then it should undo
+the effects of the update(s) specified by @var{value}, and then free any
+resources associated with that trail entry.  If it is called with @var{reason}
+being @samp{MR_commit} or @samp{MR_solve}, then it should not undo the
+update(s); instead, it may check for floundering (see the next section).
+In the @samp{MR_commit} case it may, in some cases, be possible to
+also free resources associated with the trail entry.
+If it is called with anything else (such as @samp{MR_gc}),
+then it should probably abort execution with an error message.
+
+Note that the address of the C function passed as the first argument of
+@code{MR_trail_function()} must be word aligned.
+
+@node Delayed goals and floundering
+@subsection Delayed goals and floundering
+
+Another use for the function trail is check for floundering
+in the presence of delayed goals.
+
+Often, when implementing certain kinds of constraint solvers, it may
+not be possible to actually solve all of the constraints at the time
+they are added.  Instead, it may be necessary to simply delay their
+execution until a later time, in the hope the constraints may become
+solvable when more information is available.  If you do implement a
+constraint solver with these properties, then at certain points in
+the computation --- for example, after executing a negated goal --- it
+is important for the system to check that their are no outstanding
+delayed goals which might cause failure, before execution commits
+to this execution path.  If there are any such delayed goals, the
+computation is said to ``flounder''.  If the check for floundering was
+omitted, then it could lead to unsound behaviour,  such as a negation
+failing even though logically speaking it ought to have succeeded.
+
+The check for floundering can be implemented using the function trail,
+by simply calling @samp{MR_trail_function()} to add a function trail
+entry whenever you create a delayed goal, and putting the appropriate
+check for floundering in the @samp{MR_commit} and @samp{MR_solve} cases
+of your function.
+The Mercury extras distribution includes an example of this:
+see the @samp{ML_var_untrail_func()} function in the file
+@samp{extras/trailed_update/var.m}.)
+If your function does detect floundering, then it should print
+an error message and then abort execution.
+
+@node Avoiding redundant trailing
+@subsection Avoiding redundant trailing
+
+If a mutable data structure is updated multiple times, and each update
+is recorded on the trail using the functions described above, then
+some of this trailing may be redundant.  It is generally not necessary
+to record enough information to recover the original state of the
+data structure for @emph{every} update on the trail; instead, it is
+enough to record the original state of each updated data structure
+just once for each choice point occurring after the data structure
+is allocated, rather than once for each update.
+
+The functions described below provide a means to avoid
+redundant trailing.
+
+@table @b
+@item @bullet{} @code{MR_ChoicepointId}
+Declaration:
+@example
+typedef @dots{} MR_ChoicepointId;
+@end example
+
+The type @code{MR_ChoicepointId} is an abstract type used
+to hold the identity of a choice point.  Values of this
+type can be compared using C's @samp{==} operator
+or using @samp{MR_choicepoint_newer()}.
+@sp 1
+@item @bullet{} @code{MR_current_choicepoint_id()}
+Prototype:
+@example
+MR_ChoicepointId MR_current_choicepoint_id(void);
+@end example
+
+@code{MR_current_choicepoint_id()} returns a value indicating
+the identity of the most recent choice point; that is, the
+point to which execution would backtrack if the current computation
+failed.
+The value remains meaningful if the choicepoint is pruned
+away by a commit, but is not meaningful after backtracking
+past the point where the choicepoint was created (since
+choicepoint ids may be reused after backtracking).
+@sp 1
+@item @bullet{} @code{MR_null_choicepoint_id()}
+Prototype:
+@example
+MR_ChoicepointId MR_null_choicepoint_id(void);
+@end example
+
+@code{MR_null_choicepoint_id()} returns a ``null'' value that is
+distinct from any value ever returned by @code{MR_current_choicepoint_id}.
+(Note that @code{MR_null_choicepoint_id()}
+is a macro that is guaranteed to be suitable for use as a
+static initializer, so that it can for example be used to
+provide the initial value of a C global variable.)
+@sp 1
+@item @bullet{} @code{MR_choicepoint_newer()}
+Prototype:
+@example
+bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
+@end example
+
+@code{MR_choicepoint_newer(x, y)} true iff the choicepoint indicated by
+@samp{x} is newer than (i.e.@: was created more recently than) the
+choicepoint indicated by @samp{y}.  The null ChoicepointId is considered
+older than any non-null ChoicepointId.  If either of the choice points
+have been backtracked over, the behaviour is undefined.
+
+@end table
+
+The way these functions are generally used is as follows.
+When you create a mutable data structure, you should call
+@code{MR_current_choicepoint_id()} and save the value it returns
+as a @samp{prev_choicepoint} field in your data structure.
+When you are about to modify your mutable data structure,
+you can then call @code{MR_current_choicepoint_id()} again and
+compare the result from that call with the value saved in
+the @samp{prev_choicepoint} field in the data structure
+using @code{MR_choicepoint_newer()}.
+If the current choicepoint is newer, then you must trail the update,
+and update the @samp{prev_choicepoint} field with the new value;
+furthermore, you must also take care that on backtracking the
+previous value of the @samp{prev_choicepoint} field in your data
+structure is restored to its previous value, by trailing that update too.
+But if @code{MR_current_choice_id()} is not newer than the
+@code{prev_choicepoint} field, then you can safely perform
+the update to your data structure without trailing it.
+
+If your mutable data structure is a C global variable,
+then you can use @code{MR_null_choicepoint_id()}
+for the initial value of the @samp{prev_choicepoint} field.
+If on the other hand your mutable data structure
+is created by a predicate or function that uses tabled evaluation
+(@pxref{Tabled evaluation}),
+then you @emph{should} use @code{MR_null_choicepoint_id()}
+for the initial value of the field.
+Doing so will ensure that the data will be reset to its initial value
+if execution backtracks to a point before
+the mutable data structure was created,
+which is important because this copy of the mutable data structure
+will be tabled and will therefore be produced again
+if later execution attempts to create another instance of it.
+
+For an example of avoiding redundant trailing, see the sample module below.
+
+Note that there is a cost to this --- you have to include
+an extra field in your data structure for each part of
+the data structure which you might update, you
+need to perform a test for each update to decide whether
+or not to trail it, and if you do need to trail the update,
+then you have an extra field that you need to trail.
+Whether or not the benefits from avoiding redundant trailing
+outweigh these costs will depend on your application.
+
+@example
+:- module trailing_example.
+:- interface.
+
+:- type int_ref.
+
+    % Create a new int_ref with the specified value.
+    %
+:- pred new_int_ref(int_ref::uo, int::in) is det.
+
+    % update_int_ref(Ref0, Ref, OldVal, NewVal).
+    % Ref0 has value OldVal and Ref has value NewVal.
+    %
+:- pred update_int_ref(int_ref::mdi, int_ref::muo, int::out, int::in)
+    is det.
+
+:- implementation.
+
+:- pragma foreign_decl("C", "
+
+typedef struct @{
+    MR_ChoicepointId prev_choicepoint;
+    MR_Integer data;
+@} C_IntRef;
+
+").
+
+:- pragma foreign_type("C", int_ref, "C_IntRef *").
+
+:- pragma foreign_proc("C",
+    new_int_ref(Ref::uo, Value::in),
+    [will_not_call_mercury, promise_pure],
+"
+    C_Intref *x = malloc(sizeof(C_IntRef));
+    x->prev_choicepoint = MR_current_choicepoint_id();
+    x->data = Value;
+    Ref = x;
+").
+
+:- pragma foreign_proc("C",
+    update_int_ref(Ref0::mdi, Ref::muo, OldValue::out, NewValue::in),
+    [will_not_call_mercury, promise_pure],
+"
+    C_IntRef *x = Ref0;
+    OldValue = x->data;
+
+    /* Check whether we need to trail this update. */
+    if (MR_choicepoint_newer(MR_current_choicepoint_id(),
+        x->prev_choicepoint))
+    @{
+        /*
+        ** Trail both x->data and x->prev_choicepoint,
+        ** since we're about to update them both.
+        */
+        assert(sizeof(x->data) == sizeof(MR_Word));
+        assert(sizeof(x->prev_choicepoint) == sizeof(MR_Word));
+        MR_trail_current_value((MR_Word *)&x->data);
+        MR_trail_current_value((MR_Word *)&x->prev_choicepoint);
+
+        /*
+        ** Update x->prev_choicepoint to indicate that
+        ** x->data's previous value has been trailed
+        ** at this choice point.
+        */
+        x->prev_choicepoint = MR_current_choicepoint_id();
+    @}
+    x->data = NewValue;
+    Ref = Ref0;
+").
+
+@end example
+
+@c @item @code{void MR_untrail_to(MR_TrailEntry *@var{old_trail_ptr}, MR_untrail_reason @var{reason});}
+@c 
+@c Apply all the trail entries between @samp{MR_trail_ptr} and
+@c @var{old_trail_ptr}, using the specified @var{reason}.
+@c 
+@c This function is called by the Mercury engine after backtracking,
+@c after a commit, or after catching an exception.
+@c There is probably little need for user code to call this function,
+@c but it might be needed if you're doing certain low-level things
+@c such as implementing your own exception handling.
 
 @node Bibliography
 @chapter Bibliography
