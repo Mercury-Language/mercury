@@ -41,6 +41,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.simplify.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
@@ -183,8 +184,23 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     io::uo) is det.
 
 annotate_liveness(!ModuleInfo, !IO) :-
-    process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
+    process_all_nonimported_procs(
+        update_module_io(simplify_and_detect_liveness_proc),
         !ModuleInfo, !IO).
+
+:- pred simplify_and_detect_liveness_proc(pred_id::in, proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out, 
+    io::di, io::uo) is det.
+
+simplify_and_detect_liveness_proc(PredId, ProcId, !ProcInfo, !ModuleInfo,
+        !IO) :-
+    % Liveness annotation expects the procedure to have been simplified.  For
+    % example, an if-then-else with an `erroneous' condition will cause an
+    % assertion failure if it is not simplified away. 
+    Simplifications = list_to_simplifications([]),
+    simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo,
+        !IO),
+    detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -146,6 +146,9 @@
 % information about nonlocals, it must recompute the nonlocal sets before
 % starting.
 %
+% As written this module expects goals to be simplified, otherwise there may be
+% assertion failures.
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.liveness.
