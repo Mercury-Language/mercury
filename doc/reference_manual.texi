@@ -2398,6 +2398,14 @@ If @code{solver_type} is exported then it is a requirement that
 specified, @code{equality_pred} and @code{comparison_pred} are also
 exported from the same module.
 
+If @code{equality_pred} is not specified then the compiler will
+generate an equality predicate that throws an exception of type
+@samp{exception.software_error/0} when called.
+
+Likewise, if @code{comparison_pred} is not specified then the compiler
+will generate a comparison predicate that throws an exception of
+type @samp{exception.software_error/0} when called.
+
 If provided, any mutable declarations given for the @code{constraint_store}
 attribute are equivalent to separate mutable declarations; their association
 with the solver type is for the purposes of documentation.  That is,

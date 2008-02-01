@@ -484,6 +484,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		mutable_excp \
 		null_char \
 		io_globals_deadlock \
+		solver_default_eq_cmp \
 		test_array2d \
 		test_injection \
 		user_defined_equality \

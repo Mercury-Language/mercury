@@ -73,7 +73,15 @@
     % (types for which there is a `where equality is ...' declaration).
     %
 :- pred builtin_compare_non_canonical_type(comparison_result::uo,
-        T::in, T::in) is det.
+    T::in, T::in) is det.
+
+    % The following predicates are used for unify/2 (compare/3) on
+    % solver types when the equality (comparison) attribute is omitted
+    % from the solver type definition.
+    %
+:- pred builtin_unify_solver_type(T::in, T::in) is semidet.
+:- pred builtin_compare_solver_type(comparison_result::uo,
+    T::in, T::in) is det.
 
     % Compare_error is used in the code generated for compare/3 preds.
     %
@@ -264,7 +272,7 @@ builtin_compare_pred(Result, _X, _Y) :-
 
 :- pragma no_inline(builtin_compare_non_canonical_type/3).
 builtin_compare_non_canonical_type(Res, X, _Y) :-
-    % suppress determinism warning
+    % Suppress determinism warning.
     ( semidet_succeed ->
         Message = "call to compare/3 for non-canonical type `"
             ++ type_name(type_of(X)) ++ "'",
@@ -272,6 +280,38 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
     ;
         % The following is never executed.
         Res = (<)
+    ).
+
+:- pragma no_inline(builtin_unify_solver_type/2).
+builtin_unify_solver_type(_X, _Y) :-
+    % Suppress determinism warning.
+    ( semidet_succeed ->
+        % XXX ideally we should use the commented out code but looking up
+        % the name of the solver type in RTTI currently gives us the name of
+        % the representation type - reporting the name of the latter is likely
+        % to be confusing since representation types will nearly always have
+        % equality defined on them.
+        %Message = "call to unify/2 for solver type `"
+        %    ++ type_name(type_of(X)) ++ "'",
+        Message = "call to generated unify/2 for solver type",
+        error(Message)
+    ;
+        % This is never executed.
+        semidet_fail 
+    ).
+
+:- pragma no_inline(builtin_compare_solver_type/3).
+builtin_compare_solver_type(Res, _X, _Y) :-
+    % Suppress determinism warning.
+    ( semidet_succeed ->
+        % XXX see the comment above regarding RTTI.
+        %Message = "call to compare/3 for solver type `"
+        %    ++ type_name(type_of(X)) ++ "'",
+        Message = "call to generated compare/3 for solver type",
+        error(Message)
+    ;
+        % This is never executed.
+        Res = (<)        
     ).
 
 :- pragma no_inline(compare_error/0).

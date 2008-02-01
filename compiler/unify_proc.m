@@ -816,10 +816,7 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
             )
         ;
             TypeBody = hlds_solver_type(_, _),
-            % If no user defined equality predicate is given,
-            % we treat solver types as if they were an equivalent
-            % to the builtin type c_pointer.
-            generate_eqv_unify_proc_body(c_pointer_type, X, Y, Context,
+            generate_default_solver_type_unify_proc_body(X, Y, Context,
                 Clause, !Info)
         ;
             TypeBody = hlds_foreign_type(_),
@@ -1108,7 +1105,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
                 Context, Clause, !Info)
         ;
             TypeBody = hlds_solver_type(_, _),
-            generate_eqv_compare_proc_body(c_pointer_type, Res, X, Y,
+            generate_default_solver_type_compare_proc_body(Res, X, Y,
                 Context, Clause, !Info)
         ;
             TypeBody = hlds_abstract_type(_),
@@ -1236,6 +1233,25 @@ generate_builtin_compare(TypeCategory, Res, X, Y, Context, Clause, !Info) :-
     ),
     build_call(Name, ArgVars, Context, CompareGoal, !Info),
     quantify_clause_body(ArgVars, CompareGoal, Context, Clause, !Info).
+            
+:- pred generate_default_solver_type_unify_proc_body(prog_var::in,
+    prog_var::in, prog_context::in, clause::out,
+    unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_default_solver_type_unify_proc_body(X, Y, Context, Clause, !Info) :-
+    ArgVars = [X, Y],
+    build_call("builtin_unify_solver_type", ArgVars, Context, Goal, !Info),
+    quantify_clause_body(ArgVars, Goal, Context, Clause, !Info).
+    
+:- pred generate_default_solver_type_compare_proc_body(prog_var::in,
+    prog_var::in, prog_var::in, prog_context::in, clause::out,
+    unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_default_solver_type_compare_proc_body(Res, X, Y, Context, Clause,
+        !Info) :-
+    ArgVars = [Res, X, Y],
+    build_call("builtin_compare_solver_type", ArgVars, Context, Goal, !Info),
+    quantify_clause_body(ArgVars, Goal, Context, Clause, !Info).
 
 :- pred generate_user_defined_compare_proc_body(unify_compare::in,
     prog_var::in, prog_var::in, prog_var::in, prog_context::in, clause::out,
