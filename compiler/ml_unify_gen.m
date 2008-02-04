@@ -686,8 +686,8 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         Statement = statement(Stmt, mlds_make_context(Context)),
 
         ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
-            MaybeTag, Context, !.Info, FieldAssigns),
-        Statements = [Statement | FieldAssigns],
+            MaybeTag, Context, !.Info, TakeAddrStatements),
+        Statements = [Statement | TakeAddrStatements],
         Decls = []
     ;
         HowToConstruct = construct_statically(StaticArgs),
@@ -810,7 +810,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 
         ml_gen_type(!.Info, Type, MLDS_DestType),
         CastVar2Rval = unop(cast(MLDS_DestType), Var2Rval),
-        Statement = ml_gen_assign(Var1Lval, CastVar2Rval, Context),
+        AssignStatement = ml_gen_assign(Var1Lval, CastVar2Rval, Context),
 
         % For each field in the construction unification we need to generate
         % an rval.  ExtraRvals need to be inserted at the start of the object.
@@ -818,11 +818,14 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
             0, ConsIdTag, Context, ExtraRvalStatements, !Info),
         % XXX we do more work than we need to here, as some of the cells
         % may already contain the correct values.
-        ml_gen_unify_args(ConsId, ArgVars, ArgModes, ArgTypes, Fields, Type,
-            VarLval, OffSet, ArgNum, ConsIdTag, Context, Statements0, !Info),
-
-        Decls = [],
-        Statements = [Statement | ExtraRvalStatements] ++ Statements0
+        ml_gen_unify_args_for_reuse(ConsId, ArgVars, ArgModes, ArgTypes,
+            Fields, TakeAddr, Type, VarLval, OffSet, ArgNum, ConsIdTag,
+            Context, FieldStatements, TakeAddrInfos, !Info),
+        ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
+            MaybeTag, Context, !.Info, TakeAddrStatements),
+        Statements = [AssignStatement | ExtraRvalStatements] ++
+            FieldStatements ++ TakeAddrStatements,
+        Decls = []
     ;
         HowToConstruct = construct_in_region(_RegVar),
         sorry(this_file, "ml_gen_new_object: " ++
@@ -1556,6 +1559,59 @@ ml_gen_unify_args_2(ConsId, [Arg | Args], [Mode | Modes], [ArgType | ArgTypes],
         VarLval, Offset1, ArgNum1, Tag, Context, !Statements, !Info),
     ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Statements, !Info).
+
+:- pred ml_gen_unify_args_for_reuse(cons_id::in, prog_vars::in,
+    list(uni_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
+    list(int)::in, mer_type::in, mlds_lval::in, int::in, int::in, cons_tag::in,
+    prog_context::in, statements::out, list(take_addr_info)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
+        VarType, VarLval, Offset, ArgNum, Tag, Context,
+        Statements, TakeAddrInfos, !Info) :-
+    (
+        Args = [],
+        Modes = [],
+        ArgTypes = [],
+        Fields = []
+    ->
+        Statements = [],
+        TakeAddrInfos = []
+    ;
+        Args = [Arg | Args1],
+        Modes = [Mode | Modes1],
+        ArgTypes = [ArgType | ArgTypes1],
+        Fields = [Field | Fields1]
+    ->
+        Offset1 = Offset + 1,
+        ArgNum1 = ArgNum + 1,
+        ( TakeAddr = [ArgNum | TakeAddr1] ->
+            ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
+                Fields1, TakeAddr1, VarType, VarLval, Offset1, ArgNum1,
+                Tag, Context, Statements, TakeAddrInfos0, !Info),
+
+            FieldType = Field ^ arg_type,
+            ml_gen_info_get_module_info(!.Info, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+            ml_type_as_field(FieldType, ModuleInfo, HighLevelData,
+                BoxedFieldType),
+            ml_gen_type(!.Info, FieldType, MLDS_FieldType),
+            ml_gen_type(!.Info, BoxedFieldType, MLDS_BoxedFieldType),
+            TakeAddrInfo = take_addr_info(Arg, Offset, MLDS_FieldType,
+                MLDS_BoxedFieldType),
+            TakeAddrInfos = [TakeAddrInfo | TakeAddrInfos0]
+        ;
+            ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
+                Fields1, TakeAddr, VarType, VarLval, Offset1, ArgNum1,
+                Tag, Context, Statements0, TakeAddrInfos, !Info),
+            ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field,
+                VarType, VarLval, Offset, ArgNum, Tag, Context,
+                Statements0, Statements, !Info)
+        )
+    ;
+        unexpected(this_file, "ml_gen_unify_args_for_reuse: length mismatch")
+    ).
 
 :- pred ml_gen_unify_arg(cons_id::in, prog_var::in, uni_mode::in, mer_type::in,
     constructor_arg::in, mer_type::in, mlds_lval::in, int::in, int::in,
