@@ -437,6 +437,35 @@ AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
 
 #-----------------------------------------------------------------------------#
 #
+# Determine whether to define USE_MUNMAP when compiling boehm_gc.
+#
+
+AC_ARG_ENABLE(gc-munmap,
+    AC_HELP_STRING([--enable-gc-munmap],
+                   [enable unmapping of unused pages when using Boehm GC]),
+    enable_gc_munmap="$enableval",enable_gc_munmap=no)
+
+AC_MSG_CHECKING(whether to enable unmapping of unused pages when using Boehm GC)
+case "$enable_gc_munmap" in
+	yes)
+		AC_MSG_RESULT(yes)
+		# USE_MUNMAP requires USE_MMAP.
+		ENABLE_BOEHM_USE_MUNMAP="-DUSE_MMAP -DUSE_MUNMAP"
+		;;
+	no)
+		AC_MSG_RESULT(no)
+		ENABLE_BOEHM_USE_MUNMAP=
+		;;
+	*)
+		AC_MSG_RESULT(no)
+		AC_MSG_WARN([unexpected argument to --enable-gc-munmap])
+		ENABLE_BOEHM_USE_MUNMAP=
+		;;
+esac
+AC_SUBST(ENABLE_BOEHM_USE_MUNMAP)
+
+#-----------------------------------------------------------------------------#
+#
 # Find the GCC source code
 # and determine whether or not to enable the GCC back-end interface.
 #

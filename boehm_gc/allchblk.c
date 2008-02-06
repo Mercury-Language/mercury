@@ -20,6 +20,11 @@
 
 GC_bool GC_use_entire_heap = 0;
 
+/* For Mercury: this is a hack to control use of munmap() when		*/
+/* USE_MUNMAP is enabled. Use GC_MERCURY_USE_MUNMAP when checking       */
+/* the value of this variable.						*/
+GC_bool GC_mercury_use_munmap = 0;
+
 /*
  * Free heap blocks are kept on one of several free lists,
  * depending on the size of the block.  Each free list is doubly linked.
@@ -46,7 +51,7 @@ GC_bool GC_use_entire_heap = 0;
 
 struct hblk * GC_hblkfreelist[N_HBLK_FLS+1] = { 0 };
 
-#ifndef USE_MUNMAP
+#if !defined(USE_MUNMAP) || 1 /* GC_MERCURY_USE_MUNMAP */
 
   word GC_free_bytes[N_HBLK_FLS+1] = { 0 };
 	/* Number of free bytes on each list.	*/
@@ -68,7 +73,10 @@ struct hblk * GC_hblkfreelist[N_HBLK_FLS+1] = { 0 };
     return FALSE;
   }
 
-# define INCR_FREE_BYTES(n, b) GC_free_bytes[n] += (b);
+# define INCR_FREE_BYTES(n, b)                           \
+  do {                                                   \
+    if (!GC_MERCURY_USE_MUNMAP) GC_free_bytes[n] += (b); \
+  } while (0)
 
 # define FREE_ASSERT(e) GC_ASSERT(e)
 
@@ -94,7 +102,7 @@ word blocks_needed;
 # define NHDR(hhdr) HDR(hhdr -> hb_next)
 
 # ifdef USE_MUNMAP
-#   define IS_MAPPED(hhdr) (((hhdr) -> hb_flags & WAS_UNMAPPED) == 0)
+#   define IS_MAPPED(hhdr) (!GC_MERCURY_USE_MUNMAP || (((hhdr) -> hb_flags & WAS_UNMAPPED) == 0))
 # else  /* !USE_MMAP */
 #   define IS_MAPPED(hhdr) 1
 # endif /* USE_MUNMAP */
@@ -292,21 +300,25 @@ int n;
     int index;
 
     GC_ASSERT(((hhdr -> hb_sz) & (HBLKSIZE-1)) == 0);
-#   ifndef USE_MUNMAP
+#   if !defined(USE_MUNMAP) || 1 /* GC_MERCURY_USE_MUNMAP */
+    if (!GC_MERCURY_USE_MUNMAP) {
       /* We always need index to mainatin free counts.	*/
       if (FL_UNKNOWN == n) {
           index = GC_hblk_fl_from_blocks(divHBLKSZ(hhdr -> hb_sz));
       } else {
 	  index = n;
       }
+    }
 #   endif
     if (hhdr -> hb_prev == 0) {
 #	ifdef USE_MUNMAP
+	if (GC_MERCURY_USE_MUNMAP) {
 	  if (FL_UNKNOWN == n) {
             index = GC_hblk_fl_from_blocks(divHBLKSZ(hhdr -> hb_sz));
 	  } else {
 	    index = n;
 	  }
+	}
 #	endif
 	GC_ASSERT(HDR(GC_hblkfreelist[index]) == hhdr);
 	GC_hblkfreelist[index] = hhdr -> hb_next;
@@ -628,8 +640,9 @@ GC_allochblk_nth(size_t sz, int kind, unsigned char flags, int n)
 		&& USED_HEAP_SIZE >= GC_requested_heapsize
 		&& !TRUE_INCREMENTAL && GC_should_collect()) {
 #		ifdef USE_MUNMAP
-		    continue;
-#		else
+		    if (GC_MERCURY_USE_MUNMAP) continue;
+#		endif /* USE_MUNMAP */
+
 		    /* If we have enough large blocks left to cover any	*/
 		    /* previous request for large blocks, we go ahead	*/
 		    /* and split.  Assuming a steady state, that should	*/
@@ -644,7 +657,6 @@ GC_allochblk_nth(size_t sz, int kind, unsigned char flags, int n)
 		    if (GC_finalizer_bytes_freed > (GC_heapsize >> 4))  {
 		      continue;
 		    }
-#		endif /* !USE_MUNMAP */
 	    }
 	    /* If the next heap block is obviously better, go on.	*/
 	    /* This prevents us from disassembling a single large block */

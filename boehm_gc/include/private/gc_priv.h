@@ -1742,6 +1742,10 @@ extern GC_bool GC_print_back_height;
   void GC_unmap(ptr_t start, size_t bytes);
   void GC_remap(ptr_t start, size_t bytes);
   void GC_unmap_gap(ptr_t start1, size_t bytes1, ptr_t start2, size_t bytes2);
+
+  #define GC_MERCURY_USE_MUNMAP	GC_mercury_use_munmap
+#else
+  #define GC_MERCURY_USE_MUNMAP	0
 #endif
 
 /* Virtual dirty bit implementation:		*/

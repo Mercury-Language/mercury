@@ -1108,7 +1108,8 @@ enum MR_long_option {
     MR_COVERAGE_TEST_OPT,
     MR_COVERAGE_TEST_IF_EXEC_OPT,
     MR_TRACE_COUNT_FILE,
-    MR_MEM_USAGE_REPORT
+    MR_MEM_USAGE_REPORT,
+    MR_MUNMAP
 };
 
 struct MR_option MR_long_opts[] = {
@@ -1207,6 +1208,7 @@ struct MR_option MR_long_opts[] = {
     { "tc-summary-max",                 1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "trace-count-summary-max",        1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
+    { "munmap",                         0, 0, MR_MUNMAP },
 
     /* This needs to be kept at the end. */
     { NULL,                             0, 0, 0 }
@@ -1729,6 +1731,12 @@ MR_process_options(int argc, char **argv)
 
             case MR_MEM_USAGE_REPORT:
                 MR_mem_usage_report_prefix = MR_copy_string(MR_optarg);
+                break;
+
+            case MR_MUNMAP:
+#ifdef MR_BOEHM_GC
+                GC_mercury_use_munmap = MR_TRUE;
+#endif
                 break;
 
             case 'a':

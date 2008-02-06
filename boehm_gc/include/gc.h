@@ -230,6 +230,10 @@ GC_API unsigned long GC_time_limit;
 				/* will disable the "pause time exceeded"*/
 				/* tests.				 */
 
+GC_API int GC_mercury_use_munmap;
+				/* Whether to use munmap(). Only	 */
+				/* effective if USE_MUNMAP is defined.   */
+
 /* Public procedures */
 
 /* Initialize the collector.  This is only required when using thread-local

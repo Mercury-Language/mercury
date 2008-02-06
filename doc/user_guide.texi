@@ -9791,6 +9791,13 @@ The default maximum value of @var{N} is 20.
 @c bootcheck script (to reduce the time taken for a bootcheck while still
 @c testing the code writing out deep profiling data).
 
+@sp 1
+@item --munmap
+@findex --munmap
+This option enables code in the Boehm garbage collector to return unused memory
+pages back to the operating system. It is meaningful only when using the Boehm
+garbage collector, and requires @samp{--enable-gc-munmap} to be passed to
+@samp{configure}. (This may not work with all platforms).
 @end table
 
 @sp 1

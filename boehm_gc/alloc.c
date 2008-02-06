@@ -713,7 +713,9 @@ void GC_finish_collection()
       GC_finalizer_bytes_freed = 0;
       
 #   ifdef USE_MUNMAP
-      GC_unmap_old();
+    if (GC_MERCURY_USE_MUNMAP) {
+	GC_unmap_old();
+    }
 #   endif
     if (GC_print_stats) {
 	GET_TIME(done_time);

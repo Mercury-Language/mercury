@@ -53,7 +53,7 @@ ptr_t GC_alloc_large(size_t lb, int k, unsigned flags)
 	    GC_collect_a_little_inner((int)n_blocks);
     h = GC_allochblk(lb, k, flags);
 #   ifdef USE_MUNMAP
-	if (0 == h) {
+	if (0 == h && GC_MERCURY_USE_MUNMAP) {
 	    GC_merge_unmapped();
 	    h = GC_allochblk(lb, k, flags);
 	}
