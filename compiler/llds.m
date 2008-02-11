@@ -326,9 +326,9 @@
             % lval was saved with save_maxfr.
 
     ;       incr_hp(lval, maybe(tag), maybe(int), rval, string,
-                may_use_atomic_alloc, maybe(rval))
+                may_use_atomic_alloc, maybe(rval), llds_reuse)
             % incr_hp(Target, MaybeTag, MaybeOffset, SizeRval, TypeMsg,
-            %   MayUseAtomicAlloc, MaybeRegionId)
+            %   MayUseAtomicAlloc, MaybeRegionId, MaybeReuse)
             %
             % Get a memory block of a size given by SizeRval and put its
             % address in Target, possibly after incrementing it by Offset words
@@ -339,7 +339,11 @@
             % of the Boehm gc allocator calls. If MaybeRegionId =
             % yes(RegionId), then the block should be allocated in the region
             % identified by RegionId (i.e. in the region whose header RegionId
-            % points to).
+            % points to). If MaybeReuse = llds_reuse(ReuseRval,
+            % MaybeFlagLval), then we should try to reuse the cell ReuseRval
+            % for the block. If MaybeFlagLval = yes(FlagLval) then FlagLval
+            % needs to be set to true or false indicate whether reuse was
+            % really possible.
 
     ;       mark_hp(lval)
             % Tell the heap sub-system to store a marker (for later use in
@@ -619,6 +623,14 @@
 :- type temp_frame_type
     --->    det_stack_proc
     ;       nondet_stack_proc.
+
+:- type llds_reuse
+    --->    no_llds_reuse
+    ;       llds_reuse(
+                rval,           % The cell to reuse.
+                maybe(lval)     % An optional lval to set to indicate
+                                % whether cell reuse was actually possible.
+            ).
 
     % Procedures defined by nondet pragma C codes must have some way of
     % preserving information after a success, so that when control

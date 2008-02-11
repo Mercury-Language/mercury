@@ -33,7 +33,7 @@
 #include "mercury_context.h"            /* for min_heap_reclamation_point() */
 #include "mercury_heap_profile.h"       /* for MR_record_allocation() */
 #include "mercury_deep_profiling.h"     /* for MR_current_call_site_dynamic */
-#include "mercury_std.h"               /* for MR_EXTERN_INLINE */
+#include "mercury_std.h"                /* for MR_EXTERN_INLINE */
 #include "mercury_reg_workarounds.h"    /* for MR_memcpy */
 #include "mercury_debug.h"              /* for MR_debugtagoffsetincrhp* */
 #ifdef MR_HIGHLEVEL_CODE
@@ -47,6 +47,8 @@
   #ifdef MR_BOEHM_GC
     #define GC_I_HIDE_POINTERS
     #include "gc.h"
+    #include "gc_mark.h"                /* for GC_least_plausible_heap_addr */
+                                        /* GC_greatest_plausible_heap_addr */
   #endif
 #endif
 
@@ -392,6 +394,59 @@
   #endif
 
 #endif /* ! MR_HIGHLEVEL_CODE */
+
+/***************************************************************************/
+
+/*
+** Macros to implement structure reuse, conditional on whether the structure
+** to reuse is really dynamically allocated. If not, fall back to allocating
+** a new object on the heap.
+*/
+
+#define     MR_reuse_or_alloc_heap(dest, reuse, fallback_alloc)             \
+            MR_tag_reuse_or_alloc_heap((dest), 0, (reuse), (fallback_alloc))
+
+#define     MR_reuse_or_alloc_heap_flag(dest, flag, reuse, fallback_alloc)  \
+            MR_tag_reuse_or_alloc_heap((dest), 0, (flag), (reuse),          \
+                (fallback_alloc))
+
+#define     MR_tag_reuse_or_alloc_heap(dest, tag, reuse, fallback_alloc)    \
+            do {                                                            \
+                MR_bool dummy;                                              \
+                MR_tag_reuse_or_alloc_heap_flag((dest), (tag), dummy,       \
+                    (reuse), (fallback_alloc));                             \
+                (void) dummy;                                               \
+            } while (0)
+
+#if defined(MR_BOEHM_GC) && !defined(MR_UNCONDITIONAL_STRUCTURE_REUSE)
+
+  #define   MR_in_heap_range(addr)                                          \
+            ((void *) (addr) >= GC_least_plausible_heap_addr &&             \
+             (void *) (addr) < GC_greatest_plausible_heap_addr)             \
+
+#else /* ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE  */
+
+  /*
+  ** We don't have any way to check whether `addr' is dynamically allocated,
+  ** so just assume that it is.  For this to be safe `--static-ground-terms'
+  ** needs to be disabled.
+  */
+  #define   MR_in_heap_range(addr)  (MR_TRUE)
+
+#endif /* ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE  */
+
+#define     MR_tag_reuse_or_alloc_heap_flag(dest, tag, flag, reuse_addr,    \
+                fallback_alloc)                                             \
+            do {                                                            \
+                MR_Word tmp = (reuse_addr);                                 \
+                if (MR_in_heap_range(tmp)) {                                \
+                    (dest) = (MR_Word) MR_mkword((tag), tmp);               \
+                    (flag) = MR_TRUE;                                       \
+                } else {                                                    \
+                    (fallback_alloc);                                       \
+                    (flag) = MR_FALSE;                                      \
+                }                                                           \
+            } while (0)
 
 /***************************************************************************/
 

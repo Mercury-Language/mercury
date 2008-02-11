@@ -525,8 +525,8 @@ find_used_registers_instr(save_maxfr(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
 find_used_registers_instr(restore_maxfr(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
-        !Used) :-
+find_used_registers_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
+        MaybeReuse), !Used) :-
     find_used_registers_lval(Lval, !Used),
     find_used_registers_rval(Rval, !Used),
     (
@@ -534,6 +534,18 @@ find_used_registers_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
         find_used_registers_rval(RegionRval, !Used)
     ;
         MaybeRegionRval = no
+    ),
+    (
+        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+        find_used_registers_rval(ReuseRval, !Used),
+        (
+            MaybeFlagLval = yes(FlagLval),
+            find_used_registers_lval(FlagLval, !Used)
+        ;
+            MaybeFlagLval = no
+        )
+    ;
+        MaybeReuse = no_llds_reuse
     ).
 find_used_registers_instr(mark_hp(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).

@@ -167,7 +167,7 @@
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-    %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code,
+    %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Label, Code,
     %   !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
@@ -180,12 +180,12 @@
     % of whether it is allocated statically or dynamically), and initialize
     % this word with the value determined by SizeVal. (NOTE: ReserveWordAtStart
     % and MaybeSize should not be yes / yes(_), because that will cause an
-    % obvious conflict.)
+    % obvious conflict.) Label can be used in the generated code if necessary.
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, prog_var::in, bool::in,
     tag::in, list(maybe(rval))::in, how_to_construct::in,
     maybe(term_size_value)::in, list(int)::in, string::in,
-    may_use_atomic_alloc::in, code_tree::out,
+    may_use_atomic_alloc::in, label::in, code_tree::out,
     static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
@@ -811,7 +811,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 
 var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
-        MayUseAtomic, Code, !StaticCellInfo, !VLI) :-
+        MayUseAtomic, Label, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
         (
@@ -846,17 +846,17 @@ var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     ;
         var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var,
             ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
-            MaybeOffset, TypeMsg, MayUseAtomic, Code, !VLI)
+            MaybeOffset, TypeMsg, MayUseAtomic, Label, Code, !VLI)
     ).
 
 :- pred var_locn_assign_dynamic_cell_to_var(module_info::in, prog_var::in,
     bool::in, tag::in, list(maybe(rval))::in, how_to_construct::in,
-    maybe(int)::in, string::in, may_use_atomic_alloc::in, code_tree::out,
-    var_locn_info::in, var_locn_info::out) is det.
+    maybe(int)::in, string::in, may_use_atomic_alloc::in, label::in,
+    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        Vector, HowToConstruct, MaybeOffset, TypeMsg, MayUseAtomic, Code,
-        !VLI) :-
+        Vector, HowToConstruct, MaybeOffset, TypeMsg, MayUseAtomic, Label,
+        Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
@@ -879,72 +879,6 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         TotalOffset = MaybeOffset,
         TotalSize = Size
     ),
-    % This must appear before the call to `save_reused_cell_fields', otherwise
-    % `save_reused_cell_fields' won't know not to use Lval as a temporary
-    % register (if Lval is a register).
-    var_locn_set_magic_var_location(Var, Lval, !VLI),
-    (
-        HowToConstruct = construct_in_region(RegionVar),
-        var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
-            RegionVarCode, !VLI),
-        MaybeRegionRval = yes(RegionRval),
-        LldsComment = "Allocating region for ",
-        CellCode = node([
-            llds_instr(
-                incr_hp(Lval, yes(Ptag), TotalOffset,
-                    const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
-                    MaybeRegionRval), LldsComment ++ VarName)
-        ]),
-        SetupReuseCode = empty,
-        TempRegs = []
-    ;
-        % XXX  We should probably throw an exception if we find
-        % construct_statically here.
-        ( HowToConstruct = construct_statically(_)
-        ; HowToConstruct = construct_dynamically
-        ),
-        SetupReuseCode = empty,
-        RegionVarCode = empty,
-        MaybeRegionRval = no,
-        LldsComment = "Allocating heap for ",
-        CellCode = node([
-            llds_instr(
-                incr_hp(Lval, yes(Ptag), TotalOffset,
-                    const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
-                    MaybeRegionRval), LldsComment ++ VarName)
-        ]),
-        TempRegs = []
-    ;
-        HowToConstruct = reuse_cell(CellToReuse),
-        CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, _),
-        var_locn_produce_var(ModuleInfo, ReuseVar, ReuseRval, ReuseVarCode,
-            !VLI),
-        ( ReuseRval = lval(ReuseLval0) ->
-            ReuseLval = ReuseLval0
-        ;
-            unexpected(this_file,
-                "var_locn_produce_var: reused cell not an lval")
-        ),
-
-        % Save any variables which are available only in the reused cell into
-        % temporary registers.
-        save_reused_cell_fields(ModuleInfo, ReuseVar, ReuseLval, SaveArgsCode,
-            TempRegs, !VLI),
-        SetupReuseCode = tree(ReuseVarCode, SaveArgsCode),
-
-        % XXX optimise the stripping of the tag when the tags are the same or
-        % the old tag is known, as we do in the high level backend
-        LldsComment = "Reusing cell on heap for ",
-        CellCode = node([
-            llds_instr(
-                assign(Lval,
-                    mkword(Ptag,
-                        unop(strip_tag, lval(ReuseLval)))),
-                LldsComment ++ VarName)
-        ]),
-
-        RegionVarCode = empty
-    ),
     (
         MaybeOffset = yes(Offset),
         StartOffset = -Offset
@@ -952,65 +886,212 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeOffset = no,
         StartOffset = 0
     ),
-    % XXX with structure reuse we don't necessarily have to assign all fields
-    assign_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval), StartOffset,
-        ArgsCode, !VLI),
-    list.foldl(var_locn_release_reg, TempRegs, !VLI),
+    % This must appear before the call to `save_reused_cell_fields' in the
+    % reused_cell case, otherwise `save_reused_cell_fields' won't know not to
+    % use Lval as a temporary register (if Lval is a register).
+    var_locn_set_magic_var_location(Var, Lval, !VLI),
+    (
+        (
+            HowToConstruct = construct_in_region(RegionVar),
+            var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
+                RegionVarCode, !VLI),
+            MaybeRegionRval = yes(RegionRval),
+            MaybeReuse = no_llds_reuse,
+            LldsComment = "Allocating region for "
+        ;
+            HowToConstruct = construct_dynamically,
+            RegionVarCode = empty,
+            MaybeRegionRval = no,
+            LldsComment = "Allocating heap for "
+        ;
+            HowToConstruct = construct_statically(_),
+            unexpected(this_file,
+                "var_locn_assign_dynamic_cell_to_var: construct_statically")
+        ),
+        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+            StartOffset, ArgsCode, !VLI),
+        SetupReuseCode = empty,
+        MaybeReuse = no_llds_reuse
+    ;
+        HowToConstruct = reuse_cell(CellToReuse),
+        LldsComment = "Reusing cell on heap for ",
+        assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
+            StartOffset, Label, MaybeReuse, SetupReuseCode, ArgsCode, !VLI),
+        MaybeRegionRval = no,
+        RegionVarCode = empty
+    ),
+    CellCode = node([
+        llds_instr(
+            incr_hp(Lval, yes(Ptag), TotalOffset,
+                const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
+                MaybeRegionRval, MaybeReuse),
+            LldsComment ++ VarName)
+    ]),
     Code = tree_list([SetupReuseCode, CellCode, RegionVarCode, ArgsCode]).
 
-:- pred assign_cell_args(module_info::in, list(maybe(rval))::in,
+:- pred assign_reused_cell_to_var(module_info::in, lval::in, tag::in,
+    list(maybe(rval))::in, cell_to_reuse::in, int::in, label::in,
+    llds_reuse::out, code_tree::out, code_tree::out,
+    var_locn_info::in, var_locn_info::out) is det.
+
+assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
+        StartOffset, Label, MaybeReuse, SetupReuseCode, ArgsCode, !VLI) :-
+    CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, NeedsUpdates0),
+    var_locn_produce_var(ModuleInfo, ReuseVar, ReuseRval, ReuseVarCode, !VLI),
+    ( ReuseRval = lval(ReuseLval0) ->
+        ReuseLval = ReuseLval0
+    ;
+        unexpected(this_file,
+            "var_locn_assign_reused_cell_to_var: reused cell not an lval")
+    ),
+
+    % Save any variables which are available only in the reused cell into
+    % temporary registers.
+    save_reused_cell_fields(ModuleInfo, ReuseVar, ReuseLval, SaveArgsCode,
+        TempRegs0, !VLI),
+    SetupReuseCode = tree(ReuseVarCode, SaveArgsCode),
+
+    % If it's possible to avoid some field assignments, we'll need an extra
+    % temporary register to record whether we actually are reusing a structure
+    % or if a new object was allocated.
+    ( list.member(does_not_need_update, NeedsUpdates0) ->
+        var_locn_acquire_reg(FlagReg, !VLI),
+        MaybeFlag = yes(FlagReg),
+        TempRegs = [FlagReg | TempRegs0]
+    ;
+        MaybeFlag = no,
+        TempRegs = TempRegs0
+    ),
+
+    % XXX optimise the stripping of the tag when the tags are the same or
+    % the old tag is known, as we do in the high level backend
+    MaybeReuse = llds_reuse(unop(strip_tag, lval(ReuseLval)), MaybeFlag),
+
+    % NeedsUpdates0 can be shorter than Vector due to extra fields.
+    Padding = list.length(Vector) - list.length(NeedsUpdates0),
+    ( Padding >= 0 ->
+        NeedsUpdates = list.duplicate(Padding, needs_update) ++ NeedsUpdates0
+    ;
+        unexpected(this_file,
+            "var_locn_assign_reused_cell_to_var: Padding < 0")
+    ),
+
+    (
+        MaybeFlag = yes(FlagLval),
+        assign_some_cell_args(ModuleInfo, Vector, NeedsUpdates, yes(Ptag),
+            lval(Lval), StartOffset, CannotSkipArgsCode, CanSkipArgsCode,
+            !VLI),
+        ArgsCode = tree_list([
+            node([
+                llds_instr(if_val(lval(FlagLval), code_label(Label)),
+                    "skip some field assignments")
+            ]),
+            CanSkipArgsCode,
+            node([
+                llds_instr(label(Label),
+                    "past skipped field assignments")
+            ]),
+            CannotSkipArgsCode
+        ])
+    ;
+        MaybeFlag = no,
+        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+            StartOffset, ArgsCode, !VLI)
+    ),
+
+    list.foldl(var_locn_release_reg, TempRegs, !VLI).
+
+:- pred assign_all_cell_args(module_info::in, list(maybe(rval))::in,
     maybe(tag)::in, rval::in, int::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-assign_cell_args(_, [], _, _, _, empty, !VLI).
-assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
+assign_all_cell_args(_, [], _, _, _, empty, !VLI).
+assign_all_cell_args(ModuleInfo, [MaybeRval | MaybeRvals], Ptag, Base, Offset,
         Code, !VLI) :-
     (
-        MaybeRval0 = yes(Rval0),
-        Target = field(Ptag, Base, const(llconst_int(Offset))),
-        (
-            Rval0 = var(Var),
-            find_var_availability(!.VLI, Var, no, Avail),
-            (
-                Avail = available(Rval),
-                EvalCode = empty
-            ;
-                Avail = needs_materialization,
-                materialize_var(ModuleInfo, Var, no, no, [], Rval, EvalCode,
-                    !VLI)
-            ),
-            var_locn_get_vartypes(!.VLI, VarTypes),
-            map.lookup(VarTypes, Var, Type),
-            ( is_dummy_argument_type(ModuleInfo, Type) ->
-                AssignCode = empty
-            ;
-                add_additional_lval_for_var(Var, Target, !VLI),
-                get_var_name(!.VLI, Var, VarName),
-                Comment = "assigning from " ++ VarName,
-                AssignCode = node([llds_instr(assign(Target, Rval), Comment)])
-            )
-        ;
-            Rval0 = const(_),
-            EvalCode = empty,
-            Comment = "assigning field from const",
-            AssignCode = node([llds_instr(assign(Target, Rval0), Comment)])
-        ;
-            ( Rval0 = mkword(_, _)
-            ; Rval0 = binop(_, _, _)
-            ; Rval0 = unop(_, _)
-            ; Rval0 = lval(_)
-            ; Rval0 = mem_addr(_)
-            ),
-            unexpected(this_file, "assign_cell_args: unknown rval")
-        ),
-        ThisCode = tree(EvalCode, AssignCode)
+        MaybeRval = yes(Rval),
+        assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI)
     ;
-        MaybeRval0 = no,
+        MaybeRval = no,
         ThisCode = empty
     ),
-    assign_cell_args(ModuleInfo, MaybeRvals0, Ptag, Base, Offset + 1, RestCode,
-        !VLI),
+    assign_all_cell_args(ModuleInfo, MaybeRvals, Ptag, Base, Offset + 1,
+        RestCode, !VLI),
     Code = tree(ThisCode, RestCode).
+
+:- pred assign_some_cell_args(module_info::in, list(maybe(rval))::in,
+    list(needs_update)::in, maybe(tag)::in, rval::in, int::in, code_tree::out,
+    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+
+assign_some_cell_args(_, [], [], _, _, _, empty, empty, !VLI).
+assign_some_cell_args(ModuleInfo,
+        [MaybeRval | MaybeRvals], [NeedsUpdate | NeedsUpdates],
+        Ptag, Base, Offset, CannotSkipArgsCode, CanSkipArgsCode, !VLI) :-
+    (
+        MaybeRval = yes(Rval),
+        assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI)
+    ;
+        MaybeRval = no,
+        ThisCode = empty
+    ),
+    assign_some_cell_args(ModuleInfo, MaybeRvals, NeedsUpdates, Ptag, Base,
+        Offset + 1, RestCannotSkipArgsCode, RestCanSkipArgsCode, !VLI),
+    (
+        NeedsUpdate = needs_update,
+        CannotSkipArgsCode = tree(ThisCode, RestCannotSkipArgsCode),
+        CanSkipArgsCode = RestCanSkipArgsCode
+    ;
+        NeedsUpdate = does_not_need_update,
+        CannotSkipArgsCode = RestCannotSkipArgsCode,
+        CanSkipArgsCode = tree(ThisCode, RestCanSkipArgsCode)
+    ).
+
+assign_some_cell_args(_, [], [_ | _], _, _, _, _, _, !VLI) :-
+    unexpected(this_file, "assign_some_cell_args: mismatch lists").
+assign_some_cell_args(_, [_ | _], [], _, _, _, _, _, !VLI) :-
+    unexpected(this_file, "assign_some_cell_args: mismatch lists").
+
+:- pred assign_cell_arg(module_info::in, rval::in, maybe(tag)::in, rval::in,
+    int::in, code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+
+assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
+    Target = field(Ptag, Base, const(llconst_int(Offset))),
+    (
+        Rval0 = var(Var),
+        find_var_availability(!.VLI, Var, no, Avail),
+        (
+            Avail = available(Rval),
+            EvalCode = empty
+        ;
+            Avail = needs_materialization,
+            materialize_var(ModuleInfo, Var, no, no, [], Rval, EvalCode,
+                !VLI)
+        ),
+        var_locn_get_vartypes(!.VLI, VarTypes),
+        map.lookup(VarTypes, Var, Type),
+        ( is_dummy_argument_type(ModuleInfo, Type) ->
+            AssignCode = empty
+        ;
+            add_additional_lval_for_var(Var, Target, !VLI),
+            get_var_name(!.VLI, Var, VarName),
+            Comment = "assigning from " ++ VarName,
+            AssignCode = node([llds_instr(assign(Target, Rval), Comment)])
+        )
+    ;
+        Rval0 = const(_),
+        EvalCode = empty,
+        Comment = "assigning field from const",
+        AssignCode = node([llds_instr(assign(Target, Rval0), Comment)])
+    ;
+        ( Rval0 = mkword(_, _)
+        ; Rval0 = binop(_, _, _)
+        ; Rval0 = unop(_, _)
+        ; Rval0 = lval(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        unexpected(this_file, "assign_cell_args: unknown rval")
+    ),
+    Code = tree(EvalCode, AssignCode).
 
     % Save any variables which depend on the ReuseLval into temporary
     % registers so that they are available after ReuseLval is clobbered.

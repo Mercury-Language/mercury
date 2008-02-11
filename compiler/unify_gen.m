@@ -662,7 +662,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                     "get number of arguments"),
                 llds_instr(incr_hp(NewClosure, no, no,
                     binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
-                    "closure", NewClosureMayUseAtomic, no),
+                    "closure", NewClosureMayUseAtomic, no, no_llds_reuse),
                     "allocate new closure"),
                 llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
                     lval(field(yes(0), OldClosure, Zero))),

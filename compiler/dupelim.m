@@ -344,7 +344,7 @@ standardize_instr(Instr0, Instr) :-
         Instr = restore_maxfr(Lval)
     ;
         Instr0 = incr_hp(Lval0, MaybeTag, MaybeOffset, Rval0, Msg,
-            MayUseAtomic, MaybeRegionRval0),
+            MayUseAtomic, MaybeRegionRval0, MaybeReuse0),
         standardize_lval(Lval0, Lval),
         standardize_rval(Rval0, Rval),
         (
@@ -355,8 +355,24 @@ standardize_instr(Instr0, Instr) :-
             MaybeRegionRval0 = no,
             MaybeRegionRval = MaybeRegionRval0
         ),
+        (
+            MaybeReuse0 = llds_reuse(ReuseRval0, MaybeFlagLval0),
+            standardize_rval(ReuseRval0, ReuseRval),
+            (
+                MaybeFlagLval0 = yes(FlagLval0),
+                standardize_lval(FlagLval0, FlagLval),
+                MaybeFlagLval = yes(FlagLval)
+            ;
+                MaybeFlagLval0 = no,
+                MaybeFlagLval = no
+            ),
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval)
+        ;
+            MaybeReuse0 = no_llds_reuse,
+            MaybeReuse = no_llds_reuse
+        ),
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg,
-            MayUseAtomic, MaybeRegionRval)
+            MayUseAtomic, MaybeRegionRval, MaybeReuse)
     ;
         Instr0 = mark_hp(Lval0),
         standardize_lval(Lval0, Lval),
@@ -635,10 +651,10 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
         )
     ;
         InstrA = incr_hp(LvalA, MaybeTag, MaybeOffset, RvalA, Msg,
-            MayUseAtomic, MaybeRegionRvalA),
+            MayUseAtomic, MaybeRegionRvalA, MaybeReuseA),
         (
             InstrB = incr_hp(LvalB, MaybeTag, MaybeOffset, RvalB, Msg,
-                MayUseAtomic, MaybeRegionRvalB),
+                MayUseAtomic, MaybeRegionRvalB, MaybeReuseB),
             most_specific_lval(LvalA, LvalB, Lval),
             most_specific_rval(RvalA, RvalB, Rval),
             (
@@ -650,10 +666,30 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
                 MaybeRegionRvalA = no,
                 MaybeRegionRvalB = no,
                 MaybeRegionRval = no
+            ),
+            (
+                MaybeReuseA = llds_reuse(ReuseRvalA, MaybeFlagLvalA),
+                MaybeReuseB = llds_reuse(ReuseRvalB, MaybeFlagLvalB),
+                most_specific_rval(ReuseRvalA, ReuseRvalB, ReuseRval),
+                (
+                    MaybeFlagLvalA = yes(FlagLvalA),
+                    MaybeFlagLvalB = yes(FlagLvalB),
+                    most_specific_lval(FlagLvalA, FlagLvalB, FlagLval),
+                    MaybeFlagLval = yes(FlagLval)
+                ;
+                    MaybeFlagLvalA = no,
+                    MaybeFlagLvalB = no,
+                    MaybeFlagLval = no
+                ),
+                MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval)
+            ;
+                MaybeReuseA = no_llds_reuse,
+                MaybeReuseB = no_llds_reuse,
+                MaybeReuse = no_llds_reuse
             )
         ->
             MaybeInstr = yes(incr_hp(Lval, MaybeTag, MaybeOffset, Rval,
-                Msg, MayUseAtomic, MaybeRegionRval))
+                Msg, MayUseAtomic, MaybeRegionRval, MaybeReuse))
         ;
             MaybeInstr = no
         )

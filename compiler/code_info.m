@@ -3677,12 +3677,13 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
 
 assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
         MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code, !CI) :-
+    get_next_label(Label, !CI),
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
     var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
-        MayUseAtomic, Code, StaticCellInfo0, StaticCellInfo,
+        MayUseAtomic, Label, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CI).

@@ -248,7 +248,8 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = restore_maxfr(Lval),
         livemap.make_live_in_rval(lval(Lval), !Livevals)
     ;
-        Uinstr0 = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval),
+        Uinstr0 = incr_hp(Lval, _, _, SizeRval, _, _, MaybeRegionRval,
+            MaybeReuse),
 
         % Make dead the variable assigned, but make any variables
         % needed to access it live. Make the variables in the size
@@ -258,15 +259,29 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % common. This is why doing the deletion first works.
 
         svset.delete(Lval, !Livevals),
-        opt_util.lval_access_rvals(Lval, Rvals0),
+        opt_util.lval_access_rvals(Lval, Rvals),
+        livemap.make_live_in_rvals(Rvals, !Livevals),
+        livemap.make_live_in_rval(SizeRval, !Livevals),
         (
-            MaybeRegionRval = no,
-            Rvals = [Rval | Rvals0]
+            MaybeRegionRval = no
         ;
             MaybeRegionRval = yes(RegionRval),
-            Rvals = [Rval, RegionRval | Rvals0]
+            livemap.make_live_in_rval(RegionRval, !Livevals)
         ),
-        livemap.make_live_in_rvals(Rvals, !Livevals)
+        (
+            MaybeReuse = no_llds_reuse
+        ;
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            livemap.make_live_in_rval(ReuseRval, !Livevals),
+            (
+                MaybeFlagLval = no
+            ;
+                MaybeFlagLval = yes(FlagLval),
+                svset.delete(FlagLval, !Livevals),
+                opt_util.lval_access_rvals(FlagLval, FlagRvals),
+                livemap.make_live_in_rvals(FlagRvals, !Livevals)
+            )
+        )
     ;
         Uinstr0 = mark_hp(Lval),
         svset.delete(Lval, !Livevals),

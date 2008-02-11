@@ -793,7 +793,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "restore_maxfr(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _, MayUseAtomic,
-            MaybeRegionRval),
+            MaybeRegionRval, MaybeReuse),
         (
             MaybeTag = no,
             T_str = "no"
@@ -815,10 +815,27 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             MaybeRegionRval = yes(RegionRval),
             Region_str = dump_rval(no, RegionRval) 
         ),
+        (
+            MaybeReuse = no_llds_reuse,
+            Reuse_str = "no",
+            Flag_str = "no"
+        ;
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            Reuse_str = dump_rval(no, ReuseRval),
+            (
+                MaybeFlagLval = no,
+                Flag_str = "no"
+            ;
+                MaybeFlagLval = yes(FlagLval),
+                Flag_str = dump_lval(yes(ProcLabel), FlagLval)
+            )
+        ),
         Str = "incr_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", " ++
             T_str ++ ", " ++ O_str ++ ", " ++
             dump_rval(yes(ProcLabel), Size) ++ ", " ++
-            dump_may_use_atomic(MayUseAtomic) ++ ", " ++ Region_str ++ ")"
+            dump_may_use_atomic(MayUseAtomic) ++ ", " ++
+            Region_str ++ ", " ++
+            Reuse_str ++ ", " ++ Flag_str ++ ")"
     ;
         Instr = mark_hp(Lval),
         Str = "mark_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"

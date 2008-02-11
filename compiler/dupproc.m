@@ -242,7 +242,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         ; Instr = arbitrary_c_code(_, _, _)
         ; Instr = save_maxfr(_)
         ; Instr = restore_maxfr(_)
-        ; Instr = incr_hp(_, _, _, _, _, _, _)
+        ; Instr = incr_hp(_, _, _, _, _, _, _, _)
         ; Instr = mark_hp(_)
         ; Instr = restore_hp(_)
         ; Instr = free_heap(_)

@@ -323,12 +323,19 @@ instr_to_x86_64(!RegMap, save_maxfr(_), Instr) :-
 instr_to_x86_64(!RegMap, restore_maxfr(_), Instr) :-
     Instr = [x86_64_comment("<<restore_maxfr>>")].
 instr_to_x86_64(!RegMap,
-        incr_hp(Lval, Tag0, Words0, Rval, _, _, MaybeRegionRval), Instrs) :-
+        incr_hp(Lval, Tag0, Words0, Rval, _, _, MaybeRegionRval,
+            MaybeReuse), Instrs) :-
     (
         MaybeRegionRval = no
     ;
         MaybeRegionRval = yes(_),
         unexpected(this_file, "instr_to_x86_64: encounter a region variable")
+    ),
+    (
+        MaybeReuse = no_llds_reuse
+    ;
+        MaybeReuse = llds_reuse(_, _),
+        unexpected(this_file, "instr_to_x86_64: encounter a reuse variable")
     ),
     transform_rval(!RegMap, Rval, Res0, Res1),
     transform_lval(!RegMap, Lval, Res2, Res3),

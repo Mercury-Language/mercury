@@ -475,6 +475,10 @@
 ** problems if user-defined unify procedures abort: the exception could be
 ** transmitted to the parent Mercury code only by catching and retransmitting
 ** it, which, for efficiency reasons, the code doesn't do.
+**
+** MR_UNCONDITIONAL_STRUCTURE_REUSE
+** Enable this to bypass the check that a cell was allocated by Boehm GC
+** before reusing it.
 */
 
 #if defined(MR_THREAD_SAFE) && defined(MR_TRACE_HISTOGRAM)

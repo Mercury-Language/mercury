@@ -936,7 +936,7 @@ remap_instr(Remap, Instr0) = Instr :-
         Instr = restore_maxfr(Lval)
     ;
         Instr0 = incr_hp(Lval0, MaybeTag, MaybeOffset, SizeRval0, Prof,
-            Atomic, MaybeRegion0),
+            Atomic, MaybeRegion0, MaybeReuse0),
         Lval = remap_lval(Remap, Lval0),
         SizeRval = remap_rval(Remap, SizeRval0),
         (
@@ -947,8 +947,24 @@ remap_instr(Remap, Instr0) = Instr :-
             MaybeRegion0 = no,
             MaybeRegion = no
         ),
+        (
+            MaybeReuse0 = llds_reuse(Reuse0, MaybeFlag0),
+            Reuse = remap_rval(Remap, Reuse0),
+            (
+                MaybeFlag0 = yes(Flag0),
+                Flag = remap_lval(Remap, Flag0),
+                MaybeFlag = yes(Flag)
+            ;
+                MaybeFlag0 = no,
+                MaybeFlag = no
+            ),
+            MaybeReuse = llds_reuse(Reuse, MaybeFlag)
+        ;
+            MaybeReuse0 = no_llds_reuse,
+            MaybeReuse = no_llds_reuse
+        ),
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, Prof,
-            Atomic, MaybeRegion)
+            Atomic, MaybeRegion, MaybeReuse)
     ;
         Instr0 = mark_hp(Lval0),
         Lval = remap_lval(Remap, Lval0),

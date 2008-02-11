@@ -314,19 +314,35 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         Uinstr = restore_maxfr(Lval)
     ;
         Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor,
-            MayUseAtomic, MaybeRegionRval0),
+            MayUseAtomic, MaybeRegionRval0, MaybeReuse0),
         Transform(Lval0, Lval, !Acc),
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         (
             MaybeRegionRval0 = no,
-            MaybeRegionRval = MaybeRegionRval0
+            MaybeRegionRval = no
         ;
             MaybeRegionRval0 = yes(RegionRval0),
             transform_lval_in_rval(Transform, RegionRval0, RegionRval, !Acc),
             MaybeRegionRval = yes(RegionRval)
         ),
+        (
+            MaybeReuse0 = no_llds_reuse,
+            MaybeReuse = no_llds_reuse
+        ;
+            MaybeReuse0 = llds_reuse(ReuseRval0, MaybeFlagLval0),
+            transform_lval_in_rval(Transform, ReuseRval0, ReuseRval, !Acc),
+            (
+                MaybeFlagLval0 = no,
+                MaybeFlagLval = no
+            ;
+                MaybeFlagLval0 = yes(FlagLval0),
+                Transform(FlagLval0, FlagLval, !Acc),
+                MaybeFlagLval = yes(FlagLval)
+            ),
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval)
+        ),
         Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor,
-            MayUseAtomic, MaybeRegionRval)
+            MayUseAtomic, MaybeRegionRval, MaybeReuse)
     ;
         Uinstr0 = mark_hp(Lval0),
         Transform(Lval0, Lval, !Acc),
