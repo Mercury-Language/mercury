@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -411,7 +411,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
             RetArg = pragma_var(_, RetArgName, RetMode, _) - RetType,
             mode_to_arg_mode(!.ModuleInfo, RetMode, RetType, RetArgMode),
             RetArgMode = top_out,
-            \+ type_util.is_dummy_argument_type(!.ModuleInfo, RetType)
+            check_dummy_type(!.ModuleInfo, RetType) = is_not_dummy_type
         ->
             C_Code0 = RetArgName ++ " = "
         ;
@@ -457,7 +457,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
 include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode, _Box) - Type) :-
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     ArgMode \= top_unused,
-    \+ type_util.is_dummy_argument_type(ModuleInfo, Type).
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
     % create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):
     %

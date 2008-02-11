@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,7 +693,7 @@ generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
         VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
     (
         map.lookup(VarTypes, Var, Type),
-        is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type
     ->
         true
     ;

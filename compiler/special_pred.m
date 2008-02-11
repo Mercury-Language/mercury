@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -187,13 +187,13 @@ special_pred_description(spec_pred_index,   "indexing predicate").
 special_pred_description(spec_pred_init,    "initialisation predicate").
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
-    TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
+    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
     (
-        TypeCategory = type_cat_tuple
+        CtorCat = ctor_cat_tuple
     ;
-        ( TypeCategory = type_cat_user_ctor
-        ; TypeCategory = type_cat_enum
-        ; is_introduced_type_info_type_category(TypeCategory) = yes
+        ( CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_enum(_)
+        ; is_introduced_type_info_type_category(CtorCat) = yes
         ),
         module_info_get_type_table(ModuleInfo, Types),
         map.search(Types, TypeCtor, TypeDefn),
@@ -211,13 +211,13 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
     Body \= hlds_solver_type(_, _),
     Body \= hlds_abstract_type(solver_type),
 
-    TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
+    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
     (
-        TypeCategory = type_cat_tuple
+        CtorCat = ctor_cat_tuple
     ;
-        ( TypeCategory = type_cat_user_ctor
-        ; TypeCategory = type_cat_enum
-        ; is_introduced_type_info_type_category(TypeCategory) = yes
+        ( CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_enum(_)
+        ; is_introduced_type_info_type_category(CtorCat) = yes
         ),
         special_pred_is_generated_lazily_2(ModuleInfo, TypeCtor, Body, Status)
     ).

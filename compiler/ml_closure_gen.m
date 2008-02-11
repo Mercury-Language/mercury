@@ -1037,6 +1037,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
             % Handle output variables.
             ml_gen_info_get_globals(!.Info, Globals),
             CopyOut = get_copy_out_option(Globals, CodeModel),
+            IsDummy = check_dummy_type(ModuleInfo, Type),
             (
                 (
                     CopyOut = yes
@@ -1047,16 +1048,18 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                     CodeModel = model_det,
                     ArgMode = top_out,
                     TypesTail = [],
-                    \+ type_util.is_dummy_argument_type(ModuleInfo, Type)
+                    IsDummy = is_not_dummy_type
                 )
             ->
                 % Output arguments are copied out, so we need to generate
                 % a local declaration for them here.
                 Lval = VarLval,
-                ( is_dummy_argument_type(ModuleInfo, Type) ->
+                (
+                    IsDummy = is_dummy_type,
                     CopyOutLvals = CopyOutLvalsTail,
                     Defns = DefnsTail
                 ;
+                    IsDummy = is_not_dummy_type,
                     CopyOutLvals = [Lval | CopyOutLvalsTail],
                     ml_gen_local_for_output_arg(Name, Type,
                         ArgNum, Context, Defn, !Info),

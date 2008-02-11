@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -185,18 +185,25 @@ generate_assignment(VarA, VarB, empty, !CI) :-
     code_info::in, code_info::out) is det.
 
 generate_test(VarA, VarB, Code, !CI) :-
-    produce_variable(VarA, CodeA, ValA, !CI),
-    produce_variable(VarB, CodeB, ValB, !CI),
-    Type = variable_type(!.CI, VarA),
-    ( Type = builtin_type(builtin_type_string) ->
-        Op = str_eq
-    ; Type = builtin_type(builtin_type_float) ->
-        Op = float_eq
+    IsDummy = variable_is_of_dummy_type(!.CI, VarA),
+    (
+        IsDummy = is_dummy_type,
+        Code = empty
     ;
-        Op = eq
-    ),
-    fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI),
-    Code = tree_list([CodeA, CodeB, FailCode]).
+        IsDummy = is_not_dummy_type,
+        produce_variable(VarA, CodeA, ValA, !CI),
+        produce_variable(VarB, CodeB, ValB, !CI),
+        Type = variable_type(!.CI, VarA),
+        ( Type = builtin_type(builtin_type_string) ->
+            Op = str_eq
+        ; Type = builtin_type(builtin_type_float) ->
+            Op = float_eq
+        ;
+            Op = eq
+        ),
+        fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI),
+        Code = tree_list([CodeA, CodeB, FailCode])
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -739,7 +746,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         proc_info_arg_info(ProcInfo, ArgInfo),
         VarTypes = get_var_types(!.CI),
         MayUseAtomic0 = initial_may_use_atomic(ModuleInfo),
-        generate_pred_args(ModuleInfo, VarTypes, Args, ArgInfo, PredArgs,
+        generate_pred_args(!.CI, VarTypes, Args, ArgInfo, PredArgs,
             MayUseAtomic0, MayUseAtomic),
         Vector = [
             yes(ClosureLayoutRval),
@@ -759,40 +766,62 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
 generate_extra_closure_args([], _, _, empty, !CI).
 generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         !CI) :-
-    produce_variable(Var, Code0, Value, !CI),
-    One = const(llconst_int(1)),
-    Code1 = node([
-        llds_instr(
-            assign(field(yes(0), lval(NewClosure), lval(LoopCounter)), Value),
-            "set new argument field"),
-        llds_instr(assign(LoopCounter, binop(int_add, lval(LoopCounter), One)),
+    FieldLval = field(yes(0), lval(NewClosure), lval(LoopCounter)),
+    IsDummy = variable_is_of_dummy_type(!.CI, Var),
+    (
+        IsDummy = is_dummy_type,
+        ProduceCode = empty,
+        AssignCode = node([
+            llds_instr(assign(FieldLval, const(llconst_int(0))),
+                "set new argument field (dummy type)")
+        ])
+    ;
+        IsDummy = is_not_dummy_type,
+        produce_variable(Var, ProduceCode, Value, !CI),
+        AssignCode = node([
+            llds_instr(assign(FieldLval, Value),
+                "set new argument field")
+        ])
+    ),
+    IncrCode = node([
+        llds_instr(assign(LoopCounter,
+            binop(int_add, lval(LoopCounter), const(llconst_int(1)))),
             "increment argument counter")
     ]),
-    generate_extra_closure_args(Vars, LoopCounter, NewClosure, Code2, !CI),
-    Code = tree_list([Code0, Code1, Code2]).
+    generate_extra_closure_args(Vars, LoopCounter, NewClosure, VarsCode, !CI),
+    Code = tree_list([ProduceCode, AssignCode, IncrCode, VarsCode]).
 
-:- pred generate_pred_args(module_info::in, vartypes::in, list(prog_var)::in,
+:- pred generate_pred_args(code_info::in, vartypes::in, list(prog_var)::in,
     list(arg_info)::in, list(maybe(rval))::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
 generate_pred_args(_, _, [], _, [], !MayUseAtomic).
 generate_pred_args(_, _, [_ | _], [], _, !MayUseAtomic) :-
     unexpected(this_file, "generate_pred_args: insufficient args").
-generate_pred_args(ModuleInfo, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
-        [Rval | Rvals], !MayUseAtomic) :-
+generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
+        [MaybeRval | MaybeRvals], !MayUseAtomic) :-
     ArgInfo = arg_info(_, ArgMode),
     (
         ArgMode = top_in,
-        Rval = yes(var(Var))
+        IsDummy = variable_is_of_dummy_type(CI, Var),
+        (
+            IsDummy = is_dummy_type,
+            Rval = const(llconst_int(0))
+        ;
+            IsDummy = is_not_dummy_type,
+            Rval = var(Var)
+        ),
+        MaybeRval = yes(Rval)
     ;
         ( ArgMode = top_out
         ; ArgMode = top_unused
         ),
-        Rval = no
+        MaybeRval = no
     ),
     map.lookup(VarTypes, Var, Type),
+    get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
-    generate_pred_args(ModuleInfo, VarTypes, Vars, ArgInfos, Rvals,
+    generate_pred_args(CI, VarTypes, Vars, ArgInfos, MaybeRvals,
         !MayUseAtomic).
 
 :- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
@@ -1007,7 +1036,9 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         ->
             VarType = variable_type(!.CI, Var),
             get_module_info(!.CI, ModuleInfo),
-            ( is_dummy_argument_type(ModuleInfo, VarType) ->
+            IsDummy = check_dummy_type(ModuleInfo, VarType),
+            (
+                IsDummy = is_dummy_type,
                 % We must handle this case specially. If we didn't, the
                 % generated code would copy the reference to the Var's
                 % current location, which may be stackvar(N) or framevar(N)
@@ -1022,6 +1053,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
                 ),
                 Code = empty
             ;
+                IsDummy = is_not_dummy_type,
                 ArgType = variable_type(!.CI, Arg),
                 generate_sub_unify(ref(Var), ref(Arg), Mode, ArgType, Code,
                     !CI)

@@ -29,6 +29,7 @@
 :- module ll_backend.code_info.
 :- interface.
 
+:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -62,7 +63,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_rtti.
@@ -712,6 +712,8 @@ set_used_env_vars(UEV, CI,
     %
 :- func variable_type(code_info, prog_var) = mer_type.
 
+:- func variable_is_of_dummy_type(code_info, prog_var) = is_dummy_type.
+
     % Compute the principal type constructor of the given type, and return the
     % definition of this type constructor, if it has one (some type
     % constructors are built in, and some are hidden behind abstraction
@@ -902,6 +904,11 @@ get_var_types(CI) = VarTypes :-
 
 variable_type(CI, Var) = Type :-
     map.lookup(get_var_types(CI), Var, Type).
+
+variable_is_of_dummy_type(CI, Var) = IsDummy :-
+    VarType = variable_type(CI, Var),
+    get_module_info(CI, ModuleInfo),
+    IsDummy = check_dummy_type(ModuleInfo, VarType).
 
 search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),
@@ -3892,21 +3899,18 @@ key_var_is_of_dummy_type(ModuleInfo, VarTypes, Var - _ArgInfo) :-
 
 valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     map.lookup(VarTypes, Var, Type),
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
-        fail
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
+    (
+        ( Lval = stackvar(N)
+        ; Lval = parent_stackvar(N)
+        ; Lval = framevar(N)
+        ),
+        N < 0
+    ->
+        unexpected(this_file,
+            "valid_stack_slot: nondummy var in dummy stack slot")
     ;
-        (
-            ( Lval = stackvar(N)
-            ; Lval = parent_stackvar(N)
-            ; Lval = framevar(N)
-            ),
-            N < 0
-        ->
-            unexpected(this_file,
-                "valid_stack_slot: nondummy var in dummy stack slot")
-        ;
-            true
-        )
+        true
     ).
 
 :- pred setup_call_args(assoc_list(prog_var, arg_info)::in,

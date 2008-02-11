@@ -1222,8 +1222,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             ConsId = pred_const(ShroudedPredProcId, EvalMethod),
             instmap.is_reachable(InstMap)
         ->
-            proc(PredId, ProcId) =
-                unshroud_pred_proc_id(ShroudedPredProcId),
+            proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
             (
                 RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, _, Goal),
                 Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)

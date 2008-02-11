@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -552,53 +552,44 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
     ByteInfo = byte_info(_, _, ModuleInfo, _, _),
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     (
-        TypeCategory = type_cat_int,
+        TypeCategory = ctor_cat_builtin(cat_builtin_int),
         TestId = int_test
     ;
-        TypeCategory = type_cat_char,
+        TypeCategory = ctor_cat_builtin(cat_builtin_char),
         TestId = char_test
     ;
-        TypeCategory = type_cat_string,
+        TypeCategory = ctor_cat_builtin(cat_builtin_string),
         TestId = string_test
     ;
-        TypeCategory = type_cat_float,
+        TypeCategory = ctor_cat_builtin(cat_builtin_float),
         TestId = float_test
     ;
-        TypeCategory = type_cat_dummy,
+        TypeCategory = ctor_cat_builtin_dummy,
         TestId = dummy_test
     ;
-        TypeCategory = type_cat_enum,
+        TypeCategory = ctor_cat_enum(cat_enum_mercury),
         TestId = enum_test
     ;
-        TypeCategory = type_cat_foreign_enum,
+        TypeCategory = ctor_cat_enum(cat_enum_foreign),
         sorry(this_file, "foreign enums with bytecode backend")
     ;
-        TypeCategory = type_cat_higher_order,
+        TypeCategory = ctor_cat_higher_order,
         unexpected(this_file, "higher_order_type in simple_test")
     ;
-        TypeCategory = type_cat_tuple,
+        TypeCategory = ctor_cat_tuple,
         unexpected(this_file, "tuple_type in simple_test")
     ;
-        TypeCategory = type_cat_user_ctor,
+        TypeCategory = ctor_cat_user(_),
         unexpected(this_file, "user_ctor_type in simple_test")
     ;
-        TypeCategory = type_cat_variable,
+        TypeCategory = ctor_cat_variable,
         unexpected(this_file, "variable_type in simple_test")
     ;
-        TypeCategory = type_cat_void,
+        TypeCategory = ctor_cat_void,
         unexpected(this_file, "void_type in simple_test")
     ;
-        TypeCategory = type_cat_type_info,
-        unexpected(this_file, "type_info_type in simple_test")
-    ;
-        TypeCategory = type_cat_type_ctor_info,
-        unexpected(this_file, "type_ctor_info_type in simple_test")
-    ;
-        TypeCategory = type_cat_typeclass_info,
-        unexpected(this_file, "typeclass_info_type in simple_test")
-    ;
-        TypeCategory = type_cat_base_typeclass_info,
-        unexpected(this_file, "base_typeclass_info_type in simple_test")
+        TypeCategory = ctor_cat_system(_),
+        unexpected(this_file, "system type in simple_test")
     ),
     Code = node([byte_test(ByteVar1, ByteVar2, TestId)]).
 gen_unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-

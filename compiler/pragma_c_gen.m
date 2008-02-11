@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1417,11 +1417,7 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         produce_variable(Var, FirstCode, Rval, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
         get_module_info(!.CI, ModuleInfo),
-        ( is_dummy_argument_type(ModuleInfo, VarType) ->
-            IsDummy = yes
-        ;
-            IsDummy = no
-        ),
+        IsDummy = check_dummy_type(ModuleInfo, VarType),
         Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
             MaybeForeign, BoxPolicy),
         get_foreign_proc_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs,
@@ -1502,11 +1498,7 @@ place_foreign_proc_output_args_in_regs([Arg | Args], [Reg | Regs],
             MaybeName = yes(Name),
             get_module_info(!.CI, ModuleInfo),
             VarType = variable_type(!.CI, Var),
-            ( is_dummy_argument_type(ModuleInfo, VarType) ->
-                IsDummy = yes
-            ;
-                IsDummy = no
-            ),
+            IsDummy = check_dummy_type(ModuleInfo, VarType),
             PragmaCOutput = foreign_proc_output(Reg, VarType, IsDummy,
                 OrigType, Name, MaybeForeign, BoxPolicy),
             Outputs = [PragmaCOutput | OutputsTail]
@@ -1544,11 +1536,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
         Reg = reg(reg_r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         get_module_info(CI, ModuleInfo),
-        ( is_dummy_argument_type(ModuleInfo, VarType) ->
-            IsDummy = yes
-        ;
-            IsDummy = no
-        ),
+        IsDummy = check_dummy_type(ModuleInfo, VarType),
         Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, lval(Reg),
             MaybeForeign, BoxPolicy),
         Inputs = [Input | InputsTail]
@@ -1578,11 +1566,7 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
         Reg = reg(reg_r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         get_module_info(CI, ModuleInfo),
-        ( is_dummy_argument_type(ModuleInfo, VarType) ->
-            IsDummy = yes
-        ;
-            IsDummy = no
-        ),
+        IsDummy = check_dummy_type(ModuleInfo, VarType),
         Output = foreign_proc_output(Reg, VarType, IsDummy, OrigType, Name,
             MaybeForeign, BoxPolicy),
         Outputs = [Output | OutputsTail]

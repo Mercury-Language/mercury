@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -991,9 +991,12 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !TVars, !VarInfos, tree(VarCode, VarsCode), !CI) :-
     map.lookup(VarTypes, Var, Type),
     get_module_info(!.CI, ModuleInfo),
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
+    IsDummy = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummy = is_dummy_type,
         VarCode = empty
     ;
+        IsDummy = is_not_dummy_type,
         trace_produce_var(Var, VarSet, InstMap, !TVars, VarInfo, VarCode, !CI),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
@@ -1039,7 +1042,7 @@ build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
         ArgMode = top_in,
         \+ inst_is_clobbered(ModuleInfo, Inst),
         map.lookup(VarTypes, Var, Type),
-        \+ is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type
     ->
         FailVars = [Var | FailVars0]
     ;

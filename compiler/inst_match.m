@@ -2050,24 +2050,27 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
 type_may_contain_solver_type(ModuleInfo, Type) :-
     type_may_contain_solver_type_2(classify_type(ModuleInfo, Type)) = yes.
 
-:- func type_may_contain_solver_type_2(type_category) = bool.
+:- func type_may_contain_solver_type_2(type_ctor_category) = bool.
 
-type_may_contain_solver_type_2(type_cat_int) = no.
-type_may_contain_solver_type_2(type_cat_char) = no.
-type_may_contain_solver_type_2(type_cat_string) = no.
-type_may_contain_solver_type_2(type_cat_float) = no.
-type_may_contain_solver_type_2(type_cat_higher_order) = no.
-type_may_contain_solver_type_2(type_cat_tuple) = yes.
-type_may_contain_solver_type_2(type_cat_enum) = no.
-type_may_contain_solver_type_2(type_cat_foreign_enum) = no.
-type_may_contain_solver_type_2(type_cat_dummy) = no.
-type_may_contain_solver_type_2(type_cat_variable) = yes.
-type_may_contain_solver_type_2(type_cat_type_info) = no.
-type_may_contain_solver_type_2(type_cat_type_ctor_info) = no.
-type_may_contain_solver_type_2(type_cat_typeclass_info) = no.
-type_may_contain_solver_type_2(type_cat_base_typeclass_info) = no.
-type_may_contain_solver_type_2(type_cat_void) = no.
-type_may_contain_solver_type_2(type_cat_user_ctor) = yes.
+type_may_contain_solver_type_2(CtorCat) = MayContainSolverType :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ),
+        MayContainSolverType = no
+    ;
+        ( CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_general)
+        ),
+        MayContainSolverType = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 

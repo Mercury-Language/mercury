@@ -158,24 +158,26 @@ ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
         % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
         % The same issue arises for some of the cases below.
     ;
-        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest, EnumDummy,
+        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest, DuTypeKind,
             MaybeUserEqComp, _ReservedTag, _, _),
         % XXX We probably shouldn't ignore _ReservedTag.
         ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
         (
-            ( EnumDummy = is_mercury_enum
-            ; EnumDummy = is_foreign_enum(_)
+            ( DuTypeKind = du_type_kind_mercury_enum
+            ; DuTypeKind = du_type_kind_foreign_enum(_)
             ),
             ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
                 MaybeEqualityMembers, !Defns)
         ;
-            EnumDummy = is_dummy,
+            DuTypeKind = du_type_kind_direct_dummy,
             % XXX We shouldn't have to generate an MLDS type for these types,
             % but it is not easy to ensure that we never refer to that type.
             ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
                 MaybeEqualityMembers, !Defns)
         ;
-            EnumDummy = not_enum_or_dummy,
+            ( DuTypeKind = du_type_kind_notag(_, _, _)
+            ; DuTypeKind = du_type_kind_general
+            ),
             ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn,
                 Ctors, TagValues, MaybeEqualityMembers, !Defns)
         )

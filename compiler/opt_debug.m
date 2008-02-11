@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -117,6 +117,7 @@
 
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.proc_label.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
@@ -1114,10 +1115,10 @@ dump_output_component(MaybeProcLabel,
     dump_lval(MaybeProcLabel, Lval) ++ " := " ++ Var ++
         dump_maybe_dummy(Dummy).
 
-:- func dump_maybe_dummy(bool) = string.
+:- func dump_maybe_dummy(is_dummy_type) = string.
 
-dump_maybe_dummy(no) = "".
-dump_maybe_dummy(yes) = " (dummy)".
+dump_maybe_dummy(is_not_dummy_type) = "".
+dump_maybe_dummy(is_dummy_type) = " (dummy)".
 
 dump_fullinstr(ProcLabel, PrintComments, llds_instr(Uinstr, Comment)) = Str :-
     (

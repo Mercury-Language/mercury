@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2007 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -78,7 +78,7 @@
 :- pred assign_constructor_tags(list(constructor)::in,
     maybe(unify_compare)::in, type_ctor::in, uses_reserved_tag::in,
     globals::in, cons_tag_values::out,
-    uses_reserved_address::out, enum_or_dummy::out) is det.
+    uses_reserved_address::out, du_type_kind::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -99,7 +99,7 @@
 %-----------------------------------------------------------------------------%
 
 assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
-        CtorTags, ReservedAddr, EnumDummy) :-
+        CtorTags, ReservedAddr, DuTypeKind) :-
 
     % Work out how many tag bits and reserved addresses we've got to play with.
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
@@ -129,69 +129,74 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         ReservedTagPragma = does_not_use_reserved_tag
     ->
         ( Ctors = [_] ->
-            EnumDummy = is_dummy
+            DuTypeKind = du_type_kind_direct_dummy
         ;
-            EnumDummy = is_mercury_enum
+            DuTypeKind = du_type_kind_mercury_enum
         ),
         assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags),
         ReservedAddr = does_not_use_reserved_address
     ;
-        EnumDummy = not_enum_or_dummy,
         (
             % Try representing it as a no-tag type.
-            type_with_constructors_should_be_no_tag(Globals, TypeCtor,
-                ReservedTagPragma, Ctors, UserEqCmp, SingleFunc, SingleArg, _)
+            type_ctor_should_be_notag(Globals, TypeCtor, ReservedTagPragma,
+                Ctors, UserEqCmp, SingleFunctorName, SingleArgType,
+                MaybeSingleArgName)
         ->
-            SingleConsId = make_cons_id_from_qualified_sym_name(SingleFunc,
-                [SingleArg]),
+            SingleConsId = make_cons_id_from_qualified_sym_name(
+                SingleFunctorName, [SingleArgType]),
             map.set(CtorTags0, SingleConsId, no_tag, CtorTags),
-            ReservedAddr = does_not_use_reserved_address
+            % XXX What if SingleArgType uses reserved addresses?
+            ReservedAddr = does_not_use_reserved_address,
+            DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
+                MaybeSingleArgName)
         ;
-            NumTagBits = 0
-        ->
-            (
-                ReservedTagPragma = uses_reserved_tag,
-                % XXX Need to fix this.
-                % This occurs for the .NET and Java backends.
-                sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
+            DuTypeKind = du_type_kind_general,
+            ( NumTagBits = 0 ->
+                (
+                    ReservedTagPragma = uses_reserved_tag,
+                    % XXX Need to fix this.
+                    % This occurs for the .NET and Java backends.
+                    sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
+                ;
+                    ReservedTagPragma = does_not_use_reserved_tag
+                ),
+                % Assign reserved addresses to the constants, if possible.
+                separate_out_constants(Ctors, Constants, Functors),
+                assign_reserved_numeric_addresses(Constants,
+                    LeftOverConstants0, CtorTags0, CtorTags1,
+                    0, NumReservedAddresses,
+                    does_not_use_reserved_address, ReservedAddr1),
+                (
+                    HighLevelCode = yes,
+                    assign_reserved_symbolic_addresses(
+                        LeftOverConstants0, LeftOverConstants, TypeCtor,
+                        CtorTags1, CtorTags2, 0, NumReservedObjects,
+                        ReservedAddr1, ReservedAddr)
+                ;
+                    HighLevelCode = no,
+                    % Reserved symbolic addresses are not supported for the
+                    % LLDS back-end.
+                    LeftOverConstants = LeftOverConstants0,
+                    CtorTags2 = CtorTags1,
+                    ReservedAddr = ReservedAddr1
+                ),
+                % Assign shared_with_reserved_address(...) representations
+                % for the remaining constructors.
+                RemainingCtors = LeftOverConstants ++ Functors,
+                ReservedAddresses = list.filter_map(
+                    (func(reserved_address_tag(RA)) = RA is semidet),
+                    map.values(CtorTags2)),
+                assign_unshared_tags(RemainingCtors, 0, 0, ReservedAddresses,
+                    CtorTags2, CtorTags)
             ;
-                ReservedTagPragma = does_not_use_reserved_tag
-            ),
-            % Assign reserved addresses to the constants, if possible.
-            separate_out_constants(Ctors, Constants, Functors),
-            assign_reserved_numeric_addresses(Constants, LeftOverConstants0,
-                CtorTags0, CtorTags1, 0, NumReservedAddresses,
-                does_not_use_reserved_address, ReservedAddr1),
-            (
-                HighLevelCode = yes,
-                assign_reserved_symbolic_addresses(
-                    LeftOverConstants0, LeftOverConstants, TypeCtor,
-                    CtorTags1, CtorTags2, 0, NumReservedObjects,
-                    ReservedAddr1, ReservedAddr)
-            ;
-                HighLevelCode = no,
-                % Reserved symbolic addresses are not supported for the
-                % LLDS back-end.
-                LeftOverConstants = LeftOverConstants0,
-                CtorTags2 = CtorTags1,
-                ReservedAddr = ReservedAddr1
-            ),
-            % Assign shared_with_reserved_address(...) representations
-            % for the remaining constructors.
-            RemainingCtors = LeftOverConstants ++ Functors,
-            ReservedAddresses = list.filter_map(
-                (func(reserved_address_tag(RA)) = RA is semidet),
-                map.values(CtorTags2)),
-            assign_unshared_tags(RemainingCtors, 0, 0, ReservedAddresses,
-                CtorTags2, CtorTags)
-        ;
-            MaxTag = max_num_tags(NumTagBits) - 1,
-            separate_out_constants(Ctors, Constants, Functors),
-            assign_constant_tags(Constants, CtorTags0, CtorTags1,
-                InitTag, NextTag),
-            assign_unshared_tags(Functors, NextTag, MaxTag, [],
-                CtorTags1, CtorTags),
-            ReservedAddr = does_not_use_reserved_address
+                MaxTag = max_num_tags(NumTagBits) - 1,
+                separate_out_constants(Ctors, Constants, Functors),
+                assign_constant_tags(Constants, CtorTags0, CtorTags1,
+                    InitTag, NextTag),
+                assign_unshared_tags(Functors, NextTag, MaxTag, [],
+                    CtorTags1, CtorTags),
+                ReservedAddr = does_not_use_reserved_address
+            )
         )
     ).
 

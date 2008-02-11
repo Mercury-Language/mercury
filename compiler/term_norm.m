@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -327,27 +327,30 @@ functor_lower_bound(use_map_and_args(WeightMap), TypeCtor, ConsId, _)
 %-----------------------------------------------------------------------------%
 
 zero_size_type(Module, Type) :-
-    type_util.classify_type(Module, Type) = TypeCategory,
-    zero_size_type_category(TypeCategory, yes).
+    CtorCat = classify_type(Module, Type),
+    zero_size_type_category(CtorCat, yes).
 
-:- pred zero_size_type_category(type_category::in, bool::out) is det.
+:- pred zero_size_type_category(type_ctor_category::in, bool::out) is det.
 
-zero_size_type_category(type_cat_int, yes).
-zero_size_type_category(type_cat_char, yes).
-zero_size_type_category(type_cat_string, yes).
-zero_size_type_category(type_cat_float, yes).
-zero_size_type_category(type_cat_void, yes).
-zero_size_type_category(type_cat_type_info, yes).
-zero_size_type_category(type_cat_type_ctor_info, yes).
-zero_size_type_category(type_cat_typeclass_info, yes).
-zero_size_type_category(type_cat_base_typeclass_info, yes).
-zero_size_type_category(type_cat_higher_order, yes).
-zero_size_type_category(type_cat_tuple, no).
-zero_size_type_category(type_cat_enum, yes).
-zero_size_type_category(type_cat_foreign_enum, yes).
-zero_size_type_category(type_cat_dummy, yes).
-zero_size_type_category(type_cat_variable, no).
-zero_size_type_category(type_cat_user_ctor, no).
+zero_size_type_category(CtorCat, ZeroSize) :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ),
+        ZeroSize = yes
+    ;
+        ( CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_general)
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ),
+        ZeroSize = no
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -756,35 +756,31 @@ check_type(ModuleInfo, Type) = Status :-
         % types and solver types may modify the trail.
         Status = trail_may_modify
     ;
-        TypeCategory = classify_type(ModuleInfo, Type),
-        Status = check_type_2(ModuleInfo, Type, TypeCategory)
+        TypeCtorCategory = classify_type(ModuleInfo, Type),
+        Status = check_type_2(ModuleInfo, Type, TypeCtorCategory)
     ).
 
-:- func check_type_2(module_info, mer_type, type_category) = trailing_status.
+:- func check_type_2(module_info, mer_type, type_ctor_category)
+    = trailing_status.
 
-check_type_2(ModuleInfo, Type, TypeCat) = Status :-
+check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
     (
-        ( TypeCat = type_cat_int
-        ; TypeCat = type_cat_char
-        ; TypeCat = type_cat_string
-        ; TypeCat = type_cat_float
-        ; TypeCat = type_cat_higher_order
-        ; TypeCat = type_cat_type_info
-        ; TypeCat = type_cat_type_ctor_info
-        ; TypeCat = type_cat_typeclass_info
-        ; TypeCat = type_cat_base_typeclass_info
-        ; TypeCat = type_cat_void
-        ; TypeCat = type_cat_dummy
+        ( TypeCtorCat = ctor_cat_builtin(_)
+        ; TypeCtorCat = ctor_cat_higher_order
+        ; TypeCtorCat = ctor_cat_system(_)
+        ; TypeCtorCat = ctor_cat_void
+        ; TypeCtorCat = ctor_cat_builtin_dummy
+        ; TypeCtorCat = ctor_cat_user(cat_user_direct_dummy)
         ),
         Status = trail_will_not_modify
     ;
-        TypeCat = type_cat_variable,
+        TypeCtorCat = ctor_cat_variable,
         Status = trail_conditional
     ;
-        ( TypeCat = type_cat_tuple
-        ; TypeCat = type_cat_enum
-        ; TypeCat = type_cat_foreign_enum
-        ; TypeCat = type_cat_user_ctor
+        ( TypeCtorCat = ctor_cat_tuple
+        ; TypeCtorCat = ctor_cat_enum(_)
+        ; TypeCtorCat = ctor_cat_user(cat_user_notag)
+        ; TypeCtorCat = ctor_cat_user(cat_user_general)
         ),
         type_to_ctor_and_args_det(Type, _TypeCtor, Args),
         (

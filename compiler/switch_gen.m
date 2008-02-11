@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,8 +107,8 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
     globals.lookup_bool_option(Globals, smart_indexing, Indexing),
 
     type_to_ctor_det(VarType, VarTypeCtor),
-    TypeCategory = classify_type(ModuleInfo, VarType),
-    SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory),
+    CtorCat = classify_type(ModuleInfo, VarType),
+    SwitchCategory = type_ctor_cat_to_switch_cat(CtorCat),
 
     VarName = variable_name(!.CI, Var),
     produce_variable(Var, VarCode, VarRval, !CI),
@@ -213,8 +213,8 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
 determine_switch_category(CI, Var) = SwitchCategory :-
     Type = variable_type(CI, Var),
     get_module_info(CI, ModuleInfo),
-    classify_type(ModuleInfo, Type) = TypeCategory,
-    SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory).
+    CtorCat = classify_type(ModuleInfo, Type),
+    SwitchCategory = type_ctor_cat_to_switch_cat(CtorCat).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

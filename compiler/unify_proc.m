@@ -547,13 +547,12 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         ConsId = cons(CtorSymName, TupleArity),
         map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
         UnifyPred = no,
-        IsEnum = not_enum_or_dummy,
-        IsForeign = no,
+        DuTypeKind = du_type_kind_general,
         ReservedTag = does_not_use_reserved_tag,
         ReservedAddr = does_not_use_reserved_address,
         IsForeign = no,
         TypeBody = hlds_du_type([Ctor], ConsTagValues, no_cheaper_tag_test,
-            IsEnum, UnifyPred, ReservedTag, ReservedAddr, IsForeign),
+            DuTypeKind, UnifyPred, ReservedTag, ReservedAddr, IsForeign),
         construct_type(TypeCtor, TupleArgTypes, Type),
 
         term.context_init(Context)
@@ -776,7 +775,7 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     (
         type_to_ctor_det(Type, TypeCtor),
-        is_builtin_dummy_argument_type(TypeCtor)
+        check_builtin_dummy_type_ctor(TypeCtor) = is_builtin_dummy_type_ctor
     ->
         Goal = true_goal_with_context(Context),
         quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
@@ -788,29 +787,34 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
             Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, _, EnumDummy, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _),
             (
-                ( EnumDummy = is_mercury_enum
-                ; EnumDummy = is_foreign_enum(_)
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
                 ),
                 make_simple_test(X, Y, umc_explicit, [], Goal),
                 quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
             ;
-                EnumDummy = is_dummy,
+                DuTypeKind = du_type_kind_direct_dummy,
                 Goal = true_goal_with_context(Context),
                 quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
             ;
-                EnumDummy = not_enum_or_dummy,
+                ( DuTypeKind = du_type_kind_general
+                ; DuTypeKind = du_type_kind_notag(_, _, _)
+                ),
                 generate_du_unify_proc_body(Ctors, X, Y, Context, Clause,
                     !Info)
             )
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            ( is_dummy_argument_type(ModuleInfo, EqvType) ->
+            IsDummyType = check_dummy_type(ModuleInfo, EqvType),
+            (
+                IsDummyType = is_dummy_type,
                 % Treat this type as if it were a dummy type itself.
                 Goal = true_goal_with_context(Context),
                 quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
             ;
+                IsDummyType = is_not_dummy_type,
                 generate_eqv_unify_proc_body(EqvType, X, Y, Context,
                     Clause, !Info)
             )
@@ -838,64 +842,40 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
         )
     ).
 
-:- pred generate_builtin_unify((type_category)::in, prog_var::in, prog_var::in,
-    prog_context::in, clause::out,
+:- pred generate_builtin_unify(type_ctor_category::in,
+    prog_var::in, prog_var::in, prog_context::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_builtin_unify(TypeCategory, X, Y, Context, Clause, !Info) :-
+generate_builtin_unify(CtorCat, X, Y, Context, Clause, !Info) :-
     ArgVars = [X, Y],
 
     % can_generate_special_pred_clauses_for_type ensures the unexpected
     % cases can never occur.
     (
-        TypeCategory = type_cat_int,
+        CtorCat = ctor_cat_builtin(cat_builtin_int),
         Name = "builtin_unify_int"
     ;
-        TypeCategory = type_cat_char,
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_unify_character"
     ;
-        TypeCategory = type_cat_string,
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
         Name = "builtin_unify_string"
     ;
-        TypeCategory = type_cat_float,
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
         Name = "builtin_unify_float"
     ;
-        TypeCategory = type_cat_higher_order,
+        CtorCat = ctor_cat_higher_order,
         Name = "builtin_unify_pred"
     ;
-        TypeCategory = type_cat_tuple,
-        unexpected(this_file, "generate_builtin_unify: tuple")
-    ;
-        TypeCategory = type_cat_enum,
-        unexpected(this_file, "generate_builtin_unify: enum")
-    ;
-        TypeCategory = type_cat_foreign_enum,
-        unexpected(this_file, "generate_builtin_unify: foreign enum")
-    ;
-        TypeCategory = type_cat_dummy,
-        unexpected(this_file, "generate_builtin_unify: dummy")
-    ;
-        TypeCategory = type_cat_variable,
-        unexpected(this_file, "generate_builtin_unify: variable type")
-    ;
-        TypeCategory = type_cat_type_info,
-        unexpected(this_file, "generate_builtin_unify: type_info type")
-    ;
-        TypeCategory = type_cat_type_ctor_info,
-        unexpected(this_file, "generate_builtin_unify: type_ctor_info type")
-    ;
-        TypeCategory = type_cat_typeclass_info,
-        unexpected(this_file, "generate_builtin_unify: typeclass_info type")
-    ;
-        TypeCategory = type_cat_base_typeclass_info,
-        unexpected(this_file,
-            "generate_builtin_unify: base_typeclass_info type")
-    ;
-        TypeCategory = type_cat_void,
-        unexpected(this_file, "generate_builtin_unify: void type")
-    ;
-        TypeCategory = type_cat_user_ctor,
-        unexpected(this_file, "generate_builtin_unify: user_ctor type")
+        ( CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        unexpected(this_file, "generate_builtin_unify: bad ctor category")
     ),
     build_call(Name, ArgVars, Context, UnifyGoal, !Info),
     quantify_clause_body(ArgVars, UnifyGoal, Context, Clause, !Info).
@@ -997,25 +977,29 @@ generate_index_proc_body(TypeBody, X, Index, Context, Clause, !Info) :-
             "trying to create index proc for non-canonical type")
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, _, EnumDummy, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _),
             (
                 % For enum types, the generated comparison predicate performs
                 % an integer comparison, and does not call the type's index
                 % predicate, so do not generate an index predicate for such
                 % types.
-                EnumDummy = is_mercury_enum,
+                DuTypeKind = du_type_kind_mercury_enum,
                 unexpected(this_file,
                     "trying to create index proc for enum type")
             ;
-                EnumDummy = is_foreign_enum(_),
+                DuTypeKind = du_type_kind_foreign_enum(_),
                 unexpected(this_file,
                     "trying to create index proc for foreign enum type")
             ;
-                EnumDummy = is_dummy,
+                DuTypeKind = du_type_kind_direct_dummy,
                 unexpected(this_file,
                     "trying to create index proc for dummy type")
             ;
-                EnumDummy = not_enum_or_dummy,
+                DuTypeKind = du_type_kind_notag(_, _, _),
+                unexpected(this_file,
+                    "trying to create index proc for notag type")
+            ;
+                DuTypeKind = du_type_kind_general,
                 generate_du_index_proc_body(Ctors, X, Index, Context,
                     Clause, !Info)
             )
@@ -1052,7 +1036,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
     info_get_module_info(!.Info, ModuleInfo),
     (
         type_to_ctor_det(Type, TypeCtor),
-        is_builtin_dummy_argument_type(TypeCtor)
+        check_builtin_dummy_type_ctor(TypeCtor) = is_builtin_dummy_type_ctor
     ->
         generate_dummy_compare_proc_body(Res, X, Y, Context, Clause, !Info)
     ;
@@ -1063,19 +1047,21 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             Res, X, Y, Context, Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors0, _, _, EnumDummy, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors0, _, _, DuTypeKind, _, _, _, _),
             (
-                ( EnumDummy = is_mercury_enum
-                ; EnumDummy = is_foreign_enum(_)
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
                 ),
                 generate_enum_compare_proc_body(Res, X, Y, Context, Clause,
                     !Info)
             ;
-                EnumDummy = is_dummy,
+                DuTypeKind = du_type_kind_direct_dummy,
                 generate_dummy_compare_proc_body(Res, X, Y, Context, Clause,
                     !Info)
             ;
-                EnumDummy = not_enum_or_dummy,
+                ( DuTypeKind = du_type_kind_general
+                ; DuTypeKind = du_type_kind_notag(_, _, _)
+                ),
                 module_info_get_globals(ModuleInfo, Globals),
                 globals.lookup_bool_option(Globals,
                     lexically_order_constructors, LexicalOrder),
@@ -1091,11 +1077,14 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             )
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            ( is_dummy_argument_type(ModuleInfo, EqvType) ->
+            IsDummyType = check_dummy_type(ModuleInfo, EqvType),
+            (
+                IsDummyType = is_dummy_type,
                 % Treat this type as if it were a dummy type itself.
                 generate_dummy_compare_proc_body(Res, X, Y, Context, Clause,
                     !Info)
             ;
+                IsDummyType = is_not_dummy_type,
                 generate_eqv_compare_proc_body(EqvType, Res, X, Y,
                     Context, Clause, !Info)
             )
@@ -1172,68 +1161,44 @@ generate_dummy_compare_proc_body(Res, X, Y, Context, Clause, !Info) :-
     % XXX check me
     quantify_clause_body([Res, X, Y], Goal, Context, Clause, !Info).
 
-:- pred generate_builtin_compare(type_category::in,
+:- pred generate_builtin_compare(type_ctor_category::in,
     prog_var::in, prog_var::in, prog_var::in, prog_context::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_builtin_compare(TypeCategory, Res, X, Y, Context, Clause, !Info) :-
+generate_builtin_compare(CtorCat, Res, X, Y, Context, Clause, !Info) :-
     ArgVars = [Res, X, Y],
 
     % can_generate_special_pred_clauses_for_type ensures the unexpected
     % cases can never occur.
     (
-        TypeCategory = type_cat_int,
+        CtorCat = ctor_cat_builtin(cat_builtin_int),
         Name = "builtin_compare_int"
     ;
-        TypeCategory = type_cat_char,
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_compare_character"
     ;
-        TypeCategory = type_cat_string,
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
         Name = "builtin_compare_string"
     ;
-        TypeCategory = type_cat_float,
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
         Name = "builtin_compare_float"
     ;
-        TypeCategory = type_cat_higher_order,
+        CtorCat = ctor_cat_higher_order,
         Name = "builtin_compare_pred"
     ;
-        TypeCategory = type_cat_tuple,
-        unexpected(this_file, "generate_builtin_compare: tuple type")
-    ;
-        TypeCategory = type_cat_enum,
-        unexpected(this_file, "generate_builtin_compare: enum type")
-    ;
-        TypeCategory = type_cat_foreign_enum,
-        unexpected(this_file, "generate_builtin_compare: foreign enum type")
-    ;
-        TypeCategory = type_cat_dummy,
-        unexpected(this_file, "generate_builtin_compare: dummy type")
-    ;
-        TypeCategory = type_cat_variable,
-        unexpected(this_file, "generate_builtin_compare: variable type")
-    ;
-        TypeCategory = type_cat_type_info,
-        unexpected(this_file, "generate_builtin_compare: type_info type")
-    ;
-        TypeCategory = type_cat_type_ctor_info,
-        unexpected(this_file, "generate_builtin_compare: type_ctor_info type")
-    ;
-        TypeCategory = type_cat_typeclass_info,
-        unexpected(this_file, "generate_builtin_compare: typeclass_info type")
-    ;
-        TypeCategory = type_cat_base_typeclass_info,
-        unexpected(this_file,
-            "generate_builtin_compare: base_typeclass_info type")
-    ;
-        TypeCategory = type_cat_void,
-        unexpected(this_file, "generate_builtin_compare: void type")
-    ;
-        TypeCategory = type_cat_user_ctor,
-        unexpected(this_file, "generate_builtin_compare: user_ctor type")
+        ( CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        unexpected(this_file, "generate_builtin_compare: bad ctor category")
     ),
     build_call(Name, ArgVars, Context, CompareGoal, !Info),
     quantify_clause_body(ArgVars, CompareGoal, Context, Clause, !Info).
-            
+
 :- pred generate_default_solver_type_unify_proc_body(prog_var::in,
     prog_var::in, prog_context::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
@@ -1242,7 +1207,7 @@ generate_default_solver_type_unify_proc_body(X, Y, Context, Clause, !Info) :-
     ArgVars = [X, Y],
     build_call("builtin_unify_solver_type", ArgVars, Context, Goal, !Info),
     quantify_clause_body(ArgVars, Goal, Context, Clause, !Info).
-    
+
 :- pred generate_default_solver_type_compare_proc_body(prog_var::in,
     prog_var::in, prog_var::in, prog_context::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
@@ -1889,41 +1854,46 @@ compare_args_2([Arg | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
     % which would be a type error, we call `typed_compare', which is a builtin
     % that first compares their types and then compares their values.
     (
-        list.member(ExistQTVar, ExistQTVars),
-        type_contains_var(Type, ExistQTVar)
+        some [ExistQTVar] (
+            list.member(ExistQTVar, ExistQTVars),
+            type_contains_var(Type, ExistQTVar)
+        )
     ->
         ComparePred = "typed_compare"
     ;
         ComparePred = "compare"
     ),
+    info_get_module_info(!.Info, ModuleInfo),
+    IsDummy = check_dummy_type(ModuleInfo, Type),
     (
-        info_get_module_info(!.Info, ModuleInfo),
-        is_dummy_argument_type(ModuleInfo, Type)
-    ->
+        IsDummy = is_dummy_type,
         % X and Y contain dummy values, so there is nothing to compare.
         compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal, !Info)
     ;
-        Xs = [],
-        Ys = []
-    ->
-        build_call(ComparePred, [R, X, Y], Context, Goal, !Info)
-    ;
-        info_new_var(comparison_result_type, R1, !Info),
-        build_call(ComparePred, [R1, X, Y], Context, Do_Comparison, !Info),
+        IsDummy = is_not_dummy_type,
+        (
+            Xs = [],
+            Ys = []
+        ->
+            build_call(ComparePred, [R, X, Y], Context, Goal, !Info)
+        ;
+            info_new_var(comparison_result_type, R1, !Info),
+            build_call(ComparePred, [R1, X, Y], Context, Do_Comparison, !Info),
 
-        make_const_construction(R1, equal_cons_id, Check_Equal),
-        Check_Not_Equal = hlds_goal(negation(Check_Equal), GoalInfo),
+            make_const_construction(R1, equal_cons_id, Check_Equal),
+            Check_Not_Equal = hlds_goal(negation(Check_Equal), GoalInfo),
 
-        create_pure_atomic_complicated_unification(R, rhs_var(R1),
-            Context, umc_explicit, [], Return_R1),
-        Condition = hlds_goal(
-            conj(plain_conj, [Do_Comparison, Check_Not_Equal]),
-            GoalInfo),
-        compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R, Context, ElseCase,
-            !Info),
-        Goal = hlds_goal(
-            if_then_else([], Condition, Return_R1, ElseCase),
-            GoalInfo)
+            create_pure_atomic_complicated_unification(R, rhs_var(R1),
+                Context, umc_explicit, [], Return_R1),
+            Condition = hlds_goal(
+                conj(plain_conj, [Do_Comparison, Check_Not_Equal]),
+                GoalInfo),
+            compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R, Context, ElseCase,
+                !Info),
+            Goal = hlds_goal(
+                if_then_else([], Condition, Return_R1, ElseCase),
+                GoalInfo)
+        )
     ).
 
 :- pred generate_return_equal(prog_var::in, prog_context::in,
@@ -2019,13 +1989,11 @@ make_fresh_vars(CtorArgs, ExistQTVars, Vars, !Info) :-
         make_fresh_vars_from_types(ArgTypes, Vars, !Info)
     ;
         ExistQTVars = [_ | _],
-        %
         % If there are existential types involved, then it's too hard to get
         % the types right here (it would require allocating new type variables)
         % -- instead, typecheck.m will typecheck the clause to figure out
         % the correct types. So we just allocate the variables and leave it
         % up to typecheck.m to infer their types.
-        %
         info_get_varset(!.Info, VarSet0),
         list.length(CtorArgs, NumVars),
         varset.new_vars(VarSet0, NumVars, Vars, VarSet),
@@ -2054,7 +2022,7 @@ unify_var_lists_2([Arg | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
     term.context_init(Context),
     (
         info_get_module_info(!.Info, ModuleInfo),
-        is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type
     ->
         Goal = true_goal
     ;

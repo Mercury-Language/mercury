@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2903,7 +2903,7 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
 
 var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
     map.lookup(VarTypes, Var, Type),
-    is_dummy_argument_type(ModuleInfo, Type).
+    check_dummy_type(ModuleInfo, Type) = is_dummy_type.
 
 %-----------------------------------------------------------------------------%
 

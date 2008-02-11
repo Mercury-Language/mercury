@@ -966,8 +966,8 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
         TempRegs = TempRegs0
     ),
 
-    % XXX optimise the stripping of the tag when the tags are the same or
-    % the old tag is known, as we do in the high level backend
+    % XXX Optimise the stripping of the tag when the tags are the same
+    % or the old tag is known, as we do in the high level backend.
     MaybeReuse = llds_reuse(unop(strip_tag, lval(ReuseLval)), MaybeFlag),
 
     % NeedsUpdates0 can be shorter than Vector due to extra fields.
@@ -1072,9 +1072,12 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         ),
         var_locn_get_vartypes(!.VLI, VarTypes),
         map.lookup(VarTypes, Var, Type),
-        ( is_dummy_argument_type(ModuleInfo, Type) ->
+        IsDummy = check_dummy_type(ModuleInfo, Type),
+        (
+            IsDummy = is_dummy_type,
             AssignCode = empty
         ;
+            IsDummy = is_not_dummy_type,
             add_additional_lval_for_var(Var, Target, !VLI),
             get_var_name(!.VLI, Var, VarName),
             Comment = "assigning from " ++ VarName,
@@ -1129,24 +1132,27 @@ save_reused_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
     ),
     var_locn_get_vartypes(!.VLI, VarTypes),
     map.lookup(VarTypes, DepVar, DepVarType),
+    IsDummy = check_dummy_type(ModuleInfo, DepVarType),
     (
-        is_dummy_argument_type(ModuleInfo, DepVarType)
-    ->
+        IsDummy = is_dummy_type,
         AssignCode = empty
     ;
-        rval_depends_on_search_lval(DepVarRval,
-            specific_reg_or_stack(ReuseLval))
-    ->
-        var_locn_acquire_reg(Target, !VLI),
-        add_additional_lval_for_var(DepVar, Target, !VLI),
-        get_var_name(!.VLI, DepVar, DepVarName),
-        AssignCode = node([
-            llds_instr(assign(Target, DepVarRval),
-                "saving " ++ DepVarName)
-        ]),
-        !:Regs = [Target | !.Regs]
-    ;
-        AssignCode = empty
+        IsDummy = is_not_dummy_type,
+        (
+            rval_depends_on_search_lval(DepVarRval,
+                specific_reg_or_stack(ReuseLval))
+        ->
+            var_locn_acquire_reg(Target, !VLI),
+            add_additional_lval_for_var(DepVar, Target, !VLI),
+            get_var_name(!.VLI, DepVar, DepVarName),
+            AssignCode = node([
+                llds_instr(assign(Target, DepVarRval),
+                    "saving " ++ DepVarName)
+            ]),
+            !:Regs = [Target | !.Regs]
+        ;
+            AssignCode = empty
+        )
     ),
     SaveDepVarCode = tree(EvalCode, AssignCode).
 
@@ -1402,9 +1408,12 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
             ),
             var_locn_get_vartypes(!.VLI, VarTypes),
             map.lookup(VarTypes, Var, Type),
-            ( is_dummy_argument_type(ModuleInfo, Type) ->
+            IsDummy = check_dummy_type(ModuleInfo, Type),
+            (
+                IsDummy = is_dummy_type,
                 AssignCode = empty
             ;
+                IsDummy = is_not_dummy_type,
                 AssignCode = node([llds_instr(assign(Target, Rval), Msg)])
             )
         ),

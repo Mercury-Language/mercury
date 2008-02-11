@@ -126,7 +126,7 @@ ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
         % Skip dummy argument types, since they will not have been declared.
         ml_variable_type(!.Info, TargetVar, Type),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type
     ->
         Statements = []
     ;
@@ -872,12 +872,8 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % Check for type_infos and typeclass_infos,
             % since these need to be handled specially;
             % their Mercury type definitions are lies.
-            MLDS_Type = mercury_type(_, TypeCategory, _),
-            ( TypeCategory = type_cat_type_info
-            ; TypeCategory = type_cat_type_ctor_info
-            ; TypeCategory = type_cat_typeclass_info
-            ; TypeCategory = type_cat_base_typeclass_info
-            )
+            MLDS_Type = mercury_type(_, TypeCtorCategory, _),
+            TypeCtorCategory = ctor_cat_system(_)
         ->
             ConstType = mlds_array_type(mlds_generic_type)
         ;
@@ -891,7 +887,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             (
                 MLDS_Type = mlds_class_type(QualTypeName, TypeArity, _)
             ;
-                MLDS_Type = mercury_type(MercuryType, type_cat_user_ctor, _),
+                MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
                 type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
                 ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
             )
@@ -912,7 +908,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % mapped to `mlds_ptr_type(mlds_class_type(...))', but when
             % declarating static constants we want just the class type,
             % not the pointer type.
-            MLDS_Type = mercury_type(MercuryType, type_cat_user_ctor, _),
+            MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
             type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes)
         ->
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
@@ -920,7 +916,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
         ;
             % For tuples, a similar issue arises; we want tuple constants
             % to have array type, not the pointer type MR_Tuple.
-            MLDS_Type = mercury_type(_, type_cat_tuple, _)
+            MLDS_Type = mercury_type(_, ctor_cat_tuple, _)
         ->
             ConstType = mlds_array_type(mlds_generic_type)
         ;
@@ -928,7 +924,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % the pointer type MR_ClosurePtr. Note that we use a low-level
             % data representation for closures, even when --high-level-data
             % is enabled.
-            MLDS_Type = mercury_type(_, type_cat_higher_order, _)
+            MLDS_Type = mercury_type(_, ctor_cat_higher_order, _)
         ->
             ConstType = mlds_array_type(mlds_generic_type)
         ;
@@ -1309,8 +1305,8 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
     ;
         (
             mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in),
-            not is_dummy_argument_type(ModuleInfo, ArgType),
-            not is_dummy_argument_type(ModuleInfo, ConsArgType)
+            check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type,
+            check_dummy_type(ModuleInfo, ConsArgType) = is_not_dummy_type
         ->
             ml_gen_box_or_unbox_rval(ArgType, BoxedArgType, native_if_possible,
                 lval(Lval), Rval, !Info)
@@ -1684,8 +1680,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
     mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
     (
         % Skip dummy argument types, since they will not have been declared.
-        ( is_dummy_argument_type(ModuleInfo, ArgType)
-        ; is_dummy_argument_type(ModuleInfo, FieldType)
+        ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
+        ; check_dummy_type(ModuleInfo, FieldType) = is_dummy_type
         )
     ->
         true

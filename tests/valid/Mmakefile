@@ -83,9 +83,9 @@ OTHER_PROGS= \
 	easy_nondet_test_2 \
 	empty_bound_inst_list \
 	empty_switch \
+	equiv_solns_ia \
 	erl_ite_vars \
 	error \
-	equiv_solns_ia \
 	eval \
 	existential_cons \
 	explicit_quant \
@@ -248,6 +248,7 @@ DEEP_PROF_CAPABLE_PROGS = \
 #
 LLDS_PROGS= \
 	exists_cast_bug \
+	fzn_debug_abort \
 	untuple_bug
 
 # These tests only work in grades that support tabling.

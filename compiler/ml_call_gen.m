@@ -315,9 +315,12 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
         ArgTypes = [SrcType, DestType]
     ->
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        ( is_dummy_argument_type(ModuleInfo, DestType) ->
+        IsDummy = check_dummy_type(ModuleInfo, DestType),
+        (
+            IsDummy = is_dummy_type,
             Statements = []
         ;
+            IsDummy = is_not_dummy_type,
             ml_gen_box_or_unbox_rval(SrcType, DestType, native_if_possible,
                 lval(SrcLval), CastRval, !Info),
             Assign = ml_gen_assign(DestLval, CastRval, Context),
@@ -647,23 +650,28 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             !:OutputTypes, !:ConvDecls, !:ConvOutputStatements, !Info),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_arg_mode(ModuleInfo, Mode, CalleeType, ArgMode),
-        ( is_dummy_argument_type(ModuleInfo, CalleeType) ->
+        CalleeIsDummy = check_dummy_type(ModuleInfo, CalleeType),
+        (
+            CalleeIsDummy = is_dummy_type
             % Exclude arguments of type io.state etc.
-            true
         ;
+            CalleeIsDummy = is_not_dummy_type,
             (
                 ArgMode = top_unused
                 % Also exclude those with arg_mode `top_unused'.
             ;
                 ArgMode = top_in,
                 % It's an input argument.
-                ( is_dummy_argument_type(ModuleInfo, CallerType) ->
+                CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
+                (
+                    CallerIsDummy = is_dummy_type,
                     % The variable may not have been declared, so we need to
                     % generate a dummy value for it. Using `0' here is more
                     % efficient than using private_builtin.dummy_var, which is
                     % what ml_gen_var will have generated for this variable.
                     VarRval = const(mlconst_int(0))
                 ;
+                    CallerIsDummy = is_not_dummy_type,
                     VarRval = lval(VarLval)
                 ),
                 ml_gen_box_or_unbox_rval(CallerType, CalleeType,
@@ -856,12 +864,15 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         ml_gen_var_lval(!.Info, ArgVarName, MLDS_CalleeType, ArgLval),
 
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        ( is_dummy_argument_type(ModuleInfo, CallerType) ->
+        CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
+        (
+            CallerIsDummy = is_dummy_type,
             % If it is a dummy argument type (e.g. io.state),
             % then we don't need to bother assigning it.
             ConvInputStatements = [],
             ConvOutputStatements = []
         ;
+            CallerIsDummy = is_not_dummy_type,
             % Generate statements to box/unbox the fresh variable and assign it
             % to/from the output argument whose address we were passed.
 
@@ -912,7 +923,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
                 % introduced for types such as io.state.
                 Lval = var(_VarName, VarType),
                 VarType = mercury_type(ProgDataType, _, _),
-                is_dummy_argument_type(ModuleInfo, ProgDataType)
+                check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
             ->
                 Statements = []
             ;

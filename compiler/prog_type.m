@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,12 +206,16 @@
     %
 :- func builtin_type_ctors_with_no_hlds_type_defn = list(type_ctor).
 
-    % is_builtin_dummy_argument_type(type_ctor):
+:- type is_builtin_dummy_type_ctor
+    --->    is_builtin_dummy_type_ctor
+    ;       is_not_builtin_dummy_type_ctor.
+
+    % is_builtin_dummy_type_ctor(type_ctor):
     %
     % Is the given type constructor a dummy type irrespective
     % of its definition?
     %
-:- pred is_builtin_dummy_argument_type(type_ctor::in) is semidet.
+:- func check_builtin_dummy_type_ctor(type_ctor) = is_builtin_dummy_type_ctor.
 
     % Certain types, e.g. io.state and store.store(S), are just dummy types
     % used to ensure logical semantics; there is no need to actually pass them,
@@ -240,7 +244,7 @@
 
 :- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
 
-:- func is_introduced_type_info_type_category(type_category) = bool.
+:- func is_introduced_type_info_type_category(type_ctor_category) = bool.
 
     % Given a list of variables, return the permutation
     % of that list which has all the type_info-related variables
@@ -268,23 +272,37 @@
 :- mode remove_new_prefix(in, out) is semidet.
 :- mode remove_new_prefix(out, in) is det.
 
-:- type type_category
-    --->    type_cat_int
-    ;       type_cat_char
-    ;       type_cat_string
-    ;       type_cat_float
-    ;       type_cat_higher_order
-    ;       type_cat_tuple
-    ;       type_cat_enum
-    ;       type_cat_foreign_enum
-    ;       type_cat_dummy
-    ;       type_cat_variable
-    ;       type_cat_type_info
-    ;       type_cat_type_ctor_info
-    ;       type_cat_typeclass_info
-    ;       type_cat_base_typeclass_info
-    ;       type_cat_void
-    ;       type_cat_user_ctor.
+:- type type_ctor_category
+    --->    ctor_cat_builtin(type_ctor_cat_builtin)
+    ;       ctor_cat_higher_order
+    ;       ctor_cat_tuple
+    ;       ctor_cat_enum(type_ctor_cat_enum)
+    ;       ctor_cat_builtin_dummy
+    ;       ctor_cat_variable
+    ;       ctor_cat_system(type_ctor_cat_system)
+    ;       ctor_cat_void
+    ;       ctor_cat_user(type_ctor_cat_user).
+
+:- type type_ctor_cat_builtin
+    --->    cat_builtin_int
+    ;       cat_builtin_float
+    ;       cat_builtin_char
+    ;       cat_builtin_string.
+
+:- type type_ctor_cat_system
+    --->    cat_system_type_info
+    ;       cat_system_type_ctor_info
+    ;       cat_system_typeclass_info
+    ;       cat_system_base_typeclass_info.
+
+:- type type_ctor_cat_enum
+    --->    cat_enum_mercury
+    ;       cat_enum_foreign.
+
+:- type type_ctor_cat_user
+    --->    cat_user_direct_dummy
+    ;       cat_user_notag
+    ;       cat_user_general.
 
     % Construct builtin types.
     %
@@ -350,34 +368,20 @@
                                     % functor result type
             ).
 
-    % Check whether the type with the given list of constructors would be
-    % a no_tag type (which requires the list to include exactly one constructor
-    % with exactly one argument), and if so, return its constructor symbol,
-    % argument type, and the argument's name (if it has one).
-    %
-    % This doesn't do any checks for options that might be set (such as
-    % turning off no_tag_types). If you want those checks you should use
-    % type_is_no_tag_type/4, or if you really know what you are doing,
-    % perform the checks yourself.
-    %
-:- pred type_constructors_are_no_tag_type(list(constructor)::in, sym_name::out,
-    mer_type::out, maybe(string)::out) is semidet.
-
     % Given a list of constructors for a type, check whether that type
     % is a private_builtin.type_info/0 or similar type.
     %
 :- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
-    % type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReservedTag,
-    %   Ctors, UserEqComp, FunctorName, FunctorArgType, MaybeFunctorArgName):
+    % type_ctor_should_be_notag(Globals, TypeCtor, ReservedTag, Ctors,
+    %   MaybeUserEqComp, SingleFunctorName, SingleArgType, MaybeSingleArgName):
     %
-    % Check whether some constructors are a no_tag type, and that this
-    % is compatible with the ReservedTag setting for this type and
-    % the grade options set in the globals.
-    % Assign single functor of arity one a `no_tag' tag (unless we are
-    % reserving a tag, or if it is one of the dummy types).
+    % Succeed if the type constructor with the given name (TypeCtor) and
+    % details (ReservedTag, Ctors, MaybeUserEqComp) is a no_tag type. If it is,
+    % return the name of its single function symbol, the type of its one
+    % argument, and its name (if any).
     %
-:- pred type_with_constructors_should_be_no_tag(globals::in, type_ctor::in,
+:- pred type_ctor_should_be_notag(globals::in, type_ctor::in,
     uses_reserved_tag::in, list(constructor)::in, maybe(unify_compare)::in,
     sym_name::out, mer_type::out, maybe(string)::out) is semidet.
 
@@ -781,17 +785,24 @@ builtin_type_ctors_with_no_hlds_type_defn =
       type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
     ].
 
-is_builtin_dummy_argument_type(TypeCtor) :-
+check_builtin_dummy_type_ctor(TypeCtor) = IsBuiltinDummy :-
     TypeCtor = type_ctor(CtorSymName, TypeArity),
-    CtorSymName = qualified(ModuleName, TypeName),
     (
+        CtorSymName = qualified(ModuleName, TypeName),
         ModuleName = mercury_std_lib_module_name(unqualified("io")),
         TypeName = "state",
         TypeArity = 0
+    ->
+        IsBuiltinDummy = is_builtin_dummy_type_ctor
     ;
+        CtorSymName = qualified(ModuleName, TypeName),
         ModuleName = mercury_std_lib_module_name(unqualified("store")),
         TypeName = "store",
         TypeArity = 1
+    ->
+        IsBuiltinDummy = is_builtin_dummy_type_ctor
+    ;
+        IsBuiltinDummy = is_not_builtin_dummy_type_ctor
     ).
 
 constructor_list_represents_dummy_argument_type([Ctor], no) :-
@@ -820,22 +831,22 @@ is_introduced_type_info_type_ctor(TypeCtor) :-
     ; Name = "base_typeclass_info"
     ).
 
-is_introduced_type_info_type_category(type_cat_int) = no.
-is_introduced_type_info_type_category(type_cat_char) = no.
-is_introduced_type_info_type_category(type_cat_string) = no.
-is_introduced_type_info_type_category(type_cat_float) = no.
-is_introduced_type_info_type_category(type_cat_higher_order) = no.
-is_introduced_type_info_type_category(type_cat_tuple) = no.
-is_introduced_type_info_type_category(type_cat_enum) = no.
-is_introduced_type_info_type_category(type_cat_foreign_enum) = no.
-is_introduced_type_info_type_category(type_cat_dummy) = no.
-is_introduced_type_info_type_category(type_cat_variable) = no.
-is_introduced_type_info_type_category(type_cat_type_info) = yes.
-is_introduced_type_info_type_category(type_cat_type_ctor_info) = yes.
-is_introduced_type_info_type_category(type_cat_typeclass_info) = yes.
-is_introduced_type_info_type_category(type_cat_base_typeclass_info) = yes.
-is_introduced_type_info_type_category(type_cat_void) = no.
-is_introduced_type_info_type_category(type_cat_user_ctor) = no.
+is_introduced_type_info_type_category(TypeCtorCat) = IsIntroduced :-
+    (
+        ( TypeCtorCat = ctor_cat_builtin(_)
+        ; TypeCtorCat = ctor_cat_higher_order
+        ; TypeCtorCat = ctor_cat_tuple
+        ; TypeCtorCat = ctor_cat_enum(_)
+        ; TypeCtorCat = ctor_cat_builtin_dummy
+        ; TypeCtorCat = ctor_cat_variable
+        ; TypeCtorCat = ctor_cat_void
+        ; TypeCtorCat = ctor_cat_user(_)
+        ),
+        IsIntroduced = no
+    ;
+        TypeCtorCat = ctor_cat_system(_),
+        IsIntroduced = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -861,7 +872,6 @@ split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList,
             Type = map.lookup(VarTypes, Var),
             is_introduced_type_info_type(Type)),
         VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
-
 
 remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
     string.append("new ", Name, Name0).
@@ -990,23 +1000,14 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
 
 %-----------------------------------------------------------------------------%
 
-type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
-    type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName0, ArgType),
-
-    % We don't handle unary tuples as no_tag types -- they are rare enough
-    % that it's not worth the implementation effort.
-    Ctor \= unqualified("{}"),
-
-    MaybeArgName = map_maybe(unqualify_name, MaybeArgName0).
-
 type_constructors_are_type_info(Ctors) :-
     type_is_single_ctor_single_arg(Ctors, Ctor, _, _),
     ctor_is_type_info(Ctor).
 
 :- pred type_is_single_ctor_single_arg(list(constructor)::in, sym_name::out,
-    maybe(ctor_field_name)::out, mer_type::out) is semidet.
+    mer_type::out, maybe(ctor_field_name)::out) is semidet.
 
-type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
+type_is_single_ctor_single_arg(Ctors, Ctor, ArgType, MaybeArgName) :-
     Ctors = [SingleCtor],
     SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
         [ctor_arg(MaybeArgName, ArgType, _)], _Ctxt),
@@ -1038,35 +1039,25 @@ name_is_type_info("base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
 
-    % Assign single functor of arity one a `no_tag' tag (unless we are
-    % reserving a tag, or if it is one of the dummy types).
+type_ctor_should_be_notag(Globals, _TypeCtor, ReserveTagPragma, Ctors,
+        MaybeUserEqCmp, SingleFunctorName, SingleArgType,
+        MaybeSingleArgName) :-
+    ReserveTagPragma = does_not_use_reserved_tag,
+    globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes),
+    MaybeUserEqCmp = no,
+
+    type_is_single_ctor_single_arg(Ctors, SingleFunctorName, SingleArgType,
+        MaybeSingleArgName0),
+
+    % We don't handle unary tuples as no_tag types -- they are rare enough
+    % that it's not worth the implementation effort.
     %
-type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
-        Ctors, UserEqCmp, SingleFunc, SingleArg, MaybeArgName) :-
-    type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg,
-        MaybeArgName),
-    (
-        ReserveTagPragma = does_not_use_reserved_tag,
-        globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes)
-    ;
-        % Dummy types always need to be treated as no-tag types as the
-        % low-level C back end just passes around rubbish for them. When e.g.
-        % using the debugger, it is crucial that these values are treated
-        % as unboxed c_pointers, not as tagged pointers to c_pointers
-        % (otherwise the system winds up following a bogus pointer).
-        is_dummy_argument_type_with_constructors(TypeCtor, Ctors, UserEqCmp)
-    ).
+    % XXX Since the tuple type constructor doesn't have a HLDS type defn body,
+    % will this test ever fail? Even if it can fail, we should test TypeCtor,
+    % not SingleFunctorName.
+    SingleFunctorName \= unqualified("{}"),
 
-:- pred is_dummy_argument_type_with_constructors(type_ctor::in,
-    list(constructor)::in, maybe(unify_compare)::in) is semidet.
-
-is_dummy_argument_type_with_constructors(TypeCtor, Ctors, UserEqCmp) :-
-    % Keep this in sync with is_dummy_argument_type below.
-    (
-        is_builtin_dummy_argument_type(TypeCtor)
-    ;
-        constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
-    ).
+    MaybeSingleArgName = map_maybe(unqualify_name, MaybeSingleArgName0).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1408,7 +1399,6 @@ arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
     ).
 
 %-----------------------------------------------------------------------------%
-
 
 apply_partial_map_to_list(_PartialMap, [], []).
 apply_partial_map_to_list(PartialMap, [X | Xs], [Y | Ys]) :-

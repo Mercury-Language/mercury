@@ -118,18 +118,28 @@
     %
 :- pred is_existq_type(module_info::in, mer_type::in) is semidet.
 
-    % Certain types, e.g. io.state and store.store(S), are just dummy types
-    % used to ensure logical semantics; there is no need to actually pass them,
-    % and so when importing or exporting procedures to/from C, we don't include
+:- type is_dummy_type
+    --->    is_dummy_type
+    ;       is_not_dummy_type.
+
+    % Certain types are just dummy types used to ensure logical semantics
+    % or to act as a placeholder; they contain no information, and thus
+    % there is no need to actually pass them around, so we don't. Also,
+    % when importing or exporting procedures to/from C, we don't include
     % arguments with these types.
     %
-    % A type is a dummy type in one of two cases: either it is a builtin
-    % dummy type, or it has only a single function symbol of arity zero.
+    % A type is a dummy type in one of three cases:
     %
-    % Note that types that are the subject of a foreign_enum pragma cannot
-    % be dummy types.
+    % - its principal type constructor is a builtin dummy type constructor
+    %   such as io.state or store.store(S)
+    % - it has only a single function symbol with zero arguments,
+    % - it has only a single function symbol with one argument, which is itself
+    %   a dummy type.
     %
-:- pred is_dummy_argument_type(module_info::in, mer_type::in) is semidet.
+    % A type cannot be a dummy type if it is the subject of a foreign_enum
+    % pragma, or if it has a reserved tag or user defined equality.
+    %
+:- func check_dummy_type(module_info, mer_type) = is_dummy_type.
 
     % A test for types that are defined in Mercury, but whose definitions
     % are `lies', i.e. they are not sufficiently accurate for RTTI
@@ -142,11 +152,11 @@
     % Given a type, determine what category its principal constructor
     % falls into.
     %
-:- func classify_type(module_info, mer_type) = type_category.
+:- func classify_type(module_info, mer_type) = type_ctor_category.
 
     % Given a type_ctor, determine what sort it is.
     %
-:- func classify_type_ctor(module_info, type_ctor) = type_category.
+:- func classify_type_ctor(module_info, type_ctor) = type_ctor_category.
 
     % Report whether it is OK to include a value of the given time
     % in a heap cell allocated with GC_malloc_atomic.
@@ -364,26 +374,29 @@ type_is_atomic(ModuleInfo, Type) :-
 
 type_ctor_is_atomic(ModuleInfo, TypeCtor) :-
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
-    type_category_is_atomic(TypeCategory) = yes.
+    type_ctor_category_is_atomic(TypeCategory) = yes.
 
-:- func type_category_is_atomic(type_category) = bool.
+:- func type_ctor_category_is_atomic(type_ctor_category) = bool.
 
-type_category_is_atomic(type_cat_int) = yes.
-type_category_is_atomic(type_cat_char) = yes.
-type_category_is_atomic(type_cat_string) = yes.
-type_category_is_atomic(type_cat_float) = yes.
-type_category_is_atomic(type_cat_higher_order) = no.
-type_category_is_atomic(type_cat_tuple) = no.
-type_category_is_atomic(type_cat_enum) = yes.
-type_category_is_atomic(type_cat_foreign_enum) = yes.
-type_category_is_atomic(type_cat_dummy) = yes.
-type_category_is_atomic(type_cat_variable) = no.
-type_category_is_atomic(type_cat_type_info) = no.
-type_category_is_atomic(type_cat_type_ctor_info) = no.
-type_category_is_atomic(type_cat_typeclass_info) = no.
-type_category_is_atomic(type_cat_base_typeclass_info) = no.
-type_category_is_atomic(type_cat_void) = yes.
-type_category_is_atomic(type_cat_user_ctor) = no.
+type_ctor_category_is_atomic(CtorCat) = IsAtomic :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ),
+        IsAtomic = yes
+    ;
+        ( CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_general)
+        ),
+        IsAtomic = no
+    ).
 
 type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -521,7 +534,7 @@ type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
         % initialisation or not.  In the absence of such information we
         % assume that they do not.  Since we don't officially support
         % automatic initialisation anyway this shouldn't be too much of a
-        % problem.  (In the event that we do re-add some form of support for 
+        % problem.  (In the event that we do re-add some form of support for
         % automatic solver initialisation then we will need to make sure
         % that this information ends up in interface files somehow.)
         TypeBody = hlds_abstract_type(solver_type),
@@ -560,6 +573,7 @@ type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
         type_has_solver_type_details(ModuleInfo, EqvType, SolverTypeDetails)
     ).
 
+is_solver_type(ModuleInfo, Type) :-
     % XXX We can't assume that type variables refer to solver types
     % because otherwise the compiler will try to construct initialisation
     % forwarding predicates for exported abstract types defined to be
@@ -567,7 +581,6 @@ type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
     % lead to the compiler throwing an exception.  The correct solution
     % is to introduce a solver typeclass, but that's something for another day.
     %
-is_solver_type(ModuleInfo, Type) :-
     % Type_to_type_defn_body will fail for builtin types such as `int/0'.
     % Such types are not solver types so is_solver_type fails too.
     % Type_to_type_defn_body also fails for type variables.
@@ -591,26 +604,68 @@ is_existq_type(ModuleInfo, Type) :-
         Constructor ^ cons_exist = [_ | _]
     ).
 
-is_dummy_argument_type(ModuleInfo, Type) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+check_dummy_type(ModuleInfo, Type) =
+    check_dummy_type_2(ModuleInfo, Type, []).
+
+:- func check_dummy_type_2(module_info, mer_type, list(mer_type))
+    = is_dummy_type.
+
+check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
+    % Since the sizes of types in any given program is bounded, this test
+    % will ensure termination.
+    ( list.member(Type, CoveredTypes) ->
+        % The type is circular.
+        IsDummy = is_not_dummy_type
+    ; type_to_ctor_and_args(Type, TypeCtor, ArgTypes) ->
         % Keep this in sync with is_dummy_argument_type_with_constructors
         % above.
+        IsBuiltinDummy = check_builtin_dummy_type_ctor(TypeCtor),
         (
-            is_builtin_dummy_argument_type(TypeCtor)
+            IsBuiltinDummy = is_builtin_dummy_type_ctor,
+            IsDummy = is_dummy_type
         ;
+            IsBuiltinDummy = is_not_builtin_dummy_type_ctor,
             module_info_get_type_table(ModuleInfo, TypeTable),
             % This can fail for some builtin type constructors such as func,
             % pred, and tuple, none of which are dummy types.
-            map.search(TypeTable, TypeCtor, TypeDefn),
-            get_type_defn_body(TypeDefn, TypeBody),
-            Ctors = TypeBody ^ du_type_ctors,
-            UserEqCmp = TypeBody ^ du_type_usereq,
-            EnumOrDummy = TypeBody ^ du_type_is_enum,
-            EnumOrDummy \= is_foreign_enum(_),
-            constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
+            ( map.search(TypeTable, TypeCtor, TypeDefn) ->
+                get_type_defn_body(TypeDefn, TypeBody),
+                (
+                    TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
+                    (
+                        DuTypeKind = du_type_kind_direct_dummy,
+                        IsDummy = is_dummy_type
+                    ;
+                        ( DuTypeKind = du_type_kind_mercury_enum
+                        ; DuTypeKind = du_type_kind_foreign_enum(_)
+                        ; DuTypeKind = du_type_kind_general
+                        ),
+                        IsDummy = is_not_dummy_type
+                    ;
+                        DuTypeKind = du_type_kind_notag(_, SingleArgTypeInDefn
+                            , _),
+                        get_type_defn_tparams(TypeDefn, TypeParams),
+                        map.from_corresponding_lists(TypeParams, ArgTypes,
+                            Subst),
+                        apply_subst_to_type(Subst, SingleArgTypeInDefn,
+                            SingleArgType),
+                        IsDummy = check_dummy_type_2(ModuleInfo, SingleArgType,
+                            [Type | CoveredTypes])
+                    )
+                ;
+                    ( TypeBody = hlds_eqv_type(_)
+                    ; TypeBody = hlds_foreign_type(_)
+                    ; TypeBody = hlds_solver_type(_, _)
+                    ; TypeBody = hlds_abstract_type(_)
+                    ),
+                    IsDummy = is_not_dummy_type
+                )
+            ;
+                IsDummy = is_not_dummy_type
+            )
         )
     ;
-        fail
+        IsDummy = is_not_dummy_type
     ).
 
 type_ctor_has_hand_defined_rtti(Type, Body) :-
@@ -631,7 +686,7 @@ classify_type(ModuleInfo, VarType) = TypeCategory :-
     ( type_to_ctor_and_args(VarType, TypeCtor, _) ->
         TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor)
     ;
-        TypeCategory = type_cat_variable
+        TypeCategory = ctor_cat_variable
     ).
 
 classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
@@ -641,19 +696,19 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
         Arity = 0,
         (
             TypeName = "character",
-            TypeCategoryPrime = type_cat_char
+            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_char)
         ;
             TypeName = "int",
-            TypeCategoryPrime = type_cat_int
+            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_int)
         ;
             TypeName = "float",
-            TypeCategoryPrime = type_cat_float
+            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_float)
         ;
             TypeName = "string",
-            TypeCategoryPrime = type_cat_string
+            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_string)
         ;
             TypeName = "void",
-            TypeCategoryPrime = type_cat_void
+            TypeCategoryPrime = ctor_cat_void
         )
     ->
         TypeCategory = TypeCategoryPrime
@@ -663,39 +718,62 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
         Arity = 0,
         (
             TypeName = "type_info",
-            TypeCategoryPrime = type_cat_type_info
+            TypeCategoryPrime = ctor_cat_system(cat_system_type_info)
         ;
             TypeName = "type_ctor_info",
-            TypeCategoryPrime = type_cat_type_ctor_info
+            TypeCategoryPrime = ctor_cat_system(cat_system_type_ctor_info)
         ;
             TypeName = "typeclass_info",
-            TypeCategoryPrime = type_cat_typeclass_info
+            TypeCategoryPrime = ctor_cat_system(cat_system_typeclass_info)
         ;
             TypeName = "base_typeclass_info",
-            TypeCategoryPrime = type_cat_base_typeclass_info
+            TypeCategoryPrime = ctor_cat_system(cat_system_base_typeclass_info)
         )
     ->
         TypeCategory = TypeCategoryPrime
     ;
-        is_builtin_dummy_argument_type(TypeCtor)
+        check_builtin_dummy_type_ctor(TypeCtor) = is_builtin_dummy_type_ctor
     ->
-        TypeCategory = type_cat_dummy
+        TypeCategory = ctor_cat_builtin_dummy
     ;
-        ( type_ctor_is_higher_order(TypeCtor, _, _, _) ->
-            TypeCategory = type_cat_higher_order
-        ; type_ctor_is_tuple(TypeCtor) ->
-            TypeCategory = type_cat_tuple
-        ;
-            module_info_get_type_table(ModuleInfo, TypeDefnTable),
-            map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
-            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            ( TypeBody ^ du_type_is_enum = is_mercury_enum ->
-                TypeCategory = type_cat_enum
-            ; TypeBody ^ du_type_is_enum = is_foreign_enum(_) ->
-                TypeCategory = type_cat_foreign_enum
+        type_ctor_is_higher_order(TypeCtor, _, _, _)
+    ->
+        TypeCategory = ctor_cat_higher_order
+    ;
+        type_ctor_is_tuple(TypeCtor)
+    ->
+        TypeCategory = ctor_cat_tuple
+    ;
+        module_info_get_type_table(ModuleInfo, TypeDefnTable),
+        map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        (
+            TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
+            (
+                DuTypeKind = du_type_kind_mercury_enum,
+                TypeCategory = ctor_cat_enum(cat_enum_mercury)
             ;
-                TypeCategory = type_cat_user_ctor
+                DuTypeKind = du_type_kind_foreign_enum(_),
+                TypeCategory = ctor_cat_enum(cat_enum_foreign)
+            ;
+                DuTypeKind = du_type_kind_direct_dummy,
+                TypeCategory = ctor_cat_user(cat_user_direct_dummy)
+            ;
+                DuTypeKind = du_type_kind_notag(_, _, _),
+                TypeCategory = ctor_cat_user(cat_user_notag)
+            ;
+                DuTypeKind = du_type_kind_general,
+                TypeCategory = ctor_cat_user(cat_user_general)
             )
+        ;
+            % XXX We should be able to return more precise descriptions
+            % than this.
+            ( TypeBody = hlds_eqv_type(_)
+            ; TypeBody = hlds_foreign_type(_)
+            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_abstract_type(_)
+            ),
+            TypeCategory = ctor_cat_user(cat_user_general)
         )
     ).
 
@@ -713,16 +791,15 @@ update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic) :-
 type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
-        ( TypeCategory = type_cat_int
-        ; TypeCategory = type_cat_char
-        ; TypeCategory = type_cat_enum
-        ; TypeCategory = type_cat_foreign_enum
-        ; TypeCategory = type_cat_dummy
-        ; TypeCategory = type_cat_type_ctor_info
+        ( TypeCategory = ctor_cat_builtin(cat_builtin_int)
+        ; TypeCategory = ctor_cat_builtin(cat_builtin_char)
+        ; TypeCategory = ctor_cat_enum(_)
+        ; TypeCategory = ctor_cat_builtin_dummy
+        ; TypeCategory = ctor_cat_system(cat_system_type_ctor_info)
         ),
         TypeMayUseAtomic = may_use_atomic_alloc
     ;
-        TypeCategory = type_cat_float,
+        TypeCategory = ctor_cat_builtin(cat_builtin_float),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, unboxed_float, UBF),
         (
@@ -733,15 +810,15 @@ type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
             TypeMayUseAtomic = may_not_use_atomic_alloc
         )
     ;
-        ( TypeCategory = type_cat_string
-        ; TypeCategory = type_cat_higher_order
-        ; TypeCategory = type_cat_tuple
-        ; TypeCategory = type_cat_variable
-        ; TypeCategory = type_cat_type_info
-        ; TypeCategory = type_cat_typeclass_info
-        ; TypeCategory = type_cat_base_typeclass_info
-        ; TypeCategory = type_cat_void
-        ; TypeCategory = type_cat_user_ctor
+        ( TypeCategory = ctor_cat_builtin(cat_builtin_string)
+        ; TypeCategory = ctor_cat_higher_order
+        ; TypeCategory = ctor_cat_tuple
+        ; TypeCategory = ctor_cat_variable
+        ; TypeCategory = ctor_cat_system(cat_system_type_info)
+        ; TypeCategory = ctor_cat_system(cat_system_typeclass_info)
+        ; TypeCategory = ctor_cat_system(cat_system_base_typeclass_info)
+        ; TypeCategory = ctor_cat_void
+        ; TypeCategory = ctor_cat_user(_) % for direct_dummy, alloc is moot
         ),
         TypeMayUseAtomic = may_not_use_atomic_alloc
     ).
@@ -1014,7 +1091,7 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
 
 type_not_stored_in_region(Type, ModuleInfo) :-
     ( type_is_atomic(ModuleInfo, Type)
-    ; is_dummy_argument_type(ModuleInfo, Type)
+    ; check_dummy_type(ModuleInfo, Type) = is_dummy_type
     ; Type = type_info_type
     ; Type = type_ctor_info_type
     ; type_is_var(Type)

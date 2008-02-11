@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -288,13 +288,12 @@ construct_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
     rtti_data::out) is det.
 
 construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
-    TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
+    TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
         TypeArity, _Status, HldsDefn, UnifyPredProcId, ComparePredProcId),
     make_rtti_proc_label(UnifyPredProcId, ModuleInfo, UnifyProcLabel),
     make_rtti_proc_label(ComparePredProcId, ModuleInfo, CompareProcLabel),
     type_to_univ(UnifyProcLabel, UnifyUniv),
     type_to_univ(CompareProcLabel, CompareUniv),
-    module_info_get_globals(ModuleInfo, Globals),
     hlds_data.get_type_defn_body(HldsDefn, TypeBody),
     Version = type_ctor_info_rtti_version,
 
@@ -361,7 +360,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             Details = eqv(MaybePseudoTypeInfo)
         ;
             TypeBody = hlds_du_type(Ctors, ConsTagMap, _CheaperTagTest,
-                EnumDummy, MaybeUserEqComp, ReservedTag, ReservedAddr,
+                DuTypeKind, MaybeUserEqComp, ReservedTag, ReservedAddr,
                 _IsForeignType),
             (
                 MaybeUserEqComp = yes(_),
@@ -371,30 +370,26 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 EqualityAxioms = standard
             ),
             (
-                EnumDummy = is_mercury_enum,
+                DuTypeKind = du_type_kind_mercury_enum,
                 make_mercury_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
-                EnumDummy = is_foreign_enum(Lang),
+                DuTypeKind = du_type_kind_foreign_enum(Lang),
                 make_foreign_enum_details(Lang, Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
-                EnumDummy = is_dummy,
+                DuTypeKind = du_type_kind_direct_dummy,
                 make_mercury_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
-                EnumDummy = not_enum_or_dummy,
-                (
-                    type_with_constructors_should_be_no_tag(Globals, TypeCtor,
-                        ReservedTag, Ctors, MaybeUserEqComp, Name, ArgType,
-                        MaybeArgName)
-                ->
-                    make_notag_details(TypeArity, Name, ArgType, MaybeArgName,
-                        EqualityAxioms, Details)
-                ;
-                    make_du_details(Ctors, ConsTagMap, TypeArity,
-                        EqualityAxioms, ReservedAddr, ModuleInfo, Details)
-                )
+                DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
+                    MaybeArgName),
+                make_notag_details(TypeArity, FunctorName, ArgType,
+                    MaybeArgName, EqualityAxioms, Details)
+            ;
+                DuTypeKind = du_type_kind_general,
+                make_du_details(Ctors, ConsTagMap, TypeArity,
+                    EqualityAxioms, ReservedAddr, ModuleInfo, Details)
             )
         )
     ),

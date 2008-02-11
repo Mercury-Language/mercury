@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
@@ -699,7 +700,7 @@
                 in_var_type                 :: mer_type,
 
                 % Whether in_var_type is a dummy type.
-                in_var_type_is_dummy        :: bool,
+                in_var_type_is_dummy        :: is_dummy_type,
 
                 % The type of the argument in original foreign_proc procedure.
                 % If the foreign_proc was inlined in some other procedure,
@@ -729,7 +730,7 @@
                 out_var_type                :: mer_type,
 
                 % Whether out_var_type is a dummy type.
-                out_var_type_is_dummy       :: bool,
+                out_var_type_is_dummy       :: is_dummy_type,
 
                 % The type of the argument in original foreign_proc procedure;
                 % see in_original_type above.

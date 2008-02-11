@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,7 +235,7 @@ erl_maybe_gen_simple_special_pred(ModuleInfo, PredId, ProcId,
         in_in_unification_proc_id(ProcId),
         list.reverse(Args, [Y, X | _]),
         map.lookup(VarTypes, Y, Type),
-        not is_dummy_argument_type(ModuleInfo, Type),
+        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
         type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
         erl_gen_simple_in_in_unification(ModuleInfo, PredId, ProcId, X, Y,
             ProcDefn)
@@ -243,7 +243,7 @@ erl_maybe_gen_simple_special_pred(ModuleInfo, PredId, ProcId,
         SpecialId = spec_pred_compare,
         list.reverse(Args, [Y, X, _Res | _]),
         map.lookup(VarTypes, Y, Type),
-        not is_dummy_argument_type(ModuleInfo, Type),
+        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
         type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
         erl_gen_simple_compare(ModuleInfo, PredId, ProcId, X, Y, ProcDefn)
     ),
@@ -783,14 +783,14 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
 
     erl_variable_type(!.Info, Var, VarType),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    type_util.classify_type(ModuleInfo, VarType) = TypeCategory,
+    type_util.classify_type(ModuleInfo, VarType) = TypeCtorCategory,
 
     (if
         % The HiPE compiler is extremely slow compiling functions containing
         % long case statements involving strings.  Workaround: for a string
         % switch with many cases, convert the string to an atom and switch on
         % atoms instead.
-        TypeCategory = type_cat_string,
+        TypeCtorCategory = ctor_cat_builtin(cat_builtin_string),
 
         % list_to_atom could throw an exception for long strings, so we don't
         % enable the workaround unless the user specifically passes
@@ -994,7 +994,7 @@ maybe_create_closure_for_success_expr(NonLocals, MaybeSuccessExpr0,
 :- func non_dummy_var(module_info, prog_var, mer_type) = prog_var is semidet.
 
 non_dummy_var(ModuleInfo, Var, Type) = Var :-
-    not is_dummy_argument_type(ModuleInfo, Type).
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
 :- pred ground_var_in_instmap(prog_var::in, instmap::in, instmap::out) is det.
 

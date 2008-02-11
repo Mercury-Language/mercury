@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -862,65 +862,50 @@ check_type(ModuleInfo, Type) = Status :-
         Status = check_type_2(ModuleInfo, Type, TypeCategory)
     ).
 
-:- func check_type_2(module_info, mer_type, type_category) = type_status.
+:- func check_type_2(module_info, mer_type, type_ctor_category) = type_status.
 
-check_type_2(_, _, type_cat_int) = type_will_not_throw.
-check_type_2(_, _, type_cat_char) = type_will_not_throw.
-check_type_2(_, _, type_cat_string) = type_will_not_throw.
-check_type_2(_, _, type_cat_float) = type_will_not_throw.
-check_type_2(_, _, type_cat_higher_order) = type_will_not_throw.
-check_type_2(_, _, type_cat_type_info) = type_will_not_throw.
-check_type_2(_, _, type_cat_type_ctor_info) = type_will_not_throw.
-check_type_2(_, _, type_cat_typeclass_info) = type_will_not_throw.
-check_type_2(_, _, type_cat_base_typeclass_info) = type_will_not_throw.
-check_type_2(_, _, type_cat_void) = type_will_not_throw.
-check_type_2(_, _, type_cat_dummy) = type_will_not_throw.
-check_type_2(_, _, type_cat_variable) = type_conditional.
-check_type_2(ModuleInfo, Type, type_cat_tuple) = Status :-
-    ( type_to_ctor_and_args(Type, _TypeCtor, Args) ->
-        Status = check_types(ModuleInfo, Args)
+check_type_2(ModuleInfo, Type, CtorCat) = WillThrow :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_builtin_dummy
+        ),
+        WillThrow = type_will_not_throw
     ;
-        unexpected(this_file, "check_type_2/3: expected tuple type")
-    ).
-check_type_2(ModuleInfo, Type, type_cat_enum) =
-    ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UnifyCompare) ->
-        % XXX This is very conservative.
-        type_may_throw
+        CtorCat = ctor_cat_variable,
+        WillThrow = type_conditional
     ;
-        type_will_not_throw
-    ).
-check_type_2(ModuleInfo, Type, type_cat_foreign_enum) = 
-    ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UnifyCompare) ->
-        % XXX This is very conservative.
-        type_may_throw
+        CtorCat = ctor_cat_tuple,
+        ( type_to_ctor_and_args(Type, _TypeCtor, Args) ->
+            WillThrow = check_types(ModuleInfo, Args)
+        ;
+            unexpected(this_file, "check_type_2/3: expected tuple type")
+        )
     ;
-        type_will_not_throw
-    ).
-
-check_type_2(ModuleInfo, Type, type_cat_user_ctor) =
-    check_user_type(ModuleInfo, Type).
-
-:- func check_user_type(module_info, mer_type) = type_status.
-
-check_user_type(ModuleInfo, Type) = Status :-
-    ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
-        (
-            type_has_user_defined_equality_pred(ModuleInfo, Type,
-                _UnifyCompare)
-        ->
+        CtorCat = ctor_cat_enum(_),
+        ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UC) ->
+            % XXX This is very conservative.
+            WillThrow = type_may_throw
+        ;
+            WillThrow = type_will_not_throw
+        )
+    ;
+        CtorCat = ctor_cat_user(_),
+        type_to_ctor_and_args_det(Type, TypeCtor, Args),
+        ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UC) ->
             % XXX We can do better than this by examining what these preds
             % actually do. Something similar needs to be sorted out for
             % termination analysis as well, so we'll wait until that is done.
-            Status = type_may_throw
+            WillThrow = type_may_throw
         ;
             ( type_ctor_is_safe(TypeCtor) ->
-                Status = check_types(ModuleInfo, Args)
+                WillThrow = check_types(ModuleInfo, Args)
             ;
-                Status = type_may_throw
+                WillThrow = type_may_throw
             )
         )
-    ;
-        unexpected(this_file, "Unable to get ctor and args.")
     ).
 
     % Succeeds if the exception status of the type represented by the given

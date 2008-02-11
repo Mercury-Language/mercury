@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -352,7 +352,7 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
             OptDummyArgs = opt_dummy_args,
             % Exclude arguments of type io.state etc.
             % Also exclude those with arg_mode `top_unused'.
-            ( is_dummy_argument_type(ModuleInfo, ArgType)
+            ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
             ; ArgMode = top_unused
             )
         ->
@@ -409,7 +409,7 @@ erl_bound_nonlocals_in_goal(Info, InstMap, Goal, BoundNonLocals) :-
 is_bound_and_not_dummy(ModuleInfo, VarTypes, InstMap, InstmapDelta, Var) :-
     var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta, Var),
     map.lookup(VarTypes, Var, Type),
-    not is_dummy_argument_type(ModuleInfo, Type).
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
 erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
         Statement0, Statement) :-
@@ -525,7 +525,7 @@ non_variable_term(Term) :-
 erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
     (if
         map.search(VarTypes, Var, Type),
-        is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type
     then
         elds_term(DummyVarReplacement)
     else

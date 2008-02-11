@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -180,6 +180,7 @@
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
@@ -2942,20 +2943,21 @@ output_foreign_proc_inputs([Input | Inputs], !IO) :-
     Input = foreign_proc_input(VarName, VarType, IsDummy, _OrigType, _Rval,
         _MaybeForeignTypeInfo, _BoxPolicy),
     (
-        IsDummy = yes,
+        IsDummy = is_dummy_type,
         (
             % Avoid outputting an assignment for builtin dummy types.
             % For other dummy types we must output an assignment because
             % code in the foreign_proc body may examine the value.
             type_to_ctor_and_args(VarType, VarTypeCtor, []),
-            is_builtin_dummy_argument_type(VarTypeCtor)
+            check_builtin_dummy_type_ctor(VarTypeCtor) =
+                is_builtin_dummy_type_ctor
         ->
             true
         ;
             io.write_string("\t" ++ VarName ++ " = 0;\n", !IO)
         )
     ;
-        IsDummy = no,
+        IsDummy = is_not_dummy_type,
         output_foreign_proc_input(Input, !IO)
     ),
     output_foreign_proc_inputs(Inputs, !IO).
@@ -3046,9 +3048,9 @@ output_foreign_proc_outputs([Output | Outputs], !IO) :-
     Output = foreign_proc_output(_Lval, _VarType, IsDummy, _OrigType, _VarName,
         _MaybeForeignType, _BoxPolicy),
     (
-        IsDummy = yes
+        IsDummy = is_dummy_type
     ;
-        IsDummy = no,
+        IsDummy = is_not_dummy_type,
         output_foreign_proc_output(Output, !IO)
     ),
     output_foreign_proc_outputs(Outputs, !IO).

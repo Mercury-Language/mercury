@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2331,7 +2331,7 @@ generate_table_lookup_goals([VarModePos | NumberedVars], MaybeStatsRef,
     varset.lookup_name(!.VarSet, Var, VarName),
     ModuleInfo = !.TableInfo ^ table_module_info,
     map.lookup(!.VarTypes, Var, VarType),
-    classify_type(ModuleInfo, VarType) = TypeCat,
+    CtorCat = classify_type(ModuleInfo, VarType),
     (
         ArgMethod = arg_promise_implied,
         Step = table_trie_step_promise_implied,
@@ -2342,7 +2342,7 @@ generate_table_lookup_goals([VarModePos | NumberedVars], MaybeStatsRef,
         ( ArgMethod = arg_value
         ; ArgMethod = arg_addr
         ),
-        gen_lookup_call_for_type(ArgMethod, TypeCat, VarType, Var,
+        gen_lookup_call_for_type(ArgMethod, CtorCat, VarType, Var,
             VarSeqNum, MaybeStatsRef, DebugArgStr, BackArgStr, Context,
             !VarSet, !VarTypes, !TableInfo, Step, ForeignArgs,
             PrefixGoals, CodeStr)
@@ -2352,15 +2352,15 @@ generate_table_lookup_goals([VarModePos | NumberedVars], MaybeStatsRef,
         DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
         StepDescs, RestForeignArgs, RestPrefixGoals, RestCodeStr).
 
-:- pred gen_lookup_call_for_type(arg_tabling_method::in, type_category::in,
-    mer_type::in, prog_var::in, int::in, maybe(string)::in,
-    string::in, string::in, term.context::in,
+:- pred gen_lookup_call_for_type(arg_tabling_method::in,
+    type_ctor_category::in, mer_type::in, prog_var::in, int::in,
+    maybe(string)::in, string::in, string::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out,
     table_trie_step::out, list(foreign_arg)::out, list(hlds_goal)::out,
     string::out) is det.
 
-gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
+gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
         MaybeStatsRef, DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes,
         !TableInfo, Step, ExtraArgs, PrefixGoals, CodeStr) :-
     ModuleInfo = !.TableInfo ^ table_module_info,
@@ -2368,11 +2368,10 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type,
         native_if_possible),
     (
-        ( TypeCat = type_cat_enum
-        ; TypeCat = type_cat_foreign_enum
-        ; TypeCat = type_cat_int
-        ; TypeCat = type_cat_char
-        ; TypeCat = type_cat_void
+        ( CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+        ; CtorCat = ctor_cat_void
         ),
         % Values in these type categories don't have an address.
         ( ArgTablingMethod0 = arg_addr ->
@@ -2381,17 +2380,14 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
             ArgTablingMethod = ArgTablingMethod0
         )
     ;
-        ( TypeCat = type_cat_string
-        ; TypeCat = type_cat_float
-        ; TypeCat = type_cat_type_info
-        ; TypeCat = type_cat_type_ctor_info
-        ; TypeCat = type_cat_higher_order
-        ; TypeCat = type_cat_tuple
-        ; TypeCat = type_cat_variable
-        ; TypeCat = type_cat_user_ctor
-        ; TypeCat = type_cat_dummy
-        ; TypeCat = type_cat_typeclass_info
-        ; TypeCat = type_cat_base_typeclass_info
+        ( CtorCat = ctor_cat_builtin(cat_builtin_string)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_float)
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_builtin_dummy
         ),
         ArgTablingMethod = ArgTablingMethod0
     ),
@@ -2399,14 +2395,14 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
     (
         ArgTablingMethod = arg_value,
         (
-            TypeCat = type_cat_enum,
+            CtorCat = ctor_cat_enum(cat_enum_mercury),
             type_to_ctor_det(Type, TypeCtor),
             module_info_get_type_table(ModuleInfo, TypeDefnTable),
             map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             (
                 Ctors = TypeBody ^ du_type_ctors,
-                TypeBody ^ du_type_is_enum = is_mercury_enum,
+                TypeBody ^ du_type_kind = du_type_kind_mercury_enum,
                 TypeBody ^ du_type_usereq  = no
             ->
                 list.length(Ctors, EnumRange)
@@ -2424,38 +2420,59 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
                 int_to_string(EnumRange) ++ ", " ++ ArgName ++ ", " ++
                 next_table_node_name ++ ");\n"
         ;
+            % Mercury doesn't know the specific values of the foreign
+            % enums, so we cannot use an array as a trie (since we don't
+            % know how big the array would have to be). However, hashing
+            % the enum as an int will work.
+            %
+            % XXX The code of this case is the same as the code of the case
+            % shared by the builtin types below. The only reason why it is
+            % here is that switch detection cannot yet look three levels deep.
+
+            CtorCat = ctor_cat_enum(cat_enum_foreign),
+            CatString = "int",
+            Step = table_trie_step_int,
+            LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
+            PrefixGoals = [],
+            ExtraArgs = [ForeignArg],
+            LookupCodeStr = "\t" ++ LookupMacroName ++ "(" ++
+                MaybeStepStatsArgStr ++ ", " ++ DebugArgStr ++ ", " ++
+                BackArgStr ++ ", " ++ cur_table_node_name ++ ", " ++
+                ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+        ;
+            % XXX The code of this case is the same as the code of the case
+            % shared by the builtin types below. The only reason why it is
+            % here is that switch detection cannot yet look three levels deep.
+
+            ( CtorCat = ctor_cat_system(cat_system_type_info)
+            ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
+            ),
+            CatString = "typeinfo",
+            Step = table_trie_step_typeinfo,
+            LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
+            PrefixGoals = [],
+            ExtraArgs = [ForeignArg],
+            LookupCodeStr = "\t" ++ LookupMacroName ++ "(" ++
+                MaybeStepStatsArgStr ++ ", " ++ DebugArgStr ++ ", " ++
+                BackArgStr ++ ", " ++ cur_table_node_name ++ ", " ++
+                ArgName ++ ", " ++ next_table_node_name ++ ");\n"
+        ;
             (
-                % Mercury doesn't know the specific values of the foreign
-                % enums, so we cannot use an array as a trie (since we don't
-                % know how big the array would have to be). However, hashing
-                % the enum as an int will work.
-                TypeCat = type_cat_foreign_enum,
+                CtorCat = ctor_cat_builtin(cat_builtin_int),
                 CatString = "int",
                 Step = table_trie_step_int
             ;
-                TypeCat = type_cat_int,
-                CatString = "int",
-                Step = table_trie_step_int
-            ;
-                TypeCat = type_cat_char,
+                CtorCat = ctor_cat_builtin(cat_builtin_char),
                 CatString = "char",
                 Step = table_trie_step_char
             ;
-                TypeCat = type_cat_string,
+                CtorCat = ctor_cat_builtin(cat_builtin_string),
                 CatString = "string",
                 Step = table_trie_step_string
             ;
-                TypeCat = type_cat_float,
+                CtorCat = ctor_cat_builtin(cat_builtin_float),
                 CatString = "float",
                 Step = table_trie_step_float
-            ;
-                TypeCat = type_cat_type_info,
-                CatString = "typeinfo",
-                Step = table_trie_step_typeinfo
-            ;
-                TypeCat = type_cat_type_ctor_info,
-                CatString = "typeinfo",
-                Step = table_trie_step_typeinfo
             ),
             LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
             PrefixGoals = [],
@@ -2465,10 +2482,10 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
                 BackArgStr ++ ", " ++ cur_table_node_name ++ ", " ++
                 ArgName ++ ", " ++ next_table_node_name ++ ");\n"
         ;
-            ( TypeCat = type_cat_higher_order
-            ; TypeCat = type_cat_tuple
-            ; TypeCat = type_cat_variable
-            ; TypeCat = type_cat_user_ctor
+            ( CtorCat = ctor_cat_higher_order
+            ; CtorCat = ctor_cat_tuple
+            ; CtorCat = ctor_cat_variable
+            ; CtorCat = ctor_cat_user(_)
             ),
             MaybeAddrString = "",
             IsAddr = table_value,
@@ -2477,49 +2494,43 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
                 Context, !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs,
                 PrefixGoals, LookupCodeStr)
         ;
-            TypeCat = type_cat_dummy,
+            CtorCat = ctor_cat_builtin_dummy,
             Step = table_trie_step_dummy,
             PrefixGoals = [],
             ExtraArgs = [],
             LookupCodeStr = "\t" ++ next_table_node_name ++ " = " ++
                 cur_table_node_name ++ ";\n"
         ;
-            TypeCat = type_cat_void,
+            CtorCat = ctor_cat_void,
             unexpected(this_file, "gen_lookup_call_for_type: void")
         ;
-            TypeCat = type_cat_typeclass_info,
+            CtorCat = ctor_cat_system(cat_system_typeclass_info),
             unexpected(this_file,
                 "gen_lookup_call_for_type: typeclass_info_type")
         ;
-            TypeCat = type_cat_base_typeclass_info,
+            CtorCat = ctor_cat_system(cat_system_base_typeclass_info),
             unexpected(this_file,
                 "gen_lookup_call_for_type: base_typeclass_info_type")
         )
     ;
         ArgTablingMethod = arg_addr,
         (
-            TypeCat = type_cat_enum,
+            CtorCat = ctor_cat_enum(_),
             unexpected(this_file, "tabling enums by addr")
         ;
-            TypeCat = type_cat_foreign_enum,
-            unexpected(this_file, "tabling foreign enums by addr")
-        ;
-            TypeCat = type_cat_int,
+            CtorCat = ctor_cat_builtin(cat_builtin_int),
             unexpected(this_file, "tabling ints by addr")
         ;
-            TypeCat = type_cat_char,
+            CtorCat = ctor_cat_builtin(cat_builtin_char),
             unexpected(this_file, "tabling chars by addr")
         ;
-            ( TypeCat = type_cat_string
-            ; TypeCat = type_cat_float
-            ; TypeCat = type_cat_type_info
-            ; TypeCat = type_cat_type_ctor_info
-            ; TypeCat = type_cat_typeclass_info
-            ; TypeCat = type_cat_base_typeclass_info
-            ; TypeCat = type_cat_higher_order
-            ; TypeCat = type_cat_tuple
-            ; TypeCat = type_cat_variable
-            ; TypeCat = type_cat_user_ctor
+            ( CtorCat = ctor_cat_builtin(cat_builtin_string)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_float)
+            ; CtorCat = ctor_cat_system(_)
+            ; CtorCat = ctor_cat_higher_order
+            ; CtorCat = ctor_cat_tuple
+            ; CtorCat = ctor_cat_variable
+            ; CtorCat = ctor_cat_user(_)
             ),
             MaybeAddrString = "_addr",
             IsAddr = table_addr,
@@ -2528,10 +2539,10 @@ gen_lookup_call_for_type(ArgTablingMethod0, TypeCat, Type, ArgVar, VarSeqNum,
                 Context, !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs,
                 PrefixGoals, LookupCodeStr)
         ;
-            TypeCat = type_cat_dummy,
+            CtorCat = ctor_cat_builtin_dummy,
             unexpected(this_file, "tabling dummies by addr")
         ;
-            TypeCat = type_cat_void,
+            CtorCat = ctor_cat_void,
             unexpected(this_file, "gen_lookup_call_for_type: void")
         )
     ;
@@ -2845,19 +2856,19 @@ generate_save_goals([NumberedVar | NumberedRest], DebugArgStr, Context,
     NumberedVar = var_mode_pos_method(Var, _Mode, Offset, _),
     ModuleInfo = !.TableInfo ^ table_module_info,
     map.lookup(!.VarTypes, Var, VarType),
-    classify_type(ModuleInfo, VarType) = TypeCat,
-    gen_save_call_for_type(TypeCat, VarType, Var, Offset, DebugArgStr, Context,
+    CtorCat = classify_type(ModuleInfo, VarType),
+    gen_save_call_for_type(CtorCat, VarType, Var, Offset, DebugArgStr, Context,
         !VarSet, !VarTypes, !TableInfo, Args, PrefixGoals, CodeStr),
     generate_save_goals(NumberedRest, DebugArgStr, Context, !VarSet, !VarTypes,
         !TableInfo, RestArgs, RestPrefixGoals, RestCodeStr).
 
-:- pred gen_save_call_for_type(type_category::in, mer_type::in,
+:- pred gen_save_call_for_type(type_ctor_category::in, mer_type::in,
     prog_var::in, int::in, string::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, list(foreign_arg)::out,
     list(hlds_goal)::out, string::out) is det.
 
-gen_save_call_for_type(TypeCat, Type, Var, Offset, DebugArgStr, Context,
+gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
         !VarSet, !VarTypes, !TableInfo, Args, PrefixGoals, CodeStr) :-
     Name = arg_name(Offset),
     ForeignArg = foreign_arg(Var, yes(Name - in_mode), Type,
@@ -2869,7 +2880,7 @@ gen_save_call_for_type(TypeCat, Type, Var, Offset, DebugArgStr, Context,
         CodeStr = "\t" ++ SaveMacroName ++ "(" ++ DebugArgStr ++ ", " ++
             answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", "
             ++ Name ++ ");\n"
-    ; builtin_type(TypeCat) = no ->
+    ; builtin_type(CtorCat) = no ->
         % If we used ForeignArg instead of GenericForeignArg, then
         % Var would be unboxed when assigned to Name, which we don't want.
         GenericForeignArg = foreign_arg(Var, yes(Name - in_mode),
@@ -2886,7 +2897,7 @@ gen_save_call_for_type(TypeCat, Type, Var, Offset, DebugArgStr, Context,
             answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", " ++
             TypeInfoName ++ ", " ++ Name ++ ");\n"
     ;
-        type_save_category(TypeCat, CatString),
+        type_save_category(CtorCat, CatString),
         SaveMacroName = "MR_tbl_save_" ++ CatString ++ "_answer",
         Args = [ForeignArg],
         PrefixGoals = [],
@@ -3068,27 +3079,27 @@ generate_restore_goals([NumberedVar | NumberedRest], OrigInstmapDelta,
         [Arg | Args], CodeStr ++ RestCodeStr) :-
     NumberedVar = var_mode_pos_method(Var, _Mode, Offset, _),
     map.lookup(!.VarTypes, Var, VarType),
-    classify_type(ModuleInfo, VarType) = TypeCat,
-    gen_restore_call_for_type(DebugArgStr, TypeCat, VarType, OrigInstmapDelta,
+    CtorCat = classify_type(ModuleInfo, VarType),
+    gen_restore_call_for_type(DebugArgStr, CtorCat, VarType, OrigInstmapDelta,
         Var, Offset, VarInst, Arg, CodeStr),
     generate_restore_goals(NumberedRest, OrigInstmapDelta, DebugArgStr,
         ModuleInfo, !VarSet, !VarTypes, VarInsts, Args, RestCodeStr).
 
-:- pred gen_restore_call_for_type(string::in, type_category::in, mer_type::in,
-    instmap_delta::in, prog_var::in, int::in,
+:- pred gen_restore_call_for_type(string::in, type_ctor_category::in,
+    mer_type::in, instmap_delta::in, prog_var::in, int::in,
     pair(prog_var, mer_inst)::out, foreign_arg::out, string::out) is det.
 
-gen_restore_call_for_type(DebugArgStr, TypeCat, Type, OrigInstmapDelta, Var,
+gen_restore_call_for_type(DebugArgStr, CtorCat, Type, OrigInstmapDelta, Var,
         Offset, Var - Inst, Arg, CodeStr) :-
     Name = "restore_arg" ++ int_to_string(Offset),
     ( type_is_io_state(Type) ->
         RestoreMacroName = "MR_tbl_restore_io_state_answer",
         ArgType = Type
-    ; builtin_type(TypeCat) = no ->
+    ; builtin_type(CtorCat) = no ->
         RestoreMacroName = "MR_tbl_restore_any_answer",
         ArgType = dummy_type_var
     ;
-        type_save_category(TypeCat, CatString),
+        type_save_category(CtorCat, CatString),
         RestoreMacroName = "MR_tbl_restore_" ++ CatString ++ "_answer",
         ArgType = Type
     ),
@@ -3561,54 +3572,77 @@ goal_info_init_hide(NonLocals, InstmapDelta, Detism, Purity, Context,
     % However, since we made type_info have arity zero, this overhead
     % should be gone.
     %
-:- func builtin_type(type_category) = bool.
+:- func builtin_type(type_ctor_category) = bool.
 
-builtin_type(type_cat_int) = yes.
-builtin_type(type_cat_char) = yes.
-builtin_type(type_cat_string) = yes.
-builtin_type(type_cat_float) = yes.
-builtin_type(type_cat_void) = yes.
-builtin_type(type_cat_type_info) = no.
-builtin_type(type_cat_type_ctor_info) = yes.
-builtin_type(type_cat_typeclass_info) = yes.
-builtin_type(type_cat_base_typeclass_info) = yes.
-builtin_type(type_cat_higher_order) = no.
-builtin_type(type_cat_enum) = no.
-builtin_type(type_cat_foreign_enum) = no.
-builtin_type(type_cat_dummy) = no.
-builtin_type(type_cat_variable) = no.
-builtin_type(type_cat_tuple) = no.
-builtin_type(type_cat_user_ctor) = no.
+builtin_type(CtorCat) = Builtin :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
+        ; CtorCat = ctor_cat_system(cat_system_typeclass_info)
+        ; CtorCat = ctor_cat_system(cat_system_base_typeclass_info)
+        ),
+        Builtin = yes
+    ;
+        ( CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_system(cat_system_type_info)
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_higher_order
+        ),
+        Builtin = no
+    ).
 
     % Figure out which save and restore predicates in library/table_builtin.m
     % we need to use for values of types belonging the type category given by
     % the first argument. The returned value replaces CAT in
     % table_save_CAT_answer and table_restore_CAT_answer.
     %
-:- pred type_save_category(type_category::in, string::out) is det.
+:- pred type_save_category(type_ctor_category::in, string::out) is det.
 
-type_save_category(type_cat_enum,         "enum").
-type_save_category(type_cat_foreign_enum, _) :-
-    sorry(this_file, "tabling and foreign enumerations NYI.").
-type_save_category(type_cat_int,          "int").
-type_save_category(type_cat_char,         "char").
-type_save_category(type_cat_string,       "string").
-type_save_category(type_cat_float,        "float").
-type_save_category(type_cat_higher_order, "pred").
-type_save_category(type_cat_tuple,        "any").
-type_save_category(type_cat_user_ctor,    "any").       % could do better
-type_save_category(type_cat_variable,     "any").       % could do better
-type_save_category(type_cat_dummy, _) :-
-    unexpected(this_file, "type_save_category: dummy").
-type_save_category(type_cat_void, _) :-
-    unexpected(this_file, "type_save_category: void").
-type_save_category(type_cat_type_info, "any").          % could do better
-type_save_category(type_cat_type_ctor_info, _) :-
-    unexpected(this_file, "type_save_category: type_ctor_info").
-type_save_category(type_cat_typeclass_info, _) :-
-    unexpected(this_file, "type_save_category: typeclass_info").
-type_save_category(type_cat_base_typeclass_info, _) :-
-    unexpected(this_file, "type_save_category: base_typeclass_info").
+type_save_category(CtorCat, Name) :-
+    (
+        CtorCat = ctor_cat_enum(cat_enum_mercury),
+        Name = "enum"
+    ;
+        CtorCat = ctor_cat_enum(cat_enum_foreign),
+        sorry(this_file, "tabling and foreign enumerations NYI.")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        Name = "int"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
+        Name = "float"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
+        Name = "char"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
+        Name = "string"
+    ;
+        CtorCat = ctor_cat_higher_order,
+        Name = "pred"
+    ;
+        % Could do better.
+        ( CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_system(cat_system_type_info)
+        ),
+        Name = "any"
+    ;
+        CtorCat = ctor_cat_tuple,
+        Name = "any"
+    ;
+        ( CtorCat = ctor_cat_system(cat_system_type_ctor_info)
+        ; CtorCat = ctor_cat_system(cat_system_typeclass_info)
+        ; CtorCat = ctor_cat_system(cat_system_base_typeclass_info)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_void
+        ),
+        unexpected(this_file, "type_save_category: unexpected category")
+    ).
 
 %-----------------------------------------------------------------------------%
 

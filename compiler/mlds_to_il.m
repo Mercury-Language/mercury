@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1198,7 +1198,8 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         UnivSymName = qualified(unqualified("univ"), "univ"),
         UnivMercuryType = defined_type(UnivSymName, [], kind_star),
         UnivMLDSType = mercury_type(UnivMercuryType,
-            type_cat_user_ctor, non_foreign_type(UnivMercuryType)),
+            ctor_cat_user(cat_user_general),
+            non_foreign_type(UnivMercuryType)),
         UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType),
 
         RenameNode = (func(N) = list.map(RenameRets, N)),
@@ -2058,7 +2059,7 @@ atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
             Type = mlds_class_type(_, _, mlds_class)
         ;
             DataRep ^ highlevel_data = yes,
-            Type = mercury_type(MercuryType, type_cat_user_ctor, _),
+            Type = mercury_type(MercuryType, ctor_cat_user(_), _),
             \+ type_needs_lowlevel_rep(target_il, MercuryType)
         )
     ->
@@ -2613,12 +2614,12 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
     ;
         ( already_boxed(SrcILType) ->
             (
-                SrcType = mercury_type(_, TypeCategory, _),
+                SrcType = mercury_type(_, TypeCtorCategory, _),
                 % XXX Consider whether this is the right way to handle
                 % type_infos, type_ctor_infos, typeclass_infos and
                 % base_typeclass_infos.
-                ( TypeCategory = type_cat_user_ctor
-                ; is_introduced_type_info_type_category(TypeCategory) = yes
+                ( TypeCtorCategory = ctor_cat_user(_)
+                ; is_introduced_type_info_type_category(TypeCtorCategory) = yes
                 )
             ->
                 % XXX We should look into a nicer way to generate MLDS
@@ -3110,7 +3111,7 @@ mlds_type_to_ilds_type(_, mlds_rtti_type(_RttiName)) = il_object_array_type.
 mlds_type_to_ilds_type(_, mlds_tabling_type(_Id)) = il_object_array_type.
 
 mlds_type_to_ilds_type(DataRep, mlds_mercury_array_type(ElementType)) =
-    ( ElementType = mercury_type(_, type_cat_variable, _) ->
+    ( ElementType = mercury_type(_, ctor_cat_variable, _) ->
         il_generic_array_type
     ;
         il_type([], '[]'(mlds_type_to_ilds_type(DataRep, ElementType), []))
@@ -3200,38 +3201,47 @@ mlds_type_to_ilds_type(_, mlds_unknown_type) = _ :-
     % of type void, so the type is moot.
     %
 :- func mlds_mercury_type_to_ilds_type(il_data_rep, mer_type,
-    type_category) = il_type.
+    type_ctor_category) = il_type.
 
-mlds_mercury_type_to_ilds_type(_, _, type_cat_int)    = il_type([], int32).
-mlds_mercury_type_to_ilds_type(_, _, type_cat_char)   = il_type([], char).
-mlds_mercury_type_to_ilds_type(_, _, type_cat_float)  = il_type([], float64).
-mlds_mercury_type_to_ilds_type(_, _, type_cat_string) = il_string_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_void)   = il_type([], int32).
-mlds_mercury_type_to_ilds_type(_, _, type_cat_higher_order) =
-    il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_tuple) = il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_enum) =  il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_foreign_enum) = 
-    il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_dummy) =  il_generic_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_variable) = il_generic_type.
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_type_info) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_type_ctor_info) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_typeclass_info) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType,
-        type_cat_base_typeclass_info) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor) =
+mlds_mercury_type_to_ilds_type(DataRep, MercuryType, CtorCat) = ILType :-
     (
-        DataRep ^ highlevel_data = yes,
-        \+ type_needs_lowlevel_rep(target_il, MercuryType)
-    ->
-        mercury_type_to_highlevel_class_type(MercuryType)
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_void
+        ),
+        ILType = il_type([], int32)
     ;
-        il_object_array_type
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
+        ILType = il_type([], char)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
+        ILType = il_type([], float64)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
+        ILType = il_string_type
+    ;
+        ( CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_enum(_)
+        ),
+        ILType = il_object_array_type
+    ;
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ),
+        ILType = il_generic_type
+    ;
+        % We should handle ctor_cat_user(cat_user_direct_dummy) specially.
+        ( CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        (
+            DataRep ^ highlevel_data = yes,
+            \+ type_needs_lowlevel_rep(target_il, MercuryType)
+        ->
+            ILType = mercury_type_to_highlevel_class_type(MercuryType)
+        ;
+            ILType = il_object_array_type
+        )
     ).
 
 :- func mlds_class_to_ilds_simple_type(mlds_class_kind, ilds.class_name) =
@@ -3728,23 +3738,26 @@ rval_to_type(const(Const), Type) :-
 rval_const_to_type(mlconst_data_addr(_)) = mlds_array_type(mlds_generic_type).
 rval_const_to_type(mlconst_code_addr(_))
         = mlds_func_type(mlds_func_params([], [])).
-rval_const_to_type(mlconst_int(_))
-        = mercury_type(IntType, type_cat_int, non_foreign_type(IntType)) :-
-    IntType = builtin_type(builtin_type_int).
+rval_const_to_type(mlconst_int(_)) = MLDSType :-
+    IntType = builtin_type(builtin_type_int),
+    MLDSType = mercury_type(IntType, ctor_cat_builtin(cat_builtin_int),
+        non_foreign_type(IntType)).
 rval_const_to_type(mlconst_foreign(_, _, _))
         = sorry(this_file, "IL backend and foreign tag."). 
-rval_const_to_type(mlconst_float(_))
-        = mercury_type(FloatType, type_cat_float,
-            non_foreign_type(FloatType)) :-
-    FloatType = builtin_type(builtin_type_float).
+rval_const_to_type(mlconst_float(_)) = MLDSType :-
+    FloatType = builtin_type(builtin_type_float),
+    MLDSType = mercury_type(FloatType, ctor_cat_builtin(cat_builtin_float),
+        non_foreign_type(FloatType)).
 rval_const_to_type(mlconst_false) = mlds_native_bool_type.
 rval_const_to_type(mlconst_true) = mlds_native_bool_type.
-rval_const_to_type(mlconst_string(_))
-        = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
-    StrType = builtin_type(builtin_type_string).
-rval_const_to_type(mlconst_multi_string(_))
-        = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
-    StrType = builtin_type(builtin_type_string).
+rval_const_to_type(mlconst_string(_)) = MLDSType :-
+    StrType = builtin_type(builtin_type_string),
+    MLDSType = mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
+        non_foreign_type(StrType)).
+rval_const_to_type(mlconst_multi_string(_)) = MLDSType :-
+    StrType = builtin_type(builtin_type_string),
+    MLDSType = mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
+        non_foreign_type(StrType)).
 rval_const_to_type(mlconst_named_const(_))
         = sorry(this_file, "IL backend and named const."). 
 rval_const_to_type(mlconst_null(MldsType)) = MldsType.

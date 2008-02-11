@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: equiv_type_hlds.m.
 % Main author: stayl.
-% 
+%
 % Expand all types in the module_info using all equivalence type definitions,
 % even those local to (transitively) imported modules.
-% 
+%
 % This is necessary to avoid problems with back-ends that don't support
 % equivalence types properly (or at all).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.equiv_type_hlds.
@@ -826,8 +826,7 @@ replace_in_goal_expr(EqvMap,
         GoalExpr = GoalExpr0
     ).
 replace_in_goal_expr(EqvMap, GoalExpr0 @ generic_call(A, B, Modes0, D),
-GoalExpr,
-        Changed, !Info) :-
+        GoalExpr, Changed, !Info) :-
     TVarSet0 = !.Info ^ tvarset,
     Cache0 = !.Info ^ inst_cache,
     replace_in_modes(EqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
@@ -847,15 +846,15 @@ replace_in_goal_expr(EqvMap, GoalExpr0 @ unify(Var, _, _, _, _), GoalExpr,
     proc_info_get_vartypes(!.Info ^ proc_info, VarTypes),
     proc_info_get_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
     map.lookup(VarTypes, Var, VarType),
-    classify_type(!.Info ^ module_info, VarType) = TypeCat,
+    TypeCtorCat = classify_type(!.Info ^ module_info, VarType),
     (
         % If this goal constructs a type_info for an equivalence type,
         % we need to expand that to make the type_info for the expanded type.
-        % It's simpler to just recreate the type_info from scratch.
-        %
+        % It is simpler to just recreate the type_info from scratch.
+
         GoalExpr0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
         ConsId = type_info_cell_constructor(TypeCtor),
-        TypeCat = type_cat_type_info,
+        TypeCtorCat = ctor_cat_system(cat_system_type_info),
         map.search(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
         Body = hlds_eqv_type(_)
@@ -897,10 +896,10 @@ replace_in_goal_expr(EqvMap, GoalExpr0 @ unify(Var, _, _, _, _), GoalExpr,
         % Check for a type_ctor_info for an equivalence type. We can just
         % remove these because after the code above to fix up type_infos
         % for equivalence types they can't be used.
-        %
+
         GoalExpr0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
         ConsId = type_info_cell_constructor(TypeCtor),
-        TypeCat = type_cat_type_ctor_info,
+        TypeCtorCat = ctor_cat_system(cat_system_type_ctor_info),
         map.search(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
         Body = hlds_eqv_type(_)

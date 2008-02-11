@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,7 +157,7 @@ var_to_expr_or_false(ModuleInfo, VarTypes, Var) = Expr :-
         % The variable may not be in VarTypes if it did not exist in the
         % HLDS, i.e. we invented the variable.  Those should be kept.
         map.search(VarTypes, Var, Type),
-        is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type
     then
         Expr = elds_term(elds_false)
     else
@@ -286,7 +286,7 @@ materialise_dummies_before_expr(Info, Vars, Expr0, Expr) :-
 assign_false_if_dummy(Info, Var, AssignFalse) :-
     erl_gen_info_get_module_info(Info, ModuleInfo),
     erl_variable_type(Info, Var, VarType),
-    is_dummy_argument_type(ModuleInfo, VarType),
+    check_dummy_type(ModuleInfo, VarType) = is_dummy_type,
     AssignFalse = var_eq_false(Var).
 
 %-----------------------------------------------------------------------------%
@@ -376,9 +376,12 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
         ArgTypes = [_SrcType, DestType]
     ->
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        ( is_dummy_argument_type(ModuleInfo, DestType) ->
+        IsDummy = check_dummy_type(ModuleInfo, DestType),
+        (
+            IsDummy = is_dummy_type,
             Statement = expr_or_void(MaybeSuccessExpr)
         ;
+            IsDummy = is_not_dummy_type,
             erl_gen_info_get_var_types(!.Info, VarTypes),
             SrcVarExpr = var_to_expr_or_false(ModuleInfo, VarTypes, SrcVar),
             Assign = elds_eq(expr_from_var(DestVar), SrcVarExpr),
@@ -418,7 +421,7 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
                 map.lookup(VarTypes, Lval, LvalType),
-                is_dummy_argument_type(ModuleInfo, LvalType)
+                check_dummy_type(ModuleInfo, LvalType) = is_dummy_type
             ->
                 Statement = expr_or_void(MaybeSuccessExpr)
             ;

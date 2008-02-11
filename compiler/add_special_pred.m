@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             ThisModule = yes,
             (
                 Ctors = Body ^ du_type_ctors,
-                Body ^ du_type_is_enum = not_enum_or_dummy,
+                Body ^ du_type_kind = du_type_kind_general,
                 Body ^ du_type_usereq = no,
                 module_info_get_globals(!.ModuleInfo, Globals),
                 globals.lookup_int_option(Globals, compare_specialization,

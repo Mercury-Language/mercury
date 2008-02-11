@@ -662,12 +662,12 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
             ;
                 % XXX How should we handle IsForeignType here?
                 TypeBody = hlds_du_type(Ctors, _TagValues, _CheaperTagTest,
-                    IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
+                    DuTypeKind, _MaybeUserEq, _ReservedTag, _ReservedAddr,
                     _IsForeignType),
                 (
-                    ( IsEnumOrDummy = is_mercury_enum
-                    ; IsEnumOrDummy = is_foreign_enum(_)
-                    ; IsEnumOrDummy = is_dummy
+                    ( DuTypeKind = du_type_kind_mercury_enum
+                    ; DuTypeKind = du_type_kind_foreign_enum(_)
+                    ; DuTypeKind = du_type_kind_direct_dummy
                     ),
                     Attributes = export_enum_attributes(MaybePrefix),
                     (
@@ -689,21 +689,21 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                                 TypeCtor, Mapping),
                             module_info_get_exported_enums(!.ModuleInfo,
                                 ExportedEnums0),
-                            ExportedEnums = [ ExportedEnum | ExportedEnums0 ],
+                            ExportedEnums = [ExportedEnum | ExportedEnums0],
                             module_info_set_exported_enums(ExportedEnums,
                                 !ModuleInfo)
                         ;
                             MaybeMapping = no
-                        ),
-                        ErrorPieces = [],
-                        MaybeSeverity = no
+                        )
                     ;
-                        MaybeOverridesMap = no,
-                        ErrorPieces = [],
-                        MaybeSeverity = no
-                    )
+                        MaybeOverridesMap = no
+                    ),
+                    ErrorPieces = [],
+                    MaybeSeverity = no
                 ;
-                    IsEnumOrDummy = not_enum_or_dummy,
+                    ( DuTypeKind = du_type_kind_general
+                    ; DuTypeKind = du_type_kind_notag(_, _, _)
+                    ),
                     MaybeSeverity = yes(severity_error),
                     % XXX Maybe we should add a verbose error message that
                     % identifies the non-zero arity constructors.
@@ -752,11 +752,9 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
         unexpected(this_file,
             "unqualified type name while building override map")
     ),
-    %
-    % Strip off module qualifiers that match those of the type
-    % being exported.  We leave those that do not match so that
-    % they can be reported as errors later.
-    %
+    % Strip off module qualifiers that match those of the type being exported.
+    % We leave those that do not match so that they can be reported as errors
+    % later.
     StripQualifiers = (func(Name0) = Name :-
         (
             Name0 = qualified(ModuleQualifier, UnqualName),
@@ -1010,19 +1008,17 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
             ]
         ;
             TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
-                IsEnumOrDummy0, MaybeUserEq, ReservedTag, ReservedAddr,
+                DuTypeKind0, MaybeUserEq, ReservedTag, ReservedAddr,
                 IsForeignType),
-            %
             % Work out what language's foreign_enum pragma we should be
             % looking at for the the current compilation target language.
-            %
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_target(Globals, TargetLanguage),
             LangForForeignEnums =
                 target_lang_to_foreign_enum_lang(TargetLanguage),
             (
-                ( IsEnumOrDummy0 = is_dummy
-                ; IsEnumOrDummy0 = is_mercury_enum
+                ( DuTypeKind0 = du_type_kind_direct_dummy
+                ; DuTypeKind0 = du_type_kind_mercury_enum
                 ),
                 get_type_defn_status(TypeDefn0, TypeStatus),
                 % Either both the type and the pragma are defined in this
@@ -1041,8 +1037,8 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                     )
                 ->
                     % XXX We should also check that this type is not
-                    %     the subject of a reserved tag pragma.
-                    IsEnumOrDummy = is_foreign_enum(Lang),
+                    % the subject of a reserved tag pragma.
+                    DuTypeKind = du_type_kind_foreign_enum(Lang),
                     build_foreign_enum_tag_map(Context, ContextPieces,
                         TypeName, ForeignTagValues, MaybeForeignTagMap,
                         !Specs),
@@ -1056,7 +1052,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                         (
                             UnmappedCtors = [],
                             TypeBody = hlds_du_type(Ctors, TagValues,
-                                CheaperTagTest, IsEnumOrDummy, MaybeUserEq,
+                                CheaperTagTest, DuTypeKind, MaybeUserEq,
                                 ReservedTag, ReservedAddr, IsForeignType),
                             set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
                             svmap.set(TypeCtor, TypeDefn, TypeTable0,
@@ -1090,7 +1086,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                     ]
                 )
             ;
-                IsEnumOrDummy0 = is_foreign_enum(_),
+                DuTypeKind0 = du_type_kind_foreign_enum(_),
                 ( LangForForeignEnums \= Lang ->
                      MaybeSeverity = no,
                      ErrorPieces = []
@@ -1103,7 +1099,9 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                     ]
                 )
             ;
-                IsEnumOrDummy0 = not_enum_or_dummy,
+                ( DuTypeKind0 = du_type_kind_general
+                ; DuTypeKind0 = du_type_kind_notag(_, _, _)
+                ),
                 MaybeSeverity = yes(severity_error),
                 ErrorPieces = [
                     words("error: "),
@@ -1185,7 +1183,7 @@ fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
         ( match_sym_name(CtorModuleName, TypeModuleName) ->
             CtorSymName = qualified(TypeModuleName, Name)
         ;
-            !:BadCtors = [ CtorSymName0 | !.BadCtors],
+            !:BadCtors = [CtorSymName0 | !.BadCtors],
             CtorSymName = CtorSymName0
         )
     ),
@@ -3614,8 +3612,8 @@ mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo) :-
     inst_var_renaming::in, inst_var_renaming::out) is semidet.
 
 match_corresponding_inst_lists_with_renaming(_, [], [], !Renaming).
-match_corresponding_inst_lists_with_renaming(ModuleInfo,
-        [ A | As ], [ B | Bs ], !Renaming) :-
+match_corresponding_inst_lists_with_renaming(ModuleInfo, [A | As], [B | Bs],
+        !Renaming) :-
     match_insts_with_renaming(ModuleInfo, A, B, Renaming0),
     merge_inst_var_renamings(Renaming0, !Renaming),
     match_corresponding_inst_lists_with_renaming(ModuleInfo, As, Bs,
@@ -3627,7 +3625,7 @@ match_corresponding_inst_lists_with_renaming(ModuleInfo,
 
 match_corresponding_bound_inst_lists_with_renaming(_, [], [], !Renaming).
 match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
-        [A | As ], [B | Bs], !Renaming) :-
+        [A | As], [B | Bs], !Renaming) :-
     A = bound_functor(ConsId, ArgsA),
     B = bound_functor(ConsId, ArgsB),
     match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,

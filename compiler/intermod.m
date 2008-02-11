@@ -415,7 +415,7 @@ check_for_ho_input_args(ModuleInfo, VarTypes,
     (
         mode_is_input(ModuleInfo, ArgMode),
         map.lookup(VarTypes, HeadVar, Type),
-        classify_type(ModuleInfo, Type) = type_cat_higher_order
+        classify_type(ModuleInfo, Type) = ctor_cat_higher_order
     ;
         check_for_ho_input_args(ModuleInfo, VarTypes, HeadVars, ArgModes)
     ).
@@ -1363,8 +1363,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         true
     ),
     (
-        Body = hlds_du_type(_, ConsTagVals, _, EnumOrDummy, _, _, _, _),
-        EnumOrDummy = is_foreign_enum(Lang)
+        Body = hlds_du_type(_, ConsTagVals, _, DuTypeKind, _, _, _, _),
+        DuTypeKind = du_type_kind_foreign_enum(Lang)
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [], 
             ForeignEnumVals),

@@ -1520,10 +1520,13 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
         !Info) :-
     map.lookup(VarTypes, Var, Type),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
-        % no declaration needed for this variable
+    IsDummy = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummy = is_dummy_type,
+        % No declaration needed for this variable.
         ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns, !Info)
     ;
+        IsDummy = is_not_dummy_type,
         VarName = ml_gen_var_name(VarSet, Var),
         ml_gen_var_decl(VarName, Type, Context, Defn, !Info),
         ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns0, !Info),
@@ -2111,10 +2114,13 @@ ml_gen_make_locals_for_output_args([Var | Vars], Context,
         !Info),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_variable_type(!.Info, Var, Type),
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
+    IsDummy = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummy = is_dummy_type,
         LocalDefns = LocalDefns0,
         Assigns = Assigns0
     ;
+        IsDummy = is_not_dummy_type,
         ml_gen_make_local_for_output_arg(Var, Type, Context,
             LocalDefn, Assign, !Info),
         LocalDefns = [LocalDefn | LocalDefns0],
@@ -2705,8 +2711,8 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
     ),
     (
         MaybeVarMode = yes(ArgName - Mode),
-        \+ is_dummy_argument_type(ModuleInfo, OrigType),
-        \+ var_is_singleton(ArgName)
+        check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
+        not var_is_singleton(ArgName)
     ->
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode),
         (
@@ -2812,7 +2818,7 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
         VarSet, Context, IsByRef, Var, Statement) :-
     map.lookup(ArgMap, Var, ForeignArg),
     ForeignArg = foreign_arg(_, MaybeNameMode, Type, BoxPolicy),
-    not is_dummy_argument_type(ModuleInfo, Type),
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
     (
         BoxPolicy = always_boxed,
         MLDSType = mlds_generic_type
@@ -2865,7 +2871,7 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 
     % Dummy arguments are just mapped to integers, since they shouldn't be
     % used in any way that requires them to have a real value.
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
+    ( check_dummy_type(ModuleInfo, Type) = is_dummy_type ->
         Initializer = no_initializer,
         MLDSType = mlds_native_int_type
     ; list.member(Var, ByRefOutputVars) ->
@@ -3140,7 +3146,7 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     (
         MaybeNameAndMode = yes(ArgName - _Mode),
-        \+ var_is_singleton(ArgName)
+        not var_is_singleton(ArgName)
     ->
         (
             BoxPolicy = always_boxed,
@@ -3200,7 +3206,7 @@ ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     (
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
         MaybeNameAndMode = yes(ArgName - Mode),
-        \+ var_is_singleton(ArgName),
+        not var_is_singleton(ArgName),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in)
     ->
         ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType,
@@ -3220,13 +3226,16 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ( is_dummy_argument_type(ModuleInfo, VarType) ->
+    IsDummy = check_dummy_type(ModuleInfo, VarType),
+    (
+        IsDummy = is_dummy_type,
         % The variable may not have been declared, so we need to generate
         % a dummy value for it. Using `0' here is more efficient than using
         % private_builtin.dummy_var, which is what ml_gen_var will have
         % generated for this variable.
         ArgRval = const(mlconst_int(0))
     ;
+        IsDummy = is_not_dummy_type,
         ml_gen_box_or_unbox_rval(VarType, OrigType, BoxPolicy,
             lval(VarLval), ArgRval, !Info)
     ),
@@ -3326,7 +3335,7 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
     (
         MaybeNameAndMode = yes(ArgName - Mode),
         not var_is_singleton(ArgName),
-        not is_dummy_argument_type(ModuleInfo, OrigType),
+        check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
     ->
         % Create a target lval with the right type for *internal* use in the
@@ -3394,8 +3403,8 @@ ml_gen_pragma_c_output_arg(Lang, Arg, Context, AssignOutput, ConvDecls,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
         MaybeNameAndMode = yes(ArgName - Mode),
-        \+ var_is_singleton(ArgName),
-        \+ is_dummy_argument_type(ModuleInfo, OrigType),
+        not var_is_singleton(ArgName),
+        check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
     ->
         ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,

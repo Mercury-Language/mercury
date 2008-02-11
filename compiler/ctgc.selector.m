@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -308,8 +308,10 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
         SelectorAcc0, !Selector) :-
     (
         !.Selector = [UnitSelector | SelRest],
-        Class = classify_type(ModuleInfo, VarType),
-        ( Class = type_cat_user_ctor ->
+        CtorCat = classify_type(ModuleInfo, VarType),
+        % XXX This test seems to be a bug: it shouldn't succeed for either
+        % notag types or dummy types.
+        ( CtorCat = ctor_cat_user(_) ->
             % If it is either a term-selector of a non-existentially typed
             % functor or is a type-selector, construct the branch map and
             % proceed with normalization. If it is a term-selector of an

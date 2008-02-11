@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -184,24 +184,26 @@ type_is_reusable(ModuleInfo, Type) :-
     TypeCat = classify_type(ModuleInfo, Type),
     type_category_is_reusable(TypeCat) = yes.
 
-:- func type_category_is_reusable(type_category) = bool.
+:- func type_category_is_reusable(type_ctor_category) = bool.
 
-type_category_is_reusable(type_cat_int) = no.
-type_category_is_reusable(type_cat_char) = no.
-type_category_is_reusable(type_cat_string) = no.
-type_category_is_reusable(type_cat_float) = no.
-type_category_is_reusable(type_cat_higher_order) = no.
-type_category_is_reusable(type_cat_tuple) = yes.
-type_category_is_reusable(type_cat_enum) = no.
-type_category_is_reusable(type_cat_foreign_enum) = no.
-type_category_is_reusable(type_cat_dummy) = no.
-type_category_is_reusable(type_cat_variable) = no.
-type_category_is_reusable(type_cat_type_info) = no.
-type_category_is_reusable(type_cat_type_ctor_info) = no.
-type_category_is_reusable(type_cat_typeclass_info) = no.
-type_category_is_reusable(type_cat_base_typeclass_info) = no.
-type_category_is_reusable(type_cat_void) = no.
-type_category_is_reusable(type_cat_user_ctor) = yes.
+type_category_is_reusable(CtorCat) = Reusable :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ),
+        Reusable = no
+    ;
+        % XXX I don't think notag user types should be reusable.
+        ( CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        Reusable = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 

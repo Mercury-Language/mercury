@@ -286,7 +286,7 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
     ;
         % We don't include dummy types in the constraints - they won't tell us
         % anything useful.
-        is_dummy_argument_type(ModuleInfo, Type)
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type
     ).
 
 add_context_to_constr_termination_info(no, _, no).

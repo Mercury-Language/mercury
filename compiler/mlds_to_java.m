@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -182,7 +182,7 @@ defn_is_rtti_data(Defn) :-
 
 type_is_enum(Type) :-
     Type = mercury_type(_, Builtin, _),
-    Builtin = type_cat_enum.
+    Builtin = ctor_cat_enum(_).
 
     % Succeeds iff this type is something that the Java backend will represent
     % as an object i.e. something created using the new operator.
@@ -190,27 +190,28 @@ type_is_enum(Type) :-
 :- pred type_is_object(mlds_type::in) is semidet.
 
 type_is_object(Type) :-
-    Type = mercury_type(_, TypeCategory, _),
-    type_category_is_object(TypeCategory) = yes.
+    Type = mercury_type(_, CtorCat, _),
+    type_category_is_object(CtorCat) = yes.
 
-:- func type_category_is_object(type_category) = bool.
+:- func type_category_is_object(type_ctor_category) = bool.
 
-type_category_is_object(type_cat_int) = no.
-type_category_is_object(type_cat_char) = no.
-type_category_is_object(type_cat_string) = no.
-type_category_is_object(type_cat_float) = no.
-type_category_is_object(type_cat_higher_order) = no.
-type_category_is_object(type_cat_tuple) = no.
-type_category_is_object(type_cat_enum) = yes.
-type_category_is_object(type_cat_foreign_enum) = yes.
-type_category_is_object(type_cat_dummy) = yes.
-type_category_is_object(type_cat_variable) = yes.
-type_category_is_object(type_cat_type_info) = yes.
-type_category_is_object(type_cat_type_ctor_info) = yes.
-type_category_is_object(type_cat_typeclass_info) = yes.
-type_category_is_object(type_cat_base_typeclass_info) = yes.
-type_category_is_object(type_cat_void) = no.
-type_category_is_object(type_cat_user_ctor) = yes.
+type_category_is_object(CtorCat) = IsObject :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_void
+        ),
+        IsObject = no
+    ;
+        ( CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        IsObject = yes
+    ).
 
     % Given an lval, return its type.
     %
@@ -1437,45 +1438,59 @@ output_data_defn(ModuleInfo, Name, Type, Initializer, !IO) :-
     %
 :- func get_java_type_initializer(mlds_type) = string.
 
-get_java_type_initializer(mercury_type(_, type_cat_int, _)) = "0".
-get_java_type_initializer(mercury_type(_, type_cat_char, _)) = "0".
-get_java_type_initializer(mercury_type(_, type_cat_float, _)) = "0".
-get_java_type_initializer(mercury_type(_, type_cat_string, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_void, _)) = "0".
-get_java_type_initializer(mercury_type(_, type_cat_type_info, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_type_ctor_info, _))
-    = "null".
-get_java_type_initializer(mercury_type(_, type_cat_typeclass_info, _))
-    = "null".
-get_java_type_initializer(mercury_type(_, type_cat_base_typeclass_info, _))
-    = "null".
-get_java_type_initializer(mercury_type(_, type_cat_higher_order, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_tuple, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_enum, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_foreign_enum, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_dummy, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_variable, _)) = "null".
-get_java_type_initializer(mercury_type(_, type_cat_user_ctor, _)) = "null".
-get_java_type_initializer(mlds_mercury_array_type(_)) = "null".
-get_java_type_initializer(mlds_cont_type(_)) = "null".
-get_java_type_initializer(mlds_commit_type) = "null".
-get_java_type_initializer(mlds_native_bool_type) = "false".
-get_java_type_initializer(mlds_native_int_type) = "0".
-get_java_type_initializer(mlds_native_float_type) = "0".
-get_java_type_initializer(mlds_native_char_type) = "0".
-get_java_type_initializer(mlds_foreign_type(_)) = "null".
-get_java_type_initializer(mlds_class_type(_, _, _)) = "null".
-get_java_type_initializer(mlds_array_type(_)) = "null".
-get_java_type_initializer(mlds_ptr_type(_)) = "null".
-get_java_type_initializer(mlds_func_type(_)) = "null".
-get_java_type_initializer(mlds_generic_type) = "null".
-get_java_type_initializer(mlds_generic_env_ptr_type) = "null".
-get_java_type_initializer(mlds_type_info_type) = "null".
-get_java_type_initializer(mlds_pseudo_type_info_type) = "null".
-get_java_type_initializer(mlds_rtti_type(_)) = "null".
-get_java_type_initializer(mlds_tabling_type(_)) = "null".
-get_java_type_initializer(mlds_unknown_type) = _ :-
-    unexpected(this_file, "get_type_initializer: variable has unknown_type").
+get_java_type_initializer(Type) = Initializer :-
+    (
+        Type = mercury_type(_, CtorCat, _),
+        (
+            ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_float)
+            ; CtorCat = ctor_cat_void
+            ),
+            Initializer = "0"
+        ;
+            ( CtorCat = ctor_cat_builtin(cat_builtin_string)
+            ; CtorCat = ctor_cat_system(_)
+            ; CtorCat = ctor_cat_higher_order
+            ; CtorCat = ctor_cat_tuple
+            ; CtorCat = ctor_cat_enum(_)
+            ; CtorCat = ctor_cat_builtin_dummy
+            ; CtorCat = ctor_cat_variable
+            ; CtorCat = ctor_cat_user(_)
+            ),
+            Initializer = "null"
+        )
+    ;
+        ( Type = mlds_native_int_type
+        ; Type = mlds_native_float_type
+        ; Type = mlds_native_char_type
+        ),
+        Initializer = "0"
+    ;
+        Type = mlds_native_bool_type,
+        Initializer = "false"
+    ;
+        ( Type = mlds_mercury_array_type(_)
+        ; Type = mlds_cont_type(_)
+        ; Type = mlds_commit_type
+        ; Type = mlds_foreign_type(_)
+        ; Type = mlds_class_type(_, _, _)
+        ; Type = mlds_array_type(_)
+        ; Type = mlds_ptr_type(_)
+        ; Type = mlds_func_type(_)
+        ; Type = mlds_generic_type
+        ; Type = mlds_generic_env_ptr_type
+        ; Type = mlds_type_info_type
+        ; Type = mlds_pseudo_type_info_type
+        ; Type = mlds_rtti_type(_)
+        ; Type = mlds_tabling_type(_)
+        ),
+        Initializer = "null"
+    ;
+        Type = mlds_unknown_type,
+        unexpected(this_file,
+            "get_type_initializer: variable has unknown_type")
+    ).
 
 :- pred output_maybe(maybe(T)::in,
     pred(T, io, io)::pred(in, di, uo) is det, io::di, io::uo) is det.
@@ -1828,7 +1843,7 @@ output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
 
 :- pred output_type(mlds_type::in, io::di, io::uo) is det.
 
-output_type(mercury_type(Type, TypeCategory, _), !IO) :-
+output_type(mercury_type(Type, CtorCat, _), !IO) :-
     ( Type = c_pointer_type ->
         % The c_pointer type is used in the c back-end as a generic way
         % to pass foreign types to automatically generated Compare and Unify
@@ -1837,15 +1852,15 @@ output_type(mercury_type(Type, TypeCategory, _), !IO) :-
     ;
         % We need to handle type_info (etc.) types specially -- they get mapped
         % to types in the runtime rather than in private_builtin.
-        hand_defined_type(TypeCategory, SubstituteName)
+        hand_defined_type(CtorCat, SubstituteName)
     ->
         io.write_string(SubstituteName, !IO)
     ;
-        output_mercury_type(Type, TypeCategory, !IO)
+        output_mercury_type(Type, CtorCat, !IO)
     ).
 
 output_type(mlds_mercury_array_type(ElementType), !IO) :-
-    ( ElementType = mercury_type(_, type_cat_variable, _) ->
+    ( ElementType = mercury_type(_, ctor_cat_variable, _) ->
         % We can't use `java.lang.Object []', since we want a generic type
         % that is capable of holding any kind of array, including e.g.
         % `int []'. Java doesn't have any equivalent of .NET's System.Array
@@ -1925,68 +1940,53 @@ output_type(mlds_tabling_type(TablingId), !IO) :-
 output_type(mlds_unknown_type, !IO) :-
     unexpected(this_file, "output_type: unknown type").
 
-:- pred output_mercury_type(mer_type::in, type_category::in,
+:- pred output_mercury_type(mer_type::in, type_ctor_category::in,
     io::di, io::uo) is det.
 
-output_mercury_type(Type, TypeCategory, !IO) :-
+output_mercury_type(Type, CtorCat, !IO) :-
     (
-        TypeCategory = type_cat_char,
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
         io.write_string("char", !IO)
     ;
-        TypeCategory = type_cat_int,
+        CtorCat = ctor_cat_builtin(cat_builtin_int),
         io.write_string("int", !IO)
     ;
-        TypeCategory = type_cat_string,
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
         io.write_string("java.lang.String", !IO)
     ;
-        TypeCategory = type_cat_float,
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
         io.write_string("double", !IO)
     ;
-        TypeCategory = type_cat_void,
+        CtorCat = ctor_cat_void,
         % Shouldn't matter what we put here.
         io.write_string("int", !IO)
     ;
-        TypeCategory = type_cat_type_info,
-        output_mercury_user_type(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_type_ctor_info,
-        output_mercury_user_type(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_typeclass_info,
-        output_mercury_user_type(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_base_typeclass_info,
-        output_mercury_user_type(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_variable,
+        CtorCat = ctor_cat_variable,
         io.write_string("java.lang.Object", !IO)
     ;
-        TypeCategory = type_cat_tuple,
+        CtorCat = ctor_cat_tuple,
         io.write_string("/* tuple */ java.lang.Object[]", !IO)
     ;
-        TypeCategory = type_cat_higher_order,
+        CtorCat = ctor_cat_higher_order,
         io.write_string("/* closure */ java.lang.Object[]", !IO)
     ;
-        TypeCategory = type_cat_enum,
-        output_mercury_user_type(Type, TypeCategory, !IO)
+        CtorCat = ctor_cat_system(_),
+        output_mercury_user_type(Type, ctor_cat_user(cat_user_general), !IO)
     ;
-        TypeCategory = type_cat_foreign_enum,
-        output_mercury_user_type(Type, TypeCategory, !IO)
-    ;
-        TypeCategory = type_cat_dummy,
-        output_mercury_user_type(Type, TypeCategory, !IO)
-    ;
-        TypeCategory = type_cat_user_ctor,
-        output_mercury_user_type(Type, TypeCategory, !IO)
+        ( CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ),
+        output_mercury_user_type(Type, CtorCat, !IO)
     ).
 
-:- pred output_mercury_user_type(mer_type::in, type_category::in,
+:- pred output_mercury_user_type(mer_type::in, type_ctor_category::in,
     io::di, io::uo) is det.
 
-output_mercury_user_type(Type, TypeCategory, !IO) :-
+output_mercury_user_type(Type, CtorCat, !IO) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) ->
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        ( TypeCategory = type_cat_enum ->
+        ( CtorCat = ctor_cat_enum(_) ->
             MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
         ;
             MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
@@ -2005,8 +2005,8 @@ type_is_array(Type) = IsArray :-
         IsArray = is_array
     ; Type = mlds_mercury_array_type(_) ->
         IsArray = is_array
-    ; Type = mercury_type(_, TypeCategory, _) ->
-        IsArray = type_category_is_array(TypeCategory)
+    ; Type = mercury_type(_, CtorCat, _) ->
+        IsArray = type_category_is_array(CtorCat)
     ; Type = mlds_rtti_type(RttiIdMaybeElement) ->
         rtti_id_maybe_element_java_type(RttiIdMaybeElement,
             _JavaTypeName, IsArray)
@@ -2016,39 +2016,50 @@ type_is_array(Type) = IsArray :-
 
     % Return is_array if the corresponding Java type is an array type.
     %
-:- func type_category_is_array(type_category) = is_array.
+:- func type_category_is_array(type_ctor_category) = is_array.
 
-type_category_is_array(type_cat_int) = not_array.
-type_category_is_array(type_cat_char) = not_array.
-type_category_is_array(type_cat_string) = not_array.
-type_category_is_array(type_cat_float) = not_array.
-type_category_is_array(type_cat_higher_order) = is_array.
-type_category_is_array(type_cat_tuple) = is_array.
-type_category_is_array(type_cat_enum) = not_array.
-type_category_is_array(type_cat_foreign_enum) = not_array.
-type_category_is_array(type_cat_dummy) = not_array.
-type_category_is_array(type_cat_variable) = not_array.
-type_category_is_array(type_cat_type_info) = not_array.
-type_category_is_array(type_cat_type_ctor_info) = not_array.
-type_category_is_array(type_cat_typeclass_info) = is_array.
-type_category_is_array(type_cat_base_typeclass_info) = is_array.
-type_category_is_array(type_cat_void) = not_array.
-type_category_is_array(type_cat_user_ctor) = not_array.
+type_category_is_array(CtorCat) = IsArray :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_system(cat_system_type_info)
+        ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        IsArray = not_array
+    ;
+        ( CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_system(cat_system_typeclass_info)
+        ; CtorCat = ctor_cat_system(cat_system_base_typeclass_info)
+        ),
+        IsArray = is_array
+    ).
 
     % hand_defined_type(Type, SubstituteName):
     %
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
     %
-:- pred hand_defined_type(type_category::in, string::out) is semidet.
+:- pred hand_defined_type(type_ctor_category::in, string::out) is semidet.
 
-hand_defined_type(type_cat_type_info, "mercury.runtime.TypeInfo_Struct").
-hand_defined_type(type_cat_type_ctor_info,
-    "mercury.runtime.TypeCtorInfo_Struct").
-hand_defined_type(type_cat_base_typeclass_info,
-    "/* base_typeclass_info */ java.lang.Object[]").
-hand_defined_type(type_cat_typeclass_info,
-    "/* typeclass_info */ java.lang.Object[]").
+hand_defined_type(ctor_cat_system(Kind), SubstituteName) :-
+    (
+        Kind = cat_system_type_info,
+        SubstituteName = "mercury.runtime.TypeInfo_Struct"
+    ;
+        Kind = cat_system_type_ctor_info,
+        SubstituteName = "mercury.runtime.TypeCtorInfo_Struct"
+    ;
+        Kind = cat_system_typeclass_info,
+        SubstituteName = "/* typeclass_info */ java.lang.Object[]"
+    ;
+        Kind = cat_system_base_typeclass_info,
+        SubstituteName = "/* base_typeclass_info */ java.lang.Object[]"
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2613,7 +2624,7 @@ remove_dummy_vars(ModuleInfo, [Var | Vars0]) = VarList :-
         Var = lval(Lval),
         Lval = var(_VarName, VarType),
         VarType = mercury_type(ProgDataType, _, _),
-        is_dummy_argument_type(ModuleInfo, ProgDataType)
+        check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
     ->
         VarList = Vars
     ;
@@ -2819,8 +2830,8 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
     (
         MaybeCtorName = yes(QualifiedCtorId),
         \+ (
-            Type = mercury_type(_, TypeCategory, _),
-            hand_defined_type(TypeCategory, _)
+            Type = mercury_type(_, CtorCat, _),
+            hand_defined_type(CtorCat, _)
         )
     ->
         output_type(Type, !IO),
@@ -3099,7 +3110,7 @@ output_unop(ModuleInfo, cast(Type), Exprn, ModuleName, !IO) :-
         output_rval(ModuleInfo, Exprn, ModuleName, !IO),
         io.write_string(")", !IO)
     ;
-        ( Type = mercury_type(_, type_cat_type_info, _)
+        ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
         ; Type = mlds_type_info_type
         )
     ->
@@ -3201,7 +3212,7 @@ java_builtin_type(ModuleInfo, Type, "int", "java.lang.Integer", "intValue") :-
     % types are defined types, but enables the compiler to infer that
     % this disjunction is a switch.
     Type = mercury_type(MercuryType @ defined_type(_, _, _), _, _),
-    is_dummy_argument_type(ModuleInfo, MercuryType).
+    check_dummy_type(ModuleInfo, MercuryType) = is_dummy_type.
 
 :- pred output_std_unop(module_info::in, builtin_ops.unary_op::in,
     mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.

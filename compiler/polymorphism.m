@@ -2703,26 +2703,40 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
         unexpected(this_file, "get_special_proc_det: get_special_proc failed")
     ).
 
-:- func get_category_name(type_category) = maybe(string).
+:- func get_category_name(type_ctor_category) = maybe(string).
 
-get_category_name(type_cat_int) = yes("int").
-get_category_name(type_cat_char) = yes("int").
-get_category_name(type_cat_enum) = no.
-get_category_name(type_cat_foreign_enum) = no.
-get_category_name(type_cat_dummy) = no.
-get_category_name(type_cat_float) = yes("float").
-get_category_name(type_cat_string) = yes("string").
-get_category_name(type_cat_higher_order) = yes("pred").
-get_category_name(type_cat_tuple) = yes("tuple").
-get_category_name(type_cat_variable) = _ :-
-    unexpected(this_file, "get_category_name: variable type").
-get_category_name(type_cat_void) = _ :-
-    unexpected(this_file, "get_category_name: void_type").
-get_category_name(type_cat_user_ctor) = no.
-get_category_name(type_cat_type_info) = no.
-get_category_name(type_cat_type_ctor_info) = no.
-get_category_name(type_cat_typeclass_info) = no.
-get_category_name(type_cat_base_typeclass_info) = no.
+get_category_name(CtorCat) = MaybeName :-
+    (
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+        ),
+        MaybeName = yes("int")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
+        MaybeName = yes("float")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
+        MaybeName = yes("string")
+    ;
+        CtorCat = ctor_cat_higher_order,
+        MaybeName = yes("pred")
+    ;
+        CtorCat = ctor_cat_tuple,
+        MaybeName = yes("tuple")
+    ;
+        ( CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_system(_)
+        ),
+        MaybeName = no
+    ;
+        CtorCat = ctor_cat_variable,
+        unexpected(this_file, "get_category_name: variable type")
+    ;
+        CtorCat = ctor_cat_void,
+        unexpected(this_file, "get_category_name: void_type")
+    ).
 
 init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         !VarSet, !VarTypes, !RttiVarMaps) :-

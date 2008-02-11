@@ -2057,7 +2057,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
         )
     ->
         (
-            is_dummy_argument_type(ModuleInfo, SpecialPredType)
+            check_dummy_type(ModuleInfo, SpecialPredType) = is_dummy_type
         ->
             specialize_unify_or_compare_pred_for_dummy(MaybeResult, Goal,
                 !Info)
@@ -2321,61 +2321,26 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
 
 find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         NeedIntCast) :-
-    TypeCategory = classify_type(ModuleInfo, Type),
+    CtorCat = classify_type(ModuleInfo, Type),
     (
-        ( TypeCategory = type_cat_int
-        ; TypeCategory = type_cat_char
-        ; TypeCategory = type_cat_string
-        ; TypeCategory = type_cat_float
-        ),
+        CtorCat = ctor_cat_builtin(_),
         EqvType = Type,
         NeedIntCast = no
     ;
-        TypeCategory = type_cat_dummy,
-        unexpected(this_file,
-            "dummy type in find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_void,
-        unexpected(this_file,
-            "void type in find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_higher_order,
-        unexpected(this_file, "higher_order type in " ++
-            "find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_tuple,
-        unexpected(this_file,
-            "tuple type in find_builtin_type_with_equivalent_compare")
-    ;
-        ( TypeCategory = type_cat_enum
-        ; TypeCategory = type_cat_foreign_enum
-        ),
+        CtorCat = ctor_cat_enum(_),
         construct_type(type_ctor(unqualified("int"), 0), [], EqvType),
         NeedIntCast = yes
     ;
-        TypeCategory = type_cat_variable,
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_system(_)
+        ),
         unexpected(this_file,
-            "var type in find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_user_ctor,
-        unexpected(this_file,
-            "user type in find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_type_info,
-        unexpected(this_file, "type_info type in " ++
-            "find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_type_ctor_info,
-        unexpected(this_file, "type_ctor_info type in " ++
-            "find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_typeclass_info,
-        unexpected(this_file, "typeclass_info type in " ++
-            "find_builtin_type_with_equivalent_compare")
-    ;
-        TypeCategory = type_cat_base_typeclass_info,
-        unexpected(this_file, "base_typeclass_info type in " ++
-            "find_builtin_type_with_equivalent_compare")
+            "find_builtin_type_with_equivalent_compare: bad type")
     ).
 
 :- pred generate_unsafe_type_cast(prog_context::in,

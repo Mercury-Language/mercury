@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,8 +326,8 @@ target_supports_goto_2(target_erlang) =
 determine_category(Info, CaseVar) = SwitchCategory :-
     ml_variable_type(Info, CaseVar, Type),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    type_util.classify_type(ModuleInfo, Type) = TypeCategory,
-    SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory).
+    type_util.classify_type(ModuleInfo, Type) = TypeCtorCategory,
+    SwitchCategory = switch_util.type_ctor_cat_to_switch_cat(TypeCtorCategory).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 University of Melbourne.
+% Copyright (C) 1997-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1289,7 +1289,7 @@ construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
     (
         LiveValueType = live_value_var(_, _, Type, _),
         get_module_info(!.Info, ModuleInfo),
-        is_dummy_argument_type(ModuleInfo, Type),
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type,
         % We want to preserve I/O states in registers.
         \+ (
             Locn = locn_direct(reg(_, _))

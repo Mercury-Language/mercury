@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -403,7 +403,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
             pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
                 arg_info(RetArgLoc, RetArgMode) - RetType),
             RetArgMode = top_out,
-            \+ is_dummy_argument_type(ModuleInfo, RetType)
+            check_dummy_type(ModuleInfo, RetType) = is_not_dummy_type
         ->
             Export_RetType = foreign.to_exported_type(ModuleInfo, RetType),
             C_RetType = exported_type_to_string(lang_c, Export_RetType),
@@ -459,7 +459,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
 
 include_arg(ModuleInfo, arg_info(_Loc, Mode) - Type) :-
     Mode \= top_unused,
-    \+ is_dummy_argument_type(ModuleInfo, Type).
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
     % get_argument_declarations(Args, NameThem, DeclString):
     %
@@ -812,15 +812,17 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
         unexpected(this_file, "invalid type for foreign_export_enum")
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
-            IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
+            DuTypeKind, _MaybeUserEq, _ReservedTag, _ReservedAddr,
             _IsForeignType),
         (
-            IsEnumOrDummy = not_enum_or_dummy,
+            ( DuTypeKind = du_type_kind_general
+            ; DuTypeKind = du_type_kind_notag(_, _, _)
+            ),
             unexpected(this_file, "d.u. is not an enumeration.")
         ;
-            ( IsEnumOrDummy = is_mercury_enum
-            ; IsEnumOrDummy = is_foreign_enum(_)
-            ; IsEnumOrDummy = is_dummy
+            ( DuTypeKind = du_type_kind_mercury_enum
+            ; DuTypeKind = du_type_kind_foreign_enum(_)
+            ; DuTypeKind = du_type_kind_direct_dummy
             ),
             list.foldl(foreign_const_name_and_tag(NameMapping, TagValues),
                 Ctors, [], ForeignNamesAndTags0),

@@ -3369,84 +3369,102 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
 :- pred write_type_body(int::in, tvarset::in, hlds_type_body::in,
     io::di, io::uo) is det.
 
-write_type_body(Indent, TVarSet, DuType, !IO) :-
-    DuType = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, EnumDummy,
-        MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign),
-    io.write_string(" --->\n", !IO),
+write_type_body(Indent, TVarSet, TypeBody, !IO) :-
     (
-        CheaperTagTest = no_cheaper_tag_test
+        TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
+            MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign),
+        io.write_string(" --->\n", !IO),
+        (
+            CheaperTagTest = no_cheaper_tag_test
+        ;
+            CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
+                CheapConsId, CheapConsTag),
+            io.write_string("/* cheaper tag test: ", !IO),
+            write_cons_id(ExpConsId, !IO),
+            io.write_string(" tag ", !IO),
+            io.print(ExpConsTag, !IO),
+            io.write_string(" -> ", !IO),
+            write_cons_id(CheapConsId, !IO),
+            io.write_string(" tag ", !IO),
+            io.print(CheapConsTag, !IO),
+            io.write_string(" */\n", !IO)
+        ),
+        (
+            DuTypeKind = du_type_kind_mercury_enum,
+            write_indent(Indent, !IO),
+            io.write_string("/* KIND enumeration */\n", !IO)
+        ;
+            DuTypeKind = du_type_kind_foreign_enum(Lang),
+            write_indent(Indent, !IO),
+            io.write_string("/* KIND foreign enumeration for ", !IO),
+            io.write_string(foreign_language_string(Lang), !IO),
+            io.write_string(" */\n", !IO)
+        ;
+            DuTypeKind = du_type_kind_direct_dummy,
+            write_indent(Indent, !IO),
+            io.write_string("/* KIND dummy */\n", !IO)
+        ;
+            DuTypeKind = du_type_kind_notag(FunctorName, ArgType, MaybeArgName),
+            write_indent(Indent, !IO),
+            io.write_string("/* KIND notag: ", !IO),
+            write_sym_name(FunctorName, !IO),
+            io.write_string(", ", !IO),
+            mercury_output_type(TVarSet, no, ArgType, !IO),
+            io.write_string(", ", !IO),
+            (
+                MaybeArgName = yes(ArgName),
+                io.write_string(ArgName, !IO)
+            ;
+                MaybeArgName = no,
+                io.write_string("no arg name", !IO)
+            ),
+            io.write_string(" */\n", !IO)
+        ;
+            DuTypeKind = du_type_kind_general,
+            io.write_string("/* KIND general */\n", !IO)
+        ),
+        (
+            ReservedTag = uses_reserved_tag,
+            write_indent(Indent, !IO),
+            io.write_string("/* reserved_tag */\n", !IO)
+        ;
+            ReservedTag = does_not_use_reserved_tag
+        ),
+        (
+            ReservedAddr = uses_reserved_address,
+            write_indent(Indent, !IO),
+            io.write_string("/* reserved_address */\n", !IO)
+        ;
+            ReservedAddr = does_not_use_reserved_address
+        ),
+        write_constructors(Indent, TVarSet, Ctors, ConsTagMap, !IO),
+        mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
+        (
+            Foreign = yes(_),
+            write_indent(Indent, !IO),
+            io.write_string("/* has foreign_type */\n", !IO)
+        ;
+            Foreign = no
+        ),
+        io.write_string(".\n", !IO)
     ;
-        CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
-            CheapConsId, CheapConsTag),
-        io.write_string("/* cheaper tag test: ", !IO),
-        write_cons_id(ExpConsId, !IO),
-        io.write_string(" tag ", !IO),
-        io.print(ExpConsTag, !IO),
-        io.write_string(" -> ", !IO),
-        write_cons_id(CheapConsId, !IO),
-        io.write_string(" tag ", !IO),
-        io.print(CheapConsTag, !IO),
-        io.write_string(" */\n", !IO)
-    ),
-    (
-        EnumDummy = is_mercury_enum,
-        write_indent(Indent, !IO),
-        io.write_string("/* enumeration */\n", !IO)
+        TypeBody = hlds_eqv_type(Type),
+        io.write_string(" == ", !IO),
+        mercury_output_type(TVarSet, no, Type, !IO),
+        io.write_string(".\n", !IO)
     ;
-        EnumDummy = is_foreign_enum(Lang),
-        write_indent(Indent, !IO),
-        io.write_string("/* foreign enumeration for ", !IO),
-        io.write_string(foreign_language_string(Lang), !IO),
-        io.write_string(" */\n", !IO)
+        TypeBody = hlds_abstract_type(_IsSolverType),
+        io.write_string(".\n", !IO)
     ;
-        EnumDummy = is_dummy,
-        write_indent(Indent, !IO),
-        io.write_string("/* dummy */\n", !IO)
+        TypeBody = hlds_foreign_type(_),
+        % XXX
+        io.write_string(" == $foreign_type.\n", !IO)
     ;
-        EnumDummy = not_enum_or_dummy
-    ),
-    (
-        ReservedTag = uses_reserved_tag,
-        write_indent(Indent, !IO),
-        io.write_string("/* reserved_tag */\n", !IO)
-    ;
-        ReservedTag = does_not_use_reserved_tag
-    ),
-    (
-        ReservedAddr = uses_reserved_address,
-        write_indent(Indent, !IO),
-        io.write_string("/* reserved_address */\n", !IO)
-    ;
-        ReservedAddr = does_not_use_reserved_address
-    ),
-    write_constructors(Indent, TVarSet, Ctors, ConsTagMap, !IO),
-    mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
-    (
-        Foreign = yes(_),
-        write_indent(Indent, !IO),
-        io.write_string("/* has foreign_type */\n", !IO)
-    ;
-        Foreign = no
-    ),
-    io.write_string(".\n", !IO).
-
-write_type_body(_Indent, TVarSet, hlds_eqv_type(Type), !IO) :-
-    io.write_string(" == ", !IO),
-    mercury_output_type(TVarSet, no, Type, !IO),
-    io.write_string(".\n", !IO).
-
-write_type_body(_Indent, _TVarSet, hlds_abstract_type(_IsSolverType), !IO) :-
-    io.write_string(".\n", !IO).
-
-write_type_body(_Indent, _TVarSet, hlds_foreign_type(_), !IO) :-
-    % XXX
-    io.write_string(" == $foreign_type.\n", !IO).
-
-write_type_body(_Indent, TVarSet,
-        hlds_solver_type(SolverTypeDetails, MaybeUserEqComp), !IO) :-
-    mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
-        MaybeUserEqComp, !IO),
-    io.write_string(".\n", !IO).
+        TypeBody = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
+        mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
+            MaybeUserEqComp, !IO),
+        io.write_string(".\n", !IO)
+    ).
 
 :- pred write_constructors(int::in, tvarset::in,
     list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.

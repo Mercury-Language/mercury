@@ -117,43 +117,61 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
 
 :- func is_integral_type(mlds_type) = bool.
 
-is_integral_type(mlds_mercury_array_type(_)) = no.
-is_integral_type(mlds_cont_type(_)) = no.
-is_integral_type(mlds_commit_type) = no.
-is_integral_type(mlds_native_bool_type) = no.
-is_integral_type(mlds_native_int_type)  = yes.
-is_integral_type(mlds_native_char_type) = yes.
-is_integral_type(mlds_native_float_type) = no.
-is_integral_type(mercury_type(_, type_cat_int, _)) = yes.
-is_integral_type(mercury_type(_, type_cat_char, _)) = yes.
-is_integral_type(mercury_type(_, type_cat_string, _)) = no.
-is_integral_type(mercury_type(_, type_cat_float, _)) = no.
-is_integral_type(mercury_type(_, type_cat_higher_order, _)) = no.
-is_integral_type(mercury_type(_, type_cat_tuple, _)) = no.
-is_integral_type(mercury_type(_, type_cat_enum, _)) = yes.
-% XXX we are able to switch on foreign enumerations in C; this
-% may not be the case for the other target languages.
-is_integral_type(mercury_type(_, type_cat_foreign_enum, _)) = yes.
-is_integral_type(mercury_type(_, type_cat_dummy, _)) = no.
-is_integral_type(mercury_type(_, type_cat_variable, _)) = no.
-is_integral_type(mercury_type(_, type_cat_type_info, _)) = no.
-is_integral_type(mercury_type(_, type_cat_type_ctor_info, _)) = no.
-is_integral_type(mercury_type(_, type_cat_typeclass_info, _)) = no.
-is_integral_type(mercury_type(_, type_cat_base_typeclass_info, _)) = no.
-is_integral_type(mercury_type(_, type_cat_void, _)) = no.
-is_integral_type(mercury_type(_, type_cat_user_ctor, _)) = no.
-is_integral_type(mlds_foreign_type(_)) = no.
-is_integral_type(mlds_class_type(_, _, _)) = no.
-is_integral_type(mlds_ptr_type(_)) = no.
-is_integral_type(mlds_func_type(_)) = no.
-is_integral_type(mlds_type_info_type) = no.
-is_integral_type(mlds_generic_type) = no.
-is_integral_type(mlds_generic_env_ptr_type) = no.
-is_integral_type(mlds_array_type(_)) = no.
-is_integral_type(mlds_pseudo_type_info_type) = no.
-is_integral_type(mlds_rtti_type(_)) = no.
-is_integral_type(mlds_tabling_type(_)) = no.
-is_integral_type(mlds_unknown_type) = no.
+is_integral_type(MLDSType) = IsIntegral :-
+    (
+        ( MLDSType = mlds_native_int_type
+        ; MLDSType = mlds_native_char_type
+        ),
+        IsIntegral = yes
+    ;
+        ( MLDSType = mlds_mercury_array_type(_)
+        ; MLDSType = mlds_cont_type(_)
+        ; MLDSType = mlds_commit_type
+        ; MLDSType = mlds_native_bool_type
+        ; MLDSType = mlds_native_float_type
+        ; MLDSType = mlds_foreign_type(_)
+        ; MLDSType = mlds_class_type(_, _, _)
+        ; MLDSType = mlds_ptr_type(_)
+        ; MLDSType = mlds_func_type(_)
+        ; MLDSType = mlds_type_info_type
+        ; MLDSType = mlds_generic_type
+        ; MLDSType = mlds_generic_env_ptr_type
+        ; MLDSType = mlds_array_type(_)
+        ; MLDSType = mlds_pseudo_type_info_type
+        ; MLDSType = mlds_rtti_type(_)
+        ; MLDSType = mlds_tabling_type(_)
+        ; MLDSType = mlds_unknown_type
+        ),
+        IsIntegral = no
+    ;
+        MLDSType = mercury_type(_, CtorCat, _),
+        (
+            ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+            ; CtorCat = ctor_cat_enum(cat_enum_mercury)
+            ),
+            IsIntegral = yes
+        ;
+            ( CtorCat = ctor_cat_builtin(cat_builtin_string)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_float)
+            ; CtorCat = ctor_cat_higher_order
+            ; CtorCat = ctor_cat_tuple
+            ; CtorCat = ctor_cat_builtin_dummy
+            ; CtorCat = ctor_cat_variable
+            ; CtorCat = ctor_cat_void
+            ; CtorCat = ctor_cat_system(_)
+            ; CtorCat = ctor_cat_user(cat_user_notag)
+            ; CtorCat = ctor_cat_user(cat_user_general)
+            ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+            ),
+            IsIntegral = no
+        ;
+            CtorCat = ctor_cat_enum(cat_enum_foreign),
+            % XXX We can switch on foreign enumerations in C, but this may
+            % not be the case for the other target languages.
+            IsIntegral = no
+        )
+    ).
 
 :- pred is_dense_switch(list(mlds_switch_case)::in, int::in) is semidet.
 

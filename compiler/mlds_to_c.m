@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1396,7 +1396,7 @@ mlds_output_type_forward_decl(Indent, Type, !IO) :-
             Kind \= mlds_enum,
             ClassType = Type
         ;
-            Type = mercury_type(MercuryType, type_cat_user_ctor, _),
+            Type = mercury_type(MercuryType, ctor_cat_user(_), _),
             type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ClassType = mlds_class_type(ClassName, ClassArity, mlds_class)
@@ -2184,7 +2184,7 @@ mlds_output_type_prefix(mlds_mercury_array_type(_ElemType), !IO) :-
         HighLevelData = yes,
         mlds_output_mercury_user_type_name(
             type_ctor(qualified(unqualified("array"), "array"), 1),
-            type_cat_user_ctor, !IO)
+            ctor_cat_user(cat_user_general), !IO)
     ;
         HighLevelData = no,
         io.write_string("MR_ArrayPtr", !IO)
@@ -2279,53 +2279,33 @@ mlds_output_type_prefix(mlds_tabling_type(TablingId), !IO) :-
 mlds_output_type_prefix(mlds_unknown_type, !IO) :-
     unexpected(this_file, "prefix has unknown type").
 
-:- pred mlds_output_mercury_type_prefix(mer_type::in, type_category::in,
+:- pred mlds_output_mercury_type_prefix(mer_type::in, type_ctor_category::in,
     io::di, io::uo) is det.
 
-mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
+mlds_output_mercury_type_prefix(Type, CtorCat, !IO) :-
     (
-        TypeCategory = type_cat_char,
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
         io.write_string("MR_Char", !IO)
     ;
-        TypeCategory = type_cat_int,
+        CtorCat = ctor_cat_builtin(cat_builtin_int),
         io.write_string("MR_Integer", !IO)
     ;
-        TypeCategory = type_cat_string,
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
         io.write_string("MR_String", !IO)
     ;
-        TypeCategory = type_cat_float,
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
         io.write_string("MR_Float", !IO)
     ;
-        TypeCategory = type_cat_void,
+        CtorCat = ctor_cat_void,
         io.write_string("MR_Word", !IO)
     ;
-        TypeCategory = type_cat_variable,
+        CtorCat = ctor_cat_variable,
         io.write_string("MR_Box", !IO)
     ;
-        TypeCategory = type_cat_type_info,
-        % runtime/mercury_hlc_types requires typeclass_infos
-        % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_type_ctor_info,
-        % runtime/mercury_hlc_types requires typeclass_infos
-        % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_typeclass_info,
-        % runtime/mercury_hlc_types requires typeclass_infos
-        % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_base_typeclass_info,
-        % runtime/mercury_hlc_types requires typeclass_infos
-        % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
-    ;
-        TypeCategory = type_cat_tuple,
+        CtorCat = ctor_cat_tuple,
         io.write_string("MR_Tuple", !IO)
     ;
-        TypeCategory = type_cat_higher_order,
+        CtorCat = ctor_cat_higher_order,
         globals.io_lookup_bool_option(highlevel_data, HighLevelData, !IO),
         (
             HighLevelData = yes,
@@ -2335,23 +2315,25 @@ mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
             io.write_string("MR_Word", !IO)
         )
     ;
-        ( TypeCategory = type_cat_enum
-        ; TypeCategory = type_cat_dummy
-        ; TypeCategory = type_cat_foreign_enum
-        ; TypeCategory = type_cat_user_ctor
+        % runtime/mercury_hlc_types requires typeinfos, typeclass_infos etc
+        % to be treated as user defined types.
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_system(_)
         ),
-        mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
+        mlds_output_mercury_user_type_prefix(Type, CtorCat, !IO)
     ).
 
 :- pred mlds_output_mercury_user_type_prefix(mer_type::in,
-    type_category::in, io::di, io::uo) is det.
+    type_ctor_category::in, io::di, io::uo) is det.
 
-mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
+mlds_output_mercury_user_type_prefix(Type, CtorCat, !IO) :-
     globals.io_lookup_bool_option(highlevel_data, HighLevelData, !IO),
     (
         HighLevelData = yes,
         ( type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) ->
-            mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO)
+            mlds_output_mercury_user_type_name(TypeCtor, CtorCat, !IO)
         ;
             unexpected(this_file, "mlds_output_mercury_user_type_prefix")
         )
@@ -2361,31 +2343,23 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
         io.write_string("MR_Word", !IO)
     ).
 
-:- pred mlds_output_mercury_user_type_name(type_ctor::in, type_category::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_mercury_user_type_name(type_ctor::in,
+    type_ctor_category::in, io::di, io::uo) is det.
 
-mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO) :-
+mlds_output_mercury_user_type_name(TypeCtor, CtorCat, !IO) :-
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     (
-        ( TypeCategory = type_cat_enum
-        ; TypeCategory = type_cat_foreign_enum
-        ),
+        CtorCat = ctor_cat_enum(_),
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
     ;
-        ( TypeCategory = type_cat_int
-        ; TypeCategory = type_cat_char
-        ; TypeCategory = type_cat_string
-        ; TypeCategory = type_cat_float
-        ; TypeCategory = type_cat_higher_order
-        ; TypeCategory = type_cat_tuple
-        ; TypeCategory = type_cat_dummy
-        ; TypeCategory = type_cat_variable
-        ; TypeCategory = type_cat_type_info
-        ; TypeCategory = type_cat_type_ctor_info
-        ; TypeCategory = type_cat_typeclass_info
-        ; TypeCategory = type_cat_base_typeclass_info
-        ; TypeCategory = type_cat_void
-        ; TypeCategory = type_cat_user_ctor
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(_)
         ),
         MLDS_Type = mlds_ptr_type(
             mlds_class_type(ClassName, ClassArity, mlds_class))
@@ -3676,7 +3650,7 @@ mlds_output_cast(Type, !IO) :-
 mlds_output_boxed_rval(Type, Exprn, !IO) :-
     (
         ( Type = mlds_generic_type
-        ; Type = mercury_type(_, type_cat_variable, _)
+        ; Type = mercury_type(_, ctor_cat_variable, _)
         )
     ->
         % It already has type MR_Box, so no cast is needed.

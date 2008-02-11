@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -385,11 +385,13 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
             !:Specs = CtorAddSpecs ++ !.Specs
         ),
 
+        % XXX Why is this being done now, rather than *after* all the types
+        % have been added into the HLDS?
         (
-            type_with_constructors_should_be_no_tag(Globals, TypeCtor,
-                ReservedTag, ConsList, UserEqCmp, Name, CtorArgType, _)
+            type_ctor_should_be_notag(Globals, TypeCtor,
+                ReservedTag, ConsList, UserEqCmp, CtorName, CtorArgType, _)
         ->
-            NoTagType = no_tag_type(Args, Name, CtorArgType),
+            NoTagType = no_tag_type(Args, CtorName, CtorArgType),
             module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
             map.set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
             module_info_set_no_tag_types(NoTagTypes, !ModuleInfo)
@@ -466,16 +468,16 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         FoundError = yes
     ).
 
-:- pred merge_foreign_type_bodies(compilation_target::in, bool::in,
-    hlds_type_body::in, hlds_type_body::in, hlds_type_body::out)
-    is semidet.
-
     % Ignore Mercury definitions if we've got a foreign type
     % declaration suitable for this back-end and we aren't making the
     % optimization interface.  We need to keep the Mercury definition
     % if we are making the optimization interface so that it gets
     % output in the .opt file.
     %
+:- pred merge_foreign_type_bodies(compilation_target::in, bool::in,
+    hlds_type_body::in, hlds_type_body::in, hlds_type_body::out)
+    is semidet.
+
 merge_foreign_type_bodies(Target, MakeOptInterface,
         hlds_foreign_type(ForeignTypeBody0), Body1, Body) :-
     MaybeForeignTypeBody1 = Body1 ^ du_type_is_foreign_type,

@@ -995,7 +995,8 @@ ml_gen_array_elem_type(elem_type_int) = mlds_native_int_type.
 ml_gen_array_elem_type(elem_type_generic) = mlds_generic_type.
 
 ml_string_type =
-    mercury_type(string_type, type_cat_string, non_foreign_type(string_type)).
+    mercury_type(string_type, ctor_cat_builtin(cat_builtin_string),
+        non_foreign_type(string_type)).
 
 ml_make_boxed_types(Arity) = BoxedTypes :-
     varset.init(TypeVarSet0),
@@ -1100,7 +1101,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             pred_args_to_func_args(HeadModes, _, ResultMode),
             ResultMode = top_out,
             pred_args_to_func_args(HeadTypes, _, ResultType),
-            \+ is_dummy_argument_type(ModuleInfo, ResultType)
+            check_dummy_type(ModuleInfo, ResultType) = is_not_dummy_type
         ->
             pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
             RetArg = mlds_argument(_RetArgName, RetTypePtr, _GCStatement),
@@ -1187,7 +1188,7 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
         (
             % Exclude types such as io.state, etc.
             % Also exclude values with arg_mode `top_unused'.
-            ( is_dummy_argument_type(ModuleInfo, Type)
+            ( check_dummy_type(ModuleInfo, Type) = is_dummy_type
             ; Mode = top_unused
             )
         ->
@@ -1258,7 +1259,7 @@ ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
 
     RetArgMode = top_out,
-    \+ is_dummy_argument_type(ModuleInfo, RetArgType).
+    check_dummy_type(ModuleInfo, RetArgType) = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1431,7 +1432,9 @@ ml_gen_var(Info, Var, Lval) :-
 
 ml_gen_var_with_type(Info, Var, Type, Lval) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
+    IsDummy = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummy = is_dummy_type,
         % The variable won't have been declared, so we need to generate
         % a dummy lval for this variable.
 
@@ -1441,6 +1444,7 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         Lval = var(qual(MLDS_Module, module_qual,
             mlds_var_name("dummy_var", no)), MLDS_Type)
     ;
+        IsDummy = is_not_dummy_type,
         ml_gen_info_get_varset(Info, VarSet),
         VarName = ml_gen_var_name(VarSet, Var),
         ml_gen_type(Info, Type, MLDS_Type),
@@ -1592,24 +1596,28 @@ ml_must_box_field_type(Type, ModuleInfo) :-
     classify_type(ModuleInfo, Type) = Category,
     ml_must_box_field_type_category(Category) = yes.
 
-:- func ml_must_box_field_type_category(type_category) = bool.
+:- func ml_must_box_field_type_category(type_ctor_category) = bool.
 
-ml_must_box_field_type_category(type_cat_int) = no.
-ml_must_box_field_type_category(type_cat_char) = yes.
-ml_must_box_field_type_category(type_cat_string) = no.
-ml_must_box_field_type_category(type_cat_float) = yes.
-ml_must_box_field_type_category(type_cat_higher_order) = no.
-ml_must_box_field_type_category(type_cat_tuple) = no.
-ml_must_box_field_type_category(type_cat_enum) = no.
-ml_must_box_field_type_category(type_cat_foreign_enum) = no.
-ml_must_box_field_type_category(type_cat_dummy) = no.
-ml_must_box_field_type_category(type_cat_variable) = no.
-ml_must_box_field_type_category(type_cat_type_info) = no.
-ml_must_box_field_type_category(type_cat_type_ctor_info) = no.
-ml_must_box_field_type_category(type_cat_typeclass_info) = no.
-ml_must_box_field_type_category(type_cat_base_typeclass_info) = no.
-ml_must_box_field_type_category(type_cat_void) = no.
-ml_must_box_field_type_category(type_cat_user_ctor) = no.
+ml_must_box_field_type_category(CtorCat) = MustBox :-
+    (
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_string)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        MustBox = no
+    ;
+        ( CtorCat = ctor_cat_builtin(cat_builtin_char)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_float)
+        ),
+        MustBox = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1728,10 +1736,13 @@ ml_skip_dummy_argument_types([], [], _, [], []).
 ml_skip_dummy_argument_types([Type | Types0], [Var | Vars0], ModuleInfo,
         Types, Vars) :-
     ml_skip_dummy_argument_types(Types0, Vars0, ModuleInfo, Types1, Vars1),
-    ( is_dummy_argument_type(ModuleInfo, Type) ->
+    IsDummy = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummy = is_dummy_type,
         Types = Types1,
         Vars = Vars1
     ;
+        IsDummy = is_not_dummy_type,
         Types = [Type | Types1],
         Vars = [Var | Vars1]
     ).
@@ -1991,24 +2002,33 @@ ml_type_might_contain_pointers_for_gc(mlds_rtti_type(_)) = yes.
 ml_type_might_contain_pointers_for_gc(mlds_tabling_type(_)) = no.
 ml_type_might_contain_pointers_for_gc(mlds_unknown_type) = yes.
 
-:- func ml_type_category_might_contain_pointers(type_category) = bool.
+:- func ml_type_category_might_contain_pointers(type_ctor_category) = bool.
 
-ml_type_category_might_contain_pointers(type_cat_int) = no.
-ml_type_category_might_contain_pointers(type_cat_char) = no.
-ml_type_category_might_contain_pointers(type_cat_string) = yes.
-ml_type_category_might_contain_pointers(type_cat_float) = no.
-ml_type_category_might_contain_pointers(type_cat_void) = no.
-ml_type_category_might_contain_pointers(type_cat_type_info) = yes.
-ml_type_category_might_contain_pointers(type_cat_type_ctor_info) = no.
-ml_type_category_might_contain_pointers(type_cat_typeclass_info) = yes.
-ml_type_category_might_contain_pointers(type_cat_base_typeclass_info) = no.
-ml_type_category_might_contain_pointers(type_cat_higher_order) = yes.
-ml_type_category_might_contain_pointers(type_cat_tuple) = yes.
-ml_type_category_might_contain_pointers(type_cat_enum) = no.
-ml_type_category_might_contain_pointers(type_cat_foreign_enum) = no.
-ml_type_category_might_contain_pointers(type_cat_dummy) = no.
-ml_type_category_might_contain_pointers(type_cat_variable) = yes.
-ml_type_category_might_contain_pointers(type_cat_user_ctor) = yes.
+ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
+    (
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_float)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
+        ; CtorCat = ctor_cat_system(cat_system_base_typeclass_info)
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ),
+        MayContainPointers = no
+    ;
+        ( CtorCat = ctor_cat_builtin(cat_builtin_string)
+        ; CtorCat = ctor_cat_system(cat_system_type_info)
+        ; CtorCat = ctor_cat_system(cat_system_typeclass_info)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_general)
+        ),
+        MayContainPointers = yes
+    ).
 
     % trace_type_info_type(Type, RealType):
     %
@@ -2121,8 +2141,8 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     MLDS_Module = mercury_module_name_to_mlds(PredModule),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
-    CPointerType = mercury_type(c_pointer_type, type_cat_user_ctor,
-        non_foreign_type(c_pointer_type)),
+    CPointerType = mercury_type(c_pointer_type,
+        ctor_cat_user(cat_user_general), non_foreign_type(c_pointer_type)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
     Signature = mlds_func_signature(ArgTypes, []),
     FuncAddr = const(mlconst_code_addr(

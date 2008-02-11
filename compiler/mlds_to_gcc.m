@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1858,34 +1858,36 @@ build_type(mlds_tabling_type(_TablingId), _InitializerSize, _GlobalInfo,
 build_type(mlds_unknown_type, _, _, _) -->
 	{ unexpected(this_file, "build_type: unknown type") }.
 
-:- pred build_mercury_type(mer_type, type_category, gcc__type,
+:- pred build_mercury_type(mer_type, type_ctor_category, gcc__type,
 	io__state, io__state).
 :- mode build_mercury_type(in, in, out, di, uo) is det.
 
-build_mercury_type(Type, TypeCategory, GCC_Type) -->
+build_mercury_type(Type, CtorCat, GCC_Type) -->
 	(
-		{ TypeCategory = type_cat_char },
+		{ CtorCat = ctor_cat_builtin(cat_builtin_char) },
 		{ GCC_Type = 'MR_Char' }
 	;
-		{ TypeCategory = type_cat_int },
+		{ CtorCat = ctor_cat_builtin(cat_builtin_int) },
 		{ GCC_Type = 'MR_Integer' }
 	;
-		{ TypeCategory = type_cat_string },
+		{ CtorCat = ctor_cat_builtin(cat_builtin_string) },
 		{ GCC_Type = 'MR_String' }
 	;
-		{ TypeCategory = type_cat_float },
+		{ CtorCat = ctor_cat_builtin(cat_builtin_float) },
 		{ GCC_Type = 'MR_Float' }
 	;
-		{ TypeCategory = type_cat_void },
+		{ CtorCat = ctor_cat_void },
 		{ GCC_Type = 'MR_Word' }
 	;
-		{ TypeCategory = type_cat_type_info },
-		build_mercury_type(Type, type_cat_user_ctor, GCC_Type)
+		{ CtorCat = ctor_cat_system(cat_system_type_info) },
+		build_mercury_type(Type, ctor_cat_user(cat_user_general),
+			GCC_Type)
 	;
-		{ TypeCategory = type_cat_type_ctor_info },
-		build_mercury_type(Type, type_cat_user_ctor, GCC_Type)
+		{ CtorCat = ctor_cat_system(cat_system_type_ctor_info) },
+		build_mercury_type(Type, ctor_cat_user(cat_user_general),
+			GCC_Type)
 	;
-		{ TypeCategory = type_cat_typeclass_info },
+		{ CtorCat = ctor_cat_system(cat_system_typeclass_info) },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file,
@@ -1894,7 +1896,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = type_cat_base_typeclass_info },
+		{ CtorCat = ctor_cat_system(cat_system_base_typeclass_info) },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file,
@@ -1903,16 +1905,16 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = type_cat_variable },
+		{ CtorCat = ctor_cat_variable },
 		{ GCC_Type = 'MR_Box' }
 	;
-		{ TypeCategory = type_cat_tuple },
+		{ CtorCat = ctor_cat_tuple },
 		% tuples are always (pointers to)
 		% arrays of polymorphic terms
 		gcc__build_pointer_type('MR_Box', MR_Tuple),
 		{ GCC_Type = MR_Tuple }
 	;
-		{ TypeCategory = type_cat_higher_order },
+		{ CtorCat = ctor_cat_higher_order },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file, "--high-level-data (pred_type)") }
@@ -1921,9 +1923,8 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = type_cat_enum
-		; TypeCategory = type_cat_dummy
-		; TypeCategory = type_cat_foreign_enum
+		{ CtorCat = ctor_cat_enum(_)
+		; CtorCat = ctor_cat_builtin_dummy
 		},
 		% Note that the MLDS -> C back-end uses 'MR_Word' here,
 		% unless --high-level-data is enabled.  But 'MR_Integer'
@@ -1932,7 +1933,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 		% XXX for --high-level-data, we should use a real enum type
 		{ GCC_Type = 'MR_Integer' }
 	;
-		{ TypeCategory = type_cat_user_ctor },
+		{ CtorCat = ctor_cat_user(_) },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file, "--high-level-data (user_type)") }

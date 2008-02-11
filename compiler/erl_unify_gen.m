@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,9 +100,12 @@ erl_gen_unification(Unification, _CodeModel, _Context, MaybeSuccessExpr,
     Unification = assign(TargetVar, SourceVar),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     erl_variable_type(!.Info, TargetVar, VarType),
-    ( is_dummy_argument_type(ModuleInfo, VarType) ->
+    IsDummy = check_dummy_type(ModuleInfo, VarType),
+    (
+        IsDummy = is_dummy_type,
         Statement = expr_or_void(MaybeSuccessExpr)
     ;
+        IsDummy = is_not_dummy_type,
         Assign = elds_eq(expr_from_var(TargetVar), expr_from_var(SourceVar)),
         Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
     ).
@@ -138,9 +141,12 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
     ),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     erl_variable_type(!.Info, Var, VarType),
-    ( is_dummy_argument_type(ModuleInfo, VarType) ->
+    IsDummy = check_dummy_type(ModuleInfo, VarType),
+    (
+        IsDummy = is_dummy_type,
         Statement = expr_or_void(MaybeSuccessExpr)
     ;
+        IsDummy = is_not_dummy_type,
         erl_variable_types(!.Info, Args, ArgTypes),
         erl_gen_construct(Var, ConsId, Args, ArgTypes, ArgModes, Context,
             Construct, !Info),
@@ -198,7 +204,7 @@ assign_free_var(ModuleInfo, Var, ArgType, UniMode) = var_eq_false(Var) :-
     UniMode = ((_LI - RI) -> (_LF - RF)),
     not (
         mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in),
-        not is_dummy_argument_type(ModuleInfo, ArgType)
+        check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type
         % XXX ml_unify_gen also checks if ConsArgType is dummy type,
         % do we need to do the same?
     ).

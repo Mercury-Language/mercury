@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_data.m.
 % Main authors: fjh, conway.
 %
 % This module defines the part of the HLDS that deals with issues related
 % to data and its representation: function symbols, types, insts, modes.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_data.
@@ -162,28 +162,28 @@
 :- type hlds_type_body
     --->    hlds_du_type(
                 % The ctors for this type.
-                du_type_ctors           :: list(constructor),
+                du_type_ctors               :: list(constructor),
 
                 % Their tag values.
-                du_type_cons_tag_values :: cons_tag_values,
+                du_type_cons_tag_values     :: cons_tag_values,
 
-                du_type_chaper_tag_test :: maybe_cheaper_tag_test,
+                du_type_cheaper_tag_test    :: maybe_cheaper_tag_test,
 
-                % Is this type an enumeration?
-                du_type_is_enum         :: enum_or_dummy,
+                % Is this type an enumeration or a dummy type?
+                du_type_kind                :: du_type_kind,
 
                 % User-defined equality and comparison preds.
-                du_type_usereq          :: maybe(unify_compare),
+                du_type_usereq              :: maybe(unify_compare),
 
                 % Is there a `:- pragma reserve_tag' pragma for this type?
-                du_type_reserved_tag    :: uses_reserved_tag,
+                du_type_reserved_tag        :: uses_reserved_tag,
 
                 % Does the type representation use a reserved address?
-                du_type_reserved_addr   :: uses_reserved_address,
+                du_type_reserved_addr       :: uses_reserved_address,
 
                 % Are there `:- pragma foreign' type declarations for
                 % this type?
-                du_type_is_foreign_type :: maybe(foreign_type_body)
+                du_type_is_foreign_type     :: maybe(foreign_type_body)
             )
     ;       hlds_eqv_type(mer_type)
     ;       hlds_foreign_type(foreign_type_body)
@@ -199,11 +199,20 @@
                 less_expensive_cons_tag :: cons_tag
             ).
 
-:- type enum_or_dummy
-    --->    is_mercury_enum
-    ;       is_foreign_enum(foreign_language)
-    ;       is_dummy
-    ;       not_enum_or_dummy.
+:- type du_type_kind
+    --->    du_type_kind_mercury_enum
+    ;       du_type_kind_foreign_enum(
+                dtkfe_language      :: foreign_language
+            )
+    ;       du_type_kind_direct_dummy
+    ;       du_type_kind_notag(
+                % A notag type is a dummy type if and only if the type it wraps
+                % is a dummy type.
+                dtkn_functor_name   :: sym_name,
+                dtkn_arg_type       :: mer_type,
+                dtkn_maybe_arg_name :: maybe(string)
+            )
+    ;       du_type_kind_general.
 
 :- type foreign_type_body
     --->    foreign_type_body(
@@ -261,7 +270,7 @@
             % This means the constant is represented just as a word containing
             % the specified integer value. This is used for enumerations and
             % character constants as well as for int constants.
-    
+
     ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
             % embedded directly in the target language.  This is used for
@@ -1018,7 +1027,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     % always keep the shorter one.
     %
 :- type ancestor_constraints == map(prog_constraint, list(prog_constraint)).
- 
+
     % During type checking we fill in a constraint_map which gives
     % the constraint that corresponds to each identifier.  This is used
     % by the polymorphism translation to retrieve details of constraints.

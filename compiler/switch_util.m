@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,9 +70,9 @@
     ;       tag_switch
     ;       other_switch.
 
-    % Convert a type category to a switch category.
+    % Convert a type constructor category to a switch category.
     %
-:- func type_cat_to_switch_cat(type_category) = switch_category.
+:- func type_ctor_cat_to_switch_cat(type_ctor_category) = switch_category.
 
     % Return an estimate of the runtime cost of a constructor test for the
     % given tag. We try to put the cheap tests first.
@@ -86,14 +86,14 @@
 % Stuff for dense switches.
 %
 
-    % type_range(ModuleInfo, TypeCategory, Type, Min, Max, NumValues):
+    % type_range(ModuleInfo, TypeCtorCategory, Type, Min, Max, NumValues):
     %
     % Determine the range [Min..Max] of an atomic type, and the number of
     % values in that range (including both endpoints).
     % Fail if the type isn't the sort of type that has a range
     % or if the type's range is too big to switch on (e.g. int).
     %
-:- pred type_range(module_info::in, type_category::in, mer_type::in,
+:- pred type_range(module_info::in, type_ctor_category::in, mer_type::in,
     int::out, int::out, int::out) is semidet.
 
     % Calculate the percentage density given the range and the number of cases.
@@ -326,29 +326,36 @@ represent_tagged_case_by_itself(TaggedCase, TaggedCase,
 % Stuff for categorizing switches.
 %
 
-type_cat_to_switch_cat(type_cat_enum) = atomic_switch.
-type_cat_to_switch_cat(type_cat_foreign_enum) = atomic_switch.
-type_cat_to_switch_cat(type_cat_dummy) = _ :-
-    % You can't have a switch without at least two arms.
-    unexpected(this_file, "type_cat_to_switch_cat: dummy").
-type_cat_to_switch_cat(type_cat_int) =  atomic_switch.
-type_cat_to_switch_cat(type_cat_char) = atomic_switch.
-type_cat_to_switch_cat(type_cat_float) = other_switch.
-type_cat_to_switch_cat(type_cat_string) =  string_switch.
-type_cat_to_switch_cat(type_cat_higher_order) = other_switch.
-type_cat_to_switch_cat(type_cat_user_ctor) = tag_switch.
-type_cat_to_switch_cat(type_cat_variable) = other_switch.
-type_cat_to_switch_cat(type_cat_tuple) = other_switch.
-type_cat_to_switch_cat(type_cat_void) = _ :-
-    unexpected(this_file, "type_cat_to_switch_cat: void").
-type_cat_to_switch_cat(type_cat_type_info) = _ :-
-    unexpected(this_file, "type_cat_to_switch_cat: type_info").
-type_cat_to_switch_cat(type_cat_type_ctor_info) = _ :-
-    unexpected(this_file, "type_cat_to_switch_cat: type_ctor_info").
-type_cat_to_switch_cat(type_cat_typeclass_info) = _ :-
-    unexpected(this_file, "type_cat_to_switch_cat: typeclass_info").
-type_cat_to_switch_cat(type_cat_base_typeclass_info) = _ :-
-    unexpected(this_file, "type_cat_to_switch_cat: base_typeclass_info").
+type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
+    (
+        ( CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+        ),
+        SwitchCat = atomic_switch
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
+        SwitchCat = string_switch
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
+        SwitchCat = other_switch
+    ;
+        CtorCat = ctor_cat_user(cat_user_general),
+        SwitchCat = tag_switch
+    ;
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_higher_order
+        ),
+        % You can't have a switch without at least two arms, or without values
+        % that can be deconstructed.
+        unexpected(this_file, "type_ctor_cat_to_switch_cat: bad type ctor cat")
+    ).
 
 estimate_switch_tag_test_cost(Tag) = Cost :-
     (
@@ -408,9 +415,9 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
 % Stuff for dense switches.
 %
 
-type_range(ModuleInfo, TypeCat, Type, Min, Max, NumValues) :-
+type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
     (
-        TypeCat = type_cat_char,
+        TypeCtorCat = ctor_cat_builtin(cat_builtin_char),
         % XXX The following code uses the host's character size, not the
         % target's, so it won't work if cross-compiling to a machine with
         % a different character size. Note also that some code in both
@@ -419,7 +426,7 @@ type_range(ModuleInfo, TypeCat, Type, Min, Max, NumValues) :-
         char.min_char_value(Min),
         char.max_char_value(Max)
     ;
-        TypeCat = type_cat_enum,
+        TypeCtorCat = ctor_cat_enum(cat_enum_mercury),
         Min = 0,
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),

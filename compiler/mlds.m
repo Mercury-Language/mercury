@@ -708,7 +708,7 @@
                 % Mercury data types
 
                 mer_type,           % The exact Mercury type.
-                type_category,      % What kind of type it is: enum, float, ...
+                type_ctor_category, % What kind of type it is: enum, float, ...
                 exported_type       % A representation of the type which can be
                                     % used to determine the foreign language
                                     % representation of the type.

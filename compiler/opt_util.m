@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -321,6 +321,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.type_util.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module ll_backend.exprn_aux.
@@ -996,10 +997,10 @@ foreign_proc_input_refers_stackvars(Input) = Refers :-
     Input = foreign_proc_input(_Name, _Type, IsDummy, _OrigType, Rval,
         _MaybeForeign, _BoxPolicy),
     (
-        IsDummy = yes,
+        IsDummy = is_dummy_type,
         Refers = no
     ;
-        IsDummy = no,
+        IsDummy = is_not_dummy_type,
         Refers = rval_refers_stackvars(Rval)
     ).
 
@@ -1009,10 +1010,10 @@ foreign_proc_output_refers_stackvars(Input) = Refers :-
     Input = foreign_proc_output(Lval, _Type, IsDummy, _OrigType, _Name,
         _MaybeForeign, _BoxPolicy),
     (
-        IsDummy = yes,
+        IsDummy = is_dummy_type,
         Refers = no
     ;
-        IsDummy = no,
+        IsDummy = is_not_dummy_type,
         Refers = lval_refers_stackvars(Lval)
     ).
 

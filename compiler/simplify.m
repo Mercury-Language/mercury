@@ -1620,7 +1620,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
 can_switch_on_type(TypeBody) = CanSwitchOnType :-
     (
         TypeBody = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
-            IsEnumOrDummy, _UserEq, _ReservedTag, _ReservedAddr,
+            DuTypeKind, _UserEq, _ReservedTag, _ReservedAddr,
             _MaybeForeignType),
         % We don't care about _UserEq, since the unification with *any* functor
         % of the type indicates that we are deconstructing the physical
@@ -1633,13 +1633,15 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
         % *any* functor of the type means that either there is no foreign type
         % version, or we are using the Mercury version of the type.
         (
-            ( IsEnumOrDummy = is_mercury_enum
-            ; IsEnumOrDummy = is_foreign_enum(_)
-            ; IsEnumOrDummy = not_enum_or_dummy
+            ( DuTypeKind = du_type_kind_mercury_enum
+            ; DuTypeKind = du_type_kind_foreign_enum(_)
+            ; DuTypeKind = du_type_kind_general
             ),
             CanSwitchOnType = yes
         ;
-            IsEnumOrDummy = is_dummy,
+            ( DuTypeKind = du_type_kind_direct_dummy
+            ; DuTypeKind = du_type_kind_notag(_, _, _)
+            ),
             % We should have already got a warning that the condition cannot
             % fail; a warning about using a switch would therefore be redundant
             % (as well as confusing, since you cannot have a switch with one
