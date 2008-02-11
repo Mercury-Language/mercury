@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -912,11 +912,6 @@ find_matching_close_bracket(NumBrackets0, Length, String, Index0, Index) :-
 
 maybe_remove_prefix(Prefix) -->
     ( remove_prefix(Prefix) -> [] ; [] ).
-
-:- pred remove_prefix(string::in, string::in, string::out) is semidet.
-
-remove_prefix(Prefix, Name0, Name) :-
-    string.append(Prefix, Name, Name0).
 
 :- pred m_remove_suffix(string::in, string::in, string::out) is semidet.
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -97,9 +97,16 @@
 :- pred string.remove_suffix(string::in, string::in, string::out) is semidet.
 
     % string.remove_suffix_if_present(Suffix, String) returns `String' minus
-    % `Suffix' if `String' ends with `Suffix', `String' otherwise
+    % `Suffix' if `String' ends with `Suffix', `String' otherwise.
     %
 :- func string.remove_suffix_if_present(string, string) = string.
+
+    % string.remove_prefix(Prefix, String, Suffix):
+    % This is a synonym for string.append(Prefix, Suffix, String) but with
+    % the arguments in a more convenient order for use with higher-order
+    % code.
+    %
+:- pred string.remove_prefix(string::in, string::in, string::out) is semidet.
 
     % string.prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as string.append(Prefix, _, String).
@@ -350,6 +357,18 @@
     % True if string contains only letters, digits, and underscores.
     %
 :- pred string.is_all_alnum_or_underscore(string::in) is semidet.
+
+    % True if the string contains only decimal digits (0-9).
+    %
+:- pred string.is_all_digits(string::in) is semidet.
+
+    % string.all_match(TestPred, String):
+    %
+    % True if TestPred is true when applied to each character in
+    % String or if String is the empty string.
+    % 
+:- pred string.all_match(pred(char)::in(pred(in) is semidet), string::in)
+    is semidet.
 
     % string.pad_left(String0, PadChar, Width, String):
     % Insert `PadChar's at the left of `String0' until it is at least as long
@@ -1060,6 +1079,9 @@ string.remove_suffix_if_present(Suffix, String) = Out :-
     ;
         Out = String
     ).
+    
+string.remove_prefix(Prefix, String, Suffix) :-
+    string.append(Prefix, Suffix, String).
 
 :- pragma promise_equivalent_clauses(string.prefix/2).
 
@@ -1487,9 +1509,6 @@ string.uncapitalize_first(S0, S) :-
         S = S0
     ).
 
-:- pred string.all_match(pred(char)::in(pred(in) is semidet), string::in)
-    is semidet.
-
 string.all_match(P, String) :-
     all_match_2(string.length(String) - 1, P, String).
 
@@ -1512,6 +1531,9 @@ string.is_all_alpha_or_underscore(S) :-
 
 string.is_all_alnum_or_underscore(S) :-
     string.all_match(char.is_alnum_or_underscore, S).
+    
+string.is_all_digits(S) :-
+    string.all_match(char.is_digit, S).
 
 string.pad_left(String0, PadChar, Width, String) :-
     string.length(String0, Length),

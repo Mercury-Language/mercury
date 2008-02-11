@@ -96,6 +96,9 @@ Changes to the Mercury standard library:
 	string.split_at_char/2
 	string.split_at_string/2
 	string.remove_suffix_if_present/2
+	string.is_all_digits/1
+	string.all_match/2
+	string.remove_prefix/3
 
 * The following functions and predicates have been added to the bag module:
 	bag.count/1

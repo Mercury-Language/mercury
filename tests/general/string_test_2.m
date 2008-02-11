@@ -2,35 +2,39 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module string.
 
-main -->
-	{ string__append("abc", "def", S1) },
-	io__write_string(S1),
-	io__write_string("\n"),
-	{ string__append("", "abcdef", S2) },
-	io__write_string(S2),
-	io__write_string("\n"),
-	{ string__append("abcdef", "", S3) },
-	io__write_string(S3),
-	io__write_string("\n"),
-	( { string__append("", S4, "abcdef") } ->
-		io__write_string(S4),
-		io__write_string("\n")
+main(!IO) :-
+	string.append("abc", "def", S1),
+	io.write_string(S1, !IO),
+	io.write_string("\n", !IO),
+	string.append("", "abcdef", S2),
+	io.write_string(S2, !IO),
+	io.write_string("\n", !IO),
+	string.append("abcdef", "", S3),
+	io.write_string(S3, !IO),
+	io.write_string("\n", !IO),
+	( string.append("", S4, "abcdef") ->
+		io.write_string(S4, !IO),
+		io.write_string("\n", !IO)
 	;
-		io__write_string("failed\n")
+		io.write_string("failed\n", !IO)
 	),
-	( { string__append("abc", S5, "abcdef") } ->
-		io__write_string(S5),
-		io__write_string("\n")
+	( string.append("abc", S5, "abcdef") ->
+		io.write_string(S5, !IO),
+		io.write_string("\n", !IO)
 	;
-		io__write_string("failed\n")
+		io.write_string("failed\n", !IO)
+	),
+	( string.remove_prefix("abc", "abcdef", S6) ->
+		io.write_string(S6, !IO),
+		io.nl(!IO)
+	;
+		io.write_string("failed\n", !IO)
 	).
-
-
 
 /*
 	( { string__append(S6, "", "abcdef") } ->
