@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2007 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -58,6 +58,8 @@
 
 :- type term    ==  term(generic).
 :- type var     ==  var(generic).
+
+:- func get_term_context(term) = term.context.
 
 %-----------------------------------------------------------------------------%
 
@@ -472,6 +474,13 @@
 
 :- type var(T)
     --->    var(int).
+
+%-----------------------------------------------------------------------------%
+
+get_term_context(Term) = Context :-
+    ( Term = functor(_, _, Context)
+    ; Term = variable(_, Context)
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -172,6 +172,8 @@ Changes to the Mercury standard library:
   term.var_list_to_term_list to be removed.  The backwards mode is
   now accessed via term.term_list_to_var_list.
 
+  There is a new function, get_term_context, to return the context of any term.
+
 * We have renamed some library predicates whose names were ambiguous.
 
 * The type software_error/0 has been moved from the require module into

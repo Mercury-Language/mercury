@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
     % import_status and whether uses of it must be module qualified.
     %
 :- type item_status
-    ---> item_status(import_status, need_qualifier).
+    --->    item_status(import_status, need_qualifier).
 
     % do_parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, UsedModules
     %   HLDS, QualInfo, InvalidTypes, InvalidModes):
@@ -48,13 +48,12 @@
 
     % The bool records whether any cyclic insts or modes were detected.
     %
-:- pred add_item_decl_pass_1(item::in, prog_context::in,
+:- pred add_item_decl_pass_1(item::in, bool::out,
     item_status::in, item_status::out, module_info::in, module_info::out,
-    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_item_clause(item::in, import_status::in, import_status::out,
-    prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+:- pred add_item_pass_3(item::in, import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_stratified_pred(string::in, sym_name::in, arity::in,
@@ -194,7 +193,7 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
             !IO),
         maybe_report_stats(Statistics, !IO),
         init_qual_info(MQInfo0, EqvMap, QualInfo0),
-        add_item_list_clauses(Items, status_local, !ModuleInfo,
+        add_item_list_pass_3(Items, status_local, !ModuleInfo,
             QualInfo0, QualInfo, !Specs),
 
         qual_info_get_mq_info(QualInfo, MQInfo),
@@ -244,19 +243,17 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
     % The `InvalidModes' bool records whether we detected
     % any cyclic insts or modes.
     %
-:- pred add_item_list_decls_pass_1(item_list::in, item_status::in,
+:- pred add_item_list_decls_pass_1(list(item)::in, item_status::in,
     module_info::in, module_info::out, bool::in, bool::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_item_list_decls_pass_1([], _, !ModuleInfo, !InvalidModes, !Specs).
-add_item_list_decls_pass_1([ItemAndContext | ItemAndContexts], !.Status,
-        !ModuleInfo, !InvalidModes, !Specs) :-
-    ItemAndContext = item_and_context(Item, Context),
-    add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo,
-        NewInvalidModes, !Specs),
+add_item_list_decls_pass_1([Item | Items], !.Status, !ModuleInfo,
+        !InvalidModes, !Specs) :-
+    add_item_decl_pass_1(Item, NewInvalidModes, !Status, !ModuleInfo, !Specs),
     !:InvalidModes = bool.or(!.InvalidModes, NewInvalidModes),
-    add_item_list_decls_pass_1(ItemAndContexts, !.Status,
-        !ModuleInfo, !InvalidModes, !Specs).
+    add_item_list_decls_pass_1(Items, !.Status, !ModuleInfo, !InvalidModes,
+        !Specs).
 
     % pass 2:
     % Add the type definitions and pragmas one by one to the module,
@@ -275,16 +272,14 @@ add_item_list_decls_pass_1([ItemAndContext | ItemAndContexts], !.Status,
     % processed all the mode declarations, since otherwise we can't be
     % sure that there isn't a mode declaration for the function.
     %
-:- pred add_item_list_decls_pass_2(item_list::in, item_status::in,
+:- pred add_item_list_decls_pass_2(list(item)::in, item_status::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_item_list_decls_pass_2([], _, !ModuleInfo, !Specs).
-add_item_list_decls_pass_2([ItemAndContext | ItemAndContexts], !.Status,
-        !ModuleInfo, !Specs) :-
-    ItemAndContext = item_and_context(Item, Context),
-    add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs),
-    add_item_list_decls_pass_2(ItemAndContexts, !.Status, !ModuleInfo, !Specs).
+add_item_list_decls_pass_2([Item | Items], !.Status, !ModuleInfo, !Specs) :-
+    add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs),
+    add_item_list_decls_pass_2(Items, !.Status, !ModuleInfo, !Specs).
 
     % pass 3:
     % Add the clauses one by one to the module.
@@ -298,25 +293,75 @@ add_item_list_decls_pass_2([ItemAndContext | ItemAndContexts], !.Status,
     % name in the module_info so that we can generate code to call it at
     % initialisation/finalisation time.
     %
-:- pred add_item_list_clauses(item_list::in, import_status::in,
+:- pred add_item_list_pass_3(list(item)::in, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_list_clauses([], _Status, !ModuleInfo, !QualInfo, !Specs).
-add_item_list_clauses([ItemAndContext | ItemAndContexts], Status0,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    ItemAndContext = item_and_context(Item, Context),
-    add_item_clause(Item, Status0, Status1, Context,
-        !ModuleInfo, !QualInfo, !Specs),
-    add_item_list_clauses(ItemAndContexts, Status1,
-        !ModuleInfo, !QualInfo, !Specs).
+add_item_list_pass_3([], _Status, !ModuleInfo, !QualInfo, !Specs).
+add_item_list_pass_3([Item | Items], Status0, !ModuleInfo, !QualInfo,
+        !Specs) :-
+    add_item_pass_3(Item, Status0, Status1, !ModuleInfo, !QualInfo, !Specs),
+    add_item_list_pass_3(Items, Status1, !ModuleInfo, !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
-add_item_decl_pass_1(item_clause(_, _, _, _, _, _), _, !Status, !ModuleInfo,
-        no, !Specs).
-    % Skip clauses.
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
+add_item_decl_pass_1(Item, FoundError, !Status, !ModuleInfo, !Specs) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs),
+        FoundError = no
+    ;
+        Item = item_type_defn(ItemTypeDefnInfo),
+        add_pass_1_type_defn(ItemTypeDefnInfo, !Status, !ModuleInfo, !Specs),
+        FoundError = no
+    ;
+        Item = item_inst_defn(ItemInstDefnInfo),
+        module_add_inst_defn(ItemInstDefnInfo, FoundError,
+            !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_mode_defn(ItemModeDefnInfo),
+        module_add_mode_defn(ItemModeDefnInfo, FoundError,
+            !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        add_pass_1_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !Specs),
+        FoundError = no
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        add_pass_1_mode_decl(ItemModeDecl, !.Status, !ModuleInfo, !Specs),
+        FoundError = no
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        module_add_class_defn(ItemTypeClass, !.Status, !ModuleInfo, !Specs),
+        FoundError = no
+    ;
+        Item = item_mutable(ItemMutable),
+        add_pass_1_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs),
+        FoundError = no
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_nothing(_)
+        ),
+        % These will be processed only in later passes.
+        %
+        % We don't want to add clauses or pragma foreign_procs before we add
+        % the declarations of the predicates they implement.
+        %
+        % We don't want to add instance declarations before the typeclass
+        % declaration it implements.
+        FoundError = no
+    ).
+
+:- pred add_pass_1_type_defn(item_type_defn_info::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_1_type_defn(ItemTypeDefnInfo, !Status, !ModuleInfo, !Specs) :-
     % If this is a solver type then we need to also add the declarations
     % for the compiler generated construction function and deconstruction
     % predicate for the special constrained data constructor.
@@ -326,36 +371,30 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
     % Before switch detection, we turn calls to these functions/predicates
     % into ordinary constructions/deconstructions, but preserve the
     % corresponding impurity annotations.
-    Item = item_type_defn(TVarSet, SymName, TypeParams, TypeDefn, _Cond),
+    ItemTypeDefnInfo = item_type_defn_info(TVarSet, SymName, TypeParams,
+        TypeDefn, _Cond, Context),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         add_solver_type_decl_items(TVarSet, SymName, TypeParams,
             SolverTypeDetails, Context, !Status, !ModuleInfo, !Specs),
         add_solver_type_mutable_items_pass_1(SolverTypeDetails ^ mutable_items,
-            Context, !Status, !ModuleInfo, !Specs)
+            !Status, !ModuleInfo, !Specs)
     ;
         true
     ).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, InvalidMode,
-        !Specs) :-
-    Item = item_inst_defn(VarSet, Name, Params, InstDefn, Cond),
-    module_add_inst_defn(VarSet, Name, Params, InstDefn, Cond, Context,
-        !.Status, !ModuleInfo, InvalidMode, !Specs).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, InvalidMode,
-        !Specs) :-
-    Item = item_mode_defn(VarSet, Name, Params, ModeDefn, Cond),
-    module_add_mode_defn(VarSet, Name, Params, ModeDefn,
-        Cond, Context, !.Status, !ModuleInfo, InvalidMode, !Specs).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst, MaybeDet,
-        _Cond, Purity, ClassContext),
+
+:- pred add_pass_1_pred_decl(item_pred_decl_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
+    ItemPredDecl = item_pred_decl_info(Origin, TypeVarSet, InstVarSet,
+        ExistQVars, PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
+        MaybeDet, _Cond, Purity, ClassContext, Context),
     init_markers(Markers0),
-    %
+
     % If this predicate was added as a result of the mutable transformation
     % then mark this predicate as a mutable access pred.  We do this
-    % so that we can tell optimizations, like inlining, to treat it
-    % specially.
-    %
+    % so that we can tell optimizations, like inlining, to treat it specially.
     (
         Origin = compiler(Reason),
         (
@@ -376,13 +415,18 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
     ),
     module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
         PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity, ClassContext,
-        Markers, Context, !.Status, _, !ModuleInfo, !Specs).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_pred_or_func_mode(VarSet, MaybePredOrFunc, PredName, Modes,
-        _WithInst, MaybeDet, _Cond),
+        Markers, Context, Status, _, !ModuleInfo, !Specs).
+
+:- pred add_pass_1_mode_decl(item_mode_decl_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
+    ItemModeDecl = item_mode_decl_info(VarSet, MaybePredOrFunc, PredName,
+        Modes, _WithInst, MaybeDet, _Cond, Context),
     (
         MaybePredOrFunc = yes(PredOrFunc),
-        !.Status = item_status(ImportStatus, _),
+        Status = item_status(ImportStatus, _),
         IsClassMethod = no,
         module_add_mode(VarSet, PredName, Modes, MaybeDet, ImportStatus,
             Context, PredOrFunc, IsClassMethod, _, !ModuleInfo, !Specs)
@@ -390,15 +434,16 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
         MaybePredOrFunc = no,
         % equiv_type.m should have either set the pred_or_func
         % or removed the item from the list.
-        unexpected(this_file, "add_item_decl_pass_1: " ++
-            "no pred_or_func on mode declaration")
+        unexpected(this_file,
+            "add_pass_1_mode_decl: no pred_or_func on mode declaration")
     ).
-add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_pragma(_, _).
-add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_promise(_, _, _, _).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_module_defn(_VarSet, ModuleDefn),
+
+:- pred add_pass_1_module_defn(item_module_defn_info::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
+    ItemModuleDefn = item_module_defn_info(_VarSet, ModuleDefn, Context),
     ( module_defn_update_import_status(ModuleDefn, StatusPrime) ->
         !:Status = StatusPrime
     ; ModuleDefn = md_import(list_module(Specifiers)) ->
@@ -447,27 +492,17 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
         Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
-add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_nothing(_).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
-    Item = item_typeclass(Constraints, FunDeps, Name, Vars, Interface, VarSet),
-    module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface,
-        VarSet, Context, !.Status, !ModuleInfo, !Specs).
-add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !Specs) :-
-    % We add instance declarations on the second pass so that we don't add
-    % an instance declaration before its class declaration.
-    Item = item_instance(_, _, _, _, _,_).
-add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !Specs) :-
-    % We add initialise declarations on the third pass.
-    Item = item_initialise(_, _, _).
-add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !Specs) :-
-    % We add finalise declarations on the third pass.
-    Item = item_finalise(_, _, _).
-add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
+
+:- pred add_pass_1_mutable(item_mutable_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
-    Item = item_mutable(Name, Type, _InitValue, Inst, MutAttrs, _MutVarset),
-    !.Status = item_status(ImportStatus, _),
+    Item = item_mutable_info(Name, Type, _InitValue, Inst, MutAttrs,
+        _MutVarset, Context),
+    Status = item_status(ImportStatus, _),
     DefinedThisModule = status_defined_in_this_module(ImportStatus),
     (
         DefinedThisModule = yes,
@@ -498,9 +533,9 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
         ),
 
         % Create the mutable initialisation predicate.
-        InitPredDecl = mutable_init_pred_decl(ModuleName, Name),
-        add_item_decl_pass_1(InitPredDecl, Context, !Status, !ModuleInfo, _,
-            !Specs),
+        InitPredDeclItem = mutable_init_pred_decl(ModuleName, Name, Context),
+        add_item_decl_pass_1(InitPredDeclItem, _, Status, _,
+            !ModuleInfo, !Specs),
 
         IsConstant = mutable_var_constant(MutAttrs),
         (
@@ -510,9 +545,10 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
             % by the mutable initialisation predicate.
             (
                 WantPreInitDecl = yes,
-                PreInitPredDecl = mutable_pre_init_pred_decl(ModuleName, Name),
-                add_item_decl_pass_1(PreInitPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs)
+                PreInitPredDeclItem = mutable_pre_init_pred_decl(ModuleName,
+                    Name, Context),
+                add_item_decl_pass_1(PreInitPredDeclItem, _, Status, _,
+                    !ModuleInfo, !Specs)
             ;
                 WantPreInitDecl = no
             ),
@@ -520,20 +556,20 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
             % Create the primitive access and locking predicates.
             (
                 WantUnsafeAccessAndLockDecls = yes,
-                LockPredDecl = lock_pred_decl(ModuleName, Name),
-                add_item_decl_pass_1(LockPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs),
-                UnlockPredDecl = unlock_pred_decl(ModuleName, Name),
-                add_item_decl_pass_1(UnlockPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs),
-                UnsafeGetPredDecl = unsafe_get_pred_decl(ModuleName, Name,
-                    Type, Inst),
-                add_item_decl_pass_1(UnsafeGetPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs),
-                UnsafeSetPredDecl = unsafe_set_pred_decl(ModuleName, Name,
-                    Type, Inst),
-                add_item_decl_pass_1(UnsafeSetPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs)
+                LockPredDeclItem = lock_pred_decl(ModuleName, Name, Context),
+                UnlockPredDecl = unlock_pred_decl(ModuleName, Name, Context),
+                add_item_decl_pass_1(LockPredDeclItem, _, Status, _,
+                    !ModuleInfo, !Specs),
+                add_item_decl_pass_1(UnlockPredDecl, _, Status, _,
+                    !ModuleInfo, !Specs),
+                UnsafeGetPredDeclItem = unsafe_get_pred_decl(ModuleName, Name,
+                    Type, Inst, Context),
+                UnsafeSetPredDeclItem = unsafe_set_pred_decl(ModuleName, Name,
+                    Type, Inst, Context),
+                add_item_decl_pass_1(UnsafeGetPredDeclItem, _, Status, _,
+                    !ModuleInfo, !Specs),
+                add_item_decl_pass_1(UnsafeSetPredDeclItem, _, Status, _,
+                    !ModuleInfo, !Specs)
             ;
                 WantUnsafeAccessAndLockDecls = no
             ),
@@ -541,24 +577,28 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
             % Create the standard, non-pure access predicates. These are
             % always created for non-constant mutables, even if the
             % `attach_to_io_state' attribute has been specified.
-            StdGetPredDecl = std_get_pred_decl(ModuleName, Name, Type, Inst),
-            add_item_decl_pass_1(StdGetPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
-            StdSetPredDecl = std_set_pred_decl(ModuleName, Name, Type, Inst),
-            add_item_decl_pass_1(StdSetPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
+            StdGetPredDeclItem = std_get_pred_decl(ModuleName, Name,
+                Type, Inst, Context),
+            StdSetPredDeclItem = std_set_pred_decl(ModuleName, Name,
+                Type, Inst, Context),
+            add_item_decl_pass_1(StdGetPredDeclItem, _, Status, _,
+                !ModuleInfo, !Specs),
+            add_item_decl_pass_1(StdSetPredDeclItem, _, Status, _,
+                !ModuleInfo, !Specs),
 
             % If requested, create the pure access predicates using
             % the I/O state as well.
             CreateIOInterface = mutable_var_attach_to_io_state(MutAttrs),
             (
                 CreateIOInterface = yes,
-                IOGetPredDecl = io_get_pred_decl(ModuleName, Name, Type, Inst),
-                add_item_decl_pass_1(IOGetPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs),
-                IOSetPredDecl = io_set_pred_decl(ModuleName, Name, Type, Inst),
-                add_item_decl_pass_1(IOSetPredDecl, Context, !Status,
-                    !ModuleInfo, _, !Specs)
+                IOGetPredDeclItem = io_get_pred_decl(ModuleName, Name,
+                    Type, Inst, Context),
+                IOSetPredDeclItem = io_set_pred_decl(ModuleName, Name,
+                    Type, Inst, Context),
+                add_item_decl_pass_1(IOGetPredDeclItem, _, Status, _,
+                    !ModuleInfo, !Specs),
+                add_item_decl_pass_1(IOSetPredDeclItem, _, Status, _,
+                    !ModuleInfo, !Specs)
             ;
                 CreateIOInterface = no
             )
@@ -568,30 +608,28 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
             % We create the "get" access predicate, which is pure since
             % it always returns the same value, but we must also create
             % a secret "set" predicate for use by the initialization code.
-            ConstantGetPredDecl = constant_get_pred_decl(ModuleName, Name,
-                Type, Inst),
-            add_item_decl_pass_1(ConstantGetPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs),
-            ConstantSetPredDecl = constant_set_pred_decl(ModuleName, Name,
-                Type, Inst),
-            add_item_decl_pass_1(ConstantSetPredDecl, Context, !Status,
-                !ModuleInfo, _, !Specs)
+            ConstantGetPredDeclItem = constant_get_pred_decl(ModuleName, Name,
+                Type, Inst, Context),
+            ConstantSetPredDeclItem = constant_set_pred_decl(ModuleName, Name,
+                Type, Inst, Context),
+            add_item_decl_pass_1(ConstantGetPredDeclItem, _, Status, _,
+                !ModuleInfo, !Specs),
+            add_item_decl_pass_1(ConstantSetPredDeclItem, _, Status, _,
+                !ModuleInfo, !Specs)
         )
     ;
         DefinedThisModule = no
     ).
 
-:- pred add_solver_type_mutable_items_pass_1(list(item)::in, prog_context::in,
+:- pred add_solver_type_mutable_items_pass_1(list(item)::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_solver_type_mutable_items_pass_1([], _Context, !Status, !ModuleInfo,
-        !Specs).
-add_solver_type_mutable_items_pass_1([Item | Items], Context, !Status,
+add_solver_type_mutable_items_pass_1([], !Status, !ModuleInfo, !Specs).
+add_solver_type_mutable_items_pass_1([Item | Items], !Status,
         !ModuleInfo, !Specs) :-
-    add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, _, !Specs),
-    add_solver_type_mutable_items_pass_1(Items, Context, !Status, !ModuleInfo,
-        !Specs).
+    add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, !Specs),
+    add_solver_type_mutable_items_pass_1(Items, !Status, !ModuleInfo, !Specs).
 
 :- pred add_module_specifiers(list(module_specifier)::in, import_status::in,
     module_info::in, module_info::out) is det.
@@ -612,38 +650,77 @@ add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_item_decl_pass_2(item::in, prog_context::in, item_status::in,
-    item_status::out, module_info::in, module_info::out,
+:- pred add_item_decl_pass_2(item::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_module_defn(_VarSet, ModuleDefn),
-    ( module_defn_update_import_status(ModuleDefn, StatusPrime) ->
-        !:Status = StatusPrime
+add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ( module_defn_update_import_status(ModuleDefn, NewStatus) ->
+            !:Status = NewStatus
+        ;
+            true
+        )
     ;
-        true
+        Item = item_type_defn(ItemTypeDefn),
+        add_pass_2_type_defn(ItemTypeDefn, !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        add_pass_2_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_pragma(ItemPragma),
+        add_pragma(ItemPragma, !Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_instance(ItemInstance),
+        add_pass_2_instance(ItemInstance, !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_initialise(ItemInitialise),
+        add_pass_2_initialise(ItemInitialise, !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_finalise(ItemFinalise),
+        add_pass_2_finalise(ItemFinalise, !.Status, !ModuleInfo, !Specs)
+    ;
+        Item = item_mutable(ItemMutable),
+        add_pass_2_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs)
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_nothing(_)
+        )
+        % Do nothing in pass 2 for these kinds of items.
     ).
-add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_type_defn(VarSet, Name, Args, TypeDefn, Cond),
+
+:- pred add_pass_2_type_defn(item_type_defn_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
+    ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeDefn, Cond,
+        Context),
     module_add_type_defn(VarSet, Name, Args, TypeDefn, Cond, Context,
-        !.Status, !ModuleInfo, !Specs),
+        Status, !ModuleInfo, !Specs),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         add_solver_type_mutable_items_pass_2(SolverTypeDetails ^ mutable_items,
-            Context, !Status, !ModuleInfo, !Specs)
+            Status, _, !ModuleInfo, !Specs)
     ;
         true
     ).
 
-add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_pragma(Origin, Pragma),
-    add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs).
-add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_pred_or_func(_Origin, _TypeVarSet, _InstVarSet, _ExistQVars,
-        PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
-        _MaybeDet, _Cond, _Purity, _ClassContext),
-    %
+:- pred add_pass_2_pred_decl(item_pred_decl_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
+    ItemPredDecl = item_pred_decl_info(_Origin, _TypeVarSet, _InstVarSet,
+        _ExistQVars, PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
+        _MaybeDet, _Cond, _Purity, _ClassContext, _Context),
     % Add default modes for function declarations, if necessary.
-    %
     (
         PredOrFunc = pf_predicate
     ;
@@ -663,24 +740,15 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !Specs) :-
             unexpected(this_file, "can't find func declaration")
         )
     ).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_promise(_, _, _, _).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_clause(_, _, _, _, _, _).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_inst_defn(_, _, _, _, _).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_mode_defn(_, _, _, _, _).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_pred_or_func_mode(_, _, _, _, _, _, _).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_nothing(_).
-add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !Specs) :-
-    Item = item_typeclass(_, _, _, _, _, _).
-add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_instance(Constraints, Name, Types, Body, VarSet,
-        InstanceModuleName),
-    !.Status = item_status(ImportStatus, _),
+
+:- pred add_pass_2_instance(item_instance_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
+    ItemInstance = item_instance_info(Constraints, Name, Types, Body, VarSet,
+        InstanceModuleName, Context),
+    Status = item_status(ImportStatus, _),
     (
         Body = instance_body_abstract,
         make_status_abstract(ImportStatus, BodyStatus)
@@ -690,11 +758,16 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
     ),
     module_add_instance_defn(InstanceModuleName, Constraints, Name, Types,
         Body, VarSet, BodyStatus, Context, !ModuleInfo, !Specs).
-add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
+
+:- pred add_pass_2_initialise(item_initialise_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
     % These are processed properly during pass 3, we just do some
     % error checking at this point.
-    Item = item_initialise(Origin, _, _),
-    !.Status = item_status(ImportStatus, _),
+    ItemInitialise = item_initialise_info(Origin, _, _, Context),
+    Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         (
             Origin = user,
@@ -718,11 +791,16 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
     ;
         true
     ).
-add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
+
+:- pred add_pass_2_finalise(item_finalise_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs) :-
     % There are processed properly during pass 3, we just do some error
     % checking at this point.
-    Item = item_finalise(Origin, _, _),
-    !.Status = item_status(ImportStatus, _),
+    ItemFinalise = item_finalise_info(Origin, _, _, Context),
+    Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         (
             Origin = user,
@@ -736,19 +814,25 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
     ;
         true
     ).
-add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_mutable(Name, _Type, _InitTerm, Inst, MutAttrs, _MutVarset),
-    !.Status = item_status(ImportStatus, _),
+
+:- pred add_pass_2_mutable(item_mutable_info::in,
+    item_status::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
+    ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
+        MutAttrs, _MutVarset, Context),
+    Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         error_is_exported(Context, "`mutable' declaration", !Specs)
     ;
         true
     ),
-    %
+
     % We don't implement the `mutable' declaration unless it is defined in
-    % this module.  Not having this check means that we might end up up
+    % this module. Not having this check means that we might end up up
     % duplicating the definition of the global variable in any submodules.
-    %
+
     DefinedThisModule = status_defined_in_this_module(ImportStatus),
     (
         DefinedThisModule = yes,
@@ -757,7 +841,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
 
         % XXX We don't currently support the foreign_name attribute
         % for languages other than C and Erlang.
-        ( 
+        (
             (
                 CompilationTarget = target_c,
                 ForeignLanguage = lang_c
@@ -790,8 +874,10 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
                 IOStateInterface = yes,
                 SetPredName = mutable_set_pred_sym_name(ModuleName, Name),
                 IOSetPromisePurePragma = pragma_promise_pure(SetPredName, 3),
-                add_pragma(compiler(mutable_decl), IOSetPromisePurePragma,
-                    Context, !Status, !ModuleInfo, !Specs)
+                IOSetPromisePureItemPragma = item_pragma_info(
+                    compiler(mutable_decl), IOSetPromisePurePragma, Context),
+                add_pragma(IOSetPromisePureItemPragma, Status, _,
+                    !ModuleInfo, !Specs)
             ;
                 IOStateInterface = no
             )
@@ -809,25 +895,24 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         ),
-        %
+
         % Check that the inst in the mutable declaration is a valid inst for a
         % mutable declaration.
-        %
         ( is_valid_mutable_inst(!.ModuleInfo, Inst) ->
             true
         ;
             % It is okay to pass a dummy varset in here since any attempt
             % to use inst variables in a mutable declaration should already
             % been dealt with when the mutable declaration was parsed.
-            DummyInstVarset = varset.init,  
+            DummyInstVarset = varset.init,
             InstStr = mercury_expanded_inst_to_string(Inst, DummyInstVarset,
                 !.ModuleInfo),
             InvalidInstPieces = [
                 words("Error: the inst"),
                 quote(InstStr),
-                words("is not a valid inst for a mutable declaration.")     
+                words("is not a valid inst for a mutable declaration.")
             ],
-            % XXX we could provide more information about exactly *why* the
+            % XXX We could provide more information about exactly *why* the
             % inst was not valid here as well.
             InvalidInstMsg = simple_msg(Context, [always(InvalidInstPieces)]),
             InvalidInstSpec = error_spec(severity_error,
@@ -838,17 +923,15 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
         DefinedThisModule = no
     ).
 
-:- pred add_solver_type_mutable_items_pass_2(list(item)::in, prog_context::in,
+:- pred add_solver_type_mutable_items_pass_2(list(item)::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_solver_type_mutable_items_pass_2([], _Context, !Status,
-        !ModuleInfo, !Specs).
-add_solver_type_mutable_items_pass_2([Item | Items], Context, !Status,
-        !ModuleInfo, !Specs) :-
-    add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs),
-    add_solver_type_mutable_items_pass_2(Items, Context, !Status,
-        !ModuleInfo, !Specs).
+add_solver_type_mutable_items_pass_2([], !Status, !ModuleInfo, !Specs).
+add_solver_type_mutable_items_pass_2([Item | Items], !Status, !ModuleInfo,
+        !Specs) :-
+    add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs),
+    add_solver_type_mutable_items_pass_2(Items, !Status, !ModuleInfo, !Specs).
 
     % Check to see if there is a valid foreign_name attribute for this backend.
     % If so, use it as the name of the global variable in the target code,
@@ -902,9 +985,61 @@ get_matching_foreign_name(ForeignNames, ForeignLanguage, ForeignName) :-
 
 %-----------------------------------------------------------------------------%
 
-add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_clause(Origin, VarSet, PredOrFunc, PredName, Args, Body),
-    ( !.Status = status_exported ->
+add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        Item = item_clause(ItemClause),
+        add_pass_3_clause(ItemClause, !.Status, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        Item = item_type_defn(ItemTypeDefn),
+        add_pass_3_type_defn(ItemTypeDefn, !.Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        add_pass_3_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        Item = item_pragma(ItemPragma),
+        add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        Item = item_promise(ItemPromise),
+        add_pass_3_promise(ItemPromise, !.Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        Item = item_initialise(ItemInitialise),
+        add_pass_3_initialise(ItemInitialise, !.Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        Item = item_finalise(ItemFinalise),
+        add_pass_3_finalise(ItemFinalise, !.Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        Item = item_mutable(ItemMutable),
+        add_pass_3_mutable(ItemMutable, !.Status, !ModuleInfo, !QualInfo,
+            !Specs)
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_nothing(_)
+        )
+        % Do nothing.
+    ).
+
+:- pred add_pass_3_clause(item_clause_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemClause = item_clause_info(Origin, VarSet, PredOrFunc,
+        PredName, Args, Body, Context),
+    ( Status = status_exported ->
         (
             Origin = user,
             list.length(Args, Arity),
@@ -937,47 +1072,61 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         true
     ),
     % At this stage we only need know that it's not a promise declaration.
-    module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, !.Status,
+    module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, Status,
         Context, goal_type_none, !ModuleInfo, !QualInfo, !Specs).
-add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_type_defn(_TVarSet, SymName, TypeParams, TypeDefn, _Cond),
-    % If this is a solver type then we need to also add clauses
-    % the compiler generated inst cast predicate (the declaration
-    % for which was added in pass 1).  We should only add the clauses
-    % if this is the module in which the solver type was defined though.
+
+:- pred add_pass_3_type_defn(item_type_defn_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemTypeDefn = item_type_defn_info(_TVarSet, SymName, TypeParams, TypeDefn,
+        _Cond, Context),
+    % If this is a solver type, then we need to also add the clauses for
+    % the compiler generated inst cast predicate (the declaration for which
+    % was added in pass 1). We should only add the clauses if this is the
+    % module in which the solver type was defined though.
     (
         TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp),
-        status_defined_in_this_module(!.Status) = yes
+        status_defined_in_this_module(Status) = yes
     ->
         add_solver_type_clause_items(SymName, TypeParams, SolverTypeDetails,
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs),
+            Context, Status, _, !ModuleInfo, !QualInfo, !Specs),
         MutableItems = SolverTypeDetails ^ mutable_items,
-        add_solver_type_mutable_items_clauses(MutableItems,
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+        add_solver_type_mutable_items_clauses(MutableItems, Status, _,
+            !ModuleInfo, !QualInfo, !Specs)
     ;
         true
     ).
-add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_inst_defn(_, _, _, _, _).
-add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_mode_defn(_, _, _, _, _).
-add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_pred_or_func(_, _, _, _, PredOrFunc, SymName, TypesAndModes,
-        _WithType, _WithInst, _, _, _, _),
+
+:- pred add_pass_3_pred_decl(item_pred_decl_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, SymName,
+        TypesAndModes, _WithType, _WithInst, _, _, _, _, Context),
     (
         PredOrFunc = pf_predicate
     ;
         PredOrFunc = pf_function,
         list.length(TypesAndModes, PredArity),
         adjust_func_arity(pf_function, FuncArity, PredArity),
-        maybe_check_field_access_function(SymName, FuncArity, !.Status,
+        maybe_check_field_access_function(SymName, FuncArity, Status,
             Context, !.ModuleInfo, !Specs)
     ).
-add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_pred_or_func_mode(_, _, _, _, _, _, _).
-add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_module_defn(_, Defn),
-    ( Defn = md_version_numbers(ModuleName, ModuleVersionNumbers) ->
+
+:- pred add_pass_3_module_defn(item_module_defn_info::in,
+    import_status::in, import_status::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
+        !Specs) :-
+    ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+    ( ModuleDefn = md_version_numbers(ModuleName, ModuleVersionNumbers) ->
         % Record the version numbers for each imported module
         % if smart recompilation is enabled.
         RecordPred = (pred(RecompInfo0::in, RecompInfo::out) is det :-
@@ -985,7 +1134,7 @@ add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !Specs) :-
                 map.elem(ModuleName) := ModuleVersionNumbers
         ),
         apply_to_recompilation_info(RecordPred, !QualInfo)
-    ; module_defn_update_import_status(Defn, ItemStatus1) ->
+    ; module_defn_update_import_status(ModuleDefn, ItemStatus1) ->
         ItemStatus1 = item_status(!:Status, NeedQual),
         qual_info_get_mq_info(!.QualInfo, MQInfo0),
         mq_info_set_need_qual_flag(NeedQual, MQInfo0, MQInfo),
@@ -993,8 +1142,14 @@ add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !Specs) :-
     ;
         true
     ).
-add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_pragma(Origin, Pragma),
+
+:- pred add_pass_3_pragma(item_pragma_info::in,
+    import_status::in, import_status::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemPragma = item_pragma_info(Origin, Pragma, Context),
     (
         Pragma = pragma_foreign_proc(Attributes, Pred, PredOrFunc,
             Vars, ProgVarSet, InstVarSet, PragmaImpl),
@@ -1018,7 +1173,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         (
             TypeLayout = yes,
             module_add_pragma_tabled(Type, Name, Arity, PredOrFunc, MaybeModes,
-                MaybeAttributes, !Status, Context, !ModuleInfo, !QualInfo,
+                MaybeAttributes, Context, !Status, !ModuleInfo, !QualInfo,
                 !Specs)
         ;
             TypeLayout = no,
@@ -1038,7 +1193,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         % So we ignore these pragmas for the Java back-end.
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.get_target(Globals, Target),
-        ( 
+        (
             Target = target_java
         ;
             ( Target = target_c
@@ -1117,8 +1272,15 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         ; Pragma = pragma_require_feature_set(_)
         )
     ).
-add_item_clause(item_promise(PromiseType, Goal, VarSet, UnivVars),
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+
+:- pred add_pass_3_promise(item_promise_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_promise(ItemPromise, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemPromise = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
+        Context),
     % If the outermost universally quantified variables are placed in the head
     % of the dummy predicate, the typechecker will avoid warning about unbound
     % type variables as this implicitly adds a universal quantification of the
@@ -1136,14 +1298,18 @@ add_item_clause(item_promise(PromiseType, Goal, VarSet, UnivVars),
     ),
     % Add as dummy predicate.
     add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context,
-        !.Status, !ModuleInfo, !QualInfo, !Specs).
-add_item_clause(item_nothing(_), !Status, _, !ModuleInfo, !QualInfo, !Specs).
-add_item_clause(item_typeclass(_, _, _, _, _, _), !Status, _, !ModuleInfo,
-        !QualInfo, !Specs).
-add_item_clause(item_instance(_, _, _, _, _, _), !Status, _, !ModuleInfo,
-        !QualInfo, !Specs).
-add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        Status, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred add_pass_3_initialise(item_initialise_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
+        !Specs) :-
+    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context),
+    Origin = user,
+
     % To handle a `:- initialise initpred.' declaration for C backends we need
     % to:
     % (1) construct a new C function name, CName, to use to export initpred,
@@ -1170,7 +1336,8 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
                 type_is_io_state(Arg1Type),
                 type_is_io_state(Arg2Type),
                 list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                proc_info_get_maybe_declared_argmodes(ProcInfo,
+                    MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
                 HeadModes = [ di_mode, uo_mode ],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
@@ -1181,31 +1348,34 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
             ->
                 module_info_new_user_init_pred(SymName, Arity, CName,
                     !ModuleInfo),
-                PragmaExportItem =
-                    item_pragma(compiler(initialise_decl),
-                        pragma_foreign_export(ExportLang, SymName,
-                            pf_predicate, [di_mode, uo_mode], CName)),
-                add_item_clause(PragmaExportItem, !Status, Context,
+                ExportPragma = pragma_foreign_export(ExportLang, SymName,
+                    pf_predicate, [di_mode, uo_mode], CName),
+                ExportItemPragma = item_pragma_info(compiler(initialise_decl),
+                    ExportPragma, Context),
+                ExportItem = item_pragma(ExportItemPragma),
+                add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
                 ArgTypes = [],
                 list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                proc_info_get_maybe_declared_argmodes(ProcInfo,
+                    MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
                 HeadModes = [],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = detism_det; Detism = detism_cc_multi ),
+                ( Detism = detism_det ; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_impure
             ->
                 module_info_new_user_init_pred(SymName, Arity, CName,
                     !ModuleInfo),
-                PragmaExportedItem =
-                    item_pragma(compiler(initialise_decl),
-                        pragma_foreign_export(ExportLang, SymName,
-                            pf_predicate, [], CName)),
-                add_item_clause(PragmaExportedItem, !Status, Context,
+                ExportPragma = pragma_foreign_export(ExportLang, SymName,
+                    pf_predicate, [], CName),
+                ExportItemPragma = item_pragma_info(compiler(initialise_decl),
+                    ExportPragma, Context),
+                ExportItem = item_pragma(ExportItemPragma),
+                add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
                 Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
@@ -1233,8 +1403,11 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
-add_item_clause(item_initialise(compiler(Details), SymName, Arity),
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
+        !Specs) :-
+    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context),
+    Origin = compiler(Details),
+
     % The compiler introduces initialise declarations that call impure
     % predicates as part of the source-to-source transformation for mutable
     % variables.  These predicates *must* be impure in order to prevent the
@@ -1244,11 +1417,12 @@ add_item_clause(item_initialise(compiler(Details), SymName, Arity),
         Details = mutable_decl,
         module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
         ExportLang = lang_c,    % XXX Implement for other backends.
-        PragmaExportItem =
-            item_pragma(compiler(mutable_decl),
-                pragma_foreign_export(ExportLang, SymName, pf_predicate, [],
-                    CName)),
-        add_item_clause(PragmaExportItem, !Status, Context,
+        ExportPragma = pragma_foreign_export(ExportLang, SymName, pf_predicate,
+            [], CName),
+        ExportItemPragma = item_pragma_info(compiler(mutable_decl),
+            ExportPragma, Context),
+        ExportItem = item_pragma(ExportItemPragma),
+        add_item_pass_3(ExportItem, Status, _,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         ( Details = initialise_decl
@@ -1259,8 +1433,15 @@ add_item_clause(item_initialise(compiler(Details), SymName, Arity),
         ),
         unexpected(this_file, "Bad introduced initialise declaration.")
     ).
-add_item_clause(item_finalise(Origin, SymName, Arity),
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+
+:- pred add_pass_3_finalise(item_finalise_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemFinalise = item_finalise_info(Origin, SymName, Arity, Context),
+
     % To handle a `:- finalise finalpred.' declaration for C backends we need
     % to:
     % (1) construct a new C function name, CName, to use to export finalpred,
@@ -1270,12 +1451,12 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
     %
     % For the Erlang backend, we need to have the finalpred recorded in the
     % ModuleInfo. This is implied by the handling for the C backends.
-    
-    ( 
+
+    (
         Origin = compiler(_),
         unexpected(this_file, "Bad introduced finalise declaration.")
     ;
-        Origin = user 
+        Origin = user
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
@@ -1296,7 +1477,8 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
                 type_is_io_state(Arg1Type),
                 type_is_io_state(Arg2Type),
                 list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                proc_info_get_maybe_declared_argmodes(ProcInfo,
+                    MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
                 HeadModes = [ di_mode, uo_mode ],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
@@ -1307,16 +1489,18 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
             ->
                 module_info_new_user_final_pred(SymName, Arity, CName,
                     !ModuleInfo),
-                PragmaExportItem =
-                    item_pragma(compiler(finalise_decl),
-                        pragma_foreign_export(ExportLang, SymName,
-                            pf_predicate, [di_mode, uo_mode], CName)),
-                add_item_clause(PragmaExportItem, !Status, Context,
+                ExportPragma = pragma_foreign_export(ExportLang, SymName,
+                    pf_predicate, [di_mode, uo_mode], CName),
+                ExportItemPragma = item_pragma_info(compiler(finalise_decl),
+                    ExportPragma, Context),
+                ExportItem = item_pragma(ExportItemPragma),
+                add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
                 ArgTypes = [],
                 list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                proc_info_get_maybe_declared_argmodes(ProcInfo,
+                    MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
                 HeadModes = [],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
@@ -1327,14 +1511,14 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
             ->
                 module_info_new_user_final_pred(SymName, Arity, CName,
                     !ModuleInfo),
-                PragmaExportItem =
-                    item_pragma(compiler(finalise_decl),
-                        pragma_foreign_export(ExportLang, SymName,
-                            pf_predicate, [], CName)),
-                add_item_clause(PragmaExportItem, !Status, Context,
+                ExportPragma = pragma_foreign_export(ExportLang, SymName,
+                    pf_predicate, [], CName),
+                ExportItemPragma = item_pragma_info(compiler(finalise_decl),
+                    ExportPragma, Context),
+                ExportItem = item_pragma(ExportItemPragma),
+                add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
-
                 Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
                     words("used in finalise declaration"),
                     words("has invalid signature."), nl],
@@ -1368,14 +1552,20 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
-add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    Item = item_mutable(MercuryMutableName, Type, _InitTerm, _Inst,
-        MutAttrs, _MutVarset),
+
+:- pred add_pass_3_mutable(item_mutable_info::in,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemMutable = item_mutable_info(MercuryMutableName, Type, _InitTerm, _Inst,
+        MutAttrs, _MutVarset, Context),
 
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.
 
-    DefinedThisModule = status_defined_in_this_module(!.Status),
+    DefinedThisModule = status_defined_in_this_module(Status),
     (
         DefinedThisModule = yes,
         module_info_get_name(!.ModuleInfo, ModuleName),
@@ -1400,8 +1590,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
                 IsThreadLocal, Context, !ModuleInfo, !QualInfo, !Specs),
 
             % Add all the predicates related to mutables.
-            add_c_mutable_preds(Item, TargetMutableName, 
-                !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            add_c_mutable_preds(ItemMutable, TargetMutableName,
+                Status, _, !ModuleInfo, !QualInfo, !Specs)
         ;
             CompilationTarget = target_erlang,
 
@@ -1411,8 +1601,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
                 TargetMutableName, !Specs),
 
             % Add all the predicates related to mutables.
-            add_erlang_mutable_preds(Item, TargetMutableName,
-                !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            add_erlang_mutable_preds(ItemMutable, TargetMutableName,
+                Status, _, !ModuleInfo, !QualInfo, !Specs)
         ;
             ( CompilationTarget = target_il
             ; CompilationTarget = target_java
@@ -1468,24 +1658,22 @@ add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
     % in pass 2 because the target-language-specific type name depends on
     % whether there are any foreign_type declarations for Type.
     get_c_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
-        TargetMutableName, IsConstant, IsThreadLocal,
+        TargetMutableName, IsConstant, IsThreadLocal, Context,
         ForeignDecl, ForeignDefn),
     ItemStatus0 = item_status(status_local, may_be_unqualified),
-    add_item_decl_pass_2(ForeignDecl, Context, ItemStatus0, _,
-        !ModuleInfo, !Specs),
-    add_item_decl_pass_2(ForeignDefn, Context, ItemStatus0, _,
-        !ModuleInfo, !Specs).
+    add_item_decl_pass_2(ForeignDecl, ItemStatus0, _, !ModuleInfo, !Specs),
+    add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
 
     % Create the C foreign_decl for the mutable.
     % The bool argument says whether the mutable is a constant mutable
     % or not.
     %
 :- pred get_c_mutable_global_foreign_decl_defn(module_info::in, mer_type::in,
-    string::in, bool::in, mutable_thread_local::in, item::out, item::out)
-    is det.
+    string::in, bool::in, mutable_thread_local::in, prog_context::in,
+    item::out, item::out) is det.
 
 get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Decl, Defn) :-
+        IsConstant, IsThreadLocal, Context, DeclItem, DefnItem) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     (
@@ -1494,16 +1682,13 @@ get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
             ModuleInfo, Type)
     ;
         IsThreadLocal = mutable_thread_local,
-        %
         % For thread-local mutables, the variable holds an index into an
         % array.
-        %
         TypeName = "MR_Unsigned"
     ),
-    %
+
     % Constant mutables do not require mutexes as their values are never
-    % updated.  Thread-local mutables do not require mutexes either.
-    %
+    % updated. Thread-local mutables do not require mutexes either.
     (
         ( IsConstant = yes
         ; IsThreadLocal = mutable_thread_local
@@ -1528,13 +1713,18 @@ get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
 
     DeclBody = string.append_list([
         "extern ", TypeName, " ", TargetMutableName, ";\n" | LockDecl]),
-    Decl = item_pragma(compiler(mutable_decl),
-        pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody)),
-    
+    DeclPragma =
+        pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody),
+    DeclItemPragma = item_pragma_info(compiler(mutable_decl), DeclPragma,
+        Context),
+    DeclItem = item_pragma(DeclItemPragma),
+
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
-    Defn = item_pragma(compiler(mutable_decl),
-        pragma_foreign_code(lang_c, DefnBody)).
+    DefnPragma = pragma_foreign_code(lang_c, DefnBody),
+    DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
+        Context),
+    DefnItem = item_pragma(DefnItemPragma).
 
 :- func global_foreign_type_name(bool, foreign_language, module_info,
     mer_type) = string.
@@ -1545,16 +1735,16 @@ global_foreign_type_name(no, Lang, ModuleInfo, Type) =
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_c_mutable_preds(item::in(item_mutable), string::in,
-    import_status::in, import_status::out, prog_context::in,
+:- pred add_c_mutable_preds(item_mutable_info::in, string::in,
+    import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_c_mutable_preds(Item, TargetMutableName,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+add_c_mutable_preds(ItemMutableInfo, TargetMutableName, !Status, !ModuleInfo,
+        !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    Item = item_mutable(MercuryMutableName, Type, InitTerm, Inst,
-        MutAttrs, MutVarset),
+    ItemMutableInfo = item_mutable_info(MercuryMutableName, Type, InitTerm,
+        Inst, MutAttrs, MutVarset, Context),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
 
@@ -1579,7 +1769,7 @@ add_c_mutable_preds(Item, TargetMutableName,
             MercuryMutableName),
         add_c_constant_mutable_access_preds(TargetMutableName,
             ModuleName, MercuryMutableName, Attrs, Inst, BoxPolicy,
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         IsConstant = no,
         InitSetPredName = mutable_set_pred_sym_name(ModuleName,
@@ -1587,27 +1777,27 @@ add_c_mutable_preds(Item, TargetMutableName,
         TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
             !.ModuleInfo, Type),
         add_c_mutable_primitive_preds(TargetMutableName, ModuleName,
-            MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, TypeName, 
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs),
+            MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, TypeName,
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs),
         add_c_mutable_user_access_preds(ModuleName, MercuryMutableName,
-            MutAttrs, !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            MutAttrs, Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ),
     add_c_mutable_initialisation(IsConstant, IsThreadLocal,
         TargetMutableName, ModuleName, MercuryMutableName, MutVarset,
         InitSetPredName, InitTerm, Attrs,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs).
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs).
 
     % Add the access predicates for constant mutables.
     %
 :- pred add_c_constant_mutable_access_preds(string::in, module_name::in,
     string::in, pragma_foreign_proc_attributes::in, mer_inst::in,
-    box_policy::in, import_status::in, import_status::out, prog_context::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out, 
+    box_policy::in, prog_context::in, import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_c_constant_mutable_access_preds(TargetMutableName,
-        ModuleName, MutableName, Attrs, Inst, BoxPolicy,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+        ModuleName, MutableName, Attrs, Inst, BoxPolicy, Context,
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     InstVarSet = varset.init,
     set_purity(purity_pure, Attrs, ConstantGetAttrs0),
@@ -1621,10 +1811,10 @@ add_c_constant_mutable_access_preds(TargetMutableName,
         InstVarSet,
         fc_impl_ordinary("X = " ++ TargetMutableName ++ ";", yes(Context))
     ),
-    ConstantGetClause = item_pragma(compiler(mutable_decl),
-        ConstantGetForeignProc),
-    add_item_clause(ConstantGetClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !Specs),
+    ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
+        ConstantGetForeignProc, Context),
+    ConstantGetItem = item_pragma(ConstantGetItemPragma),
+    add_item_pass_3(ConstantGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % NOTE: we don't need to trail the set action, since it is executed
     % only once at initialization time.
@@ -1637,24 +1827,24 @@ add_c_constant_mutable_access_preds(TargetMutableName,
         InstVarSet,
         fc_impl_ordinary(TargetMutableName ++ " = X;", yes(Context))
     ),
-    ConstantSetClause = item_pragma(compiler(mutable_decl),
-        ConstantSetForeignProc),
-    add_item_clause(ConstantSetClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !Specs).
+    ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
+        ConstantSetForeignProc, Context),
+    ConstantSetItem = item_pragma(ConstantSetItemPragma),
+    add_item_pass_3(ConstantSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
-    % Add the foreign clauses for the mutable's primitive access and 
+    % Add the foreign clauses for the mutable's primitive access and
     % locking predicates.
     %
 :- pred add_c_mutable_primitive_preds(string::in, module_name::in, string::in,
     mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
-    mer_inst::in, box_policy::in, string::in,
-    import_status::in, import_status::out, prog_context::in,
+    mer_inst::in, box_policy::in, string::in, prog_context::in,
+    import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         MutAttrs, Attrs, Inst, BoxPolicy, TypeName,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     set_thread_safe(proc_thread_safe, Attrs, LockAndUnlockAttrs),
 
@@ -1683,9 +1873,10 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         varset.init,    % Inst varset.
         fc_impl_ordinary(LockForeignProcBody, yes(Context))
     ),
-    LockClause = item_pragma(compiler(mutable_decl), LockForeignProc),
-    add_item_clause(LockClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    LockItemPragma = item_pragma_info(compiler(mutable_decl),
+        LockForeignProc, Context),
+    LockItem = item_pragma(LockItemPragma),
+    add_item_pass_3(LockItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Construct the unlock predicate.
     % XXX as above regarding the second argument to MR_UNLOCK.
@@ -1710,14 +1901,15 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         varset.init,    % Inst varset.
         fc_impl_ordinary(UnlockForeignProcBody, yes(Context))
     ),
-    UnlockClause = item_pragma(compiler(mutable_decl), UnlockForeignProc),
-    add_item_clause(UnlockClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    UnlockItemPragma = item_pragma_info(compiler(mutable_decl),
+        UnlockForeignProc, Context),
+    UnlockItem = item_pragma(UnlockItemPragma),
+    add_item_pass_3(UnlockItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Construct the semipure unsafe_get_predicate.
 
     set_purity(purity_semipure, Attrs, UnsafeGetAttrs0),
-    set_thread_safe(proc_thread_safe, UnsafeGetAttrs0, UnsafeGetAttrs), 
+    set_thread_safe(proc_thread_safe, UnsafeGetAttrs0, UnsafeGetAttrs),
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     (
         IsThreadLocal = mutable_not_thread_local,
@@ -1735,10 +1927,10 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         varset.init, % Inst varset.
         fc_impl_ordinary(UnsafeGetCode, yes(Context))
     ),
-    UnsafeGetClause = item_pragma(compiler(mutable_decl),
-        UnsafeGetForeignProc),
-    add_item_clause(UnsafeGetClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    UnsafeGetItemPragma = item_pragma_info(compiler(mutable_decl),
+        UnsafeGetForeignProc, Context),
+    UnsafeGetItem = item_pragma(UnsafeGetItemPragma),
+    add_item_pass_3(UnsafeGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Construct the impure unsafe_set_predicate.
 
@@ -1786,23 +1978,23 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         varset.init, % Inst varset.
         fc_impl_ordinary(TrailCode ++ SetCode, yes(Context))
     ),
-    UnsafeSetClause = item_pragma(compiler(mutable_decl),
-        UnsafeSetForeignProc),
-    add_item_clause(UnsafeSetClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs).
+    UnsafeSetItemPragma = item_pragma_info(compiler(mutable_decl),
+        UnsafeSetForeignProc, Context),
+    UnsafeSetItem = item_pragma(UnsafeSetItemPragma),
+    add_item_pass_3(UnsafeSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
     % Add the access predicates for a non-constant mutable.
     % If the mutable has the `attach_to_io_state' attribute then add the
     % versions of the access preds that take the I/O state as well.
     %
 :- pred add_c_mutable_user_access_preds(module_name::in, string::in,
-    mutable_var_attributes::in,
-    import_status::in, import_status::out, prog_context::in,
+    mutable_var_attributes::in, prog_context::in,
+    import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
- 
-add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+
+add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet0),
     LockPredName   = mutable_lock_pred_sym_name(ModuleName, MutableName),
     UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
@@ -1810,34 +2002,32 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
     GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
     CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
     CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
-    % 
+
     % Construct the semipure get predicate.
-    %
     UnsafeGetPredName = mutable_unsafe_get_pred_sym_name(ModuleName,
         MutableName),
     UnsafeGetCallArgs = [variable(X, Context)],
     CallUnsafeGet = call_expr(UnsafeGetPredName, UnsafeGetCallArgs,
         purity_semipure) - Context,
-    
+
     GetBody = goal_list_to_conj(Context,
         [CallLock, CallUnsafeGet, CallUnlock]),
     StdGetBody = promise_purity_expr(dont_make_implicit_promises,
         purity_semipure, GetBody) - Context,
 
-    StdGetClause = item_clause(
+    StdGetItemClause = item_clause_info(
         compiler(mutable_decl),
         ProgVarSet0,
         pf_predicate,
         GetPredName,
         [variable(X, context_init)],
-        StdGetBody
+        StdGetBody,
+        Context
     ),
-    
-    add_item_clause(StdGetClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
-    %
+    StdSetItem = item_clause(StdSetItemClause),
+    add_item_pass_3(StdGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
     % Construct the impure set predicate.
-    %
     UnsafeSetPredName = mutable_unsafe_set_pred_sym_name(ModuleName,
         MutableName),
     UnsafeSetCallArgs = [variable(X, context_init)],
@@ -1847,60 +2037,59 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
     StdSetBody = goal_list_to_conj(Context,
         [CallLock, StdSetCallUnsafeSet, CallUnlock]),
 
-    StdSetClause = item_clause(
+    StdSetItemClause = item_clause_info(
         compiler(mutable_decl),
         ProgVarSet0,
         pf_predicate,
         SetPredName,
         [variable(X, context_init)],
-        StdSetBody
+        StdSetBody,
+        Context
     ),
-    
-    add_item_clause(StdSetClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
-    
+    StdGetItem = item_clause(StdGetItemClause),
+    add_item_pass_3(StdSetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
     IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
     (
         IOStateInterface = yes,
         varset.new_named_var(ProgVarSet0, "IO", IO, ProgVarSet),
 
         % Construct the pure get predicate.
-        % 
         IOGetBody = promise_purity_expr(dont_make_implicit_promises,
             purity_pure, GetBody) - Context,
-    
+
         Ctxt = context_init,
-        IOGetClause = item_clause(
+        IOGetItemClause = item_clause_info(
             compiler(mutable_decl),
             ProgVarSet,
             pf_predicate,
             GetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            IOGetBody
+            IOGetBody,
+            Context
         ),
-    
-        add_item_clause(IOGetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !Specs),
+        IOGetItem = item_clause(IOGetItemClause),
+        add_item_pass_3(IOGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
         % Construct the pure set predicate.
         %
         % We just use the body of impure version and attach a promise_pure
-        % pragma to the predicate.  (The purity pragma was added during
+        % pragma to the predicate. (The purity pragma was added during
         % stage 2.)
-        %
-        IOSetBody = StdSetBody, 
-        
-        IOSetClause = item_clause(
+
+        IOSetBody = StdSetBody,
+
+        IOSetItemClause = item_clause_info(
             compiler(mutable_decl),
             ProgVarSet,
             pf_predicate,
             SetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            IOSetBody
+            IOSetBody,
+            Context
         ),
-        
-        add_item_clause(IOSetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !Specs)
+        IOSetItem = item_clause(IOSetItemClause),
+        add_item_pass_3(IOSetItem, !Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         IOStateInterface = no
     ).
@@ -1910,28 +2099,28 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
 :- pred add_c_mutable_initialisation(bool::in, mutable_thread_local::in,
     string::in, module_name::in, string::in, prog_varset::in,
     sym_name::in, prog_term::in, pragma_foreign_proc_attributes::in,
-    import_status::in, import_status::out, prog_context::in, 
+    prog_context::in, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         ModuleName, MutableName, MutVarset, InitSetPredName, InitTerm, Attrs,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
-    %
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     % Add the `:- initialise' declaration for the mutable initialisation
     % predicate.
-    %
-    add_item_clause(item_initialise(compiler(mutable_decl),
-            InitPredName, 0 /* Arity */),
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs),
-    %
+    InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
+    InitPredArity = 0,
+
+    InitItemInitialise = item_initialise_info(compiler(mutable_decl),
+        InitPredName, InitPredArity, Context),
+    InitItem = item_initialise(InitItemInitialise),
+    add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
     % Add the clause for the mutable initialisation predicate.
-    %
     (
         IsConstant = yes,
         InitClauseExpr =
-            call_expr(InitSetPredName, [InitTerm], purity_impure) 
+            call_expr(InitSetPredName, [InitTerm], purity_impure)
                 - Context
     ;
         IsConstant = no,
@@ -1962,48 +2151,49 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
             varset.init,    % InstVarSet
             fc_impl_ordinary(PreInitCode, yes(Context))
         ),
-        PreInitClause = item_pragma(compiler(mutable_decl),
-            PreInitForeignProc),
-        add_item_clause(PreInitClause, !Status, Context, !ModuleInfo,
-            !QualInfo, !Specs),
-      
+        PreInitItemPragma = item_pragma_info(compiler(mutable_decl),
+            PreInitForeignProc, Context),
+        PreInitItem = item_pragma(PreInitItemPragma),
+        add_item_pass_3(PreInitItem, !Status, !ModuleInfo, !QualInfo,
+            !Specs),
+
         CallPreInitExpr =
             call_expr(PreInitPredName, [], purity_impure) - Context,
-        CallSetPredExpr = 
+        CallSetPredExpr =
             call_expr(InitSetPredName, [InitTerm], purity_impure)
                 - Context,
         InitClauseExpr = conj_expr(CallPreInitExpr, CallSetPredExpr)
             - Context
     ),
-    %
+
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.
-    %
-    InitClause = item_clause(compiler(mutable_decl),
+    PredItemClause = item_clause_info(compiler(mutable_decl),
         MutVarset,
         pf_predicate,
         InitPredName,
         [],
-        InitClauseExpr
+        InitClauseExpr,
+        Context
     ),
-    add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs).
+    PredItem = item_clause(PredItemClause),
+    add_item_pass_3(PredItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 %
 % Erlang mutables
 %
 
-:- pred add_erlang_mutable_preds(item::in(item_mutable), string::in,
-    import_status::in, import_status::out, prog_context::in,
+:- pred add_erlang_mutable_preds(item_mutable_info::in, string::in,
+    import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_erlang_mutable_preds(Item, TargetMutableName,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+add_erlang_mutable_preds(ItemMutable, TargetMutableName,
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    Item = item_mutable(MutableName, _Type, InitTerm, Inst,
-        MutAttrs, MutVarset),
+    ItemMutable = item_mutable_info(MutableName, _Type, InitTerm, Inst,
+        MutAttrs, MutVarset, Context),
     IsConstant = mutable_var_constant(MutAttrs),
     (
         IsConstant = yes,
@@ -2011,30 +2201,30 @@ add_erlang_mutable_preds(Item, TargetMutableName,
             MutableName),
         add_erlang_constant_mutable_access_preds(TargetMutableName,
             ModuleName, MutableName, Inst,
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         IsConstant = no,
         InitSetPredName = mutable_set_pred_sym_name(ModuleName,
             MutableName),
         add_erlang_mutable_user_access_preds(TargetMutableName,
             ModuleName, MutableName, MutAttrs, Inst,
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ),
     add_erlang_mutable_initialisation(ModuleName, MutableName,
         MutVarset, InitSetPredName, InitTerm,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs).
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs).
 
     % Add the access predicates for constant mutables.
     %
-:- pred add_erlang_constant_mutable_access_preds(string::in, 
-    module_name::in, string::in, mer_inst::in,
-    import_status::in, import_status::out, prog_context::in, 
-    module_info::in, module_info::out, qual_info::in, qual_info::out, 
+:- pred add_erlang_constant_mutable_access_preds(string::in,
+    module_name::in, string::in, mer_inst::in, prog_context::in,
+    import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_erlang_constant_mutable_access_preds(TargetMutableName,
         ModuleName, MutableName, Inst,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     InstVarSet = varset.init,
     Attrs = default_attributes(lang_erlang),
@@ -2052,10 +2242,10 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
         InstVarSet,
         fc_impl_ordinary(GetCode, yes(Context))
     ),
-    ConstantGetClause = item_pragma(compiler(mutable_decl),
-        ConstantGetForeignProc),
-    add_item_clause(ConstantGetClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !Specs),
+    ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
+        ConstantGetForeignProc, Context),
+    ConstantGetItem = item_pragma(ConstantGetItemPragma),
+    add_item_pass_3(ConstantGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Secret setter.
     SetCode = erlang_mutable_set_code(TargetMutableName),
@@ -2067,10 +2257,10 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
         InstVarSet,
         fc_impl_ordinary(SetCode, yes(Context))
     ),
-    ConstantSetClause = item_pragma(compiler(mutable_decl),
-        ConstantSetForeignProc),
-    add_item_clause(ConstantSetClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !Specs).
+    ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
+        ConstantSetForeignProc, Context),
+    ConstantSetItem = item_pragma(ConstantSetItemPragma),
+    add_item_pass_3(ConstantSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
     % Add the access predicates for a non-constant mutable.
     % If the mutable has the `attach_to_io_state' attribute then add the
@@ -2078,22 +2268,20 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
     %
 :- pred add_erlang_mutable_user_access_preds(string::in,
     module_name::in, string::in, mutable_var_attributes::in, mer_inst::in,
-    import_status::in, import_status::out, prog_context::in,
+    prog_context::in, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
- 
+
 add_erlang_mutable_user_access_preds(TargetMutableName,
-        ModuleName, MutableName, MutAttrs, Inst,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+        ModuleName, MutableName, MutAttrs, Inst, Context,
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     Attrs = default_attributes(lang_erlang),
     varset.new_named_var(varset.init, "X", X, ProgVarSet0),
 
-    % 
     % Construct the semipure get predicate.
-    %
     set_purity(purity_semipure, Attrs, GetAttrs0),
-    set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs), 
+    set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
     (
         IsThreadLocal = mutable_not_thread_local,
         GetCode = erlang_mutable_get_code(TargetMutableName)
@@ -2115,15 +2303,14 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         varset.init, % Inst varset.
         fc_impl_ordinary(GetCode, yes(Context))
     ),
-    GetClause = item_pragma(compiler(mutable_decl), GetForeignProc),
-    add_item_clause(GetClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    GetItemPragma = item_pragma_info(compiler(mutable_decl), GetForeignProc,
+        Context),
+    GetItem = item_pragma(GetItemPragma),
+    add_item_pass_3(GetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
-    %
     % Construct the impure set predicate.
-    %
     set_purity(purity_impure, Attrs, SetAttrs0),
-    set_thread_safe(proc_thread_safe, SetAttrs0, SetAttrs), 
+    set_thread_safe(proc_thread_safe, SetAttrs0, SetAttrs),
     (
         IsThreadLocal = mutable_not_thread_local,
         SetCode = erlang_mutable_set_code(TargetMutableName)
@@ -2142,9 +2329,10 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         varset.init, % Inst varset.
         fc_impl_ordinary(SetCode, yes(Context))
     ),
-    SetClause = item_pragma(compiler(mutable_decl), SetForeignProc),
-    add_item_clause(SetClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    SetItemPragma = item_pragma_info(compiler(mutable_decl), SetForeignProc,
+        Context),
+    SetItem = item_pragma(SetItemPragma),
+    add_item_pass_3(SetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
     (
@@ -2159,38 +2347,37 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
             purity_semipure) - Context,
         IOGetBody = promise_purity_expr(dont_make_implicit_promises,
             purity_pure, CallSemipureGet) - Context,
-    
-        IOGetClause = item_clause(
+
+        IOGetItemClause = item_clause_info(
             compiler(mutable_decl),
             ProgVarSet,
             pf_predicate,
             GetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            IOGetBody
+            IOGetBody,
+            Context
         ),
-    
-        add_item_clause(IOGetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !Specs),
+        IOGetItem = item_clause(IOGetItemClause),
+        add_item_pass_3(IOGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
         % Construct the pure set predicate.
         %
         % We just call the impure version and attach a promise_pure
-        % pragma to the predicate.  (The purity pragma was added during
+        % pragma to the predicate. (The purity pragma was added during
         % stage 2.)
-        %
         CallImpureSet = call_expr(SetPredName, [variable(X, Context)],
             purity_impure) - Context,
-        IOSetClause = item_clause(
+        IOSetItemClause = item_clause_info(
             compiler(mutable_decl),
             ProgVarSet,
             pf_predicate,
             SetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            CallImpureSet
+            CallImpureSet,
+            Context
         ),
-        
-        add_item_clause(IOSetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !Specs)
+        IOSetItem = item_clause(IOSetItemClause),
+        add_item_pass_3(IOSetItem, !Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         IOStateInterface = no
     ).
@@ -2209,58 +2396,58 @@ erlang_mutable_get_code(TargetMutableName) =
 
 :- func erlang_mutable_set_code(string) = string.
 
-erlang_mutable_set_code(TargetMutableName) = 
+erlang_mutable_set_code(TargetMutableName) =
     "'ML_erlang_global_server' ! {set_mutable, " ++
         TargetMutableName ++ ", X}".
 
     % Add the code required to initialise a mutable.
     %
 :- pred add_erlang_mutable_initialisation(module_name::in, string::in,
-    prog_varset::in, sym_name::in, prog_term::in,
-    import_status::in, import_status::out, prog_context::in,
+    prog_varset::in, sym_name::in, prog_term::in, prog_context::in,
+    import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_erlang_mutable_initialisation(ModuleName, MutableName,
         MutVarset, InitSetPredName, InitTerm,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    %
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     % Add the `:- initialise' declaration for the mutable initialisation
     % predicate.
-    %
     InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
-    add_item_clause(item_initialise(compiler(mutable_decl),
-            InitPredName, 0 /* Arity */),
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs),
-    %
+    InitPredArity = 0,
+    InitItemInitialise = item_initialise_info(compiler(mutable_decl),
+        InitPredName, InitPredArity, Context),
+    InitItem = item_initialise(InitItemInitialise),
+    add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
     % Add the clause for the mutable initialisation predicate.
     %
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.
-    %
-    InitClause = item_clause(compiler(mutable_decl),
+    PredItemClause = item_clause_info(compiler(mutable_decl),
         MutVarset,
         pf_predicate,
         InitPredName,
         [],
-        call_expr(InitSetPredName, [InitTerm], purity_impure) - Context
+        call_expr(InitSetPredName, [InitTerm], purity_impure) - Context,
+        Context
     ),
-    add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs).
+    PredItem = item_clause(PredItemClause),
+    add_item_pass_3(PredItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
 :- pred add_solver_type_mutable_items_clauses(list(item)::in,
-    import_status::in, import_status::out, prog_context::in,
+    import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_solver_type_mutable_items_clauses([], !Status, _Context,
+add_solver_type_mutable_items_clauses([], !Status,
         !ModuleInfo, !QualInfo, !Specs).
-add_solver_type_mutable_items_clauses([Item | Items], !Status, Context,
+add_solver_type_mutable_items_clauses([Item | Items], !Status,
         !ModuleInfo, !QualInfo, !Specs) :-
-    add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs),
-    add_solver_type_mutable_items_clauses(Items, !Status, Context,
+    add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs),
+    add_solver_type_mutable_items_clauses(Items, !Status,
         !ModuleInfo, !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
@@ -2312,7 +2499,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
     %
     % promise.lineno_filename(A, B, R) :-
     %   ( R = A + B <=> R = B + A ).
-    %
+
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
         HeadVars, Goal, Status, Context, goal_type_promise(PromiseType),

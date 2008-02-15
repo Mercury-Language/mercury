@@ -71,11 +71,11 @@
     % Convert_to_mercury(ModuleName, OutputFileName, Items).
     %
 :- pred convert_to_mercury(module_name::in, string::in,
-    list(item_and_context)::in, io::di, io::uo) is det.
+    list(item)::in, io::di, io::uo) is det.
 
     % Output the specified item, followed by ".\n".
     %
-:- pred mercury_output_item(item::in, prog_context::in, io::di, io::uo) is det.
+:- pred mercury_output_item(item::in, io::di, io::uo) is det.
 
     % Output a `:- pred' declaration, making sure that the variable
     % number appears in variable names if the boolean argument
@@ -464,33 +464,87 @@ convert_to_mercury(ModuleName, OutputFileName, Items, !IO) :-
 
     % Output the declarations one by one.
     %
-:- pred mercury_output_item_list(bool::in, list(item_and_context)::in,
+:- pred mercury_output_item_list(bool::in, list(item)::in,
     io::di, io::uo) is det.
 
 mercury_output_item_list(_, [], !IO).
-mercury_output_item_list(UnqualifiedItemNames,
-        [ItemAndContext | ItemAndContexts], !IO) :-
-    ItemAndContext = item_and_context(Item, Context),
-    mercury_output_item(UnqualifiedItemNames, Item, Context, !IO),
-    mercury_output_item_list(UnqualifiedItemNames, ItemAndContexts, !IO).
+mercury_output_item_list(UnqualifiedItemNames, [Item | Items], !IO) :-
+    mercury_output_item_2(UnqualifiedItemNames, Item, !IO),
+    mercury_output_item_list(UnqualifiedItemNames, Items, !IO).
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_item(Item, Context, !IO) :-
+mercury_output_item(Item, !IO) :-
     UnqualifiedItemNames = no,
-    mercury_output_item(UnqualifiedItemNames, Item, Context, !IO).
+    mercury_output_item_2(UnqualifiedItemNames, Item, !IO).
 
-:- pred mercury_output_item(bool::in, item::in, prog_context::in,
+:- pred mercury_output_item_2(bool::in, item::in, io::di, io::uo) is det.
+
+mercury_output_item_2(UnqualifiedItemNames, Item, !IO) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        mercury_output_item_module_defn(UnqualifiedItemNames, ItemModuleDefn, 
+            !IO)
+    ;
+        Item = item_clause(ItemClause),
+        mercury_output_item_clause(UnqualifiedItemNames, ItemClause, !IO)
+    ;
+        Item = item_type_defn(ItemTypeDefn),
+        mercury_output_item_type_defn(UnqualifiedItemNames, ItemTypeDefn, !IO)
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        mercury_output_item_inst_defn(UnqualifiedItemNames, ItemInstDefn, !IO)
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        mercury_output_item_mode_defn(UnqualifiedItemNames, ItemModeDefn, !IO)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        mercury_output_item_pred_decl(UnqualifiedItemNames, ItemPredDecl, !IO)
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        mercury_output_item_mode_decl(UnqualifiedItemNames, ItemModeDecl, !IO)
+    ;
+        Item = item_pragma(ItemPragma),
+        mercury_output_item_pragma(UnqualifiedItemNames, ItemPragma, !IO)
+    ;
+        Item = item_promise(ItemPromise),
+        mercury_output_item_promise(UnqualifiedItemNames, ItemPromise, !IO)
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        mercury_output_item_typeclass(UnqualifiedItemNames, ItemTypeClass, !IO)
+    ;
+        Item = item_instance(ItemInstance),
+        mercury_output_item_instance(UnqualifiedItemNames, ItemInstance, !IO)
+    ;
+        Item = item_initialise(ItemInitialise),
+        mercury_output_item_initialise(UnqualifiedItemNames, ItemInitialise, 
+            !IO)
+    ;
+        Item = item_finalise(ItemFinalise),
+        mercury_output_item_finalise(UnqualifiedItemNames, ItemFinalise, !IO)
+    ;
+        Item = item_mutable(ItemMutable),
+        mercury_output_item_mutable(UnqualifiedItemNames, ItemMutable, !IO)
+    ;
+        Item = item_nothing(_ItemNothing)
+    ).
+
+:- pred mercury_output_item_type_defn(bool::in, item_type_defn_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item(UnqualifiedItemNames,
-        item_type_defn(VarSet, Name0, Args, TypeDefn, _Cond),
-        Context, !IO) :-
+mercury_output_item_type_defn(UnqualifiedItemNames, ItemTypeDefn, !IO) :-
+    ItemTypeDefn = item_type_defn_info(VarSet, Name0, Args, TypeDefn, _Cond,
+        Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name),
     maybe_output_line_number(Context, !IO),
     mercury_output_type_defn(VarSet, Name, Args, TypeDefn, Context, !IO).
-mercury_output_item(UnqualifiedItemNames,
-        item_inst_defn(VarSet, Name0, Args, InstDefn, _Cond), Context, !IO) :-
+
+:- pred mercury_output_item_inst_defn(bool::in, item_inst_defn_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_inst_defn(UnqualifiedItemNames, ItemInstDefn, !IO) :-
+    ItemInstDefn = item_inst_defn_info(VarSet, Name0, Args, InstDefn, _Cond,
+        Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name1),
     % If the unqualified name is a builtin inst, then output the qualified
     % name.  This prevents the compiler giving an error about redefining
@@ -502,16 +556,24 @@ mercury_output_item(UnqualifiedItemNames,
     ),
     maybe_output_line_number(Context, !IO),
     mercury_output_inst_defn(VarSet, Name, Args, InstDefn, Context, !IO).
-mercury_output_item(UnqualifiedItemNames,
-        item_mode_defn(VarSet, Name0, Args, ModeDefn, _Cond), Context, !IO) :-
+
+:- pred mercury_output_item_mode_defn(bool::in, item_mode_defn_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_mode_defn(UnqualifiedItemNames, ItemModeDefn, !IO) :-
+    ItemModeDefn = item_mode_defn_info(VarSet, Name0, Args, ModeDefn, _Cond,
+        Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name),
     maybe_output_line_number(Context, !IO),
     mercury_format_mode_defn(VarSet, Name, Args, ModeDefn, Context, !IO).
-mercury_output_item(UnqualifiedItemNames,
-        item_pred_or_func(_Origin, TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredName0, TypesAndModes, WithType, WithInst, Det,
-            _Cond, Purity, ClassContext),
-        Context, !IO) :-
+
+:- pred mercury_output_item_pred_decl(bool::in, item_pred_decl_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_pred_decl(UnqualifiedItemNames, ItemPredDecl, !IO) :-
+    ItemPredDecl = item_pred_decl_info(_Origin, TypeVarSet, InstVarSet,
+        ExistQVars, PredOrFunc, PredName0, TypesAndModes, WithType, WithInst,
+        Det, _Cond, Purity, ClassContext, Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
     maybe_output_line_number(Context, !IO),
     (
@@ -531,10 +593,13 @@ mercury_output_item(UnqualifiedItemNames,
             ExistQVars, PredName, TypesAndModes, WithType, WithInst, Det,
             Purity, ClassContext, Context, ":- ", ".\n", ".\n", !IO)
     ).
-mercury_output_item(UnqualifiedItemNames,
-        item_pred_or_func_mode(VarSet, PredOrFunc, PredName0, Modes, WithInst,
-            MaybeDet, _Cond),
-        Context, !IO) :-
+
+:- pred mercury_output_item_mode_decl(bool::in, item_mode_decl_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_mode_decl(UnqualifiedItemNames, ItemModeDecl, !IO) :-
+    ItemModeDecl = item_mode_decl_info(VarSet, PredOrFunc, PredName0, Modes,
+        WithInst, MaybeDet, _Cond, Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
     maybe_output_line_number(Context, !IO),
     (
@@ -550,12 +615,21 @@ mercury_output_item(UnqualifiedItemNames,
         mercury_output_pred_mode_decl(VarSet, PredName, Modes, WithInst,
             MaybeDet, Context, !IO)
     ).
-mercury_output_item(_, item_module_defn(VarSet, ModuleDefn), Context, !IO) :-
+
+:- pred mercury_output_item_module_defn(bool::in, item_module_defn_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_module_defn(_, ItemModuleDefn, !IO) :-
+    ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
     maybe_output_line_number(Context, !IO),
     mercury_output_module_defn(VarSet, ModuleDefn, Context, !IO).
-mercury_output_item(UnqualifiedItemNames,
-        item_clause(_, VarSet, PredOrFunc, PredName0, Args, Body), Context,
-        !IO) :-
+
+:- pred mercury_output_item_clause(bool::in, item_clause_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_clause(UnqualifiedItemNames, ItemClause, !IO) :-
+    ItemClause = item_clause_info(_, VarSet, PredOrFunc, PredName0, Args,
+        Body, Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
     maybe_output_line_number(Context, !IO),
     (
@@ -568,8 +642,12 @@ mercury_output_item(UnqualifiedItemNames,
             Context, !IO)
     ),
     io.write_string(".\n", !IO).
-mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
-        !IO) :-
+
+:- pred mercury_output_item_pragma(bool::in, item_pragma_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_pragma(_UnqualifiedItemNames, ItemPragma, !IO) :-
+    ItemPragma = item_pragma_info(_, Pragma, Context),
     maybe_output_line_number(Context, !IO),
     (
         Pragma = pragma_source_file(SourceFile),
@@ -774,8 +852,12 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
         mercury_output_pragma_require_feature_set(Features, !IO)
     ).
 
-mercury_output_item(_, item_promise(PromiseType, Goal0, VarSet, UnivVars), _,
-        !IO) :-
+:- pred mercury_output_item_promise(bool::in, item_promise_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_promise(_, ItemPromise, !IO) :-
+    ItemPromise = item_promise_info(PromiseType, Goal0, VarSet, UnivVars,
+        _Context),
     Indent = 1,
     (
         PromiseType = promise_type_true,
@@ -785,8 +867,8 @@ mercury_output_item(_, item_promise(PromiseType, Goal0, VarSet, UnivVars), _,
         io.write_string(":- promise ", !IO),
         (
             UnivVars = [_ | _],
-            Goal0 = _GoalExpr - Context,
-            Goal = all_expr(UnivVars, Goal0) - Context
+            Goal0 = _GoalExpr - GoalContext,
+            Goal = all_expr(UnivVars, Goal0) - GoalContext
         ;
             UnivVars = [],
             Goal = Goal0
@@ -810,14 +892,18 @@ mercury_output_item(_, item_promise(PromiseType, Goal0, VarSet, UnivVars), _,
     mercury_output_newline(Indent, !IO),
     mercury_output_goal(Goal, VarSet, Indent, !IO),
     io.write_string(".\n", !IO).
-mercury_output_item(_, item_nothing(_), _, !IO).
-mercury_output_item(UnqualifiedItemNames, item_typeclass(Constraints,
-        FunDeps, ClassName0, Vars, Interface, VarSet), _, !IO) :-
+
+:- pred mercury_output_item_typeclass(bool::in, item_typeclass_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_typeclass(UnqualifiedItemNames, ItemTypeClass, !IO) :-
+    ItemTypeClass = item_typeclass_info(Constraints, FunDeps, ClassName0,
+        Vars, Interface, VarSet, _Context),
     maybe_unqualify_sym_name(UnqualifiedItemNames, ClassName0, ClassName),
     io.write_string(":- typeclass ", !IO),
 
-        % We put an extra set of brackets around the class name in
-        % case the name is an operator
+    % We put an extra set of brackets around the class name in
+    % case the name is an operator
     mercury_output_sym_name(ClassName, !IO),
     io.write_char('(', !IO),
     io.write_list(Vars, ", ",
@@ -838,11 +924,16 @@ mercury_output_item(UnqualifiedItemNames, item_typeclass(Constraints,
         output_class_methods(Methods, !IO),
         io.write_string("\n].\n", !IO)
     ).
-mercury_output_item(_, item_instance(Constraints, ClassName, Types, Body,
-        VarSet, _InstanceModuleName), _, !IO) :-
+
+:- pred mercury_output_item_instance(bool::in, item_instance_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_instance(_, ItemInstance, !IO) :-
+    ItemInstance = item_instance_info(Constraints, ClassName, Types, Body,
+        VarSet, _InstanceModuleName, _),
     io.write_string(":- instance ", !IO),
-        % We put an extra set of brackets around the class name in
-        % case the name is an operator.
+    % We put an extra set of brackets around the class name in case
+    % the name is an operator.
     io.write_char('(', !IO),
     mercury_output_sym_name(ClassName, !IO),
     io.write_char('(', !IO),
@@ -861,29 +952,43 @@ mercury_output_item(_, item_instance(Constraints, ClassName, Types, Body,
         io.write_string("\n]", !IO)
     ),
     io.write_string(".\n", !IO).
-mercury_output_item(_, item_initialise(_, PredSymName, Arity), _, !IO) :-
+
+:- pred mercury_output_item_initialise(bool::in, item_initialise_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_initialise(_, ItemInitialise, !IO) :-   
+    ItemInitialise = item_initialise_info(_, PredSymName, Arity, _),
     io.write_string(":- initialise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
     io.write_string(".\n", !IO).
-mercury_output_item(_, item_finalise(_, PredSymName, Arity), _, !IO) :-
+
+:- pred mercury_output_item_finalise(bool::in, item_finalise_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_finalise(_, ItemFinalise, !IO) :-
+    ItemFinalise = item_finalise_info(_, PredSymName, Arity, _),
     io.write_string(":- finalise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
     io.write_string(".\n", !IO).
-mercury_output_item(_, Mutable, _, !IO) :-
-    Mutable = item_mutable(Name, Type, InitTerm, Inst, Attrs, MutVarset),
+
+:- pred mercury_output_item_mutable(bool::in, item_mutable_info::in,
+    io::di, io::uo) is det.
+
+mercury_output_item_mutable(_, ItemMutable, !IO) :-
+    ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst, Attrs,
+        MutVarset, _Context),
     io.write_string(":- mutable(", !IO),
     io.write_string(Name, !IO),
     io.write_string(", ", !IO),
     mercury_output_type(varset.init, no, Type, !IO),
     io.write_string(", ", !IO),
-    %
+
     % See the comments for prog_io.read_mutable_decl for the reason we
     % _must_ use MutVarset here.
-    %
     mercury_output_term(MutVarset, no, InitTerm, !IO),
     io.write_string(", ", !IO),
     mercury_output_inst(Inst, varset.init, !IO),
@@ -956,7 +1061,7 @@ mercury_output_instance_methods(Methods, !IO) :-
 :- pred output_instance_method(instance_method::in, io::di, io::uo) is det.
 
 output_instance_method(Method, !IO) :-
-    Method = instance_method(PredOrFunc, Name1, Defn, Arity, Context),
+    Method = instance_method(PredOrFunc, Name1, Defn, Arity, _Context),
     (
         Defn = instance_proc_def_name(Name2),
         io.write_char('\t', !IO),
@@ -977,27 +1082,25 @@ output_instance_method(Method, !IO) :-
         % XXX should we output the term contexts?
         io.write_string("\t(", !IO),
         io.write_list(ItemList, "),\n\t(",
-            output_instance_method_clause(Name1, Context), !IO),
+            output_instance_method_clause(Name1), !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred output_instance_method_clause(sym_name::in, prog_context::in, item::in,
+:- pred output_instance_method_clause(sym_name::in, item_clause_info::in,
     io::di, io::uo) is det.
 
-output_instance_method_clause(Name1, Context, Item, !IO) :-
-    ( Item = item_clause(_, VarSet, PredOrFunc, _PredName, HeadTerms, Body) ->
-        (
-            PredOrFunc = pf_predicate,
-            mercury_output_pred_clause(VarSet, Name1, HeadTerms, Body, Context,
-                !IO)
-        ;
-            PredOrFunc = pf_function,
-            pred_args_to_func_args(HeadTerms, ArgTerms, ResultTerm),
-            mercury_output_func_clause(VarSet, Name1, ArgTerms, ResultTerm,
-                Body, Context, !IO)
-        )
+output_instance_method_clause(Name1, ItemClause, !IO) :-
+    ItemClause = item_clause_info(_, VarSet, PredOrFunc, _PredName,
+        HeadTerms, Body, Context),
+    (
+        PredOrFunc = pf_predicate,
+        mercury_output_pred_clause(VarSet, Name1, HeadTerms, Body, Context,
+            !IO)
     ;
-        unexpected(this_file, "invalid instance method item")
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(HeadTerms, ArgTerms, ResultTerm),
+        mercury_output_func_clause(VarSet, Name1, ArgTerms, ResultTerm,
+            Body, Context, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1975,16 +2078,10 @@ mercury_output_solver_type_details(TVarSet,
     ;
         MutableItems = [_ | _],
         io.write_string(",\n\t\tconstraint_store is [\n\t\t\t", !IO),
-        io.write_list(MutableItems, ",\n\t\t\t", mercury_output_item_2,
+        io.write_list(MutableItems, ",\n\t\t\t", mercury_output_item,
             !IO),
         io.write_string("\n\t\t]", !IO)
     ).
-
-:- pred mercury_output_item_2(item::in, io::di, io::uo) is det.
-
-mercury_output_item_2(Item, !IO) :-
-    term.context_init(DummyContext),
-    mercury_output_item(Item, DummyContext, !IO).
 
 :- pred mercury_output_ctors(list(constructor)::in, tvarset::in,
     io::di, io::uo) is det.

@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: add_mode.m.
-% 
+%
 % This submodule of make_hlds handles the declarations of new insts and modes.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_mode.
@@ -17,21 +17,17 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.make_hlds_passes.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
 
-:- pred module_add_inst_defn(inst_varset::in, sym_name::in, list(inst_var)::in,
-    inst_defn::in, condition::in, prog_context::in, item_status::in,
-    module_info::in, module_info::out, bool::out,
+:- pred module_add_inst_defn(item_inst_defn_info::in, bool::out,
+    item_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred module_add_mode_defn(inst_varset::in, sym_name::in, list(inst_var)::in,
-    mode_defn::in, condition::in, prog_context::in, item_status::in,
-    module_info::in, module_info::out, bool::out,
+:- pred module_add_mode_defn(item_mode_defn_info::in, bool::out,
+    item_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -49,18 +45,21 @@
 
 %----------------------------------------------------------------------------%
 
-module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
-        item_status(Status, _NeedQual), !ModuleInfo, InvalidMode, !Specs) :-
+module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
+        !Specs) :-
+    ItemStatus = item_status(Status, _NeedQual),
+    ItemInstDefnInfo = item_inst_defn_info(VarSet, Name, Params, InstDefn,
+        Cond, Context),
     % Add the definition of this inst to the HLDS inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, Insts0),
-    insts_add(VarSet, Name, Args, InstDefn, Cond, Context, Status,
+    insts_add(VarSet, Name, Params, InstDefn, Cond, Context, Status,
         Insts0, Insts, !Specs),
     inst_table_set_user_insts(Insts, InstTable0, InstTable),
     module_info_set_inst_table(InstTable, !ModuleInfo),
 
     % Check if the inst is infinitely recursive (at the top level).
-    Arity = list.length(Args),
+    Arity = list.length(Params),
     InstId = inst_id(Name, Arity),
     TestArgs = list.duplicate(Arity, not_reached),
     check_for_cyclic_inst(Insts, InstId, InstId, TestArgs, [], Context,
@@ -78,10 +77,8 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         !Specs) :-
     list.length(Args, Arity),
     InstId = inst_id(Name, Arity),
-    (
-        I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Context, Status),
-        user_inst_table_insert(InstId, I, !Insts)
-    ->
+    I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Context, Status),
+    ( user_inst_table_insert(InstId, I, !Insts) ->
         true
     ;
         % If abstract insts are implemented, this will need to change
@@ -129,8 +126,11 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 
 %-----------------------------------------------------------------------------%
 
-module_add_mode_defn(VarSet, Name, Params, ModeDefn, Cond, Context,
-        item_status(Status, _NeedQual), !ModuleInfo, InvalidMode, !Specs) :-
+module_add_mode_defn(ItemModeDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
+        !Specs) :-
+    ItemModeDefnInfo = item_mode_defn_info(VarSet, Name, Params, ModeDefn,
+        Cond, Context),
+    ItemStatus = item_status(Status, _NeedQual),
     module_info_get_mode_table(!.ModuleInfo, Modes0),
     modes_add(VarSet, Name, Params, ModeDefn, Cond, Context, Status,
         Modes0, Modes, InvalidMode, !Specs),
@@ -145,10 +145,8 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
         !Modes, InvalidMode, !Specs) :-
     list.length(Args, Arity),
     ModeId = mode_id(Name, Arity),
-    (
-        I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),
-        mode_table_insert(ModeId, I, !Modes)
-    ->
+    I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),
+    ( mode_table_insert(ModeId, I, !Modes) ->
         true
     ;
         mode_table_get_mode_defns(!.Modes, ModeDefns),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,8 +47,8 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_solver_type_clause_items(sym_name::in, list(type_param)::in,
-    solver_type_details::in, import_status::in, import_status::out,
-    prog_context::in, module_info::in, module_info::out,
+    solver_type_details::in, prog_context::in,
+    import_status::in, import_status::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -181,7 +181,7 @@ solver_conversion_fn_symname(Prefix, qualified(ModuleNames, Name), Arity) =
     qualified(ModuleNames, Prefix ++ Name ++ "/" ++ int_to_string(Arity)).
 
 add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
-        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     Arity             = length(TypeParams),
 
     AnyInst           = SolverTypeDetails ^ any_inst,
@@ -193,12 +193,12 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     OutAnyMode        = out_mode(AnyInst),
     OutGroundMode     = out_mode(GroundInst),
 
-    ProgVarSet0           = varset.init,
+    ProgVarSet0       = varset.init,
     varset.new_var(ProgVarSet0, X, ProgVarSet1),
     varset.new_var(ProgVarSet1, Y, ProgVarSet),
-    
+
     InstVarSet = varset.init,
-    
+
     Attrs0            = default_attributes(lang_c),
     some [!Attrs] (
         !:Attrs = Attrs0,
@@ -210,8 +210,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 
     Impl              = fc_impl_ordinary("Y = X;", yes(Context)),
 
-        % The `func(in) = out(<i_ground>) is det' mode.
-        %
+    % The `func(in) = out(<i_ground>) is det' mode.
+    %
     ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
     XTGPragmaVar = pragma_var(X, "X", in_mode, native_if_possible),
     YTGPragmaVar = pragma_var(Y, "Y", OutGroundMode, native_if_possible),
@@ -223,16 +223,17 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             pf_function,
             ToGroundRepnArgs,
             ProgVarSet,
-            InstVarSet, 
+            InstVarSet,
             Impl
         ),
-    ToGroundRepnItem = item_pragma(compiler(solver_type),
-        ToGroundRepnForeignProc),
-    add_item_clause(ToGroundRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    ToGroundRepnItemPragma = item_pragma_info(compiler(solver_type),
+        ToGroundRepnForeignProc, Context),
+    ToGroundRepnItem = item_pragma(ToGroundRepnItemPragma),
+    add_item_pass_3(ToGroundRepnItem, !Status, !ModuleInfo,
+        !QualInfo, !Specs),
 
-        % The `func(in(any)) = out(<i_any>) is det' mode.
-        %
+    % The `func(in(any)) = out(<i_any>) is det' mode.
+    %
     ToAnyRepnSymName = solver_to_any_repn_symname(TypeSymName, Arity),
     XTAPragmaVar = pragma_var(X, "X", in_any_mode, native_if_possible),
     YTAPragmaVar = pragma_var(Y, "Y", OutAnyMode, native_if_possible),
@@ -247,12 +248,14 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet,
             Impl
         ),
-    ToAnyRepnItem = item_pragma(compiler(solver_type), ToAnyRepnForeignProc),
-    add_item_clause(ToAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs),
+    ToAnyRepnItemPragma = item_pragma_info(compiler(solver_type),
+        ToAnyRepnForeignProc, Context),
+    ToAnyRepnItem = item_pragma(ToAnyRepnItemPragma),
+    add_item_pass_3(ToAnyRepnItem, !Status, !ModuleInfo,
+        !QualInfo, !Specs),
 
-        % The `func(in(<i_ground>)) = out is det' mode.
-        %
+    % The `func(in(<i_ground>)) = out is det' mode.
+    %
     FromGroundRepnSymName = repn_to_ground_solver_symname(TypeSymName, Arity),
     XFGPragmaVar = pragma_var(X, "X", InGroundMode, native_if_possible),
     YFGPragmaVar = pragma_var(Y, "Y", out_mode, native_if_possible),
@@ -267,13 +270,14 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet,
             Impl
         ),
-    FromGroundRepnItem = item_pragma(compiler(solver_type),
-        FromGroundRepnForeignProc),
-    add_item_clause(FromGroundRepnItem, !Status, Context, !ModuleInfo,
+    FromGroundRepnItemPragma = item_pragma_info(compiler(solver_type),
+        FromGroundRepnForeignProc, Context),
+    FromGroundRepnItem = item_pragma(FromGroundRepnItemPragma),
+    add_item_pass_3(FromGroundRepnItem, !Status, !ModuleInfo,
         !QualInfo, !Specs),
 
-        % The `func(in(<i_any>)) = out(any) is det' mode.
-        %
+    % The `func(in(<i_any>)) = out(any) is det' mode.
+    %
     FromAnyRepnSymName = repn_to_any_solver_symname(TypeSymName, Arity),
     XFAPragmaVar = pragma_var(X, "X", InAnyMode, native_if_possible),
     YFAPragmaVar = pragma_var(Y, "Y", out_any_mode, native_if_possible),
@@ -288,10 +292,11 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet,
             Impl
         ),
-    FromAnyRepnItem = item_pragma(compiler(solver_type),
-        FromAnyRepnForeignProc),
-    add_item_clause(FromAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
-        !Specs).
+    FromAnyRepnItemPragma = item_pragma_info(compiler(solver_type),
+        FromAnyRepnForeignProc, Context),
+    FromAnyRepnItem = item_pragma(FromAnyRepnItemPragma),
+    add_item_pass_3(FromAnyRepnItem, !Status, !ModuleInfo,
+        !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
  :- end_module add_solver.

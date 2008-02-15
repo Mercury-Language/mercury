@@ -1287,9 +1287,10 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         Body = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
         TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)
     ),
-    mercury_output_item(
-        item_type_defn(VarSet, Name, Args, TypeBody, cond_true),
-        Context, !IO),
+    MainItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeBody,
+        cond_true, Context),
+    MainItem = item_type_defn(MainItemTypeDefn),
+    mercury_output_item(MainItem, !IO),
     (
         ( Body = hlds_foreign_type(ForeignTypeBody)
         ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
@@ -1301,12 +1302,12 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             MaybeIL = yes(DataIL),
             DataIL = foreign_type_lang_data(ILForeignType, ILMaybeUserEqComp,
                 AssertionsIL),
-            mercury_output_item(
-                item_type_defn(VarSet, Name, Args,
-                    parse_tree_foreign_type(il(ILForeignType),
-                        ILMaybeUserEqComp, AssertionsIL),
-                cond_true),
-                Context, !IO)
+            ILItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+                parse_tree_foreign_type(il(ILForeignType),
+                    ILMaybeUserEqComp, AssertionsIL),
+                cond_true, Context),
+            ILItem = item_type_defn(ILItemTypeDefn),
+            mercury_output_item(ILItem, !IO)
         ;
             MaybeIL = no
         ),
@@ -1314,12 +1315,12 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             MaybeC = yes(DataC),
             DataC = foreign_type_lang_data(CForeignType,
                 CMaybeUserEqComp, AssertionsC),
-            mercury_output_item(
-                item_type_defn(VarSet, Name, Args,
-                    parse_tree_foreign_type(c(CForeignType),
-                        CMaybeUserEqComp, AssertionsC),
-                    cond_true),
-                Context, !IO)
+            CItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+                parse_tree_foreign_type(c(CForeignType),
+                    CMaybeUserEqComp, AssertionsC),
+                cond_true, Context),
+            CItem = item_type_defn(CItemTypeDefn),
+            mercury_output_item(CItem, !IO)
         ;
             MaybeC = no
         ),
@@ -1327,12 +1328,12 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             MaybeJava = yes(DataJava),
             DataJava = foreign_type_lang_data(JavaForeignType,
                 JavaMaybeUserEqComp, AssertionsJava),
-            mercury_output_item(
-                item_type_defn(VarSet, Name, Args,
-                    parse_tree_foreign_type(java(JavaForeignType),
-                        JavaMaybeUserEqComp, AssertionsJava),
-                    cond_true),
-                Context, !IO)
+            JavaItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+                parse_tree_foreign_type(java(JavaForeignType),
+                    JavaMaybeUserEqComp, AssertionsJava),
+                cond_true, Context),
+            JavaItem = item_type_defn(JavaItemTypeDefn),
+            mercury_output_item(JavaItem, !IO)
         ;
             MaybeJava = no
         ),
@@ -1340,12 +1341,12 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             MaybeErlang = yes(DataErlang),
             DataErlang = foreign_type_lang_data(ErlangForeignType,
                 ErlangMaybeUserEqComp, AssertionsErlang),
-            mercury_output_item(
-                item_type_defn(VarSet, Name, Args,
-                    parse_tree_foreign_type(erlang(ErlangForeignType),
-                        ErlangMaybeUserEqComp, AssertionsErlang),
-                    cond_true),
-                Context, !IO)
+            ErlangItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+                parse_tree_foreign_type(erlang(ErlangForeignType),
+                    ErlangMaybeUserEqComp, AssertionsErlang),
+                cond_true, Context),
+            ErlangItem = item_type_defn(ErlangItemTypeDefn),
+            mercury_output_item(ErlangItem, !IO)
         ;
             MaybeErlang = no
         )
@@ -1357,8 +1358,10 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         ReservedTag = uses_reserved_tag
     ->
         % The pragma_origin doesn't matter here.
-        mercury_output_item(item_pragma(user, pragma_reserve_tag(Name, Arity)),
-            Context, !IO)
+        ReserveItemPragma = item_pragma_info(user,
+            pragma_reserve_tag(Name, Arity), Context),
+        ReserveItem = item_pragma(ReserveItemPragma),
+        mercury_output_item(ReserveItem, !IO)
     ;
         true
     ),
@@ -1366,11 +1369,12 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         Body = hlds_du_type(_, ConsTagVals, _, DuTypeKind, _, _, _, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)
     ->
-        map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [], 
+        map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [],
             ForeignEnumVals),
         Pragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
-        Item = item_pragma(user, Pragma),
-        mercury_output_item(Item, Context, !IO)
+        ForeignItemPragma = item_pragma_info(user, Pragma, Context),
+        ForeignItem = item_pragma(ForeignItemPragma),
+        mercury_output_item(ForeignItem, !IO)
     ;
         true
     ).
@@ -1411,9 +1415,10 @@ write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
         SymName = qualified(ModuleName, _),
         import_status_to_write(ImportStatus)
     ->
-        mercury_output_item(
-            item_mode_defn(Varset, SymName, Args, eqv_mode(Mode), cond_true),
-            Context, !IO)
+        ItemModeDefn = item_mode_defn_info(Varset, SymName, Args,
+            eqv_mode(Mode), cond_true, Context),
+        Item = item_mode_defn(ItemModeDefn),
+        mercury_output_item(Item, !IO)
     ;
         true
     ).
@@ -1444,8 +1449,10 @@ write_inst(ModuleName, InstId, InstDefn, !IO) :-
             Body = abstract_inst,
             InstBody = abstract_inst
         ),
-        mercury_output_item(item_inst_defn(Varset, SymName, Args, InstBody,
-            cond_true), Context, !IO)
+        ItemInstDefn = item_inst_defn_info(Varset, SymName, Args, InstBody,
+            cond_true, Context),
+        Item = item_inst_defn(ItemInstDefn),
+        mercury_output_item(Item, !IO)
     ;
         true
     ).
@@ -1470,9 +1477,10 @@ write_class(ModuleName, ClassId, ClassDefn, !IO) :-
         import_status_to_write(ImportStatus)
     ->
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
-        Item = item_typeclass(Constraints, FunDeps, QualifiedClassName, TVars,
-            Interface, TVarSet),
-        mercury_output_item(Item, Context, !IO)
+        ItemTypeClass = item_typeclass_info(Constraints, FunDeps,
+            QualifiedClassName, TVars, Interface, TVarSet, Context),
+        Item = item_typeclass(ItemTypeClass),
+        mercury_output_item(Item, !IO)
     ;
         true
     ).
@@ -1506,9 +1514,10 @@ write_instance(ClassId - InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(ModuleName, _, Context, Constraints,
         Types, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
-    Item = item_instance(Constraints, ClassName, Types, Body, TVarSet,
-        ModuleName),
-    mercury_output_item(Item, Context, !IO).
+    ItemInstance = item_instance_info(Constraints, ClassName, Types, Body,
+        TVarSet, ModuleName, Context),
+    Item = item_instance(ItemInstance),
+    mercury_output_item(Item, !IO).
 
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
@@ -1917,7 +1926,7 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
     %
 :- type intermod_info
     --->    intermod_info(
-                % Modules to import.              
+                % Modules to import.
                 im_modules              :: set(module_name),
 
                 % Preds to output clauses for.
@@ -2261,9 +2270,10 @@ grab_opt_files(!Module, FoundError, !IO) :-
         UnusedArgs = yes,
         read_optimization_interfaces(no, ModuleName, [ModuleName],
             set.init, [], LocalItems, no, UAError, !IO),
-        IsPragmaUnusedArgs = (pred(ItemAndContext::in) is semidet :-
-            ItemAndContext = item_and_context(item_pragma(_, PragmaType), _),
-            PragmaType = pragma_unused_args(_,_,_,_,_)
+        IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
+            Item = item_pragma(ItemPragma),
+            ItemPragma = item_pragma_info(_, Pragma, _),
+            Pragma = pragma_unused_args(_,_,_,_,_)
         ),
         list.filter(IsPragmaUnusedArgs, LocalItems, PragmaItems),
 
@@ -2322,7 +2332,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
 
 :- pred read_optimization_interfaces(bool::in, module_name::in,
     list(module_name)::in, set(module_name)::in,
-    item_list::in, item_list::out, bool::in, bool::out,
+    list(item)::in, list(item)::out, bool::in, bool::out,
     io::di, io::uo) is det.
 
 read_optimization_interfaces(_, _, [], _, !Items, !Error, !IO).

@@ -996,7 +996,8 @@ expand_method_bsvs(IM0) = IM :-
         Arity0, Ctxt),
     Cs  = list.map(expand_item_bsvs, Cs0),
     % Note that the condition should always succeed...
-    ( Cs = [item_clause(_, _, _, _, Args, _) | _] ->
+    ( Cs = [ItemClause | _] ->
+        Args = ItemClause ^ cl_head_args,
         adjust_func_arity(PredOrFunc, Arity, list.length(Args))
     ;
         Arity = Arity0
@@ -1004,17 +1005,14 @@ expand_method_bsvs(IM0) = IM :-
     IM  = instance_method(PredOrFunc, Method, instance_proc_def_clauses(Cs),
         Arity, Ctxt).
 
-    % The instance method clause items will all be clause items.
-    %
-:- func expand_item_bsvs(item) = item.
+:- func expand_item_bsvs(item_clause_info) = item_clause_info.
 
-expand_item_bsvs(Item) =
-    ( Item = item_clause(Origin, VarSet, PredOrFunc, SymName, Args, Body) ->
-        item_clause(Origin, VarSet, PredOrFunc, SymName,
-            expand_bang_state_var_args(Args), Body)
-    ;
-        Item
-    ).
+expand_item_bsvs(ItemClause0) = ItemClause :-
+    ItemClause0 = item_clause_info(Origin, VarSet, PredOrFunc, SymName,
+        Args0, Body, Context),
+    Args = expand_bang_state_var_args(Args0),
+    ItemClause = item_clause_info(Origin, VarSet, PredOrFunc, SymName,
+        Args, Body, Context).
 
 %-----------------------------------------------------------------------------%
 

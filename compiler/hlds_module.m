@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -229,11 +229,11 @@
 %
 
     % Create an empty module_info for a given module name (and the
-    % global options). The item_list is passed so that we can call
+    % global options). The item list is passed so that we can call
     % get_implicit_dependencies to figure out whether to import
     % `table_builtin', but the items are not inserted into the module_info.
     %
-:- pred module_info_init(module_name::in, item_list::in, globals::in,
+:- pred module_info_init(module_name::in, list(item)::in, globals::in,
     partial_qualifier_info::in, maybe(recompilation_info)::in,
     module_info::out) is det.
 

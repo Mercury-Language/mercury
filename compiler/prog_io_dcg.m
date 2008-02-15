@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, maybe_item_and_context::out) is det.
+    prog_context::in, maybe1(item)::out) is det.
 
     % parse_dcg_pred_goal(GoalTerm, MaybeGoal, DCGVarInitial, DCGVarFinal,
     %   !Varset):
@@ -71,11 +71,10 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
         parse_implicitly_qualified_term(ModuleName, DCG_Head, DCG_Body,
             "DCG clause head", HeadResult),
         process_dcg_clause(HeadResult, ProgVarSet, DCG_0_Var, DCG_Var, Body,
-            DCG_Context, ProcessResult),
-        add_context(ProcessResult, DCG_Context, Result)
+            DCG_Context, Result)
     ;
         MaybeBody = error1(Errors),
-        Result = error2(Errors)
+        Result = error1(Errors)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -682,8 +681,17 @@ term_list_append_term(List0, Term, List) :-
 :- pred process_dcg_clause(maybe_functor::in, prog_varset::in, prog_var::in,
     prog_var::in, goal::in, prog_context::in, maybe1(item)::out) is det.
 
-process_dcg_clause(ok2(Name, Args0), VarSet, Var0, Var, Body, Context,
-        ok1(item_clause(user, VarSet, pf_predicate, Name, Args, Body))) :-
-    list.map(term.coerce, Args0, Args1),
-    Args = Args1 ++ [variable(Var0, Context), variable(Var, Context)].
-process_dcg_clause(error2(Errors), _, _, _, _, _, error1(Errors)).
+process_dcg_clause(MaybeFunctor, VarSet, Var0, Var, Body, Context,
+        MaybeItem) :-
+    (
+        MaybeFunctor = ok2(Name, Args0), 
+        list.map(term.coerce, Args0, Args1),
+        Args = Args1 ++ [variable(Var0, Context), variable(Var, Context)],
+        ItemClause = item_clause_info(user, VarSet, pf_predicate, Name, Args,
+            Body, Context),
+        Item = item_clause(ItemClause),
+        MaybeItem = ok1(Item)
+    ;
+        MaybeFunctor = error2(Errors),
+        MaybeItem = error1(Errors)
+    ).

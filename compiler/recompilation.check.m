@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,11 +693,12 @@ check_imported_module(Term, !Info, !IO) :-
         (
             MaybeUsedItemsTerm = yes(UsedItemsTerm),
             Items = [InterfaceItem, VersionNumberItem | OtherItems],
-            InterfaceItem =
-                item_and_context(item_module_defn(_, md_interface), _),
-            VersionNumberItem =
-                item_and_context(
-                    item_module_defn(_, md_version_numbers(_, VersionNumbers)),
+            InterfaceItem = item_module_defn(InterfaceItemModuleDefn),
+            InterfaceItemModuleDefn =
+                item_module_defn_info(_, md_interface, _),
+            VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
+            VersionNumberItemModuleDefn =
+                item_module_defn_info(_, md_version_numbers(_, VersionNumbers),
                     _)
         ->
             check_module_used_items(ImportedModuleName, NeedQualifier,
@@ -719,7 +720,7 @@ check_imported_module(Term, !Info, !IO) :-
     ).
 
 :- pred check_module_used_items(module_name::in, need_qualifier::in,
-    timestamp::in, term::in, version_numbers::in, item_list::in,
+    timestamp::in, term::in, version_numbers::in, list(item)::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
@@ -854,17 +855,17 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
     % when the current module was last compiled.
     %
 :- pred check_for_ambiguities(need_qualifier::in, timestamp::in,
-    item_version_numbers::in, item_and_context::in,
+    item_version_numbers::in, item::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        ItemAndContext, !Info) :-
-    ItemAndContext = item_and_context(Item, _Context),
+check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
+        !Info) :-
     (
-        Item = item_clause(_, _, _, _, _, _),
+        Item = item_clause(_),
         unexpected(this_file, "check_for_ambiguities: clause")
     ;
-        Item = item_type_defn(_, Name, Params, Body, _),
+        Item = item_type_defn(ItemTypeDefn),
+        ItemTypeDefn = item_type_defn_info(_, Name, Params, Body, _, _),
         Arity = list.length(Params),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, type_abstract_item, Name, Arity, NeedsCheck,
@@ -877,15 +878,19 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
             NeedsCheck = no
         )
     ;
-        Item = item_inst_defn(_, Name, Params, _, _),
+        Item = item_inst_defn(ItemInstDefn),
+        ItemInstDefn = item_inst_defn_info(_, Name, Params, _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, inst_item, Name, list.length(Params), _, !Info)
     ;
-        Item = item_mode_defn(_, Name, Params, _, _),
+        Item = item_mode_defn(ItemModeDefn),
+        ItemModeDefn = item_mode_defn_info(_, Name, Params, _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, mode_item, Name, list.length(Params), _, !Info)
     ;
-        Item = item_typeclass(_, _, Name, Params, Interface, _),
+        Item = item_typeclass(ItemTypeClass),
+        ItemTypeClass = item_typeclass_info(_, _, Name, Params, Interface,
+            _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, typeclass_item, Name, list.length(Params),
             NeedsCheck, !Info),
@@ -899,19 +904,20 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
             true
         )
     ;
-        Item = item_pred_or_func(_, _, _, _, PredOrFunc, Name, Args,
-            WithType, _, _, _, _, _),
+        Item = item_pred_decl(ItemPredDecl),
+        ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, Name, Args,
+            WithType, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
     ;
-        ( Item = item_pred_or_func_mode(_, _, _, _, _, _, _)
-        ; Item = item_pragma(_, _)
-        ; Item = item_promise(_, _, _, _)
-        ; Item = item_module_defn(_, _)
-        ; Item = item_instance(_, _, _, _, _, _)
-        ; Item = item_initialise(_, _, _)
-        ; Item = item_finalise(_, _, _)
-        ; Item = item_mutable(_, _, _, _, _, _)
+        ( Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_module_defn(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
         ; Item = item_nothing(_)
         )
     ).
@@ -1362,7 +1368,7 @@ add_module_to_recompile(Module, !Info) :-
             some_modules([Module | Modules0])
     ).
 
-:- pred record_read_file(module_name::in, module_timestamp::in, item_list::in,
+:- pred record_read_file(module_name::in, module_timestamp::in, list(item)::in,
     module_error::in, file_name::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1519,15 +1525,6 @@ read_term_check_for_error_or_eof(Info, Item, Term, !IO) :-
         Reason = recompile_for_syntax_error(term.context(FileName, Line),
             "unexpected end of file, expected " ++ Item ++ "."),
         throw_syntax_error(Reason, Info)
-    ).
-
-:- func get_term_context(term) = term.context.
-
-get_term_context(Term) =
-    ( Term = term.functor(_, _, Context) ->
-        Context
-    ;
-        term.context_init
     ).
 
 :- pred record_recompilation_reason(recompile_reason::in,

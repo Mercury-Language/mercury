@@ -29,7 +29,6 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -72,17 +71,12 @@
     % ok(SymName, Args - MaybeFuncRetArg) ; error(Msg, Term).
 :- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
 
-:- type maybe_item_and_context ==  maybe2(item, prog_context).
-
 :- type var2tvar    ==  map(var, tvar).
 
 :- type var2pvar    ==  map(var, prog_var).
 
 :- type parser(T) == pred(term, maybe1(T)).
 :- mode parser == (pred(in, out) is det).
-
-:- pred add_context(maybe1(item)::in, prog_context::in,
-    maybe_item_and_context::out) is det.
 
 % Various predicates to parse small bits of syntax.
 % These predicates simply fail if they encounter a syntax error.
@@ -208,9 +202,6 @@ get_any_errors3(error3(Errors)) = Errors.
 
 get_any_errors4(ok4(_, _, _, _)) = [].
 get_any_errors4(error4(Errors)) = Errors.
-
-add_context(error1(Errs), _, error2(Errs)).
-add_context(ok1(Item), Context, ok2(Item, Context)).
 
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
     PredAndArityTerm = term.functor(term.atom("/"),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,8 +49,7 @@
     % while processing each item are recorded in the recompilation_info,
     % for use by smart recompilation.
     %
-:- pred expand_eqv_types(module_name::in,
-    list(item_and_context)::in, list(item_and_context)::out,
+:- pred expand_eqv_types(module_name::in, list(item)::in, list(item)::out,
     event_spec_map::in, event_spec_map::out,
     eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
@@ -89,21 +88,21 @@
 
 :- type eqv_map == map(type_ctor, eqv_type_body).
 
+% XXX Should we make equiv_type_info abstract?
 :- type equiv_type_info == maybe(expanded_item_set).
 :- type expanded_item_set.
 
-    % For smart recompilation we need to record which items were
-    % expanded in each declaration.  Any items which depend on
-    % that declaration also depend on the expanded items.
+    % For smart recompilation we need to record which items were expanded
+    % in each declaration. Any items which depend on that declaration also
+    % depend on the expanded items.
     %
-:- pred maybe_record_expanded_items(module_name::in,
-    sym_name::in, maybe(recompilation_info)::in, equiv_type_info::out) is det.
+:- pred maybe_start_recording_expanded_items(module_name::in, sym_name::in,
+    maybe(recompilation_info)::in, equiv_type_info::out) is det.
 
     % Record all the expanded items in the recompilation_info.
     %
-:- pred finish_recording_expanded_items(item_id::in,
-    equiv_type_info::in, maybe(recompilation_info)::in,
-    maybe(recompilation_info)::out) is det.
+:- pred finish_recording_expanded_items(item_id::in, equiv_type_info::in,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -169,50 +168,54 @@ expand_eqv_types(ModuleName, Items0, Items, EventSpecMap0, EventSpecMap,
     --->    type_decl
     ;       mode_decl.
 
-:- pred build_eqv_map(list(item_and_context)::in,
+:- pred build_eqv_map(list(item)::in,
     eqv_map::in, eqv_map::out, eqv_inst_map::in, eqv_inst_map::out) is det.
 
 build_eqv_map([], !EqvMap, !EqvInstMap).
-build_eqv_map([ItemAndContext | Items0], !EqvMap, !EqvInstMap) :-
-    ItemAndContext = item_and_context(Item, _Context),
+build_eqv_map([Item | Items], !EqvMap, !EqvInstMap) :-
     (
-        Item = item_module_defn(_, md_abstract_imported)
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ModuleDefn = md_abstract_imported
     ->
-        skip_abstract_imported_items(Items0, Items)
+        skip_abstract_imported_items(Items, AfterSkipItems),
+        build_eqv_map(AfterSkipItems, !EqvMap, !EqvInstMap)
     ;
-        Item = item_type_defn(VarSet, Name, Args, parse_tree_eqv_type(Body), _)
-    ->
-        Items = Items0,
-        list.length(Args, Arity),
-        TypeCtor = type_ctor(Name, Arity),
-        svmap.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !EqvMap)
-    ;
-        Item = item_inst_defn(VarSet, Name, Args, eqv_inst(Body), _)
-    ->
-        Items = Items0,
-        list.length(Args, Arity),
-        InstId = inst_id(Name, Arity),
-        svmap.set(InstId, eqv_inst_body(VarSet, Args, Body), !EqvInstMap)
-    ;
-        Items = Items0
-    ),
-    build_eqv_map(Items, !EqvMap, !EqvInstMap).
+        (
+            Item = item_type_defn(ItemTypeDefn),
+            ItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+                parse_tree_eqv_type(Body), _, _)
+        ->
+            list.length(Args, Arity),
+            TypeCtor = type_ctor(Name, Arity),
+            svmap.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !EqvMap)
+        ;
+            Item = item_inst_defn(ItemInstDefn),
+            ItemInstDefn = item_inst_defn_info(VarSet, Name, Args,
+                eqv_inst(Body), _, _)
+        ->
+            list.length(Args, Arity),
+            InstId = inst_id(Name, Arity),
+            svmap.set(InstId, eqv_inst_body(VarSet, Args, Body), !EqvInstMap)
+        ;
+            true
+        ),
+        build_eqv_map(Items, !EqvMap, !EqvInstMap)
+    ).
 
-:- pred skip_abstract_imported_items(list(item_and_context)::in,
-    list(item_and_context)::out) is det.
+:- pred skip_abstract_imported_items(list(item)::in, list(item)::out) is det.
 
 skip_abstract_imported_items([], []).
-skip_abstract_imported_items([ItemAndContext0 | ItemAndContexts0],
-        ItemAndContexts) :-
-    ItemAndContext0 = item_and_context(Item0, _Context),
+skip_abstract_imported_items([Item0 | Items0], Items) :-
     (
-        Item0 = item_module_defn(_, Defn),
-        is_section_defn(Defn) = yes,
-        Defn \= md_abstract_imported
+        Item0 = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        is_section_defn(ModuleDefn) = yes,
+        ModuleDefn \= md_abstract_imported
     ->
-        ItemAndContexts = ItemAndContexts0
+        Items = Items0
     ;
-        skip_abstract_imported_items(ItemAndContexts0, ItemAndContexts)
+        skip_abstract_imported_items(Items0, Items)
     ).
 
 :- func is_section_defn(module_defn) = bool.
@@ -240,20 +243,20 @@ is_section_defn(md_version_numbers(_, _)) = no.
     % on <foo>s.
     %
 :- pred replace_in_item_list(module_name::in, eqv_type_location::in,
-    list(item_and_context)::in, eqv_map::in, eqv_inst_map::in,
-    list(item_and_context)::in, list(item_and_context)::out,
+    list(item)::in, eqv_map::in, eqv_inst_map::in,
+    list(item)::in, list(item)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 replace_in_item_list(_, _, [], _, _, !Items, !RecompInfo, !UsedModules,
         !Specs).
-replace_in_item_list(ModuleName, Location0,
-        [ItemAndContext0 | ItemAndContexts0], EqvMap, EqvInstMap,
-        !ReplItems, !RecompInfo, !UsedModules, !Specs) :-
-    ItemAndContext0 = item_and_context(Item0, Context),
-    ( Item0 = item_module_defn(_, ModuleDefn) ->
-        ( ModuleDefn = md_interface,
+replace_in_item_list(ModuleName, Location0, [Item0 | Items0],
+        EqvMap, EqvInstMap, !ReplItems, !RecompInfo, !UsedModules, !Specs) :-
+    ( Item0 = item_module_defn(ItemModuleDefn) ->
+        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        (
+            ModuleDefn = md_interface,
             Location = eqv_type_in_interface
         ;
             ( ModuleDefn = md_implementation
@@ -267,8 +270,8 @@ replace_in_item_list(ModuleName, Location0,
             ; ModuleDefn = md_abstract_imported
             ; ModuleDefn = md_opt_imported
             ; ModuleDefn = md_transitively_imported
-                % XXX I'm not sure what these two are so they may not signify
-                % that we've finished processing the module.
+            % XXX I'm not sure what these two are so they may not signify
+            % that we've finished processing the module.
             ; ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_export(_)
             ),
@@ -286,38 +289,92 @@ replace_in_item_list(ModuleName, Location0,
     ;
         Location = Location0
     ),
+    replace_in_item(ModuleName, Location, EqvMap, EqvInstMap,
+        Item0, Item, !RecompInfo, !UsedModules, ItemSpecs),
+    % Discard the item if there were any errors.
     (
-        replace_in_item(ModuleName, Location, Item0, Context, EqvMap,
-            EqvInstMap, Item, !RecompInfo, !UsedModules, ItemSpecs)
-    ->
-        ItemAndContext = item_and_context(Item, Context),
-        % Discard the item if there were any errors.
-        (
-            ItemSpecs = [],
-            !:ReplItems = [ItemAndContext | !.ReplItems]
-        ;
-            ItemSpecs = [_ | _]
-        ),
-        !:Specs = ItemSpecs ++ !.Specs
+        ItemSpecs = [],
+        !:ReplItems = [Item | !.ReplItems]
     ;
-        ItemAndContext = ItemAndContext0,
-        !:ReplItems = [ItemAndContext | !.ReplItems]
+        ItemSpecs = [_ | _]
     ),
-    replace_in_item_list(ModuleName, Location, ItemAndContexts0,
+    !:Specs = ItemSpecs ++ !.Specs,
+    replace_in_item_list(ModuleName, Location, Items0,
         EqvMap, EqvInstMap, !ReplItems, !RecompInfo, !UsedModules, !Specs).
 
-:- pred replace_in_item(module_name::in, eqv_type_location::in, item::in,
-    prog_context::in, eqv_map::in, eqv_inst_map::in, item::out,
+:- pred replace_in_item(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,  item::in,item::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is semidet.
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
-replace_in_item(ModuleName, Location,
-        item_type_defn(VarSet0, SymName, TArgs, TypeDefn0, Cond),
-        Context, EqvMap, _EqvInstMap,
-        item_type_defn(VarSet, SymName, TArgs, TypeDefn, Cond),
-        !RecompInfo, !UsedModules, Specs) :-
+replace_in_item(ModuleName, Location, EqvMap, EqvInstMap,
+        Item0, Item, !RecompInfo, !UsedModules, Specs) :-
+    (
+        Item0 = item_type_defn(ItemTypeDefn0),
+        replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemTypeDefn0, ItemTypeDefn, !RecompInfo, !UsedModules, Specs),
+        Item = item_type_defn(ItemTypeDefn)
+    ;
+        Item0 = item_pred_decl(ItemPredDecl0),
+        replace_in_pred_decl_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemPredDecl0, ItemPredDecl, !RecompInfo, !UsedModules, Specs),
+        Item = item_pred_decl(ItemPredDecl)
+    ;
+        Item0 = item_mode_decl(ItemModeDecl0),
+        replace_in_mode_decl_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemModeDecl0, ItemModeDecl, !RecompInfo, !UsedModules, Specs),
+        Item = item_mode_decl(ItemModeDecl)
+    ;
+        Item0 = item_pragma(ItemPragma0),
+        replace_in_pragma_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemPragma0, ItemPragma, !RecompInfo, !UsedModules, Specs),
+        Item = item_pragma(ItemPragma)
+    ;
+        Item0 = item_typeclass(ItemTypeClass0),
+        replace_in_typeclass_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemTypeClass0, ItemTypeClass, !RecompInfo, !UsedModules, Specs),
+        Item = item_typeclass(ItemTypeClass)
+    ;
+        Item0 = item_instance(ItemInstance0),
+        replace_in_instance_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemInstance0, ItemInstance, !RecompInfo, !UsedModules, Specs),
+        Item = item_instance(ItemInstance)
+    ;
+        Item0 = item_mutable(ItemMutable0),
+        replace_in_mutable_info(ModuleName, Location, EqvMap, EqvInstMap,
+            ItemMutable0, ItemMutable, !RecompInfo, !UsedModules, Specs),
+        Item = item_mutable(ItemMutable)
+    ;
+        Item0 = item_mode_defn(_),
+        % XXX zs: This seems to be a bug. Mode definitions contain insts,
+        % we should see if they need expansion.
+        Item = Item0,
+        Specs = []
+    ;
+        ( Item0 = item_module_defn(_)
+        ; Item0 = item_clause(_)
+        ; Item0 = item_inst_defn(_)
+        ; Item0 = item_promise(_)
+        ; Item0 = item_initialise(_)
+        ; Item0 = item_finalise(_)
+        ; Item0 = item_nothing(_)
+        ),
+        Item = Item0,
+        Specs = []
+    ).
+
+:- pred replace_in_type_defn_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_type_defn_info::in, item_type_defn_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn_info(ModuleName, Location, EqvMap, _EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
+    Info0 = item_type_defn_info(VarSet0, SymName, TArgs, TypeDefn0, Cond,
+        Context),
     list.length(TArgs, Arity),
-    maybe_record_expanded_items(ModuleName, SymName, !.RecompInfo,
+    maybe_start_recording_expanded_items(ModuleName, SymName, !.RecompInfo,
         UsedTypeCtors0),
     replace_in_type_defn(Location, EqvMap, type_ctor(SymName, Arity),
         TypeDefn0, TypeDefn, ContainsCirc, VarSet0, VarSet,
@@ -331,49 +388,56 @@ replace_in_item(ModuleName, Location,
             Spec = error_spec(severity_error, phase_expand_types, [Msg]),
             Specs = [Spec]
         ;
-            unexpected(this_file, "replace_in_item: invalid item")
+            unexpected(this_file, "replace_in_type_defn: invalid item")
         )
     ;
         ContainsCirc = no,
         Specs = []
     ),
     ItemId = item_id(type_body_item, item_name(SymName, Arity)),
-    finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo).
+    finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
+    Info = item_type_defn_info(VarSet, SymName, TArgs, TypeDefn, Cond,
+        Context).
 
-replace_in_item(ModuleName, Location,
-        item_pred_or_func(Origin, TypeVarSet0, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes0, MaybeWithType0,
-            MaybeWithInst0, Det0, Cond, Purity, ClassContext0),
-        Context, EqvMap, EqvInstMap,
-        item_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes, MaybeWithType,
-            MaybeWithInst, Det, Cond, Purity, ClassContext),
-        !RecompInfo, !UsedModules, Specs) :-
-    maybe_record_expanded_items(ModuleName, PredName, !.RecompInfo,
+:- pred replace_in_pred_decl_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_pred_decl_info::in, item_pred_decl_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_pred_decl_info(ModuleName, Location, EqvMap, EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
+    Info0 = item_pred_decl_info(Origin, TypeVarSet0, InstVarSet, ExistQVars,
+        PredOrFunc, PredName, TypesAndModes0, MaybeWithType0,
+        MaybeWithInst0, Det0, Cond, Purity, ClassContext0, Context),
+    maybe_start_recording_expanded_items(ModuleName, PredName, !.RecompInfo,
         ExpandedItems0),
-
     replace_in_pred_type(Location, PredName, PredOrFunc, Context, EqvMap,
         EqvInstMap, ClassContext0, ClassContext,
         TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
         Det0, Det, ExpandedItems0, ExpandedItems, !UsedModules, Specs),
-
     ItemType = pred_or_func_to_item_type(PredOrFunc),
     list.length(TypesAndModes, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     ItemId = item_id(ItemType, item_name(PredName, OrigArity)),
-    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo).
+    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
+    Info = item_pred_decl_info(Origin, TypeVarSet, InstVarSet, ExistQVars,
+        PredOrFunc, PredName, TypesAndModes, MaybeWithType,
+        MaybeWithInst, Det, Cond, Purity, ClassContext, Context).
 
-replace_in_item(ModuleName, Location,
-        item_pred_or_func_mode(InstVarSet, MaybePredOrFunc0, PredName,
-            Modes0, WithInst0, Det0, Cond),
-        Context, _EqvMap, EqvInstMap,
-        item_pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
-            Modes, WithInst, Det, Cond),
-        !RecompInfo, !UsedModules, Specs) :-
-    maybe_record_expanded_items(ModuleName, PredName, !.RecompInfo,
+:- pred replace_in_mode_decl_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_mode_decl_info::in, item_mode_decl_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_mode_decl_info(ModuleName, Location, _EqvMap, EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
+    Info0 = item_mode_decl_info(InstVarSet, MaybePredOrFunc0, PredName,
+        Modes0, WithInst0, Det0, Cond, Context),
+    maybe_start_recording_expanded_items(ModuleName, PredName, !.RecompInfo,
         ExpandedItems0),
-
     replace_in_pred_mode(Location, PredName, length(Modes0), Context,
         mode_decl, EqvInstMap, ExtraModes, MaybePredOrFunc0, MaybePredOrFunc,
         WithInst0, WithInst, Det0, Det,
@@ -394,17 +458,22 @@ replace_in_item(ModuleName, Location,
         finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo)
     ;
         MaybePredOrFunc = no
-    ).
+    ),
+    Info = item_mode_decl_info(InstVarSet, MaybePredOrFunc, PredName,
+        Modes, WithInst, Det, Cond, Context).
 
-replace_in_item(ModuleName, Location,
-        item_typeclass(Constraints0, FunDeps, ClassName, Vars,
-            ClassInterface0, VarSet0),
-        _Context, EqvMap, EqvInstMap,
-        item_typeclass(Constraints, FunDeps, ClassName, Vars,
-            ClassInterface, VarSet),
-        !RecompInfo, !UsedModules, Specs) :-
+:- pred replace_in_typeclass_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_typeclass_info::in, item_typeclass_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_typeclass_info(ModuleName, Location, EqvMap, EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
+    Info0 = item_typeclass_info(Constraints0, FunDeps, ClassName, Vars,
+        ClassInterface0, VarSet0, Context),
     list.length(Vars, Arity),
-    maybe_record_expanded_items(ModuleName, ClassName, !.RecompInfo,
+    maybe_start_recording_expanded_items(ModuleName, ClassName, !.RecompInfo,
         ExpandedItems0),
     replace_in_prog_constraint_list(Location, EqvMap,
         Constraints0, Constraints, VarSet0, VarSet,
@@ -421,18 +490,23 @@ replace_in_item(ModuleName, Location,
         ClassInterface = class_interface_concrete(Methods)
     ),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
-    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo).
+    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
+    Info = item_typeclass_info(Constraints, FunDeps, ClassName, Vars,
+        ClassInterface, VarSet, Context).
 
-replace_in_item(ModuleName, Location,
-        item_instance(Constraints0, ClassName, Ts0, InstanceBody, VarSet0,
-            ModName),
-        _Context, EqvMap, _EqvInstMap,
-        item_instance(Constraints, ClassName, Ts, InstanceBody, VarSet,
-            ModName),
-        !RecompInfo, !UsedModules, []) :-
+:- pred replace_in_instance_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_instance_info::in, item_instance_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_instance_info(ModuleName, Location, EqvMap, _EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, []) :-
+    Info0 = item_instance_info(Constraints0, ClassName, Ts0, InstanceBody,
+        VarSet0, ContainingModuleName, Context),
     (
         ( !.RecompInfo = no
-        ; ModName = ModuleName
+        ; ContainingModuleName = ModuleName
         )
     ->
         UsedTypeCtors0 = no
@@ -446,72 +520,119 @@ replace_in_item(ModuleName, Location,
         VarSet1, VarSet, UsedTypeCtors1, UsedTypeCtors, !UsedModules),
     list.length(Ts0, Arity),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
-    finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo).
+    finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
+    Info = item_instance_info(Constraints, ClassName, Ts, InstanceBody,
+        VarSet, ContainingModuleName, Context).
 
-replace_in_item(ModuleName, Location,
-        item_pragma(Origin, pragma_type_spec(PredName, NewName, Arity, PorF,
-            Modes, Subst0, VarSet0, ItemIds0)),
-        _Context, EqvMap, _EqvInstMap,
-        item_pragma(Origin, pragma_type_spec(PredName, NewName, Arity, PorF,
-            Modes, Subst, VarSet, ItemIds)),
-        !RecompInfo, !UsedModules, []) :-
-    (
-        ( !.RecompInfo = no
-        ; PredName = qualified(ModuleName, _)
-        )
-    ->
-        ExpandedItems0 = no
-    ;
-        ExpandedItems0 = yes(ModuleName - ItemIds0)
-    ),
-    replace_in_subst(Location, EqvMap, Subst0, Subst, VarSet0, VarSet,
-        ExpandedItems0, ExpandedItems, !UsedModules),
-    (
-        ExpandedItems = no,
-        ItemIds = ItemIds0
-    ;
-        ExpandedItems = yes(_ - ItemIds)
-    ).
+:- pred replace_in_pragma_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_pragma_info::in, item_pragma_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
-replace_in_item(ModuleName, Location,
-        item_pragma(Origin, pragma_foreign_proc(Attrs0, PName, PredOrFunc,
-            ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
-        _Context, EqvMap, _EqvInstMap,
-        item_pragma(Origin, pragma_foreign_proc(Attrs, PName, PredOrFunc,
-            ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
-        !RecompInfo, !UsedModules, []) :-
-    some [!EquivTypeInfo] (
-        maybe_record_expanded_items(ModuleName, PName,
-            !.RecompInfo, !:EquivTypeInfo),
-        UserSharing0 = get_user_annotated_sharing(Attrs0),
+replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, []) :-
+    Info0 = item_pragma_info(Origin, Pragma0, Context),
+    (
+        Pragma0 = pragma_type_spec(PredName, NewName, Arity,
+            PorF, Modes, Subst0, VarSet0, ItemIds0),
         (
-            UserSharing0 = user_sharing(Sharing0, MaybeTypes0),
-            MaybeTypes0 = yes(user_type_info(Types0, TVarset0))
+            ( !.RecompInfo = no
+            ; PredName = qualified(ModuleName, _)
+            )
         ->
-            replace_in_type_list_location(Location,
-                EqvMap, Types0, Types, _AnythingChanged,
-                TVarset0, TVarset, !EquivTypeInfo, !UsedModules),
-            replace_in_structure_sharing_domain(Location,
-                EqvMap, Sharing0, Sharing,
-                TVarset0, !EquivTypeInfo, !UsedModules),
-            MaybeTypes = yes(user_type_info(Types, TVarset)),
-            UserSharing = user_sharing(Sharing, MaybeTypes),
-            set_user_annotated_sharing(UserSharing, Attrs0, Attrs)
+            ExpandedItems0 = no
         ;
-            Attrs = Attrs0
+            ExpandedItems0 = yes(ModuleName - ItemIds0)
         ),
-        ItemId = item_id(foreign_proc_item, item_name(PName,
-            list.length(ProcVars))),
-        finish_recording_expanded_items(ItemId, !.EquivTypeInfo, !RecompInfo)
-    ).
+        replace_in_subst(Location, EqvMap, Subst0, Subst, VarSet0, VarSet,
+            ExpandedItems0, ExpandedItems, !UsedModules),
+        (
+            ExpandedItems = no,
+            ItemIds = ItemIds0
+        ;
+            ExpandedItems = yes(_ - ItemIds)
+        ),
+        Pragma = pragma_type_spec(PredName, NewName, Arity,
+            PorF, Modes, Subst, VarSet, ItemIds)
+    ;
+        Pragma0 = pragma_foreign_proc(Attrs0, PName, PredOrFunc,
+            ProcVars, ProcVarset, ProcInstVarset, ProcImpl),
+        some [!EquivTypeInfo] (
+            maybe_start_recording_expanded_items(ModuleName, PName,
+                !.RecompInfo, !:EquivTypeInfo),
+            UserSharing0 = get_user_annotated_sharing(Attrs0),
+            (
+                UserSharing0 = user_sharing(Sharing0, MaybeTypes0),
+                MaybeTypes0 = yes(user_type_info(Types0, TVarset0))
+            ->
+                replace_in_type_list_location(Location,
+                    EqvMap, Types0, Types, _AnythingChanged,
+                    TVarset0, TVarset, !EquivTypeInfo, !UsedModules),
+                replace_in_structure_sharing_domain(Location,
+                    EqvMap, Sharing0, Sharing,
+                    TVarset0, !EquivTypeInfo, !UsedModules),
+                MaybeTypes = yes(user_type_info(Types, TVarset)),
+                UserSharing = user_sharing(Sharing, MaybeTypes),
+                set_user_annotated_sharing(UserSharing, Attrs0, Attrs)
+            ;
+                Attrs = Attrs0
+            ),
+            ItemId = item_id(foreign_proc_item, item_name(PName,
+                list.length(ProcVars))),
+            finish_recording_expanded_items(ItemId, !.EquivTypeInfo,
+                !RecompInfo)
+        ),
+        Pragma = pragma_foreign_proc(Attrs, PName, PredOrFunc,
+            ProcVars, ProcVarset, ProcInstVarset, ProcImpl)
+    ;
+        ( Pragma0 = pragma_check_termination(_, _)
+        ; Pragma0 = pragma_does_not_terminate(_, _)
+        ; Pragma0 = pragma_exceptions(_, _, _, _, _)
+        ; Pragma0 = pragma_fact_table(_, _, _)
+        ; Pragma0 = pragma_foreign_code(_, _)
+        ; Pragma0 = pragma_foreign_decl(_, _, _)
+        ; Pragma0 = pragma_foreign_enum(_, _, _, _)
+        ; Pragma0 = pragma_foreign_export(_, _, _, _, _)
+        ; Pragma0 = pragma_foreign_export_enum(_, _, _, _, _)
+        ; Pragma0 = pragma_foreign_import_module(_, _)
+        ; Pragma0 = pragma_import(_, _, _, _, _)
+        ; Pragma0 = pragma_inline(_, _)
+        ; Pragma0 = pragma_mm_tabling_info(_, _, _, _, _)
+        ; Pragma0 = pragma_mode_check_clauses(_, _)
+        ; Pragma0 = pragma_no_inline(_, _)
+        ; Pragma0 = pragma_obsolete(_, _)
+        ; Pragma0 = pragma_promise_equivalent_clauses(_, _)
+        ; Pragma0 = pragma_promise_pure(_, _)
+        ; Pragma0 = pragma_promise_semipure(_, _)
+        ; Pragma0 = pragma_require_feature_set(_)
+        ; Pragma0 = pragma_reserve_tag(_, _)
+        ; Pragma0 = pragma_source_file(_)
+        ; Pragma0 = pragma_structure_reuse(_, _, _, _, _, _)
+        ; Pragma0 = pragma_structure_sharing(_, _, _, _, _, _)
+        ; Pragma0 = pragma_tabled(_, _, _, _, _, _)
+        ; Pragma0 = pragma_terminates(_, _)
+        ; Pragma0 = pragma_termination2_info(_, _, _, _, _, _)
+        ; Pragma0 = pragma_termination_info(_, _, _, _, _)
+        ; Pragma0 = pragma_trailing_info(_, _, _, _, _)
+        ; Pragma0 = prog_item.pragma_unused_args(_, _, _, _, _)
+        ),
+        Pragma = Pragma0
+    ),
+    Info = item_pragma_info(Origin, Pragma, Context).
 
-replace_in_item(ModuleName, Location,
-        item_mutable(MutName, Type0, InitValue, Inst0, Attrs, Varset),
-        _Context, EqvMap, EqvInstMap,
-        item_mutable(MutName, Type, InitValue, Inst, Attrs, Varset),
-        !RecompInfo, !UsedModules, []) :-
+:- pred replace_in_mutable_info(module_name::in, eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_mutable_info::in, item_mutable_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_mutable_info(ModuleName, Location, EqvMap, EqvInstMap,
+        Info0, Info, !RecompInfo, !UsedModules, []) :-
+    Info0 = item_mutable_info(MutName, Type0, InitValue, Inst0, Attrs, Varset,
+        Context),
     QualName = qualified(ModuleName, MutName),
-    maybe_record_expanded_items(ModuleName, QualName, !.RecompInfo,
+    maybe_start_recording_expanded_items(ModuleName, QualName, !.RecompInfo,
         ExpandedItems0),
     TVarSet0 = varset.init,
     replace_in_type_location(Location, EqvMap, Type0, Type, _TypeChanged,
@@ -519,7 +640,9 @@ replace_in_item(ModuleName, Location,
     replace_in_inst(Location, Inst0, EqvInstMap, Inst,
         ExpandedItems1, ExpandedItems, !UsedModules),
     ItemId = item_id(mutable_item, item_name(QualName, 0)),
-    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo).
+    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
+    Info = item_mutable_info(MutName, Type, InitValue, Inst, Attrs, Varset,
+        Context).
 
 :- pred replace_in_event_spec_list(
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
@@ -590,7 +713,7 @@ replace_in_event_attr(Attr0, Attr, EqvMap, _EqvInstMap,
 :- pred replace_in_type_defn(eqv_type_location::in, eqv_map::in, type_ctor::in,
     type_defn::in, type_defn::out, bool::out, tvarset::in, tvarset::out,
     equiv_type_info::in, equiv_type_info::out,
-    used_modules::in, used_modules::out) is semidet.
+    used_modules::in, used_modules::out) is det.
 
 replace_in_type_defn(Location, EqvMap, TypeCtor, TypeDefn0, TypeDefn,
         ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules) :-
@@ -616,6 +739,12 @@ replace_in_type_defn(Location, EqvMap, TypeCtor, TypeDefn0, TypeDefn,
         SolverDetails = solver_type_details(RepresentationType, InitPred,
             GroundInst, AnyInst, MutableItems),
         TypeDefn = parse_tree_solver_type(SolverDetails,  MaybeUserEqComp)
+    ;
+        ( TypeDefn0 = parse_tree_abstract_type(_)
+        ; TypeDefn0 = parse_tree_foreign_type(_, _, _)
+        ),
+        TypeDefn = TypeDefn0,
+        ContainsCirc = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1329,8 +1458,8 @@ replace_in_unit_selector(Location, EqvMap, TVarset,
 
 :- type expanded_item_set == pair(module_name, set(item_id)).
 
-maybe_record_expanded_items(_, _, no, no).
-maybe_record_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
+maybe_start_recording_expanded_items(_, _, no, no).
+maybe_start_recording_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
     ( SymName = qualified(ModuleName, _) ->
         MaybeInfo = no
     ;
@@ -1344,16 +1473,17 @@ record_expanded_item(Item, !EquivTypeInfo) :-
     map_maybe(record_expanded_item_2(Item), !EquivTypeInfo).
 
 :- pred record_expanded_item_2(item_id::in,
-    pair(module_name, set(item_id))::in,
-    pair(module_name, set(item_id))::out) is det.
+    expanded_item_set::in, expanded_item_set::out) is det.
 
-record_expanded_item_2(ItemId, ModuleName - Items0, ModuleName - Items) :-
+record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
+    ExpandedItemSet0 = ModuleName - Items0,
     ItemId = item_id(_, ItemName),
     ( ItemName = item_name(qualified(ModuleName, _), _) ->
         % We don't need to record local types.
-        Items = Items0
+        ExpandedItemSet = ExpandedItemSet0
     ;
-        Items = set.insert(Items0, ItemId)
+        set.insert(Items0, ItemId, Items),
+        ExpandedItemSet = ModuleName - Items
     ).
 
 finish_recording_expanded_items(_, no, no, no).

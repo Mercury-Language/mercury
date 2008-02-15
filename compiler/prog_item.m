@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,7 @@
 :- type compilation_unit
     --->    unit_module(
                 module_name,
-                item_list
+                list(item)
             ).
 
     % Did an item originate in user code or was it added by the compiler as
@@ -87,64 +87,84 @@
             % The compiler sometimes needs to insert additional foreign_import
             % pragmas. XXX Why?
 
-:- type item_list == list(item_and_context).
+:- type item
+    --->    item_module_defn(item_module_defn_info)
+    ;       item_clause(item_clause_info)
+    ;       item_type_defn(item_type_defn_info)
+    ;       item_inst_defn(item_inst_defn_info)
+    ;       item_mode_defn(item_mode_defn_info)
+    ;       item_pred_decl(item_pred_decl_info)
+    ;       item_mode_decl(item_mode_decl_info)
+    ;       item_pragma(item_pragma_info)
+    ;       item_promise(item_promise_info)
+    ;       item_typeclass(item_typeclass_info)
+    ;       item_instance(item_instance_info)
+    ;       item_initialise(item_initialise_info)
+    ;       item_finalise(item_finalise_info)
+    ;       item_mutable(item_mutable_info)
+    ;       item_nothing(item_nothing_info).
 
-:- type item_and_context
-    --->    item_and_context(
-                item,
-                prog_context
+:- type item_module_defn_info
+    --->    item_module_defn_info(
+                module_defn_varset              :: prog_varset,
+                module_defn_module_defn         :: module_defn,
+                module_defn_context             :: prog_context
             ).
 
-:- type item
-    --->    item_clause(
+:- type item_clause_info
+    --->    item_clause_info(
                 cl_origin                       :: item_origin,
                 cl_varset                       :: prog_varset,
                 cl_pred_or_func                 :: pred_or_func,
                 cl_predname                     :: sym_name,
                 cl_head_args                    :: list(prog_term),
-                cl_body                         :: goal
-            )
+                cl_body                         :: goal,
+                cl_context                      :: prog_context
+            ).
 
-            % `:- type ...':
-            % a definition of a type, or a declaration of an abstract type.
-    ;       item_type_defn(
+:- type item_type_defn_info
+    --->    item_type_defn_info(
+                % `:- type ...':
+                % a definition of a type, or a declaration of an abstract type.
+
                 td_tvarset                      :: tvarset,
                 td_ctor_name                    :: sym_name,
                 td_ctor_args                    :: list(type_param),
                 td_ctor_defn                    :: type_defn,
-                td_cond                         :: condition
-            )
+                td_cond                         :: condition,
+                td_context                      :: prog_context
+            ).
 
-            % `:- inst ... = ...':
-            % a definition of an inst.
-    ;       item_inst_defn(
+:- type item_inst_defn_info
+    --->    item_inst_defn_info(
+                % `:- inst ... = ...':
+                % a definition of an inst.
                 id_varset                       :: inst_varset,
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
                 id_inst_defn                    :: inst_defn,
-                id_cond                         :: condition
-            )
+                id_cond                         :: condition,
+                id_context                      :: prog_context
+            ).
 
-            % `:- mode ... = ...':
-            % a definition of a mode.
-    ;       item_mode_defn(
+:- type item_mode_defn_info
+    --->    item_mode_defn_info(
+                % `:- mode ... = ...':
+                % a definition of a mode.
                 md_varset                       :: inst_varset,
                 md_mode_name                    :: sym_name,
                 md_mode_args                    :: list(inst_var),
                 md_mode_defn                    :: mode_defn,
-                md_cond                         :: condition
-            )
+                md_cond                         :: condition,
+                md_context                      :: prog_context
+            ).
 
-    ;       item_module_defn(
-                module_defn_varset              :: prog_varset,
-                module_defn_module_defn         :: module_defn
-            )
-
-            % `:- pred ...' or `:- func ...':
-            % a predicate or function declaration.
-            % This specifies the type of the predicate or function,
-            % and it may optionally also specify the mode and determinism.
-    ;       item_pred_or_func(
+:- type item_pred_decl_info
+    --->    item_pred_decl_info(
+                % `:- pred ...' or `:- func ...':
+                % a predicate or function declaration.
+                % This specifies the type of the predicate or function,
+                % and it may optionally also specify the mode and determinism.
                 pf_origin                       :: item_origin,
                 pf_tvarset                      :: tvarset,
                 pf_instvarset                   :: inst_varset,
@@ -152,95 +172,112 @@
                 pf_which                        :: pred_or_func,
                 pf_name                         :: sym_name,
                 pf_arg_decls                    :: list(type_and_mode),
+                % The next two fields hold the `with_type` and `with_inst`
+                % annotations. This syntactic sugar is expanded out by
+                % equiv_type.m, which will then set these fields to `no'.
                 pf_maybe_with_type              :: maybe(mer_type),
                 pf_maybe_with_inst              :: maybe(mer_inst),
                 pf_maybe_detism                 :: maybe(determinism),
                 pf_cond                         :: condition,
                 pf_purity                       :: purity,
-                pf_class_context                :: prog_constraints
-            )
-            %   The WithType and WithInst fields hold the `with_type`
-            %   and `with_inst` annotations, which are syntactic
-            %   sugar that is expanded by equiv_type.m
-            %   equiv_type.m will set these fields to `no'.
+                pf_class_context                :: prog_constraints,
+                pf_context                      :: prog_context
+            ).
 
-            % `:- mode ...':
-            % a mode declaration for a predicate or function.
-    ;       item_pred_or_func_mode(
+:- type item_mode_decl_info
+    --->    item_mode_decl_info(
+                % `:- mode ...':
+                % a mode declaration for a predicate or function.
                 pfm_instvarset                  :: inst_varset,
                 pfm_which                       :: maybe(pred_or_func),
                 pfm_name                        :: sym_name,
                 pfm_arg_modes                   :: list(mer_mode),
+                % The next field holds the `with_inst` annotation. This
+                % syntactic sugar is expanded by equiv_type.m, which will
+                % then set the field to `no'.
                 pfm_maybe_with_inst             :: maybe(mer_inst),
                 pfm_maybe_detism                :: maybe(determinism),
-                pfm_cond                        :: condition
-            )
-            %   The WithInst field holds the `with_inst` annotation,
-            %   which is syntactic sugar that is expanded by
-            %   equiv_type.m. equiv_type.m will set the field to `no'.
+                pfm_cond                        :: condition,
+                pfm_context                     :: prog_context
+            ).
 
-    ;       item_pragma(
+:- type item_pragma_info
+    --->    item_pragma_info(
                 pragma_origin                   :: item_origin,
-                pragma_type                     :: pragma_type
-            )
+                pragma_type                     :: pragma_type,
+                pragma_context                  :: prog_context
+            ).
 
-    ;       item_promise(
+:- type item_promise_info
+    --->    item_promise_info(
                 prom_type                       :: promise_type,
                 prom_clause                     :: goal,
                 prom_varset                     :: prog_varset,
-                prom_univ_quant_vars            :: prog_vars
-            )
+                prom_univ_quant_vars            :: prog_vars,
+                prom_context                    :: prog_context
+            ).
 
-    ;       item_typeclass(
+:- type item_typeclass_info
+    --->    item_typeclass_info(
                 tc_constraints                  :: list(prog_constraint),
                 tc_fundeps                      :: list(prog_fundep),
                 tc_class_name                   :: class_name,
                 tc_class_params                 :: list(tvar),
                 tc_class_methods                :: class_interface,
-                tc_varset                       :: tvarset
-            )
+                tc_varset                       :: tvarset,
+                tc_context                      :: prog_context
+            ).
 
-    ;       item_instance(
+:- type item_instance_info
+    --->    item_instance_info(
                 ci_deriving_class               :: list(prog_constraint),
                 ci_class_name                   :: class_name,
                 ci_types                        :: list(mer_type),
                 ci_method_instances             :: instance_body,
                 ci_varset                       :: tvarset,
-                ci_module_containing_instance   :: module_name
-            )
+                ci_module_containing_instance   :: module_name,
+                ci_context                      :: prog_context
+            ).
 
-            % :- initialise pred_name.
-    ;       item_initialise(
-                item_origin,
-                sym_name,
-                arity
-            )
+:- type item_initialise_info
+    --->    item_initialise_info(
+                % :- initialise pred_name.
+                init_origin                     :: item_origin,
+                init_name                       :: sym_name,
+                init_arity                      :: arity,
+                init_context                    :: prog_context
+            ).
 
-            % :- finalise pred_name.
-    ;       item_finalise(
-                item_origin,
-                sym_name,
-                arity
-            )
+:- type item_finalise_info
+    --->    item_finalise_info(
+                % :- finalise pred_name.
+                final_origin                    :: item_origin,
+                final_name                      :: sym_name,
+                final_arity                     :: arity,
+                final_context                   :: prog_context
+            ).
 
-            % :- mutable(var_name, type, inst, value, attrs).
-    ;       item_mutable(
+:- type item_mutable_info
+    --->    item_mutable_info(
+                % :- mutable(var_name, type, inst, value, attrs).
                 mut_name                        :: string,
                 mut_type                        :: mer_type,
                 mut_init_value                  :: prog_term,
                 mut_inst                        :: mer_inst,
                 mut_attrs                       :: mutable_var_attributes,
-                mut_varset                      :: prog_varset
-            )
-
-            % Used for items that should be ignored (for the
-            % purposes of backwards compatibility etc).
-    ;       item_nothing(
-                nothing_maybe_warning           :: maybe(item_warning)
+                mut_varset                      :: prog_varset,
+                mut_context                     :: prog_context
             ).
 
-:- inst item_mutable
-    --->    item_mutable(ground, ground, ground, ground, ground, ground).
+:- type item_nothing_info
+    --->    item_nothing_info(
+                % Used for items that should be ignored (for purposes of
+                % backwards compatibility etc).
+                nothing_maybe_warning           :: maybe(item_warning),
+                nothing_context                 :: prog_context
+            ).
+
+:- func get_item_context(item) = prog_context.
 
 :- type item_warning
     --->    item_warning(
@@ -831,6 +868,56 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+%-----------------------------------------------------------------------------%
+
+get_item_context(Item) = Context :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        Context = ItemModuleDefn ^ module_defn_context
+    ;
+        Item = item_clause(ItemClause),
+        Context = ItemClause ^ cl_context
+    ;
+        Item = item_type_defn(ItemTypeDefn),
+        Context = ItemTypeDefn ^ td_context
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        Context = ItemInstDefn ^ id_context
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        Context = ItemModeDefn ^ md_context
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        Context = ItemPredDecl ^ pf_context
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        Context = ItemModeDecl ^ pfm_context
+    ;
+        Item = item_pragma(ItemPragma),
+        Context = ItemPragma ^ pragma_context
+    ;
+        Item = item_promise(ItemPromise),
+        Context = ItemPromise ^ prom_context
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        Context = ItemTypeClass ^ tc_context
+    ;
+        Item = item_instance(ItemInstance),
+        Context = ItemInstance ^ ci_context
+    ;
+        Item = item_initialise(ItemInitialise),
+        Context = ItemInitialise ^ init_context
+    ;
+        Item = item_finalise(ItemFinalise),
+        Context = ItemFinalise ^ final_context
+    ;
+        Item = item_mutable(ItemMutable),
+        Context = ItemMutable ^ mut_context
+    ;
+        Item = item_nothing(ItemNothing),
+        Context = ItemNothing ^ nothing_context
+    ).
 
 %-----------------------------------------------------------------------------%
 %

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -957,7 +957,7 @@ file_or_module_to_module_name(file(FileName)) = ModuleName :-
 file_or_module_to_module_name(module(ModuleName)) = ModuleName.
 
 :- pred read_module_or_file(file_or_module::in, bool::in, module_name::out,
-    file_name::out, maybe(timestamp)::out, item_list::out,
+    file_name::out, maybe(timestamp)::out, list(item)::out,
     module_error::out, read_modules::in, read_modules::out,
     io::di, io::uo) is det.
 
@@ -1185,10 +1185,10 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 
 :- pred apply_process_module(
     pred(file_name, module_name, maybe(timestamp),
-        pair(module_name, item_list), io, io)::
+        pair(module_name, list(item)), io, io)::
         in(pred(in, in, in, in, di, uo) is det),
     file_name::in, module_name::in, maybe(timestamp)::in,
-    pair(module_name, item_list)::in, io::di, io::uo) is det.
+    pair(module_name, list(item))::in, io::di, io::uo) is det.
 
 apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
         SubModule, !IO) :-
@@ -1283,7 +1283,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 :- pred compile_all_submodules(string::in, module_name::in,
     list(module_name)::in, maybe(timestamp)::in, read_modules::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(pair(module_name, item_list))::in, list(string)::out,
+    list(pair(module_name, list(item)))::in, list(string)::out,
     list(string)::out, io::di, io::uo) is det.
 
 compile_all_submodules(FileName, SourceFileModuleName, NestedSubModules,
@@ -1296,7 +1296,7 @@ compile_all_submodules(FileName, SourceFileModuleName, NestedSubModules,
     list.condense(FactTableObjFileLists, FactTableObjFiles).
 
 :- pred make_interface(file_name::in, module_name::in, maybe(timestamp)::in,
-    pair(module_name, item_list)::in, io::di, io::uo) is det.
+    pair(module_name, list(item))::in, io::di, io::uo) is det.
 
 make_interface(SourceFileName, SourceFileModuleName, MaybeTimestamp,
         ModuleName - Items, !IO) :-
@@ -1304,14 +1304,14 @@ make_interface(SourceFileName, SourceFileModuleName, MaybeTimestamp,
         ModuleName, MaybeTimestamp, Items, !IO).
 
 :- pred make_short_interface(file_name::in, module_name::in,
-    maybe(timestamp)::in, pair(module_name, item_list)::in,
+    maybe(timestamp)::in, pair(module_name, list(item))::in,
     io::di, io::uo) is det.
 
 make_short_interface(SourceFileName, _, _, ModuleName - Items, !IO) :-
     make_short_interface(SourceFileName, ModuleName, Items, !IO).
 
 :- pred make_private_interface(file_name::in, module_name::in,
-    maybe(timestamp)::in, pair(module_name, item_list)::in,
+    maybe(timestamp)::in, pair(module_name, list(item))::in,
     io::di, io::uo) is det.
 
 make_private_interface(SourceFileName, SourceFileModuleName,
@@ -1324,7 +1324,7 @@ make_private_interface(SourceFileName, SourceFileModuleName,
 halt_at_module_error(_, fatal_module_errors).
 halt_at_module_error(HaltSyntax, some_module_errors) :- HaltSyntax = yes.
 
-:- pred module_to_link(pair(module_name, item_list)::in, string::out) is det.
+:- pred module_to_link(pair(module_name, list(item))::in, string::out) is det.
 
 module_to_link(ModuleName - _Items, ModuleToLink) :-
     module_name_to_file_name(ModuleName, ModuleToLink).
@@ -1474,7 +1474,7 @@ find_timestamp_files_2(CompilationTarget, TimestampSuffix,
 :- pred compile(file_name::in, module_name::in, list(module_name)::in,
     maybe(timestamp)::in, read_modules::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    pair(module_name, item_list)::in, list(string)::out,
+    pair(module_name, list(item))::in, list(string)::out,
     io::di, io::uo) is det.
 
 compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
@@ -1907,7 +1907,7 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         HLDS1 = HLDS0
     ).
 
-:- pred invoke_module_qualify_items(item_list::in, item_list::out,
+:- pred invoke_module_qualify_items(list(item)::in, list(item)::out,
     event_spec_map::in, event_spec_map::out,
     module_name::in, string::in, bool::in, bool::in, mq_info::out,
     bool::out, bool::out, io::di, io::uo) is det.
@@ -2008,7 +2008,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     bool.or(Error1, Error2, Error).
 
 :- pred expand_equiv_types(module_name::in, bool::in, bool::in,
-    item_list::in, item_list::out, event_spec_map::in, event_spec_map::out,
+    list(item)::in, list(item)::out, event_spec_map::in, event_spec_map::out,
     eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     list(error_spec)::out, io::di, io::uo) is det.
@@ -2024,7 +2024,7 @@ expand_equiv_types(ModuleName, Verbose, Stats, Items0, Items,
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred make_hlds(module_name::in, item_list::in, event_set::in,
+:- pred make_hlds(module_name::in, list(item)::in, event_set::in,
     mq_info::in, eqv_map::in, used_modules::in, bool::in, bool::in,
     module_info::out, make_hlds_qual_info::out,
     bool::out, bool::out, bool::out, io::di, io::uo) is det.

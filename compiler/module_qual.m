@@ -50,7 +50,7 @@
     %
     % Errors in EventSpecMap0 will be reported as being for EventSpecFileName.
     %
-:- pred module_qualify_items(item_list::in, item_list::out,
+:- pred module_qualify_items(list(item)::in, list(item)::out,
     event_spec_map::in, event_spec_map::out, globals::in,
     module_name::in, maybe(string)::in, string::in, mq_info::out,
     bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
@@ -257,96 +257,116 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
     % inst ids, all module synonym definitions, and the names of all
     % modules imported in the interface.
     %
-:- pred collect_mq_info(item_list::in, mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info(list(item)::in, mq_info::in, mq_info::out) is det.
 
 collect_mq_info([], !Info).
-collect_mq_info([ItemAndContext | ItemAndContexts], !Info) :-
-    ItemAndContext = item_and_context(Item, _Context),
-    ( Item = item_module_defn(_, md_transitively_imported) ->
+collect_mq_info([Item | Items], !Info) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ModuleDefn = md_transitively_imported
+    ->
         % Don't process the transitively imported items (from `.int2' files).
         % They can't be used in the current module.
         true
     ;
         collect_mq_info_item(Item, !Info),
-        collect_mq_info(ItemAndContexts, !Info)
+        collect_mq_info(Items, !Info)
     ).
 
 :- pred collect_mq_info_item(item::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_item(item_clause(_, _, _, _, _, _), !Info).
-collect_mq_info_item(item_type_defn(_, SymName, Params, _, _), !Info) :-
-    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
-        % This item is not visible in the current module.
-        true
-    ;
-        list.length(Params, Arity),
-        mq_info_get_types(!.Info, Types0),
-        mq_info_get_impl_types(!.Info, ImplTypes0),
-        mq_info_get_need_qual_flag(!.Info, NeedQualifier),
-        id_set_insert(NeedQualifier, mq_id(SymName, Arity), Types0, Types),
-        id_set_insert(NeedQualifier, mq_id(SymName, Arity),
-            ImplTypes0, ImplTypes),
-        mq_info_set_types(Types, !Info),
-        mq_info_set_impl_types(ImplTypes, !Info)
-    ).
-collect_mq_info_item(item_inst_defn(_, SymName, Params, _, _), !Info) :-
-    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
-        % This item is not visible in the current module.
-        true
-    ;
-        list.length(Params, Arity),
-        mq_info_get_insts(!.Info, Insts0),
-        mq_info_get_need_qual_flag(!.Info, NeedQualifier),
-        id_set_insert(NeedQualifier, mq_id(SymName, Arity), Insts0, Insts),
-        mq_info_set_insts(Insts, !Info)
-    ).
-collect_mq_info_item(item_mode_defn(_, SymName, Params, _, _), !Info) :-
-    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
-        % This item is not visible in the current module.
-        true
-    ;
-        list.length(Params, Arity),
-        mq_info_get_modes(!.Info, Modes0),
-        mq_info_get_need_qual_flag(!.Info, NeedQualifier),
-        id_set_insert(NeedQualifier, mq_id(SymName, Arity), Modes0, Modes),
-        mq_info_set_modes(Modes, !Info)
-    ).
-collect_mq_info_item(item_module_defn(_, ModuleDefn), !Info) :-
-    process_module_defn(ModuleDefn, !Info).
-collect_mq_info_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
-        !Info).
-collect_mq_info_item(item_pred_or_func_mode(_, _, _, _, _, _, _), !Info).
-collect_mq_info_item(item_pragma(_, _), !Info).
-collect_mq_info_item(item_promise(_PromiseType, Goal, _ProgVarSet, _UnivVars),
-        !Info) :-
-    process_assert(Goal, SymNames, Success),
+collect_mq_info_item(Item, !Info) :-
     (
-        Success = yes,
-        list.foldl(collect_mq_info_qualified_symname, SymNames, !Info)
+        Item = item_type_defn(ItemTypeDefn),
+        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _),
+        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+            % This item is not visible in the current module.
+            true
+        ;
+            list.length(Params, Arity),
+            mq_info_get_types(!.Info, Types0),
+            mq_info_get_impl_types(!.Info, ImplTypes0),
+            mq_info_get_need_qual_flag(!.Info, NeedQualifier),
+            id_set_insert(NeedQualifier, mq_id(SymName, Arity), Types0, Types),
+            id_set_insert(NeedQualifier, mq_id(SymName, Arity),
+                ImplTypes0, ImplTypes),
+            mq_info_set_types(Types, !Info),
+            mq_info_set_impl_types(ImplTypes, !Info)
+        )
+    ;   
+        Item = item_inst_defn(ItemInstDefn),
+        ItemInstDefn = item_inst_defn_info(_, SymName, Params, _, _, _),
+        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+            % This item is not visible in the current module.
+            true
+        ;
+            list.length(Params, Arity),
+            mq_info_get_insts(!.Info, Insts0),
+            mq_info_get_need_qual_flag(!.Info, NeedQualifier),
+            id_set_insert(NeedQualifier, mq_id(SymName, Arity), Insts0, Insts),
+            mq_info_set_insts(Insts, !Info)
+        )
     ;
-        % Any unqualified symbol in the promise might come from *any* of the
-        % imported modules. There's no way for us to tell which ones.
-        % So we conservatively assume that it uses all of them.
-        Success = no,
-        set.init(UnusedInterfaceModules),
-        mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
-    ).
-collect_mq_info_item(item_nothing(_), !Info).
-collect_mq_info_item(item_typeclass(_, _, SymName, Params, _, _), !Info) :-
-    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
-        % This item is not visible in the current module.
-        true
+        Item = item_mode_defn(ItemModeDefn),
+        ItemModeDefn = item_mode_defn_info(_, SymName, Params, _, _, _),
+        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+            % This item is not visible in the current module.
+            true
+        ;
+            list.length(Params, Arity),
+            mq_info_get_modes(!.Info, Modes0),
+            mq_info_get_need_qual_flag(!.Info, NeedQualifier),
+            id_set_insert(NeedQualifier, mq_id(SymName, Arity), Modes0, Modes),
+            mq_info_set_modes(Modes, !Info)
+        )
     ;
-        list.length(Params, Arity),
-        mq_info_get_classes(!.Info, Classes0),
-        mq_info_get_need_qual_flag(!.Info, NeedQualifier),
-        id_set_insert(NeedQualifier, mq_id(SymName, Arity), Classes0, Classes),
-        mq_info_set_classes(Classes, !Info)
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        process_module_defn(ModuleDefn, !Info)
+    ;
+        Item = item_promise(ItemPromise),
+        ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
+            _UnivVars, _Context),
+        process_assert(Goal, SymNames, Success),
+        (
+            Success = yes,
+            list.foldl(collect_mq_info_qualified_symname, SymNames, !Info)
+        ;
+            % Any unqualified symbol in the promise might come from *any* of
+            % the imported modules. There's no way for us to tell which ones.
+            % So we conservatively assume that it uses all of them.
+            Success = no,
+            set.init(UnusedInterfaceModules),
+            mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
+        )
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        ItemTypeClass = item_typeclass_info(_, _, SymName, Params, _, _, _),
+        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+            % This item is not visible in the current module.
+            true
+        ;
+            list.length(Params, Arity),
+            mq_info_get_classes(!.Info, Classes0),
+            mq_info_get_need_qual_flag(!.Info, NeedQualifier),
+            id_set_insert(NeedQualifier, mq_id(SymName, Arity),
+                Classes0, Classes),
+            mq_info_set_classes(Classes, !Info)
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_nothing(_)
+        )
+        % Do nothing.
     ).
-collect_mq_info_item(item_instance(_, _, _, _, _, _), !Info).
-collect_mq_info_item(item_initialise(_, _, _), !Info).
-collect_mq_info_item(item_finalise(_, _, _), !Info).
-collect_mq_info_item(item_mutable(_, _, _, _, _, _), !Info).
 
 :- pred collect_mq_info_qualified_symname(sym_name::in,
     mq_info::in, mq_info::out) is det.
@@ -628,67 +648,79 @@ term_qualified_symbols_list([Term | Terms], Symbols) :-
     % is reached, since imported declarations should already be
     % module qualified.
     %
-:- pred do_module_qualify_items(item_list::in, item_list::out,
+:- pred do_module_qualify_items(list(item)::in, list(item)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 do_module_qualify_items([], [], !Info, !Specs).
-do_module_qualify_items([ItemAndContext0 | ItemAndContexts0],
-        [ItemAndContext | ItemAndContexts], !Info, !Specs) :-
-    ItemAndContext0 = item_and_context(Item0, Context),
-    module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs),
-    ItemAndContext = item_and_context(Item, Context),
+do_module_qualify_items([Item0 | Items0], [Item | Items], !Info, !Specs) :-
+    module_qualify_item(Item0, Item, Continue, !Info, !Specs),
     (
         Continue = yes,
-        do_module_qualify_items(ItemAndContexts0, ItemAndContexts,
-            !Info, !Specs)
+        do_module_qualify_items(Items0, Items, !Info, !Specs)
     ;
         Continue = no,
-        ItemAndContexts = ItemAndContexts0
+        Items = Items0
     ).
 
     % Call predicates to qualify a single item.
     %
-:- pred module_qualify_item(item::in, item::out, prog_context::in, bool::out,
+:- pred module_qualify_item(item::in, item::out, bool::out,
     mq_info::in, mq_info::out, list(error_spec)::in, list(error_spec)::out)
     is det.
 
-module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs) :-
+module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
     (
-        Item0 = item_clause(_,_,_,_,_,_),
+        Item0 = item_clause(_),
         Item = Item0,
         Continue = yes
     ;
-        Item0 = item_type_defn(TVarSet, SymName, Params, TypeDefn0, C),
+        Item0 = item_type_defn(ItemTypeDefn0),
+        ItemTypeDefn0 = item_type_defn_info(TVarSet, SymName, Params,
+            TypeDefn0, C, Context),
         list.length(Params, Arity),
         mq_info_set_error_context(mqec_type(mq_id(SymName, Arity)) - Context,
             !Info),
         qualify_type_defn(TypeDefn0, TypeDefn, !Info, !Specs),
-        Item = item_type_defn(TVarSet, SymName, Params, TypeDefn, C),
+        ItemTypeDefn = item_type_defn_info(TVarSet, SymName, Params,
+            TypeDefn, C, Context),
+        Item = item_type_defn(ItemTypeDefn),
         Continue = yes
     ;
-        Item0 = item_inst_defn(A, SymName, Params, InstDefn0, C),
+        Item0 = item_inst_defn(ItemInstDefn0),
+        ItemInstDefn0 = item_inst_defn_info(A, SymName, Params, InstDefn0, C,
+            Context),
         list.length(Params, Arity),
         mq_info_set_error_context(mqec_inst(mq_id(SymName, Arity)) - Context,
             !Info),
         qualify_inst_defn(InstDefn0, InstDefn, !Info, !Specs),
-        Item = item_inst_defn(A, SymName, Params, InstDefn, C),
+        ItemInstDefn = item_inst_defn_info(A, SymName, Params, InstDefn, C,
+            Context),
+        Item = item_inst_defn(ItemInstDefn),
         Continue = yes
     ;
-        Item0 = item_mode_defn(A, SymName, Params, ModeDefn0, C),
+        Item0 = item_mode_defn(ItemModeDefn0),
+        ItemModeDefn0 = item_mode_defn_info(A, SymName, Params, ModeDefn0, C,   
+            Context),
         list.length(Params, Arity),
         mq_info_set_error_context(mqec_mode(mq_id(SymName, Arity)) - Context,
             !Info),
         qualify_mode_defn(ModeDefn0, ModeDefn, !Info, !Specs),
-        Item = item_mode_defn(A, SymName, Params, ModeDefn, C),
+        ItemModeDefn = item_mode_defn_info(A, SymName, Params, ModeDefn, C,
+            Context),
+        Item = item_mode_defn(ItemModeDefn),
         Continue = yes
     ;
-        Item0 = item_module_defn(A, ModuleDefn),
+        Item0 = item_module_defn(ItemModuleDefn0),
+        ItemModuleDefn0 = item_module_defn_info(A, ModuleDefn, Context),
         update_import_status(ModuleDefn, !Info, Continue),
-        Item = item_module_defn(A, ModuleDefn)
+        ItemModuleDefn = item_module_defn_info(A, ModuleDefn, Context),
+        Item = item_module_defn(ItemModuleDefn)
     ;
-        Item0 = item_pred_or_func(Origin, A, IVs, B, PredOrFunc, SymName,
-            TypesAndModes0, WithType0, WithInst0, C, D, E, Constraints0),
+        Item0 = item_pred_decl(ItemPredDecl0),
+        ItemPredDecl0 = item_pred_decl_info(Origin, A, IVs, B, PredOrFunc,
+            SymName, TypesAndModes0, WithType0, WithInst0, C, D, E,
+            Constraints0, Context),
         list.length(TypesAndModes0, Arity),
         mq_info_set_error_context(
             mqec_pred_or_func(PredOrFunc, mq_id(SymName, Arity)) - Context,
@@ -697,12 +729,15 @@ module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs) :-
         qualify_prog_constraints(Constraints0, Constraints, !Info, !Specs),
         map_fold2_maybe(qualify_type, WithType0, WithType, !Info, !Specs),
         map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !Specs),
-        Item = item_pred_or_func(Origin, A, IVs, B, PredOrFunc, SymName,
-            TypesAndModes, WithType, WithInst, C, D, E, Constraints),
+        ItemPredDecl = item_pred_decl_info(Origin, A, IVs, B, PredOrFunc,
+            SymName, TypesAndModes, WithType, WithInst, C, D, E,
+            Constraints, Context),
+        Item = item_pred_decl(ItemPredDecl),
         Continue = yes
     ;
-        Item0 = item_pred_or_func_mode(A, PredOrFunc, SymName, Modes0,
-            WithInst0, C, D),
+        Item0 = item_mode_decl(ItemModeDecl0),
+        ItemModeDecl0 = item_mode_decl_info(A, PredOrFunc, SymName, Modes0,
+            WithInst0, C, D, Context),
         list.length(Modes0, Arity),
         mq_info_set_error_context(
             mqec_pred_or_func_mode(PredOrFunc, mq_id(SymName, Arity))
@@ -710,17 +745,20 @@ module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs) :-
             !Info),
         qualify_mode_list(Modes0, Modes, !Info, !Specs),
         map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !Specs),
-        Item = item_pred_or_func_mode(A, PredOrFunc, SymName, Modes,
-            WithInst, C, D),
+        ItemModeDecl = item_mode_decl_info(A, PredOrFunc, SymName, Modes,
+            WithInst, C, D, Context),
+        Item = item_mode_decl(ItemModeDecl),
         Continue = yes
     ;
-        Item0 = item_pragma(Origin, Pragma0),
+        Item0 = item_pragma(ItemPragma0),
+        ItemPragma0 = item_pragma_info(Origin, Pragma0, Context),
         mq_info_set_error_context(mqec_pragma - Context, !Info),
         qualify_pragma(Pragma0, Pragma, !Info, !Specs),
-        Item = item_pragma(Origin, Pragma),
+        ItemPragma = item_pragma_info(Origin, Pragma, Context),
+        Item = item_pragma(ItemPragma),
         Continue = yes
     ;
-        Item0 = item_promise(_T, _G, _V, _U),
+        Item0 = item_promise(_),
         Item = Item0,
         Continue = yes
     ;
@@ -728,8 +766,9 @@ module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs) :-
         Item = Item0,
         Continue = yes
     ;
-        Item0 = item_typeclass(Constraints0, FunDeps, Name, Vars, Interface0,
-            VarSet),
+        Item0 = item_typeclass(ItemTypeClass0),
+        ItemTypeClass0 = item_typeclass_info(Constraints0, FunDeps,
+            Name, Vars, Interface0, VarSet, Context),
         list.length(Vars, Arity),
         mq_info_set_error_context(mqec_class(mq_id(Name, Arity)) - Context,
             !Info),
@@ -742,12 +781,14 @@ module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs) :-
             qualify_class_interface(Methods0, Methods, !Info, !Specs),
             Interface = class_interface_concrete(Methods)
         ),
-        Item = item_typeclass(Constraints, FunDeps, Name, Vars, Interface,
-            VarSet),
+        ItemTypeClass = item_typeclass_info(Constraints, FunDeps,
+            Name, Vars, Interface, VarSet, Context),
+        Item = item_typeclass(ItemTypeClass),
         Continue = yes
     ;
-        Item0 = item_instance(Constraints0, Name0, Types0, Body0, VarSet,
-            ModName),
+        Item0 = item_instance(ItemInstance0),
+        ItemInstance0 = item_instance_info(Constraints0, Name0, Types0,
+            Body0, VarSet, ModName, Context),
         list.length(Types0, Arity),
         Id = mq_id(Name0, Arity),
         mq_info_set_error_context(mqec_instance(Id) - Context, !Info),
@@ -758,22 +799,28 @@ module_qualify_item(Item0, Item, Context, Continue, !Info, !Specs) :-
         qualify_class_name(Id, mq_id(Name, _), !Info, !Specs),
         qualify_type_list(Types0, Types, !Info, !Specs),
         qualify_instance_body(Name, Body0, Body),
-        Item = item_instance(Constraints, Name, Types, Body, VarSet, ModName),
+        ItemInstance = item_instance_info(Constraints, Name, Types,
+            Body, VarSet, ModName, Context),
+        Item = item_instance(ItemInstance),
         Continue = yes
     ;
-        Item0 = item_initialise(_Origin, _PredSymName, _Arity),
+        Item0 = item_initialise(_),
         Item = Item0,
         Continue = yes
     ;
-        Item0 = item_finalise(_Origin, _PredSymName, _Arity),
+        Item0 = item_finalise(_O),
         Item = Item0,
         Continue = yes
     ;
-        Item0 = item_mutable(Name, Type0, InitTerm, Inst0, Attrs, Varset),
+        Item0 = item_mutable(ItemMutable0),
+        ItemMutable0 = item_mutable_info(Name, Type0, InitTerm, Inst0,
+            Attrs, Varset, Context),
         mq_info_set_error_context(mqec_mutable(Name) - Context, !Info),
         qualify_type(Type0, Type, !Info, !Specs),
         qualify_inst(Inst0, Inst, !Info, !Specs),
-        Item = item_mutable(Name, Type, InitTerm, Inst, Attrs, Varset),
+        ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst,
+            Attrs, Varset, Context),
+        Item = item_mutable(ItemMutable),
         Continue = yes
     ).
 
@@ -1749,7 +1796,7 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
 % Access and initialisation predicates.
 %
 
-:- pred init_mq_info(item_list::in, globals::in, bool::in, module_name::in,
+:- pred init_mq_info(list(item)::in, globals::in, bool::in, module_name::in,
     mq_info::out) is det.
 
 init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-

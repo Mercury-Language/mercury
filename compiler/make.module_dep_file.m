@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -631,7 +631,7 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
     ).
 
 :- pred make_short_interfaces(io.output_stream::in, file_name::in,
-    assoc_list(module_name, item_list)::in, list(string)::in, bool::out,
+    assoc_list(module_name, list(item))::in, list(string)::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, _, Succeeded,

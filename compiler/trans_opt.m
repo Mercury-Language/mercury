@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,8 +207,8 @@ grab_trans_opt_files(TransOptDeps, !Module, FoundError, !IO) :-
 
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
-:- pred read_trans_opt_files(list(module_name)::in, item_list::in,
-    item_list::out, bool::in, bool::out, io::di, io::uo) is det.
+:- pred read_trans_opt_files(list(module_name)::in, list(item)::in,
+    list(item)::out, bool::in, bool::out, io::di, io::uo) is det.
 
 read_trans_opt_files([], !Items, !Error, !IO).
 read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-

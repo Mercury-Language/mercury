@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,10 +22,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_class_defn(list(prog_constraint)::in,
-    list(prog_fundep)::in, sym_name::in, list(tvar)::in, class_interface::in,
-    tvarset::in, prog_context::in, item_status::in,
-    module_info::in, module_info::out,
+:- pred module_add_class_defn(item_typeclass_info::in,
+    item_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred module_add_instance_defn(module_name::in, list(prog_constraint)::in,
@@ -75,8 +73,9 @@
 :- import_module string.
 :- import_module varset.
 
-module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
-        Context, Status, !ModuleInfo, !Specs) :-
+module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
+    ItemTypeClassInfo = item_typeclass_info(Constraints, FunDeps, Name, Vars,
+        Interface, VarSet, Context),
     module_info_get_class_table(!.ModuleInfo, Classes0),
     list.length(Vars, ClassArity),
     ClassId = class_id(Name, ClassArity),
@@ -568,7 +567,6 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-    %
     % Do two hlds_instance_defn refer to the same type?
     % eg "instance tc(f(T))" compares equal to "instance tc(f(U))"
     % 
@@ -585,14 +583,14 @@ same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
     VarSetA = InstanceDefnA ^ instance_tvarset,
     VarSetB = InstanceDefnB ^ instance_tvarset,
 
-        % Rename the two lists of types apart.
+    % Rename the two lists of types apart.
     tvarset_merge_renaming(VarSetA, VarSetB, _NewVarSet, RenameApart),
     apply_variable_renaming_to_type_list(RenameApart, TypesB0, TypesB1),
 
     type_vars_list(TypesA, TVarsA),
     type_vars_list(TypesB1, TVarsB),
 
-        % If the lengths are different they can't be the same type.
+    % If the lengths are different they can't be the same type.
     list.length(TVarsA, L),
     list.length(TVarsB, L),
 
@@ -647,46 +645,45 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
     ).
 
 :- pred produce_instance_method_clause(pred_or_func::in,
-    prog_context::in, import_status::in, item::in,
+    prog_context::in, import_status::in, item_clause_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     clauses_info::in, clauses_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         !ModuleInfo, !QualInfo, !ClausesInfo, !Specs) :-
-    (
-        InstanceClause = item_clause(_Origin, CVarSet, PredOrFunc, PredName,
-            HeadTerms0, Body)
-    ->
-        ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->
-            report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
-        ;
-            HeadTerms = expand_bang_state_var_args(HeadTerms0),
-            PredArity = list.length(HeadTerms),
-            adjust_func_arity(PredOrFunc, Arity, PredArity),
-            % The tvarset argument is only used for explicit type
-            % qualifications, of which there are none in this
-            % clause, so it is set to a dummy value.
-            varset.init(TVarSet0),
-
-            ProcIds = [],
-            % Means this clause applies to _every_ mode of the procedure.
-            GoalType = goal_type_none,    % goal is not a promise
-            clauses_info_add_clause(ProcIds, CVarSet, TVarSet0, HeadTerms,
-                Body, Context, Status, PredOrFunc, Arity, GoalType, Goal,
-                VarSet, _TVarSet, !ClausesInfo, Warnings, !ModuleInfo,
-                !QualInfo, !Specs),
-
-            SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
-
-            % Warn about singleton variables.
-            warn_singletons(VarSet, SimpleCallId, !.ModuleInfo, Goal, !Specs),
-
-            % Warn about variables with overlapping scopes.
-            warn_overlap(Warnings, VarSet, SimpleCallId, !Specs)
-        )
+    InstanceClause = item_clause_info(_Origin, CVarSet, ClausePredOrFunc,
+        PredName, HeadTerms0, Body, _ClauseContext),
+    % XXX Can this ever fail? If yes, we should generate an error message
+    % instead of aborting.
+    expect(unify(PredOrFunc, ClausePredOrFunc), this_file,
+        "produce_instance_method_clause: PredOrFunc mismatch"),
+    ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->
+        report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
     ;
-        unexpected(this_file, "produce_clause: invalid instance item")
+        HeadTerms = expand_bang_state_var_args(HeadTerms0),
+        PredArity = list.length(HeadTerms),
+        adjust_func_arity(PredOrFunc, Arity, PredArity),
+        % The tvarset argument is only used for explicit type
+        % qualifications, of which there are none in this
+        % clause, so it is set to a dummy value.
+        varset.init(TVarSet0),
+
+        ProcIds = [],
+        % Means this clause applies to _every_ mode of the procedure.
+        GoalType = goal_type_none,    % goal is not a promise
+        clauses_info_add_clause(ProcIds, CVarSet, TVarSet0, HeadTerms,
+            Body, Context, Status, PredOrFunc, Arity, GoalType, Goal,
+            VarSet, _TVarSet, !ClausesInfo, Warnings, !ModuleInfo,
+            !QualInfo, !Specs),
+
+        SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+
+        % Warn about singleton variables.
+        warn_singletons(VarSet, SimpleCallId, !.ModuleInfo, Goal, !Specs),
+
+        % Warn about variables with overlapping scopes.
+        warn_overlap(Warnings, VarSet, SimpleCallId, !Specs)
     ).
 
 :- pred pred_method_with_no_modes_error(pred_info::in,

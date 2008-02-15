@@ -145,7 +145,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     hlds_data.get_type_defn_body(!.Defn, Body0),
     TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-    equiv_type.maybe_record_expanded_items(ModuleName, TypeCtorSymName,
+    maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
         Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _, _),
@@ -301,9 +301,9 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
             MaybeRecompInfo0),
 
         PredName = pred_info_name(!.PredInfo),
-        equiv_type.maybe_record_expanded_items(ModuleName,
+        maybe_start_recording_expanded_items(ModuleName,
             qualified(ModuleName, PredName), MaybeRecompInfo0,
-                !:EquivTypeInfo),
+            !:EquivTypeInfo),
 
         pred_info_get_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars,
             ArgTypes0),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,11 +151,9 @@
 :- func prefer_foreign_language(globals, compilation_target,
     foreign_language, foreign_language) = bool.
 
-    % The `multi' mode returns all supported foreign languages.
+    % Return all supported foreign languages.
     %
-:- pred foreign_language(foreign_language).
-:- mode foreign_language(in) is det.
-:- mode foreign_language(out) is multi.
+:- func all_foreign_languages = list(foreign_language).
 
 :- func foreign_type_language(foreign_language_type) = foreign_language.
 
@@ -192,6 +190,7 @@
 
 :- import_module char.
 :- import_module int.
+:- import_module solutions.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -340,11 +339,19 @@ prefer_foreign_language(_Globals, target_erlang, _Lang1, _Lang2) = no.
 
 %-----------------------------------------------------------------------------%
 
-foreign_language(lang_c).
-foreign_language(lang_java).
-foreign_language(lang_csharp).
-foreign_language(lang_il).
-foreign_language(lang_erlang).
+all_foreign_languages = Langs :-
+    GetLangs = (pred(Lang::out) is multi :- valid_foreign_language(Lang)),
+    solutions(GetLangs, Langs).
+
+:- pred valid_foreign_language(foreign_language).
+:- mode valid_foreign_language(in) is det.
+:- mode valid_foreign_language(out) is multi.
+
+valid_foreign_language(lang_c).
+valid_foreign_language(lang_java).
+valid_foreign_language(lang_csharp).
+valid_foreign_language(lang_il).
+valid_foreign_language(lang_erlang).
 
 %-----------------------------------------------------------------------------%
 

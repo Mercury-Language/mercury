@@ -17,6 +17,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -24,7 +25,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma(item_origin::in, pragma_type::in, prog_context::in,
+:- pred add_pragma(item_pragma_info::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -101,8 +102,8 @@
 
 :- pred module_add_pragma_tabled(eval_method::in, sym_name::in, int::in,
     maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
-    maybe(table_attributes)::in, import_status::in, import_status::out,
-    prog_context::in, module_info::in, module_info::out,
+    maybe(table_attributes)::in, prog_context::in,
+    import_status::in, import_status::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -195,10 +196,11 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs) :-
+add_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
+    ItemPragma = item_pragma_info(Origin, Pragma, Context),
     % Check for invalid pragmas in the `interface' section.
     !.Status = item_status(ImportStatus, _),
-    pragma_allowed_in_interface(Pragma, Allowed),
+    Allowed = pragma_allowed_in_interface(Pragma),
     (
         Allowed = no,
         (
@@ -2372,7 +2374,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
 %-----------------------------------------------------------------------------%
 
 module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
-        MaybeModes, MaybeAttributes, !Status, Context, !ModuleInfo,
+        MaybeModes, MaybeAttributes, Context, !Status, !ModuleInfo,
         !QualInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     EvalMethodStr = eval_method_to_string(EvalMethod),
@@ -2771,12 +2773,14 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     WithInst = no,
     Condition = cond_true,
     Origin = compiler(pragma_memo_attribute),
-    StatsPredDecl = item_pred_or_func(Origin, VarSet0, InstVarSet, ExistQVars,
-        pf_predicate, StatsPredSymName, ArgDecls, WithType, WithInst,
-        yes(detism_det), Condition, purity_pure, Constraints),
+    StatsPredDecl = item_pred_decl_info(Origin, VarSet0, InstVarSet,
+        ExistQVars, pf_predicate, StatsPredSymName, ArgDecls,
+        WithType, WithInst, yes(detism_det), Condition, purity_pure,
+        Constraints, Context),
+    StatsPredDeclItem = item_pred_decl(StatsPredDecl),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
-    add_item_decl_pass_1(StatsPredDecl, Context, ItemStatus0, _,
-        !ModuleInfo, _, !Specs),
+    add_item_decl_pass_1(StatsPredDeclItem, _, ItemStatus0, _,
+        !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
         !:Attrs = default_attributes(lang_c),
@@ -2796,15 +2800,16 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
 
         Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
-        StatsPredClause = item_pragma(compiler(pragma_memo_attribute),
-            pragma_foreign_proc(!.Attrs, StatsPredSymName, pf_predicate,
-                [Arg1, Arg2, Arg3], !.VarSet, InstVarSet,
-                fc_impl_ordinary(
-                    "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
-                    yes(Context))))
+        StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
+        StatsImpl = fc_impl_ordinary(StatsCode, yes(Context)),
+        StatsPragma = pragma_foreign_proc(!.Attrs, StatsPredSymName,
+            pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl),
+        StatsPragmaInfo = item_pragma_info(compiler(pragma_memo_attribute),
+            StatsPragma, Context),
+        StatsImplItem = item_pragma(StatsPragmaInfo)
     ),
-    add_item_clause(StatsPredClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !Specs).
+    % XXX Instead of calling add_item_pass_3, we should call what *it* calls.
+    add_item_pass_3(StatsImplItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
     simple_call_id::in, bool::in, proc_table::in, proc_table::out,
@@ -2828,12 +2833,14 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     WithInst = no,
     Condition = cond_true,
     Origin = compiler(pragma_memo_attribute),
-    ResetPredDecl = item_pred_or_func(Origin, VarSet0, InstVarSet, ExistQVars,
-        pf_predicate, ResetPredSymName, ArgDecls, WithType, WithInst,
-        yes(detism_det), Condition, purity_pure, Constraints),
+    ResetPredDecl = item_pred_decl_info(Origin, VarSet0, InstVarSet,
+        ExistQVars, pf_predicate, ResetPredSymName, ArgDecls,
+        WithType, WithInst, yes(detism_det), Condition, purity_pure,
+        Constraints, Context),
+    ResetPredDeclItem = item_pred_decl(ResetPredDecl),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
-    add_item_decl_pass_1(ResetPredDecl, Context, ItemStatus0, _,
-        !ModuleInfo, _, !Specs),
+    add_item_decl_pass_1(ResetPredDeclItem, _, ItemStatus0, _,
+        !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
         !:Attrs = default_attributes(lang_c),
@@ -2848,15 +2855,16 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
 
         Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
-        ResetPredClause = item_pragma(compiler(pragma_memo_attribute),
-            pragma_foreign_proc(!.Attrs, ResetPredSymName, pf_predicate,
-                [Arg1, Arg2], !.VarSet, InstVarSet,
-                fc_impl_ordinary(
-                    Global ++ ".MR_pt_tablenode.MR_integer = 0;",
-                    yes(Context))))
+        ResetCode = Global ++ ".MR_pt_tablenode.MR_integer = 0;",
+        ResetImpl = fc_impl_ordinary(ResetCode, yes(Context)),
+        ResetPragma = pragma_foreign_proc(!.Attrs, ResetPredSymName,
+            pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl),
+        ResetPragmaInfo = item_pragma_info(compiler(pragma_memo_attribute),
+            ResetPragma, Context),
+        ResetImplItem = item_pragma(ResetPragmaInfo)
     ),
-    add_item_clause(ResetPredClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !Specs).
+    % XXX Instead of calling add_item_pass_3, we should call what *it* calls.
+    add_item_pass_3(ResetImplItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
 :- func tabling_stats_pred_name(simple_call_id, proc_id, bool) = sym_name.
 

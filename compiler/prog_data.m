@@ -704,11 +704,9 @@
                 % defined using the `pred(...) is <Name>' syntax
                 sym_name
             )
-
     ;       instance_proc_def_clauses(
                 % defined using clauses
-                list(item)          % the items must be either
-                                    % pred_clause or func_clause items
+                list(item_clause_info)
             ).
 
 :- type instance_body
