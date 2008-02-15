@@ -694,12 +694,10 @@ check_imported_module(Term, !Info, !IO) :-
             MaybeUsedItemsTerm = yes(UsedItemsTerm),
             Items = [InterfaceItem, VersionNumberItem | OtherItems],
             InterfaceItem = item_module_defn(InterfaceItemModuleDefn),
-            InterfaceItemModuleDefn =
-                item_module_defn_info(_, md_interface, _),
+            InterfaceItemModuleDefn = item_module_defn_info(md_interface, _),
             VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
             VersionNumberItemModuleDefn =
-                item_module_defn_info(_, md_version_numbers(_, VersionNumbers),
-                    _)
+                item_module_defn_info(md_version_numbers(_, VersionNumbers), _)
         ->
             check_module_used_items(ImportedModuleName, NeedQualifier,
                 RecordedTimestamp, UsedItemsTerm, VersionNumbers,

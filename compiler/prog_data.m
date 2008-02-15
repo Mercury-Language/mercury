@@ -1235,7 +1235,7 @@
     --->    solver_init_explicit
             % The user will explicitly insert calls to initialise solver
             % variables of this type in their code.
-    
+
     ;       solver_init_automatic(init_pred).
             % The mode analyser should insert calls to `init_pred' in order
             % to initialise solver variables of this type.
@@ -1607,56 +1607,6 @@
     ;       import_locn_ancestor_private_interface.
             % The item is from the private interface of an ancestor module.
 
-:- type sym_list
-    --->    list_sym(list(sym_specifier))
-    ;       list_pred(list(pred_specifier))
-    ;       list_func(list(func_specifier))
-    ;       list_cons(list(cons_specifier))
-    ;       list_op(list(op_specifier))
-    ;       list_adt(list(adt_specifier))
-    ;       list_type(list(type_specifier))
-    ;       list_module(list(module_specifier)).
-
-:- type sym_specifier
-    --->    spec_sym(sym_name_specifier)
-    ;       spec_typed_sym(typed_cons_specifier)
-    ;       spec_pred(pred_specifier)
-    ;       spec_func(func_specifier)
-    ;       spec_cons(cons_specifier)
-    ;       spec_op(op_specifier)
-    ;       spec_adt(adt_specifier)
-    ;       spec_type(type_specifier)
-    ;       spec_module(module_specifier).
-
-:- type pred_specifier
-    --->    predspec_sym(sym_name_specifier)
-    ;       predspec_name_args(sym_name, list(mer_type)).
-
-:- type func_specifier  ==  cons_specifier.
-:- type cons_specifier
-    --->    consspec_sym(sym_name_specifier)
-    ;       consspec_typed(typed_cons_specifier).
-
-:- type typed_cons_specifier
-    --->    name_args(sym_name, list(mer_type))
-    ;       name_res(sym_name_specifier, mer_type)
-    ;       name_args_res(sym_name, list(mer_type), mer_type).
-
-:- type adt_specifier   ==  sym_name_specifier.
-:- type type_specifier  ==  sym_name_specifier.
-
-:- type op_specifier
-    --->    opspec_sym(sym_name_specifier)
-    ;       opspec_fixity(sym_name_specifier, fixity).
-            % operator fixity specifiers not yet implemented
-
-:- type fixity
-    --->    infix
-    ;       prefix
-    ;       postfix
-    ;       binary_prefix
-    ;       binary_postfix.
-
 :- type sym_name_specifier
     --->    name(sym_name)
     ;       name_arity(sym_name, arity).
@@ -1668,7 +1618,7 @@
     --->    simple_call_id(pred_or_func, sym_name, arity).
 
 :- type module_specifier == sym_name.
-:- type arity       ==  int.
+:- type arity == int.
 
     % Describes whether an item can be used without an explicit module
     % qualifier.
@@ -1692,23 +1642,20 @@
 
 :- type used_modules
     --->    used_modules(
-                    % The modules used in the interface and implementation.
+                % The modules used in the interface and implementation.
                 int_used_modules    :: set(module_name),
                 impl_used_modules   :: set(module_name)
             ).
 
-    %
     % Initialize the used_modules structure.
     %
 :- func used_modules_init = used_modules.
 
-    %
     % Given a sym_name call add_all_modules on the module part of the name.
     %
 :- pred add_sym_name_module(item_visibility::in, sym_name::in,
     used_modules::in, used_modules::out) is det.
 
-    %
     % Given a module name add the module and all of its parent modules
     % to the used_modules.
     %

@@ -70,9 +70,9 @@ compute_version_numbers(SourceFileTime,
         MaybeOldItems = yes(OldItems0),
         OldItems0 = [FirstItem, VersionNumberItem | OldItems],
         FirstItem = item_module_defn(FirstItemModuleDefn),
-        FirstItemModuleDefn = item_module_defn_info(_, md_interface, _),
+        FirstItemModuleDefn = item_module_defn_info(md_interface, _),
         VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
-        VersionNumberItemModuleDefn = item_module_defn_info(_,
+        VersionNumberItemModuleDefn = item_module_defn_info(
             md_version_numbers(_, OldVersionNumbers), _)
     ->
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
@@ -270,12 +270,12 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 gather_items_2(Item, !Section, !Info) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, md_interface, _)
+        ItemModuleDefn = item_module_defn_info(md_interface, _)
     ->
         !:Section = section_interface
     ;
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, md_implementation, _)
+        ItemModuleDefn = item_module_defn_info(md_implementation, _)
     ->
         !:Section = section_implementation
     ;
@@ -696,10 +696,10 @@ items_are_unchanged([Section - Item1 | Items1], [Section - Item2 | Items2]) :-
 item_is_unchanged(Item1, Item2) = Unchanged :-
     (
         Item1 = item_module_defn(ItemModuleDefn1),
-        ItemModuleDefn1 = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn1 = item_module_defn_info(ModuleDefn, _),
         (
             Item2 = item_module_defn(ItemModuleDefn2),
-            ItemModuleDefn2 = item_module_defn_info(_, ModuleDefn, _)
+            ItemModuleDefn2 = item_module_defn_info(ModuleDefn, _)
         ->
             Unchanged = yes
         ;

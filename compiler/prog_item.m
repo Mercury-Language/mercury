@@ -106,7 +106,6 @@
 
 :- type item_module_defn_info
     --->    item_module_defn_info(
-                module_defn_varset              :: prog_varset,
                 module_defn_module_defn         :: module_defn,
                 module_defn_context             :: prog_context
             ).
@@ -854,9 +853,9 @@
 
     ;       md_external(maybe(backend), sym_name_specifier)
 
-    ;       md_export(sym_list)
-    ;       md_import(sym_list)
-    ;       md_use(sym_list)
+    ;       md_export(list(module_specifier))
+    ;       md_import(list(module_specifier))
+    ;       md_use(list(module_specifier))
 
     ;       md_include_module(list(module_name))
 

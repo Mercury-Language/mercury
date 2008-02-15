@@ -587,7 +587,7 @@ get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
 
         RevItems0 = [Item | RevItemsPrime],
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
         ModuleDefn = md_end_module(ModuleName)
     ->
         RevItems = RevItemsPrime,
@@ -613,7 +613,7 @@ check_end_module(EndModule, !Messages, !Items, !Error) :-
     (
         !.Items = [Item | !:Items],
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, md_module(ModuleName1), _)
+        ItemModuleDefn = item_module_defn_info(md_module(ModuleName1), _)
     ->
         % Check that the end module declaration (if any) matches
         % the begin module declaration.
@@ -779,8 +779,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         % Check if the first term was a `:- module' decl.
         MaybeFirstItem = read_item_ok(FirstItem),
         FirstItem = item_module_defn(FirstItemModuleDefn),
-        FirstItemModuleDefn = item_module_defn_info(_VarSet, ModuleDefn,
-            FirstContext),
+        FirstItemModuleDefn = item_module_defn_info(ModuleDefn, FirstContext),
         ModuleDefn = md_module(StartModuleName)
     ->
         % If so, then check that it matches the expected module name,
@@ -840,9 +839,8 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
     item::out) is det.
 
 make_module_decl(ModuleName, Context, Item) :-
-    varset.init(EmptyVarSet),
     ModuleDefn = md_module(ModuleName),
-    ItemInfo = item_module_defn_info(EmptyVarSet, ModuleDefn, Context),
+    ItemInfo = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemInfo).
 
 :- pred maybe_add_warning(bool::in, read_term::in, term.context::in,
@@ -970,7 +968,7 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Msgs, !Items,
     ;
         Item = item_module_defn(ItemModuleDefn)
     ->
-        ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
         ( ModuleDefn = md_module(NestedModuleName) ->
             !:ModuleName = NestedModuleName,
             !:Items = [Item | !.Items]
@@ -980,19 +978,16 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Msgs, !Items,
                 ParentModuleName),
             !:ModuleName = ParentModuleName,
             !:Items = [Item | !.Items]
-        ; ModuleDefn = md_import(list_module(Modules)) ->
-            ImportItems = list.map(
-                make_pseudo_import_module_decl(VarSet, Context),
+        ; ModuleDefn = md_import(Modules) ->
+            ImportItems = list.map(make_pseudo_import_module_decl(Context),
                 Modules),
             !:Items = ImportItems ++ !.Items
-        ; ModuleDefn = md_use(list_module(Modules)) ->
-            UseItems = list.map(
-                make_pseudo_use_module_decl(VarSet, Context),
+        ; ModuleDefn = md_use(Modules) ->
+            UseItems = list.map(make_pseudo_use_module_decl(Context),
                 Modules),
             !:Items = UseItems ++ !.Items
         ; ModuleDefn = md_include_module(Modules) ->
-            IncludeItems = list.map(
-                make_pseudo_include_module_decl(VarSet, Context),
+            IncludeItems = list.map(make_pseudo_include_module_decl(Context),
                 Modules),
             !:Items = IncludeItems ++ !.Items
         ;
@@ -1002,28 +997,25 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Msgs, !Items,
         !:Items = [Item | !.Items]
     ).
 
-:- func make_pseudo_import_module_decl(prog_varset, prog_context,
-    module_specifier) = item.
+:- func make_pseudo_import_module_decl(prog_context, module_specifier) = item.
 
-make_pseudo_import_module_decl(Varset, Context, ModuleSpecifier) = Item :-
-    ModuleDefn = md_import(list_module([ModuleSpecifier])),
-    ItemModuleDefn = item_module_defn_info(Varset, ModuleDefn, Context),
+make_pseudo_import_module_decl(Context, ModuleSpecifier) = Item :-
+    ModuleDefn = md_import([ModuleSpecifier]),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemModuleDefn).
 
-:- func make_pseudo_use_module_decl(prog_varset, prog_context,
-    module_specifier) = item.
+:- func make_pseudo_use_module_decl(prog_context, module_specifier) = item.
 
-make_pseudo_use_module_decl(Varset, Context, ModuleSpecifier) = Item :-
-    ModuleDefn = md_use(list_module([ModuleSpecifier])),
-    ItemModuleDefn = item_module_defn_info(Varset, ModuleDefn, Context),
+make_pseudo_use_module_decl(Context, ModuleSpecifier) = Item :-
+    ModuleDefn = md_use([ModuleSpecifier]),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemModuleDefn).
 
-:- func make_pseudo_include_module_decl(prog_varset, prog_context, module_name)
-    = item.
+:- func make_pseudo_include_module_decl(prog_context, module_name) = item.
 
-make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) = Item :-
+make_pseudo_include_module_decl(Context, ModuleSpecifier) = Item :-
     ModuleDefn = md_include_module([ModuleSpecifier]),
-    ItemModuleDefn = item_module_defn_info(Varset, ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemModuleDefn).
 
 %-----------------------------------------------------------------------------%
@@ -1226,143 +1218,36 @@ process_decl(ModuleName, VarSet, "inst", [InstDecl], Attributes,
     parse_inst_decl(ModuleName, VarSet, InstDecl, Context, Result0),
     check_no_attributes(Result0, Attributes, Result).
 
-process_decl(_ModuleName, VarSet, "import_module", [ModuleSpec], Attributes,
+process_decl(_ModuleName, _VarSet, "import_module", [ModuleSpec], Attributes,
         Context, Result) :-
-    parse_symlist_decl(parse_module_specifier, make_module, make_import,
-        ModuleSpec, Attributes, VarSet, Context, Result).
+    parse_symlist_decl(parse_module_specifier, make_import,
+        ModuleSpec, Attributes, Context, Result).
 
-process_decl(_ModuleName, VarSet, "use_module", [ModuleSpec], Attributes,
+process_decl(_ModuleName, _VarSet, "use_module", [ModuleSpec], Attributes,
         Context, Result) :-
-    parse_symlist_decl(parse_module_specifier, make_module, make_use,
-        ModuleSpec, Attributes, VarSet, Context, Result).
+    parse_symlist_decl(parse_module_specifier, make_use,
+        ModuleSpec, Attributes, Context, Result).
 
-process_decl(_ModuleName, VarSet, "export_module", [ModuleSpec], Attributes,
+process_decl(_ModuleName, _VarSet, "export_module", [ModuleSpec], Attributes,
         Context, Result) :-
-    parse_symlist_decl(parse_module_specifier, make_module, make_export,
-        ModuleSpec, Attributes, VarSet, Context, Result).
+    parse_symlist_decl(parse_module_specifier, make_export,
+        ModuleSpec, Attributes, Context, Result).
 
-process_decl(_ModuleName, VarSet, "import_sym", [SymSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_symbol_specifier, make_sym, make_import,
-        SymSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_sym", [SymSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_symbol_specifier, make_sym, make_use,
-        SymSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_sym", [SymSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_symbol_specifier, make_sym, make_export,
-        SymSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "import_pred", [PredSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_predicate_specifier, make_pred, make_import,
-        PredSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_pred", [PredSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_predicate_specifier, make_pred, make_use,
-        PredSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_pred", [PredSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_predicate_specifier, make_pred, make_export,
-        PredSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "import_func", [FuncSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_function_specifier, make_func, make_import,
-        FuncSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_func", [FuncSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_function_specifier, make_func, make_use,
-        FuncSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_func", [FuncSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_function_specifier, make_func, make_export,
-        FuncSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "import_cons", [ConsSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_constructor_specifier, make_cons, make_import,
-        ConsSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_cons", [ConsSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_constructor_specifier, make_cons, make_use,
-        ConsSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_cons", [ConsSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_constructor_specifier, make_cons, make_export,
-        ConsSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "import_type", [TypeSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_type_specifier, make_type, make_import,
-        TypeSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_type", [TypeSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_type_specifier, make_type, make_use,
-        TypeSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_type", [TypeSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_type_specifier, make_type, make_export,
-        TypeSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "import_adt", [ADT_Spec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_adt_specifier, make_adt, make_import,
-        ADT_Spec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_adt", [ADT_Spec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_adt_specifier, make_adt, make_use,
-        ADT_Spec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_adt", [ADT_Spec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_adt_specifier, make_adt, make_export,
-        ADT_Spec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "import_op", [OpSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_op_specifier, make_op, make_import,
-        OpSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "use_op", [OpSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_op_specifier, make_op, make_use,
-        OpSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet, "export_op", [OpSpec], Attributes,
-        Context, Result) :-
-    parse_symlist_decl(parse_op_specifier, make_op, make_export,
-        OpSpec, Attributes, VarSet, Context, Result).
-
-process_decl(_ModuleName, VarSet0, "interface", [], Attributes, Context,
+process_decl(_ModuleName, _VarSet, "interface", [], Attributes, Context,
         Result) :-
-    varset.coerce(VarSet0, VarSet),
-    ItemModuleDefn = item_module_defn_info(VarSet, md_interface, Context),
+    ItemModuleDefn = item_module_defn_info(md_interface, Context),
     Item = item_module_defn(ItemModuleDefn),
     Result0 = ok1(Item),
     check_no_attributes(Result0, Attributes, Result).
 
-process_decl(_ModuleName, VarSet0, "implementation", [], Attributes, Context,
+process_decl(_ModuleName, _VarSet, "implementation", [], Attributes, Context,
         Result) :-
-    varset.coerce(VarSet0, VarSet),
-    ItemModuleDefn = item_module_defn_info(VarSet, md_implementation, Context),
+    ItemModuleDefn = item_module_defn_info(md_implementation, Context),
     Item = item_module_defn(ItemModuleDefn),
     Result0 = ok1(Item),
     check_no_attributes(Result0, Attributes, Result).
 
-process_decl(ModuleName, VarSet, "external", Args, Attributes, Context,
+process_decl(ModuleName, _VarSet, "external", Args, Attributes, Context,
         Result) :-
     (
         Args = [PredSpec],
@@ -1381,18 +1266,16 @@ process_decl(ModuleName, VarSet, "external", Args, Attributes, Context,
     ),
     parse_implicitly_qualified_symbol_name_specifier(ModuleName, PredSpec,
         Result0),
-    process_maybe1(make_external(VarSet, MaybeBackend, Context), Result0,
-        Result1),
+    process_maybe1(make_external(MaybeBackend, Context), Result0, Result1),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, VarSet0, "module", [ModuleName], Attributes,
+process_decl(DefaultModuleName, _VarSet, "module", [ModuleName], Attributes,
         Context, Result) :-
     parse_module_name(DefaultModuleName, ModuleName, Result0),
     (
         Result0 = ok1(ModuleNameSym),
-        varset.coerce(VarSet0, VarSet),
         ModuleDefn = md_module(ModuleNameSym),
-        ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
         Item = item_module_defn(ItemModuleDefn),
         Result1 = ok1(Item)
     ;
@@ -1401,14 +1284,13 @@ process_decl(DefaultModuleName, VarSet0, "module", [ModuleName], Attributes,
     ),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, VarSet0, "include_module", [ModuleNames],
+process_decl(DefaultModuleName, _VarSet, "include_module", [ModuleNames],
         Attributes, Context, Result) :-
     parse_list(parse_module_name(DefaultModuleName), ModuleNames, Result0),
     (
         Result0 = ok1(ModuleNameSyms),
-        varset.coerce(VarSet0, VarSet),
         ModuleDefn = md_include_module(ModuleNameSyms),
-        ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
         Item = item_module_defn(ItemModuleDefn),
         Result1 = ok1(Item)
     ;
@@ -1417,7 +1299,7 @@ process_decl(DefaultModuleName, VarSet0, "include_module", [ModuleNames],
     ),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
+process_decl(DefaultModuleName, _VarSet, "end_module", [ModuleName],
         Attributes, Context, Result) :-
     % The name in an `end_module' declaration not inside the scope of the
     % module being ended, so the default module name here is the parent
@@ -1429,9 +1311,8 @@ process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
     parse_module_name(ParentOfDefaultModuleName, ModuleName, Result0),
     (
         Result0 = ok1(ModuleNameSym),
-        varset.coerce(VarSet0, VarSet),
         ModuleDefn = md_end_module(ModuleNameSym),
-        ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
         Item = item_module_defn(ItemModuleDefn),
         Result1 = ok1(Item)
     ;
@@ -1490,7 +1371,7 @@ process_decl(ModuleName, VarSet, "instance", Args, Attributes, Context,
     ),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(ModuleName, VarSet0, "version_numbers",
+process_decl(ModuleName, _VarSet, "version_numbers",
         [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
         Attributes, Context, Result) :-
     parse_module_specifier(ModuleNameTerm, ModuleNameResult),
@@ -1505,10 +1386,8 @@ process_decl(ModuleName, VarSet0, "version_numbers",
                 Result0),
             (
                 Result0 = ok1(VersionNumbers),
-                varset.coerce(VarSet0, VarSet),
                 ModuleDefn = md_version_numbers(ModuleName, VersionNumbers),
-                ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn,
-                    Context),
+                ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
                 Item = item_module_defn(ItemModuleDefn),
                 Result1 = ok1(Item),
                 check_no_attributes(Result1, Attributes, Result)
@@ -1670,13 +1549,12 @@ make_type_defn(VarSet0, Cond, Context, ProcessedTypeBody, Item) :-
         Context),
     Item = item_type_defn(ItemTypeDefn).
 
-:- pred make_external(varset::in, maybe(backend)::in, prog_context::in,
+:- pred make_external(maybe(backend)::in, prog_context::in,
     sym_name_specifier::in, item::out) is det.
 
-make_external(VarSet0, MaybeBackend, Context, SymSpec, Item) :-
-    varset.coerce(VarSet0, VarSet),
+make_external(MaybeBackend, Context, SymSpec, Item) :-
     ModuleDefn = md_external(MaybeBackend, SymSpec),
-    ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemModuleDefn).
 
 :- pred get_is_solver_type(is_solver_type::out,
@@ -3974,28 +3852,23 @@ make_mode_defn(VarSet0, Cond, Context, ProcessedModeBody, Item) :-
 :- type maker(T1, T2) == pred(T1, T2).
 :- mode maker == (pred(in, out) is det).
 
-:- pred parse_symlist_decl(parser(T)::parser, maker(list(T), sym_list)::maker,
-    maker(sym_list, module_defn)::maker,
-    term::in, decl_attrs::in, varset::in, prog_context::in, maybe1(item)::out)
-    is det.
+:- pred parse_symlist_decl(parser(module_specifier)::parser,
+    maker(list(module_specifier), module_defn)::maker,
+    term::in, decl_attrs::in, prog_context::in, maybe1(item)::out) is det.
 
-parse_symlist_decl(ParserPred, MakeSymListPred, MakeModuleDefnPred,
-        Term, Attributes, VarSet, Context, Result) :-
+parse_symlist_decl(ParserPred, MakeModuleDefnPred, Term, Attributes, Context,
+        Result) :-
     parse_list(ParserPred, Term, Result0),
-    process_maybe1(make_module_defn(MakeSymListPred, MakeModuleDefnPred,
-        VarSet, Context), Result0, Result1),
+    process_maybe1(make_module_defn(MakeModuleDefnPred, Context),
+        Result0, Result1),
     check_no_attributes(Result1, Attributes, Result).
 
-:- pred make_module_defn(maker(T, sym_list)::maker,
-    maker(sym_list, module_defn)::maker, varset::in, prog_context::in,
-    T::in, item::out) is det.
+:- pred make_module_defn(maker(list(module_specifier), module_defn)::maker,
+    prog_context::in, list(module_specifier)::in, item::out) is det.
 
-make_module_defn(MakeSymListPred, MakeModuleDefnPred, VarSet0, Context,
-        T, Item) :-
-    varset.coerce(VarSet0, VarSet),
-    call(MakeSymListPred, T, SymList),
-    call(MakeModuleDefnPred, SymList, ModuleDefn),
-    ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+make_module_defn(MakeModuleDefnPred, Context, ModuleSpecs, Item) :-
+    call(MakeModuleDefnPred, ModuleSpecs, ModuleDefn),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemModuleDefn).
 
 %-----------------------------------------------------------------------------%
@@ -4013,133 +3886,6 @@ process_maybe1(_, error1(Errors), error1(Errors)).
 process_maybe1_to_t(Maker, ok1(X), Y) :-
     call(Maker, X, Y).
 process_maybe1_to_t(_, error1(Errors), error1(Errors)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred make_module(list(module_specifier)::in, sym_list::out) is det.
-make_module(X, list_module(X)).
-
-:- pred make_sym(list(sym_specifier)::in, sym_list::out) is det.
-make_sym(X, list_sym(X)).
-
-:- pred make_pred(list(pred_specifier)::in, sym_list::out) is det.
-make_pred(X, list_pred(X)).
-
-:- pred make_func(list(func_specifier)::in, sym_list::out) is det.
-make_func(X, list_func(X)).
-
-:- pred make_cons(list(cons_specifier)::in, sym_list::out) is det.
-make_cons(X, list_cons(X)).
-
-:- pred make_type(list(type_specifier)::in, sym_list::out) is det.
-make_type(X, list_type(X)).
-
-:- pred make_adt(list(adt_specifier)::in, sym_list::out) is det.
-make_adt(X, list_adt(X)).
-
-:- pred make_op(list(op_specifier)::in, sym_list::out) is det.
-make_op(X, list_op(X)).
-
-%-----------------------------------------------------------------------------%
-%
-% A symbol specifier is one of
-%
-%   SymbolNameSpecifier
-%       Matches any symbol matched by the SymbolNameSpecifier.
-%   TypedConstructorSpecifier
-%       Matches any constructors matched by the
-%       TypedConstructorSpecifier.
-%   cons(ConstructorSpecifier)
-%       Matches only constructors.
-%   pred(PredSpecifier)
-%       Matches only predicates, ie. constructors of type `pred'.
-%   adt(SymbolNameSpecifier)
-%       Matches only type names.
-%   type(SymbolNameSpecifier)
-%       Matches type names matched by the SymbolNameSpecifier,
-%       and also matches any constructors for the matched type names.
-%   op(SymbolNameSpecifier)
-%       Matches only operators.
-%   module(ModuleSpecifier)
-%       Matches all symbols in the specified module.
-
-:- pred parse_symbol_specifier(term::in, maybe1(sym_specifier)::out) is det.
-
-parse_symbol_specifier(MainTerm, Result) :-
-    ( MainTerm = term.functor(term.atom(Functor), [Term], _Context) ->
-        ( Functor = "cons" ->
-            parse_constructor_specifier(Term, Result0),
-            process_maybe1(make_cons_symbol_specifier, Result0, Result)
-        ; Functor = "pred" ->
-            parse_predicate_specifier(Term, Result0),
-            process_maybe1(make_pred_symbol_specifier, Result0, Result)
-        ; Functor = "func" ->
-            parse_function_specifier(Term, Result0),
-            process_maybe1(make_func_symbol_specifier, Result0, Result)
-        ; Functor = "type" ->
-            parse_type_specifier(Term, Result0),
-            process_maybe1(make_type_symbol_specifier, Result0, Result)
-        ; Functor = "adt" ->
-            parse_adt_specifier(Term, Result0),
-            process_maybe1(make_adt_symbol_specifier, Result0, Result)
-        ; Functor = "op" ->
-            parse_op_specifier(Term, Result0),
-            process_maybe1(make_op_symbol_specifier, Result0, Result)
-        ; Functor = "module" ->
-            parse_module_specifier(Term, Result0),
-            process_maybe1(make_module_symbol_specifier, Result0, Result)
-        ;
-            parse_constructor_specifier(MainTerm, Result0),
-            process_maybe1(make_cons_symbol_specifier, Result0, Result)
-        )
-    ;
-        parse_constructor_specifier(MainTerm, Result0),
-        process_maybe1(make_cons_symbol_specifier, Result0, Result)
-    ).
-
-    % Once we've parsed the appropriate type of symbol specifier, we need to
-    % convert it to a sym_specifier.
-    %
-:- pred make_pred_symbol_specifier(pred_specifier::in, sym_specifier::out)
-    is det.
-
-make_pred_symbol_specifier(PredSpec, spec_pred(PredSpec)).
-
-:- pred make_func_symbol_specifier(func_specifier::in, sym_specifier::out)
-    is det.
-
-make_func_symbol_specifier(FuncSpec, spec_func(FuncSpec)).
-
-:- pred make_cons_symbol_specifier(cons_specifier::in, sym_specifier::out)
-    is det.
-
-make_cons_symbol_specifier(ConsSpec, spec_cons(ConsSpec)).
-
-:- pred make_type_symbol_specifier(type_specifier::in, sym_specifier::out)
-    is det.
-
-make_type_symbol_specifier(TypeSpec, spec_type(TypeSpec)).
-
-:- pred make_adt_symbol_specifier(adt_specifier::in, sym_specifier::out)
-    is det.
-
-make_adt_symbol_specifier(ADT_Spec, spec_adt(ADT_Spec)).
-
-:- pred make_op_symbol_specifier(op_specifier::in, sym_specifier::out) is det.
-
-make_op_symbol_specifier(OpSpec, spec_op(OpSpec)).
-
-:- pred make_module_symbol_specifier(module_specifier::in, sym_specifier::out)
-    is det.
-
-make_module_symbol_specifier(ModuleSpec, spec_module(ModuleSpec)).
-
-:- pred cons_specifier_to_sym_specifier(cons_specifier::in,
-    sym_specifier::out) is det.
-
-cons_specifier_to_sym_specifier(consspec_sym(SymSpec), spec_sym(SymSpec)).
-cons_specifier_to_sym_specifier(consspec_typed(SymSpec),
-    spec_typed_sym(SymSpec)).
 
 %-----------------------------------------------------------------------------%
 
@@ -4167,126 +3913,6 @@ parse_module_name(DefaultModuleName, Term, Result) :-
     ;
         parse_implicitly_qualified_symbol_name(DefaultModuleName, Term, Result)
     ).
-
-%-----------------------------------------------------------------------------%
-
-    % A ConstructorSpecifier is one of
-    %   SymbolNameSpecifier
-    %   TypedConstructorSpecifier
-    %
-    % A TypedConstructorSpecifier is one of
-    %   SymbolNameSpecifier::Type
-    %       Matches only constructors with the specified result type.
-    %   SymbolName(ArgType1, ..., ArgTypeN)
-    %       Matches only constructors with the specified argument types.
-    %   SymbolName(ArgType1, ..., ArgTypeN)::Type
-    %       Matches only constructors with the specified argument
-    %       and result types.
-    %
-:- pred parse_constructor_specifier(term::in, maybe1(cons_specifier)::out)
-    is det.
-
-parse_constructor_specifier(Term, Result) :-
-    (
-        Term = term.functor(term.atom("::"), [NameArgsTerm, TypeTerm],
-            _Context)
-    ->
-        parse_arg_types_specifier(NameArgsTerm, NameArgsResult),
-        parse_type(TypeTerm, TypeResult),
-        process_typed_constructor_specifier(NameArgsResult, TypeResult, Result)
-    ;
-        parse_arg_types_specifier(Term, TermResult),
-        process_maybe1(make_untyped_cons_spec, TermResult, Result)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % A PredicateSpecifier is one of
-    %   SymbolName(ArgType1, ..., ArgTypeN)
-    %       Matches only predicates with the specified argument types.
-    %   SymbolNameSpecifier
-    %
-:- pred parse_predicate_specifier(term::in, maybe1(pred_specifier)::out)
-    is det.
-
-parse_predicate_specifier(Term, Result) :-
-    ( Term = term.functor(term.atom("/"), [_, _], _Context) ->
-        parse_symbol_name_specifier(Term, NameResult),
-            process_maybe1(make_arity_predicate_specifier, NameResult, Result)
-    ;
-        parse_qualified_term(Term, Term, "predicate specifier", TermResult),
-        process_typed_predicate_specifier(TermResult, Result)
-    ).
-
-:- pred process_typed_predicate_specifier(maybe_functor::in,
-    maybe1(pred_specifier)::out) is det.
-
-process_typed_predicate_specifier(ok2(Name, Args0), Result) :-
-    (
-        Args0 = [],
-        Result = ok1(predspec_sym(name(Name)))
-    ;
-        Args0 = [_ | _],
-        parse_types(Args0, ArgsResult),
-        (
-            ArgsResult = ok1(Args),
-            Result = ok1(predspec_name_args(Name, Args))
-        ;
-            ArgsResult = error1(Errors),
-            Result = error1(Errors)
-        )
-    ).
-process_typed_predicate_specifier(error2(Errors), error1(Errors)).
-
-:- pred make_arity_predicate_specifier(sym_name_specifier::in,
-    pred_specifier::out) is det.
-
-make_arity_predicate_specifier(Result, predspec_sym(Result)).
-
-%-----------------------------------------------------------------------------%
-
-    % Parsing the name & argument types of a constructor specifier is exactly
-    % the same as parsing a predicate specifier...
-    %
-:- pred parse_arg_types_specifier(term::in, maybe1(pred_specifier)::out)
-    is det.
-
-parse_arg_types_specifier(Term, Result) :-
-    ( Term = term.functor(term.atom("/"), [_, _], _Context) ->
-        parse_symbol_name_specifier(Term, NameResult),
-            process_maybe1(make_arity_predicate_specifier, NameResult, Result)
-    ;
-        parse_qualified_term(Term, Term, "constructor specifier", TermResult),
-        process_typed_predicate_specifier(TermResult, Result)
-    ).
-
-    % ... but we have to convert the result back into the appropriate format.
-    %
-:- pred process_typed_constructor_specifier(maybe1(pred_specifier)::in,
-    maybe1(mer_type)::in, maybe1(cons_specifier)::out) is det.
-
-process_typed_constructor_specifier(error1(Errors1), error1(Errors2),
-        error1(Errors1 ++ Errors2)).
-process_typed_constructor_specifier(error1(Errors), ok1(_), error1(Errors)).
-process_typed_constructor_specifier(ok1(_), error1(Errors), error1(Errors)).
-process_typed_constructor_specifier(ok1(NameArgs), ok1(ResType),
-        ok1(Result)) :-
-    process_typed_cons_spec_2(NameArgs, ResType, Result).
-
-:- pred process_typed_cons_spec_2(pred_specifier::in, mer_type::in,
-    cons_specifier::out) is det.
-
-process_typed_cons_spec_2(predspec_sym(Name), Res,
-    consspec_typed(name_res(Name, Res))).
-process_typed_cons_spec_2(predspec_name_args(Name, Args), Res,
-    consspec_typed(name_args_res(Name, Args, Res))).
-
-:- pred make_untyped_cons_spec(pred_specifier::in, cons_specifier::out) is det.
-
-make_untyped_cons_spec(predspec_sym(Name),
-    consspec_sym(Name)).
-make_untyped_cons_spec(predspec_name_args(Name, Args),
-    consspec_typed(name_args(Name, Args))).
 
 %-----------------------------------------------------------------------------%
 
@@ -4493,55 +4119,17 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 %
 % Predicates used to convert a sym_list to a program item.
 
-:- pred make_use(sym_list::in, module_defn::out) is det.
+:- pred make_use(list(module_specifier)::in, module_defn::out) is det.
 
 make_use(Syms, md_use(Syms)).
 
-:- pred make_import(sym_list::in, module_defn::out) is det.
+:- pred make_import(list(module_specifier)::in, module_defn::out) is det.
 
 make_import(Syms, md_import(Syms)).
 
-:- pred make_export(sym_list::in, module_defn::out) is det.
+:- pred make_export(list(module_specifier)::in, module_defn::out) is det.
 
 make_export(Syms, md_export(Syms)).
-
-%-----------------------------------------------------------------------------%
-
-    % A FuncSpecifier is just a constructur name specifier.
-    %
-:- pred parse_function_specifier(term::in, maybe1(func_specifier)::out) is det.
-
-parse_function_specifier(Term, Result) :-
-    parse_constructor_specifier(Term, Result).
-
-    % A TypeSpecifier is just a symbol name specifier.
-    %
-:- pred parse_type_specifier(term::in, maybe1(sym_name_specifier)::out) is det.
-
-parse_type_specifier(Term, Result) :-
-    parse_symbol_name_specifier(Term, Result).
-
-    % An ADT_Specifier is just a symbol name specifier.
-    %
-:- pred parse_adt_specifier(term::in, maybe1(sym_name_specifier)::out) is det.
-
-parse_adt_specifier(Term, Result) :-
-    parse_symbol_name_specifier(Term, Result).
-
-%-----------------------------------------------------------------------------%
-
-    % For the moment, an OpSpecifier is just a symbol name specifier.
-    % XXX We should allow specifying the fixity of an operator
-    %
-:- pred parse_op_specifier(term::in, maybe1(op_specifier)::out) is det.
-
-parse_op_specifier(Term, Result) :-
-    parse_symbol_name_specifier(Term, R),
-    process_maybe1(make_op_specifier, R, Result).
-
-:- pred make_op_specifier(sym_name_specifier::in, op_specifier::out) is det.
-
-make_op_specifier(X, opspec_sym(X)).
 
 %-----------------------------------------------------------------------------%
 

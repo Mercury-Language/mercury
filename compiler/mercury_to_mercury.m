@@ -620,9 +620,9 @@ mercury_output_item_mode_decl(UnqualifiedItemNames, ItemModeDecl, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_module_defn(_, ItemModuleDefn, !IO) :-
-    ItemModuleDefn = item_module_defn_info(VarSet, ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     maybe_output_line_number(Context, !IO),
-    mercury_output_module_defn(VarSet, ModuleDefn, Context, !IO).
+    mercury_output_module_defn(ModuleDefn, Context, !IO).
 
 :- pred mercury_output_item_clause(bool::in, item_clause_info::in,
     io::di, io::uo) is det.
@@ -1105,28 +1105,20 @@ output_instance_method_clause(Name1, ItemClause, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_module_defn(prog_varset::in, module_defn::in,
+:- pred mercury_output_module_defn(module_defn::in,
     term.context::in, io::di, io::uo) is det.
 
-mercury_output_module_defn(_VarSet, ModuleDefn, _Context, !IO) :-
+mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
     (
-        ModuleDefn = md_import(Imported),
-        ( Imported = list_module(ImportedModules) ->
-            io.write_string(":- import_module ", !IO),
-            mercury_write_module_spec_list(ImportedModules, !IO),
-            io.write_string(".\n", !IO)
-        ;
-            unexpected(this_file, "mercury_output_module_defn: import")
-        )
+        ModuleDefn = md_import(ImportedModules),
+        io.write_string(":- import_module ", !IO),
+        mercury_write_module_spec_list(ImportedModules, !IO),
+        io.write_string(".\n", !IO)
     ;
-        ModuleDefn = md_use(Used),
-        ( Used = list_module(UsedModules) ->
-            io.write_string(":- use_module ", !IO),
-            mercury_write_module_spec_list(UsedModules, !IO),
-            io.write_string(".\n", !IO)
-        ;
-            unexpected(this_file, "mercury_output_module_defn: use")
-        )
+        ModuleDefn = md_use(UsedModules),
+        io.write_string(":- use_module ", !IO),
+        mercury_write_module_spec_list(UsedModules, !IO),
+        io.write_string(".\n", !IO)
     ;
         ModuleDefn = md_interface,
         io.write_string(":- interface.\n", !IO)

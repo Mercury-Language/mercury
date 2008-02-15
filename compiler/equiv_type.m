@@ -175,7 +175,7 @@ build_eqv_map([], !EqvMap, !EqvInstMap).
 build_eqv_map([Item | Items], !EqvMap, !EqvInstMap) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
         ModuleDefn = md_abstract_imported
     ->
         skip_abstract_imported_items(Items, AfterSkipItems),
@@ -209,7 +209,7 @@ skip_abstract_imported_items([], []).
 skip_abstract_imported_items([Item0 | Items0], Items) :-
     (
         Item0 = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
         is_section_defn(ModuleDefn) = yes,
         ModuleDefn \= md_abstract_imported
     ->
@@ -254,7 +254,7 @@ replace_in_item_list(_, _, [], _, _, !Items, !RecompInfo, !UsedModules,
 replace_in_item_list(ModuleName, Location0, [Item0 | Items0],
         EqvMap, EqvInstMap, !ReplItems, !RecompInfo, !UsedModules, !Specs) :-
     ( Item0 = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
         (
             ModuleDefn = md_interface,
             Location = eqv_type_in_interface

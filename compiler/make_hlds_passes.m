@@ -443,15 +443,15 @@ add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
-    ItemModuleDefn = item_module_defn_info(_VarSet, ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
     ( module_defn_update_import_status(ModuleDefn, StatusPrime) ->
         !:Status = StatusPrime
-    ; ModuleDefn = md_import(list_module(Specifiers)) ->
+    ; ModuleDefn = md_import(ModuleSpecifiers) ->
         !.Status = item_status(IStat, _),
-        add_module_specifiers(Specifiers, IStat, !ModuleInfo)
-    ; ModuleDefn = md_use(list_module(Specifiers)) ->
+        add_module_specifiers(ModuleSpecifiers, IStat, !ModuleInfo)
+    ; ModuleDefn = md_use(ModuleSpecifiers) ->
         !.Status = item_status(IStat, _),
-        add_module_specifiers(Specifiers, IStat, !ModuleInfo)
+        add_module_specifiers(ModuleSpecifiers, IStat, !ModuleInfo)
     ; ModuleDefn = md_include_module(_) ->
         true
     ; ModuleDefn = md_external(MaybeBackend, External) ->
@@ -657,7 +657,7 @@ add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
 add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
         ( module_defn_update_import_status(ModuleDefn, NewStatus) ->
             !:Status = NewStatus
         ;
@@ -1125,7 +1125,7 @@ add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
         !Specs) :-
-    ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
     ( ModuleDefn = md_version_numbers(ModuleName, ModuleVersionNumbers) ->
         % Record the version numbers for each imported module
         % if smart recompilation is enabled.

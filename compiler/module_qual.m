@@ -263,7 +263,7 @@ collect_mq_info([], !Info).
 collect_mq_info([Item | Items], !Info) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
         ModuleDefn = md_transitively_imported
     ->
         % Don't process the transitively imported items (from `.int2' files).
@@ -322,7 +322,7 @@ collect_mq_info_item(Item, !Info) :-
         )
     ;
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(_, ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
         process_module_defn(ModuleDefn, !Info)
     ;
         Item = item_promise(ItemPromise),
@@ -438,26 +438,10 @@ add_module_defn(ModuleName, !Info) :-
     id_set_insert(NeedQualifier, mq_id(ModuleName, Arity), Modules0, Modules),
     mq_info_set_modules(Modules, !Info).
 
-:- pred add_imports(sym_list::in, mq_info::in, mq_info::out) is det.
+:- pred add_imports(list(module_specifier)::in, mq_info::in, mq_info::out)
+    is det.
 
 add_imports(Imports, !Info) :-
-    (
-        Imports = list_module(ImportedModules),
-        add_imports_2(ImportedModules, !Info)
-    ;
-        ( Imports = list_sym(_)
-        ; Imports = list_pred(_)
-        ; Imports = list_func(_)
-        ; Imports = list_cons(_)
-        ; Imports = list_op(_)
-        ; Imports = list_adt(_)
-        ; Imports = list_type(_)
-        )
-    ).
-
-:- pred add_imports_2(list(sym_name)::in, mq_info::in, mq_info::out) is det.
-
-add_imports_2(Imports, !Info) :-
     mq_info_get_import_status(!.Info, Status),
 
     % Modules imported from the the private interface of ancestors of
@@ -481,8 +465,7 @@ add_imports_2(Imports, !Info) :-
     (
         Status = mq_status_exported
     ->
-        mq_info_get_unused_interface_modules(!.Info,
-            UnusedIntModules0),
+        mq_info_get_unused_interface_modules(!.Info, UnusedIntModules0),
         set.insert_list(UnusedIntModules0, Imports, UnusedIntModules),
         mq_info_set_unused_interface_modules(UnusedIntModules, !Info)
     ;
@@ -712,9 +695,9 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Continue = yes
     ;
         Item0 = item_module_defn(ItemModuleDefn0),
-        ItemModuleDefn0 = item_module_defn_info(A, ModuleDefn, Context),
+        ItemModuleDefn0 = item_module_defn_info(ModuleDefn, Context),
         update_import_status(ModuleDefn, !Info, Continue),
-        ItemModuleDefn = item_module_defn_info(A, ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
         Item = item_module_defn(ItemModuleDefn)
     ;
         Item0 = item_pred_decl(ItemPredDecl0),
