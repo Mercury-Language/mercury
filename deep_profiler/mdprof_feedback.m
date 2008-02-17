@@ -31,6 +31,7 @@
 :- implementation.
 
 :- import_module conf.
+:- import_module dump.
 :- import_module measurements.
 :- import_module profile.
 :- import_module startup.
@@ -71,6 +72,8 @@ main(!IO) :-
                     lookup_accumulating_option(Options, dump_stages,
                         DumpStages),
                     lookup_accumulating_option(Options, dump_options,
+                        DumpArrayOptionStrs),
+                    dump_array_options_to_dump_options(DumpArrayOptionStrs,
                         DumpOptions),
                     read_deep_file(Input, Verbose, DumpStages, DumpOptions,
                         MaybeProfile, !IO),
@@ -141,7 +144,7 @@ write_version_message(ProgName, !IO) :-
     % Read a deep profiling data file.
     % 
 :- pred read_deep_file(string::in, bool::in,
-    list(string)::in, list(string)::in,
+    list(string)::in, dump_options::in,
     maybe_error(deep)::out, io::di, io::uo) is det.
 
 read_deep_file(Input, Verbose, DumpStages, DumpOptions, MaybeProfile, !IO) :-

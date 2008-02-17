@@ -21,21 +21,101 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
+    % This structure controls what is printed how by the dump_deep/4 and
+    % dump_initial_dump predicates.
+    %
+:- type dump_options
+    --->    dump_options(
+                do_restricted               :: show_restricted_dump,
+                do_arrays                   :: set(dumpable_array),
+                do_stats                    :: show_stats,
+                do_dump_cliques             :: dump_cliques,
+                do_dump_rev_links           :: dump_rev_links,
+                do_dump_prop_measurements   :: dump_prop_measurements
+            ).
+
+
+    % This type is used to describe if a restricted set of "css" and "ps"
+    % structures should be shown, (those for code that was executed), or if all
+    % "css" and "ps" structures should be shown.
+    %
+:- type show_restricted_dump 
+    --->        show_restricted_dump
+    ;           show_complete_dump.
+
+
+    % This type indicates the arrays in the deep profile data that may be
+    % printed.
+    %
+:- type dumpable_array
+    --->        csd
+    ;           css
+    ;           pd
+    ;           ps.
+
+    
+    % show_stats describes whether to show some statistics and the root node
+    % in the dump.
+    %
+:- type show_stats
+    --->        show_stats
+    ;           dont_show_stats.
+
+
+    % Types to specifiy if cliques, rev (proc static to caller) links and
+    % propagated measurements should be dumpped by dump_deep/3.
+    %
+:- type dump_cliques
+    --->        dump_cliques
+    ;           do_not_dump_cliques.
+
+:- type dump_rev_links
+    --->        dump_rev_links
+    ;           do_not_dump_rev_links.
+
+:- type dump_prop_measurements
+    --->        dump_prop_measurements
+    ;           do_not_dump_prop_measurements.
+
+
+%-----------------------------------------------------------------------------%
+    
+    % returns the default dump options.
+    %
+:- func default_dump_options = dump_options.
+
+
+    % dump_array_options will take a list of strings for the accumulating
+    % dump options and produce a set if possible.
+    %
+    % A deterministic version is avalible that will throw an exception if
+    % a string cannot be converted to a option.
+    %
+:- pred dump_array_options(list(string)::in, set(dumpable_array)::out) 
+    is semidet.
+:- pred det_dump_array_options(list(string)::in, set(dumpable_array)::out)
+    is det.
+
+    
+    % dump_array_options_to_dump_options takes a list of strings of the
+    % accumulating array dump options and create a dump_options structure
+    % based on the default plus these spacific array options.
+    %
+:- pred dump_array_options_to_dump_options(list(string)::in,
+    dump_options::out) is det.
+
+
     % dump_initial_deep(InitialDeep, DumpOptions, !IO):
     %
-    % Dump selected parts of InitialDeep to standard output. The array of call
-    % site dynamics, proc dynamics, call site statics and proc statics is
-    % dumped if DumpOptions contains "csd", "pd", "css" or "ps" respectively.
-    % If it contains "restrict", then the only the elements of the static
-    % arrays that will be dumped are the ones that are referred to from the
-    % dynamic arrays. The statistics and the root node are dumped if
-    % DumpOptions contains "stats".
+    % Print selected parts of InitialDeep to standard output.  Which parts
+    % to print is controlled by DumpOptions.
     %
-:- pred dump_initial_deep(initial_deep::in, list(string)::in, io::di, io::uo)
-    is det.
+:- pred dump_initial_deep(initial_deep::in, dump_options::in, io::di,
+    io::uo) is det.
 
     % dump_deep(Deep, DumpOptions, !IO):
     %
@@ -44,7 +124,7 @@
     % contain reverse links are dumped if DumpOptions contains "rev".
     % The propagated costs are dumped if DumpOptions contains "prop".
     %
-:- pred dump_deep(deep::in, list(string)::in, io::di, io::uo) is det.
+:- pred dump_deep(deep::in, dump_options::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -64,42 +144,125 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module svset.
 
 %----------------------------------------------------------------------------%
 
+default_dump_options = DumpOptions :-
+    DumpOptions = dump_options(show_complete_dump, all_array_options,
+        show_stats, dump_cliques, dump_rev_links, dump_prop_measurements).
+
+
+det_dump_array_options(Strings, DumpArrayOptions) :-
+    (
+        dump_array_options_special(Strings, DumpArrayOptionsSpecial)
+    ->
+        DumpArrayOptions = DumpArrayOptionsSpecial
+    ;
+        string_list_to_sym_set(det_string_to_dumpable_array, Strings,
+            DumpArrayOptions)
+    ).
+
+dump_array_options(Strings, DumpArrayOptions) :-
+    (
+        dump_array_options_special(Strings, DumpArrayOptionsSpecial)
+    ->
+        DumpArrayOptions = DumpArrayOptionsSpecial
+    ; 
+        string_list_to_sym_set(string_to_dumpable_array, Strings,
+            DumpArrayOptions)
+    ).
+
+
+    % Handle special cases in the list of array options.
+    %
+:- pred dump_array_options_special(list(string)::in, set(dumpable_array)::out)
+    is semidet.
+
+dump_array_options_special([], all_array_options).
+dump_array_options_special(["all"], all_array_options).
+
+
+dump_array_options_to_dump_options(Strings, DumpOptions) :-
+    det_dump_array_options(Strings, DumpArrayOptions),
+    DumpOptions = default_dump_options ^ do_arrays := DumpArrayOptions.
+      
+
+
+:- pred string_list_to_sym_set(pred(string, X), list(string), set(X)).
+:- mode string_list_to_sym_set(pred(in, out) is det, in, out) is det.
+:- mode string_list_to_sym_set(pred(in, out) is semidet, in, out) is semidet.
+
+string_list_to_sym_set(StrToSym, List0, Set) :-
+    map(StrToSym, List0, List),
+    list_to_set(List, Set).
+
+
+:- pred det_string_to_dumpable_array(string::in, dumpable_array::out) is det.
+
+det_string_to_dumpable_array(String, Array) :-
+    ( string_to_dumpable_array(String, ArrayP) ->
+        Array = ArrayP
+    ;
+        error("Invalid array name in dump options: " ++ String)
+    ).
+
+
+:- pred string_to_dumpable_array(string::in, dumpable_array::out) is semidet.
+
+string_to_dumpable_array("csd", csd).
+string_to_dumpable_array("css", css).
+string_to_dumpable_array("pd", pd).
+string_to_dumpable_array("ps", ps).
+
+
+:- func all_array_options = set(dumpable_array).
+
+all_array_options = Set :-
+    Set = set.list_to_set([csd, css, pd, ps]).
+
+
+%----------------------------------------------------------------------------%
+%
+% Dump initial deep profiling structure.
+%
+
 dump_initial_deep(InitialDeep, DumpOptions, !IO) :-
     InitialDeep = initial_deep(Stats, InitRoot, CSDs, PDs, CSSs, PSs),
-    ( should_dump(DumpOptions, "restrict") ->
+    Restrict = DumpOptions ^ do_restricted,
+    (
+        Restrict = show_restricted_dump,
         get_static_ptrs_from_dynamic_procs(PDs, PSs, UsedPSs, UsedCSSs),
         Restriction = these(UsedPSs, UsedCSSs)
     ;
+        Restrict = show_complete_dump,
         Restriction = none
     ),
-    ( should_dump(DumpOptions, "stat") ->
+    ShowStats = DumpOptions ^ do_stats,
+    ( 
+        ShowStats = show_stats,
         dump_init_profile_stats(Stats, !IO),
         dump_init_root(InitRoot, !IO)
     ;
-        true
+        ShowStats = dont_show_stats
     ),
-    ( should_dump(DumpOptions, "csd") ->
+    ( should_dump(DumpOptions, csd) ->
         dump_init_call_site_dynamics(CSDs, !IO)
     ;
         true
     ),
-    ( should_dump(DumpOptions, "pd") ->
+    ( should_dump(DumpOptions, pd) ->
         dump_init_proc_dynamics(PDs, PSs, !IO)
     ;
         true
     ),
-    ( should_dump(DumpOptions, "css") ->
+    ( should_dump(DumpOptions, css) ->
         dump_init_call_site_statics(Restriction, CSSs, !IO)
     ;
         true
     ),
-    ( should_dump(DumpOptions, "ps") ->
+    ( should_dump(DumpOptions, ps) ->
         dump_init_proc_statics(Restriction, PSs, !IO)
     ;
         true
@@ -462,21 +625,28 @@ dump_call_site_kind_and_callee(callback_and_no_callee, !IO) :-
 %----------------------------------------------------------------------------%
 
 dump_deep(Deep, DumpOptions, !IO) :-
-    ( should_dump(DumpOptions, "clique") ->
+    DumpCliques = DumpOptions ^ do_dump_cliques,
+    DumpRevLinks = DumpOptions ^ do_dump_rev_links,
+    DumpPropMeasurements = DumpOptions ^ do_dump_prop_measurements,
+    (
+        DumpCliques = dump_cliques,
         dump_deep_cliques(Deep, !IO)
     ;
-        true
+        DumpCliques = do_not_dump_cliques
     ),
-    ( should_dump(DumpOptions, "rev") ->
+    ( 
+        DumpRevLinks = dump_rev_links,
         dump_deep_rev_links(Deep, !IO)
     ;
-        true
+        DumpRevLinks = do_not_dump_rev_links
     ),
-    ( should_dump(DumpOptions, "prop") ->
+    ( 
+        DumpPropMeasurements = dump_prop_measurements,
         dump_deep_prop_measurements(Deep, !IO)
     ;
-        true
+        DumpPropMeasurements = do_not_dump_prop_measurements
     ).
+
 
 %----------------------------------------------------------------------------%
 
@@ -749,13 +919,11 @@ dump_own_and_desc(Prefix, Cur, Own, Desc, !IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred should_dump(list(string)::in, string::in) is semidet.
+:- pred should_dump(dump_options::in, dumpable_array::in) is semidet.
 
 should_dump(DumpOptions, What) :-
-    ( list.member(What, DumpOptions)
-    ; list.member("all", DumpOptions)
-    ; DumpOptions = []
-    ).
+    Arrays = DumpOptions ^ do_arrays,
+    set.member(What, Arrays).
 
 %----------------------------------------------------------------------------%
 :- end_module dump.

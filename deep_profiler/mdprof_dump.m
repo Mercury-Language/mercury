@@ -58,12 +58,21 @@ main(!IO) :-
         ;
             NeedsHelp = no,
             (
-                Args = [],
-                FileName = "Deep.data",
-                main_2(Options, FileName, !IO)
-            ;
-                Args = [FileName],
-                main_2(Options, FileName, !IO)
+                ( 
+                    Args = [],
+                    FileName = "Deep.data"
+                ;
+                    Args = [FileName]
+                ),
+                % Process options, check that they make sense.
+                make_dump_options(Options, MaybeDumpOptions),
+                (
+                    MaybeDumpOptions = yes(DumpOptions),
+                    main_2(DumpOptions, FileName, !IO)
+                ;
+                    MaybeDumpOptions = no,
+                    usage(ProgName, !IO)
+                )
             ;
                 Args = [_, _ | _],
                 usage(ProgName, !IO)
@@ -76,10 +85,9 @@ main(!IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred main_2(option_table(option)::in, string::in, io::di, io::uo) is det.
+:- pred main_2(dump_options::in, string::in, io::di, io::uo) is det.
 
-main_2(Options, FileName, !IO) :-
-    getopt.lookup_accumulating_option(Options, dump_options, DumpOptions),
+main_2(DumpOptions, FileName, !IO) :-
     read_call_graph(FileName, MaybeInitialDeep, !IO),
     (
         MaybeInitialDeep = ok(InitialDeep),
@@ -94,9 +102,36 @@ main_2(Options, FileName, !IO) :-
 % Option processing
 %
 
+
+    % Process options and the list of arrays to be dumped.
+    %
+:- pred make_dump_options(option_table(option)::in, maybe(dump_options)::out)
+    is det.
+
+make_dump_options(Options, MaybeDumpOptions) :-
+    getopt.lookup_accumulating_option(Options, dump_options, ArrayOptionStrs),
+    getopt.lookup_bool_option(Options, option_restrict, RestrictBool),
+    (
+        RestrictBool = yes,
+        Restrict = show_restricted_dump
+    ;
+        RestrictBool = no,
+        Restrict = show_complete_dump
+    ),
+    DumpOptions0 = default_dump_options ^ do_restricted := Restrict, 
+    (
+        dump_array_options(ArrayOptionStrs, ArrayOptions) 
+    ->
+        MaybeDumpOptions = yes(DumpOptions0 ^ do_arrays := ArrayOptions)
+    ;
+        MaybeDumpOptions = no
+    ).
+
+
 :- type option
     --->    help
-    ;       dump_options.
+    ;       dump_options
+    ;       option_restrict.
 
 :- type option_table == (option_table(option)).
 
@@ -104,16 +139,19 @@ main_2(Options, FileName, !IO) :-
 
 short_option('h', help).
 short_option('D', dump_options).
+short_option('r', option_restrict).
 
 :- pred long_option(string::in, option::out) is semidet.
 
 long_option("help", help).
 long_option("dump-options", dump_options).
+long_option("restrict", option_restrict).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
 defaults(help, bool(no)).
 defaults(dump_options, accumulating([])).
+defaults(option_restrict, bool(no)).
 
 %----------------------------------------------------------------------------%
 
@@ -131,6 +169,11 @@ options_description =
     "Options:\n" ++
     "\t-h, --help\n" ++
     "\t\tDisplay this message.\n" ++
+    "\t-r, --restrict\n" ++
+    "\t\tDo not dump proc and call-site statics that are\n" ++
+    "\t\tnot referenced from the proc dynamics\n" ++
+    "\t-D all\n" ++
+    "\t\tDUmp all arrays, (default).\n" ++
     "\t-D csd\n" ++
     "\t\tDump call-site dynamics.\n" ++
     "\t-D pd\n" ++
@@ -139,15 +182,14 @@ options_description =
     "\t\tDump call-site statics.\n" ++
     "\t-D ps\n" ++
     "\t\tDump proc statics.\n" ++
-    "\t-D restrict\n" ++
-    "\t\tDo not dump proc and call-site statics that are\n" ++
-    "\t\tnot referenced from the proc dynamics\n" ++
+    "\nThe following options are unimplemented.\n" ++
     "\t-D clique\n" ++
     "\t\tDump information about cliques.\n" ++
     "\t-D rev\n" ++
     "\t\tDump reverse links.\n" ++
     "\t-D prop\n" ++
     "\t\tDump propagated measurement information.\n".
+
 
 %----------------------------------------------------------------------------%
 :- end_module mdprof_dump.

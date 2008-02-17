@@ -27,6 +27,7 @@
 :- implementation.
 
 :- import_module conf.
+:- import_module dump.
 :- import_module interface.
 :- import_module profile.
 :- import_module query.
@@ -102,7 +103,8 @@ main2(ProgName, Args, Options, !IO) :-
         lookup_bool_option(Options, canonical_clique, Canonical),
         lookup_bool_option(Options, verbose, Verbose),
         lookup_accumulating_option(Options, dump, DumpStages),
-        lookup_accumulating_option(Options, dump_options, DumpOptions),
+        lookup_accumulating_option(Options, dump_options, DumpArrayOptionsStr),
+        dump_array_options_to_dump_options(DumpArrayOptionsStr, DumpOptions), 
         server_name_port(Machine, !IO),
         script_name(ScriptName, !IO),
         (
@@ -168,7 +170,7 @@ verify_profile_2(ProgName, Options, FileName, !IO) :-
     Machine = "dummy_server",      % For verification this doesn't matter.
     script_name(ScriptName, !IO),
     read_and_startup(Machine, ScriptName, [FileName], Canonical, no,
-        [], [], Res, !IO),
+        [], default_dump_options, Res, !IO),
     (
         Res = ok(_Deep)
     ;

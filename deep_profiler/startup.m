@@ -19,6 +19,7 @@
 :- module startup.
 :- interface.
 
+:- import_module dump.
 :- import_module profile.
 
 :- import_module bool.
@@ -28,8 +29,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_and_startup(string::in, string::in, list(string)::in,
-    bool::in, maybe(io.output_stream)::in, list(string)::in, list(string)::in,
+:- pred read_and_startup(string::in, string::in, list(string)::in, bool::in,
+    maybe(io.output_stream)::in, list(string)::in, maybe_error(deep)::out,
+    io::di, io::uo) is det.
+
+:- pred read_and_startup(string::in, string::in, list(string)::in, bool::in,
+    maybe(io.output_stream)::in, list(string)::in, dump_options::in,
     maybe_error(deep)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -40,7 +45,6 @@
 :- import_module array_util.
 :- import_module callgraph.
 :- import_module canonical.
-:- import_module dump.
 :- import_module measurements.
 :- import_module profile.
 :- import_module read_profile.
@@ -54,6 +58,11 @@
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%
+
+read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
+        MaybeOutputStream, DumpStages, Res, !IO) :-
+    read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
+        MaybeOutputStream, DumpStages, default_dump_options, Res, !IO).
 
 read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
         MaybeOutputStream, DumpStages, DumpOptions, Res, !IO) :-
@@ -85,8 +94,9 @@ read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
         error("mdprof_server: merging of data files is not yet implemented")
     ).
 
+
 :- pred startup(string::in, string::in, string::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, list(string)::in,
+    maybe(io.output_stream)::in, list(string)::in, dump_options::in,
     initial_deep::in, deep::out, io::di, io::uo) is det.
 
 startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
@@ -94,7 +104,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     InitDeep0 = initial_deep(InitStats, Root,
         CallSiteDynamics0, ProcDynamics, CallSiteStatics0, ProcStatics0),
     maybe_dump(DataFileName, DumpStages, 0,
-        dump_initial_deep(InitDeep0, DumpOptions), !IO),
+        dump_initial_deep(InitDeep0, default_dump_options), !IO),
 
     maybe_report_msg(MaybeOutputStream,
         "% Mapping static call sites to containing procedures...\n", !IO),

@@ -336,7 +336,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
         MaybeStartupStream = no
     ),
     read_and_startup(Machine, ScriptName, [FileName], Canonical,
-        MaybeStartupStream, [], [], Res, !IO),
+        MaybeStartupStream, [], Res, !IO),
     (
         Res = ok(Deep),
         Pref = solidify_preference(Deep, PrefInd),
@@ -493,7 +493,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 
     ( Cmd0 = deep_cmd_restart ->
         read_and_startup(Deep0 ^ server_name_port, Deep0 ^ script_name,
-            [Deep0 ^ data_file_name], Canonical, MaybeStartupStream, [], [],
+            [Deep0 ^ data_file_name], Canonical, MaybeStartupStream, [], 
             MaybeDeep, !IO),
         (
             MaybeDeep = ok(Deep),
