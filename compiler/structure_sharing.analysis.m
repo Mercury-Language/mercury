@@ -92,15 +92,20 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
     %
     sharing_analysis(!ModuleInfo, LoadedSharingTable, !IO),
     %
-    % Maybe write structure sharing pragmas to .opt files.
+    % Only write structure sharing pragmas to `.opt' files for
+    % `--intermodule-optimization' not `--intermodule-analysis'.
     %
     globals.io_lookup_bool_option(make_optimization_interface,
         MakeOptInt, !IO),
+    globals.io_lookup_bool_option(intermodule_analysis,
+        IntermodAnalysis, !IO),
     (
         MakeOptInt = yes,
+        IntermodAnalysis = no
+    ->
         make_opt_int(!.ModuleInfo, !IO)
     ;
-        MakeOptInt = no
+        true
     ).
 
 %-----------------------------------------------------------------------------%

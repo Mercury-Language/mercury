@@ -125,6 +125,8 @@ analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
             MakeOptInt, !IO),
         globals.io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
+        globals.io_lookup_bool_option(intermodule_analysis,
+            IntermodAnalysis, !IO),
         globals.io_lookup_bool_option(make_analysis_registry,
             MakeAnalysisReg, !IO),
         Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
@@ -135,11 +137,15 @@ analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
         globals.io_lookup_bool_option(debug_mm_tabling_analysis, Debug, !IO),
         list.foldl2(analyse_mm_tabling_in_scc(Debug, Pass1Only), SCCs,
             !ModuleInfo, !IO),
+        % Only write mm_tabling_info pragmas to `.opt' files for
+        % `--intermodule-optimisation' not `--intermodule-analysis'.
         (
             MakeOptInt = yes,
+            IntermodAnalysis = no
+        ->
             make_opt_int(!.ModuleInfo, !IO)
         ;
-            MakeOptInt = no
+            true
         )
     ;
         UseMinimalModel = no

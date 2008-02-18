@@ -1941,9 +1941,12 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     globals.lookup_bool_option(Globals, make_transitive_opt_interface,
         MakeTransOptInt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     (
         ( UseOptInt = yes
         ; IntermodOpt = yes
+        ; IntermodAnalysis = yes
         ),
         MakeOptInt = no
     ->
@@ -2099,12 +2102,15 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
     (
-        ( Intermod = yes
+        ( IntermodOpt = yes
+        ; IntermodAnalysis = yes
         ; UseOptFiles = yes
         ),
         MakeOptInt = no
@@ -2231,7 +2237,9 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
 
 maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     globals.lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
     globals.lookup_accumulating_option(Globals, intermod_directories,
         IntermodDirs),
@@ -2256,11 +2264,15 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         MakeOptInt = yes,
         write_opt_file(!HLDS, !IO),
 
+        % The following passes are only run with `--intermodule-optimisation'
+        % to append their results to the `.opt.tmp' file.  For
+        % `--intermodule-analysis', analyses results should be recorded
+        % using the intermodule analysis framework instead.
+        %
         % If intermod_unused_args is being performed, run polymorphism,
-        % mode analysis and determinism analysis, then run unused_args
-        % to append the unused argument information to the `.opt.tmp'
-        % file written above.
+        % mode analysis and determinism analysis before unused_args.
         (
+            IntermodAnalysis = no,
             ( IntermodArgs = yes
             ; Termination = yes
             ; Termination2 = yes
@@ -2350,7 +2362,9 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         MakeOptInt = no,
         % If there is a `.opt' file for this module the import
         % status of items in the `.opt' file needs to be updated.
-        ( Intermod = yes ->
+        ( IntermodOpt = yes ->
+            UpdateStatus = yes
+        ; IntermodAnalysis = yes ->
             UpdateStatus = yes
         ; UseOptFiles = yes ->
             module_info_get_name(!.HLDS, ModuleName),

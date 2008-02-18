@@ -699,13 +699,13 @@ make_all_interface_files(AllModules, Succeeded, !Info, !IO) :-
         module_target_unqualified_short_interface),
     LongInts = make_dependency_list(AllModules,
         module_target_long_interface),
-    globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+    globals.io_get_any_intermod(AnyIntermod, !IO),
     (
-        Intermod = yes,
+        AnyIntermod = yes,
         OptFiles = make_dependency_list(AllModules,
             module_target_intermodule_interface)
     ;
-        Intermod = no,
+        AnyIntermod = no,
         OptFiles = []
     ),
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -1018,9 +1018,9 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+        globals.io_get_any_intermod(AnyIntermod, !IO),
         (
-            Intermod = yes,
+            AnyIntermod = yes,
             % `.int0' files are imported by `.opt' files.
             (
                 Imports ^ children = [_ | _],
@@ -1030,7 +1030,7 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
                 Exts = ["opt"]
             )
         ;
-            Intermod = no,
+            AnyIntermod = no,
             Exts = []
         ),
 
@@ -1287,16 +1287,15 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
         ),
 
         GradeIntDir = LibDir/"ints"/GradeDir,
-        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+        globals.io_get_any_intermod(AnyIntermod, !IO),
         (
-            Intermod = yes,
+            AnyIntermod = yes,
             install_subdir_file(LinkSucceeded, GradeIntDir, ModuleName, "opt",
                 OptSucceeded, !IO)
         ;
-            Intermod = no,
+            AnyIntermod = no,
             OptSucceeded = yes
         ),
-
         globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
             !IO),
         (

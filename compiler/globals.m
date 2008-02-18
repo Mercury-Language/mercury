@@ -262,6 +262,8 @@
 
 :- pred io_get_extra_error_info(bool::out, io::di, io::uo) is det.
 
+:- pred io_get_any_intermod(bool::out, io::di, io::uo) is det.
+
     % This is semipure because it is called in a context in which the I/O
     % state is not available.  Note that the corresponding set predicate
     % below does take the I/O state.
@@ -689,6 +691,12 @@ io_get_c_compiler_type(C_CompilerType, !IO) :-
 
 io_get_extra_error_info(ExtraErrorInfo, !IO) :-
     get_extra_error_info(ExtraErrorInfo, !IO).
+
+io_get_any_intermod(AnyIntermod, !IO) :-
+    io_get_globals(Globals, !IO),
+    lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    lookup_bool_option(Globals, intermodule_analysis, IntermodAnalysis),
+    AnyIntermod = bool.or(IntermodOpt, IntermodAnalysis).
 
 semipure_get_solver_auto_init_supported(AutoInitSupported) :-
     semipure get_solver_auto_init_supported(AutoInitSupported).

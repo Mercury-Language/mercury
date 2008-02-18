@@ -515,7 +515,7 @@ read_module_dependencies_remake_msg(ModuleName, Msg, !IO) :-
         no, ModuleDepsFile, !IO),
     io.write_string("Error reading file `", !IO),
     io.write_string(ModuleDepsFile, !IO),
-    io.write_string("rebuilding: ", !IO),
+    io.write_string("', rebuilding: ", !IO),
     io.write_string(Msg, !IO),
     io.nl(!IO).
 

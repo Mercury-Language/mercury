@@ -233,8 +233,14 @@ process_module(!ModuleInfo, !Specs, !IO) :-
 
     map.keys(UnusedArgInfo, PredProcsToFix),
     globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    % Only write unused argument analysis pragmas to `.opt' files for
+    % `--intermodule-optimization', not `--intermodule-analysis'.
     (
         MakeOpt = yes,
+        IntermodAnalysis = no
+    ->
         module_info_get_name(!.ModuleInfo, ModuleName),
         module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
         io.open_append(OptFileName, OptFileRes, !IO),
@@ -250,7 +256,6 @@ process_module(!ModuleInfo, !Specs, !IO) :-
             MaybeOptFile = no
         )
     ;
-        MakeOpt = no,
         MaybeOptFile = no
     ),
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarn),

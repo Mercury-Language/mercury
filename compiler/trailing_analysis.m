@@ -135,6 +135,8 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
             MakeOptInt, !IO),
         globals.io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
+        globals.io_lookup_bool_option(intermodule_analysis,
+            IntermodAnalysis, !IO),
         globals.io_lookup_bool_option(make_analysis_registry,
             MakeAnalysisReg, !IO),
         Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
@@ -144,11 +146,15 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
         globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
         list.foldl2(process_scc(Debug, Pass1Only), SCCs, !ModuleInfo, !IO),
+        % Only write trailing analysis pragmas to `.opt' files for
+        % `--intermodule-optimization', not `--intermodule-analysis'.
         (
             MakeOptInt = yes,
+            IntermodAnalysis = no
+        ->
             make_opt_int(!.ModuleInfo, !IO)
         ;
-            MakeOptInt = no
+            true
         )
     ;
         UseTrail = no

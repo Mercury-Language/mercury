@@ -160,13 +160,19 @@ analyse_exceptions_in_module(!ModuleInfo, !IO) :-
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
     list.foldl2(check_scc_for_exceptions, SCCs, !ModuleInfo, !IO),
+    % Only write exception analysis pragmas to `.opt' files for
+    % `--intermodule-optimization', not `--intermodule-analysis'.
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
+        !IO),
+    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
         !IO),
     (
         MakeOptInt = yes,
+        IntermodAnalysis = no
+    ->
         make_optimization_interface(!.ModuleInfo, !IO)
     ;
-        MakeOptInt = no
+        true
     ).
 
 %----------------------------------------------------------------------------%

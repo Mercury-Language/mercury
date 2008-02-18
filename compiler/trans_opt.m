@@ -69,7 +69,7 @@
     %
 :- pred write_trans_opt_file(module_info::in, io::di, io::uo) is det.
 
-    % grab_optfiles(ModuleList, !ModuleImports, Error, !IO):
+    % grab_trans_optfiles(ModuleList, !ModuleImports, Error, !IO):
     %
     % Add the items from each of the modules in ModuleList.trans_opt to
     % the items in ModuleImports.

@@ -116,6 +116,7 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
 
     list.foldl2(analyse_termination_in_scc(PassInfo), SCCs, !ModuleInfo, !IO),
 
+    % XXX update this once this analysis supports `--intermodule-analysis'
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
         !IO),
     (

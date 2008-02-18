@@ -881,17 +881,20 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         pred_info_get_import_status(!.PredInfo, Status),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_optimization,
-            Intermod),
+            IntermodOpt),
+        globals.lookup_bool_option(Globals, intermodule_analysis,
+            IntermodAnalysis),
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
         (
-            % With `--intermodule-optimization' we can read the declarations
+            % With intermodule optimization we can read the declarations
             % for a predicate from the `.int' and `.int0' files, so ignore
-            % the error in that case.
+            % the error in those cases.
             (
                 status_defined_in_this_module(Status) = yes
             ;
-                Intermod = no
+                IntermodOpt = no,
+                IntermodAnalysis = no
             ;
                 MakeOptInt = yes
             )

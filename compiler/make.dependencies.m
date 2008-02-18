@@ -245,10 +245,9 @@ target_dependencies(_, module_target_intermodule_interface) =
     ]).
 target_dependencies(_, module_target_analysis_registry) =
     combine_deps_list([
-        module_target_source `of` self,
-        module_target_private_interface `of` parents,
-        module_target_long_interface `of` non_intermod_direct_imports,
-        module_target_short_interface `of` non_intermod_indirect_imports
+        module_target_intermodule_interface `of` direct_imports,
+        module_target_intermodule_interface `of` indirect_imports,
+        module_target_intermodule_interface `of` intermod_imports
     ]).
 target_dependencies(_, module_target_foreign_il_asm(_)) =
     combine_deps_list([
@@ -315,11 +314,12 @@ interface_file_dependencies =
     (find_module_deps(dependency_file)::out(find_module_deps)) is det.
 
 compiled_code_dependencies(Globals) = Deps :-
-    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
+    AnyIntermod = bool.or(IntermodOpt, IntermodAnalysis),
     (
-        Intermod = yes,
+        AnyIntermod = yes,
         Deps0 = combine_deps_list([
             module_target_intermodule_interface `of` self,
             module_target_intermodule_interface `of` intermod_imports,
@@ -328,7 +328,7 @@ compiled_code_dependencies(Globals) = Deps :-
             base_compiled_code_dependencies
         ])
     ;
-        Intermod = no,
+        AnyIntermod = no,
         Deps0 = base_compiled_code_dependencies
     ),
     (
@@ -598,9 +598,9 @@ indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 intermod_imports(ModuleName, Success, Modules, !Info, !IO) :-
-    globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+    globals.io_get_any_intermod(AnyIntermod, !IO),
     (
-        Intermod = yes,
+        AnyIntermod = yes,
         globals.io_lookup_bool_option(read_opt_files_transitively,
             Transitive, !IO),
         (
@@ -613,7 +613,7 @@ intermod_imports(ModuleName, Success, Modules, !Info, !IO) :-
                 Modules, !Info, !IO)
         )
     ;
-        Intermod = no,
+        AnyIntermod = no,
         Success = yes,
         Modules = set.init
     ).
@@ -668,7 +668,7 @@ find_module_foreign_imports_2(Languages, ModuleName,
         MaybeImports = yes(Imports),
         ForeignModules = set.list_to_set(
             get_foreign_imported_modules_lang(Languages,
-            Imports ^ foreign_import_modules)),
+                Imports ^ foreign_import_modules)),
         Success = yes
     ;
         MaybeImports = no,

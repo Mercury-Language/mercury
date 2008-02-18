@@ -462,6 +462,7 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
     is det.
 
 maybe_make_optimization_interface(ModuleInfo, !IO) :-
+    % XXX update this once this analysis supports `--intermodule-analysis'
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
         !IO),
     (
