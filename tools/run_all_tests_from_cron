@@ -72,7 +72,7 @@ export CVSROOT
 # Redirect all output to $tmpfile to stop cron mailing
 # content-free messages to mercury@cs.mu.oz.au.
 {
-tm_dir=$TOPDIR/test_mercury
+tm_dir=$TOPDIR/test_mercury/test_dirs/$HOST
 
 [ -d $TOPDIR/test_mercury/scripts ] || mkdir -p $TOPDIR/test_mercury/scripts
 cd $TOPDIR/test_mercury/scripts
