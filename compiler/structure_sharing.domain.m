@@ -445,9 +445,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
         = Sharing :-
     (
         Unification = construct(Var, ConsId, Args0, _, _, _, _),
-        ( var_has_non_reusable_type(ModuleInfo, ProcInfo, Var) ->
-            Sharing = sharing_as_init
-        ;
+        ( var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) ->
             list.takewhile(is_introduced_typeinfo_arg(ProcInfo), Args0,
                 _TypeInfoArgs, Args),
             number_args(Args, NumberedArgs),
@@ -460,6 +458,8 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
                     NumberedArgs, !SharingSet),
                 Sharing = wrap(!.SharingSet)
             )
+        ;
+            Sharing = sharing_as_init
         )
     ;
         Unification = deconstruct(Var, ConsId, Args0, _, _, _),
@@ -475,13 +475,13 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
         )
     ;
         Unification = assign(X, Y),
-        ( var_has_non_reusable_type(ModuleInfo, ProcInfo, X) ->
-            Sharing = sharing_as_init
-        ;
+        ( var_needs_sharing_analysis(ModuleInfo, ProcInfo, X) ->
             new_entry(ModuleInfo, ProcInfo,
                 datastruct_init(X) - datastruct_init(Y),
                 sharing_set_init, SharingSet),
             Sharing = wrap(SharingSet)
+        ;
+            Sharing = sharing_as_init
         )
     ;
         Unification = simple_test(_, _),
@@ -512,12 +512,12 @@ number_args(Args, NumberedArgs) :-
     sharing_set::in, sharing_set::out) is det.
 
 add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :-
-    ( var_has_non_reusable_type(ModuleInfo, ProcInfo, Arg) ->
-        true
-    ;
+    ( var_needs_sharing_analysis(ModuleInfo, ProcInfo, Arg) ->
         Data1 = datastruct_init_with_pos(Var, ConsId, N),
         Data2 = datastruct_init(Arg),
         new_entry(ModuleInfo, ProcInfo, Data1 - Data2, !Sharing)
+    ;
+        true
     ).
 
     % When two positions within the constructed term refer to the same variable,
@@ -1676,7 +1676,14 @@ selector_sharing_set_rename(Dict, Subst, SelSharingSet0, SelSharingSet):-
 selector_sharing_set_rename_2(Dict, Subst, Selector0, DataSet0, !Map) :-
     rename_selector(Subst, Selector0, Selector),
     data_set_rename(Dict, Subst, DataSet0, DataSet),
-    svmap.det_insert(Selector, DataSet, !Map).
+    ( map.search(!.Map, Selector, DataSetOld) ->
+        % This can happen if Subst maps two different type variables to the
+        % same type.
+        data_set_add(DataSet, DataSetOld, CombinedDataSet),
+        svmap.set(Selector, CombinedDataSet, !Map)
+    ;
+        svmap.det_insert(Selector, DataSet, !Map)
+    ).
 
 selector_sharing_set_add(SelectorSetA, SelectorSetB, SelectorSet):-
     SelectorSetA = selector_sharing_set(_, MapA),

@@ -52,11 +52,12 @@
 :- func get_type_substitution(module_info, pred_proc_id, list(mer_type),
     tvarset, head_type_params) = tsubst.
 
-    % var_has_non_reusable_type(ModuleInfo, ProcInfo, Var).
+    % var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var).
     %
-    % Succeed iff Var is of a type for which we don't support structure reuse.
+    % Succeed iff Var is of a type for which we need to consider structure
+    % sharing.
     %
-:- pred var_has_non_reusable_type(module_info::in, proc_info::in,
+:- pred var_needs_sharing_analysis(module_info::in, proc_info::in,
     prog_var::in) is semidet.
 
     % Succeed iff type is one for which we support structure reuse.
@@ -175,10 +176,38 @@ reverse_renaming(RevSubst, K0, V0, !Acc) :-
 
 %-----------------------------------------------------------------------------%
 
-var_has_non_reusable_type(ModuleInfo, ProcInfo, Var):-
+var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    not type_is_reusable(ModuleInfo, Type).
+    type_needs_sharing_analysis(ModuleInfo, Type).
+
+:- pred type_needs_sharing_analysis(module_info::in, mer_type::in) is semidet.
+
+type_needs_sharing_analysis(ModuleInfo, Type) :-
+    TypeCat = classify_type(ModuleInfo, Type),
+    type_category_needs_sharing_analysis(TypeCat) = yes.
+
+:- func type_category_needs_sharing_analysis(type_ctor_category) = bool.
+
+type_category_needs_sharing_analysis(CtorCat) = NeedsSharingAnalysis :-
+    (
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_system(_)
+        ),
+        NeedsSharingAnalysis = no
+    ;
+        ( CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        NeedsSharingAnalysis = yes
+    ).
+
+%-----------------------------------------------------------------------------%
 
 type_is_reusable(ModuleInfo, Type) :-
     TypeCat = classify_type(ModuleInfo, Type),
@@ -195,12 +224,13 @@ type_category_is_reusable(CtorCat) = Reusable :-
         ; CtorCat = ctor_cat_variable
         ; CtorCat = ctor_cat_void
         ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_notag)
         ),
         Reusable = no
     ;
-        % XXX I don't think notag user types should be reusable.
         ( CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_user(cat_user_general)
         ),
         Reusable = yes
     ).

@@ -309,9 +309,18 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
     (
         !.Selector = [UnitSelector | SelRest],
         CtorCat = classify_type(ModuleInfo, VarType),
-        % XXX This test seems to be a bug: it shouldn't succeed for either
-        % notag types or dummy types.
-        ( CtorCat = ctor_cat_user(_) ->
+        ( CtorCat = ctor_cat_user(CatUser) ->
+            (
+                CatUser = cat_user_general
+            ;
+                CatUser = cat_user_notag
+            ;
+                CatUser = cat_user_direct_dummy,
+                % We should not be producing selectors for dummy types.
+                unexpected(this_file,
+                    "do_normalize_selector: cat_user_direct_dummy")
+            ),
+
             % If it is either a term-selector of a non-existentially typed
             % functor or is a type-selector, construct the branch map and
             % proceed with normalization. If it is a term-selector of an
@@ -346,7 +355,9 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
                 )
             ;
                 % Existentially typed functor.
-                append(SelectorAcc0, !Selector)
+                % XXX awaiting confirmation on this from Nancy but it seems
+                % right to me --pw
+                append(SelectorAcc0, [UnitSelector], !:Selector)
             )
         ;
             % If it is not a user type, SelRest is empty anyhow, and
