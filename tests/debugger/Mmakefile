@@ -40,6 +40,7 @@ NONRETRY_PROGS = \
 	lambdatest			\
 	loopcheck			\
 	lval_desc_array			\
+	mdbrc_test			\
 	multi_parameter			\
 	poly_io_retry			\
 	poly_io_retry2			\
@@ -429,6 +430,14 @@ interpreter.out: interpreter interpreter.inp
 lval_desc_array.out: lval_desc_array lval_desc_array.inp
 	$(MDB) ./lval_desc_array < lval_desc_array.inp \
 		> lval_desc_array.out 2>&1
+
+# The use of MDB_STD_NOINIT here is to override the default mdbrc file
+# specified by the MDB make variable.
+mdbrc_test.out: mdbrc_test mdbrc_test.inp mdbrc_test.mdbrc
+	cp mdbrc_test.mdbrc .mdbrc
+	$(MDB_STD_NOINIT) ./mdbrc_test < mdbrc_test.inp \
+		> mdbrc_test.out 2>&1
+	/bin/rm .mdbrc
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

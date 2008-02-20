@@ -1,0 +1,6 @@
+echo on
+context none
+step
+finish
+print B
+continue

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2005-2006 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2006, 2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,6 @@ extern  MR_Code     *MR_trace_event_internal(MR_TraceCmdInfo *cmd,
 extern  void        MR_trace_event_print_internal_report(
                         MR_EventInfo *event_info);
 
-
 /*
 ** Debugger I/O streams.
 ** Replacements for stdin/stdout/stderr respectively.
@@ -44,34 +43,20 @@ extern  FILE    *MR_mdb_in;
 extern  FILE    *MR_mdb_out;
 extern  FILE    *MR_mdb_err;
 
-/* 
+/*
 ** We print confirmation of commands (e.g. new aliases) if this is MR_TRUE.
-*/ 
+*/
 
 extern  MR_bool         MR_trace_internal_interacting;
 
 /*
-** The structure of the input queue, and the operations that work on it.
+** If this true, we print every command we get from the command queue
+** just before it is executed. This is intended for debugging the debugger.
 */
 
-typedef struct MR_Line_Struct {
-    char                    *MR_line_contents;
-    struct MR_Line_Struct   *MR_line_next;
-} MR_Line;
-
-extern  void        MR_insert_line_at_head(const char *contents);
-extern  void        MR_insert_line_at_tail(const char *contents);
+extern  MR_bool         MR_trace_echo_queue_commands;
 
 /*
-** If there any lines waiting in the queue, return the first of these.
-** The memory for the line will have been allocated with MR_malloc(),
-** and it is the caller's resposibility to MR_free() it when appropriate.
-** If there are no lines in the queue, this function returns NULL.
-*/
-        
-extern  char        *MR_trace_getline_queue(void);
-
-/*  
 ** The details of the source server, if any.
 */
 

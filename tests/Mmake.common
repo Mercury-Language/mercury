@@ -60,10 +60,15 @@ JAVA=java
 MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes \
 	MERCURY_DEBUGGER_INIT=$(TESTS_DIR)/mdbrc mdb
 
+MDB_NOINIT = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes \
+	MERCURY_DEBUGGER_INIT="" mdb
+
 # Debugger test cases can standardize the reported event numbers and call
 # sequence numbers by using $(MDB_STD) instead of $(MDB) on the command line.
 
 MDB_STD = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB)
+
+MDB_STD_NOINIT = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB_NOINIT)
 
 ifeq ($(TARGET_ASM),yes)
 PARAMS_MSG = in grade $(GRADE) with --target asm

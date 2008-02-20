@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2007 The University of Melbourne.
+# Copyright (C) 1998-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -12,6 +12,7 @@
 # The list of human-written C header files of the trace library.
 # Keep this list in alphabetical order, please.
 HAND_TRACE_HDRS	=	\
+			mercury_trace.h			\
 			mercury_trace_alias.h		\
 			mercury_trace_browse.h		\
 			mercury_trace_cmd_backward.h	\
@@ -24,12 +25,12 @@ HAND_TRACE_HDRS	=	\
 			mercury_trace_cmd_misc.h	\
 			mercury_trace_cmd_parameter.h	\
 			mercury_trace_cmd_queries.h	\
-			mercury_trace_cmds.h		\
 			mercury_trace_cmd_table_io.h	\
+			mercury_trace_cmds.h		\
+			mercury_trace_command_queue.h	\
 			mercury_trace_completion.h	\
 			mercury_trace_declarative.h	\
 			mercury_trace_external.h	\
-			mercury_trace.h			\
 			mercury_trace_help.h		\
 			mercury_trace_hold_vars.h	\
 			mercury_trace_internal.h	\
@@ -43,9 +44,9 @@ HAND_TRACE_HDRS	=	\
 # The list of human-written C source files of the trace library.
 # Keep this list in alphabetical order, please.
 HAND_TRACE_SRCS	=	\
+			mercury_trace.c			\
 			mercury_trace_alias.c		\
 			mercury_trace_browse.c		\
-			mercury_trace.c			\
 			mercury_trace_cmd_backward.c	\
 			mercury_trace_cmd_breakpoint.c	\
 			mercury_trace_cmd_browsing.c	\
@@ -58,6 +59,7 @@ HAND_TRACE_SRCS	=	\
 			mercury_trace_cmd_parameter.c	\
 			mercury_trace_cmd_queries.c	\
 			mercury_trace_cmd_table_io.c	\
+			mercury_trace_command_queue.c		\
 			mercury_trace_completion.c	\
 			mercury_trace_declarative.c	\
 			mercury_trace_external.c	\

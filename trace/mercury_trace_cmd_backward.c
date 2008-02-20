@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,6 +28,7 @@
 #include "mercury_trace_cmds.h"
 #include "mercury_trace_cmd_backward.h"
 #include "mercury_trace_cmd_parameter.h"
+#include "mercury_trace_command_queue.h"
 #include "mercury_trace_util.h"
 
 /****************************************************************************/
@@ -101,7 +102,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         /* Arrange to retry the call once it is finished. */
         /* XXX we should use the same options as the original retry */
-        MR_insert_line_at_head("retry -o");
+        MR_insert_command_line_at_head("retry -o");
         return STOP_INTERACTING;
 
     case MR_RETRY_OK_FAIL_FIRST:
@@ -112,7 +113,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         /* Arrange to retry the call once it is finished. */
         /* XXX we should use the same options as the original retry */
-        MR_insert_line_at_head("retry -o");
+        MR_insert_command_line_at_head("retry -o");
         return STOP_INTERACTING;
 
     case MR_RETRY_ERROR:

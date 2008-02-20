@@ -39,6 +39,7 @@
 #include "mercury_trace_hold_vars.h"
 #include "mercury_trace_readline.h"
 #include "mercury_trace_source.h"
+#include "mercury_trace_command_queue.h"
 
 #include "mercury_trace_cmd_forward.h"
 #include "mercury_trace_cmd_backward.h"
@@ -160,8 +161,7 @@ MR_TraceSourceServer  MR_trace_source_server =
 
 MR_bool             MR_trace_internal_interacting = MR_FALSE;
 
-static  MR_Line     *MR_line_head = NULL;
-static  MR_Line     *MR_line_tail = NULL;
+MR_bool             MR_trace_echo_queue_commands = MR_FALSE;
 
 static  void        MR_trace_internal_ensure_init(void);
 static  MR_bool     MR_trace_internal_create_mdb_window(void);
@@ -334,14 +334,21 @@ MR_trace_internal_ensure_init(void)
             fprintf(MR_mdb_out, MR_trace_banner, MR_VERSION);
         }
 
+        if (getenv("MERCURY_DEBUG_ECHO_QUEUE_COMMANDS") != NULL) {
+            MR_trace_echo_queue_commands = MR_TRUE;
+        }
+
         env = getenv("LINES");
         if (env != NULL && MR_trace_is_natural_number(env, &n)) {
             MR_scroll_limit = n;
         }
 
         /*
-        ** These functions add the commands to the front of the queue, so
-        ** we call them in the reverse order we want the commands executed.
+        ** We call these functions in this order because we want the .mdbrc
+        ** file in the current (local) directory to be able to override
+        ** any actions from the system's standard .mdbrc file, and the
+        ** .mdbrc file (if any) referred to by the current setting of the
+        ** MERCURY_DEBUGGER_INIT environment to override both.
         */
         MR_trace_internal_init_from_home_dir();
         MR_trace_internal_init_from_local();
@@ -624,7 +631,7 @@ MR_trace_internal_init_from_env(void)
     char    *init;
 
     init = getenv("MERCURY_DEBUGGER_INIT");
-    if (init != NULL) {
+    if (init != NULL && strlen(init) > 0) {
         (void) MR_trace_source(init, MR_FALSE, NULL, 0);
         /* If the source failed, the error message has been printed. */
     }
@@ -692,13 +699,17 @@ MR_trace_source(const char *filename, MR_bool ignore_errors,
 void
 MR_trace_source_from_open_file(FILE *fp, char **args, int num_args)
 {
-    char    *contents;
-    MR_Line *line;
-    MR_Line *prev_line;
-    MR_Line *old_head;
+    char        *contents;
+    MR_CmdLines *line;
+    MR_CmdLines *first_line;
+    MR_CmdLines *prev_line;
 
+    /*
+    ** Invariant: either both first_line and prev_line are NULL, or neither is.
+    */
+
+    first_line = NULL;
     prev_line = NULL;
-    old_head = MR_line_head;
 
     /*
     ** Insert the sourced commands at the front of the command queue,
@@ -708,24 +719,21 @@ MR_trace_source_from_open_file(FILE *fp, char **args, int num_args)
     while ((contents = MR_trace_readline_from_script(fp, args, num_args))
         != NULL)
     {
-        line = MR_NEW(MR_Line);
-        line->MR_line_contents = MR_copy_string(contents);
+        line = MR_NEW(MR_CmdLines);
+        line->MR_cmd_line_contents = MR_copy_string(contents);
+        line->MR_cmd_line_next = NULL;
 
-        if (prev_line == NULL) {
-            MR_line_head = line;
+        if (first_line == NULL) {
+            first_line = line;
         } else {
-            prev_line->MR_line_next = line;
+            MR_assert(prev_line != NULL);
+            prev_line->MR_cmd_line_next = line;
         }
 
         prev_line = line;
     }
 
-    if (prev_line != NULL) {
-        prev_line->MR_line_next = old_head;
-        if (MR_line_tail == NULL) {
-            MR_line_tail = prev_line;
-        }
-    }
+    MR_insert_command_lines_at_tail(first_line);
 
     MR_trace_internal_interacting = MR_FALSE;
 }
@@ -1233,7 +1241,7 @@ MR_trace_getline(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 {
     char    *line;
 
-    line = MR_trace_getline_queue();
+    line = MR_trace_getline_command_queue();
     if (line != NULL) {
         return line;
     }
@@ -1248,67 +1256,6 @@ MR_trace_getline(const char *prompt, FILE *mdb_in, FILE *mdb_out)
     }
 
     return line;
-}
-
-/*
-** If there any lines waiting in the queue, return the first of these.
-** The memory for the line will have been allocated with MR_malloc(),
-** and it is the caller's resposibility to MR_free() it when appropriate.
-** If there are no lines in the queue, this function returns NULL.
-*/
-
-char *
-MR_trace_getline_queue(void)
-{
-    if (MR_line_head != NULL) {
-        MR_Line *old;
-        char    *contents;
-
-        old = MR_line_head;
-        contents = MR_line_head->MR_line_contents;
-        MR_line_head = MR_line_head->MR_line_next;
-        if (MR_line_head == NULL) {
-            MR_line_tail = NULL;
-        }
-
-        MR_free(old);
-        return contents;
-    } else {
-        return NULL;
-    }
-}
-
-void
-MR_insert_line_at_head(const char *contents)
-{
-    MR_Line *line;
-
-    line = MR_NEW(MR_Line);
-    line->MR_line_contents = MR_copy_string(contents);
-    line->MR_line_next = MR_line_head;
-
-    MR_line_head = line;
-    if (MR_line_tail == NULL) {
-        MR_line_tail = MR_line_head;
-    }
-}
-
-void
-MR_insert_line_at_tail(const char *contents)
-{
-    MR_Line *line;
-
-    line = MR_NEW(MR_Line);
-    line->MR_line_contents = MR_copy_string(contents);
-    line->MR_line_next = NULL;
-
-    if (MR_line_tail == NULL) {
-        MR_line_tail = line;
-        MR_line_head = line;
-    } else {
-        MR_line_tail->MR_line_next = line;
-        MR_line_tail = line;
-    }
 }
 
 /*
@@ -1342,7 +1289,7 @@ MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
             ** later.
             */
             *ptr = '\0';
-            MR_insert_line_at_head(MR_copy_string(ptr + 1));
+            MR_insert_command_line_at_head(MR_copy_string(ptr + 1));
             return MR_FALSE;
         }
 
