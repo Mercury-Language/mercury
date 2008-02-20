@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -308,8 +308,8 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
         ;
             % Start analysis.
             proc_info_get_goal(ProcInfo, Goal),
-            analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
-                !FixpointTable, !Sharing, !IO),
+            analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+                Verbose, Goal, !FixpointTable, !Sharing, !IO),
             FullAsDescr = sharing_as_short_description(!.Sharing),
 
             sharing_as_project(HeadVars, !Sharing),
@@ -325,7 +325,7 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
                 WidenAsDescr = "-"
             ),
 
-            maybe_write_string(Verbose, "\t\t: " ++
+            maybe_write_string(Verbose, "\n\t\t: " ++
                 TabledAsDescr ++ "->" ++
                 FullAsDescr ++ "/" ++
                 ProjAsDescr ++ "/" ++
@@ -343,19 +343,20 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
 %
 
 :- pred analyse_goal(module_info::in, pred_info::in, proc_info::in,
-    sharing_as_table::in, hlds_goal::in,
+    sharing_as_table::in, bool::in, hlds_goal::in,
     ss_fixpoint_table::in, ss_fixpoint_table::out,
     sharing_as::in, sharing_as::out, io::di, io::uo) is det.
 
-analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
+analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         !FixpointTable, !SharingAs, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            list.foldl3(analyse_goal(ModuleInfo, PredInfo, ProcInfo,
-                SharingTable), Goals, !FixpointTable, !SharingAs, !IO)
+            list.foldl3(analyse_goal_with_progress(ModuleInfo, PredInfo,
+                ProcInfo, SharingTable, Verbose), Goals,
+                !FixpointTable, !SharingAs, !IO)
         ;
             ConjType = parallel_conj,
             Context = goal_info_get_context(GoalInfo),
@@ -395,13 +396,13 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         GoalExpr = disj(Goals),
         list.foldl3(
             analyse_disj(ModuleInfo, PredInfo, ProcInfo,
-                SharingTable, !.SharingAs),
+                SharingTable, !.SharingAs, Verbose),
             Goals, !FixpointTable, sharing_as_init, !:SharingAs, !IO)
     ;
         GoalExpr = switch(_, _, Cases),
         list.foldl3(
             analyse_case(ModuleInfo, PredInfo, ProcInfo,
-                SharingTable, !.SharingAs),
+                SharingTable, !.SharingAs, Verbose),
             Cases, !FixpointTable, sharing_as_init, !:SharingAs, !IO)
     ;
         GoalExpr = negation(_Goal)
@@ -410,15 +411,15 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
     ;
         GoalExpr = scope(_, SubGoal),
         % XXX Check theory.
-        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, SubGoal,
-            !FixpointTable, !SharingAs, !IO)
+        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
+            SubGoal, !FixpointTable, !SharingAs, !IO)
     ;
         GoalExpr = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
-        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
             IfGoal, !FixpointTable, !.SharingAs, IfSharingAs, !IO),
-        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
             ThenGoal, !FixpointTable, IfSharingAs, ThenSharingAs, !IO),
-        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
             ElseGoal, !FixpointTable, !.SharingAs, ElseSharingAs, !IO),
         !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo,
             ThenSharingAs, ElseSharingAs)
@@ -434,19 +435,36 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         unexpected(this_file, "analyse_goal: shorthand goal.")
     ).
 
+:- pred analyse_goal_with_progress(module_info::in, pred_info::in,
+    proc_info::in, sharing_as_table::in, bool::in, hlds_goal::in,
+    ss_fixpoint_table::in, ss_fixpoint_table::out,
+    sharing_as::in, sharing_as::out, io::di, io::uo) is det.
+
+analyse_goal_with_progress(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        Verbose, Goal, !FixpointTable, !SharingAs, !IO) :-
+    (
+        Verbose = yes,
+        io.write_char('.', !IO),
+        io.flush_output(!IO)
+    ;
+        Verbose = no
+    ),
+    analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
+        !FixpointTable, !SharingAs, !IO).
+
 %-----------------------------------------------------------------------------%
 %
 % Additional code for analysing disjuctions
 %
 
 :- pred analyse_disj(module_info::in, pred_info::in, proc_info::in,
-    sharing_as_table::in, sharing_as::in, hlds_goal::in,
+    sharing_as_table::in, sharing_as::in, bool::in, hlds_goal::in,
     ss_fixpoint_table::in, ss_fixpoint_table::out,
     sharing_as::in, sharing_as::out, io::di, io::uo) is det.
 
 analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, SharingBeforeDisj,
-        Goal, !FixpointTable, !Sharing, !IO) :-
-    analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
+        Verbose, Goal, !FixpointTable, !Sharing, !IO) :-
+    analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         !FixpointTable, SharingBeforeDisj, GoalSharing, !IO),
     !:Sharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, !.Sharing,
         GoalSharing).
@@ -457,14 +475,14 @@ analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, SharingBeforeDisj,
 %
 
 :- pred analyse_case(module_info::in, pred_info::in, proc_info::in,
-    sharing_as_table::in, sharing_as::in, case::in,
+    sharing_as_table::in, sharing_as::in, bool::in, case::in,
     ss_fixpoint_table::in, ss_fixpoint_table::out,
     sharing_as::in, sharing_as::out, io::di, io::uo) is det.
 
 analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
-        Case, !FixpointTable, !Sharing, !IO) :-
+        Verbose, Case, !FixpointTable, !Sharing, !IO) :-
     Case = case(_, _, Goal),
-    analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
+    analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         !FixpointTable, Sharing0, CaseSharing, !IO),
     !:Sharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, !.Sharing,
         CaseSharing).

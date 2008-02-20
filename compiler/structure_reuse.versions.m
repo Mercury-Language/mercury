@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,7 +210,7 @@ process_goal(ReuseMap, !Goal, !IO) :-
             CalleePredName),
         ReuseDescription0 = goal_info_get_reuse(GoalInfo0),
         (
-            % If the reuse description already sais "reuse", then this is
+            % If the reuse description already says "reuse", then this is
             % a call to a procedure which might have specified conditions, yet
             % whose conditions are always met, hence do not imply conditions on
             % the procedure in which this call appears. We must therefore

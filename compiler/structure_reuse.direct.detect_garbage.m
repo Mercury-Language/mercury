@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,6 +37,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.ctgc.datastruct.
 
+:- import_module bool.
+:- import_module io.
 :- import_module pair. 
 :- import_module set.
 :- import_module string.
@@ -48,15 +50,18 @@
                 module_info     ::  module_info, 
                 pred_info       ::  pred_info, 
                 proc_info       ::  proc_info, 
-                sharing_table   ::  sharing_as_table
+                sharing_table   ::  sharing_as_table,
+                very_verbose    ::  bool
             ).
    
 :- func detect_bg_info_init(module_info, pred_info, proc_info, 
     sharing_as_table) = detect_bg_info.
 
-detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable) =
-    detect_bg_info(ModuleInfo, PredInfo, ProcInfo, SharingTable). 
-
+detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable) = BG :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    BG = detect_bg_info(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        VeryVerbose).
 
 determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
         Goal, DeadCellTable) :- 
@@ -66,7 +71,18 @@ determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     % which boils down to reconstructing that sharing information based on the
     % sharing recorded in the sharing table. 
     determine_dead_deconstructions_2(Background, Goal, 
-        sharing_as_init, _, dead_cell_table_init, DeadCellTable).
+        sharing_as_init, _, dead_cell_table_init, DeadCellTable),
+
+    % Add a newline after the "progress dots".
+    VeryVerbose = Background ^ very_verbose,
+    (
+        VeryVerbose = yes,
+        trace [io(!IO)] (
+            io.nl(!IO)
+        )
+    ;
+        VeryVerbose = no
+    ).
 
     % Process a procedure goal, determining the sharing at each subgoal, as
     % well as constructing the table of dead cells. 
@@ -88,7 +104,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
     SharingTable = Background ^ sharing_table, 
     (
         GoalExpr = conj(_, Goals),
-        list.foldl2(determine_dead_deconstructions_2(Background),
+        list.foldl2(determine_dead_deconstructions_2_with_progress(Background),
             Goals, !SharingAs, !DeadCellTable)
     ;
         GoalExpr = plain_call(PredId, ProcId, ActualVars, _, _, _),
@@ -145,6 +161,25 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         unexpected(detect_garbage.this_file, 
             "determine_dead_deconstructions_2: shorthand goal.")
     ).
+
+:- pred determine_dead_deconstructions_2_with_progress(detect_bg_info::in,
+    hlds_goal::in, sharing_as::in, sharing_as::out, dead_cell_table::in, 
+    dead_cell_table::out) is det.
+
+determine_dead_deconstructions_2_with_progress(Background, TopGoal,
+        !SharingAs, !DeadCellTable) :- 
+    VeryVerbose = Background ^ very_verbose,
+    (
+        VeryVerbose = yes,
+        trace [io(!IO)] (
+            io.write_char('.', !IO),
+            io.flush_output(!IO)
+        )
+    ;
+        VeryVerbose = no
+    ),
+    determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
+        !DeadCellTable).
        
 :- pred determine_dead_deconstructions_2_disj(detect_bg_info::in, 
     hlds_goals::in, sharing_as::in, sharing_as::out,

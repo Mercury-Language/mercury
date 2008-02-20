@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,6 +63,7 @@
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.dependency_graph.
 
+:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -152,7 +153,7 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
     !:FixpointTable = AnalysisInfo ^ fptable,
 
     % Some feedback.
-    maybe_write_string(VeryVerbose, "% FPT: " ++
+    maybe_write_string(VeryVerbose, "\n% FPT: " ++
         sr_fixpoint_table_get_short_description(PPId, !.FixpointTable)
         ++ "\n", !IO),
 
@@ -178,7 +179,8 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
                 proc_info       :: proc_info,
                 sharing_table   :: sharing_as_table,
                 reuse_table     :: reuse_as_table,
-                headvars        :: list(prog_var)
+                headvars        :: list(prog_var),
+                very_verbose    :: bool
             ).
 
     % The type analysis_info gathers the analysis information that may change
@@ -205,8 +207,11 @@ ir_background_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     HeadVarsOfInterest = 
         remove_typeinfo_vars(Vartypes, HeadVars), 
 
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+
     BG = ir_background_info(ModuleInfo, PredInfo, ProcInfo,
-        SharingTable, ReuseTable, HeadVarsOfInterest).
+        SharingTable, ReuseTable, HeadVarsOfInterest, VeryVerbose).
 
 :- func analysis_info_init(pred_proc_id, sr_fixpoint_table) = ir_analysis_info.
 
@@ -268,8 +273,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl2(indirect_reuse_analyse_goal(BaseInfo), Goals0,
-            Goals, !AnalysisInfo, !IO),
+        list.map_foldl2(indirect_reuse_analyse_goal_with_progress(BaseInfo),
+            Goals0, Goals, !AnalysisInfo, !IO),
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -384,6 +389,22 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "indirect_reuse_analyse_goal: shorthand goal.")
     ).
+
+:- pred indirect_reuse_analyse_goal_with_progress(ir_background_info::in,
+    hlds_goal::in, hlds_goal::out, ir_analysis_info::in, ir_analysis_info::out,
+    io::di, io::uo) is det.
+
+indirect_reuse_analyse_goal_with_progress(BaseInfo, !Goal, !AnalysisInfo,
+        !IO) :-
+    VeryVerbose = BaseInfo ^ very_verbose,
+    (
+        VeryVerbose = yes,
+        io.write_char('.', !IO),
+        io.flush_output(!IO)
+    ;
+        VeryVerbose = no
+    ),
+    indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO).
 
     % Analyse each branch of a disjunction with respect to an input
     % analysis_info, producing a resulting analysis_info, and possibly
