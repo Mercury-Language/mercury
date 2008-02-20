@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2007 The University of Melbourne.
+** Copyright (C) 1999-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1460,7 +1460,10 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
         }
 
         success_count = 0;
-        do {
+        while (var_num < MR_point.MR_point_var_count &&
+            MR_streq(var_spec.MR_var_spec_name,
+                MR_point.MR_point_vars[var_num].MR_value_var.MR_var_fullname))
+        {
             bad_path = MR_trace_browse_var(out, print_var_name,
                 type_info, value, name, path, browser, caller, format);
 
@@ -1469,9 +1472,13 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
             }
 
             var_num++;
-        } while (var_num < MR_point.MR_point_var_count &&
-            MR_streq(var_spec.MR_var_spec_name,
-                MR_point.MR_point_vars[var_num].MR_value_var.MR_var_fullname));
+
+            type_info = MR_point.MR_point_vars[var_num].MR_value_type;
+            value = MR_point.MR_point_vars[var_num].MR_value_value;
+            name = MR_trace_printed_var_name(MR_point.MR_point_level_entry,
+                &MR_point.MR_point_vars[var_num]);
+        }
+
         /* Attribute names cannot be ambiguous; the compiler enforces this. */
 
         if (success_count == 0) {
