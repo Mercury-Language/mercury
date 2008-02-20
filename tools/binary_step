@@ -164,29 +164,24 @@ set +x
 
 touch stage2/library/*.c
 touch stage2/mdbcomp/*.c
-touch stage2/analysis/*.c
 touch stage2/compiler/*.c
 
 sleep 2
 
 touch stage2/library/*.int3
 touch stage2/mdbcomp/*.int3
-touch stage2/analysis/*.int3
 touch stage2/compiler/*.int3
 
 sleep 2
 
 touch stage2/library/*.date3
 touch stage2/mdbcomp/*.date3
-touch stage2/analysis/*.date3
 touch stage2/compiler/*.date3
 
 touch stage2/library/*.int2
 touch stage2/library/*.int
 touch stage2/mdbcomp/*.int2
 touch stage2/mdbcomp/*.int
-touch stage2/analysis/*.int2
-touch stage2/analysis/*.int
 touch stage2/compiler/*.int2
 touch stage2/compiler/*.int
 
@@ -194,7 +189,6 @@ sleep 2
 
 touch stage2/library/*.date
 touch stage2/mdbcomp/*.date
-touch stage2/analysis/*.date
 touch stage2/compiler/*.date
 
 touch stage2/library/*.opt
@@ -210,7 +204,6 @@ touch stage2/library/*.trans_opt_date
 touch stage2/library/*.o
 touch stage2/library/*.pic_o
 touch stage2/mdbcomp/*.o
-touch stage2/analysis/*.o
 touch stage2/compiler/*.o
 
 # Rebuild the stage2 library and compiler from the components already there.
@@ -235,15 +228,6 @@ then
     echo "building of stage 2 mdbcomp successful"
 else
     echo "building of stage 2 mdbcomp not successful"
-    touch .stage2_problem
-    exit 1
-fi
-
-if (cd stage2/analysis ; mmake $mmake_opts $jfactor library)
-then
-    echo "building of stage 2 analysis successful"
-else
-    echo "building of stage 2 analysis not successful"
     touch .stage2_problem
     exit 1
 fi

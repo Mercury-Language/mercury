@@ -1,16 +1,19 @@
 -----------------------------------------------------------------------------
-| Copyright (C) 2003, 2006 The University of Melbourne.
+| Copyright (C) 2003, 2006, 2008 The University of Melbourne.
 | This file may only be copied under the terms of the GNU General
 | Public License - see the file COPYING in the Mercury distribution.
 -----------------------------------------------------------------------------
 
-This directory contains an implementation of the inter-module
+This directory formerly contained an implementation of the inter-module
 analysis framework described in 
 
 	Nicholas Nethercote. The Analysis Framework of HAL,
 	Chapter 7: Inter-module Analysis, Master's Thesis,
 	University of Melbourne, September 2001, revised April 2002.
 	<http://www.cl.cam.ac.uk/~njn25/pubs/masters2001.ps.gz>.
+
+The code has now been moved into the compiler directory, in the package
+`analysis'. The files that remain (Mmakefile, etc.) are unused.
 
 This framework records call and answer patterns for arbitrary analyses,
 and performs dependency analysis to force recompilation where necessary

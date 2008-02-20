@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2007 The University of Melbourne.
+# Copyright (C) 2002-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -57,7 +57,6 @@ MPS_GC_DIR = $(WORKSPACE)/mps_gc/code
 COMPILER_DIR = $(WORKSPACE)/compiler
 UTIL_DIR = $(WORKSPACE)/util
 ROBDD_DIR = $(WORKSPACE)/robdd
-ANALYSIS_DIR = $(WORKSPACE)/analysis
 
 # Specify the MPS "platform"
 # E.g. lii4gc means Linux, i486, gcc
@@ -85,7 +84,6 @@ EVENTSPEC_LIB_NAME = mer_eventspec
 SSDB_LIB_NAME = mer_ssdb
 BROWSER_LIB_NAME = mer_browser
 MDBCOMP_LIB_NAME = mer_mdbcomp
-ANALYSIS_LIB_NAME = mer_analysis
 
 # This specifies the path to the so_locations file (or its equivalent),
 # which is used by the linker to help it to map different shared objects

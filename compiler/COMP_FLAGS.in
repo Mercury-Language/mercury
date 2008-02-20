@@ -7,7 +7,6 @@
 -I../browser
 -I../ssdb
 -I../mdbcomp
--I../analysis
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
@@ -20,11 +19,8 @@
 --c-include-directory ../ssdb
 --c-include-directory ../ssdb/Mercury/mihs
 --c-include-directory ../trace
---c-include-directory ../analysis
---c-include-directory ../analysis/Mercury/mihs
 --erlang-include-directory ../library/Mercury/hrls
 --erlang-include-directory ../mdbcomp/Mercury/hrls
---erlang-include-directory ../analysis/Mercury/hrls
 --erlang-include-directory ../ssdb/Mercury/hrls
 --no-main
 --config-file ../scripts/Mercury.config.bootstrap

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2007 The University of Melbourne.
+# Copyright (C) 1995-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -40,7 +40,6 @@ SUBDIRS = \
 		ssdb \
 		mdbcomp \
 		browser \
-		analysis \
 		compiler \
 		doc \
 		slice \
@@ -71,7 +70,6 @@ EVENTSPEC_LIB_NAME = mer_eventspec
 SSDB_LIB_NAME = mer_ssdb
 MDBCOMP_LIB_NAME = mer_mdbcomp
 BROWSER_LIB_NAME = mer_browser
-ANALYSIS_LIB_NAME = mer_analysis
 
 #-----------------------------------------------------------------------------#
 
@@ -79,7 +77,7 @@ ANALYSIS_LIB_NAME = mer_analysis
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
 .PHONY: dep
-dep: dep_library dep_ssdb dep_mdbcomp dep_browser dep_analysis dep_compiler \
+dep: dep_library dep_ssdb dep_mdbcomp dep_browser dep_compiler \
 		dep_slice dep_profiler dep_deep_profiler
 
 .PHONY: dep_library
@@ -120,12 +118,6 @@ dep_ssdb: \
 
 ssdb/$(deps_subdir)$(SSDB_LIB_NAME).dep:
 	+cd ssdb && $(SUBDIR_MMAKE) $(SSDB_LIB_NAME).depend
-
-.PHONY: dep_analysis
-dep_analysis: analysis/$(deps_subdir)$(ANALYSIS_LIB_NAME).dep
-
-analysis/$(deps_subdir)$(ANALYSIS_LIB_NAME).dep:
-	+cd analysis && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
 dep_compiler: compiler/$(deps_subdir)top_level.dep
@@ -173,7 +165,7 @@ deep_profiler/$(deps_subdir)mdprof_procrep.dep: \
 
 .PHONY: depend
 depend: depend_library depend_mdbcomp depend_browser depend_ssdb \
-		depend_analysis depend_compiler \
+		depend_compiler \
 		depend_slice depend_profiler depend_deep_profiler
 
 .PHONY: depend_library
@@ -191,10 +183,6 @@ depend_browser:
 .PHONY: depend_ssdb
 depend_ssdb:
 	+cd ssdb && $(SUBDIR_MMAKE) depend
-
-.PHONY: depend_analysis
-depend_analysis:
-	+cd analysis && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_compiler
 depend_compiler:
@@ -254,23 +242,18 @@ browser: dep_browser scripts util boehm_gc runtime library mdbcomp
 ssdb: dep_ssdb scripts boehm_gc runtime library mdbcomp browser
 	+cd ssdb && $(SUBDIR_MMAKE)
 
-.PHONY: analysis
-analysis: dep_analysis scripts util boehm_gc runtime library mdbcomp browser \
-    		ssdb trace
-	+cd analysis && $(SUBDIR_MMAKE)
-
 .PHONY: runtime
 trace: scripts boehm_gc runtime library mdbcomp browser
 	+cd trace && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
 compiler: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser ssdb trace analysis
+		mdbcomp browser ssdb trace
 	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: libmmc
 libmmc: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser ssdb trace analysis
+		mdbcomp browser ssdb trace
 	+cd compiler && $(SUBDIR_MMAKE) libmmc
 
 .PHONY: doc
@@ -296,7 +279,7 @@ deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
 
 .PHONY: tags
 tags: tags_compiler tags_library tags_mdbcomp tags_browser tags_ssdb \
-    		tags_analysis tags_slice tags_profiler tags_deep_profiler
+    		tags_slice tags_profiler tags_deep_profiler
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -318,10 +301,6 @@ tags_browser:
 tags_ssdb:
 	+cd ssdb && $(SUBDIR_MMAKE) tags
 
-.PHONY: tags_analysis
-tags_analysis:
-	+cd analysis && $(SUBDIR_MMAKE) tags
-
 .PHONY: tags_slice
 tags_slice:
 	+cd slice && $(SUBDIR_MMAKE) tags
@@ -339,7 +318,7 @@ tags_deep_profiler:
 # Remove from each of the listed directories mmc-generated files that don't
 # belong there.
 cleanint:
-	for dir in library mdbcomp browser ssdb analysis compiler \
+	for dir in library mdbcomp browser ssdb compiler \
 		slice profiler deep_profiler; \
 	do \
 		echo Looking for inappropriate files in the $$dir directory: ; \
@@ -418,8 +397,6 @@ tar: $(GENERATED_DOCS)
 	+cd ssdb && $(SUBDIR_MMAKE) all-ints cs \
 		$(SSDB_LIB_NAME).init tags
 	+cd trace && $(SUBDIR_MMAKE) cs
-	+cd analysis && $(SUBDIR_MMAKE) depend
-	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) cs tags
 	+cd slice && $(SUBDIR_MMAKE) depend
@@ -672,9 +649,6 @@ touch_files:
 	touch ssdb/*.optdate
 	chmod +w ssdb/*.dep
 	touch ssdb/*.dep
-	touch analysis/*.date*
-	chmod +w analysis/*.dep
-	touch analysis/*.dep
 	touch compiler/*.date*
 	chmod +w compiler/*.dep
 	touch compiler/*.dep

@@ -27,8 +27,8 @@ library, runtime, etc.) fit together.
 
 The main job of the compiler is to translate Mercury into C, although it
 can also translate (subsets of) Mercury to some other languages:
-Mercury bytecode (for a planned bytecode interpreter) and MSIL (for the
-Microsoft .NET platform).
+Mercury bytecode (for a planned bytecode interpreter), MSIL (for the
+Microsoft .NET platform) and Erlang.
 
 <p>
 
@@ -96,7 +96,7 @@ Taking all this into account, the structure looks like this:
                <br> Package: check_hlds.m
 	  <li> 3. high-level transformations
 	       (annotated HLDS -&gt; annotated HLDS)
-               <br> Package: transform_hlds.m
+               <br> Packages: transform_hlds.m and analysis.m
           </ul>
      <li> back-ends
           <ul type=disc>
@@ -943,7 +943,7 @@ Expansion of equivalence types (equiv_type_hlds.m)
 
 	<p>
 
-	It's also needed by the MLDS->C back-end, for
+	It's also needed by the MLDS-&gt;C back-end, for
 	--high-level-data, and for cases involving abstract
 	equivalence types which are defined as "float".
 </ul>
@@ -1122,6 +1122,16 @@ deep profiling (deep_profiling.m, in the ll_backend.m package).
 Both passes insert into procedure bodies, among other things,
 calls to procedures (some of which are impure)
 that record profiling information.
+
+<h4> 4. Intermodule analysis framework </h4>
+
+<p>
+This is the analysis.m package.
+
+<p>
+
+The framework can be used by a few analyses in the transform_hlds.m package.
+It is documented in the analysis/README file.
 
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
@@ -1781,6 +1791,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2007-12-30 08:24:22 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2008-02-20 03:09:59 $ by $Author: wangp $@cs.mu.oz.au. <br>
 </body>
 </html>

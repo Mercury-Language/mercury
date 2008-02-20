@@ -2926,7 +2926,7 @@ if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 "using grade \`$GRADE' to compile the compiler
 	compiler and library will be rebuilt with new grade
 	installation may take a long time")
-		find library compiler browser mdbcomp analysis \
+		find library compiler browser mdbcomp \
 			profiler deep_profiler ssdb slice \
 			-name \*.c -o -name \*.c_date | \
 			xargs rm > /dev/null 2>&1
@@ -4625,7 +4625,7 @@ some_kept=false
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for directory in library compiler profiler deep_profiler mdbcomp browser analysis slice
+    for directory in library compiler profiler deep_profiler mdbcomp browser slice
     do
         mercury_check_c_files $directory $directory
         mercury_check_c_files $directory/Mercury/cs $directory/Mercury/c_dates
@@ -4780,7 +4780,6 @@ library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS
 browser/MDB_FLAGS
 ssdb/SSDB_FLAGS
-analysis/ANALYSIS_FLAGS
 slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS

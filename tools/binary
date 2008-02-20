@@ -35,7 +35,7 @@ Options:
     -d, --dependency-only
         Make dependencies for stage3 only. Do not compile stage3.
     -D <dirname>, --dir <dirname>
-        Confine the search to one directory, library, mdbcomp, analysis
+        Confine the search to one directory, library, mdbcomp
         or compiler. (Usually useful only after a previous search.)
     -f <modulename>, --file <modulename>
         Confine the search to the named file(s).
@@ -213,12 +213,11 @@ echo "starting at `date`"
 
 for dir in $base $trial
 do
-    for subdir in library mdbcomp analysis compiler
+    for subdir in library mdbcomp compiler
     do
         case $subdir in
             library)    example_o=builtin.o ;;
             mdbcomp)    example_o=mdbcomp.prim_data.o ;;
-            analysis)   example_o=analysis.o ;;
             compiler)   example_o=check_hlds.cse_detection.o ;;
         esac
 
@@ -274,15 +273,6 @@ cp $root/mdbcomp/Mmake* .
 cp $root/mdbcomp/Mercury* .
 cp $root/mdbcomp/*FLAGS* .
 cp $root/mdbcomp/.mgnuc* .
-cd $root/stage2
-mkdir analysis
-cd analysis
-ln -s $root/analysis/*.m .
-ln -s $root/analysis/*.init .
-cp $root/analysis/Mmake* .
-cp $root/analysis/Mercury* .
-cp $root/analysis/*FLAGS* .
-cp $root/analysis/.mgnuc* .
 cd $root/stage2
 if "$copy_runtime"
 then
@@ -343,15 +333,6 @@ cp stage2.ok/mdbcomp/*.int stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int2 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.date stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.mh stage2/mdbcomp
-# cp stage2.ok/analysis/*.d stage2/analysis
-cp stage2.ok/analysis/*.dep stage2/analysis
-cp stage2.ok/analysis/*.dv stage2/analysis
-cp stage2.ok/analysis/*.int3 stage2/analysis
-cp stage2.ok/analysis/*.date3 stage2/analysis
-cp stage2.ok/analysis/*.int stage2/analysis
-cp stage2.ok/analysis/*.int2 stage2/analysis
-cp stage2.ok/analysis/*.date stage2/analysis
-cp stage2.ok/analysis/*.mh stage2/analysis
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.dv stage2/compiler
@@ -407,15 +388,6 @@ then
     cp $root/mdbcomp/.mgnuc* .
     cp $root/mdbcomp/Mmake* .
     cd $root/stage3
-    mkdir analysis
-    cd analysis
-    ln -s $root/analysis/*.m .
-    ln -s $root/analysis/*.init .
-    cp $root/analysis/Mercury* .
-    cp $root/analysis/*FLAGS* .
-    cp $root/analysis/.mgnuc* .
-    cp $root/analysis/Mmake* .
-    cd $root/stage3
     ln -s $root/boehm_gc .
     ln -s $root/browser .
     ln -s $root/ssdb .
@@ -460,13 +432,13 @@ then
 
     /bin/rm .stage2_problem
     found=false
-    for testsubdir in library mdbcomp analysis compiler
+    for testsubdir in library mdbcomp compiler
     do
         if $found
         then
             echo skipping test of $testsubdir
         else
-            for subdir in library mdbcomp analysis compiler
+            for subdir in library mdbcomp compiler
             do
                 if test "$subdir" = "$testsubdir"
                 then
@@ -516,7 +488,7 @@ then
         exit 1
     fi
 else
-    for subdir in library mdbcomp analysis compiler
+    for subdir in library mdbcomp compiler
     do
         echo linking stage2/$subdir from stage2.ok/$subdir 1>&2
         cp stage2.ok/$subdir/*.[co] stage2/$subdir

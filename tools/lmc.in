@@ -171,5 +171,4 @@ exec mmc --no-mercury-stdlib-dir \
 	-I $WORKSPACE/library \
 	-I $WORKSPACE/mdbcomp \
 	-I $WORKSPACE/ssdb \
-	-I $WORKSPACE/analysis \
 	$CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS $LINK_FLAGS "$@"

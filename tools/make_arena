@@ -20,7 +20,7 @@ mkdir arena
 cp compiler/*.m arena
 
 # copy the interface files and possibly optimization files they will need
-for dir in library mdbcomp analysis compiler
+for dir in library mdbcomp compiler
 do
 	cp $dir/*.int* arena
 	cp $dir/*.*opt arena > /dev/null 2>&1

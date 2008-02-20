@@ -247,7 +247,6 @@ TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 SSDB_LIB_NAME=mer_ssdb
 MDBCOMP_LIB_NAME=mer_mdbcomp
-ANALYSIS_LIB_NAME=mer_analysis
 
 while test $# -gt 0; do
     case "$1" in
@@ -717,13 +716,6 @@ then
         $LN_S $root/ssdb/$SSDB_LIB_NAME.init .
         $LN_S $root/ssdb/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
-        mkdir analysis
-        cd analysis
-        $LN_S $root/analysis/*.m .
-        cp $root/analysis/Mmake* $root/analysis/Mercury.options .
-        cp $root/analysis/*_FLAGS.in .
-        cp $root/analysis/.mgnu* .
-        $LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
 
         cd $root/$stage2dir
         if $copy_runtime
@@ -932,7 +924,7 @@ then
                 # will not run if we are using `mmc --make' so run them now.
                 if (cd $stage2dir && \
                     $MMAKE compiler/COMP_FLAGS library/LIB_FLAGS \
-                    mdbcomp/MDBCOMP_FLAGS analysis/ANALYSIS_FLAGS \
+                    mdbcomp/MDBCOMP_FLAGS \
                     profiler/PROF_FLAGS deep_profiler/DEEP_FLAGS)
                 then
                     echo "building of stage 2 flags files successful"
@@ -945,7 +937,7 @@ then
 
         if (cd $stage2dir && \
             $MMAKE $mmake_opts dep_library dep_mdbcomp \
-            dep_browser dep_ssdb dep_analysis dep_compiler \
+            dep_browser dep_ssdb dep_compiler \
             dep_profiler dep_deep_profiler)
         then
             echo "building of stage 2 dependencies successful"
@@ -1007,15 +999,6 @@ then
             ar cr $stage2dir/ssdb/lib$ssdb_LIB_NAME.a
             /bin/rm $stage2dir/trace/lib$TRACE_LIB_NAME.a
             ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
-        fi
-
-        if (cd $stage2dir/analysis \
-            && $MMAKE $mmake_opts $jfactor all)
-        then
-            echo "building of stage 2 analysis successful"
-        else
-            echo "building of stage 2 analysis not successful"
-            exit 1
         fi
 
         if (cd $stage2dir/compiler && \
@@ -1229,13 +1212,6 @@ then
     cp $root/ssdb/.mgnu* .
     $LN_S $root/ssdb/$SSDB_LIB_NAME.init .
     cd $root/$stage3dir
-    mkdir analysis
-    cd analysis
-    $LN_S $root/analysis/*.m .
-    cp $root/analysis/Mmake* $root/analysis/Mercury.options .
-    cp $root/analysis/*_FLAGS.in .
-    cp $root/analysis/.mgnu* .
-    $LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
     cd $root/$stage3dir
     $LN_S $root/$stage2dir/boehm_gc .
     $LN_S $root/$stage2dir/java .
@@ -1287,7 +1263,7 @@ then
     fi
 
     if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
-        dep_browser_all dep_ssdb dep_analysis dep_compiler)
+        dep_browser_all dep_ssdb dep_compiler)
     then
         echo "building of stage 3 dependencies successful"
     else
@@ -1386,26 +1362,6 @@ then
         fi
     fi
 
-    if (cd $stage3dir/analysis &&
-        $MMAKE $mmake_opts $jfactor all-ints &&
-        $MMAKE $mmake_opts $jfactor ${target_ext}s)
-    then
-        echo "building of stage 3 analysis successful"
-    else
-        echo "building of stage 3 analysis initially not successful"
-        df .
-        # try again, in case the failure cause was transient
-        if (cd $stage3dir/analysis &&
-            $MMAKE $mmake_opts $jfactor all-ints &&
-            $MMAKE $mmake_opts $jfactor ${target_ext}s)
-        then
-            echo "building of stage 3 analysis successful"
-        else
-            echo "building of stage 3 analysis not successful"
-            exit 1
-        fi
-    fi
-
     if (cd $stage3dir/compiler && \
         $MMAKE $mmake_opts $jfactor ${target_ext}s)
     then
@@ -1439,7 +1395,7 @@ then
         exec > "$outfile"   # redirect stdout to $outfile
     fi
 
-    for dir in library mdbcomp browser ssdb analysis compiler; do
+    for dir in library mdbcomp browser ssdb compiler; do
         # `mmake cs' in the compiler directory doesn't build
         # `top_level_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.

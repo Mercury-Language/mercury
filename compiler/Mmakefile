@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005-2007 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2008 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -39,8 +39,7 @@ VPATH = \
 	$(LIBRARY_DIR) \
 	$(MDBCOMP_DIR) \
 	$(BROWSER_DIR) \
-	$(SSDB_DIR) \
-	$(ANALYSIS_DIR)
+	$(SSDB_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -66,12 +65,11 @@ $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
-MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A \
+MLOBJS       := ../main.$O \
 		../trace/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(MLOBJS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
-C2INITARGS   += $(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
 C2INITARGS   += $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
 
 #
@@ -196,7 +194,7 @@ mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
 ifeq ($(findstring il,$(GRADE)),il)        
 	# set the stack size to 100M -- the default of 1M is too low
 	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
-	cp ../analysis/*.dll ../browser/*.dll .
+	cp ../browser/*.dll .
 endif
 
 libmercury_compile.a: lib$(MC_PROG).a
@@ -240,7 +238,7 @@ endif
 # compiler if one of the libraries changes.
 
 ifeq ($(findstring il,$(GRADE)),il)        
-MS_CSCFLAGS=/lib:`$(FIX_PATH_FOR_CSC) ../analysis`
+MS_CSCFLAGS=/lib
 
 # This line works around an Mmake bug: mmake doesn't record
 # dependencies properly with --transitive-intermodule-optimization
@@ -254,7 +252,6 @@ $(MC_PROG): $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 $(MC_PROG): $(SSDB_DIR)/lib$(SSDB_LIB_NAME).$A
 $(MC_PROG): $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
 $(MC_PROG): $(TRACE_DIR)/lib$(EVENTSPEC_LIB_NAME).$A
-$(MC_PROG): $(ANALYSIS_DIR)/lib$(ANALYSIS_LIB_NAME).$A
 # XXX should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade
 $(MC_PROG): $(GCC_MAIN_LIBS)
@@ -272,16 +269,13 @@ ints:	$(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
-		$(ANALYSIS_DIR)/*.m
-	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
-		$(ANALYSIS_DIR)/*.m
+tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags ; \
-	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
-		$(ANALYSIS_DIR)/*.m ; fi
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
 
 $(MC_PROG).stats: source_stats.awk $($(MC_PROG).ms)
 	awk -f `vpath_find source_stats.awk` \

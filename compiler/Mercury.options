@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2007 University of Melbourne.
+# Copyright (C) 2002-2008 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -50,6 +50,10 @@ MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
 MCFLAGS-transform_hlds.smm_fixpoint_table = --no-warn-nothing-exported
 
 # Bug workarounds
+
+# XXX work around a bug that sometimes appears at -O4 and above.
+# mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation
+MCFLAGS-analysis.file = --no-optimise-higher-order
 
 # This works around bug 32 in Mantis.
 MCFLAGS-check_hlds.check_typeclass = --no-loop-invariants
