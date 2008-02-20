@@ -799,9 +799,20 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
                 Goal = true_goal_with_context(Context),
                 quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
             ;
-                ( DuTypeKind = du_type_kind_general
-                ; DuTypeKind = du_type_kind_notag(_, _, _)
-                ),
+                DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                IsDummyType = check_dummy_type(ModuleInfo, ArgType),
+                (
+                    IsDummyType = is_dummy_type,
+                    % Treat this type as if it were a dummy type itself.
+                    Goal = true_goal_with_context(Context),
+                    quantify_clause_body([X, Y], Goal, Context, Clause, !Info)
+                ;
+                    IsDummyType = is_not_dummy_type,
+                    generate_du_unify_proc_body(Ctors, X, Y, Context, Clause,
+                        !Info)
+                )
+            ;
+                DuTypeKind = du_type_kind_general,
                 generate_du_unify_proc_body(Ctors, X, Y, Context, Clause,
                     !Info)
             )
@@ -1047,7 +1058,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             Res, X, Y, Context, Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors0, _, _, DuTypeKind, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _),
             (
                 ( DuTypeKind = du_type_kind_mercury_enum
                 ; DuTypeKind = du_type_kind_foreign_enum(_)
@@ -1058,20 +1069,22 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
                 DuTypeKind = du_type_kind_direct_dummy,
                 generate_dummy_compare_proc_body(Res, X, Y, Context, Clause,
                     !Info)
+
             ;
-                ( DuTypeKind = du_type_kind_general
-                ; DuTypeKind = du_type_kind_notag(_, _, _)
-                ),
-                module_info_get_globals(ModuleInfo, Globals),
-                globals.lookup_bool_option(Globals,
-                    lexically_order_constructors, LexicalOrder),
+                DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                IsDummyType = check_dummy_type(ModuleInfo, ArgType),
                 (
-                    LexicalOrder = yes,
-                    list.sort(compare_ctors_lexically, Ctors0, Ctors)
+                    IsDummyType = is_dummy_type,
+                    % Treat this type as if it were a dummy type itself.
+                    generate_dummy_compare_proc_body(Res, X, Y, Context,
+                        Clause, !Info)
                 ;
-                    LexicalOrder = no,
-                    Ctors = Ctors0
-                ),
+                    IsDummyType = is_not_dummy_type,
+                    generate_du_compare_proc_body(Type, Ctors, Res, X, Y,
+                        Context, Clause, !Info)
+                )
+            ;
+                DuTypeKind = du_type_kind_general,
                 generate_du_compare_proc_body(Type, Ctors, Res, X, Y,
                     Context, Clause, !Info)
             )
@@ -1448,15 +1461,24 @@ generate_du_index_case(X, Index, Context, Ctor, Goal, !N, !Info) :-
     prog_var::in, prog_var::in, prog_var::in, prog_context::in,
     clause::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_du_compare_proc_body(Type, Ctors, Res, X, Y, Context, Clause,
+generate_du_compare_proc_body(Type, Ctors0, Res, X, Y, Context, Clause,
         !Info) :-
+    info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, lexically_order_constructors,
+        LexicalOrder),
+    (
+        LexicalOrder = yes,
+        list.sort(compare_ctors_lexically, Ctors0, Ctors)
+    ;
+        LexicalOrder = no,
+        Ctors = Ctors0
+    ),
     (
         Ctors = [],
         unexpected(this_file, "compare for type with no functors")
     ;
         Ctors = [_ | _],
-        info_get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_int_option(Globals, compare_specialization,
             CompareSpec),
         list.length(Ctors, NumCtors),
