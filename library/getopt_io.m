@@ -10,13 +10,12 @@
 % Authors: fjh, zs
 % Stability: medium
 %
-% This module exports the predicate getopt_io.process_options/6,
-% which can be used to parse command-line options.
+% This module exports the predicate getopt_io.process_options/6, which can be
+% used to parse command-line options.
 %
-% This version allows both short (single-character) options
-% and GNU-style long options. It also has the GNU extension
-% of recognizing options anywhere in the command-line, not
-% just at the start.
+% This version allows both short (single-character) options and GNU-style long
+% options. It also has the GNU extension of recognizing options anywhere in
+% the command-line, not just at the start.
 %
 % To use this module, you must provide an `option' type which
 % is an enumeration of all your different options.
@@ -51,21 +50,21 @@
 %   - maybe_string_special
 %   - file_special
 %
-% For the "simple" option types, if there are multiple occurrences
-% of the same option on the command-line, then the last (right-most)
-% occurrence will take precedence.  For "accumulating" options,
-% multiple occurrences will be appended together into a list.
+% For the "simple" option types, if there are multiple occurrences of the same
+% option on the command-line, then the last (right-most) occurrence will take
+% precedence.  For "accumulating" options, multiple occurrences will be
+% appended together into a list.
 %
-% With the exception of file_special, the "special" option types are
-% handled by a special option handler (see `special_handler' below), which
-% may perform arbitrary modifications to the option_table.  For example,
-% an option which is not yet implemented could be handled by a special handler
-% which produces an error report, or an option which is a synonym for a
-% set of more "primitive" options could be handled by a special
-% handler which sets those "primitive" options.
+% With the exception of file_special, the "special" option types are handled
+% by a special option handler (see `special_handler' below), which may perform
+% arbitrary modifications to the option_table.  For example, an option which
+% is not yet implemented could be handled by a special handler which produces
+% an error report, or an option which is a synonym for a set of more
+% "primitive" options could be handled by a special handler which sets those
+% "primitive" options.
 %
-% It is an error to use a "special" option for which there is no
-% handler, or for which the handler fails.
+% It is an error to use a "special" option for which there is no handler, or
+% for which the handler fails.
 %
 % Boolean (i.e. bool or bool_special), maybe_int, maybe_string
 % and accumulating options can be negated. Negating an accumulating
@@ -80,6 +79,14 @@
 % Its handling always consists of reading the named file, converting its
 % contents into a sequence of words separated by white space, and interpreting
 % those words as options in the usual manner.
+%
+% Note that arguments following an option may be separated from the option by
+% either whitespace or an equals, `=', character, e.g. `--foo 3' and `--foo=3'
+% both specify the option `--foo' with the integer argument `3'.
+%
+% If the argument `--' is encountered on the command-line then option
+% processing will immediately terminate, without processing any remaining
+% options.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
