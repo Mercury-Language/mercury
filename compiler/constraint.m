@@ -25,7 +25,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
@@ -38,7 +37,7 @@
     % goal feature.
     %
 :- pred propagate_constraints_in_goal(hlds_goal::in, hlds_goal::out,
-    constraint_info::in, constraint_info::out, io::di, io::uo) is det.
+    constraint_info::in, constraint_info::out) is det.
 
 :- pred constraint_info_init(module_info::in, vartypes::in, prog_varset::in,
     instmap::in, constraint_info::out) is det.
@@ -68,7 +67,7 @@
 
 %-----------------------------------------------------------------------------%
 
-propagate_constraints_in_goal(Goal0, Goal, !Info, !IO) :-
+propagate_constraints_in_goal(Goal0, Goal, !Info) :-
     % We need to strip off any existing constraint markers first.
     % Constraint markers are meant to indicate where a constraint is
     % meant to be attached to a call, and that deforest.m should
@@ -76,20 +75,19 @@ propagate_constraints_in_goal(Goal0, Goal, !Info, !IO) :-
     % deforest.m rearranges the goal, the constraints may not remain
     % next to the call.
     Goal1 = strip_constraint_markers(Goal0),
-    propagate_goal(Goal1, [], Goal, !Info, !IO).
+    propagate_goal(Goal1, [], Goal, !Info).
 
 :- pred propagate_goal(hlds_goal::in, list(constraint)::in,
-    hlds_goal::out, constraint_info::in, constraint_info::out,
-    io::di, io::uo) is det.
+    hlds_goal::out, constraint_info::in, constraint_info::out) is det.
 
-propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
+propagate_goal(Goal0, Constraints, Goal, !Info) :-
     % We need to treat all single goals as conjunctions so that propagate_conj
     % can move the constraints to the left of the goal if that is allowed.
     Goal0 = hlds_goal(_, GoalInfo0),
     Features0 = goal_info_get_features(GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
     goal_to_conj_list(Goal0, Goals0),
-    propagate_conj(Goals0, Constraints, Goals, !Info, !IO),
+    propagate_conj(Goals0, Constraints, Goals, !Info),
     goal_list_nonlocals(Goals, NonLocals),
     goal_list_instmap_delta(Goals, Delta),
     goal_list_determinism(Goals, ConjDetism),
@@ -102,9 +100,9 @@ propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
 
 :- pred propagate_conj_sub_goal(hlds_goal::in,
     list(constraint)::in, hlds_goals::out,
-    constraint_info::in, constraint_info::out, io::di, io::uo) is det.
+    constraint_info::in, constraint_info::out) is det.
 
-propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info, !IO) :-
+propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, _),
     ( goal_is_atomic(GoalExpr0) ->
         true
@@ -115,20 +113,19 @@ propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info, !IO) :-
         constraint_info_update_changed(Constraints, !Info)
     ),
     InstMap0 = !.Info ^ constr_instmap,
-    propagate_conj_sub_goal_2(Goal0, Constraints, Goals, !Info, !IO),
+    propagate_conj_sub_goal_2(Goal0, Constraints, Goals, !Info),
     !:Info = !.Info ^ constr_instmap := InstMap0.
 
 :- pred propagate_conj_sub_goal_2(hlds_goal::in, list(constraint)::in,
-    list(hlds_goal)::out, constraint_info::in, constraint_info::out,
-    io::di, io::uo) is det.
+    list(hlds_goal)::out, constraint_info::in, constraint_info::out) is det.
 
 propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
-        FinalGoals, !Info, !IO) :-
+        FinalGoals, !Info) :-
     (
         GoalExpr = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            propagate_conj(Goals0, Constraints, Goals, !Info, !IO),
+            propagate_conj(Goals0, Constraints, Goals, !Info),
             FinalGoals = [hlds_goal(conj(ConjType, Goals), GoalInfo)]
         ;
             ConjType = parallel_conj,
@@ -136,17 +133,17 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             % parallel conjunctions must have determinism det. However, we can
             % propagate constraints *within* the goals of the conjunction.
             flatten_constraints(Constraints, MoreGoals),
-            propagate_in_independent_goals(Goals0, [], Goals, !Info, !IO),
+            propagate_in_independent_goals(Goals0, [], Goals, !Info),
             FinalGoals = [hlds_goal(conj(ConjType, Goals), GoalInfo) |
                 MoreGoals]
         )
     ;
         GoalExpr = disj(Goals0),
-        propagate_in_independent_goals(Goals0, Constraints, Goals, !Info, !IO),
+        propagate_in_independent_goals(Goals0, Constraints, Goals, !Info),
         FinalGoals = [hlds_goal(disj(Goals), GoalInfo)]
     ;
         GoalExpr = switch(Var, CanFail, Cases0),
-        propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO),
+        propagate_cases(Var, Constraints, Cases0, Cases, !Info),
         FinalGoals = [hlds_goal(switch(Var, CanFail, Cases), GoalInfo)]
     ;
         GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
@@ -154,11 +151,11 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         % We can't safely propagate constraints into the condition of an
         % if-then-else, because that would change the answers generated
         % by the procedure.
-        propagate_goal(Cond0, [], Cond, !Info, !IO),
+        propagate_goal(Cond0, [], Cond, !Info),
         constraint_info_update_goal(Cond, !Info),
-        propagate_goal(Then0, Constraints, Then, !Info, !IO),
+        propagate_goal(Then0, Constraints, Then, !Info),
         !:Info = !.Info ^ constr_instmap := InstMap0,
-        propagate_goal(Else0, Constraints, Else, !Info, !IO),
+        propagate_goal(Else0, Constraints, Else, !Info),
         FinalGoals =
             [hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo)]
     ;
@@ -167,7 +164,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             ( Reason = exist_quant(_)
             ; Reason = from_ground_term(_)
             ),
-            propagate_goal(SubGoal0, Constraints, SubGoal, !Info, !IO),
+            propagate_goal(SubGoal0, Constraints, SubGoal, !Info),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
         ;
             ( Reason = promise_solutions(_, _)
@@ -178,7 +175,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             ),
             % We can't safely propagate constraints into one of these scopes.
             % However, we can propagate constraints inside the scope goal.
-            propagate_goal(SubGoal0, [], SubGoal, !Info, !IO),
+            propagate_goal(SubGoal0, [], SubGoal, !Info),
             flatten_constraints(Constraints, ConstraintGoals),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo) |
                 ConstraintGoals]
@@ -187,7 +184,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         GoalExpr = negation(NegGoal0),
         % We can't safely propagate constraints into a negation,
         % because that would change the answers computed by the procedure.
-        propagate_goal(NegGoal0, [], NegGoal, !Info, !IO),
+        propagate_goal(NegGoal0, [], NegGoal, !Info),
         flatten_constraints(Constraints, ConstraintGoals),
         FinalGoals = [hlds_goal(negation(NegGoal), GoalInfo) | ConstraintGoals]
     ;
@@ -222,33 +219,31 @@ flatten_constraints(Constraints0, Goals) :-
 %-----------------------------------------------------------------------------%
 
 :- pred propagate_in_independent_goals(hlds_goals::in, list(constraint)::in,
-    hlds_goals::out, constraint_info::in, constraint_info::out,
-    io::di, io::uo) is det.
+    hlds_goals::out, constraint_info::in, constraint_info::out) is det.
 
-propagate_in_independent_goals([], _, [], !Info, !IO).
+propagate_in_independent_goals([], _, [], !Info).
 propagate_in_independent_goals([Goal0 | Goals0], Constraints, [Goal | Goals],
-        !Info, !IO) :-
+        !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
-    propagate_goal(Goal0, Constraints, Goal, !Info, !IO),
+    propagate_goal(Goal0, Constraints, Goal, !Info),
     !:Info = !.Info ^ constr_instmap := InstMap0,
-    propagate_in_independent_goals(Goals0, Constraints, Goals, !Info, !IO).
+    propagate_in_independent_goals(Goals0, Constraints, Goals, !Info).
 
 %-----------------------------------------------------------------------------%
 
 :- pred propagate_cases(prog_var::in, list(constraint)::in,
     list(case)::in, list(case)::out,
-    constraint_info::in, constraint_info::out, io::di, io::uo) is det.
+    constraint_info::in, constraint_info::out) is det.
 
-propagate_cases(_, _, [], [], !Info, !IO).
-propagate_cases(Var, Constraints, [Case0 | Cases0], [Case | Cases],
-        !Info, !IO) :-
+propagate_cases(_, _, [], [], !Info).
+propagate_cases(Var, Constraints, [Case0 | Cases0], [Case | Cases], !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     InstMap0 = !.Info ^ constr_instmap,
     constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info),
-    propagate_goal(Goal0, Constraints, Goal, !Info, !IO),
+    propagate_goal(Goal0, Constraints, Goal, !Info),
     !:Info = !.Info ^ constr_instmap := InstMap0,
     Case = case(MainConsId, OtherConsIds, Goal),
-    propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO).
+    propagate_cases(Var, Constraints, Cases0, Cases, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -258,10 +253,9 @@ propagate_cases(Var, Constraints, [Case0 | Cases0], [Case | Cases],
     % to increase the likelihood of folding recursive calls.
     %
 :- pred propagate_conj(hlds_goals::in, list(constraint)::in,
-    hlds_goals::out, constraint_info::in, constraint_info::out,
-    io::di, io::uo) is det.
+    hlds_goals::out, constraint_info::in, constraint_info::out) is det.
 
-propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
+propagate_conj(Goals0, Constraints, Goals, !Info) :-
     constraint_info_update_changed(Constraints, !Info),
     (
         Goals0 = [],
@@ -272,7 +266,7 @@ propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
             GoalsTail0 = [],
             Constraints = []
         ->
-            propagate_conj_sub_goal(Goal0, [], Goals, !Info, !IO)
+            propagate_conj_sub_goal(Goal0, [], Goals, !Info)
         ;
             InstMap0 = !.Info ^ constr_instmap,
             ModuleInfo = !.Info ^ constr_module_info,
@@ -280,8 +274,8 @@ propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
             annotate_conj_output_vars(Goals0, ModuleInfo,
                 VarTypes, InstMap0, [], RevGoals1),
             annotate_conj_constraints(ModuleInfo, RevGoals1,
-                Constraints, [], Goals2, !Info, !IO),
-            propagate_conj_constraints(Goals2, [], Goals, !Info, !IO)
+                Constraints, [], Goals2, !Info),
+            propagate_conj_constraints(Goals2, [], Goals, !Info)
         )
     ).
 
@@ -399,9 +393,9 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     %
 :- pred annotate_conj_constraints(module_info::in, annotated_conj::in,
     list(constraint)::in, constrained_conj::in, constrained_conj::out,
-    constraint_info::in, constraint_info::out, io::di, io::uo) is det.
+    constraint_info::in, constraint_info::out) is det.
 
-annotate_conj_constraints(_, [], Constraints0, Goals0, Goals, !Info, !IO) :-
+annotate_conj_constraints(_, [], Constraints0, Goals0, Goals, !Info) :-
     flatten_constraints(Constraints0, Constraints1),
     list.map((pred(Goal::in, CnstrGoal::out) is det :-
             CnstrGoal = Goal - []
@@ -409,14 +403,14 @@ annotate_conj_constraints(_, [], Constraints0, Goals0, Goals, !Info, !IO) :-
     list.append(Constraints, Goals0, Goals).
 annotate_conj_constraints(ModuleInfo,
         [Conjunct | RevConjuncts0],
-        Constraints0, Goals0, Goals, !Info, !IO) :-
+        Constraints0, Goals0, Goals, !Info) :-
     Conjunct = annotated_conjunct(Goal, ChangedVars, OutputVars,
         IncompatibleInstVars),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     CI_ModuleInfo0 = !.Info ^ constr_module_info,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
-        CI_ModuleInfo0, CI_ModuleInfo, !IO),
+        CI_ModuleInfo0, CI_ModuleInfo),
     !:Info = !.Info ^ constr_module_info := CI_ModuleInfo,
     (
         % Propagate goals that can fail and have no output variables.
@@ -507,7 +501,7 @@ annotate_conj_constraints(ModuleInfo,
         Goals1 = [attach_constraints(Goal, DependentConstraints) | Goals0]
     ),
     annotate_conj_constraints(ModuleInfo, RevConjuncts0, Constraints1,
-        Goals1, Goals, !Info, !IO).
+        Goals1, Goals, !Info).
 
 :- pred add_empty_constraints(hlds_goal::in,
     pair(hlds_goal, list(constraint))::out) is det.
@@ -656,22 +650,22 @@ can_reorder_constraints(EarlierConstraint, Constraint) :-
     %
 :- pred propagate_conj_constraints(constrained_conj::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    constraint_info::in, constraint_info::out, io::di, io::uo) is det.
+    constraint_info::in, constraint_info::out) is det.
 
-propagate_conj_constraints([], RevGoals, Goals, !Info, !IO) :-
+propagate_conj_constraints([], RevGoals, Goals, !Info) :-
     list.reverse(RevGoals, Goals).
 propagate_conj_constraints([Goal0 - Constraints0 | Goals0],
-        RevGoals0, RevGoals, !Info, !IO) :-
+        RevGoals0, RevGoals, !Info) :-
     filter_complex_constraints(Constraints0,
         SimpleConstraints, ComplexConstraints0),
-    propagate_conj_sub_goal(Goal0, SimpleConstraints, GoalList1, !Info, !IO),
+    propagate_conj_sub_goal(Goal0, SimpleConstraints, GoalList1, !Info),
     flatten_constraints(ComplexConstraints0, ComplexConstraints),
     list.reverse(ComplexConstraints, RevComplexConstraints),
     list.reverse(GoalList1, RevGoalList1),
     list.condense([RevComplexConstraints, RevGoalList1, RevGoals0],
         RevGoals1),
     constraint_info_update_goal(Goal0, !Info),
-    propagate_conj_constraints(Goals0, RevGoals1, RevGoals, !Info, !IO).
+    propagate_conj_constraints(Goals0, RevGoals1, RevGoals, !Info).
 
 :- pred filter_complex_constraints(list(constraint)::in,
     list(constraint)::out, list(constraint)::out) is det.

@@ -221,7 +221,7 @@ unused_args_answer_from_string(String) = unused_args(Args) :-
 process_module(!ModuleInfo, !Specs, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    init_var_usage(VarUsage0, PredProcs, ProcCallInfo0, !ModuleInfo, !IO),
+    init_var_usage(VarUsage0, PredProcs, ProcCallInfo0, !ModuleInfo),
     % maybe_write_string(VeryVerbose, "% Finished initialisation.\n", !IO),
 
     unused_args_pass(PredProcs, VarUsage0, VarUsage),
@@ -290,8 +290,8 @@ process_module(!ModuleInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, optimize_unused_args, DoFixup),
     (
         DoFixup = yes,
-        list.foldl3(create_new_pred(UnusedArgInfo), PredProcsToFix,
-            ProcCallInfo0, ProcCallInfo, !ModuleInfo, !IO),
+        list.foldl2(create_new_pred(UnusedArgInfo), PredProcsToFix,
+            ProcCallInfo0, ProcCallInfo, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Finished new preds.\n",
         %   !IO),
         fixup_unused_args(VarUsage, PredProcs, ProcCallInfo, !ModuleInfo,
@@ -318,40 +318,39 @@ process_module(!ModuleInfo, !Specs, !IO) :-
     % iteration over.
     %
 :- pred init_var_usage(var_usage::out, pred_proc_list::out,
-    proc_call_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    proc_call_info::out, module_info::in, module_info::out) is det.
 
-init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo, !IO) :-
+init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo) :-
     map.init(ProcCallInfo0),
     map.init(VarUsage0),
     module_info_predids(PredIds, !ModuleInfo),
     setup_local_var_usage(PredIds, VarUsage0, VarUsage, [], PredProcList,
-        ProcCallInfo0, ProcCallInfo, !ModuleInfo, !IO).
+        ProcCallInfo0, ProcCallInfo, !ModuleInfo).
 
     % Setup args for the whole module.
     %
 :- pred setup_local_var_usage(list(pred_id)::in,
     var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
     proc_call_info::in, proc_call_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-setup_local_var_usage([], !VarUsage, !PredProcs, !OptProcs, !ModuleInfo, !IO).
+setup_local_var_usage([], !VarUsage, !PredProcs, !OptProcs, !ModuleInfo).
 setup_local_var_usage([PredId | PredIds], !VarUsage, !PredProcList, !OptProcs,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
-        !ModuleInfo, !IO),
+        !ModuleInfo),
     setup_local_var_usage(PredIds, !VarUsage, !PredProcList, !OptProcs,
-        !ModuleInfo, !IO).
+        !ModuleInfo).
 
     % Setup args for the given predicate if required.
     %
 :- pred maybe_setup_pred_args(pred_id::in, var_usage::in, var_usage::out,
     pred_proc_list::in, pred_proc_list::out,
     proc_call_info::in, proc_call_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs, !ModuleInfo,
-        !IO) :-
+maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
+        !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     (
         % The builtins use all their arguments. We also want to treat stub
@@ -368,7 +367,7 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs, !ModuleInfo,
     ;
         ProcIds = pred_info_procids(PredInfo),
         setup_pred_args(PredId, ProcIds, !VarUsage, !PredProcList, !OptProcs,
-            !ModuleInfo, !IO)
+            !ModuleInfo)
     ).
 
     % Setup args for each mode of a predicate.
@@ -376,30 +375,31 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs, !ModuleInfo,
 :- pred setup_pred_args(pred_id::in, list(proc_id)::in,
     var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
     proc_call_info::in, proc_call_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-setup_pred_args(_, [], !VarUsage, !PredProcs, !OptProcs, !ModuleInfo, !IO).
+setup_pred_args(_, [], !VarUsage, !PredProcs, !OptProcs, !ModuleInfo).
 setup_pred_args(PredId, [ProcId | ProcIds], !VarUsage,
-        !PredProcs, !OptProcs, !ModuleInfo, !IO) :-
+        !PredProcs, !OptProcs, !ModuleInfo) :-
     setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs,
-        !OptProcs, !ModuleInfo, !IO),
+        !OptProcs, !ModuleInfo),
     setup_pred_args(PredId, ProcIds, !VarUsage, !PredProcs,
-        !OptProcs, !ModuleInfo, !IO).
+        !OptProcs, !ModuleInfo).
 
     % Setup args for the procedure.
     %
 :- pred setup_proc_args(pred_id::in, proc_id::in,
     var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
     proc_call_info::in, proc_call_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
-        !IO) :-
+setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
+        !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
+    module_info_get_globals(!.ModuleInfo, Globals),
     some [!VarDep] (
         map.init(!:VarDep),
-        globals.io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
+        globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
         (
             % Don't use the intermodule analysis info when we have the clauses
             % (opt_imported preds) since we may be able to do better with the
@@ -416,10 +416,11 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                 PredName, PredArity, ProcId),
             Call = unused_args_call(PredArity),
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-            lookup_best_result(PredModuleId, FuncId, Call,
-                MaybeBestResult, AnalysisInfo0, AnalysisInfo1, !IO),
+            lookup_best_result(AnalysisInfo0, PredModuleId, FuncId, Call,
+                MaybeBestResult),
             (
-                MaybeBestResult = yes({_, unused_args(UnusedArgs), _}),
+                MaybeBestResult = yes(analysis_result(_, BestAnswer, _)),
+                BestAnswer = unused_args(UnusedArgs),
                 ( 
                     UnusedArgs = [_ | _],
                     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -428,8 +429,8 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
                     PredProcId = proc(PredId, ProcId),
                     svmap.set(PredProcId, VarDep, !VarUsage),
-                    globals.io_lookup_bool_option(optimize_unused_args,
-                        OptimizeUnusedArgs, !IO),
+                    globals.lookup_bool_option(Globals,
+                        optimize_unused_args, OptimizeUnusedArgs),
                     (
                         OptimizeUnusedArgs = yes,
                         make_imported_unused_args_pred_info(PredProcId,
@@ -440,34 +441,34 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                 ;
                     UnusedArgs = [] 
                 ),
-                AnalysisInfo = AnalysisInfo1
+                AnalysisInfo = AnalysisInfo0
             ;
                 MaybeBestResult = no,
-                module_is_local(mmc, PredModuleId, IsLocal, !IO),
+                module_is_local(AnalysisInfo0, PredModuleId, IsLocal),
                 (
                     IsLocal = yes,
                     % XXX makes too many requests
-                    globals.io_lookup_bool_option(make_analysis_registry,
-                        MakeAnalysisRegistry, !IO),
+                    globals.lookup_bool_option(Globals,
+                        make_analysis_registry, MakeAnalysisRegistry),
                     (
                         MakeAnalysisRegistry = yes,
                         ( is_unify_or_compare_pred(PredInfo) ->
-                            AnalysisInfo = AnalysisInfo1
+                            AnalysisInfo = AnalysisInfo0
                         ;
                             analysis.record_result(PredModuleId, FuncId,
                                 Call, top(Call) : unused_args_answer,
-                                suboptimal, AnalysisInfo1, AnalysisInfo2),
+                                suboptimal, AnalysisInfo0, AnalysisInfo1),
                             analysis.record_request(analysis_name,
-                                PredModuleId, FuncId, Call, AnalysisInfo2,
+                                PredModuleId, FuncId, Call, AnalysisInfo1,
                                 AnalysisInfo)
                         )
                     ;
                         MakeAnalysisRegistry = no,
-                        AnalysisInfo = AnalysisInfo1
+                        AnalysisInfo = AnalysisInfo0
                     )
                 ;
                     IsLocal = no,
-                    AnalysisInfo = AnalysisInfo1
+                    AnalysisInfo = AnalysisInfo0
                 )
             ),
             module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
@@ -491,7 +492,6 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
             initialise_vardep(Vars, !VarDep),
             setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
 
-            module_info_get_globals(!.ModuleInfo, Globals),
             proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
                 Globals, TypeInfoLiveness),
             (
@@ -982,17 +982,18 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
     %
 :- pred create_new_pred(unused_arg_info::in, pred_proc_id::in,
     proc_call_info::in, proc_call_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     map.lookup(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         OrigPredInfo, OrigProcInfo),
     PredModule = pred_info_module(OrigPredInfo),
     PredName = pred_info_name(OrigPredInfo),
 
-    globals.io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
     (
         Intermod = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
@@ -1004,11 +1005,10 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         Call = unused_args_call(PredArity),
         Answer = unused_args(UnusedArgs),
 
-        analysis.lookup_results(ModuleId, FuncId,
-            IntermodResultsTriples : list({unused_args_call,
-                unused_args_answer, analysis_status}),
-            AnalysisInfo0, AnalysisInfo1, !IO),
-        IntermodOldAnswers = list.map((func({_, Ans, _}) = Ans),
+        analysis.lookup_results(AnalysisInfo0, ModuleId, FuncId,
+            IntermodResultsTriples : list(analysis_result(unused_args_call,
+                unused_args_answer))),
+        IntermodOldAnswers = list.map((func(R) = R ^ ar_answer),
             IntermodResultsTriples),
         FilterUnused = (pred(VersionAnswer::in) is semidet :-
             VersionAnswer \= Answer,
@@ -1021,8 +1021,8 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         % XXX: optimal?  If we know some output arguments are not going to be
         % used by the caller then more input arguments could be deduced to be
         % unused.  This analysis doesn't handle that yet.
-        globals.io_lookup_bool_option(make_analysis_registry,
-            MakeAnalysisRegistry, !IO),
+        globals.lookup_bool_option(Globals, make_analysis_registry,
+            MakeAnalysisRegistry),
         ( 
             MakeAnalysisRegistry = yes,
             procedure_is_exported(!.ModuleInfo, OrigPredInfo, ProcId),
@@ -1033,9 +1033,9 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
             %     (See exception_analysis.should_write_exception_info/4).
         ->
             analysis.record_result(ModuleId, FuncId, Call, Answer, optimal,
-                AnalysisInfo1, AnalysisInfo)
+                AnalysisInfo0, AnalysisInfo)
         ;
-            AnalysisInfo = AnalysisInfo1
+            AnalysisInfo = AnalysisInfo0
         ),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
     ;

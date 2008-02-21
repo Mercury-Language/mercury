@@ -145,7 +145,7 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
         module_info_dependency_info(!.ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
         globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
-        list.foldl2(process_scc(Debug, Pass1Only), SCCs, !ModuleInfo, !IO),
+        list.foldl(process_scc(Debug, Pass1Only), SCCs, !ModuleInfo),
         % Only write trailing analysis pragmas to `.opt' files for
         % `--intermodule-optimization', not `--intermodule-analysis'.
         (
@@ -177,10 +177,10 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
             ).
 
 :- pred process_scc(bool::in, bool::in, scc::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
-    check_procs_for_trail_mods(SCC, ProcResults, !ModuleInfo, !IO),
+process_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
+    check_procs_for_trail_mods(SCC, ProcResults, !ModuleInfo),
 
     % The `Results' above are the results of analysing each individual
     % procedure in the SCC - we now have to combine them in a meaningful way.
@@ -189,7 +189,9 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
 
     (
         Debug = yes,
-        dump_trail_usage_debug_info(!.ModuleInfo, SCC, TrailingStatus, !IO)
+        trace [io(!IO)] (
+            dump_trail_usage_debug_info(!.ModuleInfo, SCC, TrailingStatus, !IO)
+        )
     ;
         Debug = no
     ),
@@ -204,8 +206,9 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
     module_info_set_trailing_info(TrailingInfo, !ModuleInfo),
 
     % Record the analysis results for the intermodule analysis.
-    globals.io_lookup_bool_option(make_analysis_registry,
-        MakeAnalysisRegistry, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisRegistry),
     (
         MakeAnalysisRegistry = yes,
         (
@@ -221,7 +224,7 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
     ),
     (
         Pass1Only = no,
-        list.foldl2(annotate_proc, SCC, !ModuleInfo, !IO)
+        list.foldl(annotate_proc, SCC, !ModuleInfo)
     ;
         Pass1Only = yes
     ).
@@ -229,11 +232,10 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
     % Check each procedure in the SCC individually.
     %
 :- pred check_procs_for_trail_mods(scc::in, proc_results::out,
-        module_info::in, module_info::out, io::di, io::uo) is det.
+        module_info::in, module_info::out) is det.
 
-check_procs_for_trail_mods(SCC, Result, !ModuleInfo, !IO) :-
-    list.foldl3(check_proc_for_trail_mods(SCC), SCC, [], Result,
-        !ModuleInfo, !IO).
+check_procs_for_trail_mods(SCC, Result, !ModuleInfo) :-
+    list.foldl2(check_proc_for_trail_mods(SCC), SCC, [], Result, !ModuleInfo).
 
     % Examine how the procedures interact with other procedures that
     % are mutually-recursive to them.
@@ -295,14 +297,14 @@ maybe_analysis_status(ProcResult, ProcResult ^ maybe_analysis_status).
 
 :- pred check_proc_for_trail_mods(scc::in,
     pred_proc_id::in, proc_results::in, proc_results::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo, !IO) :-
+check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Body),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     check_goal_for_trail_mods(SCC, VarTypes, Body,
-        Result, MaybeAnalysisStatus, !ModuleInfo, !IO),
+        Result, MaybeAnalysisStatus, !ModuleInfo),
     list.cons(proc_result(PPId, Result, MaybeAnalysisStatus), !Results).
 
 %----------------------------------------------------------------------------%
@@ -312,10 +314,10 @@ check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo, !IO) :-
 
 :- pred check_goal_for_trail_mods(scc::in, vartypes::in, hlds_goal::in,
     trailing_status::out, maybe(analysis_status)::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, _, _, Kind, _),
@@ -376,7 +378,9 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             Result = Result0,
             MaybeAnalysisStatus = yes(optimal)
         ;
-            globals.io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, intermodule_analysis,
+                Intermod),
             (
                 Intermod = yes,
                 pred_info_is_imported(CallPredInfo)
@@ -385,7 +389,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
                 % results for locally defined procedures, otherwise we use
                 % the intermodule analysis framework.
                 search_analysis_status(CallPPId, Result0, AnalysisStatus, SCC,
-                    !ModuleInfo, !IO),
+                    !ModuleInfo),
                 (
                     Result0 = trail_conditional,
                     Result = check_vars(!.ModuleInfo, VarTypes, CallArgs)
@@ -443,11 +447,11 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
     ;
         GoalExpr = conj(_ConjType, Goals),
         check_goals_for_trail_mods(SCC, VarTypes, Goals,
-            Result, MaybeAnalysisStatus, !ModuleInfo, !IO)
+            Result, MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = disj(Goals),
         check_goals_for_trail_mods(SCC, VarTypes, Goals,
-            _Result0, MaybeAnalysisStatus, !ModuleInfo, !IO),
+            _Result0, MaybeAnalysisStatus, !ModuleInfo),
         % XXX Currently we have to put trailing code around disjunctions.
         % If we introduce trail specialisation, it may be possible to omit it.
         Result = trail_may_modify
@@ -455,11 +459,11 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         GoalExpr = switch(_, _, Cases),
         CaseGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
         check_goals_for_trail_mods(SCC, VarTypes, CaseGoals,
-            Result, MaybeAnalysisStatus, !ModuleInfo, !IO)
+            Result, MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         check_goals_for_trail_mods(SCC, VarTypes, [Cond, Then, Else],
-            Result0, MaybeAnalysisStatus, !ModuleInfo, !IO),
+            Result0, MaybeAnalysisStatus, !ModuleInfo),
         (
             % If the condition of an if-then-else does not modify the trail
             % and is not model_non then we can omit the trailing ops around
@@ -490,12 +494,12 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
     ;
         GoalExpr = negation(SubGoal),
         check_goal_for_trail_mods(SCC, VarTypes, SubGoal, Result,
-            MaybeAnalysisStatus, !ModuleInfo, !IO)
+            MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = scope(_, InnerGoal),
         OuterGoalInfo = GoalInfo,
         check_goal_for_trail_mods(SCC, VarTypes, InnerGoal, Result0,
-            MaybeAnalysisStatus, !ModuleInfo, !IO),
+            MaybeAnalysisStatus, !ModuleInfo),
         InnerGoal = hlds_goal(_, InnerGoalInfo),
         InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
         OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
@@ -514,12 +518,12 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
 
 :- pred check_goals_for_trail_mods(scc::in, vartypes::in,
     hlds_goals::in, trailing_status::out, maybe(analysis_status)::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 check_goals_for_trail_mods(SCC, VarTypes, Goals,
-        Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    list.map2_foldl2(check_goal_for_trail_mods(SCC, VarTypes), Goals,
-        Results, MaybeAnalysisStatuses, !ModuleInfo, !IO),
+        Result, MaybeAnalysisStatus, !ModuleInfo) :-
+    list.map2_foldl(check_goal_for_trail_mods(SCC, VarTypes), Goals,
+        Results, MaybeAnalysisStatuses, !ModuleInfo),
     list.foldl(combine_trailing_status, Results, trail_will_not_modify,
         Result),
     list.foldl(combine_maybe_analysis_status, MaybeAnalysisStatuses,
@@ -811,27 +815,26 @@ check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
     % features to the goal_infos of those procedure that cannot modify the
     % trail.
     %
-:- pred annotate_proc(pred_proc_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred annotate_proc(pred_proc_id::in, module_info::in, module_info::out)
+    is det.
 
-annotate_proc(PPId, !ModuleInfo, !IO) :-
+annotate_proc(PPId, !ModuleInfo) :-
     some [!ProcInfo, !Body] (
       module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
       proc_info_get_goal(!.ProcInfo, !:Body),
       proc_info_get_vartypes(!.ProcInfo, VarTypes),
-      annotate_goal(VarTypes, !Body, _Status, !ModuleInfo, !IO),
+      annotate_goal(VarTypes, !Body, _Status, !ModuleInfo),
       proc_info_set_goal(!.Body, !ProcInfo),
       module_info_set_pred_proc_info(PPId, PredInfo, !.ProcInfo, !ModuleInfo)
     ).
 
 :- pred annotate_goal(vartypes::in, hlds_goal::in, hlds_goal::out,
-    trailing_status::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    trailing_status::out, module_info::in, module_info::out) is det.
 
-annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
+annotate_goal(VarTypes, !Goal, Status, !ModuleInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     annotate_goal_2(VarTypes, GoalInfo0, GoalExpr0, GoalExpr, Status,
-        !ModuleInfo, !IO),
+        !ModuleInfo),
     (
         Status = trail_will_not_modify,
         goal_info_add_feature(feature_will_not_modify_trail,
@@ -846,9 +849,9 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
 
 :- pred annotate_goal_2(vartypes::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, trailing_status::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo, !IO) :-
+annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
     (
         !.GoalExpr = unify(_, _, _, Kind, _),
         (
@@ -890,8 +893,9 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo, !IO) :-
         ->
             Status = Status0
         ;
-            globals.io_lookup_bool_option(intermodule_analysis,
-                IntermodAnalysis, !IO),
+            module_info_get_globals(!.ModuleInfo, Globals), 
+            globals.lookup_bool_option(Globals, intermodule_analysis,
+                IntermodAnalysis),
             (
                 IntermodAnalysis = yes,
                 pred_info_is_imported(CallPredInfo)
@@ -902,7 +906,7 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo, !IO) :-
                 % when compiling to target code.
                 SCC = [],
                 search_analysis_status(CallPPId, Result, AnalysisStatus, SCC,
-                    !ModuleInfo, !IO),
+                    !ModuleInfo),
 
                 % XXX We shouldn't be getting invalid analysis results at this
                 % stage so maybe we should just call unexpected/2 here?
@@ -950,22 +954,22 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo, !IO) :-
     ;
         !.GoalExpr = conj(ConjType, Conjuncts0),
         annotate_goal_list(VarTypes, Conjuncts0, Conjuncts, Status,
-            !ModuleInfo, !IO),
+            !ModuleInfo),
         !:GoalExpr = conj(ConjType, Conjuncts)
     ;
         !.GoalExpr = disj(Disjuncts0),
         annotate_goal_list(VarTypes, Disjuncts0, Disjuncts, Status,
-            !ModuleInfo, !IO),
+            !ModuleInfo),
         !:GoalExpr = disj(Disjuncts)
     ;
         !.GoalExpr = switch(Var, CanFail, Cases0),
-        annotate_cases(VarTypes, Cases0, Cases, Status, !ModuleInfo, !IO),
+        annotate_cases(VarTypes, Cases0, Cases, Status, !ModuleInfo),
         !:GoalExpr = switch(Var, CanFail, Cases)
     ;
         !.GoalExpr = if_then_else(Vars, If0, Then0, Else0),
-        annotate_goal(VarTypes, If0, If, IfStatus, !ModuleInfo, !IO),
-        annotate_goal(VarTypes, Then0, Then, ThenStatus, !ModuleInfo, !IO),
-        annotate_goal(VarTypes, Else0, Else, ElseStatus, !ModuleInfo, !IO),
+        annotate_goal(VarTypes, If0, If, IfStatus, !ModuleInfo),
+        annotate_goal(VarTypes, Then0, Then, ThenStatus, !ModuleInfo),
+        annotate_goal(VarTypes, Else0, Else, ElseStatus, !ModuleInfo),
         (
             IfStatus   = trail_will_not_modify,
             ThenStatus = trail_will_not_modify,
@@ -978,13 +982,12 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo, !IO) :-
         !:GoalExpr = if_then_else(Vars, If, Then, Else)
     ;
         !.GoalExpr = negation(SubGoal0),
-        annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo, !IO),
+        annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo),
         !:GoalExpr = negation(SubGoal)
     ;
         !.GoalExpr = scope(Reason, InnerGoal0),
         OuterGoalInfo = GoalInfo,
-        annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0,
-            !ModuleInfo, !IO),
+        annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0, !ModuleInfo),
         InnerGoal = hlds_goal(_, InnerGoalInfo),
         InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
         OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
@@ -998,31 +1001,27 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo, !IO) :-
 
 :- pred annotate_goal_list(vartypes::in, hlds_goals::in,
     hlds_goals::out, trailing_status::out, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+    module_info::out) is det.
 
-annotate_goal_list(VarTypes, !Goals, Status, !ModuleInfo, !IO) :-
-    list.map2_foldl2(annotate_goal(VarTypes), !Goals, Statuses, !ModuleInfo,
-        !IO),
+annotate_goal_list(VarTypes, !Goals, Status, !ModuleInfo) :-
+    list.map2_foldl(annotate_goal(VarTypes), !Goals, Statuses, !ModuleInfo),
     list.foldl(combine_trailing_status, Statuses, trail_will_not_modify,
         Status).
 
 :- pred annotate_cases(vartypes::in, list(case)::in, list(case)::out,
-    trailing_status::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    trailing_status::out, module_info::in, module_info::out) is det.
 
-annotate_cases(VarTypes, !Cases, Status, !ModuleInfo, !IO) :-
-    list.map2_foldl2(annotate_case(VarTypes), !Cases, Statuses, !ModuleInfo,
-        !IO),
+annotate_cases(VarTypes, !Cases, Status, !ModuleInfo) :-
+    list.map2_foldl(annotate_case(VarTypes), !Cases, Statuses, !ModuleInfo),
     list.foldl(combine_trailing_status, Statuses, trail_will_not_modify,
         Status).
 
 :- pred annotate_case(vartypes::in, case::in, case::out,
-    trailing_status::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    trailing_status::out, module_info::in, module_info::out) is det.
 
-annotate_case(VarTypes, !Case, Status, !ModuleInfo, !IO) :-
+annotate_case(VarTypes, !Case, Status, !ModuleInfo) :-
     !.Case = case(MainConsId, OtherConsIds, Goal0),
-    annotate_goal(VarTypes, Goal0, Goal, Status, !ModuleInfo, !IO),
+    annotate_goal(VarTypes, Goal0, Goal, Status, !ModuleInfo),
     !:Case = case(MainConsId, OtherConsIds, Goal).
 
 %----------------------------------------------------------------------------%
@@ -1174,30 +1173,31 @@ trailing_status_to_string(trail_conditional, "conditional").
 
 :- pred search_analysis_status(pred_proc_id::in,
     trailing_status::out, analysis_status::out, scc::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
     search_analysis_status_2(!.ModuleInfo, PPId, Result, AnalysisStatus,
-        CallerSCC, AnalysisInfo0, AnalysisInfo, !IO),
+        CallerSCC, AnalysisInfo0, AnalysisInfo),
     module_info_set_analysis_info(AnalysisInfo, !ModuleInfo).
 
 :- pred search_analysis_status_2(module_info::in, pred_proc_id::in,
     trailing_status::out, analysis_status::out, scc::in,
-    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+    analysis_info::in, analysis_info::out) is det.
 
 search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
-        !AnalysisInfo, !IO) :-
+        !AnalysisInfo) :-
     mmc_analysis.module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
     Call = any_call,
-    analysis.lookup_best_result(ModuleId, FuncId, Call,
-        MaybeBestStatus, !AnalysisInfo, !IO),
-    globals.io_lookup_bool_option(make_analysis_registry,
-        MakeAnalysisRegistry, !IO),
+    analysis.lookup_best_result(!.AnalysisInfo, ModuleId, FuncId, Call,
+        MaybeBestStatus),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisRegistry),
     (
-        MaybeBestStatus = yes({BestCall, trailing_analysis_answer(Result),
-            AnalysisStatus}),
+        MaybeBestStatus = yes(analysis_result(BestCall,
+            trailing_analysis_answer(Result), AnalysisStatus)),
         (
             MakeAnalysisRegistry = yes,
             record_dependencies(ModuleId, FuncId, BestCall,
@@ -1211,7 +1211,7 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         % then assume that it modifies the trail.
         top(Call) = Answer,
         Answer = trailing_analysis_answer(Result),
-        module_is_local(mmc, ModuleId, IsLocal, !IO),
+        module_is_local(!.AnalysisInfo, ModuleId, IsLocal),
         (
             IsLocal = yes,
             AnalysisStatus = suboptimal,

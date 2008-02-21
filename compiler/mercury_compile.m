@@ -1552,14 +1552,16 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             output_trans_opt_file(HLDS21, !DumpInfo, !IO),
             FactTableObjFiles = []
         ; MakeAnalysisRegistry = yes ->
-            output_analysis_file(ModuleName, HLDS21, !DumpInfo, !IO),
+            prepare_intermodule_analysis(HLDS21, HLDS22, !IO),
+            output_analysis_file(ModuleName, HLDS22, !DumpInfo, !IO),
             FactTableObjFiles = []
         ; MakeXmlDocumentation = yes ->
             xml_documentation(HLDS21, !IO),
             FactTableObjFiles = []
         ;
+            maybe_prepare_intermodule_analysis(HLDS21, HLDS22, !IO),
             mercury_compile_after_front_end(NestedSubModules,
-                FindTimestampFiles, MaybeTimestamps, ModuleName, HLDS21,
+                FindTimestampFiles, MaybeTimestamps, ModuleName, HLDS22,
                 FactTableObjFiles, !DumpInfo, !IO)
         )
     ;
@@ -1573,6 +1575,36 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
         ),
         FactTableObjFiles = []
     ).
+
+:- pred maybe_prepare_intermodule_analysis(module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+maybe_prepare_intermodule_analysis(!HLDS, !IO) :-
+    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    (
+        IntermodAnalysis = yes,
+        prepare_intermodule_analysis(!HLDS, !IO)
+    ;
+        IntermodAnalysis = no
+    ).
+
+:- pred prepare_intermodule_analysis(module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+prepare_intermodule_analysis(!HLDS, !IO) :-
+    module_info_get_name(!.HLDS, ThisModuleName),
+    module_info_get_all_deps(!.HLDS, ModuleNamesSet0),
+    set.insert(ModuleNamesSet0, ThisModuleName, ModuleNamesSet),
+    ModuleIds = set.map(module_name_to_module_id, ModuleNamesSet),
+
+    globals.io_lookup_accumulating_option(local_module_id, LocalModulesList,
+        !IO),
+    LocalModuleIds = set.from_list(LocalModulesList),
+
+    module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
+    analysis.prepare_intermodule_analysis(ModuleIds, LocalModuleIds,
+        AnalysisInfo0, AnalysisInfo, !IO),
+    module_info_set_analysis_info(AnalysisInfo, !HLDS).
 
 :- pred mercury_compile_after_front_end(list(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),

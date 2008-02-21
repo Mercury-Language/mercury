@@ -222,22 +222,21 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
         hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
         io.write_string(": ", !IO),
         process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-            !ModuleInfo, !IO),
+            !ModuleInfo),
         io.write_string("done.\n", !IO)
     ;
         VeryVerbose = no,
         process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-            !ModuleInfo, !IO)
+            !ModuleInfo)
     ).
 
 :- pred process_proc(construct_transform::in, pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     Simplifications = list_to_simplifications([]),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, !ProcInfo, _Msgs, !IO),
+        !ModuleInfo, !ProcInfo, _Msgs),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),

@@ -46,7 +46,7 @@
     % Apply simplify.m to the goal.
     %
 :- pred pd_simplify_goal(simplifications::in, hlds_goal::in,
-    hlds_goal::out, pd_info::in, pd_info::out, io::di, io::uo) is det.
+    hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Apply unique_modes.m to the goal.
     %
@@ -208,7 +208,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
         Goal0 = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        constraint.propagate_constraints_in_goal(!Goal, CInfo0, CInfo, !IO),
+        constraint.propagate_constraints_in_goal(!Goal, CInfo0, CInfo),
         constraint_info_deconstruct(CInfo, ModuleInfo, VarTypes, VarSet,
             Changed),
         pd_info_set_module_info(ModuleInfo, !PDInfo),
@@ -224,7 +224,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
             rerun_det_analysis(!Goal, !PDInfo, !IO),
             module_info_get_globals(ModuleInfo, Globals),
             simplify.find_simplifications(no, Globals, Simplifications),
-            pd_simplify_goal(Simplifications, !Goal, !PDInfo, !IO)
+            pd_simplify_goal(Simplifications, !Goal, !PDInfo)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal
             % because constraint propagation can make the quantification
@@ -239,7 +239,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
+pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo) :-
     % Construct a simplify_info.
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
@@ -251,8 +251,8 @@ pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
         SimplifyInfo0),
 
-    simplify_process_clause_body_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo,
-        !IO),
+    simplify_process_clause_body_goal(Goal0, Goal,
+        SimplifyInfo0, SimplifyInfo),
 
     % Deconstruct the simplify_info.
     simplify_info_get_module_info(SimplifyInfo, ModuleInfo),

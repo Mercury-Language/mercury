@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: analysis.file.m
-% Main author: stayl
+% Main author: stayl, wangp.
 %
 % An analysis file contains analysis results for a single module.
 %
@@ -33,7 +33,7 @@
     % from a `.analysis' file.
     %
 :- pred read_module_analysis_results(analysis_info::in, module_id::in,
-    analysis_status::out, module_analysis_map(analysis_result)::out,
+    analysis_status::out, module_analysis_map(some_analysis_result)::out,
     module_extra_info_map::out, io::di, io::uo) is det.
 
     % write_module_analysis_results(AnalysisInfo, ModuleId,
@@ -44,7 +44,7 @@
     %
 :- pred write_module_analysis_results(analysis_info::in,
     module_id::in, analysis_status::in,
-    module_analysis_map(analysis_result)::in,
+    module_analysis_map(some_analysis_result)::in,
     module_extra_info_map::in, io::di, io::uo) is det.
 
     % read_module_analysis_requests(AnalysisInfo, ModuleId, ModuleRequests,
@@ -92,6 +92,17 @@
 
 :- implementation.
 
+:- import_module bool.
+:- import_module exception.
+:- import_module parser.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
+
+:- import_module libs.compiler_util.
+
+%-----------------------------------------------------------------------------%
+
 % The format of an analysis result file is:
 %
 % version_number.
@@ -112,21 +123,23 @@
 % version_number.
 % analysis_name(analysis_version, func_id, call_pattern).
 
-:- import_module bool, exception, parser, term, term_io, varset.
-
 :- type invalid_analysis_file
     --->    invalid_analysis_file.
 
 :- func version_number = int.
+
 version_number = 2.
 
 :- func analysis_registry_suffix = string.
+
 analysis_registry_suffix = ".analysis".
 
 :- func imdg_suffix = string.
+
 imdg_suffix = ".imdg".
 
 :- func request_suffix = string.
+
 request_suffix = ".request".
 
 %-----------------------------------------------------------------------------%
@@ -213,7 +226,7 @@ read_module_analysis_results(Info, ModuleId, ModuleStatus, ModuleResults,
     ).
 
 :- pred read_module_analysis_results_2(Compiler::in, string::in,
-    analysis_status::out, module_analysis_map(analysis_result)::out,
+    analysis_status::out, module_analysis_map(some_analysis_result)::out,
     module_extra_info_map::out, io::di, io::uo) is det <= compiler(Compiler).
 
 read_module_analysis_results_2(Compiler, AnalysisFileName,
@@ -223,8 +236,8 @@ read_module_analysis_results_2(Compiler, AnalysisFileName,
     (
         OpenResult = ok(Stream),
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.print("Reading analysis registry file ", !IO),
-            io.print(AnalysisFileName, !IO),
+            io.write_string("% Reading analysis registry file ", !IO),
+            io.write_string(AnalysisFileName, !IO),
             io.nl(!IO)
         ), !IO),
         io.set_input_stream(Stream, OldStream, !IO),
@@ -263,8 +276,8 @@ read_module_analysis_results_2(Compiler, AnalysisFileName,
     ;
         OpenResult = error(_),
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.print("Error reading analysis registry file: ", !IO),
-            io.print(AnalysisFileName, !IO),
+            io.write_string("% Error reading analysis registry file: ", !IO),
+            io.write_string(AnalysisFileName, !IO),
             io.nl(!IO)
         ), !IO),
         ModuleStatus = optimal,
@@ -327,7 +340,7 @@ read_module_extra_infos(ExtraInfo0, ExtraInfo, MaybeFirstResultEntry, !IO) :-
     ).
 
 :- pred parse_result_entry(Compiler::in)
-    `with_type` parse_entry(module_analysis_map(analysis_result))
+    `with_type` parse_entry(module_analysis_map(some_analysis_result))
     `with_inst` parse_entry <= compiler(Compiler).
 
 parse_result_entry(Compiler, Term, Results0, Results) :-
@@ -353,7 +366,7 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
             VersionNumberTerm = term.functor(
                 term.integer(VersionNumber), [], _)
         ->
-            Result = 'new analysis_result'(CallPattern, AnswerPattern,
+            Result = 'new some_analysis_result'(CallPattern, AnswerPattern,
                 Status),
             ( AnalysisResults0 = map.search(Results0, AnalysisName) ->
                 AnalysisResults1 = AnalysisResults0
@@ -496,8 +509,15 @@ read_analysis_file(Compiler, ModuleId, Suffix, ParseEntry,
             ModuleResults0, ModuleResults, !IO)
     ;
         MaybeAnalysisFileName = error(Message),
-        debug_msg(io.print("Couldn't open " ++ Suffix ++
-            " for module " ++ ModuleId ++ ": " ++ Message ++ "\n"), !IO),
+        debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Couldn't open ", !IO),
+            io.write_string(Suffix, !IO),
+            io.write_string(" for module ", !IO),
+            io.write_string(ModuleId, !IO),
+            io.write_string(": ", !IO),
+            io.write_string(Message, !IO),
+            io.nl(!IO)
+        ), !IO),
         ModuleResults = ModuleResults0
     ).
 
@@ -510,8 +530,8 @@ read_analysis_file(AnalysisFileName, ParseEntry, ModuleResults0, ModuleResults,
     (
         OpenResult = ok(Stream),
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.print("Reading analysis file ", !IO),
-            io.print(AnalysisFileName, !IO),
+            io.write_string("% Reading analysis file ", !IO),
+            io.write_string(AnalysisFileName, !IO),
             io.nl(!IO)
         ), !IO),
         io.set_input_stream(Stream, OldStream, !IO),
@@ -538,8 +558,8 @@ read_analysis_file(AnalysisFileName, ParseEntry, ModuleResults0, ModuleResults,
     ;
         OpenResult = error(_),
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.print("Error reading analysis file: ", !IO),
-            io.print(AnalysisFileName, !IO),
+            io.write_string("Error reading analysis file: ", !IO),
+            io.write_string(AnalysisFileName, !IO),
             io.nl(!IO)
         ), !IO),
         ModuleResults = ModuleResults0
@@ -578,10 +598,10 @@ read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
 %-----------------------------------------------------------------------------%
 
 write_module_analysis_results(Info, ModuleId, ModuleStatus, ModuleResults,
-    ExtraInfo, !IO) :-
+        ExtraInfo, !IO) :-
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-        io.print("Writing module analysis results for ", !IO),
-        io.print(ModuleId, !IO),
+        io.write_string("% Writing module analysis results for ", !IO),
+        io.write_string(ModuleId, !IO),
         io.nl(!IO)
     ), !IO),
     WriteHeader = write_module_status_and_extra_info(ModuleStatus, ExtraInfo),
@@ -613,11 +633,11 @@ write_extra_info(Key, Value, !IO) :-
     ValueTerm = functor(string(Value), [], context_init).
 
 :- pred write_result_entry
-    `with_type` write_entry(analysis_result)
+    `with_type` write_entry(some_analysis_result)
     `with_inst` write_entry.
 
 write_result_entry(AnalysisName, FuncId, Result, !IO) :-
-    Result = analysis_result(Call, Answer, Status),
+    Result = some_analysis_result(Call, Answer, Status),
     VersionNumber = analysis_version_number(Call, Answer),
     analysis_status_to_string(Status, StatusString),
     term_io.write_term_nl(varset.init : varset,
@@ -636,8 +656,8 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
     module_id_to_write_file_name(Compiler, ModuleId, request_suffix,
         AnalysisFileName, !IO),
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-        io.print("Writing module analysis requests to ", !IO),
-        io.print(AnalysisFileName, !IO),
+        io.write_string("% Writing module analysis requests to ", !IO),
+        io.write_string(AnalysisFileName, !IO),
         io.nl(!IO)
     ), !IO),
     io.open_input(AnalysisFileName, InputResult, !IO),
@@ -694,8 +714,8 @@ write_request_entry(Compiler, AnalysisName, FuncId, analysis_request(Call),
     ->
         VersionNumber = analysis_version_number(_ : Call, _ :  Answer)
     ;
-        error("write_request_entry: unknown analysis type")
-
+        unexpected(this_file,
+            "write_request_entry: unknown analysis type")
     ),
     term_io.write_term_nl(varset.init : varset,
         functor(atom(AnalysisName), [
@@ -722,7 +742,8 @@ write_imdg_arc(Compiler, AnalysisName, FuncId, imdg_arc(Call, DependentModule),
     ->
         VersionNumber = analysis_version_number(_ : Call, _ : Answer)
     ;
-        error("write_imdg_arc: unknown analysis type")
+        unexpected(this_file,
+            "write_imdg_arc: unknown analysis type")
     ),
     term_io.write_term_nl(varset.init : varset,
         functor(atom("->"), [
@@ -803,8 +824,8 @@ empty_request_file(Info, ModuleId, !IO) :-
     module_id_to_write_file_name(Info ^ compiler, ModuleId, request_suffix,
         RequestFileName, !IO),
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-        io.print("Removing request file ", !IO),
-        io.print(RequestFileName, !IO),
+        io.write_string("% Removing request file ", !IO),
+        io.write_string(RequestFileName, !IO),
         io.nl(!IO)
     ), !IO),
     io.remove_file(RequestFileName, _, !IO).
@@ -815,4 +836,6 @@ empty_request_file(Info, ModuleId, !IO) :-
 
 nop(!IO).
 
+%-----------------------------------------------------------------------------%
+:- end_module analysis.file.
 %-----------------------------------------------------------------------------%

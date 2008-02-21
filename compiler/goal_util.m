@@ -30,7 +30,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
@@ -252,7 +251,7 @@
     instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
     % can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeGoal1, Goal1,
-    %   InstmapBeforeGoal2, Goal2, Result, !ModuleInfo, !IO).
+    %   InstmapBeforeGoal2, Goal2, Result, !ModuleInfo).
     %
     % Result is `yes' if the goals can be reordered; no otherwise.
     %
@@ -267,7 +266,7 @@
     %
 :- pred can_reorder_goals(vartypes::in, bool::in, instmap::in,
     hlds_goal::in, instmap::in, hlds_goal::in, bool::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
     % reordering_maintains_termination_old(ModuleInfo, FullyStrict,
     %   Goal1, Goal2).
@@ -295,8 +294,7 @@
     %       intermodule-analysis framework.
     %
 :- pred reordering_maintains_termination(bool::in, hlds_goal::in,
-    hlds_goal::in, bool::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    hlds_goal::in, bool::out, module_info::in, module_info::out) is det.
 
     % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context, CallGoal):
@@ -1313,7 +1311,7 @@ can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
 
 can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
         EarlierGoal, InstmapBeforeLaterGoal, LaterGoal, CanReorder,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     % The logic here is mostly duplicated in can_reorder_goals_old above
     % and in pd_can_reorder_goals in pd_util.m.
 
@@ -1333,7 +1331,7 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
         CanReorder = no
     ;
         reordering_maintains_termination(FullyStrict,
-            EarlierGoal, LaterGoal, MaintainsTermination, !ModuleInfo, !IO),
+            EarlierGoal, LaterGoal, MaintainsTermination, !ModuleInfo),
         (
             MaintainsTermination = no,
             CanReorder = no
@@ -1394,7 +1392,7 @@ reordering_maintains_termination_old(ModuleInfo, FullyStrict,
     ).
 
 reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
-        MaintainsTermination, !ModuleInfo, !IO) :-
+        MaintainsTermination, !ModuleInfo) :-
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     LaterGoal = hlds_goal(_, LaterGoalInfo),
 
@@ -1405,8 +1403,7 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
 
     % If --fully-strict was specified, don't convert (can_loop, can_fail) into
     % (can_fail, can_loop).
-    goal_can_loop_or_throw(EarlierGoal, EarlierCanLoopOrThrow, !ModuleInfo,
-        !IO),
+    goal_can_loop_or_throw(EarlierGoal, EarlierCanLoopOrThrow, !ModuleInfo),
     (
         FullyStrict = yes,
         EarlierCanLoopOrThrow = can_loop_or_throw,
@@ -1418,7 +1415,7 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
         % this could worsen the termination properties of the program.
         %
         goal_can_loop_or_throw(LaterGoal, LaterCanLoopOrThrow,
-            !ModuleInfo, !IO),
+            !ModuleInfo),
         (
             EarlierCanFail = can_fail,
             LaterCanLoopOrThrow = can_loop_or_throw

@@ -209,7 +209,7 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
         % Inlining may have created some opportunities for simplification.
         globals.io_get_globals(Globals, !IO),
         simplify.find_simplifications(no, Globals, Simplifications),
-        pd_util.pd_simplify_goal(Simplifications, !Goal, !PDInfo, !IO),
+        pd_util.pd_simplify_goal(Simplifications, !Goal, !PDInfo),
 
         pd_util.propagate_constraints(!Goal, !PDInfo, !IO),
 
@@ -1687,7 +1687,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     % This helps achieve folding in some cases.
     SimpList = [simp_extra_common_struct | SimpList0],
     Simplifications = list_to_simplifications(SimpList),
-    pd_util.pd_simplify_goal(Simplifications, Goal2, Goal3, !PDInfo, !IO),
+    pd_util.pd_simplify_goal(Simplifications, Goal2, Goal3, !PDInfo),
     pd_info_set_instmap(InstMap0, !PDInfo),
 
     % Perform any folding which may now be possible.
@@ -1926,7 +1926,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         pd_info_get_module_info(!.PDInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         simplify.find_simplifications(no, Globals, Simplifications),
-        pd_util.pd_simplify_goal(Simplifications, Goal3, Goal4, !PDInfo, !IO),
+        pd_util.pd_simplify_goal(Simplifications, Goal3, Goal4, !PDInfo),
 
         pd_info_get_cost_delta(!.PDInfo, CostDelta1),
         CostDelta = CostDelta1 - CostDelta0,

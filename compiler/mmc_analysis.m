@@ -90,10 +90,7 @@
         mmc_module_id_to_read_file_name(ModuleId, Ext, FileName, !IO),
 
     module_id_to_write_file_name(mmc, ModuleId, Ext, FileName, !IO) :-
-        mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO),
-
-    module_is_local(mmc, ModuleId, IsLocal, !IO) :-
-        mmc_module_is_local(ModuleId, IsLocal, !IO)
+        mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO)
 ].
 
 :- pred mmc_module_id_to_read_file_name(module_id::in, string::in,
@@ -118,13 +115,6 @@ mmc_module_id_to_read_file_name(ModuleId, Ext, MaybeFileName, !IO) :-
 mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO) :-
     ModuleName = module_id_to_module_name(ModuleId),
     module_name_to_file_name(ModuleName, Ext, yes, FileName, !IO).
-
-:- pred mmc_module_is_local(module_id::in, bool::out, io::di, io::uo) is det.
-
-mmc_module_is_local(ModuleId, IsLocal, !IO) :-
-    globals.io_lookup_accumulating_option(local_module_id, LocalModuleIds,
-        !IO),
-    IsLocal = (if ModuleId `list.member` LocalModuleIds then yes else no).
 
 module_name_to_module_id(ModuleName) = sym_name_to_string(ModuleName).
 
