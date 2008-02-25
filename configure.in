@@ -814,15 +814,25 @@ do
 done
 
 AC_PROG_CPP
+
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for use of a Microsoft C compiler)
-AC_EGREP_CPP(yes,
+
+AC_PROG_EGREP
+AC_MSG_CHECKING([for use of a Microsoft C compiler])
+AC_EGREP_CPP([yes],
 [
 #ifdef _MSC_VER
     yes
 #endif
 ],
-[ac_microsoft=yes] AC_MSG_RESULT(yes), [ac_microsoft=no] AC_MSG_RESULT(no))
+[ac_microsoft=yes], [ac_microsoft=no])
+
+if test "$ac_microsoft" = "yes"
+then
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
 
 LDFLAGS_FOR_TRACE=
 LD_LIBFLAGS_FOR_TRACE=
