@@ -1,0 +1,99 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2008 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+if test "$#" != 1
+then
+	echo "Usage: prepare_install_dir <installdirname>"
+	exit 1
+fi
+
+installdir=$1;
+
+ln_s="@LN_S@"
+if test "$ln_s" = "false"
+then
+	ln_s="cp -r"
+fi
+wd=`/bin/pwd`
+
+rm -fr ${installdir}
+
+mkdir ${installdir}
+cp Mmake* ${installdir}
+cp Mercury.* ${installdir}
+cp VERSION ${installdir}
+cp config* ${installdir}
+cp aclocal.m4 ${installdir}
+mkdir ${installdir}/scripts
+cp scripts/* ${installdir}/scripts
+mkdir ${installdir}/tools
+cp tools/* ${installdir}/tools
+$ln_s $wd/compiler ${installdir}
+$ln_s $wd/robdd ${installdir}
+$ln_s $wd/util ${installdir}
+
+mkdir ${installdir}/boehm_gc
+mkdir ${installdir}/boehm_gc/Mac_files
+mkdir ${installdir}/boehm_gc/cord
+mkdir ${installdir}/boehm_gc/include
+mkdir ${installdir}/boehm_gc/include/private
+cp boehm_gc/NT_MAKEFILE ${installdir}/boehm_gc
+cp boehm_gc/gc.mak ${installdir}/boehm_gc
+cp boehm_gc/Makefile* ${installdir}/boehm_gc
+cp boehm_gc/Mmake* ${installdir}/boehm_gc
+cp boehm_gc/ac* ${installdir}/boehm_gc
+cp boehm_gc/*.cc ${installdir}/boehm_gc
+cp boehm_gc/*.cpp ${installdir}/boehm_gc
+cp boehm_gc/*.[chsS] ${installdir}/boehm_gc
+cp boehm_gc/Mac_files/*.[ch] ${installdir}/boehm_gc/Mac_files
+cp boehm_gc/cord/*.[ch] ${installdir}/boehm_gc/cord
+cp boehm_gc/include/*.[ch] ${installdir}/boehm_gc/include
+cp boehm_gc/include/private/*.[ch] ${installdir}/boehm_gc/include/private
+cp boehm_gc/configure_atomic_ops.sh ${installdir}/boehm_gc
+cp -r boehm_gc/libatomic_ops-*[0-9] ${installdir}/boehm_gc
+rm -fr ${installdir}/boehm_gc/libatomic_ops-*[0-9]/src/*.o
+rm -fr ${installdir}/boehm_gc/libatomic_ops-*[0-9]/src/*.a
+mkdir ${installdir}/runtime
+mkdir ${installdir}/runtime/machdeps
+cp runtime/Mmake* ${installdir}/runtime
+cp runtime/.mgnuc* ${installdir}/runtime
+cp runtime/*.in ${installdir}/runtime
+cp runtime/*.[ch] ${installdir}/runtime
+cp runtime/*.il ${installdir}/runtime
+cp runtime/machdeps/*.h ${installdir}/runtime/machdeps
+mkdir ${installdir}/trace
+cp trace/Mmake* ${installdir}/trace
+cp trace/.mgnuc* ${installdir}/trace
+cp trace/*.[chyl] ${installdir}/trace
+mkdir ${installdir}/library
+cp library/Mmake* ${installdir}/library
+cp library/Mercury.* ${installdir}/library
+cp library/.mgnuc* ${installdir}/library
+cp library/*FLAGS* ${installdir}/library
+cp library/print_extra_inits ${installdir}/library
+cp library/library_strong_name.sn ${installdir}/library
+cp library/*.m ${installdir}/library
+cp library/*.hrl ${installdir}/library
+mkdir ${installdir}/mdbcomp
+cp mdbcomp/Mmake* ${installdir}/mdbcomp
+cp mdbcomp/Mercury.* ${installdir}/mdbcomp
+cp mdbcomp/.mgnuc* ${installdir}/mdbcomp
+cp mdbcomp/*FLAGS* ${installdir}/mdbcomp
+cp mdbcomp/*.m ${installdir}/mdbcomp
+mkdir ${installdir}/browser
+cp browser/Mmake* ${installdir}/browser
+cp browser/Mercury.* ${installdir}/browser
+cp browser/.mgnuc* ${installdir}/browser
+cp browser/*FLAGS* ${installdir}/browser
+cp browser/*.m ${installdir}/browser
+mkdir ${installdir}/ssdb
+cp ssdb/Mmake* ${installdir}/ssdb
+cp ssdb/Mercury.* ${installdir}/ssdb
+cp ssdb/.mgnuc* ${installdir}/ssdb
+cp ssdb/*FLAGS* ${installdir}/ssdb
+cp ssdb/*.m ${installdir}/ssdb
+exit 0

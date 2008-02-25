@@ -4842,7 +4842,7 @@ scripts/mtags
 scripts/canonical_grade
 scripts/mkfifo_using_mknod
 scripts/mercury_config
-scripts/prepare_tmp_dir_fixed_part
+scripts/prepare_install_dir
 tools/lmc
 tools/dotime
 '
