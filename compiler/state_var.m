@@ -783,9 +783,21 @@ add_disj_unifier(Context, SInfo, SInfoX, StateVar, !Unifiers) :-
     % that compares the numbers appended at the right hand ends of the
     % name strings.
     %
-    % NOTE state variable names are either "..._X" or "..._X_N" where X is
+    % NOTE State variable names are either "..._X" or "..._X_N" where X is
     % the name of the program variable used for the state variable and
     % N is a decimal number with no leading zeroes.
+    %
+    % NOTE The code below looks a bit slow, since it extracts the numbers
+    % from the ends of variable names repeatedly. I (zs) tried to avoid
+    % this cost by making the read_only_dot, dot and colon maps in svar_infos
+    % map not just to a variable but a pair of a variable and a number,
+    % the number being the one we extract below. This even allowed us to avoid
+    % passing varsets in lots of places, since in many predicates varsets
+    % are needed only for looking up the variable names passed to
+    % compare_svar_names. However, I found that the result was an overall
+    % slowdown. Apparently, the overhead of recording the numbers, and of
+    % extracting the variables from the variable-number pairs in lookups,
+    % is higher than the overhead of compare_svar_names.
     %
 :- pred compare_svar_names(comparison_result::out, string::in, string::in)
     is det.
