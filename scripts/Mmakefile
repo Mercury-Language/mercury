@@ -15,9 +15,7 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 NONCONF_SCRIPTS = \
-	mercury_cleanup_install \
 	mprof_merge_runs \
-	mtags \
 	mtc \
 	vpath_find
 
@@ -35,6 +33,7 @@ CONF_SCRIPTS = \
 	mmake \
 	mmc \
 	mprof \
+	mtags \
 	prepare_install_dir
 
 SCRIPTS = $(NONCONF_SCRIPTS) $(CONF_SCRIPTS)

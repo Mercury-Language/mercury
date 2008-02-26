@@ -9,3 +9,5 @@ parse_ml_options.sh-subr
 Mercury.config Mercury.config.bootstrap mercury_config
 prepare_tmp_dir_fixed_part
 config.log
+mtags
+prepare_install_dir
