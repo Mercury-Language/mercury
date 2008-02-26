@@ -245,6 +245,10 @@ target_dependencies(_, module_target_intermodule_interface) =
     ]).
 target_dependencies(_, module_target_analysis_registry) =
     combine_deps_list([
+        module_target_source `of` self,
+        module_target_private_interface `of` parents,
+        module_target_long_interface `of` non_intermod_direct_imports,
+        module_target_short_interface `of` non_intermod_indirect_imports,
         module_target_intermodule_interface `of` direct_imports,
         module_target_intermodule_interface `of` indirect_imports,
         module_target_intermodule_interface `of` intermod_imports
