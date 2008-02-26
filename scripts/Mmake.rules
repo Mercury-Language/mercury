@@ -454,7 +454,7 @@ clean_local: clean_prof_files
 
 .PHONY: lib%.install
 lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_library
-	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
+	$(MMAKE) lib$*.install_grades
 
 .PHONY: lib%.install_grade_init
 lib%.install_grade_init: %.init install_grade_dirs

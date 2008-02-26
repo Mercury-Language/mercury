@@ -559,9 +559,6 @@ GRADE_SUBDIR_EXTS = \
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
-# If you change any of these, you may need to update
-# `mercury_cleanup_install'.
-
 SUBDIR=Mercury/
 
 deps_subdir=$(SUBDIR)deps/
