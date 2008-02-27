@@ -1739,17 +1739,19 @@ attribute_list_to_attributes(Attributes, Attributes).
     % argument (if this info is needed and available),
     % (b) it doesn't have to be an enum, and
     % (c) it doesn't have to handle dummy steps.
+    %
 :- type table_trie_step
-    --->    table_trie_step_int
+    --->    table_trie_step_dummy
+    ;       table_trie_step_int
     ;       table_trie_step_char
     ;       table_trie_step_string
     ;       table_trie_step_float
-    ;       table_trie_step_dummy
     ;       table_trie_step_enum(
                 % The int gives the number of alternatives in the enum type,
                 % and thus the size of the corresponding trie node.
                 int
             )
+    ;       table_trie_step_foreign_enum
     ;       table_trie_step_general(
                 mer_type,
                 table_is_poly,
@@ -2371,6 +2373,7 @@ table_step_stats_kind(Step) = KindStr :-
         ; Step = table_trie_step_float
         ; Step = table_trie_step_typeinfo
         ; Step = table_trie_step_typeclassinfo
+        ; Step = table_trie_step_foreign_enum
         ),
         KindStr = "MR_TABLE_STATS_DETAIL_HASH"
     ;

@@ -1,8 +1,13 @@
 *.d
+*.dep
+*.dv
 *.mh
+*.c
 *.c_date
 *.out
 *.res
+*.res1
 CLEAN
 .mgnuc_copts
 .mgnuc_opts
+table_foreign_enum

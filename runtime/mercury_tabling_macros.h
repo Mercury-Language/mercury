@@ -40,9 +40,15 @@
 #define MR_RAW_TABLE_ENUM(table, range, value)                              \
     MR_int_fix_index_enum_lookup_or_add((table), (range), (value))
 
+#define MR_RAW_TABLE_FOREIGN_ENUM(table, value)                             \
+    MR_int_hash_lookup_or_add((table), (value));
+
 #define MR_RAW_TABLE_ENUM_STATS(stats, table, range, value)                 \
     MR_int_fix_index_enum_lookup_or_add_stats((stats), (table),             \
         (range), (value))
+
+#define MR_RAW_TABLE_FOREIGN_ENUM_STATS(stats, table, value)                \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (value))
 
 #define MR_RAW_TABLE_DU(table, range, value)                                \
     MR_int_fix_index_du_lookup_or_add((table), (range), (value))
@@ -146,6 +152,19 @@
         if (debug && MR_tabledebug) {                                       \
             printf("TABLE %p: enum %ld of %ld => %p\n",                     \
                 (t0), (long) (value), (long) (count), (t));                 \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_FOREIGN_ENUM(stats, debug, back, t, t0, value)             \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_FOREIGN_ENUM_STATS((stats), (t0), (value));  \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_FOREIGN_ENUM((t0), (value));                 \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: foreign enum %ld => %p\n",                    \
+                (t0), (long) (value), (t));                                 \
         }                                                                   \
     } while (0)
 

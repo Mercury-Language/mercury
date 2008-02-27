@@ -2170,6 +2170,8 @@ table_trie_step_to_c(table_trie_step_string, "MR_TABLE_STEP_STRING", no).
 table_trie_step_to_c(table_trie_step_float, "MR_TABLE_STEP_FLOAT", no).
 table_trie_step_to_c(table_trie_step_enum(EnumRange), "MR_TABLE_STEP_ENUM",
     yes(EnumRange)).
+table_trie_step_to_c(table_trie_step_foreign_enum,
+    "MR_TABLE_STEP_FOREIGN_ENUM", no).
 table_trie_step_to_c(table_trie_step_general(_, table_is_mono, table_value),
     "MR_TABLE_STEP_GEN", no).
 table_trie_step_to_c(table_trie_step_general(_, table_is_poly, table_value),

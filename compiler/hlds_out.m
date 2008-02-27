@@ -4245,6 +4245,7 @@ table_trie_step_desc(_, table_trie_step_float) = "float".
 table_trie_step_desc(_, table_trie_step_dummy) = "dummy".
 table_trie_step_desc(_, table_trie_step_enum(N)) =
     "enum(" ++ int_to_string(N) ++ ")".
+table_trie_step_desc(_, table_trie_step_foreign_enum) = "foreign_enum".
 table_trie_step_desc(TVarSet, table_trie_step_general(Type, IsPoly, IsAddr)) =
         Str :-
     (

@@ -240,7 +240,7 @@ typedef	enum {
 
 /*
 ** The definition of this type should correspond to the type table_step_kind
-** in library/table_builtin.m.
+** in library/table_statistics.m.
 */
 
 typedef enum {
@@ -250,6 +250,7 @@ typedef enum {
 	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_STRING),
 	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FLOAT),
 	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_ENUM),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FOREIGN_ENUM),
 	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN),
 	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_ADDR),
 	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_POLY),

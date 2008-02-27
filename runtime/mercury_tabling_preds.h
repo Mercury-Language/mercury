@@ -32,6 +32,8 @@
         MR_tbl_lookup_insert_float(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_enum(a, b, c, d)                             \
         MR_tbl_lookup_insert_enum(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
+#define MR_table_lookup_insert_foreign_enum(a, b, c)                        \
+        MR_tbl_lookup_insert_foreign_enum(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_gen(a, b, c, d)                              \
         MR_tbl_lookup_insert_gen(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
 #define MR_table_lookup_insert_gen_addr(a, b, c, d)                         \
@@ -174,6 +176,11 @@
 #define MR_tbl_lookup_insert_enum(stats, debug, back, T0, R, V, T)          \
     do {                                                                    \
         MR_TABLE_ENUM(stats, debug, back, T, T0, R, V);                     \
+    } while(0)
+
+#define MR_tbl_lookup_insert_foreign_enum(stats, debug, back, T0, V, T)     \
+    do {                                                                    \
+        MR_TABLE_FOREIGN_ENUM(stats, debug, back, T, T0, V);                \
     } while(0)
 
 #define MR_tbl_lookup_insert_gen(stats, debug, back, T0, TI, V, T)          \

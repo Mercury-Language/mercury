@@ -48,6 +48,7 @@
     % The definition of this type be an enum whose implementation matches
     % the type MR_TableTrieStep in runtime/mercury_tabling.h. It should also
     % be kept in sync with the type table_trie_step in hlds_pred.m.
+    %
 :- type table_step_kind
     --->    table_step_dummy
     ;       table_step_int
@@ -55,6 +56,7 @@
     ;       table_step_string
     ;       table_step_float
     ;       table_step_enum
+    ;       table_step_foreign_enum
     ;       table_step_general
     ;       table_step_general_addr
     ;       table_step_general_poly

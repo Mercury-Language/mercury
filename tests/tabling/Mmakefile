@@ -25,13 +25,9 @@ SIMPLE_NONLOOP_PROGS = \
 	oota \
 	specified_hidden_arg \
 	table_foreign_output \
+	table_foreign_enum \
 	test_enum \
 	unused_args
-
-# The following test is currently disabled because tabling and 
-# foreign enumerations are not yet supported.
-#
-# table_foreign_enum 
 
 # Tabling of nondet predicates and deep profiling are (currently)
 # incompatible.

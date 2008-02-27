@@ -1268,6 +1268,11 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_enum(ml_trie_node::in, int::in, T::in,
     ml_trie_node::out) is det.
 
+    % Lookup or insert a foreign enumeration type in the given trie.
+    %
+:- impure pred table_lookup_insert_foreign_enum(ml_trie_node::in, T::in,
+    ml_trie_node::out) is det.
+
     % Lookup or insert a monomorphic general type in the given trie.
     %
 :- impure pred table_lookup_insert_gen(ml_trie_node::in, T::in,
@@ -1443,6 +1448,14 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 "
     MR_tbl_lookup_insert_enum(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         R, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_foreign_enum(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_foreign_enum(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+        V, T);
 ").
 
 :- pragma foreign_proc("C",

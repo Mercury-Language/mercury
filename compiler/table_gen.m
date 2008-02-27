@@ -2423,15 +2423,15 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             % Mercury doesn't know the specific values of the foreign
             % enums, so we cannot use an array as a trie (since we don't
             % know how big the array would have to be). However, hashing
-            % the enum as an int will work.
+            % the foreign enum will work.
             %
             % XXX The code of this case is the same as the code of the case
             % shared by the builtin types below. The only reason why it is
             % here is that switch detection cannot yet look three levels deep.
 
             CtorCat = ctor_cat_enum(cat_enum_foreign),
-            CatString = "int",
-            Step = table_trie_step_int,
+            CatString = "foreign_enum",
+            Step = table_trie_step_foreign_enum,
             LookupMacroName = "MR_tbl_lookup_insert_" ++ CatString,
             PrefixGoals = [],
             ExtraArgs = [ForeignArg],

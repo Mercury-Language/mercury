@@ -33,10 +33,15 @@
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
-        case MR_TYPECTOR_REP_FOREIGN_ENUM:
-        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
             MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table,
                 MR_type_ctor_num_functors(type_ctor_info), data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_FOREIGN_ENUM:
+        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+             MR_TABLE_FOREIGN_ENUM(STATS, DEBUG, BACK, table_next, table,
+                data);
             table = table_next;
             return table;
 
