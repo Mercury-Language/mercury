@@ -627,8 +627,9 @@ compute_match_table_with_continuation(Background, DeadCellTable,
             !Table, !IO)
     ;
         GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(choose_reuse.this_file,
-            "compute_match_table: shorthand goal.")
+            "compute_match_table: shorthand")
     ).
 
 :- pred compute_match_table_in_disjs(background_info::in, dead_cell_table::in,
@@ -1144,8 +1145,9 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(choose_reuse.this_file, "annotate_reuses: " ++
-            "shorthand goal.")
+        % These should have been expanded out by now.
+        unexpected(choose_reuse.this_file,
+            "annotate_reuses: shorthand.")
     ),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -1182,13 +1184,9 @@ annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo):-
             ReuseAs = match_get_condition(Background, Match),
             ReuseFields = ConSpec ^ con_reuse ^ reuse_fields,
 
-            (
-                reuse_as_conditional_reuses(ReuseAs)
-            ->
+            ( reuse_as_conditional_reuses(ReuseAs) ->
                 Kind = conditional_reuse
-            ;
-                reuse_as_all_unconditional_reuses(ReuseAs)
-            ->
+            ; reuse_as_all_unconditional_reuses(ReuseAs) ->
                 Kind = unconditional_reuse
             ;
                 % reuse_as_no_reuses(ReuseAs)
@@ -1197,7 +1195,6 @@ annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo):-
             ),
             CellReused = cell_reused(DeadVar, Kind, DeadConsIds,
                 ReuseFields),
-
             (
                 Kind = conditional_reuse,
                 KindReuse = potential_reuse(CellReused)
@@ -1267,7 +1264,7 @@ dump_line(Msg, !IO) :-
     io.write_string("%\n", !IO).
 
 :- pred maybe_dump_match_table(bool::in, match_table::in, match::in,
-        io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 maybe_dump_match_table(VeryVerbose, MatchTable, HighestMatch, !IO) :-
     (
@@ -1282,6 +1279,7 @@ maybe_dump_match_table(VeryVerbose, MatchTable, HighestMatch, !IO) :-
     ).
 
 :- pred dump_match(string::in, match::in, io::di, io::uo) is det.
+
 dump_match(Prefix, Match, !IO):-
     io.write_string(Prefix, !IO),
     io.write_string("\t|\t", !IO),
@@ -1303,12 +1301,11 @@ dump_match(Prefix, Match, !IO):-
     io.nl(!IO).
 
 :- pred dump_match_details(match::in, io::di, io::uo) is det.
+
 dump_match_details(Match, !IO) :-
     Conds = list.map((func(DeconSpec) = DeconSpec ^ decon_conds),
         Match ^ decon_specs),
-    (
-        list.takewhile(reuse_as_all_unconditional_reuses, Conds, _, [])
-    ->
+    ( list.takewhile(reuse_as_all_unconditional_reuses, Conds, _, []) ->
         CondsString = "A"
     ;
         CondsString = "C"
@@ -1322,10 +1319,9 @@ dump_match_details(Match, !IO) :-
     io.write_string(Details, !IO).
 
 :- pred dump_full_table(match_table::in, io::di, io::uo) is det.
+
 dump_full_table(MatchTable, !IO) :-
-    (
-        multi_map.is_empty(MatchTable)
-    ->
+    ( multi_map.is_empty(MatchTable) ->
         dump_line("empty match table", !IO)
     ;
         dump_line("full table (start)", !IO),
@@ -1355,13 +1351,11 @@ maybe_dump_full_table(yes, M, !IO) :-
 check_for_cell_caching(DeadCellTable0, !Goal, !IO) :-
     dead_cell_table_remove_conditionals(DeadCellTable0, DeadCellTable),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    (
-        \+ dead_cell_table_is_empty(DeadCellTable)
-    ->
+    ( dead_cell_table_is_empty(DeadCellTable) ->
+        maybe_write_string(VeryVerbose, "% No cells to be cached.\n", !IO)
+    ;
         maybe_write_string(VeryVerbose, "% Marking cacheable cells.\n", !IO),
         check_for_cell_caching_2(DeadCellTable, !Goal)
-    ;
-        maybe_write_string(VeryVerbose, "% No cells to be cached.\n", !IO)
     ).
 
 :- pred check_for_cell_caching_2(dead_cell_table::in,
@@ -1419,8 +1413,8 @@ check_for_cell_caching_2(DeadCellTable, !Goal):-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(choose_reuse.this_file, "check_cc: " ++
-            "shorthand goal.")
+        % These should have been expanded out by now.
+        unexpected(choose_reuse.this_file, "check_cc: shorthand.")
     ),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 

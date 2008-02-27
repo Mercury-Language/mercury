@@ -376,50 +376,60 @@ clause_used_modules(clause(_, Goal, _, _), !UsedModules) :-
 :- pred hlds_goal_used_modules(hlds_goal::in,
     used_modules::in, used_modules::out) is det.
 
-hlds_goal_used_modules(hlds_goal(GoalExpr, _), !UsedModules) :-
-    hlds_goal_expr_used_modules(GoalExpr, !UsedModules).
-
-:- pred hlds_goal_expr_used_modules(hlds_goal_expr::in,
-    used_modules::in, used_modules::out) is det.
-
-hlds_goal_expr_used_modules(unify(_, Rhs, _, _, _), !UsedModules) :-
-    unify_rhs_used_modules(Rhs, !UsedModules).
-hlds_goal_expr_used_modules(plain_call(_, _, _, _, _, Name), !UsedModules) :-
-    add_sym_name_module(visibility_private, Name, !UsedModules).
-hlds_goal_expr_used_modules(generic_call(Call, _, _, _), !UsedModules) :-
+hlds_goal_used_modules(Goal, !UsedModules) :-
+    Goal = hlds_goal(GoalExpr, _),
     (
-        Call = class_method(_, _, ClassId, CallId),
-        ClassId = class_id(ClassName, _),
-        add_sym_name_module(visibility_private, ClassName, !UsedModules),
-
-        CallId = simple_call_id(_, MethodName, _),
-        add_sym_name_module(visibility_private, MethodName, !UsedModules)
+        GoalExpr = unify(_, Rhs, _, _, _),
+        unify_rhs_used_modules(Rhs, !UsedModules)
     ;
-        ( Call = higher_order(_, _, _, _)
-        ; Call = event_call(_)
-        ; Call = cast(_)
+        GoalExpr = plain_call(_, _, _, _, _, Name),
+        add_sym_name_module(visibility_private, Name, !UsedModules)
+    ;
+        GoalExpr = generic_call(Call, _, _, _),
+        (
+            Call = class_method(_, _, ClassId, CallId),
+            ClassId = class_id(ClassName, _),
+            add_sym_name_module(visibility_private, ClassName, !UsedModules),
+            CallId = simple_call_id(_, MethodName, _),
+            add_sym_name_module(visibility_private, MethodName, !UsedModules)
+        ;
+            ( Call = higher_order(_, _, _, _)
+            ; Call = event_call(_)
+            ; Call = cast(_)
+            )
+        )
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+    ;
+        ( GoalExpr = conj(_, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        list.foldl(hlds_goal_used_modules, Goals, !UsedModules)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.foldl(case_used_modules, Cases, !UsedModules)
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        hlds_goal_used_modules(SubGoal, !UsedModules)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        hlds_goal_used_modules(Cond, !UsedModules),
+        hlds_goal_used_modules(Then, !UsedModules),
+        hlds_goal_used_modules(Else, !UsedModules)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = bi_implication(GoalA, GoalB),
+            hlds_goal_used_modules(GoalA, !UsedModules),
+            hlds_goal_used_modules(GoalB, !UsedModules)
+        ;
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            hlds_goal_used_modules(MainGoal, !UsedModules),
+            list.foldl(hlds_goal_used_modules, OrElseGoals, !UsedModules)
         )
     ).
-hlds_goal_expr_used_modules(call_foreign_proc(_, _, _, _, _, _, _),
-        !UsedModules).
-hlds_goal_expr_used_modules(conj(_, Goals), !UsedModules) :-
-    list.foldl(hlds_goal_used_modules, Goals, !UsedModules).
-hlds_goal_expr_used_modules(disj(Goals), !UsedModules) :-
-    list.foldl(hlds_goal_used_modules, Goals, !UsedModules).
-hlds_goal_expr_used_modules(switch(_, _, Cases), !UsedModules) :-
-    list.foldl(case_used_modules, Cases, !UsedModules).
-hlds_goal_expr_used_modules(negation(Goal), !UsedModules) :-
-    hlds_goal_used_modules(Goal, !UsedModules).
-hlds_goal_expr_used_modules(scope(_, Goal), !UsedModules) :-
-    hlds_goal_used_modules(Goal, !UsedModules).
-hlds_goal_expr_used_modules(if_then_else(_, If, Then, Else), !UsedModules) :-
-    hlds_goal_used_modules(If, !UsedModules),
-    hlds_goal_used_modules(Then, !UsedModules),
-    hlds_goal_used_modules(Else, !UsedModules).
-hlds_goal_expr_used_modules(shorthand(bi_implication(GoalA, GoalB)),
-        !UsedModules) :-
-    hlds_goal_used_modules(GoalA, !UsedModules),
-    hlds_goal_used_modules(GoalB, !UsedModules).
 
 :- pred case_used_modules(case::in, used_modules::in, used_modules::out)
     is det.
@@ -444,26 +454,28 @@ unify_rhs_used_modules(rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
 :- pred cons_id_used_modules(item_visibility::in, cons_id::in,
     used_modules::in, used_modules::out) is det.
 
-cons_id_used_modules(Visibility, cons(Name, _), !UsedModules) :-
-    add_sym_name_module(Visibility, Name, !UsedModules).
-cons_id_used_modules(_, int_const(_), !UsedModules).
-cons_id_used_modules(_, string_const(_), !UsedModules).
-cons_id_used_modules(_, float_const(_), !UsedModules).
-cons_id_used_modules(_, pred_const(_, _), !UsedModules).
-cons_id_used_modules(Visibility,
-        type_ctor_info_const(ModuleName, _, _), !UsedModules) :-
-    add_all_modules(Visibility, ModuleName, !UsedModules).
-cons_id_used_modules(Visibility,
-        base_typeclass_info_const(ModuleName, _, _, _), !UsedModules) :-
-    add_all_modules(Visibility, ModuleName, !UsedModules).
-cons_id_used_modules(Visibility,
-        type_info_cell_constructor(type_ctor(SymName, _Arity)),
-        !UsedModules) :-
-    add_sym_name_module(Visibility, SymName, !UsedModules).
-cons_id_used_modules(_, typeclass_info_cell_constructor, !UsedModules).
-cons_id_used_modules(_, tabling_info_const(_), !UsedModules).
-cons_id_used_modules(_, deep_profiling_proc_layout(_), !UsedModules).
-cons_id_used_modules(_, table_io_decl(_), !UsedModules).
+cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
+    (
+        ( ConsId = cons(SymName, _)
+        ; ConsId = type_info_cell_constructor(type_ctor(SymName, _))
+        ),
+        add_sym_name_module(Visibility, SymName, !UsedModules)
+    ;
+        ( ConsId = type_ctor_info_const(ModuleName, _, _)
+        ; ConsId = base_typeclass_info_const(ModuleName, _, _, _)
+        ),
+        add_all_modules(Visibility, ModuleName, !UsedModules)
+    ;
+        ( ConsId = int_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = pred_const(_, _)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = table_io_decl(_)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

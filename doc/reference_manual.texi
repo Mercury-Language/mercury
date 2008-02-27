@@ -9621,6 +9621,12 @@ extensions to the Mercury language:
 
 @menu
 * Fact tables::                 Support for very large tables of facts.
+@c XXX STM
+@c The documentation of STM is commented out because its support is
+@c not yet complete. All such lines are preceded by XXX STM.
+@c * Software Transactional Memory::
+@c                              Support for synchronisation of threads without
+@c                              explicit locking.
 * Tabled evaluation::           Support for automatically recording previously
                                 calculated results and detecting or avoiding
                                 certain kinds of infinite loops.
@@ -9676,6 +9682,109 @@ arguments of types @samp{string}, @samp{int} or @samp{float}.
 Another limitation is that the @samp{--high-level-code} back-end does
 not support @samp{pragma fact_table} for procedures with determinism
 @samp{nondet} or @samp{multi}.
+
+@c XXX STM
+@c @node Software Transactional Memory
+@c @section Software Transactional Memory
+@c
+@c (Note: Software Transactional Memory is still in development and many
+@c aspects c documented here might change without notice.
+@c Please use with caution.)
+@c
+@c Software Transactional Memory or STM
+@c is an method of synchronising access to shared data
+@c between concurrently running threads.
+@c It is an alternative to the use of explicit locking.
+@c
+@c The way to synchronise threads using Software Transactional Memory
+@c is through the use of the @samp{atomic} scope.
+@c The syntax of an atomic scope is @code{atomic @var{Params} @var{Goal}}.
+@c @var{Goal} must be a valid goal;
+@c @var{Params} must be a list of atomic parameters
+@c which must include the @samp{outer} and @samp{inner} parameters.
+@c The following example shows the use of the atomic scope:
+@c
+@c @example
+@c :- pred add_2_atomically(stm_var(int)::in, io::di, io::uo) is cc_multi.
+@c
+@c add_2_atomically(TVar, IO0, IO) :-
+@c         atomic [ outer(IO0, IO1), inner(STM0, STM) ] (
+@c                 read_stm_var(TVar, X, STM0, STM1),
+@c                 Y = X + 2,
+@c                 write_stm_var(TVar, Y, STM1, STM)
+@c         ),
+@c         io.write_string("Value of Y is ", IO1, IO2),
+@c         io.write(Y, IO2, IO3),
+@c         io.nl(IO3, IO).
+@c @end example
+@c
+@c
+@c The @samp{outer} parameter takes a pair of variables of type @samp{io.io}.
+@c As the atomic scope can be seen as an operation which changes the I/O state,
+@c the modes of these variables must be @samp{di} and @samp{uo} respectively.
+@c
+@c The @samp{inner} parameter takes a pair of variables of type @samp{stm}.
+@c When the atomic scope is executed,
+@c these variables supply and consume the @samp{stm} state
+@c which can be used by the Software Transactional Memory primitives.
+@c Calling these primitives requires threading the @samp{stm} state
+@c in a way similar to I/O operations and,
+@c as such, the modes of these variables must also be @samp{di} and @samp{uo}.
+@c
+@c The code within the atomic scope is restricted
+@c in the same way as code which takes the I/O state.
+@c The code within the atomic scope
+@c must be either @samp{det} or @samp{cc_multi}.
+@c Due to the way Software Transactional Memory provides synchronous behaviour,
+@c it is likely that the goal will be executed more than once.
+@c As it is unknown how many times (if any) the inner goal will be repeated,
+@c only pure code or code which makes use of the @samp{stm} state
+@c should be placed inside an atomic scope.
+@c (Trace goals are permitted but should not be used for any action
+@c that depends on the number of times the goal is executed).
+@c
+@c Using the atomic scope requires the program to explicitly import the modules
+@c @samp{stm_builtin}, @samp{exception} and @samp{univ}.
+@c This restriction will soon be dropped,
+@c as the the compiler itself will do the required imports.
+@c
+@c In STM systems, data shared between threads
+@c is stored in @samp{Transaction Variables}.
+@c This is the only form of shared data
+@c which the atomic scope will synchronise.
+@c @samp{Transaction Variables} can be operated on
+@c using the following predicates:
+@c
+@c @example
+@c :- pred new_stm_var(T::in, stm_var(T)::out, io::di, io::uo) is det.
+@c
+@c :- pred read_stm_var(stm_var(T)::in, T::out, stm::di, stm::uo) is det.
+@c
+@c :- pred write_stm_var(stm_var(T)::in, T::in, stm::di, stm::uo) is det.
+@c @end example
+@c
+@c The @samp{new_stm_var} creates a new transaction variable
+@c whose the type and initial value are given by the first argument,
+@c and returns a reference to it.
+@c Only one copy of the transaction variable exists in memory,
+@c but references to it can be duplicated.
+@c Unifications and tests of references
+@c affect only the references themselves,
+@c and do not affect the underlying transaction variables.
+@c
+@c To get or set the value of the actual transaction variable,
+@c programs must call
+@c the builtins @samp{read_stm_var} and @samp{write_stm_var}.
+@c These calls take a reference to a transaction variable
+@c and either set or return the value of the transaction variable.
+@c @footnote{In actual fact, write_stm_var does not update the variable.
+@c The update is instead written to a log,
+@c and the real transaction variable is changed
+@c only when the atomic goal has completed
+@c and the whole log has been validated.}
+@c As the calls to @samp{read_stm_var} and @samp{write_stm_var}
+@c take a pair of @samp{stm} states,
+@c they can only appear within an atomic scope.
 
 @node Tabled evaluation
 @section Tabled evaluation

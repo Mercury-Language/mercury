@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -607,22 +607,29 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Context = goal_info_get_context(GoalInfo),
         det_report_call_context(Context, CallContext, !.DetInfo,
             PredId, ProcId, InitMsgs, StartingPieces),
-        det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces,
+        det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces,
             AtomicMsgs),
         Msgs = InitMsgs ++ AtomicMsgs
     ;
         GoalExpr = generic_call(GenericCall, _, _, _),
         Context = goal_info_get_context(GoalInfo),
         report_generic_call_context(GenericCall, StartingPieces),
-        det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces,
+        det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces,
             Msgs)
     ;
         GoalExpr = unify(LHS, RHS, _, _, UnifyContext),
         Context = goal_info_get_context(GoalInfo),
         det_report_unify_context(is_first, is_last, Context, UnifyContext,
             !.DetInfo, LHS, RHS, StartingPieces),
-        det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces,
+        det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces,
             Msgs)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        Context = goal_info_get_context(GoalInfo),
+        DesiredStr = determinism_to_string(Desired),
+        Pieces = [words("Determinism declaration not satisfied."),
+            words("Desired determinism is " ++ DesiredStr ++ ".")],
+        Msgs = [simple_msg(Context, [always(Pieces)])]
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         determinism_components(Desired, _DesiredCanFail, DesiredSolns),
@@ -679,16 +686,19 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         det_diagnose_goal(SubGoal, InstMap0, InternalDesired, SwitchContexts,
             !DetInfo, Msgs)
     ;
-        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        Context = goal_info_get_context(GoalInfo),
-        DesiredStr = determinism_to_string(Desired),
-        Pieces = [words("Determinism declaration not satisfied."),
-            words("Desired determinism is " ++ DesiredStr ++ ".")],
-        Msgs = [simple_msg(Context, [always(Pieces)])]
-    ;
-        GoalExpr = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "det_diagnose_goal_expr: unexpected shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            det_diagnose_goal(MainGoal, InstMap0, Desired,
+                SwitchContexts, !DetInfo, MainMsgs),
+            det_diagnose_orelse_goals(OrElseGoals, InstMap0, Desired,
+                SwitchContexts, !DetInfo, OrElseMsgs),
+            Msgs = MainMsgs ++ OrElseMsgs
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "det_diagnose_goal_expr: bi_implication")
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -702,10 +712,10 @@ report_generic_call_context(CallType, StartingPieces) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_diagnose_atomic_goal(determinism::in, determinism::in,
+:- pred det_diagnose_primitive_goal(determinism::in, determinism::in,
     prog_context::in, list(format_component)::in, list(error_msg)::out) is det.
 
-det_diagnose_atomic_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
+det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     determinism_components(Actual, ActualCanFail, ActualSolns),
     compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
@@ -829,6 +839,19 @@ det_diagnose_switch_arms(Var, [Case | Cases], InstMap0, Desired,
     det_diagnose_goal(Goal, InstMap1, Desired, SwitchContexts1,
         !DetInfo, Msgs1),
     det_diagnose_switch_arms(Var, Cases, InstMap0, Desired, SwitchContexts0,
+        !DetInfo, Msgs2),
+    Msgs = Msgs1 ++ Msgs2.
+
+:- pred det_diagnose_orelse_goals(list(hlds_goal)::in, instmap::in,
+    determinism::in, list(switch_context)::in, det_info::in, det_info::out,
+    list(error_msg)::out) is det.
+
+det_diagnose_orelse_goals([], _, _Desired, _SwitchContexts, !DetInfo, []).
+det_diagnose_orelse_goals([Goal | Goals], InstMap0, Desired, SwitchContexts0,
+        !DetInfo, Msgs) :-
+    det_diagnose_goal(Goal, InstMap0, Desired, SwitchContexts0,
+        !DetInfo, Msgs1),
+    det_diagnose_orelse_goals(Goals, InstMap0, Desired, SwitchContexts0,
         !DetInfo, Msgs2),
     Msgs = Msgs1 ++ Msgs2.
 

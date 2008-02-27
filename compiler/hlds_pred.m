@@ -425,8 +425,7 @@
 :- type attribute
     --->    custom(mer_type).
                         % A custom attribute, indended to be associated
-                        % with this predicate in the underlying
-                        % implementation.
+                        % with this predicate in the underlying implementation.
 
 :- type pred_transformation
     --->    transform_higher_order_specialization(
@@ -468,6 +467,7 @@
                     % pointer.
             )
     ;       transform_table_generator
+    ;       transform_stm_expansion
     ;       transform_dnf(
                 int % This predicate was originally part of a predicate
                     % transformed into disjunctive normal form; this integer
@@ -506,6 +506,10 @@
     ;       origin_user(sym_name).
                 % The predicate is a normal user-written predicate;
                 % the string is its name.
+
+:- type need_to_requantify
+    --->    need_to_requantify
+    ;       do_not_need_to_requantify.
 
     % pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
     %   Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
@@ -2003,8 +2007,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     is semidet.
 
 :- pred proc_info_set_imported_structure_reuse(prog_vars::in,
-    list(mer_type)::in, structure_reuse_domain::in, proc_info::in,
-    proc_info::out) is det.
+    list(mer_type)::in, structure_reuse_domain::in,
+    proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_reset_imported_structure_reuse(proc_info::in,
     proc_info::out) is det.
@@ -2020,7 +2024,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     is det.
 
     % proc_info_never_succeeds(ProcInfo, Result):
-    % return Result = yes if the procedure is known to never succeed
+    %
+    % Return Result = yes if the procedure is known to never succeed
     % according to the declared determinism.
     %
 :- pred proc_info_never_succeeds(proc_info::in, bool::out) is det.
@@ -2456,8 +2461,7 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
         RttiVarMaps, eval_normal, ProcSubInfo).
 
-proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps,
-        !ProcInfo) :-
+proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ prog_varset := VarSet,
     !:ProcInfo = !.ProcInfo ^ var_types := VarTypes,
     !:ProcInfo = !.ProcInfo ^ head_vars := HeadVars,
@@ -2642,8 +2646,7 @@ proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
         ^ maybe_sharing := yes(Sharing).
 
-proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types,
-        Sharing) :-
+proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
     MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
         ^ maybe_imported_sharing,
     MaybeImportedSharing = yes(ImportedSharing),
@@ -2667,8 +2670,7 @@ proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
         ^ maybe_reuse := yes(Reuse).
 
-proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types,
-        Reuse) :-
+proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
     MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ structure_reuse
         ^ maybe_imported_reuse,
     MaybeImportedReuse = yes(ImportedReuse),
@@ -3144,7 +3146,7 @@ valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
     % a cannot_fail execution path is guaranteed not to go through a call
     % to a predicate that is mutually recursive with this one, which (if this
     % predicate is minimal model) is the only way that the predicate can be
-    % properly cannot_fail. The problem is that in in general, the mutually
+    % properly cannot_fail. The problem is that in general, the mutually
     % recursive predicate may be in another module.
     %
     % Reason 2:

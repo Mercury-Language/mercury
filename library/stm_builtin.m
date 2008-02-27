@@ -1,19 +1,18 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: stm_builtin.m.
 % Main author: lmika.
 % Stability: low.
-% 
-% This file is automatically imported into every module that uses software
-% transactional memory (STM).  It defines the data types and predicates
-% use to implement STM.
-% 
+%
+% This module defines types and predicates that can be used with the
+% Software Transactional Memory constructs.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -44,7 +43,7 @@
 %
 % Transaction variables
 %
-    
+
     % A transaction variable may contain a value of type T.
     % It may only be accessed from within an atomic scope.
     %
@@ -54,9 +53,13 @@
     %
     % Create a new transaction variable with initial value `Value'.
     %
-    % XXX we need a version that works within atomic blocks as well.
-    %
 :- pred new_stm_var(T::in, stm_var(T)::out, io::di, io::uo) is det.
+
+    % new_stm_var_atomic(Value, TVar, !STM):
+    %
+    % A version of new_stm_var which works within an atomic scope.
+    %
+:- pred new_stm_var_atomic(T::in, stm_var(T)::out, stm::di, stm::uo) is det.
 
     % Update the value stored in a transaction variable.
     %
@@ -76,19 +79,31 @@
     % of at least one transaction variable read during the attempted
     % transaction is written by another thread.
     %
-    % XXX the implementation of this predicate is incomplete.  Calling it
-    % will currently cause the program to abort execution.
-    %
-:- pred retry(stm::di) is erroneous.
+:- pred retry(stm::ui) is erroneous.
 
 %-----------------------------------------------------------------------------%
 %
-% Atomic transactions
+% Closure versions of atomic transactions.  These predicates can be used
+% to perform Software Transactional Memory without using the atomic scope.
 %
 
-:- pred atomic_transaction(pred(T, stm, stm), T, io, io).
-:- mode atomic_transaction(in(pred(out, di, uo) is det), out, di, uo)
-    is det.
+    % atomic_transaction(Closure, Result, !IO):
+    %
+    % Performs the Software Transactional Memory operations in Closure
+    % atomically.  If the transaction is invalid, the Closure is
+    % re-executed.
+    %
+:- pred atomic_transaction(pred(T, stm, stm)::in(pred(out, di, uo) is det),
+    T::out, io::di, io::uo) is det.
+
+    % or_else(AtomicClosure1, AtomicClosure2, Result, !STM):
+    %
+    % Performs the Software Transactional Memory operations in AtomicClosure1
+    % atomically.  If a retry is thrown, AtomicClosure2 is executed atomically.
+    %
+:- pred or_else(pred(T, stm, stm)::in(pred(out, di, uo) is det),
+    pred(T, stm, stm)::in(pred(out, di, uo) is det),
+    T::out, stm::di, stm::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -113,15 +128,16 @@
 
     % Create a new transaction log.
     %
-:- impure pred stm_create_transaction_log(stm::uo) is det. 
+:- impure pred stm_create_transaction_log(stm::uo) is det.
 
     % Discard a transaction log.
     %
 :- impure pred stm_discard_transaction_log(stm::di) is det.
 
     % stm_create_nested_transaction_log(Parent, Child):
-    % `Child' is a new transaction log whose enclosing transaction's
-    % log is given by `Parent'.
+    %
+    % `Child' is a new transaction log whose enclosing transaction's log
+    % is given by `Parent'.
     %
 :- impure pred stm_create_nested_transaction_log(stm::ui, stm::uo) is det.
 
@@ -135,10 +151,10 @@
 
     % Values of this type are returned by stm_validate/2 and indicate
     % whether a given transaction log is valid.
+    %
     % NOTE: The definition of this type must be kept consistent with the
     % constants defined in runtime/mercury_stm.h.
     %
-    % 
 :- type stm_validation_result
     --->    stm_transaction_valid
     ;       stm_transaction_invalid.
@@ -149,9 +165,9 @@
 :- impure pred stm_validate(stm::ui, stm_validation_result::out) is det.
 
     % Write the changes in the given log to memory.
-    % 
-    % NOTE: this predicate must *only* be called while the STM global mutex
-    %       is locked.
+    %
+    % NOTE: This predicate must *only* be called while the STM global mutex
+    % is locked.
     %
 :- impure pred stm_commit(stm::ui) is det.
 
@@ -159,17 +175,30 @@
     % to by the given log and then block until another thread makes a commit
     % that involves one of those transaction variables.
     %
-    % NOTE: this predicate must *only* be called while the STM global mutex
-    %       is locked.
+    % NOTE: This predicate must *only* be called while the STM global mutex
+    % is locked.
     %
 :- impure pred stm_block(stm::ui) is det.
 
     % This type is used in the case where an atomic_scope has no outputs
-    % since the call to try_stm/3 introduced by the expansion of atomic 
+    % since the call to try_stm/3 introduced by the expansion of atomic
     % scopes needs to return at least one value.
-    % 
+    %
 :- type stm_dummy_output
     --->    stm_dummy_output.
+
+    % Used to enforce the uniqueness of outer and inner variables.
+    % Will be removed before stm_expansion.
+    %
+:- pred stm_from_outer_to_inner_io(T::di, stm::uo) is det.
+:- pred stm_from_inner_to_outer_io(stm::di, T::uo) is det.
+
+    % Changes the value of a transaction variable without going through
+    % the log. USE ONLY FOR DEBUGGING PURPOSES.
+    %
+:- pred unsafe_write_stm_var(stm_var(T)::in, T::in, stm::di, stm::uo) is det.
+
+:- impure pred stm_merge_nested_logs(stm::di, stm::di, stm::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -183,7 +212,7 @@
 
 :- pragma foreign_decl("C", "#include \"mercury_stm.h\"").
 
-:- pragma foreign_type("C", stm_var(T), "MR_STM_Var *", 
+:- pragma foreign_type("C", stm_var(T), "MR_STM_Var *",
     [stable, can_pass_as_mercury_type]).
 
 :- pragma foreign_type("C", stm, "MR_STM_TransLog *",
@@ -208,10 +237,26 @@
 ").
 
 :- pragma foreign_proc("C",
+    new_stm_var_atomic(T::in, TVar::out, STM0::di, STM::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    MR_STM_new_stm_var(T, TVar);
+    STM = STM0;
+").
+
+:- pragma foreign_proc("C",
     write_stm_var(TVar::in, Value::in, STM0::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     MR_STM_write_var(TVar, Value, STM0);
+    STM = STM0;
+").
+
+:- pragma foreign_proc("C",
+    unsafe_write_stm_var(TVar::in, Value::in, STM0::di, STM::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    MR_STM_unsafe_write_var(TVar, Value);
     STM = STM0;
 ").
 
@@ -228,6 +273,11 @@
     [will_not_call_mercury, thread_safe],
 "
     MR_STM_create_log(STM, NULL);
+
+#if defined(MR_STM_DEBUG)
+        fprintf(stderr, \"STM NEW LOG: log <0x%.8lx>\\n\",
+            (MR_Word)(STM));
+#endif
 ").
 
 :- pragma foreign_proc("C",
@@ -235,6 +285,11 @@
     [will_not_call_mercury, thread_safe],
 "
     MR_STM_create_log(Child, Parent);
+#ifdef  MR_STM_DEBUG
+        fprintf(stderr,
+                \"STM: Creating nested log <0x%.8lx>, parent <0x%.8lx>\\n\",
+                (MR_Word)(Child), (MR_Word)(Parent));
+#endif
 ").
 
 :- pragma foreign_proc("C",
@@ -245,11 +300,27 @@
 ").
 
 :- pragma foreign_proc("C",
+    stm_merge_nested_logs(Child::di, Parent0::di, Parent::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    /* Avoid a warning: Child, Parent0, Parent */
+#if defined(MR_STM_DEBUG)
+    fprintf(stderr, \"STM Calling Merge Nested: log <0x%.8lx>\\n\",
+        (MR_Word)(Child));
+#endif
+    MR_STM_merge_transactions(Child);
+    Parent = Parent0;
+").
+
+:- pragma foreign_proc("C",
     stm_lock,
     [will_not_call_mercury, thread_safe],
 "
-    #ifdef MR_THREAD_SAFE
+    #if defined(MR_THREAD_SAFE)
         MR_LOCK(&MR_STM_lock, \"stm_lock/0\");
+    #endif
+    #if defined(MR_STM_DEBUG)
+        fprintf(stderr, \"STM LOCKING\\n\");
     #endif
 ").
 
@@ -257,7 +328,10 @@
     stm_unlock,
     [will_not_call_mercury, thread_safe],
 "
-    #ifdef MR_THREAD_SAFE
+    #if defined(MR_STM_DEBUG)
+        fprintf(stderr, \"STM UNLOCKING\\n\");
+    #endif
+    #if defined(MR_THREAD_SAFE)
         MR_UNLOCK(&MR_STM_lock, \"stm_unlock/0\");
     #endif
 ").
@@ -276,12 +350,29 @@
     MR_STM_commit(STM);
 ").
 
+:- pragma foreign_proc("C",
+    stm_from_outer_to_inner_io(IO::di, STM::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    STM = NULL;
+    MR_final_io_state(IO);
+").
+
+:- pragma foreign_proc("C",
+    stm_from_inner_to_outer_io(STM0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    STM0 = NULL;
+    IO = MR_initial_io_state();
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    stm_block(_STM::ui),
+    stm_block(STM::ui),
     [will_not_call_mercury, thread_safe],
 "
+    MR_STM_block_thread(STM);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -297,13 +388,73 @@ retry(_) :-
 % Atomic transactions
 %
 
-:- pragma promise_pure(atomic_transaction/4).
 atomic_transaction(Goal, Result, !IO) :-
-    impure atomic_transaction_impl(Goal, Result). 
+    promise_pure (
+        impure atomic_transaction_impl(Goal, Result)
+    ).
 
-:- impure pred atomic_transaction_impl(pred(T, stm, stm), T).
-:- mode atomic_transaction_impl(in(pred(out, di, uo) is det), out)
-    is det.
+:- pragma promise_pure(or_else/5).
+or_else(TransA, TransB, Result, OuterSTM0, OuterSTM) :-
+    impure stm_create_nested_transaction_log(OuterSTM0, InnerSTM_A0),
+    promise_equivalent_solutions [ResultA, InnerSTM_A] (
+        unsafe_try_stm(TransA, ResultA,
+            InnerSTM_A0, InnerSTM_A)
+    ),
+    (
+        ResultA = succeeded(Result),
+        impure stm_merge_nested_logs(InnerSTM_A, OuterSTM0, OuterSTM)
+    ;
+        ResultA = exception(ExcpA),
+
+        % If transaction A retried, then we should attemp transaction B.
+        % Otherwise we just propagate the exception upwards.
+
+        ( ExcpA = univ(rollback_retry) ->
+            impure stm_create_nested_transaction_log(OuterSTM0, InnerSTM_B0),
+            promise_equivalent_solutions [ResultB, InnerSTM_B] (
+                unsafe_try_stm(TransB, ResultB,
+                    InnerSTM_B0, InnerSTM_B)
+            ),
+            (
+                ResultB = succeeded(Result),
+                impure stm_merge_nested_logs(InnerSTM_B, OuterSTM0, OuterSTM)
+            ;
+                ResultB = exception(ExcpB),
+                ( ExcpB = univ(rollback_retry) ->
+                    impure stm_lock,
+                    impure stm_validate(InnerSTM_A, IsValidA),
+                    impure stm_validate(InnerSTM_B, IsValidB),
+                    (
+                        IsValidA = stm_transaction_valid,
+                        IsValidB = stm_transaction_valid
+                    ->
+                        % We want to wait on the union of the transaction
+                        % variables accessed during both alternatives.
+                        % We merge the transaction logs (the order does not
+                        % matter) and then propagate the retry upwards.
+                        impure stm_merge_nested_logs(InnerSTM_A, OuterSTM0,
+                            OuterSTM1),
+                        impure stm_merge_nested_logs(InnerSTM_B, OuterSTM1,
+                            OuterSTM),
+                        impure stm_unlock,
+                        retry(OuterSTM)
+                    ;
+                        impure stm_unlock,
+                        throw(rollback_invalid_transaction)
+                    )
+                ;
+                    impure stm_unlock,
+                    rethrow(ResultB)
+                )
+            )
+        ;
+            impure stm_discard_transaction_log(InnerSTM_A),
+            rethrow(ResultA)
+        )
+    ).
+
+:- impure pred atomic_transaction_impl(
+    pred(T, stm, stm)::in(pred(out, di, uo) is det), T::out) is det.
 
 atomic_transaction_impl(Goal, Result) :-
     impure stm_create_transaction_log(STM0),
@@ -345,23 +496,23 @@ atomic_transaction_impl(Goal, Result) :-
         )
     ).
 
-:- pragma promise_pure(call_atomic_goal/4).
-:- pred call_atomic_goal(pred(T, stm, stm), T, stm, stm).
-:- mode call_atomic_goal(in(pred(out, di, uo) is det), out, di, uo)
-    is det.
+:- pred call_atomic_goal(pred(T, stm, stm)::in(pred(out, di, uo) is det),
+    T::out, stm::di, stm::uo) is det.
 
 call_atomic_goal(Goal, Result, !STM) :-
-    Goal(Result, !STM),
-    impure stm_lock,
-    impure stm_validate(!.STM, IsValid),
-    (
-        IsValid = stm_transaction_valid,
-        impure stm_commit(!.STM),
-        impure stm_unlock
-    ;
-        IsValid = stm_transaction_invalid,
-        impure stm_unlock,
-        throw(rollback_invalid_transaction)
+    promise_pure (
+        Goal(Result, !STM),
+        impure stm_lock,
+        impure stm_validate(!.STM, IsValid),
+        (
+            IsValid = stm_transaction_valid,
+            impure stm_commit(!.STM),
+            impure stm_unlock
+        ;
+            IsValid = stm_transaction_invalid,
+            impure stm_unlock,
+            throw(rollback_invalid_transaction)
+        )
     ).
 
 %----------------------------------------------------------------------------%

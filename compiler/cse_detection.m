@@ -318,9 +318,22 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
             InstMap0, !CseInfo, Redo, GoalExpr)
     ;
-        GoalExpr0 = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "detect_cse_in_goal_expr: unexpected shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(AtomicGoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal0, OrElseGoals0),
+            detect_cse_in_goal(MainGoal0, MainGoal, !CseInfo, InstMap0, Redo1),
+            detect_cse_in_independent_goals(OrElseGoals0, OrElseGoals,
+                !CseInfo, InstMap0, Redo2),
+            ShortHand = atomic_goal(AtomicGoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals),
+            bool.or(Redo1, Redo2, Redo)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "detect_cse_in_goal_expr: bi_implication")
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -357,7 +370,7 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
     cse_info::out, bool::out, hlds_goal_expr::out) is det.
 
 detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
-    detect_cse_in_disjuncts(Goals0, Goals, !CseInfo, InstMap, Redo).
+    detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap, Redo).
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, Redo, GoalExpr) :-
     (
@@ -379,14 +392,15 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
             !CseInfo, Redo, GoalExpr)
     ).
 
-:- pred detect_cse_in_disjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred detect_cse_in_independent_goals(
+    list(hlds_goal)::in, list(hlds_goal)::out,
     cse_info::in, cse_info::out, instmap::in, bool::out) is det.
 
-detect_cse_in_disjuncts([], [], !CseInfo, _, no).
-detect_cse_in_disjuncts([Goal0 | Goals0], [Goal | Goals], !CseInfo, InstMap0,
-        Redo) :-
+detect_cse_in_independent_goals([], [], !CseInfo, _, no).
+detect_cse_in_independent_goals([Goal0 | Goals0], [Goal | Goals], !CseInfo,
+        InstMap0, Redo) :-
     detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo1),
-    detect_cse_in_disjuncts(Goals0, Goals, !CseInfo, InstMap0, Redo2),
+    detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap0, Redo2),
     bool.or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_cases(list(prog_var)::in, prog_var::in, can_fail::in,

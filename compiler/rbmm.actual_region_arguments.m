@@ -1,7 +1,7 @@
 % -----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,8 +119,7 @@ record_actual_region_arguments_proc(ModuleInfo, PredId, RptaInfoTable,
     pp_actual_region_args_table::in, pp_actual_region_args_table::out) is det.
 
 record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, Goal,
-        !ActualRegionArgProc) :-
+        ConstantRTable, DeadRTable, BornRTable, Goal, !ActualRegionArgProc) :-
     Goal = hlds_goal(Expr, Info),
     record_actual_region_arguments_expr(Expr, Info, ModuleInfo, PPId,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
@@ -132,66 +131,74 @@ record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
     proc_region_set_table::in, proc_region_set_table::in,
     pp_actual_region_args_table::in, pp_actual_region_args_table::out) is det.
 
-record_actual_region_arguments_expr(conj(_, Conjs), _, ModuleInfo, PPId,
+record_actual_region_arguments_expr(GoalExpr, GoalInfo, ModuleInfo, CallerPPId,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
         !ActualRegionArgProc) :-
-    list.foldl(record_actual_region_arguments_goal(ModuleInfo, PPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable), Conjs,
-        !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(disj(Disjs), _, ModuleInfo, PPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-        !ActualRegionArgProc) :-
-    list.foldl(record_actual_region_arguments_goal(ModuleInfo, PPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
-        Disjs, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(if_then_else(_, If, Then, Else), _,
-        ModuleInfo, PPId, RptaInfoTable, ConstantRTable, DeadRTable,
-        BornRTable, !ActualRegionArgProc) :-
-    record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, If, !ActualRegionArgProc),
-    record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, Then, !ActualRegionArgProc),
-    record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, Else, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(switch(_, _, Cases), _, ModuleInfo,
-        PPId, RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-        !ActualRegionArgProc) :-
-    list.foldl(record_actual_region_arguments_case(ModuleInfo, PPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
-        Cases, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(generic_call(_, _, _, _), _, _, _, _, _,
-        _, _, !ActualRegionArgProc) :-
-    sorry(this_file,
-        "record_actual_region_arguments_expr: generic_call not handled").
-
-record_actual_region_arguments_expr(call_foreign_proc(_, _, _, _, _, _, _),
-        _, _, _, _, _, _, _, !ActualRegionArgProc) :-
-    sorry(this_file,
-        "record_actual_region_arguments_expr: call_foreign_proc not handled").
-
-record_actual_region_arguments_expr(negation(Goal), _, ModuleInfo, PPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-        !ActualRegionArgProc) :-
-    record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, Goal, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(unify(_, _, _, _, _), _, _, _, _, _, _,
-        _, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(scope(_, Goal), _, ModuleInfo, PPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-        !ActualRegionArgProc) :-
-    record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, Goal, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(shorthand(_), _, _, _, _, _, _, _,
-        !ActualRegionArgProc) :-
-    unexpected(this_file,
-        "record_actual_region_arguments_expr: shorthand not handled").
+    (
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        CalleePPId = proc(PredId, ProcId),
+        ( some_are_special_preds([CalleePPId], ModuleInfo) ->
+            true
+        ;
+            CallSite = program_point_init(GoalInfo),
+            record_actual_region_arguments_call_site(CallerPPId, CallSite,
+                CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
+                BornRTable, !ActualRegionArgProc)
+        )
+    ;
+        GoalExpr = conj(_, Conjuncts),
+        list.foldl(
+            record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+                RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
+            Conjuncts, !ActualRegionArgProc)
+    ;
+        GoalExpr = disj(Disjuncts),
+        list.foldl(
+            record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+                RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
+            Disjuncts, !ActualRegionArgProc)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Cond,
+            !ActualRegionArgProc),
+        record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Then,
+            !ActualRegionArgProc),
+        record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Else,
+            !ActualRegionArgProc)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.foldl(
+            record_actual_region_arguments_case(ModuleInfo, CallerPPId,
+                RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
+            Cases, !ActualRegionArgProc)
+    ;
+        GoalExpr = generic_call(_, _, _, _),
+        sorry(this_file,
+            "record_actual_region_arguments_expr: generic_call NYI")
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        sorry(this_file,
+            "record_actual_region_arguments_expr: call_foreign_proc NYI")
+    ;
+        GoalExpr = negation(SubGoal),
+        record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, SubGoal,
+            !ActualRegionArgProc)
+    ;
+        GoalExpr = unify(_, _, _, _, _)
+    ;
+        GoalExpr = scope(_, SubGoal),
+        record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, SubGoal,
+            !ActualRegionArgProc)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file,
+            "record_actual_region_arguments_expr: shorthand")
+    ).
 
 :- pred record_actual_region_arguments_case(module_info::in,
     pred_proc_id::in, rpta_info_table::in, proc_region_set_table::in,
@@ -203,20 +210,6 @@ record_actual_region_arguments_case(ModuleInfo, PPId, RptaInfoTable,
     Case = case(_, _, Goal),
     record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, Goal, !ActualRegionArgProc).
-
-record_actual_region_arguments_expr(Expr, Info, ModuleInfo, CallerPPId,
-        RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-        !ActualRegionArgProc) :-
-    Expr = plain_call(PredId, ProcId, _, _, _, _),
-    CalleePPId = proc(PredId, ProcId),
-    ( if    some_are_special_preds([CalleePPId], ModuleInfo)
-      then  true
-      else
-            CallSite = program_point_init(Info),
-            record_actual_region_arguments_call_site(CallerPPId, CallSite,
-                CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
-                BornRTable, !ActualRegionArgProc)
-    ).
 
 :- pred record_actual_region_arguments_call_site(pred_proc_id::in,
     program_point::in, pred_proc_id::in,

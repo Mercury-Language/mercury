@@ -2,13 +2,15 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** mercury_stm.h - runtime support for software transactional memory.
+**
+** TODO: Currently, only the High Level C Grades have been fully implemented.
 */
 
 #ifndef MERCURY_STM_H
@@ -17,17 +19,20 @@
 #include "mercury_types.h"
 #include "mercury_thread.h"
 #include "mercury_conf.h"
+#include "mercury_conf_param.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"
+#include <stdio.h>
 
 typedef struct MR_STM_Waiter_Struct         MR_STM_Waiter;
 typedef struct MR_STM_Var_Struct            MR_STM_Var;
 typedef struct MR_STM_TransRecord_Struct    MR_STM_TransRecord;
 typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
 
+
 /*
 ** The type MR_ThreadId provides an abstract means of identifying a Mercury
-** thread.  Depending upon the grade we use one of three notions of thread
+** thread. Depending upon the grade we use one of three notions of thread
 ** identity.
 **
 ** For high-level code with parallelism it is the value returned by a call
@@ -44,10 +49,11 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
 #if defined(MR_HIGHLEVEL_CODE)
 
     #if defined(MR_THREAD_SAFE)
-        typedef pthread_t   MR_ThreadId;
+        typedef pthread_t       MR_ThreadId;
+
         #define MR_THIS_THREAD_ID pthread_self()
     #else
-        typedef MR_Integer  MR_ThreadId;
+        typedef MR_Integer      MR_ThreadId;
         /*
         ** Since these grades don't support concurrency there is only one
         ** thread which we always give the id 0.
@@ -57,8 +63,43 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
 
 #else /* !MR_HIGHLEVEL_CODE */
 
-    typedef MR_Context  *MR_ThreadId;
+    typedef MR_Context      *MR_ThreadId;
     #define MR_THIS_THREAD_ID (MR_ENGINE(MR_eng_this_context))
+
+#endif /* !MR_HIGHLEVEL_CODE */
+
+
+/*
+** The type MR_STM_ConditionVar provides an abstract method of blocking and
+** signalling threads based on conditions.
+*/
+#if defined(MR_HIGHLEVEL_CODE)
+
+    #if defined(MR_THREAD_SAFE)
+        typedef MercuryCond  MR_STM_ConditionVar;
+
+        #define MR_STM_condvar_wait(x, y)     MR_cond_wait(x, y)
+        #define MR_STM_condvar_signal(x)      MR_cond_signal(x)
+    #else
+        typedef MR_Integer      MR_STM_ConditionVar;
+        /*
+        ** Since these grades don't support concurrency, there is no
+        ** need to block the thread.
+        */
+        #define MR_STM_condvar_wait(x, y)
+        #define MR_STM_condvar_signal(x)
+    #endif
+
+#else /* !MR_HIGHLEVEL_CODE */
+
+    typedef MR_Context  *MR_STM_ConditionVar;
+
+    /*
+    ** These are dummy definitions; STM is not yet implemented for low level C
+    ** grades.
+    */
+    #define MR_STM_condvar_wait(x, y)
+    #define MR_STM_condvar_signal(x)
 
 #endif /* !MR_HIGHLEVEL_CODE */
 
@@ -66,15 +107,18 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
 ** A waiter is the identity of a thread that is blocking until the value
 ** of this transaction variable changes.
 */
+
 struct MR_STM_Waiter_Struct {
-    MR_ThreadId     MR_STM_waiter_thread;
-    MR_STM_Waiter   *MR_STM_waiter_next;
+    MR_STM_ConditionVar *MR_STM_cond_var;
+    MR_STM_Waiter       *MR_STM_waiter_next;
+    MR_STM_Waiter       *MR_STM_waiter_prev;
 };
 
 /*
-** XXX this should also contain the type_info for the value, so we can
+** XXX This should also contain the type_info for the value, so we can
 ** print them out in the debugger.
 */
+
 struct MR_STM_Var_Struct {
     MR_Word         MR_STM_var_value;
     MR_STM_Waiter   *MR_STM_var_waiters;
@@ -94,6 +138,15 @@ struct MR_STM_TransLog_Struct {
 };
 
 /*
+** The global STM lock. This lock must be acquired before validating or
+** committing a transaction log.
+*/
+
+#if defined(MR_THREAD_SAFE)
+    extern MercuryLock  MR_STM_lock;
+#endif
+
+/*
 ** Allocate a new transaction variable.
 */
 #define MR_STM_new_stm_var(value, var)                                  \
@@ -105,8 +158,8 @@ struct MR_STM_TransLog_Struct {
 
 /*
 ** Create a new transaction log.
-** If the log is for a nested transaction then the field `parent' points
-** to the log of the enclosing transaction.  It is NULL otherwise.
+** If the log is for a nested transaction then the `parent' field points
+** to the log of the enclosing transaction. It is NULL otherwise.
 */
 #define MR_STM_create_log(tlog, parent)                                 \
     do {                                                                \
@@ -127,32 +180,37 @@ struct MR_STM_TransLog_Struct {
 
 /*
 ** Record a change of state for transaction variable `var' in the
-** given transaction log.  `old_value' and `new_value' give the value
+** given transaction log. `old_value' and `new_value' give the value
 ** of the transaction variable before and after the change of state.
 */
-extern void
-MR_STM_record_transaction(MR_STM_TransLog *tlog, MR_STM_Var *var,
-    MR_Word old_value, MR_Word new_value);
+
+extern  void        MR_STM_record_transaction(MR_STM_TransLog *tlog,
+                        MR_STM_Var *var,
+                        MR_Word old_value, MR_Word new_value);
 
 /*
 ** Add a waiter for the current thread to all of the transaction variables
 ** listed in the log.
 */
-extern void
-MR_STM_wait(MR_STM_TransLog *tlog);
+
+extern  void        MR_STM_wait(MR_STM_TransLog *tlog,
+                        MR_STM_ConditionVar *cvar);
 
 /*
 ** Detach waiters for the current thread from all of the transaction variables
 ** referenced by the given transaction log.
 */
-extern void
-MR_STM_unwait(MR_STM_TransLog *tlog);
+
+extern  void        MR_STM_unwait(MR_STM_TransLog *tlog,
+                        MR_STM_ConditionVar *cvar);
 
 /*
-** Attach a waiter for thread tid to the transaction variable.
+** Attach a waiter for thread tid to the transaction variable. The condition
+** variable should be a condition variable properly initialised and associated
+** with the thread.
 */
-extern void
-MR_STM_attach_waiter(MR_STM_Var *var, MR_ThreadId tid);
+extern  void        MR_STM_attach_waiter(MR_STM_Var *var, MR_ThreadId tid,
+                        MR_STM_ConditionVar *cvar);
 
 /*
 ** Detach any waiters for thread tid from the transaction variable.
@@ -160,33 +218,73 @@ MR_STM_attach_waiter(MR_STM_Var *var, MR_ThreadId tid);
 ** be found since it can only correctly be called in a situation where
 ** such a waiter exists.
 */
-extern void
-MR_STM_detach_waiter(MR_STM_Var *var, MR_ThreadId tid);
 
-extern MR_Integer
-MR_STM_validate(MR_STM_TransLog *tlog);
+extern  void        MR_STM_detach_waiter(MR_STM_Var *var,
+                        MR_STM_ConditionVar *cvar);
+
+extern  MR_Integer  MR_STM_validate(MR_STM_TransLog *tlog);
 
 /*
 ** Irrevocably write the changes stored in a transaction log to memory.
 */
-extern void
-MR_STM_commit(MR_STM_TransLog *tlog);
 
-extern void
-MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog);
+extern  void        MR_STM_commit(MR_STM_TransLog *tlog);
 
-extern MR_Word
-MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog);
+/*
+** Changes the value of transaction variable var in a transaction log.
+*/
 
-#if defined(MR_THREAD_SAFE)
-    extern MercuryLock  MR_STM_lock;
-#endif
+extern  void        MR_STM_write_var(MR_STM_Var *var, MR_Word value,
+                        MR_STM_TransLog *tlog);
+
+/*
+** Returns the value of transaction variable var in a transaction log.
+** If no entry for var exists, the actual value of the transaction variable
+** var is returned (and added to the transaction log).
+*/
+
+extern  MR_Word     MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog);
+
+/*
+** Changes the value of the transaction variable var without going through
+** the log.
+**
+** NOTE: This functions must only be used for debugging purposes and will
+** eventually be removed. Please, DO NOT use it for normal operations.
+*/
+
+extern  void        MR_STM_unsafe_write_var(MR_STM_Var *var, MR_Word value);
+
+/*
+** Blocks a thread from execution. This method is called by the thread
+** which is to be blocked. The STM lock MUST be aquired by the thread
+** before this method is called and acquires the lock when the thread
+** is signalled.
+*/
+
+extern  void        MR_STM_block_thread(MR_STM_TransLog *tlog);
+
+/*
+** Merges a transaction log with its parent. Do not merge it with any
+** other ancestors. Aborts if the given transaction log does not have a
+** parent.
+*/
+
+extern  void        MR_STM_merge_transactions(MR_STM_TransLog *tlog);
+
+/*
+** Reschedules all threads currently waiting on the given transaction
+** variables.
+*/
+
+extern  void        MR_STM_signal_vars(MR_STM_Var *tvar);
 
 /*
 ** These definitions need to be kept in sync with the definition of the type
-** stm_validation_result/0 in library/stm_builtin.m.  Changes here may need
+** stm_validation_result/0 in library/stm_builtin.m. Changes here may need
 ** be reflected there.
 */
+
 #define MR_STM_TRANSACTION_VALID 0
 #define MR_STM_TRANSACTION_INVALID 1
 

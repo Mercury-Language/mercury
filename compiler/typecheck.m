@@ -479,10 +479,10 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             ;
                 IsFieldAccessFunction = no
             ),
-            pred_info_get_markers(!.PredInfo, PredMarkers),
+            pred_info_get_markers(!.PredInfo, PredMarkers0),
             typecheck_info_init(!.ModuleInfo, PredId, IsFieldAccessFunction,
                 TypeVarSet0, VarSet, ExplicitVarTypes0, !.HeadTypeParams,
-                Constraints, Status, PredMarkers, StartingSpecs, !:Info),
+                Constraints, Status, PredMarkers0, StartingSpecs, !:Info),
             get_clause_list(ClausesRep1, Clauses1),
             typecheck_clause_list(HeadVars, ArgTypes0, Clauses1, Clauses,
                 !Info),
@@ -495,6 +495,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 !:HeadTypeParams, InferredVarTypes0,
                 InferredTypeConstraints0, ConstraintProofs,
                 ConstraintMap, TVarRenaming, ExistTypeRenaming),
+            typecheck_info_get_pred_markers(!.Info, PredMarkers),
             map.optimize(InferredVarTypes0, InferredVarTypes),
             clauses_info_set_vartypes(InferredVarTypes, !ClausesInfo),
 
@@ -516,6 +517,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             pred_info_set_typevarset(TypeVarSet, !PredInfo),
             pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
             pred_info_set_constraint_map(ConstraintMap, !PredInfo),
+            pred_info_set_markers(PredMarkers, !PredInfo),
 
             % Split the inferred type class constraints into those that
             % apply only to the head variables, and those that apply to
@@ -1232,22 +1234,51 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         perform_context_reduction(!Info),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = shorthand(ShorthandGoal0),
-        typecheck_goal_2_shorthand(ShorthandGoal0, ShorthandGoal, !Info),
-        GoalExpr = shorthand(ShorthandGoal)
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = bi_implication(LHS0, RHS0),
+            trace [io(!IO)] (
+                type_checkpoint("<=>", !.Info, !IO)
+            ),
+            typecheck_goal(LHS0, LHS, !Info),
+            typecheck_goal(RHS0, RHS, !Info),
+            ShortHand = bi_implication(LHS, RHS)
+        ;
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            trace [io(!IO)] (
+                type_checkpoint("atomic_goal", !.Info, !IO)
+            ),
+            (
+                MaybeOutputVars = yes(OutputVars),
+                ensure_vars_have_a_type(OutputVars, !Info)
+            ;
+                MaybeOutputVars = no
+            ),
+
+            typecheck_goal(MainGoal0, MainGoal, !Info),
+            typecheck_goal_list(OrElseGoals0, OrElseGoals, !Info),
+
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            ensure_vars_have_a_type([OuterDI, OuterUO, InnerDI, InnerUO],
+                !Info),
+
+            % The outer variables must either be both I/O states of STM states.
+            % Checking that here could double the number of type assign sets.
+            % We therefore delay the check until after we have typechecked
+            % the predicate body, in post_typecheck. The code in the
+            % post_typecheck pass (actually in purity.m) will do this
+            % if the GoalType is unknown_atomic_goal_type.
+            typecheck_var_has_type(InnerDI, stm_atomic_type, !Info),
+            typecheck_var_has_type(InnerUO, stm_atomic_type, !Info),
+            expect(unify(GoalType, unknown_atomic_goal_type), this_file,
+                "typecheck_goal_2: GoalType != unknown_atomic_goal_type"),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals)
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
-
-:- pred typecheck_goal_2_shorthand(shorthand_goal_expr::in,
-    shorthand_goal_expr::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-typecheck_goal_2_shorthand(bi_implication(LHS0, RHS0),
-        bi_implication(LHS, RHS), !Info) :-
-    trace [io(!IO)] (
-        type_checkpoint("<=>", !.Info, !IO)
-    ),
-    typecheck_goal(LHS0, LHS, !Info),
-    typecheck_goal(RHS0, RHS, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1640,6 +1671,33 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
     ;
         ArgTypes0 = [],
         unexpected(this_file, "arg_type_assign_var_has_type")
+    ).
+
+:- pred type_assign_var_has_one_of_these_types(type_assign::in,
+    prog_var::in, mer_type::in, mer_type::in, type_assign_set::in,
+    type_assign_set::out) is det.
+
+type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
+        !TypeAssignSet) :-
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
+    ( map.search(VarTypes0, Var, VarType) ->
+        ( type_assign_unify_type(TypeAssign0, VarType, TypeA, TypeAssignA) ->
+            !:TypeAssignSet = [TypeAssignA | !.TypeAssignSet]
+        ;
+            !:TypeAssignSet = !.TypeAssignSet
+        ),
+        ( type_assign_unify_type(TypeAssign0, VarType, TypeB, TypeAssignB) ->
+            !:TypeAssignSet = [TypeAssignB | !.TypeAssignSet]
+        ;
+            !:TypeAssignSet = !.TypeAssignSet
+        )
+    ;
+        % YYY
+        map.det_insert(VarTypes0, Var, TypeA, VarTypesA),
+        type_assign_set_var_types(VarTypesA, TypeAssign0, TypeAssignA),
+        map.det_insert(VarTypes0, Var, TypeB, VarTypesB),
+        type_assign_set_var_types(VarTypesB, TypeAssign0, TypeAssignB),
+        !: TypeAssignSet = [TypeAssignA, TypeAssignB | !.TypeAssignSet]
     ).
 
 %-----------------------------------------------------------------------------%

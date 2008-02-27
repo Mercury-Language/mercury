@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -760,64 +760,53 @@ dump_proc_goal_paths(ProcTable, ProcId, !IO) :-
     %
 :- pred dump_goal_goal_paths(int::in, hlds_goal::in, io::di, io::uo) is det.
 
-dump_goal_goal_paths(Indent, hlds_goal(GoalExpr, GoalInfo), !IO) :-
+dump_goal_goal_paths(Indent, Goal, !IO) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     GoalPath = goal_info_get_goal_path(GoalInfo),
     GoalPathFormat = [words(goal_path_to_string(GoalPath)), nl],
     write_error_pieces_maybe_with_context(no, Indent, GoalPathFormat, !IO),
-    dump_goal_expr_goal_paths(Indent+1, GoalExpr, !IO).
 
-    % dump_goal_expr_goal_paths(Indent, GoalExpr, !IO)
-    %
-    % Dumps the goal paths for each sub-goal in GoalExpr at level of indent
-    % Indent, in the order they appear, and for each of their sub-goals in
-    % turn, for the purposes of visually checking reordering.
-    %
-:- pred dump_goal_expr_goal_paths(int::in, hlds_goal_expr::in, io::di, io::uo)
-    is det.
-
-dump_goal_expr_goal_paths(_Indent, GoalExpr, !IO) :-
-    %
-    % Do nothing for atomic goals.
-    %
+    % Dump the goal paths for each subgoal in GoalExpr at SubGoalIndent,
+    % in the order they appear, for the purposes of visually checking
+    % reordering.
+    SubGoalIndent = Indent + 1,
     (
-        GoalExpr = plain_call(_, _, _, _, _, _)
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        )
+        % There are no subgoals to recurse on.
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = conj(_, Goals),
+        list.foldl(dump_goal_goal_paths(SubGoalIndent), Goals, !IO)
     ;
-        GoalExpr = unify(_, _, _, _, _)
+        GoalExpr = disj(Goals),
+        list.foldl(dump_goal_goal_paths(SubGoalIndent), Goals, !IO)
     ;
-        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
-    ).
-
-dump_goal_expr_goal_paths(_Indent, GoalExpr, !IO) :-
-    (
         GoalExpr = switch(_, _, _),
         unexpected(this_file, "switch")
     ;
-        GoalExpr = shorthand(_),
-        unexpected(this_file, "shorthand")
+        GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
+        Goals = [CondGoal, ThenGoal, ElseGoal],
+        list.foldl(dump_goal_goal_paths(SubGoalIndent), Goals, !IO)
+    ;
+        GoalExpr = negation(SubGoal),
+        dump_goal_goal_paths(SubGoalIndent, SubGoal, !IO)
+    ;
+        GoalExpr = scope(_, SubGoal),
+        dump_goal_goal_paths(SubGoalIndent, SubGoal, !IO)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            Goals = [MainGoal | OrElseGoals],
+            list.foldl(dump_goal_goal_paths(SubGoalIndent), Goals, !IO)
+        ;
+            ShortHand = bi_implication(_, _),
+            unexpected(this_file, "bi_implication")
+        )
     ).
-
-dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = conj(_, Goals),
-    list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
-
-dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = disj(Goals),
-    list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
-
-dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = negation(Goal),
-    dump_goal_goal_paths(Indent, Goal, !IO).
-
-dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = scope(_, Goal),
-    dump_goal_goal_paths(Indent, Goal, !IO).
-
-dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
-    Goals = [CondGoal, ThenGoal, ElseGoal],
-    list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
 
 %-----------------------------------------------------------------------------%
 

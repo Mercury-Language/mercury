@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -200,74 +200,84 @@ goal_can_throw(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo) :-
 :- pred goal_can_throw_2(hlds_goal_expr::in, hlds_goal_info::in,
     goal_throw_status::out, module_info::in, module_info::out) is det.
 
-goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo) :-
-    (
-        Goal = conj(_, Goals)
-    ;
-        Goal = disj(Goals)
-    ;
-        Goal = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
-        Goals = [IfGoal, ThenGoal, ElseGoal]
-    ),
-    goals_can_throw(Goals, Result, !ModuleInfo).
-goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo) :-
-    Goal = plain_call(PredId, ProcId, _, _, _, _),
-    lookup_exception_analysis_result(proc(PredId, ProcId), Status,
-        !ModuleInfo),
-    (
-        Status = will_not_throw,
-        Result = cannot_throw
-    ;
-        ( Status = may_throw(_)
-        ; Status = throw_conditional
-        ),
-        Result = can_throw
-    ).
-goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo) :-
-    % XXX We should use results form closure analysis here.
-    Goal = generic_call(_, _, _, _),
-    Result = can_throw.
-goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo) :-
-    Goal = switch(_, _, Cases),
-    cases_can_throw(Cases, Result, !ModuleInfo).
-goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo) :-
-    Goal = unify(_, _, _, Uni, _),
-    % Complicated unifies are _non_builtin_
-    (
-        Uni = complicated_unify(_, _, _),
-        Result = can_throw
-    ;
-        ( Uni = construct(_, _, _, _, _, _, _)
-        ; Uni = deconstruct(_, _, _, _, _, _)
-        ; Uni = assign(_, _)
-        ; Uni = simple_test(_, _)
-        ),
-        Result = cannot_throw
-    ).
-goal_can_throw_2(OuterGoal, _, Result, !ModuleInfo) :-
-    (
-        OuterGoal = negation(InnerGoal)
-    ;
-        OuterGoal = scope(_, InnerGoal)
-    ),
-    goal_can_throw(InnerGoal, Result, !ModuleInfo).
-goal_can_throw_2(Goal, _, Result, !ModuleInfo) :-
-    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    ExceptionStatus = get_may_throw_exception(Attributes),
+goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
     (
         (
-            ExceptionStatus = proc_will_not_throw_exception
+            GoalExpr = conj(_, Goals)
         ;
-            ExceptionStatus = default_exception_behaviour,
-            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
-        )
-    ->
-        Result = cannot_throw
+            GoalExpr = disj(Goals)
+        ;
+            GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
+            Goals = [CondGoal, ThenGoal, ElseGoal]
+        ),
+        goals_can_throw(Goals, Result, !ModuleInfo)
     ;
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        lookup_exception_analysis_result(proc(PredId, ProcId), Status,
+            !ModuleInfo),
+        (
+            Status = will_not_throw,
+            Result = cannot_throw
+        ;
+            ( Status = may_throw(_)
+            ; Status = throw_conditional
+            ),
+            Result = can_throw
+        )
+    ;
+        GoalExpr = generic_call(_, _, _, _),
+        % XXX We should use results form closure analysis here.
         Result = can_throw
+    ;
+        GoalExpr = switch(_, _, Cases),
+        cases_can_throw(Cases, Result, !ModuleInfo)
+    ;
+        GoalExpr = unify(_, _, _, Uni, _),
+        % Complicated unifies are _non_builtin_
+        (
+            Uni = complicated_unify(_, _, _),
+            Result = can_throw
+        ;
+            ( Uni = construct(_, _, _, _, _, _, _)
+            ; Uni = deconstruct(_, _, _, _, _, _)
+            ; Uni = assign(_, _)
+            ; Uni = simple_test(_, _)
+            ),
+            Result = cannot_throw
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        goal_can_throw(SubGoal, Result, !ModuleInfo)
+    ;
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        ExceptionStatus = get_may_throw_exception(Attributes),
+        (
+            (
+                ExceptionStatus = proc_will_not_throw_exception
+            ;
+                ExceptionStatus = default_exception_behaviour,
+                get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+            )
+        ->
+            Result = cannot_throw
+        ;
+            Result = can_throw
+        )
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = bi_implication(GoalA, GoalB),
+            goals_can_throw([GoalA, GoalB], Result, !ModuleInfo)
+        ;
+            ShortHand = atomic_goal(_, _, _, _, _, _),
+            % Atomic goals currently throw an exception to signal a rollback so
+            % it is pretty safe to say that any goal inside an atomic goal
+            % can throw an exception.
+            Result = can_throw
+        )
     ).
-goal_can_throw_2(Goal, _, can_throw, !ModuleInfo) :-
-    Goal = shorthand(_).    % XXX maybe call unexpected/2 here.
 
 :- pred goals_can_throw(hlds_goals::in, goal_throw_status::out,
     module_info::in, module_info::out) is det.
@@ -344,88 +354,102 @@ goal_can_loop_or_throw(Goal) :-
 
 :- func goal_can_loop_func(maybe(module_info), hlds_goal) = bool.
 
-goal_can_loop_func(MaybeModuleInfo, hlds_goal(GoalExpr, _)) =
-    goal_expr_can_loop(MaybeModuleInfo, GoalExpr).
-
-:- func goal_expr_can_loop(maybe(module_info), hlds_goal_expr) = bool.
-
-goal_expr_can_loop(MaybeModuleInfo, conj(plain_conj, Goals)) =
-    goal_list_can_loop(MaybeModuleInfo, Goals).
-goal_expr_can_loop(_MaybeModuleInfo, conj(parallel_conj, _Goals)) = yes.
-    % In theory, parallel conjunctions can get into deadlocks, which are
-    % effectively a form of nontermination. We can return `no' here only
-    % if we are sure this cannot happen for this conjunction.
-goal_expr_can_loop(MaybeModuleInfo, disj(Goals)) =
-    goal_list_can_loop(MaybeModuleInfo, Goals).
-goal_expr_can_loop(MaybeModuleInfo, switch(_Var, _CanFail, Cases)) =
-    case_list_can_loop(MaybeModuleInfo, Cases).
-goal_expr_can_loop(MaybeModuleInfo, negation(Goal)) =
-    goal_can_loop_func(MaybeModuleInfo, Goal).
-goal_expr_can_loop(MaybeModuleInfo, scope(_, Goal)) =
-    goal_can_loop_func(MaybeModuleInfo, Goal).
-goal_expr_can_loop(MaybeModuleInfo, Goal) = CanLoop :-
-    Goal = if_then_else(_Vars, Cond, Then, Else),
-    ( goal_can_loop_func(MaybeModuleInfo, Cond) = yes ->
-        CanLoop = yes
-    ; goal_can_loop_func(MaybeModuleInfo, Then) = yes ->
-        CanLoop = yes
-    ; goal_can_loop_func(MaybeModuleInfo, Else) = yes ->
-        CanLoop = yes
-    ;
-        CanLoop = no
-    ).
-goal_expr_can_loop(_MaybeModuleInfo, Goal) = CanLoop :-
-    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
+goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
+    Goal = hlds_goal(GoalExpr, _),
     (
-        Terminates = get_terminates(Attributes),
+        GoalExpr = unify(_, _, _, Uni, _),
         (
-            Terminates = proc_terminates
+            ( Uni = assign(_, _)
+            ; Uni = simple_test(_, _)
+            ; Uni = construct(_, _, _, _, _, _, _)
+            ; Uni = deconstruct(_, _, _, _, _, _)
+            ),
+            CanLoop = no
         ;
-            Terminates = depends_on_mercury_calls,
-            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+            Uni = complicated_unify(_, _, _),
+            % It can call, possibly indirectly, a user-specified unification
+            % predicate.
+            CanLoop = yes
         )
-    ->
-        CanLoop = no
     ;
-        CanLoop = yes
-    ).
-goal_expr_can_loop(MaybeModuleInfo, Goal) = CanLoop :-
-    Goal = plain_call(PredId, ProcId, _, _, _, _),
-    (
-        MaybeModuleInfo = yes(ModuleInfo),
-        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         (
-            proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
-            MaybeTermInfo = yes(cannot_loop(_))
+            MaybeModuleInfo = yes(ModuleInfo),
+            module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
+                ProcInfo),
+            (
+                proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
+                MaybeTermInfo = yes(cannot_loop(_))
+            ;
+                proc_info_get_termination2_info(ProcInfo, Term2Info),
+                Term2Info ^ term_status = yes(cannot_loop(_))
+            )
+        ->
+            CanLoop = no
         ;
-            proc_info_get_termination2_info(ProcInfo, Term2Info),
-            Term2Info ^ term_status = yes(cannot_loop(_))
+            CanLoop = yes
         )
-    ->
-        CanLoop = no
     ;
+        GoalExpr = generic_call(_, _, _, _),
+        % We have no idea whether the called goal can throw exceptions,
+        % at least without closure analysis.
         CanLoop = yes
-    ).
-goal_expr_can_loop(_MaybeModuleInfo, Goal) = yes :-
-    % We have no idea whether the called goal can throw exceptions,
-    % at least without closure analysis.
-    Goal = generic_call(_, _, _, _).
-goal_expr_can_loop(_, unify(_, _, _, Uni, _)) = CanLoop :-
-    (
-        ( Uni = assign(_, _)
-        ; Uni = simple_test(_, _)
-        ; Uni = construct(_, _, _, _, _, _, _)
-        ; Uni = deconstruct(_, _, _, _, _, _)
+    ;
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        (
+            Terminates = get_terminates(Attributes),
+            (
+                Terminates = proc_terminates
+            ;
+                Terminates = depends_on_mercury_calls,
+                get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+            )
+        ->
+            CanLoop = no
+        ;
+            CanLoop = yes
+        )
+    ;
+        GoalExpr = conj(plain_conj, Goals),
+        CanLoop = goal_list_can_loop(MaybeModuleInfo, Goals)
+    ;
+        GoalExpr = conj(parallel_conj, _Goals),
+        % In theory, parallel conjunctions can get into deadlocks, which are
+        % effectively a form of nontermination. We can return `no' here only
+        % if we are sure this cannot happen for this conjunction.
+        CanLoop = yes
+    ;
+        GoalExpr = disj(Goals),
+        CanLoop = goal_list_can_loop(MaybeModuleInfo, Goals)
+    ;
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        CanLoop = case_list_can_loop(MaybeModuleInfo, Cases)
+    ;
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        ( goal_can_loop_func(MaybeModuleInfo, Cond) = yes ->
+            CanLoop = yes
+        ; goal_can_loop_func(MaybeModuleInfo, Then) = yes ->
+            CanLoop = yes
+        ;
+            CanLoop = goal_can_loop_func(MaybeModuleInfo, Else)
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
         ),
-        CanLoop = no
+        CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
     ;
-        Uni = complicated_unify(_, _, _),
-        % It can call, possibly indirectly, a user-specified unification
-        % predicate.
-        CanLoop = yes
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            MainGoalCanLoop = goal_can_loop_func(MaybeModuleInfo, MainGoal),
+            OrElseCanLoop = goal_list_can_loop(MaybeModuleInfo, OrElseGoals),
+            CanLoop = MainGoalCanLoop `or` OrElseCanLoop
+        ;
+            ShortHand = bi_implication(_, _),
+            unexpected(this_file, "goal_can_loop: bi_implication")
+        )
     ).
-goal_expr_can_loop(_, shorthand(_)) = _ :-
-    unexpected(this_file, "goal_expr_can_loop: shorthand").
 
 :- func goal_list_can_loop(maybe(module_info), list(hlds_goal)) = bool.
 
@@ -465,75 +489,86 @@ goal_can_throw_func(MaybeModuleInfo, hlds_goal(GoalExpr, GoalInfo))
 
 :- func goal_expr_can_throw(maybe(module_info), hlds_goal_expr) = bool.
 
-goal_expr_can_throw(MaybeModuleInfo, conj(_ConjType, Goals)) =
-    goal_list_can_throw(MaybeModuleInfo, Goals).
-goal_expr_can_throw(MaybeModuleInfo, disj(Goals)) =
-    goal_list_can_throw(MaybeModuleInfo, Goals).
-goal_expr_can_throw(MaybeModuleInfo, switch(_Var, _Category, Cases)) =
-    case_list_can_throw(MaybeModuleInfo, Cases).
-goal_expr_can_throw(MaybeModuleInfo, negation(Goal)) =
-    goal_can_throw_func(MaybeModuleInfo, Goal).
-goal_expr_can_throw(MaybeModuleInfo, scope(_, Goal)) =
-    goal_can_throw_func(MaybeModuleInfo, Goal).
-goal_expr_can_throw(MaybeModuleInfo, Goal) = CanThrow :-
-    Goal = if_then_else(_, Cond, Then, Else),
-    ( goal_can_throw_func(MaybeModuleInfo, Cond) = yes ->
-        CanThrow = yes
-    ; goal_can_throw_func(MaybeModuleInfo, Then) = yes ->
-        CanThrow = yes
-    ; goal_can_throw_func(MaybeModuleInfo, Else) = yes ->
-        CanThrow = yes
-    ;
-        CanThrow = no
-    ).
-goal_expr_can_throw(_MaybeModuleInfo, Goal) = CanThrow :-
-    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    ExceptionStatus = get_may_throw_exception(Attributes),
+goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
     (
+        GoalExpr = unify(_, _, _, Uni, _),
         (
-            ExceptionStatus = proc_will_not_throw_exception
+            ( Uni = assign(_, _)
+            ; Uni = simple_test(_, _)
+            ; Uni = construct(_, _, _, _, _, _, _)
+            ; Uni = deconstruct(_, _, _, _, _, _)
+            ),
+            CanThrow = no
         ;
-            ExceptionStatus = default_exception_behaviour,
-            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+            Uni = complicated_unify(_, _, _),
+            % It can call, possibly indirectly, a user-specified unification
+            % predicate.
+            CanThrow = yes
         )
-    ->
-        CanThrow = no
     ;
-        CanThrow = yes
-    ).
-goal_expr_can_throw(MaybeModuleInfo, Goal) = CanThrow :-
-    Goal = plain_call(PredId, ProcId, _, _, _, _),
-    (
-        MaybeModuleInfo = yes(ModuleInfo),
-        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-        map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
-        ProcExceptionInfo = proc_exception_info(will_not_throw, _)
-    ->
-        CanThrow = no
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        (
+            MaybeModuleInfo = yes(ModuleInfo),
+            module_info_get_exception_info(ModuleInfo, ExceptionInfo),
+            map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
+            ProcExceptionInfo = proc_exception_info(will_not_throw, _)
+        ->
+            CanThrow = no
+        ;
+            CanThrow = yes
+        )
     ;
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        ExceptionStatus = get_may_throw_exception(Attributes),
+        (
+            (
+                ExceptionStatus = proc_will_not_throw_exception
+            ;
+                ExceptionStatus = default_exception_behaviour,
+                get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+            )
+        ->
+            CanThrow = no
+        ;
+            CanThrow = yes
+        )
+    ;
+        GoalExpr = generic_call(_, _, _, _),
+        % We have no idea whether the called goal can throw exceptions,
+        % at least without closure analysis.
         CanThrow = yes
-    ).
-goal_expr_can_throw(_MaybeModuleInfo, Goal) = yes :-
-    % We have no idea whether the called goal can throw exceptions,
-    % at least without closure analysis.
-    Goal = generic_call(_, _, _, _).
-goal_expr_can_throw(_, unify(_, _, _, Uni, _)) = CanThrow :-
-    % Complicated unifies are _non_builtin_
-    (
-        ( Uni = assign(_, _)
-        ; Uni = simple_test(_, _)
-        ; Uni = construct(_, _, _, _, _, _, _)
-        ; Uni = deconstruct(_, _, _, _, _, _)
+    ;
+        ( GoalExpr = conj(_ConjType, Goals)
+        ; GoalExpr = disj(Goals)
         ),
-        CanThrow = no
+        CanThrow = goal_list_can_throw(MaybeModuleInfo, Goals)
     ;
-        Uni = complicated_unify(_, _, _),
-        % It can call, possibly indirectly, a user-specified unification
-        % predicate.
-        CanThrow = yes
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        CanThrow = case_list_can_throw(MaybeModuleInfo, Cases)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        ( goal_can_throw_func(MaybeModuleInfo, Cond) = yes ->
+            CanThrow = yes
+        ; goal_can_throw_func(MaybeModuleInfo, Then) = yes ->
+            CanThrow = yes
+        ;
+            CanThrow = goal_can_throw_func(MaybeModuleInfo, Else)
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_Reason, SubGoal)
+        ),
+        CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, _, _),
+            CanThrow = yes
+        ;
+            ShortHand = bi_implication(_, _),
+            unexpected(this_file, "goal_expr_can_throw: bi_implication")
+        )
     ).
-goal_expr_can_throw(_, shorthand(_)) = _ :-
-    unexpected(this_file, "goal_expr_can_throw: shorthand").
 
 :- func goal_list_can_throw(maybe(module_info), list(hlds_goal)) = bool.
 
@@ -605,67 +640,81 @@ goal_may_allocate_heap(hlds_goal(GoalExpr, _GoalInfo), May) :-
 
 :- pred goal_may_allocate_heap_2(hlds_goal_expr::in, bool::out) is det.
 
-goal_may_allocate_heap_2(generic_call(_, _, _, _), yes).
-goal_may_allocate_heap_2(plain_call(_, _, _, Builtin, _, _), May) :-
+goal_may_allocate_heap_2(GoalExpr, May) :-
     (
-        Builtin = inline_builtin, 
-        May = no
+        GoalExpr = unify(_, _, _, Unification, _),
+        (
+            Unification = construct(_, _, Args, _, _, _, _),
+            Args = [_ | _]
+        ->
+            May = yes
+        ;
+            May = no
+        )
     ;
-        ( Builtin = out_of_line_builtin
-        ; Builtin = not_builtin
-        ),
-        May = yes
-    ).
-goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
-    (
-        Unification = construct(_, _, Args, _, _, _, _),
-        Args = [_ | _]
-    ->
-        May = yes
+        GoalExpr = plain_call(_, _, _, Builtin, _, _),
+        (
+            Builtin = inline_builtin, 
+            May = no
+        ;
+            ( Builtin = out_of_line_builtin
+            ; Builtin = not_builtin
+            ),
+            May = yes
+        )
     ;
-        May = no
-    ).
-    % We cannot safely say that a foreign code fragment does not
-    % allocate memory without knowing all the #defined macros that
-    % expand to incr_hp and variants thereof.
-    % XXX You could make it an attribute of the foreign code and
-    % trust the programmer.
-goal_may_allocate_heap_2(call_foreign_proc(_, _, _, _, _, _, _), yes).
-goal_may_allocate_heap_2(scope(_, Goal), May) :-
-    goal_may_allocate_heap(Goal, May).
-goal_may_allocate_heap_2(negation(Goal), May) :-
-    goal_may_allocate_heap(Goal, May).
-goal_may_allocate_heap_2(conj(ConjType, Goals), May) :-
-    (
-        ConjType = parallel_conj,
+        GoalExpr = generic_call(_, _, _, _),
         May = yes
     ;
-        ConjType = plain_conj,
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        % We cannot safely say that a foreign code fragment does not
+        % allocate memory without knowing all the #defined macros that
+        % expand to incr_hp and variants thereof.
+        % XXX You could make it an attribute of the foreign code and
+        % trust the programmer.
+        May = yes
+    ;
+        GoalExpr = conj(ConjType, Goals),
+        (
+            ConjType = parallel_conj,
+            May = yes
+        ;
+            ConjType = plain_conj,
+            goal_list_may_allocate_heap(Goals, May)
+        )
+    ;
+        GoalExpr = disj(Goals),
         goal_list_may_allocate_heap(Goals, May)
-    ).
-goal_may_allocate_heap_2(disj(Goals), May) :-
-    goal_list_may_allocate_heap(Goals, May).
-goal_may_allocate_heap_2(switch(_Var, _Det, Cases), May) :-
-    cases_may_allocate_heap(Cases, May).
-goal_may_allocate_heap_2(if_then_else(_Vars, C, T, E), May) :-
-    ( goal_may_allocate_heap(C, yes) ->
-        May = yes
-    ; goal_may_allocate_heap(T, yes) ->
-        May = yes
     ;
-        goal_may_allocate_heap(E, May)
-    ).
-goal_may_allocate_heap_2(shorthand(ShorthandGoal), May) :-
-    goal_may_allocate_heap_2_shorthand(ShorthandGoal, May).
-
-:- pred goal_may_allocate_heap_2_shorthand(shorthand_goal_expr::in, bool::out)
-    is det.
-
-goal_may_allocate_heap_2_shorthand(bi_implication(G1, G2), May) :-
-    ( goal_may_allocate_heap(G1, yes) ->
-        May = yes
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        cases_may_allocate_heap(Cases, May)
     ;
-        goal_may_allocate_heap(G2, May)
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        ( goal_may_allocate_heap(Cond, yes) ->
+            May = yes
+        ; goal_may_allocate_heap(Then, yes) ->
+            May = yes
+        ;
+            goal_may_allocate_heap(Else, May)
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        goal_may_allocate_heap(SubGoal, May)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, _, _),
+            May = yes
+        ;
+            ShortHand = bi_implication(GoalA, GoalB),
+            ( goal_may_allocate_heap(GoalA, yes) ->
+                May = yes
+            ;
+                goal_may_allocate_heap(GoalB, May)
+            )
+        )
     ).
 
 :- pred goal_list_may_allocate_heap(list(hlds_goal)::in, bool::out) is det.
@@ -764,47 +813,62 @@ cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
-count_recursive_calls(hlds_goal(GoalExpr, _), PredId, ProcId, Min, Max) :-
-    count_recursive_calls_2(GoalExpr, PredId, ProcId, Min, Max).
-
-:- pred count_recursive_calls_2(hlds_goal_expr::in, pred_id::in, proc_id::in,
-    int::out, int::out) is det.
-
-count_recursive_calls_2(negation(Goal), PredId, ProcId, Min, Max) :-
-    count_recursive_calls(Goal, PredId, ProcId, Min, Max).
-count_recursive_calls_2(scope(_, Goal), PredId, ProcId, Min, Max) :-
-    count_recursive_calls(Goal, PredId, ProcId, Min, Max).
-count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
-count_recursive_calls_2(generic_call(_, _, _, _), _, _, 0, 0).
-count_recursive_calls_2(call_foreign_proc(_, _, _, _, _, _, _), _, _, 0, 0).
-count_recursive_calls_2(plain_call(CallPredId, CallProcId, _, _, _, _),
-        PredId, ProcId, Count, Count) :-
+count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
+    Goal = hlds_goal(GoalExpr, _),
     (
-        PredId = CallPredId,
-        ProcId = CallProcId
-    ->
-        Count = 1
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        Min = 0,
+        Max = 0
     ;
-        Count = 0
+        GoalExpr = plain_call(CallPredId, CallProcId, _, _, _, _),
+        (
+            PredId = CallPredId,
+            ProcId = CallProcId
+        ->
+            Count = 1
+        ;
+            Count = 0
+        ),
+        Min = Count,
+        Max = Count
+    ;
+        GoalExpr = conj(_, Goals),
+        count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0, Min, Max)
+    ;
+        GoalExpr = disj(Goals),
+        count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        count_recursive_calls_cases(Cases, PredId, ProcId, Min, Max)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        count_recursive_calls(Cond, PredId, ProcId, CMin, CMax),
+        count_recursive_calls(Then, PredId, ProcId, TMin, TMax),
+        count_recursive_calls(Else, PredId, ProcId, EMin, EMax),
+        CTMin = CMin + TMin,
+        CTMax = CMax + TMax,
+        int.min(CTMin, EMin, Min),
+        int.max(CTMax, EMax, Max)
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            count_recursive_calls_disj([MainGoal | OrElseGoals],
+                PredId, ProcId, Min, Max)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "count_recursive_calls: bi_implication")
+        )
     ).
-count_recursive_calls_2(conj(_, Goals), PredId, ProcId, Min, Max) :-
-    count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0, Min, Max).
-count_recursive_calls_2(disj(Goals), PredId, ProcId, Min, Max) :-
-    count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max).
-count_recursive_calls_2(switch(_, _, Cases), PredId, ProcId, Min, Max) :-
-    count_recursive_calls_cases(Cases, PredId, ProcId, Min, Max).
-count_recursive_calls_2(if_then_else(_, Cond, Then, Else), PredId, ProcId,
-        Min, Max) :-
-    count_recursive_calls(Cond, PredId, ProcId, CMin, CMax),
-    count_recursive_calls(Then, PredId, ProcId, TMin, TMax),
-    count_recursive_calls(Else, PredId, ProcId, EMin, EMax),
-    CTMin = CMin + TMin,
-    CTMax = CMax + TMax,
-    int.min(CTMin, EMin, Min),
-    int.max(CTMax, EMax, Max).
-count_recursive_calls_2(shorthand(_), _, _, _, _) :-
-    % these should have been expanded out by now
-    unexpected(this_file, "count_recursive_calls_2: unexpected shorthand").
 
 :- pred count_recursive_calls_conj(list(hlds_goal)::in,
     pred_id::in, proc_id::in, int::in, int::in, int::out, int::out) is det.

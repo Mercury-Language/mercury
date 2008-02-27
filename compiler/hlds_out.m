@@ -2104,24 +2104,80 @@ write_goal_2(shorthand(ShortHandGoal), ModuleInfo, VarSet, AppendVarNums,
     write_goal_2_shorthand(ShortHandGoal, ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO).
 
+:- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in, 
+    prog_varset::in, bool::in, io::di, io::uo) is det.
+
+write_atomic_interface_vars(CompName, CompState, VarSet, AppendVarNums, !IO) :-
+    io.write_string(CompName, !IO),
+    io.write_string("(", !IO),
+    CompState = atomic_interface_vars(Var1, Var2),
+    mercury_output_var(VarSet, AppendVarNums, Var1, !IO),
+    io.write_string(", ", !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var2, !IO),
+    io.write_string(")", !IO).
+
+:- pred write_or_else_list(hlds_goals::in, module_info::in, prog_varset::in,
+    bool::in, int::in, string::in, maybe_vartypes::in, io::di, io::uo) is det.
+
+write_or_else_list([], _, _, _, _, _, _, !IO).
+write_or_else_list([Goal | Goals], ModuleInfo, VarSet, AppendVarNums, Indent,
+        Follow, TypeQual, !IO) :-
+    write_indent(Indent, !IO),
+    io.write_string("or_else\n", !IO),
+    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent+1, Follow,
+        TypeQual, !IO),
+    write_or_else_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent+1, 
+        Follow, TypeQual, !IO).
+
 :- pred write_goal_2_shorthand(shorthand_goal_expr::in, module_info::in,
     prog_varset::in, bool::in, int::in, string::in, maybe_vartypes::in,
     io::di, io::uo) is det.
 
-write_goal_2_shorthand(bi_implication(LHS, RHS), ModuleInfo, VarSet,
-        AppendVarNums, Indent, Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("( % bi-implication\n", !IO),
-    Indent1 = Indent + 1,
-    write_goal_a(LHS, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-        TypeQual, !IO),
-    write_indent(Indent, !IO),
-    io.write_string("<=>\n", !IO),
-    write_goal_a(RHS, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-        TypeQual, !IO),
-    write_indent(Indent, !IO),
-    io.write_string(")", !IO),
-    io.write_string(Follow, !IO).
+write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
+        Indent, Follow, TypeQual, !IO) :-
+    (
+        ShortHand = atomic_goal(_GoalType, Outer, Inner, MaybeOutputVars,
+            MainGoal, OrElseGoals),
+        write_indent(Indent, !IO),
+        io.write_string("atomic [", !IO),
+        write_atomic_interface_vars("outer", Outer, VarSet, AppendVarNums,
+            !IO),
+        io.write_string(" ", !IO),
+        write_atomic_interface_vars("inner", Inner, VarSet, AppendVarNums,
+            !IO),
+        io.write_string(" ", !IO),
+        (
+            MaybeOutputVars = no
+        ;
+            MaybeOutputVars = yes(OutputVars),
+            io.write_string("vars([", !IO),
+            mercury_output_vars(VarSet, AppendVarNums, OutputVars, !IO),
+            io.write_string("])", !IO)
+        ),
+        io.write_string("] (\n",!IO),
+        
+        write_goal_a(MainGoal, ModuleInfo, VarSet, AppendVarNums, 
+            Indent + 1, "\n", TypeQual, !IO),
+        write_goal_list(OrElseGoals, ModuleInfo, VarSet, AppendVarNums,
+            Indent, "or_else\n", TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string(")", !IO),
+        io.write_string(Follow, !IO)
+    ;
+        ShortHand = bi_implication(GoalA, GoalB),
+        write_indent(Indent, !IO),
+        io.write_string("( % bi-implication\n", !IO),
+        Indent1 = Indent + 1,
+        write_goal_a(GoalA, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
+            TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string("<=>\n", !IO),
+        write_goal_a(GoalB, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
+            TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string(")", !IO),
+        io.write_string(Follow, !IO)
+    ).
 
 :- pred write_trace_mutable_var_hlds(int::in, trace_mutable_var_hlds::in,
     io::di, io::uo) is det.

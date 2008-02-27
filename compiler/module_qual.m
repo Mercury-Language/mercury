@@ -539,6 +539,12 @@ process_assert(promise_equivalent_solution_arbitrary_expr(_V, _D, _C, G) - _,
     process_assert(G, Symbols, Success).
 process_assert(trace_expr(_C, _R, _I, _M, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
+process_assert(atomic_expr(_, _, _, MainGoal, OrElseGoals) - _, Symbols,
+        Success) :-
+    process_assert(MainGoal, SymbolsMainGoal, SuccessMainGoal),
+    process_assert_list(OrElseGoals, SymbolsOrElseGoals, SuccessOrElseGoals),
+    list.append(SymbolsMainGoal, SymbolsOrElseGoals, Symbols),
+    bool.and(SuccessMainGoal, SuccessOrElseGoals, Success).
 process_assert(implies_expr(GA, GB) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),
@@ -596,6 +602,26 @@ process_assert(unify_expr(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
     ;
         Symbols = [],
         Success = no
+    ).
+
+    % process_assert(G, SNs, B)
+    %
+    % Performs process_assert on a list of goals.
+    %
+:- pred process_assert_list(list(goal)::in, list(sym_name)::out,
+        bool::out) is det.
+
+process_assert_list(ExprList, Symbols, Success) :-
+    (
+        ExprList = [],
+        Symbols = [],
+        Success = yes
+    ;
+        ExprList = [Expr | Rest],
+        process_assert(Expr, SymbolsE, SuccessE),
+        process_assert_list(Rest, SymbolsR, SuccessR),
+        list.append(SymbolsE, SymbolsR, Symbols),
+        bool.and(SuccessE, SuccessR, Success)
     ).
 
     % term_qualified_symbols(T, S)
@@ -1188,7 +1214,7 @@ qualify_type(apply_n_type(Var, Args0, Kind), apply_n_type(Var, Args, Kind),
 qualify_type(kinded_type(Type0, Kind), kinded_type(Type, Kind),
         !Info, !Specs) :-
     qualify_type(Type0, Type, !Info, !Specs).
-    
+
 :- pred qualify_type_ctor(type_ctor::in, type_ctor::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1217,7 +1243,7 @@ qualify_pragma(X @ pragma_foreign_import_module(_, _), X, !Info, !Specs).
 qualify_pragma(X, Y, !Info, !Specs) :-
     X = pragma_foreign_export_enum(Lang, TypeName0, TypeArity0, Attributes,
         Overrides),
-    qualify_type_ctor(type_ctor(TypeName0, TypeArity0), 
+    qualify_type_ctor(type_ctor(TypeName0, TypeArity0),
         type_ctor(TypeName, TypeArity), !Info, !Specs),
     Y = pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
         Overrides).

@@ -84,8 +84,8 @@
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
     %
-:- pred goals_goal_vars(hlds_goals::in, set(prog_var)::in,
-    set(prog_var)::out) is det.
+:- pred goals_goal_vars(hlds_goals::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
 
     % Return all the variables in a generic call.
     %
@@ -232,7 +232,7 @@
     % Create a conjunction of the specified type using the specified two goals.
     % This fills in the hlds_goal_info.
     %
-:- pred create_conj(hlds_goal::in, hlds_goal::in, conj_type::in, 
+:- pred create_conj(hlds_goal::in, hlds_goal::in, conj_type::in,
     hlds_goal::out) is det.
 
     % can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
@@ -452,98 +452,117 @@ create_variables([V | Vs], OldVarNames, OldVarTypes, !Varset, !VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-goal_vars(hlds_goal(GoalExpr, _GoalInfo), Set) :-
-    goal_vars_2(GoalExpr, set.init, Set).
+goal_vars(Goal, !:Set) :-
+    set.init(!:Set),
+    goal_vars_2(Goal, !Set).
 
-:- pred goal_vars_2(hlds_goal_expr::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred goal_vars_2(hlds_goal::in, set(prog_var)::in, set(prog_var)::out)
+    is det.
 
-goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
-    svset.insert(Var, !Set),
+goal_vars_2(Goal, !Set) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
-        Unif = construct(_, _, _, _, CellToReuse, _, _),
-        ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
-            svset.insert(Var, !Set)
+        GoalExpr = unify(Var, RHS, _, Unif, _),
+        svset.insert(Var, !Set),
+        (
+            Unif = construct(_, _, _, _, CellToReuse, _, _),
+            ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
+                svset.insert(Var, !Set)
+            ;
+                true
+            )
         ;
-            true
+            Unif = deconstruct(_, _, _, _, _, _)
+        ;
+            Unif = assign(_, _)
+        ;
+            Unif = simple_test(_, _)
+        ;
+            Unif = complicated_unify(_, _, _)
+        ),
+        rhs_goal_vars(RHS, !Set)
+    ;
+        GoalExpr = generic_call(GenericCall, ArgVars, _, _),
+        generic_call_vars(GenericCall, GenericCallVars),
+        svset.insert_list(GenericCallVars, !Set),
+        svset.insert_list(ArgVars, !Set)
+    ;
+        GoalExpr = plain_call(_, _, ArgVars, _, _, _),
+        svset.insert_list(ArgVars, !Set)
+    ;
+        ( GoalExpr = conj(_, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        goals_goal_vars(Goals, !Set)
+    ;
+        GoalExpr = switch(Var, _Det, Cases),
+        svset.insert(Var, !Set),
+        cases_goal_vars(Cases, !Set)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        (
+            Reason = exist_quant(Vars),
+            svset.insert_list(Vars, !Set)
+        ;
+            Reason = promise_purity(_, _)
+        ;
+            Reason = promise_solutions(Vars, _),
+            svset.insert_list(Vars, !Set)
+        ;
+            Reason = barrier(_)
+        ;
+            Reason = commit(_)
+        ;
+            Reason = from_ground_term(Var),
+            set.insert(!.Set, Var, !:Set)
+        ;
+            Reason = trace_goal(_, _, _, _, _)
+        ),
+        goal_vars_2(SubGoal, !Set)
+    ;
+        GoalExpr = negation(SubGoal),
+        goal_vars_2(SubGoal, !Set)
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        svset.insert_list(Vars, !Set),
+        goal_vars_2(Cond, !Set),
+        goal_vars_2(Then, !Set),
+        goal_vars_2(Else, !Set)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
+        ArgVars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        svset.insert_list(ArgVars, !Set),
+        svset.insert_list(ExtraVars, !Set)
+    ;
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = atomic_goal(_, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            svset.insert(OuterDI, !Set),
+            svset.insert(OuterUO, !Set),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            svset.insert(InnerDI, !Set),
+            svset.insert(InnerUO, !Set),
+            (
+                MaybeOutputVars = no
+            ;
+                MaybeOutputVars = yes(OutputVars),
+                svset.insert_list(OutputVars, !Set)
+            ),
+            goal_vars_2(MainGoal, !Set),
+            goals_goal_vars(OrElseGoals, !Set)
+        ;
+            Shorthand = bi_implication(LeftGoal, RightGoal),
+            goal_vars_2(LeftGoal, !Set),
+            goal_vars_2(RightGoal, !Set)
         )
-    ;
-        Unif = deconstruct(_, _, _, _, _, _)
-    ;
-        Unif = assign(_, _)
-    ;
-        Unif = simple_test(_, _)
-    ;
-        Unif = complicated_unify(_, _, _)
-    ),
-    rhs_goal_vars(RHS, !Set).
-
-goal_vars_2(generic_call(GenericCall, ArgVars, _, _), !Set) :-
-    generic_call_vars(GenericCall, Vars0),
-    svset.insert_list(Vars0, !Set),
-    svset.insert_list(ArgVars, !Set).
-
-goal_vars_2(plain_call(_, _, ArgVars, _, _, _), !Set) :-
-    svset.insert_list(ArgVars, !Set).
-
-goal_vars_2(conj(_, Goals), !Set) :-
-    goals_goal_vars(Goals, !Set).
-
-goal_vars_2(disj(Goals), !Set) :-
-    goals_goal_vars(Goals, !Set).
-
-goal_vars_2(switch(Var, _Det, Cases), !Set) :-
-    svset.insert(Var, !Set),
-    cases_goal_vars(Cases, !Set).
-
-goal_vars_2(scope(Reason, hlds_goal(GoalExpr, _)), !Set) :-
-    (
-        Reason = exist_quant(Vars),
-        svset.insert_list(Vars, !Set)
-    ;
-        Reason = promise_purity(_, _)
-    ;
-        Reason = promise_solutions(Vars, _),
-        svset.insert_list(Vars, !Set)
-    ;
-        Reason = barrier(_)
-    ;
-        Reason = commit(_)
-    ;
-        Reason = from_ground_term(Var),
-        set.insert(!.Set, Var, !:Set)
-    ;
-        Reason = trace_goal(_, _, _, _, _)
-    ),
-    goal_vars_2(GoalExpr, !Set).
-
-goal_vars_2(negation(hlds_goal(GoalExpr, _GoalInfo)), !Set) :-
-    goal_vars_2(GoalExpr, !Set).
-
-goal_vars_2(if_then_else(Vars, Cond, Then, Else), !Set) :-
-    set.insert_list(!.Set, Vars, !:Set),
-    goal_vars_2(Cond ^ hlds_goal_expr, !Set),
-    goal_vars_2(Then ^ hlds_goal_expr, !Set),
-    goal_vars_2(Else ^ hlds_goal_expr, !Set).
-
-goal_vars_2(call_foreign_proc(_, _, _, Args, ExtraArgs, _, _), !Set) :-
-    ArgVars = list.map(foreign_arg_var, Args),
-    ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-    svset.insert_list(list.append(ArgVars, ExtraVars), !Set).
-
-goal_vars_2(shorthand(ShorthandGoal), !Set) :-
-    goal_vars_2_shorthand(ShorthandGoal, !Set).
-
-:- pred goal_vars_2_shorthand(shorthand_goal_expr::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
-
-goal_vars_2_shorthand(bi_implication(LHS, RHS), !Set) :-
-    goal_vars_2(LHS ^ hlds_goal_expr, !Set),
-    goal_vars_2(RHS ^ hlds_goal_expr, !Set).
+    ).
 
 goals_goal_vars([], !Set).
 goals_goal_vars([Goal | Goals], !Set) :-
-    goal_vars_2(Goal ^ hlds_goal_expr, !Set),
+    goal_vars_2(Goal, !Set),
     goals_goal_vars(Goals, !Set).
 
 :- pred cases_goal_vars(list(case)::in,
@@ -551,7 +570,7 @@ goals_goal_vars([Goal | Goals], !Set) :-
 
 cases_goal_vars([], !Set).
 cases_goal_vars([case(_, _, Goal) | Cases], !Set) :-
-    goal_vars_2(Goal ^ hlds_goal_expr, !Set),
+    goal_vars_2(Goal, !Set),
     cases_goal_vars(Cases, !Set).
 
 :- pred rhs_goal_vars(unify_rhs::in,
@@ -567,7 +586,7 @@ rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
     svset.insert_list(NonLocals, !Set),
     svset.insert_list(LambdaVars, !Set),
-    goal_vars_2(Goal ^ hlds_goal_expr, !Set).
+    goal_vars_2(Goal, !Set).
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
 generic_call_vars(class_method(Var, _, _, _), [Var]).
@@ -595,6 +614,13 @@ attach_features_to_case(Features, Case0, Case) :-
 
 attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
     (
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
         GoalExpr0 = conj(ConjType, Goals0),
         list.map(attach_features_to_all_goals(Features), Goals0, Goals),
         GoalExpr = conj(ConjType, Goals)
@@ -621,20 +647,22 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
         attach_features_to_all_goals(Features, Goal0, Goal),
         GoalExpr = scope(Reason, Goal)
     ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = unify(_, _, _, _, _),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = shorthand(_),
-        GoalExpr = GoalExpr0
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            attach_features_to_all_goals(Features, MainGoal0, MainGoal),
+            list.map(attach_features_to_all_goals(Features),
+                OrElseGoals0, OrElseGoals),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals)
+        ;
+            ShortHand0 = bi_implication(GoalA0, GoalB0),
+            attach_features_to_all_goals(Features, GoalA0, GoalA),
+            attach_features_to_all_goals(Features, GoalB0, GoalB),
+            ShortHand = bi_implication(GoalA, GoalB)
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -731,14 +759,19 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
         )
     ;
         GoalExpr = shorthand(ShortHand),
-        ShortHand = bi_implication(GoalA, GoalB),
         (
-            proc_body_is_leaf(GoalA) = is_leaf,
-            proc_body_is_leaf(GoalB) = is_leaf
-        ->
-            IsLeaf = is_leaf
-        ;
+            ShortHand = atomic_goal(_, _, _, _, _, _),
             IsLeaf = is_not_leaf
+        ;
+            ShortHand = bi_implication(GoalA, GoalB),
+            (
+                proc_body_is_leaf(GoalA) = is_leaf,
+                proc_body_is_leaf(GoalB) = is_leaf
+            ->
+                IsLeaf = is_leaf
+            ;
+                IsLeaf = is_not_leaf
+            )
         )
     ).
 
@@ -812,45 +845,60 @@ cases_size([case(_, _, Goal) | Cases], Size) :-
 
 :- pred goal_expr_size(hlds_goal_expr::in, int::out) is det.
 
-goal_expr_size(conj(ConjType, Goals), Size) :-
-    goals_size(Goals, InnerSize),
+goal_expr_size(GoalExpr, Size) :-
     (
-        ConjType = plain_conj,
-        Size = InnerSize
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        Size = 1
     ;
-        ConjType = parallel_conj,
-        Size = InnerSize + 1
+        GoalExpr = conj(ConjType, Goals),
+        goals_size(Goals, InnerSize),
+        (
+            ConjType = plain_conj,
+            Size = InnerSize
+        ;
+            ConjType = parallel_conj,
+            Size = InnerSize + 1
+        )
+    ;
+        GoalExpr = disj(Goals),
+        goals_size(Goals, Size1),
+        Size = Size1 + 1
+    ;
+        GoalExpr = switch(_, _, Cases),
+        cases_size(Cases, Size1),
+        Size = Size1 + 1
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        goal_size(Cond, Size1),
+        goal_size(Then, Size2),
+        goal_size(Else, Size3),
+        Size = Size1 + Size2 + Size3 + 1
+    ;
+        GoalExpr = negation(SubGoal),
+        goal_size(SubGoal, Size1),
+        Size = Size1 + 1
+    ;
+        GoalExpr = scope(_, SubGoal),
+        goal_size(SubGoal, Size1),
+        Size = Size1 + 1
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            goal_size(MainGoal, Size1),
+            goals_size(OrElseGoals, Size2),
+            Size = Size1 + Size2 + 1
+        ;
+            ShortHand = bi_implication(GoalA, GoalB),
+            goal_size(GoalA, Size1),
+            goal_size(GoalB, Size2),
+            Size = Size1 + Size2 + 1
+        )
     ).
-goal_expr_size(disj(Goals), Size) :-
-    goals_size(Goals, Size1),
-    Size = Size1 + 1.
-goal_expr_size(switch(_, _, Goals), Size) :-
-    cases_size(Goals, Size1),
-    Size = Size1 + 1.
-goal_expr_size(if_then_else(_, Cond, Then, Else), Size) :-
-    goal_size(Cond, Size1),
-    goal_size(Then, Size2),
-    goal_size(Else, Size3),
-    Size = Size1 + Size2 + Size3 + 1.
-goal_expr_size(negation(Goal), Size) :-
-    goal_size(Goal, Size1),
-    Size = Size1 + 1.
-goal_expr_size(scope(_, Goal), Size) :-
-    goal_size(Goal, Size1),
-    Size = Size1 + 1.
-goal_expr_size(plain_call(_, _, _, _, _, _), 1).
-goal_expr_size(generic_call(_, _, _, _), 1).
-goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(call_foreign_proc(_, _, _, _, _, _, _), 1).
-goal_expr_size(shorthand(ShorthandGoal), Size) :-
-    goal_expr_size_shorthand(ShorthandGoal, Size).
-
-:- pred goal_expr_size_shorthand(shorthand_goal_expr::in, int::out) is det.
-
-goal_expr_size_shorthand(bi_implication(LHS, RHS), Size) :-
-    goal_size(LHS, Size1),
-    goal_size(RHS, Size2),
-    Size = Size1 + Size2 + 1.
 
 %-----------------------------------------------------------------------------%
 %
@@ -860,6 +908,11 @@ goal_expr_size_shorthand(bi_implication(LHS, RHS), Size) :-
 % but the following is more efficient in the (in, in) mode
 % since it avoids creating any choice points.
 %
+
+% XXX STM
+% split this predicate into two:
+% goal_calls_this_proc(Goal, PredProcId) = bool
+% all_called_procs_in_goal(Goal) = cord(pred_proc_id)
 
 goal_calls(hlds_goal(GoalExpr, _), PredProcId) :-
     goal_expr_calls(GoalExpr, PredProcId).
@@ -1017,8 +1070,16 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         GoalExpr = scope(_, Goal),
         goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
     ;
-        GoalExpr = shorthand(_),
-        unexpected(this_file, "goal__calls_proc_in_list_2: shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            goal_calls_proc_in_list_2(MainGoal, PredProcIds, !CalledSet),
+            goal_list_calls_proc_in_list_2(OrElseGoals, PredProcIds,
+                !CalledSet)
+        ;
+            ShortHand = bi_implication(_, _),
+            unexpected(this_file, "goal__calls_proc_in_list_2: bi_implication")
+        )
     ).
 
 :- pred goal_list_calls_proc_in_list_2(list(hlds_goal)::in,
@@ -1271,7 +1332,7 @@ create_conj(GoalA, GoalB, Type, ConjGoal) :-
     goal_list_purity(GoalsInConj, Purity),
     GoalAInfo = GoalA ^ hlds_goal_info,
     Context = goal_info_get_context(GoalAInfo),
-    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, 
+    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         ConjGoalInfo),
     ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo).
 
@@ -1603,16 +1664,6 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = scope(Reason, SubGoal0),
-        SubGoal = maybe_strip_equality_pretest(SubGoal0),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = negation(SubGoal0),
-        SubGoal = maybe_strip_equality_pretest(SubGoal0),
-        GoalExpr = negation(SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         ( goal_info_has_feature(GoalInfo0, feature_pretest_equality) ->
             Goal = Else0
@@ -1624,8 +1675,31 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
-        GoalExpr0 = shorthand(_),
-        unexpected(this_file, "maybe_strip_equality_pretest: shorthand")
+        GoalExpr0 = negation(SubGoal0),
+        SubGoal = maybe_strip_equality_pretest(SubGoal0),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        SubGoal = maybe_strip_equality_pretest(SubGoal0),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            MainGoal = maybe_strip_equality_pretest(MainGoal0),
+            OrElseGoals = list.map(maybe_strip_equality_pretest, OrElseGoals0),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file,
+                "maybe_strip_equality_pretest: bi_implication")
+        )
     ).
 
 :- func maybe_strip_equality_pretest_case(case) = case.

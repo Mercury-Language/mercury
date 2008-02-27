@@ -6,11 +6,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File:     purity.m
-% Authors:  scachte (Peter Schachte, main author and designer of purity system)
-%           trd (modifications for impure functions)
-% Purpose:  handle `impure' and `promise_pure' declarations;
-%           finish off type checking.
+% File: purity.m
+% Main authors: schachte (Peter Schachte, main author and designer of
+% purity system), trd (modifications for impure functions).
+
+% Purpose: handle `impure' and `promise_pure' declarations; finish off
+% type checking.
 %
 % The main purpose of this module is check the consistency of the `impure' and
 % `promise_pure' (etc.) declarations, and to thus report error messages if the
@@ -18,8 +19,13 @@
 % different clauses for different modes as impure, unless promised pure.
 %
 % This module also calls post_typecheck.m to perform the final parts of
-% type analysis, including resolution of predicate and function overloading
-% (see the comments in that file).
+% type analysis, including
+%
+% - resolution of predicate and function overloading
+% - checking the types of the outer variables in atomic goals, and insertion
+%   of their conversions to and from the inner variables.
+%
+% (See the comments in typecheck.m and post_typecheck.m.)
 %
 % These actions cannot be done until after type inference is complete,
 % so they need to be a separate "post-typecheck pass"; they are done
@@ -164,17 +170,21 @@
 :- implementation.
 
 :- import_module check_hlds.post_typecheck.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.quantification.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -184,7 +194,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -299,13 +311,13 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         clauses_info_clauses(Clauses0, !ClausesInfo),
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
-        RunPostTypecheck = yes,
-        PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
-            !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises),
-        compute_purity(Clauses0, Clauses, !.PredInfo, purity_pure, Purity,
-            PurityInfo0, PurityInfo),
+        PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck,
+            !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises,
+            do_not_need_to_requantify),
+        compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
+            purity_pure, Purity, PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, !:PredInfo,
-            VarTypes, VarSet, GoalSpecs, _),
+            VarTypes, VarSet, GoalSpecs, _, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
         clauses_info_set_clauses(Clauses, !ClausesInfo),
@@ -354,14 +366,22 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     proc_info_get_varset(ProcInfo0, VarSet0),
-    RunPostTypeCheck = no,
-    PurityInfo0 = purity_info(ModuleInfo, RunPostTypeCheck,
-        !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises),
+    PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck,
+        !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises,
+        do_not_need_to_requantify),
     compute_goal_purity(Goal0, Goal, Bodypurity, _, PurityInfo0, PurityInfo),
-    PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _, _),
+    PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _, _,
+        NeedToRequantify),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
-    proc_info_set_varset(VarSet, ProcInfo2, ProcInfo),
+    proc_info_set_varset(VarSet, ProcInfo2, ProcInfo3),
+    (
+        NeedToRequantify = need_to_requantify,
+        requantify_proc(ProcInfo3, ProcInfo)
+    ;
+        NeedToRequantify = do_not_need_to_requantify,
+        ProcInfo = ProcInfo3
+    ),
     map.det_update(Procs0, ProcId, ProcInfo, Procs),
     pred_info_set_procedures(Procs, !PredInfo),
 
@@ -414,15 +434,28 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
 
     % Infer the purity of a single (non-foreign_proc) predicate.
     %
-:- pred compute_purity(list(clause)::in, list(clause)::out,
+:- pred compute_purity_for_clauses(list(clause)::in, list(clause)::out,
     pred_info::in, purity::in, purity::out,
     purity_info::in, purity_info::out) is det.
 
-compute_purity([], [], _, !Purity, !Info).
-compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
-        !Info) :-
-    Clause0 = clause(Ids, hlds_goal(GoalExpr0, GoalInfo0), Lang, Context),
-    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, BodyPurity0, _, !Info),
+compute_purity_for_clauses([], [], _, !Purity, !Info).
+compute_purity_for_clauses([Clause0 | Clauses0], [Clause | Clauses], PredInfo,
+        !Purity, !Info) :-
+    compute_purity_for_clause(Clause0, Clause, PredInfo, ClausePurity, !Info),
+    !:Purity = worst_purity(!.Purity, ClausePurity),
+    compute_purity_for_clauses(Clauses0, Clauses, PredInfo, !Purity, !Info).
+
+    % Infer the purity of a single clause.
+    %
+:- pred compute_purity_for_clause(clause::in, clause::out, pred_info::in,
+    purity::out, purity_info::in, purity_info::out) is det.
+
+compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
+    Clause0 = clause(Ids, Goal0, Lang, Context),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    !Info ^ pi_requant := do_not_need_to_requantify,
+    compute_expr_purity(GoalExpr0, GoalExpr1, GoalInfo0, BodyPurity0, _,
+        !Info),
     % If this clause doesn't apply to all modes of this procedure,
     % i.e. the procedure has different clauses for different modes,
     % then we must treat it as impure, unless the programmer has promised
@@ -447,11 +480,28 @@ compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
     ;
         ClausePurity = purity_impure
     ),
-    BodyPurity = worst_purity(BodyPurity0, ClausePurity),
-    goal_info_set_purity(BodyPurity, GoalInfo0, GoalInfo),
-    !:Purity = worst_purity(!.Purity, BodyPurity),
-    Clause = clause(Ids, hlds_goal(GoalExpr, GoalInfo), Lang, Context),
-    compute_purity(Clauses0, Clauses, PredInfo, !Purity, !Info).
+    Purity = worst_purity(BodyPurity0, ClausePurity),
+    goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
+    NeedToRequantify = !.Info ^ pi_requant,
+    (
+        NeedToRequantify = need_to_requantify,
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
+        clauses_info_get_headvar_list(ClausesInfo, HeadVars),
+        VarTypes1 = !.Info ^ pi_vartypes,
+        VarSet1 = !.Info ^ pi_varset,
+        % The RTTI varmaps here are just a dummy value, because the real ones
+        % are not introduced until polymorphism.
+        rtti_varmaps_init(EmptyRttiVarmaps),
+        implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal,
+            VarSet1, VarSet, VarTypes1, VarTypes, EmptyRttiVarmaps, _),
+        !Info ^ pi_vartypes := VarTypes,
+        !Info ^ pi_varset := VarSet
+    ;
+        NeedToRequantify = do_not_need_to_requantify,
+        Goal = Goal1
+    ),
+    Clause = clause(Ids, Goal, Lang, Context).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
@@ -470,223 +520,402 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
     hlds_goal_info::in, purity::out, contains_trace_goal::out,
     purity_info::in, purity_info::out) is det.
 
-compute_expr_purity(conj(ConjType, Goals0), conj(ConjType, Goals), _,
-        Purity, ContainsTrace, !Info) :-
+compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
+        !Info) :-
     (
-        ConjType = plain_conj,
-        compute_goals_purity(Goals0, Goals, purity_pure, Purity,
-            contains_no_trace_goal, ContainsTrace, !Info)
-    ;
-        ConjType = parallel_conj,
-        compute_parallel_goals_purity(Goals0, Goals, purity_pure, Purity,
-            contains_no_trace_goal, ContainsTrace, !Info)
-    ).
-compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity,
-        contains_no_trace_goal, !Info) :-
-    Goal0 = plain_call(PredId0, ProcId, Vars, BIState, UContext, Name0),
-    RunPostTypecheck = !.Info ^ run_post_typecheck,
-    PredInfo = !.Info ^ pred_info,
-    ModuleInfo = !.Info ^ module_info,
-    (
-        RunPostTypecheck = yes,
-        finally_resolve_pred_overloading(Vars, PredInfo, ModuleInfo,
-            Name0, Name, PredId0, PredId),
+        GoalExpr0 = conj(ConjType, Goals0),
         (
-            % Convert any calls to private_builtin.unsafe_type_cast
-            % into unsafe_type_cast generic calls.
-            Name = qualified(mercury_private_builtin_module,
-                "unsafe_type_cast"),
-            Vars = [InputArg, OutputArg]
-        ->
-            Goal = generic_call(cast(unsafe_type_cast), [InputArg, OutputArg],
-                [in_mode, out_mode], detism_det)
+            ConjType = plain_conj,
+            compute_goals_purity(Goals0, Goals, purity_pure, Purity,
+                contains_no_trace_goal, ContainsTrace, !Info)
         ;
-            Goal = plain_call(PredId, ProcId, Vars, BIState, UContext, Name)
+            ConjType = parallel_conj,
+            compute_parallel_goals_purity(Goals0, Goals, purity_pure, Purity,
+                contains_no_trace_goal, ContainsTrace, !Info)
+        ),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = plain_call(PredId0, ProcId, ArgVars, Status,
+            MaybeUnifyContext, SymName0),
+        RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
+        PredInfo = !.Info ^ pi_pred_info,
+        ModuleInfo = !.Info ^ pi_module_info,
+        (
+            RunPostTypecheck = run_post_typecheck,
+            finally_resolve_pred_overloading(ArgVars, PredInfo, ModuleInfo,
+                SymName0, SymName, PredId0, PredId),
+            (
+                % Convert any calls to private_builtin.unsafe_type_cast
+                % into unsafe_type_cast generic calls.
+                SymName = qualified(mercury_private_builtin_module,
+                    "unsafe_type_cast"),
+                ArgVars = [InputArg, OutputArg]
+            ->
+                GoalExpr = generic_call(cast(unsafe_type_cast),
+                    [InputArg, OutputArg], [in_mode, out_mode], detism_det)
+            ;
+                GoalExpr = plain_call(PredId, ProcId, ArgVars, Status,
+                    MaybeUnifyContext, SymName)
+            )
+        ;
+            RunPostTypecheck = do_not_run_post_typecheck,
+            PredId = PredId0,
+            GoalExpr = GoalExpr0
+        ),
+        DeclaredPurity = goal_info_get_purity(GoalInfo),
+        CallContext = goal_info_get_context(GoalInfo),
+        perform_goal_purity_checks(CallContext, PredId,
+            DeclaredPurity, ActualPurity, !Info),
+        Purity = ActualPurity,
+        ContainsTrace = contains_no_trace_goal
+    ;
+        GoalExpr0 = generic_call(GenericCall0, _ArgVars, _Modes0, _Det),
+        GoalExpr = GoalExpr0,
+        (
+            GenericCall0 = higher_order(_, Purity, _, _)
+        ;
+            GenericCall0 = class_method(_, _, _, _),
+            Purity = purity_pure                        % XXX this is wrong!
+        ;
+            ( GenericCall0 = cast(_)
+            ; GenericCall0 = event_call(_)
+            ),
+            Purity = purity_pure
+        ),
+        ContainsTrace = contains_no_trace_goal
+    ;
+        GoalExpr0 = switch(Var, Canfail, Cases0),
+        compute_cases_purity(Cases0, Cases, purity_pure, Purity,
+            contains_no_trace_goal, ContainsTrace, !Info),
+        GoalExpr = switch(Var, Canfail, Cases)
+    ;
+        GoalExpr0 = unify(LHS, RHS0, Mode, Unification, UnifyContext),
+        (
+            RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
+                EvalMethod, LambdaNonLocals, LambdaQuantVars,
+                LambdaModes, LambdaDetism, LambdaGoal0),
+            LambdaGoal0 = hlds_goal(LambdaGoalExpr0, LambdaGoalInfo0),
+            compute_expr_purity(LambdaGoalExpr0, LambdaGoalExpr,
+                LambdaGoalInfo0, GoalPurity, _, !Info),
+            LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo0),
+            RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
+                EvalMethod, LambdaNonLocals, LambdaQuantVars,
+                LambdaModes, LambdaDetism, LambdaGoal),
+
+            check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
+            GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
+            % The unification itself is always pure,
+            % even if the lambda expression body is impure.
+            DeclaredPurity = goal_info_get_purity(GoalInfo),
+            (
+                ( DeclaredPurity = purity_impure
+                ; DeclaredPurity = purity_semipure
+                ),
+                Context = goal_info_get_context(GoalInfo),
+                Spec = impure_unification_expr_error(Context, DeclaredPurity),
+                purity_info_add_message(Spec, !Info)
+            ;
+                DeclaredPurity = purity_pure
+            ),
+            ActualPurity = purity_pure,
+            ContainsTrace = contains_no_trace_goal
+        ;
+            RHS0 = rhs_functor(ConsId, _, Args),
+            RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
+            (
+                RunPostTypecheck = run_post_typecheck,
+                ModuleInfo = !.Info ^ pi_module_info,
+                PredInfo0 = !.Info ^ pi_pred_info,
+                VarTypes0 = !.Info ^ pi_vartypes,
+                VarSet0 = !.Info ^ pi_varset,
+                post_typecheck.resolve_unify_functor(LHS, ConsId, Args, Mode,
+                    Unification, UnifyContext, GoalInfo, ModuleInfo,
+                    PredInfo0, PredInfo, VarTypes0, VarTypes, VarSet0, VarSet,
+                    Goal1),
+                !Info ^ pi_vartypes := VarTypes,
+                !Info ^ pi_varset := VarSet,
+                !Info ^ pi_pred_info := PredInfo
+            ;
+                RunPostTypecheck = do_not_run_post_typecheck,
+                Goal1 = hlds_goal(GoalExpr0, GoalInfo)
+            ),
+            ( Goal1 = hlds_goal(unify(_, _, _, _, _), _) ->
+                check_higher_order_purity(GoalInfo, ConsId, LHS, Args,
+                    ActualPurity, !Info),
+                ContainsTrace = contains_no_trace_goal,
+                Goal = Goal1
+            ;
+                compute_goal_purity(Goal1, Goal, ActualPurity, ContainsTrace,
+                    !Info)
+            ),
+            Goal = hlds_goal(GoalExpr, _)
+        ;
+            RHS0 = rhs_var(_),
+            GoalExpr = GoalExpr0,
+            ActualPurity = purity_pure,
+            ContainsTrace = contains_no_trace_goal
+        ),
+        Purity = ActualPurity
+    ;
+        GoalExpr0 = disj(Goals0),
+        compute_goals_purity(Goals0, Goals, purity_pure, Purity,
+            contains_no_trace_goal, ContainsTrace, !Info),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = negation(Goal0),
+        % Eliminate double negation.
+        negate_goal(Goal0, GoalInfo, NotGoal0),
+        ( NotGoal0 = hlds_goal(negation(Goal1), _) ->
+            compute_goal_purity(Goal1, Goal, Purity, ContainsTrace, !Info),
+            GoalExpr = negation(Goal)
+        ;
+            compute_goal_purity(NotGoal0, NotGoal1, Purity, ContainsTrace,
+                !Info),
+            NotGoal1 = hlds_goal(GoalExpr, _)
         )
     ;
-        RunPostTypecheck = no,
-        PredId = PredId0,
-        Goal = Goal0
-    ),
-    DeclaredPurity = goal_info_get_purity(GoalInfo),
-    CallContext = goal_info_get_context(GoalInfo),
-    perform_goal_purity_checks(CallContext, PredId,
-        DeclaredPurity, ActualPurity, !Info).
-compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
-        GoalExpr, _GoalInfo, Purity, contains_no_trace_goal, !Info) :-
-    (
-        GenericCall0 = higher_order(_, Purity, _, _),
-        GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
-    ;
-        GenericCall0 = class_method(_, _, _, _),
-        Purity = purity_pure, % XXX this is wrong!
-        GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
-    ;
-        ( GenericCall0 = cast(_)
-        ; GenericCall0 = event_call(_)
-        ),
-        Purity = purity_pure,
-        GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
-    ).
-compute_expr_purity(switch(Var, Canfail, Cases0),
-        switch(Var, Canfail, Cases), _, Purity, ContainsTrace, !Info) :-
-    compute_cases_purity(Cases0, Cases, purity_pure, Purity,
-        contains_no_trace_goal, ContainsTrace, !Info).
-compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
-        ContainsTrace, !Info) :-
-    Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
-    (
-        RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, F, EvalMethod, H,
-            Vars, Modes, K, hlds_goal(LambdaGoalExpr0, LambdaGoalInfo0)),
-        compute_expr_purity(LambdaGoalExpr0, LambdaGoalExpr, LambdaGoalInfo0,
-            GoalPurity, _, !Info),
-        RHS = rhs_lambda_goal(LambdaPurity, Groundness, F, EvalMethod, H, Vars,
-            Modes, K, hlds_goal(LambdaGoalExpr, LambdaGoalInfo0)),
-        check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
-        GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
-        % the unification itself is always pure,
-        % even if the lambda expression body is impure
-        DeclaredPurity = goal_info_get_purity(GoalInfo),
+        GoalExpr0 = scope(Reason, Goal0),
         (
-            ( DeclaredPurity = purity_impure
-            ; DeclaredPurity = purity_semipure
+            Reason = exist_quant(_),
+            compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
+        ;
+            Reason = promise_purity(Implicit, PromisedPurity),
+            ImplicitPurity0 = !.Info ^ pi_implicit_purity,
+            (
+                Implicit = make_implicit_promises,
+                !:Info = !.Info ^ pi_implicit_purity := Implicit
+            ;
+                Implicit = dont_make_implicit_promises
             ),
-            Context = goal_info_get_context(GoalInfo),
-            Spec = impure_unification_expr_error(Context, DeclaredPurity),
-            purity_info_add_message(Spec, !Info)
+            compute_goal_purity(Goal0, Goal, _, ContainsTrace, !Info),
+            !:Info = !.Info ^ pi_implicit_purity := ImplicitPurity0,
+            Purity = PromisedPurity
         ;
-            DeclaredPurity = purity_pure
+            ( Reason = promise_solutions(_, _)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_)
+            ),
+            compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
+        ;
+            Reason = trace_goal(_, _, _, _, _),
+            compute_goal_purity(Goal0, Goal, _SubPurity, _, !Info),
+            Purity = purity_pure,
+            ContainsTrace = contains_trace_goal
         ),
-        ActualPurity = purity_pure,
+        GoalExpr = scope(Reason, Goal)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        compute_goal_purity(Cond0, Cond, Purity1, ContainsTrace1, !Info),
+        compute_goal_purity(Then0, Then, Purity2, ContainsTrace2, !Info),
+        compute_goal_purity(Else0, Else, Purity3, ContainsTrace3, !Info),
+        worst_purity(Purity1, Purity2) = Purity12,
+        worst_purity(Purity12, Purity3) = Purity,
+        (
+            ( ContainsTrace1 = contains_trace_goal
+            ; ContainsTrace2 = contains_trace_goal
+            ; ContainsTrace3 = contains_trace_goal
+            )
+        ->
+            ContainsTrace = contains_trace_goal
+        ;
+            ContainsTrace = contains_no_trace_goal
+        ),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = call_foreign_proc(Attributes, PredId, _, _, _, _, _),
+        ModuleInfo = !.Info ^ pi_module_info,
+        LegacyBehaviour = get_legacy_purity_behaviour(Attributes),
+        (
+            LegacyBehaviour = yes,
+            % Get the purity from the declaration, and set it here so that
+            % it is correct for later use.
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_purity(PredInfo, Purity),
+            set_purity(Purity, Attributes, NewAttributes),
+            GoalExpr = GoalExpr0 ^ foreign_attr := NewAttributes
+        ;
+            LegacyBehaviour = no,
+            GoalExpr = GoalExpr0,
+            Purity = get_purity(Attributes)
+        ),
         ContainsTrace = contains_no_trace_goal
     ;
-        RHS0 = rhs_functor(ConsId, _, Args),
-        RunPostTypecheck = !.Info ^ run_post_typecheck,
+        GoalExpr0 = shorthand(ShortHand0),
         (
-            RunPostTypecheck = yes,
-            ModuleInfo = !.Info ^ module_info,
-            PredInfo0 = !.Info ^ pred_info,
-            VarTypes0 = !.Info ^ vartypes,
-            VarSet0 = !.Info ^ varset,
-            post_typecheck.resolve_unify_functor(Var, ConsId, Args, Mode,
-                Unification, UnifyContext, GoalInfo, ModuleInfo,
-                PredInfo0, PredInfo, VarTypes0, VarTypes, VarSet0, VarSet,
-                Goal1),
-            !:Info = !.Info ^ vartypes := VarTypes,
-            !:Info = !.Info ^ varset := VarSet,
-            !:Info = !.Info ^ pred_info := PredInfo
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
+            (
+                RunPostTypecheck = run_post_typecheck,
+                VarSet = !.Info ^ pi_varset,
+                VarTypes = !.Info ^ pi_vartypes,
+                Outer = atomic_interface_vars(OuterDI, OuterUO),
+                Inner = atomic_interface_vars(InnerDI, InnerUO),
+                Context = goal_info_get_context(GoalInfo),
+                check_outer_var_type(Context, VarTypes, VarSet, OuterDI,
+                    OuterDIType, OuterDITypeSpecs),
+                check_outer_var_type(Context, VarTypes, VarSet, OuterUO,
+                    OuterUOType, OuterUOTypeSpecs),
+                OuterTypeSpecs = OuterDITypeSpecs ++ OuterUOTypeSpecs,
+                (
+                    OuterTypeSpecs = [_ | _],
+                    list.foldl(purity_info_add_message, OuterTypeSpecs, !Info),
+                    MainGoal1 = MainGoal0,
+                    OrElseGoals1 = OrElseGoals0
+                ;
+                    OuterTypeSpecs = [],
+                    (
+                        (
+                            OuterDIType = io_state_type,
+                            OuterUOType = io_state_type
+                        ->
+                            OuterToInnerPred = "stm_from_outer_to_inner_io",
+                            InnerToOuterPred = "stm_from_inner_to_outer_io"
+                        ;
+                            OuterDIType = stm_atomic_type,
+                            OuterUOType = stm_atomic_type
+                        ->
+                            OuterToInnerPred = "stm_from_outer_to_inner_stm",
+                            InnerToOuterPred = "stm_from_inner_to_outer_stm"
+                        ;
+                            fail
+                        )
+                    ->
+                        ModuleInfo = !.Info ^ pi_module_info,
+                        generate_simple_call(mercury_stm_builtin_module,
+                            OuterToInnerPred, pf_predicate, only_mode,
+                            detism_det, purity_pure, [OuterDI, InnerDI], [],
+                            [OuterDI - ground(clobbered, none),
+                                InnerDI - ground(unique, none)],
+                            ModuleInfo, Context, OuterToInnerGoal),
+                        generate_simple_call(mercury_stm_builtin_module,
+                            InnerToOuterPred, pf_predicate, only_mode,
+                            detism_det, purity_pure, [InnerUO, OuterUO], [],
+                            [InnerUO - ground(clobbered, none),
+                                OuterUO - ground(unique, none)],
+                            ModuleInfo, Context, InnerToOuterGoal),
+                        wrap_inner_outer_goals(Outer, Inner,
+                            OuterToInnerGoal, InnerToOuterGoal,
+                            MainGoal0, MainGoal1, !Info),
+                        list.map_foldl(wrap_inner_outer_goals(Outer, Inner,
+                            OuterToInnerGoal, InnerToOuterGoal),
+                            OrElseGoals0, OrElseGoals1, !Info),
+                        !Info ^ pi_requant := need_to_requantify
+                    ;
+                        MisMatchSpec = mismatched_outer_var_types(Context),
+                        purity_info_add_message(MisMatchSpec, !Info),
+                        MainGoal1 = MainGoal0,
+                        OrElseGoals1 = OrElseGoals0
+                    )
+                )
+            ;
+                RunPostTypecheck = do_not_run_post_typecheck,
+                MainGoal1 = MainGoal0,
+                OrElseGoals1 = OrElseGoals0
+            ),
+            compute_goal_purity(MainGoal1, MainGoal, Purity1, ContainsTrace1,
+                !Info),
+            compute_goals_purity(OrElseGoals1, OrElseGoals,
+                purity_pure, Purity2, contains_no_trace_goal, ContainsTrace2,
+                !Info),
+            Purity = worst_purity(Purity1, Purity2),
+            (
+                ( ContainsTrace1 = contains_trace_goal
+                ; ContainsTrace2 = contains_trace_goal
+                )
+            ->
+                ContainsTrace = contains_trace_goal
+            ;
+                ContainsTrace = contains_no_trace_goal
+            ),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand)
         ;
-            RunPostTypecheck = no,
-            Goal1 = hlds_goal(Unif0, GoalInfo)
-        ),
-        ( Goal1 = hlds_goal(unify(_, _, _, _, _), _) ->
-            check_higher_order_purity(GoalInfo, ConsId, Var, Args,
-                ActualPurity, !Info),
-            ContainsTrace = contains_no_trace_goal,
-            Goal = Goal1
-        ;
-            compute_goal_purity(Goal1, Goal, ActualPurity, ContainsTrace,
-                !Info)
-        ),
-        Goal = hlds_goal(GoalExpr, _)
-    ;
-        RHS0 = rhs_var(_),
-        GoalExpr = Unif0,
-        ActualPurity = purity_pure,
-        ContainsTrace = contains_no_trace_goal
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "compute_expr_purity: bi_implication")
+        )
     ).
-compute_expr_purity(disj(Goals0), disj(Goals), _, Purity, ContainsTrace,
-        !Info) :-
-    compute_goals_purity(Goals0, Goals, purity_pure, Purity,
-        contains_no_trace_goal, ContainsTrace, !Info).
-compute_expr_purity(negation(Goal0), NotGoal, GoalInfo0, Purity, ContainsTrace,
-        !Info) :-
-    % Eliminate double negation.
-    negate_goal(Goal0, GoalInfo0, NotGoal0),
-    ( NotGoal0 = hlds_goal(negation(Goal1), _) ->
-        compute_goal_purity(Goal1, Goal, Purity, ContainsTrace, !Info),
-        NotGoal = negation(Goal)
-    ;
-        compute_goal_purity(NotGoal0, NotGoal1, Purity, ContainsTrace, !Info),
-        NotGoal1 = hlds_goal(NotGoal, _)
-    ).
-compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
-        _, Purity, ContainsTrace, !Info) :-
+
+:- pred wrap_inner_outer_goals(
+    atomic_interface_vars::in, atomic_interface_vars::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal::out,
+    purity_info::in, purity_info::out) is det.
+
+wrap_inner_outer_goals(Outer, Inner, OuterToInnerGoal, InnerToOuterGoal,
+        Goal0, Goal, !Info) :-
+    % Generate an error if the outer variables are in the nonlocals of the
+    % original goal, since they are not supposed to be used in the goal.
+    %
+    % Generate an error if the inner variables are in the nonlocals of the
+    % original goal, since they are not supposed to be used outside the goal.
+    Goal0 = hlds_goal(_, GoalInfo0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
+    Outer = atomic_interface_vars(OuterDI, OuterUO),
+    Inner = atomic_interface_vars(InnerDI, InnerUO),
+    list.filter(set.contains(NonLocals0), [OuterUO, OuterDI], PresentOuter),
+    list.filter(set.contains(NonLocals0), [InnerUO, InnerDI], PresentInner),
+    VarSet = !.Info ^ pi_varset,
     (
-        Reason = exist_quant(_),
-        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
+        PresentOuter = []
     ;
-        Reason = promise_purity(Implicit, PromisedPurity),
-        ImplicitPurity0 = !.Info ^ implicit_purity,
-        (
-            Implicit = make_implicit_promises,
-            !:Info = !.Info ^ implicit_purity := Implicit
-        ;
-            Implicit = dont_make_implicit_promises
-        ),
-        compute_goal_purity(Goal0, Goal, _, ContainsTrace, !Info),
-        !:Info = !.Info ^ implicit_purity := ImplicitPurity0,
-        Purity = PromisedPurity
-    ;
-        Reason = promise_solutions(_, _),
-        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
-    ;
-        Reason = commit(_),
-        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
-    ;
-        Reason = barrier(_),
-        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
-    ;
-        Reason = from_ground_term(_),
-        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
-    ;
-        Reason = trace_goal(_, _, _, _, _),
-        compute_goal_purity(Goal0, Goal, _SubPurity, _, !Info),
-        Purity = purity_pure,
-        ContainsTrace = contains_trace_goal
-    ).
-compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), _, Purity, ContainsTrace,
-        !Info) :-
-    compute_goal_purity(Cond0, Cond, Purity1, ContainsTrace1, !Info),
-    compute_goal_purity(Then0, Then, Purity2, ContainsTrace2, !Info),
-    compute_goal_purity(Else0, Else, Purity3, ContainsTrace3, !Info),
-    worst_purity(Purity1, Purity2) = Purity12,
-    worst_purity(Purity12, Purity3) = Purity,
+        PresentOuter = [_ | _],
+        PresentOuterVarNames =
+            list.map(mercury_var_to_string(VarSet, no), PresentOuter),
+        Pieces1 = [words("Outer"),
+            words(choose_number(PresentOuterVarNames,
+                "variable", "variables"))] ++
+            list_to_pieces(PresentOuterVarNames) ++
+            [words(choose_number(PresentOuterVarNames, "is", "are")),
+            words("present in the atomic goal.")],
+        Msg1 = error_msg(yes(Context), no, 0, [always(Pieces1)]),
+        Spec1 = error_spec(severity_error, phase_type_check, [Msg1]),
+        purity_info_add_message(Spec1, !Info)
+    ),
     (
-        ( ContainsTrace1 = contains_trace_goal
-        ; ContainsTrace2 = contains_trace_goal
-        ; ContainsTrace3 = contains_trace_goal
+        PresentInner = []
+    ;
+        PresentInner = [_ | _],
+        PresentInnerVarNames =
+            list.map(mercury_var_to_string(VarSet, no), PresentInner),
+        Pieces2 = [words("Inner"),
+            words(choose_number(PresentInnerVarNames,
+                "variable", "variables"))] ++
+            list_to_pieces(PresentInnerVarNames) ++
+            [words(choose_number(PresentInnerVarNames, "is", "are")),
+            words("present outside the atomic goal.")],
+        Msg2 = error_msg(yes(Context), no, 0, [always(Pieces2)]),
+        Spec2 = error_spec(severity_error, phase_type_check, [Msg2]),
+        purity_info_add_message(Spec2, !Info)
+    ),
+
+    WrapExpr = conj(plain_conj, [OuterToInnerGoal, Goal0, InnerToOuterGoal]),
+    % After the addition of OuterToInnerGoal and InnerToOuterGoal,
+    % OuterDI and OuterUO will definitely be used by the code inside the new
+    % goal, and *should* be used by code outside the goal. However, even if
+    % they are not, the nonlocals set is allowed to overapproximate.
+    set.insert_list(NonLocals0, [OuterDI, OuterUO], NonLocals),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(WrapExpr, GoalInfo).
+
+:- pred check_outer_var_type(prog_context::in, vartypes::in, prog_varset::in,
+    prog_var::in, mer_type::out, list(error_spec)::out) is det.
+
+check_outer_var_type(Context, VarTypes, VarSet, Var, VarType, Specs) :-
+    map.lookup(VarTypes, Var, VarType),
+    (
+        ( VarType = io_state_type
+        ; VarType = stm_atomic_type
         )
     ->
-        ContainsTrace = contains_trace_goal
+        Specs = []
     ;
-        ContainsTrace = contains_no_trace_goal
+        Spec = bad_outer_var_type_error(Context, VarSet, Var),
+        Specs = [Spec]
     ).
-compute_expr_purity(ForeignProc0, ForeignProc, _, Purity,
-        contains_no_trace_goal, !Info) :-
-    ForeignProc0 = call_foreign_proc(_, _, _, _, _, _, _),
-    Attributes = ForeignProc0 ^ foreign_attr,
-    PredId = ForeignProc0 ^ foreign_pred_id,
-    ModuleInfo = !.Info ^ module_info,
-    LegacyBehaviour = get_legacy_purity_behaviour(Attributes),
-    (
-        LegacyBehaviour = yes,
-        % Get the purity from the declaration, and set it here so that
-        % it is correct for later use.
-
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_purity(PredInfo, Purity),
-        set_purity(Purity, Attributes, NewAttributes),
-        ForeignProc = ForeignProc0 ^ foreign_attr := NewAttributes
-    ;
-        LegacyBehaviour = no,
-        ForeignProc = ForeignProc0,
-        Purity = get_purity(Attributes)
-    ).
-compute_expr_purity(shorthand(_), _, _, _, _, !Info) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "compute_expr_purity: unexpected shorthand").
 
 :- pred check_higher_order_purity(hlds_goal_info::in, cons_id::in,
     prog_var::in, list(prog_var)::in, purity::out,
@@ -695,20 +924,19 @@ compute_expr_purity(shorthand(_), _, _, _, _, !Info) :-
 check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % Check that the purity of the ConsId matches the purity of the
     % variable's type.
-    VarTypes = !.Info ^ vartypes,
+    VarTypes = !.Info ^ pi_vartypes,
     map.lookup(VarTypes, Var, TypeOfVar),
     (
         ConsId = cons(PName, _),
         type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
             _EvalMethod, VarArgTypes)
     ->
-        PredInfo = !.Info ^ pred_info,
+        PredInfo = !.Info ^ pi_pred_info,
         pred_info_get_typevarset(PredInfo, TVarSet),
         map.apply_to_list(Args, VarTypes, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
-        ModuleInfo = !.Info ^ module_info,
-        CallerPredInfo = !.Info ^ pred_info,
-        pred_info_get_markers(CallerPredInfo, CallerMarkers),
+        ModuleInfo = !.Info ^ pi_module_info,
+        pred_info_get_markers(PredInfo, CallerMarkers),
         (
             get_pred_id(calls_are_fully_qualified(CallerMarkers), PName,
                 PredOrFunc, TVarSet, PredArgTypes, ModuleInfo, CalleePredId)
@@ -734,7 +962,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     DeclaredPurity = goal_info_get_purity(GoalInfo),
     (
         DeclaredPurity \= purity_pure,
-        !.Info ^ implicit_purity = dont_make_implicit_promises
+        !.Info ^ pi_implicit_purity = dont_make_implicit_promises
     ->
         Context = goal_info_get_context(GoalInfo),
         Spec = impure_unification_expr_error(Context, DeclaredPurity),
@@ -849,9 +1077,9 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 
 perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         !Info) :-
-    ModuleInfo = !.Info ^ module_info,
-    PredInfo = !.Info ^ pred_info,
-    ImplicitPurity = !.Info ^ implicit_purity,
+    ModuleInfo = !.Info ^ pi_module_info,
+    PredInfo = !.Info ^ pi_pred_info,
+    ImplicitPurity = !.Info ^ pi_implicit_purity,
     module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
     pred_info_get_purity(CalleePredInfo, ActualPurity),
     (
@@ -1180,31 +1408,54 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
+:- func bad_outer_var_type_error(prog_context, prog_varset, prog_var)
+    = error_spec.
+
+bad_outer_var_type_error(Context, VarSet, Var) = Spec :-
+    Pieces = [words("The type of outer variable"),
+        fixed(mercury_var_to_string(VarSet, no, Var)),
+        words("must be either io.state or stm_builtin.stm.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+:- func mismatched_outer_var_types(prog_context) = error_spec.
+
+mismatched_outer_var_types(Context) = Spec :-
+    Pieces = [words("The types of the two outer variables differ.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
 %-----------------------------------------------------------------------------%
+
+:- type run_post_typecheck
+    --->    run_post_typecheck
+    ;       do_not_run_post_typecheck.
 
 :- type purity_info
     --->    purity_info(
                 % Fields not changed by purity checking.
-                module_info         :: module_info,
-                run_post_typecheck  :: bool,
+                pi_module_info          :: module_info,
+                pi_run_post_typecheck   :: run_post_typecheck,
 
                 % Fields which may be changed.
-                pred_info           :: pred_info,
-                vartypes            :: vartypes,
-                varset              :: prog_varset,
-                messages            :: list(error_spec),
-                implicit_purity     :: implicit_purity_promise
-                                    % If this is make_implicit_promises then
-                                    % purity annotations are optional in the
-                                    % current scope and purity warnings/errors
-                                    % should not be generated.
+                pi_pred_info            :: pred_info,
+                pi_vartypes             :: vartypes,
+                pi_varset               :: prog_varset,
+                pi_messages             :: list(error_spec),
+                pi_implicit_purity      :: implicit_purity_promise,
+                                        % If this is make_implicit_promises,
+                                        % then purity annotations are optional
+                                        % in the current scope and purity
+                                        % warnings/errors should not be
+                                        % generated.
+                pi_requant              :: need_to_requantify
             ).
 
 :- pred purity_info_add_message(error_spec::in,
     purity_info::in, purity_info::out) is det.
 
 purity_info_add_message(Spec, Info0, Info) :-
-    Info = Info0 ^ messages := [Spec | Info0 ^ messages].
+    Info = Info0 ^ pi_messages := [Spec | Info0 ^ pi_messages].
 
 %-----------------------------------------------------------------------------%
 

@@ -720,7 +720,7 @@ erl_gen_goal_expr(
         CodeModel, OuterContext, MaybeSuccessExpr, Statement, !Info).
 
 erl_gen_goal_expr(shorthand(_), _, _, _, _, _, _, !Info) :-
-    % these should have been expanded out by now
+    % These should have been expanded out by now.
     unexpected(this_file, "erl_gen_goal_expr: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%

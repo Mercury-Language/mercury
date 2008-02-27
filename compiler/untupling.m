@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -241,7 +241,8 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
         requantify_proc(!ProcInfo),
-        recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
+        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+            !ProcInfo, !ModuleInfo),
 
         counter.allocate(Num, !Counter),
         create_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo, Num,
@@ -489,7 +490,8 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
             proc_info_set_varset(VarSet, !ProcInfo),
             proc_info_set_vartypes(VarTypes, !ProcInfo),
             requantify_proc(!ProcInfo),
-            recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
+            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+                !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
                 PredInfo, !.ProcInfo, !ModuleInfo)
         ;
@@ -585,6 +587,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file, "fix_calls_in_goal: unexpected shorthand")
     ).
 

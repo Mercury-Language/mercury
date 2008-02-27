@@ -317,6 +317,8 @@
 :- func sample_typeclass_info_type = mer_type.
 :- func comparison_result_type = mer_type.
 :- func io_state_type = mer_type.
+:- func io_io_type = mer_type.
+:- func stm_atomic_type = mer_type.
 :- func region_type = mer_type.
 
     % Succeed iff the given variable is of region_type.
@@ -921,6 +923,14 @@ type_ctor_info_type = defined_type(Name, [], kind_star) :-
 io_state_type = defined_type(Name, [], kind_star) :-
     Module = mercury_std_lib_module_name(unqualified("io")),
     Name = qualified(Module, "state").
+
+io_io_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_std_lib_module_name(unqualified("io")),
+    Name = qualified(Module, "io").
+
+stm_atomic_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_std_lib_module_name(unqualified("stm_builtin")),
+    Name = qualified(Module, "stm").
 
 region_type = defined_type(Name, [], kind_star) :-
     Module = mercury_region_builtin_module,

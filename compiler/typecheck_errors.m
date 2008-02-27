@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -71,6 +71,9 @@
 
 :- func report_error_var(typecheck_info, prog_var, mer_type, type_assign_set)
     = error_spec.
+
+:- func report_error_var_either_type(typecheck_info, prog_var, 
+    mer_type, mer_type, type_assign_set) = error_spec.
 
 :- func report_error_arg_var(typecheck_info, prog_var, args_type_assign_set)
     = error_spec.
@@ -874,6 +877,60 @@ report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
             argument_name_to_pieces(VarSet, Var) ++
             [words("has overloaded actual/expected types {"), nl] ++
             actual_expected_types_list_to_pieces(ActualExpectedList) ++
+            [nl, fixed("}."), nl]
+    ),
+
+    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
+    Msg = simple_msg(Context,
+        [always(InClauseForPieces ++ CallContextPieces),
+        always(Pieces1 ++ Pieces2),
+        verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+%-----------------------------------------------------------------------------%
+
+report_error_var_either_type(Info, Var, TypeA, TypeB, TypeAssignSet0) = Spec :-
+    typecheck_info_get_pred_markers(Info, PredMarkers),
+    typecheck_info_get_called_predid(Info, CalledPredId),
+    ArgNum = Info ^ tc_info_arg_num,
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
+    get_type_stuff(TypeAssignSet0, Var, TypeStuffList),
+    typecheck_info_get_varset(Info, VarSet),
+
+    InClauseForPieces = in_clause_for_pieces(Info),
+    CallContextPieces = call_context_to_pieces(PredMarkers, CalledPredId,
+        ArgNum, UnifyContext),
+
+    ActualExpectedListA0 = list.map(type_stuff_to_actual_expected(TypeA),
+        TypeStuffList),
+    ActualExpectedListB0 = list.map(type_stuff_to_actual_expected(TypeB),
+        TypeStuffList),
+    list.sort_and_remove_dups(ActualExpectedListA0, ActualExpectedListA),
+    list.sort_and_remove_dups(ActualExpectedListB0, ActualExpectedListB),
+
+    Pieces1 = [words("type error:")],
+    ( 
+        ActualExpectedListA = [ActualExpectedA],
+        ActualExpectedListB = [ActualExpectedB]
+    ->
+        ActualExpectedA = actual_expected_types(ActualPieces, ExpectedPiecesA),
+        ActualExpectedB = actual_expected_types(_, ExpectedPiecesB),
+        Pieces2 = argument_name_to_pieces(VarSet, Var) ++
+            [words("has type"), prefix("`")] ++ ActualPieces ++
+            [suffix("'"), suffix(","), nl,
+            words("expected type was either"), prefix("`")] ++ 
+            ExpectedPiecesA ++ [suffix("'"), words("or"), prefix("`")] ++
+            ExpectedPiecesB ++ [suffix("'"), suffix("."), nl]
+    ;
+        Pieces2 = [words("type of")] ++
+            argument_name_to_pieces(VarSet, Var) ++
+            [words("does not match its expected type;"), nl] ++
+            argument_name_to_pieces(VarSet, Var) ++
+            [words("has overloaded actual/expected types {"), nl] ++
+            actual_expected_types_list_to_pieces(ActualExpectedListA) ++
+            [nl, fixed("} or {."), nl] ++
+            actual_expected_types_list_to_pieces(ActualExpectedListB) ++
             [nl, fixed("}."), nl]
     ),
 

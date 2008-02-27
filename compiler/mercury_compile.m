@@ -71,6 +71,7 @@
 :- import_module transform_hlds.table_gen.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.lambda.
+:- import_module transform_hlds.stm_expand.
 :- import_module transform_hlds.closure_analysis.
 :- import_module transform_hlds.termination.
 :- import_module transform_hlds.ssdebug.
@@ -230,12 +231,8 @@ real_main(!IO) :-
     handle_options([], _, _, _, _, !IO),
 
     ( Args0 = ["--arg-file", ArgFile] ->
-        %
-        % All the configuration and options file options
-        % are passed in the given file, which is created
-        % by the parent `mmc --make' process.
-        %
-
+        % All the configuration and options file options are passed in the
+        % given file, which is created by the parent `mmc --make' process.
         options_file.read_args_file(ArgFile, MaybeArgs1, !IO),
         (
             MaybeArgs1 = yes(Args1),
@@ -250,9 +247,7 @@ real_main(!IO) :-
         Variables = options_variables_init,
         Link = no
     ;
-        %
         % Find out which options files to read.
-        %
         handle_options(Args0, Errors0, OptionArgs, NonOptionArgs, Link, !IO),
         (
             Errors0 = [_ | _],
@@ -286,11 +281,8 @@ real_main(!IO) :-
         MaybeMCFlags = yes(MCFlags),
         handle_options(MCFlags ++ OptionArgs, Errors, _, _, _, !IO),
 
-        %
-        % When computing the option arguments to pass
-        % to `--make', only include the command-line
-        % arguments, not the contents of DEFAULT_MCFLAGS.
-        %
+        % When computing the option arguments to pass to `--make', only include
+        % the command-line arguments, not the contents of DEFAULT_MCFLAGS.
         main_2(Errors, Variables, OptionArgs, NonOptionArgs, Link, !IO)
     ;
         MaybeMCFlags = no,
@@ -302,10 +294,7 @@ real_main(!IO) :-
     io::di, io::uo) is det.
 
 real_main_2(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
-    %
-    % Process the options again to find out
-    % which configuration file to read.
-    %
+    % Process the options again to find out which configuration file to read.
     handle_options(MCFlags0 ++ Args0, Errors, _, _, _, !IO),
     (
         Errors = [_ | _],
@@ -444,19 +433,19 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             ),
             NYIMsg = [
                 words("Sorry,"),
-                quote("--generate-standalone-interface"), 
+                quote("--generate-standalone-interface"),
                 words("is not yet supported with target language"),
                 words(compilation_target_string(Target)),
                 suffix(".")
             ],
             write_error_pieces_plain(NYIMsg, !IO),
             io.set_exit_status(1, !IO)
-        ; 
+        ;
             ( Target = target_c
             ; Target = target_asm
             ; Target = target_x86_64
             ),
-            make_standalone_interface(StandaloneIntBasename, !IO) 
+            make_standalone_interface(StandaloneIntBasename, !IO)
         )
     ; Make = yes ->
         make_process_args(OptionVariables, OptionArgs, Args, !IO)
@@ -497,13 +486,11 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                 true
             )
         ;
-            % If we found some errors, but the user didn't enable
-            % the `-E' (`--verbose-errors') option, give them a
-            % hint about it.  Of course, we should only output the
-            % hint when we have further information to give the user.
-            %
-            globals.lookup_bool_option(Globals, verbose_errors,
-                VerboseErrors),
+            % If we found some errors, but the user didn't enable the `-E'
+            % (`--verbose-errors') option, give them a hint about it.
+            % Of course, we should only output the hint when we have further
+            % information to give the user.
+            globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
             globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
             (
                 VerboseErrors = no,
@@ -542,16 +529,16 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
     % we need to call run_gcc_backend here at the top level.
     globals.io_get_globals(Globals, !IO),
     ( compiling_to_asm(Globals) ->
-        ( Args = [FirstArg | OtherArgs] ->
+        (
+            Args = [FirstArg | OtherArgs],
             globals.lookup_bool_option(Globals, smart_recompilation, Smart),
             (
                 Smart = yes,
                 (
                     OtherArgs = [],
-                    % With smart recompilation we need to delay
-                    % starting the gcc backend to avoid overwriting
-                    % the output assembler file even if
-                    % recompilation is found to be unnecessary.
+                    % With smart recompilation we need to delay starting
+                    % the gcc backend to avoid overwriting the output assembler
+                    % file even if recompilation is found to be unnecessary.
                     process_args(OptionVariables, OptionArgs, Args,
                         ModulesToLink, FactTableObjFiles, !IO)
                 ;
@@ -574,6 +561,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
                 FactTableObjFiles = []
             )
         ;
+            Args = [],
             Msg = "Sorry, not implemented: `--target asm' " ++
                 "with `--filenames-from-stdin",
             write_error_pieces_plain([words(Msg)], !IO),
@@ -582,9 +570,8 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
             FactTableObjFiles = []
         )
     ;
-        % If we're NOT using the GCC back-end,
-        % then we can just call process_args directly,
-        % rather than via GCC.
+        % If we're NOT using the GCC back-end, then we can just call
+        % process_args directly, rather than via GCC.
         process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
             FactTableObjFiles, !IO)
     ).
@@ -613,49 +600,41 @@ compiling_to_asm(Globals) :-
 
 compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
         CallBack, ModulesToLink, !IO) :-
-    % The name of the assembler file that we generate
-    % is based on name of the first module named
-    % on the command line.  (Mmake requires this.)
+    % The name of the assembler file that we generate is based on name
+    % of the first module named on the command line. (Mmake requires this.)
     %
-    % There's two cases:
-    % (1) If the argument ends in ".m", we assume
-    % that the argument is a file name.
-    % To find the corresponding module name,
-    % we would need to read in the file
-    % (at least up to the first item);
-    % this is needed to handle the case where
-    % the module name does not match the file
-    % name, e.g. file "browse.m" containing
-    % ":- module mdb.browse." as its first item.
-    % Rather than reading in the source file here,
-    % we just pick a name
-    % for the asm file based on the file name argument,
-    % (e.g. "browse.s") and if necessary rename it later
-    % (e.g. to "mdb.browse.s").
+    % There are two cases:
     %
-    % (2) If the argument doesn't end in `.m',
-    % then we assume it is a module name.
-    % (Is it worth checking that the name doesn't
-    % contain directory separators, and issuing
-    % a warning or error in that case?)
+    % (1) If the argument ends in ".m", we assume that the argument is a file
+    % name. To find the corresponding module name, we would need to read in
+    % the file (at least up to the first item); this is needed to handle
+    % the case where the module name does not match the file name, e.g.
+    % file "browse.m" containing ":- module mdb.browse." as its first item.
+    % Rather than reading in the source file here, we just pick a name
+    % for the asm file based on the file name argument, (e.g. "browse.s")
+    % and if necessary rename it later (e.g. to "mdb.browse.s").
     %
+    % (2) If the argument doesn't end in `.m', then we assume it is
+    % a module name. (Is it worth checking that the name doesn't contain
+    % directory separators, and issuing a warning or error in that case?)
+
     (
-        FirstFileOrModule = file(FirstFileName),
+        FirstFileOrModule = fm_file(FirstFileName),
         file_name_to_module_name(FirstFileName, FirstModuleName)
     ;
-        FirstFileOrModule = module(FirstModuleName)
+        FirstFileOrModule = fm_module(FirstModuleName)
     ),
 
-    % Invoke run_gcc_backend.  It will call us back,
-    % and then we'll continue with the normal work of
-    % the compilation, which will be done by the callback
-    % function (`process_args').
+    % Invoke run_gcc_backend. It will call us back, and then we will continue
+    % with the normal work of the compilation, which will be done by the
+    % callback function (`process_args').
     maybe_mlds_to_gcc.run_gcc_backend(FirstModuleName, CallBack, ModulesToLink,
         !IO),
 
-    % Now we know what the real module name was, so we
-    % can rename the assembler file if needed (see above).
-    ( ModulesToLink = [Module | _] ->
+    % Now we know what the real module name was, so we can rename
+    % the assembler file if needed (see above).
+    (
+        ModulesToLink = [Module | _],
         file_name_to_module_name(Module, ModuleName),
         globals.io_lookup_bool_option(pic, Pic, !IO),
         AsmExt = (Pic = yes -> ".pic_s" ; ".s"),
@@ -668,8 +647,7 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
             Result = ok
         ),
 
-        % Invoke the assembler to produce an object file,
-        % if needed.
+        % Invoke the assembler to produce an object file, if needed.
         globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
         (
             Result = ok,
@@ -687,9 +665,9 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
             true
         )
     ;
+        ModulesToLink = []
         % This can happen if smart recompilation decided
         % that nothing needed to be compiled.
-        true
     ).
 
 :- pred do_rename_file(string::in, string::in, io.res::out,
@@ -901,10 +879,10 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         ModulesToLink = [],
         FactTableObjFiles = [],
         (
-            FileOrModule = file(FileName),
+            FileOrModule = fm_file(FileName),
             generate_file_dependencies(FileName, !IO)
         ;
-            FileOrModule = module(ModuleName),
+            FileOrModule = fm_module(ModuleName),
             generate_module_dependencies(ModuleName, !IO)
         )
     ;
@@ -916,10 +894,10 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             ModulesToLink = [],
             FactTableObjFiles = [],
             (
-                FileOrModule = file(FileName),
+                FileOrModule = fm_file(FileName),
                 generate_file_dependency_file(FileName, !IO)
             ;
-                FileOrModule = module(ModuleName),
+                FileOrModule = fm_module(ModuleName),
                 generate_module_dependency_file(ModuleName, !IO)
             )
         ;
@@ -930,39 +908,38 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
     ).
 
 :- type file_or_module
-    --->    file(file_name)
-    ;       module(module_name).
+    --->    fm_file(file_name)
+    ;       fm_module(module_name).
 
 :- func string_to_file_or_module(string) = file_or_module.
 
 string_to_file_or_module(String) = FileOrModule :-
     ( string.remove_suffix(String, ".m", FileName) ->
-        % If the argument name ends in `.m', then we assume it is
-        % a file name.
-        FileOrModule = file(FileName)
+        % If the argument name ends in `.m', then we assume it is a file name.
+        FileOrModule = fm_file(FileName)
     ;
-        % If it doesn't end in `.m', then we assume it is
-        % a module name.  (Is it worth checking that the
-        % name doesn't contain directory separators, and issuing
-        % a warning or error in that case?)
+        % If it doesn't end in `.m', then we assume it is a module name.
+        % (Is it worth checking that the name doesn't contain directory
+        % separators, and issuing a warning or error in that case?)
         file_name_to_module_name(String, ModuleName),
-        FileOrModule = module(ModuleName)
+        FileOrModule = fm_module(ModuleName)
     ).
 
 :- func file_or_module_to_module_name(file_or_module) = module_name.
 
-file_or_module_to_module_name(file(FileName)) = ModuleName :-
+file_or_module_to_module_name(fm_file(FileName)) = ModuleName :-
     % Assume the module name matches the file name.
     file_name_to_module_name(FileName, ModuleName).
-file_or_module_to_module_name(module(ModuleName)) = ModuleName.
+file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
 :- pred read_module_or_file(file_or_module::in, bool::in, module_name::out,
     file_name::out, maybe(timestamp)::out, list(item)::out,
     module_error::out, read_modules::in, read_modules::out,
     io::di, io::uo) is det.
 
-read_module_or_file(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
-        MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
+read_module_or_file(fm_module(ModuleName), ReturnTimestamp,
+        ModuleName, FileName, MaybeTimestamp, Items, Error, !ReadModules,
+        !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing module `", !IO),
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -989,7 +966,7 @@ read_module_or_file(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
     ),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_report_stats(Stats, !IO).
-read_module_or_file(file(FileName), ReturnTimestamp, ModuleName,
+read_module_or_file(fm_file(FileName), ReturnTimestamp, ModuleName,
         SourceFileName, MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing file `", !IO),
@@ -1016,12 +993,11 @@ read_module_or_file(file(FileName), ReturnTimestamp, ModuleName,
         read_mod_from_file(FileName, ".m", "Reading file", Search,
             ReturnTimestamp, Items, Error, ModuleName, MaybeTimestamp, !IO),
 
-        %
-        % XXX If the module name doesn't match the file name the compiler
+        % XXX If the module name doesn't match the file name, the compiler
         % won't be able to find the `.used' file (the name of the `.used' file
         % is derived from the module name not the file name). This will be
         % fixed when mmake functionality is moved into the compiler.
-        %
+
         globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
         (
             Smart = yes,
@@ -1118,17 +1094,15 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         (
             Smart = yes,
             (
-                FileOrModule = module(ModuleName)
+                FileOrModule = fm_module(ModuleName)
             ;
-                FileOrModule = file(FileName),
-                % XXX This won't work if the module name
-                % doesn't match the file name -- such
-                % modules will always be recompiled.
+                FileOrModule = fm_file(FileName),
+                % XXX This won't work if the module name doesn't match
+                % the file name -- such modules will always be recompiled.
                 %
-                % This problem will be fixed when mmake
-                % functionality is moved into the compiler.
-                % The file_name->module_name mapping
-                % will be explicitly recorded.
+                % This problem will be fixed when mmake functionality
+                % is moved into the compiler. The file_name->module_name
+                % mapping will be explicitly recorded.
                 file_name_to_module_name(FileName, ModuleName)
             ),
 
@@ -1141,12 +1115,9 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
                 Target = target_asm,
                 ModulesToRecompile0 = some_modules([_ | _])
             ->
-                %
-                % With `--target asm', if one module
-                % needs to be recompiled, all need to be
-                % recompiled because they are all compiled
+                % With `--target asm', if one module needs to be recompiled,
+                % all need to be recompiled because they are all compiled
                 % into a single object file.
-                %
                 ModulesToRecompile = all_modules
             ;
                 ModulesToRecompile = ModulesToRecompile0
@@ -1157,11 +1128,9 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             ModulesToRecompile = all_modules
         ),
         ( ModulesToRecompile = some_modules([]) ->
-            % XXX Currently smart recompilation is disabled
-            % if mmc is linking the executable because it
-            % doesn't know how to check whether all the
-            % necessary intermediate files are present
-            % and up-to-date.
+            % XXX Currently smart recompilation is disabled if mmc is linking
+            % the executable because it doesn't know how to check whether
+            % all the necessary intermediate files are present and up-to-date.
             ModulesToLink = [],
             FactTableObjFiles = []
         ;
@@ -1244,12 +1213,11 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
                 TraceProf = yes
             )
         ->
-            % Some predicates in the builtin modules are missing
-            % typeinfo arguments, which means that execution
-            % tracing will not work on them. Predicates defined
-            % there should never be part of an execution trace
-            % anyway; they are effectively language primitives.
-            % (They may still be parts of stack traces.)
+            % Some predicates in the builtin modules are missing typeinfo
+            % arguments, which means that execution tracing will not work
+            % on them. Predicates defined there should never be part of
+            % an execution trace anyway; they are effectively language
+            % primitives. (They may still be parts of stack traces.)
             globals.lookup_bool_option(Globals, trace_stack_layout, TSL),
             globals.get_trace_level(Globals, TraceLevel),
 
@@ -1444,9 +1412,8 @@ find_timestamp_files_2(CompilationTarget, TimestampSuffix,
         CompilationTarget = target_asm,
         ModuleName \= TopLevelModuleName
     ->
-        % With `--target asm' all the nested
-        % sub-modules are placed in the `.s' file
-        % of the top-level module.
+        % With `--target asm' all the nested sub-modules are placed in
+        % the `.s' file of the top-level module.
         TimestampFiles = []
     ;
         module_name_to_file_name(ModuleName, TimestampSuffix, yes, FileName,
@@ -1489,7 +1456,7 @@ compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
     grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         NestedSubModules, ReadModules, MaybeTimestamp, Items, Module, Error2,
         !IO),
-    ( 
+    (
         ( Error2 = no_module_errors
         ; Error2 = some_module_errors
         ),
@@ -1534,8 +1501,8 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
         ( TypeCheckOnly = yes ->
             FactTableObjFiles = []
         ; ErrorCheckOnly = yes ->
-            % we may still want to run `unused_args' so that we get
-            % the appropriate warnings
+            % We may still want to run `unused_args' so that we get
+            % the appropriate warnings.
             globals.io_lookup_bool_option(warn_unused_args, UnusedArgs, !IO),
             (
                 UnusedArgs = yes,
@@ -1622,13 +1589,11 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     globals.io_get_target(Target, !IO),
     globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
 
-    %
-    % Remove any existing `.used' file before writing the
-    % output file file. This avoids leaving the old `used'
-    % file lying around if compilation is interrupted after
-    % the new output file is written but before the new
+    % Remove any existing `.used' file before writing the output file.
+    % This avoids leaving the old `used' file lying around if compilation
+    % is interrupted after the new output file is written but before the new
     % `.used' file is written.
-    %
+
     module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
@@ -1639,14 +1604,11 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ; Target = target_asm
             ; Target = target_x86_64
             ),
-            %
             % Produce the grade independent header file <module>.mh
             % containing function prototypes for the procedures
             % referred to by foreign_export pragmas.
-            %
             export.get_foreign_export_decls(!.HLDS, ExportDecls),
-            export.produce_header_file(!.HLDS, ExportDecls, ModuleName,
-                !IO)
+            export.produce_header_file(!.HLDS, ExportDecls, ModuleName, !IO)
         ;
             ( Target = target_java
             ; Target = target_il
@@ -1839,10 +1801,10 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     module_imports_get_module_name(ModuleImports0, ModuleName),
     (
         DontWriteDFile = yes,
-        % The only time the TransOptDeps are required is when
-        % creating the .trans_opt file.  If DontWriteDFile is yes,
-        % then error check only or type-check only is enabled, so
-        % we cant be creating the .trans_opt file.
+        % The only time the TransOptDeps are required is when creating the
+        % .trans_opt file. If DontWriteDFile is yes, then error check only
+        % or type-check only is enabled, so we can't be creating the
+        % .trans_opt file.
         MaybeTransOptDeps = no
     ;
         DontWriteDFile = no,
@@ -2018,22 +1980,21 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             )
         )
     ; MakeOptInt = yes ->
-        % If we're making the `.opt' file, then we can't
-        % read any `.trans_opt' files, since `.opt' files
-        % aren't allowed to depend on `.trans_opt' files.
+        % If we're making the `.opt' file, then we can't read any `.trans_opt'
+        % files, since `.opt' files aren't allowed to depend on `.trans_opt'
+        % files.
         Imports = Imports1,
         Error2 = no
     ;
         (
             TransOpt = yes,
-            % If transitive optimization is enabled, but we are
-            % not creating the .opt or .trans opt file, then import
-            % the trans_opt files for all the modules that are
-            % imported (or used), and for all ancestor modules.
+            % If transitive optimization is enabled, but we are not creating
+            % the .opt or .trans opt file, then import the trans_opt files
+            % for all the modules that are imported (or used), and for all
+            % ancestor modules.
             list.condense([Imports0 ^ parent_deps,
                 Imports0 ^ int_deps, Imports0 ^ impl_deps], TransOptFiles),
-            grab_trans_opt_files(TransOptFiles, Imports1, Imports, Error2,
-                !IO)
+            grab_trans_opt_files(TransOptFiles, Imports1, Imports, Error2, !IO)
         ;
             TransOpt = no,
             Imports = Imports1,
@@ -2173,9 +2134,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         WarnInstsWithNoMatchingType = no
     ),
 
-    %
     % Next typecheck the clauses.
-    %
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
     typecheck_module(!HLDS, TypeCheckSpecs, ExceededTypeCheckIterationLimit),
@@ -2219,9 +2178,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
 
         !:FoundError = !.FoundError `or` FoundTypeError,
 
-        %
         % Stop here if `--typecheck-only' was specified.
-        %
         globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
         (
             TypecheckOnly = yes
@@ -2324,6 +2281,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     ClosureAnalysis = yes,
                     mercury_compile.process_lambdas(Verbose, Stats,
                         !HLDS, !IO),
+
+                    mercury_compile.process_stms(Verbose, Stats, !HLDS, !IO),
                     mercury_compile.maybe_closure_analysis(Verbose, Stats,
                         !HLDS, !IO)
                 ;
@@ -2579,7 +2538,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    
+
     maybe_read_experimental_complexity_file(!HLDS, !IO),
 
     tabling(Verbose, Stats, !HLDS, !IO),
@@ -2587,6 +2546,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     process_lambdas(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
+
+    process_stms(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 113, "stm", !DumpInfo, !IO),
 
     expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 115, "equiv_types", !DumpInfo, !IO),
@@ -2600,7 +2562,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % five modules in the compiler and library). It is important that unique
     % mode analysis work most of the time after optimizations because
     % deforestation reruns it.
-    %
 
     % check_unique_modes(Verbose, Stats, !HLDS,
     %   FoundUniqError, !IO),
@@ -2613,7 +2574,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % Exception analysis and termination analysis need to come before any
     % optimization passes that could benefit from the information that
     % they provide.
-    %
+
     maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !DumpInfo, !IO),
 
@@ -2660,7 +2621,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     % Hoisting loop invariants first invokes pass 148, "mark_static".
     % "mark_static" is also run at stage 420.
-    %
     maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO),
     maybe_dump_hlds(!.HLDS, 150, "loop_inv", !DumpInfo, !IO),
 
@@ -2708,7 +2668,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % opportunities the other optimizations have provided for constant
     % propagation and we cannot do that once the term-size profiling or deep
     % profiling transformations have been applied.
-    %
     simplify(no, pre_prof_transforms, Verbose, Stats, !HLDS, SimplifySpecs,
         !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
@@ -3300,8 +3259,7 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
 :- pred check_stratification(bool::in, bool::in,
     module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
-check_stratification(Verbose, Stats, !HLDS, FoundError,
-        !IO) :-
+check_stratification(Verbose, Stats, !HLDS, FoundError, !IO) :-
     module_info_get_stratified_preds(!.HLDS, StratifiedPreds),
     globals.io_lookup_bool_option(warn_non_stratification, Warn, !IO),
     (
@@ -3464,8 +3422,7 @@ simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
-        !IO),
+    globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms, !IO),
     (
         StaticGroundTerms = yes,
         maybe_write_string(Verbose, "% Marking static ground terms...\n", !IO),
@@ -3662,6 +3619,18 @@ process_lambdas(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming lambda expressions...", !IO),
     maybe_flush_output(Verbose, !IO),
     lambda_process_module(!HLDS),
+    maybe_write_string(Verbose, " done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred process_stms(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+process_stms(Verbose, Stats, !HLDS, !IO) :-
+    maybe_write_string(Verbose, "% Transforming stm expressions...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    stm_process_module(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4049,40 +4018,40 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
         Sharing = no
     ).
 
-:- pred maybe_implicit_parallelism(bool::in, bool::in, 
+:- pred maybe_implicit_parallelism(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, parallel, Parallel),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.lookup_bool_option(Globals, implicit_parallelism, 
+    globals.lookup_bool_option(Globals, implicit_parallelism,
         ImplicitParallelism),
-    globals.lookup_string_option(Globals, feedback_file, 
+    globals.lookup_string_option(Globals, feedback_file,
         FeedbackFile),
     ( FeedbackFile = "" ->
         % No feedback file has been specified.
         true
     ;
-        ( 
+        (
             % If this is false, no implicit parallelism is to be introduced.
-            Parallel = yes, 
-            
-            % If this is false, then the user hasn't asked for implicit 
+            Parallel = yes,
+
+            % If this is false, then the user hasn't asked for implicit
             % parallelism.
-            ImplicitParallelism = yes, 
-            
-            % Our mechanism for implicit parallelism only works for the low 
+            ImplicitParallelism = yes,
+
+            % Our mechanism for implicit parallelism only works for the low
             % level backend.
-            HighLevelCode = no 
+            HighLevelCode = no
         ->
             globals.get_target(Globals, Target),
             (
                 Target = target_c,
                 maybe_write_string(Verbose, "% Applying implicit " ++
-                    "parallelism...\n", !IO), 
-                maybe_flush_output(Verbose, !IO), 
-                apply_implicit_parallelism_transformation(!HLDS, 
+                    "parallelism...\n", !IO),
+                maybe_flush_output(Verbose, !IO),
+                apply_implicit_parallelism_transformation(!HLDS,
                     FeedbackFile, !IO),
                 maybe_write_string(Verbose, "% done.\n", !IO),
                 maybe_report_stats(Stats, !IO)
@@ -4593,7 +4562,7 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     module_info_get_name(HLDS, ModuleName),
     module_info_get_foreign_decl(HLDS, ForeignDecls),
     module_info_get_foreign_import_module(HLDS, ForeignImports0),
-    %
+
     % Always include the module we are compiling amongst the foreign import
     % modules so that pragma foreign_exported procedures are visible to
     % foreign code in this module.
@@ -4602,8 +4571,8 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     % inconsistent in its treatement of self-imports.  Both this backend
     % (the LLDS) and the MLDS backend currently handle self foreign imports
     % directly.
-    %
-    ForeignSelfImport = foreign_import_module_info(UseForeignLanguage, 
+
+    ForeignSelfImport = foreign_import_module_info(UseForeignLanguage,
         ModuleName, term.context_init),
     ForeignImports = [ ForeignSelfImport | ForeignImports0 ],
     module_info_get_foreign_body_code(HLDS, ForeignBodyCode),

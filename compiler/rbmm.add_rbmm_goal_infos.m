@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -349,6 +349,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = shorthand(_), 
+    % These should have been expanded out by now.
     unexpected(this_file,
         "collect_rbmm_goal_info_goal_expr: shorthand unexpected").
 

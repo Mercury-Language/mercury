@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -378,6 +378,11 @@ dump_goal_path_step(step_first, !IO) :-
     io.write_char('f', !IO).
 dump_goal_path_step(step_later, !IO) :-
     io.write_char('l', !IO).
+dump_goal_path_step(step_atomic_main, !IO) :-
+    io.write_char('a', !IO).
+dump_goal_path_step(step_atomic_orelse(N), !IO) :-
+    io.write_char('o', !IO),
+    io.write_int(N, !IO).
 
 robdd_to_dot(Constraint, ProgVarSet, Info, FileName, !IO) :-
     robdd_to_dot(Constraint ^ robdd, P, FileName, !IO),
@@ -400,8 +405,7 @@ robdd_to_dot(Constraint, ProgVarSet, Info, FileName, !IO) :-
 
 atomic_prodvars_map(Constraint, MCInfo) =
     (
-        some_vars(VarsEntailed) =
-            vars_entailed(ensure_normalised(Constraint))
+        some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint))
     ->
         list.foldl(
             (func(MCVar, PVM) =

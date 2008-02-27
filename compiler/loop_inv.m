@@ -393,8 +393,8 @@ invariant_goal_candidates_2(PPId,
 
 invariant_goal_candidates_2(_PPId,
         hlds_goal(shorthand(_), _GoalInfo), _IGCs) = _ :-
-    unexpected(this_file,
-        "invariant_goal_candidates_2/3: shorthand/1 in hlds_goal").
+    % These should have been expanded out by now.
+    unexpected(this_file, "invariant_goal_candidates_2: shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -862,7 +862,8 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
     hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
 
     requantify_proc(!AuxProcInfo),
-    recompute_instmap_delta_proc(no, !AuxProcInfo, !ModuleInfo),
+    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        !AuxProcInfo, !ModuleInfo),
 
     module_info_set_pred_proc_info(AuxPredId, AuxProcId,
         AuxPredInfo, !.AuxProcInfo, !ModuleInfo).
@@ -978,8 +979,8 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
         RttiVarMaps, ProcInfo0, ProcInfo1),
 
     quantification.requantify_proc(ProcInfo1, ProcInfo2),
-    recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
-        ModuleInfo0, ModuleInfo1),
+    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        ProcInfo2, ProcInfo, ModuleInfo0, ModuleInfo1),
 
     module_info_set_pred_proc_info(PredId, ProcId,
         PredInfo0, ProcInfo, ModuleInfo1, ModuleInfo).

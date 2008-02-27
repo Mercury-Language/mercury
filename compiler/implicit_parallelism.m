@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,16 +123,16 @@ apply_implicit_parallelism_transformation(!ModuleInfo, FeedbackFile, !IO) :-
 :- pred process_preds_for_implicit_parallelism(list(pred_id)::in,
     list(candidate_call_site)::in, module_info::in, module_info::out) is det.
 
-process_preds_for_implicit_parallelism([], _ListCandidateCallSite,
-        !ModuleInfo).
-process_preds_for_implicit_parallelism([PredId | PredIdList],
-        ListCandidateCallSite, !ModuleInfo) :-
+process_preds_for_implicit_parallelism([],
+        _CandidateCallSites, !ModuleInfo).
+process_preds_for_implicit_parallelism([PredId | PredIds],
+        CandidateCallSites, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     process_procs_for_implicit_parallelism(PredId, ProcIds,
-        ListCandidateCallSite, !ModuleInfo),
-    process_preds_for_implicit_parallelism(PredIdList,
-        ListCandidateCallSite, !ModuleInfo).
+        CandidateCallSites, !ModuleInfo),
+    process_preds_for_implicit_parallelism(PredIds,
+        CandidateCallSites, !ModuleInfo).
 
     % Process procedures for implicit parallelism.
     %
@@ -141,21 +141,20 @@ process_preds_for_implicit_parallelism([PredId | PredIdList],
     module_info::in, module_info::out) is det.
 
 process_procs_for_implicit_parallelism(_PredId, [],
-        _ListCandidateCallSite, !ModuleInfo).
+        _CandidateCallSites, !ModuleInfo).
 process_procs_for_implicit_parallelism(PredId, [ProcId | ProcIds],
-        ListCandidateCallSite, !ModuleInfo) :-
+        CandidateCallSites, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
     % Initialize the counter for the slot number.
     SiteNumCounter = counter.init(0),
     pred_proc_id_to_raw_id(PredInfo0, ProcId, CallerRawId),
-    get_callees_feedback(CallerRawId, ListCandidateCallSite, [],
-        CallSites),
+    get_callees_feedback(CallerRawId, CandidateCallSites, [], CallSites),
     list.length(CallSites, NumCallSites),
     ( NumCallSites = 0 ->
         % No candidate calls for implicit parallelism in this procedure.
         process_procs_for_implicit_parallelism(PredId, ProcIds,
-            ListCandidateCallSite, !ModuleInfo)
+            CandidateCallSites, !ModuleInfo)
     ;
         proc_info_get_goal(ProcInfo0, Body0),
         process_goal_for_implicit_parallelism(Body0, Body, ProcInfo0,
@@ -163,13 +162,12 @@ process_procs_for_implicit_parallelism(PredId, [ProcId | ProcIds],
         proc_info_set_goal(Body, ProcInfo0, ProcInfo1),
         proc_info_set_has_parallel_conj(yes, ProcInfo1, ProcInfo2),
         requantify_proc(ProcInfo2, ProcInfo3),
-        RecomputeAtomic = no,
-        recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo3, ProcInfo,
-            !ModuleInfo),
+        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+            ProcInfo3, ProcInfo, !ModuleInfo),
         pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
         process_procs_for_implicit_parallelism(PredId, ProcIds,
-            ListCandidateCallSite, !ModuleInfo)
+            CandidateCallSites, !ModuleInfo)
     ).
 
     % Filter the list of call site information from the feedback file so that
@@ -180,15 +178,15 @@ process_procs_for_implicit_parallelism(PredId, [ProcId | ProcIds],
     list(candidate_call_site)::in, list(candidate_call_site)::out) is det.
 
 get_callees_feedback(_Caller, [], !ResultAcc).
-get_callees_feedback(Caller, [CandidateCallSite | ListCandidateCallSite],
+get_callees_feedback(Caller, [CandidateCallSite | CandidateCallSites],
         !ResultAcc) :-
     CandidateCallSite = candidate_call_site(CSSCaller, _, _, _),
     ( Caller = CSSCaller ->
-        !:ResultAcc = [CandidateCallSite | !.ResultAcc],
-        get_callees_feedback(Caller, ListCandidateCallSite, !ResultAcc)
+        !:ResultAcc = [CandidateCallSite | !.ResultAcc]
     ;
-        get_callees_feedback(Caller, ListCandidateCallSite, !ResultAcc)
-    ).
+        true
+    ),
+    get_callees_feedback(Caller, CandidateCallSites, !ResultAcc).
 
     % Process a goal for implicit parallelism.
     % MaybeConj is the conjunction which contains Goal.
@@ -200,7 +198,7 @@ get_callees_feedback(Caller, [CandidateCallSite | ListCandidateCallSite],
     counter::in, counter::out) is det.
 
 process_goal_for_implicit_parallelism(!Goal, ProcInfo, !ModuleInfo,
-    !MaybeConj, !IndexInConj, !CalleeListToBeParallelized, !SiteNumCounter) :-
+        !MaybeConj, !IndexInConj, !CalleesToBeParallelized, !SiteNumCounter) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = unify(_, _, _, _, _),
@@ -208,14 +206,14 @@ process_goal_for_implicit_parallelism(!Goal, ProcInfo, !ModuleInfo,
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         process_call_for_implicit_parallelism(!.Goal, ProcInfo, !ModuleInfo,
-            !IndexInConj, !MaybeConj, !CalleeListToBeParallelized,
+            !IndexInConj, !MaybeConj, !CalleesToBeParallelized,
             !SiteNumCounter)
         % We deal with the index in the conjunction in
         % process_call_for_implicit_parallelism.
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         process_call_for_implicit_parallelism(!.Goal, ProcInfo, !ModuleInfo,
-            !IndexInConj, !MaybeConj, !CalleeListToBeParallelized,
+            !IndexInConj, !MaybeConj, !CalleesToBeParallelized,
             !SiteNumCounter)
     ;
         GoalExpr0 = generic_call(Details, _, _, _),
@@ -223,12 +221,12 @@ process_goal_for_implicit_parallelism(!Goal, ProcInfo, !ModuleInfo,
             Details = higher_order(_, _, _, _),
             process_call_for_implicit_parallelism(!.Goal, ProcInfo,
                 !ModuleInfo, !IndexInConj, !MaybeConj,
-                !CalleeListToBeParallelized, !SiteNumCounter)
+                !CalleesToBeParallelized, !SiteNumCounter)
         ;
             Details = class_method(_, _, _, _),
             process_call_for_implicit_parallelism(!.Goal, ProcInfo,
                 !ModuleInfo, !IndexInConj, !MaybeConj,
-                !CalleeListToBeParallelized, !SiteNumCounter)
+                !CalleesToBeParallelized, !SiteNumCounter)
         ;
             Details = event_call(_),
             increment_index_if_in_conj(!.MaybeConj, !IndexInConj)
@@ -242,69 +240,68 @@ process_goal_for_implicit_parallelism(!Goal, ProcInfo, !ModuleInfo,
         % slot number.
         GoalExpr0 = conj(_, _),
         process_conj_for_implicit_parallelism(GoalExpr0, GoalExpr, 1,
-            ProcInfo, !ModuleInfo, !CalleeListToBeParallelized,
-            !SiteNumCounter),
+            ProcInfo, !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter),
         % A plain conjunction will never be contained in an other plain
-        % conjunction. As for parallel conjunctions, they will not
-        % be modified. Therefore, incrementing the index suffices (no need to
-        % call update_conj_and_index).
+        % conjunction. As for parallel conjunctions, they will not be modified.
+        % Therefore, incrementing the index suffices (no need to call
+        % update_conj_and_index).
         !:Goal = hlds_goal(GoalExpr, GoalInfo),
         increment_index_if_in_conj(!.MaybeConj, !IndexInConj)
     ;
         GoalExpr0 = disj(Goals0),
         process_disj_for_implicit_parallelism(Goals0, [], Goals,
-            ProcInfo, !ModuleInfo, !CalleeListToBeParallelized,
+            ProcInfo, !ModuleInfo, !CalleesToBeParallelized,
             !SiteNumCounter),
-        GoalProcessed = hlds_goal(disj(Goals), GoalInfo),
-        update_conj_and_index(!MaybeConj, GoalProcessed, !IndexInConj),
+        GoalExpr = disj(Goals),
         % If we are not in a conjunction, then we need to return the modified
-        % value of Goal. In we are in a conjunction, that information is not
+        % value of Goal. If we are in a conjunction, that information is not
         % read (see process_conj_for_implicit_parallelism).
-        !:Goal = GoalProcessed
+        !:Goal = hlds_goal(GoalExpr, GoalInfo),
+        update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         process_switch_cases_for_implicit_parallelism(Cases0, [], Cases,
-            ProcInfo, !ModuleInfo, !CalleeListToBeParallelized,
-            !SiteNumCounter),
-        GoalProcessed = hlds_goal(switch(Var, CanFail, Cases), GoalInfo),
-        update_conj_and_index(!MaybeConj, GoalProcessed, !IndexInConj),
-        !:Goal = GoalProcessed
+            ProcInfo, !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter),
+        GoalExpr = switch(Var, CanFail, Cases),
+        !:Goal = hlds_goal(GoalExpr, GoalInfo),
+        update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
         GoalExpr0 = negation(Goal0),
         process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
-            !ModuleInfo, !MaybeConj, !IndexInConj, !CalleeListToBeParallelized,
+            !ModuleInfo, !MaybeConj, !IndexInConj, !CalleesToBeParallelized,
             !SiteNumCounter),
-        GoalProcessed = hlds_goal(negation(Goal), GoalInfo),
-        update_conj_and_index(!MaybeConj, GoalProcessed, !IndexInConj),
-        !:Goal = GoalProcessed
+        GoalExpr = negation(Goal),
+        !:Goal = hlds_goal(GoalExpr, GoalInfo),
+        update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
         GoalExpr0 = scope(Reason, Goal0),
         % 0 is the default value when we are not in a conjunction (in this case
         % a scope).
         process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
-            !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized,
+            !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized,
             !SiteNumCounter),
-        GoalProcessed = hlds_goal(scope(Reason, Goal), GoalInfo),
-        update_conj_and_index(!MaybeConj, GoalProcessed, !IndexInConj),
-        !:Goal = GoalProcessed
+        GoalExpr = scope(Reason, Goal),
+        !:Goal = hlds_goal(GoalExpr, GoalInfo),
+        update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         process_goal_for_implicit_parallelism(Cond0, Cond, ProcInfo,
-            !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized,
+            !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized,
             !SiteNumCounter),
         process_goal_for_implicit_parallelism(Then0, Then, ProcInfo,
-            !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized,
+            !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized,
             !SiteNumCounter),
         process_goal_for_implicit_parallelism(Else0, Else, ProcInfo,
-            !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized,
+            !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized,
             !SiteNumCounter),
-        GoalProcessed = hlds_goal(if_then_else(Vars, Cond, Then, Else),
-            GoalInfo),
-        update_conj_and_index(!MaybeConj, GoalProcessed, !IndexInConj),
-        !:Goal = GoalProcessed
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        !:Goal = hlds_goal(GoalExpr, GoalInfo),
+        update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
         GoalExpr0 = shorthand(_),
-        increment_index_if_in_conj(!.MaybeConj, !IndexInConj)
+        % These should have been expanded out by now.
+        unexpected(this_file,
+            "process_goal_for_implicit_parallelism: shorthand")
     ).
 
     % Increment the index if we are in a conjunction.
@@ -329,7 +326,7 @@ increment_index_if_in_conj(MaybeConj, !IndexInConj) :-
     counter::in, counter::out) is det.
 
 process_call_for_implicit_parallelism(Call, ProcInfo, !ModuleInfo,
-    !IndexInConj, !MaybeConj, !CalleeListToBeParallelized, !SiteNumCounter) :-
+        !IndexInConj, !MaybeConj, !CalleesToBeParallelized, !SiteNumCounter) :-
     counter.allocate(SlotNumber, !SiteNumCounter),
     get_call_kind_and_callee(!.ModuleInfo, Call, Kind, CalleeRawId),
     (
@@ -338,12 +335,12 @@ process_call_for_implicit_parallelism(Call, ProcInfo, !ModuleInfo,
     ->
         (
             is_in_css_list_to_be_parallelized(Kind, SlotNumber, CalleeRawId,
-                !.CalleeListToBeParallelized, [], !:CalleeListToBeParallelized)
+                !.CalleesToBeParallelized, [], !:CalleesToBeParallelized)
         ->
             (
                 build_goals_surrounded_by_calls_to_be_parallelized(ConjGoals0,
                     !.ModuleInfo, [Call], Goals, !.IndexInConj + 1, End,
-                    !SiteNumCounter, !CalleeListToBeParallelized)
+                    !SiteNumCounter, !CalleesToBeParallelized)
             ->
                 parallelize_calls(Goals, !.IndexInConj, End, Conj0, Conj,
                     ProcInfo, !ModuleInfo),
@@ -351,7 +348,7 @@ process_call_for_implicit_parallelism(Call, ProcInfo, !ModuleInfo,
                 !:MaybeConj = yes(Conj)
             ;
                 % The next call is not in the feedback file or we've hit a
-                % plain conjunction/disjunction/switch/if then else.
+                % plain conjunction/disjunction/switch/if_then_else.
                 !:IndexInConj = !.IndexInConj + 1
             )
         ;
@@ -374,14 +371,12 @@ get_call_kind_and_callee(ModuleInfo, Call, Kind, CalleeRawId) :-
     GoalExpr = Call ^ hlds_goal_expr,
     (
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
-        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-            PredInfo, _),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, _),
         pred_proc_id_to_raw_id(PredInfo, ProcId, CalleeRawId),
         Kind = csk_normal
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId, _, _, _, _),
-        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-            PredInfo, _),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, _),
         pred_proc_id_to_raw_id(PredInfo, ProcId, CalleeRawId),
         Kind = csk_special
     ;
@@ -396,10 +391,10 @@ get_call_kind_and_callee(ModuleInfo, Call, Kind, CalleeRawId) :-
             Kind = csk_method
         ;
             Details = event_call(_),
-            unexpected(this_file, "get_call_kind_and_callee")
+            unexpected(this_file, "get_call_kind_and_callee: event_call")
         ;
             Details = cast(_),
-            unexpected(this_file, "get_call_kind_and_callee")
+            unexpected(this_file, "get_call_kind_and_callee: cast")
         )
     ;
         % XXX Some of our callers can call us with these kinds of goals.
@@ -446,8 +441,8 @@ is_in_css_list_to_be_parallelized(Kind, SlotNumber, CalleeRawId,
         CandidateCallSites = [],
         fail
     ;
-        CandidateCallSites = [CandidateCallSite | CandidateCallSitesTail],
-        CandidateCallSite = candidate_call_site(_, CSSSlotNumber, CSSKind,
+        CandidateCallSites = [HeadCandidateCallSite | TailCandidateCallSites],
+        HeadCandidateCallSite = candidate_call_site(_, CSSSlotNumber, CSSKind,
             CSSCallee),
         % =< because there is not a one to one correspondance with the source
         % code. New calls might have been added by the previous passes of the
@@ -457,11 +452,11 @@ is_in_css_list_to_be_parallelized(Kind, SlotNumber, CalleeRawId,
             CSSKind = Kind,
             CSSCallee = CalleeRawId
         ->
-            !:ResultAcc = !.ResultAcc ++ CandidateCallSitesTail
+            !:ResultAcc = !.ResultAcc ++ TailCandidateCallSites
         ;
-            !:ResultAcc = !.ResultAcc ++ [CandidateCallSite],
+            !:ResultAcc = !.ResultAcc ++ [HeadCandidateCallSite],
             is_in_css_list_to_be_parallelized(Kind, SlotNumber, CalleeRawId,
-                CandidateCallSitesTail, !ResultAcc)
+                TailCandidateCallSites, !ResultAcc)
         )
     ).
 
@@ -479,7 +474,7 @@ is_in_css_list_to_be_parallelized(Kind, SlotNumber, CalleeRawId,
     is semidet.
 
 build_goals_surrounded_by_calls_to_be_parallelized(ConjGoals, ModuleInfo,
-        !ResultAcc, !Index, !SiteNumCounter, !CalleeListToBeParallelized) :-
+        !ResultAcc, !Index, !SiteNumCounter, !CalleesToBeParallelized) :-
     list.length(ConjGoals, Length),
     ( !.Index > Length ->
         fail
@@ -505,21 +500,21 @@ build_goals_surrounded_by_calls_to_be_parallelized(ConjGoals, ModuleInfo,
                         CalleeRawId),
                     (
                         is_in_css_list_to_be_parallelized(Kind, SlotNumber,
-                            CalleeRawId, !.CalleeListToBeParallelized, [],
-                            !:CalleeListToBeParallelized)
+                            CalleeRawId, !.CalleesToBeParallelized,
+                            [], !:CalleesToBeParallelized)
                     ->
                         true
                     ;
                         !:Index = !.Index + 1,
                         build_goals_surrounded_by_calls_to_be_parallelized(
                             ConjGoals, ModuleInfo, !ResultAcc, !Index,
-                            !SiteNumCounter, !CalleeListToBeParallelized)
+                            !SiteNumCounter, !CalleesToBeParallelized)
                     )
                 ;
                     !:Index = !.Index + 1,
                     build_goals_surrounded_by_calls_to_be_parallelized(
                         ConjGoals, ModuleInfo, !ResultAcc, !Index,
-                        !SiteNumCounter, !CalleeListToBeParallelized)
+                        !SiteNumCounter, !CalleesToBeParallelized)
                 )
             )
         )
@@ -537,6 +532,8 @@ goal_is_conjunction(Goal, Type) :-
     % Succeed if Goal is a call or a negated call.
     % Call here includes higher-order and class method calls.
     % Fail otherwise.
+    %
+    % XXX Should be a function returning a bool or something similar.
     %
 :- pred goal_is_call_or_negated_call(hlds_goal::in) is semidet.
 
@@ -571,9 +568,9 @@ goal_is_call_or_negated_call(Goal) :-
     ).
 
     % Parallelize two calls/a call and a parallel conjunction which might have
-    % goals between them. If these have no dependencies with the first call then
-    % we move them before the first call and parallelize the two calls/call and
-    % parallel conjunction.
+    % goals between them. If these have no dependencies with the first call
+    % then we move them before the first call and parallelize the two
+    % calls/call and parallel conjunction.
     %
     % Goals is contained in Conj.
     %
@@ -735,7 +732,8 @@ add_call_to_parallel_conjunction(Call, ParallelGoal0, ParallelGoal) :-
             ParallelGoalInfo1),
         goal_info_set_instmap_delta(InstMapDelta, ParallelGoalInfo1,
             ParallelGoalInfo2),
-        goal_info_set_determinism(Detism, ParallelGoalInfo2, ParallelGoalInfo3),
+        goal_info_set_determinism(Detism,
+            ParallelGoalInfo2, ParallelGoalInfo3),
         goal_info_set_purity(Purity, ParallelGoalInfo3, ParallelGoalInfo),
         ParallelGoalExpr = conj(parallel_conj, GoalList),
         ParallelGoal = hlds_goal(ParallelGoalExpr, ParallelGoalInfo)
@@ -748,7 +746,9 @@ add_call_to_parallel_conjunction(Call, ParallelGoal0, ParallelGoal) :-
     %
 :- pred goal_depends_on_goal(hlds_goal::in, hlds_goal::in) is semidet.
 
-goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
+goal_depends_on_goal(Goal1, Goal2) :-
+    Goal1 = hlds_goal(_, GoalInfo1),
+    Goal2 = hlds_goal(_, GoalInfo2),
     InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     instmap_delta_changed_vars(InstmapDelta1, ChangedVars1),
     NonLocals2 = goal_info_get_nonlocals(GoalInfo2),
@@ -764,7 +764,7 @@ goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
     counter::in, counter::out) is det.
 
 process_conj_for_implicit_parallelism(!GoalExpr, IndexInConj, ProcInfo,
-    !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter) :-
+    !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter) :-
     ( !.GoalExpr = conj(_, GoalsConj) ->
         list.length(GoalsConj, Length),
         ( IndexInConj > Length ->
@@ -776,14 +776,14 @@ process_conj_for_implicit_parallelism(!GoalExpr, IndexInConj, ProcInfo,
             % MaybeConj matters.
             process_goal_for_implicit_parallelism(GoalInConj, _, ProcInfo,
                 !ModuleInfo, MaybeConj0, MaybeConj, IndexInConj, IndexInConj0,
-                !CalleeListToBeParallelized, !SiteNumCounter),
+                !CalleesToBeParallelized, !SiteNumCounter),
             ( MaybeConj = yes(GoalExprProcessed) ->
                 !:GoalExpr = GoalExprProcessed
             ;
                 unexpected(this_file, "process_conj_for_implicit_parallelism")
             ),
             process_conj_for_implicit_parallelism(!GoalExpr, IndexInConj0,
-                ProcInfo, !ModuleInfo, !CalleeListToBeParallelized,
+                ProcInfo, !ModuleInfo, !CalleesToBeParallelized,
                 !SiteNumCounter)
         )
     ;
@@ -799,14 +799,14 @@ process_conj_for_implicit_parallelism(!GoalExpr, IndexInConj, ProcInfo,
     counter::in, counter::out) is det.
 
 process_disj_for_implicit_parallelism([], !GoalsAcc, _ProcInfo,
-        !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter).
+        !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter).
 process_disj_for_implicit_parallelism([Goal0 | Goals], !GoalsAcc,
-        ProcInfo, !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter) :-
+        ProcInfo, !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter) :-
     process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
-        !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized, !SiteNumCounter),
+        !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized, !SiteNumCounter),
     !:GoalsAcc = !.GoalsAcc ++ [Goal],
     process_disj_for_implicit_parallelism(Goals, !GoalsAcc, ProcInfo,
-        !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter).
+        !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter).
 
     % If we are in a conjunction, update it by replacing the goal at index by
     % Goal and increment the index.
@@ -833,16 +833,16 @@ update_conj_and_index(!MaybeConj, Goal, !IndexInConj) :-
     counter::in, counter::out) is det.
 
 process_switch_cases_for_implicit_parallelism([], !CasesAcc, _ProcInfo,
-        !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter).
+        !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter).
 process_switch_cases_for_implicit_parallelism([Case0 | Cases], !CasesAcc,
-        ProcInfo, !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter) :-
+        ProcInfo, !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
-        !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized, !SiteNumCounter),
+        !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized, !SiteNumCounter),
     Case = case(MainConsId, OtherConsIds, Goal),
     !:CasesAcc = !.CasesAcc ++ [Case],
     process_switch_cases_for_implicit_parallelism(Cases, !CasesAcc,
-        ProcInfo, !ModuleInfo, !CalleeListToBeParallelized, !SiteNumCounter).
+        ProcInfo, !ModuleInfo, !CalleesToBeParallelized, !SiteNumCounter).
 
 %-----------------------------------------------------------------------------%
 
@@ -851,30 +851,28 @@ process_switch_cases_for_implicit_parallelism([Case0 | Cases], !CasesAcc,
 :- pred parse_feedback_file(string::in,
     maybe_error(list(candidate_call_site))::out, io::di, io::uo) is det.
 
-parse_feedback_file(InputFile, MaybeListCandidateCallSite, !IO) :-
+parse_feedback_file(InputFile, MaybeCandidateCallSites, !IO) :-
     io.open_input(InputFile, Result, !IO),
     (
         Result = io.error(ErrInput),
-        MaybeListCandidateCallSite = error(io.error_message(ErrInput))
+        MaybeCandidateCallSites = error(io.error_message(ErrInput))
     ;
         Result = ok(Stream),
         io.read_file_as_string(Stream, MaybeFileAsString, !IO),
         (
             MaybeFileAsString = ok(FileAsString),
-            LineList = string.words_separator(is_carriage_return,
-                FileAsString),
-            process_header(LineList, MaybeBodyFileAsListString, !IO),
+            Lines = string.words_separator(is_carriage_return, FileAsString),
+            process_feedback_file_header(Lines, MaybeBodyLines, !IO),
             (
-                MaybeBodyFileAsListString = error(ErrProcessHeader),
-                MaybeListCandidateCallSite = error(ErrProcessHeader)
+                MaybeBodyLines = error(HeaderError),
+                MaybeCandidateCallSites = error(HeaderError)
             ;
-                MaybeBodyFileAsListString = ok(BodyFileAsListString),
-                process_body(BodyFileAsListString, MaybeListCandidateCallSite)
+                MaybeBodyLines = ok(BodyLines),
+                process_feedback_file_body(BodyLines, MaybeCandidateCallSites)
             )
         ;
-            MaybeFileAsString = error(_, ErrReadFileAsString),
-            MaybeListCandidateCallSite =
-                error(io.error_message(ErrReadFileAsString))
+            MaybeFileAsString = error(_, ReadError),
+            MaybeCandidateCallSites = error(io.error_message(ReadError))
         ),
         io.close_input(Stream, !IO)
     ).
@@ -886,83 +884,66 @@ is_carriage_return(Char) :-
 
     % Process the header of the feedback file.
     %
-:- pred process_header(list(string)::in, maybe_error(list(string))::out,
-    io::di, io::uo) is det.
+:- pred process_feedback_file_header(list(string)::in,
+    maybe_error(list(string))::out, io::di, io::uo) is det.
 
-process_header(FileAsListString, MaybeFileAsListStringWithoutHeader, !IO) :-
-    ( list.index0(FileAsListString, 0, Type) ->
-        ( Type = "Profiling feedback file" ->
-            (list.index0(FileAsListString, 1, Version) ->
-                ( Version = "Version = 1.0" ->
-                    list.det_split_list(4, FileAsListString, _,
-                        FileAsListStringWithoutHeader),
-                    MaybeFileAsListStringWithoutHeader =
-                        ok(FileAsListStringWithoutHeader)
-                ;
-                    MaybeFileAsListStringWithoutHeader =
-                        error("Profiling feedback file version incorrect")
-                )
-            ;
-                MaybeFileAsListStringWithoutHeader =
-                    error("Not a profiling feedback file")
-            )
+process_feedback_file_header(Lines, MaybeBodyLines, !IO) :-
+    (
+        Lines = [IdLine, VersionLine, _MeasureLine, _ThresholdLine
+            | BodyLines],
+        IdLine = "Profiling feedback file"
+    ->
+        ( VersionLine = "Version = 1.0" ->
+            MaybeBodyLines = ok(BodyLines)
         ;
-            MaybeFileAsListStringWithoutHeader =
-                error("Not a profiling feedback file")
+            MaybeBodyLines = error("Profiling feedback file version incorrect")
         )
     ;
-        MaybeFileAsListStringWithoutHeader =
-            error("Not a profiling feedback file")
+        MaybeBodyLines = error("Not a profiling feedback file")
     ).
 
     % Process the body of the feedback file.
     %
-:- pred process_body(list(string)::in,
+:- pred process_feedback_file_body(list(string)::in,
     maybe_error(list(candidate_call_site))::out) is det.
 
-process_body(CoreFileAsListString, MaybeListCandidateCallSite) :-
-    ( process_body2(CoreFileAsListString, [], ListCandidateCallSite) ->
-        MaybeListCandidateCallSite = ok(ListCandidateCallSite)
+process_feedback_file_body(BodyLines, MaybeCandidateCallSites) :-
+    ( process_feedback_file_body_2(BodyLines, [], CandidateCallSites) ->
+        MaybeCandidateCallSites = ok(CandidateCallSites)
     ;
-        MaybeListCandidateCallSite =
+        MaybeCandidateCallSites =
             error("Profiling feedback file is not well-formed")
     ).
 
-:- pred process_body2(list(string)::in, list(candidate_call_site)::in,
-    list(candidate_call_site)::out) is semidet.
+:- pred process_feedback_file_body_2(list(string)::in,
+    list(candidate_call_site)::in, list(candidate_call_site)::out) is semidet.
 
-process_body2([], !ListCandidateCallSiteAcc).
-process_body2([Line | Lines], !ListCandidateCallSiteAcc) :-
+process_feedback_file_body_2([], !CandidateCallSites).
+process_feedback_file_body_2([Line | Lines], !CandidateCallSites) :-
     Words = string.words_separator(is_whitespace, Line),
-    list.index0_det(Words, 0, Caller),
+    Words = [Caller, SlotNumber, KindAsString | WordsTail],
     ( Caller = "Mercury" ->
-        process_body2(Lines, !ListCandidateCallSiteAcc)
+        true
     ;
-        list.index0_det(Words, 1, SlotNumber),
         string.to_int(SlotNumber, IntSlotNumber),
-        list.index0_det(Words, 2, KindAsString),
-        ( construct_call_site_kind(KindAsString, Kind) ->
-            (
-                Kind = csk_normal,
-                list.index0_det(Words, 3, Callee)
-            ;
-                ( Kind = csk_higher_order
-                ; Kind = csk_method
-                ; Kind = csk_special
-                ; Kind = csk_callback
-                ),
-                Callee = ""
-            ),
-            CandidateCallSite = candidate_call_site(Caller, IntSlotNumber,
-                Kind, Callee)
+        construct_call_site_kind(KindAsString, Kind),
+        (
+            Kind = csk_normal,
+            WordsTail = [Callee]
         ;
-            % Unexpected call site kind.
-            unexpected(this_file, "process_body2")
+            ( Kind = csk_higher_order
+            ; Kind = csk_method
+            ; Kind = csk_special
+            ; Kind = csk_callback
+            ),
+            WordsTail = [],
+            Callee = ""
         ),
-        !:ListCandidateCallSiteAcc =
-            [CandidateCallSite | !.ListCandidateCallSiteAcc],
-        process_body2(Lines, !ListCandidateCallSiteAcc)
-    ).
+        CandidateCallSite = candidate_call_site(Caller, IntSlotNumber,
+            Kind, Callee),
+        !:CandidateCallSites = [CandidateCallSite | !.CandidateCallSites]
+    ),
+    process_feedback_file_body_2(Lines, !CandidateCallSites).
 
 %-----------------------------------------------------------------------------%
 

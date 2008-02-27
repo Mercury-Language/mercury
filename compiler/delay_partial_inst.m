@@ -335,7 +335,6 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
 
                 % Mark the procedure as changed.
                 !DelayInfo ^ dpi_changed := yes
-
             else
                 (
                     % Tranform lambda goals as well. Non-local variables in
@@ -395,7 +394,6 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             )
         ;
             Unify = complicated_unify(_UniMode, CanFail, _TypeInfos),
-            %
             % Deal with tests generated for calls to implied modes.
             %
             %       LHS := f(_),
@@ -408,7 +406,6 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             %
             % XXX I have not seen a case where the LHS and RHS are swapped
             % but we should handle that if it comes up.
-            %
             (if
                 CanFail = can_fail,
                 RHS0 = rhs_var(RHSVar),
@@ -439,10 +436,26 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         ),
         Goal = Goal0
     ;
-        GoalExpr0 = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file,
-            "delay_partial_inst_in_goal: unexpected shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            % XXX Is it ok to ignore the updated ConstructMaps,
+            % and if yes, why? This should be documented.
+            delay_partial_inst_in_goal(InstMap0, MainGoal0, MainGoal,
+                !.ConstructMap, _, !DelayInfo),
+            delay_partial_inst_in_goals(InstMap0, OrElseGoals0, OrElseGoals,
+                !.ConstructMap, _, !DelayInfo),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file,
+                "delay_partial_inst_in_goal: bi_implication")
+        )
     ).
 
 :- pred create_canonical_variables(prog_vars::in, prog_vars::out,
@@ -529,6 +542,8 @@ delay_partial_inst_in_conj(InstMap0, [Goal0 | Goals0], Goals, !ConstructMap,
 delay_partial_inst_in_goals(_, [], [], !ConstructMap, !DelayInfo).
 delay_partial_inst_in_goals(InstMap0,
         [Goal0 | Goals0], [Goal | Goals], !ConstructMap, !DelayInfo) :-
+    % XXX I think using the ConstructMap at the end of one disjunct
+    % at the start of the next disjunct is a bug. zs
     delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
         !DelayInfo),
     delay_partial_inst_in_goals(InstMap0, Goals0, Goals, !ConstructMap,
@@ -541,6 +556,8 @@ delay_partial_inst_in_goals(InstMap0,
 delay_partial_inst_in_cases(_, [], [], !ConstructMap, !DelayInfo).
 delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
         !ConstructMap, !DelayInfo) :-
+    % XXX I think using the ConstructMap at the end of one case
+    % at the start of the next case is a bug. zs
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
         !DelayInfo),

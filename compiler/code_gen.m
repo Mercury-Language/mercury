@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,12 +74,8 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
     get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
 
     % Make any changes to liveness before Goal.
-    ( goal_is_atomic(GoalExpr) ->
-        IsAtomic = yes
-    ;
-        IsAtomic = no
-    ),
-    pre_goal_update(GoalInfo, IsAtomic, !CI),
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr),
+    pre_goal_update(GoalInfo, HasSubGoals, !CI),
     get_instmap(!.CI, InstMap),
     ( instmap.is_reachable(InstMap) ->
         CodeModel = goal_info_get_code_model(GoalInfo),

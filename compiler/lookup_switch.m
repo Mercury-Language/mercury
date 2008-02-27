@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -354,7 +354,7 @@ generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
         % The pre- and post-goal updates for the disjuncts themselves are
         % done as part of the call to generate_goal in
         % generate_constants_for_disjuncts in lookup_util.m.
-        pre_goal_update(GoalInfo, no, !CI),
+        pre_goal_update(GoalInfo, has_subgoals, !CI),
         get_instmap(!.CI, InstMap),
         generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, Solns,
             !MaybeEnd, MaybeLiveness, !CI),

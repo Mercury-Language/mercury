@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -273,8 +273,8 @@ process_proc_for_dep_par_conj_with_ignores(PredId, ProcId, IgnoreVars,
 
 fixup_and_reinsert_proc(PredId, ProcId, !.PredInfo, !.ProcInfo, !ModuleInfo) :-
     requantify_proc(!ProcInfo),
-    RecomputeAtomic = no,
-    recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo),
+    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        !ProcInfo, !ModuleInfo),
     pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
@@ -484,6 +484,7 @@ search_goal_for_par_conj_2(Goal0, Goal, InstMap0, !Info) :-
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file,
             "shorthand goal encountered during dependent parallel " ++
             "conjunction transformation.")

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -357,9 +357,11 @@ annotate_proc(ModuleInfo, PredInfo, Graph, ConstantR, DeadR, BornR,
 region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
         ActualRegionArgProc, RegionInstructionProc, ResurRenamingAnnoProc,
         IteRenamingAnnoProc, !Goal, !NameToVar, !VarSet, !VarTypes) :-
-    !.Goal = hlds_goal(GoalExpr0, Info0),
-    ( goal_is_atomic(GoalExpr0) ->
-        ProgPoint = program_point_init(Info0),
+    !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = does_not_have_subgoals,
+        ProgPoint = program_point_init(GoalInfo0),
         ProgPoint = pp(Context, _),
         find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc,
             ProgPoint, ResurRenaming, IteRenaming),
@@ -369,7 +371,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
         % - a construction unification with a region to construct in.
         region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming,
             IteRenaming, ActualRegionArgProc, ProgPoint, GoalExpr0, GoalExpr,
-            Info0, Info, !NameToVar, !VarSet, !VarTypes),
+            GoalInfo0, GoalInfo, !NameToVar, !VarSet, !VarTypes),
 
         % Assignment unifications due to ite renaming.
         assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
@@ -386,7 +388,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
                 !VarSet, !VarTypes, IteRenamingAssignments, Conjs1),
 
             % The goal at this program point itself.
-            Conjs2 = Conjs1 ++ [hlds_goal(GoalExpr, Info)],
+            Conjs2 = Conjs1 ++ [hlds_goal(GoalExpr, GoalInfo)],
 
             % Region instructions after this program point.
             list.foldl4(region_instruction_to_conj(ModuleInfo, Context,
@@ -394,7 +396,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
                 !VarSet, !VarTypes, Conjs2, Conjs3)
         ;
             % The goal at this program point itself.
-            Conjs3 = IteRenamingAssignments ++ [hlds_goal(GoalExpr, Info)]
+            Conjs3 = IteRenamingAssignments ++ [hlds_goal(GoalExpr, GoalInfo)]
         ),
 
         % Assignment unifications due to region resurrection renaming.
@@ -403,11 +405,12 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
             Conjs3, Conjs),
 
         ( Conjs = [_, _ | _] ->
-            !:Goal = hlds_goal(conj(plain_conj, Conjs), Info)
+            !:Goal = hlds_goal(conj(plain_conj, Conjs), GoalInfo)
         ;
-            !:Goal = hlds_goal(GoalExpr, Info)
+            !:Goal = hlds_goal(GoalExpr, GoalInfo)
         )
     ;
+        HasSubGoals = has_subgoals,
         region_transform_compound_goal(ModuleInfo, Graph,
             ResurRenamingProc, IteRenamingProc, ActualRegionArgProc,
             RegionInstructionProc, ResurRenamingAnnoProc,
@@ -950,9 +953,8 @@ update_instmap_delta_pred(PredId, !ModuleInfo) :-
 update_instmap_delta_proc(PredId, ProcId, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
-    RecomputeAtomic = yes,
-    recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo0, ProcInfo,
-        !ModuleInfo),
+    recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+        ProcInfo0, ProcInfo, !ModuleInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

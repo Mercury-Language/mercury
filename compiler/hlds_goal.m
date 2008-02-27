@@ -231,25 +231,69 @@
     --->    plain_conj
     ;       parallel_conj.
 
-:- type after_semantic_analysis
-    --->    before_semantic_analysis
-    ;       after_semantic_analysis.
-
-    % Instances of these `shorthand' goals are implemented by a
-    % hlds --> hlds transformation that replaces them with
-    % equivalent non-shorthand goals.
+    % These `shorthand' goals are implemented by HLDS --> HLDS transformations
+    % that replaces them with equivalent non-shorthand goals.
     %
 :- type shorthand_goal_expr
-            % bi-implication (A <=> B)
-            %
-            % Note that ordinary implications (A => B)
-            % and reverse implications (A <= B) are expanded
-            % out before we construct the HLDS.  But we can't
-            % do that for bi-implications, because if expansion
-            % of bi-implications is done before implicit quantification,
-            % then the quantification would be wrong.
-            %
-    --->    bi_implication(hlds_goal, hlds_goal).
+    --->    bi_implication(
+                % bi-implication (A <=> B)
+                %
+                % Note that ordinary implications (A => B) and reverse
+                % implications (A <= B) are expanded out before we construct
+                % the HLDS.  We cannot do that for bi-implications, because
+                % if expansion of bi-implications is done before implicit
+                % quantification, then the quantification would be wrong.
+
+                hlds_goal,
+                hlds_goal
+            )
+
+    ;       atomic_goal(
+                % An atomic goal that will be executed atomically against
+                % all running threads using the stm system.
+
+                % The type of atomic goal. Either a top level atomic goal,
+                % or a nested atomic goal. This isn't known until after
+                % typechecking.
+                atomic_goal_type    :: atomic_goal_type,
+
+                % The variables representing the initial and final versions
+                % of the outer state. For top level atomic goals, of type
+                % io.state; for nested atomic goals, of type stm_builtin.stm.
+                atomic_outer        :: atomic_interface_vars,
+
+                % The variables representing the initial and final versions
+                % of the inner state (always of type stm_builtin.stm).
+                atomic_inner        :: atomic_interface_vars,
+
+                % List of output variables specified with `var(...)`.
+                % These variables should be free when the atomic goal
+                % is started and ground when the atomic goal is complete.
+                atomic_output_vars  :: maybe(list(prog_var)),
+
+                % The main atomic transaction goal. If any or_else goals
+                % also exist, this goal is the first or_else alternative.
+                atomic_main_goal    :: hlds_goal,
+
+                % Any later or_else alternative goals.
+                orelse_alternatives :: list(hlds_goal)
+
+            ).
+
+:- type atomic_interface_vars
+    --->    atomic_interface_vars(
+                atomic_initial  :: prog_var,
+                atomic_final    :: prog_var
+            ).
+
+    % If an atomic goal has type unknown_atomic_goal_type, then the conversion
+    % predicates to and from the inner variables have not been added yet to the
+    % main and orelse goals. If the type is top_level_atomic_goal or
+    % nested_atomic_goal, then the conversion predicates *have* been added.
+:- type atomic_goal_type
+    --->    unknown_atomic_goal_type 
+    ;       top_level_atomic_goal
+    ;       nested_atomic_goal.
 
 :- type scope_reason
     --->    exist_quant(list(prog_var))
@@ -1369,12 +1413,16 @@
 :- func goal_has_foreign(hlds_goal) = bool.
 :- func goal_list_has_foreign(list(hlds_goal)) = bool.
 
-    % A goal is atomic iff it doesn't contain any sub-goals
+:- type has_subgoals
+    --->    has_subgoals
+    ;       does_not_have_subgoals.
+
+    % A goal is primitive iff it doesn't contain any sub-goals
     % (except possibly goals inside lambda expressions --
     % but lambda expressions will get transformed into separate
     % predicates by the polymorphism.m pass).
     %
-:- pred goal_is_atomic(hlds_goal_expr::in) is semidet.
+:- func goal_expr_has_subgoals(hlds_goal_expr) = has_subgoals.
 
     % Return the HLDS equivalent of `true'.
     %
@@ -2189,18 +2237,39 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         Expr = call_foreign_proc(Attrs, PredId, ProcId, Args, Extra,
             MTRC, Impl)
     ;
-        Expr0 = shorthand(ShorthandGoal0),
-        rename_vars_in_shorthand(Must, Subn, ShorthandGoal0, ShorthandGoal),
-        Expr = shorthand(ShorthandGoal)
+        Expr0 = shorthand(Shorthand0),
+        (
+            Shorthand0 = atomic_goal(GoalType0, Outer0, Inner0,
+                MaybeOutputVars0, MainGoal0, OrElseGoals0),
+            GoalType = GoalType0,
+            Outer0 = atomic_interface_vars(OuterDI0, OuterUO0),
+            rename_var(Must, Subn, OuterDI0, OuterDI),
+            rename_var(Must, Subn, OuterUO0, OuterUO),
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            Inner0 = atomic_interface_vars(InnerDI0, InnerUO0),
+            rename_var(Must, Subn, InnerDI0, InnerDI),
+            rename_var(Must, Subn, InnerUO0, InnerUO),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            (
+                MaybeOutputVars0 = no,
+                MaybeOutputVars = MaybeOutputVars0
+            ;
+                MaybeOutputVars0 = yes(OutputVars0),
+                rename_var_list(Must, Subn, OutputVars0, OutputVars),
+                MaybeOutputVars = yes(OutputVars)
+            ),
+            rename_vars_in_goal(Must, Subn, MainGoal0, MainGoal),
+            rename_vars_in_goals(Must, Subn, OrElseGoals0, OrElseGoals),
+            Shorthand = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals)
+        ;
+            Shorthand0 = bi_implication(LeftGoal0, RightGoal0),
+            rename_vars_in_goal(Must, Subn, LeftGoal0, LeftGoal),
+            rename_vars_in_goal(Must, Subn, RightGoal0, RightGoal),
+            Shorthand = bi_implication(LeftGoal, RightGoal)
+        ),
+        Expr = shorthand(Shorthand)
     ).
-
-:- pred rename_vars_in_shorthand(must_rename::in, prog_var_renaming::in,
-    shorthand_goal_expr::in, shorthand_goal_expr::out) is det.
-
-rename_vars_in_shorthand(Must, Subn,
-        bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) :-
-    rename_vars_in_goal(Must, Subn, LHS0, LHS),
-    rename_vars_in_goal(Must, Subn, RHS0, RHS).
 
 :- pred rename_arg_list(must_rename::in, prog_var_renaming::in,
     list(foreign_arg)::in, list(foreign_arg)::out) is det.
@@ -2591,23 +2660,15 @@ goal_has_foreign(Goal) = HasForeign :-
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         HasForeign = yes
     ;
-        GoalExpr = shorthand(ShorthandGoal),
-        HasForeign = goal_has_foreign_shorthand(ShorthandGoal)
-    ).
-
-    % Return yes if the shorthand goal contains any foreign code.
-    %
-:- func goal_has_foreign_shorthand(shorthand_goal_expr) = bool.
-
-goal_has_foreign_shorthand(bi_implication(GoalA, GoalB)) =
-    (
-        ( goal_has_foreign(GoalA) = yes
-        ; goal_has_foreign(GoalB) = yes
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, _, _),
+            HasForeign = yes
+        ;
+            ShortHand = bi_implication(GoalA, GoalB),
+            HasForeign = bool.or(goal_has_foreign(GoalA),
+                goal_has_foreign(GoalB))
         )
-    ->
-        yes
-    ;
-        no
     ).
 
 goal_list_has_foreign([]) = no.
@@ -2620,36 +2681,39 @@ goal_list_has_foreign([X | Xs]) =
 
 %-----------------------------------------------------------------------------%
 
-goal_is_atomic(Goal) :-
-    goal_is_atomic(Goal) = yes.
-
-:- func goal_is_atomic(hlds_goal_expr) = bool.
-
-goal_is_atomic(unify(_, _, _, _, _)) = yes.
-goal_is_atomic(generic_call(_, _, _, _)) = yes.
-goal_is_atomic(plain_call(_, _, _, _, _, _)) = yes.
-goal_is_atomic(call_foreign_proc(_, _, _, _, _, _,  _)) = yes.
-goal_is_atomic(conj(_, Conj)) = IsAtomic :-
+goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
     (
-        Conj = [],
-        IsAtomic = yes
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _,  _)
+        ),
+        HasSubGoals = does_not_have_subgoals
     ;
-        Conj = [_ | _],
-        IsAtomic = no
-    ).
-goal_is_atomic(disj(Disj)) = IsAtomic :-
-    (
-        Disj = [],
-        IsAtomic = yes
+        ( GoalExpr = conj(_, SubGoals)
+        ; GoalExpr = disj(SubGoals)
+        ),
+        (
+            SubGoals = [],
+            HasSubGoals = does_not_have_subgoals
+        ;
+            SubGoals = [_ | _],
+            HasSubGoals = has_subgoals
+        )
     ;
-        Disj = [_ | _],
-        IsAtomic = no
+        ( GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = scope(_, _)
+        ),
+        HasSubGoals = has_subgoals
+    ;
+        GoalExpr = shorthand(ShortHand),
+        ( ShortHand = atomic_goal(_, _, _, _, _, _)
+        ; ShortHand = bi_implication(_, _)
+        ),
+        HasSubGoals = has_subgoals
     ).
-goal_is_atomic(if_then_else(_, _, _, _)) = no.
-goal_is_atomic(negation(_)) = no.
-goal_is_atomic(switch(_, _, _)) = no.
-goal_is_atomic(scope(_, _)) = no.
-goal_is_atomic(shorthand(_)) = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -2715,54 +2779,64 @@ goal_list_purity(Goals, GoalsPurity) :-
 set_goal_contexts(Context, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
-    set_goal_contexts_expr(Context, GoalExpr0, GoalExpr),
+    (
+        GoalExpr0 = conj(ConjType, SubGoals0),
+        list.map(set_goal_contexts(Context), SubGoals0, SubGoals),
+        GoalExpr = conj(ConjType, SubGoals)
+    ;
+        GoalExpr0 = disj(SubGoals0),
+        list.map(set_goal_contexts(Context), SubGoals0, SubGoals),
+        GoalExpr = disj(SubGoals)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        set_goal_contexts(Context, Cond0, Cond),
+        set_goal_contexts(Context, Then0, Then),
+        set_goal_contexts(Context, Else0, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        list.map(set_case_contexts(Context), Cases0, Cases),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        set_goal_contexts(Context, SubGoal0, SubGoal),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        set_goal_contexts(Context, SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal)
+    ;
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            set_goal_contexts(Context, MainGoal0, MainGoal),
+            list.map(set_goal_contexts(Context), OrElseGoals0, OrElseGoals),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals)
+        ;
+            ShortHand0 = bi_implication(LHS0, RHS0),
+            set_goal_contexts(Context, LHS0, LHS),
+            set_goal_contexts(Context, RHS0, RHS),
+            ShortHand = bi_implication(LHS, RHS)
+        ),
+        GoalExpr = shorthand(ShortHand)
+    ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred set_goal_contexts_case(prog_context::in, case::in, case::out) is det.
+:- pred set_case_contexts(prog_context::in, case::in, case::out) is det.
 
-set_goal_contexts_case(Context, Case0, Case) :-
+set_case_contexts(Context, Case0, Case) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     set_goal_contexts(Context, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal).
-
-:- pred set_goal_contexts_expr(prog_context::in, hlds_goal_expr::in,
-    hlds_goal_expr::out) is det.
-
-set_goal_contexts_expr(Context, conj(ConjType, Goals0), conj(ConjType, Goals)) :-
-    list.map(set_goal_contexts(Context), Goals0, Goals).
-set_goal_contexts_expr(Context, disj(Goals0), disj(Goals)) :-
-    list.map(set_goal_contexts(Context), Goals0, Goals).
-set_goal_contexts_expr(Context, if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else)) :-
-    set_goal_contexts(Context, Cond0, Cond),
-    set_goal_contexts(Context, Then0, Then),
-    set_goal_contexts(Context, Else0, Else).
-set_goal_contexts_expr(Context, switch(Var, CanFail, Cases0),
-        switch(Var, CanFail, Cases)) :-
-    list.map(set_goal_contexts_case(Context), Cases0, Cases).
-set_goal_contexts_expr(Context, scope(Reason, Goal0), scope(Reason, Goal)) :-
-    set_goal_contexts(Context, Goal0, Goal).
-set_goal_contexts_expr(Context, negation(Goal0), negation(Goal)) :-
-    set_goal_contexts(Context, Goal0, Goal).
-set_goal_contexts_expr(_, Goal, Goal) :-
-    Goal = plain_call(_, _, _, _, _, _).
-set_goal_contexts_expr(_, Goal, Goal) :-
-    Goal = generic_call(_, _, _, _).
-set_goal_contexts_expr(_, Goal, Goal) :-
-    Goal = unify(_, _, _, _, _).
-set_goal_contexts_expr(_, Goal, Goal) :-
-    Goal = call_foreign_proc(_, _, _, _, _, _, _).
-set_goal_contexts_expr(Context,
-        shorthand(ShorthandGoal0), shorthand(ShorthandGoal)) :-
-    set_goal_contexts_shorthand(Context, ShorthandGoal0, ShorthandGoal).
-
-:- pred set_goal_contexts_shorthand(prog_context::in,
-    shorthand_goal_expr::in, shorthand_goal_expr::out) is det.
-
-set_goal_contexts_shorthand(Context,
-        bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) :-
-    set_goal_contexts(Context, LHS0, LHS),
-    set_goal_contexts(Context, RHS0, RHS).
 
 %-----------------------------------------------------------------------------%
 

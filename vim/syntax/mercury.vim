@@ -42,6 +42,7 @@ syn keyword mercuryKeyword      is semidet det nondet multi erroneous failure
 syn keyword mercuryKeyword      cc_nondet cc_multi
 syn keyword mercuryKeyword      typeclass instance where
 syn keyword mercuryKeyword      pragma promise external
+syn keyword mercuryKeyword      trace atomic or_else
 syn keyword mercuryPragma       inline no_inline
 syn keyword mercuryPragma       type_spec source_file fact_table obsolete
 syn keyword mercuryPragma       memo loop_check minimal_model

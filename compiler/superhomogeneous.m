@@ -847,14 +847,14 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
     %               H3 = D
     %       )
     %
-    % Note that the quantification is important here.  That's why we need
+    % Note that the quantification is important here. That's why we need
     % to introduce the explicit `some [...]'. Variables in the argument
     % positions are lambda-quantified, so when we move them to the body,
     % we need to make them explicitly existentially quantified to avoid
     % capturing any variables of the same name that occur outside this scope.
     %
     % Also, note that any introduced unifications that construct the output
-    % arguments for the lambda expression, need to occur *after*, the body
+    % arguments for the lambda expression, need to occur *after* the body
     % of the lambda expression. This is in case the body of the lambda
     % expression is impure, in which case the mode analyser cannot reorder
     % the unifications; this results in a mode error.
@@ -863,7 +863,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
     % especially ones that the compiler introduced itself.
     %
     % For predicates, all variables occurring in the lambda arguments are
-    % locally quantified to the lambda goal.  For functions, we need to
+    % locally quantified to the lambda goal. For functions, we need to
     % be careful because variables in arguments should similarly be quantified,
     % but variables in the function return value term (and not in the
     % arguments) should *not* be locally quantified.
@@ -889,11 +889,10 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
 
         list.length(Args, NumArgs),
         svvarset.new_vars(NumArgs, LambdaVars, !VarSet),
-        %
+
         % Partition the arguments (and their corresponding lambda variables)
         % into two sets: those that are not output, i.e. input and unused,
         % and those that are output.
-        %
         (
             partition_args_and_lambda_vars(!.ModuleInfo, Args, LambdaVars,
                 Modes, NonOutputArgs0, OutputArgs0, NonOutputLambdaVars0,
@@ -911,17 +910,16 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
         map.init(Substitution),
         ArgContext = ac_head(PredOrFunc, NumArgs),
 
-        % Create the unifications that need to come before the body of
-        % the lambda expression; those corresponding to args whose mode
-        % is input or unused.
+        % Create the unifications that need to come before the body of the
+        % lambda expression; those corresponding to args whose mode is input
+        % or unused.
         HeadBefore0 = true_goal,
         insert_arg_unifications(NonOutputLambdaVars, NonOutputArgs,
             Context, ArgContext, HeadBefore0, HeadBefore, NonOutputAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
 
-        % Create the unifications that need to come after the body of
-        % the lambda expression; those corresponding to args whose mode
-        % is output.
+        % Create the unifications that need to come after the body of the
+        % lambda expression; those corresponding to args whose mode is output.
         HeadAfter0 = true_goal,
         insert_arg_unifications(OutputLambdaVars, OutputArgs,
             Context, ArgContext, HeadAfter0, HeadAfter, OutputAdded,
@@ -981,35 +979,33 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
 
 partition_args_and_lambda_vars(_, [], [], [], [], [], [], []).
 partition_args_and_lambda_vars(ModuleInfo, [Arg | Args],
-            [LambdaVar | LambdaVars], [Mode | Modes], InputArgs, OutputArgs,
-            InputLambdaVars, OutputLambdaVars) :-
-        partition_args_and_lambda_vars(ModuleInfo, Args, LambdaVars, Modes,
-            InputArgs0, OutputArgs0, InputLambdaVars0, OutputLambdaVars0),
+        [LambdaVar | LambdaVars], [Mode | Modes], InputArgs, OutputArgs,
+        InputLambdaVars, OutputLambdaVars) :-
+    partition_args_and_lambda_vars(ModuleInfo, Args, LambdaVars, Modes,
+        InputArgs0, OutputArgs0, InputLambdaVars0, OutputLambdaVars0),
 
-        % Calling mode_is_output/2 directly will cause the compiler to abort
-        % if the mode is undefined, so we first check for this. If the mode
-        % is undefined, it doesn't really matter which partitions we place
-        % the arguements/lambda vars into because mode analysis will fail
-        % anyway.
+    % Calling mode_is_output/2 directly will cause the compiler to abort
+    % if the mode is undefined, so we first check for this. If the mode
+    % is undefined, it doesn't really matter which partitions we place
+    % the arguements/lambda vars into because mode analysis will fail
+    % anyway.
 
-        ( mode_is_undefined(ModuleInfo, Mode) ->
-            InputArgs        = [Arg | InputArgs0],
-            OutputArgs       = OutputArgs0,
-            InputLambdaVars  = [LambdaVar | InputLambdaVars0],
-            OutputLambdaVars = OutputLambdaVars0
-        ;
-            ( mode_is_output(ModuleInfo, Mode) ->
-                InputArgs        = InputArgs0,
-                OutputArgs       = [Arg | OutputArgs0],
-                InputLambdaVars  = InputLambdaVars0,
-                OutputLambdaVars = [LambdaVar | OutputLambdaVars0]
-            ;
-                InputArgs        = [Arg | InputArgs0],
-                OutputArgs       = OutputArgs0,
-                InputLambdaVars  = [LambdaVar | InputLambdaVars0],
-                OutputLambdaVars = OutputLambdaVars0
-            )
-        ).
+    ( mode_is_undefined(ModuleInfo, Mode) ->
+        InputArgs        = [Arg | InputArgs0],
+        OutputArgs       = OutputArgs0,
+        InputLambdaVars  = [LambdaVar | InputLambdaVars0],
+        OutputLambdaVars = OutputLambdaVars0
+    ; mode_is_output(ModuleInfo, Mode) ->
+        InputArgs        = InputArgs0,
+        OutputArgs       = [Arg | OutputArgs0],
+        InputLambdaVars  = InputLambdaVars0,
+        OutputLambdaVars = [LambdaVar | OutputLambdaVars0]
+    ;
+        InputArgs        = [Arg | InputArgs0],
+        OutputArgs       = OutputArgs0,
+        InputLambdaVars  = [LambdaVar | InputLambdaVars0],
+        OutputLambdaVars = OutputLambdaVars0
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1028,19 +1024,25 @@ ground_terms([Term | Terms]) :-
 :- pred arg_context_to_unify_context(arg_context::in, int::in,
     unify_main_context::out, unify_sub_contexts::out) is det.
 
-arg_context_to_unify_context(ac_head(PredOrFunc, Arity), ArgNum,
-        ArgContext, []) :-
-    ( PredOrFunc = pf_function, ArgNum = Arity ->
-        % It's the function result term in the head.
-        ArgContext = umc_head_result
+arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
+    (
+        ArgContext = ac_head(PredOrFunc, Arity),
+        ( PredOrFunc = pf_function, ArgNum = Arity ->
+            % It's the function result term in the head.
+            MainContext = umc_head_result
+        ;
+            % It's a head argument.
+            MainContext = umc_head(ArgNum)
+        ),
+        SubContexts = []
     ;
-        % It's a head argument.
-        ArgContext = umc_head(ArgNum)
+        ArgContext = ac_call(PredId),
+        MainContext = umc_call(PredId, ArgNum),
+        SubContexts = []
+    ;
+        ArgContext = ac_functor(ConsId, MainContext, SubContexts0),
+        SubContexts = [ConsId - ArgNum | SubContexts0]
     ).
-arg_context_to_unify_context(ac_call(PredId), ArgNum,
-        umc_call(PredId, ArgNum), []).
-arg_context_to_unify_context(ac_functor(ConsId, MainContext, SubContexts),
-        ArgNum, MainContext, [ConsId - ArgNum | SubContexts]).
 
 %-----------------------------------------------------------------------------%
 

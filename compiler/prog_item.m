@@ -779,6 +779,23 @@
                 texpr_mutable_vars  :: list(trace_mutable_var),
                 texpr_goal          :: goal
             )
+    ;       atomic_expr(
+                % Subgoals of the atomic goal are parsed into the following
+                % datatype.  During the creation of the parse tree, all
+                % subterms of the "orelse" operator are flattened and placed
+                % into a list.  If this is the case, the first "orelse"
+                % alternative is stored in "main_goal" whilst the other
+                % alternatives are stored in "orelse_alternatives". If there
+                % are no "or_else" operators within the atomic subgoal,
+                % the subgoal is stored in "main_goal" whilst the
+                % "orelse_alternatives" list remains empty.
+
+                aexpr_outer         :: atomic_component_state,
+                aexpr_inner         :: atomic_component_state,
+                aexpr_output_vars   :: maybe(list(prog_var)),
+                aexpr_main_goal     :: goal,    
+                aexpr_orelse_goals  :: goals
+            )
 
     % implications
     ;       implies_expr(goal, goal)

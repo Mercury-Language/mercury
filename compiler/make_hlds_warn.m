@@ -208,20 +208,24 @@ warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
         warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
             NamesModes, Context, PredCallId, ModuleInfo, !Specs)
     ;
-        GoalExpr = shorthand(ShorthandGoal),
-        warn_singletons_in_goal_2_shorthand(ShorthandGoal, GoalInfo,
-            QuantVars, VarSet, PredCallId, ModuleInfo, !Specs)
+        GoalExpr = shorthand(ShortHand),
+        (
+            % XXX STM We need to look at how we should handle Outer, Inner and
+            % MaybeOutputVars.
+            ShortHand = atomic_goal(_GoalType, _Outer, Inner,
+                _MaybeOutputVars, MainGoal, OrElseGoals),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            set.insert_list(QuantVars, [InnerDI, InnerUO], InsideQuantVars),
+            warn_singletons_in_goal(MainGoal, InsideQuantVars, VarSet,
+                PredCallId, ModuleInfo, !Specs),
+            warn_singletons_in_goal_list(OrElseGoals, InsideQuantVars, VarSet,
+                PredCallId, ModuleInfo, !Specs)
+        ;
+            ShortHand = bi_implication(GoalA, GoalB),
+            warn_singletons_in_goal_list([GoalA, GoalB], QuantVars, VarSet,
+                PredCallId, ModuleInfo, !Specs)
+        )
     ).
-
-:- pred warn_singletons_in_goal_2_shorthand(shorthand_goal_expr::in,
-    hlds_goal_info::in, set(prog_var)::in, prog_varset::in,
-    simple_call_id::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_singletons_in_goal_2_shorthand(bi_implication(LHS, RHS), _GoalInfo,
-        QuantVars, VarSet, PredCallId, ModuleInfo, !Specs) :-
-    warn_singletons_in_goal_list([LHS, RHS], QuantVars, VarSet, PredCallId,
-        ModuleInfo, !Specs).
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal)::in, set(prog_var)::in,
     prog_varset::in, simple_call_id::in, module_info::in,

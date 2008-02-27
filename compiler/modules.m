@@ -2969,14 +2969,27 @@ get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
 add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     !:ImportDeps = [mercury_public_builtin_module | !.ImportDeps],
     !:UseDeps = [mercury_private_builtin_module | !.UseDeps],
+    items_need_imports(Items, no, ItemsNeedTabling,
+        no, ItemsNeedTablingStatistics, no, ItemsNeedSTM),
+    % We should include mercury_table_builtin_module if the Items contain
+    % a tabling pragma, or if one of --use-minimal-model (either kind) and
+    % --trace-table-io is specified. In the former case, we may also need
+    % to import mercury_table_statistics_module.
     (
-        % We should include mercury_table_builtin_module if the Items contain
-        % a tabling pragma, or if one of --use-minimal-model and
-        % --trace-table-io is specified.
-
-        ( contains_tabling_pragma(Items, HasStatsPrime) ->
-            HasStats = HasStatsPrime
+        ItemsNeedTabling = yes,
+        !:UseDeps = [mercury_table_builtin_module | !.UseDeps],
+        (
+            ItemsNeedTablingStatistics = yes,
+            !:UseDeps = [mercury_table_statistics_module | !.UseDeps]
         ;
+            ItemsNeedTablingStatistics = no
+        )
+    ;
+        ItemsNeedTabling = no,
+        expect(unify(ItemsNeedTablingStatistics, no), this_file,
+            "add_implicit_imports: tabling statistics without tabling"),
+        (
+            % These forms of tabling cannot ask for statistics.
             (
                 globals.lookup_bool_option(Globals,
                     use_minimal_model_stack_copy, yes)
@@ -2985,19 +2998,19 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
                     use_minimal_model_own_stacks, yes)
             ;
                 globals.lookup_bool_option(Globals, trace_table_io, yes)
-            ),
-            HasStats = table_dont_gather_statistics
-        )
-    ->
-        !:UseDeps = [mercury_table_builtin_module | !.UseDeps],
-        (
-            HasStats = table_dont_gather_statistics
+            )
+        ->
+            !:UseDeps = [mercury_table_builtin_module | !.UseDeps]
         ;
-            HasStats = table_gather_statistics,
-            !:UseDeps = [mercury_table_statistics_module | !.UseDeps]
+            true
         )
+    ),
+    (
+        ItemsNeedSTM = yes,
+        !:UseDeps = [mercury_stm_builtin_module, mercury_exception_module,
+            mercury_univ_module | !.UseDeps]
     ;
-        true
+        ItemsNeedSTM = no
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
@@ -3046,43 +3059,131 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         SSDB = no
     ).
 
-:- pred contains_tabling_pragma(list(item)::in, table_attr_statistics::out)
-    is semidet.
+:- pred items_need_imports(list(item)::in,
+    bool::in, bool::out, bool::in, bool::out, bool::in, bool::out) is det.
 
-contains_tabling_pragma(Items, HasStats) :-
-    contains_tabling_pragma_2(Items, no, HasTabling,
-        table_dont_gather_statistics, HasStats),
-    HasTabling = yes.
-
-:- pred contains_tabling_pragma_2(list(item)::in, bool::in, bool::out,
-    table_attr_statistics::in, table_attr_statistics::out) is det.
-
-contains_tabling_pragma_2([], !HasTabling, !HasStats).
-contains_tabling_pragma_2([Item | Items], !HasTabling, !HasStats) :-
+items_need_imports([], !ItemsNeedTabling,
+        !ItemsNeedTablingStatistics, !ItemsNeedSTM).
+items_need_imports([Item | Items], !ItemsNeedTabling,
+        !ItemsNeedTablingStatistics, !ItemsNeedSTM) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _),
         Pragma = pragma_tabled(_, _, _, _, _, MaybeAttributes)
     ->
-        !:HasTabling = yes,
+        !:ItemsNeedTabling = yes,
         (
             MaybeAttributes = no,
-            contains_tabling_pragma_2(Items, !HasTabling, !HasStats)
+            % We cannot be done yet. If !.ItemsNeedTablingStatistics and
+            % !.ItemsNeedSTM were already both `yes', !.ItemsNeedTabling
+            % would have been too, and we would have stopped before looking
+            % at this item.
+            items_need_imports(Items, !ItemsNeedTabling,
+                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
         ;
             MaybeAttributes = yes(Attributes),
             StatsAttr = Attributes ^ table_attr_statistics,
             (
                 StatsAttr = table_gather_statistics,
-                !:HasStats = table_gather_statistics
-                % We can stop recursing; later items cannot change the result.
+                !:ItemsNeedTablingStatistics = yes,
+                (
+                    !.ItemsNeedSTM = yes
+                    % There is nothing left to search for; stop recursing.
+                ;
+                    !.ItemsNeedSTM = no,
+                    items_need_imports(Items, !ItemsNeedTabling,
+                        !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+                )
             ;
-                StatsAttr = table_dont_gather_statistics,
-                % Leave !HasStats as it is.
-                contains_tabling_pragma_2(Items, !HasTabling, !HasStats)
+                StatsAttr = table_dont_gather_statistics
             )
         )
     ;
-        contains_tabling_pragma_2(Items, !HasTabling, !HasStats)
+        Item = item_clause(ItemClause),
+        Body = ItemClause ^ cl_body,
+        goal_contains_stm_atomic(Body) = yes
+    ->
+        !:ItemsNeedSTM = yes,
+        (
+            !.ItemsNeedTabling = yes,
+            !.ItemsNeedTablingStatistics = yes
+        ->
+            % There is nothing left to search for; stop recursing.
+            true
+        ;
+            items_need_imports(Items, !ItemsNeedTabling,
+                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+        )
+    ;
+        items_need_imports(Items, !ItemsNeedTabling,
+            !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+    ).
+
+:- func goal_contains_stm_atomic(goal) = bool.
+
+goal_contains_stm_atomic(GoalExpr - _Context) = ContainsAtomic :-
+    (
+        ( GoalExpr = true_expr
+        ; GoalExpr = fail_expr
+        ),
+        ContainsAtomic = no
+    ;
+        ( GoalExpr = conj_expr(SubGoalA, SubGoalB)
+        ; GoalExpr = par_conj_expr(SubGoalA, SubGoalB)
+        ; GoalExpr = disj_expr(SubGoalA, SubGoalB)
+        ),
+        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
+    ;
+        ( GoalExpr = some_expr(_, SubGoal)
+        ; GoalExpr = all_expr(_, SubGoal)
+        ; GoalExpr = some_state_vars_expr(_, SubGoal)
+        ; GoalExpr = all_state_vars_expr(_, SubGoal)
+        ; GoalExpr = promise_purity_expr(_, _, SubGoal)
+        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, SubGoal)
+        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, SubGoal)
+        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _,
+            SubGoal)
+        ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
+        ),
+        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
+    ;
+        ( GoalExpr = implies_expr(SubGoalA, SubGoalB)
+        ; GoalExpr = equivalent_expr(SubGoalA, SubGoalB)
+        ),
+        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
+    ;
+        GoalExpr = not_expr(SubGoal),
+        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
+    ;
+        GoalExpr = if_then_else_expr(_, _, Cond, Then, Else),
+        ContainsAtomic = three_goals_contain_stm_atomic(Cond, Then, Else)
+    ;
+        GoalExpr = atomic_expr(_, _, _, _, _),
+        ContainsAtomic = yes
+    ;
+        ( GoalExpr = event_expr(_, _)
+        ; GoalExpr = call_expr(_, _, _)
+        ; GoalExpr = unify_expr(_, _, _)
+        ),
+        ContainsAtomic = no
+    ).
+
+:- func two_goals_contain_stm_atomic(goal, goal) = bool.
+
+two_goals_contain_stm_atomic(GoalA, GoalB) = ContainsAtomic :-
+    ( goal_contains_stm_atomic(GoalA) = yes ->
+        ContainsAtomic = yes
+    ;
+        ContainsAtomic = goal_contains_stm_atomic(GoalB)
+    ).
+
+:- func three_goals_contain_stm_atomic(goal, goal, goal) = bool.
+
+three_goals_contain_stm_atomic(GoalA, GoalB, GoalC) = ContainsAtomic :-
+    ( goal_contains_stm_atomic(GoalA) = yes ->
+        ContainsAtomic = yes
+    ;
+        ContainsAtomic = two_goals_contain_stm_atomic(GoalB, GoalC)
     ).
 
     % Warn if a module imports itself, or an ancestor.

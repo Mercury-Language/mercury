@@ -59,7 +59,7 @@
 :- type term    ==  term(generic).
 :- type var     ==  var(generic).
 
-:- func get_term_context(term) = term.context.
+:- func get_term_context(term(T)) = term.context.
 
 %-----------------------------------------------------------------------------%
 

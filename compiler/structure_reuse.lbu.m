@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -143,27 +143,28 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         !.Expr = if_then_else(Vars, Cond0, Then0, Else0),
         LBU0 = !.LBU,
 
-            % Annotate Cond-goal.
+        % Annotate Cond-goal.
         backward_use_in_goal(VarTypes, Cond0, Cond, LBU0, _),
 
-            % Annotate Then-goal.
-            % When annotating the then-part, the lbu used for it should not
-            % contain the resume-vars due to the else part.
-            % trick: to calculate inital LBU for the Then-goal, we set the
-            % resume-point of the condition to no_resume_point.
+        % Annotate Then-goal.
+        % When annotating the then-part, the lbu used for it should not
+        % contain the resume-vars due to the else part.
+        % trick: to calculate inital LBU for the Then-goal, we set the
+        % resume-point of the condition to no_resume_point.
         Cond0 = hlds_goal(CondGoal0, CondInfo0),
         goal_info_set_resume_point(no_resume_point, CondInfo0, InfoTmp),
         CondTmp = hlds_goal(CondGoal0, InfoTmp),
         backward_use_in_goal(VarTypes, CondTmp, _, LBU0, LBU0T),
         backward_use_in_goal(VarTypes, Then0, Then, LBU0T, LBUT),
 
-            % Annotate Else-goal.
+        % Annotate Else-goal.
         backward_use_in_goal(VarTypes, Else0, Else, LBU0, LBUE),
         set.union(LBUT, LBUE, !:LBU),
         !:Expr = if_then_else(Vars, Cond, Then, Else)
     ;
         !.Expr = shorthand(_),
-        unexpected(this_file, "backward_use_in_goal_2: shorthand goal.")
+        % These should have been expanded out by now.
+        unexpected(this_file, "backward_use_in_goal_2: shorthand")
     ).
 
 :- func get_backtrack_vars(vartypes, hlds_goal_info) = set(prog_var).

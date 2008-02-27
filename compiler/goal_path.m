@@ -141,17 +141,17 @@ mode_equiv_step(Step) :-
 :- pred fill_expr_slots(hlds_goal_info::in, goal_path::in, slot_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is det.
 
-fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
+fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
     (
-        Goal0 = conj(ConjType, Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         fill_conj_slots(Path0, 0, SlotInfo, Goals0, Goals),
-        Goal = conj(ConjType, Goals)
+        GoalExpr = conj(ConjType, Goals)
     ;
-        Goal0 = disj(Goals0),
+        GoalExpr0 = disj(Goals0),
         fill_disj_slots(Path0, 0, SlotInfo, Goals0, Goals),
-        Goal = disj(Goals)
+        GoalExpr = disj(Goals)
     ;
-        Goal0 = switch(Var, CanFail, Cases0),
+        GoalExpr0 = switch(Var, CanFail, Cases0),
         VarTypes = SlotInfo ^ slot_info_vartypes,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
         map.lookup(VarTypes, Var, Type),
@@ -161,14 +161,14 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
             MaybeNumFunctors = no
         ),
         fill_switch_slots(Path0, 0, MaybeNumFunctors, SlotInfo, Cases0, Cases),
-        Goal = switch(Var, CanFail, Cases)
+        GoalExpr = switch(Var, CanFail, Cases)
     ;
-        Goal0 = negation(SubGoal0),
+        GoalExpr0 = negation(SubGoal0),
         fill_goal_slots(cord.snoc(Path0, step_neg), SlotInfo,
             SubGoal0, SubGoal),
-        Goal = negation(SubGoal)
+        GoalExpr = negation(SubGoal)
     ;
-        Goal0 = scope(Reason, SubGoal0),
+        GoalExpr0 = scope(Reason, SubGoal0),
         SubGoal0 = hlds_goal(_, InnerInfo),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerDetism = goal_info_get_determinism(InnerInfo),
@@ -179,42 +179,53 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         ),
         fill_goal_slots(cord.snoc(Path0, step_scope(MaybeCut)), SlotInfo,
             SubGoal0, SubGoal),
-        Goal = scope(Reason, SubGoal)
+        GoalExpr = scope(Reason, SubGoal)
     ;
-        Goal0 = if_then_else(A, Cond0, Then0, Else0),
+        GoalExpr0 = if_then_else(A, Cond0, Then0, Else0),
         fill_goal_slots(cord.snoc(Path0, step_ite_cond), SlotInfo,
             Cond0, Cond),
         fill_goal_slots(cord.snoc(Path0, step_ite_then), SlotInfo,
             Then0, Then),
         fill_goal_slots(cord.snoc(Path0, step_ite_else), SlotInfo,
             Else0, Else),
-        Goal = if_then_else(A, Cond, Then, Else)
+        GoalExpr = if_then_else(A, Cond, Then, Else)
     ;
-        Goal0 = unify(LHS, RHS0, Mode, Kind, Context),
+        GoalExpr0 = unify(LHS, RHS0, Mode, Kind, Context),
         (
-            RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal0),
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+                NonLocals, QuantVars, LambdaModes, Detism, LambdaGoal0),
             fill_goal_slots(Path0, SlotInfo, LambdaGoal0, LambdaGoal),
-            RHS = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal)
+            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+                NonLocals, QuantVars, LambdaModes, Detism, LambdaGoal)
         ;
             ( RHS0 = rhs_var(_)
             ; RHS0 = rhs_functor(_, _, _)
             ),
             RHS = RHS0
         ),
-        Goal = unify(LHS, RHS,  Mode, Kind, Context)
+        GoalExpr = unify(LHS, RHS,  Mode, Kind, Context)
     ;
-        Goal0 = plain_call(_, _, _, _, _, _),
-        Goal = Goal0
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
     ;
-        Goal0 = generic_call(_, _, _, _),
-        Goal = Goal0
-    ;
-        Goal0 = call_foreign_proc(_, _, _, _, _, _, _),
-        Goal = Goal0
-    ;
-        Goal0 = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "fill_expr_slots: unexpected shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            fill_goal_slots(cord.snoc(Path0, step_atomic_main), SlotInfo,
+                MainGoal0, MainGoal),
+            fill_orelse_slots(Path0, 0, SlotInfo, OrElseGoals0, OrElseGoals),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "fill_expr_slots: unexpected shorthand")
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
 
 :- pred fill_conj_slots(goal_path::in, int::in, slot_info::in,
@@ -247,6 +258,16 @@ fill_switch_slots(Path0, N0, MaybeNumFunctors, SlotInfo,
         SlotInfo, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
     fill_switch_slots(Path0, N1, MaybeNumFunctors, SlotInfo, Cases0, Cases).
+
+:- pred fill_orelse_slots(goal_path::in, int::in, slot_info::in,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+fill_orelse_slots(_, _, _, [], []).
+fill_orelse_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
+    N1 = N0 + 1,
+    fill_goal_slots(cord.snoc(Path0, step_atomic_orelse(N1)), SlotInfo,
+        Goal0, Goal),
+    fill_orelse_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
 

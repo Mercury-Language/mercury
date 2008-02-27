@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -308,6 +308,7 @@ collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
 
 collect_non_local_and_in_cond_regions_expr(_, _, _, _, _, shorthand(_),
         !NonLocalRegionProc, !InCondRegionsProc) :-
+    % These should have been expanded out by now.
     unexpected(this_file, "collect_non_local_and_in_cond_regions_expr: "
         ++ "shorthand not handled").
 
@@ -334,7 +335,9 @@ collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, GoalInIte,
         !NonLocalRegionProc) :-
     GoalInIte = hlds_goal(Expr, Info),
-    ( goal_is_atomic(Expr) ->
+    HasSubGoals = goal_expr_has_subgoals(Expr),
+    (
+        HasSubGoals = does_not_have_subgoals,
         ProgPoint = program_point_init(Info),
         ProgPoint = pp(_, GoalPath),
         map.lookup(LRBeforeProc, ProgPoint, LRBefore),
@@ -372,6 +375,7 @@ collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
         record_non_local_regions(GoalPath, CreatedBeforeRegions,
             RemovedAfterRegions, !NonLocalRegionProc)
     ;
+        HasSubGoals = has_subgoals,
         collect_non_local_regions_in_ite_compound_goal(Graph,
             LRBeforeProc, LRAfterProc,
             ResurRenamingProc, ResurRenamingAnnoProc,
@@ -562,9 +566,11 @@ collect_non_local_regions_in_ite_case(Graph, LRBeforeProc, LRAfterProc,
 
 collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Cond, !InCondRegionsProc) :-
-    Cond = hlds_goal(Expr, Info),
-    ( goal_is_atomic(Expr) ->
-        ProgPoint = program_point_init(Info),
+    Cond = hlds_goal(CondExpr, CondInfo),
+    HasSubGoals = goal_expr_has_subgoals(CondExpr),
+    (
+        HasSubGoals = does_not_have_subgoals,
+        ProgPoint = program_point_init(CondInfo),
         ProgPoint = pp(_, GoalPath),
         map.lookup(LRBeforeProc, ProgPoint, LRBefore),
         map.lookup(LRAfterProc, ProgPoint, LRAfter),
@@ -594,6 +600,7 @@ collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
         record_regions_created_in_condition(GoalPath,
             CreatedRegions, !InCondRegionsProc)
     ;
+        HasSubGoals = has_subgoals,
         collect_regions_created_in_condition_compound_goal(Graph,
             LRBeforeProc, LRAfterProc,
             ResurRenamingProc, ResurRenamingAnnoProc,
@@ -871,9 +878,11 @@ collect_ite_renaming_case(IteRenamedRegionProc, Graph, Case,
 
 collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
         !IteRenamingProc) :-
-    Cond = hlds_goal(Expr, Info),
-    ( goal_is_atomic(Expr) ->
-        ProgPoint = program_point_init(Info),
+    Cond = hlds_goal(CondExpr, CondInfo),
+    HasSubGoals = goal_expr_has_subgoals(CondExpr),
+    (
+        HasSubGoals = does_not_have_subgoals,
+        ProgPoint = program_point_init(CondInfo),
         % It is enough to look for the regions to be renamed at the closest
         % condition because if a region is to be renamed for a compounding
         % if-then-else of the closest if-then-else then it also needs to be
@@ -892,6 +901,7 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
             true
         )
     ;
+        HasSubGoals = has_subgoals,
         collect_ite_renaming_in_condition_compound_goal(IteRenamedRegionProc,
             Graph, Cond, !IteRenamingProc)
     ).

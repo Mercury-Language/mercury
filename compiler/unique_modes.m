@@ -258,34 +258,104 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
         true
     ).
 
-:- pred unique_modes_check_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
-    hlds_goal_expr::out, mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
+%-----------------------------------------------------------------------------%
 
-unique_modes_check_goal_expr(conj(ConjType, List0), _GoalInfo0,
-        conj(ConjType, List), !ModeInfo, !IO) :-
+:- pred unique_modes_check_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
+    hlds_goal_expr::out, mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
+    % XXX The predicates we call here should have their definitions
+    % in the same order as this switch.
+    (
+        GoalExpr0 = unify(LHS0, RHS0, _UniModes0, Unification0, UnifyContext0),
+        unique_modes_check_goal_unify(LHS0, RHS0, Unification0, UnifyContext0,
+            GoalInfo0, GoalExpr, !ModeInfo, !IO)
+    ;
+        GoalExpr0 = plain_call(PredId0, ProcId0, ArgVars0, Builtin0,
+            MaybeUnifyContext0, SymName0),
+        unique_modes_check_goal_plain_call(PredId0, ProcId0, ArgVars0,
+            Builtin0, MaybeUnifyContext0, SymName0, GoalInfo0, GoalExpr,
+            !ModeInfo, !IO)
+    ;
+        GoalExpr0 = generic_call(GenericCall0, ArgVars0, ArgModes0, Detism0),
+        unique_modes_check_goal_generic_call(GenericCall0, ArgVars0, ArgModes0,
+            Detism0, GoalExpr, !ModeInfo, !IO)
+    ;
+        GoalExpr0 = call_foreign_proc(Attributes0, PredId0, ProcId0,
+            Args0, ExtraArgs0, MaybeTraceRuntimeCond0, PragmaCode0),
+        unique_modes_check_goal_call_foreign_proc(Attributes0,
+            PredId0, ProcId0, Args0, ExtraArgs0, MaybeTraceRuntimeCond0,
+            PragmaCode0, GoalInfo0, GoalExpr, !ModeInfo, !IO)
+    ;
+        GoalExpr0 = conj(GoalType0, Goals0),
+        unique_modes_check_goal_conj(GoalType0, Goals0, GoalExpr,
+            !ModeInfo, !IO)
+    ;
+        GoalExpr0 = disj(Goals0),
+        unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr,
+            !ModeInfo, !IO)
+    ;
+        GoalExpr0 = switch(Var0, CanFail0, Cases0),
+        unique_modes_check_goal_switch(Var0, CanFail0, Cases0, GoalInfo0,
+            GoalExpr, !ModeInfo, !IO)
+    ;
+        GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
+        unique_modes_check_goal_if_then_else(Vars0, Cond0, Then0, Else0,
+            GoalInfo0, GoalExpr, !ModeInfo, !IO)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr,
+            !ModeInfo, !IO)
+    ;
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        unique_modes_check_goal_scope(Reason0, SubGoal0, GoalExpr,
+            !ModeInfo, !IO)
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal0, OrElseGoals0, GoalInfo0, GoalExpr,
+                !ModeInfo, !IO)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file,
+                "unique_modes_check_goal_expr: bi_implication")
+        )
+    ).
+
+:- pred unique_modes_check_goal_conj(conj_type::in, list(hlds_goal)::in,
+    hlds_goal_expr::out, mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_conj(ConjType, Goals0, GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "*conj", !ModeInfo, !IO),
     (
-        List0 = [],
+        Goals0 = [],
         % For efficiency, optimize common case.
-        List = []
+        Goals = []
     ;
-        List0 = [_ | _],
-        mode_info_add_goals_live_vars(ConjType, List0, !ModeInfo),
-        unique_modes_check_conj(ConjType, List0, List, !ModeInfo, !IO)
+        Goals0 = [_ | _],
+        mode_info_add_goals_live_vars(ConjType, Goals0, !ModeInfo),
+        unique_modes_check_conj(ConjType, Goals0, Goals, !ModeInfo, !IO)
     ),
+    GoalExpr = conj(ConjType, Goals),
     mode_checkpoint(exit, "*conj", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(disj(List0), GoalInfo0, disj(List), !ModeInfo,
-        !IO) :-
+:- pred unique_modes_check_goal_disj(list(hlds_goal)::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "disj", !ModeInfo, !IO),
     (
-        List0 = [],
-        List = [],
+        Goals0 = [],
+        Goals = [],
         instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
-        List0 = [_ | _],
+        Goals0 = [_ | _],
         % If the disjunction creates a choice point (i.e. is model_non), then
         % mark all the variables which are live at the start of the disjunction
         % and whose inst is `unique' as instead being only `mostly_unique',
@@ -309,19 +379,25 @@ unique_modes_check_goal_expr(disj(List0), GoalInfo0, disj(List), !ModeInfo,
 
         % Now just modecheck each disjunct in turn, and then
         % merge the resulting instmaps.
-        unique_modes_check_disj(List0, Determinism, NonLocals, List,
-            InstMapList, !ModeInfo, !IO),
-        instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
+        unique_modes_check_disj(Goals0, Determinism, NonLocals, Goals,
+            InstMaps, !ModeInfo, !IO),
+        instmap_merge(NonLocals, InstMaps, merge_disj, !ModeInfo)
     ),
+    GoalExpr = disj(Goals),
     mode_checkpoint(exit, "disj", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
-        Goal, !ModeInfo, !IO) :-
+:- pred unique_modes_check_goal_if_then_else(list(prog_var)::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
+        GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "if-then-else", !ModeInfo, !IO),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    Cond_Vars = goal_get_nonlocals(Cond0),
-    Then_Vars = goal_get_nonlocals(Then0),
-    Else_Vars = goal_get_nonlocals(Else0),
+    CondVars = goal_get_nonlocals(Cond0),
+    ThenVars = goal_get_nonlocals(Then0),
+    ElseVars = goal_get_nonlocals(Else0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_lock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
 
@@ -349,19 +425,19 @@ unique_modes_check_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
     %       use(Var)
     %   ).
 
-    mode_info_add_live_vars(Else_Vars, !ModeInfo),
-    set.to_sorted_list(Cond_Vars, Cond_Vars_List),
-    select_live_vars(Cond_Vars_List, !.ModeInfo, Cond_Live_Vars),
-    Cond0 = hlds_goal(_, Cond0_GoalInfo),
-    Cond0_DeltaInstMap = goal_info_get_instmap_delta(Cond0_GoalInfo),
-    select_changed_inst_vars(Cond_Live_Vars, Cond0_DeltaInstMap, !.ModeInfo,
+    mode_info_add_live_vars(ElseVars, !ModeInfo),
+    set.to_sorted_list(CondVars, CondVarList),
+    select_live_vars(CondVarList, !.ModeInfo, CondLiveVars),
+    Cond0 = hlds_goal(_, CondInfo0),
+    CondDeltaInstMap0 = goal_info_get_instmap_delta(CondInfo0),
+    select_changed_inst_vars(CondLiveVars, CondDeltaInstMap0, !.ModeInfo,
         ChangedVars),
     make_var_list_mostly_uniq(ChangedVars, !ModeInfo),
-    mode_info_remove_live_vars(Else_Vars, !ModeInfo),
+    mode_info_remove_live_vars(ElseVars, !ModeInfo),
 
-    mode_info_add_live_vars(Then_Vars, !ModeInfo),
+    mode_info_add_live_vars(ThenVars, !ModeInfo),
     unique_modes_check_goal(Cond0, Cond, !ModeInfo, !IO),
-    mode_info_remove_live_vars(Then_Vars, !ModeInfo),
+    mode_info_remove_live_vars(ThenVars, !ModeInfo),
     mode_info_unlock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
     ( instmap.is_reachable(InstMapCond) ->
@@ -378,12 +454,16 @@ unique_modes_check_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
     unique_modes_check_goal(Else0, Else, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMapElse),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    instmap_merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
+    instmap_merge(NonLocals, [InstMapThen, InstMapElse], merge_if_then_else,
         !ModeInfo),
-    Goal = if_then_else(Vars, Cond, Then, Else),
+    GoalExpr = if_then_else(Vars, Cond, Then, Else),
     mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(negation(SubGoal0), GoalInfo0, negation(SubGoal),
+:- pred unique_modes_check_goal_negation(hlds_goal::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr,
         !ModeInfo, !IO) :-
     mode_checkpoint(enter, "not", !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -410,10 +490,13 @@ unique_modes_check_goal_expr(negation(SubGoal0), GoalInfo0, negation(SubGoal),
     mode_info_unlock_vars(var_lock_negation, NonLocals, !ModeInfo),
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
+    GoalExpr = negation(SubGoal),
     mode_checkpoint(exit, "not", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(scope(Reason, SubGoal0), _, scope(Reason, SubGoal),
-        !ModeInfo, !IO) :-
+:- pred unique_modes_check_goal_scope(scope_reason::in, hlds_goal::in,
+    hlds_goal_expr::out, mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_scope(Reason, SubGoal0, GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "scope", !ModeInfo, !IO),
     ( Reason = from_ground_term(_) ->
         mode_info_get_in_from_ground_term(!.ModeInfo, WasInFromGroundTerm),
@@ -423,14 +506,19 @@ unique_modes_check_goal_expr(scope(Reason, SubGoal0), _, scope(Reason, SubGoal),
     ;
         unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo, !IO)
     ),
+    GoalExpr = scope(Reason, SubGoal),
     mode_checkpoint(exit, "scope", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(generic_call(GenericCall, Args, Modes, Det),
-        _GoalInfo0, Goal, !ModeInfo, !IO) :-
+:- pred unique_modes_check_goal_generic_call(generic_call::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
+    hlds_goal_expr::out, mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes, Detism,
+        GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "generic_call", !ModeInfo, !IO),
     hlds_goal.generic_call_id(GenericCall, CallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
-    ( determinism_components(Det, _, at_most_zero) ->
+    ( determinism_components(Detism, _, at_most_zero) ->
         NeverSucceeds = yes
     ;
         NeverSucceeds = no
@@ -451,38 +539,52 @@ unique_modes_check_goal_expr(generic_call(GenericCall, Args, Modes, Det),
         GenericCall = cast(_),
         ArgOffset = 0
     ),
-    unique_modes_check_call_modes(Args, Modes, ArgOffset, Det, NeverSucceeds,
-        !ModeInfo),
-    Goal = generic_call(GenericCall, Args, Modes, Det),
+    unique_modes_check_call_modes(ArgVars, Modes, ArgOffset, Detism,
+        NeverSucceeds, !ModeInfo),
+    GoalExpr = generic_call(GenericCall, ArgVars, Modes, Detism),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, Goal, !ModeInfo, !IO) :-
-    GoalExpr0 = plain_call(PredId, ProcId0, Args, Builtin, CallContext,
-        PredName),
+:- pred unique_modes_check_goal_plain_call(pred_id::in, proc_id::in,
+    list(prog_var)::in, builtin_state::in, maybe(call_unify_context)::in,
+    sym_name::in, hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_plain_call(PredId, ProcId0, ArgVars, Builtin,
+        MaybeUnifyContext, PredName, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
     PredNameString = sym_name_to_string(PredName),
     string.append("call ", PredNameString, CallString),
     mode_checkpoint(enter, CallString, !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
         !ModeInfo),
-    unique_modes_check_call(PredId, ProcId0, Args, GoalInfo0, ProcId,
+    unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,
         !ModeInfo),
-    Goal = plain_call(PredId, ProcId, Args, Builtin, CallContext, PredName),
+    GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
+        PredName),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "call", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(unify(LHS0, RHS0, _, UnifyInfo0, UnifyContext),
-        GoalInfo0, Goal, !ModeInfo, !IO) :-
+:- pred unique_modes_check_goal_unify(prog_var::in, unify_rhs::in,
+    unification::in, unify_context::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_unify(LHS0, RHS0, Unification0, UnifyContext,
+        GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "unify", !ModeInfo, !IO),
     mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
-    modecheck_unification(LHS0, RHS0, UnifyInfo0, UnifyContext, GoalInfo0,
-        Goal, !ModeInfo, !IO),
+    modecheck_unification(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
+        GoalExpr, !ModeInfo, !IO),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "unify", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
-        switch(Var, CanFail, Cases), !ModeInfo, !IO) :-
+:- pred unique_modes_check_goal_switch(prog_var::in, can_fail::in,
+    list(case)::in, hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
+        !ModeInfo, !IO) :-
     mode_checkpoint(enter, "switch", !ModeInfo, !IO),
     (
         Cases0 = [],
@@ -494,13 +596,21 @@ unique_modes_check_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         unique_modes_check_case_list(Cases0, Var, Cases, InstMapList,
             !ModeInfo, !IO),
-        instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
+        instmap_merge(NonLocals, InstMapList, merge_disj, !ModeInfo)
     ),
+    GoalExpr = switch(Var, CanFail, Cases),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, Goal, !ModeInfo, !IO) :-
-    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaCode),
+:- pred unique_modes_check_goal_call_foreign_proc(
+    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    list(foreign_arg)::in, list(foreign_arg)::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_call_foreign_proc(Attributes, PredId, ProcId0,
+        Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode,
+        GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
     % To modecheck a pragma_c_code, we just modecheck the proc for
     % which it is the goal.
     mode_checkpoint(enter, "foreign_proc", !ModeInfo, !IO),
@@ -510,14 +620,57 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, Goal, !ModeInfo, !IO) :-
     ArgVars = list.map(foreign_arg_var, Args),
     unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,
         !ModeInfo),
-    Goal = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         MaybeTraceRuntimeCond, PragmaCode),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "foreign_proc", !ModeInfo, !IO).
 
-unique_modes_check_goal_expr(shorthand(_), _, _, !ModeInfo, !IO) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "unique_modes_check_goal_expr: unexpected shorthand").
+:- pred unique_modes_check_goal_atomic_goal(atomic_goal_type::in,
+    atomic_interface_vars::in, atomic_interface_vars::in,
+    maybe(list(prog_var))::in, hlds_goal::in, list(hlds_goal)::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+        MainGoal0, OrElseGoals0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
+    mode_checkpoint(enter, "atomic_goal", !ModeInfo, !IO),
+    (
+        OrElseGoals0 = [],
+        unique_modes_check_goal(MainGoal0, MainGoal, !ModeInfo, !IO),
+        OrElseGoals = []
+    ;
+        OrElseGoals0 = [_ | _],
+        % The unique mode check on the or_else goals is very similar
+        % to the unique mode check for disjunctions.  Please see
+        % "unique_modes_check_goal_disj" for disjunctions for discussion
+        % of this code.
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
+        Determinism = goal_info_get_determinism(GoalInfo0),
+        ( determinism_components(Determinism, _, at_most_many) ->
+            mode_info_add_live_vars(NonLocals, !ModeInfo),
+            make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
+            mode_info_remove_live_vars(NonLocals, !ModeInfo)
+        ;
+            true
+        ),
+        Goals0 = [MainGoal0 | OrElseGoals0],
+        unique_modes_check_disj(Goals0, Determinism, NonLocals, Goals,
+            InstMapList, !ModeInfo, !IO),
+        (
+            Goals = [MainGoal | OrElseGoals]
+        ;
+            Goals = [],
+            unexpected(this_file,
+                "unique_modes_check_goal_atomic_goal: Goals = []")
+        ),
+        instmap_merge(NonLocals, InstMapList, merge_disj, !ModeInfo)
+    ),
+    ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+        MainGoal, OrElseGoals),
+    GoalExpr = shorthand(ShortHand),
+    mode_checkpoint(exit, "atomic_goal", !ModeInfo, !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pred unique_modes_check_call(pred_id::in, proc_id::in, list(prog_var)::in,
     hlds_goal_info::in, proc_id::out, mode_info::in, mode_info::out) is det.
@@ -533,7 +686,7 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     % First off, try using the existing mode.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId0,
-            PredInfo, ProcInfo),
+        PredInfo, ProcInfo),
     compute_arg_offset(PredInfo, ArgOffset),
     proc_info_get_argmodes(ProcInfo, ProcArgModes0),
     proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),

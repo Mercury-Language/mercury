@@ -333,7 +333,14 @@ add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
-        GoalExpr = shorthand(_ShorthandGoalExpr)
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, _, _),
+            sorry(this_file, "add_mc_vars_for_goal: NYI: atomic_goal")
+        ;
+            ShortHand = bi_implication(_, _),
+            unexpected(this_file, "add_mc_vars_for_goal: bi_implication")
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -412,260 +419,261 @@ add_goal_constraints(ModuleInfo, ProgVarset, PredId,
     nonlocals::in, mc_var_info::in, mc_var_info::out, mode_constraints::in,
     mode_constraints::out) is det.
 
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        conj(ConjType, Goals), Context, GoalPath, Nonlocals, !VarInfo,
-        !Constraints) :-
+add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
+        Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
     (
-        ConjType = plain_conj,
-        list.foldl(
-            add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId,
-                Nonlocals),
-            Goals, conj_constraints_info_init, ConjConstraintsInfo),
-        VarMap = rep_var_map(!.VarInfo),
+        GoalExpr = conj(ConjType, Goals), 
+        (
+            ConjType = plain_conj,
+            list.foldl(
+                add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId,
+                    Nonlocals),
+                Goals, conj_constraints_info_init, ConjConstraintsInfo),
+            VarMap = rep_var_map(!.VarInfo),
+            list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
+                Goals, !VarInfo, !Constraints),
+            map.foldl(add_local_var_conj_constraints(Context),
+                locals_positions(ConjConstraintsInfo), !Constraints),
+            map.foldl2(add_nonlocal_var_conj_constraints(ProgVarset, PredId,
+                Context, GoalPath), nonlocals_positions(ConjConstraintsInfo),
+                !VarInfo, !Constraints)
+        ;
+            ConjType = parallel_conj,
+            % XXX Need to do something here.
+            sorry(this_file, "par_conj")
+        )
+    ;
+        GoalExpr = plain_call(CalleePredId, _, Args, _, _, _),
+        module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+        % The predicate we are in now is the caller.
+        CallerPredId = PredId,
+        ( pred_info_infer_modes(CalleePredInfo) ->
+            % No modes declared so just constrain the hearvars
+            pred_info_get_clauses_info(CalleePredInfo, CalleeClausesInfo),
+            clauses_info_get_headvar_list(CalleeClausesInfo, CalleeHeadVars),
+            add_mode_infer_callee(CalleePredId, !Constraints),
+            add_call_headvar_constraints(ProgVarset, Context, GoalPath,
+                CallerPredId, Args, CalleePredId, CalleeHeadVars,
+                !VarInfo, !Constraints)
+        ;
+            % At least one declared mode
+            pred_info_get_procedures(CalleePredInfo, CalleeProcTable),
+            map.values(CalleeProcTable, CalleeProcInfos),
+            list.map(proc_info_get_argmodes, CalleeProcInfos,
+                CalleeArgModeDecls),
+            add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
+                CallerPredId, CalleeArgModeDecls, GoalPath, Args, !VarInfo,
+                !Constraints)
+        )
+    ;
+        GoalExpr = generic_call(Details, _, _, _),
+        % XXX Need to do something here.
+        (
+            % XXX Need to do something here.
+            Details = higher_order(_, _, _, _),
+            sorry(this_file, "higher_order generic_call")
+        ;
+            % XXX Need to do something here.
+            Details = class_method(_, _, _, _),
+            sorry(this_file, "class_method generic_call")
+        ;
+            % XXX We need to impose the constraint that all the argument
+            % variables are bound elsewhere.
+            Details = event_call(_),
+            sorry(this_file, "event_call generic_call")
+        ;
+            % No mode constraints
+            Details = cast(_)
+        )
+    ;
+        GoalExpr = switch(_, _, _),
+        unexpected(this_file, "switch")
+    ;
+        GoalExpr = unify(LHSvar, RHS, _Mode, _Kind, _UnifyContext),
+        prog_var_at_path(ProgVarset, PredId, LHSvar, GoalPath,
+            LHSvarProducedHere, !VarInfo),
+        (
+            RHS = rhs_var(RHSvar),
+            % Goal: LHSvar = RHSvar
+            % At most one of the left and right hand sides of a unification
+            % is produced at the unification.
+            prog_var_at_path(ProgVarset, PredId, RHSvar, GoalPath,
+                RHSvarProducedHere, !VarInfo),
+            not_both(Context, LHSvarProducedHere, RHSvarProducedHere,
+                !Constraints)
+        ;
+            RHS = rhs_functor(_Functor, _IsExistConstr, Args),
+            prog_vars_at_path(ProgVarset, PredId, Args, GoalPath,
+                ArgsProducedHere, !VarInfo),
+            (
+                ArgsProducedHere = [OneArgProducedHere, _Two| _],
+                % Goal: LHSvar = functor(Args)
+                % (a): If one arg is produced here, then they all are.
+                % (b): At most one side of the unification is produced.
+                equivalent(Context, ArgsProducedHere, !Constraints),
+                not_both(Context, LHSvarProducedHere, OneArgProducedHere,
+                    !Constraints)
+            ;
+                ArgsProducedHere = [OneArgProducedHere],
+                % Goal: LHSvar = functor(Arg)
+                % At most one side of the unification is produced.
+                not_both(Context, LHSvarProducedHere, OneArgProducedHere,
+                    !Constraints)
+            ;
+                ArgsProducedHere = []
+                % Goal: LHSvar = functor
+                % In this case, LHSvar need not be produced
+                % - it could be a test, so no constraints.
+            )
+        ;
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+            sorry(this_file, "unify with lambda goal")
+        )
+    ;
+        GoalExpr = disj(Goals),
+        nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalPath,
+            DisjunctGoalPaths, Nonlocals, NonlocalsHere, NonlocalsAtDisjuncts,
+            !VarInfo),
+        GoalInfos = list.map(get_hlds_goal_info, Goals),
+        DisjunctGoalPaths = list.map(goal_info_get_goal_path, GoalInfos),
 
         list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
             Goals, !VarInfo, !Constraints),
-        map.foldl(add_local_var_conj_constraints(Context),
-            locals_positions(ConjConstraintsInfo), !Constraints),
-        map.foldl2(add_nonlocal_var_conj_constraints(ProgVarset, PredId,
-            Context, GoalPath), nonlocals_positions(ConjConstraintsInfo),
-            !VarInfo, !Constraints)
-    ;
-        ConjType = parallel_conj,
-        % XXX Need to do something here.
-        sorry(this_file, "par_conj")
-    ).
 
-add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
-        Context, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
-    GoalExpr = plain_call(CalleePredId, _, Args, _, _, _),
-    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-
-    ( pred_info_infer_modes(CalleePredInfo) ->
-        % No modes declared so just constrain the hearvars
-        pred_info_get_clauses_info(CalleePredInfo, CalleeClausesInfo),
-        clauses_info_get_headvar_list(CalleeClausesInfo, CalleeHeadVars),
-        add_mode_infer_callee(CalleePredId, !Constraints),
-        add_call_headvar_constraints(ProgVarset, Context, GoalPath,
-            CallerPredId, Args, CalleePredId, CalleeHeadVars,
-            !VarInfo, !Constraints)
+        % A variable bound at any disjunct is bound for the disjunction
+        % as a whole. If a variable can be bound at one disjunct
+        % it must be able to be bound at any.
+        EquivVarss = list.map_corresponding(list.cons, NonlocalsHere,
+            NonlocalsAtDisjuncts),
+        list.foldl(equivalent(Context), EquivVarss, !Constraints)
     ;
-        % At least one declared mode
-        pred_info_get_procedures(CalleePredInfo, CalleeProcTable),
-        map.values(CalleeProcTable, CalleeProcInfos),
-        list.map(proc_info_get_argmodes, CalleeProcInfos, CalleeArgModeDecls),
-        add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
-            CallerPredId, CalleeArgModeDecls, GoalPath, Args, !VarInfo,
-            !Constraints)
-    ).
+        GoalExpr = negation(Goal),
+        Goal = hlds_goal(_, NegatedGoalInfo),
+        NegatedGoalPath = goal_info_get_goal_path(NegatedGoalInfo),
+        VarMap = rep_var_map(!.VarInfo),
+        NonlocalsAtPath = set.fold(
+            cons_prog_var_at_path(VarMap, PredId, GoalPath),
+            Nonlocals, []),
+        NonlocalsConstraintVars = set.fold(
+            cons_prog_var_at_path(VarMap, PredId, NegatedGoalPath),
+            Nonlocals, NonlocalsAtPath),
 
-add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
-        generic_call(Details, _, _, _), _Context,  _GoalPath,
-        _Nonlocals, !VarInfo, !Constraints) :-
-    % XXX Need to do something here.
-    (
-        % XXX Need to do something here.
-        Details = higher_order(_, _, _, _),
-        sorry(this_file, "higher_order generic_call")
-    ;
-        % XXX Need to do something here.
-        Details = class_method(_, _, _, _),
-        sorry(this_file, "class_method generic_call")
-    ;
-        % XXX We need to impose the constraint that all the argument variables
-        % are bound elsewhere.
-        Details = event_call(_),
-        sorry(this_file, "event_call generic_call")
-    ;
-        % No mode constraints
-        Details = cast(_)
-    ).
+        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
+            !Constraints),
 
-add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
-        switch(_, _, _), _Context,  _GoalPath, _Nonlocals, _, _, _, _) :-
-    unexpected(this_file, "switch").
+        % The variables non-local to the negation are not to be produced
+        % at the negation or any deeper, so we constrain their mode constraint
+        % variables for these positions to `no'.
+        list.foldl(equiv_no(Context), NonlocalsConstraintVars, !Constraints)
+    ;
+        GoalExpr = scope(_Reason, Goal),
+        Goal = hlds_goal(_, SomeGoalInfo),
+        SomeGoalPath = goal_info_get_goal_path(SomeGoalInfo),
 
-add_goal_expr_constraints(_ModuleInfo, ProgVarset, PredId,
-        unify(LHSvar, RHS, _Mode, _Kind, _UnifyContext),
-        GoalContext, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
-    prog_var_at_path(ProgVarset, PredId, LHSvar, GoalPath,
-        LHSvarProducedHere, !VarInfo),
-    (
-        RHS = rhs_var(RHSvar),
-        % Goal: LHSvar = RHSvar
-        % At most one of the left and right hand sides of a unification
-        % is produced at the unification.
-        prog_var_at_path(ProgVarset, PredId, RHSvar, GoalPath,
-            RHSvarProducedHere, !VarInfo),
-        not_both(GoalContext, LHSvarProducedHere, RHSvarProducedHere,
+        % If a program variable is produced by the sub-goal of the some
+        % statement, it is produced at the main goal as well
+        % - here we pair up equivalent mode constraint vars and
+        % then constrain them to reflect this.
+        NonlocalsList = set.to_sorted_list(Nonlocals),
+        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalPath,
+            NonlocalsHere, !VarInfo),
+        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, SomeGoalPath,
+            NonlocalsAtSubGoal, !VarInfo),
+        EquivVarss = list.map_corresponding(
+            func(NlAtPath, NlAtSubPath) = [NlAtPath, NlAtSubPath],
+            NonlocalsHere, NonlocalsAtSubGoal),
+        list.foldl(equivalent(Context), EquivVarss, !Constraints),
+
+        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
             !Constraints)
     ;
-        RHS = rhs_functor(_Functor, _IsExistConstr, Args),
-        prog_vars_at_path(ProgVarset, PredId, Args, GoalPath, ArgsProducedHere,
-            !VarInfo),
-        (
-            ArgsProducedHere = [OneArgProducedHere, _Two| _],
-            % Goal: LHSvar = functor(Args)
-            % (a): If one arg is produced here, then they all are.
-            % (b): At most one side of the unification is produced.
-            equivalent(GoalContext, ArgsProducedHere, !Constraints),
-            not_both(GoalContext, LHSvarProducedHere, OneArgProducedHere,
-                !Constraints)
+        GoalExpr = if_then_else(ExistVars, Cond, Then, Else),
+        Cond = hlds_goal(_, CondInfo),
+        Then = hlds_goal(_, ThenInfo),
+        Else = hlds_goal(_, ElseInfo),
+        CondPath = goal_info_get_goal_path(CondInfo),
+        ThenPath = goal_info_get_goal_path(ThenInfo),
+        ElsePath = goal_info_get_goal_path(ElseInfo),
+
+        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalPath,
+            NonlocalsHere, !VarInfo),
+        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, CondPath,
+            NonlocalsAtCond, !VarInfo),
+        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ThenPath,
+            NonlocalsAtThen, !VarInfo),
+        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ElsePath,
+            NonlocalsAtElse, !VarInfo),
+        NonlocalsList = set.to_sorted_list(Nonlocals),
+
+        % The existentially quantified variables shared between the condition
+        % and the then-part have special constraints.
+
+        CondNonlocals = goal_info_get_nonlocals(CondInfo),
+        ThenNonlocals = goal_info_get_nonlocals(ThenInfo),
+        list.filter(set.contains(CondNonlocals), ExistVars, NonlocalToCond),
+        list.filter(set.contains(ThenNonlocals), NonlocalToCond,
+            LocalAndShared),
+        prog_vars_at_path(ProgVarset, PredId, LocalAndShared, CondPath,
+            LocalAndSharedAtCond, !VarInfo),
+        prog_vars_at_path(ProgVarset, PredId, LocalAndShared, ThenPath,
+            LocalAndSharedAtThen, !VarInfo),
+
+        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Cond, !VarInfo,
+            !Constraints),
+        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Then, !VarInfo,
+            !Constraints),
+        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Else, !VarInfo,
+            !Constraints),
+
+        % If a variable is to be produced at this path,
+        % the then and else parts must be able to produce it.
+        % Here we group constraint variables into lists to be
+        % constrained equivalent to reflect this.
+        EquivVarss = list.map_corresponding3(func(A, B, C) = [A, B, C],
+            NonlocalsHere, NonlocalsAtThen, NonlocalsAtElse),
+        list.foldl(equivalent(Context), EquivVarss, !Constraints),
+
+        % No nonlocal is produced in the condition.
+        list.foldl(equiv_no(Context), NonlocalsAtCond, !Constraints),
+
+        % In case the program variable appears in the nonlocal set
+        % of the condition, but its value is not used, we do not
+        % simply constrain LocalAtCond = yes and LocalAtThen = no.
+        % Instead we constrain exactly one of them to be yes.
+        list.foldl_corresponding(xor(Context), LocalAndSharedAtCond,
+            LocalAndSharedAtThen, !Constraints)
+    ;
+        GoalExpr = call_foreign_proc(_, CalledPred, ProcId, ForeignArgs,
+            _, _, _),
+        CallArgs = list.map(foreign_arg_var, ForeignArgs),
+        module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _, ProcInfo),
+        ( proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
+            proc_info_get_argmodes(ProcInfo, Decl),
+
+            % This pred should strip the disj(conj()) for the single
+            % declaration.
+            add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
+                PredId, [Decl], GoalPath, CallArgs, !VarInfo, !Constraints)
         ;
-            ArgsProducedHere = [OneArgProducedHere],
-            % Goal: LHSvar = functor(Arg)
-            % At most one side of the unification is produced.
-            not_both(GoalContext, LHSvarProducedHere, OneArgProducedHere,
-                !Constraints)
-        ;
-            ArgsProducedHere = []
-            % Goal: LHSvar = functor
-            % In this case, LHSvar need not be produced
-            % - it could be a test, so no constraints.
+            unexpected(this_file, "no mode declaration for foreign proc")
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-        sorry(this_file, "unify with lambda goal")
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = atomic_goal(_, _, _, _, _, _),
+            % Should record that
+            % - OuterDI is definitely not produced inside this goal
+            % - InnerDI is definitely produced by this goal
+            % - InnerUO should definitely be produced inside this goal,
+            %   by the main goal and each orelse goal
+            % - OuterUO is definitely produced by this goal
+            sorry(this_file, "NYI: atomic_goal")
+        ;
+            Shorthand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "shorthand goal")
+        )
     ).
-
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        disj(Goals), Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
-    nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalPath,
-        DisjunctGoalPaths, Nonlocals, NonlocalsHere, NonlocalsAtDisjuncts,
-        !VarInfo),
-
-    GoalInfos = list.map(get_hlds_goal_info, Goals),
-    DisjunctGoalPaths = list.map(goal_info_get_goal_path, GoalInfos),
-
-    list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
-        Goals, !VarInfo, !Constraints),
-
-    % A variable bound at any disjunct is bound for the disjunction
-    % as a whole. If a variable can be bound at one disjunct
-    % it must be able to be bound at any.
-    EquivVarss = list.map_corresponding(list.cons, NonlocalsHere,
-        NonlocalsAtDisjuncts),
-    list.foldl(equivalent(Context), EquivVarss, !Constraints).
-
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        negation(Goal), Context, GoalPath, Nonlocals, !VarInfo,
-        !Constraints) :-
-    Goal = hlds_goal(_, NegatedGoalInfo),
-    NegatedGoalPath = goal_info_get_goal_path(NegatedGoalInfo),
-    VarMap = rep_var_map(!.VarInfo),
-    NonlocalsAtPath = set.fold(cons_prog_var_at_path(VarMap, PredId, GoalPath),
-        Nonlocals, []),
-    NonlocalsConstraintVars = set.fold(cons_prog_var_at_path(VarMap, PredId,
-        NegatedGoalPath), Nonlocals, NonlocalsAtPath),
-
-    add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
-        !Constraints),
-
-    % The variables non-local to the negation are not to be produced
-    % at the negation or any deeper, so we constrain their mode constraint
-    % variables for these positions to `no'.
-    list.foldl(equiv_no(Context), NonlocalsConstraintVars, !Constraints).
-
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        scope(_Reason, Goal), Context, GoalPath, Nonlocals, !VarInfo,
-        !Constraints) :-
-    Goal = hlds_goal(_, SomeGoalInfo),
-    SomeGoalPath = goal_info_get_goal_path(SomeGoalInfo),
-
-    % If a program variable is produced by the sub-goal of the some
-    % statement, it is produced at the main goal as well
-    % - here we pair up equivalent mode constraint vars and
-    % then constrain them to reflect this.
-    NonlocalsList = set.to_sorted_list(Nonlocals),
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalPath,
-        NonlocalsHere, !VarInfo),
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, SomeGoalPath,
-        NonlocalsAtSubGoal, !VarInfo),
-    EquivVarss = list.map_corresponding(
-        func(NlAtPath, NlAtSubPath) = [NlAtPath, NlAtSubPath],
-        NonlocalsHere, NonlocalsAtSubGoal),
-    list.foldl(equivalent(Context), EquivVarss, !Constraints),
-
-    add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
-        !Constraints).
-
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        if_then_else(ExistVars, Cond, Then, Else),
-        Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
-    Cond = hlds_goal(_, CondInfo),
-    Then = hlds_goal(_, ThenInfo),
-    Else = hlds_goal(_, ElseInfo),
-    CondPath = goal_info_get_goal_path(CondInfo),
-    ThenPath = goal_info_get_goal_path(ThenInfo),
-    ElsePath = goal_info_get_goal_path(ElseInfo),
-
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalPath,
-        NonlocalsHere, !VarInfo),
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, CondPath,
-        NonlocalsAtCond, !VarInfo),
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ThenPath,
-        NonlocalsAtThen, !VarInfo),
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ElsePath,
-        NonlocalsAtElse, !VarInfo),
-    NonlocalsList = set.to_sorted_list(Nonlocals),
-
-    % The existentially quantified variables shared between the condition
-    % and the then-part have special constraints.
-
-    CondNonlocals = goal_info_get_nonlocals(CondInfo),
-    ThenNonlocals = goal_info_get_nonlocals(ThenInfo),
-    list.filter(set.contains(CondNonlocals), ExistVars, NonlocalToCond),
-    list.filter(set.contains(ThenNonlocals), NonlocalToCond, LocalAndShared),
-    prog_vars_at_path(ProgVarset, PredId, LocalAndShared, CondPath,
-        LocalAndSharedAtCond, !VarInfo),
-    prog_vars_at_path(ProgVarset, PredId, LocalAndShared, ThenPath,
-        LocalAndSharedAtThen, !VarInfo),
-
-    add_goal_constraints(ModuleInfo, ProgVarset, PredId, Cond, !VarInfo,
-        !Constraints),
-    add_goal_constraints(ModuleInfo, ProgVarset, PredId, Then, !VarInfo,
-        !Constraints),
-    add_goal_constraints(ModuleInfo, ProgVarset, PredId, Else, !VarInfo,
-        !Constraints),
-
-    % If a variable is to be produced at this path,
-    % the then and else parts must be able to produce it.
-    % Here we group constraint variables into lists to be
-    % constrained equivalent to reflect this.
-    EquivVarss = list.map_corresponding3(func(A, B, C) = [A, B, C],
-        NonlocalsHere, NonlocalsAtThen, NonlocalsAtElse),
-    list.foldl(equivalent(Context), EquivVarss, !Constraints),
-
-    % No nonlocal is produced in the condition.
-    list.foldl(equiv_no(Context), NonlocalsAtCond, !Constraints),
-
-    % In case the program variable appears in the nonlocal set
-    % of the condition, but its value is not used, we do not
-    % simply constrain LocalAtCond = yes and LocalAtThen = no.
-    % Instead we constrain exactly one of them to be yes.
-    list.foldl_corresponding(xor(Context), LocalAndSharedAtCond,
-        LocalAndSharedAtThen, !Constraints).
-
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        call_foreign_proc(_, CalledPred, ProcId, ForeignArgs, _, _, _),
-        Context, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
-    CallArgs = list.map(foreign_arg_var, ForeignArgs),
-    module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _, ProcInfo),
-    ( proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
-        proc_info_get_argmodes(ProcInfo, Decl),
-
-        % This pred should strip the disj(conj()) for the single declaration.
-        add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
-            PredId, [Decl], GoalPath, CallArgs, !VarInfo, !Constraints)
-    ;
-        unexpected(this_file, "no mode declaration for foreign proc")
-    ).
-
-add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
-        shorthand(_ShorthandGoalExpr), _Context, _GoalPath, _Nonlocals,
-        _, _, _, _) :-
-    % Shorthand goals should not exist at this point in compilation.
-    unexpected(this_file, "shorthand goal").
 
 %-----------------------------------------------------------------------------%
 

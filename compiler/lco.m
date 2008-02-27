@@ -415,6 +415,7 @@ lco_in_goal(hlds_goal(GoalExpr0, GoalInfo), hlds_goal(GoalExpr, GoalInfo),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file, "lco_in_goal: shorthand")
     ).
 
@@ -946,6 +947,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
             GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
         GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file, "transform_variant_goal: shorthand")
     ),
     (

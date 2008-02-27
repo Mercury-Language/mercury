@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_io_goal.m.
 % Main authors: fjh, zs.
-% 
+%
 % This module defines the predicates that parse goals.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_goal.
@@ -386,6 +386,28 @@ parse_goal_2("trace", [ParamsTerm, SubTerm], Context, MaybeGoal, !VarSet) :-
         SubGoalErrors = get_any_errors1(MaybeSubGoal),
         MaybeGoal = error1(ParamsErrors ++ SubGoalErrors)
     ).
+parse_goal_2("atomic", [ParamsTerm, SubTerm], Context, MaybeGoal, !VarSet) :-
+    parse_atomic_params(Context, ParamsTerm, MaybeParams),
+    parse_atomic_subexpr(SubTerm, MaybeSubGoals, !VarSet),
+    (
+        MaybeParams = ok1(Params),
+        MaybeSubGoals = ok2(MainGoal, OrElseGoals)
+    ->
+        convert_atomic_params(ParamsTerm, Params, MaybeComponents),
+        (
+            MaybeComponents = ok3(Outer, Inner, MaybeOutputVars),
+            GoalExpr = atomic_expr(Outer, Inner, MaybeOutputVars, MainGoal,
+                OrElseGoals),
+            MaybeGoal = ok1(GoalExpr - Context)
+        ;
+            MaybeComponents = error3(Errors),
+            MaybeGoal = error1(Errors)
+        )
+    ;
+        ParamsErrors = get_any_errors1(MaybeParams),
+        SubGoalErrors = get_any_errors2(MaybeSubGoals),
+        MaybeGoal = error1(ParamsErrors ++ SubGoalErrors)
+    ).
 parse_goal_2("promise_equivalent_solutions", [VarsTerm, SubTerm], Context,
         MaybeGoal, !VarSet) :-
     parse_vars_and_state_vars(VarsTerm, MaybeVars),
@@ -638,8 +660,7 @@ parse_trace_params(Context, Term, MaybeComponentsTerms) :-
             MaybeHeadComponent = ok1(HeadComponent),
             MaybeTailComponentsTerms = ok1(TailComponentsTerms)
         ->
-            MaybeComponentsTerms = ok1([HeadComponent |
-                TailComponentsTerms])
+            MaybeComponentsTerms = ok1([HeadComponent | TailComponentsTerms])
         ;
             HeadErrors = get_any_errors1(MaybeHeadComponent),
             TailErrors = get_any_errors1(MaybeTailComponentsTerms),
@@ -1056,6 +1077,313 @@ convert_trace_params_2([Component - Term | ComponentsTerms],
 
 %-----------------------------------------------------------------------------%
 
+:- type atomic_component
+    --->    atomic_component_inner(atomic_component_state)
+    ;       atomic_component_outer(atomic_component_state)
+    ;       atomic_component_vars(list(prog_var)).
+
+:- pred parse_atomic_params(context::in, term::in,
+    maybe1(assoc_list(atomic_component, term))::out) is det.
+
+parse_atomic_params(Context, Term, MaybeComponentsTerms) :-
+    ( Term = term.functor(term.atom("[]"), [], _) ->
+        MaybeComponentsTerms = ok1([])
+    ; Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) ->
+        parse_atomic_component(Term, HeadTerm, MaybeHeadComponent),
+        parse_atomic_params(Context, TailTerm, MaybeTailComponentsTerms),
+        (
+            MaybeHeadComponent = ok1(HeadComponent),
+            MaybeTailComponentsTerms = ok1(TailComponentsTerms)
+        ->
+            MaybeComponentsTerms = ok1([HeadComponent | TailComponentsTerms])
+        ;
+            HeadErrors = get_any_errors1(MaybeHeadComponent),
+            TailErrors = get_any_errors1(MaybeTailComponentsTerms),
+            MaybeComponentsTerms = error1(HeadErrors ++ TailErrors)
+        )
+    ;
+        (
+            Term = term.functor(_, _, _),
+            Msg = "invalid atomic goal parameter",
+            MaybeComponentsTerms = error1([Msg - Term])
+        ;
+            Term = term.variable(_, _),
+            Msg = "expected atomic goal parameter, found variable",
+            ErrorTerm = term.functor(term.atom(""), [], Context),
+            MaybeComponentsTerms = error1([Msg - ErrorTerm])
+        )
+    ).
+
+:- pred parse_atomic_subterm(string::in, term::in, term::in,
+    maybe1(atomic_component_state)::out) is det.
+
+parse_atomic_subterm(Name, ErrorTerm, Term, MaybeComponentTerm) :-
+    (
+        Term = term.functor(_, SubTerms, _),
+        ( SubTerms = [SubTerm] ->
+            parse_atomic_component_state(Name, SubTerm, MaybeCompState),
+            (
+                MaybeCompState = ok1(Component),
+                MaybeComponentTerm = ok1(Component)
+            ;
+                MaybeCompState = error1(Errors),
+                MaybeComponentTerm = error1(Errors)
+            )
+        ; SubTerms = [SubTermA, SubTermB] ->
+            parse_atomic_component_pair(Name, SubTermA, SubTermB,
+                MaybeCompState),
+            (
+                MaybeCompState = ok1(Component),
+                MaybeComponentTerm = ok1(Component)
+            ;
+                MaybeCompState = error1(Errors),
+                MaybeComponentTerm = error1(Errors)
+            )
+        ;
+            Msg = Name ++ " takes exactly one argument, " ++
+                "which should be a state variable " ++
+                "or a pair of variables",
+            MaybeComponentTerm = error1([Msg - Term])
+        )
+    ;
+        Term = term.variable(_, _),
+        Msg = "expected atomic goal parameter, found variable",
+        MaybeComponentTerm = error1([Msg - ErrorTerm])
+    ).
+
+:- pred parse_atomic_component(term::in, term::in,
+    maybe1(pair(atomic_component, term))::out) is det.
+
+parse_atomic_component(ErrorTerm, Term, MaybeComponentTerm) :-
+    (
+        Term = term.functor(Functor, SubTerms, _),
+        ( Functor = term.atom(Atom) ->
+            ( Atom = "outer" ->
+                parse_atomic_subterm(Atom, ErrorTerm, Term,
+                    MaybeComponentSubTerm),
+                (
+                    MaybeComponentSubTerm = ok1(CompTerm),
+                    Component = atomic_component_outer(CompTerm),
+                    MaybeComponentTerm = ok1(Component - Term)
+                ;
+                    MaybeComponentSubTerm = error1(Errors),
+                    MaybeComponentTerm = error1(Errors)
+                )
+            ; Atom = "inner" ->
+                parse_atomic_subterm(Atom, ErrorTerm, Term,
+                    MaybeComponentSubTerm),
+                (
+                    MaybeComponentSubTerm = ok1(CompTerm),
+                    Component = atomic_component_inner(CompTerm),
+                    MaybeComponentTerm = ok1(Component - Term)
+                ;
+                    MaybeComponentSubTerm = error1(Errors),
+                    MaybeComponentTerm = error1(Errors)
+                )
+            ; Atom = "vars" ->
+                ( SubTerms = [SubTerm] ->
+                    parse_vars(SubTerm, MaybeVars),
+                    (
+                        MaybeVars = ok1(Vars),
+                        list.map(term.coerce_var, Vars, ProgVars),
+                        Component = atomic_component_vars(ProgVars),
+                        MaybeComponentTerm = ok1(Component - Term)
+                    ;
+                        MaybeVars = error1(Errors),
+                        MaybeComponentTerm = error1(Errors)
+                    )
+                ;
+                    Msg = Atom ++ " takes exactly one argument, " ++
+                        "which should be a list of variable names",
+                    MaybeComponentTerm = error1([Msg - Term])
+                )
+            ;
+                Msg = "invalid atomic goal parameter",
+                MaybeComponentTerm = error1([Msg - Term])
+            )
+        ;
+            Msg = "invalid atomic goal parameter",
+            MaybeComponentTerm = error1([Msg - Term])
+        )
+    ;
+        Term = term.variable(_, _),
+        Msg = "expected atomic goal parameter, found variable",
+        MaybeComponentTerm = error1([Msg - ErrorTerm])
+    ).
+
+:- pred parse_atomic_component_state(string::in, term::in,
+    maybe1(atomic_component_state)::out) is det.
+
+parse_atomic_component_state(Scope, Term, MaybeState) :-
+    (
+        Term = term.functor(term.atom("!"), [term.variable(Var, _)], _)
+    ->
+        term.coerce_var(Var, ProgVar),
+        MaybeState = ok1(atomic_state_var(ProgVar))
+    ;
+        Msg = atomic_component_state_error(Scope),
+        MaybeState = error1([Msg - Term])
+    ).
+
+:- pred parse_atomic_component_pair(string::in, term::in,
+    term::in, maybe1(atomic_component_state)::out) is det.
+
+parse_atomic_component_pair(Scope, TermA, TermB, MaybeState) :-
+    (
+        TermA = term.variable(VarA, _),
+        TermB = term.variable(VarB, _)
+    ->
+        term.coerce_var(VarA, ProgVarA),
+        term.coerce_var(VarB, ProgVarB),
+        MaybeState = ok1(atomic_var_pair(ProgVarA, ProgVarB))
+    ;
+        Msg = atomic_component_state_error(Scope),
+        MaybeState = error1([Msg - TermA])
+    ).
+
+:- func atomic_component_state_error(string) = string.
+
+atomic_component_state_error(Scope) =
+    "The argument of " ++ Scope ++ " should contain " ++
+    "either a state variable or a pair of variables".
+
+:- pred convert_atomic_params(term::in,
+    assoc_list(atomic_component, term)::in,
+    maybe3(atomic_component_state, atomic_component_state,
+        maybe(list(prog_var)))::out) is det.
+
+convert_atomic_params(ErrorTerm, Components, MaybeParams) :-
+    convert_atomic_params_2(ErrorTerm, Components, no, no, no, [],
+        MaybeParams).
+
+:- pred convert_atomic_params_2(term::in,
+    assoc_list(atomic_component, term)::in,
+    maybe(atomic_component_state)::in,
+    maybe(atomic_component_state)::in,
+    maybe(list(prog_var))::in,
+    assoc_list(string, term)::in,
+    maybe3(atomic_component_state, atomic_component_state,
+        maybe(list(prog_var)))::out) is det.
+
+convert_atomic_params_2(ErrorTerm, [], MaybeOuter, MaybeInner, MaybeVars,
+        Errors, MaybeParams) :-
+    (
+        Errors = [],
+        (
+            MaybeOuter = yes(Outer),
+            MaybeInner = yes(Inner),
+            MaybeParams = ok3(Outer, Inner, MaybeVars)
+        ;
+            MaybeOuter = yes(_),
+            MaybeInner = no,
+            Msg = "atomic goal is missing " ++
+                "a specification of the inner STM state",
+            MaybeParams = error3([Msg - ErrorTerm])
+        ;
+            MaybeOuter = no,
+            MaybeInner = yes(_),
+            Msg = "atomic goal is missing " ++
+                "a specification of the outer STM state",
+            MaybeParams = error3([Msg - ErrorTerm])
+        ;
+            MaybeOuter = no,
+            MaybeInner = no,
+            Msg = "atomic goal is missing " ++
+                "a specification of both the outer and inner STM state",
+            MaybeParams = error3([Msg - ErrorTerm])
+        )
+    ;
+        Errors = [_ | _],
+        MaybeParams = error3(Errors)
+    ).
+convert_atomic_params_2(ErrorTerm, [Component - Term | ComponentsTerms],
+        !.MaybeOuter, !.MaybeInner, !.MaybeVars, !.Errors, MaybeParams) :-
+    (
+        Component = atomic_component_outer(Outer),
+        (
+            !.MaybeOuter = no,
+            !:MaybeOuter = yes(Outer)
+        ;
+            !.MaybeOuter = yes(_),
+            Msg = "duplicate outer atomic parameter",
+            !:Errors = !.Errors ++ [Msg - Term]
+        )
+    ;
+        Component = atomic_component_inner(Inner),
+        (
+            !.MaybeInner = no,
+            !:MaybeInner = yes(Inner)
+        ;
+            !.MaybeInner = yes(_),
+            Msg = "duplicate inner atomic parameter",
+            !:Errors = !.Errors ++ [Msg - Term]
+        )
+    ;
+        Component = atomic_component_vars(Vars),
+        (
+            !.MaybeVars = no,
+            !:MaybeVars = yes(Vars)
+        ;
+            !.MaybeVars = yes(_),
+            Msg = "duplicate io trace parameter",
+            !:Errors = !.Errors ++ [Msg - Term]
+        )
+    ),
+    convert_atomic_params_2(ErrorTerm, ComponentsTerms,
+        !.MaybeOuter, !.MaybeInner, !.MaybeVars, !.Errors, MaybeParams).
+
+:- pred parse_atomic_subexpr(term::in, maybe2(goal, goals)::out,
+    prog_varset::in, prog_varset::out) is det.
+
+parse_atomic_subexpr(Term, MaybeSubExpr, !VarSet) :-
+    parse_atomic_subgoals_as_list(Term, MaybeGoalList, !VarSet),
+    ( MaybeGoalList = ok1(GoalList) ->
+        (
+            GoalList = [],
+            Msg = "atomic goal must have a subgoal",
+            MaybeSubExpr = error2([Msg - Term])
+        ;
+            GoalList = [MainSubGoalExpr | OrElseAlternativeSubExpr],
+            MaybeSubExpr = ok2(MainSubGoalExpr, OrElseAlternativeSubExpr)
+        )
+    ;
+        GoalListErrors = get_any_errors1(MaybeGoalList),
+        MaybeSubExpr = error2(GoalListErrors)
+    ).
+
+:- pred parse_atomic_subgoals_as_list(term::in, maybe1(list(goal))::out,
+    prog_varset::in, prog_varset::out) is det.
+
+parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
+    (
+        Term = term.functor(term.atom("or_else"), [LeftGoal, RightGoal], _)
+    ->
+        parse_atomic_subgoals_as_list(LeftGoal, MaybeLeftGoalList, !VarSet),
+        parse_atomic_subgoals_as_list(RightGoal, MaybeRightGoalList, !VarSet),
+        (
+            MaybeLeftGoalList = ok1(LeftGoalList),
+            MaybeRightGoalList = ok1(RightGoalList)
+        ->
+            MaybeGoals = ok1(LeftGoalList ++ RightGoalList)
+        ;
+            LeftErrors = get_any_errors1(MaybeLeftGoalList),
+            RightErrors = get_any_errors1(MaybeRightGoalList),
+            MaybeGoals = error1(LeftErrors ++ RightErrors)
+        )
+    ;
+        parse_goal(Term, MaybeSubGoal, !VarSet),
+        (
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            MaybeGoals = ok1([SubGoal])
+        ;
+            SubGoalErrors = get_any_errors1(MaybeSubGoal),
+            MaybeGoals = error1(SubGoalErrors)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- pred parse_lambda_arg(term::in, prog_term::out, mer_mode::out) is semidet.
 
 parse_lambda_arg(Term, ArgTerm, Mode) :-
@@ -1065,7 +1393,7 @@ parse_lambda_arg(Term, ArgTerm, Mode) :-
     constrain_inst_vars_in_mode(Mode0, Mode).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Code for parsing pred/func expressions
 %
 

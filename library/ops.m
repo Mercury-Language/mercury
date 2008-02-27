@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -405,6 +405,7 @@ ops.op_table(Op, Info, OtherInfos) :-
         ; Op = "==>",               Info = op_info(infix(x, x), 1175)
         ; Op = "=^",                Info = op_info(infix(x, x), 650)
         ; Op = "@",                 Info = op_info(infix(x, x), 90)
+        ; Op = "or_else",           Info = op_info(infix(x, y), 1100)
         ; Op = "end_module",        Info = op_info(prefix(x), 1199)
         ; Op = "event",             Info = op_info(prefix(x), 100)
         ; Op = "finalise",          Info = op_info(prefix(x), 1199)
@@ -433,6 +434,7 @@ ops.op_table(Op, Info, OtherInfos) :-
         ; Op = "promise_equivalent_solutions"
         ; Op = "promise_equivalent_solution_sets"
         ; Op = "trace"
+        ; Op = "atomic"
         ),
         Info = op_info(binary_prefix(x, y), 950),
         OtherInfos = []

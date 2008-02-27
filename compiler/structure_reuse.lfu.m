@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,9 @@ forward_use_information(!ProcInfo) :-
 
 forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
-    ( goal_is_atomic(GoalExpr0) ->
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = does_not_have_subgoals,
         InstantiatedVars0 = !.InstantiatedVars,
         compute_instantiated_and_dead_vars(VarTypes, GoalInfo0,
             !InstantiatedVars, !DeadVars),
@@ -75,6 +77,7 @@ forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
         goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
         !:Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
+        HasSubGoals = has_subgoals,
         goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
         set.union(PreDeaths, !DeadVars),
         forward_use_in_composite_goal(VarTypes, !Goal,

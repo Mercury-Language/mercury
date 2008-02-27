@@ -405,6 +405,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         )
     ;
         GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file, "shorthand in build_interval_info_in_goal")
     ).
 
@@ -946,23 +947,16 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             rename_var_list(need_not_rename, !.VarRename, Vars0, Vars),
             Reason = exist_quant(Vars)
         ;
-            Reason0 = promise_purity(_, _),
-            Reason = Reason0
-        ;
-            Reason0 = promise_solutions(_, _),
-            Reason = Reason0
-        ;
-            Reason0 = commit(_),
-            Reason = Reason0
-        ;
-            Reason0 = barrier(_),
-            Reason = Reason0
-        ;
             Reason0 = from_ground_term(Var0),
             rename_var(need_not_rename, !.VarRename, Var0, Var),
             Reason = from_ground_term(Var)
         ;
-            Reason0 = trace_goal(_, _, _, _, _),
+            ( Reason0 = promise_purity(_, _)
+            ; Reason0 = promise_solutions(_, _)
+            ; Reason0 = commit(_)
+            ; Reason0 = barrier(_)
+            ; Reason0 = trace_goal(_, _, _, _, _)
+            ), 
             Reason = Reason0
         ),
         record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,

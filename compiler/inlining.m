@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -516,7 +516,8 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
 
         (
             DidInlining = yes,
-            recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo)
+            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+                !ProcInfo, !ModuleInfo)
         ;
             DidInlining = no
         ),
@@ -553,6 +554,17 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
 inlining_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
     (
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+        inlining_in_call(PredId, ProcId, ArgVars, Builtin,
+            Context, Sym, GoalExpr, GoalInfo0, GoalInfo, !Info)
+    ;
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0,
+        GoalInfo = GoalInfo0
+    ;
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
@@ -591,20 +603,9 @@ inlining_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         GoalExpr = scope(Reason, SubGoal),
         GoalInfo = GoalInfo0
     ;
-        ( GoalExpr0 = generic_call(_, _, _, _)
-        ; GoalExpr0 = unify(_, _, _, _, _)
-        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
         unexpected(this_file, "inlining_in_goal: unexpected shorthand")
-    ;
-        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
-        inlining_in_call(PredId, ProcId, ArgVars, Builtin,
-            Context, Sym, GoalExpr, GoalInfo0, GoalInfo, !Info)
     ).
 
 :- pred inlining_in_call(pred_id::in, proc_id::in,

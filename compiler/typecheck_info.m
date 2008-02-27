@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,6 +215,9 @@
 
 :- pred typecheck_info_get_all_errors(typecheck_info::in,
     list(error_spec)::out) is det.
+
+:- pred typecheck_info_add_pred_marker(marker::in,
+    typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -663,6 +666,11 @@ typecheck_info_get_all_errors(Info, Errors) :-
         MaybeOverloadError = yes(OverloadError),
         Errors = [OverloadError | Errors0]
     ).
+
+typecheck_info_add_pred_marker(Marker, !Info) :-
+    Markers0 = !.Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers,
+    add_marker(Marker, Markers0, Markers),
+    !:Info = !.Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers := Markers.
 
 %-----------------------------------------------------------------------------%
 

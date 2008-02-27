@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -369,6 +369,7 @@ process_goal(_, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     list.filter_map(ForeignHOArgs, Args, OutputForeignHOArgs),
     svmap.det_insert_from_assoc_list(OutputForeignHOArgs, !ClosureInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
+
 process_goal(_, _, hlds_goal(shorthand(_), _), _, _, _) :-
     unexpected(this_file, "shorthand/1 goal during closure analysis.").
 

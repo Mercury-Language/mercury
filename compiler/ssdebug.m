@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -845,7 +845,8 @@ commit_goal_changes(Goal, PredId, ProcId, !.PredInfo, !ProcInfo, !ModuleInfo,
     proc_info_set_vartypes(Vartypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     requantify_proc(!ProcInfo),
-    recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
+    recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+        !ProcInfo, !ModuleInfo),
     pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).

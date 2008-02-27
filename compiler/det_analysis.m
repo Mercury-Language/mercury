@@ -626,9 +626,22 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             GoalFailingContexts, !.DetInfo, !Specs),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "det_infer_goal_2: unexpected shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Inner, Outer, Vars, MainGoal0,
+                OrElseGoals0),
+            det_infer_atomic(MainGoal0, MainGoal, OrElseGoals0, OrElseGoals,
+                InstMap0, SolnContext, RightFailingContexts,
+                MaybePromiseEqvSolutionSets, Detism, !DetInfo, !Specs),
+            GoalFailingContexts = [],
+            ShortHand = atomic_goal(GoalType, Inner, Outer, Vars, MainGoal,
+                OrElseGoals)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "det_infer_goal_2: bi_implication")
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1335,6 +1348,110 @@ det_infer_not(Goal0, Goal, GoalInfo, InstMap0, MaybePromiseEqvSolutionSets,
         CanFail = cannot_fail,
         GoalFailingContexts = []
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_infer_atomic(hlds_goal::in, hlds_goal::out,
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in,
+    soln_context::in, list(failing_context)::in, maybe(pess_info)::in,
+    determinism::out, det_info::in, det_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+det_infer_atomic(MainGoal0, MainGoal, OrElseGoals0, OrElseGoals, InstMap0,
+        SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets0,
+        Detism, !DetInfo, !Specs) :-
+    det_infer_atomic_goal(MainGoal0, MainGoal, InstMap0,
+        SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets0,
+        MainDetism, !DetInfo, !Specs),
+    (
+        OrElseGoals0 = [],
+        OrElseGoals = [],
+        Detism = MainDetism
+    ;
+        OrElseGoals0 = [_ | _],
+        determinism_components(MainDetism, MainCanFail, MainMaxSolns),
+        det_infer_orelse_goals(OrElseGoals0, OrElseGoals, InstMap0,
+            SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets0,
+            MainCanFail, CanFail, MainMaxSolns, MaxSolns0, !DetInfo, !Specs),
+        (
+            MaxSolns0 = at_most_zero,
+            MaxSolns = at_most_zero
+        ;
+            MaxSolns0 = at_most_one,
+            % The final solution is given by the main goal or one of the
+            % orelse goals; whichever succeeds first. This effectively makes
+            % the atomic scope commit to the first of several possible
+            % solutions.
+            MaxSolns = at_most_many_cc
+        ;
+            MaxSolns0 = at_most_many_cc,
+            MaxSolns = at_most_many_cc
+        ;
+            MaxSolns0 = at_most_many,
+            MaxSolns = at_most_many
+        ),
+        determinism_components(Detism, CanFail, MaxSolns)
+    ).
+
+:- pred det_infer_atomic_goal(hlds_goal::in, hlds_goal::out, instmap::in,
+    soln_context::in, list(failing_context)::in, maybe(pess_info)::in,
+    determinism::out, det_info::in, det_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+det_infer_atomic_goal(Goal0, Goal, InstMap0,
+        SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets0,
+        Detism, !DetInfo, !Specs) :-
+    det_infer_goal(Goal0, Goal, InstMap0, SolnContext, RightFailingContexts,
+        MaybePromiseEqvSolutionSets0, Detism, GoalFailingContexts,
+        !DetInfo, !Specs),
+    (
+        ( Detism = detism_det
+        ; Detism = detism_cc_multi
+        ; Detism = detism_erroneous
+        ),
+        % XXX STM Detism = detism_cc_multi            % <== TMP
+        expect(unify(GoalFailingContexts, []), this_file,
+            "det_infer_atomic_goal: GoalFailingContexts != []")
+    ;
+        ( Detism = detism_semi
+        ; Detism = detism_multi
+        ; Detism = detism_non
+        ; Detism = detism_cc_non
+        ; Detism = detism_failure
+        ),
+        Goal0 = hlds_goal(_, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        DetismStr = determinism_to_string(Detism),
+        Pieces = [words("Error: atomic goal has determinism"),
+            quote(DetismStr), suffix(","),
+            words("should be det or cc_multi.")],
+        Spec = error_spec(severity_error, phase_detism_check,
+            [simple_msg(Context, [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred det_infer_orelse_goals(list(hlds_goal)::in, list(hlds_goal)::out,
+    instmap::in, soln_context::in, list(failing_context)::in,
+    maybe(pess_info)::in,
+    can_fail::in, can_fail::out, soln_count::in, soln_count::out,
+    det_info::in, det_info::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+det_infer_orelse_goals([], [], _InstMap0,
+        _SolnContext, _RightFailingContexts, _MaybePromiseEqvSolutionSets,
+        !CanFail, !MaxSolns, !DetInfo, !Specs).
+det_infer_orelse_goals([Goal0 | Goals0], [Goal | Goals], InstMap0,
+        SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
+        !CanFail, !MaxSolns, !DetInfo, !Specs) :-
+    det_infer_atomic_goal(Goal0, Goal, InstMap0,
+        SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
+        FirstDetism, !DetInfo, !Specs),
+    determinism_components(FirstDetism, FirstCanFail, FirstMaxSolns),
+    det_switch_canfail(!.CanFail, FirstCanFail, !:CanFail),
+    det_switch_maxsoln(!.MaxSolns, FirstMaxSolns, !:MaxSolns),
+    det_infer_orelse_goals(Goals0, Goals, InstMap0,
+        SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
+        !CanFail, !MaxSolns, !DetInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

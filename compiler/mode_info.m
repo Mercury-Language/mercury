@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,6 +69,7 @@
     ;       var_lock_if_then_else
     ;       var_lock_lambda(pred_or_func)
     ;       var_lock_trace_goal
+    ;       var_lock_atomic_goal
     ;       var_lock_par_conj.
 
     % Specify how to process goals - using either modes.m or unique_modes.m.
@@ -106,10 +107,6 @@
 :- pred mode_info_init(module_info::in, pred_id::in,
     proc_id::in, prog_context::in, set(prog_var)::in, instmap::in,
     how_to_check_goal::in, may_change_called_proc::in, mode_info::out) is det.
-
-:- type need_to_requantify
-    --->    need_to_requantify
-    ;       do_not_need_to_requantify.
 
     % The mode_info contains a flag indicating whether initialisation calls,
     % converting a solver variable from `free' to `any', may be inserted

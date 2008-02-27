@@ -180,14 +180,14 @@ detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo) :-
     proc_info_get_vartypes(ProcInfo0, VarTypes),
     proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
     detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-        Goal0, Goal, !ModuleInfo, dont_need_to_requantify, Requant),
+        Goal0, Goal, !ModuleInfo, do_not_need_to_requantify, Requant),
 
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     (
         Requant = need_to_requantify,
         requantify_proc(ProcInfo1, ProcInfo)
     ;
-        Requant = dont_need_to_requantify,
+        Requant = do_not_need_to_requantify,
         ProcInfo = ProcInfo1
     ),
     map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -196,10 +196,6 @@ detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo) :-
     module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
-
-:- type need_to_requantify
-    --->    dont_need_to_requantify
-    ;       need_to_requantify.
 
     % Given a goal, and the instmap on entry to that goal,
     % replace disjunctions with switches whereever possible.
@@ -306,9 +302,22 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
         ),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "detect_switches_in_goal_2: shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
+                MainGoal0, MainGoal, !ModuleInfo, !Requant),
+            detect_switches_in_orelse(VarTypes, AllowMulti, InstMap0,
+                OrElseGoals0, OrElseGoals, !ModuleInfo, !Requant),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "detect_switches_in_goal_2: bi_implication")
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -628,6 +637,19 @@ detect_switches_in_conj(VarTypes, AllowMulti, InstMap0,
     detect_switches_in_conj(VarTypes, AllowMulti,
         InstMap1, Goals0, Goals, !ModuleInfo, !Requant).
 
+:- pred detect_switches_in_orelse(vartypes::in, allow_multi_arm::in,
+    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    module_info::in, module_info::out,
+    need_to_requantify::in, need_to_requantify::out) is det.
+
+detect_switches_in_orelse(_, _, _, [], [], !ModuleInfo, !Requant).
+detect_switches_in_orelse(VarTypes, AllowMulti, InstMap,
+        [Goal0 | Goals0], [Goal | Goals], !ModuleInfo, !Requant) :-
+    detect_switches_in_goal(VarTypes, AllowMulti, InstMap, Goal0, Goal,
+        !ModuleInfo, !Requant),
+    detect_switches_in_orelse(VarTypes, AllowMulti, InstMap, Goals0, Goals,
+        !ModuleInfo, !Requant).
+
 %-----------------------------------------------------------------------------%
 
     % partition_disj(AllowMulti, Disjuncts, Var, GoalInfo, VarTypes,
@@ -925,8 +947,15 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             FoundDeconstruct = given_up_search
         )
     ;
-        GoalExpr0 = shorthand(_),
-        unexpected(this_file, "find_bind_var_2: shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(_, _, _, _, _, _),
+            Goal = Goal0,
+            FoundDeconstruct = given_up_search
+        ;
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file, "find_bind_var_2: bi_implication")
+        )
     ).
 
 :- pred conj_find_bind_var(prog_var::in,

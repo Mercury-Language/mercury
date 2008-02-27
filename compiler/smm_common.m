@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -175,6 +175,11 @@ dump_goal_path_step(step_first) -->
     io.write_char('f').
 dump_goal_path_step(step_later) -->
     io.write_char('l').
+dump_goal_path_step(step_atomic_main) -->
+    io.write_char('a').
+dump_goal_path_step(step_atomic_orelse(N)) -->
+    io.write_char('o'),
+    io.write_int(N).
 	
 %-----------------------------------------------------------------------------%
 :- end_module smm_common.

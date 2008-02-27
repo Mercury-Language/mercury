@@ -35,8 +35,9 @@
 %-----------------------------------------------------------------------------%
 
 :- type merge_context
-    --->    disj
-    ;       if_then_else.
+    --->    merge_disj
+    ;       merge_if_then_else
+    ;       merge_stm_atomic.
 
 :- type merge_error
     --->    merge_error(prog_var, list(mer_inst)).
@@ -541,8 +542,9 @@ merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
 
 :- func merge_context_to_string(merge_context) = string.
 
-merge_context_to_string(disj) = "disjunction".
-merge_context_to_string(if_then_else) = "if-then-else".
+merge_context_to_string(merge_disj) = "disjunction".
+merge_context_to_string(merge_if_then_else) = "if-then-else".
+merge_context_to_string(merge_stm_atomic) = "atomic".
 
 %-----------------------------------------------------------------------------%
 
@@ -568,6 +570,10 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
     ;
         Reason = var_lock_trace_goal,
         ReasonStr = "attempt to bind a non-local variable inside a trace goal."
+    ;
+        Reason = var_lock_atomic_goal,
+        ReasonStr = "attempt to bind outer state variables inside an " ++
+            "atomic goal."
     ;
         Reason = var_lock_par_conj,
         ReasonStr = "attempt to bind a non-local variable" ++
@@ -605,6 +611,11 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
         VerbosePieces =
             [words("A trace goal is only allowed to bind variables"),
             words("which are local to the trace goal."), nl]
+    ;
+        Reason = var_lock_atomic_goal,
+        VerbosePieces =
+            [words("An atomic goal may not use the state variables"),
+            words("belonging to the outer scope."), nl]
     ;
         Reason = var_lock_par_conj,
         VerbosePieces =

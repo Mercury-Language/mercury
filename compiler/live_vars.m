@@ -127,10 +127,12 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
     % If the goal is atomic, we want to apply the postdeaths before processing
     % the goal, but if the goal is a compound goal, then we want to apply them
     % after processing it.
-    ( goal_is_atomic(GoalExpr0) ->
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = does_not_have_subgoals,
         set.difference(!.Liveness, PostDeaths, !:Liveness)
     ;
-        true
+        HasSubGoals = has_subgoals
     ),
 
     goal_info_get_resume_point(GoalInfo0, ResumePoint),
@@ -156,9 +158,10 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         ResumeVars1, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         !ParStackVars),
 
-    ( goal_is_atomic(GoalExpr0) ->
-        true
+    (
+        HasSubGoals = does_not_have_subgoals
     ;
+        HasSubGoals = has_subgoals,
         set.difference(!.Liveness, PostDeaths, !:Liveness)
     ),
 

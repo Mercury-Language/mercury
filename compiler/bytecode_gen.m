@@ -317,7 +317,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         Code = node([byte_not_supported])
     ;
         GoalExpr = shorthand(_),
-        % these should have been expanded out by now
+        % These should have been expanded out by now.
         unexpected(this_file, "goal_expr: unexpected shorthand")
     ).
 

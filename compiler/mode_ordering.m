@@ -342,6 +342,13 @@ mode_order_goal_2(Goal0, _, !GoalInfo, !MOI) :-
 mode_order_goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = shorthand(_),
     unexpected(this_file, "mode_order_goal_2: shorthand").
+% mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
+%     Goal0 = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal0,
+%         OrElseGoals0),
+%     mode_order_goal(MainGoal0, MainGoal, !MOI),
+%     list.map_foldl(mode_order_goal, OrElseGoals0, OrElseGoals, !MOI),
+%     mode_order_disj(OrElseGoals, !GoalInfo),
+%     Goal = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal, OrElseGoals).
 
 :- pred mode_order_disj(hlds_goals::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.

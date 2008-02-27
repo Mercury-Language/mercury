@@ -484,11 +484,9 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     AbstractGoal = term_primitive(polyhedron.universe, [], []),
     info_update_ho_info(Context, !Info).
 
-    % shorthand/1 goals ought to have been transformed away by
-    % the time we get round to termination analysis.
-    %
 build_abstract_goal_2(shorthand(_), _, _, _, _) :-
-    unexpected(this_file, "shorthand/1 goal during termination analysis.").
+    % These should have been expanded out by now.
+    unexpected(this_file, "build_abstract_goal_2: shorthand").
 
 %------------------------------------------------------------------------------%
 %

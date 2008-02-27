@@ -382,14 +382,16 @@ detect_liveness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         set.union(Births1, NewTypeInfos, Births)
     ),
     set.union(Liveness0, Births, Liveness),
-
-    ( goal_is_atomic(GoalExpr0) ->
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = does_not_have_subgoals,
         PreDeaths = Empty,
         PreBirths = Births,
         PostDeaths = Empty,
         PostBirths = Empty,
         GoalExpr = GoalExpr0
     ;
+        HasSubGoals = has_subgoals,
         PreDeaths = Empty,
         PreBirths = Empty,
         detect_liveness_in_goal_2(GoalExpr0, GoalExpr, Liveness0,
@@ -596,7 +598,9 @@ detect_deadness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     set.union(PreBirths0, !Liveness),
 
     set.init(Empty),
-    ( goal_is_atomic(GoalExpr0) ->
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = does_not_have_subgoals,
         liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
             _BaseNonLocals, CompletedNonLocals),
         set.intersect(!.Liveness, CompletedNonLocals, LiveNonLocals),
@@ -604,6 +608,7 @@ detect_deadness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         set.union(NewPostDeaths, !Deadness),
         GoalExpr = GoalExpr0
     ;
+        HasSubGoals = has_subgoals,
         NewPostDeaths = Empty,
         detect_deadness_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0,
             !Deadness, !.Liveness, LiveInfo)

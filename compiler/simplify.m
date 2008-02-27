@@ -498,40 +498,39 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         IsDefinedHere = yes
     ).
 
-simplify_process_clause_body_goal(Goal0, Goal, !Info) :-
-    simplify_info_get_simplifications(!.Info, Simplifications0),
-    simplify_info_get_instmap(!.Info, InstMap0),
-    (
-        ( simplify_do_common_struct(!.Info)
-        ; simplify_do_opt_duplicate_calls(!.Info)
+simplify_process_clause_body_goal(!Goal, !Info) :-
+    some [!Simplifications] (
+        simplify_info_get_simplifications(!.Info, !:Simplifications),
+        simplify_info_get_instmap(!.Info, InstMap0),
+        (
+            ( simplify_do_common_struct(!.Info)
+            ; simplify_do_opt_duplicate_calls(!.Info)
+            )
+        ->
+            !Simplifications ^ do_do_once := no,
+            !Simplifications ^ do_excess_assign := no,
+            simplify_info_set_simplifications(!.Simplifications, !Info),
+
+            do_process_clause_body_goal(!Goal, !Info),
+
+            !Simplifications ^ do_warn_simple_code := no,
+            !Simplifications ^ do_warn_duplicate_calls := no,
+            !Simplifications ^ do_common_struct := no,
+            !Simplifications ^ do_opt_duplicate_calls := no,
+            simplify_info_reinit(!.Simplifications, InstMap0, !Info)
+        ;
+            true
+        ),
+        % On the second pass do excess assignment elimination and
+        % some cleaning up after the common structure pass.
+        do_process_clause_body_goal(!Goal, !Info),
+        simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
+        (
+            FoundContainsTrace = no
+        ;
+            FoundContainsTrace = yes,
+            goal_contains_trace(!Goal, _)
         )
-    ->
-        Simplifications1 = ((Simplifications0
-            ^ do_do_once := no)
-            ^ do_excess_assign := no),
-        simplify_info_set_simplifications(Simplifications1, !Info),
-
-        do_process_clause_body_goal(Goal0, Goal1, !Info),
-
-        Simplifications2 = ((((Simplifications0
-            ^ do_warn_simple_code := no)
-            ^ do_warn_duplicate_calls := no)
-            ^ do_common_struct := no)
-            ^ do_opt_duplicate_calls := no),
-        simplify_info_reinit(Simplifications2, InstMap0, !Info)
-    ;
-        Goal1 = Goal0
-    ),
-    % On the second pass do excess assignment elimination and some cleaning up
-    % after the common structure pass.
-    do_process_clause_body_goal(Goal1, Goal2, !Info),
-    simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
-    (
-        FoundContainsTrace = no,
-        Goal = Goal2
-    ;
-        FoundContainsTrace = yes,
-        goal_contains_trace(Goal2, Goal, _)
     ).
 
 :- pred do_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
@@ -558,11 +557,10 @@ do_process_clause_body_goal(Goal0, Goal, !Info) :-
         % in the case where unused variables should no longer be included
         % in the instmap_delta for a goal.
         % In the alias branch this is necessary anyway.
-        RecomputeAtomic = yes,
-
         simplify_info_get_module_info(!.Info, ModuleInfo0),
-        recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3, VarTypes1,
-            !.Info ^ simp_inst_varset, InstMap0, ModuleInfo0, ModuleInfo1),
+        recompute_instmap_delta(recompute_atomic_instmap_deltas, Goal2, Goal3,
+            VarTypes1, !.Info ^ simp_inst_varset, InstMap0,
+            ModuleInfo0, ModuleInfo1),
         simplify_info_set_module_info(ModuleInfo1, !Info)
     ;
         Goal3 = Goal1
@@ -825,7 +823,6 @@ goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
 :- inst goal_expr_scope == bound(scope(ground, ground)).
 :- inst goal_expr_foreign_proc == bound(call_foreign_proc(ground, ground,
     ground, ground, ground, ground, ground)).
-:- inst goal_expr_shorthand == bound(shorthand(ground)).
 
 :- pred simplify_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
@@ -869,9 +866,18 @@ simplify_goal_2(!GoalExpr, !GoalInfo, !Info) :-
         !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         simplify_goal_2_foreign_proc(!GoalExpr, !GoalInfo, !Info)
     ;
-        !.GoalExpr = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "goal_2: unexpected shorthand")
+        !.GoalExpr = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals),
+            simplify_goal_2_atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals, !:GoalExpr, !GoalInfo,
+                !Info)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "simplify_goal_2: bi_implication")
+        )
     ).
 
 :- pred simplify_goal_2_plain_conj(list(hlds_goal)::in, hlds_goal_expr::out,
@@ -1603,8 +1609,14 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
         ),
         !:CondCanSwitch = cond_cannot_switch
     ;
-        CondExpr = shorthand(_),
-        unexpected(this_file, "warn_ite_instead_of_switch: shorthand")
+        CondExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, _, _),
+            !:CondCanSwitch = cond_cannot_switch
+        ;
+            ShortHand = bi_implication(_, _),
+            unexpected(this_file, "warn_ite_instead_of_switch: shorthand")
+        )
     ).
 
 :- func can_switch_on_type(hlds_type_body) = bool.
@@ -1986,6 +1998,34 @@ evaluate_compile_time_condition(trace_op(Op, ExprA, ExprB), Info) = Result :-
         Op = trace_and,
         Result = bool.and(ResultA, ResultB)
     ).
+
+:- pred simplify_goal_2_atomic_goal(atomic_goal_type::in,
+    atomic_interface_vars::in, atomic_interface_vars::in,
+    maybe(list(prog_var))::in, hlds_goal::in, list(hlds_goal)::in,
+    hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_goal_2_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+        MainGoal0, OrElseGoals0, GoalExpr, !GoalInfo, !Info) :-
+    % XXX STM: At the moment we do not simplify the inner goals as there is
+    % a chance that the outer and inner variables will change which will
+    % cause problems during expansion of STM constructs.  This will be
+    % fixed eventually.
+    MainGoal = MainGoal0,
+    OrElseGoals = OrElseGoals0,
+    % simplify_goal(MainGoal0, MainGoal, !Info),
+    % simplify_or_else_goals(OrElseGoals0, OrElseGoals, !Info),
+    ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+        MainGoal, OrElseGoals),
+    GoalExpr = shorthand(ShortHand).
+
+:- pred simplify_or_else_goals(list(hlds_goal)::in, list(hlds_goal)::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_or_else_goals([], [], !Info).
+simplify_or_else_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
+    simplify_goal(Goal0, Goal, !Info),
+    simplify_or_else_goals(Goals0, Goals, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -3308,8 +3348,22 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
         goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = shorthand(_),
-        unexpected(this_file, "goal_contains_trace: shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            goal_contains_trace(MainGoal0, MainGoal, MainContainsTrace),
+            goal_list_contains_trace(OrElseGoals0, OrElseGoals,
+                contains_no_trace_goal, OrElseContainsTrace),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand),
+            ContainsTrace = worst_contains_trace(MainContainsTrace,
+                OrElseContainsTrace)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file, "goal_contains_trace: bi_implication")
+        )
     ),
     (
         ContainsTrace = contains_trace_goal,
@@ -3661,9 +3715,9 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, !Info) :-
         true
     ).
 
-    % Succeed if execution of the given goal cannot encounter a context
+    % Return `no' if execution of the given goal cannot encounter a context
     % that causes any variable to be flushed to its stack slot or to a
-    % register at the specified time.
+    % register at the specified time, and `yes' otherwise.
     %
 :- func will_flush(hlds_goal_expr, before_after) = bool.
 
@@ -3745,9 +3799,15 @@ will_flush(if_then_else(_, _, _, _), BeforeAfter) = WillFlush :-
     ).
 will_flush(negation(_), _) = yes.
 will_flush(scope(_, _), _) = no.
-will_flush(shorthand(_), _) = _ :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "will_flush: unexpected shorthand").
+will_flush(shorthand(ShortHand), _) = WillFlush :-
+    (
+        ShortHand = atomic_goal(_, _, _, _, _MainGoal, _OrElseGoals),
+        WillFlush = yes
+    ;
+        ShortHand = bi_implication(_, _),
+        % These should have been expanded out by now.
+        unexpected(this_file, "will_flush: bi_implication")
+    ).
 
     % Reset the instmap and seen calls for the next branch.
     %

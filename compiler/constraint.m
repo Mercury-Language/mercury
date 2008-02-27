@@ -104,9 +104,11 @@ propagate_goal(Goal0, Constraints, Goal, !Info) :-
 
 propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, _),
-    ( goal_is_atomic(GoalExpr0) ->
-        true
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = does_not_have_subgoals
     ;
+        HasSubGoals = has_subgoals,
         % If a non-empty list of constraints is pushed into a sub-goal,
         % quantification, instmap_deltas and determinism need to be
         % recomputed.
@@ -710,8 +712,9 @@ filter_complex_constraints_2([Constraint | Constraints],
 
 goal_is_simple(Goal) :-
     Goal = hlds_goal(GoalExpr, _),
+    % XXX This code should be replaced with an explicit switch.
     (
-        goal_is_atomic(GoalExpr)
+        goal_expr_has_subgoals(GoalExpr) = does_not_have_subgoals
     ;
         ( GoalExpr = scope(_, SubGoal)
         ; GoalExpr = negation(SubGoal)

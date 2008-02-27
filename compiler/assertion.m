@@ -704,22 +704,22 @@ normalise_goal_expr(GoalExpr0, GoalExpr) :-
         normalise_goal(Else0, Else),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = shorthand(ShortHandGoal0),
-        normalise_goal_shorthand(ShortHandGoal0, ShortHandGoal),
-        GoalExpr = shorthand(ShortHandGoal)
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars, 
+                MainGoal0, OrElseAlternatives0),
+            normalise_goal(MainGoal0, MainGoal),
+            normalise_goals(OrElseAlternatives0, OrElseAlternatives),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal,
+                OrElseAlternatives)
+        ;
+            ShortHand0 = bi_implication(LHS0, RHS0),
+            normalise_goal(LHS0, LHS),
+            normalise_goal(RHS0, RHS),
+            ShortHand = bi_implication(LHS, RHS)
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
-
-    % Place a shorthand goal into a standard form. Currently
-    % all the code does is replace conj([G]) with G.
-    %
-:- pred normalise_goal_shorthand(shorthand_goal_expr::in,
-    shorthand_goal_expr::out) is det.
-
-normalise_goal_shorthand(ShortHand0, ShortHand) :-
-    ShortHand0 = bi_implication(LHS0, RHS0),
-    normalise_goal(LHS0, LHS),
-    normalise_goal(RHS0, RHS),
-    ShortHand = bi_implication(LHS, RHS).
 
 %-----------------------------------------------------------------------------%
 

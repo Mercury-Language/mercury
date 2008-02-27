@@ -575,8 +575,8 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             !.SInfo),
         qual_info_get_var_types(!.QualInfo, VarTypes0),
 
-        % The RTTI varmaps here are just a dummy value because the real ones
-        % are not introduced until typechecking and polymorphism.
+        % The RTTI varmaps here are just a dummy value, because the real ones
+        % are not introduced until polymorphism.
         rtti_varmaps_init(EmptyRttiVarmaps),
         implicitly_quantify_clause_body(HeadVarList, Warnings, Goal0, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
@@ -679,6 +679,92 @@ transform_goal_2(
     transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
         Context, Renaming, Vars, Goal0, Goal, GoalInfo, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
+transform_goal_2(atomic_expr(Outer0, Inner0, MaybeOutputVars0,
+        MainGoal, OrElseGoals), Context, Renaming, HLDSGoal,
+        !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+    (
+        Outer0 = atomic_state_var(OuterStateVar0),
+        rename_var(need_not_rename, Renaming, OuterStateVar0, OuterStateVar),
+        svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDI, OuterUO,
+            OuterScopeInfo, !VarSet, !SInfo, !Specs),
+        MaybeOuterScopeInfo = yes(OuterScopeInfo),
+        Outer = atomic_interface_vars(OuterDI, OuterUO)
+    ;
+        Outer0 = atomic_var_pair(OuterDI0, OuterUO0),
+        rename_var(need_not_rename, Renaming, OuterDI0, OuterDI),
+        rename_var(need_not_rename, Renaming, OuterUO0, OuterUO),
+        Outer = atomic_interface_vars(OuterDI, OuterUO),
+        MaybeOuterScopeInfo = no
+    ),
+    (
+        Inner0 = atomic_state_var(InnerStateVar0),
+        rename_var(need_not_rename, Renaming, InnerStateVar0, InnerStateVar),
+        svar_start_inner_atomic_scope(Context, InnerStateVar, InnerScopeInfo,
+            !VarSet, !SInfo, !Specs),
+        MaybeInnerScopeInfo = yes(InnerScopeInfo)
+    ;
+        Inner0 = atomic_var_pair(_InnerDI0, _InnerUO0),
+        MaybeInnerScopeInfo = no
+    ),
+    BeforeDisjSInfo = !.SInfo,
+    transform_goal(MainGoal, Renaming, HLDSMainGoal0,
+        !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, BeforeDisjSInfo, SInfo1,
+        !Specs),
+    MainDisjInfo = {HLDSMainGoal0, SInfo1},
+    transform_orelse_goals(OrElseGoals, Renaming, OrElseDisjInfos,
+        0, OrElseNumAdded, !VarSet, !ModuleInfo, !QualInfo, BeforeDisjSInfo,
+        !Specs),
+    AllDisjInfos = [MainDisjInfo | OrElseDisjInfos],
+    svar_finish_disjunction(Context, !.VarSet, AllDisjInfos, HLDSGoals,
+        !:SInfo),
+    (
+        HLDSGoals = [HLDSMainGoal | HLDSOrElseGoals]
+    ;
+        HLDSGoals = [],
+        unexpected(this_file, "transform_goal_2: atomic HLDSGoals = []")
+    ),
+    (
+        Inner0 = atomic_state_var(_),
+        (
+            MaybeInnerScopeInfo = yes(InnerScopeInfo2),
+            svar_finish_inner_atomic_scope(Context, InnerScopeInfo2,
+                InnerDI, InnerUO, !VarSet, !SInfo, !Specs),
+            Inner = atomic_interface_vars(InnerDI, InnerUO)
+        ;
+            MaybeInnerScopeInfo = no,
+            unexpected(this_file, "transform_goal_2: MaybeFinishStateVar = no")
+        )
+    ;
+        Inner0 = atomic_var_pair(InnerDI0, InnerUO0),
+        rename_var(need_not_rename, Renaming, InnerDI0, InnerDI),
+        rename_var(need_not_rename, Renaming, InnerUO0, InnerUO),
+        Inner = atomic_interface_vars(InnerDI, InnerUO)
+    ),
+    (
+        MaybeOutputVars0 = no,
+        MaybeOutputVars = no
+    ;
+        MaybeOutputVars0 = yes(OutputVars0),
+        rename_var_list(need_not_rename, Renaming, OutputVars0, OutputVars),
+        MaybeOutputVars = yes(OutputVars)
+    ),
+    (
+        MaybeOuterScopeInfo = yes(OuterScopeInfo2),
+        svar_finish_outer_atomic_scope(OuterScopeInfo2, !SInfo)
+    ;
+        MaybeOuterScopeInfo = no
+    ),
+    !:NumAdded = !.NumAdded + 1 + OrElseNumAdded,
+    ShortHand = atomic_goal(unknown_atomic_goal_type, Outer, Inner,
+        MaybeOutputVars, HLDSMainGoal, HLDSOrElseGoals),
+    GoalExpr = shorthand(ShortHand),
+    goal_info_init(Context, GoalInfo),
+    HLDSGoal = hlds_goal(GoalExpr, GoalInfo),
+    trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
+        io.write_string("atomic:\n", !IO),
+        write_goal(HLDSGoal, !.ModuleInfo, !.VarSet, yes, 0, "\n", !IO),
+        io.nl(!IO)
+    ).
 transform_goal_2(
         trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, Mutables, Goal0),
         Context, Renaming, hlds_goal(scope(Reason, Goal), GoalInfo), NumAdded,
@@ -1236,24 +1322,47 @@ get_rev_par_conj(Goal, Renaming, RevParConj0, RevParConj, !NumAdded, !VarSet,
     % append Disj0, and return the result in Disj.
     %
 :- pred get_disj(goal::in, prog_var_renaming::in,
-    hlds_goal_svar_infos::in, hlds_goal_svar_infos::out, int::in, int::out,
+    list(hlds_goal_svar_info)::in, list(hlds_goal_svar_info)::out,
+    int::in, int::out, prog_varset::in, prog_varset::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    svar_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+get_disj(Goal, Renaming, DisjInfos0, DisjInfos, !NumAdded, !VarSet,
+        !ModuleInfo, !QualInfo, SInfo0, !Specs) :-
+    ( Goal = disj_expr(A, B) - _Context ->
+        % We recurse on the *second* arm first, so that we will put the
+        % disjuncts from *that* arm at the front of DisjInfos0, before
+        % putting the disjuncts from the first arm at the front of the
+        % resulting DisjInfos1. This way, the overall result, DisjInfos,
+        % will have the disjuncts and their svar_infos in the correct order.
+        get_disj(B, Renaming, DisjInfos0, DisjInfos1, !NumAdded, !VarSet,
+            !ModuleInfo, !QualInfo, SInfo0, !Specs),
+        get_disj(A, Renaming, DisjInfos1, DisjInfos,  !NumAdded, !VarSet,
+            !ModuleInfo, !QualInfo, SInfo0, !Specs)
+    ;
+        transform_goal(Goal, Renaming, HLDSGoal, GoalAdded, !VarSet,
+            !ModuleInfo, !QualInfo, SInfo0, SInfo1, !Specs),
+        !:NumAdded = !.NumAdded + GoalAdded,
+        DisjInfo = {HLDSGoal, SInfo1},
+        DisjInfos = [DisjInfo | DisjInfos0]
+    ).
+
+:- pred transform_orelse_goals(goals::in, prog_var_renaming::in,
+    list(hlds_goal_svar_info)::out, num_added_goals::in, num_added_goals::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out, svar_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_disj(Goal, Renaming, Disj0, Disj, !NumAdded, !VarSet, !ModuleInfo,
-        !QualInfo, SInfo, !Specs) :-
-    ( Goal = disj_expr(A, B) - _Context ->
-        get_disj(B, Renaming, Disj0, Disj1, !NumAdded, !VarSet, !ModuleInfo,
-            !QualInfo, SInfo, !Specs),
-        get_disj(A, Renaming, Disj1, Disj,  !NumAdded, !VarSet, !ModuleInfo,
-            !QualInfo, SInfo, !Specs)
-    ;
-        transform_goal(Goal, Renaming, Goal1, GoalAdded, !VarSet, !ModuleInfo,
-            !QualInfo, SInfo, SInfo1, !Specs),
-        !:NumAdded = !.NumAdded + GoalAdded,
-        Disj = [{Goal1, SInfo1} | Disj0]
-    ).
+transform_orelse_goals([], _, [],
+        !NumAdded, !VarSet, !ModuleInfo, !QualInfo, _SInfo0, !Specs).
+transform_orelse_goals([Goal | Goals], Renaming, [DisjInfo | DisjInfos],
+        !NumAdded, !VarSet, !ModuleInfo, !QualInfo, SInfo0, !Specs) :-
+    transform_goal(Goal, Renaming, HLDSGoal, NumAddedGoal,
+        !VarSet, !ModuleInfo, !QualInfo, SInfo0, SInfo1, !Specs),
+    DisjInfo = {HLDSGoal, SInfo1},
+    !:NumAdded = !.NumAdded + NumAddedGoal,
+    transform_orelse_goals(Goals, Renaming, DisjInfos,
+        !NumAdded, !VarSet, !ModuleInfo, !QualInfo, SInfo0, !Specs).
 
 %----------------------------------------------------------------------------%
 

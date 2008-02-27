@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -280,9 +280,9 @@ apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance, PredIdSpecialized,
             !:Specialized = yes,
             proc_info_set_goal(BodyClone, ProcInfo1, ProcInfo2),
             requantify_proc(ProcInfo2, ProcInfo3),
-            RecomputeAtomic = no,
-            recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo3,
-                ProcInfo, !ModuleInfo),
+            recompute_instmap_delta_proc(
+                do_not_recompute_atomic_instmap_deltas, ProcInfo3, ProcInfo,
+                !ModuleInfo),
             pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
         ;
             MaybeGranularityVar = no
@@ -393,7 +393,7 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
         IsRecursiveCallInParallelConj = no
     ;
         GoalExpr0 = shorthand(_),
-        % Shorthand are not supposed to occur here.
+        % These should have been expanded out by now.
         unexpected(this_file, "apply_dg_to_goal")
     ).
 
@@ -847,9 +847,8 @@ update_original_predicate_procs(PredId, [ProcId | ProcIds], Distance,
         PredIdSpecialized, SymNameSpecialized, ProcInfo0, ProcInfo1, Distance),
     proc_info_set_goal(Body, ProcInfo1, ProcInfo2),
     requantify_proc(ProcInfo2, ProcInfo3),
-    RecomputeAtomic = no,
-    recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo3,
-        ProcInfo, !ModuleInfo),
+    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        ProcInfo3, ProcInfo, !ModuleInfo),
     pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo),
     update_original_predicate_procs(PredId, ProcIds, Distance,
         PredIdSpecialized, SymNameSpecialized, !PredInfo, !ModuleInfo).

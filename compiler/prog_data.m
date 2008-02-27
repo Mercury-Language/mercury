@@ -988,6 +988,10 @@
                 trace_state_var         :: prog_var
             ).
 
+:- type atomic_component_state
+    --->    atomic_state_var(prog_var)
+    ;       atomic_var_pair(prog_var, prog_var).
+
     % These type equivalences are for the type of program variables
     % and associated structures.
     %

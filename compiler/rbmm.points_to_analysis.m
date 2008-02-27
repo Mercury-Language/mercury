@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -168,7 +168,8 @@ intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :-
     intra_analyse_goal(Else, !RptaInfo).
 
 intra_analyse_goal_expr(shorthand(_), _, _) :-
-    unexpected(this_file, "intra_analyse_goal_expr: shorthand not handled").
+    % These should have been expanded out by now.
+    unexpected(this_file, "intra_analyse_goal_expr: shorthand").
 
 :- pred intra_analyse_case(case::in, rpta_info::in, rpta_info::out) is det.
 

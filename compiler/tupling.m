@@ -638,7 +638,8 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
         % Make a transformed version of the procedure and add it to
         % the module.
         make_transformed_proc(CellVar, FieldVars, InsertMap, !ProcInfo),
-        recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
+        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+            !ProcInfo, !ModuleInfo),
         counter.allocate(Num, !Counter),
         create_aux_pred(PredId, ProcId, PredInfo, !.ProcInfo, Num,
             AuxPredProcId, CallAux, !ModuleInfo),
@@ -1153,8 +1154,9 @@ count_load_stores_in_goal_expr(if_then_else(_, Cond, Then, Else), _GoalInfo,
     ).
 
 count_load_stores_in_goal_expr(shorthand(_), _, _, !_) :-
+    % These should have been expanded out by now.
     unexpected(this_file,
-        "count_load_stores_in_goal_expr: unexpected shorthand").
+        "count_load_stores_in_goal_expr: shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -1680,7 +1682,8 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
             proc_info_set_vartypes(VarTypes, !ProcInfo),
             proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
             requantify_proc(!ProcInfo),
-            recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
+            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+                !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
                 PredInfo, !.ProcInfo, !ModuleInfo)
         )
@@ -1784,7 +1787,8 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "fix_calls_in_goal: unexpected shorthand")
+        % These should have been expanded out by now.
+        unexpected(this_file, "fix_calls_in_goal: shorthand")
     ).
 
 %-----------------------------------------------------------------------------%

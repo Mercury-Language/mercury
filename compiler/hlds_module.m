@@ -635,6 +635,9 @@
 :- pred module_info_next_lambda_count(prog_context::in, int::out,
     module_info::in, module_info::out) is det.
 
+:- pred module_info_next_atomic_count(prog_context::in, int::out,
+    module_info::in, module_info::out) is det.
+
 :- pred module_info_next_model_non_pragma_count(int::out,
     module_info::in, module_info::out) is det.
 
@@ -671,6 +674,12 @@
     map(prog_context, counter)::out) is det.
 
 :- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_get_atomics_per_context(module_info::in,
+    map(prog_context, counter)::out) is det.
+
+:- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_get_model_non_pragma_counter(module_info::in, counter::out)
@@ -759,6 +768,12 @@
                 % expressions that appear on the same line of the same file.
                 lambdas_per_context         :: map(prog_context, counter),
 
+                % How many STM atomic expressions there are at different
+                % contexts in the module.  This is used to uniquely identify
+                % STM atomic expressions that appear on the same line of
+                % the same file.
+                atomics_per_context          :: map(prog_context, counter),
+
                 % Used to ensure uniqueness of the structure types defined
                 % so far for model_non foreign_procs.
                 model_non_pragma_counter    :: counter,
@@ -839,6 +854,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(TablingStructMap),
     map.init(MM_TablingInfo),
     map.init(LambdasPerContext),
+    map.init(AtomicsPerContext),
     counter.init(1, ModelNonPragmaCounter),
 
     % The builtin modules are automatically imported.
@@ -872,7 +888,8 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         MaybeDependencyInfo, NumErrors, PragmaExportedProcs,
         MustBeStratifiedPreds, StratPreds, UnusedArgInfo,
         ExceptionInfo, TrailingInfo, TablingStructMap, MM_TablingInfo,
-        LambdasPerContext, ModelNonPragmaCounter, ImportedModules,
+        LambdasPerContext, AtomicsPerContext, ModelNonPragmaCounter, 
+        ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes,
         MaybeComplexityMap, ComplexityProcInfos,
         AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
@@ -968,6 +985,7 @@ module_info_get_trailing_info(MI, MI ^ sub_info ^ trailing_info).
 module_info_get_table_struct_map(MI, MI ^ sub_info ^ table_struct_map).
 module_info_get_mm_tabling_info(MI, MI ^ sub_info ^ mm_tabling_info).
 module_info_get_lambdas_per_context(MI, MI ^ sub_info ^ lambdas_per_context).
+module_info_get_atomics_per_context(MI, MI ^ sub_info ^ atomics_per_context).
 module_info_get_model_non_pragma_counter(MI,
     MI ^ sub_info ^ model_non_pragma_counter).
 module_info_get_imported_module_specifiers(MI,
@@ -1100,6 +1118,8 @@ module_info_set_mm_tabling_info(NewVal, MI,
     MI ^ sub_info ^ mm_tabling_info := NewVal).
 module_info_set_lambdas_per_context(NewVal, MI,
     MI ^ sub_info ^ lambdas_per_context := NewVal).
+module_info_set_atomics_per_context(NewVal, MI,
+    MI ^ sub_info ^ atomics_per_context := NewVal).
 module_info_set_model_non_pragma_counter(NewVal, MI,
     MI ^ sub_info ^ model_non_pragma_counter := NewVal).
 module_add_imported_module_specifiers(IStat, ModuleSpecifiers, !MI) :-
@@ -1267,6 +1287,21 @@ module_info_next_lambda_count(Context, Count, !MI) :-
         map.det_update(ContextCounter0, Context, Counter, ContextCounter)
     ),
     module_info_set_lambdas_per_context(ContextCounter, !MI).
+
+module_info_next_atomic_count(Context, Count, !MI) :-
+    module_info_get_atomics_per_context(!.MI, ContextCounter0),
+    (
+        map.insert(ContextCounter0, Context, counter.init(2),
+            FoundContextCounter)
+    ->
+        Count = 1,
+        ContextCounter = FoundContextCounter
+    ;
+        map.lookup(ContextCounter0, Context, Counter0),
+        counter.allocate(Count, Counter0, Counter),
+        map.det_update(ContextCounter0, Context, Counter, ContextCounter)
+    ),
+    module_info_set_atomics_per_context(ContextCounter, !MI).
 
 module_info_next_model_non_pragma_count(Count, !MI) :-
     module_info_get_model_non_pragma_counter(!.MI, Counter0),

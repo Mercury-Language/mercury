@@ -203,9 +203,9 @@ ir_background_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     % type-info arguments and alike, so we remove them from the list
     % of head variables:
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_vartypes(ProcInfo, Vartypes), 
-    HeadVarsOfInterest = 
-        remove_typeinfo_vars(Vartypes, HeadVars), 
+    proc_info_get_vartypes(ProcInfo, Vartypes),
+    HeadVarsOfInterest =
+        remove_typeinfo_vars(Vartypes, HeadVars),
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -307,11 +307,11 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
             ;
                 ( HowToConstruct = construct_dynamically
                 ; HowToConstruct = reuse_cell(_)
-                ; HowToConstruct = construct_in_region(_) 
+                ; HowToConstruct = construct_in_region(_)
                 )
             )
         ;
-            ( Unification = deconstruct(_, _, _, _, _, _) 
+            ( Unification = deconstruct(_, _, _, _, _, _)
             ; Unification = assign(_, _)
             ; Unification = simple_test(_, _)
             )
@@ -387,7 +387,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
             !.AnalysisInfo ^ sharing_as)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "indirect_reuse_analyse_goal: shorthand goal.")
+        % These should have been expanded out by now.
+        unexpected(this_file, "indirect_reuse_analyse_goal: shorthand")
     ).
 
 :- pred indirect_reuse_analyse_goal_with_progress(ir_background_info::in,

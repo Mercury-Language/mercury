@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -355,7 +355,8 @@ pred_proc_id_get_pred_id(proc(PredId, _)) = PredId.
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_goal(Caller, hlds_goal(GoalExpr, _), !DepGraph) :-
+add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
+    Goal = hlds_goal(GoalExpr, _),
     (
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
@@ -370,10 +371,10 @@ add_dependency_arcs_in_goal(Caller, hlds_goal(GoalExpr, _), !DepGraph) :-
         add_dependency_arcs_in_goal(Caller, Then, !DepGraph),
         add_dependency_arcs_in_goal(Caller, Else, !DepGraph)
     ;
-        ( GoalExpr = negation(Goal)
-        ; GoalExpr = scope(_, Goal)
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
         ),
-        add_dependency_arcs_in_goal(Caller, Goal, !DepGraph)
+        add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;
@@ -413,9 +414,16 @@ add_dependency_arcs_in_goal(Caller, hlds_goal(GoalExpr, _), !DepGraph) :-
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
-        GoalExpr = shorthand(ShorthandGoal),
-        ShorthandGoal = bi_implication(LHS, RHS),
-        add_dependency_arcs_in_list(Caller, [LHS, RHS], !DepGraph)
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_GoalType, _Outer, _Inner, _Vars,
+                MainGoal, OrElseGoals),
+            add_dependency_arcs_in_goal(Caller, MainGoal, !DepGraph),
+            add_dependency_arcs_in_list(Caller, OrElseGoals, !DepGraph)
+        ;
+            ShortHand = bi_implication(LHS, RHS),
+            add_dependency_arcs_in_list(Caller, [LHS, RHS], !DepGraph)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

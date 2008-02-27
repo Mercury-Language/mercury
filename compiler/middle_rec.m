@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -233,7 +233,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     get_proc_id(!.CI, ProcId),
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
 
-    pre_goal_update(SwitchGoalInfo, no, !CI),
+    pre_goal_update(SwitchGoalInfo, has_subgoals, !CI),
     VarType = variable_type(!.CI, Var),
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
     generate_tag_test(Var, BaseConsId, CheaperTagTest, branch_on_success,

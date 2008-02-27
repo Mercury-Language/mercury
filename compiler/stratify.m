@@ -173,11 +173,11 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, Error,
         ( GoalExpr = conj(_ConjType, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        first_order_check_goals(Goals, Negated, WholeScc, ThisPredProcId,
             Error, !ModuleInfo, !IO)
     ;
         GoalExpr = switch(_Var, _Fail, Cases),
-        first_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
+        first_order_check_cases(Cases, Negated, WholeScc, ThisPredProcId,
             Error, !ModuleInfo, !IO)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
@@ -218,34 +218,43 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, Error,
         GoalExpr = unify(_LHS, _RHS, _Mode, _Unification, _UnifyContext)
         % Do nothing.
     ;
-        GoalExpr = shorthand(_),
-        % these should have been expanded out by now
-        unexpected(this_file, "first_order_check_goal: shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            first_order_check_goal(MainGoal, Negated, WholeScc,
+                ThisPredProcId, Error, !ModuleInfo, !IO),
+            first_order_check_goals(OrElseGoals, Negated, WholeScc,
+                ThisPredProcId, Error, !ModuleInfo, !IO)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "first_order_check_goal: bi_implication")
+        )
     ).
 
-:- pred first_order_check_goal_list(list(hlds_goal)::in, bool::in,
+:- pred first_order_check_goals(list(hlds_goal)::in, bool::in,
     list(pred_proc_id)::in, pred_proc_id::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-first_order_check_goal_list([], _, _, _, _, !ModuleInfo, !IO).
-first_order_check_goal_list([Goal | Goals], Negated,
+first_order_check_goals([], _, _, _, _, !ModuleInfo, !IO).
+first_order_check_goals([Goal | Goals], Negated,
         WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
     first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO),
-    first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+    first_order_check_goals(Goals, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
 
-:- pred first_order_check_case_list(list(case)::in, bool::in,
+:- pred first_order_check_cases(list(case)::in, bool::in,
     list(pred_proc_id)::in, pred_proc_id::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-first_order_check_case_list([], _, _, _, _, !ModuleInfo, !IO).
-first_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
+first_order_check_cases([], _, _, _, _, !ModuleInfo, !IO).
+first_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO) :-
     Case = case(_, _, Goal),
     first_order_check_goal(Goal, Negated, WholeScc,
         ThisPredProcId, Error, !ModuleInfo, !IO),
-    first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
+    first_order_check_cases(Goals, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -306,11 +315,11 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         ( GoalExpr = conj(_ConjType, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        higher_order_check_goals(Goals, Negated, WholeScc, ThisPredProcId,
             HighOrderLoops, Error, !ModuleInfo, !IO)
     ;
         GoalExpr = switch(_Var, _Fail, Cases),
-        higher_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
+        higher_order_check_cases(Cases, Negated, WholeScc, ThisPredProcId,
             HighOrderLoops, Error, !ModuleInfo, !IO)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
@@ -368,34 +377,43 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         GoalExpr = unify(_LHS, _RHS, _Mode, _Unification, _UnifyContext)
         % Do nothing.
     ;
-        GoalExpr = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "higher_order_check_goal: shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            higher_order_check_goal(MainGoal, Negated, WholeScc,
+                ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
+            higher_order_check_goals(OrElseGoals, Negated, WholeScc,
+                ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "higher_order_check_goal: bi_implication")
+        )
     ).
 
-:- pred higher_order_check_goal_list(list(hlds_goal)::in, bool::in,
+:- pred higher_order_check_goals(list(hlds_goal)::in, bool::in,
     set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-higher_order_check_goal_list([], _, _, _, _, _, !ModuleInfo, !IO).
-higher_order_check_goal_list([Goal | Goals], Negated,
+higher_order_check_goals([], _, _, _, _, _, !ModuleInfo, !IO).
+higher_order_check_goals([Goal | Goals], Negated,
         WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
     higher_order_check_goal(Goal, Negated, WholeScc,
         ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
-    higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+    higher_order_check_goals(Goals, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
 
-:- pred higher_order_check_case_list(list(case)::in, bool::in,
+:- pred higher_order_check_cases(list(case)::in, bool::in,
     set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-higher_order_check_case_list([], _, _, _, _, _, !ModuleInfo, !IO).
-higher_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
+higher_order_check_cases([], _, _, _, _, _, !ModuleInfo, !IO).
+higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO) :-
     Case = case(_, _, Goal),
     higher_order_check_goal(Goal, Negated, WholeScc,
         ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
-    higher_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
+    higher_order_check_cases(Goals, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -754,7 +772,7 @@ check_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         check_goals(Goals, !Calls, !HasAT, !CallsHO)
     ;
         GoalExpr = switch(_Var, _Fail, Cases),
-        check_case_list(Cases, !Calls, !HasAT, !CallsHO)
+        check_cases(Cases, !Calls, !HasAT, !CallsHO)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         check_goal(Cond, !Calls, !HasAT, !CallsHO),
@@ -766,9 +784,16 @@ check_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         ),
         check_goal(SubGoal, !Calls, !HasAT, !CallsHO)
     ;
-        GoalExpr = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "check_goal:  shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            check_goal(MainGoal, !Calls, !HasAT, !CallsHO),
+            check_goals(OrElseGoals, !Calls, !HasAT, !CallsHO)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "check_goal: bi_implication")
+        )
     ).
 
 :- pred check_goals(list(hlds_goal)::in,
@@ -781,16 +806,16 @@ check_goals([Goal | Goals], !Calls, !HasAT, !CallsHO) :-
     check_goal(Goal, !Calls, !HasAT, !CallsHO),
     check_goals(Goals, !Calls, !HasAT, !CallsHO).
 
-:- pred check_case_list(list(case)::in,
+:- pred check_cases(list(case)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     bool::in, bool::out) is det.
 
-check_case_list([], !Calls, !HasAT, !CallsHO).
-check_case_list([Case | Goals], !Calls, !HasAT, !CallsHO) :-
+check_cases([], !Calls, !HasAT, !CallsHO).
+check_cases([Case | Goals], !Calls, !HasAT, !CallsHO) :-
     Case = case(_, _, Goal),
     check_goal(Goal, !Calls, !HasAT, !CallsHO),
-    check_case_list(Goals, !Calls, !HasAT, !CallsHO).
+    check_cases(Goals, !Calls, !HasAT, !CallsHO).
 
     % This pred returns a list of all the calls in a given set of goals,
     % including calls in unification lambda functions and pred_proc_id's
@@ -868,9 +893,16 @@ get_called_procs(Goal, !Calls) :-
         ),
         get_called_procs(SubGoal, !Calls)
     ;
-        GoalExpr = shorthand(_),
-        % These should have been expanded out by now.
-        unexpected(this_file, "get_called_procs: shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            get_called_procs(MainGoal, !Calls),
+            get_called_procs_goals(OrElseGoals, !Calls)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "get_called_procs: bi_implication")
+        )
     ).
 
 :- pred get_called_procs_goals(list(hlds_goal)::in,

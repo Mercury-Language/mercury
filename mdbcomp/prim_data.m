@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,6 +207,16 @@
     % 
 :- func mercury_stm_builtin_module = sym_name.
 
+    % Returns the name of the module implementing exceptions.
+    % This module is automatically imported iff STM is used in a module.
+    %
+:- func mercury_exception_module = sym_name.
+
+    % Returns the name of the module implementing univs.
+    % This module is automatically imported iff STM is used in a module.
+    %
+:- func mercury_univ_module = sym_name.
+
     % Returns the name of the module containing builtins for tabling;
     % originally these were in "private_builtin", but were then moved into
     % a separate module. This module is automatically imported iff any
@@ -352,6 +362,11 @@ mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
 mercury_ssdb_builtin_module = unqualified("ssdb").
 mercury_std_lib_module_name(Name) = Name.
+
+% Additional non-builtin modules that are needed by the STM system.
+%
+mercury_exception_module = unqualified("exception").
+mercury_univ_module = unqualified("univ").
 
 is_std_lib_module_name(SymName, Name) :-
     Name = sym_name_to_string(SymName),

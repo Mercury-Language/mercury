@@ -298,7 +298,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             vars_to_byte_list(Info, ArgVars) ++ AtomicBytes
     ;
         GoalExpr = shorthand(_),
-        % these should have been expanded out by now
+        % These should have been expanded out by now.
         unexpected(this_file, "goal_expr_to_byte_list: unexpected shorthand")
     ).
 

@@ -689,11 +689,11 @@ set_used_env_vars(UEV, CI,
 :- pred set_follow_vars(abs_follow_vars::in,
     code_info::in, code_info::out) is det.
 
-    % pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
+    % pre_goal_update(GoalInfo, HasSubGoal, OldCodeInfo, NewCodeInfo)
     % updates OldCodeInfo to produce NewCodeInfo with the changes
     % specified by GoalInfo.
     %
-:- pred pre_goal_update(hlds_goal_info::in, bool::in,
+:- pred pre_goal_update(hlds_goal_info::in, has_subgoals::in,
     code_info::in, code_info::out) is det.
 
     % post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
@@ -842,7 +842,7 @@ set_follow_vars(FollowVars, !CI) :-
 
 %-----------------------------------------------------------------------------%
 
-pre_goal_update(GoalInfo, Atomic, !CI) :-
+pre_goal_update(GoalInfo, HasSubGoals, !CI) :-
     % The liveness pass puts resume_point annotations on some kinds
     % of goals. The parts of the code generator that handle those kinds
     % of goals should handle the resume point annotation as well;
@@ -869,11 +869,11 @@ pre_goal_update(GoalInfo, Atomic, !CI) :-
     goal_info_get_pre_births(GoalInfo, PreBirths),
     add_forward_live_vars(PreBirths, !CI),
     (
-        Atomic = yes,
+        HasSubGoals = does_not_have_subgoals,
         goal_info_get_post_deaths(GoalInfo, PostDeaths),
         rem_forward_live_vars(PostDeaths, !CI)
     ;
-        Atomic = no
+        HasSubGoals = has_subgoals
     ).
 
 post_goal_update(GoalInfo, !CI) :-
@@ -1967,7 +1967,7 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CI),
     expect(unify(Code, empty), this_file, "nonempty code for simple neg"),
-    pre_goal_update(GoalInfo, yes, !CI).
+    pre_goal_update(GoalInfo, does_not_have_subgoals, !CI).
 
 leave_simple_neg(GoalInfo, FailInfo, !CI) :-
     post_goal_update(GoalInfo, !CI),

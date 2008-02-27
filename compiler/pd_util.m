@@ -558,7 +558,7 @@ get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
         !:FoundBranch = yes
     ;
         Goal = hlds_goal(GoalExpr, _),
-        goal_is_atomic(GoalExpr)
+        goal_expr_has_subgoals(GoalExpr) = does_not_have_subgoals
     ),
     get_branch_vars_goal_2(ModuleInfo, Goals, !.FoundBranch,
         VarTypes, InstMap, !LeftVars, !Vars).
@@ -658,7 +658,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 
 get_sub_branch_vars_goal(_, [], _, _, Vars, Vars, !Module).
 get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
-        VarTypes, InstMap0, Vars0, SubVars, !ModuleInfo) :-
+        VarTypes, InstMap0, !.Vars, SubVars, !ModuleInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = if_then_else(_, Cond, Then, Else),
@@ -667,18 +667,18 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         instmap.apply_instmap_delta(InstMap0, CondDelta, InstMap1),
         goal_to_conj_list(Then, ThenList),
         examine_branch(!.ModuleInfo, ProcArgInfo, 1, ThenList,
-            VarTypes, InstMap1, Vars0, Vars1),
+            VarTypes, InstMap1, !Vars),
         goal_to_conj_list(Else, ElseList),
         examine_branch(!.ModuleInfo, ProcArgInfo, 2, ElseList,
-            VarTypes, InstMap0, Vars1, Vars2)
+            VarTypes, InstMap0, !Vars)
     ;
         GoalExpr = disj(Goals),
         examine_branch_list(!.ModuleInfo, ProcArgInfo,
-            1, Goals, VarTypes, InstMap0, Vars0, Vars2)
+            1, Goals, VarTypes, InstMap0, !Vars)
     ;
         GoalExpr = switch(Var, _, Cases),
         examine_case_list(ProcArgInfo, 1, Var,
-            Cases, VarTypes, InstMap0, Vars0, Vars2, !ModuleInfo)
+            Cases, VarTypes, InstMap0, !Vars, !ModuleInfo)
     ;
         ( GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
@@ -687,8 +687,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         ; GoalExpr = conj(_, _)
         ; GoalExpr = negation(_)
         ; GoalExpr = scope(_, _)
-        ),
-        Vars2 = Vars0
+        )
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file, "get_sub_branch_vars_goal: shorthand")
@@ -696,7 +695,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     get_sub_branch_vars_goal(ProcArgInfo, GoalList,
-        VarTypes, InstMap, Vars2, SubVars, !ModuleInfo).
+        VarTypes, InstMap, !.Vars, SubVars, !ModuleInfo).
 
 :- pred examine_branch_list(module_info::in, pd_arg_info::in, int::in,
     hlds_goals::in, vartypes::in, instmap::in,
@@ -738,7 +737,9 @@ examine_case_list(ProcArgInfo, BranchNo, Var, [Case | Cases],
 examine_branch(_, _, _, [], _, _, !Vars).
 examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
         VarTypes, InstMap, !Vars) :-
-    ( Goal = hlds_goal(plain_call(PredId, ProcId, Args, _, _, _), _) ->
+    (
+        Goal = hlds_goal(plain_call(PredId, ProcId, Args, _, _, _), _)
+    ->
         ( map.search(ProcArgInfo, proc(PredId, ProcId), ThisProcArgInfo) ->
             convert_branch_info(ThisProcArgInfo, Args, BranchInfo),
             BranchInfo = pd_branch_info(!:Vars, _, _),
@@ -800,8 +801,8 @@ recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    recompute_instmap_delta(yes, Goal0, Goal, VarTypes, InstVarSet,
-        InstMap, ModuleInfo0, ModuleInfo),
+    recompute_instmap_delta(recompute_atomic_instmap_deltas,
+        Goal0, Goal, VarTypes, InstVarSet, InstMap, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %-----------------------------------------------------------------------------%

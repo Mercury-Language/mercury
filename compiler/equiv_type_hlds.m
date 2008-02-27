@@ -399,7 +399,8 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
         (
             Recompute = yes,
             requantify_proc(!ProcInfo),
-            recompute_instmap_delta_proc(no, !ProcInfo, !ModuleInfo)
+            recompute_instmap_delta_proc(
+                do_not_recompute_atomic_instmap_deltas, !ProcInfo, !ModuleInfo)
         ;
             Recompute = no
         ),
@@ -929,8 +930,28 @@ replace_in_goal_expr(EqvMap, GoalExpr0 @ unify(Var, _, _, _, _), GoalExpr,
             GoalExpr = GoalExpr0
         )
     ).
-replace_in_goal_expr(_, shorthand(_), _, _, !Info) :-
-    unexpected(this_file, "replace_in_goal_expr: shorthand").
+replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
+    GoalExpr0 = shorthand(ShortHand0),
+    (
+        ShortHand0 = atomic_goal(GoalType, Outer, Inner,
+            MaybeOutputVars, MainGoal0, OrElseGoals0),
+        replace_in_goal(EqvMap, MainGoal0, MainGoal, Changed1, !Info),
+        replace_in_list(replace_in_goal(EqvMap), OrElseGoals0,
+            OrElseGoals, Changed2, !Info),
+        Changed = Changed1 `or` Changed2,
+        (
+            Changed = yes,
+            ShortHand = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand)
+        ;
+            Changed = no,
+            GoalExpr = GoalExpr0
+        )
+    ;
+        ShortHand0 = bi_implication(_, _),
+        unexpected(this_file, "replace_in_goal_expr: bi_implication")
+    ).
 
 :- pred replace_in_unification(eqv_map::in)
     `with_type` replacer(unification, replace_info)

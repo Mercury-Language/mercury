@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1037,8 +1037,8 @@ deep_prof_transform_switch(MaybeNumCases, N, Path,
 :- pred deep_prof_wrap_call(goal_path::in, hlds_goal::in, hlds_goal::out,
     deep_info::in, deep_info::out) is det.
 
-deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo), !DeepInfo) :-
+deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ModuleInfo = !.DeepInfo ^ deep_module_info,
     GoalFeatures = goal_info_get_features(GoalInfo0),
     goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
@@ -1222,7 +1222,8 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         )
     ;
         GoalExpr = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal2])
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred deep_prof_transform_higher_order_call(globals::in, code_model::in,
     hlds_goal::in, hlds_goal::out, deep_info::in, deep_info::out) is det.

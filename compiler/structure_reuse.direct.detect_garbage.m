@@ -158,6 +158,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
             !.SharingAs)
     ;
         GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(detect_garbage.this_file, 
             "determine_dead_deconstructions_2: shorthand goal.")
     ).

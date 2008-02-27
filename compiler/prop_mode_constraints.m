@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -358,8 +358,21 @@ ensure_unique_arguments_in_goal(hlds_goal(!.GoalExpr, !.GoalInfo),
     ;
         !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
-        !.GoalExpr = shorthand(_),
-        unexpected(this_file, "shorthand goal expression")
+        !.GoalExpr = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            ensure_unique_arguments_in_goal(MainGoal0, MainGoal, !SeenSoFar,
+                !Varset, !Vartypes),
+            list.map_foldl3(ensure_unique_arguments_in_goal,
+                OrElseGoals0, OrElseGoals, !SeenSoFar, !Varset, !Vartypes),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals),
+            !:GoalExpr = shorthand(ShortHand)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file, "bi_implication")
+        )
     ).
 
     % flatten_conjunction(!Goals) flattens the conjunction Goals - that

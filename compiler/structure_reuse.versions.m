@@ -188,9 +188,8 @@ process_proc(ReuseMap, PPId, !ModuleInfo, !IO) :-
         % requantify.  Then we recompute instmap deltas with the updated
         % non-local sets.
         requantify_proc(!ProcInfo),
-        RecomputeAtomic = no,
-        recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo),
-
+        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+            !ProcInfo, !ModuleInfo),
         module_info_set_pred_proc_info(PPId, PredInfo0, !.ProcInfo,
             !ModuleInfo)
     ).
@@ -287,6 +286,7 @@ process_goal(ReuseMap, !Goal, !IO) :-
             _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl)
     ;
         GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file, "process_goal: shorthand goal.")
     ).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -360,8 +360,8 @@ process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             Goal2, Goal3, VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
-        recompute_instmap_delta(no, Goal3, Goal, VarTypes, InstVarSet,
-            InitInstMap, !ModuleInfo),
+        recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
+            Goal3, Goal, VarTypes, InstVarSet, InitInstMap, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
@@ -723,6 +723,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
         unexpected(this_file, "shorthand in process_goal_internal")
     ).
 

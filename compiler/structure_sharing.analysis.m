@@ -432,7 +432,8 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             !.SharingAs)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "analyse_goal: shorthand goal.")
+        % These should have been expanded out by now.
+        unexpected(this_file, "analyse_goal: shorthand.")
     ).
 
 :- pred analyse_goal_with_progress(module_info::in, pred_info::in,

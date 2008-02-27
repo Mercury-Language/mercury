@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -256,18 +256,9 @@ goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E), May) :-
     ;
         goal_may_alloc_temp_frame(E, May)
     ).
-goal_may_alloc_temp_frame_2(shorthand(ShorthandGoal), May) :-
-    goal_may_alloc_temp_frame_2_shorthand(ShorthandGoal,May).
-
-:- pred goal_may_alloc_temp_frame_2_shorthand(shorthand_goal_expr::in,
-    bool::out) is det.
-
-goal_may_alloc_temp_frame_2_shorthand(bi_implication(G1, G2), May) :-
-    ( goal_may_alloc_temp_frame(G1, yes) ->
-        May = yes
-    ;
-        goal_may_alloc_temp_frame(G2, May)
-    ).
+goal_may_alloc_temp_frame_2(shorthand(_), _) :-
+    % These should have been expanded out by now.
+    unexpected(this_file, "goal_may_alloc_temp_frame_2: shorthand").
 
 :- pred goal_list_may_alloc_temp_frame(list(hlds_goal)::in, bool::out) is det.
 

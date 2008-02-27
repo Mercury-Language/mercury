@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -461,6 +461,22 @@ rename_in_goal_expr(OldVar, NewVar,
         Mutables0, Mutables),
     rename_in_goal(OldVar, NewVar, Goal0, Goal).
 rename_in_goal_expr(OldVar, NewVar,
+        atomic_expr(InVars0, OutVars0, MaybeVars0, MainExpr0, OrElseExpr0),
+        atomic_expr(InVars, OutVars, MaybeVars, MainExpr, OrElseExpr)) :-
+    rename_in_atomic_varlist(OldVar, NewVar, InVars0, InVars),
+    rename_in_atomic_varlist(OldVar, NewVar, OutVars0, OutVars),
+    (
+        MaybeVars0 = no,
+        MaybeVars = no
+    ;
+        MaybeVars0 = yes(TransVars0),
+        list.map(rename_in_var(OldVar, NewVar),
+            TransVars0, TransVars),
+        MaybeVars = yes(TransVars)
+    ),
+    rename_in_goal(OldVar, NewVar, MainExpr0, MainExpr),
+    list.map(rename_in_goal(OldVar, NewVar), OrElseExpr0, OrElseExpr).
+rename_in_goal_expr(OldVar, NewVar,
         implies_expr(GoalA0, GoalB0),
         implies_expr(GoalA, GoalB)) :-
     rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
@@ -491,6 +507,21 @@ rename_in_goal_expr(OldVar, NewVar,
         unify_expr(TermA, TermB, Purity)) :-
     term.substitute(TermA0, OldVar, term.variable(NewVar, context_init), TermA),
     term.substitute(TermB0, OldVar, term.variable(NewVar, context_init), TermB).
+
+:- pred rename_in_atomic_varlist(prog_var::in, prog_var::in,
+    atomic_component_state::in, atomic_component_state::out) is det.
+
+rename_in_atomic_varlist(OldVar, NewVar, Comp0, Comp) :-
+    (
+        Comp0 = atomic_state_var(SVar0),
+        rename_in_var(OldVar, NewVar, SVar0, SVar),
+        Comp = atomic_state_var(SVar)
+    ;
+        Comp0 = atomic_var_pair(IVar0, OVar0),
+        rename_in_var(OldVar, NewVar, IVar0, IVar),
+        rename_in_var(OldVar, NewVar, OVar0, OVar),
+        Comp = atomic_var_pair(IVar, OVar)
+    ).
 
 :- pred rename_in_trace_mutable_var(prog_var::in, prog_var::in,
     trace_mutable_var::in, trace_mutable_var::out) is det.

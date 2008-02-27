@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,9 +469,17 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
         GoalExpr = unify(_, _, _, Unification, _),
         traverse_unify(Unification, CurId, !ConjMaps, !PredMap, !RelevantVars)
     ;
-        GoalExpr = shorthand(_),
-        % These should have been expanded by now.
-        unexpected(this_file, "traverse_conj: shorthand")
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            traverse_disj([MainGoal | OrElseGoals], CurId,
+                !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars,
+                ModuleInfo)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded by now.
+            unexpected(this_file, "traverse_conj: bi_implication")
+        )
     ).
 
 :- pred traverse_unify(unification::in, conj_id::in,
@@ -587,13 +595,14 @@ traverse_disj(Disjuncts, CurId, !FormatCallSites, !Counter,
 
 traverse_disj_arms([], _, [], !Counter, !ConjMaps, !PredMap, [], _).
 traverse_disj_arms([Goal | Goals], ContainingId,
-        [FormatCallSites | FormatCallSitesTail], !Counter,
-        !ConjMaps, !PredMap, [RelevantVars | RelevantVarSets], ModuleInfo) :-
-    traverse_goal(Goal, DisjId, [], FormatCallSites, !Counter,
-        !ConjMaps, !PredMap, set.init, RelevantVars, ModuleInfo),
+        [GoalFormatCallSites | GoalsFormatCallSites], !Counter,
+        !ConjMaps, !PredMap, [GoalRelevantVars | GoalsRelevantVarSet],
+        ModuleInfo) :-
+    traverse_goal(Goal, DisjId, [], GoalFormatCallSites, !Counter,
+        !ConjMaps, !PredMap, set.init, GoalRelevantVars, ModuleInfo),
     svmap.det_insert(DisjId, ContainingId, !PredMap),
-    traverse_disj_arms(Goals, ContainingId, FormatCallSitesTail, !Counter,
-        !ConjMaps, !PredMap, RelevantVarSets, ModuleInfo).
+    traverse_disj_arms(Goals, ContainingId, GoalsFormatCallSites, !Counter,
+        !ConjMaps, !PredMap, GoalsRelevantVarSet, ModuleInfo).
 
 :- func get_conj_map(conj_maps, conj_id) = conj_map.
 

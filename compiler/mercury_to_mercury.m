@@ -2917,6 +2917,39 @@ mercury_output_goal_2(promise_purity_expr(_Implicit, Purity, Goal), VarSet,
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
+mercury_output_goal_2(atomic_expr(Outer, Inner, _, MainExpr, 
+        OrElseExprs), VarSet, Indent, !IO) :-
+    io.write_string("atomic [outer(", !IO),
+    (
+        Outer = atomic_state_var(OVar),
+        io.write_string("!", !IO),
+        mercury_output_var(VarSet, no, OVar, !IO)
+    ;
+        Outer = atomic_var_pair(OuterDI, OuterUO),
+        mercury_output_var(VarSet, no, OuterDI, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_var(VarSet, no, OuterUO, !IO)
+    ),
+    io.write_string("), inner(", !IO),
+    (
+        Inner = atomic_state_var(IVar),
+        io.write_string("!", !IO),
+        mercury_output_var(VarSet, no, IVar, !IO)
+    ;
+        Inner = atomic_var_pair(InnerDI, InnerUO),
+        mercury_output_var(VarSet, no, InnerDI, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_var(VarSet, no, InnerUO, !IO)
+    ),
+    io.write_string(")] (", !IO),
+
+    Indent1 = Indent + 1,
+    mercury_output_newline(Indent1, !IO),
+    mercury_output_orelse_goals([MainExpr | OrElseExprs], VarSet, Indent1,
+        !IO),
+    mercury_output_newline(Indent, !IO),
+    io.write_string(")", !IO).
+
 mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
     Expr = trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, MutableVars,
         Goal),
@@ -3235,6 +3268,29 @@ mercury_output_some(Vars, StateVars, VarSet, !IO) :-
         io.write_string("]", !IO)
     ;
         true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_orelse_goals(goals::in, prog_varset::in, int::in,
+    io::di, io::uo) is det.
+
+mercury_output_orelse_goals(Goals, VarSet, Indent, !IO) :-
+    (
+        Goals = []
+    ;
+        Goals = [Goal0 | GoalTails],
+        (
+            GoalTails = [],
+            mercury_output_goal(Goal0, VarSet, Indent + 1, !IO)
+        ;
+            GoalTails = [_|_],
+            mercury_output_goal(Goal0, VarSet, Indent + 1, !IO),
+            mercury_output_newline(Indent, !IO),
+            io.write_string("orelse", !IO),
+            mercury_output_newline(Indent, !IO),
+            mercury_output_orelse_goals(GoalTails, VarSet, Indent, !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

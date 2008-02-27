@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -314,6 +314,8 @@
     ;       step_ite_else
     ;       step_neg
     ;       step_scope(maybe_cut)
+    ;       step_atomic_main
+    ;       step_atomic_orelse(int)
     ;       step_first
     ;       step_later.
 
@@ -612,6 +614,9 @@ goal_path_step_from_string_2('e', "", step_ite_else).
 goal_path_step_from_string_2('~', "", step_neg).
 goal_path_step_from_string_2('q', "!", step_scope(scope_is_cut)).
 goal_path_step_from_string_2('q', "", step_scope(scope_is_no_cut)).
+goal_path_step_from_string_2('a', "", step_atomic_main).
+goal_path_step_from_string_2('o', NStr, step_atomic_orelse(N)) :-
+    string.to_int(NStr, N).
 goal_path_step_from_string_2('f', "", step_first).
 goal_path_step_from_string_2('l', "", step_later).
 
@@ -636,6 +641,9 @@ goal_path_step_to_string(step_ite_else) = "e;".
 goal_path_step_to_string(step_neg) = "~;".
 goal_path_step_to_string(step_scope(scope_is_cut)) = "q!;".
 goal_path_step_to_string(step_scope(scope_is_no_cut)) = "q;".
+goal_path_step_to_string(step_atomic_main) = "a;".
+goal_path_step_to_string(step_atomic_orelse(N)) =
+    "o" ++ int_to_string(N) ++ ";".
 goal_path_step_to_string(step_first) = "f;".
 goal_path_step_to_string(step_later) = "l;".
 

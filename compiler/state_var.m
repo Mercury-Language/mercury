@@ -157,6 +157,57 @@
 :- pred finish_local_state_vars(svars::in, prog_vars::out,
     svar_info::in, svar_info::in, svar_info::out) is det.
 
+:- type svar_outer_atomic_scope_info.
+
+    % svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDI, OuterUO,
+    %   OuterScopeInfo, !VarSet, !SInfo, !Specs):
+    %
+    % This predicate converts a !OuterStateVar specification in an atomic scope
+    % to a pair of outer state variables, OuterDI and OuterUO. Since
+    % !OuterStateVar should *not* be accessible inside the atomic scope,
+    % we delete it, but record it in OuterScopeInfo. The accessibility of
+    % !OuterStateVar will be restored when you call svar_finish_atomic_scope
+    % with OuterScopeInfo.
+    %  
+:- pred svar_start_outer_atomic_scope(prog_context::in, prog_var::in,
+    prog_var::out, prog_var::out, svar_outer_atomic_scope_info::out,
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+    % svar_finish_outer_atomic_scope(OuterScopeInfo, !SInfo):
+    %
+    % Restore the accessibility of !OuterStateVar that was disabled by
+    % svar_start_atomic_scope.
+    %
+:- pred svar_finish_outer_atomic_scope(svar_outer_atomic_scope_info::in,
+    svar_info::in, svar_info::out) is det.
+
+:- type svar_inner_atomic_scope_info.
+
+    % svar_start_inner_atomic_scope(Context, InnerStateVar, InnerScopeInfo,
+    %   !VarSet, !SInfo, !Specs):
+    %
+    % This predicate prepares for an atomic scope with an !InnerStateVar
+    % specification by making that state var available.
+    %
+:- pred svar_start_inner_atomic_scope(prog_context::in, prog_var::in,
+    svar_inner_atomic_scope_info::out,
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+    % svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
+    %   !VarSet, !SInfo, !Specs):
+    %
+    % This predicate ends an atomic scope with an !InnerStateVar
+    % specification by making that state var unavailable, and returning
+    % the two variables InnerDI and InnerUO representing the initial and final
+    % states of this state variable.
+    %
+:- pred svar_finish_inner_atomic_scope(prog_context::in,
+    svar_inner_atomic_scope_info::in, prog_var::out, prog_var::out,
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
     % We have to add unifiers to the Then and Else arms of an
     % if-then-else to make sure all the state variables match up.
     %
@@ -225,8 +276,8 @@
 
     % The condition of an if-then-else expression is a goal in which
     % only !.X state variables in scope are visible (although the goal
-    % may use local state variables introduced via an explicit
-    % quantifier.)  The StateVars are local to the condition and then-goal.
+    % may use local state variables introduced via an explicit quantifier.)
+    % The StateVars are local to the condition and then-goal.
     %
 :- pred svar_prepare_for_if_then_else_expr(svars::in,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
@@ -554,6 +605,122 @@ del_locals(StateVars, MapBefore, Map) =
             ),
         StateVars,
         Map
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type svar_outer_atomic_scope_info
+    --->    svar_outer_atomic_scope_info(
+                outer_state_var             :: prog_var,
+                maybe_outer_read_only_dot   :: maybe(prog_var),
+                maybe_outer_dot             :: maybe(prog_var),
+                maybe_outer_colon           :: maybe(prog_var)
+            ).
+
+svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDI, OuterUO,
+        OuterScopeInfo, !VarSet, !SInfo, !Specs) :-
+    svar_prepare_for_call(!SInfo),
+    svar_dot(Context, OuterStateVar, OuterDI, !VarSet, !SInfo, !Specs),
+    svar_colon(Context, OuterStateVar, OuterUO, !VarSet, !SInfo, !Specs),
+    svar_finish_call(!VarSet, !SInfo),
+    !.SInfo = svar_info(SVarContext, SVarNum, RODotMap0, DotMap0, ColonMap0),
+    ( map.remove(RODotMap0, OuterStateVar, OuterRODot, RODotMap1) ->
+        MaybeOuterRODot = yes(OuterRODot),
+        RODotMap = RODotMap1
+    ;
+        MaybeOuterRODot = no,
+        RODotMap = RODotMap0
+    ),
+    ( map.remove(DotMap0, OuterStateVar, OuterDot, DotMap1) ->
+        MaybeOuterDot = yes(OuterDot),
+        DotMap = DotMap1
+    ;
+        MaybeOuterDot = no,
+        DotMap = DotMap0
+    ),
+    ( map.remove(ColonMap0, OuterStateVar, OuterColon, ColonMap1) ->
+        MaybeOuterColon = yes(OuterColon),
+        ColonMap = ColonMap1
+    ;
+        MaybeOuterColon = no,
+        ColonMap = ColonMap0
+    ),
+    OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
+        MaybeOuterRODot, MaybeOuterDot, MaybeOuterColon),
+    !:SInfo = svar_info(SVarContext, SVarNum, RODotMap, DotMap, ColonMap).
+
+svar_finish_outer_atomic_scope(OuterScopeInfo, !SInfo) :-
+    OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
+        MaybeOuterRODot, MaybeOuterDot, MaybeOuterColon),
+    !.SInfo = svar_info(SVarContext, SVarNum, RODotMap0, DotMap0, ColonMap0),
+    % For each of the "yes" cases below, we deleted the corresponding entry
+    % in svar_start_atomic_scope. While a goal inside the atomic state could
+    % have introduced a state variable with the same name again, that could
+    % have been done only in a scope which also deletes the state variable.
+    % Hence the use of det_inserts below.
+    (
+        MaybeOuterRODot = yes(OuterRODot),
+        map.det_insert(RODotMap0, OuterStateVar, OuterRODot, RODotMap)
+    ;
+        MaybeOuterRODot = no,
+        RODotMap = RODotMap0
+    ),
+    (
+        MaybeOuterDot = yes(OuterDot),
+        map.det_insert(DotMap0, OuterStateVar, OuterDot, DotMap)
+    ;
+        MaybeOuterDot = no,
+        DotMap = DotMap0
+    ),
+    (
+        MaybeOuterColon = yes(OuterColon),
+        map.det_insert(ColonMap0, OuterStateVar, OuterColon, ColonMap)
+    ;
+        MaybeOuterColon = no,
+        ColonMap = ColonMap0
+    ),
+    !:SInfo = svar_info(SVarContext, SVarNum, RODotMap, DotMap, ColonMap).
+
+%-----------------------------------------------------------------------------%
+
+:- type svar_inner_atomic_scope_info
+    --->    svar_inner_atomic_scope_info(
+                inner_state_var             :: prog_var,
+                inner_di_var                :: prog_var,
+                before_svar_info            :: svar_info
+            ).
+
+svar_start_inner_atomic_scope(Context, InnerStateVar, InnerScopeInfo,
+        !VarSet, !SInfo, !Specs) :-
+    prepare_for_local_state_vars([InnerStateVar], !VarSet, !SInfo),
+    % This mention of !:InnerStateVar is to allow code in the atomic scope
+    % to access !.InnerStateVar.
+    svar_colon(Context, InnerStateVar, InnerDI, !VarSet, !SInfo, !Specs),
+    InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDI,
+        !.SInfo).
+
+svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
+        !VarSet, !SInfo, !Specs) :-
+    InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDI,
+        BeforeSInfo),
+    % XXX Should this be svar_dot?
+    svar_colon(Context, InnerStateVar, InnerUO, !VarSet, !SInfo, !Specs),
+    finish_local_state_vars([InnerStateVar], Vars, BeforeSInfo, !SInfo),
+    trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
+        ( Vars = [Var1, Var2] ->
+            io.write_string("dot/colon:\n", !IO),
+            io.write(InnerDI, !IO),
+            io.nl(!IO),
+            io.write(InnerUO, !IO),
+            io.nl(!IO),
+            io.write_string("finish", !IO),
+            io.write(Var1, !IO),
+            io.nl(!IO),
+            io.write(Var2, !IO),
+            io.nl(!IO)
+        ;
+            unexpected(this_file, "transform_goal_2: |Vars| != 2")
+        )
     ).
 
 %-----------------------------------------------------------------------------%

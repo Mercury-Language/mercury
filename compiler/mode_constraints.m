@@ -453,7 +453,15 @@ number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
     Occurring = OccCond `set.union` OccThen `set.union` OccElse.
 number_robdd_variables_in_goal_2(_, _, _, _, _, shorthand(_), _, !RInfo) :-
     unexpected(this_file, "number_robdd_variables_in_goal_2: shorthand").
-
+% number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
+%         atomic_goal(GoalType, Inner, Outer, Vars, MainGoal0, OrElseGoals0),
+%         atomic_goal(GoalType, Inner, Outer, Vars, MainGoal, OrElseGoals),
+%         !RInfo) :-
+%     number_robdd_variables_in_goal(InstGraph, NonLocals, OccMain,
+%         MainGoal0, MainGoal, !RInfo),
+%     number_robdd_variables_in_goals(InstGraph, NonLocals, OccOrElse,
+%         OrElseGoals0, OrElseGoals, !RInfo),
+%     Occurring = OccMain `set.union` OccOrElse.
 number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
         Occurring, GoalExpr, GoalExpr, !RInfo) :-
     GoalExpr = plain_call(_, _, Args, _, _, _),
@@ -1119,10 +1127,12 @@ add_in_and_out_implications(V, V_in, V_out, W, !Cs, !Info) :-
 
 goal_constraints(ParentNonLocals, CanSucceed, hlds_goal(GoalExpr0, GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo), !Constraint, !GCInfo) :-
-    ( goal_is_atomic(GoalExpr0) ->
-        add_atomic_goal(GoalPath, !GCInfo)
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    (
+        HasSubGoals = has_subgoals
     ;
-        true
+        HasSubGoals = does_not_have_subgoals,
+        add_atomic_goal(GoalPath, !GCInfo)
     ),
 
     GoalPath = goal_info_get_goal_path(GoalInfo0),
@@ -1439,8 +1449,26 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
 goal_constraints_2(_, _, _, _, call_foreign_proc(_, _, _, _, _, _, _),
         _, _, _, _, _) :-
     sorry(this_file, "goal_constraints_2: foreign_proc NYI").
+
 goal_constraints_2(_, _, _, _, shorthand(_), _, _, _, _, _) :-
     sorry(this_file, "goal_constraints_2: shorthand").
+
+% goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
+%         atomic_goal(GoalType, Outer, Inner, OutVars, MainGoal0, OrElseGoals0),
+%         atomic_goal(GoalType, Outer, Inner, OutVars, MainGoal, OrElseGoals),
+%         !Constraint, !GCInfo) :-
+%     Goals0 = [MainGoal0 | OrElseGoals0],
+%     disj_constraints(NonLocals, CanSucceed, !Constraint, Goals0, Goals,
+%         [], DisjunctPaths, !GCInfo),
+%     list.foldl2((pred(V::in, Cons0::in, Cons::out, in, out) is det -->
+%         get_var(V `at` GoalPath, Vgp),
+%         list.foldl2((pred(Path::in, C0::in, C::out, in, out) is det -->
+%             get_var(V `at` Path, VPath),
+%             { C = C0 ^ eq_vars(Vgp, VPath) }
+%         ), DisjunctPaths, Cons0, Cons)
+%     ), set.to_sorted_list(Vars), !Constraint, !GCInfo),
+%     MainGoal = list.det_head(Goals),
+%     OrElseGoals = list.det_tail(Goals).
 
     % Constraints for the conjunction. If UseKnownVars = yes, generate
     % constraints only for the vars in KnownVars, otherwise generate

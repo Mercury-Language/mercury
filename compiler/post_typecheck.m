@@ -78,6 +78,10 @@
 :- pred post_typecheck_finish_imported_pred_no_io(module_info::in,
     list(proc_id)::out, pred_info::in, pred_info::out) is det.
 
+    % For ill-typed preds, we just need to set the modes up correctly
+    % so that any calls to that pred from correctly-typed predicates
+    % won't result in spurious mode errors.
+    %
 :- pred post_typecheck_finish_ill_typed_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -436,21 +440,17 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
 
 :- func get_qualified_pred_name(module_info, pred_id) = sym_name.
 
-get_qualified_pred_name(ModuleInfo, PredId)
-        = qualified(PredModule, PredName) :-
+get_qualified_pred_name(ModuleInfo, PredId) = SymName :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo).
+    PredName = pred_info_name(PredInfo),
+    SymName = qualified(PredModule, PredName).
 
 %-----------------------------------------------------------------------------%
 
 post_typecheck_finish_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo) :-
     propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo).
 
-    % For ill-typed preds, we just need to set the modes up correctly
-    % so that any calls to that pred from correctly-typed predicates
-    % won't result in spurious mode errors.
-    %
 post_typecheck_finish_ill_typed_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo),
     report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
@@ -475,9 +475,9 @@ post_typecheck_finish_imported_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
 
 post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcIds,
         !PredInfo) :-
-    % Make sure the var-types field in the clauses_info is valid for imported
+    % Make sure the vartypes field in the clauses_info is valid for imported
     % predicates. Unification procedures have clauses generated, so they
-    % already have valid var-types.
+    % already have valid vartypes.
     ( pred_info_is_pseudo_imported(!.PredInfo) ->
         true
     ;
@@ -572,8 +572,8 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
 :- pred in_interface_check(module_info::in, pred_info::in, hlds_goal::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-in_interface_check(ModuleInfo, PredInfo, hlds_goal(GoalExpr, GoalInfo),
-        !Specs) :-
+in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = plain_call(PredId, _, _, _, _,SymName),
         module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
@@ -623,30 +623,28 @@ in_interface_check(ModuleInfo, PredInfo, hlds_goal(GoalExpr, GoalInfo),
         GoalExpr = disj(Goals),
         in_interface_check_list(ModuleInfo, PredInfo, Goals, !Specs)
     ;
-        GoalExpr = negation(Goal),
-        in_interface_check(ModuleInfo, PredInfo, Goal, !Specs)
+        GoalExpr = negation(SubGoal),
+        in_interface_check(ModuleInfo, PredInfo, SubGoal, !Specs)
     ;
-        GoalExpr = scope(_, Goal),
-        in_interface_check(ModuleInfo, PredInfo, Goal, !Specs)
+        GoalExpr = scope(_, SubGoal),
+        in_interface_check(ModuleInfo, PredInfo, SubGoal, !Specs)
     ;
-        GoalExpr = if_then_else(_, If, Then, Else),
-        in_interface_check(ModuleInfo, PredInfo, If, !Specs),
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        in_interface_check(ModuleInfo, PredInfo, Cond, !Specs),
         in_interface_check(ModuleInfo, PredInfo, Then, !Specs),
         in_interface_check(ModuleInfo, PredInfo, Else, !Specs)
     ;
-        GoalExpr = shorthand(ShorthandGoal),
-        in_interface_check_shorthand(ModuleInfo, PredInfo, ShorthandGoal,
-            !Specs)
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            in_interface_check(ModuleInfo, PredInfo, MainGoal, !Specs),
+            in_interface_check_list(ModuleInfo, PredInfo, OrElseGoals, !Specs)
+        ;
+            ShortHand = bi_implication(LHS, RHS),
+            in_interface_check(ModuleInfo, PredInfo, LHS, !Specs),
+            in_interface_check(ModuleInfo, PredInfo, RHS, !Specs)
+        )
     ).
-
-:- pred in_interface_check_shorthand(module_info::in, pred_info::in,
-    shorthand_goal_expr::in, list(error_spec)::in, list(error_spec)::out)
-    is det.
-
-in_interface_check_shorthand(ModuleInfo, PredInfo, bi_implication(LHS, RHS),
-        !Specs) :-
-    in_interface_check(ModuleInfo, PredInfo, LHS, !Specs),
-    in_interface_check(ModuleInfo, PredInfo, RHS, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -663,21 +661,19 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.lookup(VarTypes, Var, Type),
-        ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-            module_info_get_type_table(ModuleInfo, Types),
-            map.lookup(Types, TypeCtor, TypeDefn),
-            get_type_defn_status(TypeDefn, TypeStatus),
-            ( status_defined_in_impl_section(TypeStatus) = yes ->
-                ConsIdStr = cons_id_to_string(ConsId),
-                IdPieces = [words("constructor"), quote(ConsIdStr)],
-                report_assertion_interface_error(ModuleInfo, Context, IdPieces,
-                    !Specs)
-            ;
-                true
-            )
+        type_to_ctor_det(Type, TypeCtor),
+        module_info_get_type_table(ModuleInfo, Types),
+        map.lookup(Types, TypeCtor, TypeDefn),
+        get_type_defn_status(TypeDefn, TypeStatus),
+        DefinedInImpl = status_defined_in_impl_section(TypeStatus),
+        (
+            DefinedInImpl = yes,
+            ConsIdStr = cons_id_to_string(ConsId),
+            IdPieces = [words("constructor"), quote(ConsIdStr)],
+            report_assertion_interface_error(ModuleInfo, Context, IdPieces,
+                !Specs)
         ;
-            unexpected(this_file,
-                "in_interface_check_unify_rhs: type_to_ctor_and_args failed.")
+            DefinedInImpl = no
         )
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),

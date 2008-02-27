@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -364,8 +364,9 @@
     %
 :- func choose_number(list(T), U, U) = U.
 
-    % is_or_are(List) returns "is" if the list is singleton, an exception
-    % if the list is empty, otherwise it returns "are"
+    % is_or_are(List) throws an exception if the list is empty, returns "is"
+    % if the list is a singleton, and otherwise returns "are".
+    %
 :- func is_or_are(list(T)) = string.
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -262,7 +262,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         Goal = hlds_goal(disj(GoalList), GoalInfo)
     ),
     % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
-    %     we should just pass the headvar vector in directly.
+    % we should just pass the headvar vector in directly.
     HeadVarList = proc_arg_vector_to_list(HeadVars),
     proc_info_set_body(VarSet, VarTypes, HeadVarList, Goal, RttiInfo, !Proc).
 

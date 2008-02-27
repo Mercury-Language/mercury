@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -94,8 +94,8 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
         Varset1, Varset, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-    recompute_instmap_delta(no, Goal2, Goal, VarTypes,
-        InstVarSet, InstMap0, !ModuleInfo),
+    recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
+        Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
 
     % hlds_out.write_goal(Goal, !.ModuleInfo, Varset, 0, "\n"),
 

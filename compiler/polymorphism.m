@@ -1107,8 +1107,20 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = shorthand(_),
-        unexpected(this_file, "process_goal_expr: unexpected shorthand")
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars, 
+                MainGoal0, OrElseGoals0),
+            polymorphism_process_goal(MainGoal0, MainGoal, !Info),
+            polymorphism_process_goal_list(OrElseGoals0, OrElseGoals, !Info),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, Vars, 
+                MainGoal, OrElseGoals),
+            GoalExpr = shorthand(ShortHand),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file, "process_goal_expr: bi_implication")
+        )
     ).
 
     % type_info_vars prepends a comma separated list of variables

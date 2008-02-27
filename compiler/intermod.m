@@ -456,7 +456,7 @@ goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
         FoundBranch0 = no,
         FoundBranch = yes
     ;
-        goal_is_atomic(GoalExpr),
+        goal_expr_has_subgoals(GoalExpr) = does_not_have_subgoals,
         FoundBranch = FoundBranch0
     ),
     goal_contains_one_branched_goal(Goals, FoundBranch).
@@ -519,9 +519,22 @@ intermod_traverse_goal_expr(if_then_else(Vars, Cond0, Then0, Else0),
     % non-exported types, so we just write out the clauses.
 intermod_traverse_goal_expr(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
         Goal, yes, !Info).
-intermod_traverse_goal_expr(shorthand(_), _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "traverse_goal: unexpected shorthand").
+intermod_traverse_goal_expr(shorthand(ShortHand0), shorthand(ShortHand),
+        DoWrite, !Info) :-
+    (
+        ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+            MainGoal0, OrElseGoals0),
+        intermod_traverse_goal(MainGoal0, MainGoal, DoWrite1, !Info),
+        intermod_traverse_list_of_goals(OrElseGoals0, OrElseGoals, DoWrite2,
+            !Info),
+        bool.and(DoWrite1, DoWrite2, DoWrite),
+        ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+            MainGoal, OrElseGoals)
+    ;
+        ShortHand0 = bi_implication(_, _),
+        % These should have been expanded out by now.
+        unexpected(this_file, "intermod_traverse_goal_expr: bi_implication")
+    ).
 
 :- pred intermod_traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
     bool::out, intermod_info::in, intermod_info::out) is det.

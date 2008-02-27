@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 University of Melbourne.
+% Copyright (C) 1999-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -228,8 +228,8 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
             proc_info_get_vartypes(!.ProcInfo, VarTypes),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-            recompute_instmap_delta(yes, !Goal, VarTypes,
-                InstVarSet, InstMap0, !ModuleInfo),
+            recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
+                VarTypes, InstVarSet, InstMap0, !ModuleInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
 
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),
@@ -242,9 +242,8 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
             (
                 RerunDet = yes,
                 % If the determinism of some sub-goals has changed,
-                % then we re-run determinism analysis. As with
-                % inlining.m, this avoids problems with inlining
-                % erroneous procedures.
+                % then we re-run determinism analysis. As with inlining.m,
+                % this avoids problems with inlining erroneous procedures.
                 det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, _)
             ;
                 RerunDet = no
@@ -1999,7 +1998,7 @@ is_simple_goal_list([Goal | Goals]) :-
 
 is_simple_goal(hlds_goal(GoalExpr, _)) :-
     (
-        goal_is_atomic(GoalExpr)
+        goal_expr_has_subgoals(GoalExpr) = does_not_have_subgoals
     ;
         GoalExpr = negation(Goal1),
         % Handle a call or builtin + tests on the output.

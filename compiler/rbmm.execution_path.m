@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -98,17 +98,19 @@ compute_execution_paths(ProcInfo0, ModuleInfo, ExecPaths) :-
     list(execution_path)::in, list(execution_path)::out) is det.
 
 execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths) :-
-    Goal = hlds_goal(Expr, Info),
-    ( goal_is_atomic(Expr) ->
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    HasSubGoals = goal_expr_has_subgoals(GoalExpr),
+    (
+        HasSubGoals = does_not_have_subgoals,
         (
-            ( Expr = unify(_, _, _, _, _)
-            ; Expr = plain_call(_, _, _, _, _, _)
-            ; Expr = conj(_ConjType, [])
-            ; Expr = disj([])
+            ( GoalExpr = unify(_, _, _, _, _)
+            ; GoalExpr = plain_call(_, _, _, _, _, _)
+            ; GoalExpr = conj(_ConjType, [])
+            ; GoalExpr = disj([])
             )
         ->
             % Retrieve the program point of this goal.
-            ProgPoint = program_point_init(Info),
+            ProgPoint = program_point_init(GoalInfo),
             append_to_each_execution_path(!.ExecPaths,
                 [[pair(ProgPoint, Goal)]], !:ExecPaths)
         ;
@@ -118,6 +120,7 @@ execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths) :-
             append_to_each_execution_path(!.ExecPaths, [[]], !:ExecPaths)
         )
     ;
+        HasSubGoals = has_subgoals,
         execution_paths_covered_compound_goal(ProcInfo, Goal, !ExecPaths)
     ).
 

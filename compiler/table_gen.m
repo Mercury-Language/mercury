@@ -552,8 +552,8 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     % Some of the instmap_deltas generated in this module are pretty dodgy
     % (especially those for if-then-elses), so recompute them here.
     % XXX Fix this: generate correct-by-construction instmap_deltas.
-    RecomputeAtomic = no,
-    recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo),
+    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        !ProcInfo, !ModuleInfo),
 
     pred_info_get_procedures(!.PredInfo, ProcTable1),
     map.det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
