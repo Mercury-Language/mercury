@@ -7026,21 +7026,34 @@ This argument may be omitted if @var{Overrides} is empty.
 The argument @var{Attributes} is a list of optional attributes.
 If empty, it may be omitted from the @samp{pragma foreign_export_enum}
 declaration.
-The following attribute must be supported by all Mercury implementations.
+The following attributes must be supported by all Mercury implementations.
 
 @table @asis
  
 @item @samp{prefix(Prefix)}
 Prefix each symbolic name, regardless of how it was generated, with
 the string @var{Prefix}.
-This occurs @emph{before} the validity of the symbolic name in the
-foreign language is checked, i.e. the effect of the @samp{prefix}
-attribute may cause an otherwise valid symbolic name to become invalid or
-vice versa.
 At most one @samp{prefix} attribute may be specified for a
 @samp{pragma foreign_export_enum} declaration.
 
+@item @samp{uppercase}
+Convert any alphabetic characters in a Mercury constructor name
+to uppercase when generating the symbolic name using the default
+mapping.
+Symbolic names specified by the programmer using @var{Overrides}
+are not affected by this attribute.
+If the @samp{prefix} attribute is also specified, then the prefix
+is added to the symbolic name @emph{after} the conversion to
+uppercase has been performed, i.e. the characters in the prefix
+are not affected by the @samp{uppercase} attribute.
+
 @end table
+
+The implementation does not check the validity of a symbolic name
+in the foreign language until after the effects of any attributes
+have been applied.
+This means that attributes may cause an otherwise valid symbolic name
+to become invalid or vice versa.
 
 It is an error if the mapping between constructors and symbolic names
 does not form a bijection.

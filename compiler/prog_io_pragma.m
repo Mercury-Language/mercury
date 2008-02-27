@@ -506,7 +506,8 @@ maybe_parse_export_enum_attributes(yes(AttributesTerm), MaybeAttributes) :-
     parse_export_enum_attributes(AttributesTerm, MaybeAttributes).
 
 :- type collected_export_enum_attribute
-    --->    ee_attr_prefix(maybe(string)).
+    --->    ee_attr_prefix(maybe(string))
+    ;       ee_attr_upper(uppercase_export_enum).
 
 :- pred parse_export_enum_attributes(term::in,
     maybe1(export_enum_attributes)::out) is det.
@@ -554,8 +555,15 @@ parse_export_enum_attributes(AttributesTerm, AttributesResult) :-
 :- pred process_export_enum_attribute(collected_export_enum_attribute::in,
     export_enum_attributes::in, export_enum_attributes::out) is det.
 
-process_export_enum_attribute(ee_attr_prefix(MaybePrefix), _, Attributes) :-
-    Attributes = export_enum_attributes(MaybePrefix).
+process_export_enum_attribute(ee_attr_prefix(MaybePrefix), !Attributes) :-
+    % We haved alredy checked that the prefix attribute is not specified
+    % mulitple times in parse_export_enum_attributes/2 so it is safe to
+    % ignore it in the input here.
+    !.Attributes = export_enum_attributes(_, MakeUpperCase),
+    !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
+process_export_enum_attribute(ee_attr_upper(MakeUpperCase), !Attributes) :-
+    !.Attributes = export_enum_attributes(MaybePrefix, _),
+    !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
 
 :- pred parse_export_enum_attr(term::in,
     maybe1(collected_export_enum_attribute)::out) is det.
@@ -567,6 +575,10 @@ parse_export_enum_attr(Term, Result) :-
         ForeignNameTerm = functor(string(Prefix), [], _)
     ->
         Result = ok1(ee_attr_prefix(yes(Prefix)))
+    ;
+        Term = functor(atom("uppercase"), [], _)
+    ->
+        Result = ok1(ee_attr_upper(uppercase_export_enum))
     ;
         Msg = "unrecognised attribute in foreign_export_enum pragma",
         Result = error1([Msg - Term])

@@ -671,7 +671,8 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                     ; DuTypeKind = du_type_kind_foreign_enum(_)
                     ; DuTypeKind = du_type_kind_direct_dummy
                     ),
-                    Attributes = export_enum_attributes(MaybePrefix),
+                    Attributes = export_enum_attributes(MaybePrefix,
+                        MakeUpperCase),
                     (
                         MaybePrefix = yes(Prefix)
                     ;
@@ -683,7 +684,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                     (
                         MaybeOverridesMap = yes(OverridesMap),
                         build_export_enum_name_map(ContextPieces, Lang,
-                            TypeName, TypeArity, Context, Prefix,
+                            TypeName, TypeArity, Context, Prefix, MakeUpperCase,
                             OverridesMap, Ctors, MaybeMapping, !Specs),
                         (
                             MaybeMapping = yes(Mapping),
@@ -790,12 +791,12 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
 
 :- pred build_export_enum_name_map(format_components::in,
     foreign_language::in, sym_name::in, arity::in, prog_context::in,
-    string::in, map(sym_name, string)::in, list(constructor)::in,
-    maybe(map(sym_name, string))::out,
+    string::in, uppercase_export_enum::in, map(sym_name, string)::in,
+    list(constructor)::in, maybe(map(sym_name, string))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
-        Context, Prefix, Overrides0, Ctors, MaybeMapping, !Specs) :-
+        Context, Prefix, MakeUpperCase, Overrides0, Ctors, MaybeMapping, !Specs) :-
     (
         TypeName = qualified(TypeModuleQual, _)
     ;
@@ -804,7 +805,8 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
         unexpected(this_file, "unqualified type name for foreign_export_enum")
     ),
 
-    list.foldl3(add_ctor_to_name_map(Lang, Prefix, TypeModuleQual),
+    list.foldl3(
+        add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, TypeModuleQual),
         Ctors, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
     %
     % Check for any remaining user-specified renamings that didn't
@@ -915,13 +917,13 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap,
     %   !BadCtors):
     %
 :- pred add_ctor_to_name_map(foreign_language::in,
-    string::in, sym_name::in, constructor::in,
+    string::in, uppercase_export_enum::in, sym_name::in, constructor::in,
     map(sym_name, string)::in, map(sym_name, string)::out,
     map(sym_name, string)::in, map(sym_name, string)::out,
     list(sym_name)::in, list(sym_name)::out) is det.
 
-add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
-        !BadCtors) :-
+add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
+        !Overrides, !NameMap, !BadCtors) :-
     CtorSymName = Ctor ^ cons_name,
     (
         % All of the constructor sym_names should be module qualified by now.
@@ -938,14 +940,20 @@ add_ctor_to_name_map(Lang, Prefix, _TypeModQual, Ctor, !Overrides, !NameMap,
     %
     % If the user specified a name for this constructor then use that.
     %
-    ( svmap.remove(UnqualSymName, ForeignName0, !Overrides) ->
-        ForeignName1 = ForeignName0
+    ( svmap.remove(UnqualSymName, UserForeignName, !Overrides) ->
+        ForeignNameTail = UserForeignName
     ;
         % Otherwise try to derive a name automatically from the
         % constructor name.
-        ForeignName1 = UnqualCtorName
+        (
+            MakeUpperCase = uppercase_export_enum,
+            ForeignNameTail = string.to_upper(UnqualCtorName)
+        ;
+            MakeUpperCase = do_not_uppercase_export_enum,
+            ForeignNameTail = UnqualCtorName
+        )
     ),
-    ForeignName = Prefix ++ ForeignName1,
+    ForeignName = Prefix ++ ForeignNameTail,
     (
         Lang  = lang_c,
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))

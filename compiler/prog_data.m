@@ -617,10 +617,14 @@
 % Stuff for the `foreign_export_enum' pragma
 %
 
+:- type uppercase_export_enum
+    --->    uppercase_export_enum
+    ;       do_not_uppercase_export_enum.
 
 :- type export_enum_attributes
     --->    export_enum_attributes(
-                ee_attr_prefix :: maybe(string)
+                ee_attr_prefix :: maybe(string),
+                ee_attr_upper  :: uppercase_export_enum
             ).
 
 :- func default_export_enum_attributes = export_enum_attributes.
@@ -2317,7 +2321,8 @@ add_module(visibility_private, Module, !UsedModules) :-
 % Stuff for the `foreign_export_enum' pragma
 %
 
-default_export_enum_attributes = export_enum_attributes(no).
+default_export_enum_attributes =
+    export_enum_attributes(no, do_not_uppercase_export_enum).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
