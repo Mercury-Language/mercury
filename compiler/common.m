@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -212,12 +212,16 @@
 
 :- type call_args
     --->    call_args(
-                prog_context,       % The context of the call, for use in
-                                    % warnings about % duplicate calls.
-                list(prog_var),     % The input arguments. For higher-order
-                                    % calls, the closure is the first input
-                                    % argument.
-                list(prog_var)      % The output arguments.
+                % The context of the call, for use in warnings about
+                % duplicate calls.
+                prog_context,
+
+                % The input arguments. For higher-order calls, the closure
+                % is the first input argument.
+                list(prog_var),
+
+                % The output arguments.
+                list(prog_var)
             ).
 
 %---------------------------------------------------------------------------%
@@ -401,13 +405,9 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
 lookup_var_type_ctor(Info, Var) = TypeCtor :-
     simplify_info_get_var_types(Info, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
-        TypeCtor = TypeCtorPrime
-    ;
-        % If we unify a variable with a function symbol, we *must* know
-        % what the principal type constructor of its type is.
-        unexpected(this_file, "lookup_var_type_ctor: cannot find type_ctor")
-    ).
+    % If we unify a variable with a function symbol, we *must* know
+    % what the principal type constructor of its type is.
+    type_to_ctor_det(Type, TypeCtor).
 
 %---------------------------------------------------------------------------%
 
@@ -441,8 +441,8 @@ ids_vars_match([Id | Ids], [Var | Vars], VarEqv) :-
     id_var_match(Id, Var, VarEqv),
     ids_vars_match(Ids, Vars, VarEqv).
 
-:- pred id_var_match(partition_id::in, prog_var::in,
-    eqvclass(prog_var)::in) is semidet.
+:- pred id_var_match(partition_id::in, prog_var::in, eqvclass(prog_var)::in)
+    is semidet.
 :- pragma inline(id_var_match/3).
 
 id_var_match(Id, Var, VarEqv) :-
@@ -537,8 +537,7 @@ common_optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
 
 check_call_detism(Det) :-
     determinism_components(Det, _, SolnCount),
-    % Replacing nondet or mulidet calls would cause
-    % loss of solutions.
+    % Replacing nondet or multi calls would cause loss of solutions.
     ( SolnCount = at_most_one
     ; SolnCount = at_most_many_cc
     ).
@@ -752,8 +751,7 @@ create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs, UniModes,
             Goals = [Goal | GoalsTail]
         ;
             create_output_unifications(GoalInfo,
-                OutputArgsTail, OldOutputArgsTail,
-                UniModesTail, Goals, !Info)
+                OutputArgsTail, OldOutputArgsTail, UniModesTail, Goals, !Info)
         )
     ;
         OutputArgs = [],
@@ -785,21 +783,19 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
         GoalExpr = unify(ToVar, rhs_var(FromVar), UnifyMode,
             assign(ToVar, FromVar), UnifyContext)
     ;
-        % If the cells we are optimizing don't have exactly the same
-        % type, we insert explicit type casts to ensure type
-        % correctness. This avoids problems with HLDS optimizations
-        % such as inlining which expect the HLDS to be well-typed.
-        % Unfortunately this loses information for other optimizations,
-        % since the call to the type cast hides the equivalence of
-        % the input and output.
+        % If the cells we are optimizing don't have exactly the same type,
+        % we insert explicit type casts to ensure type correctness.
+        % This avoids problems with HLDS optimizations such as inlining
+        % which expect the HLDS to be well-typed. Unfortunately, this loses
+        % information for other optimizations, since the cast hides the
+        % equivalence of the input and output.
         Modes = [(ToVarInst -> ToVarInst), (free -> ToVarInst)],
         GoalExpr = generic_call(cast(unsafe_type_cast), [FromVar, ToVar],
             Modes, detism_det)
     ),
 
-    % `ToVar' may not appear in the original instmap_delta,
-    % so we can't just use instmap_delta_restrict on the
-    % original instmap_delta here.
+    % `ToVar' may not appear in the original instmap_delta, so we can't just
+    % use instmap_delta_restrict on the original instmap_delta here.
     instmap_delta_from_assoc_list([ToVar - ToVarInst], InstMapDelta),
 
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
