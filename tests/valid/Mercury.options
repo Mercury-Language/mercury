@@ -97,6 +97,7 @@ MCFLAGS-par_dupelim		= --optimize-dups
 MCFLAGS-par_saved_const 	= -O3 --optimize-saved-vars-const
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-quantifier_warning	= --halt-at-warn
+MCFLAGS-reuse_static		= --ctgc --deforestation
 MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-solver_type_bug		= --halt-at-warn

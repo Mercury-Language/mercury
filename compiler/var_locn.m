@@ -917,11 +917,27 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeReuse = no_llds_reuse
     ;
         HowToConstruct = reuse_cell(CellToReuse),
-        LldsComment = "Reusing cell on heap for ",
-        assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
-            StartOffset, Label, MaybeReuse, SetupReuseCode, ArgsCode, !VLI),
-        MaybeRegionRval = no,
-        RegionVarCode = empty
+        CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, _NeedsUpdates0),
+        var_locn_produce_var(ModuleInfo, ReuseVar, ReuseRval, ReuseVarCode,
+            !VLI),
+        ( ReuseRval = lval(ReuseLval) ->
+            LldsComment = "Reusing cell on heap for ",
+            assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector,
+                CellToReuse, ReuseLval, ReuseVarCode, StartOffset, Label,
+                MaybeReuse, SetupReuseCode, ArgsCode, !VLI),
+            MaybeRegionRval = no,
+            RegionVarCode = empty
+        ;
+            % This can happen if ReuseVar actually points to static data, which
+            % the structure reuse analysis wouldn't have known about.
+            RegionVarCode = empty,
+            MaybeRegionRval = no,
+            LldsComment = "Allocating heap for ",
+            assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+                StartOffset, ArgsCode, !VLI),
+            SetupReuseCode = empty,
+            MaybeReuse = no_llds_reuse
+        )
     ),
     CellCode = node([
         llds_instr(
@@ -933,20 +949,14 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     Code = tree_list([SetupReuseCode, CellCode, RegionVarCode, ArgsCode]).
 
 :- pred assign_reused_cell_to_var(module_info::in, lval::in, tag::in,
-    list(maybe(rval))::in, cell_to_reuse::in, int::in, label::in,
-    llds_reuse::out, code_tree::out, code_tree::out,
+    list(maybe(rval))::in, cell_to_reuse::in, lval::in, code_tree::in,
+    int::in, label::in, llds_reuse::out, code_tree::out, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
-        StartOffset, Label, MaybeReuse, SetupReuseCode, ArgsCode, !VLI) :-
+        ReuseLval, ReuseVarCode, StartOffset, Label, MaybeReuse,
+        SetupReuseCode, ArgsCode, !VLI) :-
     CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, NeedsUpdates0),
-    var_locn_produce_var(ModuleInfo, ReuseVar, ReuseRval, ReuseVarCode, !VLI),
-    ( ReuseRval = lval(ReuseLval0) ->
-        ReuseLval = ReuseLval0
-    ;
-        unexpected(this_file,
-            "var_locn_assign_reused_cell_to_var: reused cell not an lval")
-    ),
 
     % Save any variables which are available only in the reused cell into
     % temporary registers.
