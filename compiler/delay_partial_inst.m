@@ -257,18 +257,6 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         Goal = hlds_goal(conj(ConjType, Goals), GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        %
-        % We need to thread the construct map through the disjunctions for when
-        % a variable becomes partially constructed in the disjunction.  Each
-        % disjunct should be using the same entry for that variable in the
-        % construct map.
-        %
-        % XXX we depend on the fact that (it seems) after mode checking a
-        % variable won't become ground in each of the disjuncts, but rather
-        % will become ground after the disjunction as a whole.  Otherwise
-        % entries could be removed from the construct map in earlier disjuncts
-        % that should be visible in later disjuncts.
-        %
         delay_partial_inst_in_goals(InstMap0, Goals0, Goals, !ConstructMap,
             !DelayInfo),
         Goal = hlds_goal(disj(Goals), GoalInfo0)
@@ -542,8 +530,21 @@ delay_partial_inst_in_conj(InstMap0, [Goal0 | Goals0], Goals, !ConstructMap,
 delay_partial_inst_in_goals(_, [], [], !ConstructMap, !DelayInfo).
 delay_partial_inst_in_goals(InstMap0,
         [Goal0 | Goals0], [Goal | Goals], !ConstructMap, !DelayInfo) :-
-    % XXX I think using the ConstructMap at the end of one disjunct
-    % at the start of the next disjunct is a bug. zs
+    % Each time that a variable X is bound to a partially instantiated term
+    % with functor f/n somewhere in the disjunction, we want the same set of
+    % "canonical" variables to name the individual arguments of f/n.  That is
+    % why we thread the construct map through the disjunctions, so we don't
+    % end up with different canonical variables per disjunct.
+    %
+    % XXX we depend on the fact that (it seems) after mode checking a
+    % variable won't become ground in each of the disjuncts, but rather
+    % will become ground after the disjunction as a whole.  Otherwise
+    % entries could be removed from the construct map in earlier disjuncts
+    % that should be visible in later disjuncts.  To lift this assumption we
+    % would need to use separate construct maps per disjunct, merge them
+    % afterwards and renaming variables so that there is only one set of
+    % canonical variables.
+    %
     delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
         !DelayInfo),
     delay_partial_inst_in_goals(InstMap0, Goals0, Goals, !ConstructMap,
@@ -556,8 +557,7 @@ delay_partial_inst_in_goals(InstMap0,
 delay_partial_inst_in_cases(_, [], [], !ConstructMap, !DelayInfo).
 delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
         !ConstructMap, !DelayInfo) :-
-    % XXX I think using the ConstructMap at the end of one case
-    % at the start of the next case is a bug. zs
+    % See comment in delay_partial_inst_in_goals.
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
         !DelayInfo),
