@@ -109,6 +109,21 @@
 
 :- implementation.
 
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.      % for var/1.
+
+:- pragma type_spec(svbag.insert_set/3, T = var(_)).
+
+:- pragma type_spec(svbag.det_remove_set/3, T = var(_)).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
 svbag.insert(Item, Bag0, Bag) :-
     bag.insert(Bag0, Item, Bag).
 

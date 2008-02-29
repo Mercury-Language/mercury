@@ -244,6 +244,26 @@
 
 :- implementation.
 
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.      % for var/1.
+
+:- pragma type_spec(bag.insert/3, T = var(_)).
+:- pragma type_spec(bag.insert_list/3, T = var(_)).
+:- pragma type_spec(bag.insert_set/3, T = var(_)).
+
+:- pragma type_spec(bag.remove/3, T = var(_)).
+:- pragma type_spec(bag.remove_list/3, T = var(_)).
+:- pragma type_spec(bag.det_remove_list/3, T = var(_)).
+:- pragma type_spec(bag.det_remove_set/3, T = var(_)).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module int.
 :- import_module map.
 :- import_module pair.
