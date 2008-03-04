@@ -670,8 +670,12 @@ mercury_output_item_pragma(_UnqualifiedItemNames, ItemPragma, !IO) :-
     ;
         Pragma = pragma_import(Pred, PredOrFunc, ModeList, Attributes,
             C_Function),
+        % XXX the varset is only used for writing some `sharing' annotations.
+        % It's unlikely anyone would write `sharing' annotations with `pragma
+        % import' (which is deprecated) so just make up a varset.
+        ProgVarset = varset.init,
         mercury_format_pragma_import(Pred, PredOrFunc, ModeList,
-            Attributes, C_Function, !IO)
+            Attributes, ProgVarset, C_Function, !IO)
     ;
         Pragma = pragma_foreign_export(Lang, Pred, PredOrFunc, ModeList,
             ExportName),
@@ -3454,7 +3458,7 @@ mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
             (func(pragma_var(_, _, ImportMode, _)) = ImportMode), Vars0),
 
         mercury_format_pragma_import(PredName, PredOrFunc, ImportModes,
-            Attributes, C_Function, !U)
+            Attributes, ProgVarset, C_Function, !U)
     ;
         PragmaCode = fc_impl_ordinary(_, _),
         mercury_format_pragma_foreign_code_2(Attributes, PredName,
@@ -3505,7 +3509,7 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
         add_string(")", !U)
     ),
     add_string(", ", !U),
-    mercury_format_pragma_foreign_attributes(Attributes, !U),
+    mercury_format_pragma_foreign_attributes(Attributes, ProgVarset, !U),
     add_string(", ", !U),
     (
         PragmaCode = fc_impl_ordinary(C_Code, _),
@@ -3785,13 +3789,13 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_format_pragma_import(sym_name::in, pred_or_func::in,
-    list(mer_mode)::in, pragma_foreign_proc_attributes::in, string::in,
-    U::di, U::uo) is det <= output(U).
+    list(mer_mode)::in, pragma_foreign_proc_attributes::in, prog_varset::in, 
+    string::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
-        C_Function, !U) :-
-    varset.init(Varset), % the varset isn't really used.
-    InstInfo = simple_inst_info(Varset),
+        ProgVarset, C_Function, !U) :-
+    varset.init(InstVarset), % the varset isn't really used.
+    InstInfo = simple_inst_info(InstVarset),
     add_string(":- pragma import(", !U),
     mercury_format_sym_name(Name, !U),
     (
@@ -3808,7 +3812,7 @@ mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
         add_string(")", !U)
     ),
     add_string(", ", !U),
-    mercury_format_pragma_foreign_attributes(Attributes, !U),
+    mercury_format_pragma_foreign_attributes(Attributes, ProgVarset, !U),
     add_string(", """, !U),
     add_string(C_Function, !U),
     add_string(""").\n", !U).
@@ -3984,13 +3988,263 @@ mercury_format_tabs(Indent, !U) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_format_pragma_foreign_attributes(
-    pragma_foreign_proc_attributes::in, U::di, U::uo) is det <= output(U).
+    pragma_foreign_proc_attributes::in, prog_varset::in, U::di, U::uo) is det
+    <= output(U).
 
-mercury_format_pragma_foreign_attributes(Attributes, !U) :-
-    % This is one case where it is a bad idea to use field accessors.
+mercury_format_pragma_foreign_attributes(Attributes, VarSet, !U) :-
     add_string("[", !U),
-    add_list(attributes_to_strings(Attributes), ", ", add_string, !U),
+    add_list(foreign_proc_attributes_to_strings(Attributes, VarSet), ", ",
+        add_string, !U),
     add_string("]", !U).
+
+    % Convert the foreign code attributes to their source code representations
+    % suitable for placing in the attributes list of the pragma (not all
+    % attributes have one). In particular, the foreign language attribute needs
+    % to be handled separately as it belongs at the start of the pragma.
+    %
+:- func foreign_proc_attributes_to_strings(pragma_foreign_proc_attributes,
+    prog_varset) = list(string).
+
+foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
+    MayCallMercury = get_may_call_mercury(Attrs),
+    ThreadSafe = get_thread_safe(Attrs),
+    TabledForIO = get_tabled_for_io(Attrs),
+    Purity = get_purity(Attrs),
+    Terminates = get_terminates(Attrs),
+    UserSharing = get_user_annotated_sharing(Attrs),
+    Exceptions = get_may_throw_exception(Attrs),
+    OrdinaryDespiteDetism = get_ordinary_despite_detism(Attrs),
+    MayModifyTrail = get_may_modify_trail(Attrs),
+    MayCallMM_Tabled = get_may_call_mm_tabled(Attrs),
+    BoxPolicy = get_box_policy(Attrs),
+    AffectsLiveness = get_affects_liveness(Attrs),
+    AllocatesMemory = get_allocates_memory(Attrs),
+    RegistersRoots = get_registers_roots(Attrs),
+    MaybeMayDuplicate = get_may_duplicate(Attrs),
+    ExtraAttributes = get_extra_attributes(Attrs),
+    (
+        MayCallMercury = proc_may_call_mercury,
+        MayCallMercuryStr = "may_call_mercury"
+    ;
+        MayCallMercury = proc_will_not_call_mercury,
+        MayCallMercuryStr = "will_not_call_mercury"
+    ),
+    (
+        ThreadSafe = proc_not_thread_safe,
+        ThreadSafeStr = "not_thread_safe"
+    ;
+        ThreadSafe = proc_thread_safe,
+        ThreadSafeStr = "thread_safe"
+    ;
+        ThreadSafe = proc_maybe_thread_safe,
+        ThreadSafeStr = "maybe_thread_safe"
+    ),
+    (
+        TabledForIO = proc_tabled_for_io,
+        TabledForIOStr = "tabled_for_io"
+    ;
+        TabledForIO = proc_tabled_for_io_unitize,
+        TabledForIOStr = "tabled_for_io_unitize"
+    ;
+        TabledForIO = proc_tabled_for_descendant_io,
+        TabledForIOStr = "tabled_for_descendant_io"
+    ;
+        TabledForIO = proc_not_tabled_for_io,
+        TabledForIOStr = "not_tabled_for_io"
+    ),
+    (
+        Purity = purity_pure,
+        PurityStrList = ["promise_pure"]
+    ;
+        Purity = purity_semipure,
+        PurityStrList = ["promise_semipure"]
+    ;
+        Purity = purity_impure,
+        PurityStrList = []
+    ),
+    (
+        Terminates = proc_terminates,
+        TerminatesStrList = ["terminates"]
+    ;
+        Terminates = proc_does_not_terminate,
+        TerminatesStrList = ["does_not_terminate"]
+    ;
+        Terminates = depends_on_mercury_calls,
+        TerminatesStrList = []
+    ),
+    (
+        UserSharing = user_sharing(Sharing, MaybeTypes),
+        String = user_annotated_sharing_to_string(VarSet, Sharing, MaybeTypes),
+        UserSharingStrList = [String]
+    ;
+        UserSharing = no_user_annotated_sharing,
+        UserSharingStrList = []
+    ),
+    (
+        Exceptions = proc_will_not_throw_exception,
+        ExceptionsStrList = ["will_not_throw_exception"]
+    ;
+        Exceptions = default_exception_behaviour,
+        ExceptionsStrList = []
+    ),
+    (
+        OrdinaryDespiteDetism = yes,
+        OrdinaryDespiteDetismStrList = ["ordinary_despite_detism"]
+    ;
+        OrdinaryDespiteDetism = no,
+        OrdinaryDespiteDetismStrList = []
+    ),
+    (
+        MayModifyTrail = proc_may_modify_trail,
+        MayModifyTrailStrList = ["may_modify_trail"]
+    ;
+        MayModifyTrail = proc_will_not_modify_trail,
+        MayModifyTrailStrList = ["will_not_modify_trail"]
+    ),
+    (
+        MayCallMM_Tabled = may_call_mm_tabled,
+        MayCallMM_TabledStrList = ["may_call_mm_tabled"]
+    ;
+        MayCallMM_Tabled = will_not_call_mm_tabled,
+        MayCallMM_TabledStrList =["will_not_call_mm_tabled"]
+    ;
+        MayCallMM_Tabled = default_calls_mm_tabled,
+        MayCallMM_TabledStrList = []
+    ),
+    (
+        BoxPolicy = native_if_possible,
+        BoxPolicyStrList = []
+    ;
+        BoxPolicy = always_boxed,
+        BoxPolicyStrList = ["always_boxed"]
+    ),
+    (
+        AffectsLiveness = proc_affects_liveness,
+        AffectsLivenessStrList = ["affects_liveness"]
+    ;
+        AffectsLiveness = proc_does_not_affect_liveness,
+        AffectsLivenessStrList = ["doesnt_affect_liveness"]
+    ;
+        AffectsLiveness = proc_default_affects_liveness,
+        AffectsLivenessStrList = []
+    ),
+    (
+        AllocatesMemory = proc_does_not_allocate_memory,
+        AllocatesMemoryStrList =["doesnt_allocate_memory"]
+    ;
+        AllocatesMemory = proc_allocates_bounded_memory,
+        AllocatesMemoryStrList = ["allocates_bounded_memory"]
+    ;
+        AllocatesMemory = proc_allocates_unbounded_memory,
+        AllocatesMemoryStrList = ["allocates_unbounded_memory"]
+    ;
+        AllocatesMemory = proc_default_allocates_memory,
+        AllocatesMemoryStrList = []
+    ),
+    (
+        RegistersRoots = proc_registers_roots,
+        RegistersRootsStrList = ["registers_roots"]
+    ;
+        RegistersRoots = proc_does_not_register_roots,
+        RegistersRootsStrList =["doesnt_register_roots"]
+    ;
+        RegistersRoots = proc_does_not_have_roots,
+        RegistersRootsStrList = ["doesnt_have_roots"]
+    ;
+        RegistersRoots = proc_default_registers_roots,
+        RegistersRootsStrList = []
+    ),
+    (
+        MaybeMayDuplicate = yes(MayDuplicate),
+        (
+            MayDuplicate = proc_may_duplicate,
+            MayDuplicateStrList = ["may_duplicate"]
+        ;
+            MayDuplicate = proc_may_not_duplicate,
+            MayDuplicateStrList = ["may_not_duplicate"]
+        )
+    ;
+        MaybeMayDuplicate = no,
+        MayDuplicateStrList = []
+    ),
+    StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
+        PurityStrList] ++ TerminatesStrList ++ UserSharingStrList ++
+        ExceptionsStrList ++
+        OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
+        MayCallMM_TabledStrList ++ BoxPolicyStrList ++
+        AffectsLivenessStrList ++ AllocatesMemoryStrList ++
+        RegistersRootsStrList ++ MayDuplicateStrList ++
+        list.map(extra_attribute_to_string, ExtraAttributes).
+
+:- func user_annotated_sharing_to_string(prog_varset, structure_sharing_domain,
+    maybe(user_sharing_type_information)) = string.
+
+user_annotated_sharing_to_string(VarSet, Sharing, MaybeTypes) = String :-
+    (
+        Sharing = structure_sharing_bottom,
+        String = "no_sharing"
+    ;
+        Sharing = structure_sharing_top(_),
+        String = "unknown_sharing"
+    ;
+        Sharing = structure_sharing_real(SharingPairs),
+        (
+            MaybeTypes = yes(user_type_info(Types, TVarSet)),
+            TypeStrs = list.map(mercury_type_to_string(TVarSet, no), Types),
+            TypeListStr = string.join_list(", ", TypeStrs),
+            MaybeTypesStr = "yes(" ++ TypeListStr ++ ")"
+        ;
+            MaybeTypes = no,
+            MaybeTypesStr = "no",
+            TVarSet = varset.init
+        ),
+        SharingPairStrs = list.map(sharing_pair_to_string(VarSet, TVarSet),
+            SharingPairs),
+        SharingPairListStr = string.join_list(", ", SharingPairStrs),
+        String = string.append_list(
+            ["sharing(", MaybeTypesStr, ", [", SharingPairListStr, "])"])
+    ).
+
+:- func sharing_pair_to_string(prog_varset, tvarset, structure_sharing_pair)
+    = string.
+
+sharing_pair_to_string(VarSet, TVarSet, DataA - DataB) = Str :-
+    DataA = selected_cel(VarA, SelectorA),
+    DataB = selected_cel(VarB, SelectorB),
+    VarStrA = mercury_var_to_string(VarSet, no, VarA),
+    VarStrB = mercury_var_to_string(VarSet, no, VarB),
+    SelectorStrA = selector_to_string(TVarSet, SelectorA),
+    SelectorStrB = selector_to_string(TVarSet, SelectorB),
+    StrA = "cel(" ++ VarStrA ++ ", [" ++ SelectorStrA ++ "])",
+    StrB = "cel(" ++ VarStrB ++ ", [" ++ SelectorStrB ++ "])",
+    Str = StrA ++ " - " ++ StrB.
+
+:- func selector_to_string(tvarset, selector) = string.
+
+selector_to_string(TVarSet, Selector) = String :-
+    UnitStrs = list.map(unit_selector_to_string(TVarSet), Selector),
+    String = string.join_list(", ", UnitStrs).
+
+:- func unit_selector_to_string(tvarset, unit_selector) = string.
+
+unit_selector_to_string(TVarSet, UnitSelector) = String :-
+    (
+        UnitSelector = typesel(Type),
+        String = mercury_type_to_string(TVarSet, no, Type)
+    ;
+        UnitSelector = termsel(_, _),
+        unexpected(this_file,
+            "unit_selector_to_string: termsel in user-annotated sharing")
+    ).
+
+:- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
+    = string.
+
+extra_attribute_to_string(refers_to_llds_stack) = "refers_to_llds_stack".
+extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
+extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
+extra_attribute_to_string(max_stack_size(Size)) =
+    "max_stack_size(" ++ string.int_to_string(Size) ++ ")".
 
 %-----------------------------------------------------------------------------%
 

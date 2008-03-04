@@ -943,13 +943,6 @@
 :- type pragma_foreign_proc_extra_attributes ==
     list(pragma_foreign_proc_extra_attribute).
 
-    % Convert the foreign code attributes to their source code representations
-    % suitable for placing in the attributes list of the pragma (not all
-    % attributes have one). In particular, the foreign language attribute needs
-    % to be handled separately as it belongs at the start of the pragma.
-    %
-:- func attributes_to_strings(pragma_foreign_proc_attributes) = list(string).
-
 %-----------------------------------------------------------------------------%
 %
 % Goals
@@ -1726,6 +1719,8 @@
 
 :- import_module string.
 
+%-----------------------------------------------------------------------------%
+
 eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     (
         EvalMethod = eval_normal,
@@ -1759,6 +1754,9 @@ default_memo_table_attributes =
 % Some more stuff for the foreign language interface
 %
 
+    % If you add an attribute you may need to modify
+    % `foreign_proc_attributes_to_strings'.
+    %
 :- type pragma_foreign_proc_attributes
     --->    attributes(
                 attr_foreign_language           :: foreign_language,
@@ -1848,172 +1846,9 @@ set_registers_roots(RegistersRoots, Attrs0, Attrs) :-
 set_may_duplicate(MayDuplicate, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ attr_may_duplicate := MayDuplicate.
 
-attributes_to_strings(Attrs) = StringList :-
-    % We ignore Lang because it isn't an attribute that you can put
-    % in the attribute list -- the foreign language specifier string
-    % is at the start of the pragma.
-    Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
-        Purity, Terminates, _UserSharing, Exceptions, _LegacyBehaviour,
-        OrdinaryDespiteDetism, MayModifyTrail, MayCallMM_Tabled,
-        BoxPolicy, AffectsLiveness, AllocatesMemory, RegistersRoots,
-        MaybeMayDuplicate, ExtraAttributes),
-    (
-        MayCallMercury = proc_may_call_mercury,
-        MayCallMercuryStr = "may_call_mercury"
-    ;
-        MayCallMercury = proc_will_not_call_mercury,
-        MayCallMercuryStr = "will_not_call_mercury"
-    ),
-    (
-        ThreadSafe = proc_not_thread_safe,
-        ThreadSafeStr = "not_thread_safe"
-    ;
-        ThreadSafe = proc_thread_safe,
-        ThreadSafeStr = "thread_safe"
-    ;
-        ThreadSafe = proc_maybe_thread_safe,
-        ThreadSafeStr = "maybe_thread_safe"
-    ),
-    (
-        TabledForIO = proc_tabled_for_io,
-        TabledForIOStr = "tabled_for_io"
-    ;
-        TabledForIO = proc_tabled_for_io_unitize,
-        TabledForIOStr = "tabled_for_io_unitize"
-    ;
-        TabledForIO = proc_tabled_for_descendant_io,
-        TabledForIOStr = "tabled_for_descendant_io"
-    ;
-        TabledForIO = proc_not_tabled_for_io,
-        TabledForIOStr = "not_tabled_for_io"
-    ),
-    (
-        Purity = purity_pure,
-        PurityStrList = ["promise_pure"]
-    ;
-        Purity = purity_semipure,
-        PurityStrList = ["promise_semipure"]
-    ;
-        Purity = purity_impure,
-        PurityStrList = []
-    ),
-    (
-        Terminates = proc_terminates,
-        TerminatesStrList = ["terminates"]
-    ;
-        Terminates = proc_does_not_terminate,
-        TerminatesStrList = ["does_not_terminate"]
-    ;
-        Terminates = depends_on_mercury_calls,
-        TerminatesStrList = []
-    ),
-    (
-        Exceptions = proc_will_not_throw_exception,
-        ExceptionsStrList = ["will_not_throw_exception"]
-    ;
-        Exceptions = default_exception_behaviour,
-        ExceptionsStrList = []
-    ),
-    (
-        OrdinaryDespiteDetism = yes,
-        OrdinaryDespiteDetismStrList = ["ordinary_despite_detism"]
-    ;
-        OrdinaryDespiteDetism = no,
-        OrdinaryDespiteDetismStrList = []
-    ),
-    (
-        MayModifyTrail = proc_may_modify_trail,
-        MayModifyTrailStrList = ["may_modify_trail"]
-    ;
-        MayModifyTrail = proc_will_not_modify_trail,
-        MayModifyTrailStrList = ["will_not_modify_trail"]
-    ),
-    (
-        MayCallMM_Tabled = may_call_mm_tabled,
-        MayCallMM_TabledStrList = ["may_call_mm_tabled"]
-    ;
-        MayCallMM_Tabled = will_not_call_mm_tabled,
-        MayCallMM_TabledStrList =["will_not_call_mm_tabled"]
-    ;
-        MayCallMM_Tabled = default_calls_mm_tabled,
-        MayCallMM_TabledStrList = []
-    ),
-    (
-        BoxPolicy = native_if_possible,
-        BoxPolicyStrList = []
-    ;
-        BoxPolicy = always_boxed,
-        BoxPolicyStrList = ["always_boxed"]
-    ),
-    (
-        AffectsLiveness = proc_affects_liveness,
-        AffectsLivenessStrList = ["affects_liveness"]
-    ;
-        AffectsLiveness = proc_does_not_affect_liveness,
-        AffectsLivenessStrList = ["doesnt_affect_liveness"]
-    ;
-        AffectsLiveness = proc_default_affects_liveness,
-        AffectsLivenessStrList = []
-    ),
-    (
-        AllocatesMemory = proc_does_not_allocate_memory,
-        AllocatesMemoryStrList =["doesnt_allocate_memory"]
-    ;
-        AllocatesMemory = proc_allocates_bounded_memory,
-        AllocatesMemoryStrList = ["allocates_bounded_memory"]
-    ;
-        AllocatesMemory = proc_allocates_unbounded_memory,
-        AllocatesMemoryStrList = ["allocates_unbounded_memory"]
-    ;
-        AllocatesMemory = proc_default_allocates_memory,
-        AllocatesMemoryStrList = []
-    ),
-    (
-        RegistersRoots = proc_registers_roots,
-        RegistersRootsStrList = ["registers_roots"]
-    ;
-        RegistersRoots = proc_does_not_register_roots,
-        RegistersRootsStrList =["doesnt_register_roots"]
-    ;
-        RegistersRoots = proc_does_not_have_roots,
-        RegistersRootsStrList = ["doesnt_have_roots"]
-    ;
-        RegistersRoots = proc_default_registers_roots,
-        RegistersRootsStrList = []
-    ),
-    (
-        MaybeMayDuplicate = yes(MayDuplicate),
-        (
-            MayDuplicate = proc_may_duplicate,
-            MayDuplicateStrList = ["may_duplicate"]
-        ;
-            MayDuplicate = proc_may_not_duplicate,
-            MayDuplicateStrList = ["may_not_duplicate"]
-        )
-    ;
-        MaybeMayDuplicate = no,
-        MayDuplicateStrList = []
-    ),
-    StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
-        PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
-        OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
-        MayCallMM_TabledStrList ++ BoxPolicyStrList ++
-        AffectsLivenessStrList ++ AllocatesMemoryStrList ++
-        RegistersRootsStrList ++ MayDuplicateStrList ++
-        list.map(extra_attribute_to_string, ExtraAttributes).
-
 add_extra_attribute(NewAttribute, Attributes0,
     Attributes0 ^ attr_extra_attributes :=
         [NewAttribute | Attributes0 ^ attr_extra_attributes]).
-
-:- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
-    = string.
-
-extra_attribute_to_string(refers_to_llds_stack) = "refers_to_llds_stack".
-extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
-extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
-extra_attribute_to_string(max_stack_size(Size)) =
-    "max_stack_size(" ++ string.int_to_string(Size) ++ ")".
 
 %-----------------------------------------------------------------------------%
 %

@@ -135,6 +135,7 @@ OTHER_PROGS= \
 	intermod_typeclass \
 	intermod_user_equality \
 	intermod_user_equality_nested \
+	intermod_user_sharing \
 	lambda_inference\
 	lambda_instmap_bug \
 	lambda_output \
