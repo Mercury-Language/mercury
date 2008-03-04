@@ -25,6 +25,14 @@
 % When Mercury is compiled to .NET IL code, strings are represented as .NET
 % `System.String's.
 %
+% The builtin comparison operation on strings is also implementation dependent.
+% In the current implementation, when Mercury is compiled to C, string 
+% comparison is implemented using C's strcmp() function.  When Mercury
+% is compiled to Java, string comparison is implemented using Java's
+% String.compareTo() method.  When Mercury is compiled to .NET IL code
+% string comparison is implemented using C#'s System.String.Compare()
+% method.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
