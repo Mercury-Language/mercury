@@ -173,7 +173,7 @@ options_description =
     "\t\tDo not dump proc and call-site statics that are\n" ++
     "\t\tnot referenced from the proc dynamics\n" ++
     "\t-D all\n" ++
-    "\t\tDUmp all arrays, (default).\n" ++
+    "\t\tDump all arrays, (default).\n" ++
     "\t-D csd\n" ++
     "\t\tDump call-site dynamics.\n" ++
     "\t-D pd\n" ++
