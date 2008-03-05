@@ -215,6 +215,7 @@
 mercury_std_library_module("array").
 mercury_std_library_module("array2d").
 mercury_std_library_module("assoc_list").
+mercury_std_library_module("backjump").
 mercury_std_library_module("bag").
 mercury_std_library_module("benchmarking").
 mercury_std_library_module("bimap").
