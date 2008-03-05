@@ -547,15 +547,15 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
 setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep) :-
     map.lookup(VarTypeMap, Var, Type),
     type_vars(Type, TVars),
-    list.map((pred(TVar::in, TypeInfoVar::out) is det :-
-        rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
-        type_info_locn_var(Locn, TypeInfoVar)
-    ), TVars, TypeInfoVars),
-    AddArgDependency =
-        (pred(TVar::in, VarDepA::in, VarDepB::out) is det :-
-            add_arg_dep(TVar, PredProcId, Var, VarDepA, VarDepB)
-        ),
-    list.foldl(AddArgDependency, TypeInfoVars, !VarDep).
+    list.map(tvar_to_type_info_var(RttiVarMaps), TVars, TypeInfoVars),
+    list.foldl(add_rev_arg_dep(Var, PredProcId), TypeInfoVars, !VarDep).
+
+:- pred tvar_to_type_info_var(rtti_varmaps::in, tvar::in, prog_var::out)
+    is det.
+
+tvar_to_type_info_var(RttiVarMaps, TVar, TypeInfoVar) :-
+    rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
+    type_info_locn_var(Locn, TypeInfoVar).
 
     % Get output arguments for a procedure given the headvars and the
     % argument modes, and set them as used.
@@ -776,6 +776,12 @@ add_arg_dep(Var, PredProc, Arg, !VarDep) :-
     ;
         true
     ).
+
+:- pred add_rev_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in, 
+    var_dep::in, var_dep::out) is det.
+
+add_rev_arg_dep(Var, PredProcId, Arg, !VarDep) :-
+    add_arg_dep(Arg, PredProcId, Var, !VarDep).
 
     % Partition the arguments to a deconstruction into inputs
     % and outputs.
@@ -1749,6 +1755,9 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
                 string.right(Name, IdLen, Id),
                 string.to_int(Id, _)
             ),
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            \+ set.member(PredId, TypeSpecForcePreds),
             % XXX We don't currently generate pragmas for the automatically
             % generated class instance methods because the compiler aborts
             % when trying to read them back in from the `.opt' files.

@@ -409,6 +409,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -3017,9 +3018,10 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     % quantified predicates or deconstructs existentially quantified
     % terms).
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    IsNew = (pred(TypeAndIndex::in, TVarAndIndex::out) is semidet :-
-        TypeAndIndex = Type - Index,
-        Type = type_variable(TypeVar, _),
+    NewTVarAndIndex = (pred(TVarAndIndex::out) is nondet :-
+        list.member(Type - Index, IndexedClassTypes),
+        type_vars(Type, TypeVars),
+        list.member(TypeVar, TypeVars),
         ( rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn) ->
             TypeInfoLocn = type_info(_)
         ;
@@ -3027,7 +3029,7 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
         ),
         TVarAndIndex = TypeVar - Index
     ),
-    list.filter_map(IsNew, IndexedClassTypes, NewClassTypeVars),
+    solutions(NewTVarAndIndex, NewClassTypeVars),
 
     % Make an entry in the TypeInfo locations map for each new type
     % variable. The type variable can be found at the previously calculated
@@ -3040,10 +3042,6 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
         ),
     list.foldl(MakeEntry, NewClassTypeVars, RttiVarMaps0, RttiVarMaps),
     poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
-
-:- pred make_index(T::in, pair(T, int)::out, int::in, int::out) is det.
-
-make_index(Item, Item - Index, Index, Index + 1).
 
 :- pred new_typeclass_info_var(prog_constraint::in, string::in,
     prog_var::out, poly_info::in, poly_info::out) is det.
