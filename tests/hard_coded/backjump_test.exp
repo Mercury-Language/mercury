@@ -1,0 +1,25 @@
+label A = 1, (0)
+label B = 1, (1)
+label C = 1, (2)
+label C = 2, (3)
+backjump (3)
+label C = 3, (4)
+solution 1, 1, 3
+label B = 2, (5)
+label C = 1, (6)
+backjump (0)
+label A = 2, (7)
+label B = 1, (8)
+label C = 1, (9)
+solution 2, 1, 1
+label C = 2, (10)
+backjump (8)
+label B = 2, (11)
+label C = 1, (12)
+label C = 2, (13)
+solution 2, 2, 2
+label C = 3, (14)
+Solutions:
+{1, 1, 3},
+{2, 1, 1},
+{2, 2, 2}

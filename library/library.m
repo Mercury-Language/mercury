@@ -46,6 +46,7 @@
 :- import_module array.
 :- import_module array2d.
 :- import_module assoc_list.
+:- import_module backjump.
 :- import_module bag.
 :- import_module benchmarking.
 :- import_module bimap.
