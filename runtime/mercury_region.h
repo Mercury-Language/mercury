@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,7 +37,7 @@
 
 /* XXX This should be made configurable when compiling a program. */
 #define     MR_REGION_NUM_PAGES_TO_REQUEST                  100
-#define     MR_REGION_PAGE_SPACE_SIZE                       255
+#define     MR_REGION_PAGE_SPACE_SIZE                       2047
 
 /*
 ** NOTE: The following constants *must match* the values of the Mercury
