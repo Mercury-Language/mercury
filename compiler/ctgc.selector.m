@@ -54,11 +54,18 @@
 :- pred normalize_selector_with_type_information(module_info::in, mer_type::in,
     selector::in, selector::out) is det.
 
-    % SubType = type_of_node(ModuleInfo, StartType, Selector).
+    % SubType = det_type_of_node(ModuleInfo, StartType, Selector).
     % Determines the type SubType of the node obtained by traversing the type
-    % tree of StartType using the path Selector.
+    % tree of StartType using the path Selector. Abort if SubType would be an
+    % existential type.
     %
-:- func type_of_node(module_info, mer_type, selector) = mer_type.
+:- func det_type_of_node(module_info, mer_type, selector) = mer_type.
+
+    % As above but fail if the subtype would be an existential type instead of
+    % aborting.
+    %
+:- pred type_of_node(module_info::in, mer_type::in, selector::in,
+    mer_type::out) is semidet.
 
     % Abbreviate a selector to the type of the node it selects.
     %
@@ -135,7 +142,7 @@ subsumed_by_2(ModuleInfo, S1, S2, MainType, Extension):-
         % such that S2_part1.Rest = S1) lead through a node with type
         % "SubType".
         %
-        S2_part1_type = type_of_node(ModuleInfo, MainType, S2_part1),
+        S2_part1_type = det_type_of_node(ModuleInfo, MainType, S2_part1),
         type_on_path(ModuleInfo, S2_part1_type, SubType, Rest, Remainder),
 
         % step 3:
@@ -154,40 +161,64 @@ subsumed_by_2(ModuleInfo, S1, S2, MainType, Extension):-
 selector_subsumed_by(S1, S2, Extension):-
     list.append(S2, Extension, S1).
 
-type_of_node(ModuleInfo, StartType, Selector) = SubType :-
+det_type_of_node(ModuleInfo, StartType, Selector) = SubType :-
+    ( type_of_node(ModuleInfo, StartType, Selector, SubType0) ->
+        SubType = SubType0
+    ;
+        unexpected(this_file, "type_of_node: existential subtype")
+    ).
+
+type_of_node(ModuleInfo, StartType, Selector, SubType) :-
     (
         Selector = [UnitSelector | RestSelector],
         (
             UnitSelector = termsel(ConsId, Index),
-            SubType0 = select_subtype(ModuleInfo, StartType, ConsId, Index)
+            select_subtype(ModuleInfo, StartType, ConsId, Index, SubType0)
         ;
             UnitSelector = typesel(SubType0)
         ),
-        SubType = type_of_node(ModuleInfo, SubType0, RestSelector)
+        type_of_node(ModuleInfo, SubType0, RestSelector, SubType)
     ;
         Selector = [],
         SubType = StartType
     ).
 
-    % select_subtype(ModuleInfo, Type, ConsID, Position) = SubType.
+    % det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType.
     % Determine the type of the type node selected from the type tree Type,
     % selecting the specific constructor (ConsId), at position Position.
     % Position counts starting from 1.
     %
-:- func select_subtype(module_info, mer_type, cons_id, int) = mer_type.
+:- func det_select_subtype(module_info, mer_type, cons_id, int) = mer_type.
 
-select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
+det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
+    ( select_subtype(ModuleInfo, Type, ConsID, Position, SubType0) ->
+        SubType = SubType0
+    ;
+        unexpected(this_file, "select_subtype: existential subtype")
+    ).
+
+:- pred select_subtype(module_info::in, mer_type::in, cons_id::in, int::in,
+    mer_type::out) is semidet.
+
+select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
     (
         get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsID,
             ArgTypes)
     ->
-        ( list.index1(ArgTypes, Position, SubType0) ->
-            SubType = SubType0
-        ;
-            unexpected(this_file, "get_type_of_node: selection failed.")
+        SubType = list.det_index1(ArgTypes, Position)
+    ;
+        get_existq_cons_defn(ModuleInfo, Type, ConsID, CtorDefn)
+    ->
+        CtorDefn = ctor_defn(_TVarSet, ExistQVars, _KindMap, _Constraints,
+            ArgTypes, _RetType),
+        SubType = list.det_index1(ArgTypes, Position),
+        not (
+            SubType = type_variable(TVar, _),
+            list.member(TVar, ExistQVars)
         )
     ;
-        unexpected(this_file, "get_type_of_node: existential type.")
+        unexpected(this_file,
+            "select_subtype: type is both existential and non-existential")
     ).
 
     % split_upto_type_selector(Sin, S1, TS, S2).
@@ -272,7 +303,7 @@ type_on_path_2(Step, ModuleInfo, FromType, ToType, Path, RemainderPath) :-
             )
         ;
             UnitSelector = termsel(ConsId, Index),
-            SubType = select_subtype(ModuleInfo, FromType, ConsId, Index),
+            SubType = det_select_subtype(ModuleInfo, FromType, ConsId, Index),
             ( SubType = ToType ->
                 (
                     % Check if the same type occurs anywhere further on the
@@ -370,13 +401,21 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
         !:Selector = SelectorAcc0
     ).
 
-selector_apply_widening(ModuleInfo, MainType, !Selector) :-
+selector_apply_widening(ModuleInfo, MainType, Selector0, Selector) :-
     (
-        !.Selector = []
+        Selector0 = [],
+        Selector = []
     ;
-        !.Selector = [_ | _],
-        UnitSelector = typesel(type_of_node(ModuleInfo, MainType, !.Selector)),
-        !:Selector = [UnitSelector]
+        Selector0 = [_ | _],
+        ( type_of_node(ModuleInfo, MainType, Selector0, SubType) ->
+            Selector = [typesel(SubType)]
+        ;
+            % The node is existentially typed. Try for the type of the node's
+            % parent instead.
+            list.det_split_last(Selector0, ParentSelector, _),
+            selector_apply_widening(ModuleInfo, MainType, ParentSelector,
+                Selector)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

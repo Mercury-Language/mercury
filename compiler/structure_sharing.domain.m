@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1294,14 +1294,19 @@ from_sharing_pair_list(SharingPairs) = SharingSet :-
     sharing_set::in, sharing_set::out) is det.
 
 new_entry(ModuleInfo, ProcInfo, SharingPair0, !SharingSet) :-
-    % Normalize the sharing pair before doing anything.
     SharingPair0 = DataX0 - DataY0,
-    SharingPair = normalize_datastruct(ModuleInfo, ProcInfo, DataX0) -
-        normalize_datastruct(ModuleInfo, ProcInfo, DataY0),
-
+    % Normalize the sharing pair before doing anything.
+    DataX = normalize_datastruct(ModuleInfo, ProcInfo, DataX0),
+    DataY = normalize_datastruct(ModuleInfo, ProcInfo, DataY0),
+    SharingPair = DataX - DataY,
     (
-        sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo,
-            !.SharingSet, SharingPair)
+        (
+            % Ignore sharing pairs which are exactly the same.
+            DataX = DataY
+        ;
+            sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo,
+                !.SharingSet, SharingPair)
+        )
     ->
         true
     ;

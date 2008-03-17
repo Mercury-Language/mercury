@@ -196,6 +196,7 @@ OTHER_PROGS= \
 	same_length_2 \
 	semidet_disj \
 	shape_type \
+	sharing_exist \
 	simplify_bug \
 	simplify_bug2 \
 	size_prof_ho_bug \
