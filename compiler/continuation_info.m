@@ -345,8 +345,8 @@
 
     % Call maybe_process_proc_llds on the code of every procedure in the list.
     %
-:- pred maybe_process_llds(list(c_procedure)::in,
-    module_info::in, global_data::in, global_data::out) is det.
+:- pred maybe_process_llds(list(c_procedure)::in, module_info::in,
+    global_data::in, global_data::out) is det.
 
     % Check whether this procedure ought to have any layout structures
     % generated for it. If yes, then update the global_data to
@@ -354,24 +354,22 @@
     % the information about a continuation label includes the variables
     % live at that label depends on the values of options.
     %
-:- pred maybe_process_proc_llds(list(instruction)::in,
-    pred_proc_id::in, module_info::in,
-    global_data::in, global_data::out) is det.
+:- pred maybe_process_proc_llds(list(instruction)::in, pred_proc_id::in,
+    module_info::in, global_data::in, global_data::out) is det.
 
     % Check whether the given procedure should have at least (a) a basic
     % stack layout, and (b) a procedure id layout generated for it.
     % The two bools returned answer these two questions respectively.
     %
-:- pred basic_stack_layout_for_proc(pred_info::in,
-    globals::in, bool::out, bool::out) is det.
+:- pred basic_stack_layout_for_proc(pred_info::in, globals::in,
+    bool::out, bool::out) is det.
 
     % Generate the layout information we need for the return point of a call.
     %
-:- pred generate_return_live_lvalues(
-    assoc_list(prog_var, arg_loc)::in, instmap::in, list(prog_var)::in,
-    map(prog_var, set(lval))::in, assoc_list(lval, slot_contents)::in,
-    proc_info::in, module_info::in, globals::in, bool::in,
-    list(liveinfo)::out) is det.
+:- pred generate_return_live_lvalues(assoc_list(prog_var, arg_loc)::in,
+    instmap::in, list(prog_var)::in, map(prog_var, set(lval))::in,
+    assoc_list(lval, slot_contents)::in, proc_info::in, module_info::in,
+    globals::in, bool::in, list(liveinfo)::out) is det.
 
     % Generate the layout information we need for a resumption point,
     % a label where forward execution can restart after backtracking.
@@ -382,15 +380,14 @@
 
     % Generate the layout information we need to include in a closure.
     %
-:- pred generate_closure_layout(module_info::in,
-    pred_id::in, proc_id::in, closure_layout_info::out) is det.
+:- pred generate_closure_layout(module_info::in, pred_id::in, proc_id::in,
+    closure_layout_info::out) is det.
 
     % For each type variable in the given list, find out where the
     % typeinfo var for that type variable is.
     %
-:- pred find_typeinfos_for_tvars(list(tvar)::in,
-    map(prog_var, set(lval))::in, proc_info::in,
-    map(tvar, set(layout_locn))::out) is det.
+:- pred find_typeinfos_for_tvars(list(tvar)::in, map(prog_var, set(lval))::in,
+    proc_info::in, map(tvar, set(layout_locn))::out) is det.
 
 :- pred generate_table_arg_type_info(proc_info::in,
     assoc_list(prog_var, int)::in, table_arg_infos::out) is det.
@@ -442,12 +439,14 @@ maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
 
 :- type call_info
     --->    call_info(
-                label,          % The return label.
-                code_addr,      % The target of the call.
-                list(liveinfo), % What is live on return.
-                term.context,  % The position of the call in source.
-                goal_path       % The position of the call in the body;
-                                % meaningful only if tracing is enabled.
+                call_return_label       :: label,
+                call_target             :: code_addr,
+                call_live_on_return     :: list(liveinfo),
+                call_context            :: term.context,
+
+                % The position of the call in the body; meaningful only if
+                % tracing is enabled.
+                call_goal_path          :: goal_path
             ).
 
     % Process the list of instructions for this proc, adding
