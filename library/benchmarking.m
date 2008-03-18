@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -326,9 +326,14 @@ ML_report_stats(void)
     }
   #endif /* MR_MPS_GC */
   #ifdef MR_BOEHM_GC
-    fprintf(stderr, ""\\n#GCs: %lu, ""
-        ""Heap used since last GC: %.3fk, Total used: %.3fk"",
-        (unsigned long) GC_gc_no,
+    fprintf(stderr, ""\\n#GCs: %lu, "",
+        (unsigned long) GC_gc_no);
+    if (GC_mercury_calc_gc_time) {
+        /* convert from unsigned long milliseconds to float seconds */
+        fprintf(stderr, ""total GC time: %.2fs, "",
+            (float) GC_total_gc_time / (float) 1000);
+    }
+    fprintf(stderr, ""Heap used since last GC: %.3fk, Total used: %.3fk"",
         GC_get_bytes_since_gc() / 1024.0,
         GC_get_heap_size() / 1024.0
     );

@@ -59,6 +59,12 @@ word GC_non_gc_bytes = 0;  /* Number of bytes not intended to be collected */
 
 word GC_gc_no = 0;
 
+GC_bool         GC_mercury_calc_gc_time = 0;
+			   /* Accumulate total gc time  in      */
+			   /* GC_total_gc_time if set to true.  */
+unsigned long 	GC_total_gc_time = 0;
+			   /* Measured in milliseconds.         */
+
 #ifndef SMALL_CONFIG
   int GC_incremental = 0;  /* By default, stop the world.	*/
 #endif
@@ -318,9 +324,10 @@ GC_bool GC_try_to_collect_inner(GC_stop_func stop_func)
     	}
     }
     if (stop_func == GC_never_stop_func) GC_notify_full_gc();
-    if (GC_print_stats) {
+    if (GC_print_stats || GC_mercury_calc_gc_time) {
         GET_TIME(start_time);
-	GC_log_printf(
+	if (GC_print_stats)
+	   GC_log_printf(
 	   "Initiating full world-stop collection %lu after %ld allocd bytes\n",
 	   (unsigned long)GC_gc_no+1, (long)GC_bytes_allocd);
     }
@@ -356,10 +363,17 @@ GC_bool GC_try_to_collect_inner(GC_stop_func stop_func)
       return(FALSE);
     }
     GC_finish_collection();
-    if (GC_print_stats) {
+    if (GC_print_stats || GC_mercury_calc_gc_time) {
+	unsigned long cur_gc_time;
         GET_TIME(current_time);
-        GC_log_printf("Complete collection took %lu msecs\n",
-                  MS_TIME_DIFF(current_time,start_time));
+        cur_gc_time = MS_TIME_DIFF(current_time,start_time);
+        if (GC_print_stats) {
+	    GC_log_printf("Complete collection took %lu msecs\n",
+                cur_gc_time);
+	}
+    	if (GC_mercury_calc_gc_time) {
+            GC_total_gc_time += cur_gc_time;
+	}
     }
     return(TRUE);
 }

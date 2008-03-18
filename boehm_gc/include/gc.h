@@ -233,6 +233,16 @@ GC_API unsigned long GC_time_limit;
 GC_API int GC_mercury_use_munmap;
 				/* Whether to use munmap(). Only	 */
 				/* effective if USE_MUNMAP is defined.   */
+GC_API int GC_mercury_calc_gc_time;
+				/* Whether to calculate the time taken   */
+				/* by garbage collections. If yes, the   */
+				/* times are accumulated in the variable */
+				/* GC_total_gc_time.			 */
+GC_API unsigned long GC_total_gc_time;
+				/* If GC_mercury_calc_gc_time is true,   */
+				/* this holds the total user time used   */
+				/* so far by garbage collections. It is  */
+				/* measured in milliseconds.		 */
 
 /* Public procedures */
 

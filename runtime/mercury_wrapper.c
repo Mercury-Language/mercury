@@ -6,7 +6,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2007 The University of Melbourne.
+** Copyright (C) 1994-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -170,7 +170,7 @@ size_t      MR_gen_nondetstack_zone_size = 4 * sizeof(MR_Word);
   size_t    MR_heap_margin_size =          7 * 1024 * sizeof(MR_Word);
 #endif
 
-double MR_heap_expansion_factor = 2.0;
+double      MR_heap_expansion_factor = 2.0;
 
 /*
 ** When we use stack segments, we reserve the last MR_stack_margin_size bytes
@@ -1109,7 +1109,8 @@ enum MR_long_option {
     MR_COVERAGE_TEST_IF_EXEC_OPT,
     MR_TRACE_COUNT_FILE,
     MR_MEM_USAGE_REPORT,
-    MR_MUNMAP
+    MR_BOEHM_GC_MUNMAP,
+    MR_BOEHM_GC_CALC_TIME
 };
 
 struct MR_option MR_long_opts[] = {
@@ -1208,7 +1209,8 @@ struct MR_option MR_long_opts[] = {
     { "tc-summary-max",                 1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "trace-count-summary-max",        1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
-    { "munmap",                         0, 0, MR_MUNMAP },
+    { "boehm-gc-munmap",                0, 0, MR_BOEHM_GC_MUNMAP },
+    { "boehm-gc-calc-time",             0, 0, MR_BOEHM_GC_CALC_TIME },
 
     /* This needs to be kept at the end. */
     { NULL,                             0, 0, 0 }
@@ -1733,9 +1735,15 @@ MR_process_options(int argc, char **argv)
                 MR_mem_usage_report_prefix = MR_copy_string(MR_optarg);
                 break;
 
-            case MR_MUNMAP:
+            case MR_BOEHM_GC_MUNMAP:
 #ifdef MR_BOEHM_GC
                 GC_mercury_use_munmap = MR_TRUE;
+#endif
+                break;
+
+            case MR_BOEHM_GC_CALC_TIME:
+#ifdef MR_BOEHM_GC
+                GC_mercury_calc_gc_time = MR_TRUE;
 #endif
                 break;
 

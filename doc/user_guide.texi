@@ -9792,12 +9792,22 @@ The default maximum value of @var{N} is 20.
 @c testing the code writing out deep profiling data).
 
 @sp 1
-@item --munmap
-@findex --munmap
+@item --boehm-gc-munmap
+@findex --boehm-gc-munmap
 This option enables code in the Boehm garbage collector to return unused memory
 pages back to the operating system. It is meaningful only when using the Boehm
 garbage collector, and requires @samp{--enable-gc-munmap} to be passed to
 @samp{configure}. (This may not work with all platforms).
+
+@sp 1
+@item --boehm-gc-calc-time
+@findex --boehm-gc-calc-time
+This option enables code in the Boehm garbage collector to calculate
+the time spent doing garbage collection so far.
+Its only effect is to enable the @samp{report_stats} predicate
+in the @samp{benchmarking} module of the standard library
+to report this information.
+
 @end table
 
 @sp 1
