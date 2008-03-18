@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1008,7 +1008,7 @@ typedef	struct MR_ExecTrace_Struct {
 **   profiling is enabled.
 **
 **   If the body_bytes field is NULL, it means that no representation of the
-**   procedure body is available. If non-NULL, it contains a pointer to anz
+**   procedure body is available. If non-NULL, it contains a pointer to an
 **   array of bytecodes that represents the body of the procedure. The
 **   bytecode array should be interpreted by the read_proc_rep predicate in
 **   browser/declarative_execution.m (it starts with an encoded form of the
