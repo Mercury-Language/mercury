@@ -112,53 +112,13 @@ backjump(Id) :-
 % mdbcomp/program_representation.m.  The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-%
-% XXX we haven't done this yet.
-%
 
 :- external(builtin_choice_id/1).
 :- external(builtin_backjump/1).
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_decl("C", "
-
-typedef MR_Integer      ML_Choice_Id;
-
-typedef struct ML_BackJumpHandler_struct {
-    struct ML_BackJumpHandler_struct *prev;
-    ML_Choice_Id        id;
-
-#ifdef MR_HIGHLEVEL_CODE
-
-    jmp_buf             handler;
-
-#else /* !MR_HIGHLEVEL_CODE */
-
-    MR_Word             *saved_sp;
-    MR_Word             *saved_fr;
-
-#endif /* !MR_HIGHLEVEL_CODE */
-
-} ML_BackJumpHandler;
-
-
-/*
-** XXX Does not work properly in grades that support multiple threads.
-*/
-#define ML_GET_BACKJUMP_HANDLER()      ML_backjump_handler
-#define ML_SET_BACKJUMP_HANDLER(val)   ML_backjump_handler = (val)
-#define ML_GET_NEXT_CHOICE_ID()        (ML_next_choice_id++)
-
-extern ML_BackJumpHandler   *ML_backjump_handler;
-extern ML_Choice_Id         ML_next_choice_id;
-
-").
-
-:- pragma foreign_code("C", "
-    ML_BackJumpHandler  *ML_backjump_handler;
-    ML_Choice_Id        ML_next_choice_id = 0;
-").
+:- pragma foreign_decl("C", "#include \"mercury_backjump.h\"").
 
 %-----------------------------------------------------------------------------%
 %
@@ -188,10 +148,10 @@ extern ML_Choice_Id         ML_next_choice_id;
 #endif
 
 void MR_CALL
-mercury__backjump__builtin_choice_id_1_p_0(ML_Choice_Id *id, MR_CONT_PARAMS);
+mercury__backjump__builtin_choice_id_1_p_0(MR_BackJumpChoiceId *id, MR_CONT_PARAMS);
 
 void MR_CALL
-mercury__backjump__builtin_backjump_1_p_0(ML_Choice_Id id);
+mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id);
 
 #endif /* MR_HIGHLEVEL_CODE */
 #endif /* ML_BACKJUMP_GUARD */
@@ -213,18 +173,18 @@ mercury__backjump__builtin_backjump_1_p_0(ML_Choice_Id id);
 void MR_CALL
 mercury__backjump__builtin_choice_id_1_p_0(MR_Integer *id, MR_CONT_PARAMS)
 {
-    ML_BackJumpHandler this_handler;
+    MR_BackJumpHandler this_handler;
 
-    this_handler.prev = ML_GET_BACKJUMP_HANDLER();
-    this_handler.id = ML_GET_NEXT_CHOICE_ID();
-    ML_SET_BACKJUMP_HANDLER(&this_handler);
+    this_handler.MR_bjh_prev = MR_GET_BACKJUMP_HANDLER();
+    this_handler.MR_bjh_id = MR_GET_NEXT_CHOICE_ID();
+    MR_SET_BACKJUMP_HANDLER(&this_handler);
 
-    if (setjmp(this_handler.handler) == 0) {
+    if (setjmp(this_handler.MR_bjh_handler) == 0) {
     #ifdef MR_DEBUG_JMPBUFS
         fprintf(stderr, ""choice setjmp %p\\n"", this_handler.handler);
     #endif
 
-        *id = this_handler.id;
+        *id = this_handler.MR_bjh_id;
         MR_CONT_CALL();
     } else {
     #ifdef MR_DEBUG_JMPBUFS
@@ -232,13 +192,15 @@ mercury__backjump__builtin_choice_id_1_p_0(MR_Integer *id, MR_CONT_PARAMS)
     #endif
     }
 
-    ML_SET_BACKJUMP_HANDLER(this_handler.prev);
+    MR_SET_BACKJUMP_HANDLER(this_handler.MR_bjh_prev);
 }
 
 void MR_CALL
-mercury__backjump__builtin_backjump_1_p_0(ML_Choice_Id id)
+mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
 {
-    ML_BackJumpHandler *backjump_handler = ML_GET_BACKJUMP_HANDLER();
+    MR_BackJumpHandler *backjump_handler;
+    
+    backjump_handler = MR_GET_BACKJUMP_HANDLER();
 
     /*
     ** XXX when we commit and prune away nondet stack frames, we leave the
@@ -260,10 +222,10 @@ mercury__backjump__builtin_backjump_1_p_0(ML_Choice_Id id)
     ** commits.)
     */
     while (backjump_handler != NULL) {
-        if (backjump_handler->id == id) {
+        if (backjump_handler->MR_bjh_id == id) {
             break;
         }
-        backjump_handler = backjump_handler->prev;
+        backjump_handler = backjump_handler->MR_bjh_prev;
     }
 
     if (backjump_handler == NULL) {
@@ -272,9 +234,10 @@ mercury__backjump__builtin_backjump_1_p_0(ML_Choice_Id id)
     } else {
 
   #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""backjump longjmp %p\\n"", backjump_handler->handler);
+        fprintf(stderr, ""backjump longjmp %p\\n"",
+            backjump_handler->MR_bjh_handler);
   #endif
-        longjmp(backjump_handler->handler, 1);
+        longjmp(backjump_handler->MR_bjh_handler, 1);
     }
 }
 
@@ -313,7 +276,7 @@ void mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
 #define ML_DUMMY_LINE 0
 
 #define ML_BACKJUMP_STRUCT \
-    (((ML_BackJumpHandler *) (MR_curfr + 1 - MR_NONDET_FIXED_SIZE)) - 1)
+    (((MR_BackJumpHandler *) (MR_curfr + 1 - MR_NONDET_FIXED_SIZE)) - 1)
 
 #ifdef ML_DEBUG_BACKJUMPS
 #define ML_BACKJUMP_CHECKPOINT(s, p) \
@@ -321,7 +284,8 @@ void mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
         fflush(stdout); \
         fprintf(stderr, ""backjumps (%s): "" \
             ""loc %p, prev %p, id %d, sp %p, fr %p\\n"", \
-            s, p, p->prev, p->id, p->saved_sp, p->saved_fr); \
+            s, p, p->MR_bjh_prev, p->MR_bjh_id, p->MR_bjh_saved_sp, \
+            p->MR_bjh_saved_fr); \
     } while (0)
 #else
 #define ML_BACKJUMP_CHECKPOINT(s, p)
@@ -355,43 +319,45 @@ MR_BEGIN_CODE
 
 MR_define_entry(mercury__backjump__builtin_choice_id_1_0);
 {
-    MR_mkpragmaframe(""builtin_choice_id/1"", 0, ML_BackJumpHandler_struct,
+    MR_mkpragmaframe(""builtin_choice_id/1"", 0, MR_BackJumpHandler_Struct,
         MR_LABEL(mercury__backjump__builtin_choice_id_1_0_i1));
 
-    ML_BACKJUMP_STRUCT->prev = ML_GET_BACKJUMP_HANDLER();
-    ML_BACKJUMP_STRUCT->id = ML_GET_NEXT_CHOICE_ID();
-    ML_BACKJUMP_STRUCT->saved_sp = MR_sp;
-    ML_BACKJUMP_STRUCT->saved_fr = MR_curfr;
-    ML_SET_BACKJUMP_HANDLER(ML_BACKJUMP_STRUCT);
+    ML_BACKJUMP_STRUCT->MR_bjh_prev = MR_GET_BACKJUMP_HANDLER();
+    ML_BACKJUMP_STRUCT->MR_bjh_id = MR_GET_NEXT_CHOICE_ID();
+    ML_BACKJUMP_STRUCT->MR_bjh_saved_sp = MR_sp;
+    ML_BACKJUMP_STRUCT->MR_bjh_saved_fr = MR_curfr;
+    MR_SET_BACKJUMP_HANDLER(ML_BACKJUMP_STRUCT);
 
     ML_BACKJUMP_CHECKPOINT(""create"", ML_BACKJUMP_STRUCT);
 
-    MR_r1 = (MR_Word) ML_BACKJUMP_STRUCT->id;
+    MR_r1 = (MR_Word) ML_BACKJUMP_STRUCT->MR_bjh_id;
     MR_succeed();
 }
 MR_define_label(mercury__backjump__builtin_choice_id_1_0_i1);
 {
     /* Restore the previous handler. */
-    ML_SET_BACKJUMP_HANDLER(ML_BACKJUMP_STRUCT->prev);
+    MR_SET_BACKJUMP_HANDLER(ML_BACKJUMP_STRUCT->MR_bjh_prev);
     MR_fail();
 }
 
 MR_define_entry(mercury__backjump__builtin_backjump_1_0);
 {
-    ML_Choice_Id id = MR_r1;
-    ML_BackJumpHandler *backjump_handler = ML_GET_BACKJUMP_HANDLER();
+    MR_BackJumpChoiceId id = MR_r1;
+    MR_BackJumpHandler *backjump_handler;
+    
+    backjump_handler = MR_GET_BACKJUMP_HANDLER();
 
     /*
     ** XXX see comments in the high-level implementation.
     */
     while (backjump_handler != NULL) {
-        if (backjump_handler->id == id) {
+        if (backjump_handler->MR_bjh_id == id) {
             break;
         }
 
         ML_BACKJUMP_CHECKPOINT(""scan"", backjump_handler);
 
-        backjump_handler = backjump_handler->prev;
+        backjump_handler = backjump_handler->MR_bjh_prev;
     }
 
     if (backjump_handler == NULL) {
@@ -406,9 +372,9 @@ MR_define_entry(mercury__backjump__builtin_backjump_1_0);
         ** (possibly incorrect) backjump.
         */
 
-        ML_SET_BACKJUMP_HANDLER(backjump_handler->prev);
-        MR_sp_word = (MR_Word) backjump_handler->saved_sp;
-        MR_maxfr_word = (MR_Word) backjump_handler->saved_fr;
+        MR_SET_BACKJUMP_HANDLER(backjump_handler->MR_bjh_prev);
+        MR_sp_word = (MR_Word) backjump_handler->MR_bjh_saved_sp;
+        MR_maxfr_word = (MR_Word) backjump_handler->MR_bjh_saved_fr;
         MR_fail();
     }
 }

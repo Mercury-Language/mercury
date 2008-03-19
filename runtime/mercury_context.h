@@ -58,6 +58,7 @@
 #include "mercury_thread.h"     /* for MercuryLock */
 #include "mercury_goto.h"       /* for MR_GOTO() */
 #include "mercury_conf.h"       /* for MR_CONSERVATIVE_GC */
+#include "mercury_backjump.h"   /* for MR_BackJumpHandler, etc */
 
 #ifdef  MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)  x
@@ -181,6 +182,11 @@
 ** ticket_highwater The saved MR_ticket_high_water for this context.
 **                  (All accessed via abstract machine register.)
 **
+** backjump_handler         The backjump handler for this context.
+** backjump_next_choice_id  The next available backjump choice id counter
+**                          for this context.
+**                          (All accessed via MR_eng_context.)
+**
 ** hp               The saved hp for this context.
 **                  (Accessed via abstract machine register.)
 **
@@ -301,6 +307,11 @@ struct MR_Context_Struct {
     MR_TrailEntry       *MR_ctxt_trail_ptr;
     MR_ChoicepointId    MR_ctxt_ticket_counter;
     MR_ChoicepointId    MR_ctxt_ticket_high_water;
+#endif
+
+#ifndef MR_HIGHLEVEL_CODE 
+    MR_BackJumpHandler  *MR_ctxt_backjump_handler;
+    MR_BackJumpChoiceId MR_ctxt_backjump_next_choice_id;
 #endif
 
 #ifndef MR_CONSERVATIVE_GC

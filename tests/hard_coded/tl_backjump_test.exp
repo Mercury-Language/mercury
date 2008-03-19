@@ -1,0 +1,50 @@
+(TID: #2) label A = 1, (0)
+(TID: #2) label B = 1, (1)
+(TID: #2) label C = 1, (2)
+(TID: #2) label C = 2, (3)
+(TID: #2) backjump (3)
+(TID: #2) label C = 3, (4)
+(TID: #2) solution 1, 1, 3
+(TID: #2) label B = 2, (5)
+(TID: #2) label C = 1, (6)
+(TID: #2) backjump (0)
+(TID: #2) label A = 2, (7)
+(TID: #2) label B = 1, (8)
+(TID: #2) label C = 1, (9)
+(TID: #2) solution 2, 1, 1
+(TID: #2) label C = 2, (10)
+(TID: #2) backjump (8)
+(TID: #2) label B = 2, (11)
+(TID: #2) label C = 1, (12)
+(TID: #2) label C = 2, (13)
+(TID: #2) solution 2, 2, 2
+(TID: #2) label C = 3, (14)
+(TID: #2) Solutions:
+(TID: #2) {1, 1, 3},
+(TID: #2) {2, 1, 1},
+(TID: #2) {2, 2, 2}
+(TID: #3) label A = 1, (0)
+(TID: #3) label B = 1, (1)
+(TID: #3) label C = 1, (2)
+(TID: #3) label C = 2, (3)
+(TID: #3) backjump (3)
+(TID: #3) label C = 3, (4)
+(TID: #3) solution 1, 1, 3
+(TID: #3) label B = 2, (5)
+(TID: #3) label C = 1, (6)
+(TID: #3) backjump (0)
+(TID: #3) label A = 2, (7)
+(TID: #3) label B = 1, (8)
+(TID: #3) label C = 1, (9)
+(TID: #3) solution 2, 1, 1
+(TID: #3) label C = 2, (10)
+(TID: #3) backjump (8)
+(TID: #3) label B = 2, (11)
+(TID: #3) label C = 1, (12)
+(TID: #3) label C = 2, (13)
+(TID: #3) solution 2, 2, 2
+(TID: #3) label C = 3, (14)
+(TID: #3) Solutions:
+(TID: #3) {1, 1, 3},
+(TID: #3) {2, 1, 1},
+(TID: #3) {2, 2, 2}

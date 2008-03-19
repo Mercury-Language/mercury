@@ -33,8 +33,9 @@ ENDINIT
 #include "mercury_engine.h"             /* for `MR_memdebug' */
 #include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff */
 
-static  void            MR_init_context_maybe_generator(MR_Context *c,
-                            const char *id, MR_GeneratorPtr gen);
+static void
+MR_init_context_maybe_generator(MR_Context *c, const char *id,
+    MR_GeneratorPtr gen);
 
 /*---------------------------------------------------------------------------*/
 
@@ -103,6 +104,11 @@ MR_init_thread_stuff(void)
     MR_KEY_CREATE(&MR_engine_base_key, NULL);
   #endif
     MR_KEY_CREATE(&MR_exception_handler_key, NULL);
+
+  #ifdef MR_HIGHLEVEL_CODE
+    MR_KEY_CREATE(&MR_backjump_handler_key, NULL);
+    MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *)0);
+  #endif  
 
     /* These are actually in mercury_thread.c. */
     pthread_mutex_init(&MR_thread_barrier_lock, MR_MUTEX_ATTR);
@@ -276,6 +282,11 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
         (MR_TrailEntry *) c->MR_ctxt_trail_zone->MR_zone_min;
     c->MR_ctxt_ticket_counter = 1;
     c->MR_ctxt_ticket_high_water = 1;
+#endif
+
+#ifndef MR_HIGHLEVEL_CODE
+    c->MR_ctxt_backjump_handler = NULL;
+    c->MR_ctxt_backjump_next_choice_id = 0;
 #endif
 
 #ifndef MR_CONSERVATIVE_GC

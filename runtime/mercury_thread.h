@@ -244,7 +244,8 @@ extern MR_Unsigned  MR_num_thread_local_mutables;
 /*
 ** Allocate an index into the thread-local mutable array for a mutable.
 */
-extern MR_Unsigned  MR_new_thread_local_mutable_index(void);
+extern MR_Unsigned
+MR_new_thread_local_mutable_index(void);
 
 /*
 ** Allocate a thread-local mutable array.

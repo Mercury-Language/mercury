@@ -1319,6 +1319,8 @@ pred_is_external("exception", "builtin_throw", 1).
 pred_is_external("builtin", "unify", 3).
 pred_is_external("builtin", "compare", 4).
 pred_is_external("builtin", "compare_representation", 4).
+pred_is_external("backjump", "builtin_choice_id", 1).
+pred_is_external("backjump", "builtin_backjump", 1).
 
 %-----------------------------------------------------------------------------%
 

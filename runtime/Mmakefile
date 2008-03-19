@@ -26,6 +26,7 @@ HDRS		=	\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
 			mercury_atomic_ops.h	\
+			mercury_backjump.h	\
 			mercury_bootstrap.h	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
@@ -150,6 +151,7 @@ CFILES		= 	\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
 			mercury_atomic_ops.c	\
+			mercury_backjump.c	\
 			mercury_bootstrap.c	\
 			mercury_builtin_types.c	\
 			mercury_bitmap.c	\

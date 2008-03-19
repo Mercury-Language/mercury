@@ -473,6 +473,8 @@ endif
 # defined.
 #
 # backjump_test fails because deep profiler cannot yet handle backjumps.
+# tl_backjump_test fails because the deep profiler cannot yet handle
+# backjumps and threads.
 
 ifeq "$(findstring profdeep,$(GRADE))" ""
 	NON_PROFDEEP_PROGS = \
@@ -491,6 +493,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		solver_default_eq_cmp \
 		test_array2d \
 		test_injection \
+		tl_backjump_test \
 		user_defined_equality \
 		version_array_test \
 		write_binary
@@ -670,7 +673,7 @@ no_fully_strict.out: no_fully_strict
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
-
+		
 # final_excp.out is expected to fail (it calls throw/1).
 #
 final_excp.out: final_excp
@@ -742,6 +745,20 @@ runtime_opt.out: runtime_opt runtime_opt.inp
 			echo ""; \
 		done \
 	) > runtime_opt.out 2>&1
+
+# The test checks the output from multiple threads and since that output
+# may be interleaved arbitrarily we need to filter it so that all the output
+# from each thread appears sequentially in a block.
+tl_backjump_test.out: tl_backjump_test
+	if ./tl_backjump_test > $@.tmp 2>&1; then \
+		grep "^(TID: #2" $@.tmp > $@; \
+		grep "^(TID: #3" $@.tmp >> $@; \
+		grep "^spawn"    $@.tmp >> $@; \
+		rm -f $@.tmp; \
+	else \
+		grep . $@.tmp; \
+		exit 1; \
+	fi	
 
 #-----------------------------------------------------------------------------#
 
