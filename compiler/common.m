@@ -770,7 +770,7 @@ create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs, UniModes,
     is det.
 
 generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
-    apply_induced_tsubst(ToVar, FromVar, !Info),
+    apply_induced_substitutions(ToVar, FromVar, !Info),
     simplify_info_get_var_types(!.Info, VarTypes),
     map.lookup(VarTypes, ToVar, ToVarType),
     map.lookup(VarTypes, FromVar, FromVarType),
@@ -842,15 +842,20 @@ types_match_exactly_list([Type1 | Types1], [Type2 | Types2]) :-
     % rtti_varmaps.  This allows us to avoid an unsafe cast, and also may
     % allow more opportunities for simplification.
     %
+    % If we do need to apply a type substitution, then we also apply the
+    % substituion ToVar -> FromVar to the RttiVarMaps, then duplicate
+    % FromVar's information for ToVar.  This ensures we always refer to the
+    % "original" variables, not the copies created by generate_assign.
+    %
     % Note that this relies on the assignments for type_infos and
     % typeclass_infos to be generated before other arguments with these
     % existential types are processed.  In other words, the arguments of
     % calls and deconstructions must be processed in left to right order.
     %
-:- pred apply_induced_tsubst(prog_var::in, prog_var::in, simplify_info::in,
-    simplify_info::out) is det.
+:- pred apply_induced_substitutions(prog_var::in, prog_var::in,
+    simplify_info::in, simplify_info::out) is det.
 
-apply_induced_tsubst(ToVar, FromVar, !Info) :-
+apply_induced_substitutions(ToVar, FromVar, !Info) :-
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     rtti_varmaps_var_info(RttiVarMaps0, FromVar, FromVarRttiInfo),
     rtti_varmaps_var_info(RttiVarMaps0, ToVar, ToVarRttiInfo),
@@ -858,7 +863,8 @@ apply_induced_tsubst(ToVar, FromVar, !Info) :-
         ( map.is_empty(TSubst) ->
             true
         ;
-            simplify_info_apply_type_substitution(TSubst, !Info)
+            simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar,
+                TSubst, !Info)
         )
     ;
         % Update the rtti_varmaps with new information if only one of the
@@ -902,14 +908,13 @@ calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
     (
         FromVarRttiInfo = type_info_var(FromVarTypeInfoType),
         ToVarRttiInfo = type_info_var(ToVarTypeInfoType),
-        type_unify(FromVarTypeInfoType, ToVarTypeInfoType, [],
-            map.init, TSubst)
+        type_list_subsumes([ToVarTypeInfoType], [FromVarTypeInfoType], TSubst)
     ;
         FromVarRttiInfo = typeclass_info_var(FromVarConstraint),
         ToVarRttiInfo = typeclass_info_var(ToVarConstraint),
         FromVarConstraint = constraint(Name, FromArgs),
         ToVarConstraint = constraint(Name, ToArgs),
-        type_unify_list(FromArgs, ToArgs, [], map.init, TSubst)
+        type_list_subsumes(ToArgs, FromArgs, TSubst)
     ;
         FromVarRttiInfo = non_rtti_var,
         ToVarRttiInfo = non_rtti_var,

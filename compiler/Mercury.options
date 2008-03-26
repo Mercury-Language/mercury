@@ -52,6 +52,8 @@ MCFLAGS-transform_hlds.smm_fixpoint_table = --no-warn-nothing-exported
 # Bug workarounds
 
 # This works around bug 48 in Mantis.
+# (This has been fixed, and the workaround can be removed once new compilers
+# have been installed.)
 MCFLAGS-analysis = --no-common-struct
 
 # XXX work around a bug that sometimes appears at -O4 and above.

@@ -25,7 +25,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module map.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -281,8 +280,7 @@
     % is applied to all prog_vars.
     %
 :- pred apply_substitutions_to_rtti_varmaps(tvar_renaming::in, tsubst::in,
-    map(prog_var, prog_var)::in, rtti_varmaps::in, rtti_varmaps::out)
-    is det.
+    prog_var_renaming::in, rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % rtti_varmaps_transform_types(Pred, !RttiVarMaps)
     %
@@ -325,6 +323,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module map.
 :- import_module pair.
 :- import_module solutions.
 :- import_module svmap.
@@ -570,7 +569,7 @@ apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
         !:RttiVarMaps = rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap)
     ).
 
-:- pred apply_subst_to_prog_var(map(prog_var, prog_var)::in,
+:- pred apply_subst_to_prog_var(prog_var_renaming::in,
     prog_var::in, prog_var::out) is det.
 
 apply_subst_to_prog_var(Subst, Var0, Var) :-
@@ -581,7 +580,7 @@ apply_subst_to_prog_var(Subst, Var0, Var) :-
     ).
 
 :- pred apply_substs_to_tci_map(tvar_renaming::in, tsubst::in,
-    map(prog_var, prog_var)::in, prog_constraint::in, prog_var::in,
+    prog_var_renaming::in, prog_constraint::in, prog_var::in,
     typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
 
 apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
@@ -599,7 +598,7 @@ apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
     % it maps to a type, we remove it from the map.
     %
 :- pred apply_substs_to_ti_map(tvar_renaming::in, tsubst::in,
-    map(prog_var, prog_var)::in, tvar::in, type_info_locn::in,
+    prog_var_renaming::in, tvar::in, type_info_locn::in,
     type_info_varmap::in, type_info_varmap::out) is det.
 
 apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
@@ -629,7 +628,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     ).
 
 :- pred apply_substs_to_type_map(tvar_renaming::in, tsubst::in,
-    map(prog_var, prog_var)::in, prog_var::in, mer_type::in,
+    prog_var_renaming::in, prog_var::in, mer_type::in,
     type_info_type_map::in, type_info_type_map::out) is det.
 
 apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
@@ -647,7 +646,7 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
     ).
 
 :- pred apply_substs_to_constraint_map(tvar_renaming::in, tsubst::in,
-    map(prog_var, prog_var)::in, prog_var::in, prog_constraint::in,
+    prog_var_renaming::in, prog_var::in, prog_constraint::in,
     typeclass_info_constraint_map::in, typeclass_info_constraint_map::out)
     is det.
 

@@ -3515,8 +3515,8 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 :- pred simplify_info_incr_cost_delta(int::in,
     simplify_info::in, simplify_info::out) is det.
 
-:- pred simplify_info_apply_type_substitution(tsubst::in,
-    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_apply_substitutions_and_duplicate(prog_var::in,
+    prog_var::in, tsubst::in, simplify_info::in, simplify_info::out) is det.
 
 :- implementation.
 
@@ -3667,15 +3667,18 @@ simplify_info_set_module_info(ModuleInfo, !Info) :-
     det_info_set_module_info(ModuleInfo, DetInfo0, DetInfo),
     simplify_info_set_det_info(DetInfo, !Info).
 
-simplify_info_apply_type_substitution(TSubst, !Info) :-
+simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
+        !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ApplyTSubst = (pred(_::in, T0::in, T::out) is det :-
             apply_rec_subst_to_type(TSubst, T0, T)
         ),
     map.map_values(ApplyTSubst, VarTypes0, VarTypes),
-    apply_substitutions_to_rtti_varmaps(map.init, TSubst, map.init,
-        RttiVarMaps0, RttiVarMaps),
+    map.det_insert(map.init, ToVar, FromVar, Renaming),
+    apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
+        RttiVarMaps0, RttiVarMaps1),
+    rtti_var_info_duplicate(FromVar, ToVar, RttiVarMaps1, RttiVarMaps),
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
