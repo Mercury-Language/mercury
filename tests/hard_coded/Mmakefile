@@ -86,6 +86,8 @@ ORDINARY_PROGS=	\
 	float_map \
 	float_reg \
 	float_rounding_bug \
+	follow_code_bug \
+	follow_code_bug_2 \
 	foreign_and_mercury \
 	foreign_enum_dummy \
 	foreign_enum_mod1 \

@@ -48,6 +48,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -75,7 +76,7 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         (
-            move_follow_code_in_goal(Goal0, Goal1, no, Changed),
+            move_follow_code_in_goal(Goal0, Goal1, RttiVarMaps0, no, Changed),
             Changed = yes
         ->
             % We need to fix up the goal_info by recalculating the nonlocal
@@ -104,47 +105,50 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred move_follow_code_in_goal(hlds_goal::in, hlds_goal::out,
-    bool::in, bool::out) is det.
+    rtti_varmaps::in, bool::in, bool::out) is det.
 
-move_follow_code_in_goal(Goal0, Goal, !Changed) :-
+move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
             ConjPurity = goal_info_get_purity(GoalInfo),
-            move_follow_code_in_conj(Goals0, ConjPurity, Goals, !Changed)
+            move_follow_code_in_conj(Goals0, ConjPurity, RttiVarMaps, Goals,
+                !Changed)
         ;
             ConjType = parallel_conj,
-            move_follow_code_in_independent_goals(Goals0, Goals, !Changed)
+            move_follow_code_in_independent_goals(Goals0, Goals, RttiVarMaps,
+                !Changed)
         ),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = disj(Goals0),
-        move_follow_code_in_independent_goals(Goals0, Goals, !Changed),
+        move_follow_code_in_independent_goals(Goals0, Goals, RttiVarMaps,
+            !Changed),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
-        move_follow_code_in_goal(SubGoal0, SubGoal, !Changed),
+        move_follow_code_in_goal(SubGoal0, SubGoal, RttiVarMaps, !Changed),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = switch(Var, Det, Cases0),
-        move_follow_code_in_cases(Cases0, Cases, !Changed),
+        move_follow_code_in_cases(Cases0, Cases, RttiVarMaps, !Changed),
         GoalExpr = switch(Var, Det, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        move_follow_code_in_goal(Cond0, Cond, !Changed),
-        move_follow_code_in_goal(Then0, Then, !Changed),
-        move_follow_code_in_goal(Else0, Else, !Changed),
+        move_follow_code_in_goal(Cond0, Cond, RttiVarMaps, !Changed),
+        move_follow_code_in_goal(Then0, Then, RttiVarMaps, !Changed),
+        move_follow_code_in_goal(Else0, Else, RttiVarMaps, !Changed),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Remove, SubGoal0),
-        move_follow_code_in_goal(SubGoal0, SubGoal, !Changed),
+        move_follow_code_in_goal(SubGoal0, SubGoal, RttiVarMaps, !Changed),
         GoalExpr = scope(Remove, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -167,25 +171,27 @@ move_follow_code_in_goal(Goal0, Goal, !Changed) :-
     % parallel conjunction.
     %
 :- pred move_follow_code_in_independent_goals(list(hlds_goal)::in,
-    list(hlds_goal)::out, bool::in, bool::out) is det.
+    list(hlds_goal)::out, rtti_varmaps::in, bool::in, bool::out) is det.
 
-move_follow_code_in_independent_goals([], [], !Changed).
+move_follow_code_in_independent_goals([], [], _, !Changed).
 move_follow_code_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
-        !Changed) :-
-    move_follow_code_in_goal(Goal0, Goal, !Changed),
-    move_follow_code_in_independent_goals(Goals0, Goals, !Changed).
+        RttiVarMaps, !Changed) :-
+    move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed),
+    move_follow_code_in_independent_goals(Goals0, Goals, RttiVarMaps,
+        !Changed).
 
 %-----------------------------------------------------------------------------%
 
 :- pred move_follow_code_in_cases(list(case)::in, list(case)::out,
-    bool::in, bool::out) is det.
+    rtti_varmaps::in, bool::in, bool::out) is det.
 
-move_follow_code_in_cases([], [], !Changed).
-move_follow_code_in_cases([Case0 | Cases0], [Case | Cases], !Changed) :-
+move_follow_code_in_cases([], [], _, !Changed).
+move_follow_code_in_cases([Case0 | Cases0], [Case | Cases], RttiVarMaps,
+        !Changed) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    move_follow_code_in_goal(Goal0, Goal, !Changed),
+    move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed),
     Case = case(MainConsId, OtherConsIds, Goal),
-    move_follow_code_in_cases(Cases0, Cases, !Changed).
+    move_follow_code_in_cases(Cases0, Cases, RttiVarMaps, !Changed).
 
 %-----------------------------------------------------------------------------%
 
@@ -193,23 +199,26 @@ move_follow_code_in_cases([Case0 | Cases0], [Case | Cases], !Changed) :-
     % before and after it.
     %
 :- pred move_follow_code_in_conj(list(hlds_goal)::in, purity::in,
-    list(hlds_goal)::out, bool::in, bool::out) is det.
+    rtti_varmaps::in, list(hlds_goal)::out, bool::in, bool::out) is det.
 
-move_follow_code_in_conj(Goals0, ConjPurity, Goals, !Changed) :-
-    move_follow_code_in_conj_2(Goals0, ConjPurity, [], RevGoals, !Changed),
+move_follow_code_in_conj(Goals0, ConjPurity, RttiVarMaps, Goals, !Changed) :-
+    move_follow_code_in_conj_2(Goals0, ConjPurity, RttiVarMaps, [], RevGoals,
+        !Changed),
     list.reverse(RevGoals, Goals).
 
 :- pred move_follow_code_in_conj_2(list(hlds_goal)::in, purity::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, bool::in, bool::out) is det.
+    rtti_varmaps::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    bool::in, bool::out) is det.
 
-move_follow_code_in_conj_2([], _ConjPurity, !RevPrevGoals, !Changed).
-move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, !RevPrevGoals,
-        !Changed) :-
+move_follow_code_in_conj_2([], _ConjPurity, _RttiVarMaps, !RevPrevGoals,
+        !Changed).
+move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, RttiVarMaps,
+        !RevPrevGoals, !Changed) :-
     (
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         goal_util.goal_is_branched(GoalExpr0),
-        move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime,
-            ConjPurity, WorstPurity),
+        move_follow_code_select(Goals0, RttiVarMaps, FollowGoals,
+            RestGoalsPrime, ConjPurity, WorstPurity),
         FollowGoals = [_ | _],
         % Moving any goals that bind variables into a model_semi (or model_det)
         % disjunction gives that disjunction some outputs, which means that it
@@ -232,9 +241,10 @@ move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, !RevPrevGoals,
         Goal1 = Goal0,
         RestGoals = Goals0
     ),
-    move_follow_code_in_goal(Goal1, Goal, !Changed),
+    move_follow_code_in_goal(Goal1, Goal, RttiVarMaps, !Changed),
     !:RevPrevGoals = [Goal | !.RevPrevGoals],
-    move_follow_code_in_conj_2(RestGoals, ConjPurity, !RevPrevGoals, !Changed).
+    move_follow_code_in_conj_2(RestGoals, ConjPurity, RttiVarMaps,
+        !RevPrevGoals, !Changed).
 
 :- pred no_bind_vars(list(hlds_goal)::in) is semidet.
 
@@ -250,16 +260,39 @@ no_bind_vars([Goal | Goals]) :-
 
     % Split a list of goals into the prefix of builtins and the rest.
     %
-:- pred move_follow_code_select(list(hlds_goal)::in, list(hlds_goal)::out,
-    list(hlds_goal)::out, purity::in, purity::out) is det.
+:- pred move_follow_code_select(list(hlds_goal)::in, rtti_varmaps::in,
+    list(hlds_goal)::out, list(hlds_goal)::out, purity::in, purity::out)
+    is det.
 
-move_follow_code_select([], [], [], !Purity).
-move_follow_code_select([Goal | Goals], FollowGoals, RestGoals, !Purity) :-
+move_follow_code_select([], _, [], [], !Purity).
+move_follow_code_select([Goal | Goals], RttiVarMaps, FollowGoals, RestGoals,
+        !Purity) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    ( move_follow_code_is_builtin(GoalExpr) ->
+    (
+        move_follow_code_is_builtin(GoalExpr),
+
+        % Don't attempt to move existentially typed deconstructions
+        % into branched structures.  Doing so would confuse the
+        % rtti_varmaps structure, which expects type(class)_infos
+        % for a given type variable (constraint) to be retrieved from
+        % a single location.
+        %
+        % XXX A better solution might be to introduce exists_cast goals,
+        % which would allow separate type variables for each branch and
+        % avoid the above confusion.
+        %
+        \+ (
+            GoalExpr = unify(_, _, _, Unification, _),
+            Unification = deconstruct(_, _, Args, _, _, _),
+            list.member(Arg, Args),
+            rtti_varmaps_var_info(RttiVarMaps, Arg, RttiVarInfo),
+            RttiVarInfo \= non_rtti_var
+        )
+    ->
         GoalPurity = goal_info_get_purity(GoalInfo),
         !:Purity = worst_purity(!.Purity, GoalPurity),
-        move_follow_code_select(Goals, FollowGoals0, RestGoals, !Purity),
+        move_follow_code_select(Goals, RttiVarMaps, FollowGoals0, RestGoals,
+            !Purity),
         FollowGoals = [Goal | FollowGoals0]
     ;
         FollowGoals = [],
