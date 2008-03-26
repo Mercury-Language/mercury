@@ -322,6 +322,11 @@ MR_define_entry(mercury__backjump__builtin_choice_id_1_0);
     MR_mkpragmaframe(""builtin_choice_id/1"", 0, MR_BackJumpHandler_Struct,
         MR_LABEL(mercury__backjump__builtin_choice_id_1_0_i1));
 
+    #if defined(MR_DEEP_PROFILING)
+        MR_fatal_error(
+            ""builtin_choice_id: NYI backjumping and deep profiling"");
+    #endif
+
     ML_BACKJUMP_STRUCT->MR_bjh_prev = MR_GET_BACKJUMP_HANDLER();
     ML_BACKJUMP_STRUCT->MR_bjh_id = MR_GET_NEXT_CHOICE_ID();
     ML_BACKJUMP_STRUCT->MR_bjh_saved_sp = MR_sp;
@@ -346,6 +351,11 @@ MR_define_entry(mercury__backjump__builtin_backjump_1_0);
     MR_BackJumpHandler *backjump_handler;
     
     backjump_handler = MR_GET_BACKJUMP_HANDLER();
+
+    #if defined(MR_DEEP_PROFILING)
+        MR_fatal_error(
+            ""builtin_backjump: NYI backjumping and deep profiling"");
+    #endif
 
     /*
     ** XXX see comments in the high-level implementation.
