@@ -3967,8 +3967,15 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ( string.contains_char(Verbose, 'S') ->
         write_indent(Indent, !IO),
         io.write_string("% Structure sharing: \n", !IO),
-        dump_maybe_structure_sharing_domain(VarSet, TVarSet, 
-            MaybeStructureSharing, !IO)
+        (
+            MaybeStructureSharing = yes(
+                structure_sharing_domain_and_status(Domain, _Status)),
+            dump_maybe_structure_sharing_domain(VarSet, TVarSet, yes(Domain),
+                !IO)
+        ;
+            MaybeStructureSharing = no,
+            dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
+        )
     ;
         true
     ),

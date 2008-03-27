@@ -82,15 +82,11 @@
 %-----------------------------------------------------------------------------%
 
 pred_requires_no_analysis(ModuleInfo, PredId) :-
-    module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
-    map.values(SpecialPredMap, SpecialPreds),
-    (
-        list.member(PredId, SpecialPreds)
-    ;
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_import_status(PredInfo, Status),
-        status_defined_in_this_module(Status) = no
-    ).
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_import_status(PredInfo, Status),
+    % We handle `:- external' predicates later.  In that sense, they do *not*
+    % require that we don't analyse them.
+    Status = status_imported(_).
 
 pred_requires_analysis(ModuleInfo, PredId) :-
     \+ pred_requires_no_analysis(ModuleInfo, PredId).

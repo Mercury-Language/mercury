@@ -48,6 +48,7 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
@@ -129,6 +130,23 @@ indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
     sr_fixpoint_table::in, sr_fixpoint_table::out, io::di, io::uo) is det.
 
 indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
+        !ModuleInfo, !FixpointTable, !IO):-
+    PPId = proc(PredId, _),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_get_origin(PredInfo, Origin),
+    ( Origin = origin_special_pred(_) ->
+        % We can't analyse compiler generated special predicates.
+        true
+    ;
+        indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
+                !ModuleInfo, !FixpointTable, !IO)
+    ).
+
+:- pred indirect_reuse_analyse_pred_proc_2(sharing_as_table::in,
+    reuse_as_table::in, pred_proc_id::in, module_info::in, module_info::out,
+    sr_fixpoint_table::in, sr_fixpoint_table::out, io::di, io::uo) is det.
+
+indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         !ModuleInfo, !FixpointTable, !IO):-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 
@@ -291,10 +309,11 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr0 = generic_call(_GenDetails, _, _, _),
         Context = goal_info_get_context(GoalInfo0),
         context_to_string(Context, ContextString),
+        SharingAs = !.AnalysisInfo ^ sharing_as,
+        Msg = "generic call (" ++ ContextString ++ ")",
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
-            sharing_as_top_sharing_accumulate("generic call ("
-                ++ ContextString ++ ")",
-            !.AnalysisInfo ^ sharing_as)
+            sharing_as_top_sharing_accumulate(top_cannot_improve(Msg),
+                SharingAs)
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),
         % Record the statically constructed variables.
@@ -649,8 +668,8 @@ update_reuse_in_table(FixpointTable, PPId, !ReuseTable) :-
     % Same as sr_fixpoint_table_get_final_as, yet fails instead of aborting
     % if the procedure is not in the table.
     %
-:- func sr_fixpoint_table_get_final_as_semidet(pred_proc_id,
-    sr_fixpoint_table) = reuse_as is semidet.
+:- pred sr_fixpoint_table_get_final_as_semidet(pred_proc_id::in,
+    sr_fixpoint_table::in, reuse_as::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -689,7 +708,7 @@ sr_fixpoint_table_get_short_description(PPId, Table) = Descr :-
     ;
         Rec = "(non-rec)"
     ),
-    ( As = sr_fixpoint_table_get_final_as_semidet(PPId, Table) ->
+    ( sr_fixpoint_table_get_final_as_semidet(PPId, Table, As) ->
         Descr0 = reuse_as_short_description(As)
     ;
         Descr0 = "-"
@@ -699,8 +718,8 @@ sr_fixpoint_table_get_short_description(PPId, Table) = Descr :-
 sr_fixpoint_table_get_final_as(PPId, T) =
     get_from_fixpoint_table_final(PPId, T).
 
-sr_fixpoint_table_get_final_as_semidet(PPId, T) =
-    get_from_fixpoint_table_final_semidet(PPId, T).
+sr_fixpoint_table_get_final_as_semidet(PPId, T, Elem) :-
+    get_from_fixpoint_table_final_semidet(PPId, T, Elem).
 
 %------------------------------------------------------------------------------%
 

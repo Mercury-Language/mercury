@@ -76,9 +76,9 @@
 %
 
 :- type mm_tabling_analysis_answer.
-:- instance analysis(any_call, mm_tabling_analysis_answer).
-:- instance partial_order(mm_tabling_analysis_answer).
-:- instance answer_pattern(mm_tabling_analysis_answer).
+:- instance analysis(no_func_info, any_call, mm_tabling_analysis_answer).
+:- instance partial_order(no_func_info, mm_tabling_analysis_answer).
+:- instance answer_pattern(no_func_info, mm_tabling_analysis_answer).
 :- instance to_string(mm_tabling_analysis_answer).
 
 %----------------------------------------------------------------------------%
@@ -882,21 +882,24 @@ should_write_mm_tabling_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
 
 analysis_name = "mm_tabling_analysis".
 
-:- instance analysis(any_call, mm_tabling_analysis_answer) where [
+:- instance analysis(no_func_info, any_call, mm_tabling_analysis_answer) where [
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 1,
     preferred_fixpoint_type(_, _) = least_fixpoint,
-    bottom(_) = mm_tabling_analysis_answer(mm_tabled_will_not_call),
-    top(_) = mm_tabling_analysis_answer(mm_tabled_may_call)
+    bottom(_, _) = mm_tabling_analysis_answer(mm_tabled_will_not_call),
+    top(_, _) = mm_tabling_analysis_answer(mm_tabled_may_call),
+    get_func_info(_, _, _, _, _, no_func_info)
 ].
 
-:- instance answer_pattern(mm_tabling_analysis_answer) where [].
-:- instance partial_order(mm_tabling_analysis_answer) where [
-    (more_precise_than(
-            mm_tabling_analysis_answer(Status1),
-            mm_tabling_analysis_answer(Status2)) :-
-        mm_tabling_status_more_precise_than(Status1, Status2)),
-    equivalent(Status, Status)
+:- instance answer_pattern(no_func_info, mm_tabling_analysis_answer) where [].
+:- instance partial_order(no_func_info, mm_tabling_analysis_answer) where [
+    ( more_precise_than(no_func_info, Answer1, Answer2) :-
+        Answer1 = mm_tabling_analysis_answer(Status1),
+        Answer2 = mm_tabling_analysis_answer(Status2),
+        mm_tabling_status_more_precise_than(Status1, Status2)
+    ),
+
+    equivalent(no_func_info, Status, Status)
 ].
 
 :- pred mm_tabling_status_more_precise_than(mm_tabling_status::in,
@@ -956,10 +959,10 @@ search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC,
 
 search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         !AnalysisInfo) :-
-    mmc_analysis.module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
+    mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
-    analysis.lookup_best_result(!.AnalysisInfo, ModuleId, FuncId, Call,
-        MaybeBestStatus),
+    analysis.lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
+        no_func_info, Call, MaybeBestStatus),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, make_analysis_registry,
         MakeAnalysisRegistry),
@@ -968,7 +971,7 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
             mm_tabling_analysis_answer(Result), AnalysisStatus)),
         (
             MakeAnalysisRegistry = yes,
-            record_dependencies(ModuleId, FuncId, BestCall,
+            record_dependencies(ModuleName, FuncId, BestCall,
                 ModuleInfo, CallerSCC, !AnalysisInfo)
         ;
             MakeAnalysisRegistry = no
@@ -978,19 +981,19 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         % If we do not have any information about the callee procedure
         % then assume that it modifies the calls a minimal model tabled
         % procedure.
-        top(Call) = Answer,
+        top(no_func_info, Call) = Answer,
         Answer = mm_tabling_analysis_answer(Result),
-        module_is_local(!.AnalysisInfo, ModuleId, IsLocal),
+        module_is_local(!.AnalysisInfo, ModuleName, IsLocal),
         (
             IsLocal = yes,
             AnalysisStatus = suboptimal,
             (
                 MakeAnalysisRegistry = yes,
-                analysis.record_result(ModuleId, FuncId, Call, Answer,
+                analysis.record_result(ModuleName, FuncId, Call, Answer,
                     AnalysisStatus, !AnalysisInfo),
-                analysis.record_request(analysis_name, ModuleId, FuncId, Call,
-                    !AnalysisInfo),
-                record_dependencies(ModuleId, FuncId, Call,
+                analysis.record_request(analysis_name, ModuleName, FuncId,
+                    Call, !AnalysisInfo),
+                record_dependencies(ModuleName, FuncId, Call,
                     ModuleInfo, CallerSCC, !AnalysisInfo)
             ;
                 MakeAnalysisRegistry = no
@@ -1006,15 +1009,15 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
     % same module then we don't need to record the dependency so many
     % times, at least while we only have module-level granularity.
     %
-:- pred record_dependencies(module_id::in, func_id::in, Call::in,
+:- pred record_dependencies(module_name::in, func_id::in, Call::in,
     module_info::in, scc::in, analysis_info::in, analysis_info::out)
-    is det <= call_pattern(Call).
+    is det <= call_pattern(FuncInfo, Call).
 
-record_dependencies(ModuleId, FuncId, Call, ModuleInfo, CallerSCC,
+record_dependencies(ModuleName, FuncId, Call, ModuleInfo, CallerSCC,
         !AnalysisInfo) :-
     RecordDependency = (pred(CallerPPId::in, Info0::in, Info::out) is det :-
-        module_id_func_id(ModuleInfo, CallerPPId, CallerModuleId, _),
-        record_dependency(CallerModuleId, analysis_name, ModuleId, FuncId,
+        module_name_func_id(ModuleInfo, CallerPPId, CallerModuleName, _),
+        record_dependency(CallerModuleName, analysis_name, ModuleName, FuncId,
             Call, Info0, Info)
     ),
     list.foldl(RecordDependency, CallerSCC, !AnalysisInfo).
@@ -1039,9 +1042,9 @@ record_mm_tabling_analysis_result(ModuleInfo, Status, ResultStatus,
     should_write_mm_tabling_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
     (
         ShouldWrite = yes,
-        mmc_analysis.module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
+        mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         Answer = mm_tabling_analysis_answer(Status),
-        record_result(ModuleId, FuncId, any_call, Answer, ResultStatus,
+        record_result(ModuleName, FuncId, any_call, Answer, ResultStatus,
             !AnalysisInfo)
     ;
         ShouldWrite = no

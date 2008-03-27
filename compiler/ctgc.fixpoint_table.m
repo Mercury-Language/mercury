@@ -81,8 +81,8 @@
     % Same as get_final, but the predicate fails instead of aborting when
     % the element is not present.
     %
-:- func get_from_fixpoint_table_final_semidet(K, fixpoint_table(K, E)) = E
-    is semidet.
+:- pred get_from_fixpoint_table_final_semidet(K::in, fixpoint_table(K, E)::in,
+    E::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -204,13 +204,13 @@ get_from_fixpoint_table(Index, Elem, !T) :-
     !:T = !.T ^ recursive := is_recursive.
 
 get_from_fixpoint_table_final(Index, T) = Elem :-
-    ( TabledElem = get_from_fixpoint_table_final_semidet(Index, T) ->
+    ( get_from_fixpoint_table_final_semidet(Index, T, TabledElem) ->
         Elem = TabledElem
     ;
-        unexpected(this_file, "get_final: key not in map.")
+        unexpected(this_file, "get_from_fixpoint_table_final: key not in map.")
     ).
 
-get_from_fixpoint_table_final_semidet(Index, T) = Elem :-
+get_from_fixpoint_table_final_semidet(Index, T, Elem) :-
     map.search(T ^ mapping, Index, Entry),
     Elem = Entry ^ entry_elem.
 

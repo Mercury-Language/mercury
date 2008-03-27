@@ -973,8 +973,7 @@ get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
 
 get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
         !Info, !IO) :-
-    ModuleId = module_name_to_module_id(ModuleName),
-    analysis.read_module_overall_status(mmc, ModuleId, MaybeStatus, !IO),
+    analysis.read_module_overall_status(mmc, ModuleName, MaybeStatus, !IO),
     (
         MaybeStatus = yes(Status),
         (

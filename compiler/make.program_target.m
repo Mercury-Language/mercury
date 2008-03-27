@@ -834,8 +834,7 @@ lookup_module_imports(ModuleDeps, ModuleName) = ModuleImports :-
 modules_needing_reanalysis(_, [], [], [], !IO).
 modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
         InvalidModules, SuboptimalModules, !IO) :-
-    read_module_overall_status(mmc, module_name_to_module_id(Module),
-        MaybeModuleStatus, !IO),
+    read_module_overall_status(mmc, Module, MaybeModuleStatus, !IO),
     (
         MaybeModuleStatus = yes(ModuleStatus),
         (

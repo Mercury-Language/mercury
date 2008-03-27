@@ -115,7 +115,8 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         Context = goal_info_get_context(GoalInfo),
         context_to_string(Context, ContextString),
         !:SharingAs = sharing_as_top_sharing_accumulate(
-            "generic call (" ++ ContextString ++ ")", !.SharingAs)
+            top_cannot_improve("generic call (" ++ ContextString ++ ")"),
+            !.SharingAs)
     ;
         GoalExpr = unify(_, _, _, Unification, _),
         unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, 

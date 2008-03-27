@@ -342,10 +342,24 @@
     % Whenever structure sharing analysis is unable to determine a good
     % approximation of the set of structure sharing pairs that might exist
     % during the execution of a program, it must use "top" as the only safe
-    % approximation. In order to collect some useful basic feedback information
-    % as to `why' a top was generated, we use:
+    % approximation.
     %
-:- type top_feedback == string.
+    % We divide the reasons for approximating by `top' into two cases:
+    %
+    % - the procedure calls some imported procedure for which we don't have an
+    %   answer (yet). The result might be improved if we did have that
+    %   information.
+    %
+    % - the procedure calls some imported procedure for which we managed to
+    %   look up the answer, and that answer was `top'.
+    %
+    % - the procedure contains a call to foreign or generic code.
+    %   Reanalysis will not improve the result.
+    %
+:- type top_feedback
+    --->    top_failed_lookup(shrouded_pred_proc_id)
+    ;       top_from_lookup(shrouded_pred_proc_id)
+    ;       top_cannot_improve(string).
 
     % Elements of the structure sharing domain lattice are either bottom
     % (no structure sharing), top (any kind of structure sharing), or

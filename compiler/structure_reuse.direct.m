@@ -119,9 +119,17 @@ direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):-
 direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo, 
         !ReuseTable, !IO):-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0), 
-    list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId), 
-        pred_info_non_imported_procids(PredInfo0), !ModuleInfo, 
-        !ReuseTable, !IO).
+    (
+        pred_info_get_origin(PredInfo0, Origin),
+        Origin = origin_special_pred(_)
+    ->
+        % We can't analyse compiler generated special predicates.
+        true
+    ;
+        list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId), 
+            pred_info_non_imported_procids(PredInfo0), !ModuleInfo, 
+            !ReuseTable, !IO)
+    ).
 
 :- pred direct_reuse_process_proc(reuse_strategy::in, sharing_as_table::in, 
     pred_id::in, proc_id::in, module_info::in, module_info::out,

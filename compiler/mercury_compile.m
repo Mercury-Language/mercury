@@ -1560,16 +1560,16 @@ maybe_prepare_intermodule_analysis(!HLDS, !IO) :-
 
 prepare_intermodule_analysis(!HLDS, !IO) :-
     module_info_get_name(!.HLDS, ThisModuleName),
-    module_info_get_all_deps(!.HLDS, ModuleNamesSet0),
-    set.insert(ModuleNamesSet0, ThisModuleName, ModuleNamesSet),
-    ModuleIds = set.map(module_name_to_module_id, ModuleNamesSet),
+    module_info_get_all_deps(!.HLDS, ModuleNames0),
+    set.insert(ModuleNames0, ThisModuleName, ModuleNames),
 
     globals.io_lookup_accumulating_option(local_module_id, LocalModulesList,
         !IO),
-    LocalModuleIds = set.from_list(LocalModulesList),
+    SymNames = list.map(string_to_sym_name, LocalModulesList),
+    LocalModuleNames = set.from_list(SymNames),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
-    analysis.prepare_intermodule_analysis(ModuleIds, LocalModuleIds,
+    analysis.prepare_intermodule_analysis(ModuleNames, LocalModuleNames,
         AnalysisInfo0, AnalysisInfo, !IO),
     module_info_set_analysis_info(AnalysisInfo, !HLDS).
 
@@ -2446,12 +2446,16 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
+    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 190, "structure_sharing", !DumpInfo, !IO),
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 195, "structure_reuse", !DumpInfo, !IO),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
-    ModuleId = module_name_to_module_id(ModuleName),
-    ImportedModuleIds = set.map(module_name_to_module_id, ImportedModules),
-    analysis.write_analysis_files(mmc, ModuleId, ImportedModuleIds,
+    analysis.write_analysis_files(mmc, !.HLDS, ModuleName, ImportedModules,
         AnalysisInfo, _AnalysisInfo, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,

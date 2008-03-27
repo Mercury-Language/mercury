@@ -344,7 +344,7 @@ parse_structure_sharing(Term) = SharingPairs :-
 
 parse_structure_sharing_domain(Term) = SharingAs :-
     (
-        Term = term.functor(term.atom(Cons), _, Context),
+        Term = term.functor(term.atom(Cons), _, _Context),
         (
             Cons = "[|]",
             SharingAs0 = structure_sharing_real(parse_structure_sharing(Term))
@@ -353,16 +353,16 @@ parse_structure_sharing_domain(Term) = SharingAs :-
             SharingAs0 = structure_sharing_bottom
         ;
             Cons = "top",
-            context_to_string(Context, ContextMsg),
             SharingAs0 = structure_sharing_top(
-                set.make_singleton_set("imported top: " ++ ContextMsg ++ "."))
+                set.make_singleton_set(
+                    top_cannot_improve("from parse_structure_sharing_domain")))
         )
     ->
         SharingAs = SharingAs0
     ;
         unexpected(this_file, "Error while parsing structure sharing domain.")
     ).
-    
+
 parse_structure_reuse_condition(Term) = ReuseCondition :- 
     (
         Term = term.functor(term.atom(Cons), Args, _)
@@ -442,8 +442,9 @@ parse_user_annotated_sharing(Varset, Term, UserSharing) :-
         Term = term.functor(term.atom("unknown_sharing"), [], Context),
         context_to_string(Context, ContextString), 
         Msg = "user declared top(" ++ ContextString ++ ")",
+        Reason = top_cannot_improve(Msg),
         UserSharing = user_sharing(structure_sharing_top(
-            set.make_singleton_set(Msg)), no)
+            set.make_singleton_set(Reason)), no)
     ;
         Term = term.functor(term.atom("sharing"), 
             [TypesTerm, UserSharingTerm], _),
@@ -625,8 +626,7 @@ do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
         ;
             VerboseTop = yes,
             io.write_string("top([", !IO),
-            io.write_list(set.to_sorted_list(Msgs), Separator, io.write_string,
-                !IO),
+            io.write_list(set.to_sorted_list(Msgs), Separator, io.write, !IO),
             io.write_string("])", !IO)
         )
     ;

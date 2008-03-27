@@ -949,8 +949,9 @@ make_local_module_id_options(ModuleName, Success, Options, !Info, !IO) :-
 :- pred make_local_module_id_option(module_name::in, list(string)::in,
     list(string)::out) is det.
 
-make_local_module_id_option(ModuleName, Opts,
-    ["--local-module-id", module_name_to_module_id(ModuleName) | Opts]).
+make_local_module_id_option(ModuleName, Opts0, Opts) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    Opts = ["--local-module-id", ModuleNameStr | Opts0].
 
 %-----------------------------------------------------------------------------%
 

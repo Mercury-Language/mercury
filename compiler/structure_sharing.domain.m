@@ -52,6 +52,7 @@
 :- module transform_hlds.ctgc.structure_sharing.domain.
 :- interface.
 
+:- import_module analysis.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -74,11 +75,12 @@
 :- pred sharing_as_is_bottom(sharing_as::in) is semidet.
 
     % Operations w.r.t. the "top" element of the lattice. When sharing
-    % becomes top, it is useful to know why it has become top. This can
-    % be recorded and passed to the top-value as a string.
+    % becomes top, it is useful to know why it has become top.
     %
-:- func sharing_as_top_sharing(string) = sharing_as.
-:- func sharing_as_top_sharing_accumulate(string, sharing_as) = sharing_as.
+:- func sharing_as_top_no_feedback = sharing_as.
+:- func sharing_as_top_sharing(top_feedback) = sharing_as.
+:- func sharing_as_top_sharing_accumulate(top_feedback, sharing_as)
+    = sharing_as.
 :- pred sharing_as_is_top(sharing_as::in) is semidet.
 
     % Return the size of the sharing set. Fail when sharing is top.
@@ -165,6 +167,9 @@
 :- pred sharing_as_is_subsumed_by(module_info::in, proc_info::in,
     sharing_as::in, sharing_as::in) is semidet.
 
+:- pred sharing_as_and_status_is_subsumed_by(module_info::in, proc_info::in,
+    sharing_as_and_status::in, sharing_as_and_status::in) is semidet.
+
     % Compute the least upper bound.
     %
 :- func sharing_as_least_upper_bound(module_info, proc_info,
@@ -218,7 +223,13 @@
     % Mapping between pred_proc_ids and sharing information that has been
     % derived for the corresponding procedure definitions.
     %
-:- type sharing_as_table == map(pred_proc_id, sharing_as).
+:- type sharing_as_table == map(pred_proc_id, sharing_as_and_status).
+
+:- type sharing_as_and_status
+    --->    sharing_as_and_status(
+                sharing_as,
+                analysis_status
+            ).
 
     % Initialisation.
     %
@@ -227,12 +238,12 @@
     % Look up the sharing information of a specific procedure. Fail if the
     % procedure id is not in the map.
     %
-:- func sharing_as_table_search(pred_proc_id, sharing_as_table)
-    = sharing_as is semidet.
+:- pred sharing_as_table_search(pred_proc_id::in, sharing_as_table::in,
+    sharing_as_and_status::out) is semidet.
 
     % Set the sharing information for a given pred_proc_id.
     %
-:- pred sharing_as_table_set(pred_proc_id::in, sharing_as::in,
+:- pred sharing_as_table_set(pred_proc_id::in, sharing_as_and_status::in,
     sharing_as_table::in, sharing_as_table::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -244,7 +255,6 @@
 :- pred lookup_sharing_and_comb(module_info::in, pred_info::in, proc_info::in,
     sharing_as_table::in, pred_id::in, proc_id::in, prog_vars::in,
     sharing_as::in, sharing_as::out) is det.
-
 
     % Lookup the sharing information in the sharing table, or if it is not
     % in there, try to predict it using the information available in the 
@@ -259,14 +269,16 @@
     % 3 - react appropriately if the calls happen to be to
     %     * either compiler generated predicates
     %     * or predicates from builtin.m and private_builtin.m
+    %     * :- external predicates
     %
 :- pred lookup_sharing_or_predict(module_info::in, sharing_as_table::in,
-    pred_proc_id::in, sharing_as::out) is det.
+    pred_proc_id::in, sharing_as::out, analysis_status::out, bool::out) is det.
 
     % Succeeds if the sharing of a procedure can safely be approximated by
-    % "bottom", simply by looking at the modes and types of the arguments.
+    % "bottom", simply by looking at the modes and types of the arguments,
+    % or because the procedure is of a generated special predicate.
     %
-:- pred bottom_sharing_is_safe_approximation(module_info::in,
+:- pred bottom_sharing_is_safe_approximation(module_info::in, pred_info::in,
     proc_info::in) is semidet.
 
     % Load all the structure sharing information present in the HLDS into
@@ -304,14 +316,26 @@
 
 %-----------------------------------------------------------------------------%
 
+:- interface.
+
+    % The intention was for this type to be hidden, but we need to expose it
+    % for structure_sharing.m to convert between `structure_sharing_answer'
+    % and `sharing_as'.
+    %
 :- type sharing_as
     --->    sharing_as_real_as(sharing_set)
     ;       sharing_as_bottom
-    ;       sharing_as_top(set(string)).
+    ;       sharing_as_top(set(top_feedback)).
+
+:- implementation.
+
+%-----------------------------------------------------------------------------%
 
 sharing_as_init = sharing_as_bottom.
 
 sharing_as_is_bottom(sharing_as_bottom).
+
+sharing_as_top_no_feedback = sharing_as_top(set.init).
 
 sharing_as_top_sharing(Msg) = sharing_as_top(set.make_singleton_set(Msg)).
 
@@ -611,7 +635,7 @@ sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
         context_to_string(ProgContext, ContextString), 
         Msg = "foreign proc with unknown sharing (" 
             ++ ContextString ++ ")",
-        SharingAs = sharing_as_top_sharing(Msg)
+        SharingAs = sharing_as_top_sharing(top_cannot_improve(Msg))
     ).
 
 :- pred sharing_as_from_user_annotated_sharing(
@@ -639,7 +663,6 @@ sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :-
         UserSharingAs = !.SharingAs
     ).
 
-
 sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2) :-
     (
         Sharing2 = sharing_as_top(_)
@@ -651,6 +674,13 @@ sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2) :-
         sharing_set_is_subsumed_by(ModuleInfo, ProcInfo, SharingSet1,
             SharingSet2)
     ).
+
+sharing_as_and_status_is_subsumed_by(ModuleInfo, ProcInfo,
+        SharingAs_Status1, SharingAs_Status2) :-
+    SharingAs_Status1 = sharing_as_and_status(Sharing1, _Status1),
+    SharingAs_Status2 = sharing_as_and_status(Sharing2, _Status2),
+    sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2).
+    % XXX do we need to compare Status1 and Status2?
 
 sharing_as_least_upper_bound(ModuleInfo, ProcInfo, Sharing1, Sharing2)
         = Sharing :-
@@ -736,8 +766,8 @@ from_structure_sharing_domain(SharingDomain) = SharingAs :-
         SharingSet = from_sharing_pair_list(StructureSharing),
         wrap(SharingSet, SharingAs)
     ;
-        SharingDomain = structure_sharing_top(Msgs),
-        SharingAs = sharing_as_top(Msgs)
+        SharingDomain = structure_sharing_top(Reasons),
+        SharingAs = sharing_as_top(Reasons)
     ).
 
 to_structure_sharing_domain(SharingAs) = SharingDomain :-
@@ -759,9 +789,12 @@ to_structure_sharing_domain(SharingAs) = SharingDomain :-
 %
 
 sharing_as_table_init = map.init.
-sharing_as_table_search(PPId, Table) = Table ^ elem(PPId).
-sharing_as_table_set(PPId, Sharing, !Table) :-
-    !:Table = !.Table ^ elem(PPId) := Sharing.
+
+sharing_as_table_search(PPId, Table, SharingAs_Status) :-
+    map.search(Table, PPId, SharingAs_Status).
+
+sharing_as_table_set(PPId, SharingAs_Status, !Table) :-
+    !Table ^ elem(PPId) := SharingAs_Status.
 
 %-----------------------------------------------------------------------------%
 
@@ -769,7 +802,10 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         PredId, ProcId, ActualVars, !Sharing):- 
     PPId = proc(PredId, ProcId),
     
-    lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing),
+    % XXX make use of the status once the structure reuse passes use the
+    % analysis framework
+    lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing,
+        _Status, _IsPredicted),
 
     proc_info_get_vartypes(ProcInfo, VarTypes), 
     map.apply_to_list(ActualVars, VarTypes, ActualTypes),
@@ -783,12 +819,16 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo, 
         ActualSharing, !.Sharing).
 
-lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs) :- 
+lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs, Status,
+        IsPredicted) :-
     (
         % look up in SharingTable
-        SharingAs0 = sharing_as_table_search(PPId, SharingTable)
+        sharing_as_table_search(PPId, SharingTable,
+            sharing_as_and_status(SharingAs0, Status0))
     ->
-        SharingAs = SharingAs0
+        SharingAs = SharingAs0,
+        Status = Status0,
+        IsPredicted = no
     ;
         % or predict bottom sharing
         %
@@ -798,10 +838,24 @@ lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs) :-
         % the sharing the called procedure creates is bottom.
         predict_called_pred_is_bottom(ModuleInfo, PPId)
     ->
-        SharingAs = sharing_as_init
+        SharingAs = sharing_as_init,
+        Status = optimal,
+        IsPredicted = yes
+    ;
+        PPId = proc(PredId, _),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_import_status(PredInfo, ImportStatus),
+        ImportStatus = status_external(_)
+    ->
+        SharingAs = sharing_as_top_sharing(top_cannot_improve(
+            "external predicate")),
+        Status = optimal,
+        IsPredicted = no
     ;
         % or use top-sharing with appropriate message.
-        SharingAs = top_sharing_not_found(ModuleInfo, PPId)
+        SharingAs = top_sharing_not_found(PPId),
+        Status = suboptimal,
+        IsPredicted = no
     ).
 
 :- pred predict_called_pred_is_bottom(module_info::in, pred_proc_id::in)
@@ -819,7 +873,7 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         )
     ;
         % 2. bottom_sharing_is_safe_approximation
-        bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo)
+        bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo)
     ;
         % 3. call to a compiler generate special predicate:
         % "unify", "index", "compare" or "initialise".
@@ -832,20 +886,13 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         any_mercury_builtin_module(PredModule)
     ).
 
-:- func top_sharing_not_found(module_info, pred_proc_id) = sharing_as.
+:- func top_sharing_not_found(pred_proc_id) = sharing_as.
 
-top_sharing_not_found(ModuleInfo, PPId) = TopSharing :-
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
-    PPId = proc(PredId, ProcId),
-    PredModuleName = pred_info_module(PredInfo),
-
-    TopSharing = sharing_as_top_sharing("Lookup sharing failed for " ++
-        sym_name_to_escaped_string(PredModuleName) ++ "." ++
-        pred_info_name(PredInfo) ++ "/" ++
-        int_to_string(pred_info_orig_arity(PredInfo)) ++ " (id = " ++
-        int_to_string(pred_id_to_int(PredId)) ++ "," ++
-        int_to_string(proc_id_to_int(ProcId))).
-
+top_sharing_not_found(PPId) = TopSharing :-
+    ShroudedPredProcId = shroud_pred_proc_id(PPId),
+    Reason = top_failed_lookup(ShroudedPredProcId),
+    TopSharing = sharing_as_top_sharing(Reason).
+    
 %-----------------------------------------------------------------------------%
 
 load_structure_sharing_table(ModuleInfo) = SharingTable :-
@@ -869,43 +916,49 @@ load_structure_sharing_table_3(ModuleInfo, PredId, ProcId, !SharingTable) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_structure_sharing(ProcInfo, MaybePublicSharing),
     (
-        MaybePublicSharing = yes(PublicSharing),
+        MaybePublicSharing = yes(
+            structure_sharing_domain_and_status(PublicSharing, Status)),
         PPId = proc(PredId, ProcId),
         PrivateSharing = from_structure_sharing_domain(PublicSharing),
-        sharing_as_table_set(PPId, PrivateSharing, !SharingTable)
+        sharing_as_table_set(PPId,
+            sharing_as_and_status(PrivateSharing, Status), !SharingTable)
     ;
         MaybePublicSharing = no
     ).
+
 %-----------------------------------------------------------------------------%
-    
-    % Succeeds if the sharing of a procedure can safely be approximated by
-    % "bottom", simply by looking at the modes and types of the arguments.
-    %
-bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    list.map(map.lookup(VarTypes), HeadVars, Types),
 
-    ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
+bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo) :-
+    (
+        % Generated special predicates don't introduce sharing.
+        pred_info_get_origin(PredInfo, Origin),
+        Origin = origin_special_pred(_)
+    ;
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_argmodes(ProcInfo, Modes),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        list.map(map.lookup(VarTypes), HeadVars, Types),
 
-    Test = (pred(Pair::in) is semidet :-
-        Pair = Mode - Type,
+        ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
 
-        % Mode is not unique nor clobbered.
-        mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
-        \+ inst_is_unique(ModuleInfo, RightInst),
-        \+ inst_is_clobbered(ModuleInfo, RightInst),
+        Test = (pred(Pair::in) is semidet :-
+            Pair = Mode - Type,
 
-        % Mode is output.
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-        ArgMode = top_out,
+            % Mode is not unique nor clobbered.
+            mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
+            \+ inst_is_unique(ModuleInfo, RightInst),
+            \+ inst_is_clobbered(ModuleInfo, RightInst),
 
-        % Type is not primitive.
-        \+ type_is_atomic(ModuleInfo, Type)
-    ),
-    list.filter(Test, ModeTypePairs, TrueModeTypePairs),
-    TrueModeTypePairs = [].
+            % Mode is output.
+            mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+            ArgMode = top_out,
+
+            % Type is not primitive.
+            \+ type_is_atomic(ModuleInfo, Type)
+        ),
+        list.filter(Test, ModeTypePairs, TrueModeTypePairs),
+        TrueModeTypePairs = []
+    ).
 
 %-----------------------------------------------------------------------------%
 % Type: sharing_set.
@@ -1312,7 +1365,11 @@ new_entry(ModuleInfo, ProcInfo, SharingPair0, !SharingSet) :-
     ;
         sharing_set_subsumed_subset(ModuleInfo, ProcInfo,
             !.SharingSet, SharingPair, SubsumedPairs),
-        remove_entries(SubsumedPairs, !SharingSet),
+        % For any two pairs (A,B) and (B,A) keep only one pair in the list.
+        % Otherwise we'll get an assertion failure in `remove_entries' when we
+        % try to remove (B,A) after having removed (A,B).
+        remove_swapped_dup_pairs(SubsumedPairs, [], SubsumedPairsNoDups),
+        remove_entries(SubsumedPairsNoDups, !SharingSet),
         new_entry_no_controls(SharingPair, !SharingSet)
     ).
 
@@ -1493,6 +1550,19 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
         list.condense(ListSubsumedPairs, SubsumedPairs)
     ;
         SubsumedPairs = []
+    ).
+
+:- pred remove_swapped_dup_pairs(list(structure_sharing_pair)::in,
+    list(structure_sharing_pair)::in, list(structure_sharing_pair)::out)
+    is det.
+
+remove_swapped_dup_pairs([], Acc, Acc).
+remove_swapped_dup_pairs([H | T], Acc0, Acc) :-
+    H = A - B,
+    ( list.member(B - A, Acc0) ->
+        remove_swapped_dup_pairs(T, Acc0, Acc)
+    ;
+        remove_swapped_dup_pairs(T, [H | Acc0], Acc)
     ).
 
 :- pred new_entries(module_info::in, proc_info::in, structure_sharing::in,
@@ -1946,13 +2016,14 @@ data_set_directed_closure(FromData, ToData) = SharingPairs :-
     set_cross_product(DataSet1, DataSet2, SetOfPairs),
     set.to_sorted_list(SetOfPairs, SharingPairs).
 
-:- pred set_cross_product(set(T1)::in, set(T2)::in,
-    set(pair(T1, T2))::out) is det.
+:- pred set_cross_product(set(datastruct)::in, set(datastruct)::in,
+    set(pair(datastruct, datastruct))::out) is det.
 
 set_cross_product(SetA, SetB, CrossProduct):-
     solutions_set(cross_product(SetA, SetB), CrossProduct).
 
-:- pred cross_product(set(T1)::in, set(T2)::in, pair(T1, T2)::out) is nondet.
+:- pred cross_product(set(datastruct)::in, set(datastruct)::in,
+    pair(datastruct, datastruct)::out) is nondet.
 
 cross_product(SetA, SetB, Pair) :-
     set.member(ElemA, SetA),

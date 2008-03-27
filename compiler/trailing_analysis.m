@@ -74,9 +74,9 @@
     % Types and instances for the intermodule analysis framework.
     %
 :- type trailing_analysis_answer.
-:- instance analysis(any_call, trailing_analysis_answer).
-:- instance partial_order(trailing_analysis_answer).
-:- instance answer_pattern(trailing_analysis_answer).
+:- instance analysis(no_func_info, any_call, trailing_analysis_answer).
+:- instance partial_order(no_func_info, trailing_analysis_answer).
+:- instance answer_pattern(no_func_info, trailing_analysis_answer).
 :- instance to_string(trailing_analysis_answer).
 
 %----------------------------------------------------------------------------%
@@ -1123,21 +1123,23 @@ should_write_trailing_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
 
 analysis_name = "trail_usage".
 
-:- instance analysis(any_call, trailing_analysis_answer) where [
+:- instance analysis(no_func_info, any_call, trailing_analysis_answer) where [
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 1,
     preferred_fixpoint_type(_, _) = least_fixpoint,
-    bottom(_) = trailing_analysis_answer(trail_will_not_modify),
-    top(_) = trailing_analysis_answer(trail_may_modify)
+    bottom(_, _) = trailing_analysis_answer(trail_will_not_modify),
+    top(_, _) = trailing_analysis_answer(trail_may_modify),
+    get_func_info(_, _, _, _, _, no_func_info)
 ].
 
-:- instance answer_pattern(trailing_analysis_answer) where [].
-:- instance partial_order(trailing_analysis_answer) where [
-    (more_precise_than(
-            trailing_analysis_answer(Status1),
-            trailing_analysis_answer(Status2)) :-
-        trailing_status_more_precise_than(Status1, Status2)),
-    equivalent(Status, Status)
+:- instance answer_pattern(no_func_info, trailing_analysis_answer) where [].
+:- instance partial_order(no_func_info, trailing_analysis_answer) where [
+    ( more_precise_than(no_func_info, Answer1, Answer2) :-
+        Answer1 = trailing_analysis_answer(Status1),
+        Answer2 = trailing_analysis_answer(Status2),
+        trailing_status_more_precise_than(Status1, Status2)
+    ),
+    equivalent(no_func_info, Status, Status)
 ].
 
 :- pred trailing_status_more_precise_than(trailing_status::in,
@@ -1188,10 +1190,10 @@ search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC,
 
 search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         !AnalysisInfo) :-
-    mmc_analysis.module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
+    mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
-    analysis.lookup_best_result(!.AnalysisInfo, ModuleId, FuncId, Call,
-        MaybeBestStatus),
+    analysis.lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
+        no_func_info, Call, MaybeBestStatus),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, make_analysis_registry,
         MakeAnalysisRegistry),
@@ -1200,7 +1202,7 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
             trailing_analysis_answer(Result), AnalysisStatus)),
         (
             MakeAnalysisRegistry = yes,
-            record_dependencies(ModuleId, FuncId, BestCall,
+            record_dependencies(ModuleName, FuncId, BestCall,
                 ModuleInfo, CallerSCC, !AnalysisInfo)
         ;
             MakeAnalysisRegistry = no
@@ -1209,9 +1211,9 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         MaybeBestStatus = no,
         % If we do not have any information about the callee procedure
         % then assume that it modifies the trail.
-        top(Call) = Answer,
+        top(no_func_info, Call) = Answer,
         Answer = trailing_analysis_answer(Result),
-        module_is_local(!.AnalysisInfo, ModuleId, IsLocal),
+        module_is_local(!.AnalysisInfo, ModuleName, IsLocal),
         (
             IsLocal = yes,
             AnalysisStatus = suboptimal,
@@ -1223,11 +1225,11 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
                     ShouldWrite),
                 (
                     ShouldWrite = yes,
-                    analysis.record_result(ModuleId, FuncId,
+                    analysis.record_result(ModuleName, FuncId,
                         Call, Answer, AnalysisStatus, !AnalysisInfo),
-                    analysis.record_request(analysis_name, ModuleId, FuncId,
+                    analysis.record_request(analysis_name, ModuleName, FuncId,
                         Call, !AnalysisInfo),
-                    record_dependencies(ModuleId, FuncId, Call,
+                    record_dependencies(ModuleName, FuncId, Call,
                         ModuleInfo, CallerSCC, !AnalysisInfo)
                 ;
                     ShouldWrite = no
@@ -1246,17 +1248,17 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
     % same module then we don't need to record the dependency so many
     % times, at least while we only have module-level granularity.
     %
-:- pred record_dependencies(module_id::in, func_id::in, Call::in,
+:- pred record_dependencies(module_name::in, func_id::in, Call::in,
     module_info::in, scc::in, analysis_info::in, analysis_info::out)
-    is det <= call_pattern(Call).
+    is det <= call_pattern(FuncInfo, Call).
 
-record_dependencies(ModuleId, FuncId, Call,
-        ModuleInfo, CallerSCC, !AnalysisInfo) :-
+record_dependencies(ModuleName, FuncId, Call, ModuleInfo, CallerSCC,
+        !AnalysisInfo) :-
     list.foldl((pred(CallerPPId::in, Info0::in, Info::out) is det :-
-        mmc_analysis.module_id_func_id(ModuleInfo, CallerPPId,
-            CallerModuleId, _),
-        analysis.record_dependency(CallerModuleId,
-            analysis_name, ModuleId, FuncId, Call, Info0, Info)
+        mmc_analysis.module_name_func_id(ModuleInfo, CallerPPId,
+            CallerModuleName, _),
+        analysis.record_dependency(CallerModuleName, analysis_name,
+            ModuleName, FuncId, Call, Info0, Info)
     ), CallerSCC, !AnalysisInfo).
 
 :- pred record_trailing_analysis_results(trailing_status::in,
@@ -1280,8 +1282,8 @@ record_trailing_analysis_result(ModuleInfo, Status, ResultStatus,
     should_write_trailing_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
     (
         ShouldWrite = yes,
-        mmc_analysis.module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
-        analysis.record_result(ModuleId, FuncId, any_call,
+        mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        analysis.record_result(ModuleName, FuncId, any_call,
             trailing_analysis_answer(Status), ResultStatus,
             AnalysisInfo0, AnalysisInfo)
     ;

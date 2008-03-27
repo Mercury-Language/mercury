@@ -30,25 +30,30 @@
 
 :- instance compiler(mmc).
 
-:- func module_name_to_module_id(module_name) = module_id.
-:- func module_id_to_module_name(module_id) = module_name.
-
 :- func pred_or_func_name_arity_to_func_id(pred_or_func, string, arity,
     proc_id) = func_id.
 
-:- pred module_id_func_id(module_info::in, pred_proc_id::in,
-    module_id::out, func_id::out) is det.
+:- pred module_name_func_id(module_info::in, pred_proc_id::in,
+    module_name::out, func_id::out) is det.
+
+:- pred func_id_to_ppid(module_info::in, module_name::in,
+    func_id::in, pred_proc_id::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.pred_table.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
+:- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.structure_sharing.
+:- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.trailing_analysis.
@@ -86,18 +91,22 @@
             unit1 : unit(unused_args_call),
             unit1 : unit(unused_args_answer)),
 
-    module_id_to_read_file_name(mmc, ModuleId, Ext, FileName, !IO) :-
-        mmc_module_id_to_read_file_name(ModuleId, Ext, FileName, !IO),
+    analyses(mmc, "structure_sharing") =
+        'new analysis_type'(
+            unit1 : unit(structure_sharing_call),
+            unit1 : unit(structure_sharing_answer)),
 
-    module_id_to_write_file_name(mmc, ModuleId, Ext, FileName, !IO) :-
-        mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO)
+    module_name_to_read_file_name(mmc, ModuleName, Ext, FileName, !IO) :-
+        mmc_module_name_to_read_file_name(ModuleName, Ext, FileName, !IO),
+
+    module_name_to_write_file_name(mmc, ModuleName, Ext, FileName, !IO) :-
+        mmc_module_name_to_write_file_name(ModuleName, Ext, FileName, !IO)
 ].
 
-:- pred mmc_module_id_to_read_file_name(module_id::in, string::in,
+:- pred mmc_module_name_to_read_file_name(module_name::in, string::in,
     maybe_error(string)::out, io::di, io::uo) is det.
 
-mmc_module_id_to_read_file_name(ModuleId, Ext, MaybeFileName, !IO) :-
-    ModuleName = module_id_to_module_name(ModuleId),
+mmc_module_name_to_read_file_name(ModuleName, Ext, MaybeFileName, !IO) :-
     modules.module_name_to_search_file_name(ModuleName, Ext, FileName0, !IO),
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO),
@@ -109,32 +118,42 @@ mmc_module_id_to_read_file_name(ModuleId, Ext, MaybeFileName, !IO) :-
         MaybeFileName = error(_)
     ).
 
-:- pred mmc_module_id_to_write_file_name(module_id::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred mmc_module_name_to_write_file_name(module_name::in, string::in,
+    string::out, io::di, io::uo) is det.
 
-mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO) :-
-    ModuleName = module_id_to_module_name(ModuleId),
+mmc_module_name_to_write_file_name(ModuleName, Ext, FileName, !IO) :-
     module_name_to_file_name(ModuleName, Ext, yes, FileName, !IO).
 
-module_name_to_module_id(ModuleName) = sym_name_to_string(ModuleName).
+pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) =
+    func_id(PredOrFunc, Name, Arity, ProcId).
 
-module_id_to_module_name(ModuleId) = string_to_sym_name(ModuleId).
-
-pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
-    SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
-    FuncId0 = simple_call_id_to_string(SimpleCallId),
-    proc_id_to_int(ProcId, ProcInt),
-    FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).
-
-module_id_func_id(ModuleInfo, proc(PredId, ProcId), ModuleId, FuncId) :-
+module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
-    ModuleId = module_name_to_module_id(PredModule),
-    FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
-        PredName, PredArity, ProcId).
+    FuncId = func_id(PredOrFunc, PredName, PredArity, ProcId).
+
+func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId) :-
+    FuncId = func_id(PredOrFunc, FuncName, Arity, ProcId),
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    (
+        predicate_table_search_pf_m_n_a(PredTable, is_fully_qualified,
+            PredOrFunc, ModuleName, FuncName, Arity, PredIds),
+        PredIds = [PredId]
+    ->
+        PPId = proc(PredId, ProcId)
+    ;
+        unexpected(this_file,
+            "func_id_to_ppid: more than one predicate")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "mmc_analysis.m".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

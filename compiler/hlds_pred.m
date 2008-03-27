@@ -17,6 +17,7 @@
 :- module hlds.hlds_pred.
 :- interface.
 
+:- import_module analysis.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_clauses.
@@ -1846,6 +1847,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 return_debug            :: string
             ).
 
+:- type structure_sharing_domain_and_status
+    --->    structure_sharing_domain_and_status(
+                structure_sharing_domain,
+                analysis_status
+            ).
+
 :- type untuple_proc_info
     --->    untuple_proc_info(
                 map(prog_var, prog_vars)
@@ -1982,9 +1989,10 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_structure_sharing(proc_info::in,
-    maybe(structure_sharing_domain)::out) is det.
+    maybe(structure_sharing_domain_and_status)::out) is det.
 
-:- pred proc_info_set_structure_sharing(structure_sharing_domain::in,
+:- pred proc_info_set_structure_sharing(
+    structure_sharing_domain_and_status::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_imported_structure_sharing(proc_info::in,
@@ -2303,12 +2311,12 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- type structure_sharing_info
     --->    structure_sharing_info(
-                maybe_sharing           :: maybe(structure_sharing_domain),
-                maybe_imported_sharing  :: maybe(imported_sharing)
-                    % Records the sharing information from any `.opt' or
-                    % `.trans_opt' file. This information needs to be processed
-                    % at the beginning of structure sharing analysis. After
-                    % that, this field is of no use.
+                maybe_sharing   :: maybe(structure_sharing_domain_and_status),
+                maybe_imported_sharing :: maybe(imported_sharing)
+                % Records the sharing information from any `.opt' or
+                % `.trans_opt' file. This information needs to be processed at
+                % the beginning of structure sharing analysis. After that,
+                % this field is of no use.
             ).
 
     % Sharing information is expressed in terms of head variables and the

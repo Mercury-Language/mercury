@@ -117,9 +117,9 @@
 %
 
 :- type exception_analysis_answer.
-:- instance analysis(any_call, exception_analysis_answer).
-:- instance partial_order(exception_analysis_answer).
-:- instance answer_pattern(exception_analysis_answer).
+:- instance analysis(no_func_info, any_call, exception_analysis_answer).
+:- instance partial_order(no_func_info, exception_analysis_answer).
+:- instance answer_pattern(no_func_info, exception_analysis_answer).
 :- instance to_string(exception_analysis_answer).
 
 %----------------------------------------------------------------------------%
@@ -989,21 +989,25 @@ type_ctor_is_safe_2("varset",        "varset",        1).
 
 analysis_name = "exception_analysis".
 
-:- instance analysis(any_call, exception_analysis_answer) where [
+:- instance analysis(no_func_info, any_call, exception_analysis_answer)
+        where [
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 1,
     preferred_fixpoint_type(_, _) = least_fixpoint,
-    bottom(_) = exception_analysis_answer(will_not_throw),
-    top(_) = exception_analysis_answer(may_throw(user_exception))
+    bottom(_, _) = exception_analysis_answer(will_not_throw),
+    top(_, _) = exception_analysis_answer(may_throw(user_exception)),
+    get_func_info(_, _, _, _, _, no_func_info)
 ].
 
-:- instance answer_pattern(exception_analysis_answer) where [].
-:- instance partial_order(exception_analysis_answer) where [
-    (more_precise_than(
-            exception_analysis_answer(Status1),
-            exception_analysis_answer(Status2)) :-
-        exception_status_more_precise_than(Status1, Status2)),
-    equivalent(Status, Status)
+:- instance answer_pattern(no_func_info, exception_analysis_answer) where [].
+:- instance partial_order(no_func_info, exception_analysis_answer) where [
+    ( more_precise_than(no_func_info, Answer1, Answer2) :-
+        Answer1 = exception_analysis_answer(Status1),
+        Answer2 = exception_analysis_answer(Status2),
+        exception_status_more_precise_than(Status1, Status2)
+    ),
+
+    equivalent(no_func_info, Status, Status)
 ].
 
 :- pred exception_status_more_precise_than(exception_status::in,
@@ -1063,9 +1067,9 @@ search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC, !ModuleInfo) :-
 
 search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         !AnalysisInfo) :-
-    module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
+    module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
-    lookup_best_result(!.AnalysisInfo, ModuleId, FuncId, Call,
+    lookup_best_result(!.AnalysisInfo, ModuleName, FuncId, no_func_info, Call,
         MaybeBestResult),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, make_analysis_registry,
@@ -1076,7 +1080,7 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         BestAnswer = exception_analysis_answer(Result),
         (
             MakeAnalysisRegistry = yes,
-            record_dependencies(ModuleId, FuncId, BestCall, ModuleInfo,
+            record_dependencies(ModuleName, FuncId, BestCall, ModuleInfo,
                 CallerSCC, !AnalysisInfo)
         ;
             MakeAnalysisRegistry = no
@@ -1085,19 +1089,19 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         MaybeBestResult = no,
         % If we do not have any information about the callee procedure then
         % assume that it throws an exception.
-        top(Call) = Answer,
+        top(no_func_info, Call) = Answer,
         Answer = exception_analysis_answer(Result),
-        module_is_local(!.AnalysisInfo, ModuleId, IsLocal),
+        module_is_local(!.AnalysisInfo, ModuleName, IsLocal),
         (
             IsLocal = yes,
             AnalysisStatus = suboptimal,
             (
                 MakeAnalysisRegistry = yes,
-                analysis.record_result(ModuleId, FuncId,
+                analysis.record_result(ModuleName, FuncId,
                     Call, Answer, AnalysisStatus, !AnalysisInfo),
-                analysis.record_request(analysis_name, ModuleId, FuncId, Call,
-                    !AnalysisInfo),
-                record_dependencies(ModuleId, FuncId, Call,
+                analysis.record_request(analysis_name, ModuleName, FuncId,
+                    Call, !AnalysisInfo),
+                record_dependencies(ModuleName, FuncId, Call,
                     ModuleInfo, CallerSCC, !AnalysisInfo)
             ;
                 MakeAnalysisRegistry = no
@@ -1113,17 +1117,16 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
     % same module then we don't need to record the dependency so many
     % times, at least while we only have module-level granularity.
     %
-:- pred record_dependencies(module_id::in, func_id::in, Call::in,
+:- pred record_dependencies(module_name::in, func_id::in, Call::in,
     module_info::in, scc::in, analysis_info::in, analysis_info::out)
-    is det <= call_pattern(Call).
+    is det <= call_pattern(FuncInfo, Call).
 
-record_dependencies(ModuleId, FuncId, Call,
+record_dependencies(ModuleName, FuncId, Call,
         ModuleInfo, CallerSCC, !AnalysisInfo) :-
     list.foldl((pred(CallerPPId::in, Info0::in, Info::out) is det :-
-        module_id_func_id(ModuleInfo, CallerPPId,
-            CallerModuleId, _),
-        record_dependency(CallerModuleId,
-            analysis_name, ModuleId, FuncId, Call, Info0, Info)
+        module_name_func_id(ModuleInfo, CallerPPId, CallerModuleName, _),
+        record_dependency(CallerModuleName, analysis_name, ModuleName, FuncId,
+            Call, Info0, Info)
     ), CallerSCC, !AnalysisInfo).
 
 :- pred record_exception_analysis_results(exception_status::in,
@@ -1147,9 +1150,9 @@ record_exception_analysis_result(ModuleInfo, Status, ResultStatus, PPId,
     should_write_exception_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
     (
         ShouldWrite = yes,
-        module_id_func_id(ModuleInfo, PPId, ModuleId, FuncId),
-        record_result(ModuleId, FuncId, any_call,
-            exception_analysis_answer(Status), ResultStatus,
+        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        Answer = exception_analysis_answer(Status),
+        record_result(ModuleName, FuncId, any_call, Answer, ResultStatus,
             !AnalysisInfo)
     ;
         ShouldWrite = no
@@ -1289,9 +1292,9 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
         UseAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            module_id_func_id(!.ModuleInfo, PPId, ModuleId, FuncId),
-            lookup_best_result(!.AnalysisInfo, ModuleId, FuncId, any_call,
-                MaybeBestResult),
+            module_name_func_id(!.ModuleInfo, PPId, ModuleName, FuncId),
+            lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
+                no_func_info, any_call, MaybeBestResult),
             (
                 MaybeBestResult = yes(analysis_result(_Call, Answer,
                     AnalysisStatus)),
@@ -1310,9 +1313,8 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
                 ExceptionStatus = may_throw(user_exception)
             ),
             module_info_get_name(!.ModuleInfo, ThisModuleName),
-            ThisModuleId = module_name_to_module_id(ThisModuleName),
-            record_dependency(ThisModuleId, analysis_name, ModuleId, FuncId,
-                any_call, !AnalysisInfo),
+            record_dependency(ThisModuleName, analysis_name,
+                ModuleName, FuncId, any_call, !AnalysisInfo),
             module_info_set_analysis_info(!.AnalysisInfo, !ModuleInfo)
         )
     ).

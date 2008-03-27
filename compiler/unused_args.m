@@ -64,14 +64,19 @@
 % Instances used by mmc_analysis.m
 %
 
+:- type unused_args_func_info.
 :- type unused_args_call.
 :- type unused_args_answer.
-:- instance analysis(unused_args_call, unused_args_answer).
-:- instance partial_order(unused_args_call).
-:- instance call_pattern(unused_args_call).
+
+:- instance analysis(unused_args_func_info, unused_args_call,
+    unused_args_answer).
+
+:- instance partial_order(unused_args_func_info, unused_args_call).
+:- instance call_pattern(unused_args_func_info, unused_args_call).
 :- instance to_string(unused_args_call).
-:- instance partial_order(unused_args_answer).
-:- instance answer_pattern(unused_args_answer).
+
+:- instance partial_order(unused_args_func_info, unused_args_answer).
+:- instance answer_pattern(unused_args_func_info, unused_args_answer).
 :- instance to_string(unused_args_answer).
 
 %-----------------------------------------------------------------------------%
@@ -144,14 +149,15 @@
 % Types and instances used by mmc_analysis.m
 %
 
-:- type unused_args_call
-    --->    unused_args_call(arity).
-            % Stands for any call.  The arity is extra information which is
-            % not part of the call pattern.
+:- type unused_args_func_info
+    --->    unused_args_func_info(arity).
 
-    % The list of unused arguments is in sorted order.
+:- type unused_args_call
+    --->    unused_args_call.
+
 :- type unused_args_answer
     --->    unused_args(
+                % The list of unused arguments is in sorted order.
                 args    :: list(int)
             ).
 
@@ -159,45 +165,45 @@
 
 get_unused_args(UnusedArgs) = UnusedArgs ^ args.
 
-:- instance analysis(unused_args_call, unused_args_answer)
-        where [
+:- instance analysis(unused_args_func_info, unused_args_call,
+        unused_args_answer) where
+[
     analysis_name(_, _) = analysis_name,
-    analysis_version_number(_, _) = 2,
+    analysis_version_number(_, _) = 3,
     preferred_fixpoint_type(_, _) = least_fixpoint,
-    bottom(unused_args_call(Arity)) = unused_args(1 .. Arity),
-    top(_) = unused_args([])
+    bottom(unused_args_func_info(Arity), _) = unused_args(1 .. Arity),
+    top(_, _) = unused_args([]),
+    (get_func_info(ModuleInfo, ModuleName, FuncId, _, _, FuncInfo) :-
+        func_id_to_ppid(ModuleInfo, ModuleName, FuncId, proc(PredId, _)),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        Arity = pred_info_orig_arity(PredInfo),
+        FuncInfo = unused_args_func_info(Arity)
+    )
 ].
 
 :- func analysis_name = string.
+
 analysis_name = "unused_args".
 
-:- instance call_pattern(unused_args_call) where [].
-:- instance partial_order(unused_args_call) where [
-    (more_precise_than(_, _) :- semidet_fail),
-    equivalent(Call, Call)
+:- instance call_pattern(unused_args_func_info, unused_args_call) where [].
+:- instance partial_order(unused_args_func_info, unused_args_call) where [
+    (more_precise_than(_, _, _) :- semidet_fail),
+    equivalent(_, Call, Call)
 ].
 
 :- instance to_string(unused_args_call) where [
-    func(to_string/1) is unused_args_call_to_string,
-    func(from_string/1) is unused_args_call_from_string
+    to_string(_) = "",
+    from_string(_) = unused_args_call
 ].
 
-:- func unused_args_call_to_string(unused_args_call) = string.
-
-unused_args_call_to_string(unused_args_call(Arity)) =
-    string.from_int(Arity).
-
-:- func unused_args_call_from_string(string) = unused_args_call is semidet.
-
-unused_args_call_from_string(String) = unused_args_call(Arity) :-
-    string.to_int(String, Arity).
-
-:- instance answer_pattern(unused_args_answer) where [].
-:- instance partial_order(unused_args_answer) where [
-    (more_precise_than(unused_args(Args1), unused_args(Args2)) :-
+:- instance answer_pattern(unused_args_func_info, unused_args_answer) where [].
+:- instance partial_order(unused_args_func_info, unused_args_answer) where [
+    (more_precise_than(_, Answer1, Answer2) :-
+        Answer1 = unused_args(Args1),
+        Answer2 = unused_args(Args2),
         set.subset(sorted_list_to_set(Args2), sorted_list_to_set(Args1))
     ),
-    equivalent(Args, Args)
+    equivalent(_, Args, Args)
 ].
 
 :- instance to_string(unused_args_answer) where [
@@ -408,16 +414,15 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
             pred_info_is_imported(PredInfo)
         ->
             PredModule = pred_info_module(PredInfo),
-            PredModuleId = module_name_to_module_id(PredModule),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             PredName = pred_info_name(PredInfo),
             PredArity = pred_info_orig_arity(PredInfo),
             FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
                 PredName, PredArity, ProcId),
-            Call = unused_args_call(PredArity),
+            FuncInfo = unused_args_func_info(PredArity),
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-            lookup_best_result(AnalysisInfo0, PredModuleId, FuncId, Call,
-                MaybeBestResult),
+            lookup_best_result(AnalysisInfo0, PredModule, FuncId,
+                FuncInfo, unused_args_call, MaybeBestResult),
             (
                 MaybeBestResult = yes(analysis_result(_, BestAnswer, _)),
                 BestAnswer = unused_args(UnusedArgs),
@@ -444,7 +449,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                 AnalysisInfo = AnalysisInfo0
             ;
                 MaybeBestResult = no,
-                module_is_local(AnalysisInfo0, PredModuleId, IsLocal),
+                module_is_local(AnalysisInfo0, PredModule, IsLocal),
                 (
                     IsLocal = yes,
                     % XXX makes too many requests
@@ -455,12 +460,14 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                         ( is_unify_or_compare_pred(PredInfo) ->
                             AnalysisInfo = AnalysisInfo0
                         ;
-                            analysis.record_result(PredModuleId, FuncId,
-                                Call, top(Call) : unused_args_answer,
-                                suboptimal, AnalysisInfo0, AnalysisInfo1),
+                            Answer = top(FuncInfo, unused_args_call)
+                                : unused_args_answer,
+                            analysis.record_result(PredModule, FuncId,
+                                unused_args_call, Answer, suboptimal,
+                                AnalysisInfo0, AnalysisInfo1),
                             analysis.record_request(analysis_name,
-                                PredModuleId, FuncId, Call, AnalysisInfo1,
-                                AnalysisInfo)
+                                PredModule, FuncId, unused_args_call,
+                                AnalysisInfo1, AnalysisInfo)
                         )
                     ;
                         MakeAnalysisRegistry = no,
@@ -1005,13 +1012,12 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
         PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
         PredArity = pred_info_orig_arity(OrigPredInfo),
-        ModuleId = module_name_to_module_id(PredModule),
         FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
             PredName, PredArity, ProcId),
-        Call = unused_args_call(PredArity),
+        FuncInfo = unused_args_func_info(PredArity),
         Answer = unused_args(UnusedArgs),
 
-        analysis.lookup_results(AnalysisInfo0, ModuleId, FuncId,
+        analysis.lookup_results(AnalysisInfo0, PredModule, FuncId,
             IntermodResultsTriples : list(analysis_result(unused_args_call,
                 unused_args_answer))),
         IntermodOldAnswers = list.map((func(R) = R ^ ar_answer),
@@ -1019,7 +1025,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         FilterUnused = (pred(VersionAnswer::in) is semidet :-
             VersionAnswer \= Answer,
             VersionAnswer \= unused_args([]),
-            Answer `more_precise_than` VersionAnswer
+            more_precise_than(FuncInfo, Answer, VersionAnswer)
         ),
         IntermodOldArgLists = list.map(get_unused_args,
             list.filter(FilterUnused, IntermodOldAnswers)),
@@ -1038,8 +1044,8 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
             %     intermodule-optimization; they may not be here.)
             %     (See exception_analysis.should_write_exception_info/4).
         ->
-            analysis.record_result(ModuleId, FuncId, Call, Answer, optimal,
-                AnalysisInfo0, AnalysisInfo)
+            analysis.record_result(PredModule, FuncId, unused_args_call,
+                Answer, optimal, AnalysisInfo0, AnalysisInfo)
         ;
             AnalysisInfo = AnalysisInfo0
         ),
@@ -1937,13 +1943,10 @@ record_intermod_dependencies_2(ModuleInfo, CallerModule,
         CalleePredProcId @ proc(CalleePredId, _), !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     ( pred_info_is_imported(CalleePredInfo) ->
-        CallerModuleId = module_name_to_module_id(CallerModule),
-        module_id_func_id(ModuleInfo, CalleePredProcId,
-            CalleeModuleId, CalleeFuncId),
-        CalleePredArity = pred_info_orig_arity(CalleePredInfo),
-        Call = unused_args_call(CalleePredArity),
-        analysis.record_dependency(CallerModuleId, analysis_name,
-            CalleeModuleId, CalleeFuncId, Call, !AnalysisInfo)
+        module_name_func_id(ModuleInfo, CalleePredProcId,
+            CalleeModule, CalleeFuncId),
+        analysis.record_dependency(CallerModule, analysis_name,
+            CalleeModule, CalleeFuncId, unused_args_call, !AnalysisInfo)
     ;
         true
     ).

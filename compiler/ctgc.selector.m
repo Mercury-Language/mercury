@@ -303,7 +303,7 @@ type_on_path_2(Step, ModuleInfo, FromType, ToType, Path, RemainderPath) :-
             )
         ;
             UnitSelector = termsel(ConsId, Index),
-            SubType = det_select_subtype(ModuleInfo, FromType, ConsId, Index),
+            select_subtype(ModuleInfo, FromType, ConsId, Index, SubType),
             ( SubType = ToType ->
                 (
                     % Check if the same type occurs anywhere further on the
