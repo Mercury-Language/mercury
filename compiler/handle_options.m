@@ -1088,6 +1088,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(single_prec_float, unboxed_float, bool(yes),
             !Globals),
 
+        % Changing this means that the code in make_hlds_passes.m that
+        % handles the declarations for the global variables used by
+        % mutables should also be updated.
         option_implies(highlevel_code, mutable_always_boxed, bool(no),
             !Globals),
 

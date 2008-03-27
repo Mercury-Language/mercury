@@ -1657,9 +1657,12 @@ add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
     % We add the foreign code declaration and definition here rather than
     % in pass 2 because the target-language-specific type name depends on
     % whether there are any foreign_type declarations for Type.
-    get_c_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
+    get_c_mutable_global_foreign_decl(!.ModuleInfo, Type,
         TargetMutableName, IsConstant, IsThreadLocal, Context,
-        ForeignDecl, ForeignDefn),
+        ForeignDecl),
+    get_c_mutable_global_foreign_defn(!.ModuleInfo, Type,
+        TargetMutableName, IsConstant, IsThreadLocal, Context,
+        ForeignDefn),
     ItemStatus0 = item_status(status_local, may_be_unqualified),
     add_item_decl_pass_2(ForeignDecl, ItemStatus0, _, !ModuleInfo, !Specs),
     add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
@@ -1668,18 +1671,82 @@ add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
     % The bool argument says whether the mutable is a constant mutable
     % or not.
     %
-:- pred get_c_mutable_global_foreign_decl_defn(module_info::in, mer_type::in,
+:- pred get_c_mutable_global_foreign_decl(module_info::in, mer_type::in,
     string::in, bool::in, mutable_thread_local::in, prog_context::in,
-    item::out, item::out) is det.
+    item::out) is det.
 
-get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Context, DeclItem, DefnItem) :-
+get_c_mutable_global_foreign_decl(ModuleInfo, Type, TargetMutableName,
+        IsConstant, IsThreadLocal, Context, DeclItem) :-
+    % This declaration will be included in the .mh files.  Since these are
+    % grade independent we need to output both the high- and low-level C
+    % declarations for the global used to implement the mutable and make
+    % the choice conditional on whether MR_HIGHLEVEL_CODE is defined.
+    %
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        % The first argument in the following calls to
+        % global_foreign_type_name says whether the mutable should always be
+        % boxed or not.  The only difference between the high- and low-level
+        % C backends is that in the latter mutables are *always* boxed,
+        % whereas in the former they may not be.
+        HighLevelTypeName = global_foreign_type_name(no, lang_c, ModuleInfo,
+            Type),
+        LowLevelTypeName = global_foreign_type_name(yes, lang_c, ModuleInfo,
+            Type)
+    ;
+        IsThreadLocal = mutable_thread_local,
+        % For thread-local mutables, the variable holds an index into an
+        % array.
+        HighLevelTypeName = "MR_Unsigned",
+        LowLevelTypeName  = "MR_Unsigned"
+    ),
+
+    % Constant mutables do not require mutexes as their values are never
+    % updated. Thread-local mutables do not require mutexes either.
+    (
+        ( IsConstant = yes
+        ; IsThreadLocal = mutable_thread_local
+        )
+    ->
+        LockDecl = []
+    ;
+        LockDecl = [
+            "#ifdef MR_THREAD_SAFE\n",
+            "    extern MercuryLock ",
+            mutable_mutex_var_name(TargetMutableName), ";\n",
+            "#endif\n"
+        ]
+    ),
+
+    DeclBody = string.append_list([
+        "#ifdef MR_HIGHLEVEL_CODE\n",
+        "    extern ", HighLevelTypeName, " ", TargetMutableName, ";\n",
+        "#else\n",
+        "    extern ", LowLevelTypeName, " ", TargetMutableName, ";\n",
+        "#endif\n" | LockDecl]),
+
+    DeclPragma =
+        pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody),
+    DeclItemPragma = item_pragma_info(compiler(mutable_decl), DeclPragma,
+        Context),
+    DeclItem = item_pragma(DeclItemPragma).
+    
+    % Create the C foreign_defn for the mutable.
+    % The bool argument says whether the mutable is a constant mutable
+    % or not.
+    %
+:- pred get_c_mutable_global_foreign_defn(module_info::in, mer_type::in,
+    string::in, bool::in, mutable_thread_local::in, prog_context::in,
+    item::out) is det.
+
+get_c_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
+        IsConstant, IsThreadLocal, Context, DefnItem) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     (
         IsThreadLocal = mutable_not_thread_local,
-        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
-            ModuleInfo, Type)
+        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c, ModuleInfo,
+            Type)
     ;
         IsThreadLocal = mutable_thread_local,
         % For thread-local mutables, the variable holds an index into an
@@ -1694,15 +1761,8 @@ get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
         ; IsThreadLocal = mutable_thread_local
         )
     ->
-        LockDecl = [],
         LockDefn = []
     ;
-        LockDecl = [
-            "#ifdef MR_THREAD_SAFE\n",
-            "    extern MercuryLock ",
-            mutable_mutex_var_name(TargetMutableName), ";\n",
-            "#endif\n"
-        ],
         LockDefn = [
             "#ifdef MR_THREAD_SAFE\n",
             "    MercuryLock ",
@@ -1710,14 +1770,6 @@ get_c_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
             "#endif\n"
         ]
     ),
-
-    DeclBody = string.append_list([
-        "extern ", TypeName, " ", TargetMutableName, ";\n" | LockDecl]),
-    DeclPragma =
-        pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody),
-    DeclItemPragma = item_pragma_info(compiler(mutable_decl), DeclPragma,
-        Context),
-    DeclItem = item_pragma(DeclItemPragma),
 
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
