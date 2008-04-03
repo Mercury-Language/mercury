@@ -239,7 +239,8 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         append_to_each_execution_path(!.ExecPaths,
             [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
     ;
-        ( MainConsId = pred_const(_, _)
+        ( MainConsId = implementation_defined_const(_)
+        ; MainConsId = pred_const(_, _)
         ; MainConsId = type_ctor_info_const(_, _, _)
         ; MainConsId = base_typeclass_info_const(_, _, _, _)
         ; MainConsId = type_info_cell_constructor(_)

@@ -98,6 +98,7 @@ selector_init(Cons, Index) = [TermSel] :-
         ( Cons = int_const(_)
         ; Cons = string_const(_)
         ; Cons = float_const(_)
+        ; Cons = implementation_defined_const(_)
         ; Cons = pred_const(_, _)
         ; Cons = type_ctor_info_const(_, _, _)
         ; Cons = base_typeclass_info_const(_, _, _, _)

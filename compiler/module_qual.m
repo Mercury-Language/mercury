@@ -1125,6 +1125,7 @@ qualify_bound_inst_list([bound_functor(ConsId, Insts0) | BoundInsts0],
         ( ConsId = int_const(_)
         ; ConsId = string_const(_)
         ; ConsId = float_const(_)
+        ; ConsId = implementation_defined_const(_)
         ; ConsId = pred_const(_, _)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)

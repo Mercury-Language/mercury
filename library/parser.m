@@ -572,6 +572,7 @@ parse_simple_term(Token, Context, Priority, Term, !PS) :-
 
     % term --> integer              % priority 0
     % term --> float                % priority 0
+    % term --> implementation_defined % priority 0
     % term --> name("-") integer    % priority 0
     % term --> name("-") float      % priority 0
     % term --> atom(NonOp)          % priority 0
@@ -631,6 +632,11 @@ parse_simple_term_2(float(Float), Context, _, Term, !PS) :-
 parse_simple_term_2(string(String), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
     Term = ok(term.functor(term.string(String), [], TermContext)).
+
+parse_simple_term_2(implementation_defined(Name), Context, _, Term, !PS) :-
+    get_term_context(!.PS, Context, TermContext),
+    Term = ok(term.functor(term.implementation_defined(Name), [],
+        TermContext)).
 
 parse_simple_term_2(open, _, _, Term, !PS) :-
     parse_term(Term0, !PS),
@@ -949,6 +955,7 @@ could_start_term(variable(_), yes).
 could_start_term(integer(_), yes).
 could_start_term(float(_), yes).
 could_start_term(string(_), yes).
+could_start_term(implementation_defined(_), yes).
 could_start_term(open, yes).
 could_start_term(open_ct, yes).
 could_start_term(close, no).

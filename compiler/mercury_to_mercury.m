@@ -1747,6 +1747,9 @@ mercury_format_cons_id(float_const(X), _, !U) :-
     add_float(X, !U).
 mercury_format_cons_id(string_const(X), _, !U) :-
     add_quoted_string(X, !U).
+mercury_format_cons_id(implementation_defined_const(Name), _, !U) :-
+    add_string("$", !U),
+    add_string(Name, !U).
 mercury_format_cons_id(pred_const(ShroudedPredProcId, EvalMethod), _, !U) :-
     % XXX Sufficient, but probably should print this out in
     %     name/arity form.

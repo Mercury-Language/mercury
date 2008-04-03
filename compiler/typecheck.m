@@ -2275,6 +2275,18 @@ builtin_atomic_type(float_const(_), "float").
 builtin_atomic_type(string_const(_), "string").
 builtin_atomic_type(cons(unqualified(String), 0), "character") :-
     string.char_to_string(_, String).
+builtin_atomic_type(implementation_defined_const(Name), Type) :-
+    (
+        ( Name = "file"
+        ; Name = "module"
+        ; Name = "pred"
+        ; Name = "grade"
+        ),
+        Type = "string"
+    ;
+        Name = "line",
+        Type = "int"
+    ).
 
     % builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList):
     %

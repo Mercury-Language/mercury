@@ -547,6 +547,9 @@ term_io.write_constant(term.atom(A), NextToGraphicToken, !IO) :-
     term_io.quote_atom_agt(A, NextToGraphicToken, !IO).
 term_io.write_constant(term.string(S), _, !IO) :-
     term_io.quote_string(S, !IO).
+term_io.write_constant(term.implementation_defined(N), _, !IO) :-
+    io.write_char('$', !IO),
+    io.write_string(N, !IO).
 
 term_io.format_constant(Const) =
     term_io.format_constant_agt(Const, not_adjacent_to_graphic_token).
@@ -561,6 +564,8 @@ term_io.format_constant_agt(term.atom(A), NextToGraphicToken) =
     term_io.quoted_atom_agt(A, NextToGraphicToken).
 term_io.format_constant_agt(term.string(S), _) =
     term_io.quoted_string(S).
+term_io.format_constant_agt(term.implementation_defined(N), _) =
+    "$" ++ N.
 
 %-----------------------------------------------------------------------------%
 

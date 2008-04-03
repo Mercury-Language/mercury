@@ -288,6 +288,9 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info),
         Expr = elds_term(Term)
     ;
+        ConsId = implementation_defined_const(_),
+        unexpected(this_file, "cons_id_to_expr: implementation_defined_const")
+    ;
         ConsId = pred_const(ShroudedPredProcId, lambda_normal),
         pred_const_to_closure(ShroudedPredProcId, Args, Expr, !Info)
     ;

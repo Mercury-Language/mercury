@@ -475,6 +475,7 @@ add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
         ; ConsId = int_const(_)
         ; ConsId = string_const(_)
         ; ConsId = float_const(_)
+        ; ConsId = implementation_defined_const(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)

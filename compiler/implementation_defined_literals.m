@@ -1,0 +1,208 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2008 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+%
+% File: implementation_defined_literals.m.
+% Author: wangp.
+%
+% This module replaces "implementation-defined literals" such as $file and
+% $line by real constants.  We transform clauses rather than procedures
+% because, currently, clauses are written out to `.opt' files and $file and
+% $line need to be substituted beforehand.
+%
+%-----------------------------------------------------------------------------%
+
+:- module check_hlds.implementation_defined_literals.
+:- interface.
+
+:- import_module hlds.hlds_module.
+
+:- import_module io.
+
+:- pred subst_implementation_defined_literals(module_info::in,
+    module_info::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module hlds.
+:- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.compiler_util.
+:- import_module libs.handle_options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
+
+:- import_module list.
+:- import_module map.
+:- import_module term.
+
+:- type subst_literals_info
+    --->    subst_literals_info(
+                module_info,
+                pred_info,
+                pred_id
+            ).
+
+%-----------------------------------------------------------------------------%
+
+subst_implementation_defined_literals(!ModuleInfo, !IO) :-
+    module_info_preds(!.ModuleInfo, Preds0),
+    map.map_values(subst_literals_in_pred(!.ModuleInfo), Preds0, Preds),
+    module_info_set_preds(Preds, !ModuleInfo).
+
+:- pred subst_literals_in_pred(module_info::in, pred_id::in, pred_info::in,
+    pred_info::out)  is det.
+
+subst_literals_in_pred(ModuleInfo, PredId, PredInfo0, PredInfo) :-
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+    get_clause_list(ClausesRep0, Clauses0),
+    Info = subst_literals_info(ModuleInfo, PredInfo0, PredId),
+    list.map(subst_literals_in_clause(Info), Clauses0, Clauses),
+    set_clause_list(Clauses, ClausesRep),
+    clauses_info_set_clauses_rep(ClausesRep, ClausesInfo0, ClausesInfo),
+    pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo).
+
+:- pred subst_literals_in_clause(subst_literals_info::in, clause::in,
+    clause::out) is det.
+
+subst_literals_in_clause(Info, Clause0, Clause) :-
+    Body0 = Clause0 ^ clause_body,
+    subst_literals_in_goal(Info, Body0, Body),
+    Clause = Clause0 ^ clause_body := Body.
+
+:- pred subst_literals_in_goal(subst_literals_info::in, hlds_goal::in,
+    hlds_goal::out) is det.
+
+subst_literals_in_goal(Info, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = unify(Var, RHS, _, _, _),
+        (
+            RHS = rhs_functor(ConsId, _, _),
+            (
+                ConsId = implementation_defined_const(Name),
+                Context = goal_info_get_context(GoalInfo0),
+                make_implementation_defined_literal(Var, Name, Context, Info,
+                    Goal1),
+                Goal1 = hlds_goal(GoalExpr, _),
+                Goal = hlds_goal(GoalExpr, GoalInfo0)
+            ;
+                ( ConsId = cons(_, _)
+                ; ConsId = int_const(_)
+                ; ConsId = string_const(_)
+                ; ConsId = float_const(_)
+                ; ConsId = pred_const(_, _)
+                ; ConsId = type_ctor_info_const(_, _, _)
+                ; ConsId = base_typeclass_info_const(_, _, _, _)
+                ; ConsId = type_info_cell_constructor(_)
+                ; ConsId = typeclass_info_cell_constructor
+                ; ConsId = tabling_info_const(_)
+                ; ConsId = deep_profiling_proc_layout(_)
+                ; ConsId = table_io_decl(_)
+                ),
+                Goal = Goal0
+            )
+        ;
+            ( RHS = rhs_var(_)
+            ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
+            ),
+            Goal = Goal0
+        )
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        subst_literals_in_goal(Info, SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        subst_literals_in_goal(Info, SubGoal0, SubGoal),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = conj(ConjType, Goals0),
+        list.map(subst_literals_in_goal(Info), Goals0, Goals),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Goals0),
+        list.map(subst_literals_in_goal(Info), Goals0, Goals),
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        list.map(subst_literals_in_case(Info), Cases0, Cases),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        subst_literals_in_goal(Info, Cond0, Cond),
+        subst_literals_in_goal(Info, Then0, Then),
+        subst_literals_in_goal(Info, Else0, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = shorthand(_)
+        ),
+        Goal = Goal0
+    ).
+
+:- pred subst_literals_in_case(subst_literals_info::in, case::in, case::out)
+    is det.
+
+subst_literals_in_case(Info, Case0, Case) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    subst_literals_in_goal(Info, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal).
+
+:- pred make_implementation_defined_literal(prog_var::in, string::in,
+    term.context::in, subst_literals_info::in, hlds_goal::out) is det.
+
+make_implementation_defined_literal(Var, Name, Context, Info, Goal) :-
+    Context = term.context(File, Line),
+    Info = subst_literals_info(ModuleInfo, PredInfo, PredId),
+    ( Name = "file" ->
+        make_string_const_construction(Var, File, Goal)
+    ; Name = "line" ->
+        make_int_const_construction(Var, Line, Goal)
+    ; Name = "module" ->
+        ModuleName = pred_info_module(PredInfo),
+        Str = sym_name_to_string(ModuleName),
+        make_string_const_construction(Var, Str, Goal)
+    ; Name = "pred" ->
+        Str = pred_id_to_string(ModuleInfo, PredId),
+        make_string_const_construction(Var, Str, Goal)
+    ; Name = "grade" ->
+        module_info_get_globals(ModuleInfo, Globals),
+        grade_directory_component(Globals, Grade),
+        make_string_const_construction(Var, Grade, Goal)
+    ;
+        % These should have been caught during type checking.
+        unexpected(this_file,
+            "make_implementation_defined_literal: unknown literal")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "implementation_defined_literals.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module implementation_defined_literals.
+%-----------------------------------------------------------------------------%

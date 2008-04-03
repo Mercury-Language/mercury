@@ -44,7 +44,8 @@
     --->    atom(string)
     ;       integer(int)
     ;       string(string)
-    ;       float(float).
+    ;       float(float)
+    ;       implementation_defined(string).
 
 :- type term.context
     --->    context(string, int).

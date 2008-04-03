@@ -504,6 +504,10 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
         ;
             Functor = term.atom(_),
             RequiredType = no
+        ;
+            Functor = term.implementation_defined(_),
+            unexpected(this_file,
+                "check_fact_type_and_mode: implementation-defined literal")
         ),
         (
             RequiredType = no,
@@ -1063,6 +1067,9 @@ make_key_part(term.string(S)) = K :-
     string.to_char_list(S, Cs0),
     Cs = key_from_chars(Cs0),
     string.from_char_list(Cs, K).
+make_key_part(term.implementation_defined(_)) = _ :-
+    unexpected(this_file,
+        "make_key_part: implementation-defined literal").
 
     % Escape all backslashes with a backslash and replace all
     % newlines with "\n", colons with "\c" and tildes with "\t".
@@ -1301,6 +1308,10 @@ write_fact_args([Arg | Args], OutputStream, !IO) :-
     ;
         Arg = term.atom(_),
         unexpected(this_file, "write_fact_terms: unsupported type")
+    ;
+        Arg = term.implementation_defined(_),
+        unexpected(this_file,
+            "write_fact_terms: implementation-defined literal")
     ),
     write_fact_args(Args, OutputStream, !IO).
 

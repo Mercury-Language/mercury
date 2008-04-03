@@ -117,6 +117,9 @@ ORDINARY_PROGS=	\
 	ho_order2 \
 	ho_solns \
 	ho_univ_to_type \
+	impl_def_lex \
+	impl_def_lex_string \
+	impl_def_literal \
 	impossible_unify \
 	impure_foreign \
 	impure_foreign2 \

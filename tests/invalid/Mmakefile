@@ -107,6 +107,7 @@ SINGLEMODULE= \
 	ho_type_mode_bug \
 	ho_unique_error \
 	illtyped_compare \
+	impl_def_literal_syntax \
 	impure_method_impl \
 	incompatible_instance_constraints \
 	inconsistent_instances \
@@ -217,6 +218,7 @@ SINGLEMODULE= \
 	types2	\
 	unbound_type_vars \
 	undeclared_mode \
+	undef_impl_def_literal \
 	undef_inst \
 	undef_lambda_mode \
 	undef_mode \

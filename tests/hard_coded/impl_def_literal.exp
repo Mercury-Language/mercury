@@ -1,0 +1,12 @@
+impl_def_literal.m
+21
+impl_def_literal
+predicate `impl_def_literal.main'/2
+function `impl_def_literal.a_function'/0
+fun_with_lines: unequal
+fun_with_lines_2: equal
+have $grade
+impl_def_literal.sub
+predicate `impl_def_literal.sub.in_submodule'/2
+impl_def_literal.m
+10101

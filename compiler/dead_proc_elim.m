@@ -590,6 +590,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 ; ConsId = int_const(_)
                 ; ConsId = string_const(_)
                 ; ConsId = float_const(_)
+                ; ConsId = implementation_defined_const(_)
                 ; ConsId = base_typeclass_info_const(_, _, _, _)
                 ; ConsId = type_info_cell_constructor(_)
                 ; ConsId = typeclass_info_cell_constructor

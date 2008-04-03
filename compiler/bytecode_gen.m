@@ -741,6 +741,9 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
         ConsId = float_const(FloatVal),
         ByteConsId = byte_float_const(FloatVal)
     ;
+        ConsId = implementation_defined_const(_),
+        unexpected(this_file, "map_cons_id: implementation_defined_const")
+    ;
         ConsId = pred_const(ShroudedPredProcId, _EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),

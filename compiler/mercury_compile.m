@@ -53,6 +53,7 @@
 :- import_module hlds.make_hlds.
 :- import_module check_hlds.typecheck.
 :- import_module check_hlds.purity.
+:- import_module check_hlds.implementation_defined_literals.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.mode_constraints.
@@ -2197,6 +2198,13 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
 
                 !:FoundError = yes
             ;
+                % Substitute implementation-defined literals before clauses are
+                % written out to `.opt' files.
+                subst_implementation_defined_literals(Verbose, Stats, !HLDS,
+                    !IO),
+                maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
+                    !DumpInfo, !IO),
+
                 % Only write out the `.opt' file if there are no errors.
                 (
                     !.FoundError = no,
@@ -3651,6 +3659,17 @@ expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
     maybe_report_stats(Stats, !IO).
 
 %-----------------------------------------------------------------------------%
+
+:- pred subst_implementation_defined_literals(bool::in, bool::in, module_info::in,
+    module_info::out, io::di, io::uo) is det.
+
+subst_implementation_defined_literals(Verbose, Stats, !HLDS, !IO) :-
+    maybe_write_string(Verbose,
+        "% Substituting implementation-defined literals...\n", !IO),
+    maybe_flush_output(Verbose, !IO),
+    subst_implementation_defined_literals(!HLDS, !IO),
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
 
 :- pred maybe_polymorphism(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

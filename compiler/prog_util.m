@@ -669,6 +669,7 @@ cons_id_arity(cons(_, Arity)) = Arity.
 cons_id_arity(int_const(_)) = 0.
 cons_id_arity(string_const(_)) = 0.
 cons_id_arity(float_const(_)) = 0.
+cons_id_arity(implementation_defined_const(_)) = 0.
 cons_id_arity(pred_const(_, _)) =
     unexpected(this_file, "cons_id_arity: can't get arity of pred_const").
 cons_id_arity(type_ctor_info_const(_, _, _)) =
@@ -696,6 +697,7 @@ cons_id_maybe_arity(cons(_, Arity)) = yes(Arity).
 cons_id_maybe_arity(int_const(_)) = yes(0).
 cons_id_maybe_arity(string_const(_)) = yes(0).
 cons_id_maybe_arity(float_const(_)) = yes(0).
+cons_id_maybe_arity(implementation_defined_const(_)) = yes(0).
 cons_id_maybe_arity(pred_const(_, _)) = no.
 cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
@@ -709,6 +711,8 @@ make_functor_cons_id(term.atom(Name), Arity) = cons(unqualified(Name), Arity).
 make_functor_cons_id(term.integer(Int), _) = int_const(Int).
 make_functor_cons_id(term.string(String), _) = string_const(String).
 make_functor_cons_id(term.float(Float), _) = float_const(Float).
+make_functor_cons_id(term.implementation_defined(Name), _) =
+    implementation_defined_const(Name).
 
 make_cons_id(SymName0, Args, TypeCtor) = cons(SymName, Arity) :-
     % Use the module qualifier on the SymName, if there is one,

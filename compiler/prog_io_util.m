@@ -747,6 +747,10 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm,
         parse_qualified_term(InstTerm, InstTerm, "inst", ok2(SymName, Args1)),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity)
+    ; Functor = term.implementation_defined(_) ->
+        % Implementation-defined literals should not appear in inst
+        % definitions.
+        fail
     ;
         Args1 = Args0,
         list.length(Args1, Arity),

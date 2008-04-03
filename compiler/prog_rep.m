@@ -384,6 +384,7 @@ cons_id_rep(cons(SymName, _)) = prog_rep.sym_base_name_to_string(SymName).
 cons_id_rep(int_const(Int)) = string.int_to_string(Int).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
 cons_id_rep(string_const(String)) = string.append_list(["""", String, """"]).
+cons_id_rep(implementation_defined_const(Name)) = "$" ++ Name.
 cons_id_rep(pred_const(_, _)) = "$pred_const".
 cons_id_rep(type_ctor_info_const(_, _, _)) = "$type_ctor_info_const".
 cons_id_rep(base_typeclass_info_const(_, _, _, _)) =

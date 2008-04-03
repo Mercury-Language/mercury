@@ -255,7 +255,8 @@ get_functor_if_must_check_for_type(ConsId, MaybeFunctor) :-
         ConsId = float_const(_),
         MaybeFunctor = yes(float_constant)
     ;
-        ( ConsId = pred_const(_, __)
+        ( ConsId = implementation_defined_const(_)
+        ; ConsId = pred_const(_, _)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)

@@ -997,6 +997,7 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
         ( ConsId0 = int_const(_)
         ; ConsId0 = float_const(_)
         ; ConsId0 = string_const(_)
+        ; ConsId0 = implementation_defined_const(_)
         ; ConsId0 = pred_const(_, _)
         ; ConsId0 = type_ctor_info_const(_, _, _)
         ; ConsId0 = base_typeclass_info_const(_, _, _, _)

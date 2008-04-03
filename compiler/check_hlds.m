@@ -25,6 +25,9 @@
     :- include_module typeclasses.
 %:- end_module type_analysis.
 
+% Implementation-defined literals
+:- include_module implementation_defined_literals. 
+
 % Polymorphism transformation.
 :- include_module clause_to_proc.
 :- include_module polymorphism.

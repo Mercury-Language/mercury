@@ -87,6 +87,9 @@ cons_id_to_tag(ModuleInfo, Type, ConsId) = Tag:-
         ConsId = string_const(S),
         Tag = string_tag(S)
     ;
+        ConsId = implementation_defined_const(_),
+        unexpected(this_file, "cons_id_to_tag: implementation_defined_const")
+    ;
         ConsId = pred_const(ShroudedPredProcId, EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         Tag = pred_closure_tag(PredId, ProcId, EvalMethod)

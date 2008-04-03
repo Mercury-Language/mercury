@@ -628,6 +628,7 @@ cons_id(cons(Name, Arity)) = elem("cons", [], [name(Name), arity(Arity)]).
 cons_id(int_const(I)) = tagged_int("int", I).
 cons_id(string_const(S)) = tagged_string("string", S).
 cons_id(float_const(F)) = tagged_float("float", F).
+cons_id(implementation_defined_const(_)) = nyi("implementation_defined_const").
 cons_id(pred_const(_, _)) = nyi("pred_const").
 cons_id(type_ctor_info_const(_, _, _)) = nyi("type_ctor_info_const").
 cons_id(base_typeclass_info_const(_,_,_,_)) = nyi("base_typeclass_info_const").

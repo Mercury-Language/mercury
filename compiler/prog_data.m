@@ -1092,6 +1092,7 @@
     ;       int_const(int)
     ;       string_const(string)
     ;       float_const(float)
+    ;       implementation_defined_const(string)
 
     ;       pred_const(shrouded_pred_proc_id, lambda_eval_method)
             % Note that a pred_const represents a closure,

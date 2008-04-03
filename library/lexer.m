@@ -32,6 +32,7 @@
     ;       integer(int)
     ;       float(float)
     ;       string(string)      % "...."
+    ;       implementation_defined(string) % $name
     ;       open                % '('
     ;       open_ct             % '(' without any preceding whitespace
     ;       close               % ')'
@@ -164,6 +165,8 @@ token_to_string(float(Float), String) :-
     string.append_list(["float `", FloatString, "'"], String).
 token_to_string(string(Token), String) :-
     string.append_list(["string """, Token, """"], String).
+token_to_string(implementation_defined(Name), String) :-
+    string.append_list(["implementation-defined `$", Name, "'"], String).
 token_to_string(open, "token ` ('").
 token_to_string(open_ct, "token `('").
 token_to_string(close, "token `)'").
@@ -357,6 +360,9 @@ get_token(Token, Context, !IO) :-
         ; Char = ('`') ->
             get_context(Context, !IO),
             Token = name("`")
+        ; Char = '$' ->
+            get_context(Context, !IO),
+            get_implementation_defined_literal_rest(Token, !IO)
         ; graphic_token_char(Char) ->
             get_context(Context, !IO),
             get_graphic([Char], Token, !IO)
@@ -404,6 +410,9 @@ string_get_token(String, Len, Token, Context, !Posn) :-
         ; Char = ('`') ->
             string_get_context(Posn0, Context, !Posn),
             Token = name("`")
+        ; Char = '$' ->
+            string_get_implementation_defined_literal_rest(String, Len, Posn0,
+                Token, Context, !Posn)
         ; graphic_token_char(Char) ->
             string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
         ;
@@ -467,6 +476,9 @@ get_token_2(Token, Context, !IO) :-
         ; Char = ('`') ->
             get_context(Context, !IO),
             Token = name("`")
+        ; Char = '$' ->
+            get_context(Context, !IO),
+            get_implementation_defined_literal_rest(Token, !IO)
         ; graphic_token_char(Char) ->
             get_context(Context, !IO),
             get_graphic([Char], Token, !IO)
@@ -510,6 +522,9 @@ string_get_token_2(String, Len, Token, Context, !Posn) :-
         ; Char = ('`') ->
             string_get_context(Posn0, Context, !Posn),
             Token = name("`")
+        ; Char = '$' ->
+            string_get_implementation_defined_literal_rest(String, Len, Posn0,
+                Token, Context, !Posn)
         ; graphic_token_char(Char) ->
             string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
         ;
@@ -1478,6 +1493,61 @@ string_get_name(String, Len, Posn0, Token, Context, !Posn) :-
     ;
         grab_string(String, Posn0, Name, !Posn),
         Token = name(Name),
+        string_get_context(Posn0, Context, !Posn)
+    ).
+
+:- pred get_implementation_defined_literal_rest(token::out, io::di, io::uo)
+    is det.
+
+get_implementation_defined_literal_rest(Token, !IO) :-
+    io.read_char(Result, !IO),
+    (
+        Result = error(Error),
+        Token = io_error(Error)
+    ;
+        Result = eof,
+        Token = name("$")
+    ;
+        Result = ok(Char),
+        ( char.is_lower(Char) ->
+            get_name([Char], Token0, !IO),
+            ( Token0 = name(S) ->
+                Token = implementation_defined(S)
+            ;
+                Token = Token0
+            )
+        ; graphic_token_char(Char) ->
+            get_graphic([Char, '$'], Token, !IO)
+        ;
+            io.putback_char(Char, !IO),
+            Token = name("$")
+        )
+    ).
+
+:- pred string_get_implementation_defined_literal_rest(string::in, int::in,
+    posn::in, token::out, string_token_context::out, posn::in, posn::out)
+    is det.
+
+string_get_implementation_defined_literal_rest(String, Len, Posn0,
+        Token, Context, !Posn) :-
+    Posn1 = !.Posn,
+    ( string_read_char(String, Len, Char, !Posn) ->
+        ( char.is_lower(Char) ->
+            string_get_name(String, Len, Posn1, Token0, Context, !Posn),
+            ( Token0 = name(S) ->
+                Token = implementation_defined(S)
+            ;
+                Token = Token0
+            )
+        ; graphic_token_char(Char) ->
+            string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
+        ;
+            string_ungetchar(String, !Posn),
+            Token = name("$"),
+            string_get_context(Posn0, Context, !Posn)
+        )
+    ;
+        Token = name("$"),
         string_get_context(Posn0, Context, !Posn)
     ).
 

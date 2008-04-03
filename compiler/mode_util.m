@@ -1491,6 +1491,9 @@ cons_id_to_shared_inst(_, ConsId @ float_const(_), _) =
             yes(bound(shared, [bound_functor(ConsId, [])])).
 cons_id_to_shared_inst(_, ConsId @ string_const(_), _) =
             yes(bound(shared, [bound_functor(ConsId, [])])).
+cons_id_to_shared_inst(_, implementation_defined_const(_), _) = _ :-
+    unexpected(this_file,
+        "cons_id_to_shared_inst: implementation_defined_const").
 cons_id_to_shared_inst(ModuleInfo, pred_const(PredProcId, _), NumArgs) =
         yes(ground(shared, higher_order(pred_inst_info(PorF, Modes, Det)))) :-
     module_info_pred_proc_info(ModuleInfo, unshroud_pred_proc_id(PredProcId),

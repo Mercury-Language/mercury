@@ -469,6 +469,7 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
         ( ConsId = int_const(_)
         ; ConsId = string_const(_)
         ; ConsId = float_const(_)
+        ; ConsId = implementation_defined_const(_)
         ; ConsId = pred_const(_, _)
         ; ConsId = typeclass_info_cell_constructor
         ; ConsId = tabling_info_const(_)

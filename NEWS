@@ -22,6 +22,8 @@ Changes to the Mercury language:
 * We now support !X ^ field_list := Term as a synonym for
   !:X = !.X ^ field_list := Term.
 * We now support higher-order `any' insts.
+* We now support "implementation-defined literals", such as `$file', `$line',
+  `$pred', which are useful for producing better run-time error messages.
 
 Changes to the Mercury standard library:
 

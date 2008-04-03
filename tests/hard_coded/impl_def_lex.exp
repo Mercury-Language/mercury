@@ -1,0 +1,10 @@
+implementation_defined("f") 1
+implementation_defined("foo") 2
+name("$") 3
+variable("FOO") 3
+name("$") 4
+name("$!$") 5
+name("$") 6
+comma 6
+name("$") 7
+integer(0) 7

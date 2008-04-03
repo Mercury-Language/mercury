@@ -1,0 +1,7 @@
+{token_cons(implementation_defined("f"), 1, token_nil), posn(1, 0, 2)}
+{token_cons(implementation_defined("foo"), 1, token_nil), posn(1, 0, 4)}
+{token_cons(name("$"), 1, token_cons(variable("FOO"), 1, token_nil)), posn(1, 0, 4)}
+{token_cons(name("$"), 1, token_nil), posn(1, 0, 1)}
+{token_cons(name("$!$"), 1, token_nil), posn(1, 0, 3)}
+{token_cons(name("$"), 1, token_cons(comma, 1, token_nil)), posn(1, 0, 2)}
+{token_cons(name("$"), 1, token_cons(integer(0), 1, token_nil)), posn(1, 0, 2)}

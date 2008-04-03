@@ -346,6 +346,8 @@ cons_id_to_string(string_const(String)) =
     term_io.quoted_string(String).
 cons_id_to_string(float_const(Float)) =
     float_to_string(Float).
+cons_id_to_string(implementation_defined_const(Name)) =
+    "$" ++ Name.
 cons_id_to_string(pred_const(shrouded_pred_proc_id(PredId, ProcId), _)) =
     "<pred " ++ int_to_string(PredId) ++
     " proc " ++ int_to_string(ProcId) ++ ">".
@@ -2881,6 +2883,9 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
         ConsId = string_const(String),
         Str = functor_to_string(term.string(String), ArgVars, VarSet,
             AppendVarNums)
+    ;
+        ConsId = implementation_defined_const(Name),
+        Str = "$" ++ Name
     ;
         ConsId = pred_const(ShroudedPredProcId, _),
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),

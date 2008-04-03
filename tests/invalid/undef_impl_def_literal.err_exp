@@ -1,0 +1,4 @@
+undef_impl_def_literal.m:011: In clause for predicate `main'/2:
+undef_impl_def_literal.m:011:   in argument 1 of call to predicate
+undef_impl_def_literal.m:011:   `io.write'/3:
+undef_impl_def_literal.m:011:   error: undefined symbol `$nosuchthing'.

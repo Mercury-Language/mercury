@@ -294,6 +294,10 @@ the letter @samp{E} (or @samp{e}), an optional sign (@samp{+} or @samp{-}),
 and then another sequence of decimal digits (the exponent).
 The fraction part or the exponent (but not both) may be omitted.
 
+@item implementation_defined_literal
+An implementation-defined literal consists of a dollar sign (@code{$})
+followed by an unquoted name.
+
 @item open_ct
 A left parenthesis, @samp{(}, that is not preceded by whitespace.
 
@@ -1322,13 +1326,48 @@ or an explicit type qualification.
 @subsection Data-functors
 
 A data-functor is an integer, a float, a string, a character literal
-(any single-character name), a name, or a compound data-term.
+(any single-character name), a name, an implementation-defined literal,
+or a compound data-term.
 A compound data-term is a compound term which does not match
 the form of a special data-term (@pxref{Data-terms}),
 and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
+
+Implementation-defined literals are symbolic names whose value represents
+a property of the compilation environment or the context in which it
+appears. The implementation replaces these symbolic names with actual
+constants during compilation.  Implementation-defined literals can only
+appear within clauses. The following literals must be supported by all
+Mercury implementations:
+
+@table @asis
+@item @samp{$file}
+a string that gives the name of the file that contains the module
+being compiled. If the name of the file cannot be determined then it is
+replaced by an arbitrary string.
+
+@item @samp{$line}
+the line number (integer) of the goal in which the literal appears
+or -1 if it cannot be determined.
+
+@item @samp{$module}
+a string representation of the fully-qualified module name.
+
+@item @samp{$pred}
+a string containing the fully-qualified predicate or function name and arity.
+
+@end table
+
+The Mercury Melbourne implementation additionally supports the following
+extension:
+
+@table @asis
+@item @samp{$grade}
+the grade (string) in which the module is compiled.
+
+@end table
 
 @node Record syntax
 @subsection Record syntax
