@@ -109,9 +109,6 @@ report_eval_error(unknown_variable(Name), !IO) :-
 report_eval_error(unexpected_const(Const), !IO) :-
     io.write_string("unexpected ", !IO),
     (
-        Const = term.integer(_),
-        error("report_eval_error")
-    ;
         Const = term.float(Float),
         io.write_string(" float `", !IO),
         io.write_float(Float, !IO),
@@ -122,7 +119,10 @@ report_eval_error(unexpected_const(Const), !IO) :-
         io.write_string(String, !IO),
         io.write_string("""", !IO)
     ;
-        Const = term.atom(_),
+        ( Const = term.integer(_)
+        ; Const = term.atom(_)
+        ; Const = term.implementation_defined(_)
+        ),
         error("report_eval_error")
     ),
     io.nl(!IO).
@@ -155,6 +155,9 @@ eval_expr(_, _, term.functor(term.float(Float), _, Context)) =
         throw(unexpected_const(term.float(Float)) - Context).
 eval_expr(_, _, term.functor(term.string(String), _, Context)) =
         throw(unexpected_const(term.string(String)) - Context).
+eval_expr(_,  _, term.functor(ImplDefConst, _, Context)) = _ :-
+    ImplDefConst = term.implementation_defined(_),
+    throw(unexpected_const(ImplDefConst) - Context).
 
 :- func eval_unop(string, int) = int is semidet.
 
