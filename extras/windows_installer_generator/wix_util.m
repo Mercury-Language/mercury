@@ -142,17 +142,17 @@ modeless_attr(keep_modeless) = attr("KeepModeless", "yes").
 :- pred is_legal_windows_short_name(string::in) is semidet.
 
 is_legal_windows_short_name(FileName) :-
-    Parts = string.words(unify('.'), FileName),
+    Parts = string.words_separator(unify('.'), FileName),
     (
         Parts = [BaseName, Extension],
         string.length(BaseName) =< 8,
         string.length(Extension) =< 3,
-        string.is_alnum_or_underscore(BaseName),
-        string.is_alnum_or_underscore(Extension)
+        string.is_all_alnum_or_underscore(BaseName),
+        string.is_all_alnum_or_underscore(Extension)
     ;
         Parts = [BaseName],
         string.length(BaseName) =< 8,
-        string.is_alnum_or_underscore(BaseName)
+        string.is_all_alnum_or_underscore(BaseName)
     ).
 
     % XXX I don't know exactly how to do this, so am ignoring it for 

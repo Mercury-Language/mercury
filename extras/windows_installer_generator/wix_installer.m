@@ -26,6 +26,8 @@
 
 :- import_module wix.
 
+:- type annotated_installer.
+
 % gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO).
 %
 
