@@ -104,10 +104,9 @@ LIB_FLAGS="\
 	--link-object $gclib \
 	-lm @TRACE_BASE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
 
-# XXX browser.init and mdbcomp.init might need to be included even if tracing
-# is disabled if ssdb uses code from the browser or mdbcomp libraries
+# ssdb.init is not included here because it breaks deep profiling programs
+# built with lmc.
 INIT_FLAGS="\
-	--init-file $WORKSPACE/ssdb/mer_ssdb.init \
 	--trace-init-file $WORKSPACE/browser/mer_browser.init \
 	--trace-init-file $WORKSPACE/mdbcomp/mer_mdbcomp.init \
 	--init-file $WORKSPACE/library/mer_std.init \
