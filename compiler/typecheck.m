@@ -694,7 +694,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     pred_origin::in, pred_origin::out) is det.
 
 rename_instance_method_constraints(Renaming, Origin0, Origin) :-
-    ( Origin0 = origin_instance_method(Constraints0) ->
+    ( Origin0 = origin_instance_method(MethodName, Constraints0) ->
         Constraints0 = instance_method_constraints(ClassId, InstanceTypes0,
             InstanceConstraints0, ClassMethodClassContext0),
         apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
@@ -705,7 +705,7 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
             ClassMethodClassContext0, ClassMethodClassContext),
         Constraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodClassContext),
-        Origin = origin_instance_method(Constraints)
+        Origin = origin_instance_method(MethodName, Constraints)
     ;
         Origin = Origin0
     ).

@@ -397,10 +397,20 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             ),
             Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
         ;
-            pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, marker_class_instance_method)
+            pred_info_get_origin(PredInfo, Origin),
+            Origin = origin_instance_method(MethodName, MethodConstraints)
         ->
-            Str = "type class method implementation"
+            MethodConstraints = instance_method_constraints(ClassId,
+                InstanceTypes, _, _),
+            MethodStr = simple_call_id_to_string(PredOrFunc, MethodName,
+                Arity),
+            ClassId = class_id(ClassName, _),
+            ClassStr = sym_name_to_string(ClassName),
+            TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
+            Str = string.append_list([
+                "instance method ", MethodStr,
+                " for `", ClassStr, "(", TypeStrs, ")'"
+            ])
         ;
             pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType))
         ->
@@ -942,7 +952,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = origin_instance_method(MethodConstraints),
+            Origin = origin_instance_method(_, MethodConstraints),
             MethodConstraints = instance_method_constraints(ClassId,
                 InstanceTypes, InstanceConstraints, ClassMethodConstraints),
             io.write_string("% instance method constraints:\n", !IO),

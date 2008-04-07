@@ -10,3 +10,7 @@ impl_def_literal.sub
 predicate `impl_def_literal.sub.in_submodule'/2
 impl_def_literal.m
 10101
+instance method predicate `impl_def_literal.tc_p'/5 for `impl_def_literal.tc(int, character, ((impl_def_literal.sub).tt(V_1)))'
+instance method function `impl_def_literal.tc_f'/3 for `impl_def_literal.tc(int, character, ((impl_def_literal.sub).tt(V_1)))'
+predicate `impl_def_literal.sub.string_p'/5
+function `impl_def_literal.sub.string_f'/3

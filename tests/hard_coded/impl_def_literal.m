@@ -38,7 +38,20 @@ main(!IO) :-
         io.write_string("have $grade\n", !IO)
     ),
 
-    in_submodule(!IO).
+    in_submodule(!IO),
+
+    % Test literals in instance methods.
+    tc_p(1, 'a', tt(0), !IO),
+
+    tc_f(tt(0), 'b', 2) = F1,
+    io.write_string(F1, !IO),
+    io.nl(!IO),
+
+    tc_p("a", "b", "c", !IO),
+
+    tc_f("a", "b", "c") = F2,
+    io.write_string(F2, !IO),
+    io.nl(!IO).
 
 :- func a_function = string.
 
@@ -69,6 +82,11 @@ fun_with_lines_2(!IO) :-
         io.write_string("fun_with_lines_2: unequal\n", !IO)
     ).
 
+:- typeclass tc(A, B, C) where [
+    pred tc_p(A::in, B::in, C::in, io::di, io::uo) is det,
+    func tc_f(C, B, A) = string
+].
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -76,6 +94,11 @@ fun_with_lines_2(!IO) :-
 :- interface.
 
 :- pred in_submodule(io::di, io::uo) is det.
+
+:- type tt(T) ---> tt(T).
+
+:- instance tc(int, character, tt(T)).
+:- instance tc(string, string, string).
 
 :- implementation.
 
@@ -89,6 +112,29 @@ in_submodule(!IO) :-
 #10101
     io.write_int($line, !IO),
     io.nl(!IO).
+
+:- instance tc(int, character, tt(T)) where [
+    ( tc_p(_, _, _, !IO) :-
+        io.write_string($pred, !IO),
+        io.nl(!IO)
+    ),
+    ( tc_f(_, _, _) = $pred )
+].
+
+:- instance tc(string, string, string) where [
+    pred(tc_p/5) is string_p,
+    func(tc_f/3) is string_f
+].
+
+:- pred string_p(string::in, string::in, string::in, io::di, io::uo) is det.
+
+string_p(_, _, _, !IO) :-
+    io.write_string($pred, !IO),
+    io.nl(!IO).
+
+:- func string_f(string, string, string) = string.
+
+string_f(_, _, _) = $pred.
 
 :- end_module sub.
 

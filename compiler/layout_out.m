@@ -1426,7 +1426,7 @@ origin_name(Origin, Name0) = Name :-
             Name = OldName ++ "_" ++ pred_transform_name(Transform)
         )
     ;
-        ( Origin = origin_instance_method(_)
+        ( Origin = origin_instance_method(_, _)
         ; Origin = origin_created(_)
         ; Origin = origin_assertion(_, _)
         ; Origin = origin_user(_)

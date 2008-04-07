@@ -485,11 +485,11 @@
     --->    origin_special_pred(special_pred)
                 % If the predicate is a unify, compare, index or initialisation
                 % predicate, specify which one, and for which type constructor.
-    ;       origin_instance_method(instance_method_constraints)
-                % If this predicate is a class method implementation, record
-                % extra information about the class context to allow
-                % polymorphism.m to correctly set up the extra type_info
-                % and typeclass_info arguments.
+    ;       origin_instance_method(sym_name, instance_method_constraints)
+                % The predicate is a class method implementation. Record
+                % the method name and extra information about the class
+                % context to allow polymorphism.m to correctly set up the
+                % extra type_info and typeclass_info arguments.
     ;       origin_transformed(pred_transformation, pred_origin, pred_id)
                 % The predicate is a transformed version of another predicate,
                 % whose origin and identity are given by the second and third

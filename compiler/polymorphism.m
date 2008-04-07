@@ -683,7 +683,7 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
     pred_info_get_origin(PredInfo, Origin),
     ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode),
     (
-        Origin = origin_instance_method(InstanceMethodConstraints),
+        Origin = origin_instance_method(_, InstanceMethodConstraints),
         setup_headvars_instance_method(PredInfo,
             InstanceMethodConstraints, !HeadVars,
             UnconstrainedTVars, ExtraHeadTypeInfoVars,
