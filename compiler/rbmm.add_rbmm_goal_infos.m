@@ -438,10 +438,10 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
                 goal_info_set_maybe_rbmm(yes(rbmm_info_init), !Info)
           else
                 OriginalName = rptg_lookup_region_name(Graph, Node),
-                ( map.search(ResurRenaming, OriginalName, ResurName) ->
-                    Name = ResurName
-                ; map.search(IteRenaming, OriginalName, IteName) ->
-                    Name = IteName
+                ( map.search(ResurRenaming, OriginalName, ResurNameList) ->
+                    Name = list.det_last(ResurNameList)
+                ; map.search(IteRenaming, OriginalName, IteNameList) ->
+                    Name = list.det_last(IteNameList)
                 ;
                     Name = OriginalName
                 ),

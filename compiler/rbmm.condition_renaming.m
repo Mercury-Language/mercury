@@ -109,10 +109,20 @@
     % happens. For each Condition where renaming happens,
     % it finds the first program point in the corresponding Then and
     % introduces the reverse renaming annotation before that ponit.
-    %
+    % Note that that first program point must not be in the condition of
+    % an if-then-else. E.g., 
+    % if % a renaming exists here: R -> R_ite_1 
+    % then
+    %    if % not add reverse renaming annotation at this point.
+    %    then
+    %       % but at here: R := R_ite_1
+    %    else
+    %       $ and at here: R := R_ite_1
+    % else 
+    %    ...
 :- pred collect_ite_annotation(proc_goal_path_regions_table::in,
     execution_path_table::in, rpta_info_table::in, renaming_table::in,
-    renaming_annotation_table::out) is det.
+    renaming_table::out, renaming_annotation_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -387,13 +397,14 @@ collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
 
 apply_region_renaming(Graph, Renaming, Node, !Regions) :-
     RegionName = rptg_lookup_region_name(Graph, Node),
-    ( map.search(Renaming, RegionName, RenamedRegionName) ->
+    ( map.search(Renaming, RegionName, RenamedRegionNameList) ->
+        RenamedRegionName = list.det_last(RenamedRegionNameList),
         svset.insert(RenamedRegionName, !Regions)
     ;
         svset.insert(RegionName, !Regions)
     ).
 
-:- pred renaming_annotation_to_regions(region_instruction::in,
+:- pred renaming_annotation_to_regions(region_instr::in,
     set(string)::in, set(string)::out,
     set(string)::in, set(string)::out) is det.
 
@@ -914,9 +925,9 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
 record_ite_renaming(ProgPoint, HowMany, _Graph, RegName, !IteRenamingProc) :-
     NewName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
     ( map.search(!.IteRenamingProc, ProgPoint, IteRenaming0) ->
-        svmap.set(RegName, NewName, IteRenaming0, IteRenaming)
+        svmap.set(RegName, [NewName], IteRenaming0, IteRenaming)
     ;
-        svmap.set(RegName, NewName, map.init, IteRenaming)
+        svmap.set(RegName, [NewName], map.init, IteRenaming)
     ),
     svmap.set(ProgPoint, IteRenaming, !IteRenamingProc).
 
@@ -1016,69 +1027,105 @@ get_closest_condition_in_goal_path(Path, PathToCond, !HowMany) :-
 %
 
 collect_ite_annotation(IteRenamedRegionTable, ExecPathTable,
-        RptaInfoTable, IteRenamingTable, IteAnnotationTable) :-
-    map.foldl(
-        collect_ite_annotation_proc(ExecPathTable, RptaInfoTable,
-            IteRenamingTable),
-        IteRenamedRegionTable, map.init, IteAnnotationTable).
+        RptaInfoTable, !IteRenamingTable, IteAnnotationTable) :-
+    map.foldl2(
+        collect_ite_annotation_proc(ExecPathTable, RptaInfoTable),
+        IteRenamedRegionTable, !IteRenamingTable,
+        map.init, IteAnnotationTable).
 
 :- pred collect_ite_annotation_proc(execution_path_table::in,
-    rpta_info_table::in, renaming_table::in, pred_proc_id::in,
-    goal_path_regions_table::in,
+    rpta_info_table::in, pred_proc_id::in,
+    goal_path_regions_table::in, renaming_table::in, renaming_table::out, 
     renaming_annotation_table::in, renaming_annotation_table::out) is det.
 
-collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, IteRenamingTable,
-        PPId, IteRenamedRegionProc, !IteAnnotationTable) :-
+collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, PPId,
+        IteRenamedRegionProc, !IteRenamingTable, !IteAnnotationTable) :-
     map.lookup(ExecPathTable, PPId, ExecPaths),
     map.lookup(RptaInfoTable, PPId, RptaInfo),
-    map.lookup(IteRenamingTable, PPId, IteRenamingProc),
+    map.lookup(!.IteRenamingTable, PPId, IteRenamingProc0),
     RptaInfo = rpta_info(Graph, _),
-    map.foldl(
-        collect_ite_annotation_region_names(ExecPaths, Graph, IteRenamingProc),
-        IteRenamedRegionProc, map.init, IteAnnotationProc),
-    svmap.set(PPId, IteAnnotationProc, !IteAnnotationTable).
+    map.foldl2(
+        collect_ite_annotation_region_names(ExecPaths, Graph),
+        IteRenamedRegionProc, IteRenamingProc0, IteRenamingProc,
+        map.init, IteAnnotationProc),
+    svmap.set(PPId, IteAnnotationProc, !IteAnnotationTable),
+    svmap.set(PPId, IteRenamingProc, !IteRenamingTable).
 
 :- pred collect_ite_annotation_region_names(list(execution_path)::in,
-    rpt_graph::in, renaming_proc::in, goal_path::in, set(string)::in,
+    rpt_graph::in, goal_path::in, set(string)::in,
+    renaming_proc::in, renaming_proc::out, 
     renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
-collect_ite_annotation_region_names(ExecPaths, Graph, IteRenamingProc,
-        PathToCond, RenamedRegions, !IteAnnotationProc) :-
+collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
+        RenamedRegions, !IteRenamingProc, !IteAnnotationProc) :-
     ( cord.split_last(PathToCond, InitialSteps, LastStep) ->
         expect(unify(LastStep, step_ite_cond), this_file,
             "collect_ite_annotation_region_names: not step_ite_cond"),
         PathToThen = cord.snoc(InitialSteps, step_ite_then),
         get_closest_condition_in_goal_path(PathToCond, _, 0, HowMany),
-        list.foldl(
-            collect_ite_annotation_exec_path(Graph, IteRenamingProc,
-                PathToThen, RenamedRegions, HowMany),
-            ExecPaths, !IteAnnotationProc)
+        list.foldl2(
+            collect_ite_annotation_exec_path(Graph, PathToThen,
+                RenamedRegions, HowMany),
+            ExecPaths, !IteRenamingProc, !IteAnnotationProc)
     ;
         unexpected(this_file,
             "collect_ite_annotation_region_set: empty path to condition.")
     ).
 
-:- pred collect_ite_annotation_exec_path(rpt_graph::in,
-    renaming_proc::in, goal_path::in,
+:- pred collect_ite_annotation_exec_path(rpt_graph::in, goal_path::in,
     set(string)::in, int::in, execution_path::in,
+    renaming_proc::in, renaming_proc::out, 
     renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
-collect_ite_annotation_exec_path(_, _, _, _, _, [], !IteAnnotationProc).
-collect_ite_annotation_exec_path(Graph, IteRenamingProc, PathToThen,
-        RenamedRegions, HowMany,
-        [ProgPoint - _ | ProgPoint_Goals], !IteAnnotationProc) :-
+collect_ite_annotation_exec_path(_, _, _, _, [], !IteRenamingProc,
+        !IteAnnotationProc).
+collect_ite_annotation_exec_path(Graph, PathToThen, RenamedRegions,
+        HowMany, [ProgPoint - _ | ProgPoint_Goals],
+        !IteRenamingProc, !IteAnnotationProc) :-
+    % This is the first program point of this execution path.
+    % We never need to introduce reversed renaming at this point.
+    collect_ite_annotation_exec_path_2(Graph, PathToThen, RenamedRegions,
+        HowMany, ProgPoint, ProgPoint_Goals, !IteRenamingProc,
+        !IteAnnotationProc).
+
+    % Process from the 2nd program point onwards.
+:- pred collect_ite_annotation_exec_path_2(rpt_graph::in, goal_path::in,
+    set(string)::in, int::in, program_point::in, execution_path::in,
+    renaming_proc::in, renaming_proc::out, 
+    renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
+
+collect_ite_annotation_exec_path_2(_, _, _, _, _, [], !IteRenamingProc,
+        !IteAnnotationProc).
+collect_ite_annotation_exec_path_2(Graph, PathToThen, RenamedRegions,
+        HowMany, PrevPoint, [ProgPoint - _ | ProgPoint_Goals],
+        !IteRenamingProc, !IteAnnotationProc) :-
     ProgPoint = pp(_, GoalPath),
     PathToThenSteps = cord.list(PathToThen),
     GoalPathSteps = cord.list(GoalPath),
-    ( list.append(_, PathToThenSteps, GoalPathSteps) ->
-        % This is the first goal in the corresponding then branch, we need
-        % to introduce reverse renaming at this point.
-        set.fold(
-            introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany),
-            RenamedRegions, !IteAnnotationProc)
+    ( list.append(PathToThenSteps, FromThenSteps, GoalPathSteps) ->
+        ( list.member(step_ite_cond, FromThenSteps) ->
+            % We cannot introduce reverse renaming in the condition of
+            % an if-then-else. So we need to maintain the ite renaming
+            % from the previous point to this point.
+            ( map.search(!.IteRenamingProc, PrevPoint, PrevIteRenaming) ->
+                svmap.set(ProgPoint, PrevIteRenaming, !IteRenamingProc)
+            ;   true
+            ),
+            collect_ite_annotation_exec_path_2(Graph, PathToThen,
+                RenamedRegions, HowMany, ProgPoint, ProgPoint_Goals,
+                !IteRenamingProc, !IteAnnotationProc)
+        ;
+            % This is the first point in the corresponding then branch, which
+            % is not in the condition of another if-then-else, we need
+            % to introduce reverse renaming at this point.
+            set.fold(
+                introduce_reverse_renaming(ProgPoint, !.IteRenamingProc,
+                    HowMany),
+                RenamedRegions, !IteAnnotationProc)
+        )
     ;
-        collect_ite_annotation_exec_path(Graph, IteRenamingProc,
-            PathToThen, RenamedRegions, HowMany, ProgPoint_Goals,
+        collect_ite_annotation_exec_path_2(Graph, PathToThen, RenamedRegions,
+            HowMany, ProgPoint, ProgPoint_Goals, !IteRenamingProc,
             !IteAnnotationProc)
     ).
 
@@ -1096,8 +1143,14 @@ introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
         !IteAnnotationProc) :-
     CurrentName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
     ( map.search(IteRenamingProc, ProgPoint, Renaming) ->
-        ( map.search(Renaming, RegName, RenameTo) ->
-            make_renaming_instruction(CurrentName, RenameTo, Annotation)
+        ( map.search(Renaming, RegName, RenameToList) ->
+            ( list.length(RenameToList) = 1 ->
+                RenameTo = list.det_last(RenameToList),
+                make_renaming_instruction(CurrentName, RenameTo, Annotation)
+            ;
+                unexpected(this_file,
+                    "introduce_reverse_renaming: more than one renaming exist.")
+            )
         ;
             make_renaming_instruction(CurrentName, RegName, Annotation)
         )

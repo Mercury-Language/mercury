@@ -28,25 +28,25 @@
 :- import_module map.
 :- import_module string.
 
-:- type region_instruction_table
-    ==      map(pred_proc_id, region_instruction_proc).
+:- type region_instr_table
+    ==      map(pred_proc_id, region_instr_proc).
 
-:- type region_instruction_proc
-    ==      map(program_point, instructions_before_after).
+:- type region_instr_proc
+    ==      map(program_point, instrs_before_after).
 
     % We introduce region instructions before and after a program point.
-:- type instructions_before_after
-    --->    instructions_before_after(
-                instructions_before    :: list(region_instruction),
+:- type instrs_before_after
+    --->    instrs_before_after(
+                instrs_before    :: list(region_instr),
                                         % Region instructions before a program
                                         % point.
 
-                instructions_after     :: list(region_instruction)
+                instrs_after     :: list(region_instr)
                                         % Region instructions after a program
                                         % point.
             ).
 
-:- type region_instruction
+:- type region_instr
     --->    create_region(
                 % Region name.
                 string
@@ -65,16 +65,16 @@
                 string
             ).
 
-:- type region_instruction_type
-    --->    create_region_instruction
-    ;       remove_region_instruction
-    ;       renaming_region_instruction.
+:- type region_instr_type
+    --->    create_region_instr
+    ;       remove_region_instr
+    ;       renaming_region_instr.
 
 :- pred introduce_region_instructions(module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, region_instruction_table::out) is det.
+    proc_region_set_table::in, region_instr_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -113,7 +113,7 @@ introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in, pred_id::in,
-    region_instruction_table::in, region_instruction_table::out) is det.
+    region_instr_table::in, region_instr_table::out) is det.
 
 introduce_region_instructions_pred(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
@@ -130,7 +130,7 @@ introduce_region_instructions_pred(ModuleInfo, RptaInfoTable, ExecPathTable,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in, proc_id::in,
-    region_instruction_table::in, region_instruction_table::out) is det.
+    region_instr_table::in, region_instr_table::out) is det.
 
 introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
@@ -164,7 +164,7 @@ introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, module_info::in, proc_info::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 introduce_region_instructions_exec_paths([], _, _, _, _, _, _, _, _, _, _, _,
         !RegionInstructionProc).
@@ -184,7 +184,7 @@ introduce_region_instructions_exec_paths([ExecPath|ExecPaths], RptaInfo,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, module_info::in, proc_info::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 introduce_region_instructions_exec_path([], _, _, _, _, _, _, _, _, _, _, _,
         !RegionInstructionProc).
@@ -207,7 +207,7 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
     set.intersect(Local_Born_Dead, DeadVoidVarRegions0, DeadVoidVarRegions),
     RptaInfo = rpta_info(CallerGraph, _),
     set.fold(
-        record_instruction_after_prog_point(remove_region_instruction,
+        record_instruction_after_prog_point(remove_region_instr,
             ProgPoint, CallerGraph),
         DeadVoidVarRegions, !RegionInstructionProc),
 
@@ -242,8 +242,9 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
         set.difference(LRAfter, LRBeforeNext, ToBeRemovedBeforeNext),
         set.intersect(Local_Born_Dead, ToBeRemovedBeforeNext,
             ToBeRemovedBeforeNextAndAllowed),
-        set.fold(record_instruction_before_prog_point(remove_region_instruction,
-            NextProgPoint, CallerGraph), ToBeRemovedBeforeNextAndAllowed,
+        set.fold(record_instruction_before_prog_point(
+                remove_region_instr, NextProgPoint, CallerGraph),
+            ToBeRemovedBeforeNextAndAllowed,
             !RegionInstructionProc),
 
         introduce_region_instructions_exec_path(ProgPoint_Goals, RptaInfo,
@@ -270,7 +271,7 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
     %
 :- pred transformation_rule_1(hlds_goal_expr::in, program_point::in,
     region_set::in, rpta_info::in, proc_region_set_table::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, CallerRptaInfo,
         BornRTable, !RegionInstructionProc) :-
@@ -297,7 +298,7 @@ transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, CallerRptaInfo,
             % provided that they are in BornR or LocalR, i.e., p is allowed
             % to create them.
             set.fold(
-                record_instruction_before_prog_point(create_region_instruction,
+                record_instruction_before_prog_point(create_region_instr,
                     ProgPoint, CallerGraph),
                 ToBeCreatedAndAllowed, !RegionInstructionProc)
         )
@@ -314,7 +315,7 @@ transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, CallerRptaInfo,
 
 :- pred process_mapping_rule_1(program_point::in, region_set::in,
     region_set::in, rpt_graph::in, rptg_node::in, rptg_node::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, CalleeBornR,
         CallerGraph, SourceRegion, TargetRegion, !RegionInstructionProc) :-
@@ -322,7 +323,7 @@ process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, CalleeBornR,
         set.contains(ToBeCreatedAndAllowed, TargetRegion),
         not set.contains(CalleeBornR, SourceRegion)
     ->
-        record_instruction_before_prog_point(create_region_instruction,
+        record_instruction_before_prog_point(create_region_instr,
             ProgPoint, CallerGraph, TargetRegion, !RegionInstructionProc)
     ;
         true
@@ -335,7 +336,7 @@ process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, CalleeBornR,
     %
 :- pred transformation_rule_2(hlds_goal_expr::in, program_point::in,
     region_set::in, rpta_info::in, module_info::in, proc_info::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 transformation_rule_2(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
         ModuleInfo, ProcInfo, !RegionInstructionProc) :-
@@ -349,9 +350,10 @@ transformation_rule_2(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
 
         set.intersect(Reach_X, ToBeCreatedAndAllowed,
             ToBeCreatedAllowedAndReached),
-        set.fold(record_instruction_before_prog_point(create_region_instruction,
-            ProgPoint, Graph), ToBeCreatedAllowedAndReached,
-            !RegionInstructionProc)
+        set.fold(
+            record_instruction_before_prog_point(create_region_instr,
+                ProgPoint, Graph),
+            ToBeCreatedAllowedAndReached, !RegionInstructionProc)
     ;
         ( Expr = unify(_, _, _, deconstruct(_, _, _, _, _, _), _)
         ; Expr = unify(_, _, _, assign(_, _), _)
@@ -383,7 +385,7 @@ transformation_rule_2(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
     %
 :- pred transformation_rule_3(hlds_goal_expr::in, program_point::in,
     region_set::in, rpta_info::in, proc_region_set_table::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, CallerRptaInfo,
         DeadRTable, !RegionInstructionProc) :-
@@ -405,7 +407,7 @@ transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, CallerRptaInfo,
             % become dead provided that p is allowed to remove those
             % regions.
             set.fold(
-                record_instruction_after_prog_point(remove_region_instruction,
+                record_instruction_after_prog_point(remove_region_instr,
                     ProgPoint, CallerGraph),
                 ToBeRemovedAndAllowed, !RegionInstructionProc)
         )
@@ -422,7 +424,7 @@ transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, CallerRptaInfo,
 
 :- pred process_mapping_rule_3(program_point::in, region_set::in,
     region_set::in, rpt_graph::in, rptg_node::in, rptg_node::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed, CalleeDeadR,
         CallerGraph, SourceRegion, TargetRegion, !RegionInstructionProc) :-
@@ -430,7 +432,7 @@ process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed, CalleeDeadR,
         set.contains(ToBeRemovedAndAllowed, TargetRegion),
         not set.contains(CalleeDeadR, SourceRegion)
     ->
-        record_instruction_after_prog_point(remove_region_instruction,
+        record_instruction_after_prog_point(remove_region_instr,
             ProgPoint, CallerGraph, TargetRegion, !RegionInstructionProc)
     ;
         true
@@ -442,8 +444,8 @@ process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed, CalleeDeadR,
     % procedure is allowed to remove it.
     %
 :- pred transformation_rule_4(hlds_goal_expr::in, program_point::in,
-    region_set::in, rpta_info::in, region_instruction_proc::in,
-    region_instruction_proc::out) is det.
+    region_set::in, rpta_info::in, region_instr_proc::in,
+    region_instr_proc::out) is det.
 
 transformation_rule_4(Expr, ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
         !RegionInstructionProc) :-
@@ -451,8 +453,10 @@ transformation_rule_4(Expr, ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
         Expr = unify(_, _, _, _, _)
     ->
         RptaInfo = rpta_info(Graph, _),
-        set.fold(record_instruction_after_prog_point(remove_region_instruction,
-            ProgPoint, Graph), ToBeRemovedAndAllowed, !RegionInstructionProc)
+        set.fold(
+            record_instruction_after_prog_point(remove_region_instr,
+                ProgPoint, Graph),
+            ToBeRemovedAndAllowed, !RegionInstructionProc)
     ;
         ( Expr = plain_call(_, _, _, _, _, _)
         ; Expr = conj(_, [])
@@ -469,20 +473,20 @@ transformation_rule_4(Expr, ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
     % We will record the annotations after the program point.
     %
 :- pred transformation_rule_4_2(program_point::in, region_set::in,
-    rpta_info::in, region_instruction_proc::in, region_instruction_proc::out)
+    rpta_info::in, region_instr_proc::in, region_instr_proc::out)
     is det.
 
 transformation_rule_4_2(ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
         !RegionInstructionProc) :-
     RptaInfo = rpta_info(Graph, _),
     set.fold(
-        record_instruction_after_prog_point(remove_region_instruction,
+        record_instruction_after_prog_point(remove_region_instr,
             ProgPoint, Graph),
         ToBeRemovedAndAllowed, !RegionInstructionProc).
 
-:- pred record_instruction_after_prog_point(region_instruction_type::in,
+:- pred record_instruction_after_prog_point(region_instr_type::in,
     program_point::in, rpt_graph::in, rptg_node::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
 record_instruction_after_prog_point(RegionInstType, ProgPoint, Graph, Region,
         !RegionInstructionProc) :-
@@ -492,63 +496,74 @@ record_instruction_after_prog_point(RegionInstType, ProgPoint, Graph, Region,
     % Attach the instruction to after the program point.
     (
         map.search(!.RegionInstructionProc, ProgPoint,
-            instructions_before_after(InstsBefore, InstsAfter))
+            instrs_before_after(InstsBefore, InstsAfter))
     ->
         ( list.member(RegionInstruction, InstsAfter) ->
             true
         ;
             svmap.set(ProgPoint,
-                instructions_before_after(InstsBefore,
+                instrs_before_after(InstsBefore,
                     [RegionInstruction | InstsAfter]),
                 !RegionInstructionProc)
         )
     ;
         svmap.set(ProgPoint,
-            instructions_before_after([], [RegionInstruction]),
+            instrs_before_after([], [RegionInstruction]),
             !RegionInstructionProc)
     ).
 
-:- pred record_instruction_before_prog_point(region_instruction_type::in,
+    % When adding region annotations to before a program point, we maintain
+    % that remove instructions are added to top, create instructions are
+    % appended at the end.
+    %
+:- pred record_instruction_before_prog_point(region_instr_type::in,
     program_point::in, rpt_graph::in, rptg_node::in,
-    region_instruction_proc::in, region_instruction_proc::out) is det.
+    region_instr_proc::in, region_instr_proc::out) is det.
 
-record_instruction_before_prog_point(RegionInstType, ProgPoint, Graph, Region,
+record_instruction_before_prog_point(RegionInstrType, ProgPoint, Graph, Region,
         !RegionInstructionProc) :-
     RegionName = rptg_lookup_region_name(Graph, Region),
-    make_create_or_remove_instruction(RegionInstType, RegionName,
+    make_create_or_remove_instruction(RegionInstrType, RegionName,
         RegionInstruction),
     % Attach the instruction to before the program point.
     (
         map.search(!.RegionInstructionProc, ProgPoint,
-            instructions_before_after(InstsBefore, InstsAfter))
+            instrs_before_after(InstrsBefore, InstrsAfter))
     ->
-        ( list.member(RegionInstruction, InstsBefore) ->
+        ( list.member(RegionInstruction, InstrsBefore) ->
             true
         ;
+            % It is only safe to add create intructions after remove
+            % instructions before a program point because we allow
+            % remove(R1), create(R1), p(..., R1, ...).
+            ( RegionInstrType = create_region_instr ->
+                NewInstrsBefore = InstrsBefore ++ [RegionInstruction]
+            ;
+                NewInstrsBefore = [RegionInstruction | InstrsBefore]
+            ),
             svmap.set(ProgPoint,
-                instructions_before_after([RegionInstruction | InstsBefore],
-                    InstsAfter),
+                instrs_before_after(NewInstrsBefore, InstrsAfter),
                 !RegionInstructionProc)
         )
     ;
         svmap.set(ProgPoint,
-            instructions_before_after([RegionInstruction], []),
+            instrs_before_after([RegionInstruction], []),
             !RegionInstructionProc)
     ).
 
-:- pred make_create_or_remove_instruction(region_instruction_type::in,
-    string::in, region_instruction::out) is det.
+:- pred make_create_or_remove_instruction(region_instr_type::in,
+    string::in, region_instr::out) is det.
 
-make_create_or_remove_instruction(RegionInstType, RegionName,
+make_create_or_remove_instruction(RegionInstrType, RegionName,
         RegionInstruction) :-
     (
-        RegionInstType = create_region_instruction,
+        RegionInstrType = create_region_instr,
         RegionInstruction = create_region(RegionName)
     ;
-        RegionInstType = remove_region_instruction,
+        RegionInstrType = remove_region_instr,
         RegionInstruction = remove_region(RegionName)
     ;
-        RegionInstType = renaming_region_instruction,
+        RegionInstrType = renaming_region_instr,
         unexpected(this_file, "make_create_or_remove_instruction: "
             ++ "unexpected region instruction type")
     ).
