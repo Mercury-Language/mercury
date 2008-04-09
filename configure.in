@@ -2892,14 +2892,14 @@ case "$mercury_cv_user_base_grade" in
      ;;
 esac
 
-# Force the use of the none grade on Apple x86/Darwin 9 (Leopard)
-# systems, since the default gcc supplied with that system doesn't
-# work with the either the reg or asm_fast grades.
+# Force the use of the none grade on Apple x86/Darwin systems,
+# since the default gcc supplied with that system doesn't
+# work with either the reg or asm_fast grades.
 # XXX provide a workaround for the former; the latter is a problem
 # with gcc's Darwin support.
 #
 case "$host" in
-    i*86*apple*darwin9*)
+    i*86*apple*darwin*)
         BEST_LLDS_BASE_GRADE=none
         ;;
 esac    
