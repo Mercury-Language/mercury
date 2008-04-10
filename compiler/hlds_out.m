@@ -3937,6 +3937,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize),
     proc_info_get_maybe_termination_info(Proc, MaybeTermination),
     proc_info_get_structure_sharing(Proc, MaybeStructureSharing), 
+    proc_info_get_structure_reuse(Proc, MaybeStructureReuse), 
     proc_info_get_rtti_varmaps(Proc, RttiVarMaps),
     proc_info_get_eval_method(Proc, EvalMethod),
     proc_info_get_is_address_taken(Proc, IsAddressTaken),
@@ -3978,7 +3979,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         true
     ),
 
-        % Dump structure sharing information.
+    % Dump structure sharing information.
     ( string.contains_char(Verbose, 'S') ->
         write_indent(Indent, !IO),
         io.write_string("% Structure sharing: \n", !IO),
@@ -3990,6 +3991,22 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ;
             MaybeStructureSharing = no,
             dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
+        )
+    ;
+        true
+    ),
+
+    % Dump structure reuse information.
+    ( string.contains_char(Verbose, 'R') ->
+        write_indent(Indent, !IO),
+        io.write_string("% Structure reuse: \n", !IO),
+        (
+            MaybeStructureReuse = yes(ReuseAs),
+            dump_maybe_structure_reuse_domain(VarSet, TVarSet, yes(ReuseAs),
+                !IO)
+        ;
+            MaybeStructureReuse = no,
+            dump_maybe_structure_reuse_domain(VarSet, TVarSet, no, !IO)
         )
     ;
         true

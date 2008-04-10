@@ -114,17 +114,11 @@
 :- pred dump_maybe_structure_sharing_domain(prog_varset::in, tvarset::in,
     maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
+:- pred dump_maybe_structure_reuse_domain(prog_varset::in, tvarset::in,
+    maybe(structure_reuse_domain)::in, io::di, io::uo) is det.
+
 :- pred print_interface_structure_sharing_domain(prog_varset::in,
     tvarset::in, maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
-
-:- pred print_structure_reuse_condition(prog_varset::in, tvarset::in, 
-    structure_reuse_condition::in, io::di, io::uo) is det.
-
-:- pred print_structure_reuse_conditions(prog_varset::in, tvarset::in, 
-    structure_reuse_conditions::in, io::di, io::uo) is det.
-
-:- pred print_structure_reuse_domain(prog_varset::in, tvarset::in, 
-    structure_reuse_domain::in, io::di, io::uo) is det.
 
 :- pred print_interface_maybe_structure_reuse_domain(prog_varset::in, 
     tvarset::in, maybe(structure_reuse_domain)::in, io::di, io::uo) is det.
@@ -563,7 +557,7 @@ print_datastruct(ProgVarSet, TypeVarSet, DataStruct, !IO) :-
 
 print_datastructs(ProgVarSet, TypeVarSet, Datastructs, !IO) :- 
     io.write_string("[", !IO), 
-    io.write_list(Datastructs, ",", print_datastruct(ProgVarSet, TypeVarSet),
+    io.write_list(Datastructs, ", ", print_datastruct(ProgVarSet, TypeVarSet),
         !IO), 
     io.write_string("]", !IO). 
 
@@ -609,7 +603,7 @@ print_structure_sharing_as_list(ProgVarSet, TypeVarSet, SharingPairs, !IO) :-
 print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
         MaybeThreshold, SharingAs, !IO) :-
     do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
-        MaybeThreshold, "", ",", "", SharingAs, !IO).
+        MaybeThreshold, "", ", ", "", SharingAs, !IO).
 
 :- pred do_print_structure_sharing_domain(prog_varset::in, tvarset::in,
     bool::in, maybe(int)::in, string::in, string::in, string::in,
@@ -635,7 +629,7 @@ do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
     ;
         SharingAs = structure_sharing_real(SharingPairs),
         print_structure_sharing(ProgVarSet, TypeVarSet,
-        MaybeThreshold, "[", Separator, "]", SharingPairs, !IO)
+            MaybeThreshold, "[", Separator, "]", SharingPairs, !IO)
     ),
     io.write_string(End, !IO).
 
@@ -655,24 +649,38 @@ print_interface_structure_sharing_domain(ProgVarSet, TypeVarSet,
         !IO),
     io.write_string(")", !IO).
 
+dump_maybe_structure_reuse_domain(_, _, no, !IO) :-
+    io.write_string("% no reuse information available.\n", !IO).
+dump_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, yes(ReuseAs), !IO) :-
+    print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseAs, !IO).
+
+:- pred print_structure_reuse_condition(prog_varset::in, tvarset::in, 
+    structure_reuse_condition::in, io::di, io::uo) is det.
+
 print_structure_reuse_condition(ProgVarSet, TypeVarSet, ReuseCond, !IO) :-
     ReuseCond = structure_reuse_condition(DeadNodes, InUseNodes, Sharing), 
     io.write_string("condition(", !IO), 
     print_datastructs(ProgVarSet, TypeVarSet, DeadNodes, !IO), 
-    io.write_string(",", !IO),
+    io.write_string(", ", !IO),
     print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO), 
-    io.write_string(",", !IO),
+    io.write_string(", ", !IO),
     print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, 
         Sharing, !IO),
     io.write_string(")", !IO).
 
-print_structure_reuse_conditions(ProgVarSet, TypeVarSet, ReuseConds, !IO) :- 
-    io.write_string("[", !IO), 
-    io.write_list(ReuseConds, ",", 
-        print_structure_reuse_condition(ProgVarSet, TypeVarSet), !IO), 
-    io.write_string("]", !IO).
+:- pred print_structure_reuse_conditions(prog_varset::in, tvarset::in,
+    string::in, structure_reuse_conditions::in, io::di, io::uo) is det.
+
+print_structure_reuse_conditions(ProgVarSet, TypeVarSet, Separator, ReuseConds,
+        !IO) :- 
+    io.write_list(ReuseConds, Separator,
+        print_structure_reuse_condition(ProgVarSet, TypeVarSet), !IO). 
+
+:- pred print_structure_reuse_domain(prog_varset::in, tvarset::in, 
+    structure_reuse_domain::in, io::di, io::uo) is det.
 
 print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO) :- 
+    io.write_string("%\t ", !IO),
     (
         ReuseDomain = has_no_reuse,
         io.write_string("has_no_reuse", !IO)
@@ -681,11 +689,12 @@ print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO) :-
         io.write_string("has_only_unconditional_reuse", !IO)
     ;
         ReuseDomain = has_conditional_reuse(ReuseConditions),
-        io.write_string("has_conditional_reuse(", !IO), 
+        io.write_string("has_conditional_reuse([\n%\t\t ", !IO), 
         print_structure_reuse_conditions(ProgVarSet, TypeVarSet, 
-            ReuseConditions, !IO), 
-        io.write_string(")", !IO)
-    ).
+            ", \n%\t\t ", ReuseConditions, !IO), 
+        io.write_string("\n%\t ])", !IO)
+    ),
+    io.write_string("\n", !IO).
 
 print_interface_maybe_structure_reuse_domain(_, _, no, !IO) :- 
     io.write_string("not_available", !IO).
