@@ -2321,18 +2321,6 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     Termination2 = no
                 ),
                 (
-                    TrailingAnalysis = yes,
-                    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO)
-                ;
-                    TrailingAnalysis = no
-                ),
-                (
-                    TablingAnalysis = yes,
-                    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO)
-                ;
-                    TablingAnalysis = no
-                ),
-                (
                     SharingAnalysis = yes,
                     maybe_structure_sharing_analysis(Verbose, Stats,
                         !HLDS, !IO)
@@ -2345,6 +2333,18 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                         !HLDS, !IO)
                 ;
                     ReuseAnalysis = no
+                ),
+                (
+                    TrailingAnalysis = yes,
+                    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO)
+                ;
+                    TrailingAnalysis = no
+                ),
+                (
+                    TablingAnalysis = yes,
+                    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO)
+                ;
+                    TablingAnalysis = no
                 )
             ;
                 FoundModeError = yes,
@@ -2414,14 +2414,14 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
-    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 190, "structure_sharing", !DumpInfo, !IO),
-    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 195, "structure_reuse", !DumpInfo, !IO),
     write_trans_opt_file(!.HLDS, !IO).
 
 :- pred output_analysis_file(module_name::in, module_info::in,
@@ -2450,16 +2450,16 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
     maybe_unused_args(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
-    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 190, "structure_sharing", !DumpInfo, !IO),
-    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 195, "structure_reuse", !DumpInfo, !IO),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
@@ -2642,6 +2642,12 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_delay_construct(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 160, "delay_construct", !DumpInfo, !IO),
 
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
+
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
+
     maybe_unused_args(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
 
@@ -2659,12 +2665,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
-
-    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 190, "structure_sharing", !DumpInfo, !IO),
-
-    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 195, "structure_reuse", !DumpInfo, !IO),
 
     maybe_control_granularity(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 200, "granularity", !DumpInfo, !IO),
