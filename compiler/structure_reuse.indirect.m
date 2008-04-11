@@ -577,14 +577,16 @@ verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
     LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo,
         SharingAs),
     ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
+    StaticVars = set.to_sorted_list(AnalysisInfo ^ static_vars),
     (
         reuse_as_satisfied(ModuleInfo, ProcInfo, ProjectedLiveData,
-            SharingAs, set.to_sorted_list(AnalysisInfo ^ static_vars),
-            ActualReuseAs)
+            SharingAs, StaticVars, ActualReuseAs)
     ->
-        LuData = list.map(datastruct_init,
-            set.to_sorted_list(set.union(goal_info_get_lfu(GoalInfo),
-                goal_info_get_lbu(GoalInfo)))),
+        LFU = goal_info_get_lfu(GoalInfo),
+        LBU = goal_info_get_lbu(GoalInfo),
+        LU = set.union(LFU, LBU),
+        LuList = set.to_sorted_list(LU),
+        LuData = list.map(datastruct_init, LuList),
         NewReuseAs = reuse_as_from_called_procedure_to_local_reuse_as(
             ModuleInfo, ProcInfo, BaseInfo ^ headvars, LuData, SharingAs,
             ActualReuseAs)
