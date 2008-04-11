@@ -652,7 +652,8 @@ print_interface_structure_sharing_domain(ProgVarSet, TypeVarSet,
 dump_maybe_structure_reuse_domain(_, _, no, !IO) :-
     io.write_string("% no reuse information available.\n", !IO).
 dump_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, yes(ReuseAs), !IO) :-
-    print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseAs, !IO).
+    print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseAs,
+        "%\t ", ", \n%\t ", "\n", !IO).
 
 :- pred print_structure_reuse_condition(prog_varset::in, tvarset::in, 
     structure_reuse_condition::in, io::di, io::uo) is det.
@@ -677,10 +678,12 @@ print_structure_reuse_conditions(ProgVarSet, TypeVarSet, Separator, ReuseConds,
         print_structure_reuse_condition(ProgVarSet, TypeVarSet), !IO). 
 
 :- pred print_structure_reuse_domain(prog_varset::in, tvarset::in, 
-    structure_reuse_domain::in, io::di, io::uo) is det.
+    structure_reuse_domain::in, string::in, string::in, string::in,
+    io::di, io::uo) is det.
 
-print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO) :- 
-    io.write_string("%\t ", !IO),
+print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain,
+        Start, Separator, End, !IO) :- 
+    io.write_string(Start, !IO),
     (
         ReuseDomain = has_no_reuse,
         io.write_string("has_no_reuse", !IO)
@@ -689,12 +692,12 @@ print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO) :-
         io.write_string("has_only_unconditional_reuse", !IO)
     ;
         ReuseDomain = has_conditional_reuse(ReuseConditions),
-        io.write_string("has_conditional_reuse([\n%\t\t ", !IO), 
-        print_structure_reuse_conditions(ProgVarSet, TypeVarSet, 
-            ", \n%\t\t ", ReuseConditions, !IO), 
-        io.write_string("\n%\t ])", !IO)
+        io.write_string("has_conditional_reuse([", !IO), 
+        print_structure_reuse_conditions(ProgVarSet, TypeVarSet, Separator,
+            ReuseConditions, !IO), 
+        io.write_string("])", !IO)
     ),
-    io.write_string("\n", !IO).
+    io.write_string(End, !IO).
 
 print_interface_maybe_structure_reuse_domain(_, _, no, !IO) :- 
     io.write_string("not_available", !IO).
@@ -702,7 +705,8 @@ print_interface_maybe_structure_reuse_domain(_, _, no, !IO) :-
 print_interface_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, 
         yes(ReuseDomain), !IO) :- 
     io.write_string("yes(", !IO),
-    print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO),
+    print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain,
+        "", ", ", "", !IO),
     io.write_string(")", !IO).
 
 %-----------------------------------------------------------------------------%
