@@ -1023,11 +1023,15 @@ incr_ref(Ref) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pragma promise_pure(turn_off_profiling/2).
+
 turn_off_profiling(!IO) :-
-    promise_pure ( impure turn_off_profiling ).
+    impure turn_off_profiling.
+
+:- pragma promise_pure(turn_on_profiling/2).
 
 turn_on_profiling(!IO) :-
-    promise_pure ( impure turn_on_profiling ).
+    impure turn_on_profiling.
 
 turn_off_profiling :-
     impure turn_off_call_profiling,
@@ -1041,23 +1045,35 @@ turn_on_profiling :-
 
 %-----------------------------------------------------------------------------%
 
+:- pragma promise_pure(turn_off_call_profiling/2).
+
 turn_off_call_profiling(!IO) :-
-    promise_pure ( impure turn_off_call_profiling ).
+    impure turn_off_call_profiling.
+
+:- pragma promise_pure(turn_on_call_profiling/2).
 
 turn_on_call_profiling(!IO) :-
-    promise_pure ( impure turn_on_call_profiling ).
+    impure turn_on_call_profiling.
+
+:- pragma promise_pure(turn_off_time_profiling/2).
 
 turn_off_time_profiling(!IO) :-
-    promise_pure ( impure turn_off_time_profiling ).
+    impure turn_off_time_profiling.
+
+:- pragma promise_pure(turn_on_time_profiling/2).
 
 turn_on_time_profiling(!IO) :-
-    promise_pure ( impure turn_on_time_profiling ).
+    impure turn_on_time_profiling.
+
+:- pragma promise_pure(turn_off_heap_profiling/2).
 
 turn_off_heap_profiling(!IO) :-
-    promise_pure ( impure turn_off_heap_profiling ).
+    impure turn_off_heap_profiling.
+
+:- pragma promise_pure(turn_on_heap_profiling/2).
 
 turn_on_heap_profiling(!IO) :-
-    promise_pure ( impure turn_on_heap_profiling ).
+    impure turn_on_heap_profiling.
 
 %-----------------------------------------------------------------------------%
 
