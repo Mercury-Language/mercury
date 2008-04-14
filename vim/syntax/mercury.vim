@@ -37,7 +37,7 @@ syn keyword mercuryKeyword      include_module end_module
 syn keyword mercuryKeyword      initialise mutable
 syn keyword mercuryKeyword      initialize finalize finalise
 syn keyword mercuryKeyword      interface implementation
-syn keyword mercuryKeyword      pred mode func type inst solver 
+syn keyword mercuryKeyword      pred mode func type inst solver any_pred any_func
 syn keyword mercuryKeyword      is semidet det nondet multi erroneous failure
 syn keyword mercuryKeyword      cc_nondet cc_multi
 syn keyword mercuryKeyword      typeclass instance where
