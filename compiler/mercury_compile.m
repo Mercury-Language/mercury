@@ -2329,8 +2329,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                 ),
                 (
                     ReuseAnalysis = yes,
-                    maybe_structure_reuse_analysis(Verbose, Stats,
-                        !HLDS, !IO)
+                    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO)
                 ;
                     ReuseAnalysis = no
                 ),
@@ -2396,6 +2395,8 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
 
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
@@ -2414,6 +2415,19 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
+    (
+        SharingAnalysis = yes,
+        % These affect the results we write out for structure sharing/reuse
+        % analysis.
+        maybe_higher_order(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 135, "higher_order", !DumpInfo, !IO),
+        maybe_do_inlining(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 145, "inlining", !DumpInfo, !IO),
+        maybe_deforestation(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 155, "deforestation", !DumpInfo, !IO)
+    ;
+        SharingAnalysis = no
+    ),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
@@ -2432,6 +2446,8 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
 
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
@@ -2450,6 +2466,19 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
+    (
+        SharingAnalysis = yes,
+        % These affect the results we write out for structure sharing/reuse
+        % analysis.
+        maybe_higher_order(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 135, "higher_order", !DumpInfo, !IO),
+        maybe_do_inlining(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 145, "inlining", !DumpInfo, !IO),
+        maybe_deforestation(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 155, "deforestation", !DumpInfo, !IO)
+    ;
+        SharingAnalysis = no
+    ),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),

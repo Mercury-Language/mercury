@@ -2278,24 +2278,41 @@ grab_opt_files(!Module, FoundError, !IO) :-
     % the .opt file for the current module. These are needed because we can
     % probably remove more arguments with intermod_unused_args, but the
     % interface for other modules must remain the same.
+    % 
+    % Similarly for the  :- pragma structure_reuse(...) declarations. With more
+    % information available when making the target code than when writing the
+    % `.opt' file, it can turn out that procedure which seemed to have
+    % condition reuse actually has none. But we have to maintain the interface
+    % for modules that use the conditional reuse information from the `.opt'
+    % file.
     globals.io_lookup_bool_option(intermod_unused_args, UnusedArgs, !IO),
+    globals.io_lookup_bool_option(structure_reuse_analysis, StructureReuse,
+        !IO),
     (
-        UnusedArgs = yes,
+        ( UnusedArgs = yes
+        ; StructureReuse = yes
+        )
+    ->
         read_optimization_interfaces(no, ModuleName, [ModuleName],
-            set.init, [], LocalItems, no, UAError, !IO),
-        IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
+            set.init, [], LocalItems, no, UA_SR_Error, !IO),
+        KeepPragma = (pred(Item::in) is semidet :-
             Item = item_pragma(ItemPragma),
             ItemPragma = item_pragma_info(_, Pragma, _),
-            Pragma = pragma_unused_args(_,_,_,_,_)
+            (
+                UnusedArgs = yes,
+                Pragma = pragma_unused_args(_,_,_,_,_)
+            ;
+                StructureReuse = yes,
+                Pragma = pragma_structure_reuse(_, _, _, _, _, _)
+            )
         ),
-        list.filter(IsPragmaUnusedArgs, LocalItems, PragmaItems),
+        list.filter(KeepPragma, LocalItems, PragmaItems),
 
         module_imports_get_items(!.Module, Items2),
         list.append(Items2, PragmaItems, Items),
         module_imports_set_items(Items, !Module)
     ;
-        UnusedArgs = no,
-        UAError = no
+        UA_SR_Error = no
     ),
 
     % Read .int0 files required by the `.opt' files.
@@ -2335,7 +2352,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
     (
         ( FoundError0 \= no_module_errors
         ; OptError = yes
-        ; UAError = yes
+        ; UA_SR_Error = yes
         )
     ->
         FoundError = yes

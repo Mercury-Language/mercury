@@ -130,8 +130,8 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
         ( type_list_subsumes(CalleeArgTypes, ActualTypes, TypeSubst0) ->
             TypeSubst1 = TypeSubst0
         ;
-            unexpected(this_file,
-                "ctgc.util.get_type_substitution: type unification failed")
+            % See comment in inlining.get_type_substitution.
+            TypeSubst1 = map.init
         )
     ;
         CalleeExistQVars = [_ | _],

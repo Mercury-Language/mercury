@@ -1458,6 +1458,7 @@ pred_transform_name(transform_return_via_ptr(ProcId, ArgPos)) =
 pred_transform_name(transform_table_generator) = "table_gen".
 pred_transform_name(transform_stm_expansion) = "stm_expansion".
 pred_transform_name(transform_dnf(N)) = "dnf_" ++ int_to_string(N).
+pred_transform_name(transform_structure_reuse) = "structure_reuse".
 
 :- func ints_to_string(list(int)) = string.
 

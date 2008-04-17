@@ -43,14 +43,10 @@
 :- pred create_reuse_procedures(reuse_as_table::in, module_info::in,
     module_info::out, io::di, io::uo) is det.
 
-    % Create a copy of the predicate/procedure information specified by the
-    % given pred_proc_id, and return the pred_proc_id of that copy.  This
-    % operation also updates the structure_reuse_map in the HLDS. Note that the
-    % copy is not altered w.r.t. structure reuse. It is a plain copy, nothing
-    % more than that.
+    % Create a fake reuse procedure that simply calls the non-reuse procedure.
     %
-:- pred create_fresh_pred_proc_info_copy(pred_proc_id::in, pred_proc_id::out,
-    module_info::in, module_info::out) is det.
+:- pred create_fake_reuse_procedure(pred_proc_id::in, module_info::in,
+    module_info::out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -68,10 +64,10 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
-:- import_module map.
-:- import_module pair.
 :- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module pair.
 
 %------------------------------------------------------------------------------%
 
@@ -126,11 +122,21 @@ has_unconditional_reuse(ReuseTable, PPId) :-
 
 %------------------------------------------------------------------------------%
 
+    % Create a copy of the predicate/procedure information specified by the
+    % given pred_proc_id, and return the pred_proc_id of that copy.  This
+    % operation also updates the structure_reuse_map in the HLDS. Note that the
+    % copy is not altered w.r.t. structure reuse. It is a plain copy, nothing
+    % more than that.
+    %
+:- pred create_fresh_pred_proc_info_copy(pred_proc_id::in, pred_proc_id::out,
+    module_info::in, module_info::out) is det.
+
 create_fresh_pred_proc_info_copy(PPId, NewPPId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     ReusePredName = generate_reuse_name(!.ModuleInfo, PPId),
-    create_fresh_pred_proc_info_copy_2(PredInfo0, ProcInfo0, ReusePredName,
-        ReusePredInfo, ReuseProcId),
+    PPId = proc(PredId, _),
+    create_fresh_pred_proc_info_copy_2(PredId, PredInfo0, ProcInfo0,
+        ReusePredName, ReusePredInfo, ReuseProcId),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(ReusePredInfo, ReusePredId, PredTable0, PredTable),
@@ -141,16 +147,23 @@ create_fresh_pred_proc_info_copy(PPId, NewPPId, !ModuleInfo) :-
     map.det_insert(ReuseMap0, PPId, NewPPId - ReusePredName, ReuseMap),
     module_info_set_structure_reuse_map(ReuseMap, !ModuleInfo).
 
-:- pred create_fresh_pred_proc_info_copy_2(pred_info::in, proc_info::in,
-    reuse_name::in, pred_info::out, proc_id::out) is det.
+:- pred create_fresh_pred_proc_info_copy_2(pred_id::in, pred_info::in,
+    proc_info::in, reuse_name::in, pred_info::out, proc_id::out) is det.
 
-create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
+create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
         ReusePredInfo, ReuseProcId) :-
     ModuleName = pred_info_module(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_context(PredInfo, ProgContext),
     pred_info_get_origin(PredInfo, PredOrigin),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus0),
+    % If the predicate was opt_imported then the specialised copy should be
+    % local otherwise it will be eliminated by dead proc elimination.
+    ( ImportStatus0 = status_opt_imported ->
+        ImportStatus = status_local
+    ;
+        ImportStatus = ImportStatus0
+    ),
     pred_info_get_markers(PredInfo, PredMarkers),
     pred_info_get_arg_types(PredInfo, MerTypes),
     pred_info_get_typevarset(PredInfo, TVarset),
@@ -158,8 +171,10 @@ create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
     pred_info_get_class_context(PredInfo, ProgConstraints),
     pred_info_get_assertions(PredInfo, AssertIds),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
+    NewPredOrigin = origin_transformed(transform_structure_reuse, PredOrigin,
+        PredId),
     pred_info_create(ModuleName, ReusePredName, PredOrFunc, ProgContext,
-        PredOrigin, ImportStatus, PredMarkers, MerTypes, TVarset,
+        NewPredOrigin, ImportStatus, PredMarkers, MerTypes, TVarset,
         ExistQTVars, ProgConstraints, AssertIds, VarNameRemap,
         ProcInfo, ReuseProcId, ReusePredInfo).
 
@@ -328,6 +343,31 @@ process_case(ReuseMap, !Case, !IO) :-
     !.Case = case(MainConsId, OtherConsIds, Goal0),
     process_goal(ReuseMap, Goal0, Goal, !IO),
     !:Case = case(MainConsId, OtherConsIds, Goal).
+
+%------------------------------------------------------------------------------%
+
+create_fake_reuse_procedure(PPId, !ModuleInfo) :-
+    PPId = proc(PredId, ProcId),
+    module_info_pred_proc_info(!.ModuleInfo, PPId, OldPredInfo, OldProcInfo),
+    OldPredModule = pred_info_module(OldPredInfo),
+    OldPredName = pred_info_name(OldPredInfo),
+    proc_info_interface_determinism(OldProcInfo, Determinism),
+
+    create_fresh_pred_proc_info_copy(PPId, NewPPId, !ModuleInfo),
+    some [!PredInfo, !ProcInfo] (
+        module_info_pred_proc_info(!.ModuleInfo, NewPPId, !:PredInfo,
+            !:ProcInfo),
+        proc_info_get_goal(!.ProcInfo, Body),
+        Body = hlds_goal(_, GoalInfo0),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        GoalExpr = plain_call(PredId, ProcId, HeadVars, not_builtin, no,
+            qualified(OldPredModule, OldPredName)),
+        goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        proc_info_set_goal(Goal, !ProcInfo),
+        module_info_set_pred_proc_info(NewPPId, !.PredInfo, !.ProcInfo,
+            !ModuleInfo)
+    ).
 
 %------------------------------------------------------------------------------%
 

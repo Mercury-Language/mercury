@@ -473,7 +473,8 @@
                 int % This predicate was originally part of a predicate
                     % transformed into disjunctive normal form; this integer
                     % gives the part number.
-            ).
+            )
+    ;       transform_structure_reuse.
 
 :- type pred_creation
     --->    deforestation

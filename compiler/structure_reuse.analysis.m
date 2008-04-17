@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,8 +114,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     SharingTable = load_structure_sharing_table(!.ModuleInfo),
 
     % Load all the available reuse information into a reuse table.
-    % XXX TO DO!
     ReuseTable0 = load_structure_reuse_table(!.ModuleInfo), 
+    InitialReuseTable = ReuseTable0,
    
     % Pre-annotate each of the goals with "Local Forward Use" and
     % "Local Backward Use" information, and fill in all the goal_path slots
@@ -143,15 +143,66 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     % For every procedure that has some potential (conditional) reuse (either 
     % direct or indirect), create a new procedure that actually implements
     % that reuse. 
-    % XXX TO DO!
     create_reuse_procedures(ReuseTable2, !ModuleInfo, !IO),
+    FinalReuseTable = ReuseTable2,
+
+    % Create forwarding procedures for procedures which we thought had
+    % conditional reuse when making the `.opt' file, but with further
+    % information (say, from `.trans_opt' files) we decide has no reuse
+    % opportunities. Otherwise other modules may contain references to
+    % reuse versions of procedures which we never produce.
+    create_forwarding_procedures(InitialReuseTable, FinalReuseTable,
+        !ModuleInfo),
 
     % Record the results of the reuse table into the HLDS.
-    map.foldl(save_reuse_in_module_info, ReuseTable2, !ModuleInfo).
-    %
+    map.foldl(save_reuse_in_module_info, ReuseTable2, !ModuleInfo),
+
+    % Only write structure reuse pragmas to `.opt' files for
+    % `--intermodule-optimization' not `--intermodule-analysis'.
+    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
+        !IO),
+    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    (
+        MakeOptInt = yes,
+        IntermodAnalysis = no
+    ->
+        make_opt_int(!ModuleInfo, !IO)
+    ;
+        true
+    ).
+
     % Output some profiling information.
     % XXX TO DO!
     % profiling(!.ModuleInfo, ReuseTable3).
+
+%-----------------------------------------------------------------------------%
+
+:- pred create_forwarding_procedures(reuse_as_table::in, reuse_as_table::in,
+    module_info::in, module_info::out) is det.
+
+create_forwarding_procedures(InitialReuseTable, FinalReuseTable,
+        !ModuleInfo) :-
+    map.foldl(create_forwarding_procedures_2(FinalReuseTable),
+        InitialReuseTable, !ModuleInfo).
+
+:- pred create_forwarding_procedures_2(reuse_as_table::in, pred_proc_id::in,
+    reuse_as::in, module_info::in, module_info::out) is det.
+
+create_forwarding_procedures_2(FinalReuseTable, PPId, InitialReuseAs,
+        !ModuleInfo) :-
+    PPId = proc(PredId, _),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    (
+        reuse_as_conditional_reuses(InitialReuseAs),
+        status_defined_in_this_module(ImportStatus) = yes,
+        map.search(FinalReuseTable, PPId, FinalReuseAs),
+        reuse_as_no_reuses(FinalReuseAs)
+    ->
+        create_fake_reuse_procedure(PPId, !ModuleInfo)
+    ;
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -295,6 +346,7 @@ make_opt_int(!ModuleInfo, !IO) :-
 write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_origin(PredInfo, PredOrigin),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     (
@@ -302,8 +354,13 @@ write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
             ImportStatus = status_exported
         ;
             ImportStatus = status_opt_exported
+        ;
+            ImportStatus = status_exported_to_submodules
         ),
         \+ is_unify_or_compare_pred(PredInfo),
+
+        % Don't write out info for reuse versions of procedures.
+        PredOrigin \= origin_transformed(transform_structure_reuse, _, _),
 
         % XXX These should be allowed, but the predicate declaration for the
         % specialized predicate is not produced before the structure_reuse
