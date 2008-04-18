@@ -71,10 +71,10 @@ main(!IO) :-
         ),
         split(QueryString0, query_separator_char, Pieces),
         ( Pieces = [CmdStr, PrefStr, FileName] ->
-            Cmd = url_component_to_cmd(CmdStr, deep_cmd_menu),
+            Cmd = string_to_cmd(CmdStr, deep_cmd_menu),
             process_query(Cmd, yes(PrefStr), FileName, Options, !IO)
         ; Pieces = [CmdStr, FileName] ->
-            Cmd = url_component_to_cmd(CmdStr, deep_cmd_menu),
+            Cmd = string_to_cmd(CmdStr, deep_cmd_menu),
             process_query(Cmd, no, FileName, Options, !IO)
         ; Pieces = [FileName] ->
             process_query(deep_cmd_menu, no, FileName, Options, !IO)
@@ -197,7 +197,7 @@ html_header_text = "Content-type: text/html\n\n".
 process_query(Cmd, MaybePrefStr, DataFileName0, Options0, !IO) :-
     (
         MaybePrefStr = yes(PrefStr),
-        MaybePref = url_component_to_maybe_pref(PrefStr)
+        MaybePref = string_to_maybe_pref(PrefStr)
     ;
         MaybePrefStr = no,
         MaybePref = no

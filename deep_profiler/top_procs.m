@@ -18,9 +18,9 @@
 :- module top_procs.
 :- interface.
 
-:- import_module interface.
 :- import_module measurements.
 :- import_module profile.
+:- import_module query.
 
 :- import_module list.
 :- import_module maybe.

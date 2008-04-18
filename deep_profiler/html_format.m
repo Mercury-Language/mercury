@@ -17,9 +17,9 @@
 :- module html_format.
 :- interface.
 
-:- import_module interface.
 :- import_module measurements.
 :- import_module profile.
+:- import_module query.
 :- import_module top_procs.
 
 :- import_module bool.
@@ -2350,6 +2350,22 @@ special_html_char_or_break(':', ":" ++ zero_width_space).
 
 % zero_width_space = "&#8203;".
 zero_width_space = "<wbr />".
+
+%-----------------------------------------------------------------------------%
+
+:- func machine_datafile_cmd_pref_to_url(string, string, string, cmd,
+    preferences) = string.
+
+machine_datafile_cmd_pref_to_url(Machine, ScriptName, DataFileName, Cmd,
+        Preferences) =
+    "http://" ++
+    Machine ++
+    ScriptName ++ "?" ++
+    cmd_to_string(Cmd) ++
+    string.char_to_string(query_separator_char) ++
+    preferences_to_string(Preferences) ++
+    string.char_to_string(query_separator_char) ++
+    DataFileName.
 
 %-----------------------------------------------------------------------------%
 :- end_module html_format.
