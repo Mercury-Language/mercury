@@ -576,7 +576,16 @@ verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
         FormalReuseAs, ActualReuseAs),
     LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo,
         SharingAs),
-    ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
+
+    % Nancy's implementation:
+    % ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
+    %
+    % However, that doesn't seem right.  Live data which are not arguments of
+    % the call may be affected by reuse if they share memory with CalleeArgs.
+    % In any case, the implementation of no_node_or_shared_subsumed_by_list
+    % expects live data not to be projected away. --pw
+    ProjectedLiveData = LiveData,
+
     StaticVars = set.to_sorted_list(AnalysisInfo ^ static_vars),
     (
         reuse_as_satisfied(ModuleInfo, ProcInfo, ProjectedLiveData,

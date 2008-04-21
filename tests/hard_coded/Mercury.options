@@ -1,5 +1,8 @@
 MCFLAGS-allow_stubs	=	--allow-stubs --no-warn-stubs --infer-all
 MCFLAGS-any_call_hoist_bug = --loop-invariants
+MCFLAGS-bad_indirect_reuse =	--ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse2 =	--ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse3 =	--ctgc --no-common-struct
 MCFLAGS-checked_nondet_tailcall	= --checked-nondet-tailcalls
 MCFLAGS-checked_nondet_tailcall_noinline = --checked-nondet-tailcalls --no-inlining
 MCFLAGS-big_array_from_list =   --optimize-tailcalls

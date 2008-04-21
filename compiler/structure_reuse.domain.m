@@ -607,7 +607,7 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
             SharingAs),
         UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo, 
             InUseNodes, NewSharing, LiveData),
-        nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
+        nodes_are_not_live(ModuleInfo, ProcInfo, NewSharing, DeadNodes,
             UpdatedLiveData)
     ).
     

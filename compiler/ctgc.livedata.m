@@ -74,7 +74,7 @@
 :- func livedata_add_liveness(module_info, proc_info, live_datastructs,
     sharing_as, livedata) = livedata.
 
-:- pred nodes_are_not_live(module_info::in, proc_info::in, 
+:- pred nodes_are_not_live(module_info::in, proc_info::in, sharing_as::in,
     list(datastruct)::in, livedata::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -286,7 +286,7 @@ extend_livedata(ModuleInfo, ProcInfo, SharingAs, LiveData0) = LiveData :-
             SharingAs, Data0))
     ).
 
-nodes_are_not_live(ModuleInfo, ProcInfo, Nodes, LiveData) :- 
+nodes_are_not_live(ModuleInfo, ProcInfo, SharingAs, DeadNodes, LiveData) :- 
     (
         LiveData = livedata_top,
         fail
@@ -294,8 +294,9 @@ nodes_are_not_live(ModuleInfo, ProcInfo, Nodes, LiveData) :-
         LiveData = livedata_bottom,
         true
     ;
-        LiveData = livedata_live(Data),
-        \+ datastructs_subsumed_by_list(ModuleInfo, ProcInfo, Nodes, Data)
+        LiveData = livedata_live(LiveDatastructs),
+        no_node_or_shared_subsumed_by_list(ModuleInfo, ProcInfo, SharingAs,
+            DeadNodes, LiveDatastructs)
     ).
 
 %-----------------------------------------------------------------------------%

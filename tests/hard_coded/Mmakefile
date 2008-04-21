@@ -10,6 +10,9 @@ ORDINARY_PROGS=	\
 	agg \
 	array_test \
 	backquoted_qualified_ops \
+	bad_indirect_reuse \
+	bad_indirect_reuse2 \
+	bad_indirect_reuse3 \
 	bag_various \
 	bidirectional \
 	big_array_from_list \

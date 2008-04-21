@@ -1,0 +1,39 @@
+% Regression test.
+
+:- module bad_indirect_reuse.
+:- interface.
+
+:- import_module io.
+
+:- pred main(io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+main(!IO) :-
+    copy(bar(3, 1), Sub),
+    A = foo(2, Sub),
+    quux(A, _),                     % bad indirect reuse call
+    io.write(Sub, !IO),
+    io.nl(!IO),
+
+    copy(foo(1, bar(2, 0)), B),
+    quux(B, B1),                    % good indirect reuse call
+    io.write(B1, !IO),
+    io.nl(!IO).
+
+:- type foo
+    --->    foo(int, bar).
+
+:- type bar
+    --->    bar(int, int).
+
+:- pred quux(foo::in, foo::out) is det.
+:- pragma no_inline(quux/2).
+
+quux(foo(A, bar(B, C)), foo(C, bar(A, B))).
+
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=8 sw=4 et wm=0 tw=0

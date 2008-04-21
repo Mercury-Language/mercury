@@ -188,6 +188,15 @@
 :- func extend_datastructs(module_info, proc_info, sharing_as, 
     list(datastruct)) = list(datastruct).
 
+    % no_node_or_shared_subsumed_by_list(ModuleInfo, ProcInfo, SharingAs
+    %   Dead, Live)
+    %
+    % Succeed iff none of the Dead datastructures, or memory which shares
+    % with those datastructures, are subsumed by some Live datastructure.
+    %
+:- pred no_node_or_shared_subsumed_by_list(module_info::in, proc_info::in,
+    sharing_as::in, dead_datastructs::in, live_datastructs::in) is semidet.
+
     % apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone,
     %   SharingIn, SharingOut):
     %
@@ -735,6 +744,58 @@ extend_datastructs(ModuleInfo, ProcInfo, SharingAs, Datastructs)
     ExtendedDatastructs = list.foldl(
         datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo), 
         DataLists, []).
+
+no_node_or_shared_subsumed_by_list(ModuleInfo, ProcInfo, SharingAs,
+        DeadDatastructs, LiveDatastructs) :-
+    (
+        SharingAs = sharing_as_bottom,
+        not datastructs_subsumed_by_list(ModuleInfo, ProcInfo,
+            DeadDatastructs, LiveDatastructs)
+    ;
+        SharingAs = sharing_as_real_as(sharing_set(_, SharingMap)),
+        not some_node_or_shared_subsumed_by_list(ModuleInfo, ProcInfo,
+            SharingMap, DeadDatastructs, LiveDatastructs)
+    ;
+        SharingAs = sharing_as_top(_),
+        unexpected(this_file,
+            "no_node_or_shared_subsumed_by_list: sharing_as_top")
+    ).
+
+:- pred some_node_or_shared_subsumed_by_list(module_info::in, proc_info::in,
+    map(prog_var, selector_sharing_set)::in, dead_datastructs::in,
+    live_datastructs::in) is semidet.
+
+some_node_or_shared_subsumed_by_list(ModuleInfo, ProcInfo, SharingMap,
+        DeadDatastructs, LiveDatastructs) :-
+    % For each dead cell.
+    list.member(selected_cel(DeadVar, DeadSel), DeadDatastructs),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    map.lookup(VarTypes, DeadVar, DeadVarType),
+
+    map.search(SharingMap, DeadVar, SelectorSharingSet),
+    SelectorSharingSet = selector_sharing_set(_, SelectorSharingMap),
+
+    % For some selector Sel such that Sel = DeadSel.Extension, check if some
+    % of the data structures which share with the dead datastructure are
+    % subsumed by live datastructures (which would be bad).
+    %
+    % Note that "extending" the dead datastructure and checking if the
+    % extension is subsumed by live datastructures doesn't work.  If a dead
+    % datastructure `cel(DV, [])' shares with `cel(V, [termsel(...)])' then
+    % the latter won't be included in the extension because the selector
+    % `[termsel(...)]' doesn't subsume `[]'. I don't know if the behaviour of
+    % `selector_sharing_set_extend_datastruct_2' is correct, but my attempts
+    % to change it resulted in breakages elsewhere. --pw
+    %
+    map.member(SelectorSharingMap, Sel, SelDataSet),
+    ( selector.subsumed_by(ModuleInfo, Sel, DeadSel, DeadVarType, _) ->
+        SelDataSet = datastructures(_, DeadDataSet),
+        set.member(DeadData, DeadDataSet),
+        datastruct_subsumed_by_list(ModuleInfo, ProcInfo, DeadData,
+            LiveDatastructs)
+    ;
+        true
+    ).
 
 apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone, !Sharing):-
     (
