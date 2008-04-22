@@ -192,11 +192,9 @@ OTHER_PROGS= \
 	record_syntax_bug_5 \
 	recursive_no_tag_type \
 	reg_bug \
-	reuse_static \
 	same_length_2 \
 	semidet_disj \
 	shape_type \
-	sharing_exist \
 	simplify_bug \
 	simplify_bug2 \
 	size_prof_ho_bug \
@@ -267,6 +265,12 @@ PAR_CONJ_PROGS = \
 	par_dummy \
 	par_dupelim \
 	par_saved_const
+
+# Compile-time garbage collection is currently incompatible with debugging
+# grades.
+CTGC_PROGS = \
+	reuse_static \
+	sharing_exist
 
 # The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \
@@ -357,10 +361,16 @@ else
 	PROGS5 = $(PROGS4) $(PAR_CONJ_PROGS)
 endif
 
-ifeq "$(filter java% il% erlang%,$(GRADE))" ""
-	OBJ_PROGS = $(PROGS5) $(RESERVE_TAG_PROGS)
+ifeq "$(findstring debug,$(GRADE))"  ""
+	PROGS6 = $(PROGS5) $(CTGC_PROGS)
 else
-	OBJ_PROGS = $(PROGS5)
+	PROGS6 = $(PROGS5)
+endif
+
+ifeq "$(filter java% il% erlang%,$(GRADE))" ""
+	OBJ_PROGS = $(PROGS6) $(RESERVE_TAG_PROGS)
+else
+	OBJ_PROGS = $(PROGS6)
 endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
