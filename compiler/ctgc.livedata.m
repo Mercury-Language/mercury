@@ -71,10 +71,11 @@
 
 :- func livedata_init_at_goal(module_info, proc_info, hlds_goal_info,
     sharing_as) = livedata.
+
 :- func livedata_add_liveness(module_info, proc_info, live_datastructs,
     sharing_as, livedata) = livedata.
 
-:- pred nodes_are_not_live(module_info::in, proc_info::in, sharing_as::in,
+:- pred nodes_are_not_live(module_info::in, proc_info::in, 
     list(datastruct)::in, livedata::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -85,6 +86,7 @@
 :- import_module libs.compiler_util.
 :- import_module transform_hlds.ctgc.datastruct.
 
+:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -228,25 +230,114 @@ livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
     -> 
         LiveData = livedata_init_from_vars(Lu)
     ;
-        % otherwise we have the most general case: Lu not empty, Sharing
+        % Otherwise we have the most general case: Lu not empty, Sharing
         % not top nor bottom.
-        LiveData = livedata_init_at_goal_2(ModuleInfo, ProcInfo, Lu, 
-            SharingAs)
+        SharingDomain = to_structure_sharing_domain(SharingAs),
+        (
+            SharingDomain = structure_sharing_real(SharingPairs),
+            LiveData = livedata_init_at_goal_2(ModuleInfo, ProcInfo, Lu,
+                SharingPairs)
+        ;
+            ( SharingDomain = structure_sharing_bottom
+            ; SharingDomain = structure_sharing_top(_)
+            ),
+            unexpected(this_file, "livedata_init_at_goal")
+        )
     ).
 
     % Preconditions: live_vars is not empty, sharing_as is not top.
     %
+    % This function corresponds to pa_alias_as.live_2 in the old reuse branch
+    % which is significantly more involved so there may still be more code to
+    % port over.  However, its caller always passes the empty set for the
+    % LIVE_0 argument which would make a lot of code unnecessary.
+    %
 :- func livedata_init_at_goal_2(module_info, proc_info, live_vars, 
-    sharing_as) = livedata.
+    structure_sharing) = livedata.
 
-livedata_init_at_goal_2(ModuleInfo, ProcInfo, Lu, SharingAs) = LiveData :-
-    % Let Data0 be the set of data structures pointed at by the 
-    % set of live vars Lu, then LiveData is the result of "extending" 
-    % (Cf. structure_sharing.domain.m) each of the data structures in Data0.
-    Data0 = list.map(datastruct_init, Lu),
-    DataList = extend_datastructs(ModuleInfo, ProcInfo, SharingAs, 
-        Data0), 
-    LiveData = livedata_live(DataList).
+livedata_init_at_goal_2(ModuleInfo, ProcInfo, Lu, SharingPairs) = LiveData :-
+    % LIVE1 = top-level datastructs from Lu
+    LuData = list.map(datastruct_init, Lu),
+    LIVE1 = LuData,
+
+    % LIVE2 = datastructs X^s such that X^s is aliased to Y^t,
+    % and Y is in Lu.
+    live_from_in_use(ModuleInfo, ProcInfo, LuData, SharingPairs, LIVE2),
+
+    % LIVE3 was some complicated thing.
+    % But since LIVE_0 is the empty set LIVE3 would be empty too.
+
+    LiveData = livedata_live(LIVE1 ++ LIVE2).
+
+    % In use information is stored as a set of datastructures. This
+    % procedure computes the set of live datastructure using the in-use set
+    % and extending it wrt the sharing information.
+    %
+:- pred live_from_in_use(module_info::in, proc_info::in, list(datastruct)::in,
+    structure_sharing::in, list(datastruct)::out) is det.
+
+live_from_in_use(ModuleInfo, ProcInfo, InUseList, SharingPairs, Live):-
+    % Filter the list of sharing pairs, keeping only the ones that 
+    % involve at least one variable from the IN_USE (LU) set.
+    list.map(one_of_vars_is_live(ModuleInfo, ProcInfo, InUseList),
+        SharingPairs, DatastructsLists),
+    list.condense(DatastructsLists, Live).
+
+	% one_of_vars_is_live(LIST, ALIAS, X^sx1)
+	% returns true if
+	% 	ALIAS = X^sx - Y^sy
+	%   and Y^s1 \in LIST and
+	%		sy = s1.s2 => sx1 = sx
+	% 	   or
+	%		sy.s2 = s1 => sx1 = sx.s2
+    %
+:- pred one_of_vars_is_live(module_info::in, proc_info::in, 
+    list(datastruct)::in, structure_sharing_pair::in, list(datastruct)::out)
+    is det.
+
+one_of_vars_is_live(ModuleInfo, ProcInfo, Datastructs0, PairXY,
+        Datastructs) :- 
+	one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, Datastructs0,
+        PairXY, L1),
+	% Switch order.
+    PairXY = X - Y,
+    PairYX = Y - X,
+	one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, Datastructs0,
+        PairYX, L2),
+    Datastructs = L1 ++ L2.
+
+:- pred one_of_vars_is_live_ordered(module_info::in, proc_info::in,
+	list(datastruct)::in, structure_sharing_pair::in,
+    list(datastruct)::out) is det.
+
+one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :- 
+	Pair = Xsx - Ysy,
+	list.filter(datastruct_same_vars(Ysy), List, Y_List),
+	(
+		% First try to find one of the found datastructs which is 
+		% fully alive: so that Ysy is less or equal to at least one
+		% Ys1 in Y_List (sy = s1.s2)
+		list.filter(datastruct_subsumed_by(ModuleInfo, ProcInfo, Ysy),
+            Y_List, FY_List),
+		FY_List = [_ | _]
+	->
+		Xsx1 = Xsx,
+		List_Xsx1 = [Xsx1]
+	;
+		% Find all datastructs from Y_List which are less or 
+		% equal to Ysy. Select the one with the shortest selector
+		% (Note that there should be only one solution. If more
+		% than one such datastruct is found, the initial live set
+		% is not minimal, while this should be somehow guaranteed).
+		list.filter_map(
+            datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Ysy),
+            Y_List, SelectorList),
+		% Each sx1 = sx.s2, where s2 is one of SelectorList.
+		list.map(
+            (pred(S2::in, Xsx1::out) is det :-
+                datastruct_termshift(S2, Xsx, Xsx1)
+            ), SelectorList, List_Xsx1)
+	).
 
 livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0) 
         = LiveData :- 
@@ -261,9 +352,9 @@ livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0)
             LiveData0, livedata_init_from_datastructs(LuData))
     ;
         % most general case: normal sharing.
-        LuLiveData = livedata_init_from_datastructs(
-            extend_datastructs(ModuleInfo, ProcInfo, 
-                LocalSharing, LuData)),
+        ExtendLuData = extend_datastructs(ModuleInfo, ProcInfo,
+            LocalSharing, LuData),
+        LuLiveData = livedata_init_from_datastructs(ExtendLuData),
         ExtendLiveData = extend_livedata(ModuleInfo, ProcInfo, 
             LocalSharing, LiveData0),
         LiveData = livedata_least_upper_bound(ModuleInfo, ProcInfo, 
@@ -286,7 +377,7 @@ extend_livedata(ModuleInfo, ProcInfo, SharingAs, LiveData0) = LiveData :-
             SharingAs, Data0))
     ).
 
-nodes_are_not_live(ModuleInfo, ProcInfo, SharingAs, DeadNodes, LiveData) :- 
+nodes_are_not_live(ModuleInfo, ProcInfo, Nodes, LiveData) :- 
     (
         LiveData = livedata_top,
         fail
@@ -294,9 +385,8 @@ nodes_are_not_live(ModuleInfo, ProcInfo, SharingAs, DeadNodes, LiveData) :-
         LiveData = livedata_bottom,
         true
     ;
-        LiveData = livedata_live(LiveDatastructs),
-        no_node_or_shared_subsumed_by_list(ModuleInfo, ProcInfo, SharingAs,
-            DeadNodes, LiveDatastructs)
+        LiveData = livedata_live(Data),
+        \+ datastructs_subsumed_by_list(ModuleInfo, ProcInfo, Nodes, Data)
     ).
 
 %-----------------------------------------------------------------------------%

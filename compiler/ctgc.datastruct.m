@@ -35,6 +35,11 @@
     %
 :- pred datastruct_equal(datastruct::in, datastruct::in) is semidet.
 
+    % Check whether the two given datastructs are related to the
+    % same variable or not. 
+    %
+:- pred datastruct_same_vars(datastruct::in, datastruct::in) is semidet.
+
     % Verify whether the datastructure represents a top cell, i.e. where
     % the selector path is an empty path.
     %
@@ -101,6 +106,9 @@ datastruct_init_with_pos(V, ConsId, Int)
     = datastruct_init_with_selector(V, selector_init(ConsId, Int)).
 
 datastruct_equal(D1, D2) :- D1 = D2.
+
+datastruct_same_vars(D1, D2) :-
+    D1 ^ sc_var = D2 ^ sc_var.
 
 datastruct_refers_to_topcell(Data):-
     DSel = Data ^ sc_selector,

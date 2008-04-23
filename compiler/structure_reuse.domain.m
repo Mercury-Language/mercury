@@ -58,6 +58,9 @@
 
 :- pred reuse_condition_is_conditional(reuse_condition::in) is semidet.
 
+:- pred reuse_condition_reusable_nodes(reuse_condition::in,
+    dead_datastructs::out) is semidet.
+
     % Renaming operation. 
     % This operation renames all occurrences of program variables and
     % type variables according to a program and type variable mapping.
@@ -301,6 +304,8 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU,
 
 reuse_condition_is_conditional(condition(_, _, _)).
 
+reuse_condition_reusable_nodes(condition(Nodes, _, _), Nodes).
+
 reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :- 
     (   
         Cond1 = always
@@ -450,11 +455,13 @@ reuse_as_add_unconditional(!ReuseAs) :-
 :- pred reuse_conditions_add_condition(module_info::in, proc_info::in,
     reuse_condition::in, reuse_conditions::in, reuse_conditions::out) is det.
 
-reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):- 
+reuse_conditions_add_condition(_ModuleInfo, _ProcInfo, Condition, !Conds):- 
     (
-        reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, 
-            Condition, !.Conds)
-    -> 
+        % XXX this used to check if Condition was subsumed by !.Conds, but
+        % that can produce conditions which are too weak, I think.
+        % The test suite has an example of this. --pw
+        list.member(Condition, !.Conds)
+    ->
         true
     ;
         !:Conds = [Condition | !.Conds]
@@ -580,10 +587,74 @@ reuse_as_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
     ; 
         ReuseAs = conditional(Conditions),
         list.all_true(reuse_condition_satisfied(ModuleInfo, ProcInfo, 
-            LiveData, SharingAs, StaticVars), Conditions)
-            % XXX something about reuse conditions pointing to the
-            % same datastructure to be reused... 
+            LiveData, SharingAs, StaticVars), Conditions),
+
+        % Next to verifying each condition separately, one has to verify
+        % whether the nodes which are reused in each of the conditions are
+        % not aliased within the current context. If this would be the
+        % case, then reuse is not allowed. If this would be allowed, then
+        % the callee want to reuse the different parts of the input while
+        % these may point to exactly the same structure, resulting in
+        % undefined behaviour.
+        no_aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs,
+            Conditions)
     ).
+
+:- pred no_aliases_between_reuse_nodes(module_info::in, proc_info::in,
+    sharing_as::in, list(reuse_condition)::in) is semidet.
+
+no_aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions):-
+    list.filter_map(reuse_condition_reusable_nodes, Conditions, ListNodes),
+    list.condense(ListNodes, AllNodes),
+    (
+        AllNodes = [Node | Rest],
+        no_aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs,
+            Node, Rest)
+    ;
+        AllNodes = [],
+        unexpected(this_file, "no_aliases_between_reuse_nodes: no nodes")
+    ).
+
+:- pred no_aliases_between_reuse_nodes_2(module_info::in, proc_info::in,
+    sharing_as::in, datastruct::in, list(datastruct)::in) is semidet.
+
+no_aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
+        OtherNodes):-
+    SharingNodes0 = extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Node),
+    list.delete(SharingNodes0, Node, SharingNodes),
+
+    % Check whether none of the structures to which the current Node is
+    % aliased is subsumed by or subsumes one of the other nodes, including the
+    % current node itself.
+    all [SharingNode] (
+        list.member(SharingNode, SharingNodes)
+    =>
+        not there_is_a_subsumption_relation(ModuleInfo, ProcInfo,
+            [Node | OtherNodes], SharingNode)
+    ),
+    (
+        OtherNodes = [NextNode | NextOtherNodes],
+        no_aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs,
+            NextNode, NextOtherNodes)
+    ;
+        OtherNodes = []
+    ).
+
+    % Succeed if Data is subsumed or subsumes some of the datastructures in
+    % Datastructs.
+    %
+:- pred there_is_a_subsumption_relation(module_info::in, proc_info::in,
+    list(datastruct)::in, datastruct::in) is semidet.
+
+there_is_a_subsumption_relation(ModuleInfo, ProcInfo, Datastructs, DataA):-
+    list.member(DataB, Datastructs),
+    (
+        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataA, DataB)
+    ;
+        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataB, DataA)
+    ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred reuse_condition_satisfied(module_info::in, proc_info::in,
     livedata::in, sharing_as::in, prog_vars::in, reuse_condition::in) 
@@ -607,7 +678,7 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
             SharingAs),
         UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo, 
             InUseNodes, NewSharing, LiveData),
-        nodes_are_not_live(ModuleInfo, ProcInfo, NewSharing, DeadNodes,
+        nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
             UpdatedLiveData)
     ).
     

@@ -354,6 +354,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 	CTGC_PROGS= \
 		bad_indirect_reuse \
 		bad_indirect_reuse2 \
+		bad_indirect_reuse2b \
 		bad_indirect_reuse3
 else
 	CTGC_PROGS=
