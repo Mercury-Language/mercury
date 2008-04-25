@@ -124,6 +124,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1568,7 +1569,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         NonLocalVars = goal_info_get_nonlocals(GoalInfo),
         AnyBoundVars = set.filter(var_is_any_in_instmap(ModuleInfo, InstMap0),
             NonLocalVars),
-        BoundVars = set.union(GroundBoundVars, AnyBoundVars),
+        BoundVars0 = set.union(GroundBoundVars, AnyBoundVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        BoundVars = remove_typeinfo_vars_from_set(VarTypes, BoundVars0),
 
         % Which vars were bound inside the scope but not listed
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?

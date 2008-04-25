@@ -183,6 +183,7 @@ OTHER_PROGS= \
 	param_mode_bug \
 	parsing_bug_main \
 	pred_with_no_modes \
+	promise_equiv_exists_non_local \
 	qualified_cons_id \
 	quantifier_warning \
 	record_syntax_bug \
