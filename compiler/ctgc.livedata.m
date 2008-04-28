@@ -75,8 +75,12 @@
 :- func livedata_add_liveness(module_info, proc_info, live_datastructs,
     sharing_as, livedata) = livedata.
 
-:- pred nodes_are_not_live(module_info::in, proc_info::in, 
-    list(datastruct)::in, livedata::in) is semidet.
+:- pred nodes_are_not_live(module_info::in, proc_info::in,
+    list(datastruct)::in, livedata::in, nodes_are_not_live_result::out) is det.
+
+:- type nodes_are_not_live_result
+    --->    nodes_all_live
+    ;       nodes_are_live(list(datastruct)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -85,6 +89,7 @@
 
 :- import_module libs.compiler_util.
 :- import_module transform_hlds.ctgc.datastruct.
+:- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 :- import_module pair.
 :- import_module set.
@@ -339,7 +344,7 @@ one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
             ), SelectorList, List_Xsx1)
 	).
 
-livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0) 
+livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0)
         = LiveData :- 
     ( 
         sharing_as_is_top(LocalSharing)
@@ -377,16 +382,18 @@ extend_livedata(ModuleInfo, ProcInfo, SharingAs, LiveData0) = LiveData :-
             SharingAs, Data0))
     ).
 
-nodes_are_not_live(ModuleInfo, ProcInfo, Nodes, LiveData) :- 
+nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes, LiveData, Result) :- 
     (
         LiveData = livedata_top,
-        fail
+        Result = nodes_all_live
     ; 
         LiveData = livedata_bottom,
-        true
+        Result = nodes_are_live([])
     ;
-        LiveData = livedata_live(Data),
-        \+ datastructs_subsumed_by_list(ModuleInfo, ProcInfo, Nodes, Data)
+        LiveData = livedata_live(LiveDatastructs),
+        datastructs_that_are_subsumed_by_list(ModuleInfo, ProcInfo,
+            DeadNodes, LiveDatastructs, SubsumedNodes),
+        Result = nodes_are_live(SubsumedNodes)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -158,6 +158,7 @@
     ;       debug_mode_constraints 
     ;       debug_intermodule_analysis
     ;       debug_mm_tabling_analysis
+    ;       debug_indirect_reuse
 
     % Output options
     ;       make_short_interface
@@ -1003,7 +1004,8 @@ option_defaults_2(verbosity_option, [
     debug_trail_usage                   -   bool(no),
     debug_mode_constraints              -   bool(no),
     debug_intermodule_analysis          -   bool(no),
-    debug_mm_tabling_analysis           -   bool(no)
+    debug_mm_tabling_analysis           -   bool(no),
+    debug_indirect_reuse                -   bool(no)
 ]).
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
@@ -1789,6 +1791,7 @@ long_option("debug-trail-usage",    debug_trail_usage).
 long_option("debug-mode-constraints", debug_mode_constraints).
 long_option("debug-intermodule-analysis",   debug_intermodule_analysis).
 long_option("debug-mm-tabling-analysis",    debug_mm_tabling_analysis).
+long_option("debug-indirect-reuse",         debug_indirect_reuse).
 
 % output options (mutually exclusive)
 long_option("generate-source-file-mapping", generate_source_file_mapping).
@@ -3255,7 +3258,10 @@ options_help_verbosity -->
         "\toption.",
         "--debug-intermodule-analysis",
         "\tOutput detailed debugging traces of the `--intermodule-analysis'",
-        "\toption."
+        "\toption.",
+        "--debug-indirect-reuse",
+        "\tOutput detailed debugging traces of the indirect reuse pass of",
+        "\t`--structure-reuse' option."
 % The mode constraints code is still experimental so this option is
 % currently commented out.
 %         "--debug-mode-constraints",

@@ -6435,6 +6435,12 @@ Output detailed debugging traces of the `--make' option.
 @findex --debug-intermodule-analysis
 Output detailed debugging traces of the `--intermodule-analysis' option.
 
+@sp 1
+@item --debug-indirect-reuse
+@findex --debug-indirect-reuse
+Output detailed debugging traces of the indirect reuse pass of
+`--structure-reuse' option.
+
 @end table
 
 @node Output options

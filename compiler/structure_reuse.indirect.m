@@ -50,11 +50,12 @@
 
 :- import_module analysis.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -149,17 +150,28 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
 indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         !ModuleInfo, !FixpointTable, !IO):-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(debug_indirect_reuse, DebugIndirect, !IO),
 
-    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     PPId = proc(PredId, ProcId),
 
     % Some feedback..
-    Run = string.int_to_string(sr_fixpoint_table_which_run(!.FixpointTable)),
-    passes_aux.write_proc_progress_message(
-        "% Indirect reuse analysis (run " ++ Run ++ ") ",
-        PredId, ProcId, !.ModuleInfo, !IO),
+    Run = sr_fixpoint_table_which_run(!.FixpointTable),
+    (
+        ( VeryVerbose = yes
+        ; DebugIndirect = yes
+        )
+    ->
+        io.write_string("% Indirect reuse analysis (run ", !IO),
+        io.write_int(Run, !IO),
+        io.write_string(") ", !IO),
+        hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
+        io.nl(!IO)
+    ;
+        true
+    ),
 
     % Some initialisation work...
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
     BaseInfo = ir_background_info_init(!.ModuleInfo, PredInfo0, ProcInfo0,
         SharingTable, ReuseTable),
@@ -167,13 +179,23 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
 
     % The actual analysis of the goal:
     indirect_reuse_analyse_goal(BaseInfo, Goal0, Goal, AnalysisInfo0,
-        AnalysisInfo, !IO),
+        AnalysisInfo),
     !:FixpointTable = AnalysisInfo ^ fptable,
 
     % Some feedback.
-    maybe_write_string(VeryVerbose, "\n% FPT: " ++
-        sr_fixpoint_table_get_short_description(PPId, !.FixpointTable)
-        ++ "\n", !IO),
+    (
+        ( VeryVerbose = yes
+        ; DebugIndirect = yes
+        )
+    ->
+        io.write_string("% FPT: ", !IO),
+        io.write_string(
+            sr_fixpoint_table_get_short_description(PPId, !.FixpointTable),
+            !IO),
+        io.nl(!IO)
+    ;
+        true
+    ),
 
     % Record the obtained reuse description in the fixpoint table...
     sr_fixpoint_table_new_as(!.ModuleInfo, ProcInfo0, PPId,
@@ -198,7 +220,8 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
                 sharing_table   :: sharing_as_table,
                 reuse_table     :: reuse_as_table,
                 headvars        :: list(prog_var),
-                very_verbose    :: bool
+                very_verbose    :: bool,
+                debug_indirect  :: bool
             ).
 
     % The type analysis_info gathers the analysis information that may change
@@ -227,9 +250,11 @@ ir_background_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable,
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    globals.lookup_bool_option(Globals, debug_indirect_reuse, DebugIndirect),
 
     BG = ir_background_info(ModuleInfo, PredInfo, ProcInfo,
-        SharingTable, ReuseTable, HeadVarsOfInterest, VeryVerbose).
+        SharingTable, ReuseTable, HeadVarsOfInterest, VeryVerbose,
+        DebugIndirect).
 
 :- func analysis_info_init(pred_proc_id, sr_fixpoint_table) = ir_analysis_info.
 
@@ -280,10 +305,9 @@ analysis_info_lub(BaseInfo, AnalysisInfo0, !AnalysisInfo):-
 %-----------------------------------------------------------------------------%
 
 :- pred indirect_reuse_analyse_goal(ir_background_info::in, hlds_goal::in,
-    hlds_goal::out, ir_analysis_info::in, ir_analysis_info::out,
-    io::di, io::uo) is det.
+    hlds_goal::out, ir_analysis_info::in, ir_analysis_info::out) is det.
 
-indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
+indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo) :-
     ModuleInfo = BaseInfo ^ module_info,
     PredInfo = BaseInfo ^ pred_info,
     ProcInfo = BaseInfo ^ proc_info,
@@ -291,15 +315,15 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl2(indirect_reuse_analyse_goal_with_progress(BaseInfo),
-            Goals0, Goals, !AnalysisInfo, !IO),
+        list.map_foldl(indirect_reuse_analyse_goal(BaseInfo),
+            Goals0, Goals, !AnalysisInfo),
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CalleeArgs,
             _, _, _),
         verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId,
-            CalleeArgs, GoalInfo0, GoalInfo, !AnalysisInfo, !IO),
+            CalleeArgs, GoalInfo0, GoalInfo, !AnalysisInfo),
         lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
             CalleePredId, CalleeProcId, CalleeArgs,
             !.AnalysisInfo ^ sharing_as, NewSharing),
@@ -344,20 +368,20 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
             GoalInfo0, !.AnalysisInfo ^ sharing_as)
     ;
         GoalExpr0 = disj(Goals0),
-        list.map2_foldl2(
+        list.map2_foldl(
             indirect_reuse_analyse_disj(BaseInfo, !.AnalysisInfo),
             Goals0, Goals, AnalysisInfoList, !.AnalysisInfo ^ fptable,
-            NewFixpointTable, !IO),
+            NewFixpointTable),
         analysis_info_combine(BaseInfo, AnalysisInfoList, NewFixpointTable,
             !AnalysisInfo),
         GoalExpr = disj(Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(A, B, Cases0),
-        list.map2_foldl2(
+        list.map2_foldl(
             indirect_reuse_analyse_case(BaseInfo, !.AnalysisInfo),
             Cases0, Cases, AnalysisInfoList, !.AnalysisInfo ^ fptable,
-            NewFixpointTable, !IO),
+            NewFixpointTable),
         analysis_info_combine(BaseInfo, AnalysisInfoList, NewFixpointTable,
             !AnalysisInfo),
         GoalExpr = switch(A, B, Cases),
@@ -368,7 +392,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
     ;
         GoalExpr0 = scope(A, SubGoal0),
         indirect_reuse_analyse_goal(BaseInfo, SubGoal0, SubGoal,
-            !AnalysisInfo, !IO),
+            !AnalysisInfo),
         GoalExpr = scope(A, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -385,13 +409,13 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr0 = if_then_else(A, IfGoal0, ThenGoal0, ElseGoal0),
         AnalysisInfo0 = !.AnalysisInfo,
         indirect_reuse_analyse_goal(BaseInfo, IfGoal0, IfGoal,
-            AnalysisInfo0, AnalysisInfoIfGoal, !IO),
+            AnalysisInfo0, AnalysisInfoIfGoal),
         indirect_reuse_analyse_goal(BaseInfo, ThenGoal0, ThenGoal,
-            AnalysisInfoIfGoal, AnalysisInfoThenGoal, !IO),
+            AnalysisInfoIfGoal, AnalysisInfoThenGoal),
         AnalysisInfoElseGoal0 = AnalysisInfo0 ^ fptable :=
             AnalysisInfoThenGoal ^ fptable,
         indirect_reuse_analyse_goal(BaseInfo, ElseGoal0, ElseGoal,
-            AnalysisInfoElseGoal0, AnalysisInfoElseGoal, !IO),
+            AnalysisInfoElseGoal0, AnalysisInfoElseGoal),
         analysis_info_lub(BaseInfo, AnalysisInfoThenGoal,
             AnalysisInfoElseGoal, !:AnalysisInfo),
         GoalExpr = if_then_else(A, IfGoal, ThenGoal, ElseGoal),
@@ -410,61 +434,53 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         unexpected(this_file, "indirect_reuse_analyse_goal: shorthand")
     ).
 
-:- pred indirect_reuse_analyse_goal_with_progress(ir_background_info::in,
-    hlds_goal::in, hlds_goal::out, ir_analysis_info::in, ir_analysis_info::out,
-    io::di, io::uo) is det.
-
-indirect_reuse_analyse_goal_with_progress(BaseInfo, !Goal, !AnalysisInfo,
-        !IO) :-
-    VeryVerbose = BaseInfo ^ very_verbose,
-    (
-        VeryVerbose = yes,
-        io.write_char('.', !IO),
-        io.flush_output(!IO)
-    ;
-        VeryVerbose = no
-    ),
-    indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO).
-
     % Analyse each branch of a disjunction with respect to an input
     % analysis_info, producing a resulting analysis_info, and possibly
     % updating the state of the sr_fixpoint_table.
     %
 :- pred indirect_reuse_analyse_disj(ir_background_info::in,
     ir_analysis_info::in, hlds_goal::in, hlds_goal::out, ir_analysis_info::out,
-    sr_fixpoint_table::in, sr_fixpoint_table::out, io::di, io::uo) is det.
+    sr_fixpoint_table::in, sr_fixpoint_table::out) is det.
 
 indirect_reuse_analyse_disj(BaseInfo, AnalysisInfo0, Goal0, Goal, AnalysisInfo,
-        !FixpointTable, !IO) :-
+        !FixpointTable) :-
     % Replace the state of the fixpoint_table in AnalysisInfo0:
     NewAnalysisInfo = AnalysisInfo0 ^ fptable := !.FixpointTable,
     indirect_reuse_analyse_goal(BaseInfo, Goal0, Goal, NewAnalysisInfo,
-        AnalysisInfo, !IO),
+        AnalysisInfo),
     !:FixpointTable = AnalysisInfo ^ fptable.
 
     % Similar to indirect_reuse_analyse_disj.
 :- pred indirect_reuse_analyse_case(ir_background_info::in,
     ir_analysis_info::in, case::in, case::out, ir_analysis_info::out,
-    sr_fixpoint_table::in, sr_fixpoint_table::out, io::di, io::uo) is det.
+    sr_fixpoint_table::in, sr_fixpoint_table::out) is det.
 
 indirect_reuse_analyse_case(BaseInfo, AnalysisInfo0, Case0, Case, AnalysisInfo,
-        !FixpointTable, !IO) :-
+        !FixpointTable) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     % Replace the state of the fixpoint_table in AnalysisInfo0:
     NewAnalysisInfo = AnalysisInfo0 ^ fptable := !.FixpointTable,
     indirect_reuse_analyse_goal(BaseInfo, Goal0, Goal, NewAnalysisInfo,
-        AnalysisInfo, !IO),
+        AnalysisInfo),
     !:FixpointTable = AnalysisInfo ^ fptable,
     Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 
+:- type verify_indirect_reuse_reason
+    --->    callee_has_no_reuses
+    ;       callee_has_only_unconditional_reuse
+    ;       current_sharing_is_top
+    ;       reuse_is_unsafe(prog_vars)
+    ;       reuse_is_unconditional
+    ;       reuse_is_conditional.
+
 :- pred verify_indirect_reuse(ir_background_info::in, pred_id::in, proc_id::in,
     prog_vars::in, hlds_goal_info::in, hlds_goal_info::out,
-    ir_analysis_info::in, ir_analysis_info::out, io::di, io::uo) is det.
+    ir_analysis_info::in, ir_analysis_info::out) is det.
 
 verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
-        !GoalInfo, !AnalysisInfo, !IO):-
+        !GoalInfo, !AnalysisInfo) :-
     % Find the reuse information of the called procedure in the reuse table:
     CalleePPId = proc(CalleePredId, CalleeProcId),
     lookup_reuse_as(BaseInfo, CalleePPId, !AnalysisInfo, FormalReuseAs),
@@ -473,16 +489,16 @@ verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
         % If there is no reuse, then nothing can be done.
         reuse_as_no_reuses(FormalReuseAs)
     ->
-        true
+        Reason = callee_has_no_reuses
     ;
         reuse_as_all_unconditional_reuses(FormalReuseAs)
     ->
         % With unconditional reuse, we need to mark that the call is always
-        % a reuse call, yet without implying conditions.
+        % a reuse call.
         reuse_as_add_unconditional(!.AnalysisInfo ^ reuse_as, NewReuseAs),
         !:AnalysisInfo = !.AnalysisInfo ^ reuse_as := NewReuseAs,
-        goal_info_set_reuse(reuse(reuse_call(unconditional_reuse)),
-            !GoalInfo)
+        goal_info_set_reuse(reuse(reuse_call(unconditional_reuse)), !GoalInfo),
+        Reason = callee_has_only_unconditional_reuse
     ;
         % With a conditional reuse, we need to check the conditions. If they
         % are satisfied, these conditions need to be translated to the callers
@@ -497,16 +513,16 @@ verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
             sharing_as_is_top(!.AnalysisInfo ^ sharing_as)
         ->
             % no need to update anything
-            true
+            Reason = current_sharing_is_top
         ;
             verify_indirect_reuse_2(BaseInfo, !.AnalysisInfo, !.GoalInfo,
-                CalleePPId, CalleeArgs, FormalReuseAs,
-                NewAndRenamedReuseAs),
+                CalleePPId, CalleeArgs, FormalReuseAs, NewAndRenamedReuseAs,
+                NotDeadVars),
             (
                 reuse_as_no_reuses(NewAndRenamedReuseAs)
             ->
                 % Don't do anything.
-                true
+                Reason = reuse_is_unsafe(NotDeadVars)
             ;
                 reuse_as_all_unconditional_reuses(NewAndRenamedReuseAs)
             ->
@@ -515,7 +531,8 @@ verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
                     NewReuseAs),
                 !:AnalysisInfo = !.AnalysisInfo ^ reuse_as := NewReuseAs,
                 goal_info_set_reuse(reuse(reuse_call(unconditional_reuse)),
-                    !GoalInfo)
+                    !GoalInfo),
+                Reason = reuse_is_unconditional
             ;
                 % Update reuse information and goal_info:
                 reuse_as_least_upper_bound(BaseInfo ^ module_info,
@@ -524,8 +541,33 @@ verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
                 !:AnalysisInfo = !.AnalysisInfo ^ reuse_as := NewReuseAs,
                 goal_info_set_reuse(
                     potential_reuse(reuse_call(conditional_reuse)),
-                    !GoalInfo)
+                    !GoalInfo),
+                Reason = reuse_is_conditional
             )
+        )
+    ),
+
+    % Output the reasoning behind the result.
+    trace [io(!IO)] (
+        DebugIndirect = BaseInfo ^ debug_indirect,
+        (
+            DebugIndirect = yes,
+            ModuleInfo = BaseInfo ^ module_info,
+            GoalReuse = goal_info_get_reuse(!.GoalInfo),
+            Context = goal_info_get_context(!.GoalInfo),
+            proc_info_get_varset(BaseInfo ^ proc_info, VarSet),
+            io.write_string("\tcall to ", !IO),
+            write_pred_proc_id_pair(ModuleInfo, CalleePredId, CalleeProcId,
+                !IO),
+            io.write_string("\n\tfrom ", !IO),
+            write_context(Context, !IO),
+            io.write_string("\n\t\treuse: ", !IO),
+            io.write(GoalReuse, !IO),
+            io.write_string("\n\t\treason: ", !IO),
+            write_verify_indirect_reuse_reason(Reason, VarSet, !IO),
+            io.nl(!IO)
+        ;
+            DebugIndirect = no
         )
     ).
 
@@ -559,10 +601,10 @@ lookup_reuse_as(BaseInfo, PPId, !AnalysisInfo, ReuseAs) :-
     %
 :- pred verify_indirect_reuse_2(ir_background_info::in, ir_analysis_info::in,
     hlds_goal_info::in, pred_proc_id::in, list(prog_var)::in, reuse_as::in,
-    reuse_as::out) is det.
+    reuse_as::out, prog_vars::out) is det.
 
 verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
-        CalleeArgs, FormalReuseAs, NewReuseAs):-
+        CalleeArgs, FormalReuseAs, NewReuseAs, NotDeadVars):-
     ModuleInfo = BaseInfo ^ module_info,
     PredInfo = BaseInfo ^ pred_info,
     ProcInfo = BaseInfo ^ proc_info,
@@ -578,10 +620,11 @@ verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
         SharingAs),
     ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
     StaticVars = set.to_sorted_list(AnalysisInfo ^ static_vars),
+ 
+    reuse_as_satisfied(ModuleInfo, ProcInfo, ProjectedLiveData,
+        SharingAs, StaticVars, ActualReuseAs, Result),
     (
-        reuse_as_satisfied(ModuleInfo, ProcInfo, ProjectedLiveData,
-            SharingAs, StaticVars, ActualReuseAs)
-    ->
+        Result = reuse_possible,
         LFU = goal_info_get_lfu(GoalInfo),
         LBU = goal_info_get_lbu(GoalInfo),
         LU = set.union(LFU, LBU),
@@ -589,9 +632,39 @@ verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
         LuData = list.map(datastruct_init, LuList),
         NewReuseAs = reuse_as_from_called_procedure_to_local_reuse_as(
             ModuleInfo, ProcInfo, BaseInfo ^ headvars, LuData, SharingAs,
-            ActualReuseAs)
+            ActualReuseAs),
+        NotDeadVars = []
     ;
-        NewReuseAs = reuse_as_init  % no reuse
+        Result = reuse_not_possible(Reason),
+        NewReuseAs = reuse_as_init,  % no reuse
+        (
+            ( Reason = no_reuse
+            ; Reason = unknown_livedata
+            ; Reason = reuse_nodes_have_sharing
+            ),
+            NotDeadVars = []
+        ;
+            Reason = reuse_condition_violated(NotDeadVars)
+        )
+    ).
+
+:- pred write_verify_indirect_reuse_reason(verify_indirect_reuse_reason::in,
+    prog_varset::in, io::di, io::uo) is det.
+
+write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
+    (
+        ( Reason = callee_has_no_reuses
+        ; Reason = callee_has_only_unconditional_reuse
+        ; Reason = current_sharing_is_top
+        ; Reason = reuse_is_unconditional
+        ; Reason = reuse_is_conditional
+        ),
+        io.write(Reason, !IO)
+    ;
+        Reason = reuse_is_unsafe(Vars),
+        io.write_string("reuse_is_unsafe(", !IO),
+        mercury_output_vars(VarSet, yes, Vars, !IO),
+        io.write_string(")", !IO)
     ).
 
 %-----------------------------------------------------------------------------%

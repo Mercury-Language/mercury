@@ -72,12 +72,18 @@
 
 :- pred datastruct_subsumed_by_return_selector(module_info::in, proc_info::in,
     datastruct::in, datastruct::in, selector::out) is semidet.
+
 :- pred datastruct_subsumed_by(module_info::in, proc_info::in,
     datastruct::in, datastruct::in) is semidet.
+
 :- pred datastruct_subsumed_by_list(module_info::in, proc_info::in,
     datastruct::in, list(datastruct)::in) is semidet.
+
 :- pred datastructs_subsumed_by_list(module_info::in, proc_info::in,
     list(datastruct)::in, list(datastruct)::in) is semidet.
+
+:- pred datastructs_that_are_subsumed_by_list(module_info::in, proc_info::in,
+    list(datastruct)::in, list(datastruct)::in, list(datastruct)::out) is det.
 
 :- func datastruct_lists_least_upper_bound(module_info, proc_info,
     list(datastruct), list(datastruct)) = list(datastruct).
@@ -87,6 +93,8 @@
 
 :- func datastructs_project(list(prog_var), 
     list(datastruct)) = list(datastruct).
+
+:- func datastructs_vars(list(datastruct)) = list(prog_var).
 
 %-----------------------------------------------------------------------------%
 
@@ -165,6 +173,12 @@ datastructs_subsumed_by_list(ModuleInfo, ProcInfo, PerhapsSubsumedData,
         datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data, X)
     ).
 
+datastructs_that_are_subsumed_by_list(ModuleInfo, ProcInfo,
+        PerhapsSubsumedData, Datastructs, SubsumedData) :-
+    list.filter(
+        datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs),
+        PerhapsSubsumedData, SubsumedData).
+
 :- pred datastructs_subsume_datastruct(module_info::in, proc_info::in, 
     list(datastruct)::in, datastruct::in) is semidet.
 
@@ -190,6 +204,8 @@ datastructs_project(Vars, DataIn) =
     list.filter(
         (pred(Data::in) is semidet :- list.member(Data ^ sc_var, Vars)),
         DataIn).
+
+datastructs_vars(Data) = list.map(func(X) = X ^ sc_var, Data).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.datastruct.

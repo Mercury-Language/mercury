@@ -163,14 +163,34 @@
 :- func reuse_as_from_called_procedure_to_local_reuse_as(module_info,
     proc_info, prog_vars, live_datastructs, sharing_as, reuse_as) = reuse_as.
 
-
-    % Succeeds if taking into account the live data and static variables the
+    % Taking into account the live data and static variables, check if the
     % reuse conditions expressed by reuse_as are all satisfied, hence making
     % the associated memory reuses safe for that particular calling
-    % environment.
+    % environment. If the conditions are not satisfied, return the
+    % variables which caused one of the conditions to be violated.
     % 
 :- pred reuse_as_satisfied(module_info::in, proc_info::in, livedata::in,
-    sharing_as::in, prog_vars::in, reuse_as::in) is semidet.
+    sharing_as::in, prog_vars::in, reuse_as::in, reuse_satisfied_result::out)
+    is det.
+
+:- type reuse_satisfied_result
+    --->    reuse_possible
+    ;       reuse_not_possible(reuse_not_possible_reason).
+
+:- type reuse_not_possible_reason
+    --->    no_reuse
+            % No reuse version of the procedure.
+
+    ;       unknown_livedata
+            % We had to assume everything was live.
+
+    ;       reuse_condition_violated(list(prog_var))
+            % At least these variables couldn't be allowed to be clobbered.
+
+    ;       reuse_nodes_have_sharing.
+            % The reuse conditions are individually satisfied, but the
+            % arguments for reuse have sharing between them which would lead
+            % to undefined behaviour in the reuse version of the procedure.
 
     % Conversion procedures between the public (structure_reuse_domain) 
     % and private (reuse_as) representation for structure reuse conditions. 
@@ -284,17 +304,18 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU,
     % case the condition is always satisfied, independent of any calling
     % environment.
     (
-        Nodes = []
-    ->
+        Nodes = [],
         Condition = always
     ;
+        Nodes = [_ | _],
         set.union(LFU, LBU, LU),
-            % XXX the old implementation did not bother about extending at
-            % this place, which was contrary to the theory. Check the effect
-            % of this change!
-        SharedLU = list.condense(
-            list.map(extend_datastruct(ModuleInfo, ProcInfo, Sharing),
-                list.map(datastruct_init, set.to_sorted_list(LU)))),
+        % XXX the old implementation did not bother about extending at this
+        % place, which was contrary to the theory. Check the effect of this
+        % change!
+        LuData = list.map(datastruct_init, set.to_sorted_list(LU)),
+        ExtendedLuData = list.map(
+            extend_datastruct(ModuleInfo, ProcInfo, Sharing), LuData),
+        SharedLU = list.condense(ExtendedLuData),
         HeadVarSharedLU = datastructs_project(HeadVars, SharedLU),
 
         structure_sharing.domain.sharing_as_project(HeadVars, Sharing, 
@@ -558,7 +579,7 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
             AllDeadHeadVarNodes = [],
             LocalCondition = always
         ;
-            AllDeadHeadVarNodes = [_|_],
+            AllDeadHeadVarNodes = [_ | _],
             % Translate the in use nodes:
             AllInUseNodes = extend_datastructs(ModuleInfo, ProcInfo, 
                 SharingAs, list.append(LuData, CalledInUseNodes)),
@@ -577,17 +598,17 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
     ). 
 
 reuse_as_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
-        ReuseAs) :- 
+        ReuseAs, Result) :- 
     (
         ReuseAs = no_reuse,
-        fail
+        Result = reuse_not_possible(no_reuse)
     ;
         ReuseAs = unconditional,
-        true
+        Result = reuse_possible
     ; 
         ReuseAs = conditional(Conditions),
-        list.all_true(reuse_condition_satisfied(ModuleInfo, ProcInfo, 
-            LiveData, SharingAs, StaticVars), Conditions),
+        reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs,
+            StaticVars, Conditions, Result0),
 
         % Next to verifying each condition separately, one has to verify
         % whether the nodes which are reused in each of the conditions are
@@ -596,8 +617,38 @@ reuse_as_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
         % the callee want to reuse the different parts of the input while
         % these may point to exactly the same structure, resulting in
         % undefined behaviour.
-        no_aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs,
-            Conditions)
+        (
+            Result0 = reuse_possible,
+            (
+                no_aliases_between_reuse_nodes(ModuleInfo, ProcInfo,
+                    SharingAs, Conditions)
+            ->
+                Result = reuse_possible
+            ;
+                Result = reuse_not_possible(reuse_nodes_have_sharing)
+            )
+        ;
+            Result0 = reuse_not_possible(_),
+            Result = Result0
+        )
+    ).
+
+:- pred reuse_as_satisfied_2(module_info::in, proc_info::in, livedata::in,
+    sharing_as::in, prog_vars::in, reuse_conditions::in,
+    reuse_satisfied_result::out) is det.
+
+reuse_as_satisfied_2(_, _, _, _, _, [], reuse_possible).
+reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
+        [Cond | Conds], Result) :- 
+    reuse_condition_satisfied(ModuleInfo, ProcInfo, 
+        LiveData, SharingAs, StaticVars, Cond, Result0),
+    (
+        Result0 = reuse_possible,
+        reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs,
+            StaticVars, Conds, Result)
+    ;
+        Result0 = reuse_not_possible(_),
+        Result = Result0
     ).
 
 :- pred no_aliases_between_reuse_nodes(module_info::in, proc_info::in,
@@ -657,31 +708,53 @@ there_is_a_subsumption_relation(ModuleInfo, ProcInfo, Datastructs, DataA):-
 %-----------------------------------------------------------------------------%
 
 :- pred reuse_condition_satisfied(module_info::in, proc_info::in,
-    livedata::in, sharing_as::in, prog_vars::in, reuse_condition::in) 
-    is semidet.
+    livedata::in, sharing_as::in, prog_vars::in, reuse_condition::in,
+    reuse_satisfied_result::out) is det.
 
 reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, 
-        StaticVars, Condition) :- 
+        StaticVars, Condition, Result) :- 
     (
-        Condition = always
+        Condition = always,
+        Result = reuse_possible
     ;
         Condition = condition(DeadNodes, InUseNodes, SharingNodes),
         % Reuse of static vars is not allowed:
         StaticDeadNodes = datastructs_project(StaticVars, DeadNodes),
-        StaticDeadNodes = [],
+        (
+            StaticDeadNodes = [],
 
-        % Using the InUseNodes, and the sharing recorded by the condition, 
-        % compute a new set of livedata that (safely) approximates the
-        % set of livedata that would have been obtained when looking at
-        % the program point from where the reuse condition actually comes from.
-        NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, SharingNodes, 
-            SharingAs),
-        UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo, 
-            InUseNodes, NewSharing, LiveData),
-        nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
-            UpdatedLiveData)
+            % Using the InUseNodes, and the sharing recorded by the condition, 
+            % compute a new set of livedata that (safely) approximates the
+            % set of livedata that would have been obtained when looking at
+            % the program point from where the reuse condition actually comes
+            % from.
+            NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, SharingNodes, 
+                SharingAs),
+            UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo, 
+                InUseNodes, NewSharing, LiveData),
+            nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
+                UpdatedLiveData, NotLiveResult),
+            (
+                NotLiveResult = nodes_all_live,
+                Result = reuse_not_possible(unknown_livedata)
+            ;
+                NotLiveResult = nodes_are_live(StillLive),
+                (
+                    StillLive = [],
+                    Result = reuse_possible
+                ;
+                    StillLive = [_ | _],
+                    Vars = datastructs_vars(StillLive),
+                    Result = reuse_not_possible(reuse_condition_violated(Vars))
+                )
+            )
+        ;
+            StaticDeadNodes = [_ | _],
+            Vars = datastructs_vars(StaticDeadNodes),
+            Result = reuse_not_possible(reuse_condition_violated(Vars))
+        )
     ).
-    
+
 %-----------------------------------------------------------------------------%
 
 from_structure_reuse_domain(ReuseDomain) = ReuseAs :- 
