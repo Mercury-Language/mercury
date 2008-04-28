@@ -24,6 +24,9 @@ Changes to the Mercury language:
 * We now support higher-order `any' insts.
 * We now support "implementation-defined literals", such as `$file', `$line',
   `$pred', which are useful for producing better run-time error messages.
+* We now support currying of multi-moded predicates or functions when the
+  mode to curry can be determined from the insts of the higher-order
+  arguments.
 
 Changes to the Mercury standard library:
 

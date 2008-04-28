@@ -1,0 +1,21 @@
+TEST 1
+f2p: det, not unique
+f2p: det, not unique
+f2p: det, not unique
+f2p: det, not unique
+f2p: det, not unique
+[5, 4, 3, 2, 1]
+
+TEST 2
+f2p: det, unique
+a
+f2p: det, unique
+b
+f2p: det, unique
+c
+
+TEST 3
+f2p: semidet
+f2p: semidet
+f2p: semidet
+found a multiple of three

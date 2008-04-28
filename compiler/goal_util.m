@@ -191,6 +191,11 @@
     %
 :- pred predids_from_goal(hlds_goal::in, list(pred_id)::out) is det.
 
+    % Returns all the predids that are called along with the list of
+    % arguments.
+:- pred predids_with_args_from_goal(hlds_goal::in,
+    list({pred_id, prog_vars})::out) is det.
+
     % Returns all the predids that are used in a list of goals.
     %
 :- pred predids_from_goals(hlds_goals::in, list(pred_id)::out) is det.
@@ -1615,6 +1620,13 @@ predids_from_goal(Goal, PredIds) :-
     % has multiple modes.
     P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
     solutions.solutions(P, PredIds).
+
+predids_with_args_from_goal(Goal, List) :-
+    solutions(
+        (pred({PredId, Args}::out) is nondet :-
+            goal_contains_goal(Goal, hlds_goal(SubGoal, _)),
+            SubGoal = plain_call(PredId, _, Args, _, _, _)
+        ), List).
 
 pred_proc_ids_from_goal(Goal, PredProcIds) :-
     P = (pred(PredProcId::out) is nondet :- goal_calls(Goal, PredProcId)),

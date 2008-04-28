@@ -56,6 +56,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module check_hlds.unique_modes.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -270,7 +271,23 @@ modecheck_unification_2(X0,
             UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO)
     ).
 
-modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
+modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, GoalInfo,
+        Goal, !ModeInfo, !IO) :-
+    LambdaGoal = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+    ( goal_info_has_feature(GoalInfo, feature_lambda_undetermined_mode) ->
+        modecheck_unification_rhs_undetermined_mode_lambda(X, LambdaGoal,
+            Unification0, UnifyContext, GoalInfo, Goal, !ModeInfo, !IO)
+    ;
+        modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0,
+            UnifyContext, GoalInfo, Goal, !ModeInfo, !IO)
+    ).
+
+:- pred modecheck_unification_rhs_lambda(prog_var::in,
+    unify_rhs::in(rhs_lambda_goal), unification::in, unify_context::in,
+    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out,
+    io::di, io::uo) is det.
+
+modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
         unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo, !IO) :-
     LambdaGoal = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars, Vars, Modes0, Det, Goal0),
@@ -498,6 +515,53 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
         % Return any old garbage.
         Unification = Unification0,
         RHS = RHS0
+    ).
+
+:- pred modecheck_unification_rhs_undetermined_mode_lambda(prog_var::in,
+    unify_rhs::in(rhs_lambda_goal), unification::in, unify_context::in,
+    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out,
+    io::di, io::uo) is det.
+
+modecheck_unification_rhs_undetermined_mode_lambda(X, LambdaGoal0, Unification,
+        UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
+    LambdaGoal0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal0),
+    % Find out the predicate called in the lambda goal.
+    ( predids_with_args_from_goal(Goal0, [{PredId, ArgVars}]) ->
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        mode_info_get_var_types(!.ModeInfo, VarTypes),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        match_modes_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
+            ArgVars, PredInfo, MatchResult),
+        (
+            ( MatchResult = possible_modes([])
+            ; MatchResult = ho_arg_not_ground
+            ),
+            mode_info_error(set.make_singleton_set(X),
+                mode_error_unify_var_multimode_pred(X, PredId), !ModeInfo),
+            % Return any old garbage.
+            Goal = true_goal_expr
+        ;
+            MatchResult = possible_modes([ProcId]),
+            fix_undetermined_mode_lambda_goal(ProcId, LambdaGoal0, LambdaGoal,
+                ModuleInfo),
+            goal_info_remove_feature(feature_lambda_undetermined_mode,
+                GoalInfo0, GoalInfo),
+            % Modecheck this unification in its new form.
+            modecheck_unification_2(X, LambdaGoal, Unification, UnifyContext,
+                GoalInfo, Goal, !ModeInfo, !IO)
+        ;
+            MatchResult = possible_modes([_, _ | _]),
+            mode_info_error(set.make_singleton_set(X), 
+                mode_error_unify_var_multimode_pred_undetermined(X, PredId),
+                !ModeInfo),
+            % Return any old garbage.
+            Goal = true_goal_expr
+        )
+    ;
+        unexpected(this_file,
+            "modecheck_unification_rhs_undetermined_mode_lambda: " ++
+            "expecting single call")
     ).
 
 :- pred modecheck_unify_functor(prog_var::in, mer_type::in, cons_id::in,
@@ -1378,6 +1442,89 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
         mode_info_unset_call_context(!ModeInfo)
     ;
         true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type match_modes_result
+    --->    possible_modes(list(proc_id))
+    ;       ho_arg_not_ground.
+
+:- type match_mode_result
+    --->    ho_insts_match
+    ;       ho_insts_do_not_match
+    ;       ho_arg_not_ground.
+
+:- pred match_modes_by_higher_order_insts(module_info::in, instmap::in,
+    vartypes::in, prog_vars::in, pred_info::in, match_modes_result::out) is det.
+
+match_modes_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, ArgVars,
+        CalleePredInfo, Result) :-
+    CalleeProcIds = pred_info_procids(CalleePredInfo),
+    match_modes_by_higher_order_insts_2(ModuleInfo, InstMap, VarTypes,
+        ArgVars, CalleePredInfo, CalleeProcIds, [], Result).
+
+:- pred match_modes_by_higher_order_insts_2(module_info::in, instmap::in,
+    vartypes::in, prog_vars::in, pred_info::in, list(proc_id)::in,
+    list(proc_id)::in, match_modes_result::out) is det.
+
+match_modes_by_higher_order_insts_2(_, _, _, _, _,
+        [], RevMatchedProcIds, Result) :-
+    Result = possible_modes(list.reverse(RevMatchedProcIds)).
+match_modes_by_higher_order_insts_2(ModuleInfo, InstMap, VarTypes,
+        ArgVars, PredInfo, [ProcId | ProcIds], RevMatchedProcIds, Result) :-
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, ArgVars,
+        ArgModes, ProcResult),
+    (
+        ProcResult = ho_insts_match,
+        match_modes_by_higher_order_insts_2(ModuleInfo, InstMap,
+            VarTypes, ArgVars, PredInfo, ProcIds, [ProcId | RevMatchedProcIds],
+            Result)
+    ;
+        ProcResult = ho_insts_do_not_match,
+        match_modes_by_higher_order_insts_2(ModuleInfo, InstMap, VarTypes,
+            ArgVars, PredInfo, ProcIds, RevMatchedProcIds, Result)
+    ;
+        ProcResult = ho_arg_not_ground,
+        Result = ho_arg_not_ground
+    ).
+
+:- pred match_mode_by_higher_order_insts(module_info::in, instmap::in,
+    vartypes::in, prog_vars::in, list(mer_mode)::in, match_mode_result::out)
+    is det.
+
+match_mode_by_higher_order_insts(_ModuleInfo, _InstMap, _VarTypes,
+        [], _, ho_insts_match).
+match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
+        [Arg | Args], ArgModesList, Result) :-
+    (
+        ArgModesList = [ArgMode | ArgModes]
+    ;
+        ArgModesList = [],
+        unexpected(this_file,
+            "args_match_higher_order_insts: too many arguments")
+    ),
+
+    % For arguments with higher order initial insts, check if the variable in
+    % that position has a matching inst. If the variable is free then we need
+    % to delay the goal.
+    Initial = mode_get_initial_inst(ModuleInfo, ArgMode),
+    ( Initial = ground(_, higher_order(_)) ->
+        instmap.lookup_var(InstMap, Arg, ArgInst),
+        map.lookup(VarTypes, Arg, ArgType),
+        ( inst_matches_initial(ArgInst, Initial, ArgType, ModuleInfo) ->
+            match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
+                Args, ArgModes, Result)
+        ; not inst_is_ground(ModuleInfo, ArgInst) ->
+            Result = ho_arg_not_ground
+        ;
+            Result = ho_insts_do_not_match
+        )
+    ;
+        match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, Args,
+            ArgModes, Result)
     ).
 
 %-----------------------------------------------------------------------------%

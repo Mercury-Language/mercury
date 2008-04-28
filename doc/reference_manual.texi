@@ -4161,8 +4161,10 @@ of the function are omitted in a higher-order function term, then
 the modes default to @samp{in} for the arguments, @samp{out} for the
 function result, and the determinism defaults to @samp{det}.
 
-If the predicate or function has more than one mode, you must use an explicit
-lambda expression to specify which mode you want.
+The Melbourne Mercury implementation currently requires that you use an
+explicit lambda expression to specify which mode you want, if the predicate
+or function has more than one mode (but see below for an exception to this
+rule).
 
 You can also create higher-order function terms of non-zero arity
 and higher-order predicate terms by ``currying'',
@@ -4185,6 +4187,12 @@ Double = scalar_product(2)
 @noindent
 binds @samp{Double} to a higher-order function term of type
 @samp{func(list(int)) = list(int)}.
+
+As a special case, currying of a multi-moded predicate or function is allowed
+provided that the mode of the predicate or function can be determined from
+the insts of the higher-order curried arguments.  For example,
+@samp{P = list.foldl(io.write)} is allowed because the inst of @samp{io.write}
+matches exactly one mode of @samp{list.foldl}.
 
 For higher-order predicate expressions that thread an accumulator
 pair, we have syntax that allows you to use DCG notation in the

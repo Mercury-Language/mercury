@@ -571,6 +571,10 @@
                 rhs_lambda_goal     :: hlds_goal
             ).
 
+:- inst rhs_lambda_goal
+    --->    rhs_lambda_goal(ground, ground, ground, ground, ground, ground,
+                ground, ground, ground). 
+
     % Was the constructor originally of the form 'new ctor'(...).
     %
 :- type is_existential_construction == bool.
@@ -1308,13 +1312,20 @@
             % This goal contains a scope goal whose scope_reason is
             % trace_goal(...).
 
-    ;       feature_pretest_equality.
+    ;       feature_pretest_equality
             % This goal is an if-then-else in a compiler-generated
             % type-constructor-specific unify or compare predicate
             % whose condition is a test of whether the two input arguments
             % are equal or not. The goal feature exists because in some
             % circumstances we need to strip off this pretest, and replace
             % the if-then-else with just its else branch.
+
+    ;       feature_lambda_undetermined_mode.
+            % This goal is a lambda goal converted from a higher order term
+            % for which we don't know the mode of the call to the underlying
+            % predicate. These can be produced by the polymorphism
+            % transformation but should be removed by the end of mode
+            % checking.
 
 %-----------------------------------------------------------------------------%
 %

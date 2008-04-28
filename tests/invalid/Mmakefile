@@ -148,6 +148,7 @@ SINGLEMODULE= \
 	multimode_dcg \
 	multimode_missing_impure \
 	multimode_syntax \
+	multimode_addr_problems \
 	multisoln_func \
 	nested_impl_in_int \
 	no_exports \

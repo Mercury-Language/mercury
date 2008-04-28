@@ -124,6 +124,15 @@
             % Some sort of error in attempt to unify a variable with lambda
             % expression.
 
+    ;       mode_error_unify_var_multimode_pred(prog_var, pred_id)
+            % Some sort of error in attempt to take address of a multi-moded
+            % predicate.
+
+    ;       mode_error_unify_var_multimode_pred_undetermined(prog_var,
+                pred_id)
+            % Attempt to take address of a multi-moded predicate where we
+            % could not uniquely determine the mode to use.
+
     ;       mode_error_conj(list(delayed_goal), schedule_culprit)
             % A conjunction contains one or more unscheduleable goals;
             % schedule_culprit gives the reason why they couldn't be scheduled.
@@ -309,6 +318,15 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         ModeError = mode_error_unify_var_lambda(VarA, InstA, InstB),
         Spec = mode_error_unify_var_lambda_to_spec(ModeInfo, VarA,
             InstA, InstB)
+    ;
+        ModeError = mode_error_unify_var_multimode_pred(VarA, PredId),
+        Spec = mode_error_unify_var_multimode_pred_to_spec(ModeInfo, VarA,
+            PredId)
+    ;
+        ModeError = mode_error_unify_var_multimode_pred_undetermined(VarA,
+            PredId),
+        Spec = mode_error_unify_var_multimode_pred_undetermined_to_spec(
+            ModeInfo, VarA, PredId)
     ;
         ModeError = mode_error_unify_var_functor(Var, Name, Args, Inst,
             ArgInsts),
@@ -935,6 +953,56 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
         words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix(","), nl,
         words("lambda expression has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+
+%-----------------------------------------------------------------------------%
+
+:- func mode_error_unify_var_multimode_pred_to_spec(mode_info, prog_var,
+    pred_id) = error_spec.
+
+mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId) = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredModule = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    QualifiedName = qualified(PredModule, PredName),
+    Arity = pred_info_orig_arity(PredInfo),
+    adjust_func_arity(PredOrFunc, FuncArity, Arity),
+    Pieces = [words("mode error in unification of"),
+        words(add_quotes(mercury_var_to_string(VarSet, no, X))),
+        words("and higher-order term based on multi-moded"),
+        p_or_f(PredOrFunc), sym_name_and_arity(QualifiedName / FuncArity),
+        suffix("."), nl],
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+
+:- func mode_error_unify_var_multimode_pred_undetermined_to_spec(mode_info,
+    prog_var, pred_id) = error_spec.
+
+mode_error_unify_var_multimode_pred_undetermined_to_spec(ModeInfo, X, PredId)
+        = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredModule = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    QualifiedName = qualified(PredModule, PredName),
+    Arity = pred_info_orig_arity(PredInfo),
+    adjust_func_arity(PredOrFunc, FuncArity, Arity),
+    Pieces = [words("In unification of"),
+        words(add_quotes(mercury_var_to_string(VarSet, no, X))),
+        words("and higher-order term."),
+        words("Could not determine the mode of"),
+        p_or_f(PredOrFunc), sym_name_and_arity(QualifiedName / FuncArity),
+        words("by the insts of the higher-order arguments only."), nl],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 

@@ -1012,7 +1012,20 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         get_pred_id(calls_are_fully_qualified(Markers), Name,
             PredOrFunc, TVarSet, AllArgTypes, ModuleInfo, PredId)
     ->
-        get_proc_id(ModuleInfo, PredId, ProcId),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        ProcIds = pred_info_procids(PredInfo),
+        (
+            ProcIds = [ProcId0],
+            ProcId = ProcId0
+        ;
+            ProcIds = [_, _ | _],
+            % We don't know which mode to pick. Defer it until mode checking.
+            ProcId = invalid_proc_id
+        ;
+            ProcIds = [],
+            % Abort with error message.
+            get_proc_id(ModuleInfo, PredId, ProcId)
+        ),
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
         ConsId = pred_const(ShroudedPredProcId, EvalMethod),
         GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,

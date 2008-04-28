@@ -232,6 +232,7 @@ ok_to_duplicate(feature_will_not_modify_trail) = yes.
 ok_to_duplicate(feature_will_not_call_mm_tabled) = yes.
 ok_to_duplicate(feature_contains_trace) = yes.
 ok_to_duplicate(feature_pretest_equality) = yes.
+ok_to_duplicate(feature_lambda_undetermined_mode) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.

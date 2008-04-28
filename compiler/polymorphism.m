@@ -322,6 +322,16 @@
     module_info::in, unify_rhs::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
+    % fix_undetermined_mode_lambda_goal(ProcId, Functor0, Functor, ModuleInfo)
+    %
+    % This is called by mode checking when it figures out which mode that a
+    % lambda goal converted from a higher order pred term should call.
+    % Functor0 must have been produced by `convert_pred_to_lambda_goal'.
+    %
+:- pred fix_undetermined_mode_lambda_goal(proc_id::in,
+    unify_rhs::in(rhs_lambda_goal), unify_rhs::out(rhs_lambda_goal),
+    module_info::in) is det.
+
     % init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
     %   !VarSet, !VarTypes) :-
     %
@@ -1302,19 +1312,39 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % Check if variable has a higher order type.
         type_is_higher_order_details(TypeOfX, Purity, _PredOrFunc, EvalMethod,
             CalleeArgTypes),
-        ConsId0 = pred_const(ShroudedPredProcId, _)
+        ConsId0 = pred_const(ShroudedPredProcId, _),
+        proc(PredId, ProcId0) = unshroud_pred_proc_id(ShroudedPredProcId)
     ->
+        % An `invalid_proc_id' means the predicate is multi-moded. We can't
+        % pick the right mode yet. Perform the rest of the transformation with
+        % any mode (the first) but mark the goal with a feature so that mode
+        % checking knows to fix it up later.
+        ( ProcId0 = invalid_proc_id ->
+            module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+            ProcIds = pred_info_procids(PredInfo),
+            (
+                ProcIds = [ProcId | _],
+                goal_info_add_feature(feature_lambda_undetermined_mode,
+                    GoalInfo0, GoalInfo1)
+            ;
+                ProcIds = [],
+                unexpected(this_file,
+                    "polymorphism_process_unify_functor: no modes")
+            )
+        ;
+            ProcId = ProcId0,
+            GoalInfo1 = GoalInfo0
+        ),
         % Convert the higher order pred term to a lambda goal.
         poly_info_get_varset(!.Info, VarSet0),
         Context = goal_info_get_context(GoalInfo0),
-        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
-            ArgVars0, CalleeArgTypes, UnifyContext, GoalInfo0, Context,
+            ArgVars0, CalleeArgTypes, UnifyContext, GoalInfo1, Context,
             ModuleInfo0, Functor0, VarSet0, VarSet, VarTypes0, VarTypes),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         % Process the unification in its new form.
         polymorphism_process_unify(X0, Functor0, Mode0, Unification0,
-            UnifyContext, GoalInfo0, Goal, !Info)
+            UnifyContext, GoalInfo1, Goal, !Info)
     ;
         % Is this a construction or deconstruction of an existentially
         % typed data type?
@@ -1410,23 +1440,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    list.length(ArgModes, NumArgModes),
-    list.length(LambdaVars, NumLambdaVars),
-    ( list.drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes0) ->
-        LambdaModes = LambdaModes0
-    ;
-        unexpected(this_file, "convert_pred_to_lambda_goal: list.drop failed")
-    ),
-    proc_info_get_declared_determinism(ProcInfo, MaybeDet),
-    (
-        MaybeDet = yes(Det),
-        LambdaDet = Det
-    ;
-        MaybeDet = no,
-        sorry(this_file,
-            "determinism inference for higher order predicate terms.")
-    ),
+    lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet),
 
     % Construct the lambda expression.
 
@@ -1435,6 +1449,68 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     Groundness = ho_ground,
     Functor = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
+
+fix_undetermined_mode_lambda_goal(ProcId, Functor0, Functor, ModuleInfo) :-
+    Functor0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        ArgVars0, LambdaVars, _LambdaModes0, _LambdaDet0, LambdaGoal0),
+    LambdaGoal0 = hlds_goal(_, LambdaGoalInfo),
+    goal_to_conj_list(LambdaGoal0, LambdaGoalList0),
+    (
+        list.split_last(LambdaGoalList0, LambdaGoalButLast0, LastGoal0),
+        LastGoal0 = hlds_goal(LastGoalExpr0, LastGoalInfo0),
+        LastGoalExpr0 = plain_call(PredId0, _DummyProcId, Args0, not_builtin,
+            MaybeCallUnifyContext0, QualifiedPName0)
+    ->
+        LambdaGoalButLast = LambdaGoalButLast0,
+        LastGoalInfo = LastGoalInfo0,
+        PredId = PredId0,
+        Args = Args0,
+        MaybeCallUnifyContext = MaybeCallUnifyContext0,
+        QualifiedPName = QualifiedPName0
+    ;
+        unexpected(this_file,
+            "fix_undetermined_mode_lambda_goal: unmatched lambda goal")
+    ),
+
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+
+    % Build up the lambda goal.
+    LastGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
+        MaybeCallUnifyContext, QualifiedPName),
+    LastGoal = hlds_goal(LastGoalExpr, LastGoalInfo),
+    conj_list_to_goal(LambdaGoalButLast ++ [LastGoal], LambdaGoalInfo,
+        LambdaGoal),
+
+    % Work out the modes of the introduced lambda variables and the determinism
+    % of the lambda goal.
+    lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet),
+
+    % Construct the lambda expression.
+    Functor = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
+
+:- pred lambda_modes_and_det(proc_info::in, prog_vars::in, list(mer_mode)::out,
+    determinism::out) is det.
+
+lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    list.length(ArgModes, NumArgModes),
+    list.length(LambdaVars, NumLambdaVars),
+    ( list.drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModesPrime) ->
+        LambdaModes = LambdaModesPrime
+    ;
+        unexpected(this_file, "lambda_modes_and_det: list.drop failed")
+    ),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDet),
+    (
+        MaybeDet = yes(Det),
+        LambdaDet = Det
+    ;
+        MaybeDet = no,
+        sorry(this_file,
+            "lambda_modes_and_det: determinism inference for " ++
+            "higher order predicate terms.")
+    ).
 
 :- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
