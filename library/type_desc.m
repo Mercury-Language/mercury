@@ -325,7 +325,8 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 
 :- pragma foreign_proc("C",
     is_univ_pseudo_type_desc(PseudoTypeDesc::in, TypeVarNum::out),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        no_sharing],
 "
     MR_PseudoTypeInfo   pseudo_type_info;
 
@@ -347,7 +348,8 @@ is_univ_pseudo_type_desc(PTD, N) :-
 
 :- pragma foreign_proc("C",
     is_exist_pseudo_type_desc(PseudoTypeDesc::in, TypeVarNum::out),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        no_sharing],
 "
     MR_PseudoTypeInfo   pseudo_type_info;
 
@@ -400,7 +402,8 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
 
 :- pragma foreign_proc("C",
     type_of(_Value::unused) = (TypeInfo::out),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        no_sharing],
 "{
     TypeInfo = TypeInfo_for_T;
 
@@ -442,7 +445,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
 
 :- pragma foreign_proc("C",
     has_type(_Arg::unused, TypeInfo::in),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, no_sharing],
 "
     TypeInfo_for_T = TypeInfo;
 ").

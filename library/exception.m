@@ -441,7 +441,7 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
 
 :- pragma foreign_proc("C",
     use(_T::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, no_sharing],
     ";").
 :- pragma foreign_proc("C#",
     use(_T::in),
@@ -677,7 +677,8 @@ very_unsafe_perform_io(Goal, Result) :-
 
 :- impure pred make_io_state(io::uo) is det.
 :- pragma foreign_proc("C", make_io_state(_IO::uo),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail], "").
+    [will_not_call_mercury, thread_safe, will_not_modify_trail, no_sharing],
+    "").
 :- pragma foreign_proc("C#", make_io_state(_IO::uo),
     [will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("Java", make_io_state(_IO::uo),
@@ -688,7 +689,7 @@ very_unsafe_perform_io(Goal, Result) :-
 :- impure pred consume_io_state(io::di) is det.
 :- pragma foreign_proc("C",
     consume_io_state(_IO::di),
-    [will_not_call_mercury, thread_safe], "").
+    [will_not_call_mercury, thread_safe, no_sharing], "").
 :- pragma foreign_proc("C#",
     consume_io_state(_IO::di),
     [will_not_call_mercury, thread_safe], "").
@@ -2724,7 +2725,7 @@ throw_if_near_stack_limits :-
 
 :- pragma foreign_proc("C",
     now_near_stack_limits,
-    [will_not_call_mercury],
+    [will_not_call_mercury, no_sharing],
 "
 #ifdef  MR_HIGHLEVEL_CODE
     /*

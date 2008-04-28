@@ -2161,7 +2161,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     io.read_line_as_string_2(Stream::in, _Bool::in, Res :: out,
         RetString::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #define ML_IO_READ_LINE_GROW(n) ((n) * 3 / 2)
 #define ML_IO_BYTES_TO_WORDS(n) (((n) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
@@ -2448,7 +2448,7 @@ io.output_clear_err(output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.clear_err(Stream::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     if (MR_IS_FILE_STREAM(*Stream)) {
         clearerr(MR_file(*Stream));
@@ -2505,7 +2505,7 @@ io.check_err(Stream, Res, !IO) :-
 :- pragma foreign_proc("C",
     ferror(Stream::in, RetVal::out, RetStr::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     if (MR_IS_FILE_STREAM(*Stream)) {
         RetVal = ferror(MR_file(*Stream));
@@ -2554,7 +2554,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 :- pragma foreign_proc("C",
     io.get_system_error(Error::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     /*
     ** XXX If the Mercury context that called the failing C function is now
@@ -2595,7 +2595,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 :- pragma foreign_proc("C",
     make_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, MR_FALSE, Msg);
     MR_update_io(IO0, IO);
@@ -2636,7 +2636,7 @@ have_win32 :- semidet_fail.
 :- pragma foreign_proc("C",
     have_win32,
     [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_WIN32
     SUCCESS_INDICATOR = MR_TRUE;
@@ -2650,7 +2650,7 @@ have_cygwin :- semidet_fail.
 :- pragma foreign_proc("C",
     have_cygwin,
     [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef __CYGWIN__
     SUCCESS_INDICATOR = MR_TRUE;
@@ -2684,7 +2684,7 @@ make_win32_err_msg(_, _, "", !IO) :-
 :- pragma foreign_proc("C",
     make_win32_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
     MR_update_io(IO0, IO);
@@ -2737,7 +2737,7 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
 :- pragma foreign_proc("C",
     io.stream_file_size(Stream::in, Size::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #if defined(MR_HAVE_FSTAT) && \
         (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISREG)
@@ -2804,7 +2804,7 @@ io.file_modification_time(File, Result, !IO) :-
     io.file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
     struct stat s;
@@ -2908,7 +2908,7 @@ file_type_implemented :-
 :- pragma foreign_proc("C",
     file_type_implemented,
     [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
     SUCCESS_INDICATOR = MR_TRUE;
@@ -2942,7 +2942,7 @@ file_type_implemented :-
     io.file_type_2(FollowSymLinks::in, FileName::in, Result::out,
         IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
     struct stat s;
@@ -3261,7 +3261,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     io.check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
         IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #if defined(MR_HAVE_ACCESS)
   #ifdef F_OK
@@ -3699,7 +3699,7 @@ compare_file_id(Result, FileId1, FileId2) :-
 :- pragma foreign_proc("C",
     compare_file_id_2(Res::out, FileId1::in, FileId2::in),
     [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     int device_cmp;
     int inode_cmp;
@@ -3773,7 +3773,7 @@ io.file_id(FileName, Result, !IO) :-
     io.file_id_2(FileName::in, Status::out, Msg::out,
         FileId::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
 #ifdef MR_HAVE_STAT
     struct stat s;
@@ -3832,7 +3832,7 @@ have_file_ids :- semidet_fail.
 :- pragma foreign_proc("C",
     have_file_ids,
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #if defined(MR_BROKEN_STAT_ST_INO) || !defined(MR_HAVE_STAT)
     /* Win32 returns junk in the st_ino field of `struct stat'. */
@@ -3874,7 +3874,7 @@ have_file_ids :- semidet_fail.
 :- pragma foreign_proc("C",
     io.alloc_buffer(Size::in, Buffer::buffer_uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Word buf;
     MR_offset_incr_hp_atomic_msg(buf, 0,
@@ -4899,7 +4899,7 @@ source_name(stderr) = "<standard error>".
 :- pragma foreign_proc("C",
     io.set_stream_db(StreamDb::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     ML_io_stream_db = StreamDb;
     MR_update_io(IO0, IO);
@@ -4909,7 +4909,8 @@ source_name(stderr) = "<standard error>".
 
 :- pragma foreign_proc("C",
     io.lock_stream_db(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        no_sharing],
 "
     MR_LOCK(&ML_io_stream_db_lock, MR_PROC_LABEL);
     IO = IO0;
@@ -4921,7 +4922,8 @@ io.lock_stream_db(!IO).
 
 :- pragma foreign_proc("C",
     io.unlock_stream_db(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        no_sharing],
 "
     MR_UNLOCK(&ML_io_stream_db_lock, MR_PROC_LABEL);
     IO = IO0;
@@ -5033,7 +5035,7 @@ io.maybe_delete_stream_info(Stream, !IO) :-
 :- pragma foreign_proc("C",
     io.may_delete_stream_info(MayDelete::out, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MayDelete = !MR_debug_ever_enabled;
     IO = IO0;
@@ -5086,7 +5088,7 @@ io.update_globals(UpdatePred, !IO) :-
 :- pragma foreign_proc("C",
     io.lock_globals(IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     #ifdef MR_THREAD_SAFE
         MR_LOCK(&ML_io_user_globals_lock, \"io.lock_globals/2\");
@@ -5103,7 +5105,7 @@ lock_globals(!IO).
 :- pragma foreign_proc("C",
     io.unlock_globals(IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     #ifdef MR_THREAD_SAFE
         MR_UNLOCK(&ML_io_user_globals_lock, \"io.unlock_globals/2\");
@@ -5120,7 +5122,7 @@ unlock_globals(!IO).
 :- pragma foreign_proc("C",
     io.unlock_globals,
     [will_not_call_mercury, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     #ifdef MR_THREAD_SAFE
         MR_UNLOCK(&ML_io_user_globals_lock, \"io.unlock_globals/2\");
@@ -5150,7 +5152,7 @@ io.unlock_globals :-
 :- pragma foreign_proc("C",
     io.unsafe_set_globals(Globals::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /* XXX need to globalize the memory */
     ML_io_user_globals = Globals;
@@ -5209,7 +5211,8 @@ io.progname_base(DefaultName, PrognameBase, !IO) :-
 
 :- pragma foreign_proc("C",
     io.get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness,
+        no_sharing],
 "
 #ifndef MR_NATIVE_GC
     /*
@@ -5394,7 +5397,7 @@ io.finalize_state(!IO).
 :- pragma foreign_proc("C",
     io.gc_init(StreamDbType::in, UserGlobalsType::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /* for Windows DLLs, we need to call GC_INIT() from each DLL */
 #ifdef MR_CONSERVATIVE_GC
@@ -7274,7 +7277,7 @@ io.read_char_code(input_stream(Stream), CharCode, !IO) :-
 :- pragma foreign_proc("C",
     io.read_char_code_2(Stream::in, CharCode::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     CharCode = mercury_getc(Stream);
     MR_update_io(IO0, IO);
@@ -7288,7 +7291,7 @@ io.read_byte_val(input_stream(Stream), ByteVal, !IO) :-
 :- pragma foreign_proc("C",
     io.read_byte_val_2(Stream::in, ByteVal::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     ByteVal = mercury_getc(Stream);
     MR_update_io(IO0, IO);
@@ -7301,7 +7304,7 @@ io.putback_char(input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.putback_char_2(Stream::in, Character::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr mf = Stream;
     if (Character == '\\n') {
@@ -7321,7 +7324,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.putback_byte_2(Stream::in, Character::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr mf = Stream;
     /* XXX should work even if ungetc() fails */
@@ -7438,7 +7441,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_string(Message::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     mercury_print_string(mercury_current_text_output(), Message);
     MR_update_io(IO0, IO);
@@ -7447,7 +7450,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_char(Character::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr out = mercury_current_text_output();
     if (MR_PUTCH(*out, Character) < 0) {
@@ -7462,7 +7465,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_int(Val::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr out = mercury_current_text_output();
     if (ML_fprintf(out, ""%ld"", (long) Val) < 0) {
@@ -7474,7 +7477,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_float(Val::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
     MercuryFilePtr out;
@@ -7490,7 +7493,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_byte(Byte::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /* call putc with a strictly non-negative byte-sized integer */
     if (MR_PUTCH(*mercury_current_binary_output(),
@@ -7504,7 +7507,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_bytes(Message::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     mercury_print_binary_string(mercury_current_binary_output(), Message);
     MR_update_io(IO0, IO);
@@ -7522,7 +7525,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 :- pragma foreign_proc("C",
     io.flush_output(IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr out = mercury_current_text_output();
     if (MR_FLUSH(*out) < 0) {
@@ -7534,7 +7537,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 :- pragma foreign_proc("C",
     io.flush_binary_output(IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr out = mercury_current_binary_output();
     if (MR_FLUSH(*out) < 0) {
@@ -7769,7 +7772,7 @@ io.seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
 :- pragma foreign_proc("C",
     io.seek_binary_2(Stream::in, Flag::in, Off::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
 
@@ -7798,7 +7801,7 @@ io.binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 :- pragma foreign_proc("C",
     io.binary_stream_offset_2(Stream::in, Offset::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /* XXX should check for failure */
     /* XXX should check if the stream is tellable */
@@ -7823,7 +7826,7 @@ io.write_string(output_stream(Stream), Message, !IO) :-
 :- pragma foreign_proc("C",
     io.write_string_2(Stream::in, Message::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     mercury_print_string(Stream, Message);
     MR_update_io(IO0, IO);
@@ -7836,7 +7839,7 @@ io.write_char(output_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.write_char_2(Stream::in, Character::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     if (MR_PUTCH(*Stream, Character) < 0) {
         mercury_output_error(Stream);
@@ -7854,7 +7857,7 @@ io.write_int(output_stream(Stream), Val, !IO) :-
 :- pragma foreign_proc("C",
     io.write_int_2(Stream::in, Val::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     if (ML_fprintf(Stream, ""%ld"", (long) Val) < 0) {
         mercury_output_error(Stream);
@@ -7869,7 +7872,7 @@ io.write_float(output_stream(Stream), Val, !IO) :-
 :- pragma foreign_proc("C",
     io.write_float_2(Stream::in, Val::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
     MR_sprintf_float(buf, Val);
@@ -7886,7 +7889,7 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
 :- pragma foreign_proc("C",
     io.write_byte_2(Stream::in, Byte::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /* call putc with a strictly non-negative byte-sized integer */
     if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
@@ -7902,7 +7905,7 @@ io.write_bytes(binary_output_stream(Stream), Message, !IO) :-
 :- pragma foreign_proc("C",
     io.write_bytes_2(Stream::in, Message::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     mercury_print_binary_string(Stream, Message);
     MR_update_io(IO0, IO);
@@ -7944,7 +7947,8 @@ io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
 :- pragma foreign_proc("C",
     io.do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
             IO0::di, IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        no_sharing],
 "{
     MR_WRITE(*Stream, Bitmap->elements + Start, Length);
     MR_update_io(IO0, IO);
@@ -7958,7 +7962,7 @@ io.flush_output(output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.flush_output_2(Stream::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
         mercury_output_error(Stream);
@@ -7973,7 +7977,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.flush_binary_output_2(Stream::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
         mercury_output_error(Stream);
@@ -8224,7 +8228,9 @@ io.stdin_stream = input_stream(io.stdin_stream_2).
 :- func io.stdin_stream_2 = io.stream.
 :- pragma foreign_proc("C",
     io.stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
+        no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stdin;
 ").
@@ -8243,7 +8249,8 @@ io.stdin_stream(input_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.stdin_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stdin;
     MR_update_io(IO0, IO);
@@ -8254,7 +8261,9 @@ io.stdout_stream = output_stream(io.stdout_stream_2).
 :- func io.stdout_stream_2 = io.stream.
 :- pragma foreign_proc("C",
     io.stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
+        no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stdout;
 ").
@@ -8272,7 +8281,9 @@ io.stdout_stream(output_stream(Stream), !IO) :-
 :- pred io.stdout_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.stdout_stream_2(Stream::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stdout;
     MR_update_io(IO0, IO);
@@ -8283,7 +8294,9 @@ io.stderr_stream = output_stream(io.stderr_stream_2).
 :- func io.stderr_stream_2 = io.stream.
 :- pragma foreign_proc("C",
     io.stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
+        no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stderr;
 ").
@@ -8302,7 +8315,8 @@ io.stderr_stream(output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.stderr_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stderr;
     MR_update_io(IO0, IO);
@@ -8315,7 +8329,8 @@ io.stdin_binary_stream(binary_input_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.stdin_binary_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stdin_binary;
     MR_update_io(IO0, IO);
@@ -8328,7 +8343,8 @@ io.stdout_binary_stream(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.stdout_binary_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = &mercury_stdout_binary;
     MR_update_io(IO0, IO);
@@ -8341,7 +8357,8 @@ io.input_stream(input_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.input_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = mercury_current_text_input();
     MR_update_io(IO0, IO);
@@ -8354,7 +8371,8 @@ io.output_stream(output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.output_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = mercury_current_text_output();
     MR_update_io(IO0, IO);
@@ -8367,7 +8385,8 @@ io.binary_input_stream(binary_input_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.binary_input_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = mercury_current_binary_input();
     MR_update_io(IO0, IO);
@@ -8380,7 +8399,8 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.binary_output_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     Stream = mercury_current_binary_output();
     MR_update_io(IO0, IO);
@@ -8389,7 +8409,7 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.get_line_number(LineNum::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*mercury_current_text_input());
     MR_update_io(IO0, IO);
@@ -8403,7 +8423,7 @@ io.get_line_number(input_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.get_line_number_2(Stream::in, LineNum::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*Stream);
     MR_update_io(IO0, IO);
@@ -8412,7 +8432,7 @@ io.get_line_number(input_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.set_line_number(LineNum::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*mercury_current_text_input()) = LineNum;
     MR_update_io(IO0, IO);
@@ -8427,7 +8447,7 @@ io.set_line_number(input_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.set_line_number_2(Stream::in, LineNum::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*Stream) = LineNum;
     MR_update_io(IO0, IO);
@@ -8436,7 +8456,7 @@ io.set_line_number(input_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.get_output_line_number(LineNum::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*mercury_current_text_output());
     MR_update_io(IO0, IO);
@@ -8451,7 +8471,7 @@ io.get_output_line_number(output_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.get_output_line_number_2(Stream::in, LineNum::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*Stream);
     MR_update_io(IO0, IO);
@@ -8460,7 +8480,7 @@ io.get_output_line_number(output_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.set_output_line_number(LineNum::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*mercury_current_text_output()) = LineNum;
     MR_update_io(IO0, IO);
@@ -8474,7 +8494,7 @@ io.set_output_line_number(output_stream(Stream), LineNum, !IO) :-
 :- pragma foreign_proc("C",
     io.set_output_line_number_2(Stream::in, LineNum::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*Stream) = LineNum;
     MR_update_io(IO0, IO);
@@ -8488,7 +8508,8 @@ io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
 :- pragma foreign_proc("C",
     io.set_input_stream_2(NewStream::in, OutStream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     OutStream = mercury_current_text_input();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -8506,7 +8527,8 @@ io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
 :- pragma foreign_proc("C",
     io.set_output_stream_2(NewStream::in, OutStream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     OutStream = mercury_current_text_output();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -8524,7 +8546,8 @@ io.set_binary_input_stream(binary_input_stream(NewStream),
     io.set_binary_input_stream_2(NewStream::in, OutStream::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     OutStream = mercury_current_binary_input();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -8542,7 +8565,8 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.set_binary_output_stream_2(NewStream::in, OutStream::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
 "
     OutStream = mercury_current_binary_output();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -9059,7 +9083,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.do_open_text(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Stream = mercury_open(FileName, Mode);
     if (Stream != NULL) {
@@ -9076,7 +9100,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Stream = mercury_open(FileName, Mode);
     if (Stream != NULL) {
@@ -9232,7 +9256,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.close_stream(Stream::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     mercury_close(Stream);
     MR_update_io(IO0, IO);
@@ -9278,7 +9302,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.command_line_arguments(Args::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay because the string elements can't reused.
 "{
     int i;
 
@@ -9297,7 +9322,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.get_exit_status(ExitStatus::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     ExitStatus = mercury_exit_status;
     MR_update_io(IO0, IO);
@@ -9306,7 +9331,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.set_exit_status(ExitStatus::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     mercury_exit_status = ExitStatus;
     MR_update_io(IO0, IO);
@@ -9334,7 +9359,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     io.call_system_code(Command::in, Status::out, Msg::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /*
     ** In multithreaded grades, try to use posix_spawn() instead of system().
@@ -9475,7 +9500,8 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
 
 :- pragma foreign_proc("C",
     io.handle_system_command_exit_code(Status0::in) = (Status::out),
-    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness,
+        no_sharing],
 "
     #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
             defined (WIFSIGNALED) && defined (WTERMSIG)
@@ -9703,7 +9729,7 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("C",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness],
+    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness, no_sharing],
 "{
     Value = getenv(Var);
     SUCCESS_INDICATOR = (Value != 0);
@@ -9765,7 +9791,7 @@ io.setenv(Var, Value) :-
 
 :- pragma foreign_proc("C",
     io.putenv(VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness],
+    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness, no_sharing],
 "
     SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
@@ -10230,7 +10256,7 @@ io.remove_file(FileName, Result, !IO) :-
     io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     RetVal = remove(FileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
@@ -10368,7 +10394,7 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
     io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
         RetStr::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     RetVal = rename(OldFileName, NewFileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
@@ -10446,7 +10472,7 @@ io.have_symlinks :- semidet_fail.
 :- pragma foreign_proc("C",
     io.have_symlinks,
     [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #if defined(MR_HAVE_SYMLINK) && defined(MR_HAVE_READLINK)
     SUCCESS_INDICATOR = MR_TRUE;
@@ -10485,7 +10511,7 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
     io.make_symlink_2(FileName::in, LinkFileName::in, Status::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
 #ifdef MR_HAVE_SYMLINK
     Status = (symlink(FileName, LinkFileName) == 0);
@@ -10533,7 +10559,7 @@ io.read_symlink(FileName, Result, !IO) :-
     io.read_symlink_2(FileName::in, TargetFileName::out,
         Status::out, Error::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
 #ifdef MR_HAVE_READLINK
   #ifndef PATH_MAX

@@ -1296,7 +1296,7 @@ string.to_char_list(Str::uo, CharList::in) :-
 :- pragma foreign_proc("C",
     string.to_char_list_2(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_ConstString p = Str + strlen(Str);
     CharList = MR_list_empty_msg(MR_PROC_LABEL);
@@ -1344,7 +1344,7 @@ string.from_char_list(Chars::in, Str::uo) :-
 :- pragma foreign_proc("C",
     string.semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     /* mode (uo, in) is det */
     MR_Word char_list_ptr;
@@ -1428,7 +1428,7 @@ string.from_rev_char_list(Chars, Str) :-
 :- pragma foreign_proc("C",
     string.semidet_from_rev_char_list(Chars::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Word list_ptr;
     MR_Word size;
@@ -1575,7 +1575,7 @@ string.append_list(Lists, string.append_list(Lists)).
 :- pragma foreign_proc("C",
     string.append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Word list = Strs;
     MR_Word tmp;
@@ -1616,7 +1616,7 @@ string.append_list(Lists, string.append_list(Lists)).
 :- pragma foreign_proc("C",
     string.join_list(Sep::in, Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Word list;
     MR_Word tmp;
@@ -1715,7 +1715,7 @@ string.sub_string_search(WholeString, Pattern, Index) :-
     sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     char *match;
     match = strstr(WholeString + BeginAt, Pattern);
@@ -2232,7 +2232,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 
 :- pragma foreign_proc("C", using_sprintf,
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     SUCCESS_INDICATOR = MR_TRUE;
 ").
@@ -2315,7 +2315,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- pragma foreign_proc("C",
     int_length_modifer = (LengthModifier::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
 }").
@@ -2334,7 +2334,7 @@ int_length_modifer = _ :-
 :- pragma foreign_proc("C",
     native_format_float(FormatStr::in, Val::in) = (Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
     Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
@@ -2354,7 +2354,7 @@ native_format_float(_, _) = _ :-
 :- pragma foreign_proc("C",
     native_format_int(FormatStr::in, Val::in) = (Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
     Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
@@ -2374,7 +2374,7 @@ native_format_int(_, _) = _ :-
 :- pragma foreign_proc("C",
     native_format_string(FormatStr::in, Val::in) = (Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
     Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
@@ -2394,7 +2394,7 @@ native_format_string(_, _) = _ :-
 :- pragma foreign_proc("C",
     native_format_char(FormatStr::in, Val::in) = (Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
     Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
@@ -3229,7 +3229,7 @@ string.from_float(Flt) = string.float_to_string(Flt).
 :- pragma foreign_proc("C",
     string.float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     /*
     ** For efficiency reasons we duplicate the C implementation
@@ -3289,7 +3289,7 @@ max_precision = min_precision + 2.
 :- pragma foreign_proc("C",
     string.lowlevel_float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     /*
     ** Note any changes here will require the same changes in
@@ -3338,7 +3338,7 @@ string.det_to_float(FloatString) =
 :- pragma foreign_proc("C",
     string.to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     /*
     ** The %c checks for any erroneous characters appearing after the float;
@@ -3475,7 +3475,7 @@ count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
 :- pragma foreign_proc("C",
     string.contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
 ").
@@ -3524,7 +3524,7 @@ string.index(Str, Index, Char) :-
 :- pragma foreign_proc("C",
     string.index_check(Index::in, Length::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /*
     ** We do not test for negative values of Index because (a) MR_Unsigned
@@ -3550,7 +3550,7 @@ string.index_check(Index, Length) :-
 :- pragma foreign_proc("C",
     string.unsafe_index(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Ch = Str[Index];
 ").
@@ -3764,7 +3764,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
 :- pragma foreign_proc("C",
     string.length(Str::in, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Length = strlen(Str);
 ").
@@ -3790,7 +3790,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
 :- pragma foreign_proc("C",
     string.length(Str::ui, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Length = strlen(Str);
 ").
@@ -3845,7 +3845,7 @@ string.append(S1::out, S2::out, S3::in) :-
 :- pragma foreign_proc("C",
     string.append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     size_t len_1 = strlen(S1);
     SUCCESS_INDICATOR = (
@@ -3884,7 +3884,7 @@ string.append_iii(X, Y, Z) :-
 :- pragma foreign_proc("C",
     string.append_ioi(S1::in, S2::uo, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     size_t len_1, len_2, len_3;
 
@@ -3923,7 +3923,7 @@ string.append_ioi(X, Y, Z) :-
 :- pragma foreign_proc("C",
     string.append_iio(S1::in, S2::in, S3::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     size_t len_1, len_2;
     len_1 = strlen(S1);
@@ -3976,7 +3976,7 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 :- pragma foreign_proc("C",
     string.append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_allocate_aligned_string_msg(S1, S1Len, MR_PROC_LABEL);
     MR_memcpy(S1, S3, S1Len);
@@ -4037,7 +4037,7 @@ strchars(I, End, Str) =
 :- pragma foreign_proc("C",
     string.substring(Str::in, Start::in, Count::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Integer  len;
     MR_Word     tmp;
@@ -4087,7 +4087,7 @@ strchars(I, End, Str) =
 :- pragma foreign_proc("C",
     string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Integer len;
 
@@ -4117,7 +4117,7 @@ strchars(I, End, Str) =
 :- pragma foreign_proc("C",
     string.split(Str::in, Count::in, Left::uo, Right::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     MR_Integer  len;
     MR_Word     tmp;
@@ -4203,7 +4203,7 @@ string.split(Str, Count, Left, Right) :-
 :- pragma foreign_proc("C",
     string.first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     SUCCESS_INDICATOR = (
         Str[0] == First &&
@@ -4245,7 +4245,7 @@ string.split(Str, Count, Left, Right) :-
 :- pragma foreign_proc("C",
     string.first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     First = Str[0];
     SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
@@ -4291,7 +4291,7 @@ string.split(Str, Count, Left, Right) :-
 :- pragma foreign_proc("C",
     string.first_char(Str::in, First::in, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     if (Str[0] != First || First == '\\0') {
         SUCCESS_INDICATOR = MR_FALSE;
@@ -4349,7 +4349,7 @@ string.split(Str, Count, Left, Right) :-
 :- pragma foreign_proc("C",
     string.first_char(Str::in, First::uo, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     First = Str[0];
     if (First == '\\0') {
@@ -4408,7 +4408,7 @@ string.split(Str, Count, Left, Right) :-
 :- pragma foreign_proc("C",
     string.first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "{
     size_t len = strlen(Rest) + 1;
     MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
