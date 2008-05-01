@@ -2286,7 +2286,12 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                 (
                     % Closure analysis assumes that lambda expressions have
                     % been converted into separate predicates.
-                    ClosureAnalysis = yes,
+                    % Structure sharing/reuse analysis results can be affected
+                    % by process_lambdas.
+                    ( ClosureAnalysis = yes
+                    ; SharingAnalysis = yes
+                    )
+                ->
                     mercury_compile.process_lambdas(Verbose, Stats,
                         !HLDS, !IO),
 
@@ -2294,7 +2299,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     mercury_compile.maybe_closure_analysis(Verbose, Stats,
                         !HLDS, !IO)
                 ;
-                    ClosureAnalysis = no
+                    true
                 ),
                 (
                     ExceptionAnalysis = yes,
@@ -2401,10 +2406,13 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
     (
-        ClosureAnalysis = yes,
+        ( ClosureAnalysis = yes
+        ; SharingAnalysis = yes
+        )
+    ->
         process_lambdas(Verbose, Stats, !HLDS, !IO)
     ;
-        ClosureAnalysis = no
+        true
     ),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
     maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
@@ -2452,10 +2460,13 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
     (
-        ClosureAnalysis = yes,
+        ( ClosureAnalysis = yes
+        ; SharingAnalysis = yes
+        )
+    ->
         process_lambdas(Verbose, Stats, !HLDS, !IO)
     ;
-        ClosureAnalysis = no
+        true
     ),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
     maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
