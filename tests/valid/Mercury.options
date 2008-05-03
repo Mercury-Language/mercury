@@ -94,6 +94,7 @@ MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mpj6			= --infer-all
 MCFLAGS-no_warn_obsolete	= --no-warn-obsolete
+MCFLAGS-no_warn_unresolved_poly = --no-warn-unresolved-polymorphism
 MCFLAGS-opt_det_warn            = --intermodule-optimization --halt-at-warn
 MCFLAGS-opt_det_warn2		= --intermodule-optimization --halt-at-warn --no-warn-inferred-erroneous
 MCFLAGS-par_dupelim		= --optimize-dups

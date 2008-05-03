@@ -125,6 +125,7 @@
     ;       warn_insts_without_matching_type
     ;       warn_unused_imports
     ;       inform_ite_instead_of_switch
+    ;       warn_unresolved_polymorphism
 
     % Verbosity options
     ;       verbose
@@ -970,7 +971,8 @@ option_defaults_2(warning_option, [
         % the compiler itself which is compiled
         % with --halt-at-warn by default.
     warn_unused_imports                 -   bool(no),
-    inform_ite_instead_of_switch        -   bool(no)
+    inform_ite_instead_of_switch        -   bool(no),
+    warn_unresolved_polymorphism        -   bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1751,6 +1753,7 @@ long_option("warn-insts-without-matching-type",
     warn_insts_without_matching_type).
 long_option("warn-unused-imports",      warn_unused_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
+long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -3174,7 +3177,9 @@ options_help_warning -->
         "\tbeen marked as obsolete.",
         "--inform-ite-instead-of-switch",
         "\tGenerate informational messages for if-then-elses that could be",
-        "\treplaced by switches."
+        "\treplaced by switches.",
+        "--no-warn-unresolved-polymorphism",
+        "\tDo not warn about unresolved polymorphism."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

@@ -252,12 +252,17 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
         UnresolvedVarsTypes = []
     ;
         UnresolvedVarsTypes = [_ | _],
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, warn_unresolved_polymorphism,
+            WarnUnresolvedPolymorphism),
         (
             ReportErrs = yes,
+            WarnUnresolvedPolymorphism = yes
+        ->
             report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
                 VarSet, UnresolvedVarsTypes, !Specs)
         ;
-            ReportErrs = no
+            true
         ),
 
         % Bind all the type variables in `Set' to `void' ...

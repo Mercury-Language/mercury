@@ -6282,6 +6282,11 @@ marked as obsolete.
 Generate informational messages for if-then-elses that could be
 replaced by switches.
 
+@sp 1
+@item --no-warn-unresolved-polymorphism
+@findex --no-warn-unresolved-polymorphism
+Do not warn about unresolved polymorphism.
+
 @end table
 
 @node Verbosity options
