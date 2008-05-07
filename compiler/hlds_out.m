@@ -3985,8 +3985,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         io.write_string("% Structure sharing: \n", !IO),
         (
             MaybeStructureSharing = yes(
-                structure_sharing_domain_and_status(Domain, _Status)),
-            dump_maybe_structure_sharing_domain(VarSet, TVarSet, yes(Domain),
+                structure_sharing_domain_and_status(SharingAs, _Status)),
+            dump_maybe_structure_sharing_domain(VarSet, TVarSet, yes(SharingAs),
                 !IO)
         ;
             MaybeStructureSharing = no,
@@ -4001,7 +4001,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         write_indent(Indent, !IO),
         io.write_string("% Structure reuse: \n", !IO),
         (
-            MaybeStructureReuse = yes(ReuseAs),
+            MaybeStructureReuse = yes(
+                structure_reuse_domain_and_status(ReuseAs, _ReuseStatus)),
             dump_maybe_structure_reuse_domain(VarSet, TVarSet, yes(ReuseAs),
                 !IO)
         ;

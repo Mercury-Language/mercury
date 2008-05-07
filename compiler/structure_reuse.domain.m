@@ -17,6 +17,7 @@
 :- module transform_hlds.ctgc.structure_reuse.domain.
 :- interface.
 
+:- import_module analysis.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
@@ -99,6 +100,9 @@
     %
 :- pred reuse_as_subsumed_by(module_info::in, proc_info::in, reuse_as::in, 
     reuse_as::in) is semidet.
+
+:- pred reuse_as_and_status_subsumed_by(module_info::in, proc_info::in,
+    reuse_as_and_status::in, reuse_as_and_status::in) is semidet.
 
     % Tests to see whether the reuses description describes no reuses at all, 
     % only unconditional reuses, or conditional reuses resp.
@@ -205,12 +209,20 @@
 
     % Intermediate storage of the reuse results for individual procedures.
     %
-:- type reuse_as_table == map(pred_proc_id, reuse_as).
+:- type reuse_as_table == map(pred_proc_id, reuse_as_and_status).
+
+:- type reuse_as_and_status
+    --->    reuse_as_and_status(
+                reuse_as,
+                analysis_status
+            ).
 
 :- func reuse_as_table_init = reuse_as_table.
-:- func reuse_as_table_search(pred_proc_id, reuse_as_table) 
-    = reuse_as is semidet.
-:- pred reuse_as_table_set(pred_proc_id::in, reuse_as::in, 
+
+:- pred reuse_as_table_search(pred_proc_id::in, reuse_as_table::in, 
+    reuse_as_and_status::out) is semidet.
+
+:- pred reuse_as_table_set(pred_proc_id::in, reuse_as_and_status::in, 
     reuse_as_table::in, reuse_as_table::out) is det.
 
 :- pred reuse_as_table_maybe_dump(bool::in, module_info::in,
@@ -411,6 +423,13 @@ reuse_as_subsumed_by(ModuleInfo, ProcInfo, FirstReuseAs, SecondReuseAs) :-
             NotSubsumed),
         NotSubsumed = []
     ).
+
+reuse_as_and_status_subsumed_by(ModuleInfo, ProcInfo,
+        ReuseAs_Status1, ReuseAs_Status2) :-
+    ReuseAs_Status1 = reuse_as_and_status(Reuse1, _Status1),
+    ReuseAs_Status2 = reuse_as_and_status(Reuse2, _Status2),
+    reuse_as_subsumed_by(ModuleInfo, ProcInfo, Reuse1, Reuse2).
+    % XXX do we need to compare Status1 and Status2?
 
 reuse_as_no_reuses(no_reuse).
 reuse_as_all_unconditional_reuses(unconditional).
@@ -818,9 +837,12 @@ to_structure_reuse_condition(Condition) = StructureReuseCondition :-
 %
 
 reuse_as_table_init = map.init.
-reuse_as_table_search(PPId, Table) = Table ^ elem(PPId). 
-reuse_as_table_set(PPId, ReuseAs, !Table) :- 
-    !:Table = !.Table ^ elem(PPId) := ReuseAs.
+
+reuse_as_table_search(PPId, Table, ReuseAs_Status) :-
+    map.search(Table, PPId, ReuseAs_Status).
+
+reuse_as_table_set(PPId, ReuseAs_Status, !Table) :- 
+    !Table ^ elem(PPId) := ReuseAs_Status.
 
 reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-
     (
@@ -841,10 +863,10 @@ reuse_as_table_dump(ModuleInfo, Table, !IO) :-
         map.foldl(dump_entries(ModuleInfo), Table, !IO)
     ).
 
-:- pred dump_entries(module_info::in, pred_proc_id::in, reuse_as::in,
-    io::di, io::uo) is det.
+:- pred dump_entries(module_info::in, pred_proc_id::in,
+    reuse_as_and_status::in, io::di, io::uo) is det.
 
-dump_entries(ModuleInfo, PPId, ReuseAs, !IO) :-
+dump_entries(ModuleInfo, PPId, reuse_as_and_status(ReuseAs, _Status), !IO) :-
     io.write_string("% ", !IO),
     write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.write_string("\t--> ", !IO),
@@ -872,10 +894,12 @@ load_structure_reuse_table_3(ModuleInfo, PredId, ProcId, !ReuseTable) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_structure_reuse(ProcInfo, MaybePublicReuse),
     (
-        MaybePublicReuse = yes(PublicReuse),
+        MaybePublicReuse = yes(
+            structure_reuse_domain_and_status(PublicReuse, Status)),
         PPId = proc(PredId, ProcId),
         PrivateReuse = from_structure_reuse_domain(PublicReuse),
-        reuse_as_table_set(PPId, PrivateReuse, !ReuseTable)
+        reuse_as_table_set(PPId, reuse_as_and_status(PrivateReuse, Status), 
+            !ReuseTable)
     ;
         MaybePublicReuse = no
     ).

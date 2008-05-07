@@ -64,6 +64,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -94,7 +95,17 @@ generate_reuse_name(ModuleInfo, PPId) = ReuseName :-
     %   to correctly update the reuse annotations.
     %
 create_reuse_procedures(ReuseTable, !ModuleInfo, !IO):-
-    PPIds = map.keys(ReuseTable),
+    AllPPIds = map.keys(ReuseTable),
+
+    % Ignore reuse table entries for imported procedures.
+    DefinedHere = (pred(PPId::in) is semidet :-
+        PPId = proc(PredId, _),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        pred_info_get_import_status(PredInfo, Status),
+        status_defined_in_this_module(Status) = yes
+    ),
+    list.filter(DefinedHere, AllPPIds, PPIds),
+
     CondPPIds = list.filter(has_conditional_reuse(ReuseTable), PPIds),
     UncondPPIds = list.filter(has_unconditional_reuse(ReuseTable), PPIds),
 
@@ -110,14 +121,14 @@ create_reuse_procedures(ReuseTable, !ModuleInfo, !IO):-
 :- pred has_conditional_reuse(reuse_as_table::in, pred_proc_id::in) is semidet.
 
 has_conditional_reuse(ReuseTable, PPId) :-
-    ReuseAs = reuse_as_table_search(PPId, ReuseTable),
+    reuse_as_table_search(PPId, ReuseTable, reuse_as_and_status(ReuseAs, _)),
     reuse_as_conditional_reuses(ReuseAs).
 
 :- pred has_unconditional_reuse(reuse_as_table::in, pred_proc_id::in)
     is semidet.
 
 has_unconditional_reuse(ReuseTable, PPId) :-
-    ReuseAs = reuse_as_table_search(PPId, ReuseTable),
+    reuse_as_table_search(PPId, ReuseTable, reuse_as_and_status(ReuseAs, _)),
     reuse_as_all_unconditional_reuses(ReuseAs).
 
 %------------------------------------------------------------------------------%

@@ -42,6 +42,7 @@
 
 :- implementation. 
 
+:- import_module analysis.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
@@ -126,10 +127,27 @@ direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo,
         % We can't analyse compiler generated special predicates.
         true
     ;
+        pred_info_get_import_status(PredInfo0, status_external(_))
+    ->
+        % We can't analyse `:- external' predicates but add an extry to the
+        % reuse table so something will be written out to optimisation
+        % interface files.
+        list.foldl(
+            set_external_pred_reuse_as(PredId, reuse_as_init, optimal),
+            pred_info_procids(PredInfo0), !ReuseTable)
+    ;
         list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId), 
             pred_info_non_imported_procids(PredInfo0), !ModuleInfo, 
             !ReuseTable, !IO)
     ).
+
+:- pred set_external_pred_reuse_as(pred_id::in, reuse_as::in,
+    analysis_status::in, proc_id::in, reuse_as_table::in, reuse_as_table::out)
+    is det.
+
+set_external_pred_reuse_as(PredId, ReuseAs, Status, ProcId, !ReuseTable) :-
+    reuse_as_table_set(proc(PredId, ProcId),
+        reuse_as_and_status(ReuseAs, Status), !ReuseTable).
 
 :- pred direct_reuse_process_proc(reuse_strategy::in, sharing_as_table::in, 
     pred_id::in, proc_id::in, module_info::in, module_info::out,
@@ -144,7 +162,10 @@ direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
 
     direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId, 
         !.ModuleInfo, Pred0, Proc0, Proc, ReuseAs, !IO), 
-    reuse_as_table_set(proc(PredId, ProcId), ReuseAs, !ReuseTable),
+    % XXX is this right?
+    Status = optimal,
+    reuse_as_table_set(proc(PredId, ProcId),
+        reuse_as_and_status(ReuseAs, Status), !ReuseTable),
 
     map.det_update(Procs0, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, Pred0, Pred),

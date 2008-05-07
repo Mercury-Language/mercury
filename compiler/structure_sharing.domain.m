@@ -801,9 +801,9 @@ sharing_as_table_set(PPId, SharingAs_Status, !Table) :-
 lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
         PredId, ProcId, ActualVars, !Sharing):- 
     PPId = proc(PredId, ProcId),
-    
-    % XXX make use of the status once the structure reuse passes use the
-    % analysis framework
+
+    % XXX do we need to combine the analysis status of sharing information we
+    % use with the analysis status of direct and indirect analyses?
     lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing,
         _Status, _IsPredicted),
 

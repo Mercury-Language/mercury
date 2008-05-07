@@ -54,6 +54,8 @@
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
+:- import_module transform_hlds.ctgc.structure_reuse.
+:- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.trailing_analysis.
@@ -95,6 +97,11 @@
         'new analysis_type'(
             unit1 : unit(structure_sharing_call),
             unit1 : unit(structure_sharing_answer)),
+
+    analyses(mmc, "structure_reuse") =
+        'new analysis_type'(
+            unit1 : unit(structure_reuse_call),
+            unit1 : unit(structure_reuse_answer)),
 
     module_name_to_read_file_name(mmc, ModuleName, Ext, FileName, !IO) :-
         mmc_module_name_to_read_file_name(ModuleName, Ext, FileName, !IO),

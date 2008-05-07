@@ -573,7 +573,8 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             status_defined_in_this_module(PredImportStatus) = yes,
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_import_status(CalleePredInfo, CalleeImportStatus),
-            CalleeImportStatus = status_imported(_)
+            CalleeImportStatus = status_imported(_),
+            \+ is_unify_or_compare_pred(CalleePredInfo)
         ->
             !:DepProcs = [CalleePPId | !.DepProcs]
         ;
@@ -896,35 +897,30 @@ make_opt_int(ModuleInfo, !IO) :-
 
 write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    should_write_sharing_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
+    PredName = pred_info_name(PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_context(PredInfo, Context),
+    SymName = qualified(ModuleName, PredName),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    list.foldl(
+        write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable,
+            PredOrFunc, SymName, Context, TypeVarSet),
+        ProcIds, !IO).
+
+:- pred write_proc_sharing_info(module_info::in, pred_id::in, pred_info::in,
+    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
+    tvarset::in, proc_id::in, io::di, io::uo) is det.
+
+write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
+        SymName, Context, TypeVarSet, ProcId, !IO) :-
+    should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        disallow_type_spec_preds, ShouldWrite),
     (
         ShouldWrite = yes,
-        PredName = pred_info_name(PredInfo),
-        ProcIds = pred_info_procids(PredInfo),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        ModuleName = pred_info_module(PredInfo),
-        pred_info_get_procedures(PredInfo, ProcTable),
-        pred_info_get_context(PredInfo, Context),
-        SymName = qualified(ModuleName, PredName),
-        pred_info_get_typevarset(PredInfo, TypeVarSet),
-        list.foldl(
-            write_proc_sharing_info(PredId, ProcTable, PredOrFunc,
-                SymName, Context, TypeVarSet),
-            ProcIds, !IO)
-    ;
-        ShouldWrite = no
-    ).
 
-:- pred write_proc_sharing_info(pred_id::in, proc_table::in,
-    pred_or_func::in, sym_name::in, prog_context::in, tvarset::in,
-    proc_id::in, io::di, io::uo) is det.
-
-write_proc_sharing_info(_PredId, ProcTable, PredOrFunc, SymName, Context,
-        TypeVarSet, ProcId, !IO) :-
-    globals.io_lookup_bool_option(structure_sharing_analysis,
-        SharingAnalysis, !IO),
-    (
-        SharingAnalysis = yes,
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
         proc_info_declared_argmodes(ProcInfo, Modes),
@@ -944,7 +940,7 @@ write_proc_sharing_info(_PredId, ProcTable, PredOrFunc, SymName, Context,
             Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
             MaybeSharing, !IO)
     ;
-        SharingAnalysis = no
+        ShouldWrite = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1125,7 +1121,8 @@ record_sharing_analysis_result(ModuleInfo, SharingAsTable, PPId,
         !AnalysisInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    should_write_sharing_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
+    should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        allow_type_spec_preds, ShouldWrite),
     (
         ShouldWrite = yes,
         (
@@ -1253,27 +1250,31 @@ write_top_feedback(ModuleInfo, Reason, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred should_write_sharing_info(module_info::in, pred_id::in, pred_info::in,
-    bool::out) is det.
+:- type allow_type_spec_preds
+    --->    allow_type_spec_preds
+    ;       disallow_type_spec_preds.
 
-should_write_sharing_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+:- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, allow_type_spec_preds::in, bool::out) is det.
+
+should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        AllowTypeSpecPreds, ShouldWrite) :-
     (
-        (
-            ImportStatus = status_exported
-        ;
-            ImportStatus = status_opt_exported
-        ;
-            ImportStatus = status_exported_to_submodules
-        ),
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         \+ is_unify_or_compare_pred(PredInfo),
 
-        % XXX These should be allowed, but the predicate declaration for the
-        % specialized predicate is not produced before the structure_sharing
-        % pragmas are read in, resulting in an undefined predicate error.
-        \+ set.member(PredId, TypeSpecForcePreds)
+        (
+            AllowTypeSpecPreds = allow_type_spec_preds
+        ;
+            AllowTypeSpecPreds = disallow_type_spec_preds,
+            % XXX These should be allowed, but the predicate declaration for
+            % the specialized predicate is not produced before the structure
+            % sharing pragmas are read in, resulting in an undefined predicate
+            % error.
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            \+ set.member(PredId, TypeSpecForcePreds)
+        )
     ->
         ShouldWrite = yes
     ;

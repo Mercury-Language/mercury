@@ -1854,6 +1854,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 analysis_status
             ).
 
+:- type structure_reuse_domain_and_status
+    --->    structure_reuse_domain_and_status(
+                structure_reuse_domain,
+                analysis_status
+            ).
+
 :- type untuple_proc_info
     --->    untuple_proc_info(
                 map(prog_var, prog_vars)
@@ -2008,9 +2014,9 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::out) is det.
 
 :- pred proc_info_get_structure_reuse(proc_info::in,
-    maybe(structure_reuse_domain)::out) is det.
+    maybe(structure_reuse_domain_and_status)::out) is det.
 
-:- pred proc_info_set_structure_reuse(structure_reuse_domain::in,
+:- pred proc_info_set_structure_reuse(structure_reuse_domain_and_status::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_imported_structure_reuse(proc_info::in,
@@ -2347,7 +2353,7 @@ structure_sharing_info_init = structure_sharing_info(no, no).
 
 :- type structure_reuse_info
     --->    structure_reuse_info(
-                maybe_reuse           :: maybe(structure_reuse_domain),
+                maybe_reuse     :: maybe(structure_reuse_domain_and_status),
 
                 maybe_imported_reuse  :: maybe(imported_reuse)
                 % Records the reuse information from any `.opt' or
