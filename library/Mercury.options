@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002, 2004-2007 The University of Melbourne.
+# Copyright (C) 2002, 2004-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -16,6 +16,7 @@ MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS) --optimize-constructor-last-call
 MCFLAGS-set += $(TYPE_SPEC_FLAGS)
 MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
+MCFLAGS-lexer += --optimize-constructor-last-call
 MCFLAGS-sparse_bitset += --use-atomic-cells --optimize-constant-propagation
 MCFLAGS-tree_bitset += --use-atomic-cells --optimize-constant-propagation
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -251,21 +251,48 @@ check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
 
 :- pred check_for_bad_token(token_list::in, string::out, int::out) is semidet.
 
-check_for_bad_token(token_cons(Token, LineNum, Tokens), Message, LineNum) :-
-    ( Token = io_error(IO_Error) ->
+check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
+    (
+        Token = io_error(IO_Error),
         io.error_message(IO_Error, IO_ErrorMessage),
-        string.append("I/O error: ", IO_ErrorMessage, Message)
-    ; Token = junk(Char) ->
+        string.append("I/O error: ", IO_ErrorMessage, Message),
+        LineNum = LineNum0
+    ;
+        Token = junk(Char),
         char.to_int(Char, Code),
         string.int_to_base_string(Code, 10, Decimal),
         string.int_to_base_string(Code, 16, Hex),
         string.append_list(["Syntax error: Illegal character 0x", Hex,
-            " (", Decimal, ") in input"], Message)
-    ; Token = error(ErrorMessage) ->
-        string.append("Syntax error: ", ErrorMessage, Message)
+            " (", Decimal, ") in input"], Message),
+        LineNum = LineNum0
     ;
+        Token = error(ErrorMessage),
+        string.append("Syntax error: ", ErrorMessage, Message),
+        LineNum = LineNum0
+    ;
+        ( Token = name(_)
+        ; Token = variable(_)
+        ; Token = integer(_)
+        ; Token = float(_)
+        ; Token = string(_)
+        ; Token = implementation_defined(_)
+        ; Token = open
+        ; Token = open_ct
+        ; Token = close
+        ; Token = open_list
+        ; Token = close_list
+        ; Token = open_curly
+        ; Token = close_curly
+        ; Token = ht_sep
+        ; Token = comma
+        ; Token = end
+        ; Token = eof
+        ; Token = integer_dot(_)
+        ),
         check_for_bad_token(Tokens, Message, LineNum)
     ).
+check_for_bad_token(token_nil, _, _) :-
+    fail.
 
 :- pred parse_whole_term(parse(term(T))::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
