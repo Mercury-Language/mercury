@@ -709,16 +709,16 @@ present_stats(Deep) = HTML :-
             [i(Stats ^ num_callseqs)]) ++
         "<TR><TD ALIGN=left>CallSiteDynamic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ max_csd)]) ++
+            [i(Stats ^ num_csd)]) ++
         "<TR><TD ALIGN=left>ProcDynamic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ max_pd)]) ++
+            [i(Stats ^ num_pd)]) ++
         "<TR><TD ALIGN=left>CallSiteStatic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ max_css)]) ++
+            [i(Stats ^ num_css)]) ++
         "<TR><TD ALIGN=left>ProcStatic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ max_ps)]) ++
+            [i(Stats ^ num_ps)]) ++
         "<TR><TD ALIGN=left>Cliques:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
             [i(array.max(Deep ^ clique_members))]) ++

@@ -37,10 +37,10 @@
 
 :- type profile_stats
     --->    profile_stats(
-                max_csd                 :: int,
-                max_css                 :: int,
-                max_pd                  :: int,
-                max_ps                  :: int,
+                num_csd                 :: int,
+                num_css                 :: int,
+                num_pd                  :: int,
+                num_ps                  :: int,
                 ticks_per_sec           :: int,
                 instrument_quanta       :: int,
                 user_quanta             :: int,
