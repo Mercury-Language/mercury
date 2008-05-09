@@ -643,11 +643,11 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             ThenSharingAs, ElseSharingAs)
     ;
         GoalExpr = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
-            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
+            Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
         Context = goal_info_get_context(GoalInfo),
-        !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo,
-            proc(ForeignPredId, ForeignProcId), Attributes, Context,
-            !.SharingAs)
+        ForeignPPId = proc(ForeignPredId, ForeignProcId),
+        add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
+            Attributes, Args, Context, !SharingAs)
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.

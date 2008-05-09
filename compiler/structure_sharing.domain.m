@@ -154,8 +154,10 @@
     % foreign code was manually annotated, or can be predicted to 
     % "bottom", and in the worst case to "top". 
     %
-:- func add_foreign_proc_sharing(module_info, proc_info, pred_proc_id, 
-    pragma_foreign_proc_attributes, prog_context, sharing_as) = sharing_as. 
+:- pred add_foreign_proc_sharing(module_info::in, pred_info::in, proc_info::in,
+    pred_proc_id::in, pragma_foreign_proc_attributes::in,
+    list(foreign_arg)::in, prog_context::in, sharing_as::in, sharing_as::out)
+    is det.
 
     % Compare two sharing sets. A sharing set Set1 is subsumed by a sharing set
     % Set2 iff the total set of sharing represented by Set1 is a subset of the
@@ -611,11 +613,22 @@ optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
     set.to_sorted_list(Deaths, DeathsList),
     sharing_as_project_with_type(outproject, DeathsList, Sharing0, Sharing).
 
-add_foreign_proc_sharing(ModuleInfo, ProcInfo, ForeignPPId, 
-        Attributes, GoalContext, OldSharing) = NewSharing :- 
+add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId, 
+        Attributes, Args, GoalContext, OldSharing, NewSharing) :- 
     ForeignSharing = sharing_as_for_foreign_proc(ModuleInfo, 
         Attributes, ForeignPPId, GoalContext),
-    NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, ForeignSharing, 
+
+    ActualVars = list.map(foreign_arg_var, Args),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    map.apply_to_list(ActualVars, VarTypes, ActualTypes),
+    pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
+    pred_info_get_head_type_params(PredInfo, CallerHeadTypeParams),
+
+    sharing_as_rename_using_module_info(ModuleInfo, ForeignPPId,
+        ActualVars, ActualTypes, CallerTypeVarSet,
+        CallerHeadTypeParams, ForeignSharing, ActualSharing),
+
+    NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, ActualSharing, 
         OldSharing).
 
 :- func sharing_as_for_foreign_proc(module_info, 

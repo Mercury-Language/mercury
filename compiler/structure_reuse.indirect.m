@@ -463,12 +463,13 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo, !DepProcs) :-
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
-            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
+            Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
+        ForeignPPId = proc(ForeignPredId, ForeignProcId),
         Context = goal_info_get_context(GoalInfo0),
-        !IrInfo ^ sharing_as :=
-            add_foreign_proc_sharing(ModuleInfo, ProcInfo,
-            proc(ForeignPredId, ForeignProcId), Attributes, Context,
-            !.IrInfo ^ sharing_as)
+        OldSharing = !.IrInfo ^ sharing_as,
+        add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo,
+            ForeignPPId, Attributes, Args, Context, OldSharing, NewSharing),
+        !IrInfo ^ sharing_as := NewSharing
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
