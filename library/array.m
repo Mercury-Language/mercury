@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2007 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -520,7 +520,7 @@ array.compare_elements(N, Size, Array1, Array2, Result) :-
 :- pragma foreign_proc("C",
     bounds_checks,
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef ML_OMIT_ARRAY_BOUNDS_CHECKS
     SUCCESS_INDICATOR = MR_FALSE;
@@ -616,7 +616,11 @@ array.init(Size, Item, Array) :-
 :- pragma foreign_proc("C",
     array.init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness,
+        sharing(yes(int, T, array(T)), [
+            cel(Item, []) - cel(Array, [T])
+        ])
+    ],
 "
     ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
     ML_init_array(Array, Size, Item);
@@ -625,7 +629,7 @@ array.init(Size, Item, Array) :-
 :- pragma foreign_proc("C",
     array.make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     ML_alloc_array(Array, 1, MR_PROC_LABEL);
     ML_init_array(Array, 0, 0);
@@ -691,7 +695,7 @@ array.init(Size, Item, Array) :-
 :- pragma foreign_proc("C",
     array.min(Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     /* Array not used */
     Min = 0;
@@ -724,7 +728,7 @@ array.init(Size, Item, Array) :-
 :- pragma foreign_proc("C",
     array.max(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Max = Array->size - 1;
 ").
@@ -765,7 +769,7 @@ array.bounds(Array, Min, Max) :-
 :- pragma foreign_proc("C",
     array.size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, no_sharing],
 "
     Max = Array->size;
 ").
@@ -842,7 +846,11 @@ array.lookup(Array, Index, Item) :-
 :- pragma foreign_proc("C",
     array.unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness,
+        sharing(yes(array(T), int, T), [
+            cel(Array, [T]) - cel(Item, [])
+        ])
+    ],
 "
     Item = Array->elements[Index];
 ").
@@ -880,7 +888,12 @@ array.set(Array0, Index, Item, Array) :-
 :- pragma foreign_proc("C",
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness,
+        sharing(yes(array(T), int, T, array(T)), [
+            cel(Array0, []) - cel(Array, []),
+            cel(Item, [])   - cel(Array, [T])
+        ])
+    ],
 "
     Array0->elements[Index] = Item; /* destructive update! */
     Array = Array0;
@@ -963,7 +976,12 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 :- pragma foreign_proc("C",
     array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness,
+        sharing(yes(array(T), int, T, array(T)), [
+            cel(Array0, []) - cel(Array, []),
+            cel(Item, [])   - cel(Array, [T])
+        ])
+    ],
 "
     if ((Array0)->size == Size) {
         Array = Array0;
@@ -1096,7 +1114,11 @@ array.shrink(Array0, Size, Array) :-
 :- pragma foreign_proc("C",
     array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness,
+        sharing(yes(array(T), int, array(T)), [
+            cel(Array0, []) - cel(Array, [])
+        ])
+    ],
 "
     ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
     ML_shrink_array(Array, Array0, Size);
@@ -1168,7 +1190,11 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 :- pragma foreign_proc("C",
     array.copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness,
+        sharing(yes(array(T), array(T)), [
+            cel(Array0, [T]) - cel(Array, [T])
+        ])
+    ],
 "
     ML_alloc_array(Array, Array0->size + 1, MR_PROC_LABEL);
     ML_copy_array(Array, (MR_ConstArrayPtr) Array0);
