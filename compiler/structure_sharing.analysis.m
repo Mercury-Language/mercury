@@ -931,14 +931,12 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         (
             MaybeSharingStatus = yes(
                 structure_sharing_domain_and_status(Sharing, _Status)),
-            MaybeSharing = yes(Sharing)
+            write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes,
+                Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
+                yes(Sharing), !IO)
         ;
-            MaybeSharingStatus = no,
-            MaybeSharing = no
-        ),
-        write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes,
-            Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
-            MaybeSharing, !IO)
+            MaybeSharingStatus = no
+        )
     ;
         ShouldWrite = no
     ).

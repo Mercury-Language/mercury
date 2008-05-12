@@ -65,7 +65,7 @@
     io::di, io::uo) is det.
 
     % Write all the reuse information concerning the specified predicate as
-    % reuse pragmas.  
+    % reuse pragmas.
     %
 :- pred write_pred_reuse_info(module_info::in, pred_id::in, 
     io::di, io::uo) is det.
@@ -521,22 +521,21 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         ShouldWrite = yes,
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
-        proc_info_declared_argmodes(ProcInfo, Modes),
-        proc_info_get_varset(ProcInfo, VarSet),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
-        list.map(map.lookup(VarTypes), HeadVars, HeadVarTypes),
         (
             MaybeStructureReuseDomain = yes(
                 structure_reuse_domain_and_status(Reuse, _Status)),
-            MaybeReuse = yes(Reuse)
+            proc_info_declared_argmodes(ProcInfo, Modes),
+            proc_info_get_varset(ProcInfo, VarSet),
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            list.map(map.lookup(VarTypes), HeadVars, HeadVarTypes),
+                MaybeReuse = yes(Reuse),
+            write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes,
+                Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
+                MaybeReuse, !IO)
         ;
-            MaybeStructureReuseDomain = no,
-            MaybeReuse = no
-        ),
-        write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes,
-            Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
-            MaybeReuse, !IO)
+            MaybeStructureReuseDomain = no
+        )
     ;
         ShouldWrite = no
     ).
