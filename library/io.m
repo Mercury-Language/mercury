@@ -226,6 +226,12 @@
 :- pred io.read_char(io.input_stream::in, io.result(char)::out,
     io::di, io::uo) is det.
 
+    % Reads a character from the specified stream.
+    % This interface avoids memory allocation when there is no error.
+    %
+:- pred io.read_char_unboxed(io.input_stream::in, io.result::out, char::out,
+    io::di, io::uo) is det.
+
     % Reads a whitespace delimited word from specified stream.
     %
 :- pred io.read_word(io.input_stream::in, io.result(list(char))::out,
@@ -1880,6 +1886,22 @@ io.read_char(Stream, Result, !IO) :-
     ;
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
+    ).
+
+:- pragma inline(io.read_char_unboxed/5).
+
+io.read_char_unboxed(Stream, Result, Char, !IO) :-
+    io.read_char_code(Stream, Code, !IO),
+    ( Code = -1 ->
+        Result = eof,
+        Char = char.det_from_int(0)
+    ; char.to_int(Char0, Code) ->
+        Result = ok,
+        Char = Char0
+    ;
+        io.make_err_msg("read failed: ", Msg, !IO),
+        Result = error(io_error(Msg)),
+        Char = char.det_from_int(0)
     ).
 
 % We want to inline these, to allow deforestation.
