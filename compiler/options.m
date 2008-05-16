@@ -851,6 +851,7 @@
     ;       search_directories
     ;       intermod_directories
     ;       use_search_directories_for_intermod
+    ;       libgrade_install_check
 
     % Miscellaneous Options
     ;       filenames_from_stdin
@@ -1661,7 +1662,8 @@ option_defaults_2(build_system_option, [
     use_grade_subdirs                   -   bool(no),
     search_directories                  -   accumulating(["."]),
     intermod_directories                -   accumulating([]),
-    use_search_directories_for_intermod -   bool(yes)
+    use_search_directories_for_intermod -   bool(yes),
+    libgrade_install_check              -   bool(yes)
 ]).
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
@@ -2507,6 +2509,8 @@ long_option("search-directory",     search_directories).
 long_option("intermod-directory",   intermod_directories).
 long_option("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
+long_option("libgrade-install-check", libgrade_install_check).
+        
 
 % misc options
 long_option("typecheck-ambiguity-warn-limit",
@@ -5132,7 +5136,11 @@ options_help_build_system -->
         "\tExecutables and libraries will be symlinked or copied into",
         "\tthe current directory.",
         "\t`--use-grade-subdirs' does not work with Mmake (it does",
-        "\twork with `mmc --make')."
+        "\twork with `mmc --make').",
+        "--no-libgrade-install-check",
+        "\tDo not check that libraries have been installed before",
+        "\tattempting to use them.  (This option is only meaningful with",
+        "\t`mmc --make'.)"
     ]).
 
 :- pred options_help_misc(io::di, io::uo) is det.

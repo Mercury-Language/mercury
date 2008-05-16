@@ -8852,6 +8852,12 @@ Append the arguments of all -I options to the list of directories
 to be searched for @samp{.opt} files.
 
 @sp 1
+@item --no-libgrade-install-check
+@findex --no-libgrade-install-check
+Do not check that libraries have been installed before attempting
+to use them.  (This option is only meaningful with `mmc --make'.)
+
+@sp 1
 @item --use-subdirs
 @findex --use-subdirs
 @cindex File names

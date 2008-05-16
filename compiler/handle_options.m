@@ -505,6 +505,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %   - dead procedure optimization
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
+        %   - no library grade installation check with `mmc --make'.
 
         ( 
             Target = target_il,
@@ -523,6 +524,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
             % globals.set_option(num_reserved_addresses, int(1), !Globals)
             globals.set_option(static_ground_terms, bool(no), !Globals),
+            globals.set_option(libgrade_install_check, bool(no), !Globals),
 
             (
                 HighLevelData = yes,
@@ -605,6 +607,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %   - dead procedure optimization
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
+        %   - no library grade installation check with `mmc --make'. 
 
         ( 
             Target = target_java,
@@ -623,7 +626,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
             globals.set_option(static_ground_terms, bool(no), !Globals),
             globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
-
+            globals.set_option(libgrade_install_check, bool(no), !Globals),
+    
             (
                 AutoIntermodOptimization = yes,
                 globals.set_option(intermodule_optimization, bool(yes),
@@ -649,6 +653,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %   - no-can-compare-constants-as-ints
         %   - can-compare-compound-values
         %   - lexically-compare-constructors
+        %   - no library grade installation check with `mmc --make'
 
         ( 
             Target = target_erlang,
@@ -665,7 +670,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(can_compare_compound_values, bool(yes),
                 !Globals),
             globals.set_option(lexically_order_constructors, bool(yes),
-                !Globals)
+                !Globals),
+            globals.set_option(libgrade_install_check, bool(no), !Globals)
         ;
             ( Target = target_c
             ; Target = target_il
@@ -778,6 +784,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % and they don't need to be recreated when compiling to C.
         option_implies(invoked_by_mmc_make,
             generate_mmc_make_module_dependencies, bool(no), !Globals),
+        
+        % --libgrade-install-check only works with --make
+        option_neg_implies(make, libgrade_install_check, bool(no), !Globals), 
 
         % `--transitive-intermodule-optimization' and `--make' are 
         % not compatible with each other.

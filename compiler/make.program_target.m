@@ -45,6 +45,7 @@
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -55,7 +56,7 @@
 
 %-----------------------------------------------------------------------------%
 
-make_linked_target(LinkedTargetFile, Succeeded, !Info, !IO) :-
+make_linked_target(LinkedTargetFile, LinkedTargetSucceeded, !Info, !IO) :-
     LinkedTargetFile = linked_target_file(MainModuleName, FileType),
     (
         FileType = shared_library,
@@ -78,31 +79,49 @@ make_linked_target(LinkedTargetFile, Succeeded, !Info, !IO) :-
             not list.member("shared", LibLinkages)
         )
     ->
-        Succeeded = yes
+        LinkedTargetSucceeded = yes
     ;
-        % When using `--intermodule-analysis', perform an analysis pass first.
-        % The analysis of one module may invalidate the results of a module we
-        % analysed earlier, so this step must be carried out until all the
-        % `.analysis' files are in a valid state before we can continue.
-        globals.io_lookup_bool_option(intermodule_analysis,
-            IntermoduleAnalysis, !IO),
+        globals.io_lookup_bool_option(libgrade_install_check,
+            LibgradeCheck, !IO),
         (
-            IntermoduleAnalysis = yes,
-            make_misc_target_builder(
-                MainModuleName - misc_target_build_analyses,
-                ExtraOptions, Succeeded0, !Info, !IO)
+            LibgradeCheck = yes,
+            check_libraries_are_installed(LibgradeCheckSucceeded, !IO)
         ;
-            IntermoduleAnalysis = no,
-            Succeeded0 = yes
+            LibgradeCheck = no,
+            LibgradeCheckSucceeded = yes
         ),
+
+        ( 
+            LibgradeCheckSucceeded = yes,
+            % When using `--intermodule-analysis', perform an analysis pass
+            % first.  The analysis of one module may invalidate the results of
+            % a module we analysed earlier, so this step must be carried out
+            % until all the `.analysis' files are in a valid state before we
+            % can continue.
+            globals.io_lookup_bool_option(intermodule_analysis,
+                IntermodAnalysis, !IO),
+            (
+                IntermodAnalysis = yes,
+                make_misc_target_builder(
+                    MainModuleName - misc_target_build_analyses,
+                    ExtraOptions, IntermodAnalysisSucceeded, !Info, !IO)
+            ;
+                IntermodAnalysis = no,
+                IntermodAnalysisSucceeded = yes
+            )
+        ;
+            LibgradeCheckSucceeded = no,
+            IntermodAnalysisSucceeded = no
+        ),
+
         (
-            Succeeded0 = yes,
+            IntermodAnalysisSucceeded = yes,
             build_with_module_options(MainModuleName, ExtraOptions,
                 make_linked_target_2(LinkedTargetFile),
-                Succeeded, !Info, !IO)
+                LinkedTargetSucceeded, !Info, !IO)
         ;
-            Succeeded0 = no,
-            Succeeded = no
+            IntermodAnalysisSucceeded = no,
+            LinkedTargetSucceeded = no
         )
     ).
 
@@ -1703,6 +1722,95 @@ make_module_realclean(ModuleName, !Info, !IO) :-
         !Info, !IO),
     make_remove_file(very_verbose, ModuleName, ".imdg", !Info, !IO),
     make_remove_file(very_verbose, ModuleName, ".request", !Info, !IO).
+
+%-----------------------------------------------------------------------------%
+%
+% Check that the Mercury libraries required to build a linked target
+% are installed in the selected grade.
+%             
+
+    % Check that all Mercury libraries required by the linked target are
+    % installed in the selected grade.
+    %
+:- pred check_libraries_are_installed(bool::out, io::di, io::uo) is det.
+
+check_libraries_are_installed(Succeeded, !IO) :-
+    io_get_globals(Globals, !IO),
+    % NOTE: we don't look up the value of the option init_files here because
+    % that may include .init files other than those associated with any
+    % libraries.
+    globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
+    globals.lookup_accumulating_option(Globals, init_file_directories,
+        InitFileDirs),
+    grade_directory_component(Globals, Grade),
+    check_stdlib_is_installed(Grade, Succeeded0, !IO),
+    list.foldl2(check_library_is_installed(InitFileDirs, Grade),
+        Libs, Succeeded0, Succeeded, !IO).
+
+:- pred check_stdlib_is_installed(string::in, bool::out, io::di, io::uo)
+    is det.
+
+check_stdlib_is_installed(Grade, Succeeded, !IO) :-
+    verbose_msg(debug_make,
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.format("Checking that the Mercury standard library is " ++
+                "installed in grade `%s'.\n", [s(Grade)], !IO)
+        ), !IO),
+    globals.io_lookup_maybe_string_option(
+        mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    (
+        MaybeStdLibDir = yes(StdLibDir),
+        % We check for the presence mer_std.init in the required grade.
+        % Unless the installation is broken this implies the presence
+        % of the the other standard .init files in that grade.
+        StdLibInitFile = StdLibDir / "modules" / Grade / "mer_std.init",
+        io.see(StdLibInitFile, Result, !IO),
+        (
+            Result = ok,
+            io.seen(!IO),
+            Succeeded = yes
+        ;
+            Result = error(_),
+            io.stderr_stream(Stderr, !IO),
+            io.progname_base("mercury_compile", ProgName, !IO),
+            io.format(Stderr,
+                "%s: error: the Mercury standard library "  ++
+                " cannot be found in grade %s.\n",
+                [s(ProgName), s(Grade)], !IO),
+            Succeeded = no
+        )
+    ;
+        MaybeStdLibDir = no,
+        Succeeded = yes
+    ).
+ 
+:- pred check_library_is_installed(list(string)::in, string::in,
+    string::in, bool::in, bool::out, io::di, io::uo) is det.
+
+check_library_is_installed(Dirs, Grade, LibName, !Succeeded, !IO) :-
+    verbose_msg(debug_make,
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.format("Checking that %s is installed in grade `%s'.\n",
+                [s(LibName), s(Grade)], !IO)
+        ), !IO),
+    % We check for the presence of a library in a particular grade by
+    % seeing whether its .init file.  This will work because all
+    % libraries have a grade dependent .init file.
+    InitFileName = LibName ++ ".init",
+    search_for_file(Dirs, InitFileName, SearchResult, !IO),
+    (
+        SearchResult = ok(_),
+        % search_for_file/5 has opened the file, so close it.
+        io.seen(!IO)
+    ;
+        SearchResult = error(_),
+        io.stderr_stream(Stderr, !IO),
+        io.progname_base("mercury_compile", ProgName, !IO),
+        io.format(Stderr,
+            "%s: error: the library `%s' cannot be found in grade `%s'.\n",
+            [s(ProgName), s(LibName), s(Grade)], !IO),
+        !:Succeeded = no
+    ). 
 
 %-----------------------------------------------------------------------------%
 
