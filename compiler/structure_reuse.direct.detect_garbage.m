@@ -36,6 +36,7 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.ctgc.datastruct.
+:- import_module transform_hlds.ctgc.livedata.
 
 :- import_module bool.
 :- import_module io.
@@ -237,13 +238,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             \+ sharing_as_is_top(Sharing),
 
             % Check the live set of data structures at this program point.
-            set.union(LFU, LBU, LU),
-            LU_data = set.to_sorted_list(set.map(datastruct_init, LU)),
-            LiveData = list.condense(
-                list.map(
-                    extend_datastruct(ModuleInfo, ProcInfo, Sharing), 
-                    LU_data)),
-            \+ var_is_live(Var, LiveData)
+            var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var)
         ->
             % If all the above conditions are met, then the top
             % cell data structure based on Var is dead right after
@@ -267,10 +262,21 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             "complicated_unify/3 encountered.")
     ).
 
-:- pred var_is_live(prog_var::in, list(datastruct)::in) is semidet.
+:- pred var_not_live(module_info::in, proc_info::in, hlds_goal_info::in,
+    sharing_as::in, prog_var::in) is semidet.
 
-var_is_live(Var, LiveData) :- 
-    list.member(datastruct_init(Var), LiveData).
+var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var) :-
+    LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, Sharing),
+    nodes_are_not_live(ModuleInfo, ProcInfo, [datastruct_init(Var)], LiveData,
+        NotLive),
+    (
+        NotLive = nodes_are_live([])
+    ;
+        ( NotLive = nodes_all_live
+        ; NotLive = nodes_are_live([_ | _])
+        ),
+        fail
+    ).
 
 %-----------------------------------------------------------------------------%
 

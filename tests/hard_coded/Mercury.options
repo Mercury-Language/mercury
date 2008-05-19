@@ -37,6 +37,8 @@ MCFLAGS-intermod_type_qual =	--intermodule-optimization
 MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
 MCFLAGS-intermod_multimode =	--intermodule-optimization
 MCFLAGS-intermod_multimode_main = --intermodule-optimization
+MCFLAGS-uncond_reuse	    =	--ctgc
+MCFLAGS-uncond_reuse_bad    =	--ctgc
 
 # We disable intermodule-optimization here because it isn't compatible with
 # intermodule-analysis.

@@ -1,0 +1,3 @@
+BBox before: bb(point(-2.25, -5.0, -1.5), point(3.3, 3.6, 9.3))
+BBox after: bb(point(-2.25, -5.0, -1.5), point(3.3, 3.6, 9.3))
+something(bb(point(-2.25, -5.0, -1.5), point(3.3, 3.6, 9.3)), -2.25, 100)

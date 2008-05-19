@@ -95,41 +95,44 @@ generate_reuse_name(ModuleInfo, PPId) = ReuseName :-
     %   to correctly update the reuse annotations.
     %
 create_reuse_procedures(ReuseTable, !ModuleInfo, !IO):-
-    AllPPIds = map.keys(ReuseTable),
+    map.foldl2(divide_reuse_procs, ReuseTable, [], CondPPIds, [], UncondPPIds),
 
-    % Ignore reuse table entries for imported procedures.
-    DefinedHere = (pred(PPId::in) is semidet :-
-        PPId = proc(PredId, _),
-        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-        pred_info_get_import_status(PredInfo, Status),
-        status_defined_in_this_module(Status) = yes
-    ),
-    list.filter(DefinedHere, AllPPIds, PPIds),
-
-    CondPPIds = list.filter(has_conditional_reuse(ReuseTable), PPIds),
-    UncondPPIds = list.filter(has_unconditional_reuse(ReuseTable), PPIds),
-
-    % Create all the duplicates:
+    % Create duplicates of the procedures which have conditional reuse.
     list.map_foldl(create_fresh_pred_proc_info_copy,
         CondPPIds, ReuseCondPPIds, !ModuleInfo),
 
-    % Process all the goals to update the reuse annotations:
+    % Process all the goals to update the reuse annotations.  In the reuse
+    % versions of procedures we can take advantage of potential reuse
+    % opportunities.
     module_info_get_structure_reuse_map(!.ModuleInfo, ReuseMap),
-    ReusePPIds = ReuseCondPPIds ++ UncondPPIds,
-    list.foldl2(process_proc(ReuseMap), ReusePPIds, !ModuleInfo, !IO).
+    list.foldl2(process_proc(convert_potential_reuse, ReuseMap),
+        ReuseCondPPIds, !ModuleInfo, !IO),
 
-:- pred has_conditional_reuse(reuse_as_table::in, pred_proc_id::in) is semidet.
+    % In the original procedures, only the unconditional reuse opportunities
+    % can be taken.
+    list.foldl2(process_proc(leave_potential_reuse, ReuseMap),
+        CondPPIds, !ModuleInfo, !IO),
+    list.foldl2(process_proc(leave_potential_reuse, ReuseMap),
+        UncondPPIds, !ModuleInfo, !IO).
 
-has_conditional_reuse(ReuseTable, PPId) :-
-    reuse_as_table_search(PPId, ReuseTable, reuse_as_and_status(ReuseAs, _)),
-    reuse_as_conditional_reuses(ReuseAs).
+    % Separate procedures in the reuse table into those with some conditional
+    % reuse opportunities, and those with only unconditional reuse.
+    %
+:- pred divide_reuse_procs(pred_proc_id::in, reuse_as_and_status::in,
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-:- pred has_unconditional_reuse(reuse_as_table::in, pred_proc_id::in)
-    is semidet.
-
-has_unconditional_reuse(ReuseTable, PPId) :-
-    reuse_as_table_search(PPId, ReuseTable, reuse_as_and_status(ReuseAs, _)),
-    reuse_as_all_unconditional_reuses(ReuseAs).
+divide_reuse_procs(PPId, ReuseAs_Status, !CondPPIds, !UncondPPIds) :-
+    ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
+    ( reuse_as_conditional_reuses(ReuseAs) ->
+        !:CondPPIds = [PPId | !.CondPPIds]
+    ; reuse_as_all_unconditional_reuses(ReuseAs) ->
+        !:UncondPPIds = [PPId | !.UncondPPIds]
+    ; reuse_as_no_reuses(ReuseAs) ->
+        true
+    ;
+        unexpected(this_file, "divide_reuse_procs")
+    ).
 
 %------------------------------------------------------------------------------%
 
@@ -191,43 +194,54 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
 
 %------------------------------------------------------------------------------%
 
+:- type convert_potential_reuse
+    --->    convert_potential_reuse
+    ;       leave_potential_reuse.
+
     % Process the goal of the procedure with the given pred_proc_id so that
     % all potential reuses are replaced by real reuses, and all calls to
     % procedures that have a reuse version are replaced by calls to their
     % reuse version (if of course, that is in accordance with the reuse
     % annotations).
     %
-:- pred process_proc(structure_reuse_map::in,
+:- pred process_proc(convert_potential_reuse::in, structure_reuse_map::in,
     pred_proc_id::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-process_proc(ReuseMap, PPId, !ModuleInfo, !IO) :-
+process_proc(ConvertPotentialReuse, ReuseMap, PPId, !ModuleInfo, !IO) :-
     write_proc_progress_message("(reuse version) ", PPId, !.ModuleInfo, !IO),
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, !:ProcInfo),
-        proc_info_get_goal(!.ProcInfo, Goal0),
-        process_goal(ReuseMap, Goal0, Goal, !IO),
-        proc_info_set_goal(Goal, !ProcInfo),
+        pred_info_get_import_status(PredInfo0, ImportStatus),
+        ( ImportStatus = status_imported(_) ->
+            % Don't process the bodies of imported predicates.
+            true
+        ;
+            proc_info_get_goal(!.ProcInfo, Goal0),
+            process_goal(ConvertPotentialReuse, ReuseMap, Goal0, Goal, !IO),
+            proc_info_set_goal(Goal, !ProcInfo),
 
-        % A dead variable needs to appear in the non-local set of the
-        % construction unification in which its space is reused, so we
-        % requantify.  Then we recompute instmap deltas with the updated
-        % non-local sets.
-        requantify_proc(!ProcInfo),
-        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
-            !ProcInfo, !ModuleInfo),
-        module_info_set_pred_proc_info(PPId, PredInfo0, !.ProcInfo,
-            !ModuleInfo)
+            % A dead variable needs to appear in the non-local set of the
+            % construction unification in which its space is reused, so we
+            % requantify.  Then we recompute instmap deltas with the updated
+            % non-local sets.
+            requantify_proc(!ProcInfo),
+            recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+                !ProcInfo, !ModuleInfo),
+            module_info_set_pred_proc_info(PPId, PredInfo0, !.ProcInfo,
+                !ModuleInfo)
+        )
     ).
 
-:- pred process_goal(structure_reuse_map::in, hlds_goal::in, hlds_goal::out,
-    io::di, io::uo) is det.
+:- pred process_goal(convert_potential_reuse::in, structure_reuse_map::in,
+    hlds_goal::in, hlds_goal::out, io::di, io::uo) is det.
 
-process_goal(ReuseMap, !Goal, !IO) :-
+process_goal(ConvertPotentialReuse, ReuseMap, !Goal, !IO) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl(process_goal(ReuseMap), Goals0, Goals, !IO),
+        list.map_foldl(process_goal(ConvertPotentialReuse, ReuseMap),
+            Goals0, Goals, !IO),
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -250,7 +264,8 @@ process_goal(ReuseMap, !Goal, !IO) :-
                 Args, BI, UC, ReuseCalleePredName),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            ReuseDescription0 = potential_reuse(reuse_call(CondDescr))
+            ReuseDescription0 = potential_reuse(reuse_call(CondDescr)),
+            ConvertPotentialReuse = convert_potential_reuse
         ->
             % Replace the call to the reuse version, and change the
             % potential reuse annotation to a real annotation.
@@ -271,25 +286,35 @@ process_goal(ReuseMap, !Goal, !IO) :-
         GoalExpr0 = unify(_, _, _, Unification0, _),
         ReuseDescription0 = goal_info_get_reuse(GoalInfo0),
         (
-            ReuseDescription0 = potential_reuse(Descr)
-        ->
+            (
+                ReuseDescription0 = reuse(Descr)
+            ;
+                ReuseDescription0 = potential_reuse(Descr),
+                ConvertPotentialReuse = convert_potential_reuse
+            ),
             ReuseDescription = reuse(Descr),
-            unification_set_reuse(Descr, Unification0,
-                Unification),
+            unification_set_reuse(Descr, Unification0, Unification),
             GoalExpr = GoalExpr0 ^ unify_kind := Unification,
             goal_info_set_reuse(ReuseDescription, GoalInfo0, GoalInfo),
             !:Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
-            true
+            ReuseDescription0 = potential_reuse(_),
+            ConvertPotentialReuse = leave_potential_reuse
+        ;
+            ReuseDescription0 = no_reuse_info
+        ;
+            ReuseDescription0 = missed_reuse(_)
         )
     ;
         GoalExpr0 = disj(Goals0),
-        list.map_foldl(process_goal(ReuseMap), Goals0, Goals, !IO),
+        list.map_foldl(process_goal(ConvertPotentialReuse, ReuseMap),
+            Goals0, Goals, !IO),
         GoalExpr = disj(Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(A, B, Cases0),
-        list.map_foldl(process_case(ReuseMap), Cases0, Cases, !IO),
+        list.map_foldl(process_case(ConvertPotentialReuse, ReuseMap),
+            Cases0, Cases, !IO),
         GoalExpr = switch(A, B, Cases),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -297,14 +322,16 @@ process_goal(ReuseMap, !Goal, !IO) :-
         GoalExpr0 = negation(_Goal)
     ;
         GoalExpr0 = scope(A, SubGoal0),
-        process_goal(ReuseMap, SubGoal0, SubGoal, !IO),
+        process_goal(ConvertPotentialReuse, ReuseMap, SubGoal0, SubGoal, !IO),
         GoalExpr = scope(A, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(A, IfGoal0, ThenGoal0, ElseGoal0),
-        process_goal(ReuseMap, IfGoal0, IfGoal, !IO),
-        process_goal(ReuseMap, ThenGoal0, ThenGoal, !IO),
-        process_goal(ReuseMap, ElseGoal0, ElseGoal, !IO),
+        process_goal(ConvertPotentialReuse, ReuseMap, IfGoal0, IfGoal, !IO),
+        process_goal(ConvertPotentialReuse, ReuseMap, ThenGoal0, ThenGoal,
+            !IO),
+        process_goal(ConvertPotentialReuse, ReuseMap, ElseGoal0, ElseGoal,
+            !IO),
         GoalExpr = if_then_else(A, IfGoal, ThenGoal, ElseGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -347,13 +374,13 @@ determine_reuse_version(ReuseMap, PredId, ProcId, PredName,
         ReusePredName = PredName
     ).
 
-:- pred process_case(structure_reuse_map::in, case::in, case::out,
-    io::di, io::uo) is det.
+:- pred process_case(convert_potential_reuse::in, structure_reuse_map::in,
+    case::in, case::out, io::di, io::uo) is det.
 
-process_case(ReuseMap, !Case, !IO) :-
-    !.Case = case(MainConsId, OtherConsIds, Goal0),
-    process_goal(ReuseMap, Goal0, Goal, !IO),
-    !:Case = case(MainConsId, OtherConsIds, Goal).
+process_case(ConvertPotentialReuse, ReuseMap, Case0, Case, !IO) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    process_goal(ConvertPotentialReuse, ReuseMap, Goal0, Goal, !IO),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %------------------------------------------------------------------------------%
 
