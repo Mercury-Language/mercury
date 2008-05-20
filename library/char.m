@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,6 +188,8 @@
     (from_int(X) = Y :- char.to_int(Y, X))
 ].
 
+% The information here is duplicated in lookup_token_action in lexer.m.
+% If you update this; you will also need update that.
 char.is_whitespace(' ').
 char.is_whitespace('\t').
 char.is_whitespace('\n').
@@ -221,7 +223,8 @@ char.is_alpha_or_underscore(Char) :-
     ).
 
     % We explicitly enumerate here for efficiency.
-    % (this predicate is part of the inner loop of the lexer.)
+    % (The information here and in some of the following predicates,
+    % e.g. char.lower_upper, is duplicated in lookup_token_action in lexer.m.)
 char.is_alnum_or_underscore(Char) :-
     ( Char = '0'
     ; Char = '1'

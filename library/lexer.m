@@ -1,20 +1,20 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2007 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: lexer.m.
 % Main author: fjh.
 % Stability: high.
-% 
+%
 % Lexical analysis.  This module defines the representation of tokens
 % and exports predicates for reading in tokens from an input stream.
 %
 % See ISO Prolog 6.4.  Also see the comments at the top of parser.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -312,6 +312,26 @@ string_set_line_number(LineNumber, Posn0, Posn) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type get_token_action
+    --->    action_whitespace
+    ;       action_alpha_lower
+    ;       action_alpha_upper_uscore
+    ;       action_zero
+    ;       action_nonzero_digit
+    ;       action_special_token
+    ;       action_dot
+    ;       action_percent
+    ;       action_quote
+    ;       action_slash
+    ;       action_hash
+    ;       action_backquote
+    ;       action_dollar
+    ;       action_graphic_token.
+
+:- type scanned_past_whitespace
+    --->    scanned_past_whitespace
+    ;       not_scanned_past_whitespace.
+
 :- pred get_token(io.input_stream::in, token::out, token_context::out,
     io::di, io::uo) is det.
 
@@ -327,107 +347,14 @@ get_token(Stream, Token, Context, !IO) :-
         Token = eof
     ;
         Result = ok,
-        ( char.is_whitespace(Char) ->
-            get_token_2(Stream, Token, Context, !IO)
-        ; ( char.is_upper(Char) ; Char = '_' ) ->
-            get_context(Stream, Context, !IO),
-            get_variable(Stream, [Char], Token, !IO)
-        ; char.is_lower(Char) ->
-            get_context(Stream, Context, !IO),
-            get_name(Stream, [Char], Token, !IO)
-        ; Char = '0' ->
-            get_context(Stream, Context, !IO),
-            get_zero(Stream, Token, !IO)
-        ; char.is_digit(Char) ->
-            get_context(Stream, Context, !IO),
-            get_number(Stream, [Char], Token, !IO)
-        ; special_token(Char, SpecialToken) ->
-            get_context(Stream, Context, !IO),
-            ( SpecialToken = open ->
-                Token = open_ct
-            ;
-                Token = SpecialToken
-            )
-        ; Char = ('.') ->
-            get_context(Stream, Context, !IO),
-            get_dot(Stream, Token, !IO)
-        ; Char = ('%') ->
-            skip_to_eol(Stream, Token, Context, !IO)
-        ; ( Char = '"' ; Char = '''' ) ->
-            get_context(Stream, Context, !IO),
-            start_quoted_name(Stream, Char, [], Token, !IO)
-        ; Char = ('/') ->
-            get_slash(Stream, Token, Context, !IO)
-        ; Char = ('#') ->
-            get_source_line_number(Stream, [], Token, Context, !IO)
-        ; Char = ('`') ->
-            get_context(Stream, Context, !IO),
-            Token = name("`")
-        ; Char = '$' ->
-            get_context(Stream, Context, !IO),
-            get_implementation_defined_literal_rest(Stream, Token, !IO)
-        ; graphic_token_char(Char) ->
-            get_context(Stream, Context, !IO),
-            get_graphic(Stream, [Char], Token, !IO)
+        ( lookup_token_action(Char, Action) ->
+            execute_get_token_action(Stream, Char, Action,
+                not_scanned_past_whitespace, Token, Context, !IO)
         ;
             get_context(Stream, Context, !IO),
             Token = junk(Char)
         )
     ).
-
-:- pred string_get_token(string::in, int::in, token::out,
-    token_context::out, posn::in, posn::out) is det.
-
-string_get_token(String, Len, Token, Context, !Posn) :-
-    Posn0 = !.Posn,
-    ( string_read_char(String, Len, Char, !Posn) ->
-        ( char.is_whitespace(Char) ->
-            string_get_token_2(String, Len, Token, Context, !Posn)
-        ; ( char.is_upper(Char) ; Char = '_' ) ->
-            string_get_variable(String, Len, Posn0, Token, Context, !Posn)
-        ; char.is_lower(Char) ->
-            string_get_name(String, Len, Posn0, Token, Context, !Posn)
-        ; Char = '0' ->
-            string_get_zero(String, Len, Posn0, Token, Context, !Posn)
-        ; char.is_digit(Char) ->
-            string_get_number(String, Len, Posn0, Token, Context, !Posn)
-        ; special_token(Char, SpecialToken) ->
-            string_get_context(Posn0, Context, !Posn),
-            ( SpecialToken = open ->
-                Token = open_ct
-            ;
-                Token = SpecialToken
-            )
-        ; Char = ('.') ->
-            string_get_dot(String, Len, Posn0, Token, Context, !Posn)
-        ; Char = ('%') ->
-            string_skip_to_eol(String, Len, Token, Context, !Posn)
-        ; ( Char = '"' ; Char = '''' ) ->
-            string_start_quoted_name(String, Len, Char, [], Posn0, Token,
-                Context, !Posn)
-        ; Char = ('/') ->
-            string_get_slash(String, Len, Posn0, Token, Context, !Posn)
-        ; Char = ('#') ->
-            string_get_source_line_number(String, Len, !.Posn, Token, Context,
-                !Posn)
-        ; Char = ('`') ->
-            string_get_context(Posn0, Context, !Posn),
-            Token = name("`")
-        ; Char = '$' ->
-            string_get_implementation_defined_literal_rest(String, Len, Posn0,
-                Token, Context, !Posn)
-        ; graphic_token_char(Char) ->
-            string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
-        ;
-            string_get_context(Posn0, Context, !Posn),
-            Token = junk(Char)
-        )
-    ;
-        string_get_context(Posn0, Context, !Posn),
-        Token = eof
-    ).
-
-%-----------------------------------------------------------------------------%
 
     % This is just like get_token, except that we have already scanned past
     % some whitespace, so '(' gets scanned as `open' rather than `open_ct'.
@@ -447,89 +374,24 @@ get_token_2(Stream, Token, Context, !IO) :-
         Token = eof
     ;
         Result = ok,
-        ( char.is_whitespace(Char) ->
-            get_token_2(Stream, Token, Context, !IO)
-        ; ( char.is_upper(Char) ; Char = '_' ) ->
-            get_context(Stream, Context, !IO),
-            get_variable(Stream, [Char], Token, !IO)
-        ; char.is_lower(Char) ->
-            get_context(Stream, Context, !IO),
-            get_name(Stream, [Char], Token, !IO)
-        ; Char = '0' ->
-            get_context(Stream, Context, !IO),
-            get_zero(Stream, Token, !IO)
-        ; char.is_digit(Char) ->
-            get_context(Stream, Context, !IO),
-            get_number(Stream, [Char], Token, !IO)
-        ; special_token(Char, SpecialToken) ->
-            get_context(Stream, Context, !IO),
-            Token = SpecialToken
-        ; Char = ('.') ->
-            get_context(Stream, Context, !IO),
-            get_dot(Stream, Token, !IO)
-        ; Char = ('%') ->
-            skip_to_eol(Stream, Token, Context, !IO)
-        ; ( Char = '"' ; Char = '''' ) ->
-            get_context(Stream, Context, !IO),
-            start_quoted_name(Stream, Char, [], Token, !IO)
-        ; Char = ('/') ->
-            get_slash(Stream, Token, Context, !IO)
-        ; Char = ('#') ->
-            get_source_line_number(Stream, [], Token, Context, !IO)
-        ; Char = ('`') ->
-            get_context(Stream, Context, !IO),
-            Token = name("`")
-        ; Char = '$' ->
-            get_context(Stream, Context, !IO),
-            get_implementation_defined_literal_rest(Stream, Token, !IO)
-        ; graphic_token_char(Char) ->
-            get_context(Stream, Context, !IO),
-            get_graphic(Stream, [Char], Token, !IO)
+        ( lookup_token_action(Char, Action) ->
+            execute_get_token_action(Stream, Char, Action,
+                scanned_past_whitespace, Token, Context, !IO)
         ;
             get_context(Stream, Context, !IO),
             Token = junk(Char)
         )
     ).
 
-:- pred string_get_token_2(string::in, int::in, token::out,
+:- pred string_get_token(string::in, int::in, token::out,
     token_context::out, posn::in, posn::out) is det.
 
-string_get_token_2(String, Len, Token, Context, !Posn) :-
+string_get_token(String, Len, Token, Context, !Posn) :-
     Posn0 = !.Posn,
     ( string_read_char(String, Len, Char, !Posn) ->
-        ( char.is_whitespace(Char) ->
-            string_get_token_2(String, Len, Token, Context, !Posn)
-        ; ( char.is_upper(Char) ; Char = '_' ) ->
-            string_get_variable(String, Len, Posn0, Token, Context, !Posn)
-        ; char.is_lower(Char) ->
-            string_get_name(String, Len, Posn0, Token, Context, !Posn)
-        ; Char = '0' ->
-            string_get_zero(String, Len, Posn0, Token, Context, !Posn)
-        ; char.is_digit(Char) ->
-            string_get_number(String, Len, Posn0, Token, Context, !Posn)
-        ; special_token(Char, SpecialToken) ->
-            string_get_context(Posn0, Context, !Posn),
-            Token = SpecialToken
-        ; Char = ('.') ->
-            string_get_dot(String, Len, Posn0, Token, Context, !Posn)
-        ; Char = ('%') ->
-            string_skip_to_eol(String, Len, Token, Context, !Posn)
-        ; ( Char = '"' ; Char = '''' ) ->
-            string_start_quoted_name(String, Len, Char, [], Posn0, Token,
-                Context, !Posn)
-        ; Char = ('/') ->
-            string_get_slash(String, Len, Posn0, Token, Context, !Posn)
-        ; Char = ('#') ->
-            string_get_source_line_number(String, Len, !.Posn, Token, Context,
-                !Posn)
-        ; Char = ('`') ->
-            string_get_context(Posn0, Context, !Posn),
-            Token = name("`")
-        ; Char = '$' ->
-            string_get_implementation_defined_literal_rest(String, Len, Posn0,
-                Token, Context, !Posn)
-        ; graphic_token_char(Char) ->
-            string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
+        ( lookup_token_action(Char, Action) ->
+            execute_string_get_token_action(String, Len, Posn0, Char, Action,
+                not_scanned_past_whitespace, Token, Context, !Posn)
         ;
             string_get_context(Posn0, Context, !Posn),
             Token = junk(Char)
@@ -539,11 +401,299 @@ string_get_token_2(String, Len, Token, Context, !Posn) :-
         Token = eof
     ).
 
+:- pred string_get_token_2(string::in, int::in, token::out,
+    token_context::out, posn::in, posn::out) is det.
+
+string_get_token_2(String, Len, Token, Context, !Posn) :-
+    Posn0 = !.Posn,
+    ( string_read_char(String, Len, Char, !Posn) ->
+        ( lookup_token_action(Char, Action) ->
+            execute_string_get_token_action(String, Len, Posn0, Char, Action,
+                scanned_past_whitespace, Token, Context, !Posn)
+        ;
+            string_get_context(Posn0, Context, !Posn),
+            Token = junk(Char)
+        )
+    ;
+        string_get_context(Posn0, Context, !Posn),
+        Token = eof
+    ).
+
+    % Decide on how the given character should be treated. Note that
+    % performance suffers significantly if this predicate is not inlined.
+    %
+:- pragma inline(lookup_token_action/2).
+:- pred lookup_token_action(char::in, get_token_action::out) is semidet.
+
+lookup_token_action(Char, Action) :-
+    % The body of this predicate should be turned into a single table lookup
+    % by the compiler.
+    (
+        % This list of characters comes from the code of char.is_whitespace.
+        % Any update here will also require an update there.
+        ( Char = ' '
+        ; Char = '\t'
+        ; Char = '\n'
+        ; Char = '\r'
+        ; Char = '\f'
+        ; Char = '\v'
+        ),
+        Action = action_whitespace
+    ;
+        % This list of characters comes from char.is_alnum_or_underscore and
+        % char.lower_upper.
+        ( Char = 'a' ; Char = 'b' ; Char = 'c' ; Char = 'd'
+        ; Char = 'e' ; Char = 'f' ; Char = 'g' ; Char = 'h'
+        ; Char = 'i' ; Char = 'j' ; Char = 'k' ; Char = 'l'
+        ; Char = 'm' ; Char = 'n' ; Char = 'o' ; Char = 'p'
+        ; Char = 'q' ; Char = 'r' ; Char = 's' ; Char = 't'
+        ; Char = 'u' ; Char = 'v' ; Char = 'w' ; Char = 'x'
+        ; Char = 'y' ; Char = 'z'
+        ),
+        Action = action_alpha_lower
+    ;
+        % This list of characters comes from char.is_alnum_or_underscore and
+        % char.lower_upper.
+        ( Char = '_'
+        ; Char = 'A' ; Char = 'B' ; Char = 'C' ; Char = 'D'
+        ; Char = 'E' ; Char = 'F' ; Char = 'G' ; Char = 'H'
+        ; Char = 'I' ; Char = 'J' ; Char = 'K' ; Char = 'L'
+        ; Char = 'M' ; Char = 'N' ; Char = 'O' ; Char = 'P'
+        ; Char = 'Q' ; Char = 'R' ; Char = 'S' ; Char = 'T'
+        ; Char = 'U' ; Char = 'V' ; Char = 'W' ; Char = 'X'
+        ; Char = 'Y' ; Char = 'Z'
+        ),
+        Action = action_alpha_upper_uscore
+    ;
+        Char = '0',
+        Action = action_zero
+    ;
+        % This list of characters comes from char.is_alnum_or_underscore and
+        % char.is_digit.
+        ( Char = '1' ; Char = '2' ; Char = '3' ; Char = '4'
+        ; Char = '5' ; Char = '6' ; Char = '7' ; Char = '8'
+        ; Char = '9'
+        ),
+        Action = action_nonzero_digit
+    ;
+        % These are the characters for which special_token succeeds.
+        ( Char = ('(')
+        ; Char = (')')
+        ; Char = ('[')
+        ; Char = (']')
+        ; Char = ('{')
+        ; Char = ('}')
+        ; Char = ('|')
+        ; Char = (',')
+        ; Char = (';')
+        ),
+        Action = action_special_token
+    ;
+        Char = ('.'),
+        Action = action_dot
+    ;
+        Char = ('%'),
+        Action = action_percent
+    ;
+        ( Char = '"'
+        ; Char = ''''
+        ),
+        Action = action_quote
+    ;
+        Char = ('/'),
+        Action = action_slash
+    ;
+        Char = ('#'),
+        Action = action_hash
+    ;
+        Char = ('`'),
+        Action = action_backquote
+    ;
+        Char = ('$'),
+        Action = action_dollar
+    ;
+        % These are the characters for which graphic_token_char succeeds.
+        % The ones that are commented out have their own actions.
+        ( Char = ('!')
+        % ; Char = ('#')    handled as action_hash
+        % ; Char = ('$')    handled as action_dollar
+        ; Char = ('&')
+        ; Char = ('*')
+        ; Char = ('+')
+        ; Char = ('-')
+        % ; Char = ('.')    handled as action_dot
+        % ; Char = ('/')    handled as action_slash
+        ; Char = (':')
+        ; Char = ('<')
+        ; Char = ('=')
+        ; Char = ('>')
+        ; Char = ('?')
+        ; Char = ('@')
+        ; Char = ('^')
+        ; Char = ('~')
+        ; Char = ('\\')
+        ),
+        Action = action_graphic_token
+    ).
+
 %-----------------------------------------------------------------------------%
+
+    % Handle the character we just read the way lookup_token_action decided
+    % it should be treated. Note that inlining this predicate does not
+    % significantly affect performance.
+    %
+% :- pragma inline(execute_get_token_action/8).
+:- pred execute_get_token_action(io.input_stream::in, char::in,
+    get_token_action::in, scanned_past_whitespace::in, token::out,
+    token_context::out, io::di, io::uo) is det.
+
+execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
+        Token, Context, !IO) :-
+    (
+        Action = action_whitespace,
+        get_token_2(Stream, Token, Context, !IO)
+    ;
+        Action = action_alpha_upper_uscore,
+        get_context(Stream, Context, !IO),
+        get_variable(Stream, [Char], Token, !IO)
+    ;
+        Action = action_alpha_lower,
+        get_context(Stream, Context, !IO),
+        get_name(Stream, [Char], Token, !IO)
+    ;
+        Action = action_zero,
+        get_context(Stream, Context, !IO),
+        get_zero(Stream, Token, !IO)
+    ;
+        Action = action_nonzero_digit,
+        get_context(Stream, Context, !IO),
+        get_number(Stream, [Char], Token, !IO)
+    ;
+        Action = action_special_token,
+        get_context(Stream, Context, !IO),
+        handle_special_token(Char, ScannedPastWhiteSpace, Token)
+    ;
+        Action = action_dot,
+        get_context(Stream, Context, !IO),
+        get_dot(Stream, Token, !IO)
+    ;
+        Action = action_percent,
+        skip_to_eol(Stream, Token, Context, !IO)
+    ;
+        Action = action_quote,
+        get_context(Stream, Context, !IO),
+        start_quoted_name(Stream, Char, [], Token, !IO)
+    ;
+        Action = action_slash,
+        get_slash(Stream, Token, Context, !IO)
+    ;
+        Action = action_hash,
+        get_source_line_number(Stream, [], Token, Context, !IO)
+    ;
+        Action = action_backquote,
+        get_context(Stream, Context, !IO),
+        Token = name("`")
+    ;
+        Action = action_dollar,
+        get_context(Stream, Context, !IO),
+        get_implementation_defined_literal_rest(Stream, Token, !IO)
+    ;
+        Action = action_graphic_token,
+        get_context(Stream, Context, !IO),
+        get_graphic(Stream, [Char], Token, !IO)
+    ).
+
+    % The string version of execute_get_token_action.
+    %
+% :- pragma inline(execute_string_get_token_action/10).
+:- pred execute_string_get_token_action(string::in, int::in, posn::in,
+    char::in, get_token_action::in, scanned_past_whitespace::in, token::out,
+    token_context::out, posn::in, posn::out) is det.
+
+execute_string_get_token_action(String, Len, Posn0, Char, Action,
+        ScannedPastWhiteSpace, Token, Context, !Posn) :-
+    (
+        Action = action_whitespace,
+        string_get_token_2(String, Len, Token, Context, !Posn)
+    ;
+        Action = action_alpha_upper_uscore,
+        string_get_variable(String, Len, Posn0, Token, Context, !Posn)
+    ;
+        Action = action_alpha_lower,
+        string_get_name(String, Len, Posn0, Token, Context, !Posn)
+    ;
+        Action = action_zero,
+        string_get_zero(String, Len, Posn0, Token, Context, !Posn)
+    ;
+        Action = action_nonzero_digit,
+        string_get_number(String, Len, Posn0, Token, Context, !Posn)
+    ;
+        Action = action_special_token,
+        string_get_context(Posn0, Context, !Posn),
+        handle_special_token(Char, ScannedPastWhiteSpace, Token)
+    ;
+        Action = action_dot,
+        string_get_dot(String, Len, Posn0, Token, Context, !Posn)
+    ;
+        Action = action_percent,
+        string_skip_to_eol(String, Len, Token, Context, !Posn)
+    ;
+        Action = action_quote,
+        string_start_quoted_name(String, Len, Char, [], Posn0, Token,
+            Context, !Posn)
+    ;
+        Action = action_slash,
+        string_get_slash(String, Len, Posn0, Token, Context, !Posn)
+    ;
+        Action = action_hash,
+        string_get_source_line_number(String, Len, !.Posn, Token, Context,
+            !Posn)
+    ;
+        Action = action_backquote,
+        string_get_context(Posn0, Context, !Posn),
+        Token = name("`")
+    ;
+        Action = action_dollar,
+        string_get_implementation_defined_literal_rest(String, Len, Posn0,
+            Token, Context, !Posn)
+    ;
+        Action = action_graphic_token,
+        string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Decide what to do for a token which consists of a special character.
+    % The reason for inlining this predicate is that each caller has a
+    % specific value for ScannedPastWhiteSpace, and thus after inlining,
+    % the compiler should be able to eliminate the switch on
+    % ScannedPastWhiteSpace.
+    %
+:- pragma inline(handle_special_token/3).
+:- pred handle_special_token(char::in, scanned_past_whitespace::in, token::out)
+    is det.
+
+handle_special_token(Char, ScannedPastWhiteSpace, Token) :-
+    ( special_token(Char, SpecialToken) ->
+        (
+            ScannedPastWhiteSpace = not_scanned_past_whitespace,
+            ( SpecialToken = open ->
+                Token = open_ct
+            ;
+                Token = SpecialToken
+            )
+        ;
+            ScannedPastWhiteSpace = scanned_past_whitespace,
+            Token = SpecialToken
+        )
+    ;
+        error("lexer.m, handle_special_token: unknown special token")
+    ).
 
 :- pred special_token(char::in, token::out) is semidet.
 
-special_token('(', open).    % May get converted to open_ct
+% The list of characters here is duplicated in lookup_token_action above.
+special_token('(', open).    % May get converted to open_ct above.
 special_token(')', close).
 special_token('[', open_list).
 special_token(']', close_list).
@@ -553,6 +703,7 @@ special_token('|', ht_sep).
 special_token(',', comma).
 special_token(';', name(";")).
 
+% The list of characters here is duplicated in lookup_token_action above.
 graphic_token_char('!').
 graphic_token_char('#').
 graphic_token_char('$').
@@ -1483,7 +1634,7 @@ get_name(Stream, Chars, Token, !IO) :-
                 Token = name(Name)
             ;
                 Token = error("invalid character in name")
-            ) 
+            )
         )
     ).
 
