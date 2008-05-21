@@ -240,7 +240,7 @@ MR_bool     MR_force_readline = MR_FALSE;
 ** may be open ended). The fourth is calls between debugger commands that
 ** enable and disable low level messages.
 **
-** MR_lld_start_until and MR_lld_csd_until give the end call numbers of the 
+** MR_lld_start_until and MR_lld_csd_until give the end call numbers of the
 ** blocks printed for the first two conditions. MR_lld_print_{min,max} give the
 ** boundaries of the (current or next) block for the third condition.
 */
@@ -530,8 +530,8 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
     /*
-    ** Process the command line and the options in the environment
-    ** variable MERCURY_OPTIONS, and save results in global variables.
+    ** Process the command line and the options in the relevant environment
+    ** variables, and save results in global variables.
     */
 
     MR_process_args(argc, argv);
@@ -568,7 +568,7 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
     /*
-    ** XXX The condition here used to be 
+    ** XXX The condition here used to be
     ** #if defined(MR_HIGHLEVEL_CODE) && defined(MR_CONSERVATIVE_GC)
     ** and was part of a change by Fergus to remove an unnecessary
     ** dependency on the complicated Mercury engine code.  Unfortunately
@@ -589,7 +589,7 @@ mercury_runtime_init(int argc, char **argv)
     MR_ticket_high_water = 1;
   #endif
 #else
-    /* 
+    /*
     ** Start up the Mercury engine.  We don't yet know how many slots will be
     ** needed for thread-local mutable values so allocate the maximum number.
     */
@@ -795,7 +795,7 @@ MR_init_conservative_GC(void)
 }
 #endif /* MR_CONSERVATIVE_GC */
 
-void 
+void
 MR_do_init_modules(void)
 {
     static  MR_bool done = MR_FALSE;
@@ -807,7 +807,7 @@ MR_do_init_modules(void)
     }
 }
 
-void 
+void
 MR_do_init_modules_type_tables(void)
 {
     static  MR_bool done = MR_FALSE;
@@ -826,7 +826,7 @@ MR_do_init_modules_type_tables(void)
     }
 }
 
-void 
+void
 MR_do_init_modules_debugger(void)
 {
     static  MR_bool done = MR_FALSE;
@@ -838,7 +838,7 @@ MR_do_init_modules_debugger(void)
 }
 
 #ifdef  MR_RECORD_TERM_SIZES
-void 
+void
 MR_do_init_modules_complexity(void)
 {
     static  MR_bool done = MR_FALSE;
@@ -869,7 +869,7 @@ MR_make_argv(const char *string,
     int         args_len = 0;
     int         argc = 0;
     int         i;
-    
+
     /*
     ** First do a pass over the string to count how much space we need to
     ** allocate.
@@ -972,7 +972,7 @@ MR_make_argv(const char *string,
     return NULL; /* success */
 }
 
-/*  
+/*
 ** MR_process_args() is a function that sets some global variables from the
 ** command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
 ** `progname' is program name.
@@ -987,28 +987,68 @@ MR_process_args(int argc, char **argv)
 }
 
 /*
-** MR_process_environment_options() is a function to parse the MERCURY_OPTIONS
-** environment variable.  
-*/ 
+** MR_process_environment_options() is a function to parse the options put
+** into MR_runtime_flags by mkinit, the MERCURY_OPTIONS environment variable,
+** and the MERCURY_OPTIONS-progname environment variable.
+*/
+
+#define MERCURY_OPTIONS     "MERCURY_OPTIONS"
+#define WHERE_BUF_SIZE      1000
 
 static void
 MR_process_environment_options(void)
 {
-    char    *env_options;
+    char        *gen_env_options;
+    char        *prog_env_options;
+    char        *prog_env_option_name;
+    int         prog_env_option_name_len;
+    int         mercury_options_len;
+    const char  *progname;
+    const char  *s;
 
-    env_options = getenv("MERCURY_OPTIONS");
-    if (env_options == NULL) {
-        env_options = (char *) "";
+    gen_env_options = getenv(MERCURY_OPTIONS);
+    if (gen_env_options == NULL) {
+        gen_env_options = (char *) "";
     }
 
-    if (env_options[0] != '\0' || MR_runtime_flags[0] != '\0') {
-        const char  *cmd;
-        char        *arg_str, **argv;
+    /* Find out the program's name, stripping off any directory names. */
+    progname = MR_progname;
+    for (s = progname; *s != '\0'; s++) {
+        if (*s == '/') {
+            progname = s + 1;
+        }
+    }
+
+    /* Build the program-specific option's name: MERCURY_OPTIONS-progname. */
+    mercury_options_len = strlen(MERCURY_OPTIONS);
+    prog_env_option_name_len = mercury_options_len + 1 + strlen(progname);
+    prog_env_option_name = MR_GC_NEW_ARRAY(char, prog_env_option_name_len);
+    strcpy(prog_env_option_name, MERCURY_OPTIONS);
+    prog_env_option_name[mercury_options_len] = '-';
+    strcpy(prog_env_option_name + mercury_options_len + 1, progname);
+
+    prog_env_options = getenv(prog_env_option_name);
+    if (prog_env_options == NULL) {
+        prog_env_options = (char *) "";
+    }
+
+    MR_GC_free(prog_env_option_name);
+
+    if (gen_env_options[0] != '\0' || prog_env_options[0] != '\0'
+        || MR_runtime_flags[0] != '\0')
+    {
+        const char  *dummy_cmd;
+        int         dummy_cmd_len;
         char        *dummy_command_line;
+        int         dummy_command_line_len;
+        char        *option_arg_str;
+        char        **option_argv;
+        int         option_argc;
+        int         runtime_flags_len;
+        int         gen_env_options_len;
+        int         prog_env_options_len;
+        int         next_slot;
         const char  *error_msg;
-        int     argc;
-        int     cmd_len;
-        int     runtime_flags_len;
 
         /*
         ** getopt() expects the options to start in argv[1], not argv[0],
@@ -1016,28 +1056,92 @@ MR_process_environment_options(void)
         ** at the start of the options before passing them to MR_make_argv()
         ** and then to getopt().
         */
-        cmd = "mercury_runtime ";
-        cmd_len = strlen(cmd);
+
+        dummy_cmd = "mercury_runtime";
+        dummy_cmd_len = strlen(dummy_cmd);
         runtime_flags_len = strlen(MR_runtime_flags);
-        dummy_command_line = MR_GC_NEW_ARRAY(char,
-            cmd_len + runtime_flags_len + 1 + strlen(env_options) + 1);
-        strcpy(dummy_command_line, cmd);
-        strcpy(dummy_command_line + cmd_len, MR_runtime_flags);
-        dummy_command_line[cmd_len + runtime_flags_len] = ' ';
-        strcpy(dummy_command_line + cmd_len + runtime_flags_len + 1,
-            env_options);
-        
-        error_msg = MR_make_argv(dummy_command_line, &arg_str, &argv, &argc);
-        if (error_msg != NULL) {
-            MR_fatal_error("error parsing the MERCURY_OPTIONS "
-                "environment variable:\n%s\n", error_msg);
+        gen_env_options_len = strlen(gen_env_options);
+        prog_env_options_len = strlen(prog_env_options);
+        dummy_command_line_len =
+            dummy_cmd_len + 1 +
+            runtime_flags_len + 1 +
+            gen_env_options_len + 1 +
+            prog_env_options_len + 1;
+        dummy_command_line = MR_GC_NEW_ARRAY(char, dummy_command_line_len);
+
+        next_slot = 0;
+
+        strcpy(dummy_command_line + next_slot, dummy_cmd);
+        next_slot += dummy_cmd_len;
+        dummy_command_line[next_slot] = ' ';
+        next_slot += 1;
+        strcpy(dummy_command_line + next_slot, MR_runtime_flags);
+        next_slot += runtime_flags_len;
+        dummy_command_line[next_slot] = ' ';
+        next_slot += 1;
+        strcpy(dummy_command_line + next_slot, gen_env_options);
+        next_slot += gen_env_options_len;
+        dummy_command_line[next_slot] = ' ';
+        next_slot += 1;
+        strcpy(dummy_command_line + next_slot, prog_env_options);
+        next_slot += prog_env_options_len;
+        dummy_command_line[next_slot] = '\0';
+        next_slot += 1;
+
+        /* Sanity check. */
+        if (next_slot != dummy_command_line_len) {
+            MR_fatal_error("next_slot != dummy_command_line_len");
         }
+
+#ifdef MR_DEBUG_ARGUMENT_HANDLING
+        /* Enable this is if you need to debug this code. */
+        printf("progname = <%s>\n", progname);
+        printf("MR_runtime_flags = <%s>\n", MR_runtime_flags);
+        printf("gen_env_options = <%s>\n", gen_env_options);
+        printf("prog_env_options = <%s>\n", prog_env_options);
+        printf("dummy_command_line = <%s>\n", dummy_command_line);
+#endif
+
+        error_msg = MR_make_argv(dummy_command_line, &option_arg_str,
+            &option_argv, &option_argc);
+        if (error_msg != NULL) {
+            char    *where_buf;
+            int     where_buf_next;
+
+            where_buf = MR_GC_NEW_ARRAY(char, WHERE_BUF_SIZE);
+            where_buf[0] = '\0';
+            where_buf_next = strlen(where_buf);
+
+            if (gen_env_options[0] != '\0') {
+                snprintf(where_buf + where_buf_next, WHERE_BUF_SIZE,
+                    "%sthe %s environment variable",
+                    where_buf_next == 0 ? "" : " and/or ",
+                    MERCURY_OPTIONS);
+                where_buf_next = strlen(where_buf);
+            }
+
+            if (prog_env_options[0] != '\0') {
+                snprintf(where_buf + where_buf_next, WHERE_BUF_SIZE,
+                    "%sthe %s environment variable",
+                    where_buf_next == 0 ? "" : " and/or ",
+                    prog_env_option_name);
+                where_buf_next = strlen(where_buf);
+            }
+
+            if (MR_runtime_flags[0] != '\0') {
+                snprintf(where_buf + where_buf_next, WHERE_BUF_SIZE,
+                    "%sthe runtime options built into the executable",
+                    where_buf_next == 0 ? "" : " and/or ");
+                where_buf_next = strlen(where_buf);
+            }
+
+            MR_fatal_error("error parsing %s:\n%s\n", where_buf, error_msg);
+        }
+
         MR_GC_free(dummy_command_line);
-
-        MR_process_options(argc, argv);
-
-        MR_GC_free(arg_str);
-        MR_GC_free(argv);
+        MR_process_options(option_argc, option_argv);
+        MR_GC_free(option_arg_str);
+        MR_GC_free(option_argv);
     }
 }
 
@@ -1169,7 +1273,7 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-size",           1, 0, MR_GEN_NONDETSTACK_SIZE },
     { "gen-nondetstack-size-kwords",    1, 0, MR_GEN_NONDETSTACK_SIZE_KWORDS },
     { "gen-detstack-zone-size",         1, 0, MR_GEN_DETSTACK_REDZONE_SIZE },
-    { "gen-detstack-zone-size-kwords", 
+    { "gen-detstack-zone-size-kwords",
         1, 0, MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS },
     { "gen-nondetstack-zone-size",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE },
@@ -1611,7 +1715,7 @@ MR_process_options(int argc, char **argv)
 #ifdef MR_NO_USE_READLINE
                 printf("Mercury runtime: `--force-readline' is specified "
                     "in MERCURY_OPTIONS\n");
-                printf("but readline() is not available.\n");  
+                printf("but readline() is not available.\n");
                 fflush(stdout);
                 exit(1);
 #endif
@@ -1647,7 +1751,7 @@ MR_process_options(int argc, char **argv)
 #else
                 printf("Mercury runtime: `--deep-log-file' is specified "
                     "in MERCURY_OPTIONS\n");
-                printf("but support for it is not enabled.\n");  
+                printf("but support for it is not enabled.\n");
                 fflush(stdout);
                 exit(1);
 #endif
@@ -1663,7 +1767,7 @@ MR_process_options(int argc, char **argv)
 #else
                 printf("Mercury runtime: `--deep-log-prog' is specified "
                     "in MERCURY_OPTIONS\n");
-                printf("but support for it is not enabled.\n");  
+                printf("but support for it is not enabled.\n");
                 fflush(stdout);
                 exit(1);
 #endif
@@ -1763,7 +1867,7 @@ MR_process_options(int argc, char **argv)
                 MR_pcache_size = size * 1024;
                 break;
 
-            case 'd':   
+            case 'd':
                 if (MR_streq(MR_optarg, "a")) {
                     MR_calldebug        = MR_TRUE;
                     MR_nondetstackdebug = MR_TRUE;
@@ -1903,23 +2007,23 @@ MR_process_options(int argc, char **argv)
 #endif
                 break;
 
-            case 'r':   
+            case 'r':
                 if (sscanf(MR_optarg, "%d", &repeats) != 1) {
                     MR_usage();
                 }
 
                 break;
 
-            case 's':   
+            case 's':
                 MR_deep_profiling_save_results = MR_FALSE;
                 MR_complexity_save_results = MR_FALSE;
                 break;
 
-            case 'S':   
+            case 'S':
                 MR_print_deep_profiling_statistics = MR_TRUE;
                 break;
 
-            case 't':   
+            case 't':
                 use_own_timer = MR_TRUE;
 
                 MR_calldebug        = MR_FALSE;
@@ -1955,7 +2059,7 @@ MR_process_options(int argc, char **argv)
 #endif
                 break;
 
-            default:    
+            default:
                 MR_usage();
 
         }
@@ -1995,7 +2099,7 @@ MR_process_options(int argc, char **argv)
 #endif
 }
 
-static void 
+static void
 MR_usage(void)
 {
     printf("The MERCURY_OPTIONS environment variable "
@@ -2066,7 +2170,7 @@ MR_setup_call_intervals(char **more_str_ptr,
 
 /*---------------------------------------------------------------------------*/
 
-void 
+void
 mercury_runtime_main(void)
 {
 #if MR_NUM_REAL_REGS > 0
@@ -2262,7 +2366,7 @@ MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 {
     int i;
     MR_TypeCtorRep rep;
-    
+
     rep = MR_type_ctor_rep(type_ctor_info);
     type_stat->type_ctor_reps[MR_GET_ENUM_VALUE(rep)]++;
 
@@ -2353,7 +2457,7 @@ MR_do_interpreter(void)
     */
     MR_Word *saved_hp = MR_hp;
   #endif
-    
+
   #ifdef  MR_MPROF_PROFILE_TIME
     if (MR_profiling) {
         MR_prof_turn_on_time_profiling();
@@ -2361,7 +2465,7 @@ MR_do_interpreter(void)
   #endif
 
     /* call the entry point (normally the Mercury predicate main/2) */
-    { 
+    {
         MR_Word outputs[4];
         typedef void MR_CALL (*EntryPoint1)(MR_Word *);
         typedef void MR_CALL (*EntryPoint2)(MR_Word *, MR_Word *);
@@ -2602,16 +2706,16 @@ mercury_runtime_terminate(void)
 
     /* run any user-defined finalisation predicates */
     (*MR_address_of_final_modules_required)();
-    
+
     MR_trace_end();
 
     (*MR_library_finalizer)();
 
     /*
-    ** Restore the registers before calling MR_trace_final()  
+    ** Restore the registers before calling MR_trace_final()
     ** as MR_trace_final() expect them to be valid.
     */
-    MR_restore_registers(); 
+    MR_restore_registers();
 
     MR_trace_final();
 

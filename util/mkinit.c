@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2007 The University of Melbourne.
+** Copyright (C) 1995-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -284,16 +284,16 @@ static const char   *experimental_complexity = NULL;
 
 static int          num_experimental_complexity_procs = 0;
 
-    /* List of options to pass to the runtime */
+/* List of options to pass to the runtime */
 static String_List  *runtime_flags = NULL;
 
-    /* Pointer to tail of the runtime_flags list */
+/* Pointer to tail of the runtime_flags list */
 static String_List  **runtime_flags_tail = &runtime_flags;
 
-    /* List of functions to always execute at initialization */
+/* List of functions to always execute at initialization */
 static String_List  *always_exec_funcs = NULL;
 
-    /* Pointer to tail of the always_exec_funcs list */
+/* Pointer to tail of the always_exec_funcs list */
 static String_List  **always_exec_funcs_tail = &always_exec_funcs;
 
 /* --- code fragments to put in the output file --- */
