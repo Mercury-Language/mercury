@@ -1,0 +1,4 @@
+RP = render_params(scene(space_tree([leaf(space_tree_object(basic_object(11, sphere(constant(surface_properties(22, 33, 44, 55))))))])))
+Surface = constant(surface_properties(22, 33, 44, 55))
+NewSurface = constant(surface_properties(55, 44, 33, 22))
+RP = render_params(scene(space_tree([leaf(space_tree_object(basic_object(11, sphere(constant(surface_properties(22, 33, 44, 55))))))])))

@@ -357,6 +357,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 		bad_indirect_reuse2 \
 		bad_indirect_reuse2b \
 		bad_indirect_reuse3 \
+		sharing_comb \
 		uncond_reuse \
 		uncond_reuse_bad
 else

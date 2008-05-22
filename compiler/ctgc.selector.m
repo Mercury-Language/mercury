@@ -34,11 +34,11 @@
     %
 :- pred selector_termshift(selector::in, selector::in, selector::out) is det.
 
-    % subsumed_by(ModuleInfo, Selector0, Selector1, Type, Extension).
+    % subsumed_by(ModuleInfo, Selector1, Selector2, Type, Extension).
     %
-    % Returns true if Selector0 is subsumed by Selector1. This means that
-    % Selector1 is more general than Selector0, hence, there exists an
-    % extension Ext, such that Selector1.Extension = Selector0.
+    % Succeeds iff Selector1 is subsumed by Selector2. This means that
+    % Selector2 is more general than Selector1, hence, there exists an
+    % Extension, such that Selector2.Extension = Selector1.
     %
     % The type specifies the type of the term to which the selectors refer.
     %
@@ -53,13 +53,6 @@
     %
 :- pred normalize_selector_with_type_information(module_info::in, mer_type::in,
     selector::in, selector::out) is det.
-
-    % SubType = det_type_of_node(ModuleInfo, StartType, Selector).
-    % Determines the type SubType of the node obtained by traversing the type
-    % tree of StartType using the path Selector. Abort if SubType would be an
-    % existential type.
-    %
-:- func det_type_of_node(module_info, mer_type, selector) = mer_type.
 
     % As above but fail if the subtype would be an existential type instead of
     % aborting.
@@ -117,56 +110,122 @@ selector_init_from_list(Types)
 selector_termshift(S1, S2, S) :-
     list.append(S1, S2, S).
 
-subsumed_by(ModuleInfo, S1, S2, MainType, Extension):-
+subsumed_by(ModuleInfo, S1, S2, MainType, Extension) :-
     % First make sure that both selectors are in a normalized form.
     normalize_selector_with_type_information(ModuleInfo, MainType, S1, NormS1),
     normalize_selector_with_type_information(ModuleInfo, MainType, S2, NormS2),
-    subsumed_by_2(ModuleInfo, NormS1, NormS2, MainType, Extension).
-
-:- pred subsumed_by_2(module_info::in, selector::in, selector::in,
-    mer_type::in, selector::out) is semidet.
-
-subsumed_by_2(ModuleInfo, S1, S2, MainType, Extension):-
     (
-        split_upto_type_selector(S2, S2_part1, TS, S2_part2),
-        TS = typesel(SubType)
+        only_term_selectors(NormS1),
+        only_term_selectors(NormS2)
     ->
-        % step 1: S2_part1.Rest = S1, hence S2_part1 should be more general
-        % than S1.
-        subsumed_by_2(ModuleInfo, S1, S2_part1, MainType, Rest),
-
-        % step 2: S2_part1.TS.Remainder = S1, hence S2_part1.TS should be more
-        % general than S1.
-        % i.e.
-        % Check the type-selector part: starting from the type selected by
-        % S2_part1, does the remainder of Rest (the extension of S2_part1
-        % such that S2_part1.Rest = S1) lead through a node with type
-        % "SubType".
-        %
-        S2_part1_type = det_type_of_node(ModuleInfo, MainType, S2_part1),
-        type_on_path(ModuleInfo, S2_part1_type, SubType, Rest, Remainder),
-
-        % step 3:
-        % % S2_part1.TS.S1_part2 should be more general than S1.
-        subsumed_by_2(ModuleInfo, Remainder, S2_part2, SubType, Extension)
+        % Easy case.
+        selector_subsumed_by(NormS1, NormS2, Extension)
     ;
-        % If the second selector S2 has no type-selectors, we have the
-        % simple case where S1 can be more general than S2 if there exists
-        % a path "Extension" such that S1.Extension = S2
-        selector_subsumed_by(S1, S2, Extension)
+        subsumed_by_2(ModuleInfo, NormS1, NormS2, MainType, Extension)
     ).
 
+:- pred only_term_selectors(selector::in) is semidet.
+
+only_term_selectors([]).
+only_term_selectors([H | T]) :-
+    H = termsel(_, _),
+    only_term_selectors(T).
+
+    % Both selectors must only contain term selectors.
+    %
 :- pred selector_subsumed_by(selector::in, selector::in, selector::out)
     is semidet.
 
 selector_subsumed_by(S1, S2, Extension):-
     list.append(S2, Extension, S1).
 
-det_type_of_node(ModuleInfo, StartType, Selector) = SubType :-
-    ( type_of_node(ModuleInfo, StartType, Selector, SubType0) ->
-        SubType = SubType0
+    % The general case of subsumed_by, where either selector may contain type
+    % selectors.
+    %
+:- pred subsumed_by_2(module_info::in, selector::in, selector::in,
+    mer_type::in, selector::out) is semidet.
+
+subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
+    (
+        B = [],
+        Extension = A
     ;
-        unexpected(this_file, "type_of_node: existential subtype")
+        A = [AH | AT],
+        B = [BH | BT],
+        (
+            AH = termsel(ConsIdA, IndexA),
+            BH = termsel(ConsIdB, IndexB)
+        ->
+            % If both selectors begin with term selectors, clearly they must
+            % agree on the node to select for the selectors to be comparable.
+            ConsIdA = ConsIdB,
+            IndexA = IndexB,
+            SubType = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
+            subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
+        ;
+            % If one selector has a term selector at the current position but
+            % the other has a type selector, we select the node dictated by the
+            % term selector.  We also verify that the type of that node
+            % contains within it a node selectable by the type selector.
+            AH = termsel(ConsIdA, IndexA),
+            BH = typesel(SubTypeB),
+            SubTypeA = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
+            type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
+            subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
+        ;
+            % Symmetric with the previous case.
+            AH = typesel(SubTypeA),
+            BH = termsel(ConsIdB, IndexB),
+            SubTypeB = det_select_subtype(ModuleInfo, Type, ConsIdB, IndexB),
+            type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
+            subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension)
+        ;
+            AH = typesel(SubTypeA),
+            BH = typesel(SubTypeB),
+            (
+                SubTypeA = SubTypeB
+            ->
+                % Both selectors begin with type selectors and agree on the
+                % subtype to select.
+                subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
+            ;
+                % Assume we select node according to the B selector, then check
+                % that the rest of B subsumes A.
+                type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
+                subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension0)
+            ->
+                Extension = Extension0
+            ;
+                % Assume we select node according to the A selector, then check
+                % that B subsumes the rest of A.
+                type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
+                subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
+            )
+        )
+    ).
+
+    % type_contains_subtype(ModuleInfo, FromType, ToType).
+    %
+    % Succeed iff starting from FromType we can reach a node ToType.
+    %
+:- pred type_contains_subtype(module_info::in, mer_type::in, mer_type::in)
+    is semidet.
+
+type_contains_subtype(ModuleInfo, FromType, ToType) :-
+    type_contains_subtype_2(ModuleInfo, FromType, ToType, []).
+
+:- pred type_contains_subtype_2(module_info::in, mer_type::in, mer_type::in,
+    list(mer_type)::in) is semidet.
+
+type_contains_subtype_2(ModuleInfo, FromType, ToType, SeenTypes0) :-
+    (
+        FromType = ToType
+    ;
+        SeenTypes = [FromType | SeenTypes0],
+        cons_id_arg_types(ModuleInfo, FromType, _ConsId, ArgTypes),
+        list.member(ArgType, ArgTypes),
+        not list.member(ArgType, SeenTypes),
+        type_contains_subtype_2(ModuleInfo, ArgType, ToType, SeenTypes)
     ).
 
 type_of_node(ModuleInfo, StartType, Selector, SubType) :-
@@ -220,107 +279,6 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
     ;
         unexpected(this_file,
             "select_subtype: type is both existential and non-existential")
-    ).
-
-    % split_upto_type_selector(Sin, S1, TS, S2).
-    %
-    % This predicate succeeds if there exists a typeselector TS, such that Sin
-    % is equivalent to append(S1, [TS | S2]) and S1 contains no other type
-    % selector. It fails otherwise.
-    %
-:- pred split_upto_type_selector(selector::in, selector::out,
-    unit_selector::out, selector::out) is semidet.
-
-split_upto_type_selector(Sin, S1, TS, S2):-
-    list.takewhile(is_term_selector, Sin, S1, Remainder),
-    Remainder = [TS | S2].
-
-:- pred is_term_selector(unit_selector::in) is semidet.
-
-is_term_selector(termsel(_, _)).
-
-    % type_on_path(ModuleInfo, FromType, ToType, Path, Remainder).
-    %
-    % This predicate verifies that the path Path starting from FromType
-    % encounters at least one type node with the type ToType.  Remainder is the
-    % remainder of the Path after stripping it to the last encounter of a node
-    % with "ToType".
-    %
-    % XXX Changed w.r.t. original implementation!
-    %
-:- pred type_on_path(module_info::in, mer_type::in, mer_type::in,
-    selector::in, selector::out) is semidet.
-
-type_on_path(ModuleInfo, FromType, ToType, Path, RemainderPath) :-
-    %
-    % In checking this, at least one step of the Path must be done. Indeed, if
-    % FromType = ToType, than RemainderPath would be equal to Path, which would
-    % contradict the actual meaning of a type selector: a type-selector is a
-    % shortcut notation for any non-zero (!) selector that selects a node of
-    % the type described by the type-selector.
-    %
-    type_on_path_2(first, ModuleInfo, FromType, ToType, Path, RemainderPath).
-
-    % In checking whether a type is encountered on a given selector-path
-    % we check whether the type of a selector is encountered _after_ the first
-    % unit-step on that selector-path. This means that we need to make
-    % a difference when looking at the first unit-step or any of the subsequent
-    % steps.
-    %
-    % To make the difference during the verification process, the type 'step'
-    % is used.
-    %
-:- type step
-    --->    first
-    ;       subsequent.
-
-:- pred type_on_path_2(step::in, module_info::in, mer_type::in, mer_type::in,
-    selector::in, selector::out) is semidet.
-
-type_on_path_2(Step, ModuleInfo, FromType, ToType, Path, RemainderPath) :-
-    (
-        FromType = ToType,
-        Step = subsequent
-    ->
-        RemainderPath = Path
-    ;
-        Path = [UnitSelector | Rest],
-        (
-            UnitSelector = typesel(SubType),
-            ( SubType = ToType ->
-                (
-                    % Check if the same type occurs anywhere further on the
-                    % path.
-                    type_on_path_2(first, ModuleInfo, ToType, ToType,
-                        Rest, RemainderPath0)
-                ->
-                    RemainderPath = RemainderPath0
-                ;
-                    RemainderPath = Rest
-                )
-            ;
-                type_on_path_2(subsequent, ModuleInfo, SubType, ToType,
-                    Rest, RemainderPath)
-            )
-        ;
-            UnitSelector = termsel(ConsId, Index),
-            select_subtype(ModuleInfo, FromType, ConsId, Index, SubType),
-            ( SubType = ToType ->
-                (
-                    % Check if the same type occurs anywhere further on the
-                    % path.
-                    type_on_path_2(first, ModuleInfo, ToType, ToType,
-                        Rest, RemainderPath0)
-                ->
-                    RemainderPath = RemainderPath0
-                ;
-                    RemainderPath = Rest
-                )
-            ;
-                type_on_path_2(subsequent, ModuleInfo, SubType, ToType,
-                    Rest, RemainderPath)
-            )
-        )
     ).
 
 normalize_selector_with_type_information(ModuleInfo, Type, !Selector) :-
