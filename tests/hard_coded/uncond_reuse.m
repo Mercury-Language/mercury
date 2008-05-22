@@ -47,7 +47,9 @@ capable_grade(Grade) :-
     ; Prefix = "asm"
     ; Prefix = "fast"
     ; Prefix = "hl"
-    ).
+    ),
+    not string.sub_string_search(Grade, "debug", _),
+    not string.sub_string_search(Grade, "profdeep", _).
 
 :- pred addr(T::in, int::out) is cc_multi.
 
