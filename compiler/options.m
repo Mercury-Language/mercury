@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -546,6 +546,7 @@
     ;       inline_vars_threshold
     ;       intermod_inline_simple_threshold
     ;       common_struct
+    ;       common_struct_preds
     ;       common_goal
     ;       constraint_propagation
     ;       local_constraint_propagation
@@ -1357,6 +1358,7 @@ option_defaults_2(optimization_option, [
                                         % Has no effect until
                                         % --intermodule-optimization.
     common_struct                       -   bool(no),
+    common_struct_preds                 -   string(""),
     common_goal                         -   bool(yes),
                                         % common_goal is not really an
                                         % optimization, since it affects
@@ -2112,6 +2114,7 @@ long_option("intermod-inline-simple-threshold",
                     intermod_inline_simple_threshold).
 long_option("inline-vars-threshold",        inline_vars_threshold).
 long_option("common-struct",        common_struct).
+long_option("common-struct-preds",  common_struct_preds).
 long_option("common-goal",          common_goal).
 long_option("excess-assign",        excess_assign).
 long_option("optimize-duplicate-calls", optimize_duplicate_calls).
@@ -4399,6 +4402,8 @@ options_help_hlds_hlds_optimization -->
         "\tslow compilation.",
         "--no-common-struct",
         "\tDisable optimization of common term structures.",
+%       "--common-struct-preds <predids>",
+%       "\tLimit common struct optimization to the preds with the given ids.",
 
 %       Common goal optimization should not be turned off, since it can
 %       break programs that would otherwise compile properly (e.g.,

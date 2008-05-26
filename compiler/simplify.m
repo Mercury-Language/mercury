@@ -374,9 +374,29 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         % either the compiler runs out of memory or the user runs out of
         % patience. The fact that we would generate better code if the
         % compilation finished is therefore of limited interest.
-        Simplifications = Simplifications0 ^ do_common_struct := no
+        Simplifications1 = Simplifications0 ^ do_common_struct := no
     ;
-        Simplifications = Simplifications0
+        Simplifications1 = Simplifications0
+    ),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_string_option(Globals, common_struct_preds,
+        CommonStructPreds),
+    ( CommonStructPreds = "" ->
+        Simplifications = Simplifications1
+    ;
+        CommonStructPredIdStrs = string.split_at_char(',', CommonStructPreds),
+        (
+            list.map(string.to_int, CommonStructPredIdStrs,
+                CommonStructPredIdInts)
+        ->
+            ( list.member(pred_id_to_int(PredId), CommonStructPredIdInts) ->
+                Simplifications = Simplifications1
+            ;
+                Simplifications = Simplifications1 ^ do_common_struct := no
+            )
+        ;
+            Simplifications = Simplifications1
+        )
     ),
     det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId,
         pess_extra_vars_report, DetInfo0),

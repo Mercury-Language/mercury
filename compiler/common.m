@@ -238,36 +238,36 @@ common_info_clear_structs(!Info) :-
 %---------------------------------------------------------------------------%
 
 common_optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
-        Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
+        GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
         (
             SubInfo = construct_sub_info(MaybeTakeAddr, _),
             MaybeTakeAddr = yes(_)
         ->
-            Goal = Goal0,
+            GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0
         ;
             common_optimise_construct(Var, ConsId, ArgVars, Mode,
-                Goal0, Goal, GoalInfo0, GoalInfo, !Info)
+                GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
         )
     ;
         Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, _),
         common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,
-            Mode, Goal0, Goal, GoalInfo0, GoalInfo, !Info)
+            Mode, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
     ;
         Unification0 = assign(Var1, Var2),
         record_equivalence(Var1, Var2, !Info),
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
         Unification0 = simple_test(Var1, Var2),
         record_equivalence(Var1, Var2, !Info),
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
         Unification0 = complicated_unify(_, _, _),
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ).
 
@@ -326,7 +326,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
                 ArgVars = [_ | _],
                 UniMode = ((free - Inst) -> (Inst - Inst)),
                 generate_assign(Var, OldVar, UniMode, GoalInfo0,
-                    hlds_goal(GoalExpr, GoalInfo), !Info),
+                    GoalExpr, GoalInfo, !Info),
                 simplify_info_set_requantify(!Info),
                 goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
                 simplify_info_incr_cost_delta(Cost, !Info)
@@ -501,7 +501,8 @@ record_equivalence(Var1, Var2, !Info) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-common_optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
+common_optimise_call(PredId, ProcId, Args, GoalInfo, GoalExpr0, GoalExpr,
+        !Info) :-
     (
         Det = goal_info_get_determinism(GoalInfo),
         check_call_detism(Det),
@@ -513,13 +514,13 @@ common_optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
             InputArgs, OutputArgs, OutputModes)
     ->
         common_optimise_call_2(seen_call(PredId, ProcId), InputArgs,
-            OutputArgs, OutputModes, GoalInfo, Goal0, Goal, !Info)
+            OutputArgs, OutputModes, GoalInfo, GoalExpr0, GoalExpr, !Info)
     ;
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ).
 
 common_optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
-        Goal0, Goal, !Info) :-
+        GoalExpr0, GoalExpr, !Info) :-
     (
         check_call_detism(Det),
         simplify_info_get_var_types(!.Info, VarTypes),
@@ -528,9 +529,9 @@ common_optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
             InputArgs, OutputArgs, OutputModes)
     ->
         common_optimise_call_2(higher_order_call, [Closure | InputArgs],
-            OutputArgs, OutputModes, GoalInfo, Goal0, Goal, !Info)
+            OutputArgs, OutputModes, GoalInfo, GoalExpr0, GoalExpr, !Info)
     ;
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ).
 
 :- pred check_call_detism(determinism::in) is semidet.
@@ -731,7 +732,7 @@ common_vars_are_equiv(X, Y, VarEqv) :-
     list(prog_var)::in, list(uni_mode)::in, list(hlds_goal)::out,
     simplify_info::in, simplify_info::out) is det.
 
-create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs, UniModes,
+create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
         Goals, !Info) :-
     (
         OutputArgs = [OutputArg | OutputArgsTail],
@@ -743,14 +744,15 @@ create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs, UniModes,
             % with a partially instantiated deconstruction.
             OutputArg \= OldOutputArg
         ->
-            generate_assign(OutputArg, OldOutputArg, UniMode, GoalInfo,
-                Goal, !Info),
-            create_output_unifications(GoalInfo,
+            generate_assign(OutputArg, OldOutputArg, UniMode, OldGoalInfo,
+                GoalExpr, GoalInfo, !Info),
+            Goal = hlds_goal(GoalExpr, GoalInfo),
+            create_output_unifications(OldGoalInfo,
                 OutputArgsTail, OldOutputArgsTail, UniModesTail,
                 GoalsTail, !Info),
             Goals = [Goal | GoalsTail]
         ;
-            create_output_unifications(GoalInfo,
+            create_output_unifications(OldGoalInfo,
                 OutputArgsTail, OldOutputArgsTail, UniModesTail, Goals, !Info)
         )
     ;
@@ -766,10 +768,11 @@ create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs, UniModes,
 %---------------------------------------------------------------------------%
 
 :- pred generate_assign(prog_var::in, prog_var::in, uni_mode::in,
-    hlds_goal_info::in, hlds_goal::out, simplify_info::in, simplify_info::out)
-    is det.
+    hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is det.
 
-generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
+generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
+        !Info) :-
     apply_induced_substitutions(ToVar, FromVar, !Info),
     simplify_info_get_var_types(!.Info, VarTypes),
     map.lookup(VarTypes, ToVar, ToVarType),
@@ -798,8 +801,10 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
     % use instmap_delta_restrict on the original instmap_delta here.
     instmap_delta_from_assoc_list([ToVar - ToVarInst], InstMapDelta),
 
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        GoalInfo0),
+    Context = goal_info_get_context(OldGoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     record_equivalence(ToVar, FromVar, !Info).
 
 :- pred types_match_exactly(mer_type::in, mer_type::in) is semidet.
