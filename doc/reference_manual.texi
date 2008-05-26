@@ -6693,11 +6693,11 @@ and @code{string}, there is a C typedef for the corresponding type in C:
 @code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
 and @code{MR_String} respectively.
 
-In the current implementation, @samp{MR_Integer} is a typedef for an
-integral type whose size is the same size as a pointer; @samp{MR_Float} is
-a typedef for @samp{double} (unless the program and the Mercury library
-was compiled with @samp{--single-prec-float}, in which case it is
-a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
+In the current implementation, @samp{MR_Integer} is a typedef for an integral
+type whose size is the same size as a pointer of type @samp{void *};
+@samp{MR_Float} is a typedef for @samp{double} (unless the program and the
+Mercury library was compiled with @samp{--single-prec-float}, in which case it
+is a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
 and @samp{MR_String} is a typedef for @samp{MR_Char *}.
 
 Mercury variables of type @code{int}, @code{float}, @code{char}, or
@@ -6734,25 +6734,6 @@ Mercury types in C code to use typedefs for each user-defined Mercury type,
 and to treat each such type as an abstract data type.  This is good style
 and it will also minimize any compatibility problems if and when we do change
 this.)
-
-Mercury arguments declared with input modes are passed by value to the
-C function.
-For output arguments,
-the Mercury implementation will pass to the C function an address in
-which to store the result. 
-If the Mercury procedure can fail,
-then its C function should return a truth value of type
-@samp{MR_Integer} indicating success or failure:
-non-zero indicates success, and zero indicates failure.
-If the Mercury procedure is a Mercury function that cannot fail,
-and the function result has an output mode,
-then the C function should return the Mercury function result value.
-Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io.state} or @samp{store.store(_)} are not
-passed at all.
-(The reason for this is that these types represent mutable state,
-and in C modifications to mutable state are done via side effects,
-rather than argument passing.)
 
 Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
@@ -7430,20 +7411,21 @@ If a procedure requires more than this for its local variables,
 the code can be moved into a separate function
 (defined in a @samp{pragma foreign_code} declaration, for example).
 
-The C code fragment should not declare any labels or static variables
-unless there is also a @samp{pragma no_inline} declaration
-or a @samp{may_not_duplicate} foreign code attribute for the procedure.
-The reason for this is that otherwise the Mercury implementation may
-inline the procedure by duplicating the C code fragment for each call.
-If the C code fragment declared a static variable, inlining it in this
-way could result in the program having multiple instances of the static
-variable, rather than a single shared instance.  If the C code fragment
-declared a label, inlining it in this way could result in an error due
-to the same label being defined twice inside a single C function.
+The C code fragment should not declare any labels or static variables unless
+there is also a @samp{pragma no_inline} declaration or a
+@samp{may_not_duplicate} foreign code attribute for the procedure.
+The reason for this is that otherwise the Mercury implementation may inline
+the procedure by duplicating the C code fragment for each call.
+If the C code fragment declared a static variable, inlining it in this way
+could result in the program having multiple instances of the static variable,
+rather than a single shared instance.
+If the C code fragment declared a label, inlining it in this way could result
+in an error due to the same label being defined twice inside a single C
+function.
 
-C code in a @code{pragma foreign_proc} declaration
-for any procedure whose determinism indicates that it can fail
-must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
+C code in a @code{pragma foreign_proc} declaration for any procedure whose
+determinism indicates that it can fail must assign a truth value to the macro
+@samp{SUCCESS_INDICATOR}.
 For example:
 
 @example
@@ -7463,11 +7445,15 @@ try to take its address.)
 Procedures whose determinism indicates that they cannot fail
 should not access @code{SUCCESS_INDICATOR}.
 
-Arguments whose mode is input will have their values set by the
-Mercury implementation on entry to the C code.  If the procedure
-succeeds, the C code must set the values of all output arguments.
-If the procedure fails, the C code need only
-set @code{SUCCESS_INDICATOR} to false (zero).
+Arguments whose mode is input will have their values set by the Mercury
+implementation on entry to the C code.
+If the procedure succeeds, the C code must set the values of all output
+arguments.
+If the procedure fails, the C code need only set @code{SUCCESS_INDICATOR} to
+false (zero).
+
+The behaviour of a procedure defined using a @samp{pragma foreign_proc}
+declaration whose body contains a @samp{return} statement is undefined.
 
 @node Using pragma foreign_export for C
 @subsubsection Using pragma foreign_export for C
