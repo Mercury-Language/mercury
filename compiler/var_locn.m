@@ -859,7 +859,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
-    select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
+    select_preferred_reg_or_stack(!.VLI, Var, Lval),
     get_var_name(!.VLI, Var, VarName),
     list.length(Vector, Size),
     (
@@ -1316,7 +1316,7 @@ var_locn_produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code, !VLI) :-
         Lval = SelectLval,
         Code = empty
     ;
-        select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
+        select_preferred_reg_or_stack(!.VLI, Var, Lval),
         var_locn_place_var(ModuleInfo, Var, Lval, Code, !VLI)
     ).
 
@@ -1527,8 +1527,7 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
             EffAffectedVars = [MovedVar]
         ),
 
-        CheckInUse = no,
-        select_preferred_reg_or_stack(!.VLI, MovedVar, Pref, CheckInUse),
+        select_preferred_reg_or_stack(!.VLI, MovedVar, Pref),
         \+ Pref = Lval,
         \+ list.member(Pref, ForbiddenLvals),
         ( \+ var_locn_lval_in_use(!.VLI, Pref) ->
@@ -1878,26 +1877,20 @@ select_cheapest_lval([Lval | _], Lval).
 
 %----------------------------------------------------------------------------%
 
+:- pred select_preferred_reg(var_locn_info::in, prog_var::in, lval::out)
+    is det.
+
+select_preferred_reg(VLI, Var, Lval) :-
+    select_preferred_reg_avoid(VLI, Var, [], Lval).
+
+    % Select the register into which Var should be put. If the follow_vars map
+    % maps Var to a register, then select that register, unless it is already
+    % in use.
+    %
 :- pred select_preferred_reg_avoid(var_locn_info::in, prog_var::in,
     list(lval)::in, lval::out) is det.
 
 select_preferred_reg_avoid(VLI, Var, Avoid, Lval) :-
-    select_preferred_reg(VLI, Var, yes, Avoid, Lval).
-
-:- pred select_preferred_reg(var_locn_info::in, prog_var::in,
-    lval::out) is det.
-
-select_preferred_reg(VLI, Var, Lval) :-
-    select_preferred_reg(VLI, Var, yes, [], Lval).
-
-    % Select the register into which Var should be put. If the follow_vars map
-    % maps Var to a register, then select that register, unless it is already
-    % in use, and CheckInUse = yes.
-    %
-:- pred select_preferred_reg(var_locn_info::in, prog_var::in,
-    bool::in, list(lval)::in, lval::out) is det.
-
-select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
     var_locn_get_follow_var_map(VLI, FollowVarMap),
     (
         map.search(FollowVarMap, Var, PrefLocn),
@@ -1908,12 +1901,7 @@ select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
         (
             PrefLocn = abs_reg(N),
             PrefLval = reg(reg_r, N),
-            (
-                CheckInUse = yes,
-                \+ var_locn_lval_in_use(VLI, PrefLval)
-            ;
-                CheckInUse = no
-            ),
+            \+ var_locn_lval_in_use(VLI, PrefLval),
             \+ list.member(PrefLval, Avoid)
         ->
             Lval = PrefLval
@@ -1926,24 +1914,17 @@ select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
 
     % Select the register or stack slot into which Var should be put. If the
     % follow_vars map maps Var to a register, then select that register,
-    % unless it is already in use and CheckInUse = yes. If the follow_vars map
-    % does not contain Var, then Var is not needed in a register in the near
-    % future, and this we select Var's stack slot, unless it is in use and
-    % CheckInUse = yes. If all else fails, we get spare, unused register.
-    % (Note that if the follow_vars pass has not been run, then all follow vars
-    % maps will be empty, which would cause this predicate to try to put far
-    % too many things in stack slots.)
+    % unless it is already in use. If the follow_vars map does not contain Var,
+    % then Var is not needed in a register in the near future, and this we
+    % select Var's stack slot, unless it is in use. If all else fails, we get
+    % a spare, unused register. (Note that if the follow_vars pass has not
+    % been run, then all follow vars maps will be empty, which would cause
+    % this predicate to try to put far too many things in stack slots.)
     %
-:- pred select_preferred_reg_or_stack_check(var_locn_info::in,
-    prog_var::in, lval::out) is det.
+:- pred select_preferred_reg_or_stack(var_locn_info::in, prog_var::in,
+    lval::out) is det.
 
-select_preferred_reg_or_stack_check(VLI, Var, Lval) :-
-    select_preferred_reg_or_stack(VLI, Var, Lval, yes).
-
-:- pred select_preferred_reg_or_stack(var_locn_info::in,
-    prog_var::in, lval::out, bool::in) is det.
-
-select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
+select_preferred_reg_or_stack(VLI, Var, Lval) :-
     var_locn_get_follow_var_map(VLI, FollowVarMap),
     (
         map.search(FollowVarMap, Var, PrefLocn),
@@ -1954,12 +1935,7 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
         (
             PrefLocn = abs_reg(N),
             PrefLval = reg(reg_r, N),
-            (
-                CheckInUse = yes,
-                \+ var_locn_lval_in_use(VLI, PrefLval)
-            ;
-                CheckInUse = no
-            )
+            \+ var_locn_lval_in_use(VLI, PrefLval)
         ->
             Lval = PrefLval
         ;
@@ -1970,12 +1946,7 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
             var_locn_get_stack_slots(VLI, StackSlots),
             map.search(StackSlots, Var, StackSlotLocn),
             StackSlot = stack_slot_to_lval(StackSlotLocn),
-            (
-                CheckInUse = yes,
-                \+ var_locn_lval_in_use(VLI, StackSlot)
-            ;
-                CheckInUse = no
-            )
+            \+ var_locn_lval_in_use(VLI, StackSlot)
         ->
             Lval = StackSlot
         ;
