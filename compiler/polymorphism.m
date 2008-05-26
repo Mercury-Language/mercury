@@ -471,7 +471,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     % the mapping to the extra head vars, not to the originals, because
     % otherwise we would stuff up the arg types for unification predicates for
     % equivalence types.
-    %
+
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
@@ -489,14 +489,13 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
 
     % If the clauses bind some existentially quantified type variables,
     % introduce exists_casts goals for affected head variables, including
-    % the new type_info and typeclass_info arguments.  Make sure the
-    % types of the internal versions of type_infos for those type
-    % variables in the variable types map are as specific as possible.
+    % the new type_info and typeclass_info arguments. Make sure the types
+    % of the internal versions of type_infos for those type variables in the
+    % variable types map are as specific as possible.
 
     (
         ExistQVars = [_ | _],
-        % This can fail for unification procedures
-        % of equivalence types.
+        % This can fail for unification procedures of equivalence types.
         map.apply_to_list(OldHeadVarList, VarTypes0, OldHeadVarTypes),
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         \+ map.is_empty(Subn)
