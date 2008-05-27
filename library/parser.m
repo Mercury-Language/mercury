@@ -1018,14 +1018,22 @@ final_parser_state(ParserState, VarSet, TokenList) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parser_get_token(token::out,
-    state(Ops, T)::in, state(Ops, T)::out) is semidet.
+    % The following implied modes allow us to check that an expected token
+    % matches the actual token before creating a new parser state.  This is
+    % particularly for the call in `check_for_higher_order_term' which usually
+    % fails.
+    %
+:- pred parser_get_token(token, state(Ops, T), state(Ops, T)).
+:- mode parser_get_token(in, in, out) is semidet.
+:- mode parser_get_token(out, in, out) is semidet.
 
 parser_get_token(Token, !PS) :-
     parser_get_token_context(Token, _Context, !PS).
 
-:- pred parser_get_token_context(token::out, token_context::out,
-    state(Ops, T)::in, state(Ops, T)::out) is semidet.
+:- pred parser_get_token_context(token, token_context,
+    state(Ops, T), state(Ops, T)).
+:- mode parser_get_token_context(in, out, in, out) is semidet.
+:- mode parser_get_token_context(out, out, in, out) is semidet.
 
 parser_get_token_context(Token, Context, ParserState0, ParserState) :-
     Tokens0 = parser_state_get_tokens_left(ParserState0),
