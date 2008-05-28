@@ -340,7 +340,7 @@ one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
 		% Each sx1 = sx.s2, where s2 is one of SelectorList.
 		list.map(
             (pred(S2::in, Xsx1::out) is det :-
-                datastruct_termshift(S2, Xsx, Xsx1)
+                datastruct_termshift(ModuleInfo, ProcInfo, S2, Xsx) = Xsx1
             ), SelectorList, List_Xsx1)
 	).
 

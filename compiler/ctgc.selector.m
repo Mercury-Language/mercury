@@ -23,6 +23,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type normalization
+    --->    need_normalization
+    ;       already_normalized.
+
     % Create a selector as either the top selector, a term selector,
     % or a type selector.
     %
@@ -42,8 +46,8 @@
     %
     % The type specifies the type of the term to which the selectors refer.
     %
-:- pred subsumed_by(module_info::in, selector::in, selector::in,
-    mer_type::in, selector::out) is semidet.
+:- pred subsumed_by(module_info::in, normalization::in,
+    selector::in, selector::in, mer_type::in, selector::out) is semidet.
 
     % Using the type information of the variable to which the given selector
     % belongs, normalize that selector.
@@ -110,10 +114,19 @@ selector_init_from_list(Types)
 selector_termshift(S1, S2, S) :-
     list.append(S1, S2, S).
 
-subsumed_by(ModuleInfo, S1, S2, MainType, Extension) :-
+subsumed_by(ModuleInfo, Normalization, S1, S2, MainType, Extension):-
     % First make sure that both selectors are in a normalized form.
-    normalize_selector_with_type_information(ModuleInfo, MainType, S1, NormS1),
-    normalize_selector_with_type_information(ModuleInfo, MainType, S2, NormS2),
+    (
+        Normalization = already_normalized,
+        NormS1 = S1,
+        NormS2 = S2
+    ;
+        Normalization = need_normalization,
+        normalize_selector_with_type_information(ModuleInfo, MainType,
+            S1, NormS1),
+        normalize_selector_with_type_information(ModuleInfo, MainType,
+            S2, NormS2)
+    ),
     (
         only_term_selectors(NormS1),
         only_term_selectors(NormS2)

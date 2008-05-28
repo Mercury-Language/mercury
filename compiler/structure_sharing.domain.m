@@ -1189,7 +1189,7 @@ sharing_set_comb(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
 
     % combine it all:
     ResultSharingSet = sharing_set_least_upper_bound_list(ModuleInfo, ProcInfo,
-        [NewSharingSet, OldSharingSet, OldNewSharingSet, NewOldNewSharingSet]).
+        [NewSharingSet, OldSharingSet, OldNewSharingSet], NewOldNewSharingSet).
 
     % XXX new implementation.
     %
@@ -1311,11 +1311,12 @@ sharing_set_least_upper_bound(ModuleInfo, ProcInfo, Set1, Set2) = Union :-
     new_entries(ModuleInfo, ProcInfo, Pairs, Set, Union).
 
 :- func sharing_set_least_upper_bound_list(module_info, proc_info,
-    list(sharing_set)) = sharing_set.
+    list(sharing_set), sharing_set) = sharing_set.
 
-sharing_set_least_upper_bound_list(ModuleInfo, ProcInfo, ListSharingSet) =
+sharing_set_least_upper_bound_list(ModuleInfo, ProcInfo, ListSharingSet,
+        SharingSet0) =
     list.foldl(sharing_set_least_upper_bound(ModuleInfo, ProcInfo),
-        ListSharingSet, sharing_set_init).
+        ListSharingSet, SharingSet0).
 
 sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
         = [Datastruct | Datastructures] :-
@@ -1329,7 +1330,7 @@ sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
         proc_info_get_vartypes(ProcInfo, VarTypes),
         map.lookup(VarTypes, Var, VarType),
         Datastructures = selector_sharing_set_extend_datastruct(ModuleInfo,
-            VarType, Selector, SelectorSet)
+            ProcInfo, VarType, Selector, SelectorSet)
     ;
         Datastructures = []
     ).
@@ -1471,10 +1472,15 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
     SharingSet = sharing_set(_, SharingMap),
 
     SharingPair = Data1 - Data2,
-    Var1 = Data1 ^ sc_var,
-    Sel1 = Data1 ^ sc_selector,
-    Var2 = Data2 ^ sc_var,
-    Sel2 = Data2 ^ sc_selector,
+    Data1 = selected_cel(Var1, Sel1),
+    Data2 = selected_cel(Var2, Sel2),
+    trace [
+        compile_time(flag("check_selector_normalization")),
+        run_time(env("check_selector_normalization"))
+    ] (
+        check_normalized(ModuleInfo, Type1, Sel1),
+        check_normalized(ModuleInfo, Type2, Sel2)
+    ),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var1, Type1),
@@ -1484,29 +1490,36 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
     SelSharingSet = selector_sharing_set(_, SelSharingMap),
     map.keys(SelSharingMap, SelectorList),
 
-        % Find at least one selector in SelectorList that is more general
-        % than Sel1 (with a specific extension), and whose associated dataset
-        % contains at least one datastructure that is more general than Data2
-        % (with that same extension).
-    list.find_first_map(
-        pred(Sel::in, Data::out) is semidet :-
-        (
-            subsumed_by(ModuleInfo, Sel1, Sel, Type1, Extension),
-            map.search(SelSharingMap, Sel, DataSet),
-            DataSet = datastructures(_, DatastructureSet),
-            MatchedDatastructs = list.filter(
-                pred(Datastructure::in) is semidet :-
-                (
-                    Var2 = Datastructure ^ sc_var,
-                    ctgc.selector.subsumed_by(ModuleInfo, Sel2,
-                        Datastructure ^ sc_selector, Type2, Extension)
-                ),
-                to_sorted_list(DatastructureSet)),
-            % The list of matched datastructures contains at least one element.
-            MatchedDatastructs = [Data| _]
+    % Find at least one selector in SelectorList that is more general
+    % than Sel1 (with a specific extension), and whose associated dataset
+    % contains at least one datastructure that is more general than Data2
+    % (with that same extension).
+    some [Sel] (
+        list.member(Sel, SelectorList),
+        trace [
+            compile_time(flag("check_selector_normalization")),
+            run_time(env("check_selector_normalization"))
+        ] (
+            check_normalized(ModuleInfo, Type1, Sel)
         ),
-        SelectorList,
-        _).
+        selector.subsumed_by(ModuleInfo, already_normalized,
+            Sel1, Sel, Type1, Extension),
+        map.search(SelSharingMap, Sel, datastructures(_, DatastructureSet)),
+
+        some [Datastructure] (
+            set.member(Datastructure, DatastructureSet),
+            Var2 = Datastructure ^ sc_var,
+            DatastructureSel = Datastructure ^ sc_selector,
+            trace [
+                compile_time(flag("check_selector_normalization")),
+                run_time(env("check_selector_normalization"))
+            ] (
+                check_normalized(ModuleInfo, Type2, DatastructureSel)
+            ),
+            selector.subsumed_by(ModuleInfo, already_normalized,
+                Sel2, DatastructureSel, Type2, Extension)
+        )
+    ).
 
     % Return the list of sharing pairs included in the sharing set that are
     % less or equal to the given sharing pair.
@@ -1520,10 +1533,15 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
     SharingSet = sharing_set(_, SharingMap),
 
     SharingPair = Data1 - Data2,
-    Var1 = Data1 ^ sc_var,
-    Sel1 = Data1 ^ sc_selector,
-    Var2 = Data2 ^ sc_var,
-    Sel2 = Data2 ^ sc_selector,
+    Data1 = selected_cel(Var1, Sel1),
+    Data2 = selected_cel(Var2, Sel2),
+    trace [
+        compile_time(flag("check_selector_normalization")),
+        run_time(env("check_selector_normalization"))
+    ] (
+        check_normalized(ModuleInfo, Type1, Sel1),
+        check_normalized(ModuleInfo, Type2, Sel2)
+    ),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var1, Type1),
@@ -1539,18 +1557,29 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
         %
         map.keys(SelSharingMap, SelectorList),
         list.filter_map(
-            pred(Selector::in, SPairs::out) is semidet :-
-            (
-                ctgc.selector.subsumed_by(ModuleInfo, Selector, Sel1,
-                    Type1, Extension),
+            (pred(Selector::in, SPairs::out) is semidet :-
+                trace [
+                    compile_time(flag("check_selector_normalization")),
+                    run_time(env("check_selector_normalization"))
+                ] (
+                    check_normalized(ModuleInfo, Type1, Selector)
+                ),
+                selector.subsumed_by(ModuleInfo, already_normalized,
+                    Selector, Sel1, Type1, Extension),
                 map.search(SelSharingMap, Selector, Dataset),
                 Dataset = datastructures(_, Datastructs),
                 list.filter_map(
-                    pred(D::in, Pair::out) is semidet :-
-                    (
+                    (pred(D::in, Pair::out) is semidet :-
                         Var2 = D ^ sc_var,
-                        ctgc.selector.subsumed_by(ModuleInfo, D ^ sc_selector,
-                            Sel2, Type2, Extension),
+                        DSel = D ^ sc_selector,
+                        trace [
+                            compile_time(flag("check_selector_normalization")),
+                            run_time(env("check_selector_normalization"))
+                        ] (
+                            check_normalized(ModuleInfo, Type2, DSel)
+                        ),
+                        selector.subsumed_by(ModuleInfo, already_normalized,
+                            DSel, Sel2, Type2, Extension),
                         Pair = datastruct_init_with_selector(Var1, Selector)
                             - D
                     ),
@@ -1576,6 +1605,16 @@ remove_swapped_dup_pairs([H | T], Acc0, Acc) :-
         remove_swapped_dup_pairs(T, Acc0, Acc)
     ;
         remove_swapped_dup_pairs(T, [H | Acc0], Acc)
+    ).
+
+:- pred check_normalized(module_info::in, mer_type::in, selector::in) is det.
+
+check_normalized(ModuleInfo, Type, Sel) :-
+    normalize_selector_with_type_information(ModuleInfo, Type, Sel, Norm),
+    ( Sel = Norm ->
+        true
+    ;
+        unexpected(this_file, "check_normalized: unnormalized selector")
     ).
 
 :- pred new_entries(module_info::in, proc_info::in, structure_sharing::in,
@@ -1720,7 +1759,7 @@ directed_entry_is_member(FromData, ToData, SharingSet) :-
 :- func selector_sharing_set_altclos(module_info, proc_info, mer_type,
     selector_sharing_set, selector_sharing_set) = structure_sharing.
 
-:- func selector_sharing_set_extend_datastruct(module_info,
+:- func selector_sharing_set_extend_datastruct(module_info, proc_info,
     mer_type, selector, selector_sharing_set) = list(datastruct).
 
 :- pred selector_sharing_set_apply_widening(module_info::in, proc_info::in,
@@ -1855,7 +1894,7 @@ selector_sharing_set_altclos_3(ModuleInfo, ProcInfo, Type, NewSelDataSet,
 :- func basic_closure(module_info, proc_info, mer_type,
     data_set, data_set, selector, selector) = structure_sharing.
 
-basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet,
+basic_closure(ModuleInfo, ProcInfo, Type, NewDataSet, OldDataSet,
         NewSel, OldSel) = SharingPairs :-
     % three cases:
     % 1. NewSel <= OldSel then generate sharing pairs.
@@ -1864,16 +1903,20 @@ basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet,
 
     (
         % NewSel <= OldSel ie, \exists Extension: OldSel.Extension = NewSel.
-        ctgc.selector.subsumed_by(ModuleInfo, NewSel, OldSel, Type, Extension)
+        selector.subsumed_by(ModuleInfo, already_normalized, NewSel, OldSel,
+            Type, Extension)
     ->
-        data_set_termshift(OldDataSet, Extension, TermShiftedOldDataSet),
+        data_set_termshift(ModuleInfo, ProcInfo, OldDataSet, Extension,
+            TermShiftedOldDataSet),
         SharingPairs = data_set_directed_closure(TermShiftedOldDataSet,
             NewDataSet)
     ;
         % OldSel <= NewSel ie, \exists Extension: NewSel.Extension = OldSel.
-        ctgc.selector.subsumed_by(ModuleInfo, OldSel, NewSel, Type, Extension)
+        selector.subsumed_by(ModuleInfo, already_normalized, OldSel, NewSel,
+            Type, Extension)
     ->
-        data_set_termshift(NewDataSet, Extension, TermShiftedNewDataSet),
+        data_set_termshift(ModuleInfo, ProcInfo, NewDataSet, Extension,
+            TermShiftedNewDataSet),
         SharingPairs = data_set_directed_closure(TermShiftedNewDataSet,
             OldDataSet)
     ;
@@ -1881,28 +1924,28 @@ basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet,
         SharingPairs = []
     ).
 
-selector_sharing_set_extend_datastruct(ModuleInfo, VarType, Selector,
+selector_sharing_set_extend_datastruct(ModuleInfo, ProcInfo, VarType, Selector,
         SelectorSharingSet) = Datastructures :-
     SelectorSharingSet = selector_sharing_set(_, SelectorMap),
-    DoExtend = selector_sharing_set_extend_datastruct_2(ModuleInfo, VarType,
-        Selector),
+    DoExtend = selector_sharing_set_extend_datastruct_2(ModuleInfo, ProcInfo,
+        VarType, Selector),
     Datastructures0 = map.map_values(DoExtend, SelectorMap),
     Datastructures = list.condense(map.values(Datastructures0)).
 
-:- func selector_sharing_set_extend_datastruct_2(module_info,
+:- func selector_sharing_set_extend_datastruct_2(module_info, proc_info,
     mer_type, selector, selector, data_set) = list(datastruct).
 
-selector_sharing_set_extend_datastruct_2(ModuleInfo, VarType, BaseSelector,
-        Selector, Dataset0) = Datastructures :-
+selector_sharing_set_extend_datastruct_2(ModuleInfo, ProcInfo, VarType,
+        BaseSelector, Selector, Dataset0) = Datastructures :-
     % If Selector is more general than BaseSelector, i.e.
     % BaseSelector = Selector.Extension, apply this extension
     % to all the datastructs associated with Selector, and add them
     % to the set of datastructs collected.
     (
-        ctgc.selector.subsumed_by(ModuleInfo, BaseSelector,
+        selector.subsumed_by(ModuleInfo, need_normalization, BaseSelector,
             Selector, VarType, Extension)
     ->
-        data_set_termshift(Dataset0, Extension, Dataset),
+        data_set_termshift(ModuleInfo, ProcInfo, Dataset0, Extension, Dataset),
         Dataset = datastructures(_, Data),
         Datastructures = set.to_sorted_list(Data)
     ;
@@ -1963,7 +2006,8 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
 :- pred data_set_rename(prog_var_renaming::in, tsubst::in,
     data_set::in, data_set::out) is det.
 
-:- pred data_set_termshift(data_set::in, selector::in, data_set::out) is det.
+:- pred data_set_termshift(module_info::in, proc_info::in, data_set::in,
+    selector::in, data_set::out) is det.
 
 :- pred data_set_add(data_set::in, data_set::in, data_set::out) is det.
 
@@ -2005,9 +2049,9 @@ data_set_rename(Dict, Subst, !DataSet) :-
     Datastructs = set.map(rename_datastruct(Dict, Subst), Datastructs0),
     !:DataSet = datastructures(set.count(Datastructs), Datastructs).
 
-data_set_termshift(DataSet0, Selector, DataSet) :-
+data_set_termshift(ModuleInfo, ProcInfo, DataSet0, Selector, DataSet) :-
     DataSet0 = datastructures(Size, Set0),
-    Set = set.map(datastruct_termshift(Selector), Set0),
+    Set = set.map(datastruct_termshift(ModuleInfo, ProcInfo, Selector), Set0),
     DataSet = datastructures(Size, Set).
 
 data_set_add(DataSetA, DataSetB, DataSet) :-

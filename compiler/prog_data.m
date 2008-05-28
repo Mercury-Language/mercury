@@ -383,7 +383,8 @@
 :- type structure_sharing_pair == pair(datastruct).
 
     % A datastructure is a concept that designates a particular subterm of the
-    % term to which a particular variable may be bound.
+    % term to which a particular variable may be bound.  The selector is
+    % normalized.
     %
 :- type datastruct
     --->    selected_cel(

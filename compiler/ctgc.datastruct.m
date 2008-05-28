@@ -49,9 +49,8 @@
     % It is assumed that the selector is a valid selector for that
     % datastructure.
     %
-:- pred datastruct_termshift(selector::in, datastruct::in, datastruct::out)
-    is det.
-:- func datastruct_termshift(selector, datastruct) = datastruct.
+:- func datastruct_termshift(module_info, proc_info, selector, datastruct)
+    = datastruct.
 
     % Normalize the representation of the datastructure.
     % (proc_info is needed to obtain the type of the variable of the
@@ -61,14 +60,6 @@
     % term by the selector has the same type as the selected node.
     %
 :- func normalize_datastruct(module_info, proc_info, datastruct) = datastruct.
-
-    % Normalize the representation of the datastructure using its
-    % type information.
-    %
-:- pred normalize_datastruct_with_type_information(module_info::in, 
-    mer_type::in, datastruct::in, datastruct::out) is det.
-:- func normalize_datastruct_with_type_information(module_info, mer_type,
-    datastruct) = datastruct.
 
 :- pred datastruct_subsumed_by_return_selector(module_info::in, proc_info::in,
     datastruct::in, datastruct::in, selector::out) is semidet.
@@ -122,37 +113,39 @@ datastruct_refers_to_topcell(Data):-
     DSel = Data ^ sc_selector,
     DSel = [].
 
-datastruct_termshift(Sel, Data0, Data) :-
-    DSel = Data0 ^ sc_selector,
-    selector_termshift(DSel, Sel, NewSel),
-    Data = Data0 ^ sc_selector := NewSel.
+datastruct_termshift(ModuleInfo, ProcInfo, Sel, Data0) = Data :-
+    (
+        Sel = [],
+        Data = Data0
+    ;
+        Sel = [_ | _],
+        Data0 = selected_cel(Var, DSel),
+        selector_termshift(DSel, Sel, NewSel0),
 
-datastruct_termshift(Sel, Data0) = Data :-
-    datastruct_termshift(Sel, Data0, Data).
+        % Keep datastruct seletors normalized.
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        map.lookup(VarTypes, Var, Type),
+        normalize_selector_with_type_information(ModuleInfo, Type,
+            NewSel0, NewSel),
 
-normalize_datastruct_with_type_information(ModuleInfo, Type, !Datastruct) :-
-    DSel0 = !.Datastruct ^ sc_selector,
-    normalize_selector_with_type_information(ModuleInfo, Type, DSel0, DSel),
-    !:Datastruct = !.Datastruct ^ sc_selector := DSel.
-
-normalize_datastruct_with_type_information(ModuleInfo, Type, Data0) = Data :-
-    normalize_datastruct_with_type_information(ModuleInfo, Type, Data0, Data).
+        Data = selected_cel(Var, NewSel)
+    ).
 
 normalize_datastruct(ModuleInfo, ProcInfo, Data0) = Data :-
-    Var = Data0 ^ sc_var,
+    Data0 = selected_cel(Var, DSel0),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    Data = normalize_datastruct_with_type_information(ModuleInfo, Type, Data0).
+    normalize_selector_with_type_information(ModuleInfo, Type, DSel0, DSel),
+    Data = selected_cel(Var, DSel).
 
 datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
         Extension) :-
-    Var = Data1 ^ sc_var,
-    Var = Data2 ^ sc_var,
-    Sel1 = Data1 ^ sc_selector,
-    Sel2 = Data2 ^ sc_selector,
+    Data1 = selected_cel(Var, Sel1),
+    Data2 = selected_cel(Var, Sel2),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    ctgc.selector.subsumed_by(ModuleInfo, Sel1, Sel2, Type, Extension).
+    selector.subsumed_by(ModuleInfo, already_normalized, Sel1, Sel2, Type,
+        Extension).
 
 datastruct_subsumed_by(ModuleInfo, ProcInfo, Data1, Data2) :-
     datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
@@ -185,13 +178,12 @@ datastructs_that_are_subsumed_by_list(ModuleInfo, ProcInfo,
 datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs, Data):- 
     datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data, Datastructs).
 
-datastruct_apply_widening(ModuleInfo, ProcInfo, !Data) :-
-    Var = !.Data ^ sc_var,
-    Sel0 = !.Data ^ sc_selector,
+datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
+    Data0 = selected_cel(Var, Sel0),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
-    !:Data = datastruct_init_with_selector(Var, Sel).
+    Data = selected_cel(Var, Sel).
 
 datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2) 
         = Data :- 
