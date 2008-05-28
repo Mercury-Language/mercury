@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: structure_reuse.analysis.m.
-% Main authors: nancy.
+% Main authors: nancy, wangp.
 %
 % Implementation of the structure reuse analysis (compile-time garbage
 % collection system): each procedure is analysed to see whether some
@@ -94,6 +94,7 @@
 
 :- import_module check_hlds.goal_path.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -115,10 +116,10 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -128,61 +129,100 @@
 structure_reuse_analysis(!ModuleInfo, !IO):- 
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 
+    % Load all available structure sharing information into a sharing table.
+    SharingTable = load_structure_sharing_table(!.ModuleInfo),
+
     % Process all imported reuse information.
     globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
     (
         IntermodAnalysis = yes,
-        process_intermod_analysis_imported_reuse(!ModuleInfo)
+        % Load structure reuse answers from the analysis registry into a reuse
+        % table.  Add procedures to the module as necessary.  Look up the
+        % requests made for procedures in this module by other modules.
+        process_intermod_analysis_reuse(!ModuleInfo, ReuseTable0,
+            ExternalRequests)
     ;
         IntermodAnalysis = no,
-        process_imported_reuse(!ModuleInfo)
+        % Convert imported structure reuse information into structure reuse
+        % information, then load the available reuse information into a reuse
+        % table.
+        %
+        % There is no way to request specific reuse versions of procedures
+        % across module boundaries using the old intermodule optimisation
+        % system.
+        process_imported_reuse(!ModuleInfo),
+        ReuseTable0 = load_structure_reuse_table(!.ModuleInfo),
+        ExternalRequests = []
     ),
 
-    % Load all available structure sharing information into a sharing table.
-    SharingTable = load_structure_sharing_table(!.ModuleInfo),
+    some [!ReuseTable] (
+        !:ReuseTable = ReuseTable0,
 
-    % Load all the available reuse information into a reuse table.
-    ReuseTable0 = load_structure_reuse_table(!.ModuleInfo), 
-    InitialReuseTable = ReuseTable0,
-   
-    % Pre-annotate each of the goals with "Local Forward Use" and
-    % "Local Backward Use" information, and fill in all the goal_path slots
-    % as well. 
+        % Pre-annotate each of the goals with "Local Forward Use" and
+        % "Local Backward Use" information, and fill in all the goal_path slots
+        % as well. 
+        maybe_write_string(VeryVerbose, "% Annotating in use information...",
+            !IO), 
+        process_all_nonimported_procs(
+            update_proc_io(annotate_in_use_information),
+            !ModuleInfo, !IO),
+        maybe_write_string(VeryVerbose, "done.\n", !IO),
 
-    maybe_write_string(VeryVerbose, "% Annotating in use information...", !IO), 
-    process_all_nonimported_procs(update_proc_io(annotate_in_use_information),
-         !ModuleInfo, !IO),
-    maybe_write_string(VeryVerbose, "done.\n", !IO),
+        % Create copies of externally requested procedures.  This must be done
+        % after the in-use annotations have been added to the procedures being
+        % copied.
+        list.map_foldl2(make_intermediate_reuse_proc, ExternalRequests,
+            _NewPPIds, !ReuseTable, !ModuleInfo),
 
-    % Determine information about possible direct reuses.
-    maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO), 
-    direct_reuse_pass(SharingTable, !ModuleInfo, ReuseTable0, ReuseTable1, !IO),
-    maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
-    reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, ReuseTable1, !IO),
+        % Determine information about possible direct reuses.
+        maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO), 
+        direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO),
+        maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
+        reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
+            !IO),
 
-    % Determine information about possible indirect reuses.
-    maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO), 
-    indirect_reuse_pass(SharingTable, !ModuleInfo, ReuseTable1, ReuseTable2, 
-       DepProcs, !IO), 
-    maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
-    reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, ReuseTable2, !IO),
+        % Determine information about possible indirect reuses.
+        maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO), 
+        indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs0,
+            InternalRequests, IntermodRequests0),
+        maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
+        reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
+            !IO),
 
-    % For every procedure that has some potential (conditional) reuse (either 
-    % direct or indirect), create a new procedure that actually implements
-    % that reuse. 
-    create_reuse_procedures(ReuseTable2, !ModuleInfo, !IO),
-    FinalReuseTable = ReuseTable2,
+        % Handle requests for "intermediate" reuse versions of procedures
+        % and repeat the analyses.
+        globals.io_lookup_int_option(structure_reuse_repeat, Repeats, !IO),
+        handle_structure_reuse_requests(Repeats, SharingTable, InternalRequests,
+            !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
+            IntermodRequests0, IntermodRequests, !IO),
 
-    % Create forwarding procedures for procedures which we thought had
-    % conditional reuse when making the `.opt' file, but with further
-    % information (say, from `.trans_opt' files) we decide has no reuse
-    % opportunities. Otherwise other modules may contain references to
-    % reuse versions of procedures which we never produce.
-    create_forwarding_procedures(InitialReuseTable, FinalReuseTable,
-        !ModuleInfo),
+        % Create reuse versions of procedures.  Update goals to reuse cells and
+        % call reuse versions of procedures.
+        create_reuse_procedures(!ReuseTable, !ModuleInfo),
+
+        ReuseTable = !.ReuseTable
+    ),
+
+    (
+        IntermodAnalysis = no,
+        % Create forwarding procedures for procedures which we thought had
+        % conditional reuse when making the `.opt' file, but with further
+        % information (say, from `.trans_opt' files) we decide has no reuse
+        % opportunities. Otherwise other modules may contain references to
+        % reuse versions of procedures which we never produce.
+        create_forwarding_procedures(ReuseTable0, ReuseTable, !ModuleInfo)
+    ;
+        IntermodAnalysis = yes
+        % We don't need to do anything here as we will have created procedures
+        % corresponding to existing structure reuse answers already.
+    ),
+
+    ReuseTable = reuse_as_table(ReuseInfoMap, ReuseVersionMap),
 
     % Record the results of the reuse table into the HLDS.
-    map.foldl(save_reuse_in_module_info, ReuseTable2, !ModuleInfo),
+    % This is mainly to show the reuse information in HLDS dumps as no later
+    % passes need the information.
+    map.foldl(save_reuse_in_module_info, ReuseInfoMap, !ModuleInfo),
 
     % Only write structure reuse pragmas to `.opt' files for
     % `--intermodule-optimization' not `--intermodule-analysis'.
@@ -197,7 +237,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         true
     ),
 
-    % If making a `.analysis' file, record structure sharing results, analysis
+    % If making a `.analysis' file, record structure reuse results, analysis
     % dependencies, assumed answers and requests in the analysis framework.
     globals.io_lookup_bool_option(make_analysis_registry, MakeAnalysisRegistry,
         !IO),
@@ -205,19 +245,135 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            map.foldl(record_structure_reuse_results(!.ModuleInfo),
-                ReuseTable2, !AnalysisInfo),
-            list.foldl(handle_dep_procs(!.ModuleInfo), DepProcs,
-                !AnalysisInfo),
+            CondReuseRevMap = map.reverse_map(ReuseVersionMap),
+            map.foldl(
+                record_structure_reuse_results(!.ModuleInfo, CondReuseRevMap),
+                ReuseInfoMap, !AnalysisInfo),
+            set.fold(handle_structure_reuse_dependency(!.ModuleInfo),
+                DepProcs, !AnalysisInfo),
+            set.fold(record_intermod_requests(!.ModuleInfo),
+                IntermodRequests, !AnalysisInfo),
             module_info_set_analysis_info(!.AnalysisInfo, !ModuleInfo)
         )
     ;
         MakeAnalysisRegistry = no
+    ),
+
+    % Delete the reuse versions of procedures which turn out to have no reuse.
+    % Nothing should be calling them but dead procedure elimination won't
+    % remove them if they were created from exported procedures (so would be
+    % exported themselves). 
+    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    map.foldl(remove_useless_reuse_proc(ReuseInfoMap), ReuseVersionMap,
+        PredTable0, PredTable),
+    module_info_set_predicate_table(PredTable, !ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+    % Create intermediate reuse versions of procedures according to the
+    % requests from indirect reuse analysis.  We perform direct reuse
+    % analyses on the newly created procedures, then repeat indirect reuse
+    % analysis on all procedures in the module so that calls to the new
+    % procedures can be made.  This may create new requests.
+    %
+    % XXX this is temporary only; we shouldn't be redoing so much work.
+    %
+:- pred handle_structure_reuse_requests(int::in, sharing_as_table::in,
+    set(sr_request)::in, reuse_as_table::in, reuse_as_table::out,
+    module_info::in, module_info::out,
+    set(ppid_no_clobbers)::in, set(ppid_no_clobbers)::out,
+    set(sr_request)::in, set(sr_request)::out, io::di, io::uo) is det.
+
+handle_structure_reuse_requests(Repeats, SharingTable, Requests,
+        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO) :-
+    ( Repeats > 0 ->
+        handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
+            !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO)
+    ;
+        true
     ).
 
-    % Output some profiling information.
-    % XXX TO DO!
-    % profiling(!.ModuleInfo, ReuseTable3).
+:- pred handle_structure_reuse_requests_2(int::in, sharing_as_table::in,
+    set(sr_request)::in, reuse_as_table::in, reuse_as_table::out,
+    module_info::in, module_info::out,
+    set(ppid_no_clobbers)::in, set(ppid_no_clobbers)::out,
+    set(sr_request)::in, set(sr_request)::out, io::di, io::uo) is det.
+
+handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
+        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO) :-
+    io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+
+    % Create copies of the requested procedures.
+    RequestList = set.to_sorted_list(Requests),
+    list.map_foldl2(make_intermediate_reuse_proc, RequestList, NewPPIds,
+        !ReuseTable, !ModuleInfo),
+
+    % Perform direct reuse analysis on the new procedures.
+    maybe_write_string(VeryVerbose, "% Repeating direct reuse...\n", !IO),
+    direct_reuse_process_specific_procs(SharingTable, NewPPIds,
+        !ModuleInfo, !ReuseTable, !IO),
+    maybe_write_string(VeryVerbose, "% done.\n", !IO),
+
+    % Rerun indirect reuse analysis on all procedures.
+    %
+    % XXX goals which already have reuse annotations don't need to be
+    % reanalysed.  For old procedures (not the ones just created) we actually
+    % only need to check that calls which previously had no reuse opportunity
+    % might be able to call the new procedures.
+    maybe_write_string(VeryVerbose, "% Repeating indirect reuse...\n", !IO),
+    indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
+        NewDepProcs, NewRequests, !IntermodRequests),
+    !:DepProcs = set.union(NewDepProcs, !.DepProcs),
+    maybe_write_string(VeryVerbose, "% done.\n", !IO),
+
+    ( set.empty(NewRequests) ->
+        maybe_write_string(VeryVerbose,
+            "% No more structure reuse requests.\n", !IO)
+    ;
+        maybe_write_string(VeryVerbose,
+            "% Outstanding structure reuse requests exist.\n", !IO),
+        handle_structure_reuse_requests(Repeats - 1, SharingTable, NewRequests,
+            !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO)
+    ).
+
+    % Create a new copy of a procedure to satisfy an intermediate reuse
+    % request, i.e. some of its arguments are prevented from being reused.
+    %
+    % The goal of the original procedure must already be annotated with in-use
+    % sets.  For the new procedure, we simply add the head variables at the
+    % no-clobber argument positions to the forward-use set of each goal.
+    % We also remove any existing reuse annotations on the goals.
+    %
+:- pred make_intermediate_reuse_proc(sr_request::in, pred_proc_id::out,
+    reuse_as_table::in, reuse_as_table::out, module_info::in, module_info::out)
+    is det.
+
+make_intermediate_reuse_proc(sr_request(PPId, NoClobbers), NewPPId,
+        !ReuseTable, !ModuleInfo) :-
+    create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId, !ModuleInfo),
+
+    module_info_pred_proc_info(!.ModuleInfo, NewPPId, PredInfo, ProcInfo0),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
+    get_numbered_args(1, NoClobbers, HeadVars, NoClobberVars),
+    add_vars_to_lfu(set.from_list(NoClobberVars), ProcInfo0, ProcInfo),
+    module_info_set_pred_proc_info(NewPPId, PredInfo, ProcInfo, !ModuleInfo),
+
+    reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId,
+        !ReuseTable).
+
+:- pred get_numbered_args(int::in, list(int)::in, prog_vars::in,
+    prog_vars::out) is det.
+
+get_numbered_args(_, [], _, []).
+get_numbered_args(_, [_ | _], [], _) :-
+    unexpected(this_file, "get_numbered_args: argument list too short").
+get_numbered_args(I, [N | Ns], [Var | Vars], Selected) :-
+    ( I = N ->
+        get_numbered_args(I + 1, Ns, Vars, Selected0),
+        Selected = [Var | Selected0]
+    ;
+        get_numbered_args(I + 1, [N | Ns], Vars, Selected)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -227,7 +383,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 create_forwarding_procedures(InitialReuseTable, FinalReuseTable,
         !ModuleInfo) :-
     map.foldl(create_forwarding_procedures_2(FinalReuseTable),
-        InitialReuseTable, !ModuleInfo).
+        InitialReuseTable ^ reuse_info_map, !ModuleInfo).
 
 :- pred create_forwarding_procedures_2(reuse_as_table::in, pred_proc_id::in,
     reuse_as_and_status::in, module_info::in, module_info::out) is det.
@@ -240,18 +396,19 @@ create_forwarding_procedures_2(FinalReuseTable, PPId,
     (
         reuse_as_conditional_reuses(InitialReuseAs),
         status_defined_in_this_module(ImportStatus) = yes,
-        map.search(FinalReuseTable, PPId, FinalReuseAs_Status),
+        reuse_as_table_search(FinalReuseTable, PPId, FinalReuseAs_Status),
         FinalReuseAs_Status = reuse_as_and_status(FinalReuseAs, _),
         reuse_as_no_reuses(FinalReuseAs)
     ->
-        create_fake_reuse_procedure(PPId, !ModuleInfo)
+        NoClobbers = [],
+        create_fake_reuse_procedure(PPId, NoClobbers, !ModuleInfo)
     ;
         true
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % Process all the reuse annotation from imported predicates.
+    % Process the imported reuse annotations from .opt files.
     %
 :- pred process_imported_reuse(module_info::in, module_info::out) is det.
 
@@ -322,77 +479,90 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Process the intermodule imported sharing information from the analysis
-    % framework
+    % Process the intermodule imported reuse information from the analysis
+    % framework.
     %
-:- pred process_intermod_analysis_imported_reuse(module_info::in,
-    module_info::out) is det.
+:- pred process_intermod_analysis_reuse(module_info::in, module_info::out,
+    reuse_as_table::out, list(sr_request)::out) is det.
 
-process_intermod_analysis_imported_reuse(!ModuleInfo):-
+process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests) :-
     module_info_predids(PredIds, !ModuleInfo), 
-    list.foldl(process_intermod_analysis_imported_reuse_in_pred, PredIds,
-        !ModuleInfo).
+    list.foldl3(process_intermod_analysis_reuse_pred, PredIds,
+        !ModuleInfo, reuse_as_table_init, ReuseTable, [], ExternalRequests0),
+    list.sort_and_remove_dups(ExternalRequests0, ExternalRequests).
 
-:- pred process_intermod_analysis_imported_reuse_in_pred(pred_id::in,
-    module_info::in, module_info::out) is det.
+:- pred process_intermod_analysis_reuse_pred(pred_id::in,
+    module_info::in, module_info::out, reuse_as_table::in, reuse_as_table::out,
+    list(sr_request)::in, list(sr_request)::out) is det.
 
-process_intermod_analysis_imported_reuse_in_pred(PredId, !ModuleInfo) :- 
-    some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable), 
-        PredInfo0 = !.PredTable ^ det_elem(PredId), 
-        pred_info_get_import_status(PredInfo0, ImportStatus),
-        ( ImportStatus = status_imported(_) ->
-            module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
-            process_intermod_analysis_imported_reuse_in_procs(!.ModuleInfo,
-                AnalysisInfo, PredId, PredInfo0, PredInfo),
-            svmap.det_update(PredId, PredInfo, !PredTable),
-            module_info_set_preds(!.PredTable, !ModuleInfo)
-        ;
-            true
-        )
-    ).
-
-:- pred process_intermod_analysis_imported_reuse_in_procs(module_info::in,
-    analysis_info::in, pred_id::in, pred_info::in, pred_info::out) is det.
-
-process_intermod_analysis_imported_reuse_in_procs(ModuleInfo, AnalysisInfo,
-        PredId, !PredInfo) :- 
-    some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable), 
-        ProcIds = pred_info_procids(!.PredInfo), 
+process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
+        !ExternalRequests) :- 
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    ProcIds = pred_info_procids(PredInfo), 
+    (
+        ImportStatus = status_imported(_)
+    ->
+        % Read in answers for imported procedures.
+        list.foldl2(process_intermod_analysis_reuse_proc(PredId, PredInfo),
+            ProcIds, !ModuleInfo, !ReuseTable)
+    ;
+        status_defined_in_this_module(ImportStatus) = yes
+    ->
+        % For procedures defined in this module we need to read in the answers
+        % from previous passes to know which versions of procedures other
+        % modules will be expecting.  We also need to read in new requests.
         list.foldl(
-            process_intermod_analysis_imported_reuse_in_proc(ModuleInfo,
-                AnalysisInfo, PredId, !.PredInfo), 
-            ProcIds, !ProcTable),
-        pred_info_set_procedures(!.ProcTable, !PredInfo)
+            process_intermod_analysis_defined_proc(!.ModuleInfo, PredId),
+            ProcIds, !ExternalRequests)
+    ;
+        true
     ).
 
-:- pred process_intermod_analysis_imported_reuse_in_proc(module_info::in,
-    analysis_info::in, pred_id::in, pred_info::in, proc_id::in,
-    proc_table::in, proc_table::out) is det.
+:- pred process_intermod_analysis_reuse_proc(pred_id::in,
+    pred_info::in, proc_id::in, module_info::in, module_info::out,
+    reuse_as_table::in, reuse_as_table::out) is det.
 
-process_intermod_analysis_imported_reuse_in_proc(ModuleInfo, AnalysisInfo,
-        PredId, PredInfo, ProcId, !ProcTable) :- 
+process_intermod_analysis_reuse_proc(PredId, PredInfo, ProcId,
+        !ModuleInfo, !ReuseTable) :-
     PPId = proc(PredId, ProcId),
-    some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId), 
+    module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
+    module_name_func_id(!.ModuleInfo, PPId, ModuleName, FuncId),
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    lookup_results(AnalysisInfo, ModuleName, FuncId, ImportedResults),
+    list.foldl2(
+        process_intermod_analysis_imported_reuse_answer(PPId, PredInfo,
+            ProcInfo),
+        ImportedResults, !ModuleInfo, !ReuseTable).
 
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
-        FuncInfo = structure_reuse_func_info(ModuleInfo, !.ProcInfo),
-        lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo,
-            structure_reuse_call, MaybeBestResult),
-        (
-            MaybeBestResult = yes(analysis_result(_Call, Answer,
-                ResultStatus)),
-            structure_reuse_answer_to_domain(PredInfo, !.ProcInfo, Answer,
-                Reuse),
-            proc_info_set_structure_reuse(
-                structure_reuse_domain_and_status(Reuse, ResultStatus),
-                !ProcInfo),
-            svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
-        ;
-            MaybeBestResult = no
-        )
+:- pred process_intermod_analysis_imported_reuse_answer(pred_proc_id::in,
+    pred_info::in, proc_info::in,
+    analysis_result(structure_reuse_call, structure_reuse_answer)::in,
+    module_info::in, module_info::out, reuse_as_table::in, reuse_as_table::out)
+    is det.
+
+process_intermod_analysis_imported_reuse_answer(PPId, PredInfo, ProcInfo,
+        ImportedResult, !ModuleInfo, !ReuseTable) :-
+    ImportedResult = analysis_result(Call, Answer, ResultStatus),
+    Call = structure_reuse_call(NoClobbers),
+    structure_reuse_answer_to_domain(PredInfo, ProcInfo, Answer, Domain),
+    ReuseAs = from_structure_reuse_domain(Domain),
+    ReuseAs_Status = reuse_as_and_status(ReuseAs, ResultStatus),
+    (
+        NoClobbers = [],
+        % When the no-clobber list is empty we store the information with the
+        % original pred_proc_id.
+        reuse_as_table_set(PPId, ReuseAs_Status, !ReuseTable)
+    ;
+        NoClobbers = [_ | _],
+        % When the no-clobber list is non-empty we need to create a new
+        % procedure stub and add a mapping to from the original pred_proc_id to
+        % the stub.
+        create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId,
+            !ModuleInfo),
+        reuse_as_table_set(NewPPId, ReuseAs_Status, !ReuseTable),
+        reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId,
+            !ReuseTable)
     ).
 
 :- pred structure_reuse_answer_to_domain(pred_info::in,
@@ -422,25 +592,51 @@ structure_reuse_answer_to_domain(PredInfo, ProcInfo, Answer, Reuse) :-
         )
     ).
 
+:- pred process_intermod_analysis_defined_proc(module_info::in, pred_id::in,
+    proc_id::in, list(sr_request)::in, list(sr_request)::out) is det.
+
+process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
+        !ExternalRequests) :-
+    PPId = proc(PredId, ProcId),
+    module_info_get_analysis_info(ModuleInfo, AnalysisInfo),
+    module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+
+    % Add requests corresponding to the call patterns of existing answers.
+    lookup_results(AnalysisInfo, ModuleName, FuncId,
+        Results : list(analysis_result(structure_reuse_call, _))),
+    list.foldl(add_reuse_request_for_answer(PPId), Results, !ExternalRequests),
+
+    % Add new requests from other modules.
+    lookup_requests(AnalysisInfo, analysis_name, ModuleName, FuncId, Calls),
+    list.foldl(add_reuse_request(PPId), Calls, !ExternalRequests).
+
+:- pred add_reuse_request_for_answer(pred_proc_id::in,
+    analysis_result(structure_reuse_call, structure_reuse_answer)::in,
+    list(sr_request)::in, list(sr_request)::out) is det.
+
+add_reuse_request_for_answer(PPId, Result, !ExternalRequests) :-
+    add_reuse_request(PPId, Result ^ ar_call, !ExternalRequests).
+
+:- pred add_reuse_request(pred_proc_id::in, structure_reuse_call::in,
+    list(sr_request)::in, list(sr_request)::out) is det.
+
+add_reuse_request(PPId, structure_reuse_call(NoClobbers), !Requests) :-
+    (
+        NoClobbers = []
+        % We don't need to add these as explicit requests, and in fact it's
+        % better if we don't.  The analysis is already designed to analyse for
+        % this case by default and create the reuse procedures if necessary.
+    ;
+        NoClobbers = [_ | _],
+        !:Requests = [sr_request(PPId, NoClobbers) | !.Requests]
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred save_reuse_in_module_info(pred_proc_id::in, reuse_as_and_status::in,
     module_info::in, module_info::out) is det.
 
 save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :- 
-    save_reuse_in_module_info_2(PPId, ReuseAs_Status, !ModuleInfo), 
-    module_info_get_structure_reuse_map(!.ModuleInfo, ReuseMap), 
-    ( map.search(ReuseMap, PPId, Result) -> 
-        Result = ReusePPId - _Name, 
-        save_reuse_in_module_info_2(ReusePPId, ReuseAs_Status, !ModuleInfo)
-    ;
-        true
-    ).
-
-:- pred save_reuse_in_module_info_2(pred_proc_id::in, reuse_as_and_status::in,
-    module_info::in, module_info::out) is det.
-
-save_reuse_in_module_info_2(PPId, ReuseAs_Status, !ModuleInfo) :- 
     ReuseAs_Status = reuse_as_and_status(ReuseAs, Status),
     ReuseDomain = to_structure_reuse_domain(ReuseAs),
     Domain_Status = structure_reuse_domain_and_status(ReuseDomain, Status),
@@ -546,8 +742,7 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
 %
 
 :- type structure_reuse_call
-    --->    structure_reuse_call.
-            % Eventually we should have different call patterns.
+    --->    structure_reuse_call(no_clobber_args).
 
 :- type structure_reuse_answer
     --->    structure_reuse_answer_no_reuse
@@ -572,7 +767,7 @@ analysis_name = "structure_reuse".
     structure_reuse_answer) where
 [
     analysis_name(_, _) = analysis_name,
-    analysis_version_number(_, _) = 1,
+    analysis_version_number(_, _) = 2,
     preferred_fixpoint_type(_, _) = greatest_fixpoint,
     bottom(_, _) = structure_reuse_answer_no_reuse,
     ( top(_, _) = _ :-
@@ -591,15 +786,23 @@ analysis_name = "structure_reuse".
 
 :- instance partial_order(structure_reuse_func_info, structure_reuse_call)
         where [
-    (more_precise_than(_, _, _) :-
-        semidet_fail
+    (more_precise_than(_, Call1, Call2) :-
+        Call1 = structure_reuse_call(Args1),
+        Call2 = structure_reuse_call(Args2),
+        set.subset(sorted_list_to_set(Args2), sorted_list_to_set(Args1))
     ),
     equivalent(_, Call, Call)
 ].
 
 :- instance to_string(structure_reuse_call) where [
-    to_string(structure_reuse_call) = "",
-    from_string("") = structure_reuse_call
+    ( to_string(structure_reuse_call(List)) = String :-
+        Strs = list.map(string.from_int, List),
+        String = string.join_list(" ", Strs)
+    ),
+    ( from_string(String) = structure_reuse_call(List) :-
+        Strs = string.words(String),
+        List = list.map(string.det_to_int, Strs)
+    )
 ].
 
 :- instance answer_pattern(structure_reuse_func_info, structure_reuse_answer)
@@ -700,10 +903,34 @@ reuse_answer_from_string(String) = Answer :-
 % Additional predicates used for intermodule analysis
 %
 
-:- pred record_structure_reuse_results(module_info::in, pred_proc_id::in,
+:- pred record_structure_reuse_results(module_info::in,
+    map(pred_proc_id, set(ppid_no_clobbers))::in, pred_proc_id::in,
     reuse_as_and_status::in, analysis_info::in, analysis_info::out) is det.
 
-record_structure_reuse_results(ModuleInfo, PPId, ReuseAs_Status,
+record_structure_reuse_results(ModuleInfo, CondReuseReverseMap,
+        PPId, ReuseAs_Status, !AnalysisInfo) :-
+    ( map.search(CondReuseReverseMap, PPId, Set) ->
+        % PPId is a conditional reuse procedure created from another procedure.
+        % We need to record the result using the name of the original
+        % procedure.
+        ( set.singleton_set(Set, Elem) ->
+            Elem = ppid_no_clobbers(RecordPPId, NoClobbers)
+        ;
+            unexpected(this_file,
+                "record_structure_reuse_results: non-singleton set")
+        )
+    ;
+        RecordPPId = PPId,
+        NoClobbers = []
+    ),
+    record_structure_reuse_results_2(ModuleInfo, RecordPPId, NoClobbers,
+        ReuseAs_Status, !AnalysisInfo).
+
+:- pred record_structure_reuse_results_2(module_info::in, pred_proc_id::in,
+    no_clobber_args::in, reuse_as_and_status::in,
+    analysis_info::in, analysis_info::out) is det.
+
+record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
         !AnalysisInfo) :-
     PPId = proc(PredId, ProcId),
     ReuseAs_Status = reuse_as_and_status(ReuseAs, Status),
@@ -718,30 +945,32 @@ record_structure_reuse_results(ModuleInfo, PPId, ReuseAs_Status,
         ; reuse_as_all_unconditional_reuses(ReuseAs) ->
             Answer = structure_reuse_answer_unconditional
         ; reuse_as_conditional_reuses(ReuseAs) ->
-            module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
+            module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo,
+                ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
             proc_info_get_vartypes(ProcInfo, VarTypes),
             map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
-            Answer = structure_reuse_answer_conditional(HeadVars, HeadVarTypes,
-                ReuseAs)
+            Answer = structure_reuse_answer_conditional(HeadVars,
+                HeadVarTypes, ReuseAs)
         ;
             unexpected(this_file, "record_structure_reuse_results")
         ),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
-        record_result(ModuleName, FuncId, structure_reuse_call, Answer, Status,
-            !AnalysisInfo)
+        record_result(ModuleName, FuncId, structure_reuse_call(NoClobbers),
+            Answer, Status, !AnalysisInfo)
     ;
         ShouldWrite = no
     ).
 
-:- pred handle_dep_procs(module_info::in, pred_proc_id::in,
-    analysis_info::in, analysis_info::out) is det.
+:- pred handle_structure_reuse_dependency(module_info::in,
+    ppid_no_clobbers::in, analysis_info::in, analysis_info::out) is det.
 
-handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
+handle_structure_reuse_dependency(ModuleInfo,
+        ppid_no_clobbers(DepPPId, NoClobbers), !AnalysisInfo) :-
     % Record that we depend on the result for the called procedure.
     module_info_get_name(ModuleInfo, ThisModuleName),
     module_name_func_id(ModuleInfo, DepPPId, DepModuleName, DepFuncId),
-    Call = structure_reuse_call,
+    Call = structure_reuse_call(NoClobbers),
     record_dependency(ThisModuleName, analysis_name, DepModuleName, DepFuncId,
         Call, !AnalysisInfo),
 
@@ -756,7 +985,10 @@ handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
     (
         AnyResults = [],
         Answer = bottom(FuncInfo, Call) : structure_reuse_answer,
-        record_result(DepModuleName, DepFuncId, Call, Answer, suboptimal,
+        % We assume an unknown answer is `optimal' otherwise we would not be
+        % able to get mutually recursive procedures out of the `suboptimal'
+        % state.
+        record_result(DepModuleName, DepFuncId, Call, Answer, optimal,
             !AnalysisInfo),
         % Record a request as well.
         record_request(analysis_name, DepModuleName, DepFuncId, Call,
@@ -764,6 +996,15 @@ handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
     ;
         AnyResults = [_ | _]
     ).
+
+:- pred record_intermod_requests(module_info::in, sr_request::in,
+    analysis_info::in, analysis_info::out) is det.
+
+record_intermod_requests(ModuleInfo, sr_request(PPId, NoClobbers),
+        !AnalysisInfo) :-
+    module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+    record_request(analysis_name, ModuleName, FuncId,
+        structure_reuse_call(NoClobbers), !AnalysisInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -800,6 +1041,27 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
         ShouldWrite = yes
     ;
         ShouldWrite = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred remove_useless_reuse_proc(map(pred_proc_id, reuse_as_and_status)::in,
+    ppid_no_clobbers::in, pred_proc_id::in,
+    predicate_table::in, predicate_table::out) is det.
+
+remove_useless_reuse_proc(ReuseAsMap, _, PPId, !PredTable) :-
+    map.lookup(ReuseAsMap, PPId, ReuseAs_Status),
+    ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
+    % XXX perhaps we can also remove reuse procedures with only unconditional
+    % reuse?  Such a procedure should be the same as the "non-reuse" procedure
+    % (which also implements any unconditional reuse).
+    ( reuse_as_no_reuses(ReuseAs) ->
+        PPId = proc(PredId, _),
+        % We can remove the whole predicate because we never generate
+        % multi-moded reuse versions of predicates.
+        predicate_table_remove_predicate(PredId, !PredTable)
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%

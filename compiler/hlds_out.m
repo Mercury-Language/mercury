@@ -4756,9 +4756,11 @@ write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):-
         io.write_string(" - ", !IO), 
         write_is_conditional(IsConditional, !IO)
     ;
-        ShortDescription = reuse_call(IsConditional),
+        ShortDescription = reuse_call(IsConditional, NoClobbers),
         io.write_string("reuse call - ", !IO), 
-        write_is_conditional(IsConditional, !IO)
+        write_is_conditional(IsConditional, !IO),
+        io.write_string(", no clobbers = ", !IO),
+        io.write(NoClobbers, !IO)
     ).
 
 :- pred write_is_conditional(is_conditional::in, io::di, io::uo) is det.

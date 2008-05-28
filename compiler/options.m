@@ -613,6 +613,7 @@
     ;       structure_reuse_analysis
     ;           structure_reuse_constraint
     ;           structure_reuse_constraint_arg
+    ;           structure_reuse_repeat
 
     % Stuff for the old termination analyser.
     ;       termination
@@ -1313,6 +1314,7 @@ option_defaults_2(special_optimization_option, [
     structure_reuse_analysis            -   bool(no), 
     structure_reuse_constraint        -   string("within_n_cells_difference"),
     structure_reuse_constraint_arg      -   int(0),
+    structure_reuse_repeat              -   int(0),
     termination                         -   bool(no),
     termination_single_args             -   int(0),
     termination_norm                    -   string("total"),
@@ -2255,6 +2257,7 @@ long_option("structure-reuse-constraint", structure_reuse_constraint).
 long_option("ctgc-constraint",      structure_reuse_constraint).
 long_option("structure-reuse-constraint-arg", structure_reuse_constraint_arg).
 long_option("ctgc-constraint-arg",  structure_reuse_constraint_arg).
+long_option("structure-reuse-repeat", structure_reuse_repeat).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",       smart_indexing).

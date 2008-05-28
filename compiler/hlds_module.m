@@ -204,12 +204,6 @@
     ;       complexity_input_fixed_size
     ;       complexity_output.
 
-    % This type is used to record the mapping between original procedures,
-    % and their optimised versions with respect to structure reuse (CTGC).
-    %
-:- type structure_reuse_map ==
-    map(pred_proc_id, pair(pred_proc_id, sym_name)).
-
 %-----------------------------------------------------------------------------%
 %
 % Types for foreign exported enumerations
@@ -511,10 +505,10 @@
 :- pred module_info_user_final_pred_procs(module_info::in,
     list(pred_proc_id)::out) is det.
 
-:- pred module_info_get_structure_reuse_map(module_info::in,
-    structure_reuse_map::out) is det.
+:- pred module_info_get_structure_reuse_preds(module_info::in,
+    set(pred_id)::out) is det.
 
-:- pred module_info_set_structure_reuse_map(structure_reuse_map::in,
+:- pred module_info_set_structure_reuse_preds(set(pred_id)::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_get_used_modules(module_info::in,
@@ -814,8 +808,10 @@
                 user_final_pred_c_names     :: assoc_list(sym_name_and_arity,
                                                 string),
 
-                % Information about which procedures implement structure reuse.
-                structure_reuse_map         :: structure_reuse_map,
+                % Predicates which were created as reuse versions of other
+                % procedures.  Its only use is to avoid writing out pragmas
+                % for structure reuse predicates to `.trans_opt' files.
+                structure_reuse_preds       :: set(pred_id),
 
                 % The modules which have already been calculated as being used.
                 % Currently this is the module imports inherited from the
@@ -876,7 +872,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     AnalysisInfo = init_analysis_info(mmc),
     UserInitPredCNames = [],
     UserFinalPredCNames = [],
-    map.init(StructureReuseMap),
+    set.init(StructureReusePredIds),
     UsedModules = used_modules_init,
     set.init(InterfaceModuleSpecs),
     ExportedEnums = [],
@@ -893,7 +889,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes,
         MaybeComplexityMap, ComplexityProcInfos,
         AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
-        StructureReuseMap, UsedModules, InterfaceModuleSpecs,
+        StructureReusePredIds, UsedModules, InterfaceModuleSpecs,
         ExportedEnums, EventSet),
 
     predicate_table_init(PredicateTable),
@@ -999,7 +995,8 @@ module_info_get_maybe_complexity_proc_map(MI,
     MI ^ sub_info ^ maybe_complexity_proc_map).
 module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
-module_info_get_structure_reuse_map(MI, MI ^ sub_info ^ structure_reuse_map).
+module_info_get_structure_reuse_preds(MI,
+    MI ^ sub_info ^ structure_reuse_preds).
 module_info_get_used_modules(MI, MI ^ sub_info ^ used_modules).
 module_info_get_interface_module_specifiers(MI,
     MI ^ sub_info ^ interface_module_specifiers).
@@ -1148,8 +1145,8 @@ module_info_set_maybe_complexity_proc_map(NewVal, MI,
     MI ^ sub_info ^ maybe_complexity_proc_map := NewVal).
 module_info_set_complexity_proc_infos(NewVal, MI,
     MI ^ sub_info ^ complexity_proc_infos := NewVal).
-module_info_set_structure_reuse_map(ReuseMap, MI,
-    MI ^ sub_info ^ structure_reuse_map := ReuseMap).
+module_info_set_structure_reuse_preds(ReusePreds, MI,
+    MI ^ sub_info ^ structure_reuse_preds := ReusePreds).
 module_info_set_used_modules(UsedModules, MI,
     MI ^ sub_info ^ used_modules := UsedModules).
 module_info_set_event_set(EventSet, MI, MI ^ sub_info ^ event_set := EventSet).

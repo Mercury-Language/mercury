@@ -23,8 +23,19 @@
 :- interface.
 
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
+:- import_module set.
+
+%-----------------------------------------------------------------------------%
 
 :- pred forward_use_information(proc_info::in, proc_info::out) is det.
+
+    % add_vars_to_lfu(Vars, !ProcInfo).
+    %
+    % Add the vars to all the LFU sets in the body of the procedure.
+    %
+:- pred add_vars_to_lfu(set(prog_var)::in, proc_info::in, proc_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -35,12 +46,10 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
 :- import_module list.
 :- import_module map.
-:- import_module set.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -209,6 +218,103 @@ forward_use_in_disj_goal(VarTypes, Inst0, Dead0, !Goal,
     forward_use_in_goal(VarTypes, !Goal, Inst0, Inst, Dead0, Dead),
     set.union(Inst, !InstantiatedVars),
     set.union(Dead, !DeadVars).
+
+%-----------------------------------------------------------------------------%
+
+add_vars_to_lfu(ForceInUse, !ProcInfo) :-
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
+    proc_info_set_goal(Goal, !ProcInfo).
+
+:- pred add_vars_to_lfu_in_goal(set(prog_var)::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal) :-
+    Goal0 = hlds_goal(Expr0, GoalInfo0),
+    add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr),
+    LFU0 = goal_info_get_lfu(GoalInfo0),
+    LFU = set.union(ForceInUse, LFU0),
+    goal_info_set_lfu(LFU, GoalInfo0, GoalInfo1),
+    goal_info_set_reuse(no_reuse_info, GoalInfo1, GoalInfo),
+    Goal = hlds_goal(Expr, GoalInfo).
+
+:- pred add_vars_to_lfu_in_goal_expr(set(prog_var)::in,
+    hlds_goal_expr::in, hlds_goal_expr::out) is det.
+
+add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
+    (
+        Expr0 = conj(ConjType, Goals0),
+        add_vars_to_lfu_in_goals(ForceInUse, Goals0, Goals),
+        Expr = conj(ConjType, Goals)
+    ;
+        Expr0 = disj(Goals0),
+        add_vars_to_lfu_in_goals(ForceInUse, Goals0, Goals),
+        Expr = disj(Goals)
+    ;
+        Expr0 = switch(Var, Det, Cases0),
+        add_vars_to_lfu_in_cases(ForceInUse, Cases0, Cases),
+        Expr = switch(Var, Det, Cases)
+    ;
+        Expr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        add_vars_to_lfu_in_goal(ForceInUse, Cond0, Cond),
+        add_vars_to_lfu_in_goal(ForceInUse, Then0, Then),
+        add_vars_to_lfu_in_goal(ForceInUse, Else0, Else),
+        Expr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        Expr0 = negation(Goal0),
+        add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
+        Expr = negation(Goal)
+    ;
+        Expr0 = scope(Reason, Goal0),
+        add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
+        Expr = scope(Reason, Goal)
+    ;
+        Expr0 = generic_call(_, _, _, _),
+        Expr = Expr0
+    ;
+        Expr0 = plain_call(_, _, _, _, _, _),
+        Expr = Expr0
+    ;
+        Expr0 = unify(_, _, _, _, _),
+        Expr = Expr0
+    ;
+        Expr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        Expr = Expr0
+    ;
+        Expr0 = shorthand(Shorthand0),
+        (
+            Shorthand0 = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal0, OrElseGoals0),
+            add_vars_to_lfu_in_goal(ForceInUse, MainGoal0, MainGoal),
+            add_vars_to_lfu_in_goals(ForceInUse, OrElseGoals0, OrElseGoals),
+            Shorthand = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals)
+        ;
+            Shorthand0 = bi_implication(LeftGoal0, RightGoal0),
+            add_vars_to_lfu_in_goal(ForceInUse, LeftGoal0, LeftGoal),
+            add_vars_to_lfu_in_goal(ForceInUse, RightGoal0, RightGoal),
+            Shorthand = bi_implication(LeftGoal, RightGoal)
+        ),
+        Expr = shorthand(Shorthand)
+    ).
+
+:- pred add_vars_to_lfu_in_goals(set(prog_var)::in,
+    hlds_goals::in, hlds_goals::out) is det.
+
+add_vars_to_lfu_in_goals(_, [], []).
+add_vars_to_lfu_in_goals(ForceInUse, [Goal0 | Goals0], [Goal | Goals]) :-
+    add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
+    add_vars_to_lfu_in_goals(ForceInUse, Goals0, Goals).
+
+:- pred add_vars_to_lfu_in_cases(set(prog_var)::in,
+    list(case)::in, list(case)::out) is det.
+
+add_vars_to_lfu_in_cases(_, [], []).
+add_vars_to_lfu_in_cases(ForceInUse, [Case0 | Cases0], [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    add_vars_to_lfu_in_cases(ForceInUse, Cases0, Cases).
 
 %-----------------------------------------------------------------------------%
 

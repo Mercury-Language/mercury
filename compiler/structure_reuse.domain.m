@@ -191,7 +191,7 @@
     ;       reuse_condition_violated(list(prog_var))
             % At least these variables couldn't be allowed to be clobbered.
 
-    ;       reuse_nodes_have_sharing.
+    ;       reuse_nodes_have_sharing(list(prog_var)).
             % The reuse conditions are individually satisfied, but the
             % arguments for reuse have sharing between them which would lead
             % to undefined behaviour in the reuse version of the procedure.
@@ -209,7 +209,15 @@
 
     % Intermediate storage of the reuse results for individual procedures.
     %
-:- type reuse_as_table == map(pred_proc_id, reuse_as_and_status).
+:- type reuse_as_table
+    --->    reuse_as_table(
+                reuse_info_map      :: map(pred_proc_id, reuse_as_and_status),
+                % Maps pred_proc_ids to their reuse information and status.
+
+                reuse_version_map   :: map(ppid_no_clobbers, pred_proc_id)
+                % Maps original procedures and associated no-clobber argument
+                % lists to the reuse version procedures already created.
+            ).
 
 :- type reuse_as_and_status
     --->    reuse_as_and_status(
@@ -217,19 +225,37 @@
                 analysis_status
             ).
 
+:- type ppid_no_clobbers
+    --->    ppid_no_clobbers(
+                pred_proc_id,
+                no_clobber_args
+            ).
+
+    % The arguments at these positions must not be clobbered.
+    %
+:- type no_clobber_args == list(int).
+
 :- func reuse_as_table_init = reuse_as_table.
 
-:- pred reuse_as_table_search(pred_proc_id::in, reuse_as_table::in, 
+:- pred reuse_as_table_search(reuse_as_table::in, pred_proc_id::in, 
     reuse_as_and_status::out) is semidet.
 
+:- pred reuse_as_table_search_reuse_version_proc(reuse_as_table::in,
+    pred_proc_id::in, list(int)::in, pred_proc_id::out) is semidet.
+
 :- pred reuse_as_table_set(pred_proc_id::in, reuse_as_and_status::in, 
+    reuse_as_table::in, reuse_as_table::out) is det.
+
+:- pred reuse_as_table_insert_reuse_version_proc(pred_proc_id::in,
+    no_clobber_args::in, pred_proc_id::in,
     reuse_as_table::in, reuse_as_table::out) is det.
 
 :- pred reuse_as_table_maybe_dump(bool::in, module_info::in,
     reuse_as_table::in, io::di, io::uo) is det.
 
     % Load all the structure reuse information present in the HLDS into
-    % a reuse table. 
+    % a reuse table. This is only for the old intermodule optimisation system
+    % where imported structure reuse information lives with the proc_infos.
     %
 :- func load_structure_reuse_table(module_info) = reuse_as_table.
 
@@ -244,10 +270,12 @@
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.util.
 
-:- import_module maybe. 
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
+:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -638,13 +666,15 @@ reuse_as_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
         % undefined behaviour.
         (
             Result0 = reuse_possible,
+            aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs,
+                Conditions, AliasedVars),
             (
-                no_aliases_between_reuse_nodes(ModuleInfo, ProcInfo,
-                    SharingAs, Conditions)
-            ->
+                AliasedVars = [],
                 Result = reuse_possible
             ;
-                Result = reuse_not_possible(reuse_nodes_have_sharing)
+                AliasedVars = [_ | _], 
+                Result = reuse_not_possible(reuse_nodes_have_sharing(
+                    AliasedVars))
             )
         ;
             Result0 = reuse_not_possible(_),
@@ -666,63 +696,102 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
         reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs,
             StaticVars, Conds, Result)
     ;
-        Result0 = reuse_not_possible(_),
+        Result0 = reuse_not_possible(reuse_condition_violated(Vars0)),
+        % We try to collect all the variables which violate conditions.
+        reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs,
+            StaticVars, Conds, Result1),
+        (
+            Result1 = reuse_not_possible(reuse_condition_violated(Vars1)),
+            Vars = list.sort_and_remove_dups(Vars0 ++ Vars1),
+            Result = reuse_not_possible(reuse_condition_violated(Vars))
+        ;
+            ( Result1 = reuse_possible
+            ; Result1 = reuse_not_possible(no_reuse)
+            ),
+            Result = Result0
+        ;
+            ( Result1 = reuse_not_possible(unknown_livedata)
+            ; Result1 = reuse_not_possible(reuse_nodes_have_sharing(_))
+            ),
+            unexpected(this_file, "reuse_as_satisfied_2: unexpected result")
+        )
+    ;
+        Result0 = reuse_not_possible(no_reuse),
         Result = Result0
+    ;
+        Result0 = reuse_not_possible(unknown_livedata),
+        Result = Result0
+    ;
+        Result0 = reuse_not_possible(reuse_nodes_have_sharing(_)),
+        unexpected(this_file, "reuse_as_satisfied_2: reuse_nodes_have_sharing")
     ).
 
-:- pred no_aliases_between_reuse_nodes(module_info::in, proc_info::in,
-    sharing_as::in, list(reuse_condition)::in) is semidet.
+:- pred aliases_between_reuse_nodes(module_info::in, proc_info::in,
+    sharing_as::in, list(reuse_condition)::in, prog_vars::out) is det.
 
-no_aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions):-
+aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
+        AliasedVars) :-
     list.filter_map(reuse_condition_reusable_nodes, Conditions, ListNodes),
     list.condense(ListNodes, AllNodes),
     (
         AllNodes = [Node | Rest],
-        no_aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs,
-            Node, Rest)
+        aggregate(aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo,
+            SharingAs, Node, Rest), collect_aliased_vars, set.init,
+            AliasedVarsSet),
+        AliasedVars = set.to_sorted_list(AliasedVarsSet)
     ;
         AllNodes = [],
         unexpected(this_file, "no_aliases_between_reuse_nodes: no nodes")
     ).
 
-:- pred no_aliases_between_reuse_nodes_2(module_info::in, proc_info::in,
-    sharing_as::in, datastruct::in, list(datastruct)::in) is semidet.
+:- pred aliases_between_reuse_nodes_2(module_info::in, proc_info::in,
+    sharing_as::in, datastruct::in, list(datastruct)::in,
+    pair(datastruct)::out) is nondet.
 
-no_aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
-        OtherNodes):-
+aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
+        OtherNodes, AliasedNodes) :-
     SharingNodes0 = extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Node),
     list.delete(SharingNodes0, Node, SharingNodes),
 
     % Check whether none of the structures to which the current Node is
     % aliased is subsumed by or subsumes one of the other nodes, including the
     % current node itself.
-    all [SharingNode] (
-        list.member(SharingNode, SharingNodes)
-    =>
-        not there_is_a_subsumption_relation(ModuleInfo, ProcInfo,
-            [Node | OtherNodes], SharingNode)
-    ),
     (
-        OtherNodes = [NextNode | NextOtherNodes],
-        no_aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs,
-            NextNode, NextOtherNodes)
+        list.member(SharingNode, SharingNodes),
+        there_is_a_subsumption_relation(ModuleInfo, ProcInfo,
+            [Node | OtherNodes], SharingNode, OtherAliasedNode),
+        AliasedNodes = SharingNode - OtherAliasedNode
     ;
-        OtherNodes = []
+        OtherNodes = [NextNode | NextOtherNodes],
+        aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs,
+            NextNode, NextOtherNodes, AliasedNodes)
     ).
 
     % Succeed if Data is subsumed or subsumes some of the datastructures in
     % Datastructs.
     %
 :- pred there_is_a_subsumption_relation(module_info::in, proc_info::in,
-    list(datastruct)::in, datastruct::in) is semidet.
+    list(datastruct)::in, datastruct::in, datastruct::out) is nondet.
 
-there_is_a_subsumption_relation(ModuleInfo, ProcInfo, Datastructs, DataA):-
-    list.member(DataB, Datastructs),
+there_is_a_subsumption_relation(ModuleInfo, ProcInfo, [DataB0 | DataBs],
+        DataA, DataB) :-
     (
-        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataA, DataB)
+        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataA, DataB),
+        DataB = DataB0
     ;
-        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataB, DataA)
+        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataB, DataA),
+        DataB = DataB0
+    ;
+        there_is_a_subsumption_relation(ModuleInfo, ProcInfo, DataBs,
+            DataA, DataB)
     ).
+
+:- pred collect_aliased_vars(pair(datastruct)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+collect_aliased_vars(DataA - DataB, !Vars) :-
+    svset.insert(DataA ^ sc_var, !Vars),
+    svset.insert(DataB ^ sc_var, !Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -836,13 +905,24 @@ to_structure_reuse_condition(Condition) = StructureReuseCondition :-
 % reuse_as_table
 %
 
-reuse_as_table_init = map.init.
+reuse_as_table_init = reuse_as_table(map.init, map.init).
 
-reuse_as_table_search(PPId, Table, ReuseAs_Status) :-
-    map.search(Table, PPId, ReuseAs_Status).
+reuse_as_table_search(Table, PPId, ReuseAs_Status) :-
+    map.search(Table ^ reuse_info_map, PPId, ReuseAs_Status).
+
+reuse_as_table_search_reuse_version_proc(Table, PPId, NoClobbers, NewPPId) :-
+    map.search(Table ^ reuse_version_map, ppid_no_clobbers(PPId, NoClobbers),
+        NewPPId).
 
 reuse_as_table_set(PPId, ReuseAs_Status, !Table) :- 
-    !Table ^ elem(PPId) := ReuseAs_Status.
+    T0 = !.Table ^ reuse_info_map,
+    map.set(T0, PPId, ReuseAs_Status, T),
+    !Table ^ reuse_info_map := T.
+
+reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId, !Table) :- 
+    T0 = !.Table ^ reuse_version_map,
+    map.det_insert(T0, ppid_no_clobbers(PPId, NoClobbers), NewPPId, T),
+    !Table ^ reuse_version_map := T.
 
 reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-
     (
@@ -856,11 +936,12 @@ reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-
     io::di, io::uo) is det.
 
 reuse_as_table_dump(ModuleInfo, Table, !IO) :-
-    ( map.is_empty(Table) ->
+    ReuseInfoMap = Table ^ reuse_info_map,
+    ( map.is_empty(ReuseInfoMap) ->
         io.write_string("% ReuseTable: Empty", !IO)
     ;
         io.write_string("% ReuseTable: PPId --> Reuse\n", !IO), 
-        map.foldl(dump_entries(ModuleInfo), Table, !IO)
+        map.foldl(dump_entries(ModuleInfo), ReuseInfoMap, !IO)
     ).
 
 :- pred dump_entries(module_info::in, pred_proc_id::in,
@@ -894,11 +975,11 @@ load_structure_reuse_table_3(ModuleInfo, PredId, ProcId, !ReuseTable) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_structure_reuse(ProcInfo, MaybePublicReuse),
     (
-        MaybePublicReuse = yes(
-            structure_reuse_domain_and_status(PublicReuse, Status)),
+        MaybePublicReuse = yes(structure_reuse_domain_and_status(PublicReuse,
+            Status)),
         PPId = proc(PredId, ProcId),
         PrivateReuse = from_structure_reuse_domain(PublicReuse),
-        reuse_as_table_set(PPId, reuse_as_and_status(PrivateReuse, Status), 
+        reuse_as_table_set(PPId, reuse_as_and_status(PrivateReuse, Status),
             !ReuseTable)
     ;
         MaybePublicReuse = no

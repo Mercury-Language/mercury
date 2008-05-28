@@ -26,16 +26,26 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 :- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
+    % The first pass, where we process all procedures defined in the module.
+    %
 :- pred direct_reuse_pass(sharing_as_table::in, module_info::in,
     module_info::out, reuse_as_table::in, reuse_as_table::out, 
     io::di, io::uo) is det.
+
+    % Subsequent passes, where we process only the listed procedures.
+    %
+:- pred direct_reuse_process_specific_procs(sharing_as_table::in,
+    list(pred_proc_id)::in, module_info::in, module_info::out,
+    reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -43,12 +53,9 @@
 :- implementation. 
 
 :- import_module analysis.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
@@ -57,10 +64,8 @@
 :- import_module transform_hlds.smm_common.
 
 :- import_module bool.
-:- import_module list.
 :- import_module map.
 :- import_module svmap.
-:- import_module term.
 
 :- include_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- include_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
@@ -136,9 +141,9 @@ direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo,
             set_external_pred_reuse_as(PredId, reuse_as_init, optimal),
             pred_info_procids(PredInfo0), !ReuseTable)
     ;
-        list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId), 
-            pred_info_non_imported_procids(PredInfo0), !ModuleInfo, 
-            !ReuseTable, !IO)
+        ProcIds = pred_info_non_imported_procids(PredInfo0),
+        list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId),
+            ProcIds, !ModuleInfo, !ReuseTable, !IO)
     ).
 
 :- pred set_external_pred_reuse_as(pred_id::in, reuse_as::in,
@@ -149,18 +154,35 @@ set_external_pred_reuse_as(PredId, ReuseAs, Status, ProcId, !ReuseTable) :-
     reuse_as_table_set(proc(PredId, ProcId),
         reuse_as_and_status(ReuseAs, Status), !ReuseTable).
 
+direct_reuse_process_specific_procs(SharingTable, PPIds,
+        !ModuleInfo, !ReuseTable, !IO) :-
+    get_strategy(Strategy, !ModuleInfo, !IO), 
+    list.foldl3(direct_reuse_process_ppid(Strategy, SharingTable),
+        PPIds, !ModuleInfo, !ReuseTable, !IO).
+
+:- pred direct_reuse_process_ppid(reuse_strategy::in, sharing_as_table::in, 
+    pred_proc_id::in, module_info::in, module_info::out,
+    reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
+
+direct_reuse_process_ppid(Strategy, SharingTable, proc(PredId, ProcId),
+        !ModuleInfo, !ReuseTable, !IO) :- 
+    direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
+        !ModuleInfo, !ReuseTable, !IO).
+
+    % Process one individual procedure. 
+    %
 :- pred direct_reuse_process_proc(reuse_strategy::in, sharing_as_table::in, 
     pred_id::in, proc_id::in, module_info::in, module_info::out,
     reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
 
-direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId, 
+direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
         !ModuleInfo, !ReuseTable, !IO) :- 
     module_info_preds(!.ModuleInfo, Preds0), 
     map.lookup(Preds0, PredId, Pred0), 
     pred_info_get_procedures(Pred0, Procs0), 
     map.lookup(Procs0, ProcId, Proc0), 
 
-    direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId, 
+    direct_reuse_process_proc_2(Strategy, SharingTable, PredId, ProcId, 
         !.ModuleInfo, Pred0, Proc0, Proc, ReuseAs, !IO), 
     % XXX is this right?
     Status = optimal,
@@ -172,14 +194,12 @@ direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
     map.det_update(Preds0, PredId, Pred, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
-    % Process one individual procedure. 
-    %
-:- pred direct_reuse_process_procedure(reuse_strategy::in, 
+:- pred direct_reuse_process_proc_2(reuse_strategy::in, 
     sharing_as_table::in, pred_id::in, proc_id::in, module_info::in, 
     pred_info::in, proc_info::in, proc_info::out, reuse_as::out, 
     io::di, io::uo) is det.
 
-direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
+direct_reuse_process_proc_2(Strategy, SharingTable, PredId, ProcId,
         ModuleInfo, PredInfo, !ProcInfo, ReuseAs, !IO):- 
     io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 

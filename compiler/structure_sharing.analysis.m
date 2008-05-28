@@ -1216,7 +1216,7 @@ handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
     (
         AnyResults = [],
         Answer = top(FuncInfo, Call) : structure_sharing_answer,
-        record_result(DepModuleName, DepFuncId, Call, Answer, suboptimal,
+        record_result(DepModuleName, DepFuncId, Call, Answer, optimal,
             !AnalysisInfo),
         % Record a request as well.
         record_request(analysis_name, DepModuleName, DepFuncId, Call,

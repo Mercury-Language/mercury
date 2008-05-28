@@ -98,6 +98,10 @@
 :- module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- interface.
 
+:- import_module hlds.hlds_goal.
+
+%-----------------------------------------------------------------------------%
+
 :- pred determine_reuse(reuse_strategy::in, module_info::in, proc_info::in,
     dead_cell_table::in, hlds_goal::in, hlds_goal::out, reuse_as::out,
     io::di, io::uo) is det.
@@ -120,6 +124,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module svmulti_map.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

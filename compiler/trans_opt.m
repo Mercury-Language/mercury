@@ -107,6 +107,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -144,11 +145,10 @@ write_trans_opt_file(Module, !IO) :-
         % into the .trans_opt file. 
         %
         module_info_predids(PredIds, Module, _Module),
-        module_info_get_structure_reuse_map(Module, ReuseMap), 
-        map.values(ReuseMap, ReuseResults), 
-        assoc_list.keys(ReuseResults, ReusePredProcIds), 
-        list.map(get_pred_id, ReusePredProcIds, ReusePredIds), 
-        list.delete_elems(PredIds, ReusePredIds, PredIdsNoReuseVersions), 
+        PredIdsSet = set.from_list(PredIds),
+        module_info_get_structure_reuse_preds(Module, ReusePredsSet),
+        PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),
+        PredIdsNoReuseVersions = set.to_sorted_list(PredIdsNoReusePredsSet),
 
         list.foldl(termination.write_pred_termination_info(Module),
             PredIdsNoReuseVersions, !IO),

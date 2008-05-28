@@ -1570,8 +1570,8 @@ prepare_intermodule_analysis(!HLDS, !IO) :-
     LocalModuleNames = set.from_list(SymNames),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
-    analysis.prepare_intermodule_analysis(ModuleNames, LocalModuleNames,
-        AnalysisInfo0, AnalysisInfo, !IO),
+    analysis.prepare_intermodule_analysis(ThisModuleName, ModuleNames,
+        LocalModuleNames, AnalysisInfo0, AnalysisInfo, !IO),
     module_info_set_analysis_info(AnalysisInfo, !HLDS).
 
 :- pred mercury_compile_after_front_end(list(module_name)::in,

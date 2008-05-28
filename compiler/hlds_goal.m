@@ -1042,7 +1042,11 @@
                                 % Which of the fields of the cell to be
                                 % reused already contain the correct value.
             )
-    ;       reuse_call(is_conditional).
+    ;       reuse_call(
+                is_conditional,
+                list(int)       % Which arguments must not be clobbered;
+                                % determines the reuse version to call.
+            ).
 
     % Used to represent the fact whether a reuse opportunity is either
     % always safe (unconditional_reuse) or involves a reuse condition to
@@ -2497,7 +2501,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
 rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
     (
         ( ShortReuseDesc0 = cell_died
-        ; ShortReuseDesc0 = reuse_call(_)
+        ; ShortReuseDesc0 = reuse_call(_, _)
         ),
         ShortReuseDesc = ShortReuseDesc0
     ;

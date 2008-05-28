@@ -241,7 +241,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % prepare_intermodule_analysis(ModuleNames, LocalModuleNames, !Info, !IO)
+    % prepare_intermodule_analysis(ThisModuleName, ModuleNames,
+    %   LocalModuleNames, !Info, !IO)
     %
     % This predicate should be called before any pass begins to use the
     % analysis framework.  It ensures that all the analysis files 
@@ -249,7 +250,7 @@
     % all modules that are directly or indirectly imported by the module being
     % analysed.  LocalModuleNames is the set of non-"library" modules.
     %
-:- pred prepare_intermodule_analysis(set(module_name)::in,
+:- pred prepare_intermodule_analysis(module_name::in, set(module_name)::in,
     set(module_name)::in, analysis_info::in, analysis_info::out,
     io::di, io::uo) is det.
 
@@ -295,7 +296,6 @@
 :- import_module libs.compiler_util.
 
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module univ.
 
@@ -582,12 +582,17 @@ record_result_in_analysis_map(ModuleName, FuncId,
 %-----------------------------------------------------------------------------%
 
 lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
-    map.lookup(Info ^ analysis_requests, ModuleName, ModuleRequests),
-    ( CallPatterns0 = ModuleRequests ^ elem(AnalysisName) ^ elem(FuncId) ->
-        CallPatterns = list.filter_map(
+    (
+        map.search(Info ^ analysis_requests, ModuleName, ModuleRequests),
+        CallPatterns0 = ModuleRequests ^ elem(AnalysisName) ^ elem(FuncId)
+    ->
+        CallPatterns1 = list.filter_map(
             (func(analysis_request(Call0)) = Call is semidet :-
                 univ(Call) = univ(Call0)
-            ), CallPatterns0)
+            ), CallPatterns0),
+        % Requests simply get appended to `.request' files so when we read them
+        % back in there may be duplicates.
+        list.sort_and_remove_dups(CallPatterns1, CallPatterns)
     ;
         CallPatterns = []
     ).
@@ -971,8 +976,15 @@ combine_imdg_lists(ArcsA, ArcsB, ArcsA ++ ArcsB).
 
 %-----------------------------------------------------------------------------%
 
-prepare_intermodule_analysis(ModuleNames, LocalModuleNames, !Info, !IO) :-
+prepare_intermodule_analysis(ThisModuleName, ModuleNames, LocalModuleNames,
+        !Info, !IO) :-
     set.fold2(ensure_analysis_files_loaded, ModuleNames, !Info, !IO),
+
+    % Read in requests for the module being analysed.
+    read_module_analysis_requests(!.Info, ThisModuleName, ThisModuleRequests,
+        !IO),
+    !Info ^ analysis_requests ^ elem(ThisModuleName) := ThisModuleRequests,
+
     !Info ^ local_module_names := LocalModuleNames.
 
 :- pred ensure_analysis_files_loaded(module_name::in,

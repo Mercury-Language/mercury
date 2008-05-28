@@ -16,7 +16,11 @@
 
 :- module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- interface.
-    
+
+:- import_module hlds.hlds_goal.
+
+%-----------------------------------------------------------------------------%
+
     % Using the sharing table listing all the structure sharing of all 
     % the known procedures, return a table of all data structures that may
     % become available for reuse (i.e. cells that may become dead) of a given

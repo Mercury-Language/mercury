@@ -150,6 +150,8 @@
     ;       newpred_type_subst(tvarset, type_subst)
     ;       newpred_unused_args(list(int))
     ;       newpred_parallel_args(list(int))
+    ;       newpred_structure_reuse(int, list(int))     % Mode, no-clobber
+                                                        % arguments.
     ;       newpred_distance_granularity(int).          % Distance
 
 %-----------------------------------------------------------------------------%
@@ -615,11 +617,15 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         ),
         list_to_string(SubstToString, TypeSubst, PredIdStr)
     ;
-        NewPredId = newpred_unused_args(Args),
+        ( NewPredId = newpred_unused_args(Args)
+        ; NewPredId = newpred_parallel_args(Args)
+        ),
         list_to_string(int_to_string, Args, PredIdStr)
     ;
-        NewPredId = newpred_parallel_args(Args),
-        list_to_string(int_to_string, Args, PredIdStr)
+        NewPredId = newpred_structure_reuse(ModeNum, Args),
+        int_to_string(ModeNum, ModeStr),
+        list_to_string(int_to_string, Args, ArgsStr),
+        PredIdStr = ModeStr ++ "__" ++ ArgsStr
     ;
         NewPredId = newpred_distance_granularity(Distance),
         int_to_string(Distance, PredIdStr)
