@@ -521,6 +521,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
 simplify_process_clause_body_goal(!Goal, !Info) :-
     some [!Simplifications] (
         simplify_info_get_simplifications(!.Info, !:Simplifications),
+        OriginalSimplifications = !.Simplifications,
         simplify_info_get_instmap(!.Info, InstMap0),
         (
             ( simplify_do_common_struct(!.Info)
@@ -533,6 +534,7 @@ simplify_process_clause_body_goal(!Goal, !Info) :-
 
             do_process_clause_body_goal(!Goal, !Info),
 
+            !:Simplifications = OriginalSimplifications,
             !Simplifications ^ do_warn_simple_code := no,
             !Simplifications ^ do_warn_duplicate_calls := no,
             !Simplifications ^ do_common_struct := no,
