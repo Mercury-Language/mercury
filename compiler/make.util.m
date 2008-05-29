@@ -961,11 +961,9 @@ get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
         get_target_timestamp_2(Search, Target, MaybeTimestamp, !Info, !IO)
     ).
 
-    % Special treatment for `.analysis' files.  If the `.analysis' file is
-    % valid then we look at the corresponding `.analysis_date' file to get the
-    % last time that the module was actually analysed (the file may have been
-    % rewritten or had it's status changed while analysing other modules).
-    % If the `.analysis' file is invalid then we treat it as out of date.
+    % Special treatment for `.analysis' files.  If the corresponding
+    % `.analysis_status' file says the `.analysis' file is invalid then we
+    % treat it as out of date.
     %
 :- pred get_target_timestamp_analysis_registry(bool::in, module_name::in,
     maybe_error(timestamp)::out, make_info::in, make_info::out,
@@ -973,36 +971,17 @@ get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
 
 get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
         !Info, !IO) :-
-    analysis.read_module_overall_status(mmc, ModuleName, MaybeStatus, !IO),
+    analysis.read_module_overall_status(mmc, ModuleName, Status, !IO),
     (
-        MaybeStatus = yes(Status),
-        (
-            ( Status = optimal
-            ; Status = suboptimal
-            ),
-            get_timestamp_file_timestamp(
-                target_file(ModuleName, module_target_analysis_registry),
-                MaybeTimestamp0, !Info, !IO),
-            (
-                MaybeTimestamp0 = ok(_),
-                MaybeTimestamp = MaybeTimestamp0
-            ;
-                MaybeTimestamp0 = error(_),
-                % If the `.analysis' file exists with status `optimal' or
-                % `suboptimal' but there is no `.analysis_date' file, then the
-                % `.analysis' file must just have been created while analysing
-                % a different module.
-                MaybeTimestamp = ok(oldest_timestamp)
-            )
-        ;
-            Status = invalid,
-            MaybeTimestamp = error("invalid module")
-        )
-    ;
-        MaybeStatus = no,
+        ( Status = optimal
+        ; Status = suboptimal
+        ),
         get_target_timestamp_2(Search,
             target_file(ModuleName, module_target_analysis_registry),
             MaybeTimestamp, !Info, !IO)
+    ;
+        Status = invalid,
+        MaybeTimestamp = error("invalid module")
     ).
 
 :- pred get_target_timestamp_2(bool::in, target_file::in,

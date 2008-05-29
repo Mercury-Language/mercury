@@ -853,44 +853,27 @@ lookup_module_imports(ModuleDeps, ModuleName) = ModuleImports :-
 modules_needing_reanalysis(_, [], [], [], !IO).
 modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
         InvalidModules, SuboptimalModules, !IO) :-
-    read_module_overall_status(mmc, Module, MaybeModuleStatus, !IO),
+    read_module_overall_status(mmc, Module, ModuleStatus, !IO),
     (
-        MaybeModuleStatus = yes(ModuleStatus),
-        (
-            ModuleStatus = optimal,
-            modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
-                InvalidModules, SuboptimalModules, !IO)
-        ;
-            ModuleStatus = suboptimal,
-            modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
-                InvalidModules, SuboptimalModules0, !IO),
-            (
-                ReanalyseSuboptimal = yes,
-                SuboptimalModules = [Module | SuboptimalModules0]
-            ;
-                ReanalyseSuboptimal = no,
-                SuboptimalModules = SuboptimalModules0
-            )
-        ;
-            ModuleStatus = invalid,
-            modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
-                InvalidModules0, SuboptimalModules, !IO),
-            InvalidModules = [Module | InvalidModules0]
-        )
-    ;
-        MaybeModuleStatus = no,
-        % The analysis file does not exist.  For some reason it wasn't created
-        % in this or an earlier pass (and hence probably won't be created no
-        % matter how many times we repeat the analysis).
-        %
-        % XXX: Currently modules which are basically empty do not get
-        % `.analysis' files produced.  After that is fixed we can probably
-        % consider modules with missing `.analysis' files to be invalid.
-        %
-        % XXX: MaybeModuleStatus could be `no' for some other reason
-        %
+        ModuleStatus = optimal,
         modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
             InvalidModules, SuboptimalModules, !IO)
+    ;
+        ModuleStatus = suboptimal,
+        modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
+            InvalidModules, SuboptimalModules0, !IO),
+        (
+            ReanalyseSuboptimal = yes,
+            SuboptimalModules = [Module | SuboptimalModules0]
+        ;
+            ReanalyseSuboptimal = no,
+            SuboptimalModules = SuboptimalModules0
+        )
+    ;
+        ModuleStatus = invalid,
+        modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
+            InvalidModules0, SuboptimalModules, !IO),
+        InvalidModules = [Module | InvalidModules0]
     ).
 
 :- pred reset_analysis_registry_dependency_status(module_name::in,

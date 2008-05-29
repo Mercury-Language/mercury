@@ -279,7 +279,7 @@
     % Attempt to read the overall status from a module `.analysis' file.
     %
 :- pred read_module_overall_status(Compiler::in, module_name::in,
-    maybe(analysis_status)::out, io::di, io::uo) is det
+    analysis_status::out, io::di, io::uo) is det
     <= compiler(Compiler).
 
 :- pred enable_debug_messages(bool::in, io::di, io::uo) is det.
@@ -294,6 +294,8 @@
 :- import_module analysis.file.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module parse_tree.            % XXX unwanted dependency
+:- import_module parse_tree.modules.    % XXX unwanted dependency
 
 :- import_module map.
 :- import_module string.
@@ -1002,8 +1004,9 @@ ensure_old_module_analysis_results_loaded(ModuleName, !Info, !IO) :-
         % sanity check
         map.lookup(!.Info ^ module_statuses, ModuleName, _StatusMustExist)
     ;
-        read_module_analysis_results(!.Info, ModuleName,
-            ModuleStatus, ModuleResults, !IO),
+        analysis.read_module_overall_status(!.Info ^ compiler, ModuleName,
+            ModuleStatus, !IO),
+        read_module_analysis_results(!.Info, ModuleName, ModuleResults, !IO),
         !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus,
         !Info ^ old_analysis_results ^ elem(ModuleName) := ModuleResults
     ).
@@ -1039,7 +1042,7 @@ write_analysis_files(Compiler, ModuleInfo, ModuleName, ImportedModuleNames,
         !Info, !IO) :-
     % The current module was just compiled so we set its status to the
     % lub of all the new analysis results generated.
-    ( NewResults = !.Info ^ new_analysis_results ^ elem(ModuleName) ->
+    ( map.search(!.Info ^ new_analysis_results, ModuleName, NewResults) ->
         ModuleStatus = lub_result_statuses(NewResults)
     ; 
         ModuleStatus = optimal,
@@ -1065,7 +1068,7 @@ write_analysis_files(Compiler, ModuleInfo, ModuleName, ImportedModuleNames,
     % Write the results for all the modules we know of.  For the module being
     % compiled, the analysis results may have changed. For other modules,
     % their overall statuses may have changed.
-    write_local_modules(!.Info, write_module_analysis_results,
+    write_local_modules(!.Info, write_module_status_and_analysis_results,
         !.Info ^ old_analysis_results, !IO),
 
     % Write the requests for the imported modules.
@@ -1083,16 +1086,7 @@ write_analysis_files(Compiler, ModuleInfo, ModuleName, ImportedModuleNames,
     % analysed.
     module_name_to_write_file_name(Compiler, ModuleName, ".analysis_date",
         TimestampFileName, !IO),
-    io.open_output(TimestampFileName, Result, !IO),
-    (
-        Result = ok(OutputStream),
-        io.write_string(OutputStream, "\n", !IO),
-        io.close_output(OutputStream, !IO)
-    ;
-        Result = error(IOError),
-        unexpected(this_file,
-            "write_analysis_files: " ++ io.error_message(IOError))
-    ).
+    touch_datestamp(TimestampFileName, !IO).
 
 :- type write_module_analysis_map(T) ==
     (pred(analysis_info, module_name, module_analysis_map(T), io, io)).
@@ -1123,19 +1117,23 @@ write_local_modules_2(Info, Write, ModuleName, ModuleResults, !IO) :-
         ), !IO)
     ).
 
-:- pred write_module_analysis_results(analysis_info::in, module_name::in,
-    module_analysis_map(some_analysis_result)::in, io::di, io::uo) is det.
+:- pred write_module_status_and_analysis_results(analysis_info::in,
+    module_name::in, module_analysis_map(some_analysis_result)::in,
+    io::di, io::uo) is det.
 
-write_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
+write_module_status_and_analysis_results(Info, ModuleName, ModuleResults,
+        !IO) :-
     ModuleStatus = Info ^ module_statuses ^ det_elem(ModuleName),
+    analysis.file.write_module_overall_status(Info, ModuleName,
+        ModuleStatus, !IO),
     analysis.file.write_module_analysis_results(Info, ModuleName,
-        ModuleStatus, ModuleResults, !IO).
+        ModuleResults, !IO).
 
 %-----------------------------------------------------------------------------%
 
-read_module_overall_status(Compiler, ModuleName, MaybeModuleStatus, !IO) :-
+read_module_overall_status(Compiler, ModuleName, ModuleStatus, !IO) :-
     analysis.file.read_module_overall_status(Compiler, ModuleName,
-        MaybeModuleStatus, !IO).
+        ModuleStatus, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

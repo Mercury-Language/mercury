@@ -312,11 +312,15 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
         !IO) :-
     ( Info ^ reanalysis_passes > 0 ->
-        analysis.read_module_overall_status(mmc, ModuleName,
-            MaybeAnalysisStatus, !IO),
-        ( MaybeAnalysisStatus = yes(suboptimal) ->
+        analysis.read_module_overall_status(mmc, ModuleName, AnalysisStatus,
+            !IO),
+        (
+            ( AnalysisStatus = suboptimal
+            ; AnalysisStatus = invalid
+            ),
             ForceReanalysis = yes
         ;
+            AnalysisStatus = optimal,
             ForceReanalysis = no
         )
     ;
