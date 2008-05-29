@@ -41,7 +41,7 @@
     % type system to ensure at compile time that you never attempt to use
     % a key from one store to access a different store.
     %
-:- typeclass store(S).
+:- typeclass store(T) where [].
 :- type store(S).
 
 :- instance store(io.state).
@@ -243,7 +243,6 @@
 :- import_module deconstruct.
 :- import_module require.
 
-:- typeclass store(T) where [].
 :- instance store(store(S)) where [].
 :- instance store(io.state) where [].
 
