@@ -314,6 +314,7 @@ cd $root
 # cp stage2.ok/library/*.d stage2/library
 cp stage2.ok/library/*.dep stage2/library
 cp stage2.ok/library/*.dv stage2/library
+cp stage2.ok/library/*.int0 stage2/library
 cp stage2.ok/library/*.int3 stage2/library
 cp stage2.ok/library/*.date3 stage2/library
 cp stage2.ok/library/*.int stage2/library
@@ -327,6 +328,7 @@ cp stage2.ok/library/*.mh stage2/library
 # cp stage2.ok/mdbcomp/*.d stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.dep stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.dv stage2/mdbcomp
+cp stage2.ok/mdbcomp/*.int0 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int3 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.date3 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int stage2/mdbcomp
@@ -336,6 +338,7 @@ cp stage2.ok/mdbcomp/*.mh stage2/mdbcomp
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.dv stage2/compiler
+cp stage2.ok/compiler/*.int0 stage2/compiler
 cp stage2.ok/compiler/*.int3 stage2/compiler
 cp stage2.ok/compiler/*.date3 stage2/compiler
 cp stage2.ok/compiler/*.int stage2/compiler

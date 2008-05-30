@@ -46,6 +46,7 @@ Options:
 # If you change this, you will also need to change the files indicated
 # in scripts/c2init.in.
 STD_LIB_NAME=mer_std
+MDBCOMP_LIB_NAME=mer_mdbcomp
 
 set -x
 
@@ -168,6 +169,18 @@ touch stage2/compiler/*.c
 
 sleep 2
 
+touch stage2/library/*.int0
+touch stage2/mdbcomp/*.int0
+touch stage2/compiler/*.int0
+
+sleep 2
+
+touch stage2/library/*.date0
+touch stage2/mdbcomp/*.date0
+touch stage2/compiler/*.date0
+
+sleep 2
+
 touch stage2/library/*.int3
 touch stage2/mdbcomp/*.int3
 touch stage2/compiler/*.int3
@@ -208,9 +221,9 @@ touch stage2/compiler/*.o
 
 # Rebuild the stage2 library and compiler from the components already there.
 
-/bin/rm -f stage2/library/lib$STD_LIB_NAME.a stage2/library/lib$STD_LIB_NAME.so
-/bin/rm -f stage2/mdbcomp/lib$STD_LIB_NAME.a stage2/library/lib$STD_LIB_NAME.so
-/bin/rm -f stage2/compiler/mercury_compile
+/bin/rm -f stage2/library/lib$STD_LIB_NAME.{a,so}
+/bin/rm -f stage2/mdbcomp/lib$MDBCOMP_LIB_NAME.{a,so}
+/bin/rm -f stage2/compiler/{top_level,mercury_compile}
 
 set -x
 
@@ -265,32 +278,24 @@ fi
 if "$bootcheck"
 then
 
-    # Rebuild the stage3 library and compiler from scratch
+    # Rebuild the stage3 library, mdbcomp and compiler from scratch
 
-    /bin/rm -f stage3/library/*.c
-    /bin/rm -f stage3/library/*.c_date
-    /bin/rm -f stage3/library/*.d
-    /bin/rm -f stage3/library/*.optdate
-    /bin/rm -f stage3/library/*.trans_opt_date
-    /bin/rm -f stage3/library/*.date3
-    /bin/rm -f stage3/library/*.date
-    /bin/rm -f stage3/library/*.opt
-    /bin/rm -f stage3/library/*.trans_opt
-    /bin/rm -f stage3/library/*.int3
-    /bin/rm -f stage3/library/*.int2
-    /bin/rm -f stage3/library/*.int
-    /bin/rm -f stage3/compiler/*.c
-    /bin/rm -f stage3/compiler/*.c_date
-    /bin/rm -f stage3/compiler/*.d
-    /bin/rm -f stage3/compiler/*.optdate
-    /bin/rm -f stage3/compiler/*.trans_opt_date
-    /bin/rm -f stage3/compiler/*.date3
-    /bin/rm -f stage3/compiler/*.date
-    /bin/rm -f stage3/compiler/*.opt
-    /bin/rm -f stage3/compiler/*.trans_opt
-    /bin/rm -f stage3/compiler/*.int3
-    /bin/rm -f stage3/compiler/*.int2
-    /bin/rm -f stage3/compiler/*.int
+    for dir in library mdbcomp compiler
+    do
+        /bin/rm -f stage3/$dir/*.c
+        /bin/rm -f stage3/$dir/*.c_date
+        /bin/rm -f stage3/$dir/*.d
+        /bin/rm -f stage3/$dir/*.optdate
+        /bin/rm -f stage3/$dir/*.trans_opt_date
+        /bin/rm -f stage3/$dir/*.date3
+        /bin/rm -f stage3/$dir/*.date
+        /bin/rm -f stage3/$dir/*.opt
+        /bin/rm -f stage3/$dir/*.trans_opt
+        /bin/rm -f stage3/$dir/*.int3
+        /bin/rm -f stage3/$dir/*.int2
+        /bin/rm -f stage3/$dir/*.int0
+        /bin/rm -f stage3/$dir/*.int
+    done
 
     if (cd stage3 ; mmake $mmake_opts depend_library depend_compiler)
     then
@@ -341,8 +346,7 @@ then
             for stage3file in stage3/$dir/*.c
             do
                 stage2file="stage2.$basis/$dir/`basename $file`"
-                diff -u $stage2file $stage3file >> $outfile ||
-                    founddiff=true
+                diff -u $stage2file $stage3file >> $outfile || founddiff=true
             done
         done
 
