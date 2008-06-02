@@ -3945,9 +3945,9 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     list.filter(key_var_is_of_dummy_type(ModuleInfo, VarTypes), InArgInfos,
         _DummyInArgInfos, RealInArgInfos),
     var_arg_info_to_lval(RealInArgInfos, RealInArgLocs),
-    list.append(RealStackVarLocs, RealInArgLocs, AllRealLocs),
-    var_locn_place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
-        VarLocnInfo0, VarLocnInfo),
+    AllRealLocs = RealStackVarLocs ++ RealInArgLocs,
+    AllLocs = DummyStackVarLocs ++ AllRealLocs,
+    var_locn_place_vars(ModuleInfo, AllLocs, Code, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI),
     assoc_list.values(AllRealLocs, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs).

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -99,7 +99,8 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     % Figure out what the call model is.
     call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
 
-    % Make the call.
+    % Make the call. Note that the construction of CallCode will be moved
+    % *after* the code that computes ReturnLiveLvalues.
     get_module_info(!.CI, ModuleInfo),
     Address = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, yes),
     get_next_label(ReturnLabel, !CI),

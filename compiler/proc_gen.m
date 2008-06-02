@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -418,8 +418,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         ),
         NeedsAllNames = eff_trace_needs_all_var_names(ModuleInfo, PredInfo,
             ProcInfo, TraceLevel, TraceSuppress),
-        proc_info_get_maybe_deep_profile_info(ProcInfo,
-            MaybeHLDSDeepInfo),
+        proc_info_get_maybe_deep_profile_info(ProcInfo, MaybeHLDSDeepInfo),
         (
             MaybeHLDSDeepInfo = yes(HLDSDeepInfo),
             DeepProfInfo = generate_deep_prof_info(ProcInfo, HLDSDeepInfo),

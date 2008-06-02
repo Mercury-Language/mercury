@@ -608,8 +608,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     (
         MaybeFromFullSlot = yes(CallFromFullSlot),
-        stackref_to_string(CallFromFullSlot,
-            CallFromFullSlotStr),
+        stackref_to_string(CallFromFullSlot, CallFromFullSlotStr),
         TraceStmt1 =
             "\t\t" ++ CallFromFullSlotStr ++ " = MR_trace_from_full;\n" ++
             "\t\tif (MR_trace_from_full) {\n" ++
@@ -623,11 +622,10 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
         proc_does_not_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
-    MD = proc_may_not_duplicate,
     TraceCode1 = node([
         llds_instr(foreign_proc_code([], TraceComponents1,
-            proc_will_not_call_mercury, no, no, MaybeLayoutLabel, no, yes, MD),
-            "")
+            proc_will_not_call_mercury, no, no, MaybeLayoutLabel,
+            no, yes, proc_may_not_duplicate), "")
     ]),
     (
         MaybeMaxfrLval = yes(MaxfrLval),
@@ -647,7 +645,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
             TraceStmt3)],
         TraceCode3 = node([
             llds_instr(foreign_proc_code([], TraceComponents3,
-                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
+                proc_will_not_call_mercury, no, no, no, no, yes,
+                proc_may_not_duplicate), "")
         ])
     ;
         MaybeCallTableLval = no,
@@ -909,16 +908,15 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         MaybeTraceInfo = yes(TraceInfo),
         TraceInfo ^ redo_label = yes(RedoLabel)
     ->
-        % The layout information for the redo event is the same as
-        % for the fail event; all the non-clobbered inputs in their
-        % stack slots. It is convenient to generate this common layout
-        % when the code generator state is set up for the fail event;
-        % generating it for the redo event would be much harder.
-        % On the other hand, the address of the layout structure
-        % for the redo event should be put into its fixed stack slot
-        % at procedure entry. Therefore setup reserves a label
-        % for the redo event, whose layout information is filled in
-        % when we get to the fail event.
+        % The layout information for the redo event is the same as for the
+        % fail event; all the non-clobbered inputs in their stack slots.
+        % It is convenient to generate this common layout when the code
+        % generator state is set up for the fail event; generating it for
+        % the redo event would be much harder. On the other hand, the address
+        % of the layout structure for the redo event should be put into its
+        % fixed stack slot at procedure entry. Therefore setup reserves a label
+        % for the redo event, whose layout information is filled in when
+        % we get to the fail event.
         add_trace_layout_for_label(RedoLabel, Context, port_redo,
             HideEvent, Path, no, LayoutLabelInfo, !CI)
     ;
@@ -927,7 +925,6 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     TraceComponents = [foreign_proc_raw_code(cannot_branch_away,
         proc_does_not_affect_liveness, live_lvals_info(LiveLvalSet),
         TraceStmt)],
-    MD = proc_may_not_duplicate,
     TraceCode =
         node([
             llds_instr(label(Label),
@@ -938,7 +935,8 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 % pair is preceded by another label, and this way we can
                 % eliminate this other label.
             llds_instr(foreign_proc_code([], TraceComponents,
-                proc_may_call_mercury, no, no, yes(Label), no, yes, MD), "")
+                proc_may_call_mercury, no, no, yes(Label), no, yes,
+                proc_may_not_duplicate), "")
         ]),
     Code = tree(ProduceCode, TraceCode).
 
