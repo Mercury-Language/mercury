@@ -91,47 +91,49 @@
 
 %--------------------------------------------------------------------------%
 
-:- type stack(T) == list(T).
+:- type stack(T)
+    --->    stack(list(T)).
 
-stack.init([]).
+stack.init(stack([])).
 
-stack.is_empty([]).
+stack.is_empty(stack([])).
 
 stack.is_full(_) :-
 	semidet_fail.
 
-stack.push(Stack, Elem, [Elem | Stack]).
+stack.push(stack(Elems), Elem, stack([Elem | Elems])).
 
 stack.push_list(Stack, [], Stack).
 stack.push_list(Stack0, [Elem | Elems], Stack1) :-
 	stack.push(Stack0, Elem, Stack2),
 	stack.push_list(Stack2, Elems, Stack1).
 
-stack.top([Elem | _], Elem).
+stack.top(stack([Elem | _]), Elem).
 
 stack.top_det(Stack, Elem) :-
 	(
-        Stack = [Elem | _]
+        Stack = stack([Elem | _])
 	;
-        Stack = [],
+        Stack = stack([]),
 		error("stack.top_det: top of empty stack")
 	).
 
-stack.pop([Elem | Stack], Elem, Stack).
+stack.pop(stack([Elem | Elems]), Elem, stack(Elems)).
 
 stack.pop_det(Stack0, Elem, Stack) :-
 	(
-        Stack0 = [Elem | Stack]
+        Stack0 = stack([Elem | Elems]),
+        Stack = stack(Elems)
 	;
-        Stack0 = [],
+        Stack0 = stack([]),
 		error("stack.pop_det: pop from empty stack")
 	).
 
 stack.det_pop(Stack0, Elem, Stack) :-
 	stack.pop_det(Stack0, Elem, Stack).
 
-stack.depth(Stack, Depth) :-
-	list.length(Stack, Depth).
+stack.depth(stack(Elems), Depth) :-
+	list.length(Elems, Depth).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%

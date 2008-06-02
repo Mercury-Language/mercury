@@ -269,24 +269,25 @@
 :- import_module pair.
 :- import_module require.
 
-:- type bag(T)      ==  map(T, int).
+:- type bag(T)
+    --->    bag(map(T, int)).
 
 %---------------------------------------------------------------------------%
 
-bag.init(Bag) :-
+bag.init(bag(Bag)) :-
     map.init(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.count(Bag) = list.foldl(int.plus, map.values(Bag), 0).
+bag.count(bag(Bag)) = list.foldl(int.plus, map.values(Bag), 0).
 
 %---------------------------------------------------------------------------%
 
-bag.count_unique(Bag) = map.count(Bag).
+bag.count_unique(bag(Bag)) = map.count(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.insert(Bag0, Item, Bag) :-
+bag.insert(bag(Bag0), Item, bag(Bag)) :-
     ( map.search(Bag0, Item, Count0) ->
         Count = Count0 + 1
     ;
@@ -306,7 +307,7 @@ bag.insert_set(Bag0, Set, Bag) :-
     % XXX We should exploit the sortedness of List.
     bag.insert_list(Bag0, List, Bag).
 
-bag.member(M, Bag) :-
+bag.member(M, bag(Bag)) :-
     map.search(Bag, M, _Occurrences).
 
 bag.member(OutVal, InBag, OutBag) :-
@@ -324,7 +325,7 @@ bag.from_set(Set, Bag) :-
     % XXX We should exploit the sortedness of List.
     bag.insert_list(Bag0, List, Bag).
 
-bag.to_list(Bag, List) :-
+bag.to_list(bag(Bag), List) :-
     map.to_assoc_list(Bag, AssocList),
     bag.to_list_2(AssocList, List).
 
@@ -340,13 +341,13 @@ bag.to_list_2([X - Int | Xs ], Out) :-
         Out = [X | Out0]
     ).
 
-bag.to_assoc_list(Bag, AssocList) :-
+bag.to_assoc_list(bag(Bag), AssocList) :-
     map.to_assoc_list(Bag, AssocList).
 
-bag.to_list_without_duplicates(Bag, List) :-
+bag.to_list_without_duplicates(bag(Bag), List) :-
     map.keys(Bag, List).
 
-bag.to_set_without_duplicates(Bag, Set) :-
+bag.to_set_without_duplicates(bag(Bag), Set) :-
     map.keys(Bag, List),
     set.sorted_list_to_set(List, Set).
 
@@ -359,7 +360,7 @@ bag.delete(Bag0, Item, Bag) :-
         Bag = Bag0
     ).
 
-bag.remove(Bag0, Item, Bag) :-
+bag.remove(bag(Bag0), Item, bag(Bag)) :-
     map.search(Bag0, Item, Count0),
     ( Count0 > 1 ->
         Count = Count0 - 1,
@@ -397,20 +398,20 @@ bag.det_remove_set(Bag0, Set, Bag) :-
         % XXX We should exploit the sortedness of List.
     bag.det_remove_list(Bag0, List, Bag).
 
-bag.remove_all(Bag0, Item, Bag) :-     % semidet
+bag.remove_all(bag(Bag0), Item, bag(Bag)) :-     % semidet
     map.remove(Bag0, Item, _Val, Bag).
 
-bag.delete_all(Bag0, Item, Bag) :- % det
+bag.delete_all(bag(Bag0), Item, bag(Bag)) :- % det
     map.delete(Bag0, Item, Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.contains(Bag, Item) :-
+bag.contains(bag(Bag), Item) :-
     map.contains(Bag, Item).
 
 %---------------------------------------------------------------------------%
 
-bag.count_value(Bag, Item, Count) :-
+bag.count_value(bag(Bag), Item, Count) :-
     ( map.search(Bag, Item, Count0) ->
         Count = Count0
     ;
@@ -419,7 +420,7 @@ bag.count_value(Bag, Item, Count) :-
 
 %---------------------------------------------------------------------------%
 
-bag.subtract(Bag0, SubBag, Bag) :-
+bag.subtract(bag(Bag0), bag(SubBag), bag(Bag)) :-
     ( map.remove_smallest(SubBag, SubKey, SubVal, SubBag0) ->
         ( map.search(Bag0, SubKey, Val) ->
             NewVal = Val - SubVal,
@@ -431,12 +432,12 @@ bag.subtract(Bag0, SubBag, Bag) :-
         ;
             Bag1 = Bag0
         ),
-        bag.subtract(Bag1, SubBag0, Bag)
+        bag.subtract(bag(Bag1), bag(SubBag0), bag(Bag))
     ;
         Bag = Bag0
     ).
 
-bag.union(A, B, Out) :-
+bag.union(bag(A), bag(B), bag(Out)) :-
     ( map.remove_smallest(B, Key, BVal, B0) ->
         ( map.search(A, Key, AVal) ->
             NewVal = AVal + BVal,
@@ -444,7 +445,7 @@ bag.union(A, B, Out) :-
         ;
             map.det_insert(A, Key, BVal, A0)
         ),
-        bag.union(A0, B0, Out)
+        bag.union(bag(A0), bag(B0), bag(Out))
     ;
         Out = A
     ).
@@ -456,7 +457,7 @@ bag.intersect(A, B, Out) :-
 :- pred bag.intersect_2(bag(T)::in, bag(T)::in, bag(T)::in, bag(T)::out)
     is det.
 
-bag.intersect_2(A, B, Out0, Out) :-
+bag.intersect_2(bag(A), bag(B), bag(Out0), bag(Out)) :-
     ( map.remove_smallest(A, Key, AVal,A0) ->
         ( map.search(B, Key, BVal) ->
             int.min(AVal, BVal, Val),
@@ -464,20 +465,20 @@ bag.intersect_2(A, B, Out0, Out) :-
         ;
             Out1 = Out0
         ),
-        bag.intersect_2(A0, B, Out1, Out)
+        bag.intersect_2(bag(A0), bag(B), bag(Out1), bag(Out))
     ;
         Out = Out0
     ).
 
-bag.intersect(A, B) :-
+bag.intersect(bag(A), bag(B)) :-
     map.remove_smallest(A, Key, _AVal,A0),
     ( map.contains(B, Key) ->
         true
     ;
-        bag.intersect(A0, B)
+        bag.intersect(bag(A0), bag(B))
     ).
 
-bag.least_upper_bound(A, B, Out) :-
+bag.least_upper_bound(bag(A), bag(B), bag(Out)) :-
     ( map.remove_smallest(B, Key, BVal, B0) ->
         ( map.search(A, Key, AVal) ->
             int.max(AVal, BVal, NewVal),
@@ -485,7 +486,7 @@ bag.least_upper_bound(A, B, Out) :-
         ;
             map.det_insert(A, Key, BVal, A0)
         ),
-        bag.least_upper_bound(A0, B0, Out)
+        bag.least_upper_bound(bag(A0), bag(B0), bag(Out))
     ;
         Out = A
     ).
@@ -498,12 +499,12 @@ bag.is_subbag(SubBag, BigBag) :-
 
 %---------------------------------------------------------------------------%
 
-bag.is_empty(Bag) :-
+bag.is_empty(bag(Bag)) :-
     map.is_empty(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.remove_smallest(Bag0, Item, Bag) :-
+bag.remove_smallest(bag(Bag0), Item, bag(Bag)) :-
     map.remove_smallest(Bag0, Item, Val, Bag1),
     ( Val > 1 ->
         NewVal = Val - 1,
@@ -521,20 +522,20 @@ bag.remove_smallest(Bag0, Item, Bag) :-
     % :- pred bag.subset_compare(comparison_result, bag(T), bag(T)).
     % :- mode bag.subset_compare(out, in, in) is semidet.
     %
-bag.subset_compare(Res, A, B) :-
+bag.subset_compare(Res, bag(A), bag(B)) :-
     ( map.remove_smallest(A, Key, AVal, A0) ->
         ( map.remove(B, Key, BVal, B0) ->
             compare(ValRes, AVal, BVal),
             (
                 ValRes = (>),
-                bag.is_subbag(B0, A0),
+                bag.is_subbag(bag(B0), bag(A0)),
                 Res = (>)
             ;
                 ValRes = (=),
-                bag.subset_compare(Res, A0, B0)
+                bag.subset_compare(Res, bag(A0), bag(B0))
             ;
                 ValRes = (<),
-                bag.is_subbag(A0, B0),
+                bag.is_subbag(bag(A0), bag(B0)),
                 Res = (<)
             )
         ;
