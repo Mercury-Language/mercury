@@ -113,6 +113,10 @@
     %
 :- pred get_globals(code_info::in, globals::out) is det.
 
+    % Get the exprn_opts.
+    %
+:- pred get_exprn_opts(code_info::in, exprn_opts::out) is det.
+
     % Get the HLDS of the entire module.
     %
 :- pred get_module_info(code_info::in, module_info::out) is det.
@@ -311,6 +315,7 @@
     --->    code_info_static(
                 % For the code generation options.
                 cis_globals             :: globals,
+                cis_exprn_opts          :: exprn_opts,
 
                 % The module_info structure - you just never know
                 % when you might need it.
@@ -461,7 +466,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
-    globals.get_options(Globals, Options),
+    ExprnOpts = init_exprn_opts(Globals),
     globals.get_trace_level(Globals, TraceLevel),
     (
         eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
@@ -475,7 +480,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         EffLiveness = Liveness
     ),
     init_var_locn_state(ArgList, EffLiveness, VarSet, VarTypes, StackSlots,
-        FollowVars, Options, VarLocnInfo),
+        FollowVars, VarLocnInfo),
     stack.init(ResumePoints),
     globals.lookup_bool_option(Globals, allow_hijacks, AllowHijack),
     (
@@ -524,6 +529,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     CodeInfo0 = code_info(
         code_info_static(
             Globals,
+            ExprnOpts,
             ModuleInfo,
             PredId,
             ProcId,
@@ -570,6 +576,60 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
         CodeInfo1, CodeInfo).
 
+:- func init_exprn_opts(globals) = exprn_opts.
+
+init_exprn_opts(Globals) = ExprnOpts :-
+    globals.lookup_bool_option(Globals, gcc_non_local_gotos, OptNLG),
+    (
+        OptNLG = yes,
+        NLG = have_non_local_gotos
+    ;
+        OptNLG = no,
+        NLG = do_not_have_non_local_gotos
+    ),
+    globals.lookup_bool_option(Globals, asm_labels, OptASM),
+    (
+        OptASM = yes,
+        ASM = have_asm_labels
+    ;
+        OptASM = no,
+        ASM = do_not_have_asm_labels
+    ),
+    globals.lookup_bool_option(Globals, static_ground_cells, OptSGCell),
+    (
+        OptSGCell = yes,
+        SGCell = have_static_ground_cells
+    ;
+        OptSGCell = no,
+        SGCell = do_not_have_static_ground_cells
+    ),
+    globals.lookup_bool_option(Globals, unboxed_float, OptUBF),
+    (
+        OptUBF = yes,
+        UBF = have_unboxed_floats
+    ;
+        OptUBF = no,
+        UBF = do_not_have_unboxed_floats
+    ),
+    globals.lookup_bool_option(Globals, static_ground_floats, OptSGFloat),
+    (
+        OptSGFloat = yes,
+        SGFloat = have_static_ground_floats
+    ;
+        OptSGFloat = no,
+        SGFloat = do_not_have_static_ground_floats
+    ),
+    globals.lookup_bool_option(Globals, static_code_addresses,
+        OptStaticCodeAddr),
+    (
+        OptStaticCodeAddr = yes,
+        StaticCodeAddrs = have_static_code_addresses
+    ;
+        OptStaticCodeAddr = no,
+        StaticCodeAddrs = do_not_have_static_code_addresses
+    ),
+    ExprnOpts = exprn_opts(NLG, ASM, UBF, SGCell, SGFloat, StaticCodeAddrs).
+
 :- pred init_maybe_trace_info(trace_level::in, globals::in,
     module_info::in, pred_info::in, proc_info::in, trace_slot_info::out,
     code_info::in, code_info::out) is det.
@@ -591,6 +651,7 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
 
 get_globals(CI, CI ^ code_info_static ^ cis_globals).
 get_module_info(CI, CI ^ code_info_static ^ cis_module_info).
+get_exprn_opts(CI, CI ^ code_info_static ^ cis_exprn_opts).
 get_pred_id(CI, CI ^ code_info_static ^ cis_pred_id).
 get_proc_id(CI, CI ^ code_info_static ^ cis_proc_id).
 get_pred_info(CI, CI ^ code_info_static ^ cis_pred_info).
@@ -3660,13 +3721,15 @@ assign_lval_to_var(Var, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo),
     get_module_info(!.CI, ModuleInfo),
-    var_locn_assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
-        VarLocnInfo0, VarLocnInfo),
+    var_locn_assign_lval_to_var(ModuleInfo, Var, Lval,
+        StaticCellInfo, Code, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_const_to_var(Var, ConstRval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn_assign_const_to_var(Var, ConstRval, VarLocnInfo0, VarLocnInfo),
+    get_exprn_opts(!.CI, ExprnOpts),
+    var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval,
+        VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_expr_to_var(Var, Rval, Code, !CI) :-
@@ -3688,8 +3751,9 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
+    get_exprn_opts(!.CI, ExprnOpts),
+    var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
+        Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
         MayUseAtomic, Label, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),

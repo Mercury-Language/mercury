@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,6 @@
 :- module ll_backend.exprn_aux.
 :- interface.
 
-:- import_module libs.options.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -22,16 +21,6 @@
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
-
-:- type exprn_opts
-    --->    nlg_asm_sgt_ubf(
-                non_local_gotos     :: bool,
-                asm_labels          :: bool,
-                static_ground_terms :: bool,
-                unboxed_float       :: bool
-            ).
-
-:- pred init_exprn_opts(option_table::in, exprn_opts::out) is det.
 
     % Determine whether an rval_const can be used as the initializer
     % of a C static constant.
@@ -121,36 +110,22 @@
 
 %-----------------------------------------------------------------------------%
 
-init_exprn_opts(Options, ExprnOpts) :-
-    getopt_io.lookup_bool_option(Options, gcc_non_local_gotos, NLG),
-    getopt_io.lookup_bool_option(Options, asm_labels, ASM),
-    getopt_io.lookup_bool_option(Options, static_ground_terms, SGT),
-    getopt_io.lookup_bool_option(Options, unboxed_float, UBF),
-    ExprnOpts = nlg_asm_sgt_ubf(NLG, ASM, SGT, UBF).
-
 % Determine whether a const (well, what _we_ consider to be a const)
 % is constant as far as the C compiler is concerned -- specifically,
-% determine whether it can be used as the initializer of a C static
-% constant.
+% determine whether it can be used as the initializer of a C static constant.
 
 const_is_constant(llconst_true, _, yes).
 const_is_constant(llconst_false, _, yes).
 const_is_constant(llconst_int(_), _, yes).
 const_is_constant(llconst_foreign(_, _), _, yes).
 const_is_constant(llconst_float(_), ExprnOpts, IsConst) :-
-    ExprnOpts = nlg_asm_sgt_ubf(_NLG, _ASM, StaticGroundTerms, UnboxedFloat),
+    SGFloats = ExprnOpts ^ static_ground_floats,
     (
-        UnboxedFloat = yes,
-        % If we're using unboxed (single-precision) floats,
-        % floating point values are always constants.
+        SGFloats = have_static_ground_floats,
         IsConst = yes
     ;
-        UnboxedFloat = no,
-        % If we're using boxed floats, then we can generate a static constant
-        % variable to hold a float constant, and gcc doesn't mind us converting
-        % from its address to word in a static initializer. However, we only do
-        % this if --static-ground-terms is enabled.
-        IsConst = StaticGroundTerms
+        SGFloats = do_not_have_static_ground_floats,
+        IsConst = no
     ).
 const_is_constant(llconst_string(_), _, yes).
 const_is_constant(llconst_multi_string(_), _, yes).
@@ -161,11 +136,16 @@ const_is_constant(llconst_data_addr(_, _), _, yes).
 :- pred addr_is_constant(code_addr::in, exprn_opts::in, bool::out) is det.
 
 addr_is_constant(code_label(Label), ExprnOpts, IsConst) :-
-    ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
-    label_is_constant(Label, NonLocalGotos, AsmLabels, IsConst).
+    label_is_constant(Label, ExprnOpts, IsConst).
 addr_is_constant(code_imported_proc(_), ExprnOpts, IsConst) :-
-    ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
-    globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+    StaticCodeAddrs = ExprnOpts ^ static_code_addresses,
+    (
+        StaticCodeAddrs = have_static_code_addresses,
+        IsConst = yes
+    ;
+        StaticCodeAddrs = do_not_have_static_code_addresses,
+        IsConst = no
+    ).
 addr_is_constant(code_succip, _, no).
 addr_is_constant(do_succeed(_), _, no).
 addr_is_constant(do_redo, _, no).
@@ -176,17 +156,32 @@ addr_is_constant(do_call_closure(_), _, no).
 addr_is_constant(do_call_class_method(_), _, no).
 addr_is_constant(do_not_reached, _, no).
 
-:- pred label_is_constant(label::in, bool::in, bool::in, bool::out) is det.
+:- pred label_is_constant(label::in, exprn_opts::in, bool::out) is det.
 
-label_is_constant(entry_label(entry_label_exported, _),
-        NonLocalGotos, AsmLabels, IsConst) :-
-    globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-label_is_constant(entry_label(entry_label_local, _),
-        NonLocalGotos, AsmLabels, IsConst) :-
-    globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-label_is_constant(entry_label(entry_label_c_local, _),
-        _NonLocalGotos, _AsmLabels, yes).
-label_is_constant(internal_label(_, _), _NonLocalGotos, _AsmLabels, yes).
+label_is_constant(Label, ExprnOpts, IsConst) :-
+    (
+        Label = entry_label(EntryLabelType, _),
+        (
+
+            ( EntryLabelType = entry_label_exported
+            ; EntryLabelType = entry_label_local
+            ),
+            StaticCodeAddrs = ExprnOpts ^ static_code_addresses,
+            (
+                StaticCodeAddrs = have_static_code_addresses,
+                IsConst = yes
+            ;
+                StaticCodeAddrs = do_not_have_static_code_addresses,
+                IsConst = no
+            )
+        ;
+            EntryLabelType = entry_label_c_local,
+            IsConst = yes
+        )
+    ;
+        Label = internal_label(_, _),
+        IsConst = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -217,9 +217,8 @@
 %-----------------------------------------------------------------------------%
 
 :- typeclass debug_liveness_io(T) where [
-    pred maybe_debug_liveness(string::in, int::in, int::in,
-        hlds_goal::in, prog_varset::in, module_info::in,
-        T::di, T::uo) is det
+    pred maybe_debug_liveness(string::in, int::in, int::in, hlds_goal::in,
+        prog_varset::in, module_info::in, T::di, T::uo) is det
 ].
 
 :- instance debug_liveness_io(io) where [
@@ -254,8 +253,8 @@ detect_liveness_preds_parallel_2(PredIds, HLDS0, !HLDS) :-
 
 detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS) :-
     list.map(detect_liveness_pred(HLDS0), PredIds, PredInfos),
-    list.foldl_corresponding(module_info_set_pred_info,
-        PredIds, PredInfos, !HLDS).
+    list.foldl_corresponding(module_info_set_pred_info, PredIds, PredInfos,
+        !HLDS).
 
 :- pred detect_liveness_pred(module_info::in, pred_id::in, pred_info::out)
     is det.
@@ -343,8 +342,7 @@ detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
     proc_info_set_liveness_info(Liveness0, !ProcInfo).
 
 :- pred io_maybe_debug_liveness(string::in, int::in, int::in,
-    hlds_goal::in, prog_varset::in, module_info::in,
-    io::di, io::uo) is det.
+    hlds_goal::in, prog_varset::in, module_info::in, io::di, io::uo) is det.
 
 io_maybe_debug_liveness(Message, DebugLiveness, PredIdInt,
         Goal, VarSet, ModuleInfo, !IO) :-
@@ -401,8 +399,8 @@ detect_liveness_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         set.difference(FinalLiveness, Liveness, PostDeaths),
         set.difference(Liveness, FinalLiveness, PostBirths)
     ),
-    % We initialize all the fields in order to obliterate any
-    % annotations left by a previous invocation of this module.
+    % We initialize all the fields in order to obliterate any annotations
+    % left by a previous invocation of this module.
     goal_info_initialize_liveness_info(PreBirths, PostBirths,
         PreDeaths, PostDeaths, no_resume_point, GoalInfo0, GoalInfo).
 
@@ -1657,13 +1655,13 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     ;
         unexpected(this_file, "initial_liveness: list length mismatch")
     ),
-    %
+
     % If a variable is unused in the goal, it shouldn't be in the initial
     % liveness. (If we allowed it to start live, it wouldn't ever become dead,
     % because it would have to be used to be killed).  So we intersect the
     % headvars with the non-locals and (if doing typeinfo liveness calculation)
     % their typeinfo vars.
-    %
+
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_goal(ProcInfo, hlds_goal(_Goal, GoalInfo)),
     NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo),
@@ -1764,14 +1762,13 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
     ;
         true
     ),
-    find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta,
-        !ValueVars).
+    find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta, !ValueVars).
 
 %-----------------------------------------------------------------------------%
 
     % Get the nonlocals, and, if doing typeinfo liveness, add the
     % typeinfo vars for the nonlocals.
-
+    %
 :- pred liveness.get_nonlocals_and_typeinfos(live_info::in,
     hlds_goal_info::in, set(prog_var)::out, set(prog_var)::out) is det.
 

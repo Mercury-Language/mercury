@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,6 +43,7 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
+:- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.trace_gen.
@@ -133,7 +134,7 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
 
     % Lookup disjunctions rely on static ground terms to work.
     get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, static_ground_terms, yes),
+    globals.lookup_bool_option(Globals, static_ground_cells, yes),
 
     % XXX The code to generate lookup disjunctions hasn't yet been updated
     % to handle region operations.
@@ -182,9 +183,9 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
     ),
     reset_to_position(CurPos, !CI),
 
-    get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, unboxed_float, UnboxFloat),
-    find_general_llds_types(UnboxFloat, OutTypes, Solns, LLDSTypes),
+    get_exprn_opts(!.CI, ExprnOpts),
+    UnboxFloats = get_unboxed_floats(ExprnOpts),
+    find_general_llds_types(UnboxFloats, OutTypes, Solns, LLDSTypes),
     LookupDisjInfo = lookup_disj_info(OutVars, StoreMap, MaybeEnd, Liveness,
         CurSlot, ResumeMap, FlushCode, SaveTicketCode, MaybeTicketSlot,
         SaveHpCode, MaybeHpSlot, HijackInfo, PrepareHijackCode,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2007 The University of Melbourne.
+% Copyright (C) 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,7 +69,8 @@
 
 :- type static_cell_info.
 
-:- func init_static_cell_info(module_name, bool, bool) = static_cell_info.
+:- func init_static_cell_info(module_name, have_unboxed_floats, bool)
+    = static_cell_info.
 
 :- pred add_scalar_static_cell(assoc_list(rval, llds_type)::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
@@ -77,7 +78,7 @@
 :- pred add_scalar_static_cell_natural_types(list(rval)::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-:- pred find_general_llds_types(bool::in, list(mer_type)::in,
+:- pred find_general_llds_types(have_unboxed_floats::in, list(mer_type)::in,
     list(list(rval))::in, list(llds_type)::out) is semidet.
 
 :- pred add_vector_static_cell(list(llds_type)::in,
@@ -97,7 +98,7 @@
     % is data_ptr (i.e. the type of the boxed value) rather than float
     % (the type of the unboxed value).
     %
-:- pred rval_type_as_arg(rval::in, bool::in, llds_type::out) is det.
+:- func rval_type_as_arg(have_unboxed_floats, rval) = llds_type.
 
 %-----------------------------------------------------------------------------%
 
@@ -263,7 +264,7 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
 :- type static_cell_sub_info
     --->    static_cell_sub_info(
                 module_name                 :: module_name, % base file name
-                unbox_float                 :: bool,
+                unbox_float                 :: have_unboxed_floats,
                 common_data                 :: bool
             ).
 
@@ -385,7 +386,7 @@ find_general_llds_types(UnboxFloat, Types, [Vector | Vectors], LLDSTypes) :-
     find_general_llds_types_2(UnboxFloat, Types, Vectors,
         LLDSTypes0, LLDSTypes).
 
-:- pred find_general_llds_types_2(bool::in, list(mer_type)::in,
+:- pred find_general_llds_types_2(have_unboxed_floats::in, list(mer_type)::in,
     list(list(rval))::in, list(llds_type)::in, list(llds_type)::out)
     is semidet.
 
@@ -394,8 +395,9 @@ find_general_llds_types_2(UnboxFloat, Types, [Vector | Vectors], !LLDSTypes) :-
     find_general_llds_types_in_cell(UnboxFloat, Types, Vector, !LLDSTypes),
     find_general_llds_types_2(UnboxFloat, Types, Vectors, !LLDSTypes).
 
-:- pred find_general_llds_types_in_cell(bool::in, list(mer_type)::in,
-    list(rval)::in, list(llds_type)::in, list(llds_type)::out) is semidet.
+:- pred find_general_llds_types_in_cell(have_unboxed_floats::in,
+    list(mer_type)::in, list(rval)::in, list(llds_type)::in,
+    list(llds_type)::out) is semidet.
 
 find_general_llds_types_in_cell(_UnboxFloat, [], [], [], []).
 find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
@@ -597,24 +599,24 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 
 %-----------------------------------------------------------------------------%
 
-rval_type_as_arg(Rval, UnboxedFloat, Type) :-
+rval_type_as_arg(UnboxedFloat, Rval) = Type :-
     natural_type(UnboxedFloat, Rval, Type).
 
-:- pred natural_type(bool::in, rval::in, llds_type::out) is det.
+:- pred natural_type(have_unboxed_floats::in, rval::in, llds_type::out) is det.
 
 natural_type(UnboxFloat, Rval, Type) :-
     llds.rval_type(Rval, Type0),
     (
         Type0 = float,
-        UnboxFloat = no
+        UnboxFloat = do_not_have_unboxed_floats
     ->
         Type = data_ptr
     ;
         Type = Type0
     ).
 
-:- pred associate_natural_type(bool::in, rval::in, pair(rval, llds_type)::out)
-    is det.
+:- pred associate_natural_type(have_unboxed_floats::in, rval::in,
+    pair(rval, llds_type)::out) is det.
 
 associate_natural_type(UnboxFloat, Rval, Rval - Type) :-
     natural_type(UnboxFloat, Rval, Type).

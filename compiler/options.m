@@ -648,7 +648,11 @@
     ;         binary_switch_size
     ;         switch_single_rec_base_first
     ;         switch_multi_rec_base_first
-    ;       static_ground_terms
+
+    ;       static_ground_cells
+    ;       static_ground_floats
+    ;       static_code_addresses
+
     ;       use_atomic_cells
     ;       middle_rec
     ;       simple_neg
@@ -1437,7 +1441,9 @@ option_defaults_2(optimization_option, [
     binary_switch_size                  -   int(4),
     switch_single_rec_base_first        -   bool(no),
     switch_multi_rec_base_first         -   bool(yes),
-    static_ground_terms                 -   bool(no),
+    static_ground_cells                 -   bool(no),
+    static_ground_floats                -   bool(no),
+    static_code_addresses               -   bool(no),
     use_atomic_cells                    -   bool(no),
     middle_rec                          -   bool(no),
     simple_neg                          -   bool(no),
@@ -2271,7 +2277,11 @@ long_option("try-switch-size",      try_switch_size).
 long_option("binary-switch-size",   binary_switch_size).
 long_option("switch-single-rec-base-first", switch_single_rec_base_first).
 long_option("switch-multi-rec-base-first",  switch_multi_rec_base_first).
-long_option("static-ground-terms",  static_ground_terms).
+long_option("static-ground-terms",  static_ground_cells).
+% static_ground_floats should be set only in handle_options.m.
+% long_option("static-ground-floats", static_ground_floats).
+% static_code_addresses should be set only in handle_options.m.
+% long_option("static-code-addresses", static_code_addresses).
 long_option("use-atomic-cells",     use_atomic_cells).
 long_option("middle-rec",           middle_rec).
 long_option("simple-neg",           simple_neg).
@@ -2847,7 +2857,7 @@ opt_level(0, _, [
     optimize                    -   bool(yes),
     optimize_repeat             -   int(1),
     optimize_peep               -   bool(yes),
-    static_ground_terms         -   bool(yes),
+    static_ground_cells         -   bool(yes),
     smart_indexing              -   bool(yes),
     optimize_jumps              -   bool(yes),
     optimize_labels             -   bool(yes),

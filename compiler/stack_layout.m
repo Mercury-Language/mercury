@@ -121,9 +121,17 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     globals.lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
     globals.lookup_bool_option(Globals, procid_stack_layout, ProcIdLayout),
     globals.lookup_bool_option(Globals, profile_deep, DeepProfiling),
+    globals.lookup_bool_option(Globals, static_code_addresses, StaticCodeAddr),
+    globals.lookup_bool_option(Globals, unboxed_float, OptUnboxedFloat),
+    (
+        OptUnboxedFloat = yes,
+        UnboxedFloat = have_unboxed_floats
+    ;
+        OptUnboxedFloat = no,
+        UnboxedFloat = do_not_have_unboxed_floats
+    ),
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
-    globals.have_static_code_addresses(Globals, StaticCodeAddr),
     map.init(LayoutLabels0),
 
     map.init(StringMap0),
@@ -132,7 +140,7 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
     counter.init(1, LabelCounter0),
     LayoutInfo0 = stack_layout_info(ModuleInfo,
-        AgcLayout, TraceLayout, ProcIdLayout, StaticCodeAddr,
+        AgcLayout, TraceLayout, ProcIdLayout, StaticCodeAddr, UnboxedFloat,
         LabelCounter0, [], [], [], LayoutLabels0, [],
         StringTable0, LabelTables0, StaticCellInfo0, no),
     lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
@@ -1521,10 +1529,8 @@ represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
         Type = unsigned
     ;
         LvalOrConst = const(_Const),
-        get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
-        rval_type_as_arg(LvalOrConst, UnboxedFloat, LLDSType),
+        get_unboxed_floats(!.Info, UnboxedFloats),
+        LLDSType = rval_type_as_arg(UnboxedFloats, LvalOrConst),
 
         get_layout_static_cell_info(!.Info, StaticCellInfo0),
         add_scalar_static_cell([LvalOrConst - LLDSType], DataAddr,
@@ -1785,6 +1791,7 @@ represent_determinism_rval(Detism,
                 trace_stack_layout      :: bool, % generate tracing info?
                 procid_stack_layout     :: bool, % generate proc id info?
                 static_code_addresses   :: bool, % have static code addresses?
+                unboxed_floats          :: have_unboxed_floats,
                 label_counter           :: counter,
                 table_infos             :: list(layout_data),
                 proc_layouts            :: list(layout_data),
@@ -1810,6 +1817,8 @@ represent_determinism_rval(Detism,
 :- pred get_trace_stack_layout(stack_layout_info::in, bool::out) is det.
 :- pred get_procid_stack_layout(stack_layout_info::in, bool::out) is det.
 :- pred get_static_code_addresses(stack_layout_info::in, bool::out) is det.
+:- pred get_unboxed_floats(stack_layout_info::in, have_unboxed_floats::out)
+    is det.
 :- pred get_table_infos(stack_layout_info::in, list(layout_data)::out) is det.
 :- pred get_proc_layout_data(stack_layout_info::in, list(layout_data)::out)
     is det.
@@ -1829,6 +1838,7 @@ get_agc_stack_layout(LI, LI ^ agc_stack_layout).
 get_trace_stack_layout(LI, LI ^ trace_stack_layout).
 get_procid_stack_layout(LI, LI ^ procid_stack_layout).
 get_static_code_addresses(LI, LI ^ static_code_addresses).
+get_unboxed_floats(LI, LI ^ unboxed_floats).
 get_table_infos(LI, LI ^ table_infos).
 get_proc_layout_data(LI, LI ^ proc_layouts).
 get_internal_layout_data(LI, LI ^ internal_layouts).

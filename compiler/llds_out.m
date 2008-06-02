@@ -3311,16 +3311,16 @@ output_rval_decls_format(const(Const), FirstIndent, LaterIndent, !N, !DeclSet,
         output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
     ; Const = llconst_float(FloatVal) ->
-        % If floats are boxed, and the static ground terms option is enabled,
-        % then for each float constant which we might want to box we declare
-        % a static const variable holding that constant.
+        % If floats are boxed, but are allocated statically, then for each
+        % float constant which we might want to box we declare a static const
+        % variable holding that constant.
 
         globals.io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
-        globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+        globals.io_lookup_bool_option(static_ground_floats, StaticGroundFloats,
             !IO),
         (
             UnboxedFloat = no,
-            StaticGroundTerms = yes
+            StaticGroundFloats = yes
         ->
             float_literal_name(FloatVal, FloatName),
             FloatLabel = decl_float_label(FloatName),
@@ -3359,11 +3359,11 @@ output_rval_decls_format(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
     c_util.binop_category_string(Op, Category, OpStr),
     ( Category = float_arith_binop ->
         globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
-        globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+        globals.io_lookup_bool_option(static_ground_floats, StaticGroundFloats,
             !IO),
         (
             UnboxFloat = no,
-            StaticGroundTerms = yes,
+            StaticGroundFloats = yes,
             float_const_binop_expr_name(Op, Rval1, Rval2, FloatName)
         ->
             FloatLabel = decl_float_label(FloatName),
@@ -4074,7 +4074,7 @@ c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
 c_data_const_string(Globals, InclCodeAddr) =
     (
         InclCodeAddr = yes,
-        globals.have_static_code_addresses(Globals, no)
+        globals.lookup_bool_option(Globals, static_code_addresses, no)
     ->
         ""
     ;
@@ -4839,15 +4839,15 @@ output_float_rval_as_word(Rval, !IO) :-
 :- pred output_float_rval(rval::in, bool::in, io::di, io::uo) is det.
 
 output_float_rval(Rval, IsPtr, !IO) :-
-    % For float constant expressions, if we're using boxed boxed floats
-    % and --static-ground-terms is enabled, we just refer to the static const
+    % For float constant expressions, if we're using boxed floats
+    % and --static-ground-floats is enabled, we just refer to the static const
     % which we declared earlier.
     globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
-    globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+    globals.io_lookup_bool_option(static_ground_floats, StaticGroundFloats,
         !IO),
     (
         UnboxFloat = no,
-        StaticGroundTerms = yes,
+        StaticGroundFloats = yes,
         float_const_expr_name(Rval, FloatName)
     ->
         (
@@ -5078,10 +5078,20 @@ output_rval(binop(Op, X, Y), !IO) :-
         unexpected(this_file, "output_rval: compound_compare_binop")
     ;
         Category = string_compare_binop,
-        io.write_string("(strcmp((char *)", !IO),
-        output_rval_as_type(X, word, !IO),
-        io.write_string(", (char *)", !IO),
-        output_rval_as_type(Y, word, !IO),
+        io.write_string("(strcmp(", !IO),
+        ( X = const(llconst_string(XConst)) ->
+            output_rval_const(llconst_string(XConst), !IO)
+        ;
+            io.write_string("(char *) ", !IO),
+            output_rval_as_type(X, data_ptr, !IO)
+        ),
+        io.write_string(", ", !IO),
+        ( Y = const(llconst_string(YConst)) ->
+            output_rval_const(llconst_string(YConst), !IO)
+        ;
+            io.write_string("(char *) ", !IO),
+            output_rval_as_type(Y, data_ptr, !IO)
+        ),
         io.write_string(")", !IO),
         io.write_string(" ", !IO),
         io.write_string(OpStr, !IO),

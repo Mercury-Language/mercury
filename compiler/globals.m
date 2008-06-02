@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -195,21 +195,10 @@
 % More complex options
 %
 
-    % Check if static code addresses are available in the
-    % current grade of compilation.
-    %
-:- pred have_static_code_addresses(globals::in, bool::out) is det.
-
     % Check if we should include variable information in the layout
     % structures of call return sites.
     %
 :- pred want_return_var_layouts(globals::in, bool::out) is det.
-
-    % imported_is_constant(NonLocalGotos, AsmLabels, IsConst)
-    % figures out whether an imported label address is a constant.
-    % This depends on how we treat labels.
-    %
-:- pred imported_is_constant(bool::in, bool::in, bool::out) is det.
 
     % Check that the current grade supports tabling.
     %
@@ -527,18 +516,6 @@ lookup_accumulating_option(Globals, Option, Value) :-
 
 %-----------------------------------------------------------------------------%
 
-have_static_code_addresses(Globals, IsConst) :-
-    get_options(Globals, OptionTable),
-    have_static_code_addresses_2(OptionTable, IsConst).
-
-:- pred have_static_code_addresses_2(option_table::in, bool::out) is det.
-
-have_static_code_addresses_2(OptionTable, IsConst) :-
-    getopt_io.lookup_bool_option(OptionTable, gcc_non_local_gotos,
-        NonLocalGotos),
-    getopt_io.lookup_bool_option(OptionTable, asm_labels, AsmLabels),
-    imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-
 current_grade_supports_tabling(Globals, TablingSupported) :-
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GC_Method),
@@ -617,26 +594,6 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
         WantReturnLayouts = yes
     ;
         WantReturnLayouts = no
-    ).
-
-    % The logic of this function and how it is used to select the default
-    % type_info method must agree with the code in runtime/typeinfo.h.
-
-imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
-    (
-        NonLocalGotos = yes,
-        AsmLabels = no
-    ->
-        %
-        % With non-local gotos but no asm labels, jumps to code addresses
-        % in different c_modules must be done via global variables; the value
-        % of these global variables is not constant (i.e. not computable at
-        % load time), since they can't be initialized until we call
-        % init_modules().
-        %
-        IsConst = no
-    ;
-        IsConst = yes
     ).
 
 %-----------------------------------------------------------------------------%

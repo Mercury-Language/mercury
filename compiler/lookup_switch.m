@@ -167,7 +167,7 @@ is_lookup_switch(Type, TaggedCases0, LowerLimit, UpperLimit, NumValues,
     % it right, so, lets just use a simple one - no static ground terms,
     % no lookup switch.
     get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, static_ground_terms, yes),
+    globals.lookup_bool_option(Globals, static_ground_cells, yes),
 
     CodeModel = goal_info_get_code_model(GoalInfo),
     (
@@ -261,9 +261,9 @@ is_lookup_switch(Type, TaggedCases0, LowerLimit, UpperLimit, NumValues,
         % we only use CaseValues to find out the right LLDSTypes, this is OK.
         project_solns_to_rval_lists(CaseSolns, [], CaseValues)
     ),
-    get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, unboxed_float, UnboxFloat),
-    find_general_llds_types(UnboxFloat, OutTypes, CaseValues, LLDSTypes),
+    get_exprn_opts(!.CI, ExprnOpts),
+    UnboxFloats = get_unboxed_floats(ExprnOpts),
+    find_general_llds_types(UnboxFloats, OutTypes, CaseValues, LLDSTypes),
     LookupSwitchInfo = lookup_switch_info(FirstVal, LastVal, CaseConsts,
         OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, Liveness).
 

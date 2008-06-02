@@ -523,7 +523,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(unboxed_enums, bool(no), !Globals),
             globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
             % globals.set_option(num_reserved_addresses, int(1), !Globals)
-            globals.set_option(static_ground_terms, bool(no), !Globals),
+            globals.set_option(static_ground_cells, bool(no), !Globals),
             globals.set_option(libgrade_install_check, bool(no), !Globals),
 
             (
@@ -624,7 +624,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(det_copy_out, bool(yes), !Globals),
             globals.set_option(num_tag_bits, int(0), !Globals),
             globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
-            globals.set_option(static_ground_terms, bool(no), !Globals),
+            globals.set_option(static_ground_cells, bool(no), !Globals),
             globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
             globals.set_option(libgrade_install_check, bool(no), !Globals),
     
@@ -1638,9 +1638,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         globals.lookup_string_option(!.Globals, fullarch, FullArch),
 
-        %
         % Add the standard library directory.
-        %
         globals.lookup_maybe_string_option(!.Globals,
             mercury_standard_library_directory, MaybeStdLibDir),
         (
@@ -1649,28 +1647,21 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_options(option_table_add_mercury_library_directory(
                 OptionTable2, StdLibDir), !Globals),
 
-            %
-            % Add `-L' and `-R' options for the location
-            % of the GC libraries.
-            %
+            % Add `-L' and `-R' options for the location of the GC libraries.
             globals.lookup_accumulating_option(!.Globals,
                 link_library_directories, LinkLibDirs0),
             globals.set_option(link_library_directories,
-                accumulating([StdLibDir/"lib" | LinkLibDirs0]),
-                !Globals),
+                accumulating([StdLibDir/"lib" | LinkLibDirs0]), !Globals),
 
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
             globals.set_option(runtime_link_library_directories,
                 accumulating([StdLibDir/"lib" | Rpath0]), !Globals)
-
         ;
             MaybeStdLibDir = no
         ),
 
-        %
         % Add the path to mercury_conf.h.
-        %
         globals.lookup_maybe_string_option(!.Globals,
             mercury_configuration_directory, MaybeConfDir),
         (
@@ -1683,9 +1674,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             MaybeConfDir = no
         ),
 
-        %
         % Find the configuration file.
-        %
         globals.lookup_maybe_string_option(!.Globals, config_file,
             ConfigFile),
         % yes("") means `--config-file' was not passed on the command line.
@@ -1702,11 +1691,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
-        %
         % Handle the `.opt', C and Erlang header, init file and library search
         % directories for installed libraries.  These couldn't be handled by
         % options.m because they are grade dependent.
-        %
         globals.lookup_accumulating_option(!.Globals,
             mercury_library_directories, MercuryLibDirs),
         grade_directory_component(!.Globals, GradeString),
@@ -1789,7 +1776,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/FullArch),
         (
             UseGradeSubdirs = yes,
-            %
             % With `--use-grade-subdirs', `.opt', `.trans_opt' and
             % `.mih' files are placed in a directory named
             % `Mercury/<grade>/<fullarch>/Mercury/<ext>s'.
@@ -1798,12 +1784,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % for installed files work, so we need to add
             % `--intermod-directory Mercury/<grade>/<fullarch>'
             % to find the `.opt' files in the current directory.
-            %
             GradeSubdir = "Mercury"/GradeString/FullArch,
-            %
+
             % Directories listed with --search-library-files-directories need
             % to be treated in the same way as the current directory.
-            %
             SearchLibFilesGradeSubdirs = list.map(ToGradeSubdir,
                 SearchLibFilesDirs),
             IntermodDirs3 = [GradeSubdir] ++ SearchLibFilesGradeSubdirs ++
@@ -1821,12 +1805,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             init_file_directories, InitDirs2),
         (
             UseGradeSubdirs = yes,
-            %
             % With --use-grade-subdirs we need to search in
             % `Mercury/<grade>/<fullarch>/Mercury/lib' for libraries and
             % `Mercury/<grade>/<fullarch>/Mercury/inits' for init files,
             % for each directory listed with --search-library-files-directory.
-            %
             ToGradeLibDir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"lib"),
             SearchGradeLibDirs = list.map(ToGradeLibDir, SearchLibFilesDirs),
             LinkLibDirs = SearchGradeLibDirs ++ LinkLibDirs2,
@@ -1845,12 +1827,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(init_file_directories,
             accumulating(InitDirs), !Globals),
 
-        %
         % When searching for a header (.mh, .mih, .hrl) file,
         % module_name_to_file_name uses the plain header name, so we need to
         % add the full path to the header files in the current directory,
         % and any directories listed with --search-library-files-directory.
-        %
         globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
             (
@@ -2003,17 +1983,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 :- pred postprocess_options_lowlevel(globals::in, globals::out) is det.
 
 postprocess_options_lowlevel(!Globals) :-
-        % --optimize-saved-vars-cell requires --use-local-vars for
-        % acceptable performance.
+    % --optimize-saved-vars-cell requires --use-local-vars for
+    % acceptable performance.
     option_implies(optimize_saved_vars_cell, use_local_vars, bool(yes),
         !Globals),
 
-        % --optimize-frames requires --optimize-labels and
-        % --optimize-jumps
+    % --optimize-frames requires --optimize-labels and
+    % --optimize-jumps
     option_implies(optimize_frames, optimize_labels, bool(yes), !Globals),
     option_implies(optimize_frames, optimize_jumps, bool(yes), !Globals),
 
-        % --optimize-proc-dups is implemented only with --trad-passes.
+    % --optimize-proc-dups is implemented only with --trad-passes.
     option_implies(optimize_proc_dups, trad_passes, bool(yes), !Globals),
 
     globals.lookup_bool_option(!.Globals, optimize_frames, OptFrames),
@@ -2032,7 +2012,48 @@ postprocess_options_lowlevel(!Globals) :-
         globals.set_option(optimize_repeat, int(1), !Globals)
     ;
         true
-    ).
+    ),
+
+    % The setting of static_ground_floats is governed only by the settings
+    % of unboxed_float and static_ground_cells.
+    globals.lookup_bool_option(!.Globals, unboxed_float, UnboxedFloat),
+    (
+        UnboxedFloat = yes,
+        % If we're using unboxed (MR_Word-sized) floats, floating point values
+        % are always constants.
+        StaticGroundFloats = yes
+    ;
+        UnboxedFloat = no,
+        % If we're using boxed floats, then we can generate a static constant
+        % variable to hold a float constant, and gcc doesn't mind us converting
+        % from its address to MR_Word in a static initializer. In theory,
+        % we should do this with --static-ground-terms. However, the code
+        % generator does not yet handle the dynamic creation of boxed float
+        % constants, and assumes that binding a variable to a constant
+        % generates no code.
+        StaticGroundFloats = yes
+    ),
+    globals.set_option(static_ground_floats, bool(StaticGroundFloats),
+        !Globals),
+
+    % The setting of static_code_addresses is governed only by the settings
+    % of gcc_non_local_gotos and asm_labels.
+    globals.lookup_bool_option(!.Globals, gcc_non_local_gotos, NonLocalGotos),
+    globals.lookup_bool_option(!.Globals, asm_labels, AsmLabels),
+    (
+        NonLocalGotos = yes,
+        AsmLabels = no
+    ->
+        % With non-local gotos but no asm labels, jumps to code addresses
+        % in different c_modules must be done via global variables; the value
+        % of these global variables is not constant (i.e. not computable at
+        % load time), since they can't be initialized until we call
+        % init_modules().
+        StaticCodeAddrs = no
+    ;
+        StaticCodeAddrs = yes
+    ),
+    globals.set_option(static_code_addresses, bool(StaticCodeAddrs), !Globals).
 
     % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue):
     % If the SourceBoolOption is set to yes, then the ImpliedOption is set

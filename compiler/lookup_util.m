@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -153,9 +153,7 @@ do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
     tree.tree_of_lists_is_empty(Code),
     get_forward_live_vars(!.CI, Liveness),
 
-    get_globals(!.CI, Globals),
-    globals.get_options(Globals, Options),
-    exprn_aux.init_exprn_opts(Options, ExprnOpts),
+    get_exprn_opts(!.CI, ExprnOpts),
     get_arm_rvals(Vars, CaseRvals, !CI, ExprnOpts),
     (
         SetToUnknown = no

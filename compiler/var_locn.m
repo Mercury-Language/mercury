@@ -24,7 +24,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
-:- import_module libs.options.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
@@ -41,7 +40,7 @@
 :- type var_locn_info.
 
     % init_var_locn_state(Arguments, Liveness, VarSet, VarTypes, StackSlots,
-    %   FollowVars, Opts, VarLocnInfo):
+    %   FollowVars, VarLocnInfo):
     %
     % Produces an initial state of the VarLocnInfo given
     % an association list of variables and lvalues. The initial
@@ -54,13 +53,11 @@
     % of all the procedure's variables. StackSlots maps each variable
     % to its stack slot, if it has one. FollowVars is the initial
     % follow_vars set; such sets give guidance as to what lvals
-    % (if any) each variable will be needed in next. Opts gives
-    % the table of options; this is used to decide what expressions
-    % are considered constants.
+    % (if any) each variable will be needed in next.
     %
 :- pred init_var_locn_state(assoc_list(prog_var, lval)::in, set(prog_var)::in,
     prog_varset::in, vartypes::in, stack_slots::in, abs_follow_vars::in,
-    option_table::in, var_locn_info::out) is det.
+    var_locn_info::out) is det.
 
     % reinit_var_locn_state(VarLocs, !VarLocnInfo):
     %
@@ -147,12 +144,13 @@
     static_cell_info::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % var_locn_assign_const_to_var(Var, ConstRval, !VarLocnInfo):
+    % var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval,
+    %   !VarLocnInfo):
     %
     % Reflects the effect of the assignment Var := const(ConstRval)
     % in the state of !VarLocnInfo.
     %
-:- pred var_locn_assign_const_to_var(prog_var::in, rval::in,
+:- pred var_locn_assign_const_to_var(exprn_opts::in, prog_var::in, rval::in,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_expr_to_var(Var, Rval, Code, !VarLocnInfo):
@@ -166,9 +164,9 @@
 :- pred var_locn_assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-    %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Label, Code,
-    %   !StaticCellInfo, !VarLocnInfo):
+    % var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var,
+    %   ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize, FieldAddrs, TypeMsg,
+    %   MayUseAtomic, Label, Code, !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
     % whose contents are given by the other arguments, and updates the state
@@ -182,10 +180,10 @@
     % and MaybeSize should not be yes / yes(_), because that will cause an
     % obvious conflict.) Label can be used in the generated code if necessary.
     %
-:- pred var_locn_assign_cell_to_var(module_info::in, prog_var::in, bool::in,
-    tag::in, list(maybe(rval))::in, how_to_construct::in,
-    maybe(term_size_value)::in, list(int)::in, string::in,
-    may_use_atomic_alloc::in, label::in, code_tree::out,
+:- pred var_locn_assign_cell_to_var(module_info::in, exprn_opts::in,
+    prog_var::in, bool::in, tag::in, list(maybe(rval))::in,
+    how_to_construct::in, maybe(term_size_value)::in, list(int)::in,
+    string::in, may_use_atomic_alloc::in, label::in, code_tree::out,
     static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
@@ -450,15 +448,13 @@
 :- type var_locn_info
     --->    var_locn_info(
                 % The varset and vartypes from the proc_info.
+                % XXX These fields are redundant; they are also stored
+                % in the code_info.
                 vli_varset          :: prog_varset,
                 vli_vartypes        :: vartypes,
 
                 % Maps each var to its stack slot, if it has one.
                 vli_stack_slots     :: stack_slots,
-
-                % The values of the options that are relevant to decisions
-                % about which rvals are constants.
-                vli_exprn_opts      :: exprn_opts,
 
                 % Where vars are needed next.
                 vli_follow_vars_map :: abs_follow_vars_map,
@@ -489,15 +485,14 @@
 %----------------------------------------------------------------------------%
 
 init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, StackSlots,
-        FollowVars, Options, VarLocnInfo) :-
+        FollowVars, VarLocnInfo) :-
     map.init(VarStateMap0),
     map.init(LocVarMap0),
     init_var_locn_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
-    exprn_aux.init_exprn_opts(Options, ExprnOpts),
     FollowVars = abs_follow_vars(FollowVarMap, NextNonReserved),
     set.init(AcquiredRegs),
-    VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
+    VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots,
         FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
         AcquiredRegs, 0, []).
 
@@ -507,9 +502,9 @@ reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
     init_var_locn_state_2(VarLocs, no, VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
     set.init(AcquiredRegs),
-    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
+    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots,
         FollowVarMap, NextNonReserved, _, _, _, _, _),
-    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
+    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots,
         FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
         AcquiredRegs, 0, []).
 
@@ -759,11 +754,10 @@ add_field_offset(Ptag, Offset, Base) =
 
 %----------------------------------------------------------------------------%
 
-var_locn_assign_const_to_var(Var, ConstRval0, !VLI) :-
+var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval0, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
-    var_locn_get_exprn_opts(!.VLI, ExprnOpts),
     ( expr_is_constant(VarStateMap0, ExprnOpts, ConstRval0, ConstRval) ->
         State = var_state(set.init, yes(ConstRval), no, set.init, doa_alive),
         map.det_insert(VarStateMap0, Var, State, VarStateMap),
@@ -809,8 +803,8 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 
 %----------------------------------------------------------------------------%
 
-var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
+var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
+        Ptag, MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
         MayUseAtomic, Label, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
@@ -829,19 +823,18 @@ var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeOffset = no
     ),
     var_locn_get_var_state_map(!.VLI, VarStateMap),
-    var_locn_get_exprn_opts(!.VLI, ExprnOpts),
-    StaticGroundTerms = ExprnOpts ^ static_ground_terms,
+    StaticGroundCells = get_static_ground_cells(ExprnOpts),
     % We can make the cell a constant only if all its fields are filled in,
     % and they are all constants.
     (
-        StaticGroundTerms = yes,
+        StaticGroundCells = have_static_ground_cells,
         FieldAddrs = [],
         cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes)
     ->
         add_scalar_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         CellPtrRval = mkword(Ptag, CellPtrConst),
-        var_locn_assign_const_to_var(Var, CellPtrRval, !VLI),
+        var_locn_assign_const_to_var(ExprnOpts, Var, CellPtrRval, !VLI),
         Code = empty
     ;
         var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var,
@@ -2101,7 +2094,7 @@ cell_is_constant(_VarStateMap, _ExprnOpts, [], []).
 cell_is_constant(VarStateMap, ExprnOpts, [yes(Rval0) | MaybeRvals],
         [Rval - LldsType | RvalsTypes]) :-
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
-    rval_type_as_arg(Rval, ExprnOpts ^ unboxed_float, LldsType),
+    LldsType = rval_type_as_arg(get_unboxed_floats(ExprnOpts), Rval),
     cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):
@@ -2499,7 +2492,6 @@ nonempty_state(State) :-
 
 :- pred var_locn_get_varset(var_locn_info::in, prog_varset::out) is det.
 :- pred var_locn_get_vartypes(var_locn_info::in, vartypes::out) is det.
-:- pred var_locn_get_exprn_opts(var_locn_info::in, exprn_opts::out) is det.
 :- pred var_locn_get_var_state_map(var_locn_info::in, var_state_map::out)
     is det.
 :- pred var_locn_get_loc_var_map(var_locn_info::in, loc_var_map::out) is det.
@@ -2526,7 +2518,6 @@ nonempty_state(State) :-
 var_locn_get_varset(VI, VI ^ vli_varset).
 var_locn_get_vartypes(VI, VI ^ vli_vartypes).
 var_locn_get_stack_slots(VI, VI ^ vli_stack_slots).
-var_locn_get_exprn_opts(VI, VI ^ vli_exprn_opts).
 var_locn_get_follow_var_map(VI, VI ^ vli_follow_vars_map).
 var_locn_get_next_non_reserved(VI, VI ^ vli_next_non_res).
 var_locn_get_var_state_map(VI, VI ^ vli_var_state_map).

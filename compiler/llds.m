@@ -1309,6 +1309,47 @@
 
 :- func get_defining_module_name(proc_label) = module_name.
 
+:- type have_non_local_gotos
+    --->    have_non_local_gotos
+    ;       do_not_have_non_local_gotos.
+
+:- type have_asm_labels
+    --->    have_asm_labels
+    ;       do_not_have_asm_labels.
+
+:- type have_unboxed_floats
+    --->    have_unboxed_floats
+    ;       do_not_have_unboxed_floats.
+
+:- type have_static_ground_cells
+    --->    have_static_ground_cells
+    ;       do_not_have_static_ground_cells.
+
+:- type have_static_ground_floats
+    --->    have_static_ground_floats
+    ;       do_not_have_static_ground_floats.
+
+:- type have_static_code_addresses
+    --->    have_static_code_addresses
+    ;       do_not_have_static_code_addresses.
+
+:- type exprn_opts
+    --->    exprn_opts(
+                non_local_gotos         :: have_non_local_gotos,
+                asm_labels              :: have_asm_labels,
+                unboxed_floats          :: have_unboxed_floats,
+                static_ground_cells     :: have_static_ground_cells,
+                static_ground_floats    :: have_static_ground_floats,
+                static_code_addresses   :: have_static_code_addresses
+            ).
+
+:- func get_nonlocal_gotos(exprn_opts) = have_non_local_gotos.
+:- func get_asm_labels(exprn_opts) = have_asm_labels.
+:- func get_unboxed_floats(exprn_opts) = have_unboxed_floats.
+:- func get_static_ground_cells(exprn_opts) = have_static_ground_cells.
+:- func get_static_ground_floats(exprn_opts) = have_static_ground_floats.
+:- func get_static_code_addresses(exprn_opts) = have_static_code_addresses.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1506,6 +1547,13 @@ get_defining_module_name(ordinary_proc_label(ModuleName, _, _, _, _, _))
     = ModuleName.
 get_defining_module_name(special_proc_label(ModuleName, _, _, _, _, _))
     = ModuleName.
+
+get_nonlocal_gotos(ExprnOpts) = ExprnOpts ^ non_local_gotos.
+get_asm_labels(ExprnOpts) = ExprnOpts ^ asm_labels.
+get_static_ground_cells(ExprnOpts) = ExprnOpts ^ static_ground_cells.
+get_unboxed_floats(ExprnOpts) = ExprnOpts ^ unboxed_floats.
+get_static_ground_floats(ExprnOpts) = ExprnOpts ^ static_ground_floats.
+get_static_code_addresses(ExprnOpts) = ExprnOpts ^ static_code_addresses.
 
 %-----------------------------------------------------------------------------%
 

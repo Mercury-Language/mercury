@@ -112,6 +112,7 @@
 :- import_module ll_backend.follow_code.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.liveness.
+:- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.optimize.
 :- import_module ll_backend.proc_gen.
@@ -2759,9 +2760,16 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
 backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
-    globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
+    globals.io_lookup_bool_option(unboxed_float, OptUnboxFloat, !IO),
     globals.io_lookup_bool_option(common_data, DoCommonData, !IO),
-    StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloat,
+    (
+        OptUnboxFloat = yes,
+        UnboxFloats = have_unboxed_floats
+    ;
+        OptUnboxFloat = no,
+        UnboxFloats = do_not_have_unboxed_floats
+    ),
+    StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloats,
         DoCommonData),
     global_data_init(StaticCellInfo0, GlobalData0),
 
@@ -3474,9 +3482,9 @@ simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms, !IO),
+    globals.io_lookup_bool_option(static_ground_cells, SGCells, !IO),
     (
-        StaticGroundTerms = yes,
+        SGCells = yes,
         maybe_write_string(Verbose, "% Marking static ground terms...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_proc(mark_static_terms),
@@ -3484,7 +3492,7 @@ maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        StaticGroundTerms = no
+        SGCells = no
     ).
 
 %-----------------------------------------------------------------------------%
