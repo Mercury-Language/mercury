@@ -210,16 +210,39 @@ get_token_list(Tokens, !IO) :-
     token_list::out, io::di, io::uo) is det.
 
 get_token_list_2(Stream, Token0, Context0, Tokens, !IO) :-
-    ( Token0 = eof ->
+    (
+        Token0 = eof,
         Tokens = token_nil
-    ; ( Token0 = end ; Token0 = error(_) ; Token0 = io_error(_) ) ->
+    ;
+        ( Token0 = end
+        ; Token0 = error(_)
+        ; Token0 = io_error(_)
+        ),
         Tokens = token_cons(Token0, Context0, token_nil)
-    ; Token0 = integer_dot(Int) ->
+    ;
+        Token0 = integer_dot(Int),
         get_context(Stream, Context1, !IO),
         get_dot(Stream, Token1, !IO),
         get_token_list_2(Stream, Token1, Context1, Tokens1, !IO),
         Tokens = token_cons(integer(Int), Context0, Tokens1)
     ;
+        ( Token0 = float(_)
+        ; Token0 = string(_)
+        ; Token0 = variable(_)
+        ; Token0 = integer(_)
+        ; Token0 = implementation_defined(_)
+        ; Token0 = junk(_)
+        ; Token0 = name(_)
+        ; Token0 = open
+        ; Token0 = open_ct
+        ; Token0 = close
+        ; Token0 = open_list
+        ; Token0 = close_list
+        ; Token0 = open_curly
+        ; Token0 = close_curly
+        ; Token0 = comma
+        ; Token0 = ht_sep
+        ),
         get_token(Stream, Token1, Context1, !IO),
         get_token_list_2(Stream, Token1, Context1, Tokens1, !IO),
         Tokens = token_cons(Token0, Context0, Tokens1)
@@ -231,11 +254,34 @@ string_get_token_list(String, Tokens, !Posn) :-
 
 string_get_token_list_max(String, Len, Tokens, !Posn) :-
     string_get_token(String, Len, Token, Context, !Posn),
-    ( Token = eof ->
+    (
+        Token = eof,
         Tokens = token_nil
-    ; ( Token = end ; Token = error(_) ; Token = io_error(_) ) ->
+    ;
+        ( Token = end
+        ; Token = error(_)
+        ; Token = io_error(_)
+        ),
         Tokens = token_cons(Token, Context, token_nil)
     ;
+        ( Token = float(_)
+        ; Token = string(_)
+        ; Token = variable(_)
+        ; Token = integer(_)
+        ; Token = integer_dot(_)
+        ; Token = implementation_defined(_)
+        ; Token = junk(_)
+        ; Token = name(_)
+        ; Token = open
+        ; Token = open_ct
+        ; Token = close
+        ; Token = open_list
+        ; Token = close_list
+        ; Token = open_curly
+        ; Token = close_curly
+        ; Token = comma
+        ; Token = ht_sep
+        ),
         Tokens = token_cons(Token, Context, Tokens1),
         string_get_token_list_max(String, Len, Tokens1, !Posn)
     ).
@@ -1263,11 +1309,11 @@ convert_unicode_char_to_target_chars(UnicodeCharCode, Chars) :-
 
 encode_unicode_char_as_utf8(UnicodeCharCode, UTF8Chars) :-
     allowed_unicode_char_code(UnicodeCharCode),
-    %
+
     % Refer to table 3-5 of the Unicode 4.0.0 standard (available from
     % www.unicode.org) for documentation on the bit distribution patterns used
     % below.
-    %
+
     ( if UnicodeCharCode =< 0x00007F then
         UTF8Chars = [char.det_from_int(UnicodeCharCode)]
     else if UnicodeCharCode =< 0x0007FF then
@@ -1303,11 +1349,11 @@ encode_unicode_char_as_utf8(UnicodeCharCode, UTF8Chars) :-
     %
 encode_unicode_char_as_utf16(UnicodeCharCode, UTF16Chars) :-
     allowed_unicode_char_code(UnicodeCharCode),
-    %
+
     % If the code point is less than or equal to 0xFFFF
     % then the UTF-16 encoding is simply the code point value,
     % otherwise we construct a surrogate pair.
-    %
+
     ( if UnicodeCharCode =< 0xFFFF then
         char.det_from_int(UnicodeCharCode, Char),
         UTF16Chars = [Char]
@@ -1351,8 +1397,8 @@ allowed_unicode_char_code(Code) :-
 
 backend_unicode_encoding = Encoding :-
     Int = backend_unicode_encoding_int,
-    ( unicode_encoding_int_to_encoding(Int, Encoding0) ->
-        Encoding = Encoding0
+    ( unicode_encoding_int_to_encoding(Int, EncodingPrime) ->
+        Encoding = EncodingPrime
     ;
         error("backend_unicode_encoding: unexpected Unicode encoding code")
     ).
@@ -2429,13 +2475,13 @@ string_get_float_exponent(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_float_exponent_2(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
-
     % We've read past the E signalling the start of the exponent -
     % make sure that there's at least one digit following,
     % and then get the remaining digits.
     %
+:- pred get_float_exponent_2(io.input_stream::in, list(char)::in, token::out,
+    io::di, io::uo) is det.
+
 get_float_exponent_2(Stream, Chars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -2454,13 +2500,13 @@ get_float_exponent_2(Stream, Chars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_float_exponent_2(string::in, int::in, posn::in,
-    token::out, string_token_context::out, posn::in, posn::out) is det.
-
     % We've read past the E signalling the start of the exponent -
     % make sure that there's at least one digit following,
     % and then get the remaining digits.
     %
+:- pred string_get_float_exponent_2(string::in, int::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
+
 string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_digit(Char) ->
@@ -2476,12 +2522,12 @@ string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_float_exponent_3(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
-
     % We've read past the first digit of the exponent -
     % now get the remaining digits.
     %
+:- pred get_float_exponent_3(io.input_stream::in, list(char)::in, token::out,
+    io::di, io::uo) is det.
+
 get_float_exponent_3(Stream, Chars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
