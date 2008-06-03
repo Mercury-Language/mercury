@@ -1972,7 +1972,7 @@ long_option("use-regions",          use_regions).
 long_option("use-regions-debug",    use_regions_debug).
 long_option("use-regions-profiling",use_regions_profiling).
 % Data representation options
-long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
+long_option("use-minimal-model-stack-copy", use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
 long_option("minimal-model-debug",  minimal_model_debug).
 long_option("single-prec-float",    single_prec_float).
