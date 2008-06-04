@@ -1,10 +1,15 @@
       E1:     C1 CALL pred mdbrc_test.main/2-0 (det) mdbrc_test.m:15
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> context none
 Contexts will not be printed.
-mdb> step
+mdb> break p
+ 0: + stop  interface pred mdbrc_test.p/2-0 (det)
+mdb> continue
       E2:     C2 CALL pred mdbrc_test.p/2-0 (det)
+mdb> delete *
+ 0: E stop  interface pred mdbrc_test.p/2-0 (det)
 mdb> finish
       E3:     C2 EXIT pred mdbrc_test.p/2-0 (det)
 mdb> print B
