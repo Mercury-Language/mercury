@@ -12,7 +12,6 @@ ORDINARY_PROGS=	\
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
-	big_array_from_list \
 	boyer \
 	brace \
 	builtin_inst_rename \
@@ -341,18 +340,18 @@ endif
 
 # Trace goal with runtime conditions work properly only in C and Erlang grades.
 ifeq "$(filter il% java%,$(GRADE))" ""
-	TRACE_GOAL_ENV_PROGS= \
+	TRACE_GOAL_ENV_PROGS = \
 		trace_goal_env_1 \
 		trace_goal_env_2 \
 		trace_goal_env_3
 else
-	TRACE_GOAL_ENV_PROGS=
+	TRACE_GOAL_ENV_PROGS =
 endif
 
 # Compile-time garbage collection is currently incompatible with debugging
 # grades.
 ifeq "$(findstring debug,$(GRADE))" ""
-	CTGC_PROGS= \
+	CTGC_PROGS = \
 		bad_indirect_reuse \
 		bad_indirect_reuse2 \
 		bad_indirect_reuse2b \
@@ -361,7 +360,18 @@ ifeq "$(findstring debug,$(GRADE))" ""
 		uncond_reuse \
 		uncond_reuse_bad
 else
-	CTGC_PROGS=
+	CTGC_PROGS =
+endif
+
+# Programs that deal with large amounts of datas need tail recursion. Don't
+# execute them in grades that do not allow tail recursion, since their failures
+# would be spurious.
+
+ifneq "$(filter debug% deep%,$(GRADE))" ""
+	BIG_DATA_PROGS = \
+		big_array_from_list
+else
+	BIG_DATA_PROGS =
 endif
 
 # Tests of the C#, MC++, and IL foreign language interfaces only
@@ -388,7 +398,7 @@ endif
 # Tests of the C foreign language interface only work in C grades.
 # Runtime options are specific to the C backend.
 ifeq "$(filter il% java% erlang%,$(GRADE))" ""
-	C_ONLY_PROGS= \
+	C_ONLY_PROGS = \
 		factt \
 		factt_sort_test \
 		foreign_type_assertion \
@@ -397,7 +407,7 @@ ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 		pragma_import \
 		runtime_opt
 else
-	C_ONLY_PROGS=
+	C_ONLY_PROGS =
 endif
 
 # constant_prop_2 fails in hl*prof* grades, due to a complicated phase
@@ -585,9 +595,9 @@ endif
 # string_hash tests features of the Mercury C runtime.
 # It requires too much memory to be used in non-GC grades.
 ifeq "$(filter il% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
-	C_AND_GC_ONLY_PROGS=string_hash
+	C_AND_GC_ONLY_PROGS =string_hash
 else
-	C_AND_GC_ONLY_PROGS=
+	C_AND_GC_ONLY_PROGS =
 endif
 
 # Static linking doesn't work on Solaris in debug grades
@@ -619,14 +629,14 @@ else
 		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
 		$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
 		$(TRAILED_PROGS) $(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
-		$(CTGC_PROGS)
+		$(CTGC_PROGS) $(BIG_DATA_PROGS)
 endif
 
 #-----------------------------------------------------------------------------#
 
 TESTS = $(PROGS)
 SUBDIRS = typeclasses sub-modules exceptions purity
-TESTS_DIR=..
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
