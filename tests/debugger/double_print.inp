@@ -1,6 +1,9 @@
 echo on
 context none
-step
+register --quiet
+break p
+continue
+delete *
 finish
 print A
 continue
