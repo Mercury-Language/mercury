@@ -36,6 +36,9 @@ ERRORCHECK_PROGS= \
 	unused_import \
 	warn_stubs
 
+# We don't yet pass (or even have a .exp file for) this test.
+#	trace_goal_dupl_defn
+
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 ERRORCHECK_PROGS += unused_args_analysis
 endif
