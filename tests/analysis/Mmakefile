@@ -1,0 +1,27 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS = \
+	excp \
+	ext \
+	reuse \
+	sharing \
+	table \
+	trail \
+	unused_args
+
+# These tests only work if the workspace was compiled with `--use-subdirs'.
+ifneq ($(origin WORKSPACE),undefined)
+    ifeq ($(shell [ -d $(WORKSPACE)/library/Mercury ] || echo cannot_run),cannot_run)
+    	SUBDIRS =
+    endif
+endif
+
+TESTS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#

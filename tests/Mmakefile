@@ -2,6 +2,7 @@ THIS_DIR=tests
 PROGS=
 TESTS=
 SUBDIRS = \
+	analysis \
 	benchmarks \
 	debugger \
 	dppd \

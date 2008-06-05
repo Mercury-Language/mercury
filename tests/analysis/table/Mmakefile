@@ -1,0 +1,19 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis/table
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS=
+TESTS=table_m1-nodepend
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+table_m1.runtest:
+	MC=$(MC) ./table_runtest.sh
+
+realclean_local:
+	$(RM) table_m1.m
+	$(RM) -r Mercury
+
+#-----------------------------------------------------------------------------#

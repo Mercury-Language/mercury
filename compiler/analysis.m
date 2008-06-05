@@ -169,14 +169,26 @@
                 fid_mode    :: proc_id
             ).
 
-    % Holds information used while analysing a module.
 :- type analysis_info.
 
-:- func init_analysis_info(Compiler) = analysis_info <= compiler(Compiler).
+:- func init_analysis_info(Compiler, module_name, bool) = analysis_info
+    <= compiler(Compiler).
 
 %-----------------------------------------------------------------------------%
 
+    % Look up call patterns for all results for a given function.
+    % Even if the module is `invalid' the call patterns will be returned.
+    %
+    % You should use this when you want to know which call patterns were
+    % produced for a procedure defined in the current module in previous
+    % passes.
+    %
+:- pred lookup_existing_call_patterns(analysis_info::in, analysis_name::in,
+    module_name::in, func_id::in, list(Call)::out) is det
+    <= call_pattern(FuncInfo, Call).
+
     % Look up all results for a given function.
+    % If the module is `invalid' then the result list will be empty.
     %
     % N.B. Newly recorded results will NOT be found. This is intended
     % for looking up results from _other_ modules.
@@ -211,46 +223,54 @@
     FuncInfo::in, Call::in, maybe(analysis_result(Call, Answer))::out) is det
     <= analysis(FuncInfo, Call, Answer).
 
-    % Record an analysis result for a (usually local) function.
-    %
-    % XXX At the moment the result is assumed to be for a function local to
-    % the currently-compiled module and things will probably break if it isn't.
+    % Record an analysis result for a function.
+    % Abort if the function is not from the module being analysed.
+    % Does nothing if not making the analysis registry.
     %
 :- pred record_result(module_name::in, func_id::in, Call::in, Answer::in,
     analysis_status::in, analysis_info::in, analysis_info::out) is det
     <= analysis(FuncInfo, Call, Answer).
 
-    % Record the dependency of a module on the analysis result of another
-    % module.
+    % Record the dependency of the module being analysed on the analysis
+    % result of another module.
+    % Does nothing if not making the analysis registry or if the result
+    % that is depended upon comes from a non-local module.
+    % Automatically makes a request if the call pattern hasn't been seen
+    % before for that function.
     %
-:- pred record_dependency(module_name::in, analysis_name::in, module_name::in,
-    func_id::in, Call::in, analysis_info::in, analysis_info::out) is det
-    <= call_pattern(FuncInfo, Call).
+:- pred record_dependency(module_name::in, func_id::in, FuncInfo::in,
+    Call::in, Answer::unused, analysis_info::in, analysis_info::out) is det
+    <= analysis(FuncInfo, Call, Answer).
 
-    % Lookup all the requests for a given (usually local) function.
+    % Lookup all the requests for a given function.
+    % Abort if the function is not from the module being analysed.
     %
 :- pred lookup_requests(analysis_info::in, analysis_name::in, module_name::in,
     func_id::in, list(Call)::out) is det
     <= call_pattern(FuncInfo, Call).
 
-    % Record a request for a function in an imported module.
+    % Record a request from the module being analysed on a function defined
+    % in an imported module.
+    % Does nothing if not making the analysis registry or if the function is
+    % defined in a non-local module.
     %
-:- pred record_request(analysis_name::in, module_name::in, func_id::in,
-    Call::in, analysis_info::in, analysis_info::out) is det
+:- pred record_request(analysis_name::in, module_name::in,
+    func_id::in, Call::in, analysis_info::in, analysis_info::out) is det
     <= call_pattern(FuncInfo, Call).
 
 %-----------------------------------------------------------------------------%
 
-    % prepare_intermodule_analysis(ThisModuleName, ModuleNames,
-    %   LocalModuleNames, !Info, !IO)
+    % prepare_intermodule_analysis(ImportedModuleNames, LocalModuleNames,
+    %   !Info, !IO)
     %
     % This predicate should be called before any pass begins to use the
     % analysis framework.  It ensures that all the analysis files 
-    % are loaded so that lookups can be satisfied.  ModuleNames is the set of
-    % all modules that are directly or indirectly imported by the module being
-    % analysed.  LocalModuleNames is the set of non-"library" modules.
+    % are loaded so that lookups can be satisfied.  ImportedModuleNames is the
+    % set of all modules that are directly or indirectly imported by the
+    % module being analysed.  LocalModuleNames is the set of non-"library"
+    % modules.
     %
-:- pred prepare_intermodule_analysis(module_name::in, set(module_name)::in,
+:- pred prepare_intermodule_analysis(set(module_name)::in,
     set(module_name)::in, analysis_info::in, analysis_info::out,
     io::di, io::uo) is det.
 
@@ -267,7 +287,7 @@
     % requests and results for the current compilation to the
     % analysis files.
     %
-:- pred write_analysis_files(Compiler::in, module_info::in, module_name::in,
+:- pred write_analysis_files(Compiler::in, module_info::in,
     set(module_name)::in, analysis_info::in, analysis_info::out,
     io::di, io::uo) is det
     <= compiler(Compiler).
@@ -299,6 +319,7 @@
 
 :- import_module map.
 :- import_module string.
+:- import_module type_desc.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -307,6 +328,15 @@
     --->    some [Compiler]
             analysis_info(
                 compiler :: Compiler,
+
+                % The module being analysed.
+                %
+                this_module :: module_name,
+
+                % Whether we are making the analysis registry or just using
+                % results for .analysis files.
+                %
+                make_analysis_registry :: make_analysis_registry,
 
                 % The set of local modules, i.e. for which we can issue
                 % requests.
@@ -333,7 +363,8 @@
                 % into the "old" map, from where they can be written to disk.
                 %
                 old_analysis_results :: analysis_map(some_analysis_result),
-                new_analysis_results :: analysis_map(some_analysis_result),
+                new_analysis_results :: module_analysis_map(
+                                            some_analysis_result),
 
                 % The Inter-module Dependency Graph records dependencies
                 % of an entire module's analysis results on another module's
@@ -357,6 +388,10 @@
             )
             => compiler(Compiler).
 
+:- type make_analysis_registry
+    --->    make_analysis_registry
+    ;       use_analysis_registry_only.
+
     % An analysis result is a call pattern paired with an answer.
     % The result has a status associated with it.
     %
@@ -372,17 +407,20 @@
 :- type analysis_request
     --->    some [FuncInfo, Call]
             analysis_request(
-                Call
+                req_call        :: Call,
+                req_caller      :: module_name
             )
             => call_pattern(FuncInfo, Call).
 
 :- type imdg_arc
     --->    some [FuncInfo, Call]
             imdg_arc(
-                Call,       % Call pattern of the analysis result
-                            % being depended on.
-                module_name   % The module that _depends on_ this function's
-                            % result.
+                imdg_call       :: Call,
+                                % Call pattern of the analysis result
+                                % being depended on.
+                imdg_caller     :: module_name
+                                % The module that _depends on_ this
+                                % function's result.
             )
             => call_pattern(FuncInfo, Call).
 
@@ -411,20 +449,48 @@
 
 %-----------------------------------------------------------------------------%
 
-init_analysis_info(Compiler) =
-    'new analysis_info'(Compiler, set.init, map.init, map.init, map.init,
-        map.init, map.init, map.init).
+init_analysis_info(Compiler, ThisModuleName, MakeAnalysisRegBool) = Info :-
+    (
+        MakeAnalysisRegBool = yes,
+        MakeAnalysisReg = make_analysis_registry
+    ;
+        MakeAnalysisRegBool = no,
+        MakeAnalysisReg = use_analysis_registry_only
+    ),
+    Info = 'new analysis_info'(Compiler, ThisModuleName, MakeAnalysisReg,
+        set.init, map.init, map.init, map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
 
-lookup_results(Info, ModuleName, FuncId, ResultList) :-
-    lookup_results(Info, ModuleName, FuncId, no, ResultList).
+lookup_existing_call_patterns(Info, AnalysisName, ModuleName, FuncId, Calls) :-
+    ( ModuleName = Info ^ this_module ->
+        true
+    ;
+        unexpected(this_file, "lookup_existing_call_patterns: not this_module")
+    ),
+    Map = Info ^ old_analysis_results,
+    (
+        ModuleResults = Map ^ elem(ModuleName),
+        Results = ModuleResults ^ elem(AnalysisName) ^ elem(FuncId)
+    ->
+        Calls = list.map(
+            (func(Result) = Call :-
+                Result = some_analysis_result(Call0, _Answer, _Status),
+                det_univ_to_type(univ(Call0), Call)
+            ), Results)
+    ;
+        Calls = []
+    ).
 
-:- pred lookup_results(analysis_info::in, module_name::in, func_id::in,
+lookup_results(Info, ModuleName, FuncId, ResultList) :-
+    AllowInvalidModules = no,
+    lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules, ResultList).
+
+:- pred lookup_results_1(analysis_info::in, module_name::in, func_id::in,
     bool::in, list(analysis_result(Call, Answer))::out) is det
     <= analysis(FuncInfo, Call, Answer).
 
-lookup_results(Info, ModuleName, FuncId, AllowInvalidModules, ResultList) :-
+lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules, ResultList) :-
     trace [io(!IO)] (
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("% Looking up analysis results for ", !IO),
@@ -451,9 +517,9 @@ lookup_results(Info, ModuleName, FuncId, AllowInvalidModules, ResultList) :-
         )
     ).
 
-:- pred lookup_results_2(analysis_map(some_analysis_result)::in, module_name::in,
-    func_id::in, list(analysis_result(Call, Answer))::out) is det
-    <= analysis(FuncInfo, Call, Answer).
+:- pred lookup_results_2(analysis_map(some_analysis_result)::in,
+    module_name::in, func_id::in, list(analysis_result(Call, Answer))::out)
+    is det <= analysis(FuncInfo, Call, Answer).
 
 lookup_results_2(Map, ModuleName, FuncId, ResultList) :-
     AnalysisName = analysis_name(_ : Call, _ : Answer),
@@ -525,7 +591,9 @@ more_precise_answer(FuncInfo, Result, Best0, Best) :-
 
 lookup_exactly_matching_result_even_from_invalid_modules(Info, ModuleName,
         FuncId, FuncInfo, Call, MaybeResult) :-
-    lookup_results(Info, ModuleName, FuncId, yes, AllResultsList),
+    AllowInvalidModules = yes,
+    lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules,
+        AllResultsList),
     ResultList = list.filter(
         (pred(R::in) is semidet :-
             equivalent(FuncInfo, Call, R ^ ar_call)
@@ -546,50 +614,64 @@ lookup_exactly_matching_result_even_from_invalid_modules(Info, ModuleName,
 %-----------------------------------------------------------------------------%
 
 record_result(ModuleName, FuncId, CallPattern, AnswerPattern, Status, !Info) :-
-    Map0 = !.Info ^ new_analysis_results,
-    record_result_in_analysis_map(ModuleName, FuncId,
-    CallPattern, AnswerPattern, Status, Map0, Map),
-    !Info ^ new_analysis_results := Map.
+    ( ModuleName = !.Info ^ this_module ->
+        true
+    ;
+        unexpected(this_file,
+            "record_result: recording result for procedure " ++
+            "defined in another module")
+    ),
 
-:- pred record_result_in_analysis_map(module_name::in, func_id::in,
+    MakeAnalysisReg = !.Info ^ make_analysis_registry,
+    (
+        MakeAnalysisReg = make_analysis_registry,
+        Map0 = !.Info ^ new_analysis_results,
+        record_result_in_analysis_map(FuncId, CallPattern, AnswerPattern,
+            Status, Map0, Map),
+        !Info ^ new_analysis_results := Map
+    ;
+        MakeAnalysisReg = use_analysis_registry_only
+    ).
+
+:- pred record_result_in_analysis_map(func_id::in,
     Call::in, Answer::in, analysis_status::in,
-    analysis_map(some_analysis_result)::in,
-    analysis_map(some_analysis_result)::out) is det
+    module_analysis_map(some_analysis_result)::in,
+    module_analysis_map(some_analysis_result)::out) is det
     <= analysis(FuncInfo, Call, Answer).
 
-record_result_in_analysis_map(ModuleName, FuncId,
-        CallPattern, AnswerPattern, Status, !Map) :-
-    ( ModuleResults0 = map.search(!.Map, ModuleName) ->
-        ModuleResults1 = ModuleResults0
-    ;
-        ModuleResults1 = map.init
-    ),
+record_result_in_analysis_map(FuncId, CallPattern, AnswerPattern, Status,
+        ModuleResults0, ModuleResults) :-
     AnalysisName = analysis_name(CallPattern, AnswerPattern),
-    ( AnalysisResults0 = map.search(ModuleResults1, AnalysisName) ->
+    ( map.search(ModuleResults0, AnalysisName, AnalysisResults0) ->
         AnalysisResults1 = AnalysisResults0
     ;
         AnalysisResults1 = map.init
     ),
-    ( FuncResults0 = map.search(AnalysisResults1, FuncId) ->
+    ( map.search(AnalysisResults1, FuncId, FuncResults0) ->
         FuncResults1 = FuncResults0
     ;
         FuncResults1 = []
     ),
-    !:Map = map.set(!.Map, ModuleName,
-        map.set(ModuleResults1, AnalysisName,
-            map.set(AnalysisResults1, FuncId, FuncResults))),
+    Result = 'new some_analysis_result'(CallPattern, AnswerPattern, Status),
     FuncResults = [Result | FuncResults1],
-    Result = 'new some_analysis_result'(CallPattern, AnswerPattern, Status).
+    ModuleResults =
+        map.set(ModuleResults0, AnalysisName,
+            map.set(AnalysisResults1, FuncId, FuncResults)).
 
 %-----------------------------------------------------------------------------%
 
 lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
+    ( ModuleName = Info ^ this_module ->
+        true
+    ;
+        unexpected(this_file, "lookup_requests: not this_module")
+    ),
     (
         map.search(Info ^ analysis_requests, ModuleName, ModuleRequests),
         CallPatterns0 = ModuleRequests ^ elem(AnalysisName) ^ elem(FuncId)
     ->
         CallPatterns1 = list.filter_map(
-            (func(analysis_request(Call0)) = Call is semidet :-
+            (func(analysis_request(Call0, _)) = Call is semidet :-
                 univ(Call) = univ(Call0)
             ), CallPatterns0),
         % Requests simply get appended to `.request' files so when we read them
@@ -600,6 +682,31 @@ lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
     ).
 
 record_request(AnalysisName, ModuleName, FuncId, CallPattern, !Info) :-
+    ThisModule = !.Info ^ this_module,
+    ( ThisModule = ModuleName ->
+        unexpected(this_file, "record_request: request on self")
+    ;
+        true
+    ),
+
+    MakeAnalysisReg = !.Info ^ make_analysis_registry,
+    module_is_local(!.Info, ModuleName, IsLocal),
+    (
+        MakeAnalysisReg = make_analysis_registry,
+        IsLocal = yes
+    ->
+        record_request_2(ThisModule, AnalysisName, ModuleName, FuncId,
+            CallPattern, !Info)
+    ;
+        true
+    ).
+
+:- pred record_request_2(module_name::in, analysis_name::in, module_name::in,
+    func_id::in, Call::in, analysis_info::in, analysis_info::out) is det
+    <= call_pattern(FuncInfo, Call).
+
+record_request_2(CallerModule, AnalysisName, ModuleName, FuncId, CallPattern,
+        !Info) :-
     ( ModuleResults0 = map.search(!.Info ^ analysis_requests, ModuleName) ->
         ModuleResults1 = ModuleResults0
     ;
@@ -615,50 +722,81 @@ record_request(AnalysisName, ModuleName, FuncId, CallPattern, !Info) :-
     ;
         FuncResults1 = []
     ),
+    Request = 'new analysis_request'(CallPattern, CallerModule),
+    FuncResults = [Request | FuncResults1],
     !Info ^ analysis_requests :=
         map.set(!.Info ^ analysis_requests, ModuleName,
             map.set(ModuleResults1, AnalysisName,
-                map.set(AnalysisResults1, FuncId,
-                    ['new analysis_request'(CallPattern) | FuncResults1]))).
+                map.set(AnalysisResults1, FuncId, FuncResults))).
 
 %-----------------------------------------------------------------------------%
 
-record_dependency(CallerModuleName, AnalysisName, CalleeModuleName, FuncId, Call,
+record_dependency(CalleeModuleName, FuncId, FuncInfo, Call, DummyAnswer,
         !Info) :-
-    ( CallerModuleName = CalleeModuleName ->
-        % XXX this assertion breaks compiling the standard library with
-        % --analyse-trail-usage at the moment
-        %
-        % error("record_dependency: " ++ CalleeModuleName ++ " and " ++
-        %    CallerModuleName ++ " must be different")
+    ThisModule = !.Info ^ this_module,
+    ( ThisModule = CalleeModuleName ->
+        unexpected(this_file, "record_dependency: dependency on self")
+    ;
+        true
+    ),
+
+    MakeAnalysisReg = !.Info ^ make_analysis_registry,
+    module_is_local(!.Info, CalleeModuleName, IsLocal),
+    (
+        MakeAnalysisReg = make_analysis_registry,
+        IsLocal = yes
+    ->
+        AnalysisName = analysis_name(Call, DummyAnswer),
+        record_dependency_2(ThisModule, AnalysisName, CalleeModuleName, FuncId,
+            Call, !Info),
+
+        % If the call pattern that's being depended on hasn't been analysed
+        % before, make a request for it.
+        lookup_exactly_matching_result_even_from_invalid_modules(!.Info,
+            CalleeModuleName, FuncId, FuncInfo, Call, MaybeResult),
+        (
+            MaybeResult = no,
+            record_request(AnalysisName, CalleeModuleName, FuncId, Call, !Info)
+        ;
+            MaybeResult = yes(Result),
+            same_type(Result, analysis_result(Call, DummyAnswer, _))
+        )
+    ;
+        true
+    ).
+
+:- pred record_dependency_2(module_name::in, analysis_name::in,
+    module_name::in, func_id::in, Call::in,
+    analysis_info::in, analysis_info::out) is det
+    <= call_pattern(FuncInfo, Call).
+
+record_dependency_2(CallerModuleName, AnalysisName, CalleeModuleName, FuncId,
+        Call, !Info) :-
+    ( Analyses0 = map.search(!.Info ^ new_imdg, CalleeModuleName) ->
+        Analyses1 = Analyses0
+    ;
+        Analyses1 = map.init
+    ),
+    ( Funcs0 = map.search(Analyses1, AnalysisName) ->
+        Funcs1 = Funcs0
+    ;
+        Funcs1 = map.init
+    ),
+    ( FuncArcs0 = map.search(Funcs1, FuncId) ->
+        FuncArcs1 = FuncArcs0
+    ;
+        FuncArcs1 = []
+    ),
+    Dep = 'new imdg_arc'(Call, CallerModuleName),
+    % XXX this should really be a set to begin with
+    ( list.member(Dep, FuncArcs1) ->
         true
     ;
-        ( Analyses0 = map.search(!.Info ^ new_imdg, CalleeModuleName) ->
-            Analyses1 = Analyses0
-        ;
-            Analyses1 = map.init
-        ),
-        ( Funcs0 = map.search(Analyses1, AnalysisName) ->
-            Funcs1 = Funcs0
-        ;
-            Funcs1 = map.init
-        ),
-        ( FuncArcs0 = map.search(Funcs1, FuncId) ->
-            FuncArcs1 = FuncArcs0
-        ;
-            FuncArcs1 = []
-        ),
-        Dep = 'new imdg_arc'(Call, CallerModuleName),
-        % XXX this should really be a set to begin with
-        ( list.member(Dep, FuncArcs1) ->
-            true
-        ;
-            !Info ^ new_imdg :=
-                map.set(!.Info ^ new_imdg, CalleeModuleName,
-                    map.set(Analyses1, AnalysisName,
-                        map.set(Funcs1, FuncId, FuncArcs))),
-                            FuncArcs = [Dep | FuncArcs1]
-        )
+        FuncArcs = [Dep | FuncArcs1],
+        !Info ^ new_imdg :=
+            map.set(!.Info ^ new_imdg, CalleeModuleName,
+                map.set(Analyses1, AnalysisName,
+                    map.set(Funcs1, FuncId, FuncArcs)))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -688,13 +826,17 @@ record_dependency(CallerModuleName, AnalysisName, CalleeModuleName, FuncId, Call
     % Finally, clear out the "new" analysis results map.  When we write
     % out the analysis files we will do it from the "old" results map.
     %
+    % In a similar way, any new results which satisfy a request cause the
+    % module that made the request to be marked suboptimal. 
+    %
 :- pred update_analysis_registry(module_info::in,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
 update_analysis_registry(ModuleInfo, !Info, !IO) :-
     debug_msg(io.write_string("% Updating analysis registry.\n"), !IO),
     NewResults = !.Info ^ new_analysis_results,
-    map.foldl2(update_analysis_registry_2(ModuleInfo), NewResults, !Info, !IO),
+    update_analysis_registry_2(ModuleInfo, !.Info ^ this_module, NewResults,
+        !Info, !IO),
     !Info ^ new_analysis_results := map.init.
 
 :- pred update_analysis_registry_2(module_info::in, module_name::in,
@@ -741,18 +883,8 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
         MaybeResult = yes(OldResult),
         OldResult = analysis_result(_OldCall, OldAnswer, OldStatus),
         ( equivalent(FuncInfo, NewAnswer, OldAnswer) ->
-            debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% No change in the result ", !IO),
-                io.write(ModuleName, !IO),
-                io.write_string(".", !IO),
-                io.write(FuncId, !IO),
-                io.write_string(":", !IO),
-                io.write(Call, !IO),
-                io.write_string(" --> ", !IO),
-                io.write(NewAnswer, !IO),
-                io.nl(!IO)
-            ), !IO),
-
+            debug_msg(write_no_change_in_result(ModuleName, FuncId, Call,
+                NewAnswer), !IO),
             ( NewStatus \= OldStatus ->
                 OldMap0 = !.Info ^ old_analysis_results,
                 replace_result_in_analysis_map(ModuleName, FuncId, FuncInfo,
@@ -777,22 +909,11 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
             ;
                 Status = invalid
             ),
-            debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% ", !IO),
-                io.write(OldAnswer, !IO),
-                io.write_string(" changed to ", !IO),
-                io.write(NewAnswer, !IO),
-                io.nl(!IO),
-                io.write_string("Mark dependent modules as ", !IO),
-                io.write(Status, !IO),
-                io.nl(!IO),
-                io.write_string("The modules to mark are: ", !IO),
-                io.write(DepModules, !IO),
-                io.nl(!IO)
-            ), !IO),
             OldArcs = !.Info ^ old_imdg ^ det_elem(ModuleName),
             DepModules = imdg_dependent_modules(OldArcs, AnalysisName,
                 FuncId, FuncInfo, Call),
+            debug_msg(write_changed_answer(OldAnswer, NewAnswer, Status,
+                DepModules), !IO),
             set.fold2(taint_module_overall_status(Status), DepModules,
                 !Info, !IO)
         )
@@ -800,10 +921,35 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
         % There was no previous answer for this call pattern.
         % Just add this result to the registry.
         MaybeResult = no,
-        OldMap0 = !.Info ^ old_analysis_results,
-        record_result_in_analysis_map(ModuleName, FuncId,
-            Call, NewAnswer, NewStatus, OldMap0, OldMap),
-        !Info ^ old_analysis_results := OldMap
+        OldMap0 = !.Info ^ old_analysis_results ^ det_elem(ModuleName),
+        record_result_in_analysis_map(FuncId, Call, NewAnswer, NewStatus,
+            OldMap0, OldMap),
+        !Info ^ old_analysis_results ^ elem(ModuleName) := OldMap
+    ),
+
+    % If this new result satisfies a request then mark the requesting modules
+    % as suboptimal so they can be reanalysed.
+    %
+    % Ideally we could compare the new answer with either a default answer that
+    % the calling module probably used, or each request could optionally record
+    % what answer the caller assumed.  Then we could avoid reanalysing the
+    % calling module unnecessarily.  (This only reason we don't implement
+    % the former is that the structure reuse analysis doesn't implement
+    % the `top' typeclass method.)
+    (
+        map.search(!.Info ^ analysis_requests, ModuleName, ModuleRequests),
+        Requests = ModuleRequests ^ elem(AnalysisName) ^ elem(FuncId),
+        Requests = [_ | _]
+    ->
+        Callers0 = list.filter_map(
+            (func(analysis_request(Call0, Caller)) = Caller is semidet :-
+                univ(Call0) = univ(Call0)
+            ), Requests),
+        list.sort_and_remove_dups(Callers0, Callers),
+        list.foldl2(taint_module_overall_status(suboptimal), Callers,
+            !Info, !IO)
+    ;
+        true
     ).
 
     % Replace an analysis result for the given function/call pattern with a
@@ -886,23 +1032,69 @@ taint_module_overall_status(Status, ModuleName, !Info, !IO) :-
         ; Status = invalid
         ),
 
-        % We may not have loaded the analysis results for this module yet.
+        % We may not have read the overall status for this module yet.
         % Even though we loaded all the analysis files of modules reachable
         % from the initial module beforehand, a _caller_ of the initial module
         % may not be part of that set.
-        ensure_old_module_analysis_results_loaded(ModuleName, !Info, !IO),
+        ensure_module_status_loaded(ModuleName, !Info, !IO),
 
         ModuleStatus0 = !.Info ^ module_statuses ^ det_elem(ModuleName),
         ModuleStatus = lub(ModuleStatus0, Status),
-        debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.print("% Tainting the overall module status of ", !IO),
-            io.print(ModuleName, !IO),
-            io.print(" with ", !IO),
-            io.print(ModuleStatus, !IO),
-            io.nl(!IO)
-        ), !IO),
+        debug_msg(write_tainting_module(ModuleName, ModuleStatus), !IO),
         !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus
     ).
+
+:- pred ensure_module_status_loaded(module_name::in,
+    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+
+ensure_module_status_loaded(ModuleName, !Info, !IO) :-
+    ( map.contains(!.Info ^ module_statuses, ModuleName) ->
+        true
+    ;
+        analysis.read_module_overall_status(!.Info ^ compiler, ModuleName,
+            ModuleStatus, !IO),
+        !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus
+    ).
+
+:- pred write_no_change_in_result(module_name::in, func_id::in, Call::in,
+    Answer::in, io::di, io::uo) is det.
+
+write_no_change_in_result(ModuleName, FuncId, Call, NewAnswer, !IO) :-
+    io.write_string("% No change in the result ", !IO),
+    io.write(ModuleName, !IO),
+    io.write_string(".", !IO),
+    io.write(FuncId, !IO),
+    io.write_string(":", !IO),
+    io.write(Call, !IO),
+    io.write_string(" --> ", !IO),
+    io.write(NewAnswer, !IO),
+    io.nl(!IO).
+
+:- pred write_changed_answer(Answer::in, Answer::in, analysis_status::in,
+    set(module_name)::in, io::di, io::uo) is det.
+
+write_changed_answer(OldAnswer, NewAnswer, Status, DepModules, !IO) :-
+    io.write_string("% ", !IO),
+    io.write(OldAnswer, !IO),
+    io.write_string(" changed to ", !IO),
+    io.write(NewAnswer, !IO),
+    io.nl(!IO),
+    io.write_string("Mark dependent modules as ", !IO),
+    io.write(Status, !IO),
+    io.nl(!IO),
+    io.write_string("The modules to mark are: ", !IO),
+    io.write(DepModules, !IO),
+    io.nl(!IO).
+
+:- pred write_tainting_module(module_name::in, analysis_status::in,
+    io::di, io::uo) is det.
+
+write_tainting_module(ModuleName, ModuleStatus, !IO) :-
+    io.print("% Tainting the overall module status of ", !IO),
+    io.print(ModuleName, !IO),
+    io.print(" with ", !IO),
+    io.print(ModuleStatus, !IO),
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -915,24 +1107,19 @@ taint_module_overall_status(Status, ModuleName, !Info, !IO) :-
 :- pred update_intermodule_dependencies(module_name::in, set(module_name)::in,
     analysis_info::in, analysis_info::out) is det.
 
-update_intermodule_dependencies(ModuleName, ImportedModules, !Info) :-
-    set.fold(update_intermodule_dependencies_2(ModuleName), ImportedModules,
-        !Info).
+update_intermodule_dependencies(ModuleName, LocalImportedModules, !Info) :-
+    set.fold(update_intermodule_dependencies_2(ModuleName),
+        LocalImportedModules, !Info).
 
 :- pred update_intermodule_dependencies_2(module_name::in, module_name::in,
     analysis_info::in, analysis_info::out) is det.
 
 update_intermodule_dependencies_2(ModuleName, ImportedModuleName, !Info) :-
+    map.lookup(!.Info ^ old_imdg, ImportedModuleName, IMDG0),
     trace [io(!IO)] (
-        debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.print("% Clearing entries involving ", !IO),
-            io.print(ModuleName, !IO),
-            io.print(" from ", !IO),
-            io.print(ImportedModuleName, !IO),
-            io.print("'s IMDG.\n", !IO)
-        ), !IO)
+        debug_msg(write_clearing_entries(ModuleName, ImportedModuleName),
+            !IO)
     ),
-    IMDG0 = !.Info ^ old_imdg ^ det_elem(ImportedModuleName),
     clear_imdg_entries_pointing_at(ModuleName, IMDG0, IMDG1),
 
     ( NewArcs = !.Info ^ new_imdg ^ elem(ImportedModuleName) ->
@@ -942,6 +1129,16 @@ update_intermodule_dependencies_2(ModuleName, ImportedModuleName, !Info) :-
     ),
     !Info ^ old_imdg ^ elem(ImportedModuleName) := IMDG,
     !Info ^ new_imdg := map.delete(!.Info ^ new_imdg, ImportedModuleName).
+
+:- pred write_clearing_entries(module_name::in, module_name::in,
+    io::di, io::uo) is det.
+
+write_clearing_entries(ModuleName, ImportedModuleName, !IO) :-
+    io.write_string("% Clearing entries involving ", !IO),
+    io.write(ModuleName, !IO),
+    io.write_string(" from ", !IO),
+    io.write(ImportedModuleName, !IO),
+    io.write_string("'s IMDG.\n", !IO).
 
 :- pred clear_imdg_entries_pointing_at(module_name::in,
     module_analysis_map(imdg_arc)::in,
@@ -962,7 +1159,7 @@ clear_imdg_entries_pointing_at_2(ModuleName, _, FuncMap0, FuncMap) :-
     list(imdg_arc)::in, list(imdg_arc)::out) is det.
 
 clear_imdg_entries_pointing_at_3(ModuleName, _, Arcs0, Arcs) :-
-    list.filter((pred(imdg_arc(_, ModId)::in) is semidet :- ModuleName \= ModId),
+    list.filter((pred(Arc::in) is semidet :- Arc ^ imdg_caller \= ModuleName),
         Arcs0, Arcs).
 
 :- pred combine_func_imdg(func_analysis_map(imdg_arc)::in,
@@ -978,51 +1175,37 @@ combine_imdg_lists(ArcsA, ArcsB, ArcsA ++ ArcsB).
 
 %-----------------------------------------------------------------------------%
 
-prepare_intermodule_analysis(ThisModuleName, ModuleNames, LocalModuleNames,
-        !Info, !IO) :-
-    set.fold2(ensure_analysis_files_loaded, ModuleNames, !Info, !IO),
+prepare_intermodule_analysis(ImportedModuleNames0, LocalModuleNames, !Info,
+        !IO) :-
+    ThisModule = !.Info ^ this_module,
+    ImportedModuleNames = set.delete(ImportedModuleNames0, ThisModule),
 
-    % Read in requests for the module being analysed.
-    read_module_analysis_requests(!.Info, ThisModuleName, ThisModuleRequests,
-        !IO),
-    !Info ^ analysis_requests ^ elem(ThisModuleName) := ThisModuleRequests,
+    !Info ^ local_module_names := LocalModuleNames,
 
-    !Info ^ local_module_names := LocalModuleNames.
+    % Read in results for imported modules.
+    set.fold2(load_module_analysis_results, ImportedModuleNames, !Info, !IO),
 
-:- pred ensure_analysis_files_loaded(module_name::in,
+    % Read in results and requests for the module being analysed.
+    load_module_analysis_results(ThisModule, !Info, !IO),
+    read_module_analysis_requests(!.Info, ThisModule, ThisModuleRequests, !IO),
+    !Info ^ analysis_requests ^ elem(ThisModule) := ThisModuleRequests.
+
+:- pred load_module_analysis_results(module_name::in,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
-ensure_analysis_files_loaded(ModuleName, !Info, !IO) :-
-    ensure_old_module_analysis_results_loaded(ModuleName, !Info, !IO),
-    ensure_old_imdg_loaded(ModuleName, !Info, !IO).
-
-:- pred ensure_old_module_analysis_results_loaded(module_name::in,
-    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
-
-ensure_old_module_analysis_results_loaded(ModuleName, !Info, !IO) :-
-    ( map.search(!.Info ^ old_analysis_results, ModuleName, _Results) ->
-        % sanity check
-        map.lookup(!.Info ^ module_statuses, ModuleName, _StatusMustExist)
+load_module_analysis_results(ModuleName, !Info, !IO) :-
+    (
+        ( map.contains(!.Info ^ old_analysis_results, ModuleName)
+        ; map.contains(!.Info ^ module_statuses, ModuleName)
+        )
+    ->
+        unexpected(this_file, "ensure_old_module_analysis_results_loaded")
     ;
         analysis.read_module_overall_status(!.Info ^ compiler, ModuleName,
             ModuleStatus, !IO),
         read_module_analysis_results(!.Info, ModuleName, ModuleResults, !IO),
         !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus,
         !Info ^ old_analysis_results ^ elem(ModuleName) := ModuleResults
-    ).
-
-:- pred ensure_old_imdg_loaded(module_name::in, analysis_info::in,
-    analysis_info::out, io::di, io::uo) is det.
-
-ensure_old_imdg_loaded(ModuleName, !Info, !IO) :-
-    Map0 = !.Info ^ old_imdg,
-    ( map.search(Map0, ModuleName, _) ->
-        % already loaded
-        true
-    ;
-        read_module_imdg(!.Info, ModuleName, IMDG, !IO),
-        map.det_insert(Map0, ModuleName, IMDG, Map),
-        !Info ^ old_imdg := Map
     ).
 
 module_is_local(Info, ModuleName, IsLocal) :-
@@ -1038,96 +1221,97 @@ module_is_local(Info, ModuleName, IsLocal) :-
     % and will write out data currently cached in the analysis_info structure
     % out to disk.
     %
-write_analysis_files(Compiler, ModuleInfo, ModuleName, ImportedModuleNames,
-        !Info, !IO) :-
-    % The current module was just compiled so we set its status to the
-    % lub of all the new analysis results generated.
-    ( map.search(!.Info ^ new_analysis_results, ModuleName, NewResults) ->
-        ModuleStatus = lub_result_statuses(NewResults)
-    ; 
-        ModuleStatus = optimal,
-        % Force an `.analysis' file to be written out for this module,
-        % even though there are no results recorded for it.
-        !Info ^ new_analysis_results ^ elem(ModuleName) := map.init
-    ),
+write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
+    ThisModule = !.Info ^ this_module,
+    ImportedModules = set.delete(ImportedModule0, ThisModule),
+
+    LocalModules = !.Info ^ local_module_names,
+    LocalImportedModules = set.intersect(LocalModules, ImportedModules),
+
+    % Load IMDG files for local modules.
+    set.fold2(load_module_imdg, LocalModules, !Info, !IO),
 
     update_analysis_registry(ModuleInfo, !Info, !IO),
 
-    !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus,
+    % The current module was just compiled so we set its status to the
+    % lub of all the new analysis results generated.
+    ModuleStatus = lub_result_statuses(!.Info ^ new_analysis_results),
+    !Info ^ module_statuses ^ elem(ThisModule) := ModuleStatus,
 
-    update_intermodule_dependencies(ModuleName, ImportedModuleNames, !Info),
+    update_intermodule_dependencies(ThisModule, LocalImportedModules, !Info),
     ( map.is_empty(!.Info ^ new_analysis_results) ->
         true
     ;
-        io.print("Warning: new_analysis_results is not empty\n",
-            !IO),
-        io.print(!.Info ^ new_analysis_results, !IO),
-        io.nl(!IO)
+        unexpected(this_file,
+            "write_analysis_files: new_analysis_results is not empty")
     ),
 
-    % Write the results for all the modules we know of.  For the module being
-    % compiled, the analysis results may have changed. For other modules,
-    % their overall statuses may have changed.
-    write_local_modules(!.Info, write_module_status_and_analysis_results,
-        !.Info ^ old_analysis_results, !IO),
+    % Write the module statuses for all local modules (not necessarily
+    % imported).
+    set.fold(maybe_write_module_overall_status(!.Info), LocalModules, !IO),
 
-    % Write the requests for the imported modules.
-    write_local_modules(!.Info, write_module_analysis_requests,
-        !.Info ^ analysis_requests, !IO),
+    % Write the analysis results for the current module.
+    ModuleResults = !.Info ^ old_analysis_results ^ det_elem(ThisModule),
+    write_module_analysis_results(!.Info, ThisModule, ModuleResults, !IO),
+
+    % Write the requests for imported local modules.
+    set.fold(maybe_write_module_requests(!.Info), LocalImportedModules, !IO),
 
     % Remove the requests for the current module since we (should have)
     % fulfilled them in this pass.
-    empty_request_file(!.Info, ModuleName, !IO),
+    empty_request_file(!.Info, ThisModule, !IO),
 
     % Write the intermodule dependency graphs.
-    write_local_modules(!.Info, write_module_imdg, !.Info ^ old_imdg, !IO),
+    set.fold(maybe_write_module_imdg(!.Info), LocalImportedModules, !IO),
 
     % Touch a timestamp file to indicate the last time that this module was
     % analysed.
-    module_name_to_write_file_name(Compiler, ModuleName, ".analysis_date",
+    module_name_to_write_file_name(Compiler, ThisModule, ".analysis_date",
         TimestampFileName, !IO),
     touch_datestamp(TimestampFileName, !IO).
 
-:- type write_module_analysis_map(T) ==
-    (pred(analysis_info, module_name, module_analysis_map(T), io, io)).
-:- mode write_module_analysis_map == in(pred(in, in, in, di, uo) is det).
+:- pred load_module_imdg(module_name::in,
+    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
-:- pred write_local_modules(analysis_info::in,
-    write_module_analysis_map(T)::write_module_analysis_map,
-    analysis_map(T)::in, io::di, io::uo) is det.
+load_module_imdg(ModuleName, !Info, !IO) :-
+    read_module_imdg(!.Info, ModuleName, IMDG, !IO),
+    Map0 = !.Info ^ old_imdg,
+    map.det_insert(Map0, ModuleName, IMDG, Map),
+    !Info ^ old_imdg := Map.
 
-write_local_modules(Info, Write, AnalysisMap, !IO) :-
-    map.foldl(write_local_modules_2(Info, Write), AnalysisMap, !IO).
-
-:- pred write_local_modules_2(analysis_info::in,
-    write_module_analysis_map(T)::write_module_analysis_map,
-    module_name::in, module_analysis_map(T)::in, io::di, io::uo) is det.
-
-write_local_modules_2(Info, Write, ModuleName, ModuleResults, !IO) :-
-    module_is_local(Info, ModuleName, IsLocal),
-    (
-        IsLocal = yes,
-        Write(Info, ModuleName, ModuleResults, !IO)
-    ;
-        IsLocal = no,
-        debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("% Not writing file for non-local module ", !IO),
-            io.write(ModuleName, !IO),
-            io.nl(!IO)
-        ), !IO)
-    ).
-
-:- pred write_module_status_and_analysis_results(analysis_info::in,
-    module_name::in, module_analysis_map(some_analysis_result)::in,
+:- pred maybe_write_module_overall_status(analysis_info::in, module_name::in,
     io::di, io::uo) is det.
 
-write_module_status_and_analysis_results(Info, ModuleName, ModuleResults,
-        !IO) :-
-    ModuleStatus = Info ^ module_statuses ^ det_elem(ModuleName),
-    analysis.file.write_module_overall_status(Info, ModuleName,
-        ModuleStatus, !IO),
-    analysis.file.write_module_analysis_results(Info, ModuleName,
-        ModuleResults, !IO).
+maybe_write_module_overall_status(Info, ModuleName, !IO) :-
+    ( map.search(Info ^ module_statuses, ModuleName, Status) ->
+        analysis.file.write_module_overall_status(Info, ModuleName, Status,
+            !IO)
+    ;
+        % We didn't have any reason to read in the status of this module
+        % so we have no reason to touch it either.
+        true
+    ).
+
+:- pred maybe_write_module_requests(analysis_info::in, module_name::in,
+    io::di, io::uo) is det.
+
+maybe_write_module_requests(Info, ModuleName, !IO) :-
+    ( map.search(Info ^ analysis_requests, ModuleName, Requests) ->
+        analysis.file.write_module_analysis_requests(Info, ModuleName,
+            Requests, !IO)
+    ;
+        true
+    ).
+
+:- pred maybe_write_module_imdg(analysis_info::in, module_name::in,
+    io::di, io::uo) is det.
+
+maybe_write_module_imdg(Info, ModuleName, !IO) :-
+    ( map.search(Info ^ old_imdg, ModuleName, ModuleEntries) ->
+        analysis.file.write_module_imdg(Info, ModuleName, ModuleEntries, !IO)
+    ;
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 

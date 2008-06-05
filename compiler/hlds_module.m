@@ -49,6 +49,7 @@
 
 :- implementation.
 
+:- import_module libs.options.
 :- import_module transform_hlds.mmc_analysis.
 :- import_module parse_tree.modules.
 
@@ -869,7 +870,11 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 
     MaybeComplexityMap = no,
     ComplexityProcInfos = [],
-    AnalysisInfo = init_analysis_info(mmc),
+
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisReg),
+    AnalysisInfo = init_analysis_info(mmc, Name, MakeAnalysisReg),
+
     UserInitPredCNames = [],
     UserFinalPredCNames = [],
     set.init(StructureReusePredIds),

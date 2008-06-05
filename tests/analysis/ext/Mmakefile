@@ -1,0 +1,23 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis/external
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS=
+TESTS = \
+	ext-nodepend \
+	ext2-nodepend
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+ext.runtest:
+	MC=$(MC) ./ext_runtest.sh
+
+ext2.runtest:
+	MC=$(MC) ./ext2_runtest.sh
+
+realclean_local:
+	$(RM) -r Mercury
+
+#-----------------------------------------------------------------------------#

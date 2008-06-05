@@ -892,14 +892,10 @@ lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
     % If the called procedure was imported (not opt_imported) then remember
     % that this module depends on the results for that procedure.
     (
-        pred_info_get_import_status(BaseInfo ^ pred_info, PredImportStatus),
-        status_defined_in_this_module(PredImportStatus) = yes,
-
         OrigPPId = proc(CalleePredId, _),
         module_info_pred_info(BaseInfo ^ module_info, CalleePredId,
             CalleePredInfo),
-        pred_info_get_import_status(CalleePredInfo, CalleeImportStatus),
-        CalleeImportStatus = status_imported(_),
+        pred_info_is_imported_not_external(CalleePredInfo),
         \+ is_unify_or_compare_pred(CalleePredInfo)
     ->
         Dep = ppid_no_clobbers(OrigPPId, NoClobbers),

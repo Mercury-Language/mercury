@@ -1,0 +1,19 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis/unused_args
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS=
+TESTS=ua_m1-nodepend
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+ua_m1.runtest:
+	MC=$(MC) ./unused_args_runtest.sh
+
+realclean_local:
+	$(RM) ua_m1.m
+	$(RM) -r Mercury
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,1 @@
+MCFLAGS = --intermodule-analysis --optimise-unused-args

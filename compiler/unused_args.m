@@ -287,8 +287,12 @@ process_module(!ModuleInfo, !Specs, !IO) :-
     (
         MakeAnalysisRegistry = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
+        module_info_predids(PredIds, !ModuleInfo),
+        list.foldl(
+            maybe_record_intermod_unused_args(!.ModuleInfo, UnusedArgInfo),
+            PredIds, AnalysisInfo0, AnalysisInfo1),
         list.foldl(record_intermod_dependencies(!.ModuleInfo),
-            PredProcs, AnalysisInfo0, AnalysisInfo),
+            PredProcs, AnalysisInfo1, AnalysisInfo),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
     ;
         MakeAnalysisRegistry = no
@@ -411,17 +415,16 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
             % (opt_imported preds) since we may be able to do better with the
             % information in this module.
             Intermod = yes,
-            pred_info_is_imported(PredInfo)
+            pred_info_is_imported_not_external(PredInfo),
+            not is_unify_or_compare_pred(PredInfo)
         ->
             PredModule = pred_info_module(PredInfo),
-            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-            PredName = pred_info_name(PredInfo),
             PredArity = pred_info_orig_arity(PredInfo),
-            FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
-                PredName, PredArity, ProcId),
             FuncInfo = unused_args_func_info(PredArity),
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-            lookup_best_result(AnalysisInfo0, PredModule, FuncId,
+            module_name_func_id_from_pred_info(PredInfo, ProcId, ModuleId,
+                FuncId),
+            lookup_best_result(AnalysisInfo0, ModuleId, FuncId,
                 FuncInfo, unused_args_call, MaybeBestResult),
             (
                 MaybeBestResult = yes(analysis_result(_, BestAnswer, _)),
@@ -449,34 +452,8 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                 AnalysisInfo = AnalysisInfo0
             ;
                 MaybeBestResult = no,
-                module_is_local(AnalysisInfo0, PredModule, IsLocal),
-                (
-                    IsLocal = yes,
-                    % XXX makes too many requests
-                    globals.lookup_bool_option(Globals,
-                        make_analysis_registry, MakeAnalysisRegistry),
-                    (
-                        MakeAnalysisRegistry = yes,
-                        ( is_unify_or_compare_pred(PredInfo) ->
-                            AnalysisInfo = AnalysisInfo0
-                        ;
-                            Answer = top(FuncInfo, unused_args_call)
-                                : unused_args_answer,
-                            analysis.record_result(PredModule, FuncId,
-                                unused_args_call, Answer, suboptimal,
-                                AnalysisInfo0, AnalysisInfo1),
-                            analysis.record_request(analysis_name,
-                                PredModule, FuncId, unused_args_call,
-                                AnalysisInfo1, AnalysisInfo)
-                        )
-                    ;
-                        MakeAnalysisRegistry = no,
-                        AnalysisInfo = AnalysisInfo0
-                    )
-                ;
-                    IsLocal = no,
-                    AnalysisInfo = AnalysisInfo0
-                )
+                record_request(analysis_name, PredModule, FuncId,
+                    unused_args_call, AnalysisInfo0, AnalysisInfo)
             ),
             module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
         ;
@@ -1003,53 +980,32 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         OrigPredInfo, OrigProcInfo),
     PredModule = pred_info_module(OrigPredInfo),
-    PredName = pred_info_name(OrigPredInfo),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
     (
         Intermod = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-        PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
-        PredArity = pred_info_orig_arity(OrigPredInfo),
-        FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
-            PredName, PredArity, ProcId),
-        FuncInfo = unused_args_func_info(PredArity),
-        Answer = unused_args(UnusedArgs),
 
-        analysis.lookup_results(AnalysisInfo0, PredModule, FuncId,
+        module_name_func_id_from_pred_info(OrigPredInfo, ProcId, ModuleId,
+            FuncId),
+        analysis.lookup_results(AnalysisInfo0, ModuleId, FuncId,
             IntermodResultsTriples : list(analysis_result(unused_args_call,
                 unused_args_answer))),
         IntermodOldAnswers = list.map((func(R) = R ^ ar_answer),
             IntermodResultsTriples),
+
+        PredArity = pred_info_orig_arity(OrigPredInfo),
+        FuncInfo = unused_args_func_info(PredArity),
+        Answer = unused_args(UnusedArgs),
+
         FilterUnused = (pred(VersionAnswer::in) is semidet :-
             VersionAnswer \= Answer,
             VersionAnswer \= unused_args([]),
             more_precise_than(FuncInfo, Answer, VersionAnswer)
         ),
         IntermodOldArgLists = list.map(get_unused_args,
-            list.filter(FilterUnused, IntermodOldAnswers)),
-
-        % XXX: optimal?  If we know some output arguments are not going to be
-        % used by the caller then more input arguments could be deduced to be
-        % unused.  This analysis doesn't handle that yet.
-        globals.lookup_bool_option(Globals, make_analysis_registry,
-            MakeAnalysisRegistry),
-        ( 
-            MakeAnalysisRegistry = yes,
-            procedure_is_exported(!.ModuleInfo, OrigPredInfo, ProcId),
-            not is_unify_or_compare_pred(OrigPredInfo)
-            % XXX What about class instance methods and predicates used
-            %     for type specialization.  (These are a problem for 
-            %     intermodule-optimization; they may not be here.)
-            %     (See exception_analysis.should_write_exception_info/4).
-        ->
-            analysis.record_result(PredModule, FuncId, unused_args_call,
-                Answer, optimal, AnalysisInfo0, AnalysisInfo)
-        ;
-            AnalysisInfo = AnalysisInfo0
-        ),
-        module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
+            list.filter(FilterUnused, IntermodOldAnswers))
     ;
         Intermod = no,
         IntermodResultsTriples = [],
@@ -1907,6 +1863,43 @@ format_arg_list_2(First, List) = Pieces :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred maybe_record_intermod_unused_args(module_info::in, unused_arg_info::in,
+    pred_id::in, analysis_info::in, analysis_info::out) is det.
+
+maybe_record_intermod_unused_args(ModuleInfo, UnusedArgInfo, PredId,
+        !AnalysisInfo) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(
+        maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,
+            PredId, PredInfo),
+        ProcIds, !AnalysisInfo).
+
+:- pred maybe_record_intermod_unused_args_2(module_info::in,
+    unused_arg_info::in, pred_id::in, pred_info::in, proc_id::in,
+    analysis_info::in, analysis_info::out) is det.
+
+maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,  
+        PredId, PredInfo, ProcId, !AnalysisInfo) :-
+    (
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo)
+    ->
+        PPId = proc(PredId, ProcId),
+        ( map.search(UnusedArgInfo, PPId, UnusedArgs) ->
+            Answer = unused_args(UnusedArgs)
+        ;
+            Answer = unused_args([])
+        ),
+        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        record_result(ModuleName, FuncId, unused_args_call, Answer, optimal,
+            !AnalysisInfo)
+    ;
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % If a procedure in this module calls a procedure from another module,
     % then we assume that this module depends on the analysis results of that
     % other procedure.
@@ -1925,28 +1918,30 @@ format_arg_list_2(First, List) = Pieces :-
 record_intermod_dependencies(ModuleInfo, CallerPredProcId,
         !AnalysisInfo) :-
     module_info_pred_proc_info(ModuleInfo, CallerPredProcId,
-        CallerPredInfo, CallerProcInfo),
-    ( not pred_info_is_imported(CallerPredInfo) ->
-        CallerModule = pred_info_module(CallerPredInfo),
-        proc_info_get_goal(CallerProcInfo, Goal),
-        pred_proc_ids_from_goal(Goal, CalleePredProcIds),
-        list.foldl(record_intermod_dependencies_2(ModuleInfo, CallerModule),
-            CalleePredProcIds, !AnalysisInfo)
-    ;
-        true
-    ).
+        _CallerPredInfo, CallerProcInfo),
+    proc_info_get_goal(CallerProcInfo, Goal),
+    pred_proc_ids_from_goal(Goal, CalleePredProcIds),
+    list.foldl(record_intermod_dependencies_2(ModuleInfo),
+        CalleePredProcIds, !AnalysisInfo).
 
-:- pred record_intermod_dependencies_2(module_info::in, module_name::in,
-    pred_proc_id::in, analysis_info::in, analysis_info::out) is det.
+:- pred record_intermod_dependencies_2(module_info::in, pred_proc_id::in,
+    analysis_info::in, analysis_info::out) is det.
 
-record_intermod_dependencies_2(ModuleInfo, CallerModule,
+record_intermod_dependencies_2(ModuleInfo, 
         CalleePredProcId @ proc(CalleePredId, _), !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-    ( pred_info_is_imported(CalleePredInfo) ->
-        module_name_func_id(ModuleInfo, CalleePredProcId,
-            CalleeModule, CalleeFuncId),
-        analysis.record_dependency(CallerModule, analysis_name,
-            CalleeModule, CalleeFuncId, unused_args_call, !AnalysisInfo)
+    (
+        pred_info_is_imported_not_external(CalleePredInfo),
+        not is_unify_or_compare_pred(CalleePredInfo)
+    ->
+        module_name_func_id(ModuleInfo, CalleePredProcId, CalleeModule,
+            CalleeFuncId),
+        Call = unused_args_call,
+        Answer = _ : unused_args_answer,
+        get_func_info(ModuleInfo, CalleeModule, CalleeFuncId, Call, Answer,
+            FuncInfo),
+        record_dependency(CalleeModule, CalleeFuncId, FuncInfo, Call, Answer,
+            !AnalysisInfo)
     ;
         true
     ).

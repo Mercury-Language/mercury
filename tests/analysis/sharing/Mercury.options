@@ -1,0 +1,1 @@
+MCFLAGS = --intermodule-analysis --structure-sharing

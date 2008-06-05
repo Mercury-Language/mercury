@@ -146,6 +146,7 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
         globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
         list.foldl(process_scc(Debug, Pass1Only), SCCs, !ModuleInfo),
+
         % Only write trailing analysis pragmas to `.opt' files for
         % `--intermodule-optimization', not `--intermodule-analysis'.
         (
@@ -155,6 +156,21 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
             make_opt_int(!.ModuleInfo, !IO)
         ;
             true
+        ),
+
+        % Record results if making the analysis registry.  We do this in a
+        % separate pass so that we record results for exported `:- external'
+        % procedures, which don't get analysed because we don't have clauses
+        % for them.
+        (
+            MakeAnalysisReg = yes,
+            module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
+            module_info_predids(PredIds, !ModuleInfo),
+            list.foldl(maybe_record_trailing_result(!.ModuleInfo),
+                PredIds, AnalysisInfo0, AnalysisInfo),
+            module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
+        ;
+            MakeAnalysisReg = no
         )
     ;
         UseTrail = no
@@ -205,23 +221,6 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
     list.foldl(Update, SCC, TrailingInfo0, TrailingInfo),
     module_info_set_trailing_info(TrailingInfo, !ModuleInfo),
 
-    % Record the analysis results for the intermodule analysis.
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisRegistry),
-    (
-        MakeAnalysisRegistry = yes,
-        (
-            MaybeAnalysisStatus = yes(AnalysisStatus),
-            record_trailing_analysis_results(TrailingStatus, AnalysisStatus,
-                SCC, !ModuleInfo)
-        ;
-            MaybeAnalysisStatus = no,
-            unexpected(this_file, "process_scc: no analysis status")
-        )
-    ;
-        MakeAnalysisRegistry = no
-    ),
     (
         Pass1Only = no,
         list.foldl(annotate_proc, SCC, !ModuleInfo)
@@ -383,12 +382,12 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
                 Intermod),
             (
                 Intermod = yes,
-                pred_info_is_imported(CallPredInfo)
+                pred_info_is_imported_not_external(CallPredInfo)
             ->
                 % With --intermodule-analysis use check_call_2 to look up
                 % results for locally defined procedures, otherwise we use
                 % the intermodule analysis framework.
-                search_analysis_status(CallPPId, Result0, AnalysisStatus, SCC,
+                search_analysis_status(CallPPId, Result0, AnalysisStatus,
                     !ModuleInfo),
                 (
                     Result0 = trail_conditional,
@@ -413,7 +412,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
                     Result = trail_may_modify,
                     (
                         Intermod = yes,
-                        MaybeAnalysisStatus = yes(suboptimal)
+                        MaybeAnalysisStatus = yes(optimal)
                     ;
                         Intermod = no,
                         MaybeAnalysisStatus = no
@@ -900,12 +899,7 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
                 IntermodAnalysis = yes,
                 pred_info_is_imported(CallPredInfo)
             ->
-                % NOTE: we set the value of SCC to a dummy value here.
-                % This is OK because it only needs a meaningful value
-                % when building the analysis files; it won't be used
-                % when compiling to target code.
-                SCC = [],
-                search_analysis_status(CallPPId, Result, AnalysisStatus, SCC,
+                search_analysis_status(CallPPId, Result, AnalysisStatus,
                     !ModuleInfo),
 
                 % XXX We shouldn't be getting invalid analysis results at this
@@ -1061,50 +1055,67 @@ make_opt_int(ModuleInfo, !IO) :-
 
 write_pragma_trailing_info(ModuleInfo, TrailingInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    should_write_trailing_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(
+        write_pragma_trailing_info_2(ModuleInfo, TrailingInfo, PredId,
+            PredInfo), 
+        ProcIds, !IO).
+
+:- pred write_pragma_trailing_info_2(module_info::in, trailing_info::in,
+    pred_id::in, pred_info::in, proc_id::in, io::di, io::uo) is det.
+
+write_pragma_trailing_info_2(ModuleInfo, TrailingInfo, PredId, PredInfo,
+        ProcId, !IO) :-
+    should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        for_pragma, ShouldWrite),
     (
         ShouldWrite = yes,
         ModuleName = pred_info_module(PredInfo),
         Name       = pred_info_name(PredInfo),
         Arity      = pred_info_orig_arity(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        ProcIds    = pred_info_procids(PredInfo),
-        list.foldl((pred(ProcId::in, !.IO::di, !:IO::uo) is det :-
-            proc_id_to_int(ProcId, ModeNum),
-            (
-                map.search(TrailingInfo, proc(PredId, ProcId), ProcTrailInfo),
-                ProcTrailInfo = proc_trailing_info(Status, _)
-            ->
-                mercury_output_pragma_trailing_info(PredOrFunc,
-                    qualified(ModuleName, Name), Arity, ModeNum, Status, !IO)
-            ;
-                true
-            )), ProcIds, !IO)
+        proc_id_to_int(ProcId, ModeNum),
+        (
+            map.search(TrailingInfo, proc(PredId, ProcId), ProcTrailInfo),
+            ProcTrailInfo = proc_trailing_info(Status, _)
+        ->
+            mercury_output_pragma_trailing_info(PredOrFunc,
+                qualified(ModuleName, Name), Arity, ModeNum, Status, !IO)
+        ;
+            true
+        )
     ;
         ShouldWrite = no
     ).
 
-:- pred should_write_trailing_info(module_info::in, pred_id::in,
-    pred_info::in, bool::out) is det.
+:- type should_write_for
+    --->    for_analysis_framework
+    ;       for_pragma.
 
-should_write_trailing_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
+:- pred should_write_trailing_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, bool::out) is det.
+
+should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
     (
-        ( ImportStatus = status_exported
-        ; ImportStatus = status_opt_exported
-        ),
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_or_compare_pred(PredInfo),
-        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-        not set.member(PredId, TypeSpecForcePreds),
-        %
-        % XXX Writing out pragmas for the automatically generated class
-        % instance methods causes the compiler to abort when it reads them
-        % back in.
-        %
-        pred_info_get_markers(PredInfo, Markers),
-        not check_marker(Markers, marker_class_instance_method),
-        not check_marker(Markers, marker_named_class_instance_method)
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds),
+            %
+            % XXX Writing out pragmas for the automatically generated class
+            % instance methods causes the compiler to abort when it reads them
+            % back in.
+            %
+            pred_info_get_markers(PredInfo, Markers),
+            not check_marker(Markers, marker_class_instance_method),
+            not check_marker(Markers, marker_named_class_instance_method)
+        )
     ->
         ShouldWrite = yes
     ;
@@ -1173,122 +1184,86 @@ trailing_status_to_string(trail_may_modify, "may_modify_trail").
 trailing_status_to_string(trail_will_not_modify, "will_not_modify_trail").
 trailing_status_to_string(trail_conditional, "conditional").
 
-:- pred search_analysis_status(pred_proc_id::in,
-    trailing_status::out, analysis_status::out, scc::in,
-    module_info::in, module_info::out) is det.
+:- pred search_analysis_status(pred_proc_id::in, trailing_status::out,
+    analysis_status::out, module_info::in, module_info::out) is det.
 
-search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC,
-        !ModuleInfo) :-
+search_analysis_status(PPId, Result, AnalysisStatus, !ModuleInfo) :-
     module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
     search_analysis_status_2(!.ModuleInfo, PPId, Result, AnalysisStatus,
-        CallerSCC, AnalysisInfo0, AnalysisInfo),
+        AnalysisInfo0, AnalysisInfo),
     module_info_set_analysis_info(AnalysisInfo, !ModuleInfo).
 
 :- pred search_analysis_status_2(module_info::in, pred_proc_id::in,
-    trailing_status::out, analysis_status::out, scc::in,
+    trailing_status::out, analysis_status::out,
     analysis_info::in, analysis_info::out) is det.
 
-search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
+search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
         !AnalysisInfo) :-
     mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
     analysis.lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
         no_func_info, Call, MaybeBestStatus),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisRegistry),
     (
         MaybeBestStatus = yes(analysis_result(BestCall,
             trailing_analysis_answer(Result), AnalysisStatus)),
-        (
-            MakeAnalysisRegistry = yes,
-            record_dependencies(ModuleName, FuncId, BestCall,
-                ModuleInfo, CallerSCC, !AnalysisInfo)
-        ;
-            MakeAnalysisRegistry = no
-        )
+        record_dependency(ModuleName, FuncId, no_func_info, BestCall,
+            _ : trailing_analysis_answer, !AnalysisInfo)
     ;
         MaybeBestStatus = no,
         % If we do not have any information about the callee procedure
         % then assume that it modifies the trail.
         top(no_func_info, Call) = Answer,
         Answer = trailing_analysis_answer(Result),
-        module_is_local(!.AnalysisInfo, ModuleName, IsLocal),
-        (
-            IsLocal = yes,
-            AnalysisStatus = suboptimal,
-            (
-                MakeAnalysisRegistry = yes,
-                PPId = proc(PredId, _),
-                module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                should_write_trailing_info(ModuleInfo, PredId, PredInfo,
-                    ShouldWrite),
-                (
-                    ShouldWrite = yes,
-                    analysis.record_result(ModuleName, FuncId,
-                        Call, Answer, AnalysisStatus, !AnalysisInfo),
-                    analysis.record_request(analysis_name, ModuleName, FuncId,
-                        Call, !AnalysisInfo),
-                    record_dependencies(ModuleName, FuncId, Call,
-                        ModuleInfo, CallerSCC, !AnalysisInfo)
-                ;
-                    ShouldWrite = no
-                )
-            ;
-                MakeAnalysisRegistry = no
-            )
-        ;
-            IsLocal = no,
-            % We can't do any better anyway.
-            AnalysisStatus = optimal
-        )
+        AnalysisStatus = optimal,
+        record_request(analysis_name, ModuleName, FuncId, Call, !AnalysisInfo)
     ).
 
-    % XXX if the procedures in CallerSCC definitely come from the
-    % same module then we don't need to record the dependency so many
-    % times, at least while we only have module-level granularity.
-    %
-:- pred record_dependencies(module_name::in, func_id::in, Call::in,
-    module_info::in, scc::in, analysis_info::in, analysis_info::out)
-    is det <= call_pattern(FuncInfo, Call).
-
-record_dependencies(ModuleName, FuncId, Call, ModuleInfo, CallerSCC,
-        !AnalysisInfo) :-
-    list.foldl((pred(CallerPPId::in, Info0::in, Info::out) is det :-
-        mmc_analysis.module_name_func_id(ModuleInfo, CallerPPId,
-            CallerModuleName, _),
-        analysis.record_dependency(CallerModuleName, analysis_name,
-            ModuleName, FuncId, Call, Info0, Info)
-    ), CallerSCC, !AnalysisInfo).
-
-:- pred record_trailing_analysis_results(trailing_status::in,
-    analysis_status::in, scc::in,
-    module_info::in, module_info::out) is det.
-
-record_trailing_analysis_results(Status, ResultStatus, SCC, !ModuleInfo) :-
-    module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-    list.foldl(
-        record_trailing_analysis_result(!.ModuleInfo, Status, ResultStatus),
-        SCC, AnalysisInfo0, AnalysisInfo),
-    module_info_set_analysis_info(AnalysisInfo, !ModuleInfo).
-
-:- pred record_trailing_analysis_result(module_info::in, trailing_status::in,
-    analysis_status::in, pred_proc_id::in,
+:- pred maybe_record_trailing_result(module_info::in, pred_id::in,
     analysis_info::in, analysis_info::out) is det.
 
-record_trailing_analysis_result(ModuleInfo, Status, ResultStatus,
-        PPId @ proc(PredId, _ProcId), AnalysisInfo0, AnalysisInfo) :-
+maybe_record_trailing_result(ModuleInfo, PredId, !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    should_write_trailing_info(ModuleInfo, PredId, PredInfo, ShouldWrite),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(maybe_record_trailing_result_2(ModuleInfo, PredId, PredInfo),
+        ProcIds, !AnalysisInfo).
+
+:- pred maybe_record_trailing_result_2(module_info::in, pred_id::in,
+    pred_info::in, proc_id::in, analysis_info::in, analysis_info::out) is det.
+
+maybe_record_trailing_result_2(ModuleInfo, PredId, PredInfo, ProcId,
+        !AnalysisInfo) :-
+    should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        for_analysis_framework, ShouldWrite),
     (
         ShouldWrite = yes,
-        mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
-        analysis.record_result(ModuleName, FuncId, any_call,
-            trailing_analysis_answer(Status), ResultStatus,
-            AnalysisInfo0, AnalysisInfo)
+        PPId = proc(PredId, ProcId),
+        module_info_get_trailing_info(ModuleInfo, TrailingInfo),
+        lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus),
+        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        record_result(ModuleName, FuncId, any_call,
+            trailing_analysis_answer(Status), ResultStatus, !AnalysisInfo)
     ;
-        ShouldWrite = no,
-        AnalysisInfo = AnalysisInfo0
+        ShouldWrite = no
+    ).
+
+:- pred lookup_proc_trailing_info(trailing_info::in, pred_proc_id::in,
+    trailing_status::out, analysis_status::out) is det.
+
+lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus) :-
+    ( map.search(TrailingInfo, PPId, ProcTrailingInfo) ->
+        ProcTrailingInfo = proc_trailing_info(Status, MaybeResultStatus),
+        (
+            MaybeResultStatus = yes(ResultStatus)
+        ;
+            MaybeResultStatus = no,
+            unexpected(this_file,
+                "lookup_proc_trailing_info: no result status")
+        )
+    ;
+        % Probably an exported `:- external' procedure wouldn't have been
+        % analysed.
+        Status = trail_may_modify,
+        ResultStatus = optimal
     ).
 
 %----------------------------------------------------------------------------%

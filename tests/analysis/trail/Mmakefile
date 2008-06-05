@@ -1,0 +1,19 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis/trail
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS=
+TESTS=trail_m1-nodepend
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+trail_m1.runtest:
+	MC=$(MC) ./trail_runtest.sh
+
+realclean_local:
+	$(RM) trail_m1.m
+	$(RM) -r Mercury
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,19 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis/structure_sharing
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS=
+TESTS=sharing_m1-nodepend
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+sharing_m1.runtest:
+	MC=$(MC) ./sharing_runtest.sh
+
+realclean_local:
+	$(RM) sharing_m1.m
+	$(RM) -r Mercury
+
+#-----------------------------------------------------------------------------#

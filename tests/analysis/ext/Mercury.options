@@ -1,0 +1,8 @@
+MCFLAGS = --intermodule-analysis
+
+MCFLAGS-ext = --ctgc
+MCFLAGS-ext += --analyse-exceptions
+MCFLAGS-ext += --use-trail --analyse-trail-usage
+MCFLAGS-ext += --optimise-unused-args
+
+MCFLAGS-ext2 = --grade none.mmsc --analyse-mm-tabling

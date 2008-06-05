@@ -132,14 +132,14 @@
 % The format of an analysis request file is:
 %
 % version_number.
-% analysis_name(analysis_version, func_id, call_pattern).
+% calling_module -> analysis_name(analysis_version, func_id, call_pattern).
 
 :- type invalid_analysis_file
     --->    invalid_analysis_file(string).
 
 :- func version_number = int.
 
-version_number = 4.
+version_number = 5.
 
 :- func analysis_registry_suffix = string.
 
@@ -385,8 +385,10 @@ read_module_analysis_requests(Info, ModuleName, ModuleRequests, !IO) :-
 
 parse_request_entry(Compiler, Term, Requests0, Requests) :-
     (
-        Term = term.functor(term.atom(AnalysisName),
+        Term = term.functor(atom("->"), [CallerModuleTerm, RHS], _),
+        RHS = term.functor(atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm, CallPatternTerm], _),
+        term_to_type(CallerModuleTerm, CallerModule),
         term_to_type(FuncIdTerm, FuncId),
         CallPatternTerm = term.functor(
             term.string(CallPatternString), [], _),
@@ -399,7 +401,7 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
             VersionNumberTerm = term.functor(
                 term.integer(VersionNumber), [], _)
         ->
-            Result = 'new analysis_request'(CallPattern),
+            Result = 'new analysis_request'(CallPattern, CallerModule),
             ( AnalysisRequests0 = map.search(Requests0, AnalysisName) ->
                 AnalysisRequests1 = AnalysisRequests0
             ;
@@ -666,8 +668,8 @@ write_module_analysis_requests(Info, ModuleName, ModuleRequests, !IO) :-
     `with_type` write_entry(analysis_request)
     `with_inst` write_entry <= compiler(Compiler).
 
-write_request_entry(Compiler, AnalysisName, FuncId, analysis_request(Call),
-        !IO) :-
+write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
+    Request = analysis_request(Call, CallerModule),
     (
         analysis_type(_ : unit(Call), _ : unit(Answer)) =
             analyses(Compiler, AnalysisName)
@@ -678,11 +680,16 @@ write_request_entry(Compiler, AnalysisName, FuncId, analysis_request(Call),
             "write_request_entry: unknown analysis type")
     ),
     term_io.write_term_nl(varset.init : varset,
+        functor(atom("->"), [
+            type_to_term(CallerModule),
+            CallTerm
+        ], context_init), !IO),
+    CallTerm =
         functor(atom(AnalysisName), [
             functor(integer(VersionNumber), [], context_init),
             type_to_term(FuncId),
             functor(string(to_string(Call)), [], context_init)
-        ], context_init), !IO).
+        ], context_init).
 
 %-----------------------------------------------------------------------------%
 

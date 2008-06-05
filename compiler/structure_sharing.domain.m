@@ -867,7 +867,7 @@ lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs, Status,
     ;
         % or use top-sharing with appropriate message.
         SharingAs = top_sharing_not_found(PPId),
-        Status = suboptimal,
+        Status = optimal,
         IsPredicted = no
     ).
 

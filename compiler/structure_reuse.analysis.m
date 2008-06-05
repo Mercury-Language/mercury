@@ -93,6 +93,7 @@
 :- implementation.
 
 :- import_module check_hlds.goal_path.
+:- import_module hlds.hlds_out.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
@@ -264,8 +265,9 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     % remove them if they were created from exported procedures (so would be
     % exported themselves). 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    map.foldl(remove_useless_reuse_proc(ReuseInfoMap), ReuseVersionMap,
-        PredTable0, PredTable),
+    map.foldl(
+        remove_useless_reuse_proc(!.ModuleInfo, VeryVerbose, ReuseInfoMap),
+        ReuseVersionMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -601,21 +603,21 @@ process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
     module_info_get_analysis_info(ModuleInfo, AnalysisInfo),
     module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
 
-    % Add requests corresponding to the call patterns of existing answers.
-    lookup_results(AnalysisInfo, ModuleName, FuncId,
-        Results : list(analysis_result(structure_reuse_call, _))),
-    list.foldl(add_reuse_request_for_answer(PPId), Results, !ExternalRequests),
+    % Only add requests for procedures that *really* belong to this module.
+    module_info_get_name(ModuleInfo, ThisModule),
+    ( ThisModule = ModuleName ->
+        % Add requests corresponding to the call patterns of existing answers.
+        lookup_existing_call_patterns(AnalysisInfo, analysis_name, ModuleName,
+            FuncId, OldCalls),
+        list.foldl(add_reuse_request(PPId), OldCalls, !ExternalRequests),
 
-    % Add new requests from other modules.
-    lookup_requests(AnalysisInfo, analysis_name, ModuleName, FuncId, Calls),
-    list.foldl(add_reuse_request(PPId), Calls, !ExternalRequests).
-
-:- pred add_reuse_request_for_answer(pred_proc_id::in,
-    analysis_result(structure_reuse_call, structure_reuse_answer)::in,
-    list(sr_request)::in, list(sr_request)::out) is det.
-
-add_reuse_request_for_answer(PPId, Result, !ExternalRequests) :-
-    add_reuse_request(PPId, Result ^ ar_call, !ExternalRequests).
+        % Add new requests from other modules.
+        lookup_requests(AnalysisInfo, analysis_name, ModuleName, FuncId,
+            NewCalls),
+        list.foldl(add_reuse_request(PPId), NewCalls, !ExternalRequests)
+    ;
+        true
+    ).
 
 :- pred add_reuse_request(pred_proc_id::in, structure_reuse_call::in,
     list(sr_request)::in, list(sr_request)::out) is det.
@@ -712,7 +714,7 @@ write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
 write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         SymName, Context, TypeVarSet, ProcId, !IO) :-
     should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
-        disallow_type_spec_preds, ShouldWrite),
+        for_pragma, ShouldWrite),
     (
         ShouldWrite = yes,
         map.lookup(ProcTable, ProcId, ProcInfo),
@@ -937,7 +939,7 @@ record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
-        allow_type_spec_preds, ShouldWrite),
+        for_analysis_framework, ShouldWrite),
     (
         ShouldWrite = yes,
         ( reuse_as_no_reuses(ReuseAs) ->
@@ -968,34 +970,13 @@ record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
 handle_structure_reuse_dependency(ModuleInfo,
         ppid_no_clobbers(DepPPId, NoClobbers), !AnalysisInfo) :-
     % Record that we depend on the result for the called procedure.
-    module_info_get_name(ModuleInfo, ThisModuleName),
     module_name_func_id(ModuleInfo, DepPPId, DepModuleName, DepFuncId),
     Call = structure_reuse_call(NoClobbers),
-    record_dependency(ThisModuleName, analysis_name, DepModuleName, DepFuncId,
-        Call, !AnalysisInfo),
-
-    % If the called procedure didn't have an answer in the analysis registry,
-    % record the assumed answer for it so that when it does get
-    % analysed, it will have something to compare against.
-    module_info_proc_info(ModuleInfo, DepPPId, ProcInfo),
-    FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
-    lookup_matching_results(!.AnalysisInfo, DepModuleName, DepFuncId, FuncInfo,
-        Call, AnyResults : list(analysis_result(structure_reuse_call,
-            structure_reuse_answer))),
-    (
-        AnyResults = [],
-        Answer = bottom(FuncInfo, Call) : structure_reuse_answer,
-        % We assume an unknown answer is `optimal' otherwise we would not be
-        % able to get mutually recursive procedures out of the `suboptimal'
-        % state.
-        record_result(DepModuleName, DepFuncId, Call, Answer, optimal,
-            !AnalysisInfo),
-        % Record a request as well.
-        record_request(analysis_name, DepModuleName, DepFuncId, Call,
-            !AnalysisInfo)
-    ;
-        AnyResults = [_ | _]
-    ).
+    Answer = _ : structure_reuse_answer,
+    get_func_info(ModuleInfo, DepModuleName, DepFuncId, Call, Answer,
+        FuncInfo),
+    record_dependency(DepModuleName, DepFuncId, FuncInfo, Call, Answer,
+        !AnalysisInfo).
 
 :- pred record_intermod_requests(module_info::in, sr_request::in,
     analysis_info::in, analysis_info::out) is det.
@@ -1008,15 +989,15 @@ record_intermod_requests(ModuleInfo, sr_request(PPId, NoClobbers),
 
 %-----------------------------------------------------------------------------%
 
-:- type allow_type_spec_preds
-    --->    allow_type_spec_preds
-    ;       disallow_type_spec_preds.
+:- type should_write_for
+    --->    for_analysis_framework
+    ;       for_pragma.
 
 :- pred should_write_reuse_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, allow_type_spec_preds::in, bool::out) is det.
+    pred_info::in, should_write_for::in, bool::out) is det.
 
-should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
-        AllowTypeSpecPreds, ShouldWrite) :-
+should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
     (
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         \+ is_unify_or_compare_pred(PredInfo),
@@ -1026,9 +1007,9 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
         PredOrigin \= origin_transformed(transform_structure_reuse, _, _),
 
         (
-            AllowTypeSpecPreds = allow_type_spec_preds
+            WhatFor = for_analysis_framework
         ;
-            AllowTypeSpecPreds = disallow_type_spec_preds,
+            WhatFor = for_pragma,
             % XXX These should be allowed, but the predicate declaration for
             % the specialized predicate is not produced before the structure
             % reuse pragmas are read in, resulting in an undefined predicate
@@ -1045,17 +1026,30 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred remove_useless_reuse_proc(map(pred_proc_id, reuse_as_and_status)::in,
+:- pred remove_useless_reuse_proc(module_info::in, bool::in,
+    map(pred_proc_id, reuse_as_and_status)::in,
     ppid_no_clobbers::in, pred_proc_id::in,
     predicate_table::in, predicate_table::out) is det.
 
-remove_useless_reuse_proc(ReuseAsMap, _, PPId, !PredTable) :-
+remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
+        !PredTable) :-
     map.lookup(ReuseAsMap, PPId, ReuseAs_Status),
     ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
     % XXX perhaps we can also remove reuse procedures with only unconditional
     % reuse?  Such a procedure should be the same as the "non-reuse" procedure
     % (which also implements any unconditional reuse).
     ( reuse_as_no_reuses(ReuseAs) ->
+        (
+            VeryVerbose = yes,
+            trace [io(!IO)] (
+                io.write_string("% Removing useless reuse ", !IO),
+                write_pred_proc_id(ModuleInfo, PPId, !IO),
+                io.nl(!IO)
+            )
+        ;
+            VeryVerbose = no
+        ),
+
         PPId = proc(PredId, _),
         % We can remove the whole predicate because we never generate
         % multi-moded reuse versions of predicates.

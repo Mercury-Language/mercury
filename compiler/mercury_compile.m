@@ -1522,7 +1522,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             FactTableObjFiles = []
         ; MakeAnalysisRegistry = yes ->
             prepare_intermodule_analysis(HLDS21, HLDS22, !IO),
-            output_analysis_file(ModuleName, HLDS22, !DumpInfo, !IO),
+            output_analysis_file(HLDS22, !DumpInfo, !IO),
             FactTableObjFiles = []
         ; MakeXmlDocumentation = yes ->
             xml_documentation(HLDS21, !IO),
@@ -1561,9 +1561,7 @@ maybe_prepare_intermodule_analysis(!HLDS, !IO) :-
     io::di, io::uo) is det.
 
 prepare_intermodule_analysis(!HLDS, !IO) :-
-    module_info_get_name(!.HLDS, ThisModuleName),
-    module_info_get_all_deps(!.HLDS, ModuleNames0),
-    set.insert(ModuleNames0, ThisModuleName, ModuleNames),
+    module_info_get_all_deps(!.HLDS, ModuleNames),
 
     globals.io_lookup_accumulating_option(local_module_id, LocalModulesList,
         !IO),
@@ -1571,8 +1569,8 @@ prepare_intermodule_analysis(!HLDS, !IO) :-
     LocalModuleNames = set.from_list(SymNames),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
-    analysis.prepare_intermodule_analysis(ThisModuleName, ModuleNames,
-        LocalModuleNames, AnalysisInfo0, AnalysisInfo, !IO),
+    analysis.prepare_intermodule_analysis(ModuleNames, LocalModuleNames,
+        AnalysisInfo0, AnalysisInfo, !IO),
     module_info_set_analysis_info(AnalysisInfo, !HLDS).
 
 :- pred mercury_compile_after_front_end(list(module_name)::in,
@@ -2447,10 +2445,10 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
     write_trans_opt_file(!.HLDS, !IO).
 
-:- pred output_analysis_file(module_name::in, module_info::in,
+:- pred output_analysis_file(module_info::in,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
+output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -2504,7 +2502,7 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
-    analysis.write_analysis_files(mmc, !.HLDS, ModuleName, ImportedModules,
+    analysis.write_analysis_files(mmc, !.HLDS, ImportedModules,
         AnalysisInfo, _AnalysisInfo, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,

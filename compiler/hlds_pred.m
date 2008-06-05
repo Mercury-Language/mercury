@@ -724,6 +724,8 @@
 
 :- pred pred_info_is_imported(pred_info::in) is semidet.
 
+:- pred pred_info_is_imported_not_external(pred_info::in) is semidet.
+
 :- pred pred_info_is_pseudo_imported(pred_info::in) is semidet.
 
     % pred_info_is_exported does *not* include predicates which are
@@ -1395,6 +1397,10 @@ pred_info_is_imported(PredInfo) :-
     ( Status = status_imported(_)
     ; Status = status_external(_)
     ).
+
+pred_info_is_imported_not_external(PredInfo) :-
+    pred_info_get_import_status(PredInfo, Status),
+    Status = status_imported(_).
 
 pred_info_is_pseudo_imported(PredInfo) :-
     pred_info_get_import_status(PredInfo, ImportStatus),

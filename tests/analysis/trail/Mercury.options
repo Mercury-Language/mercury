@@ -1,0 +1,2 @@
+MCFLAGS = --intermodule-analysis
+MCFLAGS += --use-trail --analyse-trail-usage

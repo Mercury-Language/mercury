@@ -240,8 +240,7 @@ process_intermod_analysis_imported_sharing_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
         module_info_preds(!.ModuleInfo, !:PredTable),
         PredInfo0 = !.PredTable ^ det_elem(PredId),
-        pred_info_get_import_status(PredInfo0, ImportStatus),
-        ( ImportStatus = status_imported(_) ->
+        ( pred_info_is_imported_not_external(PredInfo0) ->
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
             process_intermod_analysis_imported_sharing_in_procs(!.ModuleInfo,
                 AnalysisInfo, PredId, PredInfo0, PredInfo),
@@ -388,9 +387,9 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            list.foldl(
-                record_sharing_analysis_results(!.ModuleInfo, !.SharingTable),
-                SCCs, !AnalysisInfo),
+            module_info_predids(PredIds, !ModuleInfo),
+            list.foldl(maybe_record_sharing_analysis_result(!.ModuleInfo,
+                !.SharingTable), PredIds, !AnalysisInfo),
             list.foldl(handle_dep_procs(!.ModuleInfo), DepProcs,
                 !AnalysisInfo),
             module_info_set_analysis_info(!.AnalysisInfo, !ModuleInfo)
@@ -572,8 +571,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             pred_info_get_import_status(PredInfo, PredImportStatus),
             status_defined_in_this_module(PredImportStatus) = yes,
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-            pred_info_get_import_status(CalleePredInfo, CalleeImportStatus),
-            CalleeImportStatus = status_imported(_),
+            pred_info_is_imported_not_external(CalleePredInfo),
             \+ is_unify_or_compare_pred(CalleePredInfo)
         ->
             !:DepProcs = [CalleePPId | !.DepProcs]
@@ -917,7 +915,7 @@ write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
 write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         SymName, Context, TypeVarSet, ProcId, !IO) :-
     should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
-        disallow_type_spec_preds, ShouldWrite),
+        for_pragma, ShouldWrite),
     (
         ShouldWrite = yes,
 
@@ -1104,25 +1102,31 @@ sharing_answer_from_string(String) = Answer :-
 % Additional predicates used for intermodule analysis
 %
 
-:- pred record_sharing_analysis_results(module_info::in, sharing_as_table::in,
-    list(pred_proc_id)::in, analysis_info::in, analysis_info::out) is det.
+:- pred maybe_record_sharing_analysis_result(module_info::in,
+    sharing_as_table::in, pred_id::in, analysis_info::in, analysis_info::out)
+    is det.
 
-record_sharing_analysis_results(ModuleInfo, SharingAsTable, SCC,
+maybe_record_sharing_analysis_result(ModuleInfo, SharingAsTable, PredId,
         !AnalysisInfo) :-
-    list.foldl(record_sharing_analysis_result(ModuleInfo, SharingAsTable),
-        SCC, !AnalysisInfo).
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(
+        maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable,
+            PredId, PredInfo),
+        ProcIds, !AnalysisInfo).
 
-:- pred record_sharing_analysis_result(module_info::in, sharing_as_table::in,
-    pred_proc_id::in, analysis_info::in, analysis_info::out) is det.
+:- pred maybe_record_sharing_analysis_result_2(module_info::in,
+    sharing_as_table::in, pred_id::in, pred_info::in, proc_id::in,
+    analysis_info::in, analysis_info::out) is det.
 
-record_sharing_analysis_result(ModuleInfo, SharingAsTable, PPId,
-        !AnalysisInfo) :-
-    PPId = proc(PredId, ProcId),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
+        PredInfo, ProcId, !AnalysisInfo) :-
     should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
-        allow_type_spec_preds, ShouldWrite),
+        for_analysis_framework, ShouldWrite),
     (
         ShouldWrite = yes,
+        pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+        PPId = proc(PredId, ProcId),
         (
             sharing_as_table_search(PPId, SharingAsTable,
                 sharing_as_and_status(SharingAsPrime, StatusPrime))
@@ -1130,7 +1134,15 @@ record_sharing_analysis_result(ModuleInfo, SharingAsTable, PPId,
             SharingAs = SharingAsPrime,
             Status0 = StatusPrime
         ;
-            unexpected(this_file, "record_sharing_analysis_result")
+            % Probably an exported `:- external' procedure.
+            bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
+                ProcInfo)
+        ->
+            SharingAs = sharing_as_bottom,
+            Status0 = optimal
+        ;
+            SharingAs = sharing_as_top(set.init),
+            Status0 = optimal
         ),
         (
             SharingAs = sharing_as_bottom,
@@ -1199,31 +1211,13 @@ reason_implies_optimal(ModuleInfo, AnalysisInfo, Reason) :-
 
 handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
     % Record that we depend on the result for the called procedure.
-    module_info_get_name(ModuleInfo, ThisModuleName),
     module_name_func_id(ModuleInfo, DepPPId, DepModuleName, DepFuncId),
     Call = structure_sharing_call,
-    record_dependency(ThisModuleName, analysis_name, DepModuleName, DepFuncId,
-        Call, !AnalysisInfo),
-
-    % If the called procedure didn't have an answer in the analysis registry,
-    % record the assumed answer (top) for it so that when it does get
-    % analysed, it will have something to compare against.
-    module_info_proc_info(ModuleInfo, DepPPId, ProcInfo),
-    FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
-    lookup_matching_results(!.AnalysisInfo, DepModuleName, DepFuncId, FuncInfo,
-        Call, AnyResults : list(analysis_result(structure_sharing_call,
-            structure_sharing_answer))),
-    (
-        AnyResults = [],
-        Answer = top(FuncInfo, Call) : structure_sharing_answer,
-        record_result(DepModuleName, DepFuncId, Call, Answer, optimal,
-            !AnalysisInfo),
-        % Record a request as well.
-        record_request(analysis_name, DepModuleName, DepFuncId, Call,
-            !AnalysisInfo)
-    ;
-        AnyResults = [_ | _]
-    ).
+    Answer = _ : structure_sharing_answer,
+    get_func_info(ModuleInfo, DepModuleName, DepFuncId, Call, Answer,
+        FuncInfo),
+    record_dependency(DepModuleName, DepFuncId, FuncInfo, Call, Answer,
+        !AnalysisInfo).
 
 :- pred write_top_feedback(module_info::in, top_feedback::in, io::di, io::uo)
     is det.
@@ -1248,23 +1242,23 @@ write_top_feedback(ModuleInfo, Reason, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type allow_type_spec_preds
-    --->    allow_type_spec_preds
-    ;       disallow_type_spec_preds.
+:- type should_write_for
+    --->    for_analysis_framework
+    ;       for_pragma.
 
 :- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, allow_type_spec_preds::in, bool::out) is det.
+    pred_info::in, should_write_for::in, bool::out) is det.
 
-should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
-        AllowTypeSpecPreds, ShouldWrite) :-
+should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
     (
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         \+ is_unify_or_compare_pred(PredInfo),
 
         (
-            AllowTypeSpecPreds = allow_type_spec_preds
+            WhatFor = for_analysis_framework
         ;
-            AllowTypeSpecPreds = disallow_type_spec_preds,
+            WhatFor = for_pragma,
             % XXX These should be allowed, but the predicate declaration for
             % the specialized predicate is not produced before the structure
             % sharing pragmas are read in, resulting in an undefined predicate
