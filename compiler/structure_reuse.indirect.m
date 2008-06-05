@@ -182,10 +182,6 @@ indirect_reuse_rerun_analyse_scc(SharingTable, SCC, !ModuleInfo,
 :- pred extend_scc_with_reuse_procs(reuse_as_table::in, list(pred_proc_id)::in,
     list(pred_proc_id)::out) is det.
 
-% extend_scc_with_reuse_procs(_, SCC, SCC).
-
-% temporarily commented out to narrow down --structure-reuse-repeat bug
-
 extend_scc_with_reuse_procs(ReuseTable, SCC, ExtendedSCC) :-
     ReuseVersionMap = ReuseTable ^ reuse_version_map,
     solutions(
@@ -461,14 +457,27 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
     ;
         GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CalleeArgs,
             _Builtin, _Context, _Sym),
-        NoClobbers = [],
-        verify_indirect_reuse(BaseInfo, proc(CalleePredId, CalleeProcId),
-            NoClobbers, CalleeArgs, GoalInfo0, GoalInfo, !IrInfo),
+        Reuse0 = goal_info_get_reuse(GoalInfo0),
+        (
+            ( Reuse0 = no_reuse_info
+            ; Reuse0 = missed_reuse(_)
+            ; Reuse0 = potential_reuse(_)
+                % Might be able to improve the result with reanalysis. 
+            ),
+            NoClobbers = [],
+            verify_indirect_reuse(BaseInfo, proc(CalleePredId, CalleeProcId),
+                NoClobbers, CalleeArgs, GoalInfo0, GoalInfo, !IrInfo),
+            !:Goal = hlds_goal(GoalExpr0, GoalInfo)
+        ;
+            ( Reuse0 = no_possible_reuse
+            ; Reuse0 = reuse(_)
+            )
+            % Don't need to verify these calls again.
+        ),
         OldSharing = !.IrInfo ^ sharing_as,
         lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
             CalleePredId, CalleeProcId, CalleeArgs, OldSharing, NewSharing),
-        update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo),
-        !:Goal = hlds_goal(GoalExpr0, GoalInfo)
+        update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
     ;
         GoalExpr0 = generic_call(_GenDetails, _, _, _),
         Context = goal_info_get_context(GoalInfo0),
@@ -648,12 +657,14 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
     % XXX if we can't find an exact match for NoClobbers, we could try
     % procedures which have no-clobber sets which are supersets of NoClobbers.
     lookup_reuse_as(BaseInfo, CalleePPId, NoClobbers, !IrInfo, FormalReuseAs),
-
     (
         % If there is no reuse, then nothing can be done.
         reuse_as_no_reuses(FormalReuseAs)
     ->
         Reason = callee_has_no_reuses,
+        % Setting `no_possible_reuse' here would have adverse effects because
+        % the reuse_as from `lookup_reuse_as' is not definitive.  It may
+        % return something else later.
         trace [io(!IO)] (
             maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                 NoClobbers, !.GoalInfo, Reason, !IO)
@@ -685,7 +696,7 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             % pairs. In this case, reuse is not allowed.
             sharing_as_is_top(!.IrInfo ^ sharing_as)
         ->
-            % No need to update anything.
+            goal_info_set_reuse(no_possible_reuse, !GoalInfo),
             trace [io(!IO)] (
                 maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                     NoClobbers, !.GoalInfo, current_sharing_is_top, !IO)
@@ -715,6 +726,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             NotDeadArgNums = NoClobbers
         ->
             % Don't do anything.  Don't even request a new version.
+            goal_info_set_reuse(no_possible_reuse, !GoalInfo),
             trace [io(!IO)] (
                 maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                     NoClobbers, !.GoalInfo, reuse_is_unsafe(NotDeadVars), !IO)
@@ -731,7 +743,14 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 CalleeArgs, !GoalInfo, !IrInfo)
         ;
             % Request another version of the procedure.
-            maybe_add_request(BaseInfo, CalleePPId, NotDeadArgNums, !IrInfo),
+            add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule,
+                !IrInfo),
+            (
+                IntraModule = yes
+            ;
+                IntraModule = no,
+                goal_info_set_reuse(no_possible_reuse, !GoalInfo)
+            ),
             trace [io(!IO)] (
                 maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                     NoClobbers, !.GoalInfo, reuse_is_unsafe(NotDeadVars), !IO)
@@ -834,16 +853,24 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
 lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
     (
         reuse_as_table_search_reuse_version_proc(BaseInfo ^ reuse_table,
-            OrigPPId, NoClobbers, PPId0)
+            OrigPPId, NoClobbers, PPId)
     ->
-        PPId = PPId0
+        lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo,
+            ReuseAs)
     ;
         NoClobbers = []
     ->
-        PPId = OrigPPId
+        lookup_reuse_as_2(BaseInfo, OrigPPId, OrigPPId, NoClobbers, !IrInfo,
+            ReuseAs)
     ;
         unexpected(this_file, "lookup_reuse_as")
-    ),
+    ).
+
+:- pred lookup_reuse_as_2(ir_background_info::in, pred_proc_id::in,
+    pred_proc_id::in, list(int)::in, ir_analysis_info::in,
+    ir_analysis_info::out, reuse_as::out) is det.
+
+lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
     (
         % Check in the fixpoint table
         sr_fixpoint_table_get_as(PPId, ReuseAs_Status0, !.IrInfo ^ fptable,
@@ -942,18 +969,26 @@ get_var_indices(List, [Var | Vars], Index, Indices) :-
         Indices = Indices0
     ).
 
-:- pred maybe_add_request(ir_background_info::in, pred_proc_id::in,
-    list(int)::in, ir_analysis_info::in, ir_analysis_info::out) is det.
+    % Add an intra- or inter-module request for the called procedure.
+    %
+:- pred add_request(ir_background_info::in, pred_proc_id::in, list(int)::in,
+    bool::out, ir_analysis_info::in, ir_analysis_info::out) is det.
 
-maybe_add_request(BaseInfo, CalleePPId, NotDeadArgNums, !IrInfo) :-
+add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
     CalleePPId = proc(CalleePredId, _),
     ModuleInfo = BaseInfo ^ module_info,
     module_info_pred_info(ModuleInfo, CalleePredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    (
+        ( status_defined_in_this_module(ImportStatus) = yes
+        ; ImportStatus = status_opt_imported
+        )
+    ->
+        IntraModule = yes,
         Request = sr_request(CalleePPId, NotDeadArgNums),
         !IrInfo ^ requests := set.insert(!.IrInfo ^ requests, Request)
     ;
+        IntraModule = no,
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermoduleAnalysis),

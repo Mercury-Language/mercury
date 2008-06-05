@@ -1517,7 +1517,10 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
             write_string("% Reuse: ", !IO),
             (
                 ReuseDescription = no_reuse_info,
-                io.write_string("no", !IO)
+                io.write_string("no reuse info", !IO)
+            ;
+                ReuseDescription = no_possible_reuse,
+                io.write_string("no possible reuse", !IO)
             ;
                 ReuseDescription = missed_reuse(Messages),
                 io.write_string("missed (", !IO), 

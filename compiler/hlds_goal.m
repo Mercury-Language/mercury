@@ -1000,33 +1000,45 @@
             ).
 
     % Information describing possible kinds of reuse on a per goal basis.
+    %
     % - 'no_reuse_info': before CTGC analysis, every goal is annotated with
     % the reuse description 'no_reuse_info', i.e. no information about any
     % reuse.
+    %
+    % - 'no_possible_reuse': the goal has been analysed and determined to have
+    % no reuse opportunity and reanalysis in light of further information
+    % within the same module is unnecessary.
+    %
     % - 'potential_reuse': the value 'potential_reuse' states that in a reuse
     % version of the procedure to which the goal belongs, this goal may safely
     % be replaced by a goal implementing structure reuse.
+    %
     % - 'reuse': the value 'reuse' states that in the current procedure (either
     % the specialised reuse version of a procedure, or the original procedure
     % itself) the current goal can safely be replaced by a goal performing
     % structure reuse.
+    %
     % - 'missed_reuse': the value 'missed_reuse' gives some feedback when an
     % opportunity for reuse was missed for some reason (only used for calls).
     %
 :- type reuse_description
     --->    no_reuse_info
+    ;       no_possible_reuse
     ;       missed_reuse(list(missed_message))
     ;       potential_reuse(short_reuse_description)
     ;       reuse(short_reuse_description).
 
     % A short description of the kind of reuse allowed in the associated
     % goal:
+    %
     % - 'cell_died' (only relevant for deconstructions): states that the cell
     % of the deconstruction becomes dead after that deconstruction.
+    %
     % - 'cell_reused' (only relevant for constructions): states that it is
     % allowed to reuse a previously discovered dead term for constructing a
     % new term in the given construction. Details of which term is reused are
     % recorded.
+    %
     % - 'reuse_call' (only applicable to procedure calls): the called
     % procedure is an optimised procedure w.r.t. CTGC. Records whether the
     % call is conditional or not.
@@ -2442,6 +2454,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         rename_vars_in_var_set(Must, Subn, BackwardUse0, BackwardUse),
         (
             ( ReuseDesc0 = no_reuse_info
+            ; ReuseDesc0 = no_possible_reuse
             ; ReuseDesc0 = missed_reuse(_)
             ),
             ReuseDesc = ReuseDesc0

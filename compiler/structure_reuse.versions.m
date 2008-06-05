@@ -346,6 +346,8 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
         ;
             ReuseDescription0 = no_reuse_info
         ;
+            ReuseDescription0 = no_possible_reuse
+        ;
             ReuseDescription0 = missed_reuse(_)
         )
     ;
