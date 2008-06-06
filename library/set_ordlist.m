@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,1999-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -236,9 +236,8 @@
     is det.
 
     % set_ordlist.divide_by_set(DivideBySet, Set, InPart, OutPart):
-    % InPart consists of those elements of Set which are also in
-    % DivideBySet; OutPart consists of those elements of which are
-    % not in DivideBySet.
+    % InPart consists of those elements of Set which are also in DivideBySet;
+    % OutPart consists of those elements of which are not in DivideBySet.
     %
 :- pred set_ordlist.divide_by_set(set_ordlist(T)::in, set_ordlist(T)::in,
     set_ordlist(T)::out, set_ordlist(T)::out) is det.
@@ -600,13 +599,11 @@ set_ordlist.divide_by_set_2([Div | Divs], [H | T], !RevTrue, !RevFalse) :-
         set_ordlist.divide_by_set_2(Divs, T, !RevTrue, !RevFalse)
     ;
         R = (<),
-        set_ordlist.divide_by_set_2(Divs, [H | T],
-            !RevTrue, !RevFalse)
+        set_ordlist.divide_by_set_2(Divs, [H | T], !RevTrue, !RevFalse)
     ;
         R = (>),
         !:RevFalse = [H | !.RevFalse],
-        set_ordlist.divide_by_set_2([Div | Divs], T,
-            !RevTrue, !RevFalse)
+        set_ordlist.divide_by_set_2([Div | Divs], T, !RevTrue, !RevFalse)
     ).
 
 %-----------------------------------------------------------------------------%

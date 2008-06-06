@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2007 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -298,9 +298,8 @@
     set(T)::out, set(T)::out) is det.
 
     % set_divide_by_set(DivideBySet, Set, InPart, OutPart):
-    % InPart consists of those elements of Set which are also in
-    % DivideBySet; OutPart consists of those elements of which are
-    % not in DivideBySet.
+    % InPart consists of those elements of Set which are also in DivideBySet;
+    % OutPart consists of those elements of which are not in DivideBySet.
     %
 :- pred set.divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out)
     is det.
