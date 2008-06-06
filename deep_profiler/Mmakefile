@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2007 The University of Melbourne. 
+# Copyright (C) 1995-2008 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -211,17 +211,21 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test mdprof_feedback
 	# fail during a first-time installation. The rm is before the move
 	# in case this is the third or later installation.
 	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
-		rm -f $(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
-		mv -f $(INSTALL_CGI_DIR)/mdprof_cgi \
-			$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
-		cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
+		if test -w $(INSTALL_CGI_DIR) ; then \
+			rm -f $(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
+			mv -f $(INSTALL_CGI_DIR)/mdprof_cgi \
+				$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
+			cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
+		else \
+			echo "cannot install mdprof_cgi: " \
+				"$(INSTALL_CGI_DIR) is not writeable" \
+		fi \
 	fi
 	# We also install mdprof_cgi in $(INSTALL_MERC_BIN_DIR).
-	# This is done just so that it can easily get put in the
-	# binary distribution (even if the step above failed).
-	# It's useful for mdprof_test and mdprof_dump to avaiable when
-	# debugging problems with the deep profiler so we install them as
-	# well.
+	# This is done just so that it can easily get put in the binary
+	# distribution (even if the step above failed). It is useful for
+	# mdprof_test and mdprof_dump to be available when debugging problems
+	# with the deep profiler, so we install them as well.
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi
