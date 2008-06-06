@@ -15,9 +15,9 @@ rm -rf Mercury
 cat excp_m1.m.no_exception > excp_m1.m
 $MMCMAKE excp_m1.analyse --analysis-repeat 0 || failed
 
-check_result excp_m1 'exception.*aaa.*may_throw(user_exception)'
+check_result excp_m1 'exception.*aaa.*may_throw_user_exception'
 check_result excp_m1 'exception.*aaa2.*will_not_throw'
-check_result excp_m2 'exception.*bbb.*may_throw(user_exception)'
+check_result excp_m2 'exception.*bbb.*may_throw_user_exception'
 check_result excp_m3 'exception.*ccc.*will_not_throw'
 check_statuses 'suboptimal.suboptimal.optimal.'
 check_no_requests
@@ -42,10 +42,10 @@ sleep 1
 cat excp_m1.m.exception > excp_m1.m
 $MMCMAKE excp_m1.analyse --analysis-repeat 0 || failed
 
-check_result excp_m1 'exception.*aaa.*may_throw(user_exception)'
-check_result excp_m1 'exception.*aaa2.*may_throw(user_exception)'
-check_result excp_m2 'exception.*bbb.*may_throw(user_exception)'
-check_result excp_m3 'exception.*ccc.*may_throw(user_exception)'
+check_result excp_m1 'exception.*aaa.*may_throw_user_exception'
+check_result excp_m1 'exception.*aaa2.*may_throw_user_exception'
+check_result excp_m2 'exception.*bbb.*may_throw_user_exception'
+check_result excp_m3 'exception.*ccc.*may_throw_user_exception'
 check_statuses 'optimal.optimal.optimal.'
 check_no_requests
 

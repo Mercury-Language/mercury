@@ -15,10 +15,10 @@ rm -rf Mercury
 cat sharing_m1.m.no_share > sharing_m1.m
 $MMCMAKE sharing_m1.analyse --analysis-repeat 0 || failed
 
-check_result sharing_m1 'sharing.*aaa.*"t"'
-check_result sharing_m1 'sharing.*aaa2.*"b"'
-check_result sharing_m2 'sharing.*bbb.*"t"'
-check_result sharing_m3 'sharing.*ccc.*"b"'
+check_result sharing_m1 'sharing.*aaa.* t,'
+check_result sharing_m1 'sharing.*aaa2.* b,'
+check_result sharing_m2 'sharing.*bbb.* t,'
+check_result sharing_m3 'sharing.*ccc.* b,'
 check_statuses 'suboptimal.suboptimal.optimal.'
 check_no_requests
 
@@ -26,10 +26,10 @@ check_no_requests
 
 $MMCMAKE sharing_m1.analyse --analysis-repeat 3 || failed
 
-check_result sharing_m1 'sharing.*aaa.*"b"'
-check_result sharing_m1 'sharing.*aaa2.*"b"'
-check_result sharing_m2 'sharing.*bbb.*"b"'
-check_result sharing_m3 'sharing.*ccc.*"b"'
+check_result sharing_m1 'sharing.*aaa.* b,'
+check_result sharing_m1 'sharing.*aaa2.* b,'
+check_result sharing_m2 'sharing.*bbb.* b,'
+check_result sharing_m3 'sharing.*ccc.* b,'
 check_statuses 'optimal.optimal.optimal.'
 check_no_requests
 check_imdg sharing_m2 'sharing_m1.*sharing.*bbb'
@@ -55,10 +55,10 @@ sleep 1
 cat sharing_m1.m.no_share > sharing_m1.m
 $MMCMAKE sharing_m1.analyse --analysis-repeat 3 || failed
 
-check_result sharing_m1 'sharing.*aaa.*"b"'
-check_result sharing_m1 'sharing.*aaa2.*"b"'
-check_result sharing_m2 'sharing.*bbb.*"b"'
-check_result sharing_m3 'sharing.*ccc.*"b"'
+check_result sharing_m1 'sharing.*aaa.* b,'
+check_result sharing_m1 'sharing.*aaa2.* b,'
+check_result sharing_m2 'sharing.*bbb.* b,'
+check_result sharing_m3 'sharing.*ccc.* b,'
 check_statuses 'optimal.optimal.optimal.'
 check_no_requests
 

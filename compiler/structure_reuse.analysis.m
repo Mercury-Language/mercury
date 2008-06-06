@@ -81,11 +81,11 @@
 
 :- instance call_pattern(structure_reuse_func_info, structure_reuse_call).
 :- instance partial_order(structure_reuse_func_info, structure_reuse_call).
-:- instance to_string(structure_reuse_call).
+:- instance to_term(structure_reuse_call).
 
 :- instance answer_pattern(structure_reuse_func_info, structure_reuse_answer).
 :- instance partial_order(structure_reuse_func_info, structure_reuse_answer).
-:- instance to_string(structure_reuse_answer).
+:- instance to_term(structure_reuse_answer).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -122,8 +122,8 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
-:- import_module string.
 :- import_module svmap.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -796,14 +796,14 @@ analysis_name = "structure_reuse".
     equivalent(_, Call, Call)
 ].
 
-:- instance to_string(structure_reuse_call) where [
-    ( to_string(structure_reuse_call(List)) = String :-
-        Strs = list.map(string.from_int, List),
-        String = string.join_list(" ", Strs)
+:- instance to_term(structure_reuse_call) where [
+    ( to_term(Call) = Term :-
+        Call = structure_reuse_call(NoClobbers),
+        type_to_term(NoClobbers, Term)
     ),
-    ( from_string(String) = structure_reuse_call(List) :-
-        Strs = string.words(String),
-        List = list.map(string.det_to_int, Strs)
+    ( from_term(Term, Call) :-
+        term_to_type(Term, NoClobbers),
+        Call = structure_reuse_call(NoClobbers)
     )
 ].
 
@@ -852,52 +852,48 @@ analysis_name = "structure_reuse".
     )
 ].
 
-:- instance to_string(structure_reuse_answer) where [
-    func(to_string/1) is reuse_answer_to_string,
-    func(from_string/1) is reuse_answer_from_string
+:- instance to_term(structure_reuse_answer) where [
+    func(to_term/1) is reuse_answer_to_term,
+    pred(from_term/2) is reuse_answer_from_term
 ].
 
-:- func reuse_answer_to_string(structure_reuse_answer) = string.
+:- func reuse_answer_to_term(structure_reuse_answer) = term.
 
-reuse_answer_to_string(Answer) = String :-
+reuse_answer_to_term(Answer) = Term :-
     (
         Answer = structure_reuse_answer_no_reuse,
-        String = "no_reuse"
+        Term = term.functor(atom("no_reuse"), [], term.context_init)
     ;
         Answer = structure_reuse_answer_unconditional,
-        String = "uncond"
+        Term = term.functor(atom("uncond"), [], term.context_init)
     ;
         Answer = structure_reuse_answer_conditional(HeadVars, Types, ReuseAs),
         ReuseDomain = to_structure_reuse_domain(ReuseAs),
-        String = string({HeadVars, Types, ReuseDomain})
+        type_to_term(HeadVars, HeadVarsTerm),
+        type_to_term(Types, TypesTerm),
+        type_to_term(ReuseDomain, ReuseDomainTerm),
+        Term = term.functor(atom("cond"),
+            [HeadVarsTerm, TypesTerm, ReuseDomainTerm], term.context_init)
     ).
 
-:- func reuse_answer_from_string(string::in) =
-    (structure_reuse_answer::out) is det.
+:- pred reuse_answer_from_term(term::in, structure_reuse_answer::out)
+    is semidet.
 
-reuse_answer_from_string(String) = Answer :-
-    ( String = "no_reuse" ->
+reuse_answer_from_term(Term, Answer) :-
+    (
+        Term = functor(atom("no_reuse"), [], _),
         Answer = structure_reuse_answer_no_reuse
-    ; String = "uncond" ->
+    ;
+        Term = functor(atom("uncond"), [], _),
         Answer = structure_reuse_answer_unconditional
     ;
-        % XXX this is ugly.  Later we should move to writing call and answer
-        % patterns in analysis files as terms rather than strings which will
-        % clean this up.
-        StringStop = String ++ ".",
-        io.read_from_string("", StringStop, string.length(StringStop), Res,
-            posn(0, 0, 0), _Posn),
-        (
-            Res = ok({HeadVars, Types, ReuseDomain}),
-            ReuseAs = from_structure_reuse_domain(ReuseDomain),
-            Answer = structure_reuse_answer_conditional(HeadVars, Types,
-                ReuseAs)
-        ;
-            ( Res = eof
-            ; Res = error(_, _)
-            ),
-            unexpected(this_file, "reuse_answer_from_string: " ++ String)
-        )
+        Term = functor(atom("cond"),
+            [HeadVarsTerm, TypesTerm, ReuseDomainTerm], _),
+        term_to_type(HeadVarsTerm, HeadVars),
+        term_to_type(TypesTerm, Types),
+        term_to_type(ReuseDomainTerm, ReuseDomain),
+        ReuseAs = from_structure_reuse_domain(ReuseDomain),
+        Answer = structure_reuse_answer_conditional(HeadVars, Types, ReuseAs)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -79,7 +79,7 @@
 :- instance analysis(no_func_info, any_call, mm_tabling_analysis_answer).
 :- instance partial_order(no_func_info, mm_tabling_analysis_answer).
 :- instance answer_pattern(no_func_info, mm_tabling_analysis_answer).
-:- instance to_string(mm_tabling_analysis_answer).
+:- instance to_term(mm_tabling_analysis_answer).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -920,24 +920,26 @@ mm_tabling_status_more_precise_than(mm_tabled_will_not_call,
 mm_tabling_status_more_precise_than(mm_tabled_conditional,
     mm_tabled_may_call).
 
-:- instance to_string(mm_tabling_analysis_answer) where [
-    func(to_string/1) is mm_tabling_analysis_answer_to_string,
-    func(from_string/1) is mm_tabling_analysis_answer_from_string
+:- instance to_term(mm_tabling_analysis_answer) where [
+    func(to_term/1) is mm_tabling_analysis_answer_to_term,
+    pred(from_term/2) is mm_tabling_analysis_answer_from_term
 ].
 
-:- func mm_tabling_analysis_answer_to_string(mm_tabling_analysis_answer)
-    = string.
+:- func mm_tabling_analysis_answer_to_term(mm_tabling_analysis_answer)
+    = term.
 
-mm_tabling_analysis_answer_to_string(mm_tabling_analysis_answer(Status))
-        = Str :-
-    mm_tabling_status_to_string(Status, Str).
+mm_tabling_analysis_answer_to_term(Answer) = Term :-
+    Answer = mm_tabling_analysis_answer(Status),
+    mm_tabling_status_to_string(Status, String),
+    Term = term.functor(atom(String), [], context_init).
 
-:- func mm_tabling_analysis_answer_from_string(string) =
-    mm_tabling_analysis_answer is semidet.
+:- pred mm_tabling_analysis_answer_from_term(term::in,
+    mm_tabling_analysis_answer::out) is semidet.
 
-mm_tabling_analysis_answer_from_string(Str)
-        = mm_tabling_analysis_answer(Status) :-
-    mm_tabling_status_to_string(Status, Str).
+mm_tabling_analysis_answer_from_term(Term, Answer) :-
+    Term = term.functor(atom(String), [], _),
+    mm_tabling_status_to_string(Status, String),
+    Answer = mm_tabling_analysis_answer(Status).
 
 :- pred mm_tabling_status_to_string(mm_tabling_status, string).
 :- mode mm_tabling_status_to_string(in, out) is det.

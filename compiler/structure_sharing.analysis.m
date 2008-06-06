@@ -52,13 +52,13 @@
 :- instance call_pattern(structure_sharing_func_info, structure_sharing_call).
 :- instance partial_order(structure_sharing_func_info,
     structure_sharing_call).
-:- instance to_string(structure_sharing_call).
+:- instance to_term(structure_sharing_call).
 
 :- instance answer_pattern(structure_sharing_func_info, 
     structure_sharing_answer).
 :- instance partial_order(structure_sharing_func_info,
     structure_sharing_answer).
-:- instance to_string(structure_sharing_answer).
+:- instance to_term(structure_sharing_answer).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -994,9 +994,13 @@ analysis_name = "structure_sharing".
     equivalent(_, Call, Call)
 ].
 
-:- instance to_string(structure_sharing_call) where [
-    to_string(structure_sharing_call) = "",
-    from_string("") = structure_sharing_call
+:- instance to_term(structure_sharing_call) where [
+    ( to_term(structure_sharing_call) = Term :-
+        Term = term.functor(atom("any"), [], context_init)
+    ),
+    ( from_term(Term, structure_sharing_call) :-
+        Term = term.functor(atom("any"), [], _)
+    )
 ].
 
 :- instance answer_pattern(structure_sharing_func_info,
@@ -1050,51 +1054,48 @@ structure_sharing_answer_to_sharing_as(Answer) = SharingAs :-
         Answer = structure_sharing_answer_real(_, _, SharingAs)
     ).
 
-:- instance to_string(structure_sharing_answer) where [
-    func(to_string/1) is sharing_answer_to_string,
-    func(from_string/1) is sharing_answer_from_string
+:- instance to_term(structure_sharing_answer) where [
+    func(to_term/1) is sharing_answer_to_term,
+    pred(from_term/2) is sharing_answer_from_term
 ].
 
-:- func sharing_answer_to_string(structure_sharing_answer) = string.
+:- func sharing_answer_to_term(structure_sharing_answer) = term.
 
-sharing_answer_to_string(Answer) = String :-
+sharing_answer_to_term(Answer) = Term :-
     (
         Answer = structure_sharing_answer_bottom,
-        String = "b"
+        Term = term.functor(atom("b"), [], context_init)
     ;
         Answer = structure_sharing_answer_top,
-        String = "t"
+        Term = term.functor(atom("t"), [], context_init)
     ;
         Answer = structure_sharing_answer_real(HeadVars, Types, SharingAs),
         SharingDomain = to_structure_sharing_domain(SharingAs),
-        String = string({HeadVars, Types, SharingDomain})
+        type_to_term(HeadVars, HeadVarsTerm),
+        type_to_term(Types, TypesTerm),
+        type_to_term(SharingDomain, SharingDomainTerm),
+        Term = term.functor(atom("sharing"),
+            [HeadVarsTerm, TypesTerm, SharingDomainTerm], context_init)
     ).
 
-:- func sharing_answer_from_string(string::in) =
-    (structure_sharing_answer::out) is det.
+:- pred sharing_answer_from_term(term::in, structure_sharing_answer::out)
+    is semidet.
 
-sharing_answer_from_string(String) = Answer :-
-    ( String = "b" ->
+sharing_answer_from_term(Term, Answer) :-
+    (
+        Term = term.functor(atom("b"), [], _),
         Answer = structure_sharing_answer_bottom
-    ; String = "t" ->
+    ;
+        Term = term.functor(atom("t"), [], _),
         Answer = structure_sharing_answer_top
     ;
-        % XXX this is ugly.  Later we should move to writing call and answer
-        % patterns in analysis files as terms rather than strings which will
-        % clean this up.
-        StringStop = String ++ ".",
-        io.read_from_string("", StringStop, string.length(StringStop), Res,
-            posn(0, 0, 0), _Posn),
-        (
-            Res = ok({HeadVars, Types, SharingDomain}),
-            SharingAs = from_structure_sharing_domain(SharingDomain),
-            Answer = structure_sharing_answer_real(HeadVars, Types, SharingAs)
-        ;
-            ( Res = eof
-            ; Res = error(_, _)
-            ),
-            unexpected(this_file, "sharing_answer_from_string: " ++ String)
-        )
+        Term = term.functor(atom("sharing"),
+            [HeadVarsTerm, TypesTerm, SharingDomainTerm], _),
+        term_to_type(HeadVarsTerm, HeadVars),
+        term_to_type(TypesTerm, Types),
+        term_to_type(SharingDomainTerm, SharingDomain),
+        SharingAs = from_structure_sharing_domain(SharingDomain),
+        Answer = structure_sharing_answer_real(HeadVars, Types, SharingAs)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -120,7 +120,7 @@
 :- instance analysis(no_func_info, any_call, exception_analysis_answer).
 :- instance partial_order(no_func_info, exception_analysis_answer).
 :- instance answer_pattern(no_func_info, exception_analysis_answer).
-:- instance to_string(exception_analysis_answer).
+:- instance to_term(exception_analysis_answer).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -1017,20 +1017,22 @@ exception_status_more_precise_than(throw_conditional, may_throw(_)).
 exception_status_more_precise_than(may_throw(type_exception),
     may_throw(user_exception)).
 
-:- instance to_string(exception_analysis_answer) where [
-    func(to_string/1) is answer_to_string,
-    func(from_string/1) is answer_from_string
+:- instance to_term(exception_analysis_answer) where [
+    func(to_term/1) is answer_to_term,
+    pred(from_term/2) is answer_from_term
 ].
 
-:- func answer_to_string(exception_analysis_answer) = string.
+:- func answer_to_term(exception_analysis_answer) = term.
 
-answer_to_string(Answer) = String :-
+answer_to_term(Answer) = Term :-
     Answer = exception_analysis_answer(Status),
-    exception_status_to_string(Status, String).
+    exception_status_to_string(Status, String),
+    Term = term.functor(atom(String), [], context_init).
 
-:- func answer_from_string(string) = exception_analysis_answer is semidet.
+:- pred answer_from_term(term::in, exception_analysis_answer::out) is semidet.
 
-answer_from_string(String) = exception_analysis_answer(Status) :-
+answer_from_term(Term, exception_analysis_answer(Status)) :-
+    Term = term.functor(atom(String), [], _),
     exception_status_to_string(Status, String).
 
 :- pred exception_status_to_string(exception_status, string).
@@ -1040,9 +1042,9 @@ answer_from_string(String) = exception_analysis_answer(Status) :-
 exception_status_to_string(will_not_throw, "will_not_throw").
 exception_status_to_string(throw_conditional, "conditional").
 exception_status_to_string(may_throw(type_exception),
-    "may_throw(type_exception)").
+    "may_throw_type_exception").
 exception_status_to_string(may_throw(user_exception),
-    "may_throw(user_exception)").
+    "may_throw_user_exception").
 
 %----------------------------------------------------------------------------%
 %

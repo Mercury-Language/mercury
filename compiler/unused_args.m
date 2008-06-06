@@ -73,11 +73,11 @@
 
 :- instance partial_order(unused_args_func_info, unused_args_call).
 :- instance call_pattern(unused_args_func_info, unused_args_call).
-:- instance to_string(unused_args_call).
+:- instance to_term(unused_args_call).
 
 :- instance partial_order(unused_args_func_info, unused_args_answer).
 :- instance answer_pattern(unused_args_func_info, unused_args_answer).
-:- instance to_string(unused_args_answer).
+:- instance to_term(unused_args_answer).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -115,6 +115,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -187,13 +188,19 @@ analysis_name = "unused_args".
 
 :- instance call_pattern(unused_args_func_info, unused_args_call) where [].
 :- instance partial_order(unused_args_func_info, unused_args_call) where [
-    (more_precise_than(_, _, _) :- semidet_fail),
+    ( more_precise_than(_, _, _) :-
+        semidet_fail
+    ),
     equivalent(_, Call, Call)
 ].
 
-:- instance to_string(unused_args_call) where [
-    to_string(_) = "",
-    from_string(_) = unused_args_call
+:- instance to_term(unused_args_call) where [
+    ( to_term(unused_args_call) = Term :-
+        Term = term.functor(atom("any"), [], context_init)
+    ),
+    ( from_term(Term, unused_args_call) :-
+        Term = term.functor(atom("any"), [], _)
+    )
 ].
 
 :- instance answer_pattern(unused_args_func_info, unused_args_answer) where [].
@@ -206,21 +213,14 @@ analysis_name = "unused_args".
     equivalent(_, Args, Args)
 ].
 
-:- instance to_string(unused_args_answer) where [
-    func(to_string/1) is unused_args_answer_to_string,
-    func(from_string/1) is unused_args_answer_from_string
+:- instance to_term(unused_args_answer) where [
+    ( to_term(unused_args(Args)) = Term :-
+        type_to_term(Args, Term)
+    ),
+    ( from_term(Term, unused_args(Args)) :-
+        term_to_type(Term, Args)
+    )
 ].
-
-:- func unused_args_answer_to_string(unused_args_answer) = string.
-
-unused_args_answer_to_string(unused_args(Args)) =
-    string.join_list(" ", list.map(int_to_string, Args)).
-
-:- func unused_args_answer_from_string(string) = unused_args_answer is semidet.
-
-unused_args_answer_from_string(String) = unused_args(Args) :-
-    Words = string.words(String),
-    list.map(string.to_int, Words, Args).
 
 %-----------------------------------------------------------------------------%
 

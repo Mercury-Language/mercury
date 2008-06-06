@@ -77,7 +77,7 @@
 :- instance analysis(no_func_info, any_call, trailing_analysis_answer).
 :- instance partial_order(no_func_info, trailing_analysis_answer).
 :- instance answer_pattern(no_func_info, trailing_analysis_answer).
-:- instance to_string(trailing_analysis_answer).
+:- instance to_term(trailing_analysis_answer).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -1160,21 +1160,23 @@ trailing_status_more_precise_than(trail_will_not_modify, trail_may_modify).
 trailing_status_more_precise_than(trail_will_not_modify, trail_conditional).
 trailing_status_more_precise_than(trail_conditional, trail_may_modify).
 
-:- instance to_string(trailing_analysis_answer) where [
-    func(to_string/1) is trailing_analysis_answer_to_string,
-    func(from_string/1) is trailing_analysis_answer_from_string
+:- instance to_term(trailing_analysis_answer) where [
+    func(to_term/1) is trailing_analysis_answer_to_term,
+    pred(from_term/2) is trailing_analysis_answer_from_term
 ].
 
-:- func trailing_analysis_answer_to_string(trailing_analysis_answer) = string.
+:- func trailing_analysis_answer_to_term(trailing_analysis_answer) = term.
 
-trailing_analysis_answer_to_string(trailing_analysis_answer(Status)) = Str :-
-    trailing_status_to_string(Status, Str).
+trailing_analysis_answer_to_term(trailing_analysis_answer(Status)) = Term :-
+    trailing_status_to_string(Status, String),
+    Term = term.functor(atom(String), [], context_init).
 
-:- func trailing_analysis_answer_from_string(string) =
-        trailing_analysis_answer is semidet.
+:- pred trailing_analysis_answer_from_term(term::in,
+    trailing_analysis_answer::out) is semidet.
 
-trailing_analysis_answer_from_string(Str) = trailing_analysis_answer(Status) :-
-    trailing_status_to_string(Status, Str).
+trailing_analysis_answer_from_term(Term, trailing_analysis_answer(Status)) :-
+    Term = term.functor(atom(String), [], _),
+    trailing_status_to_string(Status, String).
 
 :- pred trailing_status_to_string(trailing_status, string).
 :- mode trailing_status_to_string(in, out) is det.

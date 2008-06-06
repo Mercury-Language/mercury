@@ -33,6 +33,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
+:- import_module term.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -107,12 +108,12 @@
 
 :- typeclass call_pattern(FuncInfo, Call)
     <= (partial_order(FuncInfo, Call),
-        to_string(Call))
+        to_term(Call))
     where [].
 
 :- typeclass answer_pattern(FuncInfo, Answer)
     <= (partial_order(FuncInfo, Answer),
-        to_string(Answer))
+        to_term(Answer))
     where [].
 
 :- type analysis_result(Call, Answer)
@@ -130,9 +131,9 @@
     pred equivalent(FuncInfo::in, T::in, T::in) is semidet
 ].
 
-:- typeclass to_string(S) where [
-    func to_string(S) = string,
-    func from_string(string) = S is semidet
+:- typeclass to_term(S) where [
+    func to_term(S) = term,
+    pred from_term(term::in, S::out) is semidet
 ].
 
 :- type no_func_info
@@ -146,7 +147,7 @@
 
 :- instance call_pattern(no_func_info, any_call).
 :- instance partial_order(no_func_info, any_call).
-:- instance to_string(any_call).
+:- instance to_term(any_call).
 
     % The status of a module or a specific analysis result.
     %
@@ -442,9 +443,13 @@
         semidet_succeed
     )
 ].
-:- instance to_string(any_call) where [
-    to_string(any_call) = "",
-    from_string("") = any_call
+:- instance to_term(any_call) where [
+    ( to_term(any_call) = Term :-
+        Term = term.functor(atom("any"), [], context_init)
+    ),
+    ( from_term(Term, any_call) :-
+        Term = term.functor(atom("any"), [], _)
+    )
 ].
 
 %-----------------------------------------------------------------------------%
