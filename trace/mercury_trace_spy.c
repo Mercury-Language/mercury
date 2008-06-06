@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -521,7 +521,7 @@ MR_update_enabled_action(MR_SpyPoint *point, const MR_LabelLayout *layout,
 }
 
 const char  *MR_spy_point_cond_problem = NULL;
-MR_SpyCond *MR_spy_point_cond_bad = NULL;
+MR_SpyCond  *MR_spy_point_cond_bad = NULL;
 
 static MR_bool
 MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)

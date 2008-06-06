@@ -10,7 +10,7 @@
 /*
 ** This file contains the top level of the code of the internal, in-process
 ** debugger. The functions implementing the commands themselves are in the
-** files mercury_trac_cmd_*.c.
+** files mercury_trace_cmd_*.c.
 **
 ** Main author: Zoltan Somogyi.
 */
@@ -149,6 +149,7 @@ FILE    *MR_mdb_err;
 ** is used to avoid references to the non-ISO header file <unistd.h>
 ** (for pid_t) in the runtime headers.
 */
+
 static  MR_bool     MR_have_mdb_window = MR_FALSE;
 static  pid_t       MR_mdb_window_pid = 0;
 
