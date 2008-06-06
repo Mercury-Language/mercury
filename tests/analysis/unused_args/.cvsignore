@@ -1,0 +1,20 @@
+*.dep
+*.d
+*.date
+*.dv
+*.c *.out *.res
+*.int
+*.int2
+*.err
+*.mh
+*.mih
+*.opt
+*.optdate
+*.res1
+*.gz
+*.c_date
+*.log
+CLEAN
+FAILED_TESTS
+NOMAKE_DIRS
+Mercury.modules
