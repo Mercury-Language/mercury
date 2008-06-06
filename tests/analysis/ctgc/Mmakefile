@@ -1,0 +1,19 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = analysis/reuse
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS=
+TESTS=reuse_m1-nodepend
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+reuse_m1.runtest:
+	MC=$(MC) ./reuse_runtest.sh
+
+realclean_local:
+	$(RM) reuse_m3.m
+	$(RM) -r Mercury
+
+#-----------------------------------------------------------------------------#
