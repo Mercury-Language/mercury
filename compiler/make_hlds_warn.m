@@ -79,7 +79,6 @@
 :- import_module bool.
 :- import_module char.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module varset.
 
@@ -306,14 +305,13 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
     % or "DCG_", and don't have the same name as any variable in QuantVars
     % (i.e. weren't explicitly quantified).
 
-    solutions.solutions(
-        generate_singleton_vars(GoalVars, NonLocals, QuantVars, VarSet),
-        SingletonVars),
+    list.filter(is_singleton_var(NonLocals, QuantVars, VarSet), GoalVars,
+        SingleVars),
 
     % If there were any such variables, issue a warning.
     (
         (
-            SingletonVars = []
+            SingleVars = []
         ;
             goal_info_has_feature(GoalInfo, feature_dont_warn_singleton)
         )
@@ -322,9 +320,11 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
     ;
         SinglesPreamble = [words("In clause for"),
             simple_call(PredOrFuncCallId), suffix(":"), nl],
-        SingleVarsPiece =
-            quote(mercury_vars_to_string(VarSet, no, SingletonVars)),
-        ( SingletonVars = [_] ->
+        SingleVarStrs0 = list.map(mercury_var_to_string(VarSet, no),
+            SingleVars),
+        list.sort_and_remove_dups(SingleVarStrs0, SingleVarStrs),
+        SingleVarsPiece = quote(string.join_list(", ", SingleVarStrs)),
+        ( SingleVarStrs = [_] ->
             SinglesPieces = [words("warning: variable"), SingleVarsPiece,
                 words("occurs only once in this scope."), nl]
         ;
@@ -345,16 +345,18 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
     % (i.e. are not singleton) and have a variable name that starts
     % with "_". If there were any such variables, issue a warning.
 
-    solutions.solutions(generate_multi_vars(GoalVars, NonLocals, VarSet),
-        MultiVars),
+    list.filter(is_multi_var(NonLocals, VarSet), GoalVars, MultiVars),
     (
         MultiVars = []
     ;
         MultiVars = [_ | _],
         MultiPreamble = [words("In clause for"),
             simple_call(PredOrFuncCallId), suffix(":"), nl],
-        MultiVarsPiece = quote(mercury_vars_to_string(VarSet, no, MultiVars)),
-        ( MultiVars = [_] ->
+        MultiVarStrs0 = list.map(mercury_var_to_string(VarSet, no),
+            MultiVars),
+        list.sort_and_remove_dups(MultiVarStrs0, MultiVarStrs),
+        MultiVarsPiece = quote(string.join_list(", ", MultiVarStrs)),
+        ( MultiVarStrs = [_] ->
             MultiPieces = [words("warning: variable"), MultiVarsPiece,
                 words("occurs more than once in this scope."), nl]
         ;
@@ -379,20 +381,16 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
     (
         PragmaImpl = fc_impl_ordinary(C_Code, _),
         c_code_to_name_list(C_Code, C_CodeList),
-        Filter = (pred(Name::out) is nondet :-
-            list.member(yes(Name - _), Args),
-            \+ string.prefix(Name, "_"),
-            \+ list.member(Name, C_CodeList)
-        ),
-        solutions.solutions(Filter, UnmentionedVars),
+        list.filter_map(var_is_unmentioned(C_CodeList), Args, UnmentionedVars),
         (
             UnmentionedVars = []
         ;
             UnmentionedVars = [_ | _],
             Pieces1 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl,
-                words(variable_warning_start(UnmentionedVars)),
-                words("not occur in the"), words(LangStr), words("code."), nl],
+                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
+                variable_warning_start(UnmentionedVars) ++
+                [words("not occur in the"), words(LangStr), words("code."),
+                nl],
             Msg1 = simple_msg(Context,
                 [option_is_set(warn_singleton_vars, yes, [always(Pieces1)])]),
             Severity1 = severity_conditional(warn_singleton_vars, yes,
@@ -407,21 +405,16 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         c_code_to_name_list(FirstCode, FirstCodeList),
         c_code_to_name_list(LaterCode, LaterCodeList),
         c_code_to_name_list(SharedCode, SharedCodeList),
-        InputFilter = (pred(Name::out) is nondet :-
-            list.member(yes(Name - Mode), Args),
-            mode_is_input(ModuleInfo, Mode),
-            \+ string.prefix(Name, "_"),
-            \+ list.member(Name, FirstCodeList)
-        ),
-        solutions.solutions(InputFilter, UnmentionedInputVars),
+        list.filter_map(input_var_is_unmentioned(ModuleInfo, FirstCodeList),
+            Args, UnmentionedInputVars),
         (
             UnmentionedInputVars = []
         ;
             UnmentionedInputVars = [_ | _],
             Pieces2 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl,
-                words(variable_warning_start(UnmentionedInputVars)),
-                words("not occur in the first"), words(LangStr),
+                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
+                variable_warning_start(UnmentionedInputVars) ++
+                [words("not occur in the first"), words(LangStr),
                 words("code."), nl],
             Msg2 = simple_msg(Context,
                 [option_is_set(warn_singleton_vars, yes, [always(Pieces2)])]),
@@ -431,22 +424,16 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 [Msg2]),
             !:Specs = [Spec2 | !.Specs]
         ),
-        FirstOutputFilter = (pred(Name::out) is nondet :-
-            list.member(yes(Name - Mode), Args),
-                mode_is_output(ModuleInfo, Mode),
-                \+ string.prefix(Name, "_"),
-                \+ list.member(Name, FirstCodeList),
-                \+ list.member(Name, SharedCodeList)
-        ),
-        solutions.solutions(FirstOutputFilter, UnmentionedFirstOutputVars),
+        list.filter_map(output_var_is_unmentioned(ModuleInfo,
+            FirstCodeList, SharedCodeList), Args, UnmentionedFirstOutputVars),
         (
             UnmentionedFirstOutputVars = []
         ;
             UnmentionedFirstOutputVars = [_ | _],
             Pieces3 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl,
-                words(variable_warning_start(UnmentionedFirstOutputVars)),
-                words("not occur in the first"), words(LangStr),
+                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
+                variable_warning_start(UnmentionedFirstOutputVars) ++
+                [words("not occur in the first"), words(LangStr),
                 words("code or the shared"), words(LangStr), words("code."),
                 nl],
             Msg3 = simple_msg(Context,
@@ -457,22 +444,18 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 [Msg3]),
             !:Specs = [Spec3 | !.Specs]
         ),
-        LaterOutputFilter = (pred(Name::out) is nondet :-
-            list.member(yes(Name - Mode), Args),
-            mode_is_output(ModuleInfo, Mode),
-            \+ string.prefix(Name, "_"),
-            \+ list.member(Name, LaterCodeList),
-            \+ list.member(Name, SharedCodeList)
-        ),
-        solutions.solutions(LaterOutputFilter, UnmentionedLaterOutputVars),
+        list.filter_map(output_var_is_unmentioned(ModuleInfo,
+            LaterCodeList, SharedCodeList), Args, UnmentionedLaterOutputVars),
         (
             UnmentionedLaterOutputVars = []
         ;
             UnmentionedLaterOutputVars = [_ | _],
+            list.sort(UnmentionedLaterOutputVars,
+                SortedUnmentionedLaterOutputVars),
             Pieces4 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl,
-                words(variable_warning_start(UnmentionedLaterOutputVars)),
-                words("not occur in the retry"), words(LangStr),
+                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
+                variable_warning_start(SortedUnmentionedLaterOutputVars) ++
+                [words("not occur in the retry"), words(LangStr),
                 words("code or the shared"), words(LangStr), words("code."),
                 nl],
             Msg4 = simple_msg(Context,
@@ -487,14 +470,44 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         PragmaImpl = fc_impl_import(_, _, _, _)
     ).
 
-:- func variable_warning_start(list(string)) = string.
+:- pred var_is_unmentioned(list(string)::in, maybe(pair(string, mer_mode))::in,
+    string::out) is semidet.
 
-variable_warning_start(UnmentionedVars) = Str :-
+var_is_unmentioned(NameList1, MaybeArg, Name) :-
+    MaybeArg = yes(Name - _Mode),
+    \+ string.prefix(Name, "_"),
+    \+ list.member(Name, NameList1).
+
+:- pred input_var_is_unmentioned(module_info::in,
+    list(string)::in, maybe(pair(string, mer_mode))::in,
+    string::out) is semidet.
+
+input_var_is_unmentioned(ModuleInfo, NameList1, MaybeArg, Name) :-
+    MaybeArg = yes(Name - Mode),
+    mode_is_input(ModuleInfo, Mode),
+    \+ string.prefix(Name, "_"),
+    \+ list.member(Name, NameList1).
+
+:- pred output_var_is_unmentioned(module_info::in,
+    list(string)::in, list(string)::in, maybe(pair(string, mer_mode))::in,
+    string::out) is semidet.
+
+output_var_is_unmentioned(ModuleInfo, NameList1, NameList2, MaybeArg, Name) :-
+    MaybeArg = yes(Name - Mode),
+    mode_is_output(ModuleInfo, Mode),
+    \+ string.prefix(Name, "_"),
+    \+ list.member(Name, NameList1),
+    \+ list.member(Name, NameList2).
+
+:- func variable_warning_start(list(string)) = list(format_component).
+
+variable_warning_start(UnmentionedVars) = Pieces :-
     ( UnmentionedVars = [Var] ->
-        Str = "warning: variable `" ++ Var ++ "' does"
+        Pieces = [words("warning: variable"), quote(Var), words("does")]
     ;
-        Str = "warning: variables `" ++
-            string.join_list(", ", UnmentionedVars) ++ "' do"
+        Pieces = [words("warning: variables)"),
+            words(add_quotes(string.join_list(", ", UnmentionedVars))),
+            words("do")]
     ).
 
     % c_code_to_name_list(Code, List) is true iff List is a list of the
@@ -530,8 +543,8 @@ get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
         get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
         NameCharList = [C | NameCharList0]
     ;
-            % strip off any characters in the C code which
-            % don't form part of an identifier.
+        % Strip off any characters in the C code which don't form part
+        % of an identifier.
         get_first_c_name(CodeChars, NameCharList, TheRest)
     ).
 
@@ -541,20 +554,19 @@ get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
 get_first_c_name_in_word([], [], []).
 get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
     ( char.is_alnum_or_underscore(C) ->
-            % There are more characters in the word
+        % There are more characters in the word.
         get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
         NameCharList = [C|NameCharList0]
     ;
-            % The word is finished
+        % The word is finished.
         NameCharList = [],
         TheRest = CodeChars
     ).
 
-:- pred generate_singleton_vars(list(prog_var)::in, set(prog_var)::in,
-    set(prog_var)::in, prog_varset::in, prog_var::out) is nondet.
+:- pred is_singleton_var(set(prog_var)::in,
+    set(prog_var)::in, prog_varset::in, prog_var::in) is semidet.
 
-generate_singleton_vars(GoalVars, NonLocals, QuantVars, VarSet, Var) :-
-    list.member(Var, GoalVars),
+is_singleton_var(NonLocals, QuantVars, VarSet, Var) :-
     \+ set.member(Var, NonLocals),
     varset.search_name(VarSet, Var, Name),
     \+ string.prefix(Name, "_"),
@@ -564,11 +576,10 @@ generate_singleton_vars(GoalVars, NonLocals, QuantVars, VarSet, Var) :-
         varset.search_name(VarSet, QuantVar, Name)
     ).
 
-:- pred generate_multi_vars(list(prog_var)::in, set(prog_var)::in,
-    prog_varset::in, prog_var::out) is nondet.
+:- pred is_multi_var(set(prog_var)::in, prog_varset::in, prog_var::in)
+    is semidet.
 
-generate_multi_vars(GoalVars, NonLocals, VarSet, Var) :-
-    list.member(Var, GoalVars),
+is_multi_var(NonLocals, VarSet, Var) :-
     set.member(Var, NonLocals),
     varset.search_name(VarSet, Var, Name),
     string.prefix(Name, "_").
