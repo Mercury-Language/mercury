@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,7 +142,7 @@ script_name(ScriptName, !IO) :-
 
 :- pragma foreign_proc("C",
     mkfifo_cmd(Mkfifo::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* shut up warnings about casting away const */
     Mkfifo = (MR_String) (MR_Integer) MR_MKFIFO;
@@ -152,7 +152,7 @@ script_name(ScriptName, !IO) :-
 
 :- pragma foreign_proc("C",
     hostname_cmd(Hostname::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* shut up warnings about casting away const */
     Hostname = (MR_String) (MR_Integer) MR_HOSTNAMECMD;
