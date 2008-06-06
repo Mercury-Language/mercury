@@ -311,21 +311,32 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs, !IO) :-
         Simplifications = Simplifications0
     ),
     ErrorSpecs0 = init_error_spec_accumulator,
-    simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        ErrorSpecs0, ErrorSpecs),
+    simplify_pred_procs(Simplifications, PredId, ProcIds, !ModuleInfo,
+        !PredInfo, ErrorSpecs0, ErrorSpecs),
     module_info_get_globals(!.ModuleInfo, Globals),
     SpecsList = error_spec_accumulator_to_list(ErrorSpecs),
     !:Specs = SpecsList ++ !.Specs,
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO).
 
-:- pred simplify_procs(simplifications::in, pred_id::in,
+:- pred simplify_pred_procs(simplifications::in, pred_id::in,
     list(proc_id)::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !ErrorSpecs).
-simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
+simplify_pred_procs(_, _, [], !ModuleInfo, !PredInfo, !ErrorSpecs).
+simplify_pred_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
+        !PredInfo, !ErrorSpecs) :-
+    simplify_pred_proc(Simplifications, PredId, ProcId, !ModuleInfo,
+        !PredInfo, !ErrorSpecs),
+    simplify_pred_procs(Simplifications, PredId, ProcIds, !ModuleInfo,
+        !PredInfo, !ErrorSpecs).
+
+:- pred simplify_pred_proc(simplifications::in, pred_id::in, proc_id::in,
+    module_info::in, module_info::out, pred_info::in, pred_info::out,
+    error_spec_accumulator::in, error_spec_accumulator::out) is det.
+
+simplify_pred_proc(Simplifications, PredId, ProcId, !ModuleInfo,
         !PredInfo, !ErrorSpecs) :-
     pred_info_get_procedures(!.PredInfo, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -352,9 +363,7 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
     ),
     map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
-    accumulate_error_specs_for_proc(ProcSpecs, !ErrorSpecs),
-    simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        !ErrorSpecs).
+    accumulate_error_specs_for_proc(ProcSpecs, !ErrorSpecs).
 
 simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo, !IO)  :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
