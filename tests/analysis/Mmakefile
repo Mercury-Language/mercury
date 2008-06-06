@@ -5,9 +5,9 @@ THIS_DIR = analysis
 #-----------------------------------------------------------------------------#
 
 SUBDIRS = \
+	ctgc \
 	excp \
 	ext \
-	reuse \
 	sharing \
 	table \
 	trail \
