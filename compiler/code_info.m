@@ -1192,25 +1192,29 @@ add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
     code_info::in, code_info::out) is det.
 
 :- pred save_hp_in_branch(code_tree::out, lval::out,
-    position_info::in, position_info::out) is det.
+    position_info::in, position_info::out, code_info::in, code_info::out)
+    is det.
 
 :- implementation.
 
 :- type position_info
     --->    position_info(
-                code_info   % The code_info at a given position
-                            % in the code of the procedure.
+                code_info_loc_dep   % The location-dependent part of the
+                                    % code_info at a given position.
             ).
 
 :- type branch_end_info
     --->    branch_end_info(
-                code_info   % The code_info at the end of a branch.
+                code_info           % The code_info at the end of a branch.
             ).
 
-remember_position(CI, position_info(CI)).
+:- func pos_get_fail_info(position_info) = fail_info.
 
-reset_to_position(position_info(PosCI), CurCI, NextCI) :-
-    PosCI   = code_info(_, LocDep, _),
+pos_get_fail_info(position_info(LocDep)) = LocDep ^ cild_fail_info.
+
+remember_position(CI, position_info(CI ^ code_info_loc_dep)).
+
+reset_to_position(position_info(LocDep), CurCI, NextCI) :-
     CurCI   = code_info(Static, _, Persistent),
     NextCI0 = code_info(Static, LocDep, Persistent),
 
@@ -1220,8 +1224,7 @@ reset_to_position(position_info(PosCI), CurCI, NextCI) :-
     set_temps_in_use(TempsInUse, NextCI0, NextCI).
 
 reset_resume_known(BranchStart, !CI) :-
-    BranchStart = position_info(BranchStartCI),
-    get_fail_info(BranchStartCI, BranchStartFailInfo),
+    BranchStartFailInfo = pos_get_fail_info(BranchStart),
     BranchStartFailInfo = fail_info(_, BSResumeKnown, _, _, _),
     get_fail_info(!.CI, CurFailInfo),
     CurFailInfo = fail_info(CurFailStack, _, CurCurfMaxfr, CurCondEnv,
@@ -1312,7 +1315,8 @@ after_all_branches(StoreMap, MaybeEnd, !CI) :-
     (
         MaybeEnd = yes(BranchEnd),
         BranchEnd = branch_end_info(BranchEndCodeInfo),
-        reset_to_position(position_info(BranchEndCodeInfo), !CI),
+        BranchEndLocDep = BranchEndCodeInfo ^ code_info_loc_dep,
+        reset_to_position(position_info(BranchEndLocDep), !CI),
         remake_with_store_map(StoreMap, !CI)
     ;
         MaybeEnd = no,
@@ -1335,10 +1339,15 @@ remake_with_store_map(StoreMap, !CI) :-
     reinit_var_locn_state(VarLvals, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
-save_hp_in_branch(Code, Slot, Pos0, Pos) :-
-    Pos0 = position_info(CodeInfo0),
-    save_hp(Code, Slot, CodeInfo0, CodeInfo),
-    Pos  = position_info(CodeInfo).
+save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
+    CI0 = code_info(CIStatic0, CILocDep0, CIPersistent0),
+    Pos0 = position_info(LocDep0),
+    CI1 = code_info(CIStatic0, LocDep0, CIPersistent0),
+    save_hp(Code, Slot, CI1, CI2),
+    CI2 = code_info(CIStatic, LocDep, CIPersistent),
+    Pos = position_info(LocDep),
+    % Reset the location dependent part to the original.
+    CI = code_info(CIStatic, CILocDep0, CIPersistent).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

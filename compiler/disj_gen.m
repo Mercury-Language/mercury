@@ -526,7 +526,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             % location-dependent state originally in BranchStart0.
 
             save_hp_in_branch(BranchSaveHpCode, BranchHpSlot,
-                BranchStart0, BranchStart),
+                BranchStart0, BranchStart, !CI),
             tree.flatten(SaveHpCode, HpCodeList),
             tree.flatten(BranchSaveHpCode, BranchHpCodeList),
             expect(unify(HpCodeList, BranchHpCodeList), this_file,
