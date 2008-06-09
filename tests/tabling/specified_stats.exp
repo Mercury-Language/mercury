@@ -1,187 +1,187 @@
 
 call table statistics for ap_lp_fib
-number of lookups:                                1,219
-number of successful lookups (old calls):             0   (0.00%)
-number of unsuccessful lookups (new calls):       1,219 (100.00%)
+number of lookups:                                  NNN
+number of successful lookups (old calls):           NNN (NNN%)
+number of unsuccessful lookups (new calls):         NNN (NNN%)
 statistics for the individual steps:
 
 step 1, variable TypeInfo_for_T: hash table
-  number of lookups:                              1,219
-  number of successful lookups:                   1,218  (99.92%)
-  number of unsuccessful lookups:                     1   (0.08%)
-  number of hash table allocations:                   2
-  number of bytes allocated for hash tables:      1,072
-  number of bulk hash link allocations:               2
-  number of bytes allocated for hash links:       6,160
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:         2,436
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:         NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 step 2, variable N: hash table
-  number of lookups:                              1,219
-  number of successful lookups:                       0   (0.00%)
-  number of unsuccessful lookups:                 1,219 (100.00%)
-  number of hash table allocations:                   1
-  number of bytes allocated for hash tables:        536
-  number of bulk hash link allocations:               5
-  number of bytes allocated for hash links:      15,400
-  number of key compares when unsuccessful:         449
-  number of key compares when successful:             0
-  number of hash table resizes:                       4
-  number of old entries in resizes:               1,914
-  number of new entries in resizes:               3,840
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:         NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
+  number of old entries in resizes:                 NNN
+  number of new entries in resizes:                 NNN
 
 step 3, variable Dummy: none
-  number of lookups:                                  0
+  number of lookups:                                NNN
 
 
 call table statistics for vp_lp_fib
-number of lookups:                                   27
-number of successful lookups (old calls):            12  (44.44%)
-number of unsuccessful lookups (new calls):          15  (55.56%)
+number of lookups:                                  NNN
+number of successful lookups (old calls):           NNN (NNN%)
+number of unsuccessful lookups (new calls):         NNN (NNN%)
 statistics for the individual steps:
 
 step 1, variable TypeInfo_for_T: hash table
-  number of lookups:                                 27
-  number of successful lookups:                      26  (96.30%)
-  number of unsuccessful lookups:                     1   (3.70%)
-  number of hash table allocations:                   2
-  number of bytes allocated for hash tables:      1,072
-  number of bulk hash link allocations:               2
-  number of bytes allocated for hash links:       6,160
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:            52
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:         NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 step 2, variable N: discriminated union nested trie
-  number of lookups:                                 27
-  number of successful lookups:                      12  (44.44%)
-  number of unsuccessful lookups:                    15  (55.56%)
-  number of du functor node allocations:             16
-  number of bytes allocated for du functors:        128
-  number of du functor argument lookups:             70
-  number of hash table allocations:                   2
-  number of bytes allocated for hash tables:      1,072
-  number of bulk hash link allocations:               2
-  number of bytes allocated for hash links:       6,160
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:            20
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of du functor node allocations:            NNN
+  number of bytes allocated for du functors:        NNN
+  number of du functor argument lookups:            NNN
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:         NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 step 3, variable Dummy: none
-  number of lookups:                                  0
+  number of lookups:                                NNN
 
 aplp_vs_vplp: tabling works
 
 call table statistics for ap_li_fib
-number of lookups:                                1,219
-number of successful lookups (old calls):             0   (0.00%)
-number of unsuccessful lookups (new calls):       1,219 (100.00%)
+number of lookups:                                  NNN
+number of successful lookups (old calls):           NNN (NNN%)
+number of unsuccessful lookups (new calls):         NNN (NNN%)
 statistics for the individual steps:
 
 step 1, variable N: hash table
-  number of lookups:                              1,219
-  number of successful lookups:                       0   (0.00%)
-  number of unsuccessful lookups:                 1,219 (100.00%)
-  number of hash table allocations:                   1
-  number of bytes allocated for hash tables:        536
-  number of bulk hash link allocations:               5
-  number of bytes allocated for hash links:      15,400
-  number of key compares when unsuccessful:         478
-  number of key compares when successful:             0
-  number of hash table resizes:                       4
-  number of old entries in resizes:               1,914
-  number of new entries in resizes:               3,840
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:         NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
+  number of old entries in resizes:                 NNN
+  number of new entries in resizes:                 NNN
 
 step 2, variable CopyN: none
-  number of lookups:                                  0
+  number of lookups:                                NNN
 
 
 call table statistics for vp_li_fib
-number of lookups:                                   27
-number of successful lookups (old calls):            12  (44.44%)
-number of unsuccessful lookups (new calls):          15  (55.56%)
+number of lookups:                                  NNN
+number of successful lookups (old calls):           NNN (NNN%)
+number of unsuccessful lookups (new calls):         NNN (NNN%)
 statistics for the individual steps:
 
 step 1, variable N: discriminated union nested trie
-  number of lookups:                                 27
-  number of successful lookups:                      12  (44.44%)
-  number of unsuccessful lookups:                    15  (55.56%)
-  number of du functor node allocations:             16
-  number of bytes allocated for du functors:        128
-  number of du functor argument lookups:             70
-  number of hash table allocations:                   2
-  number of bytes allocated for hash tables:      1,072
-  number of bulk hash link allocations:               2
-  number of bytes allocated for hash links:       6,160
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:            20
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of du functor node allocations:            NNN
+  number of bytes allocated for du functors:        NNN
+  number of du functor argument lookups:            NNN
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:         NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 step 2, variable CopyN: none
-  number of lookups:                                  0
+  number of lookups:                                NNN
 
 apli_vs_vpli: tabling works
 
 call table statistics for vv_ll_fib
-number of lookups:                                  887
-number of successful lookups (old calls):           442  (49.83%)
-number of unsuccessful lookups (new calls):         445  (50.17%)
+number of lookups:                                  NNN
+number of successful lookups (old calls):           NNN (NNN%)
+number of unsuccessful lookups (new calls):         NNN (NNN%)
 statistics for the individual steps:
 
 step 1, variable N: discriminated union nested trie
-  number of lookups:                                887
-  number of successful lookups:                     442  (49.83%)
-  number of unsuccessful lookups:                   445  (50.17%)
-  number of du functor node allocations:            446
-  number of bytes allocated for du functors:      3,568
-  number of du functor argument lookups:          4,886
-  number of hash table allocations:                  45
-  number of bytes allocated for hash tables:     24,120
-  number of bulk hash link allocations:              45
-  number of bytes allocated for hash links:     138,600
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:         1,998
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of du functor node allocations:            NNN
+  number of bytes allocated for du functors:        NNN
+  number of du functor argument lookups:            NNN
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:   NNN   NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 step 2, variable CopyN: discriminated union nested trie
-  number of lookups:                                887
-  number of successful lookups:                     442  (49.83%)
-  number of unsuccessful lookups:                   445  (50.17%)
-  number of du functor node allocations:          1,670
-  number of bytes allocated for du functors:     13,360
-  number of du functor argument lookups:          4,886
-  number of hash table allocations:               1,225
-  number of bytes allocated for hash tables:    656,600
-  number of bulk hash link allocations:           1,225
-  number of bytes allocated for hash links:   3,773,000
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:         1,218
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of du functor node allocations:            NNN
+  number of bytes allocated for du functors:        NNN
+  number of du functor argument lookups:            NNN
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:    6   NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:   3,7   NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 
 call table statistics for vp_ll_fib
-number of lookups:                                  887
-number of successful lookups (old calls):           442  (49.83%)
-number of unsuccessful lookups (new calls):         445  (50.17%)
+number of lookups:                                  NNN
+number of successful lookups (old calls):           NNN (NNN%)
+number of unsuccessful lookups (new calls):         NNN (NNN%)
 statistics for the individual steps:
 
 step 1, variable N: discriminated union nested trie
-  number of lookups:                                887
-  number of successful lookups:                     442  (49.83%)
-  number of unsuccessful lookups:                   445  (50.17%)
-  number of du functor node allocations:            446
-  number of bytes allocated for du functors:      3,568
-  number of du functor argument lookups:          4,886
-  number of hash table allocations:                  45
-  number of bytes allocated for hash tables:     24,120
-  number of bulk hash link allocations:              45
-  number of bytes allocated for hash links:     138,600
-  number of key compares when unsuccessful:           0
-  number of key compares when successful:         1,998
-  number of hash table resizes:                       0
+  number of lookups:                                NNN
+  number of successful lookups:                     NNN (NNN%)
+  number of unsuccessful lookups:                   NNN (NNN%)
+  number of du functor node allocations:            NNN
+  number of bytes allocated for du functors:        NNN
+  number of du functor argument lookups:            NNN
+  number of hash table allocations:                 NNN
+  number of bytes allocated for hash tables:        NNN
+  number of bulk hash link allocations:             NNN
+  number of bytes allocated for hash links:   NNN   NNN
+  number of key compares when unsuccessful:         NNN
+  number of key compares when successful:           NNN
+  number of hash table resizes:                     NNN
 
 step 2, variable CopyN: none
-  number of lookups:                                  0
+  number of lookups:                                NNN
 
 vvll_vs_vpll: tabling works
