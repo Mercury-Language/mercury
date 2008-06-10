@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,6 +25,7 @@
 #include "mercury_types.h"
 #include "mercury_tabling.h"
 #include "mercury_trace_base.h"
+#include "mercury_regs.h"
 
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
@@ -1340,6 +1341,31 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
             fclose(fp);
         }
     }
+
+    return KEEP_INTERACTING;
+}
+
+MR_Next
+MR_trace_cmd_trail_details(char **words, int word_count,
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
+{
+
+#if defined(MR_USE_TRAIL)
+
+    fprintf(MR_mdb_out, "trail pointer    : %ld (%lx)\n",
+        (long) MR_trail_ptr, (long) MR_trail_ptr);
+    fprintf(MR_mdb_out, "ticket counter   : %lu\n",
+        (unsigned long) MR_ticket_counter);
+    fprintf(MR_mdb_out, "ticket high water: %lu\n",
+        (unsigned long) MR_ticket_high_water);
+    fprintf(MR_mdb_out, "number of trail entries: %lu\n",
+        (unsigned long) MR_num_trail_entries());
+#else
+
+    fprintf(MR_mdb_out, "mdb: the `trail_details' command is available "
+        "only in trailing grades.\n");
+
+#endif /* ! MR_USE_TRAIL */
 
     return KEEP_INTERACTING;
 }

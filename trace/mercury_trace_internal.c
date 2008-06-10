@@ -1695,6 +1695,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_filename_completer },
     { "developer", "ambiguity", MR_trace_cmd_ambiguity,
         NULL, MR_trace_filename_completer },
+    { "developer", "trail_details", MR_trace_cmd_trail_details,
+        NULL, MR_trace_filename_completer },
 
     /* End of doc/mdb_command_list. */
     { NULL, "NUMBER", NULL,

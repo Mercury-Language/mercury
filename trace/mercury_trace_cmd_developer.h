@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2006, 2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -34,7 +34,7 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_all_type_ctors;
 extern  MR_TraceCmdFunc     MR_trace_cmd_all_class_decls;
 extern  MR_TraceCmdFunc     MR_trace_cmd_all_procedures;
 extern  MR_TraceCmdFunc     MR_trace_cmd_ambiguity;
-extern  MR_TraceCmdFunc     MR_trace_cmd_dice;
+extern  MR_TraceCmdFunc     MR_trace_cmd_trail_details;
 
 extern  const char *const   MR_trace_nondet_stack_cmd_args[];
 extern  const char *const   MR_trace_stats_cmd_args[];

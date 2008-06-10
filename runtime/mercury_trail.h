@@ -493,4 +493,14 @@ typedef MR_Unsigned MR_ChoicepointId;
 
 #define MR_choicepoint_newer(x, y) ((x) > (y))
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** Return the number of entries on the trail.  In multi-threaded grades
+** this returns the number of entries on the trail for the current context.
+*/
+extern MR_Unsigned
+MR_num_trail_entries(void);
+
+
 #endif /* not MERCURY_TRAIL_H */

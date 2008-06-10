@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2000, 2006-2007 The University of Melbourne.
+** Copyright (C) 1997-2000, 2006-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -72,13 +72,25 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
         }
 
         MR_trail_ptr = tr_ptr;
-        /* not needed, since MR_trail_ptr is never a real reg: */
+        /* Not needed, since MR_trail_ptr is never a real reg: */
         /* MR_save_transient_registers(); */
         break;
 
     default:
         MR_fatal_error("unknown MR_untrail_reason");
     }
+}
+
+
+MR_Unsigned
+MR_num_trail_entries(void)
+{
+#if defined(MR_THREAD_SAFE)
+    return MR_trail_ptr -
+        (MR_TrailEntry *) MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min;
+#else
+    return MR_trail_ptr - (MR_TrailEntry *) MR_trail_zone->MR_zone_min;
+#endif /* ! MR_THREAD_SAFE */
 }
 
 #endif /* MR_USE_TRAIL */
