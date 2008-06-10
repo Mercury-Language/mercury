@@ -7582,7 +7582,7 @@ Record the sizes of terms, using one cell as the unit of memory.
 @findex --experimental-complexity
 Enable experimental complexity analysis
 for the predicates listed in the given file.
-This option is supported for the C back-end, with --no-highlevel-code.
+This option is supported for the C back-end, with @samp{--no-high-level-code}.
 For now, this option itself is for developers only.
 
 @sp 1
