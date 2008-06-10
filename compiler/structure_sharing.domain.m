@@ -892,11 +892,6 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         % "unify", "index", "compare" or "initialise".
         pred_info_get_origin(PredInfo, Origin),
         Origin = origin_special_pred(_)
-    ;
-        % 4. (XXX UNSAFE!! To verify) any call to private_builtin and builtin
-        % procedures.
-        PredModule = pred_info_module(PredInfo),
-        any_mercury_builtin_module(PredModule)
     ).
 
 :- func top_sharing_not_found(pred_proc_id) = sharing_as.
