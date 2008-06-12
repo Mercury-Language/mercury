@@ -520,7 +520,10 @@ set -x
 if test "$allmodules" = ""
 then
     cd stage2/$testeddir
-    allmodules=`sub X.c X *.c`
+    for module in *.c
+    do
+        allmodules="$allmodules `basename $module .c`"
+    done
     cd $root
 else
     for module in $allmodules
