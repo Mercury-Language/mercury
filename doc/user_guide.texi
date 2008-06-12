@@ -2248,7 +2248,7 @@ However, if the current event is a user defined event,
 then the attributes of that event are also available.
 All the commands that accept variable names
 also accept the names of attributes;
-users can ask for a held variable
+users can ask for an attribute
 by prefixing the name of the attribute with an exclamation point.
 @sp 1
 @item procedure specification
