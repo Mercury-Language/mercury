@@ -1,0 +1,5 @@
+calling function trail entry with 11: commit
+calling function trail entry with 10: commit
+Call to test/1 succeeded
+calling function trail entry with 11: gc
+calling function trail entry with 10: gc

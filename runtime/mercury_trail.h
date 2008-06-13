@@ -192,9 +192,8 @@ typedef enum {
 
     /*
     ** MR_gc:
-    ** Reserved for future use.
-    ** The interface between the trail and accurate
-    ** garbage collection is not yet designed.
+    ** A call to MR_reset_trail() was made and the entry is about to
+    ** be discarded.
     */
     MR_gc
 
@@ -486,7 +485,7 @@ typedef MR_Unsigned MR_ChoicepointId;
 **
 ** Returns true iff the choicepoint indicated by `x' is newer than
 ** (i.e. was created more recently than) the choicepoint indicated by `y'.
-** The null ChoicepointId is considered older than any non-null ChoicepoindId.
+** The null ChoicepointId is considered older than any non-null ChoicepointId.
 ** If either of the choice points have been backtracked over, the behaviour
 ** is undefined.
 */
@@ -502,5 +501,14 @@ typedef MR_Unsigned MR_ChoicepointId;
 extern MR_Unsigned
 MR_num_trail_entries(void);
 
+/*
+** Reset the trail.  This removes any existing entries from the trail.
+** Function trail entries are called with the MR_gc untrail reason
+** before being removed.
+** Existing non-null ChoicepointIds are no longer valid after calling
+** this function.
+*/
+extern void
+MR_reset_trail(void);
 
 #endif /* not MERCURY_TRAIL_H */

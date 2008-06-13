@@ -10,6 +10,7 @@ else
 	TRAIL_PROGS =			\
 		func_trail_test		\
 		func_trail_test_2	\
+		test_trail_reset	\
 		tu_test1		\
 		tu_test2
 endif

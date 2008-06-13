@@ -22,6 +22,28 @@
 
 #ifdef MR_USE_TRAIL
 
+/*
+** The following macros are used to access (parts of) the trail zone in a
+** grade independent manner.
+** 
+** MR_TRAIL_ZONE expands to the address of the trail zone for the current
+** thread.
+**
+** MR_TRAIL_BASE expands to the address of the base of the trail for the
+** current thread, i.e. the initial value to which MR_trail_ptr_var is set.
+**
+*/
+#if defined(MR_THREAD_SAFE)
+
+    #define MR_TRAIL_ZONE (MR_CONTEXT(MR_ctxt_trail_zone))
+
+    #define MR_TRAIL_BASE \
+        ((MR_TrailEntry *) (MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min))
+#else
+    #define MR_TRAIL_ZONE   MR_trail_zone
+    #define MR_TRAIL_BASE   ((MR_TrailEntry *) (MR_trail_zone->MR_zone_min))
+#endif
+
 #if !defined(MR_THREAD_SAFE)
 MR_MemoryZone   *MR_trail_zone;
 MR_TrailEntry   *MR_trail_ptr_var;
@@ -81,18 +103,39 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     }
 }
 
+/*---------------------------------------------------------------------------*/
+
 
 MR_Unsigned
 MR_num_trail_entries(void)
 {
-#if defined(MR_THREAD_SAFE)
-    return MR_trail_ptr -
-        (MR_TrailEntry *) MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min;
-#else
-    return MR_trail_ptr - (MR_TrailEntry *) MR_trail_zone->MR_zone_min;
-#endif /* ! MR_THREAD_SAFE */
+    return MR_trail_ptr - MR_TRAIL_BASE;
+}
+
+/*---------------------------------------------------------------------------*/
+
+void
+MR_reset_trail(void)
+{
+    MR_TrailEntry *tr_ptr;
+
+    tr_ptr = MR_trail_ptr;
+
+    while (tr_ptr != MR_TRAIL_BASE) {
+        tr_ptr--;
+        if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
+            (*MR_get_trail_entry_untrail_func(tr_ptr))(
+                MR_get_trail_entry_datum(tr_ptr), MR_gc);
+        }
+    }
+
+    #if defined(MR_CONSERVATIVE_GC)
+        MR_clear_zone_for_GC(MR_TRAIL_ZONE, MR_trail_ptr);
+    #endif
+
+    MR_ticket_counter = 1;
+    MR_ticket_high_water = 1;
 }
 
 #endif /* MR_USE_TRAIL */
-
 /*---------------------------------------------------------------------------*/
