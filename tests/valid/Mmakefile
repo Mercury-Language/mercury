@@ -272,7 +272,8 @@ PAR_CONJ_PROGS = \
 # grades.
 CTGC_PROGS = \
 	reuse_static \
-	sharing_exist
+	sharing_exist \
+	sharing_loop
 
 # The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \

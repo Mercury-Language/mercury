@@ -183,15 +183,25 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             AH = termsel(ConsIdA, IndexA),
             BH = typesel(SubTypeB),
             SubTypeA = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
-            type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
-            subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
+            ( SubTypeA = SubTypeB ->
+                % Both selectors agree on the subtype to select.
+                subsumed_by_2(ModuleInfo, AT, BT, SubTypeA, Extension)
+            ;
+                type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
+                subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
+            )
         ;
             % Symmetric with the previous case.
             AH = typesel(SubTypeA),
             BH = termsel(ConsIdB, IndexB),
             SubTypeB = det_select_subtype(ModuleInfo, Type, ConsIdB, IndexB),
-            type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
-            subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension)
+            ( SubTypeA = SubTypeB ->
+                % Both selectors agree on the subtype to select.
+                subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
+            ;
+                type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
+                subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension)
+            )
         ;
             AH = typesel(SubTypeA),
             BH = typesel(SubTypeB),
