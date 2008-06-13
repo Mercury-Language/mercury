@@ -88,6 +88,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -443,6 +444,16 @@ analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
 
 analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
         !FixpointTable, !DepProcs, !IO) :-
+    % Abort if the analysis is taking too long.  It's probably a bug.
+    Run = ss_fixpoint_table_which_run(!.FixpointTable),
+    ( Run > max_runs ->
+        unexpected(this_file,
+            "analyse_scc_until_fixpoint: fixpoint not reached after "
+            ++ string.from_int(max_runs) ++ " runs")
+    ;
+        true
+    ),
+
     list.foldl3(analyse_pred_proc(ModuleInfo, SharingTable), SCC,
         !FixpointTable, !DepProcs, !IO),
     ( ss_fixpoint_table_stable(!.FixpointTable) ->
@@ -452,6 +463,10 @@ analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
         analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
             !FixpointTable, !DepProcs, !IO)
     ).
+
+:- func max_runs = int.
+
+max_runs = 100.
 
 %-----------------------------------------------------------------------------%
 %
