@@ -1352,12 +1352,17 @@ MR_trace_cmd_trail_details(char **words, int word_count,
 
 #if defined(MR_USE_TRAIL)
 
+    MR_Word *saved_regs;
+
+    saved_regs = event_info->MR_saved_regs;
+
     fprintf(MR_mdb_out, "trail pointer    : %ld (%lx)\n",
-        (long) MR_trail_ptr, (long) MR_trail_ptr);
+        (long) MR_saved_trail_ptr(saved_regs),
+        (long) MR_saved_trail_ptr(saved_regs));
     fprintf(MR_mdb_out, "ticket counter   : %lu\n",
-        (unsigned long) MR_ticket_counter);
+        (unsigned long) MR_saved_ticket_counter(saved_regs));
     fprintf(MR_mdb_out, "ticket high water: %lu\n",
-        (unsigned long) MR_ticket_high_water);
+        (unsigned long) MR_saved_ticket_high_water(saved_regs));
     fprintf(MR_mdb_out, "number of trail entries: %lu\n",
         (unsigned long) MR_num_trail_entries());
 #else
