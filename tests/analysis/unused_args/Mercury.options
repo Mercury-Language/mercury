@@ -1,1 +1,6 @@
-MCFLAGS = --intermodule-analysis --optimise-unused-args
+MCFLAGS = --intermodule-analysis
+# XXX --optimise-unused-args are listed per module to nullify the effect of
+# EXTRA_MCFLAGS=-O2 set on the command line as for some nightly tests.
+MCFLAGS-ua_m1 = --optimise-unused-args
+MCFLAGS-ua_m2 = --optimise-unused-args
+MCFLAGS-ua_m3 = --optimise-unused-args
