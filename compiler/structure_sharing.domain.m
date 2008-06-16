@@ -283,6 +283,12 @@
 :- pred bottom_sharing_is_safe_approximation(module_info::in, pred_info::in,
     proc_info::in) is semidet.
 
+    % Succeeds if the sharing of a call can safely be approximated by
+    % "bottom", simply by looking at the modes and types of the arguments.
+    %
+:- pred bottom_sharing_is_safe_approximation_by_args(module_info::in,
+    list(mer_mode)::in, list(mer_type)::in) is semidet.
+
     % Load all the structure sharing information present in the HLDS into
     % a sharing table. 
     %
@@ -945,28 +951,29 @@ bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo) :-
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, Modes),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        list.map(map.lookup(VarTypes), HeadVars, Types),
-
-        ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
-
-        Test = (pred(Pair::in) is semidet :-
-            Pair = Mode - Type,
-
-            % Mode is not unique nor clobbered.
-            mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
-            \+ inst_is_unique(ModuleInfo, RightInst),
-            \+ inst_is_clobbered(ModuleInfo, RightInst),
-
-            % Mode is output.
-            mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-            ArgMode = top_out,
-
-            % Type is not primitive.
-            \+ type_is_atomic(ModuleInfo, Type)
-        ),
-        list.filter(Test, ModeTypePairs, TrueModeTypePairs),
-        TrueModeTypePairs = []
+        map.apply_to_list(HeadVars, VarTypes, Types),
+        bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes, Types)
     ).
+
+bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes, Types) :-
+    ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
+    Test = (pred(Pair::in) is semidet :-
+        Pair = Mode - Type,
+
+        % Mode is not unique nor clobbered.
+        mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
+        \+ inst_is_unique(ModuleInfo, RightInst),
+        \+ inst_is_clobbered(ModuleInfo, RightInst),
+
+        % Mode is output.
+        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        ArgMode = top_out,
+
+        % Type is one which we care about for structure sharing/reuse.
+        type_needs_sharing_analysis(ModuleInfo, Type)
+    ),
+    list.filter(Test, ModeTypePairs, TrueModeTypePairs),
+    TrueModeTypePairs = [].
 
 %-----------------------------------------------------------------------------%
 % Type: sharing_set.

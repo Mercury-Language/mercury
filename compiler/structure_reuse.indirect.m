@@ -479,14 +479,9 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             CalleePredId, CalleeProcId, CalleeArgs, OldSharing, NewSharing),
         update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
     ;
-        GoalExpr0 = generic_call(_GenDetails, _, _, _),
-        Context = goal_info_get_context(GoalInfo0),
-        context_to_string(Context, ContextString),
-        Msg = "generic call (" ++ ContextString ++ ")",
-        OldSharing = !.IrInfo ^ sharing_as,
-        NewSharing = sharing_as_top_sharing_accumulate(top_cannot_improve(Msg),
-            OldSharing),
-        update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
+        GoalExpr0 = generic_call(GenDetails, CallArgs, Modes, _Detism),
+        indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs,
+            Modes, GoalInfo0, !IrInfo)
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),
         % Record the statically constructed variables.
@@ -578,6 +573,47 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
         unexpected(this_file, "indirect_reuse_analyse_goal: shorthand")
+    ).
+
+:- pred indirect_reuse_analyse_generic_call(ir_background_info::in,
+    generic_call::in, prog_vars::in, list(mer_mode)::in, hlds_goal_info::in,
+    ir_analysis_info::in, ir_analysis_info::out) is det.
+
+indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
+        GoalInfo, !IrInfo) :-
+    ModuleInfo = BaseInfo ^ module_info,
+    ProcInfo = BaseInfo ^ proc_info,
+    (
+        ( GenDetails = higher_order(_, _, _, _)
+        ; GenDetails = class_method(_, _, _, _)
+        ),
+        proc_info_get_vartypes(ProcInfo, CallerVarTypes),
+        map.apply_to_list(CallArgs, CallerVarTypes, ActualTypes),
+        (
+            bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
+                ActualTypes)
+        ->
+            SetToTop = no
+        ;
+            SetToTop = yes
+        )
+    ;
+        ( GenDetails = event_call(_) % XXX too conservative
+        ; GenDetails = cast(_)
+        ),
+        SetToTop = yes
+    ),
+    (
+        SetToTop = no
+    ;
+        SetToTop = yes,
+        Context = goal_info_get_context(GoalInfo),
+        context_to_string(Context, ContextString),
+        Msg = "generic call (" ++ ContextString ++ ")",
+        OldSharing = !.IrInfo ^ sharing_as,
+        NewSharing = sharing_as_top_sharing_accumulate(
+            top_cannot_improve(Msg), OldSharing),
+        update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
     ).
 
     % Analyse each branch of a disjunction with respect to an input

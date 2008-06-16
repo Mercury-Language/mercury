@@ -799,7 +799,8 @@ find_match_in_goal_2(Background, Goal, !Match) :-
             Unification = construct(Var, Cons, Args, _, _, _, _),
             (
                 map.lookup(Background ^ back_vartypes, Var, VarType),
-                type_is_reusable(Background ^ back_module_info, VarType),
+                top_cell_may_be_reusable(Background ^ back_module_info,
+                    VarType),
 
                 % Is the construction still looking for reuse-possibilities...
                 empty_reuse_description(goal_info_get_reuse(GoalInfo))

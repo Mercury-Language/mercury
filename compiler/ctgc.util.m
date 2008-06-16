@@ -60,9 +60,15 @@
 :- pred var_needs_sharing_analysis(module_info::in, proc_info::in,
     prog_var::in) is semidet.
 
-    % Succeed iff type is one for which we support structure reuse.
+    % Succeed iff the type is one for which we need to consider structure
+    % sharing.
     %
-:- pred type_is_reusable(module_info::in, mer_type::in) is semidet.
+:- pred type_needs_sharing_analysis(module_info::in, mer_type::in) is semidet.
+
+    % Succeed iff values of the given type may have a top-level cell
+    % that could be reused.
+    %
+:- pred top_cell_may_be_reusable(module_info::in, mer_type::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -177,8 +183,6 @@ var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) :-
     map.lookup(VarTypes, Var, Type),
     type_needs_sharing_analysis(ModuleInfo, Type).
 
-:- pred type_needs_sharing_analysis(module_info::in, mer_type::in) is semidet.
-
 type_needs_sharing_analysis(ModuleInfo, Type) :-
     TypeCat = classify_type(ModuleInfo, Type),
     type_category_needs_sharing_analysis(TypeCat) = yes.
@@ -193,25 +197,25 @@ type_category_needs_sharing_analysis(CtorCat) = NeedsSharingAnalysis :-
         ; CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_void
         ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
         ),
         NeedsSharingAnalysis = no
     ;
         ( CtorCat = ctor_cat_variable
         ; CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_user(_)
+        ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_general)
         ),
         NeedsSharingAnalysis = yes
     ).
 
-%-----------------------------------------------------------------------------%
-
-type_is_reusable(ModuleInfo, Type) :-
+top_cell_may_be_reusable(ModuleInfo, Type) :-
     TypeCat = classify_type(ModuleInfo, Type),
-    type_category_is_reusable(TypeCat) = yes.
+    type_category_top_cell_may_be_reusable(TypeCat) = yes.
 
-:- func type_category_is_reusable(type_ctor_category) = bool.
+:- func type_category_top_cell_may_be_reusable(type_ctor_category) = bool.
 
-type_category_is_reusable(CtorCat) = Reusable :-
+type_category_top_cell_may_be_reusable(CtorCat) = Reusable :-
     (
         ( CtorCat = ctor_cat_builtin(_)
         ; CtorCat = ctor_cat_higher_order

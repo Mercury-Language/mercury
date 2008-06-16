@@ -2437,6 +2437,8 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
         maybe_dump_hlds(!.HLDS, 135, "higher_order", !DumpInfo, !IO),
         maybe_do_inlining(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 145, "inlining", !DumpInfo, !IO),
+        maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO),
+        maybe_dump_hlds(!.HLDS, 150, "loop_inv", !DumpInfo, !IO),
         maybe_deforestation(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 155, "deforestation", !DumpInfo, !IO)
     ;
@@ -2491,6 +2493,8 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
         maybe_dump_hlds(!.HLDS, 135, "higher_order", !DumpInfo, !IO),
         maybe_do_inlining(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 145, "inlining", !DumpInfo, !IO),
+        maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO),
+        maybe_dump_hlds(!.HLDS, 150, "loop_inv", !DumpInfo, !IO),
         maybe_deforestation(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 155, "deforestation", !DumpInfo, !IO)
     ;

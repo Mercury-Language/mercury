@@ -608,12 +608,9 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             RenamedSharing, !.SharingAs),
         !:Status = lub(CalleeStatus, !.Status)
     ;
-        GoalExpr = generic_call(_GenDetails, _, _, _),
-        Context = goal_info_get_context(GoalInfo),
-        context_to_string(Context, ContextString),
-        !:SharingAs = sharing_as_top_sharing_accumulate(
-            top_cannot_improve("generic call (" ++ ContextString ++ ")"),
-            !.SharingAs)
+        GoalExpr = generic_call(GenDetails, CallArgs, Modes, _Detism),
+        analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs,
+            Modes, GoalInfo, !SharingAs)
     ;
         GoalExpr = unify(_, _, _, Unification, _),
         !:SharingAs = add_unify_sharing(ModuleInfo, ProcInfo, Unification,
@@ -748,6 +745,43 @@ lookup_sharing(ModuleInfo, SharingTable, PPId, !FixpointTable, SharingAs,
     ;
         lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs,
             Status, IsPredicted)
+    ).
+
+:- pred analyse_generic_call(module_info::in, proc_info::in, generic_call::in,
+    prog_vars::in, list(mer_mode)::in, hlds_goal_info::in, sharing_as::in,
+    sharing_as::out) is det.
+
+analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
+        GoalInfo, !SharingAs) :-
+    (
+        ( GenDetails = higher_order(_, _, _, _)
+        ; GenDetails = class_method(_, _, _, _)
+        ),
+        proc_info_get_vartypes(ProcInfo, CallerVarTypes),
+        map.apply_to_list(CallArgs, CallerVarTypes, ActualTypes),
+        (
+            bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
+                ActualTypes)
+        ->
+            SetToTop = no
+        ;
+            SetToTop = yes
+        )
+    ;
+        ( GenDetails = event_call(_) % XXX too conservative
+        ; GenDetails = cast(_)
+        ),
+        SetToTop = yes
+    ),
+    (
+        SetToTop = yes,
+        Context = goal_info_get_context(GoalInfo),
+        context_to_string(Context, ContextString),
+        !:SharingAs = sharing_as_top_sharing_accumulate(
+            top_cannot_improve("generic call (" ++ ContextString ++ ")"),
+            !.SharingAs)
+    ;
+        SetToTop = no
     ).
 
 %-----------------------------------------------------------------------------%
