@@ -830,8 +830,7 @@
     ;       construct_dynamically
             % Allocate a new term on the heap.
 
-    ;
-            construct_in_region(prog_var)
+    ;       construct_in_region(prog_var)
             % Allocate a new term in a region.
 
     ;       reuse_cell(cell_to_reuse).
@@ -890,7 +889,7 @@
                 case_later_functors         :: list(cons_id),
 
                 % The code of the switch arm.
-                case_goal           :: hlds_goal
+                case_goal                   :: hlds_goal
             ).
 
 :- type tagged_case
@@ -1710,7 +1709,7 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                 % which optimisers may wish to know about.
                 gi_features         :: set(goal_feature),
 
-                % The path to this goal from the root, in reverse order.
+                % The path to this goal from the root.
                 gi_goal_path        :: goal_path,
 
                 gi_code_gen_info    :: hlds_goal_code_gen_info,
