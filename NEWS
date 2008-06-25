@@ -207,7 +207,8 @@ Changes to the Mercury standard library:
 * We have added a predicate io.remove_file_recursively/4
   which can remove non-empty directories.
 
-* We have added the predicate `dir.current_directory'.
+* We have added the predicates `dir.current_directory',
+  `dir.relative_path_name_from_components'.
 
 * We have added the predicates split_last, get_first and get_last to the cord
   module.

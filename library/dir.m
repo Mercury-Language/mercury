@@ -162,6 +162,13 @@
 :- func string / string = string.
 :- func dir.make_path_name(string, string) = string.
 
+    % relative_path_name_from_components(List) = PathName.
+    %
+    % Return the relative pathname from the components in the list.  The
+    % components of the list must not contain directory separators.
+    %
+:- func dir.relative_path_name_from_components(list(string)) = string.
+
 %-----------------------------------------------------------------------------%
 
     % io.current_directory(Result)
@@ -824,6 +831,10 @@ DirName0/FileName0 = PathName :-
             string.char_to_string(dir.directory_separator),
             FileName])
     ).
+
+dir.relative_path_name_from_components(Components) = PathName :-
+    Sep = string.from_char(dir.directory_separator),
+    PathName = string.join_list(Sep, Components).
 
 %-----------------------------------------------------------------------------%
 

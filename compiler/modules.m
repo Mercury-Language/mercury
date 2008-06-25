@@ -1204,17 +1204,19 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
         % Mercury/<grade>/<fullarch>' to find the local `.opt' and `.mih'
         % files without messing up the search for the files for installed
         % libraries.
-        DirName = "Mercury"/Grade/FullArch/"Mercury"/SubDirName
+        DirComponents = ["Mercury", Grade, FullArch, "Mercury", SubDirName]
     ;
-        DirName = "Mercury"/SubDirName
+        DirComponents = ["Mercury", SubDirName]
     ),
     (
         MkDir = yes,
+        DirName = dir.relative_path_name_from_components(DirComponents),
         make_directory(DirName, _, !IO)
     ;
         MkDir = no
     ),
-    FileName = DirName/BaseName.
+    Components = DirComponents ++ [BaseName],
+    FileName = dir.relative_path_name_from_components(Components).
 
 :- pred file_is_arch_or_grade_dependent(globals::in, string::in) is semidet.
 
