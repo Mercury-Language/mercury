@@ -1074,10 +1074,8 @@ string.right(String, RightCount, RightString) :-
     string.split(String, LeftCount, _LeftString, RightString).
 
 string.remove_suffix(A, B, C) :-
-    string.to_char_list(A, LA),
-    string.to_char_list(B, LB),
-    string.to_char_list(C, LC),
-    char_list_remove_suffix(LA, LB, LC).
+    string.suffix(A, B),
+    string.left(A, length(A) - length(B), C).
 
 string.remove_suffix_if_present(Suffix, String) = Out :-
     LeftCount = length(String) - length(Suffix),
