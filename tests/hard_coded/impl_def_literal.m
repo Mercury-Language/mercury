@@ -26,6 +26,9 @@ main(!IO) :-
     io.nl(!IO),
     io.write_string(a_function, !IO),
     io.nl(!IO),
+    a_lambda(FromLambda),
+    io.write_string(FromLambda, !IO),
+    io.nl(!IO),
 
     fun_with_lines(!IO),
     fun_with_lines_2(!IO),
@@ -56,6 +59,12 @@ main(!IO) :-
 :- func a_function = string.
 
 a_function = $pred.
+
+:- pred a_lambda(string::out) is det.
+
+a_lambda(String) :-
+    Pred = (pred($pred::out) is det),
+    Pred(String).
 
 :- pred fun_with_lines(io::di, io::uo) is det.
 

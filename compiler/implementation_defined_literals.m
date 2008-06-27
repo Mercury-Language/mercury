@@ -89,9 +89,9 @@ subst_literals_in_clause(Info, Clause0, Clause) :-
 subst_literals_in_goal(Info, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        GoalExpr0 = unify(Var, RHS, _, _, _),
+        GoalExpr0 = unify(Var, RHS0, Mode, Kind, UnifyContext),
         (
-            RHS = rhs_functor(ConsId, _, _),
+            RHS0 = rhs_functor(ConsId, _, _),
             (
                 ConsId = implementation_defined_const(Name),
                 Context = goal_info_get_context(GoalInfo0),
@@ -116,9 +116,17 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
                 Goal = Goal0
             )
         ;
-            ( RHS = rhs_var(_)
-            ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
-            ),
+            RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
+                EvalMethod, LambdaNonLocals, LambdaQuantVars,
+                LambdaModes, LambdaDetism, LambdaGoal0),
+            subst_literals_in_goal(Info, LambdaGoal0, LambdaGoal),
+            RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
+                EvalMethod, LambdaNonLocals, LambdaQuantVars,
+                LambdaModes, LambdaDetism, LambdaGoal),
+            GoalExpr = unify(Var, RHS, Mode, Kind, UnifyContext),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            RHS0 = rhs_var(_),
             Goal = Goal0
         )
     ;

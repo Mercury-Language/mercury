@@ -3,6 +3,7 @@ impl_def_literal.m
 impl_def_literal
 predicate `impl_def_literal.main'/2
 function `impl_def_literal.a_function'/0
+predicate `impl_def_literal.a_lambda'/1
 fun_with_lines: unequal
 fun_with_lines_2: equal
 have $grade
