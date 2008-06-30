@@ -365,7 +365,8 @@ parse_structure_reuse_condition(Term) = ReuseCondition :-
             Cons = "condition",
             Args = [DeadNodesTerm, InUseNodesTerm, SharingTerm]
         ->
-            DeadNodes = parse_datastruct_list(DeadNodesTerm),
+            DeadNodesList = parse_datastruct_list(DeadNodesTerm),
+            DeadNodes = set.from_list(DeadNodesList),
             InUseNodes = parse_datastruct_list(InUseNodesTerm),
             Sharing = parse_structure_sharing_domain(SharingTerm),
             ReuseCondition = structure_reuse_condition(DeadNodes, 
@@ -660,8 +661,9 @@ dump_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, yes(ReuseAs), !IO) :-
 
 print_structure_reuse_condition(ProgVarSet, TypeVarSet, ReuseCond, !IO) :-
     ReuseCond = structure_reuse_condition(DeadNodes, InUseNodes, Sharing), 
+    DeadNodesList = set.to_sorted_list(DeadNodes),
     io.write_string("condition(", !IO), 
-    print_datastructs(ProgVarSet, TypeVarSet, DeadNodes, !IO), 
+    print_datastructs(ProgVarSet, TypeVarSet, DeadNodesList, !IO),
     io.write_string(", ", !IO),
     print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO), 
     io.write_string(", ", !IO),
@@ -787,7 +789,7 @@ rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes,
 rename_structure_reuse_condition(Dict, TypeSubst, 
         structure_reuse_condition(DeadNodes, LiveNodes, Sharing), 
         structure_reuse_condition(RenDeadNodes, RenLiveNodes, RenSharing)) :- 
-    RenDeadNodes = list.map(rename_datastruct(Dict, TypeSubst), DeadNodes),
+    RenDeadNodes = set.map(rename_datastruct(Dict, TypeSubst), DeadNodes),
     RenLiveNodes = list.map(rename_datastruct(Dict, TypeSubst), LiveNodes),
     rename_structure_sharing_domain(Dict, TypeSubst, Sharing, RenSharing).
 

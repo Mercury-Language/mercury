@@ -360,7 +360,8 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU,
 
         structure_sharing.domain.sharing_as_project(HeadVars, Sharing, 
             HeadVarSharing),
-        Condition = condition(Nodes, HeadVarSharedLU, HeadVarSharing)
+        Condition = condition(set.from_list(Nodes), HeadVarSharedLU,
+            HeadVarSharing)
     ).
 
 reuse_condition_is_conditional(condition(_, _, _)).
@@ -373,7 +374,19 @@ reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :-
     ;
         Cond1 = condition(Nodes1, LocalUse1, LocalSharing1),
         Cond2 = condition(Nodes2, LocalUse2, LocalSharing2), 
-        datastructs_subsumed_by_list(ModuleInfo, ProcInfo, Nodes1, Nodes2),
+
+        % XXX this was Nancy's implementation, but bad_indirect_reuse.m is
+        % broken when using this definition. --pw
+        %
+        % datastructs_subsumed_by_list(ModuleInfo, ProcInfo, Nodes1, Nodes2),
+        %
+        % That seems to match the theory, but doesn't make sense to me: if you
+        % satisfy a condition that allows you to clobber the top-cell
+        % `selected_cel(V, [])', it doesn't mean you're free to clobber a cell
+        % beneath that, say `selected_cel(V, [termsel(f, 1)])'.
+        %
+        set.subset(Nodes1, Nodes2),
+
         datastructs_subsumed_by_list(ModuleInfo, ProcInfo, LocalUse1, 
             LocalUse2),
         sharing_as_is_subsumed_by(ModuleInfo, 
@@ -400,7 +413,7 @@ reuse_condition_rename(MapVar, TypeSubst, Condition, RenamedCondition):-
         RenamedCondition = always
     ;
         Condition = condition(DeadNodes, InUseNodes, LocalSharing),
-        RenamedDeadNodes = list.map(rename_datastruct(MapVar, TypeSubst),
+        RenamedDeadNodes = set.map(rename_datastruct(MapVar, TypeSubst),
             DeadNodes),
         RenamedInUseNodes = list.map(rename_datastruct(MapVar, TypeSubst),
             InUseNodes),
@@ -523,13 +536,11 @@ reuse_as_add_unconditional(!ReuseAs) :-
 :- pred reuse_conditions_add_condition(module_info::in, proc_info::in,
     reuse_condition::in, reuse_conditions::in, reuse_conditions::out) is det.
 
-reuse_conditions_add_condition(_ModuleInfo, _ProcInfo, Condition, !Conds):- 
+reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):- 
     (
-        % XXX this used to check if Condition was subsumed by !.Conds, but
-        % that can produce conditions which are too weak, I think.
-        % The test suite has an example of this. --pw
-        list.member(Condition, !.Conds)
-    ->
+        reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, 
+            Condition, !.Conds)
+    -> 
         true
     ;
         !:Conds = [Condition | !.Conds]
@@ -619,7 +630,7 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
 
         % Translate the dead nodes: 
         AllDeadNodes = extend_datastructs(ModuleInfo, ProcInfo, 
-            SharingAs, CalledDeadNodes),
+            SharingAs, set.to_sorted_list(CalledDeadNodes)),
         AllDeadHeadVarNodes = datastructs_project(HeadVars, AllDeadNodes),
 
         (
@@ -639,7 +650,7 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
             AllHeadVarLocalSharing = sharing_as_project(HeadVars, 
                 AllLocalSharing),
 
-            LocalCondition = condition(AllDeadHeadVarNodes, 
+            LocalCondition = condition(set.from_list(AllDeadHeadVarNodes), 
                 AllInUseHeadVarNodes, AllHeadVarLocalSharing)
         )
     ). 
@@ -732,7 +743,8 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
 aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
         AliasedVars) :-
     list.filter_map(reuse_condition_reusable_nodes, Conditions, ListNodes),
-    list.condense(ListNodes, AllNodes),
+    AllNodes0 = set.union_list(ListNodes),
+    AllNodes = set.to_sorted_list(AllNodes0),
     (
         AllNodes = [Node | Rest],
         aggregate(aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo,
@@ -805,7 +817,9 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
         Condition = always,
         Result = reuse_possible
     ;
-        Condition = condition(DeadNodes, InUseNodes, SharingNodes),
+        Condition = condition(DeadNodes0, InUseNodes, SharingNodes),
+        DeadNodes = set.to_sorted_list(DeadNodes0),
+
         % Reuse of static vars is not allowed:
         StaticDeadNodes = datastructs_project(StaticVars, DeadNodes),
         (
