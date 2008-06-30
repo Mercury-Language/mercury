@@ -167,11 +167,9 @@
                 num_buckets             :: int,
                 num_occupants           :: int,
                 max_occupants           :: int,
-                hash_func               :: hash_func(K),
+                hash_pred               :: hash_pred(K),
                 buckets                 :: buckets(K, V)
             ).
-
-:- type hash_func(K) == (func(K) = {int, int}).
 
 :- type buckets(K, V) == version_array(bucket(K, V)).
 
@@ -209,9 +207,8 @@ new(HashPred, N, MaxOccupancy) = HT :-
       else
             NumBuckets   = 1 << N,
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            HashFunc     = (func(X) = {I, J} :- HashPred(X, I, J)),
             VArray       = version_array.init(NumBuckets, empty),
-            HT = ht(NumBuckets, 0, MaxOccupants, HashFunc, VArray)
+            HT = ht(NumBuckets, 0, MaxOccupants, HashPred, VArray)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -235,7 +232,8 @@ new_default(HashPred) = new(HashPred, 7, 0.9).
 :- func find_slot(version_hash_table(K, V), K) = int.
 
 find_slot(HT, K) = H :-
-    {Hash1, Hash2} = (HT ^ hash_func)(K),
+    unsafe_hash_pred_cast(HT ^ hash_pred, HashPred),
+    HashPred(K, Hash1, Hash2),
     H0    = Hash1 mod HT ^ num_buckets,
             % Have to ensure it's odd and non-zero.
     Delta = Hash2 + Hash2 + 1,
@@ -257,6 +255,16 @@ find_slot_2(HT, K, H0, Delta) = H :-
             H  = find_slot_2(HT, K, H1, Delta)
         )
     ).
+
+:- pred unsafe_hash_pred_cast(hash_pred(K)::in, hash_pred(K)::out(hash_pred))
+    is det.
+
+:- pragma foreign_proc("C",
+    unsafe_hash_pred_cast(HashPred0::in, HashPred::out(hash_pred)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    HashPred = HashPred0;
+").
 
 %-----------------------------------------------------------------------------%
 
