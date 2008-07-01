@@ -748,7 +748,7 @@ build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         % Ensure all interface files are present before continuing.  This
         % prevents a problem when two parallel branches try to generate the
         % same missing interface file later.
-        %
+        % (Although we can't actually build analysis files in parallel yet.)
         make_all_interface_files(AllModules, Succeeded1, !Info, !IO),
         ( Succeeded1 = no, KeepGoing = no ->
             Succeeded = no
@@ -787,7 +787,7 @@ build_analysis_files_1(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
 build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
         Succeeded0, Succeeded, !Info, !IO) :-
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
-    foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+    foldl2_maybe_stop_at_error(KeepGoing,
         make_module_target_extra_options(LocalModulesOpts),
         make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
