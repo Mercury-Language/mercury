@@ -445,7 +445,6 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
     ModuleInfo = BaseInfo ^ module_info,
     PredInfo = BaseInfo ^ pred_info,
     ProcInfo = BaseInfo ^ proc_info,
-    SharingTable = BaseInfo ^ sharing_table,
 
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
@@ -455,29 +454,9 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CalleeArgs,
-            _Builtin, _Context, _Sym),
-        Reuse0 = goal_info_get_reuse(GoalInfo0),
-        (
-            ( Reuse0 = no_reuse_info
-            ; Reuse0 = missed_reuse(_)
-            ; Reuse0 = potential_reuse(_)
-                % Might be able to improve the result with reanalysis. 
-            ),
-            NoClobbers = [],
-            verify_indirect_reuse(BaseInfo, proc(CalleePredId, CalleeProcId),
-                NoClobbers, CalleeArgs, GoalInfo0, GoalInfo, !IrInfo),
-            !:Goal = hlds_goal(GoalExpr0, GoalInfo)
-        ;
-            ( Reuse0 = no_possible_reuse
-            ; Reuse0 = reuse(_)
-            )
-            % Don't need to verify these calls again.
-        ),
-        OldSharing = !.IrInfo ^ sharing_as,
-        lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
-            CalleePredId, CalleeProcId, CalleeArgs, OldSharing, NewSharing),
-        update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        indirect_reuse_analyse_plain_call(BaseInfo,
+            hlds_goal(GoalExpr0, GoalInfo0), !:Goal, !IrInfo)
     ;
         GoalExpr0 = generic_call(GenDetails, CallArgs, Modes, _Detism),
         indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs,
@@ -574,6 +553,59 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         % These should have been expanded out by now.
         unexpected(this_file, "indirect_reuse_analyse_goal: shorthand")
     ).
+
+:- pred indirect_reuse_analyse_plain_call(ir_background_info::in,
+    hlds_goal::in(plain_call), hlds_goal::out(plain_call),
+    ir_analysis_info::in, ir_analysis_info::out) is det.
+
+indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
+    ModuleInfo = BaseInfo ^ module_info,
+    PredInfo = BaseInfo ^ pred_info,
+    ProcInfo = BaseInfo ^ proc_info,
+    SharingTable = BaseInfo ^ sharing_table,
+
+    !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
+    GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CalleeArgs,
+        _Builtin, _Context, _Sym),
+    Reuse0 = goal_info_get_reuse(GoalInfo0),
+    (
+        Reuse0 = no_reuse_info,
+        Verify = yes
+    ;
+        Reuse0 = no_possible_reuse,
+        Verify = no
+    ;
+        (
+            Reuse0 = missed_reuse(_)
+        ;
+            Reuse0 = potential_reuse(_)
+        ;
+            Reuse0 = reuse(_)
+            % It's possible that the called procedure had "unconditional
+            % reuse only" previously but has since gained reuse conditions.
+        ),
+        % Only need to re-verify calls to procedures for which we have the
+        % code.
+        module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+        ( pred_info_is_imported(CalleePredInfo) ->
+            Verify = no
+        ;
+            Verify = yes
+        )
+    ),
+    (
+        Verify = yes,
+        NoClobbers = [],
+        verify_indirect_reuse(BaseInfo, proc(CalleePredId, CalleeProcId),
+            NoClobbers, CalleeArgs, GoalInfo0, GoalInfo, !IrInfo),
+        !:Goal = hlds_goal(GoalExpr0, GoalInfo)
+    ;
+        Verify = no
+    ),
+    OldSharing = !.IrInfo ^ sharing_as,
+    lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        CalleePredId, CalleeProcId, CalleeArgs, OldSharing, NewSharing),
+    update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo).
 
 :- pred indirect_reuse_analyse_generic_call(ir_background_info::in,
     generic_call::in, prog_vars::in, list(mer_mode)::in, hlds_goal_info::in,
