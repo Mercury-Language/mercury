@@ -960,44 +960,52 @@ get_dependency_timestamp(dep_target(Target), MaybeTimestamp, !Info, !IO) :-
         MaybeTimestamp = MaybeTimestamp0
     ).
 
-get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
-    ( Target = target_file(ModuleName, module_target_analysis_registry) ->
-        get_target_timestamp_analysis_registry(Search, ModuleName,
+get_target_timestamp(Search, TargetFile, MaybeTimestamp, !Info, !IO) :-
+    TargetFile = target_file(_ModuleName, FileType),
+    get_file_name(Search, TargetFile, FileName, !Info, !IO),
+    ( FileType = module_target_analysis_registry ->
+        get_target_timestamp_analysis_registry(Search, TargetFile, FileName,
             MaybeTimestamp, !Info, !IO)
     ;
-        get_target_timestamp_2(Search, Target, MaybeTimestamp, !Info, !IO)
+        get_target_timestamp_2(Search, TargetFile, FileName, MaybeTimestamp,
+            !Info, !IO)
     ).
 
     % Special treatment for `.analysis' files.  If the corresponding
     % `.analysis_status' file says the `.analysis' file is invalid then we
     % treat it as out of date.
     %
-:- pred get_target_timestamp_analysis_registry(bool::in, module_name::in,
-    maybe_error(timestamp)::out, make_info::in, make_info::out,
+:- pred get_target_timestamp_analysis_registry(bool::in, target_file::in,
+    file_name::in, maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
-        !Info, !IO) :-
-    analysis.read_module_overall_status(mmc, ModuleName, Status, !IO),
-    (
-        ( Status = optimal
-        ; Status = suboptimal
-        ),
-        get_target_timestamp_2(Search,
-            target_file(ModuleName, module_target_analysis_registry),
-            MaybeTimestamp, !Info, !IO)
+get_target_timestamp_analysis_registry(Search, TargetFile, FileName,
+        MaybeTimestamp, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, _FileType),
+    ( MaybeTimestamp0 = !.Info ^ file_timestamps ^ elem(FileName) ->
+        MaybeTimestamp = MaybeTimestamp0
     ;
-        Status = invalid,
-        MaybeTimestamp = error("invalid module")
+        analysis.read_module_overall_status(mmc, ModuleName, Status, !IO),
+        (
+            ( Status = optimal
+            ; Status = suboptimal
+            ),
+            get_target_timestamp_2(Search, TargetFile, FileName,
+                MaybeTimestamp, !Info, !IO)
+        ;
+            Status = invalid,
+            MaybeTimestamp = error("invalid module"),
+            !Info ^ file_timestamps ^ elem(FileName) := MaybeTimestamp
+        )
     ).
 
-:- pred get_target_timestamp_2(bool::in, target_file::in,
+:- pred get_target_timestamp_2(bool::in, target_file::in, file_name::in,
     maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-get_target_timestamp_2(Search, TargetFile, MaybeTimestamp, !Info, !IO) :-
+get_target_timestamp_2(Search, TargetFile, FileName, MaybeTimestamp,
+        !Info, !IO) :-
     TargetFile = target_file(ModuleName, FileType),
-    get_file_name(Search, TargetFile, FileName, !Info, !IO),
     (
         Search = yes,
         get_search_directories(FileType, SearchDirs, !IO)

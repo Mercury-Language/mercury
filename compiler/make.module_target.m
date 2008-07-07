@@ -79,6 +79,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module dir.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -691,15 +692,28 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
-    DeleteTimestamp =
-        (pred(TouchedFile::in, MakeInfo0::in, MakeInfo::out) is det :-
-            MakeInfo = MakeInfo0 ^ file_timestamps :=
-                map.delete(MakeInfo0 ^ file_timestamps, TouchedFile)
-        ),
     list.map_foldl2(get_file_name(no), TouchedTargetFiles,
         TouchedTargetFileNames, !Info, !IO),
-    list.foldl(DeleteTimestamp, TouchedTargetFileNames, !Info),
-    list.foldl(DeleteTimestamp, OtherTouchedFiles, !Info).
+
+    some [!Timestamps] (
+        !:Timestamps = !.Info ^ file_timestamps,
+        list.foldl(delete_timestamp, TouchedTargetFileNames, !Timestamps),
+        list.foldl(delete_timestamp, OtherTouchedFiles, !Timestamps),
+
+        % When an .analysis file is made, that potentially invalidates other
+        % .analysis files so we have to delete their timestamps.  The exact
+        % list of files which might be affected can be found by reading the
+        % corresponding .imdg file.  But it's simpler to just delete the
+        % timestamps of all the .analysis files that we know about.
+        ( TargetFile = target_file(_, module_target_analysis_registry) ->
+            map.foldl(delete_analysis_registry_timestamps, !.Timestamps,
+                !Timestamps)
+        ;
+            true
+        ),
+
+        !Info ^ file_timestamps := !.Timestamps
+    ).
 
 :- pred update_target_status(dependency_status::in, target_file::in,
     make_info::in, make_info::out) is det.
@@ -707,6 +721,30 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 update_target_status(TargetStatus, TargetFile, !Info) :-
     Dep = dep_target(TargetFile),
     !Info ^ dependency_status ^ elem(Dep) := TargetStatus.
+
+:- pred delete_analysis_registry_timestamps(string::in,
+    maybe_error(timestamp)::in,
+    file_timestamps::in, file_timestamps::out) is det.
+
+delete_analysis_registry_timestamps(FileName, _, !Timestamps) :-
+    ( string.suffix(FileName, ".analysis") ->
+        delete_timestamp(FileName, !Timestamps)
+    ;
+        true
+    ).
+
+:- pred delete_timestamp(string::in, file_timestamps::in, file_timestamps::out)
+    is det.
+
+delete_timestamp(TouchedFile, !Timestamps) :-
+    trace [io(!IO)] (
+        debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Deleting timestamp for ", !IO),
+            io.write_string(TouchedFile, !IO),
+            io.nl(!IO)
+        ), !IO)
+    ),
+    svmap.delete(TouchedFile, !Timestamps).
 
 %-----------------------------------------------------------------------------%
 
