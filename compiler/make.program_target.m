@@ -879,9 +879,9 @@ modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
 :- pred reset_analysis_registry_dependency_status(module_name::in,
     make_info::in, make_info::out) is det.
 
-reset_analysis_registry_dependency_status(ModuleName, Info,
-        Info ^ dependency_status ^ elem(Dep) := deps_status_not_considered) :-
-    Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)).
+reset_analysis_registry_dependency_status(ModuleName, !Info) :-
+    Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)),
+    !Info ^ dependency_status ^ elem(Dep) := deps_status_not_considered.
 
 %-----------------------------------------------------------------------------%
 
@@ -1128,14 +1128,8 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
         % Remove the grade-dependent targets from the status map
         % (we need to rebuild them in the new grade).
         StatusMap0 = Info0 ^ dependency_status,
-        StatusMap = map.from_assoc_list(list.filter(
-            (pred((File - _)::in) is semidet :-
-                \+ (
-                    File = dep_target(target_file(_, Target)),
-                    target_is_grade_or_arch_dependent(Target)
-                )
-            ),
-            map.to_assoc_list(StatusMap0))),
+        StatusMap = version_hash_table.fold(remove_grade_dependent_targets,
+            StatusMap0, StatusMap0),
         Info1 = (Info0 ^ dependency_status := StatusMap)
             ^ option_args := OptionArgs,
 
@@ -1154,6 +1148,20 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
             ), Cleanup, Succeeded, Info1, Info, !IO)
     ),
     globals.io_set_globals(OrigGlobals, !IO).
+
+:- func remove_grade_dependent_targets(dependency_file, dependency_status,
+    version_hash_table(dependency_file, dependency_status)) =
+    version_hash_table(dependency_file, dependency_status).
+
+remove_grade_dependent_targets(File, _Status, StatusMap0) = StatusMap :-
+    (
+        File = dep_target(target_file(_, Target)),
+        target_is_grade_or_arch_dependent(Target)
+    ->
+        StatusMap = delete(StatusMap0, File)
+    ;
+        StatusMap = StatusMap0
+    ).
 
 :- pred install_library_grade_2(bool::in, module_name::in,
     list(module_name)::in, make_info::in, bool::in, bool::out,
