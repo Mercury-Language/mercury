@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 University of Melbourne.
+% Copyright (C) 2002-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,6 +15,8 @@
 
 :- module make.util.
 :- interface.
+
+:- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
 %
@@ -206,6 +208,8 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func make_target_list(list(K), V) = assoc_list(K, V).
+
 :- func make_target_file_list(list(module_name), module_target_type) = 
     list(target_file).
 
@@ -291,17 +295,6 @@
     %
 :- pred maybe_symlink_or_copy_linked_target_message(
     pair(module_name, target_type)::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-%
-% Hash functions
-%
-
-:- pred module_name_double_hash(module_name::in, int::out, int::out)
-    is det.
-
-:- pred dependency_file_double_hash(dependency_file::in, int::out, int::out)
-    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1064,11 +1057,9 @@ get_file_name(Search, TargetFile, FileName, !Info, !IO) :-
             MaybeExt = yes(Ext),
             (
                 Search = yes,
-                module_name_to_search_file_name_cache(ModuleName, Ext,
-                    FileName, !Info, !IO)
+                module_name_to_search_file_name(ModuleName, Ext, FileName, !IO)
             ;
                 Search = no,
-                % Not common enough to cache.
                 module_name_to_file_name(ModuleName, Ext, no, FileName, !IO)
             )
         ;
@@ -1076,19 +1067,6 @@ get_file_name(Search, TargetFile, FileName, !Info, !IO) :-
             module_target_to_file_name_maybe_search(ModuleName, FileType, no,
                 Search, FileName, !IO)
         )
-    ).
-
-:- pred module_name_to_search_file_name_cache(module_name::in,
-    string::in, string::out, make_info::in, make_info::out, io::di, io::uo)
-    is det.
-
-module_name_to_search_file_name_cache(ModuleName, Ext, FileName, !Info, !IO) :-
-    Key = ModuleName - Ext,
-    ( map.search(!.Info ^ search_file_name_cache, Key, FileName0) ->
-        FileName = FileName0
-    ;
-        module_name_to_search_file_name(ModuleName, Ext, FileName, !IO),
-        !Info ^ search_file_name_cache ^ elem(Key) := FileName
     ).
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
@@ -1183,6 +1161,8 @@ report_remove_file(FileName, !IO) :-
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
+
+make_target_list(Ks, V) = list.map((func(K) = K - V), Ks).
 
 make_target_file_list(ModuleNames, FileType) = 
     list.map((func(ModuleName) = target_file(ModuleName, FileType)),
@@ -1563,135 +1543,6 @@ write_module_or_linked_target(ModuleName - FileType, !IO) :-
         unexpected(this_file,
             "maybe_warn_up_to_date_target: misc_target")
     ).
-
-%-----------------------------------------------------------------------------%
-%
-% Hash functions
-%
-
-module_name_double_hash(ModuleName, HashA, HashB) :-
-    HashA = module_name_hash(ModuleName),
-    HashB = concoct_second_hash(HashA).
-
-dependency_file_double_hash(DepFile, HashA, HashB) :-
-    (
-        DepFile = dep_target(TargetFile),
-        HashA = target_file_hash(TargetFile) `mix` 123
-    ;
-        DepFile = dep_file(FileName, _MaybeOption),
-        HashA = string.hash(FileName) `mix` 456
-    ),
-    HashB = concoct_second_hash(HashA).
-
-:- func target_file_hash(target_file) = int.
-
-target_file_hash(TargetFile) = Hash :-
-    TargetFile = target_file(ModuleName, Type),
-    Hash0 = module_name_hash(ModuleName),
-    Hash1 = module_target_type_to_nonce(Type),
-    Hash = mix(Hash0, Hash1).
-
-:- func module_name_hash(module_name) = int.
-
-module_name_hash(SymName) = Hash :-
-    (
-        SymName = unqualified(String),
-        Hash = string.hash(String)
-    ;
-        SymName = qualified(_Qual, String),
-        % Hashing the the module qualifier seems to be not worthwhile.
-        Hash = string.hash(String)
-    ).
-
-:- func module_target_type_to_nonce(module_target_type) = int.
-
-module_target_type_to_nonce(Type) = X :-
-    (
-        Type = module_target_source,
-        X = 1
-    ;
-        Type = module_target_errors,
-        X = 2
-    ;
-        Type = module_target_private_interface,
-        X = 3
-    ;
-        Type = module_target_long_interface,
-        X = 4
-    ;
-        Type = module_target_short_interface,
-        X = 5
-    ;
-        Type = module_target_unqualified_short_interface,
-        X = 6
-    ;
-        Type = module_target_intermodule_interface,
-        X = 7
-    ;
-        Type = module_target_analysis_registry,
-        X = 8
-    ;
-        Type = module_target_c_header(header_mh),
-        X = 9
-    ;
-        Type = module_target_c_header(header_mih),
-        X = 10
-    ;
-        Type = module_target_c_code,
-        X = 11
-    ;
-        Type = module_target_il_code,
-        X = 12
-    ;
-        Type = module_target_il_asm,
-        X = 13
-    ;
-        Type = module_target_java_code,
-        X = 14
-    ;
-        Type = module_target_erlang_header,
-        X = 15
-    ;
-        Type = module_target_erlang_code,
-        X = 16
-    ;
-        Type = module_target_erlang_beam_code,
-        X = 17
-    ;
-        Type = module_target_asm_code(_PIC),
-        X = 18
-    ;
-        Type = module_target_object_code(PIC),
-        X = 19 `mix` pic_to_nonce(PIC)
-    ;
-        Type = module_target_foreign_il_asm(_ForeignLang),
-        X = 20
-    ;
-        Type = module_target_foreign_object(_PIC, _ForeignLang),
-        X = 21
-    ;
-        Type = module_target_fact_table_object(_PIC, _FileName),
-        X = 22
-    ;
-        Type = module_target_xml_doc,
-        X = 23
-    ).
-
-:- func pic_to_nonce(pic) = int.
-
-pic_to_nonce(pic) = 1.
-pic_to_nonce(link_with_pic) = 2.
-pic_to_nonce(non_pic) = 3.
-
-:- func mix(int, int) = int.
-
-mix(H0, X) = H :-
-    H1 = H0 `xor` (H0 `unchecked_left_shift` 5),
-    H = H1 `xor` X.
-
-:- func concoct_second_hash(int) = int.
-
-concoct_second_hash(H) = mix(H, 0xfe3dbe7f).    % whatever
 
 %-----------------------------------------------------------------------------%
 

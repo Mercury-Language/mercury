@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,9 +84,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module sparse_bitset.
-:- import_module version_array.
-:- import_module version_hash_table.
 
 %-----------------------------------------------------------------------------%
 
@@ -99,10 +96,6 @@
 
                 file_timestamps         :: file_timestamps,
 
-                % Cache chosen file names for a module name and extension.
-                search_file_name_cache  :: map(pair(module_name, string),
-                                            file_name),
-
                 % The original set of options passed to mmc, not including
                 % the targets to be made.
                 option_args             :: list(string),
@@ -110,13 +103,7 @@
                 % The contents of the Mercury.options file.
                 options_variables       :: options_variables,
 
-                % The mapping between module_names and indices.
-                module_index_map        :: module_index_map,
-
-                % The mapping between dependency_files and indices.
-                dep_file_index_map      :: dependency_file_index_map,
-
-                dependency_status       :: version_hash_table(dependency_file,
+                dependency_status       :: map(dependency_file,
                                             dependency_status),
 
                 % For each module, the set of modules for which the `.int'
@@ -126,15 +113,10 @@
                 % XXX Use a better representation for the sets.
                 cached_direct_imports   :: cached_direct_imports,
 
-                cached_non_intermod_direct_imports
-                                        :: cached_direct_imports,
-
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
                 cached_transitive_dependencies
                                         :: cached_transitive_dependencies,
-
-                cached_foreign_imports  :: cached_foreign_imports,
 
                 % Should the `.module_dep' files be rebuilt.
                 % Set to `no' for `mmc --make clean'.
@@ -159,22 +141,6 @@
                 % on `suboptimal' modules are performed. `invalid' modules
                 % are not affected as they will always be reanalysed.
                 reanalysis_passes       :: int
-            ).
-
-:- type module_index_map
-    --->    module_index_map(
-                mim_forward_map         :: version_hash_table(module_name,
-                                            module_index),
-                mim_reverse_map         :: version_array(module_name),
-                mim_counter             :: int
-            ).
-
-:- type dependency_file_index_map
-    --->    dependency_file_index_map(
-                dfim_forward_map        :: version_hash_table(dependency_file,
-                                            dependency_file_index),
-                dfim_reverse_map        :: version_array(dependency_file),
-                dfim_counter            :: int
             ).
 
 :- type make_error
@@ -320,15 +286,6 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
         globals.io_get_globals(Globals, !IO),
 
-        ModuleIndexMap = module_index_map(
-            version_hash_table.new_default(module_name_double_hash),
-            version_array.empty, 0),
-        DepIndexMap = dependency_file_index_map(
-            version_hash_table.new_default(dependency_file_double_hash),
-            version_array.empty, 0),
-        DepStatusMap = version_hash_table.new_default(
-            dependency_file_double_hash),
-
         %
         % Accept and ignore `.depend' targets.  `mmc --make' does not
         % need a separate make depend step. The dependencies for each
@@ -336,7 +293,7 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         %
         NonDependTargets = list.filter(
             (pred(Target::in) is semidet :-
-                \+ string.suffix(Target, ".depend")
+                \+ string.remove_suffix(Target, ".depend", _)
             ), Targets),
 
         %
@@ -347,16 +304,10 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
 
         ShouldRebuildModuleDeps = do_rebuild_module_deps,
         globals.io_lookup_int_option(analysis_repeat, AnalysisRepeat, !IO),
-
-        MakeInfo0 = make_info(map.init, map.init, map.init,
-            OptionArgs, Variables,
-            ModuleIndexMap,
-            DepIndexMap,
-            DepStatusMap,
-            init_cached_direct_imports,
+        MakeInfo0 = make_info(map.init, map.init, OptionArgs, Variables,
+            map.init,
             init_cached_direct_imports,
             init_cached_transitive_dependencies,
-            init_cached_foreign_imports,
             ShouldRebuildModuleDeps, KeepGoing,
             set.init, no, set.list_to_set(ClassifiedTargets),
             AnalysisRepeat),

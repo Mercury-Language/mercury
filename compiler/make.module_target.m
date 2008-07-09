@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,7 +116,8 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
         (
             MaybeImports = no,
             Succeeded = no,
-            !Info ^ dependency_status ^ elem(Dep) := deps_status_error
+            !:Info = !.Info ^ dependency_status ^ elem(Dep)
+                := deps_status_error
         ;
             MaybeImports = yes(Imports),
             globals.io_get_globals(Globals, !IO),
@@ -148,15 +149,11 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                 ;
                     ModulesToCheck = [ModuleName]
                 ),
-                module_names_to_index_set(ModulesToCheck, ModulesToCheckSet,
-                    !Info),
 
-                deps_set_foldl3_maybe_stop_at_error(!.Info ^ keep_going,
+                foldl3_maybe_stop_at_error(!.Info ^ keep_going,
                     union_deps(target_dependencies(Globals, FileType)),
-                    ModulesToCheckSet, DepsSuccess, init, DepFiles0,
+                    ModulesToCheck, DepsSuccess, set.init, DepFiles0,
                     !Info, !IO),
-                dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
-                    DepFilesSet0),
                 (
                     TargetFile = target_file(_, TargetType),
                     TargetType = module_target_private_interface
@@ -164,22 +161,20 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                     % Avoid circular dependencies (the `.int0' files
                     % for the nested sub-modules depend on this module's
                     % `.int0' file).
-                    PrivateInts = make_dependency_list(ModulesToCheck,
-                        module_target_private_interface),
                     DepFilesToMake = set.to_sorted_list(
-                        set.delete_list(DepFilesSet0, PrivateInts))
+                        set.delete_list(DepFiles0,
+                            make_dependency_list(ModulesToCheck,
+                                module_target_private_interface)))
                 ;
-                    DepFilesToMake = set.to_sorted_list(DepFilesSet0)
+                    DepFilesToMake = set.to_sorted_list(DepFiles0)
                 ),
+                DepFiles = set.to_sorted_list(DepFiles0),
 
                 debug_msg(
                    (pred(!.IO::di, !:IO::uo) is det :-
                         write_target_file(TargetFile, !IO),
                         io.write_string(": dependencies:\n", !IO),
-                        dependency_file_index_set_to_plain_set(!.Info,
-                            DepFiles0, PlainSet),
-                        write_dependency_file_list(to_sorted_list(PlainSet),
-                            !IO)
+                        write_dependency_file_list(DepFiles, !IO)
                 ), !IO),
 
                 globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -718,9 +713,8 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 :- pred update_target_status(dependency_status::in, target_file::in,
     make_info::in, make_info::out) is det.
 
-update_target_status(TargetStatus, TargetFile, !Info) :-
-    Dep = dep_target(TargetFile),
-    !Info ^ dependency_status ^ elem(Dep) := TargetStatus.
+update_target_status(TargetStatus, TargetFile, Info,
+    Info ^ dependency_status ^ elem(dep_target(TargetFile)) := TargetStatus).
 
 :- pred delete_analysis_registry_timestamps(string::in,
     maybe_error(timestamp)::in,
