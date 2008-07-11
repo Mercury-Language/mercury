@@ -507,7 +507,8 @@ munge(N, X, Y) =
 
 %-----------------------------------------------------------------------------%
 
-fold(Fn, HT, X) = fold_up(apply_k_v(Fn, HT ^ buckets), 0, HT ^ num_buckets, X).
+fold(Fn, HT, X) =
+    fold_up(apply_k_v(Fn, HT ^ buckets), 0, HT ^ num_buckets - 1, X).
 
 :- func apply_k_v(func(K, V, T) = T, buckets(K, V), int, T) = T.
 

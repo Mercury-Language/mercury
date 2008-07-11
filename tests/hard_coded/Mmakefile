@@ -528,6 +528,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		tl_backjump_test \
 		user_defined_equality \
 		version_array_test \
+		version_hash_table_test \
 		write_binary
 else
 	NON_PROFDEEP_PROGS =
