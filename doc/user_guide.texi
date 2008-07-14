@@ -9375,14 +9375,14 @@ A list of options for the Mercury runtime system,
 which gets linked into every Mercury program.
 The options given in this environment variable apply to every program;
 the options given in an environment variable
-whose name is of the form @samp{MERCURY_OPTIONS-@var{progname}}
+whose name is of the form @samp{MERCURY_OPTIONS_@var{progname}}
 apply only to programs named @var{progname}.
 Options may also be set for a particular executable at compile time
 by passing @samp{--runtime-flags} options
 to the invocations of @samp{ml} and @samp{c2init} which create that executable.
 These options are processed first,
 followed by those in @samp{MERCURY_OPTIONS},
-with the options in @samp{MERCURY_OPTIONS-@var{progname}} being processed last.
+with the options in @samp{MERCURY_OPTIONS_@var{progname}} being processed last.
 
 The Mercury runtime system accepts the following options.
 

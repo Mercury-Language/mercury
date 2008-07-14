@@ -989,7 +989,7 @@ MR_process_args(int argc, char **argv)
 /*
 ** MR_process_environment_options() is a function to parse the options put
 ** into MR_runtime_flags by mkinit, the MERCURY_OPTIONS environment variable,
-** and the MERCURY_OPTIONS-progname environment variable.
+** and the MERCURY_OPTIONS_progname environment variable.
 */
 
 #define MERCURY_OPTIONS     "MERCURY_OPTIONS"
@@ -1019,12 +1019,12 @@ MR_process_environment_options(void)
         }
     }
 
-    /* Build the program-specific option's name: MERCURY_OPTIONS-progname. */
+    /* Build the program-specific option's name: MERCURY_OPTIONS_progname. */
     mercury_options_len = strlen(MERCURY_OPTIONS);
     prog_env_option_name_len = mercury_options_len + 1 + strlen(progname);
     prog_env_option_name = MR_GC_NEW_ARRAY(char, prog_env_option_name_len);
     strcpy(prog_env_option_name, MERCURY_OPTIONS);
-    prog_env_option_name[mercury_options_len] = '-';
+    prog_env_option_name[mercury_options_len] = '_';
     strcpy(prog_env_option_name + mercury_options_len + 1, progname);
 
     prog_env_options = getenv(prog_env_option_name);
