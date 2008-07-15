@@ -17,4 +17,14 @@
 
 PATH=@prefix@/bin:$PATH
 export PATH
+
+# Use less heap at the expense of increased time spent in the GC.
+# The value is "experimentally determined" (guessed).
+if false
+then
+    MERCURY_OPTIONS_mdprof_cgi="--boehm-gc-free-space-divisor 10 \
+	${MERCURY_OPTIONS_mdprof_cgi}"
+    export MERCURY_OPTIONS_mdprof_cgi
+fi
+
 exec mdprof_cgi

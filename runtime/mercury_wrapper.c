@@ -1214,6 +1214,7 @@ enum MR_long_option {
     MR_TRACE_COUNT_FILE,
     MR_MEM_USAGE_REPORT,
     MR_BOEHM_GC_MUNMAP,
+    MR_BOEHM_GC_FREE_SPACE_DIVISOR,
     MR_BOEHM_GC_CALC_TIME
 };
 
@@ -1314,6 +1315,7 @@ struct MR_option MR_long_opts[] = {
     { "trace-count-summary-max",        1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
     { "boehm-gc-munmap",                0, 0, MR_BOEHM_GC_MUNMAP },
+    { "boehm-gc-free-space-divisor",    1, 0, MR_BOEHM_GC_FREE_SPACE_DIVISOR },
     { "boehm-gc-calc-time",             0, 0, MR_BOEHM_GC_CALC_TIME },
 
     /* This needs to be kept at the end. */
@@ -1842,6 +1844,20 @@ MR_process_options(int argc, char **argv)
             case MR_BOEHM_GC_MUNMAP:
 #ifdef MR_BOEHM_GC
                 GC_mercury_use_munmap = MR_TRUE;
+#endif
+                break;
+
+            case MR_BOEHM_GC_FREE_SPACE_DIVISOR:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                if (size < 1) {
+                    MR_usage();
+                }
+
+#ifdef MR_BOEHM_GC
+                GC_set_free_space_divisor(size);
 #endif
                 break;
 

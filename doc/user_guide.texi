@@ -9834,6 +9834,16 @@ garbage collector, and requires @samp{--enable-gc-munmap} to be passed to
 @samp{configure}. (This may not work with all platforms).
 
 @sp 1
+@item --boehm-gc-free-space-divisor=@var{N}
+@findex --boehm-gc-free-space-divisor=@var{N}
+This option sets the value of the free space divisor in the Boehm garbage
+collector to @var{N}.
+It is meaningful only when using the Boehm garbage collector.
+The default value is 3. Increasing its value will reduce
+heap space but increase collection time.
+See the Boehm GC documentation for details.
+
+@sp 1
 @item --boehm-gc-calc-time
 @findex --boehm-gc-calc-time
 This option enables code in the Boehm garbage collector to calculate
