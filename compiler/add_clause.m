@@ -1119,7 +1119,9 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, NumAdded,
             FieldValueTerm = RHSTerm
         )
     ->
-        parse_field_list(FieldNameTerm, MaybeFieldNames),
+        ContextPieces = dcg_field_error_context_pieces(AccessType),
+        parse_field_list(FieldNameTerm, !.VarSet, ContextPieces,
+            MaybeFieldNames),
         (
             MaybeFieldNames = ok1(FieldNames),
             ArgTerms = [FieldValueTerm, TermInputTerm, TermOutputTerm],
@@ -1127,13 +1129,12 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, NumAdded,
                 Context, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
                 !SInfo, !Specs)
         ;
-            MaybeFieldNames = error1(Errors),
+            MaybeFieldNames = error1(FieldNamesSpecs),
+            !:Specs = FieldNamesSpecs ++ !.Specs,
             invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet,
                 !SInfo, !Specs),
             NumAdded = 0,
-            qual_info_set_found_syntax_error(yes, !QualInfo),
-            list.foldl(report_dcg_field_error(Context, AccessType, !.VarSet),
-                Errors, !Specs)
+            qual_info_set_found_syntax_error(yes, !QualInfo)
         )
     ;
         invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet, !SInfo, !Specs),
@@ -1147,12 +1148,10 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, NumAdded,
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred report_dcg_field_error(term.context::in, field_access_type::in,
-    prog_varset::in, pair(string, term(prog_var_type))::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- func dcg_field_error_context_pieces(field_access_type) =
+    list(format_component).
 
-report_dcg_field_error(Context, AccessType, VarSet, Error, !Specs) :-
-    Error = ErrorMsg - ErrorTerm,
+dcg_field_error_context_pieces(AccessType) = ContextPieces :-
     (
         AccessType = set,
         Action = "update"
@@ -1160,14 +1159,7 @@ report_dcg_field_error(Context, AccessType, VarSet, Error, !Specs) :-
         AccessType = get,
         Action = "extraction"
     ),
-    GenericVarSet = varset.coerce(VarSet),
-    TermStr = mercury_term_to_string(GenericVarSet, no, ErrorTerm),
-    Pieces = [words("In DCG field"), words(Action), words("goal:"), nl,
-        words("error:"), words(ErrorMsg), words("at term"),
-        quote(TermStr), suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
+    ContextPieces = [words("In DCG field"), words(Action), words("goal:"), nl].
 
     % Produce an invalid goal.
     %

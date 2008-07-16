@@ -1,5 +1,7 @@
-purity_nonsense2.m:005: Syntax error at token 'type': unexpected token at start of (sub)term.
-purity_nonsense2.m:006: Syntax error at token 'mode': unexpected token at start of (sub)term.
+purity_nonsense2.m:005: Syntax error at token 'type': unexpected token at start
+purity_nonsense2.m:005:   of (sub)term.
+purity_nonsense2.m:006: Syntax error at token 'mode': unexpected token at start
+purity_nonsense2.m:006:   of (sub)term.
 purity_nonsense2.m:010: Error: `:- pragma promise_pure' declaration for
 purity_nonsense2.m:010:   `purity_nonsense2.undefined2'/0 without corresponding
 purity_nonsense2.m:010:   `pred' or `func' declaration.

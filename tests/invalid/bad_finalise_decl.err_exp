@@ -1,5 +1,7 @@
-bad_finalise_decl.m:025: Error: `finalise' declaration requires arity: i4.
-bad_finalise_decl.m:026: Error: `finalise' declaration specifies a predicate whose arity is not zero or two: i5 / 6.
+bad_finalise_decl.m:025: Error: `finalise' declaration requires arity, found
+bad_finalise_decl.m:025:   i4.
+bad_finalise_decl.m:026: Error: `finalise' declaration specifies a predicate
+bad_finalise_decl.m:026:   whose arity is not zero or two: (i5 / 6).
 bad_finalise_decl.m:016: Error: `finalise' declaration in module interface.
 bad_finalise_decl.m:016: Error: `i2'/2 used in finalise declaration has invalid
 bad_finalise_decl.m:016:   signature.

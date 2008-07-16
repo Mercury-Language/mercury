@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -229,28 +229,19 @@ parse_unit_selector(Term) = UnitSelector :-
             Cons = "typesel",
             Args = [TypeSelectorTerm]
         ->
-            parse_type(term.coerce(TypeSelectorTerm), MaybeTypeSelector),
-            (
-                MaybeTypeSelector = ok1(TypeSelector),
+            ( maybe_parse_type(term.coerce(TypeSelectorTerm), TypeSelector) ->
                 UnitSelector = typesel(TypeSelector)
             ;
-                MaybeTypeSelector = error1(Errors),
-                (
-                    Errors = [],
-                    unexpected(this_file, "parse_unit_selector: empty Errors")
-                ;
-                    Errors = [Msg - _ | _],
-                    unexpected(this_file, "parse_unit_selector: " ++
-                        "error parsing type selector (" ++ Msg ++ ").")
-                )
+                unexpected(this_file,
+                    "parse_unit_selector: error in parsing type selector")
             )
         ;
             unexpected(this_file, "parse_unit_selector: " ++
                 "selector is neither sel/3 nor typesel/1.")
-      )
-   ;
-      unexpected(this_file, "parse_unit_selector: term not a functor")
-   ).
+        )
+    ;
+        unexpected(this_file, "parse_unit_selector: term not a functor")
+    ).
 
 parse_selector(Term) = Selector :-
     (
@@ -445,7 +436,7 @@ parse_user_annotated_sharing(Varset, Term, UserSharing) :-
             [TypesTerm, UserSharingTerm], _),
         (
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
-            parse_types(ListTypeTerms, ok1(Types)), 
+            maybe_parse_types(ListTypeTerms, Types), 
             term.vars_list(ListTypeTerms, TypeVars),
             varset.select(Varset, set.list_to_set(TypeVars), Varset0),
             MaybeUserTypes = yes(user_type_info(Types, 
@@ -504,7 +495,7 @@ parse_user_annotated_datastruct_term(Term, Datastruct) :-
     VarTerm = term.variable(GenericVar, _),
     term.coerce_var(GenericVar, ProgVar),
     get_list_term_arguments(TypesTerm, TypeTermsList),
-    parse_types(TypeTermsList, ok1(Types)),
+    maybe_parse_types(TypeTermsList, Types),
     list.map(mer_type_to_typesel, Types, Selector),
     Datastruct = selected_cel(ProgVar, Selector).
 

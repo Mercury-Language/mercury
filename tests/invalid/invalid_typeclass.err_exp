@@ -1,4 +1,5 @@
-invalid_typeclass.m:011: Error: expected distinct variables as class parameters: class3(_1, _1).
+invalid_typeclass.m:011: Error: expected distinct variables as class
+invalid_typeclass.m:011:   parameters.
 invalid_typeclass.m:017: Error: typeclass `invalid_typeclass.class2'/1 multiply
 invalid_typeclass.m:017:   defined.
 invalid_typeclass.m:009: Here is the previous definition of typeclass

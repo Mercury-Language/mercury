@@ -494,7 +494,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     Msg1 = simple_msg(Context,
         [option_is_set(debug_modes, yes, [always(Pieces1)])]),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    Msg2 = error_msg(no, no, 0,
+    Msg2 = error_msg(no, do_not_treat_as_first, 0,
         [option_is_set(very_verbose, yes,
             [always([nl]),
              'new print_anything'(
@@ -711,12 +711,13 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             LaterMsgs0 = [LaterHead0 | LaterTail],
             (
                 LaterHead0 = simple_msg(LaterContext, Components),
-                LaterHead = error_msg(yes(LaterContext), yes, 0, Components)
+                LaterHead = error_msg(yes(LaterContext), treat_as_first,
+                    0, Components)
             ;
                 LaterHead0 = error_msg(MaybeLaterContext, _, Indent,
                     Components),
-                LaterHead = error_msg(MaybeLaterContext, yes, Indent,
-                    Components)
+                LaterHead = error_msg(MaybeLaterContext, treat_as_first,
+                    Indent, Components)
             ),
             LaterMsgs = [LaterHead | LaterTail]
         ),

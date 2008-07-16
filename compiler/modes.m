@@ -533,7 +533,7 @@ report_max_iterations_exceeded(ModuleInfo, !IO) :-
         words("to increase the limit."),
         words("(The current limit is"), int_fixed(MaxIterations),
         words("iterations.)"), nl],
-    Msg = error_msg(no, no, 0, [always(Pieces)]),
+    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [Msg]),
     % XXX _NumErrors

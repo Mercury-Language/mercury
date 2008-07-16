@@ -1,4 +1,4 @@
-predmode.m:005: Error: some but not all arguments have modes: p((int :: in), int).
+predmode.m:005: Error: some but not all arguments have modes.
 predmode.m:001: Warning: interface for module `predmode' does not export
 predmode.m:001:   anything.
 predmode.m:001:   To be useful, a module should export something. A file should

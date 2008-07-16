@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,7 +113,8 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
                 Pieces = [words("eof in term specification file"), nl],
                 ErrorSpec = error_spec(severity_error,
                     phase_term_to_parse_tree,
-                    [error_msg(no, no, 0, [always(Pieces)])]),
+                    [error_msg(no, do_not_treat_as_first, 0,
+                        [always(Pieces)])]),
                 ErrorSpecs = [ErrorSpec]
             ;
                 TermReadRes = error(TermReadMsg, LineNumber),
@@ -133,7 +134,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             EventSpecMap = map.init,
             Pieces = [words(io.error_message(TermOpenError)), nl],
             ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [error_msg(no, no, 0, [always(Pieces)])]),
+                [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
             ErrorSpecs = [ErrorSpec]
         )
     ;
@@ -141,7 +142,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
         EventSpecMap = map.init,
         Pieces = [words(Problem), nl],
         ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [error_msg(no, no, 0, [always(Pieces)])]),
+            [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
         ErrorSpecs = [ErrorSpec]
     ),
     io.remove_file(TermFileName, _RemoveRes, !IO).

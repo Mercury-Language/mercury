@@ -223,12 +223,12 @@ read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
 
     module_name_to_search_file_name(Import, ".trans_opt", FileName, !IO),
     prog_io.read_opt_file(FileName, Import,
-        ModuleError, Messages, NewItems, !IO),
+        NewItems, Specs, ModuleError, !IO),
 
     maybe_write_string(VeryVerbose, " done.\n", !IO),
 
     intermod.update_error_status(trans_opt_file, FileName, ModuleError,
-        Messages, !Error, !IO),
+        Specs, !Error, !IO),
     list.append(!.Items, NewItems, !:Items),
     read_trans_opt_files(Imports, !Items, !Error, !IO).
 

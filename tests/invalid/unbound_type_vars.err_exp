@@ -1,5 +1,7 @@
-unbound_type_vars.m:014: Error: type variable in superclass constraint is not a parameter of this type class: c1(_1, _2).
-unbound_type_vars.m:018: Error: unbound type variable(s) in constraints on instance declaration: c1(int, float) <= c3(_1).
+unbound_type_vars.m:014: Error: type variable T2 in the superclass constraint
+unbound_type_vars.m:014:   is not a parameter of this type class.
+unbound_type_vars.m:018: Error: unbound type variable T1 in constraints on
+unbound_type_vars.m:018:   instance declaration.
 unbound_type_vars.m:021: In declaration for predicate `unbound_type_vars.p1'/1:
 unbound_type_vars.m:021:   error in type class constraints: type variable T2
 unbound_type_vars.m:021:   occurs in the constraints, but is not determined by

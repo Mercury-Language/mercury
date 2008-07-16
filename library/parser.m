@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: parser.m.
 % Main author: fjh.
 % Stability: high.
-% 
+%
 % This file exports the predicate read_term, which reads
 % a term from the current input stream.
 % The read_term_from_string predicates are the same as the
@@ -31,7 +31,7 @@
 % parser, made somewhat complicated by the need to handle operator
 % precedences.  It uses `lexer.get_token_list' to read a list of tokens.
 % It uses the routines in module `ops' to look up operator precedences.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -299,7 +299,7 @@ check_for_bad_token(token_nil, _, _) :-
 
 parse_whole_term(Term, !PS) :-
     parse_term(Term0, !PS),
-    ( 
+    (
         Term0 = ok(_),
         ( parser_get_token(end, !PS) ->
             Term = Term0

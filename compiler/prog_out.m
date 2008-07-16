@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,6 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module io.
@@ -35,11 +34,6 @@
 
 :- pred report_error(string::in, io::di, io::uo) is det.
 :- pred report_error(io.output_stream::in, string::in, io::di, io::uo) is det.
-
-    % Write out the list of error/warning messages which is returned
-    % when a module is parsed.
-    %
-:- pred write_messages(message_list::in, io::di, io::uo) is det.
 
     % Write out the information in term context (at the moment, just
     % the line number) in a form suitable for the beginning of an
@@ -193,28 +187,6 @@ report_error(Stream, ErrorMessage, !IO) :-
     io.set_output_stream(Stream, OldStream, !IO),
     report_error(ErrorMessage, !IO),
     io.set_output_stream(OldStream, _, !IO).
-
-write_messages([], !IO).
-write_messages([Message | Messages], !IO) :-
-    write_message(Message, !IO),
-    write_messages(Messages, !IO).
-
-:- pred write_message(pair(string, term)::in, io::di, io::uo) is det.
-
-write_message(Msg - Term, !IO) :-
-    ( Term = term.functor(_Functor, _Args, Context)
-    ; Term = term.variable(_Var, Context)
-    ),
-    write_context(Context, !IO),
-    io.write_string(Msg, !IO),
-    ( Term = term.functor(term.atom(""), [], _Context2) ->
-        io.write_string(".\n", !IO)
-    ;
-        io.write_string(": ", !IO),
-        varset.init(VarSet),
-            % XXX variable names in error messages
-        term_io.write_term_nl(VarSet, Term, !IO)
-    ).
 
 %-----------------------------------------------------------------------------%
 

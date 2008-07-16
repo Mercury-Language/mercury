@@ -48,6 +48,7 @@
 
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_type.
@@ -1259,12 +1260,11 @@ parse_item_type_version_numbers(Term, Result) :-
             map.from_assoc_list(VNsAL, VNsMap),
             Result = ok1(items(ItemType, VNsMap))
         ;
-            Result0 = error1(Errors),
-            Result = error1(Errors)
+            Result0 = error1(Specs),
+            Result = error1(Specs)
         )
     ;
-        Term = term.functor(term.atom("instance"),
-            InstanceVNsTerms, _)
+        Term = term.functor(term.atom("instance"), InstanceVNsTerms, _)
     ->
         ParseName =
             (pred(NameTerm::in, Name::out) is semidet :-
@@ -1277,11 +1277,15 @@ parse_item_type_version_numbers(Term, Result) :-
             map.from_assoc_list(VNsAL, VNsMap),
             Result = ok1(instances(VNsMap))
         ;
-            Result1 = error1(Errors),
-            Result = error1(Errors)
+            Result1 = error1(Specs),
+            Result = error1(Specs)
         )
     ;
-        Result = error1(["invalid item type version numbers" - Term])
+        % XXX This is an uninformative error message.
+        Pieces = [words("Invalid item type version numbers."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred parse_key_version_number(
@@ -1300,7 +1304,10 @@ parse_key_version_number(ParseName, Term, Result) :-
     ->
         Result = ok1((Name - Arity) - VersionNumber)
     ;
-        Result = error1(["error in item version number" - Term])
+        Pieces = [words("Error in item version number."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred parse_item_version_number(
@@ -1319,7 +1326,10 @@ parse_item_version_number(ParseName, Term, Result) :-
     ->
         Result = ok1(item_name(SymName, Arity) - VersionNumber)
     ;
-        Result = error1(["error in item version number" - Term])
+        Pieces = [words("Error in item version number."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%

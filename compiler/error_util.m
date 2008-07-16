@@ -132,11 +132,16 @@
 % we separate it from the context by one space, whereas following lines
 % are separate by three spaces. You can request that the first line of
 % a message be treated as it were the first by setting the error_treat_as_first
-% field to "yes". You can also request that the pieces in a message be given
-% extra indentation by setting the error_extra_indent field to a nonzero value.
+% field to "treat_as_first". You can also request that the pieces in a message
+% be given extra indentation by setting the error_extra_indent field
+% to a nonzero value.
 %
 % The term simple_msg(Context, Components) is a shorthand for (and equivalent
 % in every respect to) the term error_msg(yes(Context), no, 0, Components).
+
+:- type maybe_treat_as_first
+    --->    treat_as_first
+    ;       do_not_treat_as_first.
 
 :- type error_msg
     --->    simple_msg(
@@ -145,7 +150,7 @@
             )
     ;       error_msg(
                 error_context           :: maybe(prog_context),
-                error_treat_as_first    :: bool,
+                error_treat_as_first    :: maybe_treat_as_first,
                 error_extra_indent      :: int,
                 error_components        :: list(error_msg_component)
             ).
@@ -212,8 +217,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred sort_error_specs(list(error_spec)::in, list(error_spec)::out) is det.
-
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -263,7 +266,7 @@
 :- type format_component
     --->    fixed(string)   % This string should appear in the output
                             % in one piece, as it is.
-    
+
     ;       quote(string)   % Surround the string with `' quotes, then treat
                             % as fixed.
 
@@ -273,7 +276,15 @@
     ;       nth_fixed(int)  % Convert the integer to a string, such as
                             % "first", "second", "third", "4th", "5th" and
                             % then treat as fixed.
-                            % 
+                            %
+
+    ;       lower_case_next_if_not_first
+                            % If this is the first component, ignore it.
+                            % If this is not the first component, lower case
+                            % the initial letter of the next component.
+                            % There is no effect if the next component
+                            % starts does not exist or does not start with
+                            % an upper case letter.
 
     ;       prefix(string)  % This string should appear in the output
                             % in one piece, as it is, inserted directly
@@ -284,7 +295,7 @@
                             % in one piece, as it is, appended directly
                             % after the previous format_component, without
                             % any intervening space.
-            
+
     ;       words(string)   % This string contains words separated by
                             % white space. The words should appear in
                             % the output in the given order, but the
@@ -402,11 +413,12 @@
 :- pred write_error_pieces_not_first_line(prog_context::in, int::in,
     list(format_component)::in, io::di, io::uo) is det.
 
-    % Display the given error message. The bool is true iff
-    % this is the first line.
+    % Display the given error message. The first argument tells us whether
+    % to treat this as the first line.
     %
-:- pred write_error_pieces_maybe_first_line(bool::in, prog_context::in,
-    int::in, list(format_component)::in, io::di, io::uo) is det.
+:- pred write_error_pieces_maybe_first_line(maybe_treat_as_first::in,
+    prog_context::in, int::in, list(format_component)::in, io::di, io::uo)
+    is det.
 
 :- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
     list(format_component)::in, io::di, io::uo) is det.
@@ -453,6 +465,7 @@
 :- import_module libs.compiler_util.
 
 :- import_module char.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
@@ -570,26 +583,8 @@ contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
 
 %-----------------------------------------------------------------------------%
 
-sort_error_specs(Specs0, Specs) :-
-    list.sort_and_remove_dups(compare_error_specs, Specs0, Specs).
-
 sort_error_msgs(Msgs0, Msgs) :-
     list.sort_and_remove_dups(compare_error_msgs, Msgs0, Msgs).
-
-:- pred compare_error_specs(error_spec::in, error_spec::in,
-    comparison_result::out) is det.
-
-compare_error_specs(SpecA, SpecB, Result) :-
-    SpecA = error_spec(_, _, MsgsA),
-    SpecB = error_spec(_, _, MsgsB),
-    ContextsA = project_msgs_contexts(MsgsA),
-    ContextsB = project_msgs_contexts(MsgsB),
-    compare(ContextResult, ContextsA, ContextsB),
-    ( ContextResult = (=) ->
-        compare(Result, SpecA, SpecB)
-    ;
-        Result = ContextResult
-    ).
 
 :- func project_msgs_contexts(list(error_msg)) = list(prog_context).
 
@@ -683,6 +678,28 @@ get_maybe_mode_report_control(phase_code_gen) = no.
 
 %-----------------------------------------------------------------------------%
 
+:- pred sort_error_specs(list(error_spec)::in, list(error_spec)::out) is det.
+
+sort_error_specs(Specs0, Specs) :-
+    list.sort_and_remove_dups(compare_error_specs, Specs0, Specs).
+
+:- pred compare_error_specs(error_spec::in, error_spec::in,
+    comparison_result::out) is det.
+
+compare_error_specs(SpecA, SpecB, Result) :-
+    SpecA = error_spec(_, _, MsgsA),
+    SpecB = error_spec(_, _, MsgsB),
+    ContextsA = project_msgs_contexts(MsgsA),
+    ContextsB = project_msgs_contexts(MsgsB),
+    compare(ContextResult, ContextsA, ContextsB),
+    ( ContextResult = (=) ->
+        compare(Result, SpecA, SpecB)
+    ;
+        Result = ContextResult
+    ).
+
+%-----------------------------------------------------------------------------%
+
 write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO) :-
     write_error_specs([Spec], Globals, !NumWarnings, !NumErrors, !IO).
 
@@ -698,21 +715,21 @@ write_error_specs(Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
 do_write_error_spec(Globals, OrigExitStatus, Spec, !NumWarnings, !NumErrors,
         !IO) :-
     Spec = error_spec(Severity, _, Msgs),
-    do_write_error_msgs(Msgs, Globals, OrigExitStatus, yes, no, PrintedSome,
-        !IO),
+    do_write_error_msgs(Msgs, Globals, OrigExitStatus, treat_as_first,
+        have_not_printed_anything, PrintedSome, !IO),
     MaybeActual = actual_error_severity(Globals, Severity),
     (
-        PrintedSome = no
-        % XXX the following assertion is commented out because the compiler
+        PrintedSome = have_not_printed_anything
+        % XXX The following assertion is commented out because the compiler
         % can generate error specs that consist only of conditional error
         % messages whose conditions can all be false (in which case nothing
-        % will be printed.)  Such specs will cause the assertion to fail if
-        % they have a severity that means something *should* have been 
+        % will be printed).  Such specs will cause the assertion to fail if
+        % they have a severity that means something *should* have been
         % printed out.  Error specs like this are generated by --debug-modes.
-        %expect(unify(MaybeActual, no), this_file,
+        % expect(unify(MaybeActual, no), this_file,
         %    "do_write_error_spec: MaybeActual isn't no")
     ;
-        PrintedSome = yes,
+        PrintedSome = printed_something,
         (
             MaybeActual = yes(Actual),
             (
@@ -732,8 +749,18 @@ do_write_error_spec(Globals, OrigExitStatus, Spec, !NumWarnings, !NumErrors,
         )
     ).
 
+:- type maybe_printed_something
+    --->    printed_something
+    ;       have_not_printed_anything.
+
+:- type maybe_lower_next_initial
+    --->    lower_next_initial
+    ;       do_not_lower_next_initial.
+
 :- pred do_write_error_msgs(list(error_msg)::in, globals::in, int::in,
-    bool::in, bool::in, bool::out, io::di, io::uo) is det.
+    maybe_treat_as_first::in,
+    maybe_printed_something::in, maybe_printed_something::out,
+    io::di, io::uo) is det.
 
 do_write_error_msgs([], _Globals, _OrigExitStatus, _First, !PrintedSome, !IO).
 do_write_error_msgs([Msg | Msgs], Globals, OrigExitStatus, !.First,
@@ -741,17 +768,18 @@ do_write_error_msgs([Msg | Msgs], Globals, OrigExitStatus, !.First,
     (
         Msg = simple_msg(SimpleContext, Components),
         MaybeContext = yes(SimpleContext),
-        TreatAsFirst = no,
+        TreatAsFirst = do_not_treat_as_first,
         ExtraIndentLevel = 0
     ;
         Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndentLevel,
             Components)
     ),
     (
-        TreatAsFirst = yes,
-        !:First = yes
+        TreatAsFirst = treat_as_first,
+        !:First = treat_as_first
     ;
-        TreatAsFirst = no
+        TreatAsFirst = do_not_treat_as_first
+        % Leave !:First as it is, even if it is treat_as_first.
     ),
     Indent = ExtraIndentLevel * indent_increment,
     write_msg_components(Components, MaybeContext, Indent, Globals,
@@ -761,7 +789,9 @@ do_write_error_msgs([Msg | Msgs], Globals, OrigExitStatus, !.First,
 
 :- pred write_msg_components(list(error_msg_component)::in,
     maybe(prog_context)::in, int::in, globals::in, int::in,
-    bool::in, bool::out, bool::in, bool::out, io::di, io::uo) is det.
+    maybe_treat_as_first::in, maybe_treat_as_first::out,
+    maybe_printed_something::in, maybe_printed_something::out,
+    io::di, io::uo) is det.
 
 write_msg_components([], _, _, _, _, !First, !PrintedSome, !IO).
 write_msg_components([Component | Components], MaybeContext, Indent, Globals,
@@ -770,8 +800,8 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         Component = always(ComponentPieces),
         do_write_error_pieces(!.First, MaybeContext, Indent,
             ComponentPieces, !IO),
-        !:First = no,
-        !:PrintedSome = yes
+        !:First = do_not_treat_as_first,
+        !:PrintedSome = printed_something
     ;
         Component = option_is_set(Option, RequiredValue, EmbeddedComponents),
         globals.lookup_bool_option(Globals, Option, OptionValue),
@@ -788,8 +818,8 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
             VerboseErrors = yes,
             do_write_error_pieces(!.First, MaybeContext, Indent,
                 ComponentPieces, !IO),
-            !:First = no,
-            !:PrintedSome = yes
+            !:First = do_not_treat_as_first,
+            !:PrintedSome = printed_something
         ;
             VerboseErrors = no,
             globals.io_set_extra_error_info(yes, !IO)
@@ -807,13 +837,13 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
                 NonVerbosePieces, !IO),
             globals.io_set_extra_error_info(yes, !IO)
         ),
-        !:First = no,
-        !:PrintedSome = yes
+        !:First = do_not_treat_as_first,
+        !:PrintedSome = printed_something
     ;
         Component = print_anything(Anything),
         print_anything(Anything, !IO),
-        !:First = no,
-        !:PrintedSome = yes
+        !:First = do_not_treat_as_first,
+        !:PrintedSome = printed_something
     ),
     write_msg_components(Components, MaybeContext, Indent, Globals,
         OrigExitStatus, !First, !PrintedSome, !IO).
@@ -832,6 +862,10 @@ unsafe_cast_to_io_pred(_, _) :-
     unexpected(this_file, "unsafe_cast_to_io_pred").
 
 %-----------------------------------------------------------------------------%
+
+:- type maybe_first_in_msg
+    --->    first_in_msg
+    ;       not_first_in_msg.
 
 string_to_words_piece(Str) = words(Str).
 
@@ -866,65 +900,67 @@ choose_number([], _Singular, Plural) = Plural.
 choose_number([_], Singular, _Plural) = Singular.
 choose_number([_, _ | _], _Singular, Plural) = Plural.
 
-
 is_or_are([]) = "" :-
     unexpected(this_file, "error_util.is_or_are").
 is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
 
 write_error_pieces_plain(Components, !IO) :-
-    do_write_error_pieces(yes, no, 0, Components, !IO).
+    do_write_error_pieces(treat_as_first, no, 0, Components, !IO).
 
 write_error_plain_with_progname(ProgName, Msg, !IO) :-
     write_error_pieces_plain([fixed(ProgName ++ ":"), words(Msg)], !IO).
 
 write_error_pieces(Context, Indent, Components, !IO) :-
-    do_write_error_pieces(yes, yes(Context), Indent, Components, !IO).
+    do_write_error_pieces(treat_as_first, yes(Context), Indent,
+        Components, !IO).
 
 write_error_pieces_not_first_line(Context, Indent, Components, !IO) :-
-    do_write_error_pieces(no, yes(Context), Indent, Components, !IO).
+    do_write_error_pieces(do_not_treat_as_first, yes(Context), Indent,
+        Components, !IO).
 
-write_error_pieces_maybe_first_line(IsFirst, Context, Indent, Components,
+write_error_pieces_maybe_first_line(TreatAsFirst, Context, Indent, Components,
         !IO) :-
-    do_write_error_pieces(IsFirst, yes(Context), Indent, Components, !IO).
+    do_write_error_pieces(TreatAsFirst, yes(Context), Indent, Components, !IO).
 
 write_error_pieces_maybe_with_context(MaybeContext, Indent, Components, !IO) :-
-    do_write_error_pieces(yes, MaybeContext, Indent, Components, !IO).
+    do_write_error_pieces(treat_as_first, MaybeContext, Indent,
+        Components, !IO).
 
-:- pred do_write_error_pieces(bool::in, maybe(prog_context)::in, int::in,
-    list(format_component)::in, io::di, io::uo) is det.
+:- pred do_write_error_pieces(maybe_treat_as_first::in,
+    maybe(prog_context)::in, int::in, list(format_component)::in,
+    io::di, io::uo) is det.
 
-do_write_error_pieces(IsFirst, MaybeContext, FixedIndent, Components, !IO) :-
+do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent,
+        Components, !IO) :-
+    % The fixed characters at the start of the line are:
+    % filename
+    % :
+    % line number (min 3 chars)
+    % :
+    % space
+    % indent
     (
-            % The fixed characters at the start of the line are:
-            % filename
-            % :
-            % line number (min 3 chars)
-            % :
-            % space
-            % indent
-        (
-            MaybeContext = yes(Context),
-            term.context_file(Context, FileName),
-            term.context_line(Context, LineNumber),
-            string.length(FileName, FileNameLength),
-            string.int_to_string(LineNumber, LineNumberStr),
-            string.length(LineNumberStr, LineNumberStrLength0),
-            ( LineNumberStrLength0 < 3 ->
-                LineNumberStrLength = 3
-            ;
-                LineNumberStrLength = LineNumberStrLength0
-            ),
-            ContextLength = FileNameLength + 1 + LineNumberStrLength + 2
+        MaybeContext = yes(Context),
+        term.context_file(Context, FileName),
+        term.context_line(Context, LineNumber),
+        string.length(FileName, FileNameLength),
+        string.int_to_string(LineNumber, LineNumberStr),
+        string.length(LineNumberStr, LineNumberStrLength0),
+        ( LineNumberStrLength0 < 3 ->
+            LineNumberStrLength = 3
         ;
-            MaybeContext = no,
-            ContextLength = 0
+            LineNumberStrLength = LineNumberStrLength0
         ),
-        convert_components_to_paragraphs(Components, Paragraphs),
-        FirstIndent = (IsFirst = yes -> 0 ; 1),
-        Remain = 79 - (ContextLength + FixedIndent),
-        group_words(IsFirst, FirstIndent, Paragraphs, Remain, Lines)
+        ContextLength = FileNameLength + 1 + LineNumberStrLength + 2
+    ;
+        MaybeContext = no,
+        ContextLength = 0
     ),
+    convert_components_to_paragraphs(Components, Paragraphs),
+    FirstIndent = (TreatAsFirst = treat_as_first -> 0 ; 1),
+    Remain = 79 - (ContextLength + FixedIndent),
+    group_words(TreatAsFirst, FirstIndent, Paragraphs, Remain, Lines),
     write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
 :- func indent_increment = int.
@@ -966,9 +1002,15 @@ write_line_rest([Word | Words], !IO) :-
     io.write_string(Word, !IO),
     write_line_rest(Words, !IO).
 
-error_pieces_to_string([]) = "".
-error_pieces_to_string([Component | Components]) = Str :-
-    TailStr = error_pieces_to_string(Components),
+error_pieces_to_string(Components) =
+    error_pieces_to_string_2(first_in_msg, Components).
+
+:- func error_pieces_to_string_2(maybe_first_in_msg, list(format_component))
+    = string.
+
+error_pieces_to_string_2(_, []) = "".
+error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
+    TailStr = error_pieces_to_string_2(not_first_in_msg, Components),
     (
         Component = fixed(Word),
         Str = join_string_and_tail(Word, Components, TailStr)
@@ -982,11 +1024,20 @@ error_pieces_to_string([Component | Components]) = Str :-
         Component = nth_fixed(Int),
         Str = join_string_and_tail(nth_fixed_str(Int), Components, TailStr)
     ;
-        Component = prefix(Word),
-        Str = Word ++ TailStr
+        Component = lower_case_next_if_not_first,
+        (
+            FirstInMsg = first_in_msg,
+            Str = TailStr
+        ;
+            FirstInMsg = not_first_in_msg,
+            Str = lower_initial(TailStr)
+        )
     ;
-        Component = suffix(Word),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Component = prefix(Prefix),
+        Str = Prefix ++ TailStr
+    ;
+        Component = suffix(Suffix),
+        Str = join_string_and_tail(Suffix, Components, TailStr)
     ;
         Component = words(Words),
         Str = join_string_and_tail(Words, Components, TailStr)
@@ -1068,21 +1119,25 @@ join_string_and_tail(Word, Components, TailStr) = Str :-
     list(paragraph)::out) is det.
 
 convert_components_to_paragraphs(Components, Paras) :-
-    convert_components_to_paragraphs_acc(Components, [], [], Paras).
+    convert_components_to_paragraphs_acc(first_in_msg, Components,
+        [], cord.empty, ParasCord),
+    Paras = cord.list(ParasCord).
 
 :- type word
     --->    plain_word(string)
     ;       prefix_word(string)
-    ;       suffix_word(string).
+    ;       suffix_word(string)
+    ;       lower_next_word.
 
-:- pred convert_components_to_paragraphs_acc(list(format_component)::in,
-    list(word)::in, list(paragraph)::in, list(paragraph)::out) is det.
+:- pred convert_components_to_paragraphs_acc(maybe_first_in_msg::in,
+    list(format_component)::in, list(word)::in,
+    cord(paragraph)::in, cord(paragraph)::out) is det.
 
-convert_components_to_paragraphs_acc([], RevWords0, !Paras) :-
+convert_components_to_paragraphs_acc(_, [], RevWords0, !Paras) :-
     Strings = rev_words_to_strings(RevWords0),
-    list.reverse([paragraph(Strings, 0, 0) | !.Paras], !:Paras).
-convert_components_to_paragraphs_acc([Component | Components], RevWords0,
-        !Paras) :-
+    !:Paras = snoc(!.Paras, paragraph(Strings, 0, 0)).
+convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
+        RevWords0, !Paras) :-
     (
         Component = fixed(Word),
         RevWords1 = [plain_word(Word) | RevWords0]
@@ -1095,6 +1150,15 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
     ;
         Component = nth_fixed(Int),
         RevWords1 = [plain_word(nth_fixed_str(Int)) | RevWords0]
+    ;
+        Component = lower_case_next_if_not_first,
+        (
+            FirstInMsg = first_in_msg,
+            RevWords1 = RevWords0
+        ;
+            FirstInMsg = not_first_in_msg,
+            RevWords1 = [lower_next_word | RevWords0]
+        )
     ;
         Component = prefix(Word),
         RevWords1 = [prefix_word(Word) | RevWords0]
@@ -1116,8 +1180,8 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         ( type_to_ctor_and_args(Type, TypeCtor, _) ->
             TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
             SymName = TypeCtorName / TypeCtorArity,
-            RevWords1 = [plain_word(sym_name_and_arity_to_word(SymName))
-                | RevWords0]
+            NewWord = plain_word(sym_name_and_arity_to_word(SymName)),
+            RevWords1 = [NewWord | RevWords0]
         ;
             error("convert_components_to_paragraphs_acc: type is variable")
         )
@@ -1132,24 +1196,26 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
     ;
         Component = nl,
         Strings = rev_words_to_strings(RevWords0),
-        list.cons(paragraph(Strings, 0, 0), !Paras),
+        !:Paras = snoc(!.Paras, paragraph(Strings, 0, 0)),
         RevWords1 = []
     ;
         Component = nl_indent_delta(IndentDelta),
         Strings = rev_words_to_strings(RevWords0),
-        list.cons(paragraph(Strings, 0, IndentDelta), !Paras),
+        !:Paras = snoc(!.Paras, paragraph(Strings, 0, IndentDelta)),
         RevWords1 = []
     ;
         Component = blank_line,
         Strings = rev_words_to_strings(RevWords0),
-        list.cons(paragraph(Strings, 1, 0), !Paras),
+        !:Paras = snoc(!.Paras, paragraph(Strings, 1, 0)),
         RevWords1 = []
     ),
-    convert_components_to_paragraphs_acc(Components, RevWords1, !Paras).
+    convert_components_to_paragraphs_acc(not_first_in_msg, Components,
+        RevWords1, !Paras).
 
 :- type plain_or_prefix
     --->    plain(string)
-    ;       prefix(string).
+    ;       prefix(string)
+    ;       lower_next.
 
 :- func rev_words_to_strings(list(word)) = list(string).
 
@@ -1165,6 +1231,9 @@ rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
         Word = plain_word(String),
         PorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(Words)]
     ;
+        Word = lower_next_word,
+        PorPs = [lower_next | rev_words_to_rev_plain_or_prefix(Words)]
+    ;
         Word = prefix_word(Prefix),
         PorPs = [prefix(Prefix) | rev_words_to_rev_plain_or_prefix(Words)]
     ;
@@ -1176,6 +1245,14 @@ rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
             Words = [plain_word(String) | Tail],
             PorPs = [plain(String ++ Suffix)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
+        ;
+            Words = [lower_next_word | Tail],
+            % Convert the lower_next_word/suffix combination into just the
+            % suffix after lowercasing the suffix (which will probably have
+            % no effect, since the initial character of a suffix is usually
+            % not a letter).
+            NewWords = [suffix_word(lower_initial(Suffix)) | Tail],
+            PorPs = rev_words_to_rev_plain_or_prefix(NewWords)
         ;
             Words = [prefix_word(Prefix) | Tail],
             % Convert the prefix/suffix combination into a plain word.
@@ -1208,6 +1285,28 @@ join_prefixes([Head | Tail]) = Strings :-
             TailStrings = [],
             Strings = [Prefix | TailStrings]
         )
+    ;
+        Head = lower_next,
+        (
+            TailStrings = [],
+            Strings = TailStrings
+        ;
+            TailStrings = [FirstTailString | LaterTailStrings],
+            Strings = [lower_initial(FirstTailString) | LaterTailStrings]
+        )
+    ).
+
+:- func lower_initial(string) = string.
+
+lower_initial(Str0) = Str :-
+    (
+        string.first_char(Str0, First, Rest),
+        char.is_upper(First)
+    ->
+        char.to_lower(First, LoweredFirst),
+        string.first_char(Str, LoweredFirst, Rest)
+    ;
+        Str = Str0
     ).
 
 :- func sym_name_to_word(sym_name) = string.
@@ -1279,10 +1378,10 @@ find_word_end(String, Cur, WordEnd) :-
     % The given list of paragraphs must be nonempty, since we always return
     % at least one line.
     %
-:- pred group_words(bool::in, int::in, list(paragraph)::in, int::in,
-    list(error_line)::out) is det.
+:- pred group_words(maybe_treat_as_first::in, int::in, list(paragraph)::in,
+    int::in, list(error_line)::out) is det.
 
-group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
+group_words(TreatAsFirst, CurIndent, Paras, Max, Lines) :-
     (
         Paras = [],
         Lines = []
@@ -1290,10 +1389,10 @@ group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
         Paras = [FirstPara | LaterParas],
         FirstPara = paragraph(FirstParaWords, NumBlankLines, FirstIndentDelta),
         (
-            IsFirst = yes,
+            TreatAsFirst = treat_as_first,
             RestIndent = CurIndent + 1
         ;
-            IsFirst = no,
+            TreatAsFirst = do_not_treat_as_first,
             RestIndent = CurIndent
         ),
         NextIndent = RestIndent + FirstIndentDelta,
@@ -1302,7 +1401,7 @@ group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
         list.duplicate(NumBlankLines, BlankLine, BlankLines),
         (
             FirstParaWords = [],
-            group_words(IsFirst, NextIndent, LaterParas, Max, RestLines),
+            group_words(TreatAsFirst, NextIndent, LaterParas, Max, RestLines),
             Lines = BlankLines ++ RestLines
         ;
             FirstParaWords = [FirstWord | LaterWords],
@@ -1314,7 +1413,8 @@ group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
                 ParaRestLines),
             ParaLines = [CurLine | ParaRestLines],
 
-            group_words(no, NextIndent, LaterParas, Max, RestLines),
+            group_words(do_not_treat_as_first, NextIndent, LaterParas,
+                Max, RestLines),
             Lines = ParaLines ++ BlankLines ++ RestLines
         )
     ).

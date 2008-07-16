@@ -202,10 +202,9 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
         mq_info_get_mode_error_flag(MQInfo, InvalidModes1),
         InvalidModes = InvalidModes0 `or` InvalidModes1,
 
-        sort_error_specs(!.Specs, SortedSpecs),
         module_info_get_globals(!.ModuleInfo, CurGlobals),
-        write_error_specs(SortedSpecs, CurGlobals, 0, _NumWarnings,
-            0, NumErrors, !IO),
+        write_error_specs(!.Specs, CurGlobals, 0, _NumWarnings, 0, NumErrors,
+            !IO),
         module_info_incr_num_errors(NumErrors, !ModuleInfo),
 
         ModuleInfo = !.ModuleInfo
@@ -1730,7 +1729,7 @@ get_c_mutable_global_foreign_decl(ModuleInfo, Type, TargetMutableName,
     DeclItemPragma = item_pragma_info(compiler(mutable_decl), DeclPragma,
         Context),
     DeclItem = item_pragma(DeclItemPragma).
-    
+
     % Create the C foreign_defn for the mutable.
     % The bool argument says whether the mutable is a constant mutable
     % or not.

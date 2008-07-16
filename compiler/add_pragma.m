@@ -3509,7 +3509,7 @@ decide_action(PredName, Arity, PredOrFunc, NewContext, Globals,
                         words("The first occurrence was here.")
                     ],
                     MsgA = simple_msg(NewContext, [always(PiecesA)]),
-                    MsgB = error_msg(yes(ClauseContext), yes, 0,
+                    MsgB = error_msg(yes(ClauseContext), treat_as_first, 0,
                         [always(PiecesB)]),
                     Spec = error_spec(severity_error,
                         phase_parse_tree_to_hlds, [MsgA, MsgB]),

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1969,7 +1969,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     PiecesB = [words("Here is the conflicting instance.")],
 
     MsgA = simple_msg(ContextA, [always(PiecesA)]),
-    MsgB = error_msg(yes(ContextB), yes, 0, [always(PiecesB)]),
+    MsgB = error_msg(yes(ContextB), treat_as_first, 0, [always(PiecesB)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [MsgA, MsgB]).
 
 %---------------------------------------------------------------------------%
@@ -2024,8 +2024,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
         Pieces = Pieces0 ++ [words("function's argument or result types."), nl]
     ),
     Msg = simple_msg(Context,
-        [always(Pieces),
-        verbose_only(report_unbound_tvars_explanation)]),
+        [always(Pieces), verbose_only(report_unbound_tvars_explanation)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 :- func report_unbound_tvars_in_ctor_context(list(tvar), type_ctor,

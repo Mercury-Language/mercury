@@ -1317,9 +1317,8 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
             yes(FileName), "", _, _, _, [], Specs),
         (
             Specs = [_ | _],
-            sort_error_specs(Specs, SortedSpecs),
-            write_error_specs(SortedSpecs, Globals, 0, _NumWarnings,
-                0, _NumErrors, !IO),
+            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
+                !IO),
             io.write_strings(["`", FileName, "' not written.\n"], !IO)
         ;
             Specs = [],
@@ -2801,9 +2800,8 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
             IntImportedModules ++ IntUsedModules ++
             ImpImportedModules ++ ImpUsedModules, Items, !Specs),
 
-        sort_error_specs(!.Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, Globals, 0, _NumWarnings,
-            0, _NumErrors, !IO),
+        write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO),
 
         module_imports_get_error(!.Module, Error)
     ).
@@ -2900,8 +2898,7 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
             IntImportDeps ++ IntUseDeps ++ ImpImportDeps ++ ImpUseDeps,
             Items, !Specs),
 
-        sort_error_specs(!.Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
+        write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
 
         module_imports_get_error(!.Module, Error)
@@ -4326,10 +4323,8 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
         ModuleName, _, !IO),
     string.append(FileName, ".m", SourceFileName),
     split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
-    sort_error_specs(Specs, SortedSpecs),
     globals.io_get_globals(Globals, !IO),
-    write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
-        !IO),
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(SourceFileName, ModuleName, SubModuleNames,
         Error, Globals), SubModuleList, ModuleImportsList),
@@ -4338,8 +4333,7 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
 
 :- type generate_dependencies_mode
     --->    output_d_file_only
-    ;       output_all_dependencies
-    .
+    ;       output_all_dependencies.
 
 :- pred generate_dependencies(generate_dependencies_mode::in, bool::in,
     module_name::in, deps_map::in,
@@ -6585,9 +6579,7 @@ read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
         FileName = FileName0,
         Items = Items0,
         split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
-        sort_error_specs(Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO)
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
@@ -6758,14 +6750,14 @@ read_mod_2(IgnoreErrors, ModuleName, Extension, Descr, Search,
     ),
     (
         MaybeOldTimestamp = yes(OldTimestamp),
-        prog_io.read_module_if_changed(OpenFile, ModuleName,
-            OldTimestamp, Error, MaybeFileName, ActualModuleName,
-            Messages, Items, MaybeTimestamp0, !IO)
+        prog_io.read_module_if_changed(OpenFile, ModuleName, OldTimestamp,
+            MaybeFileName, ActualModuleName, Items, Specs, Error,
+            MaybeTimestamp0, !IO)
     ;
         MaybeOldTimestamp = no,
-        prog_io.read_module(OpenFile, ModuleName,
-            ReturnTimestamp, Error, MaybeFileName,
-            ActualModuleName, Messages, Items, MaybeTimestamp0, !IO)
+        prog_io.read_module(OpenFile, ModuleName, ReturnTimestamp,
+            MaybeFileName, ActualModuleName, Items, Specs, Error,
+            MaybeTimestamp0, !IO)
     ),
 
     (
@@ -6802,7 +6794,9 @@ read_mod_2(IgnoreErrors, ModuleName, Extension, Descr, Search,
             Error = no_module_errors,
             maybe_write_string(VeryVerbose, "successful parse.\n", !IO)
         ),
-        prog_out.write_messages(Messages, !IO)
+        globals.io_get_globals(Globals, !IO),
+        % XXX _NumWarnings _NumErrors
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ).
 
 read_mod_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
@@ -6830,8 +6824,8 @@ read_mod_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
         SearchDirs = [dir.this_directory]
     ),
     OpenFile = search_for_file(SearchDirs, FullFileName),
-    prog_io.read_module(OpenFile, DefaultModuleName, ReturnTimestamp, Error,
-        _, ModuleName, Messages, Items, MaybeTimestamp0, !IO),
+    prog_io.read_module(OpenFile, DefaultModuleName, ReturnTimestamp,
+        _, ModuleName, Items, Specs, Error, MaybeTimestamp0, !IO),
     check_timestamp(FullFileName, MaybeTimestamp0, MaybeTimestamp, !IO),
     (
         Error = fatal_module_errors,
@@ -6845,7 +6839,9 @@ read_mod_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
         Error = no_module_errors,
         maybe_write_string(VeryVerbose, "successful parse.\n", !IO)
     ),
-    prog_out.write_messages(Messages, !IO).
+    globals.io_get_globals(Globals, !IO),
+    % XXX _NumWarnings _NumErrors
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 :- pred check_timestamp(file_name::in, maybe(io.res(timestamp))::in,
     maybe(timestamp)::out, io::di, io::uo) is det.

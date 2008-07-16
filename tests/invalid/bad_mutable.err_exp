@@ -1,8 +1,13 @@
-bad_mutable.m:015: Error: malformed attribute list in mutable declaration: [untrailed, bad_attrib].
-bad_mutable.m:017: Error: the type in a mutable declaration cannot contain variables: list(_1).
-bad_mutable.m:019: Error: conflicting attributes in attribute list: [untrailed, trailed].
-bad_mutable.m:024: Error: conflicting attributes in attribute list: [thread_local, trailed].
-bad_mutable.m:026: Error: conflicting attributes in attribute list: [thread_local, constant].
+bad_mutable.m:015: Error: malformed attribute list in mutable declaration:
+bad_mutable.m:015:   [untrailed, bad_attrib].
+bad_mutable.m:017: Error: the type in a mutable declaration cannot contain
+bad_mutable.m:017:   variables: list(T).
+bad_mutable.m:019: Error: conflicting attributes in attribute list:
+bad_mutable.m:019:   [untrailed, trailed].
+bad_mutable.m:024: Error: conflicting attributes in attribute list:
+bad_mutable.m:024:   [thread_local, trailed].
+bad_mutable.m:026: Error: conflicting attributes in attribute list:
+bad_mutable.m:026:   [thread_local, constant].
 bad_mutable.m:011: In declaration for mutable `not_a_type':
 bad_mutable.m:011:   error: undefined type `no_type'/0.
 bad_mutable.m:013: In declaration for mutable `not_an_inst':

@@ -1,16 +1,21 @@
 null_char.m:012: Syntax error: null character is illegal in strings and names.
+null_char.m:014: In clause head: error: atom expected at 1.
 null_char.m:014: Syntax error: null character is illegal in strings and names.
-null_char.m:014: Error: atom expected in clause head: 1.
+null_char.m:018: Syntax error at token `)': unexpected token at start of
+null_char.m:018:   (sub)term.
 null_char.m:018: Syntax error: null character is illegal in strings and names.
-null_char.m:018: Syntax error at token `)': unexpected token at start of (sub)term.
+null_char.m:022: Syntax error at token `. ': unexpected token at start of
+null_char.m:022:   (sub)term.
 null_char.m:022: Syntax error: null character is illegal in strings and names.
-null_char.m:022: Syntax error at token `. ': unexpected token at start of (sub)term.
+null_char.m:026: Syntax error at token `)': unexpected token at start of
+null_char.m:026:   (sub)term.
 null_char.m:026: Syntax error: null character is illegal in strings and names.
-null_char.m:026: Syntax error at token `)': unexpected token at start of (sub)term.
+null_char.m:028: Syntax error at token `. ': unexpected token at start of
+null_char.m:028:   (sub)term.
 null_char.m:028: Syntax error: null character is illegal in strings and names.
-null_char.m:028: Syntax error at token `. ': unexpected token at start of (sub)term.
+null_char.m:030: Syntax error at token `. ': unexpected token at start of
+null_char.m:030:   (sub)term.
 null_char.m:030: Syntax error: null character is illegal in strings and names.
-null_char.m:030: Syntax error at token `. ': unexpected token at start of (sub)term.
 null_char.m:032: Syntax error: invalid character in quoted name.
 null_char.m:034: Syntax error: Illegal character 0x0 (0) in input.
 null_char.m:012: Error: clause for predicate `null_char.int'/0

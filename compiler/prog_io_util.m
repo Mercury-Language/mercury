@@ -28,42 +28,39 @@
 :- interface.
 
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe1(T1) ==  maybe1(T1, generic).
-:- type maybe1(T1, U)
-    --->    error1(assoc_list(string, term(U)))
+:- type maybe1(T1)
+    --->    error1(list(error_spec))
     ;       ok1(T1).
 
-:- type maybe2(T1, T2) ==  maybe2(T1, T2, generic).
-:- type maybe2(T1, T2, U)
-    --->    error2(assoc_list(string, term(U)))
+:- type maybe2(T1, T2)
+    --->    error2(list(error_spec))
     ;       ok2(T1, T2).
 
-:- type maybe3(T1, T2, T3) ==  maybe3(T1, T2, T3, generic).
-:- type maybe3(T1, T2, T3, U)
-    --->    error3(assoc_list(string, term(U)))
+:- type maybe3(T1, T2, T3)
+    --->    error3(list(error_spec))
     ;       ok3(T1, T2, T3).
 
-:- type maybe4(T1, T2, T3, T4) ==  maybe4(T1, T2, T3, T4, generic).
-:- type maybe4(T1, T2, T3, T4, U)
-    --->    error4(assoc_list(string, term(U)))
+:- type maybe4(T1, T2, T3, T4)
+    --->    error4(list(error_spec))
     ;       ok4(T1, T2, T3, T4).
 
-:- func get_any_errors1(maybe1(T1, U)) = assoc_list(string, term(U)).
-:- func get_any_errors2(maybe2(T1, T2, U)) = assoc_list(string, term(U)).
-:- func get_any_errors3(maybe3(T1, T2, T3, U)) = assoc_list(string, term(U)).
-:- func get_any_errors4(maybe4(T1, T2, T3, T4, U))
-    = assoc_list(string, term(U)).
+:- func get_any_errors1(maybe1(T1)) = list(error_spec).
+:- func get_any_errors2(maybe2(T1, T2)) = list(error_spec).
+:- func get_any_errors3(maybe3(T1, T2, T3)) = list(error_spec).
+:- func get_any_errors4(maybe4(T1, T2, T3, T4)) = list(error_spec).
 
 :- type maybe_functor    ==  maybe_functor(generic).
 :- type maybe_functor(T) ==  maybe2(sym_name, list(term(T))).
@@ -84,47 +81,53 @@
 :- pred parse_list_of_vars(term(T)::in, list(var(T))::out) is semidet.
 
     % Parse a list of quantified variables.
+    % The other input argument is a prefix for any error messages.
     %
-:- pred parse_vars(term(T)::in, maybe1(list(var(T)), T)::out) is det.
+:- pred parse_vars(term(T)::in, varset(T)::in, list(format_component)::in,
+    maybe1(list(var(T)))::out) is det.
 
     % Parse a list of quantified variables, splitting it into
     % ordinary logic variables and state variables respectively.
+    % The other input argument is a prefix for any error messages.
     %
-:- pred parse_quantifier_vars(term(T)::in,
-    maybe2(list(var(T)), list(var(T)), T)::out) is det.
+:- pred parse_quantifier_vars(term(T)::in, varset(T)::in,
+    list(format_component)::in, maybe2(list(var(T)), list(var(T)))::out)
+    is det.
 
-    % parse_vars_and_state_vars(Term, OrdinaryVars, DotStateVars,
-    %   ColonStateVars):
-    %
     % Similar to parse_vars, but also allow state variables to appear
     % in the list. The outputs separate the parsed variables into ordinary
     % variables, state variables listed as !.X, and state variables
     % listed as !:X.
     %
-:- pred parse_vars_and_state_vars(term(T)::in,
-    maybe3(list(var(T)), list(var(T)), list(var(T)), T)::out) is det.
+:- pred parse_vars_and_state_vars(term(T)::in, varset(T)::in,
+    list(format_component)::in,
+    maybe3(list(var(T)), list(var(T)), list(var(T)))::out) is det.
 
-:- pred parse_name_and_arity(module_name::in, term(_T)::in,
+:- pred parse_name_and_arity(module_name::in, term(T)::in,
     sym_name::out, arity::out) is semidet.
 
-:- pred parse_name_and_arity(term(_T)::in, sym_name::out, arity::out)
+:- pred parse_name_and_arity(term(T)::in, sym_name::out, arity::out)
     is semidet.
 
-:- pred parse_pred_or_func_name_and_arity(module_name::in,
-    term(_T)::in, pred_or_func::out, sym_name::out, arity::out) is semidet.
+:- pred parse_pred_or_func_name_and_arity(term(T)::in,
+    pred_or_func::out, sym_name::out, arity::out) is semidet.
 
-:- pred parse_pred_or_func_name_and_arity(term(_T)::in, pred_or_func::out,
-    sym_name::out, arity::out) is semidet.
+:- pred parse_pred_or_func_and_args(term(_T)::in,
+    pred_or_func::out, sym_name::out, list(term(_T))::out) is semidet.
 
-:- pred parse_pred_or_func_and_args(maybe(module_name)::in, term(_T)::in,
-    term(_T)::in, string::in, maybe_pred_or_func(term(_T))::out) is det.
+:- pred parse_pred_or_func_and_args_general(maybe(module_name)::in,
+    term(_T)::in, term(_T)::in, varset(_T)::in, list(format_component)::in,
+    maybe_pred_or_func(term(_T))::out) is det.
 
-:- pred parse_pred_or_func_and_args(term(_T)::in, pred_or_func::out,
-    sym_name::out, list(term(_T))::out) is semidet.
+:- pred maybe_parse_type(term::in, mer_type::out) is semidet.
 
-:- pred parse_type(term::in, maybe1(mer_type)::out) is det.
+:- pred parse_type(term::in, varset::in, list(format_component)::in,
+    maybe1(mer_type)::out) is det.
 
-:- pred parse_types(list(term)::in, maybe1(list(mer_type))::out) is det.
+:- pred maybe_parse_types(list(term)::in, list(mer_type)::out) is semidet.
+
+:- pred parse_types(list(term)::in, varset::in, list(format_component)::in,
+    maybe1(list(mer_type))::out) is det.
 
 :- pred unparse_type(mer_type::in, term::out) is det.
 
@@ -182,6 +185,7 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -192,57 +196,57 @@
 %-----------------------------------------------------------------------------%
 
 get_any_errors1(ok1(_)) = [].
-get_any_errors1(error1(Errors)) = Errors.
+get_any_errors1(error1(Specs)) = Specs.
 
 get_any_errors2(ok2(_, _)) = [].
-get_any_errors2(error2(Errors)) = Errors.
+get_any_errors2(error2(Specs)) = Specs.
 
 get_any_errors3(ok3(_, _, _)) = [].
-get_any_errors3(error3(Errors)) = Errors.
+get_any_errors3(error3(Specs)) = Specs.
 
 get_any_errors4(ok4(_, _, _, _)) = [].
-get_any_errors4(error4(Errors)) = Errors.
+get_any_errors4(error4(Specs)) = Specs.
 
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
     PredAndArityTerm = term.functor(term.atom("/"),
         [PredNameTerm, ArityTerm], _),
-    parse_implicitly_qualified_term(ModuleName,
-        PredNameTerm, PredNameTerm, "", ok2(SymName, [])),
+    % The values of VarSet and ContextPieces do not matter here since
+    % we succeed only if they aren't needed.
+    VarSet = varset.init,
+    ContextPieces = [],
+    parse_implicitly_qualified_term(ModuleName, PredNameTerm, PredNameTerm,
+        VarSet, ContextPieces, ok2(SymName, [])),
     ArityTerm = term.functor(term.integer(Arity), [], _).
 
 parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
     parse_name_and_arity(unqualified(""),
         PredAndArityTerm, SymName, Arity).
 
-parse_pred_or_func_name_and_arity(ModuleName, PorFPredAndArityTerm,
+parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-
     PorFPredAndArityTerm = term.functor(term.atom(PredOrFuncStr), Args, _),
     ( PredOrFuncStr = "pred", PredOrFunc = pf_predicate
     ; PredOrFuncStr = "func", PredOrFunc = pf_function
     ),
     Args = [Arg],
+    ModuleName = unqualified(""),
     parse_name_and_arity(ModuleName, Arg, SymName, Arity).
 
-parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
-        PredOrFunc, SymName, Arity) :-
-    parse_pred_or_func_name_and_arity(unqualified(""),
-        PorFPredAndArityTerm, PredOrFunc, SymName, Arity).
-
-parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
-    parse_pred_or_func_and_args(no, Term, Term, "",
-        ok2(SymName, ArgTerms0 - MaybeRetTerm)),
+parse_pred_or_func_and_args(PredAndArgsTerm, PredOrFunc, SymName, ArgTerms) :-
     (
-        MaybeRetTerm = yes(RetTerm),
+        PredAndArgsTerm = term.functor(term.atom("="),
+            [FuncAndArgsTerm, FuncResultTerm], _)
+    ->
+        sym_name_and_args(FuncAndArgsTerm, SymName, ArgTerms0),
         PredOrFunc = pf_function,
-        list.append(ArgTerms0, [RetTerm], ArgTerms)
+        ArgTerms = ArgTerms0 ++ [FuncResultTerm]
     ;
-        MaybeRetTerm = no,
-        PredOrFunc = pf_predicate,
-        ArgTerms = ArgTerms0
+        sym_name_and_args(PredAndArgsTerm, SymName, ArgTerms),
+        PredOrFunc = pf_predicate
     ).
 
-parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
-        Msg, PredAndArgsResult) :-
+parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
+        ErrorTerm, VarSet, ContextPieces, PredAndArgsResult) :-
     (
         PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
@@ -253,26 +257,35 @@ parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
         FunctorTerm = PredAndArgsTerm,
         MaybeFuncResult = no
     ),
+    varset.coerce(VarSet, GenericVarSet),
     (
         MaybeModuleName = yes(ModuleName),
         parse_implicitly_qualified_term(ModuleName, FunctorTerm,
-            ErrorTerm, Msg, Result)
+            ErrorTerm, GenericVarSet, ContextPieces, Result)
     ;
         MaybeModuleName = no,
-        parse_qualified_term(FunctorTerm, ErrorTerm, Msg, Result)
+        parse_qualified_term(FunctorTerm,
+            ErrorTerm, GenericVarSet, ContextPieces, Result)
     ),
     (
         Result = ok2(SymName, Args),
         PredAndArgsResult = ok2(SymName, Args - MaybeFuncResult)
     ;
-        Result = error2(Errors),
-        PredAndArgsResult = error2(Errors)
+        Result = error2(Specs),
+        PredAndArgsResult = error2(Specs)
     ).
 
+maybe_parse_type(Term, Type) :-
+    % The values of VarSet and ContextPieces do not matter since we succeed
+    % only if they aren't used.
+    VarSet = varset.init,
+    ContextPieces = [],
+    parse_type(Term, VarSet, ContextPieces, ok1(Type)).
+
+parse_type(Term, VarSet, ContextPieces, Result) :-
     % XXX kind inference: We currently give all types kind `star'.
     % This will be different when we have a kind system.
-    %
-parse_type(Term, Result) :-
+
     (
         Term = term.variable(Var0, _)
     ->
@@ -289,56 +302,68 @@ parse_type(Term, Result) :-
     ;
         Term = term.functor(term.atom("{}"), Args, _)
     ->
-        parse_types(Args, ArgsResult),
+        parse_types(Args, VarSet, ContextPieces, ArgsResult),
         (
             ArgsResult = ok1(ArgTypes),
             Result = ok1(tuple_type(ArgTypes, kind_star))
         ;
-            ArgsResult = error1(Errors),
-            Result = error1(Errors)
+            ArgsResult = error1(Specs),
+            Result = error1(Specs)
         )
     ;
         % We don't support apply/N types yet, so we just detect them
         % and report an error message.
-        Term = term.functor(term.atom(""), _, _)
+        Term = term.functor(term.atom(""), _, Context)
     ->
-        Result = error1(["ill-formed type" - Term])
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Error: ill-formed type"), words(TermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        Result = error1([Spec])
     ;
         % We don't support kind annotations yet, and we don't report
         % an error either. Perhaps we should?
-        parse_qualified_term(Term, Term, "type", NameResult),
+        parse_qualified_term(Term, Term, VarSet, ContextPieces, NameResult),
         (
             NameResult = ok2(SymName, ArgTerms),
-            parse_types(ArgTerms, ArgsResult),
+            parse_types(ArgTerms, VarSet, ContextPieces, ArgsResult),
             (
                 ArgsResult = ok1(ArgTypes),
                 Result = ok1(defined_type(SymName, ArgTypes, kind_star))
             ;
-                ArgsResult = error1(Errors),
-                Result = error1(Errors)
+                ArgsResult = error1(Specs),
+                Result = error1(Specs)
             )
         ;
-            NameResult = error2(Errors),
-            Result = error1(Errors)
+            NameResult = error2(Specs),
+            Result = error1(Specs)
         )
     ).
 
-parse_types(Terms, Result) :-
-    parse_types_2(Terms, [], Result).
+maybe_parse_types(Term, Types) :-
+    % The values of VarSet and ContextPieces do not matter since we succeed
+    % only if they aren't used.
+    VarSet = varset.init,
+    ContextPieces = [],
+    parse_types(Term, VarSet, ContextPieces, ok1(Types)).
 
-:- pred parse_types_2(list(term)::in, list(mer_type)::in,
-    maybe1(list(mer_type))::out) is det.
+parse_types(Terms, VarSet, ContextPieces, Result) :-
+    parse_types_2(Terms, VarSet, ContextPieces, [], Result).
 
-parse_types_2([], RevTypes, ok1(Types)) :-
+:- pred parse_types_2(list(term)::in, varset::in, list(format_component)::in,
+    list(mer_type)::in, maybe1(list(mer_type))::out) is det.
+
+parse_types_2([], _, _, RevTypes, ok1(Types)) :-
     list.reverse(RevTypes, Types).
-parse_types_2([Term | Terms], RevTypes, Result) :-
-    parse_type(Term, Result0),
+parse_types_2([Term | Terms], VarSet, ContextPieces, RevTypes, Result) :-
+    parse_type(Term, VarSet, ContextPieces, Result0),
     (
         Result0 = ok1(Type),
-        parse_types_2(Terms, [Type | RevTypes], Result)
+        parse_types_2(Terms, VarSet, ContextPieces, [Type | RevTypes], Result)
     ;
-        Result0 = error1(Errors),
-        Result = error1(Errors)
+        Result0 = error1(Specs),
+        Result = error1(Specs)
     ).
 
 :- pred parse_builtin_type(term::in, builtin_type::out) is semidet.
@@ -358,13 +383,13 @@ parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, lambda_normal) :-
     parse_purity_annotation(Term0, Purity, Term1),
     ( Term1 = term.functor(term.atom("="), [FuncAndArgs, Ret], _) ->
         FuncAndArgs = term.functor(term.atom("func"), Args, _),
-        parse_type(Ret, ok1(RetType)),
+        maybe_parse_type(Ret, RetType),
         MaybeRet = yes(RetType)
     ;
         Term1 = term.functor(term.atom("pred"), Args, _),
         MaybeRet = no
     ),
-    parse_types(Args, ok1(ArgTypes)).
+    maybe_parse_types(Args, ArgTypes).
 
 parse_purity_annotation(Term0, Purity, Term) :-
     (
@@ -537,8 +562,9 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         Inst = any(shared, higher_order(FuncInstInfo)),
         Mode = (Inst -> Inst)
     ;
-        parse_qualified_term(Term, Term, "mode definition", R),
-        R = ok2(Name, Args), % should improve error reporting
+        % If the sym_name_and_args fails, we should report the error
+        % (we would need to call parse_qualified_term instead).
+        sym_name_and_args(Term, Name, Args),
         convert_inst_list(AllowConstrainedInstVar, Args, ConvertedArgs),
         Mode = user_defined_mode(Name, ConvertedArgs)
     ).
@@ -647,7 +673,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             term.coerce_var(Var)), Inst)
     ;
         % Anything else must be a user-defined inst.
-        parse_qualified_term(Term, Term, "inst", ok2(QualifiedName, Args1)),
+        sym_name_and_args(Term, QualifiedName, Args1),
         (
             BuiltinModule = mercury_public_builtin_module,
             sym_name_get_module_name(QualifiedName, unqualified(""),
@@ -744,7 +770,7 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm,
         bound_functor(ConsId, Args)) :-
     InstTerm = term.functor(Functor, Args0, _),
     ( Functor = term.atom(_) ->
-        parse_qualified_term(InstTerm, InstTerm, "inst", ok2(SymName, Args1)),
+        sym_name_and_args(InstTerm, SymName, Args1),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity)
     ; Functor = term.implementation_defined(_) ->
@@ -801,111 +827,134 @@ map_parser(Parser, [X | Xs], Result) :-
     map_parser(Parser, Xs, Xs_Result),
     combine_list_results(X_Result, Xs_Result, Result).
 
-    % If a list of things contains multiple errors, then we only
-    % report the first one.
+    % If several items in a list contain errors, then we report them all.
     %
 :- pred combine_list_results(maybe1(T)::in, maybe1(list(T))::in,
     maybe1(list(T))::out) is det.
 
-combine_list_results(error1(ErrorsA), error1(ErrorsB),
-    error1(ErrorsA ++ ErrorsB)).
-combine_list_results(error1(Errors), ok1(_), error1(Errors)).
-combine_list_results(ok1(_), error1(Errors), error1(Errors)).
+combine_list_results(error1(HeadSpecs), error1(TailSpecs),
+    error1(HeadSpecs ++ TailSpecs)).
+combine_list_results(error1(Specs), ok1(_), error1(Specs)).
+combine_list_results(ok1(_), error1(Specs), error1(Specs)).
 combine_list_results(ok1(X), ok1(Xs), ok1([X | Xs])).
 
 %-----------------------------------------------------------------------------%
 
 parse_list_of_vars(term.functor(term.atom("[]"), [], _), []).
 parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
-        [V | Vs]) :-
-    Head = term.variable(V, _),
-    parse_list_of_vars(Tail, Vs).
+        [Var | Vars]) :-
+    Head = term.variable(Var, _),
+    parse_list_of_vars(Tail, Vars).
 
-parse_vars(Term, MaybeVars) :-
+parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( Term = functor(atom("[]"), [], _) ->
         MaybeVars = ok1([])
-    ; Term = functor(atom("[|]"), [Head, Tail], _) ->
-        ( Head = variable(V, _) ->
-            parse_vars(Tail, MaybeVarsTail),
+    ; Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) ->
+        (
+            HeadTerm = variable(HeadVar, _),
+            parse_vars(TailTerm, VarSet, ContextPieces, MaybeVarsTail),
             (
                 MaybeVarsTail = ok1(TailVars),
-                Vars = [V] ++ TailVars,
+                Vars = [HeadVar] ++ TailVars,
                 MaybeVars = ok1(Vars)
             ;
                 MaybeVarsTail = error1(_),
                 MaybeVars = MaybeVarsTail
             )
         ;
-            Msg = "expected variable",
-            MaybeVars = error1([Msg - Head])
+            HeadTerm = functor(_, _, _),
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                words("Expected variable, not"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            MaybeVars = error1([Spec])
         )
     ;
-        Msg = "expected list of variables",
-        MaybeVars = error1([Msg - Term])
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Expected list of variables, not"),
+            words(TermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeVars = error1([Spec])
     ).
 
-parse_quantifier_vars(Term, MaybeQVars) :-
+parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( Term = functor(atom("[]"), [], _) ->
-        MaybeQVars = ok2([], [])
-    ; Term = functor(atom("[|]"), [Head, Tail], _) ->
+        MaybeVars = ok2([], [])
+    ; Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) ->
         (
             (
-                Head = functor(atom("!"), [variable(SV, _)], _),
+                HeadTerm = functor(atom("!"), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadStateVars = [SV]
             ;
-                Head = variable(V, _),
+                HeadTerm = variable(V, _),
                 HeadVars = [V],
                 HeadStateVars = []
             )
         ->
-            parse_quantifier_vars(Tail, MaybeQVarsTail),
+            parse_quantifier_vars(TailTerm, VarSet, ContextPieces,
+                MaybeVarsTail),
             (
-                MaybeQVarsTail = ok2(TailVars, TailStateVars),
+                MaybeVarsTail = ok2(TailVars, TailStateVars),
                 Vars = HeadVars ++ TailVars,
                 StateVars = HeadStateVars ++ TailStateVars,
-                MaybeQVars = ok2(Vars, StateVars)
+                MaybeVars = ok2(Vars, StateVars)
             ;
-                MaybeQVarsTail = error2(_),
-                MaybeQVars = MaybeQVarsTail
+                MaybeVarsTail = error2(_),
+                MaybeVars = MaybeVarsTail
             )
         ;
-            Msg = "expected variable or state variable",
-            MaybeQVars = error2([Msg - Head])
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                words("Expected variable or state variable, not"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            MaybeVars = error2([Spec])
         )
     ;
-        Msg = "expected list of variables and/or state variables",
-        MaybeQVars = error2([Msg - Term])
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Expected list of variables and/or state variables, not"),
+            words(TermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeVars = error2([Spec])
     ).
 
-parse_vars_and_state_vars(Term, MaybeVars) :-
+parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( Term = functor(atom("[]"), [], _) ->
         MaybeVars = ok3([], [], [])
-    ; Term = functor(atom("[|]"), [Head, Tail], _) ->
+    ; Term = functor(atom("[|]"), [HeadTerm, Tail], _) ->
         (
             (
-                Head = functor(atom("!"), [variable(SV, _)], _),
+                HeadTerm = functor(atom("!"), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadDotVars = [SV],
                 HeadColonVars = [SV]
             ;
-                Head = functor(atom("!."), [variable(SV, _)], _),
+                HeadTerm = functor(atom("!."), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadDotVars = [SV],
                 HeadColonVars = []
             ;
-                Head = functor(atom("!:"), [variable(SV, _)], _),
+                HeadTerm = functor(atom("!:"), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadDotVars = [],
                 HeadColonVars = [SV]
             ;
-                Head = variable(V, _),
+                HeadTerm = variable(V, _),
                 HeadVars = [V],
                 HeadDotVars = [],
                 HeadColonVars = []
             )
         ->
-            parse_vars_and_state_vars(Tail, MaybeVarsTail),
+            parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
+                MaybeVarsTail),
             (
                 MaybeVarsTail = ok3(TailVars, TailDotVars, TailColonVars),
                 Vars = HeadVars ++ TailVars,
@@ -917,24 +966,34 @@ parse_vars_and_state_vars(Term, MaybeVars) :-
                 MaybeVars = MaybeVarsTail
             )
         ;
-            Msg = "expected variable or state variable",
-            MaybeVars = error3([Msg - Head])
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                words("Expected variable or state variable, not"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            MaybeVars = error3([Spec])
         )
     ;
-        Msg = "expected list of variables and/or state variables",
-        MaybeVars = error3([Msg - Term])
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Expected list of variables and/or state variables, not"),
+            words(TermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeVars = error3([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
 
-list_term_to_term_list(Methods, MethodList) :-
+list_term_to_term_list(Term, Terms) :-
     (
-        Methods = term.functor(term.atom("[|]"), [Head, Tail0], _),
-        list_term_to_term_list(Tail0, Tail),
-        MethodList = [Head|Tail]
+        Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _),
+        list_term_to_term_list(TailTerm, TailTerms),
+        Terms = [HeadTerm | TailTerms]
     ;
-        Methods = term.functor(term.atom("[]"), [], _),
-        MethodList = []
+        Term = term.functor(term.atom("[]"), [], _),
+        Terms = []
     ).
 
 %-----------------------------------------------------------------------------%

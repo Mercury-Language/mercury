@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: options_file.m.
 % Main author: stayl.
-% 
+%
 % Code to deal with options for `mmc --make', including code to parse
 % Mercury.options files.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module make.options_file.
@@ -276,7 +276,7 @@ read_options_file_params(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
                     ErrorFile = FileToFind
                 ),
                 ErrorSpec = error_spec(severity_error, phase_read_files,
-                        [error_msg(no, no, 0,
+                        [error_msg(no, do_not_treat_as_first, 0,
                             [always([words("Error reading options file"),
                                 quote(ErrorFile), suffix(".")])
                             ])
@@ -1101,7 +1101,8 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
                     ++ [suffix(".")],
                 ErrorSpec = error_spec(severity_error, phase_read_files,
-                    [error_msg(no, no, 0, [always(Pieces)])]),
+                    [error_msg(no, do_not_treat_as_first, 0,
+                        [always(Pieces)])]),
                 globals.io_get_globals(Globals, !IO),
                 write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO),
                 Result = var_result_error(ErrorSpec)
@@ -1167,24 +1168,22 @@ lookup_variable_words_maybe_env(LookupEnv, Vars, VarName, Result, !IO) :-
             Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
-            
             ErrorSpec = error_spec(severity_error, phase_read_files,
-                [error_msg(no, no, 0,
+                [error_msg(no, do_not_treat_as_first, 0,
                     [always([words("Error: in environment variable"),
-                        quote(VarName), suffix(":"), words(Msg)
-                    ])]
+                        quote(VarName), suffix(":"), words(Msg), nl])]
                 )]),
-    Result = var_result_error(ErrorSpec)
-)
-;
-MaybeEnvValue = no,
-( map.search(Vars, VarName, MapValue) ->
-    MapValue = options_variable_value(_, Words, _),
-    Result = var_result_set(Words)
-;
-    Result = var_result_unset
-)
-).
+            Result = var_result_error(ErrorSpec)
+        )
+    ;
+        MaybeEnvValue = no,
+        ( map.search(Vars, VarName, MapValue) ->
+            MapValue = options_variable_value(_, Words, _),
+            Result = var_result_set(Words)
+        ;
+            Result = var_result_unset
+        )
+    ).
 
 :- pred lookup_variable_chars(options_variables::in, string::in,
     list(char)::out, list(string)::in, list(string)::out,

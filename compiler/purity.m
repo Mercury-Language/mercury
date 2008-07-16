@@ -871,7 +871,8 @@ wrap_inner_outer_goals(Outer, Inner, OuterToInnerGoal, InnerToOuterGoal,
             list_to_pieces(PresentOuterVarNames) ++
             [words(choose_number(PresentOuterVarNames, "is", "are")),
             words("present in the atomic goal.")],
-        Msg1 = error_msg(yes(Context), no, 0, [always(Pieces1)]),
+        Msg1 = error_msg(yes(Context), do_not_treat_as_first, 0,
+            [always(Pieces1)]),
         Spec1 = error_spec(severity_error, phase_type_check, [Msg1]),
         purity_info_add_message(Spec1, !Info)
     ),
@@ -887,7 +888,8 @@ wrap_inner_outer_goals(Outer, Inner, OuterToInnerGoal, InnerToOuterGoal,
             list_to_pieces(PresentInnerVarNames) ++
             [words(choose_number(PresentInnerVarNames, "is", "are")),
             words("present outside the atomic goal.")],
-        Msg2 = error_msg(yes(Context), no, 0, [always(Pieces2)]),
+        Msg2 = error_msg(yes(Context), do_not_treat_as_first, 0,
+            [always(Pieces2)]),
         Spec2 = error_spec(severity_error, phase_type_check, [Msg2]),
         purity_info_add_message(Spec2, !Info)
     ),

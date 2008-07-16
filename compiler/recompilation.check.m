@@ -187,7 +187,7 @@ write_reasons_message(ModuleName, Reasons, !IO) :-
 
 write_not_found_reasons_message(UsageFileName, ModuleName, !IO) :-
     Reason = recompile_for_file_error(UsageFileName,
-        "file `" ++ UsageFileName ++ "' not found."),
+        [words("file"), quote(UsageFileName), words("not found."), nl]),
     write_recompile_reason(ModuleName, Reason, !IO).
 
 :- pred should_recompile_3_try(bool::in,
@@ -226,11 +226,10 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
         true
     ;
         io.input_stream_name(UsageFileName, !IO),
-        throw_syntax_error(
-            recompile_for_file_error(UsageFileName,
-                "invalid usage file version number in file `"
-                ++ UsageFileName ++ "'."),
-            !.Info)
+        Reason = recompile_for_file_error(UsageFileName,
+            [words("invalid usage file version number in file"),
+            quote(UsageFileName), suffix("."), nl]),
+        throw_syntax_error(Reason, !.Info)
     ),
 
     % Find the timestamp of the module the last time it was compiled.
@@ -264,10 +263,10 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
             ; MaybeNewTimestamp = no
             )
         ->
-            throw_syntax_error(
-                recompile_for_file_error(FileName,
-                    "error reading file `" ++ FileName ++ "'."),
-                !.Info)
+            Reason = recompile_for_file_error(FileName,
+                [words("error reading file"), quote(FileName), suffix("."),
+                nl]),
+            throw_syntax_error(Reason, !.Info)
         ;
             true
         )
@@ -711,7 +710,8 @@ check_imported_module(Term, !Info, !IO) :-
     ->
         throw_syntax_error(
             recompile_for_file_error(FileName,
-                "error reading file `" ++ FileName ++ "'."),
+                [words("error reading file"), quote(FileName), suffix("."),
+                nl]),
             !.Info)
     ;
         true
@@ -727,16 +727,13 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
     (
         UsedItemsResult = ok1(UsedVersionNumbers)
     ;
-        UsedItemsResult = error1(Errors),
+        UsedItemsResult = error1(Specs),
         (
-            Errors = [],
+            Specs = [],
             unexpected(this_file, "check_module_used_items: error1([])")
         ;
-            Errors = [Msg - ErrorTerm | _],
-            % XXX Can Errors contain more than oner error? If so, we should
-            % not ignore the tail of the list.
-            Reason = recompile_for_syntax_error(get_term_context(ErrorTerm),
-                Msg),
+            Specs = [_ | _],
+            Reason = recompile_for_unreadable_used_items(Specs),
             throw_syntax_error(Reason, !.Info)
         )
     ),
@@ -1307,7 +1304,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 :- type recompile_reason
     --->    recompile_for_file_error(
                 file_name,
-                string
+                list(format_component)
             )
 
     ;       recompile_for_output_file_not_up_to_date(
@@ -1317,6 +1314,10 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
     ;       recompile_for_syntax_error(
                 term.context,
                 string
+            )
+
+    ;       recompile_for_unreadable_used_items(
+                list(error_spec)
             )
 
     ;       recompile_for_module_changed(
@@ -1394,64 +1395,90 @@ write_recompilation_message(P, !IO) :-
     io::di, io::uo) is det.
 
 write_recompile_reason(ModuleName, Reason, !IO) :-
-    recompile_reason_message(Reason, MaybeContext, ErrorPieces0),
-    ErrorPieces = [words("Recompiling module"), sym_name(ModuleName),
-        suffix(":"), nl | ErrorPieces0],
-    write_error_pieces_maybe_with_context(MaybeContext, 0, ErrorPieces, !IO).
+    PrefixPieces = [words("Recompiling module"), sym_name(ModuleName),
+        suffix(":"), nl],
+    recompile_reason_message(PrefixPieces, Reason, Spec),
+    globals.io_get_globals(Globals, !IO),
+    % Since these messages are informational, there should be no warnings
+    % or errors.
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
-:- pred recompile_reason_message(recompile_reason::in, maybe(context)::out,
-    list(format_component)::out) is det.
+:- pred recompile_reason_message(list(format_component)::in,
+    recompile_reason::in, error_spec::out) is det.
 
-recompile_reason_message(recompile_for_file_error(_FileName, Msg), no,
-        [words(Msg)]).
-recompile_reason_message(recompile_for_output_file_not_up_to_date(FileName),
-        no,
-        [words("output file"), words(FileName), words("is not up to date.")]).
-recompile_reason_message(recompile_for_syntax_error(Context, Msg),
-        yes(Context), [words(Msg)]).
-recompile_reason_message(recompile_for_module_changed(FileName), no,
-        [words("file"), words("`" ++ FileName ++ "'"), words("has changed.")]).
-recompile_reason_message(recompile_for_item_ambiguity(Item, AmbiguousItems),
-        no, Pieces) :-
-    AmbiguousItemPieces = component_lists_to_pieces(
-        list.map(describe_item, AmbiguousItems)),
-    Pieces = [words("addition of ") | describe_item(Item)]
-        ++ [words("could cause an ambiguity with")]
-        ++ AmbiguousItemPieces ++ [suffix(".")].
-recompile_reason_message(recompile_for_functor_ambiguity(SymName, Arity,
-        Functor, AmbiguousFunctors), no, Pieces) :-
-    FunctorPieces = describe_functor(SymName, Arity, Functor),
-    AmbiguousFunctorPieces = component_lists_to_pieces(
-        list.map(describe_functor(SymName, Arity), AmbiguousFunctors)),
-    Pieces = [words("addition of ") | FunctorPieces]
-        ++ [words("could cause an ambiguity with")]
-        ++ AmbiguousFunctorPieces ++ [suffix(".")].
-recompile_reason_message(recompile_for_changed_item(Item), no,
-        list.append(describe_item(Item), [words("was modified.")])).
-recompile_reason_message(recompile_for_removed_item(Item), no,
-        list.append(describe_item(Item), [words("was removed.")])).
-recompile_reason_message(
-        recompile_for_changed_or_added_instance(ModuleName,
-            item_name(ClassName, ClassArity)),
-        no,
-        [
-        words("an instance for class"),
-        sym_name_and_arity(ClassName / ClassArity),
-        words("in module"),
-        sym_name(ModuleName),
-        words("was added or modified.")
-        ]).
-recompile_reason_message(
-        recompile_for_removed_instance(ModuleName,
-            item_name(ClassName, ClassArity)),
-        no,
-        [
-        words("an instance for class "),
-        sym_name_and_arity(ClassName / ClassArity),
-        words("in module"),
-        sym_name(ModuleName),
-        words("was removed.")
-        ]).
+recompile_reason_message(PrefixPieces, Reason, Spec) :-
+    (
+        (
+            Reason = recompile_for_file_error(_FileName, Pieces)
+            % Pieces should mention FileName.
+        ;
+            Reason = recompile_for_output_file_not_up_to_date(FileName),
+            Pieces = [words("output file"), quote(FileName),
+                words("is not up to date.")]
+        ;
+            Reason = recompile_for_module_changed(FileName),
+            Pieces = [words("file"), quote(FileName), words("has changed.")]
+        ;
+            Reason = recompile_for_item_ambiguity(Item, AmbiguousItems),
+            ItemPieces = describe_item(Item),
+            AmbiguousItemPieces = component_lists_to_pieces(
+                list.map(describe_item, AmbiguousItems)),
+            Pieces = [words("addition of") | ItemPieces]
+                ++ [words("could cause an ambiguity with")]
+                ++ AmbiguousItemPieces ++ [suffix(".")]
+        ;
+            Reason = recompile_for_functor_ambiguity(SymName, Arity,
+                Functor, AmbiguousFunctors),
+            FunctorPieces = describe_resolved_functor(SymName, Arity, Functor),
+            AmbiguousFunctorPieces = component_lists_to_pieces(
+                list.map(describe_resolved_functor(SymName, Arity),
+                    AmbiguousFunctors)),
+            Pieces = [words("addition of") | FunctorPieces]
+                ++ [words("could cause an ambiguity with")]
+                ++ AmbiguousFunctorPieces ++ [suffix(".")]
+        ;
+            Reason = recompile_for_changed_item(Item),
+            Pieces = describe_item(Item) ++ [words("was modified.")]
+        ;
+            Reason = recompile_for_removed_item(Item),
+            Pieces = describe_item(Item) ++ [words("was removed.")]
+        ;
+            Reason = recompile_for_changed_or_added_instance(ModuleName,
+                item_name(ClassName, ClassArity)),
+            Pieces = [words("an instance for class"),
+                sym_name_and_arity(ClassName / ClassArity),
+                words("in module"), sym_name(ModuleName),
+                words("was added or modified.")]
+        ;
+            Reason = recompile_for_removed_instance(ModuleName,
+                item_name(ClassName, ClassArity)),
+            Pieces = [words("an instance for class "),
+                sym_name_and_arity(ClassName / ClassArity),
+                words("in module"), sym_name(ModuleName),
+                words("was removed.")]
+        ),
+        MaybeContext = no,
+        AllPieces = PrefixPieces ++ Pieces,
+        Spec = error_spec(severity_informational, phase_read_files,
+            [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
+    ;
+        Reason = recompile_for_syntax_error(Context, Msg),
+        MaybeContext = yes(Context),
+        AllPieces = PrefixPieces ++ [words(Msg), suffix("."), nl],
+        Spec = error_spec(severity_informational, phase_read_files,
+            [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
+    ;
+        Reason = recompile_for_unreadable_used_items(Specs),
+        MsgsList = list.map(project_spec_to_msgs, Specs),
+        list.condense(MsgsList, Msgs),
+        % MaybeContext = find_first_context_in_msgs(Msgs),
+        Spec = error_spec(severity_informational, phase_read_files, Msgs)
+    ).
+
+:- func project_spec_to_msgs(error_spec) = list(error_msg).
+
+project_spec_to_msgs(Spec) = Msgs :-
+    Spec = error_spec(_Severity, _Phase, Msgs).
 
 :- func describe_item(item_id) = list(format_component).
 
@@ -1469,10 +1496,10 @@ describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
 
 body_item(type_body_item, type_abstract_item).
 
-:- func describe_functor(sym_name, arity, resolved_functor) =
+:- func describe_resolved_functor(sym_name, arity, resolved_functor) =
     list(format_component).
 
-describe_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
+describe_resolved_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
     ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName, PredOrFunc,
         PredArity),
     string_to_item_type(ItemTypeStr, pred_or_func_to_item_type(PredOrFunc)),
@@ -1480,26 +1507,18 @@ describe_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
     SymNameAndArityPiece =
         sym_name_and_arity(qualified(ModuleName, UnqualName) / PredArity),
     Pieces = [words(ItemTypeStr), SymNameAndArityPiece].
-describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
+describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
     ResolvedFunctor = resolved_functor_constructor(
         item_name(TypeName, TypeArity)),
-    Pieces = [
-        words("constructor"),
-        sym_name_and_arity(SymName / Arity),
-        words("of type"),
-        sym_name_and_arity(TypeName / TypeArity)
-    ].
-describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
+    Pieces = [words("constructor"), sym_name_and_arity(SymName / Arity),
+        words("of type"), sym_name_and_arity(TypeName / TypeArity)].
+describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
     ResolvedFunctor = resolved_functor_field(item_name(TypeName, TypeArity),
         item_name(ConsName, ConsArity)),
-    Pieces = [
-        words("field access function"),
+    Pieces = [words("field access function"),
         sym_name_and_arity(SymName / Arity),
-        words("for constructor"),
-        sym_name_and_arity(ConsName / ConsArity),
-        words("of type"),
-        sym_name_and_arity(TypeName / TypeArity)
-    ].
+        words("for constructor"), sym_name_and_arity(ConsName / ConsArity),
+        words("of type"), sym_name_and_arity(TypeName / TypeArity)].
 
 %-----------------------------------------------------------------------------%
 

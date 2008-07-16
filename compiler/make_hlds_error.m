@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,7 +88,8 @@ multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
         Pieces2 = [words("Here is the previous definition of"),
             fixed(DefType), sym_name_and_arity(Name / Arity), suffix("."), nl],
         Msg1 = simple_msg(Context, [always(Pieces1)]),
-        Msg2 = error_msg(yes(OrigContext), yes, 0, [always(Pieces2)]),
+        Msg2 = error_msg(yes(OrigContext), treat_as_first, 0,
+            [always(Pieces2)]),
         (
             ExtraPieces = [],
             ExtraMsgs = []

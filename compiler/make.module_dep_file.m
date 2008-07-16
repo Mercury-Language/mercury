@@ -570,10 +570,9 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
             io.set_exit_status(0, !IO),
             io.set_output_stream(ErrorStream, _, !IO),
             split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
-            sort_error_specs(Specs, SortedSpecs),
             globals.io_get_globals(Globals, !IO),
-            write_error_specs(SortedSpecs, Globals, 0, _NumWarnings,
-                0, _NumErrors, !IO),
+            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
+                !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
             assoc_list.keys(SubModuleList, SubModuleNames),
@@ -587,11 +586,9 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
                         := yes(ModuleImports)
                 ), ModuleImportList, !Info),
 
-            %
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3'
             % file doesn't depend on anything else.
-            %
             (
                 Error = no_module_errors,
                 Target = target_file(ModuleName,

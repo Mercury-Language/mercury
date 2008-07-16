@@ -39,12 +39,13 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -73,7 +74,7 @@
     --->    opt_file
     ;       trans_opt_file.
 
-    % update_error_status(OptFileType, FileName, Error, Messages, !Status):
+    % update_error_status(OptFileType, FileName, Error, Specs, !Status):
     %
     % Work out whether any fatal errors have occurred while reading
     % `.opt' files, updating Status0 if there were fatal errors.
@@ -86,7 +87,7 @@
     % This is also used by trans_opt.m for reading `.trans_opt' files.
     %
 :- pred update_error_status(opt_file_type::in, string::in, module_error::in,
-    message_list::in, bool::in, bool::out, io::di, io::uo) is det.
+    list(error_spec)::in, bool::in, bool::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -113,6 +114,7 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -121,7 +123,6 @@
 :- import_module assoc_list.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -2379,10 +2380,9 @@ read_optimization_interfaces(Transitive, ModuleName,
     maybe_flush_output(VeryVerbose, !IO),
 
     module_name_to_search_file_name(ModuleToRead, ".opt", FileName, !IO),
-    prog_io.read_opt_file(FileName, ModuleToRead,
-        ModuleError, Messages, OptItems, !IO),
-    update_error_status(opt_file, FileName, ModuleError, Messages, !Error,
+    prog_io.read_opt_file(FileName, ModuleToRead, OptItems, Specs, ModuleError,
         !IO),
+    update_error_status(opt_file, FileName, ModuleError, Specs, !Error, !IO),
     !:Items = !.Items ++ OptItems,
     maybe_write_string(VeryVerbose, "% done.\n", !IO),
 
@@ -2406,13 +2406,15 @@ read_optimization_interfaces(Transitive, ModuleName,
     read_optimization_interfaces(Transitive, ModuleName,
         NewDeps ++ ModulesToRead, ModulesProcessed, !Items, !Error, !IO).
 
-update_error_status(FileType, FileName, ModuleError, Messages,
+update_error_status(FileType, FileName, ModuleError, Specs,
         !Error, !IO) :-
     (
         ModuleError = no_module_errors
     ;
         ModuleError = some_module_errors,
-        prog_out.write_messages(Messages, !IO),
+        globals.io_get_globals(Globals, !IO),
+        % XXX _NumWarnings _NumErrors
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
         !:Error = yes
     ;
         ModuleError = fatal_module_errors,

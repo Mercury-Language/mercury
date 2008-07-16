@@ -1,7 +1,17 @@
-constrained_poly_insts.m:007: Error: inconsistent constraints on inst variables in predicate mode declaration: p(in(_1), out(_1 =< any)).
-constrained_poly_insts.m:009: Error: inconsistent constraints on inst variables in `:- pred' declaration: q((_1 :: in(_2 =< free)), (_1 :: out(_2 =< bound(c)))).
-constrained_poly_insts.m:012: Error: inconsistent constraints on inst variables in function mode declaration: r(in(_1)) = out(_1 =< free).
-constrained_poly_insts.m:014: Error: inconsistent constraints on inst variables in function declaration: s((_1 :: in(_2 =< ground))) = (_1 :: out(_2 =< unique)).
+constrained_poly_insts.m:007: Error: inconsistent constraints on inst variables
+constrained_poly_insts.m:007:   in predicate mode declaration:
+constrained_poly_insts.m:007:   p(in(I), out((I =< any))).
+constrained_poly_insts.m:009: Error: inconsistent constraints on inst variables
+constrained_poly_insts.m:009:   in `:- pred' declaration:
+constrained_poly_insts.m:009:   q((T :: in((I =< free))), (T :: out((I =<
+constrained_poly_insts.m:009:   bound(c))))).
+constrained_poly_insts.m:012: Error: inconsistent constraints on inst variables
+constrained_poly_insts.m:012:   in function mode declaration:
+constrained_poly_insts.m:012:   (r(in(I)) = out((I =< free))).
+constrained_poly_insts.m:014: Error: inconsistent constraints on inst variables
+constrained_poly_insts.m:014:   in function declaration:
+constrained_poly_insts.m:014:   (s((T :: in((I =< ground)))) = (T :: out((I =<
+constrained_poly_insts.m:014:   unique)))).
 constrained_poly_insts.m:023: Error: clause for predicate
 constrained_poly_insts.m:023:   `constrained_poly_insts.q'/2
 constrained_poly_insts.m:023:   without preceding `pred' declaration.

@@ -42,10 +42,6 @@
 % This is how programs (and parse errors) are represented
 %
 
-    % An error/warning message, and the term to which it relates.
-    %
-:- type message_list == assoc_list(string, term).
-
 :- type compilation_unit
     --->    unit_module(
                 module_name,
@@ -272,6 +268,8 @@
     --->    item_nothing_info(
                 % Used for items that should be ignored (for purposes of
                 % backwards compatibility etc).
+                % XXX Instead of maybe(item_warning), this should be
+                % maybe(error_spec).
                 nothing_maybe_warning           :: maybe(item_warning),
                 nothing_context                 :: prog_context
             ).

@@ -265,6 +265,15 @@
 :- func mercury_term_nq_to_string(varset(T), bool, needs_quotes, term(T))
     = string.
 
+:- pred mercury_output_limited_term(varset(T)::in, bool::in, int::in,
+    term(T)::in, io::di, io::uo) is det.
+:- func mercury_limited_term_to_string(varset(T), bool, int, term(T)) = string.
+
+:- pred mercury_output_limited_term_nq(varset(T)::in, bool::in,
+    needs_quotes::in, int::in, term(T)::in, io::di, io::uo) is det.
+:- func mercury_limited_term_nq_to_string(varset(T), bool, needs_quotes, int,
+    term(T)) = string.
+
 :- pred mercury_output_type(tvarset::in, bool::in, mer_type::in,
     io::di, io::uo) is det.
 :- func mercury_type_to_string(tvarset, bool, mer_type) = string.
@@ -346,6 +355,8 @@
 :- pred mercury_output_where_attributes(tvarset::in,
     maybe(solver_type_details)::in, maybe(unify_compare)::in, io::di, io::uo)
     is det.
+
+:- func describe_error_term(varset(T), term(T)) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -4251,8 +4262,6 @@ extra_attribute_to_string(max_stack_size(Size)) =
 
 %-----------------------------------------------------------------------------%
 
-    % Write a term to standard output.
-    %
 mercury_output_term(VarSet, AppendVarnums, Term, !IO) :-
     mercury_output_term_nq(VarSet, AppendVarnums, not_next_to_graphic_token,
         Term, !IO).
@@ -4269,6 +4278,51 @@ mercury_term_nq_to_string(VarSet, AppendVarnums, NextToGraphicToken, Term)
         = String :-
     mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken, Term,
         "", String).
+
+mercury_output_limited_term(VarSet, AppendVarnums, Limit, Term, !IO) :-
+    mercury_output_limited_term_nq(VarSet, AppendVarnums,
+        not_next_to_graphic_token, Limit, Term, !IO).
+
+mercury_limited_term_to_string(VarSet, AppendVarnums, Limit, Term) =
+    mercury_limited_term_nq_to_string(VarSet, AppendVarnums,
+        not_next_to_graphic_token, Limit, Term).
+
+mercury_output_limited_term_nq(VarSet, AppendVarnums, NextToGraphicToken,
+        Limit, Term, !IO) :-
+    io.write_string(mercury_limited_term_nq_to_string(VarSet, AppendVarnums,
+        NextToGraphicToken, Limit, Term), !IO).
+
+mercury_limited_term_nq_to_string(VarSet, AppendVarnums, NextToGraphicToken,
+        Limit, Term) = String :-
+    mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken, Term,
+        "", FullString),
+    FullLen = string.length(FullString),
+    ( FullLen =< Limit ->
+        String = FullString
+    ;
+        (
+            Term = term.variable(_, _),
+            % We cannot reduce the length of the string.
+            String = FullString
+        ;
+            Term = term.functor(Functor, Args, Context),
+            NoArgTerm = term.functor(Functor, [], Context),
+            mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken,
+                NoArgTerm, "", FunctorString),
+            (
+                Functor = term.atom(_),
+                ArityStr = int_to_string(list.length(Args)),
+                String = FunctorString ++ "/" ++ ArityStr
+            ;
+                ( Functor = term.integer(_)
+                ; Functor = term.float(_)
+                ; Functor = term.string(_)
+                ; Functor = term.implementation_defined(_)
+                ),
+                String = FunctorString
+            )
+        )
+    ).
 
 :- pred mercury_format_term(varset(T)::in, bool::in, term(T)::in,
     U::di, U::uo) is det <= output(U).
@@ -5190,6 +5244,22 @@ write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO) :-
 write_type_of_var(VarTypes, TypeVarSet, Var, !IO):-
     map.lookup(VarTypes, Var, VarType),
     mercury_output_type(TypeVarSet, no, VarType, !IO).
+
+%---------------------------------------------------------------------------%
+
+describe_error_term(VarSet, Term) =
+    % We should consider using the algorithms of term_io.write_term instead of
+    % the ones now in mercury_limited_term_to_string to print terms; it adds
+    % fewer redundant parentheses.
+    mercury_limited_term_to_string(VarSet, no,
+        max_term_string_size_in_syntax_error, Term).
+
+    % The maximum size of the string representation of a term to print
+    % at syntax errors.
+    %
+:- func max_term_string_size_in_syntax_error = int.
+
+max_term_string_size_in_syntax_error = 80.
 
 %---------------------------------------------------------------------------%
 

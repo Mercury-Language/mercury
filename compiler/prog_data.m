@@ -674,18 +674,16 @@
     %
 :- type prog_constraint
     --->    constraint(
-                class_name,
-                list(mer_type)
+                constraint_class        :: class_name,
+                constraint_arg_types    :: list(mer_type)
             ).
 
 :- type prog_constraints
     --->    constraints(
                 univ_constraints    :: list(prog_constraint),
-                                    % universally quantified
-                                    % constraints
+                                    % Universally quantified constraints.
                 exist_constraints   :: list(prog_constraint)
-                                    % existentially quantified
-                                    % constraints
+                                    % Existentially quantified constraints.
             ).
 
     % A functional dependency on the variables in the head of a class
@@ -734,10 +732,20 @@
 
 :- type instance_methods == list(instance_method).
 
+:- func prog_constraint_get_class(prog_constraint) = class_name.
+:- func prog_constraint_get_arg_types(prog_constraint) = list(mer_type).
+
+:- implementation.
+
+prog_constraint_get_class(Constraint) = Constraint ^ constraint_class.
+prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
+
 %-----------------------------------------------------------------------------%
 %
 % Some more stuff for the foreign language interface
 %
+
+:- interface.
 
     % An abstract type for representing a set of
     % `pragma_foreign_proc_attribute's.

@@ -1,4 +1,3 @@
-%-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 1993-2008 The University of Melbourne.
@@ -59,6 +58,7 @@
 
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
@@ -89,7 +89,7 @@
     ;       fatal_module_errors.    % couldn't open the file
 
     % read_module(OpenFile, FileName, DefaultModuleName, ReturnTimestamp,
-    %   Error, MaybeFileInfo, ActualModuleName, Messages, Program,
+    %   MaybeFileInfo, ActualModuleName, Program, Specs, Error,
     %   MaybeModuleTimestamp, !IO):
     %
     % Reads and parses the file opened by OpenFile using the default module
@@ -101,25 +101,25 @@
     % directory name) returned by OpenFile. ActualModuleName is the module name
     % specified in the `:- module' declaration, if any, or the
     % DefaultModuleName if there is no `:- module' declaration.
-    % Messages is a list of warning/error messages. Program is the parse tree.
+    % Specs is a list of warning/error messages. Program is the parse tree.
     %
 :- pred read_module(open_file(FileInfo)::in(open_file),
-    module_name::in, bool::in, module_error::out, maybe(FileInfo)::out,
-    module_name::out, message_list::out, list(item)::out,
+    module_name::in, bool::in, maybe(FileInfo)::out, module_name::out,
+    list(item)::out, list(error_spec)::out, module_error::out,
     maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
 :- pred read_module_if_changed(open_file(FileInfo)::in(open_file),
-    module_name::in, timestamp::in, module_error::out,
-    maybe(FileInfo)::out, module_name::out, message_list::out,
-    list(item)::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
+    module_name::in, timestamp::in, maybe(FileInfo)::out, module_name::out,
+    list(item)::out, list(error_spec)::out, module_error::out,
+    maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
     % Same as read_module, but use intermod_directories instead of
     % search_directories when searching for the file.
     % Also report an error if the actual module name doesn't match
     % the expected module name.
     %
-:- pred read_opt_file(file_name::in, module_name::in, module_error::out,
-    message_list::out, list(item)::out, io::di, io::uo) is det.
+:- pred read_opt_file(file_name::in, module_name::in, list(item)::out,
+    list(error_spec)::out, module_error::out, io::di, io::uo) is det.
 
     % check_module_has_expected_name(FileName, ExpectedName, ActualName):
     %
@@ -181,11 +181,11 @@
 :- pred parse_decl(module_name::in, varset::in, term::in, maybe1(item)::out)
     is det.
 
-    % parse_type_defn_head(ModuleName, Head, HeadResult):
+    % parse_type_defn_head(ModuleName, VarSet, Head, HeadResult):
     %
     % Check the head of a type definition for errors.
     %
-:- pred parse_type_defn_head(module_name::in, term::in,
+:- pred parse_type_defn_head(module_name::in, varset::in, term::in,
     maybe2(sym_name, list(type_param))::out) is det.
 
     % parse_type_decl_where_part_if_present(TypeSymName, Arity,
@@ -196,7 +196,7 @@
     % in Result. If not, returns Term = Term0 and Result = no.
     %
 :- pred parse_type_decl_where_part_if_present(is_solver_type::in,
-    module_name::in, term::in, term::out,
+    module_name::in, varset::in, term::in, term::out,
     maybe2(maybe(solver_type_details), maybe(unify_compare))::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -210,41 +210,52 @@
 % where Module is a SymName. For backwards compatibility, we allow `__'
 % as an alternative to `.'.
 
-    % Sym_name_and_args takes a term and returns a sym_name and a list of
-    % argument terms. It fails if the input is not valid syntax for a
-    % QualifiedTerm.
+    % Sym_name_and_args takes a term and returns a sym_name that is its
+    % top function symbol, and a list of its argument terms. It fails
+    % if the input is not valid syntax for a QualifiedTerm.
     %
 :- pred sym_name_and_args(term(T)::in, sym_name::out, list(term(T))::out)
     is semidet.
 
-    % parse_qualified_term/4 takes a term (and also the containing term,
-    % and a string describing the context from which it was called
-    % [e.g. "clause head"]) and returns a sym_name and a list of argument
-    % terms. Returns an error on ill-formed input. See also
-    % parse_implicitly_qualified_term/5 (below).
+    % parse_qualified_term(Term, _ContainingTerm, VarSet, ContextPieces,
+    %   Result):
     %
-:- pred parse_qualified_term(term(T)::in, term(T)::in, string::in,
-    maybe_functor(T)::out) is det.
+    % Parse Term into a sym_name that is its top function symbol and a
+    % list of its argument terms, and if successful return them in Result.
+    % (parse_qualified_term thus does the same job as sym_name_and_args
+    % if it succeeds.) However, in case it does not succced,
+    % parse_qualified_term also takes as input Varset (from which the variables
+    % in Term are taken), the term containing Term, and a format_component
+    % list describing the context from which it was called, e.g.
+    % "In clause head:". XXX Currently, _ContainingTerm isn't used;
+    % maybe it should be deleted.
+    %
+    % Note: parse_qualified_term is used for places where a symbol is _used_,
+    % where no default module name exists for the sym_name. For places
+    % where a symbol is _defined_, use parse_implicitly_qualified_term.
+    %
+    % If you care only about the case where Result = ok2(SymName, Args),
+    % use sym_name_and_args.
+    %
+:- pred parse_qualified_term(term(T)::in, term(T)::in, varset::in,
+    list(format_component)::in, maybe_functor(T)::out) is det.
 
-    % parse_implicitly_qualified_term(DefaultModName, Term,
-    %   ContainingTerm, Msg, Result):
+    % parse_implicitly_qualified_term(ModuleName, Term, _ContainingTerm,
+    %   VarSet, ContextPieces, Result):
     %
-    % parse_implicitly_qualified_term/5 takes a default module name and a term,
-    % and also the containing term, and a string describing the context from
-    % which it was called (e.g. "clause head"), and returns a sym_name and
-    % a list of argument terms. Returns an error on ill-formed input or
-    % a module qualifier that doesn't match the DefaultModName.
-    %
-    % Note: parse_qualified_term/4 is used for places where a symbol is _used_,
-    % in which case no default module name exists, whereas
-    % parse_implicitly_qualified_term/5 is used for places where a symbol
-    % is _defined_; in that case, there is a default module name (the name
-    % of the current module) -- specifying a module qualifier explicitly
-    % is redundant, but it is allowed, so long as the module qualifier
-    % specified matches the default.
+    % Parse Term into a sym_name that is its top function symbol and a
+    % list of its argument terms, and if successful return them in Result.
+    % This predicate thus does almost the same job as the predicate
+    % parse_implicitly_qualified_term above, the difference being that
+    % that if the sym_name is qualified, then we check whether it is qualified
+    % with ModuleName, and if it isn't qualified, then we qualify it with
+    % Modulename (unless ModuleName is root_module_name). This is the
+    % right thing to do for clause heads, which is the intended job of
+    % parse_implicitly_qualified_term.
     %
 :- pred parse_implicitly_qualified_term(module_name::in, term(T)::in,
-    term(T)::in, string::in, maybe_functor(T)::out) is det.
+    term(T)::in, varset::in, list(format_component)::in, maybe_functor(T)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -277,8 +288,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.modules.
-:- import_module parse_tree.modules.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_pragma.
@@ -304,20 +314,19 @@
 
 %-----------------------------------------------------------------------------%
 
-read_module(OpenFile, DefaultModuleName, ReturnTimestamp, Error,
-        FileData, ModuleName, Messages, Items, MaybeModuleTimestamp, !IO) :-
-    read_module_2(OpenFile, DefaultModuleName, no, ReturnTimestamp, Error,
-        FileData, ModuleName, Messages, Items, MaybeModuleTimestamp, !IO).
+read_module(OpenFile, DefaultModuleName, ReturnTimestamp, FileData, ModuleName,
+        Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
+    read_module_2(OpenFile, DefaultModuleName, no, ReturnTimestamp,
+        FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO).
 
-read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp, Error,
-        FileData, ModuleName, Messages, Items, MaybeModuleTimestamp, !IO) :-
-    read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp), yes, Error,
-        FileData, ModuleName, Messages, Items, MaybeModuleTimestamp, !IO).
+read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp, FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
+    read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp), yes,
+        FileData, ModuleName, Items, Specs, Error,MaybeModuleTimestamp, !IO).
 
-read_opt_file(FileName, DefaultModuleName, Error, Messages, Items, !IO) :-
+read_opt_file(FileName, DefaultModuleName, Items, Specs, Error, !IO) :-
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
     read_module_2(search_for_file(Dirs, FileName), DefaultModuleName, no, no,
-        Error, _, ModuleName, Messages, Items, _, !IO),
+        _, ModuleName, Items, Specs, Error, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
         !IO).
 
@@ -341,12 +350,12 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
     % late-input modes.)
     %
 :- pred read_module_2(open_file(T)::in(open_file), module_name::in,
-    maybe(timestamp)::in, bool::in, module_error::out, maybe(T)::out,
-    module_name::out, message_list::out, list(item)::out,
+    maybe(timestamp)::in, bool::in, maybe(T)::out, module_name::out,
+    list(item)::out, list(error_spec)::out, module_error::out,
     maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
 read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
-        Error, MaybeFileData, ModuleName, Messages, Items,
+        MaybeFileData, ModuleName, Items, Specs, Error,
         MaybeModuleTimestamp, !IO) :-
     io.input_stream(OldInputStream, !IO),
     OpenFile(OpenResult, !IO),
@@ -379,25 +388,27 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
 
             ModuleName = DefaultModuleName,
             Items = [],
-            Error = no_module_errors,
-            Messages = []
+            Specs = [],
+            Error = no_module_errors
         ;
-            read_all_items(DefaultModuleName, ModuleName, Messages, Items,
-                Error, !IO)
+            read_all_items(DefaultModuleName, ModuleName, Items,
+                Specs, Error, !IO)
         ),
         io.set_input_stream(OldInputStream, ModuleInputStream, !IO),
         io.close_input(ModuleInputStream, !IO)
     ;
-        OpenResult = error(Message0),
-        io.progname_base("mercury_compile", Progname, !IO),
-        Message = Progname ++ ": " ++ Message0,
-        dummy_term(Term),
-        Messages = [Message - Term],
-        Error = fatal_module_errors,
-        Items = [],
-        ModuleName = DefaultModuleName,
+        OpenResult = error(ErrorMsg),
         MaybeFileData = no,
-        MaybeModuleTimestamp = no
+        ModuleName = DefaultModuleName,
+        Items = [],
+        MaybeModuleTimestamp = no,
+
+        io.progname_base("mercury_compile", Progname, !IO),
+        Pieces = [fixed(Progname), suffix(":"), words(ErrorMsg), nl],
+        Spec = error_spec(severity_error, phase_read_files,
+            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        Specs = [Spec],
+        Error = fatal_module_errors
     ).
 
 search_for_file(Dirs, FileName, Result, !IO) :-
@@ -603,11 +614,11 @@ get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
     % and that the end_module declaration (if any) is correct,
     % and construct the final parsing result.
     %
-:- pred check_end_module(module_end::in, message_list::in, message_list::out,
-    list(item)::in, list(item)::out, module_error::in, module_error::out)
-    is det.
+:- pred check_end_module(module_end::in, list(item)::in, list(item)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    module_error::in, module_error::out) is det.
 
-check_end_module(EndModule, !Messages, !Items, !Error) :-
+check_end_module(EndModule, !Items, !Specs, !Error) :-
     % Double-check that the first item is a `:- module ModuleName' declaration,
     % and remove it from the front of the item list.
     (
@@ -618,13 +629,16 @@ check_end_module(EndModule, !Messages, !Items, !Error) :-
         % Check that the end module declaration (if any) matches
         % the begin module declaration.
         (
-            EndModule = module_end_yes(ModuleName2, Context2),
-            ModuleName1 \= ModuleName2
+            EndModule = module_end_yes(EndModuleName, EndModuleContext),
+            ModuleName1 \= EndModuleName
         ->
-            dummy_term_with_context(Context2, Term),
-            Msg = "`:- end_module' declaration doesn't match " ++
-                "`:- module' declaration",
-            add_error(Msg - Term, !Messages),
+            Pieces = [words("Error:"),
+                quote(":- end_module"), words("declaration"),
+                words("does not match"),
+                quote(":- module"), words("declaration."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(EndModuleContext, [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs],
             !:Error = some_module_errors
         ;
             true
@@ -676,20 +690,24 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
         ),
         file_name_to_module_name(BaseName, DefaultModuleName),
         read_first_item(DefaultModuleName, FileName, _,
-            ModuleName, RevMessages, _, _, _, !IO),
+            ModuleName, _, _, Specs, _, !IO),
         MaybeModuleName = yes(ModuleName),
-        prog_out.write_messages(list.reverse(RevMessages), !IO),
+        % XXX _NumErrors
+        globals.io_get_globals(Globals, !IO),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
         io.set_input_stream(OldInputStream, _, !IO),
         io.close_input(InputStream, !IO)
     ;
         OpenRes = error(Error),
+        ErrorMsg = io.error_message(Error),
         io.progname_base("mercury_compile", Progname, !IO),
-        io.write_string(Progname, !IO),
-        io.write_string(": error opening `", !IO),
-        io.write_string(FileName, !IO),
-        io.write_string("': ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.write_string(".\n", !IO),
+        Pieces = [fixed(Progname), suffix(":"), words("error opening"),
+            quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_read_files,
+            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        globals.io_get_globals(Globals, !IO),
+        % XXX _NumErrors
+        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
         MaybeModuleName = no
     ).
 
@@ -706,36 +724,35 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
     %
     % We use a continuation-passing style here.
     %
-:- pred read_all_items(module_name::in, module_name::out, message_list::out,
-    list(item)::out, module_error::out, io::di, io::uo) is det.
+:- pred read_all_items(module_name::in, module_name::out,
+    list(item)::out, list(error_spec)::out, module_error::out,
+    io::di, io::uo) is det.
 
-read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
+read_all_items(DefaultModuleName, ModuleName, Items, Specs, Error, !IO) :-
     % Read all the items (the first one is handled specially).
     io.input_stream(Stream, !IO),
     io.input_stream_name(Stream, SourceFileName0, !IO),
     read_first_item(DefaultModuleName, SourceFileName0, SourceFileName,
-        ModuleName, RevMessages0, RevItems0, MaybeSecondTerm, Error0, !IO),
+        ModuleName, RevItems0, MaybeSecondTerm, Specs0, Error0, !IO),
     (
         MaybeSecondTerm = yes(SecondTerm),
-        process_read_term(ModuleName, SecondTerm, MaybeSecondItem),
+        % XXX Should this be SourceFileName instead of SourceFileName0?
+        read_term_to_item_result(ModuleName, SourceFileName0, SecondTerm,
+            MaybeSecondItem),
 
         read_items_loop_2(MaybeSecondItem, ModuleName, SourceFileName,
-            RevMessages0, RevMessages1, RevItems0, RevItems1,
-            Error0, Error1, !IO)
+            RevItems0, RevItems1, Specs0, Specs1, Error0, Error1, !IO)
     ;
         MaybeSecondTerm = no,
         read_items_loop(ModuleName, SourceFileName,
-            RevMessages0, RevMessages1, RevItems0, RevItems1,
-            Error0, Error1, !IO)
+            RevItems0, RevItems1, Specs0, Specs1, Error0, Error1, !IO)
     ),
 
     % Get the end_module declaration (if any), check that it matches
     % the initial module declaration (if any), and remove both of them
     % from the final item list.
     get_end_module(ModuleName, RevItems1, RevItems, EndModule),
-    check_end_module(EndModule, RevMessages1, RevMessages, Items0, Items,
-        Error1, Error),
-    list.reverse(RevMessages, Messages),
+    check_end_module(EndModule, Items0, Items, Specs1, Specs, Error1, Error),
     list.reverse(RevItems, Items0).
 
     % We need to jump through a few hoops when reading the first item,
@@ -751,20 +768,18 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
     % we reparse it in the default module scope. Blecchh.
     %
 :- pred read_first_item(module_name::in, file_name::in, file_name::out,
-    module_name::out, message_list::out, list(item)::out,
-    maybe(read_term)::out, module_error::out, io::di, io::uo) is det.
+    module_name::out, list(item)::out, maybe(read_term)::out,
+    list(error_spec)::out, module_error::out, io::di, io::uo) is det.
 
 read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
-        Messages, Items, MaybeSecondTerm, Error, !IO) :-
-    globals.io_lookup_bool_option(warn_missing_module_name, WarnMissing, !IO),
-    globals.io_lookup_bool_option(warn_wrong_module_name, WarnWrong, !IO),
-
+        Items, MaybeSecondTerm, Specs, Error, !IO) :-
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
     parser.read_term_filename(!.SourceFileName, MaybeFirstTerm, !IO),
     root_module_name(RootModuleName),
-    process_read_term(RootModuleName, MaybeFirstTerm, MaybeFirstItem),
+    read_term_to_item_result(RootModuleName, !.SourceFileName, MaybeFirstTerm,
+        MaybeFirstItem),
     (
         % Apply and then skip `pragma source_file' decls, by calling ourselves
         % recursively with the new source file name.
@@ -774,7 +789,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
             pragma_source_file(!:SourceFileName), _)
     ->
         read_first_item(DefaultModuleName, !SourceFileName,
-            ModuleName, Messages, Items, MaybeSecondTerm, Error, !IO)
+            ModuleName, Items, MaybeSecondTerm, Specs, Error, !IO)
     ;
         % Check if the first term was a `:- module' decl.
         MaybeFirstItem = read_item_ok(FirstItem),
@@ -786,16 +801,22 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         % and if not, report a warning.
         ( match_sym_name(StartModuleName, DefaultModuleName) ->
             ModuleName = DefaultModuleName,
-            Messages = []
+            Specs = []
         ; match_sym_name(DefaultModuleName, StartModuleName) ->
             ModuleName = StartModuleName,
-            Messages = []
+            Specs = []
         ;
-            StartModuleNameString = sym_name_to_string(StartModuleName),
-            WrongModuleWarning = "source file `" ++ !.SourceFileName ++
-                "' contains module named `" ++ StartModuleNameString ++ "'",
-            maybe_add_warning(WarnWrong, MaybeFirstTerm, FirstContext,
-            WrongModuleWarning, [], Messages),
+            % XXX I think this should be an error, not a warning. -zs
+            Pieces = [words("Warning: source file"), quote(!.SourceFileName),
+                words("contains module named"), sym_name(StartModuleName),
+                suffix("."), nl],
+            Severity = severity_conditional(warn_wrong_module_name, yes,
+                severity_warning, no),
+            Msgs = [option_is_set(warn_wrong_module_name, yes,
+                [always(Pieces)])],
+            Spec = error_spec(Severity, phase_term_to_parse_tree,
+                [simple_msg(FirstContext, Msgs)]),
+            Specs = [Spec],
 
             % Which one should we use here? We used to use the default module
             % name (computed from the filename) but now we use the declared
@@ -815,15 +836,17 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         ;
             term.context_init(!.SourceFileName, 1, FirstContext)
         ),
-        (
-            WarnMissing = yes,
-            dummy_term_with_context(FirstContext, FirstTerm),
-            add_warning("module should start with a `:- module' declaration",
-                FirstTerm, [], Messages)
-        ;
-            WarnMissing = no,
-            Messages = []
-        ),
+        % XXX I think this should be an error, not a warning. -zs
+        Pieces = [words("Warning: module should start with a"),
+            quote(":- module"), words("declaration."), nl],
+        Severity = severity_conditional(warn_missing_module_name, yes,
+            severity_warning, no),
+        Msgs  = [option_is_set(warn_missing_module_name, yes,
+            [always(Pieces)])],
+        Spec = error_spec(Severity, phase_term_to_parse_tree,
+            [simple_msg(FirstContext, Msgs)]),
+        Specs = [Spec],
+
         ModuleName = DefaultModuleName,
         make_module_decl(ModuleName, FirstContext, FixedFirstItem),
 
@@ -835,29 +858,12 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         Error = no_module_errors
     ).
 
-:- pred make_module_decl(module_name::in, term.context::in,
-    item::out) is det.
+:- pred make_module_decl(module_name::in, term.context::in, item::out) is det.
 
 make_module_decl(ModuleName, Context, Item) :-
     ModuleDefn = md_module(ModuleName),
     ItemInfo = item_module_defn_info(ModuleDefn, Context),
     Item = item_module_defn(ItemInfo).
-
-:- pred maybe_add_warning(bool::in, read_term::in, term.context::in,
-    string::in, message_list::in, message_list::out) is det.
-
-maybe_add_warning(DoWarn, MaybeTerm, Context, Warning, !Messages) :-
-    (
-        DoWarn = yes,
-        ( MaybeTerm = term(_VarSet, Term) ->
-            WarningTerm = Term
-        ;
-            dummy_term_with_context(Context, WarningTerm)
-        ),
-        add_warning(Warning, WarningTerm, !Messages)
-    ;
-        DoWarn = no
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -867,60 +873,51 @@ maybe_add_warning(DoWarn, MaybeTerm, Context, Warning, !Messages) :-
     % garbage collection. But optimizing for NU-Prolog is no longer a concern.
 
 :- pred read_items_loop(module_name::in, file_name::in,
-    message_list::in, message_list::out, list(item)::in, list(item)::out,
+    list(item)::in, list(item)::out,
+    list(error_spec)::in, list(error_spec)::out,
     module_error::in, module_error::out, io::di, io::uo) is det.
 
-read_items_loop(ModuleName, SourceFileName, !Msgs, !Items, !Error, !IO) :-
+read_items_loop(ModuleName, SourceFileName, !Items, !Specs, !Error, !IO) :-
     read_item(ModuleName, SourceFileName, MaybeItem, !IO),
-    read_items_loop_2(MaybeItem, ModuleName, SourceFileName, !Msgs,
-        !Items, !Error, !IO).
+    read_items_loop_2(MaybeItem, ModuleName, SourceFileName, !Items,
+        !Specs, !Error, !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred read_items_loop_2(read_item_result::in, module_name::in,
-    file_name::in, message_list::in, message_list::out,
-    list(item)::in, list(item)::out, module_error::in, module_error::out,
-    io::di, io::uo) is det.
+    file_name::in, list(item)::in, list(item)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    module_error::in, module_error::out, io::di, io::uo) is det.
 
-read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Msgs,
-        !Items, !Error, !IO) :-
+read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Items,
+        !Specs, !Error, !IO) :-
     (
         MaybeItemOrEOF = read_item_eof
         % If the next item was end-of-file, then we're done.
     ;
-        MaybeItemOrEOF = read_item_syntax_error(ErrorMsg, LineNumber),
-        % If the next item was a syntax error, then insert it in the list
-        % of messages and continue looping.
-        term.context_init(!.SourceFileName, LineNumber, Context),
-        dummy_term_with_context(Context, Term),
-        ThisError = ErrorMsg - Term,
-        !:Msgs = [ThisError | !.Msgs],
+        % If the next item had some errors, then insert them
+        % in the list of errors and continue looping.
+
+        MaybeItemOrEOF = read_item_errors(ItemSpecs),
+        !:Specs = ItemSpecs ++ !.Specs,
         !:Error = some_module_errors,
-        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs,
-            !Items, !Error, !IO)
-    ;
-        MaybeItemOrEOF = read_item_errors(Errors),
-        % If the next item was a semantic error, then insert it in the list
-        % of messages and continue looping.
-        list.foldl(add_error, Errors, !Msgs),
-        !:Error = some_module_errors,
-        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs,
-            !Items, !Error, !IO)
+        read_items_loop(!.ModuleName, !.SourceFileName, !Items,
+            !Specs, !Error, !IO)
     ;
         MaybeItemOrEOF = read_item_ok(Item),
-        read_items_loop_ok(Item, !ModuleName, !SourceFileName,
-            !Msgs, !Items, !Error, !IO),
-        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs,
-            !Items, !Error, !IO)
+        read_items_loop_ok(Item, !ModuleName, !SourceFileName, !Items,
+            !Specs, !Error, !IO),
+        read_items_loop(!.ModuleName, !.SourceFileName, !Items,
+            !Specs, !Error, !IO)
     ).
 
 :- pred read_items_loop_ok(item::in, module_name::in, module_name::out,
-    file_name::in, file_name::out, message_list::in, message_list::out,
-    list(item)::in, list(item)::out, module_error::in, module_error::out,
-    io::di, io::uo) is det.
+    file_name::in, file_name::out, list(item)::in, list(item)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    module_error::in, module_error::out, io::di, io::uo) is det.
 
-read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Msgs, !Items,
-        !Error, !IO) :-
+read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Items,
+        !Specs, !Error, !IO) :-
     (
         Item0 = item_nothing(ItemNothing0),
         ItemNothing0 = item_nothing_info(yes(Warning), Context0)
@@ -935,7 +932,10 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Msgs, !Items,
         ),
         (
             Warn = yes,
-            add_warning(Msg, Term, !Msgs),
+            Pieces = [words("Warning: "), words(Msg), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs],
 
             globals.io_lookup_bool_option(halt_at_warn, Halt, !IO),
             (
@@ -997,6 +997,8 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Msgs, !Items,
         !:Items = [Item | !.Items]
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- func make_pseudo_import_module_decl(prog_context, module_specifier) = item.
 
 make_pseudo_import_module_decl(Context, ModuleSpecifier) = Item :-
@@ -1022,8 +1024,7 @@ make_pseudo_include_module_decl(Context, ModuleSpecifier) = Item :-
 
 :- type read_item_result
     --->    read_item_eof
-    ;       read_item_syntax_error(file_name, int)
-    ;       read_item_errors(assoc_list(string, term))
+    ;       read_item_errors(list(error_spec))
     ;       read_item_ok(item).
 
     % Read_item/1 reads a single item, and if it is a valid term parses it.
@@ -1033,22 +1034,34 @@ make_pseudo_include_module_decl(Context, ModuleSpecifier) = Item :-
 
 read_item(ModuleName, SourceFileName, MaybeItem, !IO) :-
     parser.read_term_filename(SourceFileName, MaybeTerm, !IO),
-    process_read_term(ModuleName, MaybeTerm, MaybeItem).
+    read_term_to_item_result(ModuleName, SourceFileName, MaybeTerm, MaybeItem).
 
-:- pred process_read_term(module_name::in, read_term::in,
+:- pred read_term_to_item_result(module_name::in, string::in, read_term::in,
     read_item_result::out) is det.
 
-process_read_term(_ModuleName, eof, read_item_eof).
-process_read_term(_ModuleName, error(ErrorMsg, LineNumber),
-        read_item_syntax_error(ErrorMsg, LineNumber)).
-process_read_term(ModuleName, term(VarSet, Term), MaybeItemOrEof) :-
-    parse_item(ModuleName, VarSet, Term, MaybeItem),
-    convert_item(MaybeItem, MaybeItemOrEof).
+read_term_to_item_result(ModuleName, FileName, ReadTermResult,
+        ReadItemResult) :-
+    (
+        ReadTermResult = eof,
+        ReadItemResult = read_item_eof
+    ;
+        ReadTermResult = error(ErrorMsg, LineNumber),
+        % XXX Do we need to add an "Error:" prefix?
+        Pieces = [words(ErrorMsg), suffix("."), nl],
+        Context = term.context_init(FileName, LineNumber),
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        ReadItemResult = read_item_errors([Spec])
+    ;
+        ReadTermResult = term(VarSet, Term),
+        parse_item(ModuleName, VarSet, Term, MaybeItem),
+        convert_item(MaybeItem, ReadItemResult)
+    ).
 
 :- pred convert_item(maybe1(item)::in, read_item_result::out) is det.
 
 convert_item(ok1(Item), read_item_ok(Item)).
-convert_item(error1(Errors), read_item_errors(Errors)).
+convert_item(error1(Specs), read_item_errors(Specs)).
 
 parse_item(ModuleName, VarSet, Term, Result) :-
     ( Term = term.functor(term.atom(":-"), [Decl], _DeclContext) ->
@@ -1079,26 +1092,30 @@ parse_item(ModuleName, VarSet, Term, Result) :-
     prog_varset::in, term.context::in, maybe1(item)::out) is det.
 
 process_clause(ModuleName, Term, Head, Body0, ProgVarSet0, Context, Result) :-
-    parse_goal(Body0, MaybeBody, ProgVarSet0, ProgVarSet),
+    GoalContextPieces = [],
+    parse_goal(Body0, GoalContextPieces, MaybeBody, ProgVarSet0, ProgVarSet),
     (
         MaybeBody = ok1(Body),
+        varset.coerce(ProgVarSet, VarSet),
         (
             Head = term.functor(term.atom("="), [FuncHead0, FuncResult], _),
             FuncHead = desugar_field_access(FuncHead0)
         ->
+            HeadContextPieces = [words("In equation head:")],
             parse_implicitly_qualified_term(ModuleName, FuncHead, Head,
-                "equation head", MaybeFunctor),
+                VarSet, HeadContextPieces, MaybeFunctor),
             process_func_clause(MaybeFunctor, FuncResult, ProgVarSet, Body,
                 Context, Result)
         ;
+            HeadContextPieces = [words("In clause head:")],
             parse_implicitly_qualified_term(ModuleName, Head, Term,
-                "clause head", MaybeFunctor),
+                VarSet, HeadContextPieces, MaybeFunctor),
             process_pred_clause(MaybeFunctor, ProgVarSet, Body, Context,
                 Result)
         )
     ;
-        MaybeBody = error1(Errors),
-        Result = error1(Errors)
+        MaybeBody = error1(Specs),
+        Result = error1(Specs)
     ).
 
 :- pred process_pred_clause(maybe_functor::in, prog_varset::in, goal::in,
@@ -1113,9 +1130,8 @@ process_pred_clause(MaybeFunctor, VarSet, Body, Context, MaybeItem) :-
         Item = item_clause(ItemClause),
         MaybeItem = ok1(Item)
     ;
-        MaybeFunctor = error2(Errors0),
-        Errors = assoc_list.map_values_only(term.coerce, Errors0),
-        MaybeItem = error1(Errors)
+        MaybeFunctor = error2(Specs),
+        MaybeItem = error1(Specs)
     ).
 
 :- pred process_func_clause(maybe_functor::in, term::in, prog_varset::in,
@@ -1131,9 +1147,8 @@ process_func_clause(MaybeFunctor, Result0, VarSet, Body, Context, MaybeItem) :-
         Item = item_clause(ItemClause),
         MaybeItem = ok1(Item)
     ;
-        MaybeFunctor = error2(Errors0),
-        Errors = assoc_list.map_values_only(term.coerce, Errors0),
-        MaybeItem = error1(Errors)
+        MaybeFunctor = error2(Specs),
+        MaybeItem = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1153,10 +1168,10 @@ process_func_clause(MaybeFunctor, Result0, VarSet, Body, Context, MaybeItem) :-
     % both the attribute and the declaration that that attribute modifies;
     % this term is used when printing out error messages for cases when
     % attributes are used on declarations where they are not allowed.
-:- type decl_attrs == assoc_list(decl_attribute, term).
+:- type decl_attrs == assoc_list(decl_attribute, term.context).
 
-parse_decl(ModuleName, VarSet, F, Result) :-
-    parse_decl_2(ModuleName, VarSet, F, [], Result).
+parse_decl(ModuleName, VarSet, Term, Result) :-
+    parse_decl_2(ModuleName, VarSet, Term, [], Result).
 
     % parse_decl_2(ModuleName, VarSet, Term, Attributes, Result):
     %
@@ -1167,12 +1182,12 @@ parse_decl(ModuleName, VarSet, F, Result) :-
 :- pred parse_decl_2(module_name::in, varset::in, term::in, decl_attrs::in,
     maybe1(item)::out) is det.
 
-parse_decl_2(ModuleName, VarSet, F, Attributes, Result) :-
-    ( F = term.functor(term.atom(Atom), Args, Context) ->
+parse_decl_2(ModuleName, VarSet, Term, Attributes, Result) :-
+    ( Term = term.functor(term.atom(Atom), Args, Context) ->
         (
             parse_decl_attribute(Atom, Args, Attribute, SubTerm)
         ->
-            NewAttributes = [Attribute - F | Attributes],
+            NewAttributes = [Attribute - Context | Attributes],
             parse_decl_2(ModuleName, VarSet, SubTerm, NewAttributes, Result)
         ;
             process_decl(ModuleName, VarSet, Atom, Args, Attributes, Context,
@@ -1180,10 +1195,19 @@ parse_decl_2(ModuleName, VarSet, F, Attributes, Result) :-
         ->
             ResultPrime = Result
         ;
-            Result = error1(["unrecognized declaration" - F])
+            TermStr = mercury_term_to_string(VarSet, no, Term),
+            Pieces = [words("Error: unrecognized declaration:"), nl,
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        Result = error1(["atom expected after `:-'" - F])
+        Context = get_term_context(Term),
+        Pieces = [words("Error: atom expected after `:-'."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
     % process_decl(ModuleName, VarSet, Attributes, Atom, Args, Result):
@@ -1195,6 +1219,8 @@ parse_decl_2(ModuleName, VarSet, F, Attributes, Result) :-
 :- pred process_decl(module_name::in, varset::in, string::in, list(term)::in,
     decl_attrs::in, prog_context::in, maybe1(item)::out) is semidet.
 
+% XXX Break this up into one predicate per declaration,
+% with this predicate doing nothing except switching between them.
 process_decl(ModuleName, VarSet, "type", [TypeDecl], Attributes, Context,
         Result) :-
     parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Context, Result).
@@ -1218,19 +1244,19 @@ process_decl(ModuleName, VarSet, "inst", [InstDecl], Attributes,
     parse_inst_decl(ModuleName, VarSet, InstDecl, Context, Result0),
     check_no_attributes(Result0, Attributes, Result).
 
-process_decl(_ModuleName, _VarSet, "import_module", [ModuleSpec], Attributes,
+process_decl(_ModuleName, VarSet, "import_module", [ModuleSpec], Attributes,
         Context, Result) :-
-    parse_symlist_decl(parse_module_specifier, make_import,
+    parse_symlist_decl(parse_module_specifier(VarSet), make_import,
         ModuleSpec, Attributes, Context, Result).
 
-process_decl(_ModuleName, _VarSet, "use_module", [ModuleSpec], Attributes,
+process_decl(_ModuleName, VarSet, "use_module", [ModuleSpec], Attributes,
         Context, Result) :-
-    parse_symlist_decl(parse_module_specifier, make_use,
+    parse_symlist_decl(parse_module_specifier(VarSet), make_use,
         ModuleSpec, Attributes, Context, Result).
 
-process_decl(_ModuleName, _VarSet, "export_module", [ModuleSpec], Attributes,
+process_decl(_ModuleName, VarSet, "export_module", [ModuleSpec], Attributes,
         Context, Result) :-
-    parse_symlist_decl(parse_module_specifier, make_export,
+    parse_symlist_decl(parse_module_specifier(VarSet), make_export,
         ModuleSpec, Attributes, Context, Result).
 
 process_decl(_ModuleName, _VarSet, "interface", [], Attributes, Context,
@@ -1247,7 +1273,7 @@ process_decl(_ModuleName, _VarSet, "implementation", [], Attributes, Context,
     Result0 = ok1(Item),
     check_no_attributes(Result0, Attributes, Result).
 
-process_decl(ModuleName, _VarSet, "external", Args, Attributes, Context,
+process_decl(ModuleName, VarSet, "external", Args, Attributes, Context,
         Result) :-
     (
         Args = [PredSpec],
@@ -1264,14 +1290,14 @@ process_decl(ModuleName, _VarSet, "external", Args, Attributes, Context,
         ),
         MaybeBackend = yes(Backend)
     ),
-    parse_implicitly_qualified_symbol_name_specifier(ModuleName, PredSpec,
-        Result0),
+    parse_implicitly_qualified_symbol_name_specifier(ModuleName, VarSet,
+        PredSpec, Result0),
     process_maybe1(make_external(MaybeBackend, Context), Result0, Result1),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, _VarSet, "module", [ModuleName], Attributes,
+process_decl(DefaultModuleName, VarSet, "module", [ModuleName], Attributes,
         Context, Result) :-
-    parse_module_name(DefaultModuleName, ModuleName, Result0),
+    parse_module_name(DefaultModuleName, VarSet, ModuleName, Result0),
     (
         Result0 = ok1(ModuleNameSym),
         ModuleDefn = md_module(ModuleNameSym),
@@ -1279,14 +1305,15 @@ process_decl(DefaultModuleName, _VarSet, "module", [ModuleName], Attributes,
         Item = item_module_defn(ItemModuleDefn),
         Result1 = ok1(Item)
     ;
-        Result0 = error1(Errors),
-        Result1 = error1(Errors)
+        Result0 = error1(Specs),
+        Result1 = error1(Specs)
     ),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, _VarSet, "include_module", [ModuleNames],
+process_decl(DefaultModuleName, VarSet, "include_module", [ModuleNames],
         Attributes, Context, Result) :-
-    parse_list(parse_module_name(DefaultModuleName), ModuleNames, Result0),
+    parse_list(parse_module_name(DefaultModuleName, VarSet), ModuleNames,
+        Result0),
     (
         Result0 = ok1(ModuleNameSyms),
         ModuleDefn = md_include_module(ModuleNameSyms),
@@ -1294,12 +1321,12 @@ process_decl(DefaultModuleName, _VarSet, "include_module", [ModuleNames],
         Item = item_module_defn(ItemModuleDefn),
         Result1 = ok1(Item)
     ;
-        Result0 = error1(Errors),
-        Result1 = error1(Errors)
+        Result0 = error1(Specs),
+        Result1 = error1(Specs)
     ),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, _VarSet, "end_module", [ModuleName],
+process_decl(DefaultModuleName, VarSet, "end_module", [ModuleName],
         Attributes, Context, Result) :-
     % The name in an `end_module' declaration not inside the scope of the
     % module being ended, so the default module name here is the parent
@@ -1308,7 +1335,7 @@ process_decl(DefaultModuleName, _VarSet, "end_module", [ModuleName],
     root_module_name(RootModuleName),
     sym_name_get_module_name(DefaultModuleName, RootModuleName,
         ParentOfDefaultModuleName),
-    parse_module_name(ParentOfDefaultModuleName, ModuleName, Result0),
+    parse_module_name(ParentOfDefaultModuleName, VarSet, ModuleName, Result0),
     (
         Result0 = ok1(ModuleNameSym),
         ModuleDefn = md_end_module(ModuleNameSym),
@@ -1316,8 +1343,8 @@ process_decl(DefaultModuleName, _VarSet, "end_module", [ModuleName],
         Item = item_module_defn(ItemModuleDefn),
         Result1 = ok1(Item)
     ;
-        Result0 = error1(Errors),
-        Result1 = error1(Errors)
+        Result0 = error1(Specs),
+        Result1 = error1(Specs)
     ),
     check_no_attributes(Result1, Attributes, Result).
 
@@ -1354,8 +1381,8 @@ process_decl(ModuleName, VarSet, "typeclass", Args, Attributes, Context,
         Result0 = ok1(ItemTypeClass),
         Result1 = ok1(item_typeclass(ItemTypeClass))
     ;
-        Result0 = error1(Errors),
-        Result1 = error1(Errors)
+        Result0 = error1(Specs),
+        Result1 = error1(Specs)
     ),
     check_no_attributes(Result1, Attributes, Result).
 
@@ -1366,22 +1393,21 @@ process_decl(ModuleName, VarSet, "instance", Args, Attributes, Context,
         Result0 = ok1(ItemInstance),
         Result1 = ok1(item_instance(ItemInstance))
     ;
-        Result0 = error1(Errors),
-        Result1 = error1(Errors)
+        Result0 = error1(Specs),
+        Result1 = error1(Specs)
     ),
     check_no_attributes(Result1, Attributes, Result).
 
-process_decl(ModuleName, _VarSet, "version_numbers",
+process_decl(ModuleName, VarSet, "version_numbers",
         [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
         Attributes, Context, Result) :-
-    parse_module_specifier(ModuleNameTerm, ModuleNameResult),
+    parse_module_specifier(VarSet, ModuleNameTerm, ModuleNameResult),
     (
         VersionNumberTerm = term.functor(term.integer(VersionNumber), [], _),
         VersionNumber = version_numbers_version_number
     ->
         (
-            ModuleNameResult = ok1(ModuleName)
-        ->
+            ModuleNameResult = ok1(ModuleName),
             recompilation.version.parse_version_numbers(VersionNumbersTerm,
                 Result0),
             (
@@ -1392,15 +1418,22 @@ process_decl(ModuleName, _VarSet, "version_numbers",
                 Result1 = ok1(Item),
                 check_no_attributes(Result1, Attributes, Result)
             ;
-                Result0 = error1(Errors),
-                Result = error1(Errors)
+                Result0 = error1(Specs),
+                Result = error1(Specs)
             )
         ;
-            Msg = "invalid module name in `:- version_numbers'",
-            Result = error1([Msg - ModuleNameTerm])
+            % XXX _Spec
+            ModuleNameResult = error1(_Spec),
+            Pieces = [words("Error: invalid module name in"),
+                quote(":- version_numbers"), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ModuleNameTerm),
+                    [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        ( VersionNumberTerm = term.functor(_, _, Context) ->
+        (
+            VersionNumberTerm = term.functor(_, _, _VersionNumberContext),
             Msg = "interface file needs to be recreated, " ++
                 "the version numbers are out of date",
             dummy_term_with_context(Context, DummyTerm),
@@ -1410,8 +1443,12 @@ process_decl(ModuleName, _VarSet, "version_numbers",
             Item = item_nothing(ItemNothing),
             Result = ok1(Item)
         ;
-            Msg = "invalid version number in `:- version_numbers'",
-            Result = error1([Msg - VersionNumberTerm])
+            VersionNumberTerm = term.variable(_, VersionNumberContext),
+            Pieces = [words("Error: invalid version number in"),
+                quote(":- version_numbers"), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(VersionNumberContext, [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ).
 
@@ -1457,10 +1494,14 @@ parse_decl_attribute("solver", [Decl], decl_attr_solver_type, Decl).
 check_no_attributes(Result0, Attributes, Result) :-
     (
         Result0 = ok1(_),
-        Attributes = [Attr - Term | _]
+        Attributes = [Attr - Context | _]
     ->
-        Message = attribute_description(Attr) ++ " not allowed here",
-        Result = error1([Message - Term])
+        % XXX Shouldn't we mention EVERY element of Attributes?
+        Pieces = [words("Error:"), words(attribute_description(Attr)),
+            words("not allowed here."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        Result = error1([Spec])
     ;
         Result = Result0
     ).
@@ -1487,7 +1528,8 @@ attribute_description(decl_attr_solver_type) = "solver type specifier".
 parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Context,
         Result) :-
     varset.coerce(VarSet, ProgVarSet0),
-    parse_goal(Term, MaybeGoal0, ProgVarSet0, ProgVarSet),
+    ContextPieces = [],
+    parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
     (
         MaybeGoal0 = ok1(Goal0),
         % Get universally quantified variables.
@@ -1515,8 +1557,8 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Context,
         Item = item_promise(ItemPromise),
         Result = ok1(Item)
     ;
-        MaybeGoal0 = error1(Errors),
-        Result = error1(Errors)
+        MaybeGoal0 = error1(Specs),
+        Result = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1527,17 +1569,20 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Context,
 parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Context, Result) :-
     (
         TypeDecl = term.functor(term.atom(Name), Args, _),
-        parse_type_decl_type(ModuleName, Name, Args, Attributes, Cond, R)
+        parse_type_decl_type(ModuleName, VarSet, Name, Args, Attributes, Cond,
+            TypeDeclResultPrime)
     ->
-        R1 = R,
+        TypeDeclResult = TypeDeclResultPrime,
         Cond1 = Cond
     ;
-        process_abstract_type(ModuleName, TypeDecl, Attributes, R1),
+        process_abstract_type(ModuleName, VarSet, TypeDecl, Attributes,
+            TypeDeclResult),
         Cond1 = cond_true
     ),
     % We should check the condition for errors (don't bother at the moment,
     % since we ignore conditions anyhow :-).
-    process_maybe1(make_type_defn(VarSet, Cond1, Context), R1, Result).
+    process_maybe1(make_type_defn(VarSet, Cond1, Context), TypeDeclResult,
+        Result).
 
 :- pred make_type_defn(varset::in, condition::in, prog_context::in,
     processed_type_body::in, item::out) is det.
@@ -1569,95 +1614,84 @@ get_is_solver_type(IsSolverType, !Attributes) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Add a warning message to the list of messages.
-    %
-:- pred add_warning(string::in, term::in, message_list::in, message_list::out)
-    is det.
-
-add_warning(Warning, Term, Msgs, [Msg - Term | Msgs]) :-
-    string.append("Warning: ", Warning, Msg).
-
-    % Add an error message to the list of messages.
-    %
-:- pred add_error(pair(string, term)::in, message_list::in, message_list::out)
-    is det.
-
-add_error(BaseMsg - Term, Msgs, [Msg - Term | Msgs]) :-
-    string.append("Error: ",  BaseMsg, Msg).
-
-%-----------------------------------------------------------------------------%
-
     % parse_type_decl_type(Term, Condition, Result) succeeds if Term is
     % a "type" type declaration, and binds Condition to the condition for
     % that declaration (if any), and Result to a representation of the
     % declaration.
     %
-:- pred parse_type_decl_type(module_name::in, string::in, list(term)::in,
-    decl_attrs::in, condition::out, maybe1(processed_type_body)::out)
-    is semidet.
+:- pred parse_type_decl_type(module_name::in, varset::in, string::in,
+    list(term)::in, decl_attrs::in, condition::out,
+    maybe1(processed_type_body)::out) is semidet.
 
-parse_type_decl_type(ModuleName, "--->", [HeadTerm, BodyTerm], Attributes0,
-        Condition, Result) :-
-    get_condition(BodyTerm, Body, Condition),
-    get_is_solver_type(IsSolverType, Attributes0, Attributes),
+parse_type_decl_type(ModuleName, VarSet, Connective, [HeadTerm, BodyTerm],
+        Attributes0, Condition, Result) :-
     (
-        IsSolverType = solver_type,
-        Msg = "a solver type cannot have data constructors",
-        Result = error1([Msg - HeadTerm])
-    ;
-        IsSolverType = non_solver_type,
-        du_type_rhs_ctors_and_where_terms(Body, CtorsTerm, MaybeWhereTerm),
-        CtorsResult = convert_constructors(ModuleName, CtorsTerm),
+        Connective = "--->",
+        get_condition(BodyTerm, Body, Condition),
+        get_is_solver_type(IsSolverType, Attributes0, Attributes),
         (
-            CtorsResult = error1(Errors),
-            Result = error1(Errors)
+            IsSolverType = solver_type,
+            Pieces = [words("Error: a solver type:"),
+                words("cannot have data constructors."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
-            CtorsResult = ok1(Ctors),
-            WhereResult = parse_type_decl_where_term(non_solver_type,
-                ModuleName, MaybeWhereTerm),
+            IsSolverType = non_solver_type,
+            du_type_rhs_ctors_and_where_terms(Body, CtorsTerm, MaybeWhereTerm),
+            CtorsResult = convert_constructors(ModuleName, VarSet, CtorsTerm),
             (
-                WhereResult = error2(Errors),
-                Result = error1(Errors)
+                CtorsResult = error1(Specs),
+                Result = error1(Specs)
             ;
-                % The code to process `where' attributes will return an error
-                % result if solver attributes are given for a non-solver type.
-                % Because this is a du type, if the unification with
-                % WhereResult succeeds then _NoSolverTypeDetails is
-                % guaranteed to be `no'.
-                WhereResult = ok2(_NoSolverTypeDetails, MaybeUserEqComp),
-                process_du_type(ModuleName, HeadTerm, Body, Ctors,
-                    MaybeUserEqComp, Result0),
-                check_no_attributes(Result0, Attributes, Result)
+                CtorsResult = ok1(Ctors),
+                WhereResult = parse_type_decl_where_term(non_solver_type,
+                    ModuleName, VarSet, MaybeWhereTerm),
+                (
+                    WhereResult = error2(Specs),
+                    Result = error1(Specs)
+                ;
+                    % The code to process `where' attributes will return
+                    % an error result if solver attributes are given for
+                    % a non-solver type. Because this is a du type, if the
+                    % unification with WhereResult succeeds then
+                    % _NoSolverTypeDetails is guaranteed to be `no'.
+                    WhereResult = ok2(_NoSolverTypeDetails, MaybeUserEqComp),
+                    process_du_type(ModuleName, VarSet, HeadTerm, BodyTerm,
+                        Ctors, MaybeUserEqComp, Result0),
+                    check_no_attributes(Result0, Attributes, Result)
+                )
             )
         )
-    ).
-
-parse_type_decl_type(ModuleName, "==", [HeadTerm, BodyTerm], Attributes,
-        Condition, Result) :-
-    get_condition(BodyTerm, Body, Condition),
-    process_eqv_type(ModuleName, HeadTerm, Body, Result0),
-    check_no_attributes(Result0, Attributes, Result).
-
-parse_type_decl_type(ModuleName, "where", [HeadTerm, BodyTerm], Attributes0,
-        Condition, Result) :-
-    get_condition(BodyTerm, Body, Condition),
-    get_is_solver_type(IsSolverType, Attributes0, Attributes),
-    (
-        IsSolverType = non_solver_type,
-        Msg = "only solver types can be defined by a `where' block alone",
-        Result = error1([Msg - HeadTerm])
     ;
-        IsSolverType = solver_type,
-        Result0 = parse_type_decl_where_term(solver_type, ModuleName,
-            yes(Body)),
+        Connective = "==",
+        get_condition(BodyTerm, Body, Condition),
+        process_eqv_type(ModuleName, VarSet, HeadTerm, Body, Result0),
+        check_no_attributes(Result0, Attributes0, Result)
+    ;
+        Connective = "where",
+        get_condition(BodyTerm, Body, Condition),
+        get_is_solver_type(IsSolverType, Attributes0, Attributes),
         (
-            Result0 = error2(Errors),
-            Result = error1(Errors)
+            IsSolverType = non_solver_type,
+            Pieces = [words("Error: only solver types can be defined"),
+                words("by a `where' block alone."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
-            Result0 = ok2(MaybeSolverTypeDetails, MaybeUserEqComp),
-            process_solver_type(ModuleName, HeadTerm,
-                MaybeSolverTypeDetails, MaybeUserEqComp, Result1),
-            check_no_attributes(Result1, Attributes, Result)
+            IsSolverType = solver_type,
+            Result0 = parse_type_decl_where_term(solver_type, ModuleName,
+                VarSet, yes(Body)),
+            (
+                Result0 = error2(Specs),
+                Result = error1(Specs)
+            ;
+                Result0 = ok2(MaybeSolverTypeDetails, MaybeUserEqComp),
+                process_solver_type(ModuleName, VarSet, HeadTerm,
+                    MaybeSolverTypeDetails, MaybeUserEqComp, Result1),
+                check_no_attributes(Result1, Attributes, Result)
+            )
         )
     ).
 
@@ -1687,16 +1721,16 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
 
 parse_type_decl_pred(ModuleName, VarSet, Pred, Attributes, Context, Result) :-
     get_condition(Pred, Body, Condition),
-    get_determinism(Body, Body2, MaybeDeterminism),
+    get_determinism(VarSet, Body, Body2, MaybeDeterminism),
     get_with_inst(Body2, Body3, WithInst),
-    get_with_type(Body3, Body4, WithTypeResult),
+    get_with_type(VarSet, Body3, Body4, WithTypeResult),
     ( WithTypeResult = ok1(WithType),
         process_type_decl_pred_or_func(pf_predicate, ModuleName, WithType,
             WithInst, MaybeDeterminism, VarSet, Body4, Condition, Attributes,
             Context, Result)
     ;
-        WithTypeResult = error1(Errors),
-        Result = error1(Errors)
+        WithTypeResult = error1(Specs),
+        Result = error1(Specs)
     ).
 
 :- pred process_type_decl_pred_or_func(pred_or_func::in, module_name::in,
@@ -1712,11 +1746,18 @@ process_type_decl_pred_or_func(PredOrFunc, ModuleName, WithType, WithInst0,
         (
             WithInst0 = ok1(WithInst),
             ( MaybeDeterminism = yes(_), WithInst = yes(_) ->
-                Msg = "`with_inst` and determinism both specified",
-                Result = error1([Msg - Body])
+                Pieces = [words("Error:"), quote("with_inst"),
+                    words("and determinism both specified."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Body), [always(Pieces)])]),
+                Result = error1([Spec])
             ; WithInst = yes(_), WithType = no ->
-                Msg = "`with_inst` specified without `with_type`",
-                Result = error1([Msg - Body])
+                Pieces = [words("Error:"), quote("with_inst"),
+                    words("specified without"), quote("with_type"),
+                    suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Body), [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 (
                     % Function declarations with `with_type` annotations
@@ -1733,17 +1774,17 @@ process_type_decl_pred_or_func(PredOrFunc, ModuleName, WithType, WithInst0,
                 )
             )
         ;
-            WithInst0 = error1(Errors),
-            Result = error1(Errors)
+            WithInst0 = error1(Specs),
+            Result = error1(Specs)
         )
     ;
-        MaybeDeterminism0 = error1(Errors),
-        Result = error1(Errors)
+        MaybeDeterminism0 = error1(Specs),
+        Result = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % parse_type_decl_func(ModuleName, Varset, Func, Attributes, Result)
+    % parse_type_decl_func(ModuleName, VarSet, Func, Attributes, Result)
     % succeeds if Func is a function type declaration, and binds Result to
     % a representation of the declaration.
     %
@@ -1752,17 +1793,17 @@ process_type_decl_pred_or_func(PredOrFunc, ModuleName, WithType, WithInst0,
 
 parse_type_decl_func(ModuleName, VarSet, Func, Attributes, Context, Result) :-
     get_condition(Func, Body, Condition),
-    get_determinism(Body, Body2, MaybeDeterminism),
+    get_determinism(VarSet, Body, Body2, MaybeDeterminism),
     get_with_inst(Body2, Body3, WithInst),
-    get_with_type(Body3, Body4, WithTypeResult),
+    get_with_type(VarSet, Body3, Body4, WithTypeResult),
     (
         WithTypeResult = ok1(WithType),
         process_type_decl_pred_or_func(pf_function, ModuleName,
             WithType, WithInst, MaybeDeterminism, VarSet, Body4,
             Condition, Attributes, Context, Result)
     ;
-        WithTypeResult = error1(Errors),
-        Result = error1(Errors)
+        WithTypeResult = error1(Specs),
+        Result = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1777,7 +1818,7 @@ parse_type_decl_func(ModuleName, VarSet, Func, Attributes, Context, Result) :-
 
 parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Context, Result) :-
     get_condition(Pred, Body, Condition),
-    get_determinism(Body, Body2, MaybeDeterminism0),
+    get_determinism(VarSet, Body, Body2, MaybeDeterminism0),
     get_with_inst(Body2, Body3, WithInst0),
     (
         MaybeDeterminism0 = ok1(MaybeDeterminism),
@@ -1787,19 +1828,23 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Context, Result) :-
                 MaybeDeterminism = yes(_),
                 WithInst = yes(_)
             ->
-                Msg = "`with_inst` and determinism both specified",
-                Result = error1([Msg - Body])
+                Pieces = [words("Error:"), quote("with_inst"),
+                    words("and determinism both specified."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Body), [always(Pieces)])]),
+                Result = error1([Spec])
+
             ;
                 process_mode(ModuleName, VarSet, Body3, Condition, Attributes,
                     WithInst, MaybeDeterminism, Context, Result)
             )
         ;
-            WithInst0 = error1(Errors),
-            Result = error1(Errors)
+            WithInst0 = error1(Specs),
+            Result = error1(Specs)
         )
     ;
-        MaybeDeterminism0 = error1(Errors),
-        Result = error1(Errors)
+        MaybeDeterminism0 = error1(Specs),
+        Result = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1807,16 +1852,22 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Context, Result) :-
 :- pred parse_initialise_decl(module_name::in, varset::in, list(term)::in,
     prog_context::in, maybe1(item)::out) is semidet.
 
-parse_initialise_decl(_ModuleName, _VarSet, [Term], Context, Result) :-
-    parse_symbol_name_specifier(Term, MaybeSymNameSpecifier),
+parse_initialise_decl(_ModuleName, VarSet, [Term], Context, Result) :-
+    parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
     (
-        MaybeSymNameSpecifier = error1(Errors),
-        Result = error1(Errors)
+        MaybeSymNameSpecifier = error1(Specs),
+        Result = error1(Specs)
     ;
         MaybeSymNameSpecifier = ok1(SymNameSpecifier),
         (
             SymNameSpecifier = name(_),
-            Result = error1(["`initialise' declaration requires arity" - Term])
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error:"), quote("initialise"),
+                words("declaration"), words("requires arity, found"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             SymNameSpecifier = name_arity(SymName, Arity),
             (
@@ -1827,9 +1878,14 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Context, Result) :-
                 Item = item_initialise(ItemInitialise),
                 Result = ok1(Item)
             ;
-                Msg = "`initialise' declaration specifies a predicate " ++
-                    "whose arity is not zero or two",
-                Result = error1([Msg - Term])
+                TermStr = describe_error_term(VarSet, Term),
+                Pieces = [words("Error:"), quote("initialise"),
+                    words("declaration specifies a predicate"),
+                    words("whose arity is not zero or two:"),
+                    words(TermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Result = error1([Spec])
             )
         )
     ).
@@ -1839,16 +1895,22 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Context, Result) :-
 :- pred parse_finalise_decl(module_name::in, varset::in, list(term)::in,
     prog_context::in, maybe1(item)::out) is semidet.
 
-parse_finalise_decl(_ModuleName, _VarSet, [Term], Context, Result) :-
-    parse_symbol_name_specifier(Term, MaybeSymNameSpecifier),
+parse_finalise_decl(_ModuleName, VarSet, [Term], Context, Result) :-
+    parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
     (
-        MaybeSymNameSpecifier = error1(Errors),
-        Result = error1(Errors)
+        MaybeSymNameSpecifier = error1(Specs),
+        Result = error1(Specs)
     ;
         MaybeSymNameSpecifier = ok1(SymNameSpecifier),
         (
             SymNameSpecifier = name(_),
-            Result = error1(["`finalise' declaration requires arity" - Term])
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error:"), quote("finalise"),
+                words("declaration"), words("requires arity, found"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             SymNameSpecifier = name_arity(SymName, Arity),
             (
@@ -1859,9 +1921,14 @@ parse_finalise_decl(_ModuleName, _VarSet, [Term], Context, Result) :-
                 Item = item_finalise(ItemFinalise),
                 Result = ok1(Item)
             ;
-                Msg = "`finalise' declaration specifies a predicate " ++
-                    "whose arity is not zero or two",
-                Result = error1([Msg - Term])
+                TermStr = describe_error_term(VarSet, Term),
+                Pieces = [words("Error:"), quote("finalise"),
+                    words("declaration specifies a predicate"),
+                    words("whose arity is not zero or two:"),
+                    words(TermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Result = error1([Spec])
             )
         )
     ).
@@ -1876,13 +1943,13 @@ parse_finalise_decl(_ModuleName, _VarSet, [Term], Context, Result) :-
 :- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
     prog_context::in, maybe1(item)::out) is semidet.
 
-parse_mutable_decl(_ModuleName, Varset, Terms, Context, Result) :-
+parse_mutable_decl(_ModuleName, VarSet, Terms, Context, Result) :-
     Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
     parse_mutable_name(NameTerm, NameResult),
-    parse_mutable_type(TypeTerm, TypeResult),
+    parse_mutable_type(VarSet, TypeTerm, TypeResult),
     term.coerce(ValueTerm, Value),
-    varset.coerce(Varset, ProgVarset),
-    parse_mutable_inst(InstTerm, InstResult),
+    varset.coerce(VarSet, ProgVarSet),
+    parse_mutable_inst(VarSet, InstTerm, InstResult),
 
     % The list of attributes is optional.
     (
@@ -1890,7 +1957,7 @@ parse_mutable_decl(_ModuleName, Varset, Terms, Context, Result) :-
         MutAttrsResult = ok1(default_mutable_attributes)
     ;
         OptMutAttrsTerm = [MutAttrsTerm],
-        parse_mutable_attrs(MutAttrsTerm, MutAttrsResult)
+        parse_mutable_attrs(VarSet, MutAttrsTerm, MutAttrsResult)
     ),
     (
         NameResult = ok1(Name),
@@ -1905,13 +1972,13 @@ parse_mutable_decl(_ModuleName, Varset, Terms, Context, Result) :-
         % passes attempting to reuse this variable when fresh variables are
         % allocated.
         ItemMutable = item_mutable_info(Name, Type, Value, Inst, MutAttrs,
-            ProgVarset, Context),
+            ProgVarSet, Context),
         Item = item_mutable(ItemMutable),
         Result = ok1(Item)
     ;
-        Errors = get_any_errors1(NameResult) ++ get_any_errors1(TypeResult) ++
+        Specs = get_any_errors1(NameResult) ++ get_any_errors1(TypeResult) ++
             get_any_errors1(InstResult) ++ get_any_errors1(MutAttrsResult),
-        Result = error1(Errors)
+        Result = error1(Specs)
     ).
 
 :- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
@@ -1920,29 +1987,46 @@ parse_mutable_name(NameTerm, NameResult) :-
     ( NameTerm = term.functor(atom(Name), [], _) ->
         NameResult = ok1(Name)
     ;
-        NameResult = error1(["invalid mutable name" - NameTerm])
+        Pieces = [words("Error: invalid mutable name."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
+        NameResult = error1([Spec])
     ).
 
-:- pred parse_mutable_type(term::in, maybe1(mer_type)::out) is det.
+:- pred parse_mutable_type(varset::in, term::in, maybe1(mer_type)::out) is det.
 
-parse_mutable_type(TypeTerm, TypeResult) :-
+parse_mutable_type(VarSet, TypeTerm, TypeResult) :-
     ( term.contains_var(TypeTerm, _) ->
-        Msg = "the type in a mutable declaration cannot contain variables",
-        TypeResult = error1([Msg - TypeTerm])
+        TypeTermStr = describe_error_term(VarSet, TypeTerm),
+        Pieces = [words("Error: the type in a mutable declaration"),
+            words("cannot contain variables:"),
+            words(TypeTermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
+        TypeResult = error1([Spec])
     ;
-        parse_type(TypeTerm, TypeResult)
+        ContextPieces = [],
+        parse_type(TypeTerm, VarSet, ContextPieces, TypeResult)
     ).
 
-:- pred parse_mutable_inst(term::in, maybe1(mer_inst)::out) is det.
+:- pred parse_mutable_inst(varset::in, term::in, maybe1(mer_inst)::out) is det.
 
-parse_mutable_inst(InstTerm, InstResult) :-
+parse_mutable_inst(VarSet, InstTerm, InstResult) :-
     ( term.contains_var(InstTerm, _) ->
-        Msg = "the inst in a mutable declaration cannot contain variables",
-        InstResult = error1([Msg - InstTerm])
+        InstTermStr = describe_error_term(VarSet, InstTerm),
+        Pieces = [words("Error: the inst in a mutable declaration"),
+            words("cannot contain variables:"),
+            words(InstTermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
+        InstResult = error1([Spec])
     ; convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) ->
         InstResult = ok1(Inst)
     ;
-        InstResult = error1(["invalid inst in mutable declaration" - InstTerm])
+        Pieces = [words("Error: invalid inst in mutable declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
+        InstResult = error1([Spec])
     ).
 
 :- type collected_mutable_attribute
@@ -1952,10 +2036,10 @@ parse_mutable_inst(InstTerm, InstResult) :-
     ;       mutable_attr_constant(bool)
     ;       mutable_attr_thread_local(mutable_thread_local).
 
-:- pred parse_mutable_attrs(term::in,
+:- pred parse_mutable_attrs(varset::in, term::in,
     maybe1(mutable_var_attributes)::out) is det.
 
-parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
+parse_mutable_attrs(VarSet, MutAttrsTerm, MutAttrsResult) :-
     Attributes0 = default_mutable_attributes,
     ConflictingAttributes = [
         mutable_attr_trailed(mutable_trailed) -
@@ -1981,16 +2065,28 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
             list.member(Conflict1, CollectedMutAttrs),
             list.member(Conflict2, CollectedMutAttrs)
         ->
-            Msg = "conflicting attributes in attribute list",
-            MutAttrsResult = error1([Msg - MutAttrsTerm])
+            % XXX Should generate more specific error message.
+            MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
+            Pieces = [words("Error: conflicting attributes"),
+                words("in attribute list:"), nl,
+                words(MutAttrsStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(MutAttrsTerm),
+                    [always(Pieces)])]),
+            MutAttrsResult = error1([Spec])
         ;
             list.foldl(process_mutable_attribute, CollectedMutAttrs,
                 Attributes0, Attributes),
             MutAttrsResult = ok1(Attributes)
         )
     ;
-        Msg = "malformed attribute list in mutable declaration",
-        MutAttrsResult = error1([Msg - MutAttrsTerm])
+        MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
+        Pieces = [words("Error: malformed attribute list"),
+            words("in mutable declaration:"),
+            words(MutAttrsStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(MutAttrsTerm), [always(Pieces)])]),
+        MutAttrsResult = error1([Spec])
     ).
 
 :- pred process_mutable_attribute(collected_mutable_attribute::in,
@@ -2049,8 +2145,11 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
         MutAttrResult = ok1(MutAttr)
     ;
-        Msg = "unrecognised attribute in mutable declaration",
-        MutAttrResult = error1([Msg - MutAttrTerm])
+        Pieces = [words("Error: unrecognised attribute"),
+            words("in mutable declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(MutAttrTerm), [always(Pieces)])]),
+        MutAttrResult = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2071,15 +2170,15 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
     % - `equality is <<pred name>>' (optional)
     % - `comparison is <<pred name>>' (optional).
     %
-parse_type_decl_where_part_if_present(IsSolverType, ModuleName, Term0, Term,
-        Result) :-
+parse_type_decl_where_part_if_present(IsSolverType, ModuleName, VarSet,
+        Term0, Term, Result) :-
     (
         Term0 = term.functor(term.atom("where"), Args0, _Context),
         Args0 = [Term1, WhereTerm]
     ->
         Term = Term1,
         Result = parse_type_decl_where_term(IsSolverType, ModuleName,
-            yes(WhereTerm))
+            VarSet, yes(WhereTerm))
     ;
         Term = Term0,
         Result = ok2(no, no)
@@ -2089,10 +2188,10 @@ parse_type_decl_where_part_if_present(IsSolverType, ModuleName, Term0, Term,
     % of results.  Either result half may be empty, hence the maybe
     % wrapper around each of those.
     %
-:- func parse_type_decl_where_term(is_solver_type, module_name, maybe(term)) =
-    maybe2(maybe(solver_type_details), maybe(unify_compare)).
+:- func parse_type_decl_where_term(is_solver_type, module_name, varset,
+    maybe(term)) = maybe2(maybe(solver_type_details), maybe(unify_compare)).
 
-parse_type_decl_where_term(IsSolverType, ModuleName, MaybeTerm0) =
+parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, MaybeTerm0) =
         MaybeWhereDetails :-
     (
         MaybeTerm0 = no,
@@ -2104,9 +2203,10 @@ parse_type_decl_where_term(IsSolverType, ModuleName, MaybeTerm0) =
             parse_where_attribute(parse_where_type_is_abstract_noncanonical,
                 TypeIsAbstractNoncanonicalResult, !MaybeTerm),
             parse_where_attribute(parse_where_is("representation",
-                    parse_where_type_is(ModuleName)),
+                    parse_where_type_is(ModuleName, VarSet)),
                 RepresentationIsResult, !MaybeTerm),
-            parse_where_attribute(parse_where_initialisation_is(ModuleName),
+            parse_where_attribute(parse_where_initialisation_is(ModuleName,
+                    VarSet),
                 InitialisationIsResult, !MaybeTerm),
             parse_where_attribute(parse_where_is("ground",
                     parse_where_inst_is(ModuleName)),
@@ -2118,10 +2218,10 @@ parse_type_decl_where_term(IsSolverType, ModuleName, MaybeTerm0) =
                     parse_where_mutable_is(ModuleName)),
                 CStoreIsResult, !MaybeTerm),
             parse_where_attribute(parse_where_is("equality",
-                    parse_where_pred_is(ModuleName)),
+                    parse_where_pred_is(ModuleName, VarSet)),
                 EqualityIsResult, !MaybeTerm),
             parse_where_attribute(parse_where_is("comparison",
-                    parse_where_pred_is(ModuleName)),
+                    parse_where_pred_is(ModuleName, VarSet)),
                 ComparisonIsResult, !MaybeTerm),
             parse_where_end(!.MaybeTerm, WhereEndResult)
         ),
@@ -2187,21 +2287,24 @@ parse_where_attribute(Parser, Result, MaybeTerm0, MaybeRest) :-
     maybe1(maybe(T)).
 
 parse_where_is(Name, Parser, Term) = Result :-
-    ( Term = term.functor(term.atom("is"), [LHS, RHS], _Context1) ->
-        ( LHS = term.functor(term.atom(Name), [], _Context2) ->
+    ( Term = term.functor(term.atom("is"), [LHS, RHS], _) ->
+        ( LHS = term.functor(term.atom(Name), [], _) ->
             RHSResult = Parser(RHS),
             (
                 RHSResult = ok1(ParsedRHS),
                 Result    = ok1(yes(ParsedRHS))
             ;
-                RHSResult = error1(Errors),
-                Result    = error1(Errors)
+                RHSResult = error1(Specs),
+                Result    = error1(Specs)
             )
         ;
             Result = ok1(no)
         )
     ;
-        Result = error1(["expected is/2" - Term])
+        Pieces = [words("Error: expected"), quote("is"), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- func parse_where_type_is_abstract_noncanonical(term) = maybe1(maybe(unit)).
@@ -2216,17 +2319,18 @@ parse_where_type_is_abstract_noncanonical(Term) =
         ok1(no)
     ).
 
-:- func parse_where_initialisation_is(module_name, term) =
+:- func parse_where_initialisation_is(module_name, varset, term) =
     maybe1(maybe(sym_name)).
 
-parse_where_initialisation_is(ModuleName, Term) = Result :-
-    Result0 = parse_where_is("initialisation", parse_where_pred_is(ModuleName),
+parse_where_initialisation_is(ModuleName, VarSet, Term) = Result :-
+    Result0 = parse_where_is("initialisation",
+        parse_where_pred_is(ModuleName, VarSet),
         Term),
     (
         Result0 = ok1(no)
     ->
         Result1 = parse_where_is("initialization",
-            parse_where_pred_is(ModuleName), Term)
+            parse_where_pred_is(ModuleName, VarSet), Term)
     ;
         Result1 = Result0
     ),
@@ -2240,8 +2344,11 @@ parse_where_initialisation_is(ModuleName, Term) = Result :-
                 Result = Result1
             ;
                 AutoInitSupported = no,
-                Msg = "unknown attribute in solver type definition",
-                Result = error1([Msg - Term])
+                Pieces = [words("Error: unknown attribute"),
+                    words("in solver type definition."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Result = error1([Spec])
             )
         ;
             ( Result1 = ok1(no)
@@ -2251,27 +2358,32 @@ parse_where_initialisation_is(ModuleName, Term) = Result :-
         )
     ).
 
-:- func parse_where_pred_is(module_name, term) = maybe1(sym_name).
+:- func parse_where_pred_is(module_name, varset, term) = maybe1(sym_name).
 
-parse_where_pred_is(ModuleName, Term) = Result :-
-    parse_implicitly_qualified_symbol_name(ModuleName, Term, Result).
+parse_where_pred_is(ModuleName, VarSet, Term) = Result :-
+    parse_implicitly_qualified_symbol_name(ModuleName, VarSet, Term, Result).
 
 :- func parse_where_inst_is(module_name, term) = maybe1(mer_inst).
 
-parse_where_inst_is(_ModuleName, Term) =
+parse_where_inst_is(_ModuleName, Term) = Result :-
     (
         prog_io_util.convert_inst(no_allow_constrained_inst_var, Term, Inst),
         not prog_mode.inst_contains_unconstrained_var(Inst)
     ->
-        ok1(Inst)
+        Result = ok1(Inst)
     ;
-        error1(["expected a ground, unconstrained inst" - Term])
+        Pieces = [words("Error: expected a ground, unconstrained inst."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
-:- func parse_where_type_is(module_name, term) = maybe1(mer_type).
+:- func parse_where_type_is(module_name, varset, term) = maybe1(mer_type).
 
-parse_where_type_is(_ModuleName, Term) = Result :-
-    prog_io_util.parse_type(Term, Result).
+parse_where_type_is(_ModuleName, VarSet, Term) = Result :-
+    % XXX We should pass meaningful ContextPieces.
+    ContextPieces = [],
+    parse_type(Term, VarSet, ContextPieces, Result).
 
 :- func parse_where_mutable_is(module_name, term) = maybe1(list(item)).
 
@@ -2282,15 +2394,17 @@ parse_where_mutable_is(ModuleName, Term) = Result :-
             Result0 = ok1(Mutable),
             Result  = ok1([Mutable])
         ;
-            Result0 = error1(Errors),
-            Result  = error1(Errors)
+            Result0 = error1(Specs),
+            Result  = error1(Specs)
         )
     ; list_term_to_term_list(Term, Terms) ->
         map_parser(parse_mutable_decl_term(ModuleName), Terms, Result)
     ;
-        Msg = "expected a mutable declaration or a list of " ++
-            "mutable declarations",
-        Result = error1([Msg - Term])
+        Pieces = [words("Error: expected a mutable declaration"),
+            words("or a list of mutable declarations."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred parse_mutable_decl_term(module_name::in, term::in, maybe1(item)::out)
@@ -2304,15 +2418,21 @@ parse_mutable_decl_term(ModuleName, Term, Result) :-
     ->
         Result = Result0
     ;
-        Result = error1(["expected a mutable declaration" - Term])
+        Pieces = [words("Error: expected a mutable declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
+
     ).
 
 :- pred parse_where_end(maybe(term)::in, maybe1(maybe(unit))::out) is det.
 
 parse_where_end(no, ok1(yes(unit))).
-parse_where_end(yes(Term), error1([Msg - Term])) :-
-    Msg = "attributes are either badly ordered or " ++
-        "contain an unrecognised attribute".
+parse_where_end(yes(Term), error1([Spec])) :-
+    Pieces = [words("Error: attributes are either badly ordered"),
+        words("or contain an unrecognised attribute."), nl],
+    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+        [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
 :- func make_maybe_where_details(is_solver_type, maybe1(maybe(unit)),
     maybe1(maybe(mer_type)), maybe1(maybe(init_pred)),
@@ -2343,21 +2463,21 @@ make_maybe_where_details(IsSolverType, TypeIsAbstractNoncanonicalResult,
             GroundIs, AnyIs, CStoreIs, EqualityIs, ComparisonIs,
             WhereEnd, WhereTerm)
     ;
-        TypeIsAbstractNoncanonicalErrors =
+        TypeIsAbstractNoncanonicalSpecs =
             get_any_errors1(TypeIsAbstractNoncanonicalResult),
-        RepresentationIsErrors = get_any_errors1(RepresentationIsResult),
-        InitialisationIsErrors = get_any_errors1(InitialisationIsResult),
-        GroundIsErrors = get_any_errors1(GroundIsResult),
-        AnyIsErrors = get_any_errors1(AnyIsResult),
-        CStoreIsErrors = get_any_errors1(CStoreIsResult),
-        EqualityIsErrors = get_any_errors1(EqualityIsResult),
-        ComparisonIsErrors = get_any_errors1(ComparisonIsResult),
-        WhereEndErrors = get_any_errors1(WhereEndResult),
-        Errors = TypeIsAbstractNoncanonicalErrors ++ RepresentationIsErrors ++
-            InitialisationIsErrors ++ GroundIsErrors ++ AnyIsErrors ++
-            CStoreIsErrors ++ EqualityIsErrors ++ ComparisonIsErrors ++
-            WhereEndErrors,
-        Result = error2(Errors)
+        RepresentationIsSpecs = get_any_errors1(RepresentationIsResult),
+        InitialisationIsSpecs = get_any_errors1(InitialisationIsResult),
+        GroundIsSpecs = get_any_errors1(GroundIsResult),
+        AnyIsSpecs = get_any_errors1(AnyIsResult),
+        CStoreIsSpecs = get_any_errors1(CStoreIsResult),
+        EqualityIsSpecs = get_any_errors1(EqualityIsResult),
+        ComparisonIsSpecs = get_any_errors1(ComparisonIsResult),
+        WhereEndSpecs = get_any_errors1(WhereEndResult),
+        Specs = TypeIsAbstractNoncanonicalSpecs ++ RepresentationIsSpecs ++
+            InitialisationIsSpecs ++ GroundIsSpecs ++ AnyIsSpecs ++
+            CStoreIsSpecs ++ EqualityIsSpecs ++ ComparisonIsSpecs ++
+            WhereEndSpecs,
+        Result = error2(Specs)
     ).
 
 :- func make_maybe_where_details_2(is_solver_type, maybe(unit),
@@ -2384,9 +2504,13 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
         ->
             Result = ok2(no, yes(abstract_noncanonical_type(IsSolverType)))
         ;
-            Msg = "`where type_is_abstract_noncanonical' "
-                ++ " excludes other `where ...' attributes",
-            Result = error2([Msg - WhereTerm])
+            Pieces = [words("Error:"),
+                quote("where type_is_abstract_noncanonical"),
+                words("excludes other"), quote("where ..."),
+                words("attributes."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(WhereTerm), [always(Pieces)])]),
+            Result = error2([Spec])
         )
     ;
         TypeIsAbstractNoncanonical = maybe.no,
@@ -2442,9 +2566,12 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             ;
                 RepresentationIs = no
             ->
-                Msg = "solver type definitions must have a" ++
-                    "`representation' attribute",
-                Result = error2([Msg - WhereTerm])
+                Pieces = [words("Error: solver type definitions must have a"),
+                    quote("representation"), words("attribute."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(WhereTerm),
+                        [always(Pieces)])]),
+                Result = error2([Spec])
             ;
                unexpected(this_file, "make_maybe_where_details_2: " ++
                     "shouldn't have reached this point! (1)")
@@ -2459,8 +2586,12 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                 ; CStoreIs         = yes(_)
                 )
             ->
-                Msg = "solver type attribute given for non-solver type",
-                Result = error2([Msg - WhereTerm])
+                Pieces = [words("Error: solver type attribute given"),
+                    words("for non-solver type."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(WhereTerm),
+                        [always(Pieces)])]),
+                Result = error2([Spec])
             ;
                 EqualityIs = MaybeEqPred,
                 ComparisonIs = MaybeCmpPred,
@@ -2469,32 +2600,39 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
         )
     ).
 
-    % get_determinism(Term0, Term, Determinism) binds Determinism
-    % to a representation of the determinism condition of Term0, if any,
-    % and binds Term to the other part of Term0. If Term0 does not
-    % contain a determinism, then Determinism is bound to `unspecified'.
+    % get_determinism(VarSet, BodyTerm0, BodyTerm, MaybeMaybeDeterminism) binds
+    % MaybeMaybeDeterminism to ok1(yes()) wrapped around the determinism
+    % of BodyTerm0, if any, and binds BodyTerm to the other part of BodyTerm0.
+    % If BodyTerm0 does not contain a determinism, then MaybeMaybeDeterminism
+    % is bound to ok1(no).
     %
-:- pred get_determinism(term::in, term::out, maybe1(maybe(determinism))::out)
-    is det.
+:- pred get_determinism(varset::in, term::in, term::out,
+    maybe1(maybe(determinism))::out) is det.
 
-get_determinism(Body0, Body, Determinism) :-
+get_determinism(VarSet, BodyTerm0, BodyTerm, MaybeMaybeDeterminism) :-
     (
-        Body0 = term.functor(term.atom("is"), Args, _Context1),
-        Args = [Body1, Determinism1]
+        BodyTerm0 = term.functor(term.atom("is"), Args, _),
+        Args = [BodyTerm1, DeterminismTerm]
     ->
-        Body = Body1,
+        BodyTerm = BodyTerm1,
         (
-            Determinism1 = term.functor(term.atom(Determinism2), [],
-                _Context2),
-            standard_det(Determinism2, Determinism3)
+            DeterminismTerm = term.functor(term.atom(DeterminismFunctor),
+                [], _),
+            standard_det(DeterminismFunctor, Determinism)
         ->
-            Determinism = ok1(yes(Determinism3))
+            MaybeMaybeDeterminism = ok1(yes(Determinism))
         ;
-            Determinism = error1(["invalid category" - Determinism1])
+            BodyTermStr = describe_error_term(VarSet, BodyTerm),
+            Pieces = [words("Error: invalid determinism category"),
+                words(BodyTermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(DeterminismTerm),
+                    [always(Pieces)])]),
+            MaybeMaybeDeterminism = error1([Spec])
         )
     ;
-        Body = Body0,
-        Determinism = ok1(no)
+        BodyTerm = BodyTerm0,
+        MaybeMaybeDeterminism = ok1(no)
     ).
 
     % Process the `with_inst` part of a declaration of the form:
@@ -2503,44 +2641,51 @@ get_determinism(Body0, Body, Determinism) :-
 :- pred get_with_inst(term::in, term::out, maybe1(maybe(mer_inst))::out)
     is det.
 
-get_with_inst(Body0, Body, WithInst) :-
+get_with_inst(BodyTerm0, BodyTerm, WithInst) :-
     (
-        Body0 = term.functor(term.atom("with_inst"), [Body1, Inst1], _)
+        BodyTerm0 = term.functor(term.atom("with_inst"),
+            [BodyTerm1, InstTerm], _)
     ->
-        ( convert_inst(allow_constrained_inst_var, Inst1, Inst) ->
+        ( convert_inst(allow_constrained_inst_var, InstTerm, Inst) ->
             WithInst = ok1(yes(Inst))
         ;
-            WithInst = error1(["invalid inst in `with_inst`" - Body0])
+            Pieces = [words("Error: invalid inst in"), quote("with_inst"),
+                suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(BodyTerm0), [always(Pieces)])]),
+            WithInst = error1([Spec])
         ),
-        Body = Body1
+        BodyTerm = BodyTerm1
     ;
-        Body = Body0,
+        BodyTerm = BodyTerm0,
         WithInst = ok1(no)
     ).
 
-:- pred get_with_type(term::in, term::out, maybe1(maybe(mer_type))::out)
-    is det.
+:- pred get_with_type(varset::in, term::in, term::out,
+    maybe1(maybe(mer_type))::out) is det.
 
-get_with_type(Body0, Body, Result) :-
+get_with_type(VarSet, BodyTerm0, BodyTerm, Result) :-
     (
-        Body0 = term.functor(TypeQualifier, [Body1, Type1], _),
+        BodyTerm0 = term.functor(TypeQualifier, [BodyTerm1, TypeTerm1], _),
         (
             TypeQualifier = term.atom("with_type")
         ;
             TypeQualifier = term.atom(":")
         )
     ->
-        Body = Body1,
-        parse_type(Type1, Result0),
+        BodyTerm = BodyTerm1,
+        % XXX Should supply more correct ContextPieces.
+        ContextPieces = [],
+        parse_type(TypeTerm1, VarSet, ContextPieces, Result0),
         (
             Result0 = ok1(Type),
             Result = ok1(yes(Type))
         ;
-            Result0 = error1(Errors),
-            Result = error1(Errors)
+            Result0 = error1(Specs),
+            Result = error1(Specs)
         )
     ;
-        Body = Body0,
+        BodyTerm = BodyTerm0,
         Result = ok1(no)
     ).
 
@@ -2588,18 +2733,18 @@ get_condition(Body, Body, cond_true).
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_solver_type(module_name::in, term::in,
+:- pred process_solver_type(module_name::in, varset::in, term::in,
     maybe(solver_type_details)::in, maybe(unify_compare)::in,
     maybe1(processed_type_body)::out) is det.
 
-process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
-        Result) :-
+process_solver_type(ModuleName, VarSet, HeadTerm,
+        MaybeSolverTypeDetails, MaybeUserEqComp, Result) :-
     (
         MaybeSolverTypeDetails = yes(SolverTypeDetails),
-        parse_type_defn_head(ModuleName, Head, Result0),
+        parse_type_defn_head(ModuleName, VarSet, HeadTerm, Result0),
         (
-            Result0 = error2(Errors),
-            Result  = error1(Errors)
+            Result0 = error2(Specs),
+            Result  = error1(Specs)
         ;
             Result0 = ok2(Name, Params),
             (
@@ -2607,8 +2752,14 @@ process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
                 type_contains_var(RepnType, Var),
                 not list.member(Var, Params)
             ->
-                Msg = "free type variable in representation type",
-                Result = error1([Msg - Head])
+                HeadTermStr = describe_error_term(VarSet, HeadTerm),
+                Pieces = [words("Error: free type variable"),
+                    words("in representation type:"),
+                    words(HeadTermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(HeadTerm),
+                        [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 Result = ok1(processed_type_body(Name, Params,
                     parse_tree_solver_type(SolverTypeDetails,
@@ -2617,48 +2768,58 @@ process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
         )
     ;
         MaybeSolverTypeDetails = no,
-        Result = error1(["solver type with no solver_type_details" - Head])
+        Pieces = [words("Solver type with no solver_type_details."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
 
     % This is for "Head == Body" (equivalence) definitions.
     %
-:- pred process_eqv_type(module_name::in, term::in, term::in,
+:- pred process_eqv_type(module_name::in, varset::in, term::in, term::in,
     maybe1(processed_type_body)::out) is det.
 
-process_eqv_type(ModuleName, Head, Body, Result) :-
-    parse_type_defn_head(ModuleName, Head, Result0),
-    process_eqv_type_2(Result0, Body, Result).
+process_eqv_type(ModuleName, VarSet, HeadTerm, BodyTerm, Result) :-
+    parse_type_defn_head(ModuleName, VarSet, HeadTerm, Result0),
+    process_eqv_type_2(Result0, VarSet, BodyTerm, Result).
 
-:- pred process_eqv_type_2(maybe2(sym_name, list(type_param))::in, term::in,
-    maybe1(processed_type_body)::out) is det.
+:- pred process_eqv_type_2(maybe2(sym_name, list(type_param))::in,
+    varset::in, term::in, maybe1(processed_type_body)::out) is det.
 
-process_eqv_type_2(error2(Errors), _, error1(Errors)).
-process_eqv_type_2(ok2(Name, Params), Body0, Result) :-
+process_eqv_type_2(error2(Specs), _, _, error1(Specs)).
+process_eqv_type_2(ok2(Name, Params), VarSet, BodyTerm0, Result) :-
     % Check that all the variables in the body occur in the head.
     (
-        term.contains_var(Body0, Var),
+        term.contains_var(BodyTerm0, Var),
         term.coerce_var(Var, TVar),
         \+ list.member(TVar, Params)
     ->
-        Msg = "free type parameter in RHS of type definition",
-        Result = error1([Msg - Body0])
+        BodyTerm0Str = describe_error_term(VarSet, BodyTerm0),
+        Pieces = [words("Error: free type parameter"),
+            words("in RHS of type definition:"),
+            words(BodyTerm0Str), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(BodyTerm0), [always(Pieces)])]),
+        Result = error1([Spec])
     ;
-        parse_type(Body0, BodyResult),
+        % XXX Should pass more correct ContextPieces.
+        ContextPieces = [],
+        parse_type(BodyTerm0, VarSet, ContextPieces, BodyResult),
         (
-            BodyResult = ok1(Body),
+            BodyResult = ok1(BodyTerm),
             Result = ok1(processed_type_body(Name, Params,
-                parse_tree_eqv_type(Body)))
+                parse_tree_eqv_type(BodyTerm)))
         ;
-            BodyResult = error1(Errors),
-            Result = error1(Errors)
+            BodyResult = error1(Specs),
+            Result = error1(Specs)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % process_du_type(ModuleName, TypeHead, TypeBody,
+    % process_du_type(ModuleName, HeadTerm, BodyTerm, Ctors,
     %   MaybeUserEqComp, Result):
     %
     % Checks that its arguments are well formed, and if they are,
@@ -2666,90 +2827,144 @@ process_eqv_type_2(ok2(Name, Params), Body0, Result) :-
     % TypeHead.
     % This is for "Head ---> Body [where ...]" (constructor) definitions.
     %
-:- pred process_du_type(module_name::in, term::in, term::in,
+:- pred process_du_type(module_name::in, varset::in, term::in, term::in,
     list(constructor)::in, maybe(unify_compare)::in,
     maybe1(processed_type_body)::out) is det.
 
-process_du_type(ModuleName, Head, Body, Ctors, MaybeUserEqComp, Result) :-
-    parse_type_defn_head(ModuleName, Head, Result0),
+process_du_type(ModuleName, VarSet, HeadTerm, BodyTerm, Ctors, MaybeUserEqComp,
+        Result) :-
+    parse_type_defn_head(ModuleName, VarSet, HeadTerm, Result0),
     (
-        Result0 = error2(Errors),
-        Result  = error1(Errors)
+        Result0 = error2(Specs),
+        Result  = error1(Specs)
     ;
         Result0 = ok2(Functor, Params),
-        process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp,
-            Result)
+        process_du_ctors(Params, VarSet, BodyTerm, Ctors, [], Specs),
+        (
+            Specs = [],
+            TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp),
+            ProcessedTypeBody = processed_type_body(Functor, Params, TypeDefn),
+            Result = ok1(ProcessedTypeBody)
+        ;
+            Specs = [_ | _],
+            Result = error1(Specs)
+        )
     ).
 
-:- pred process_du_type_2(sym_name::in, list(type_param)::in, term::in,
-    list(constructor)::in, maybe(unify_compare)::in,
-    maybe1(processed_type_body)::out) is det.
+:- pred process_du_ctors(list(type_param)::in, varset::in, term::in,
+    list(constructor)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
-    process_du_ctors(Params, Ctors, CtorsResult),
-    (
-        CtorsResult = ok,
-        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp),
-        ProcessedTypeBody = processed_type_body(Functor, Params, TypeDefn),
-        Result = ok1(ProcessedTypeBody)
-    ;
-        CtorsResult = error(Msg),
-        Result = error1([Msg - Body])
-    ).
-
-:- pred process_du_ctors(list(type_param)::in, list(constructor)::in,
-    maybe_error::out) is det.
-
-process_du_ctors(_Params, [],  ok).
-process_du_ctors(Params, [Ctor | Ctors], Result) :-
-    Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Conetxt),
+process_du_ctors(_Params, _, _, [], !Specs).
+process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
+    Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Context),
     (
         % Check that all type variables in the ctor are either explicitly
         % existentially quantified or occur in the head of the type.
-        %
+
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
-        type_list_contains_var(CtorArgTypes, Var),
-        \+ list.member(Var, ExistQVars),
-        \+ list.member(Var, Params)
+        type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
+        list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
+        list.filter(list.contains(ExistQVars ++ Params), VarsInCtorArgTypes,
+            _ExistQOrParamVars, NotExistQOrParamVars),
+        NotExistQOrParamVars = [_ | _]
     ->
-        Result = error("free type parameter in RHS of type definition")
+        % There should be no duplicate names to remove.
+        varset.coerce(VarSet, GenericVarSet),
+        NotExistQOrParamVarsStr =
+            mercury_vars_to_string(GenericVarSet, no, NotExistQOrParamVars),
+        Pieces = [words("Error: free type"),
+            words(choose_number(NotExistQOrParamVars,
+                "parameter", "parameters")),
+            words(NotExistQOrParamVarsStr),
+            words("in RHS of type definition."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(BodyTerm), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
     ;
         % Check that all type variables in existential quantifiers do not
         % occur in the head (maybe this should just be a warning, not an error?
         % If we were to allow it, we would need to rename them apart.)
 
-        list.member(Var, ExistQVars),
-        list.member(Var, Params)
+        set.list_to_set(ExistQVars, ExistQVarsSet),
+        set.list_to_set(Params, ParamsSet),
+        set.intersect(ExistQVarsSet, ParamsSet, ExistQParamsSet),
+        set.non_empty(ExistQParamsSet)
     ->
-        Result = error("type variable has overlapping scopes " ++
-            "(explicit type quantifier shadows argument type)")
+        % There should be no duplicate names to remove.
+        set.to_sorted_list(ExistQParamsSet, ExistQParams),
+        varset.coerce(VarSet, GenericVarSet),
+        ExistQParamVarsStr =
+            mercury_vars_to_string(GenericVarSet, no, ExistQParams),
+        Pieces = [words("Error:"),
+            words(choose_number(ExistQParams,
+                "type variable", "type variables")),
+            words(ExistQParamVarsStr),
+            words(choose_number(ExistQParams, "has", "have")),
+            words("overlapping scopes"),
+            words("(explicit type quantifier shadows argument type)."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(BodyTerm), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
     ;
         % Check that all type variables in existential quantifiers occur
         % somewhere in the constructor argument types or constraints.
 
-        list.member(Var, ExistQVars),
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
-        \+ type_list_contains_var(CtorArgTypes, Var),
+        type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
+        list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
         constraint_list_get_tvars(Constraints, ConstraintTVars),
-        \+ list.member(Var, ConstraintTVars)
+        list.filter(list.contains(VarsInCtorArgTypes ++ ConstraintTVars),
+            ExistQVars, _OccursExistQVars, NotOccursExistQVars),
+        NotOccursExistQVars = [_ | _]
     ->
-        Result = error("type variable in existential quantifier " ++
-            "does not occur in arguments or constraints of constructor")
+        % There should be no duplicate names to remove.
+        varset.coerce(VarSet, GenericVarSet),
+        NotOccursExistQVarsStr =
+            mercury_vars_to_string(GenericVarSet, no, NotOccursExistQVars),
+        Pieces = [words("Error:"),
+            words(choose_number(NotOccursExistQVars,
+                "type variable", "type variables")),
+            words(NotOccursExistQVarsStr),
+            words("in existential quantifier"),
+            words(choose_number(NotOccursExistQVars,
+                "does not occur", "do not occur")),
+            words("in arguments or constraints of constructor."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(BodyTerm), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
     ;
         % Check that all type variables in existential constraints occur in
         % the existential quantifiers.
 
-        list.member(Constraint, Constraints),
-        Constraint = constraint(_Name, ConstraintArgs),
-        type_list_contains_var(ConstraintArgs, Var),
-        \+ list.member(Var, ExistQVars)
+        ConstraintArgTypeLists =
+            list.map(prog_constraint_get_arg_types, Constraints),
+        list.condense(ConstraintArgTypeLists, ConstraintArgTypes),
+        type_vars_list(ConstraintArgTypes, VarsInCtorArgTypes0),
+        list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
+        list.filter(list.contains(ExistQVars), VarsInCtorArgTypes,
+            _ExistQArgTypes, NotExistQArgTypes),
+        NotExistQArgTypes = [_ | _]
     ->
-        Result = error("type variables in class constraints introduced" ++
-            " with `=>' must be explicitly existentially quantified" ++
-            " using `some'")
+        varset.coerce(VarSet, GenericVarSet),
+        NotExistQArgTypesStr =
+            mercury_vars_to_string(GenericVarSet, no, NotExistQArgTypes),
+        Pieces = [words("Error:"),
+            words(choose_number(NotExistQArgTypes,
+                "type variable", "type variables")),
+            words(NotExistQArgTypesStr),
+            words("in class constraints,"),
+            words(choose_number(NotExistQArgTypes,
+                "which was", "which were")),
+            words("introduced with"), quote("=>"),
+            words("must be explicitly existentially quantified"),
+            words("using"), quote("some"), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(BodyTerm), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
     ;
-        process_du_ctors(Params, Ctors, Result)
-    ).
+        true
+    ),
+    process_du_ctors(Params, VarSet, BodyTerm, Ctors, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -2758,11 +2973,11 @@ process_du_ctors(Params, [Ctor | Ctors], Result) :-
     % Checks that its argument is well formed, and if it is, binds Result
     % to a representation of the type information about the TypeHead.
     %
-:- pred process_abstract_type(module_name::in, term::in, decl_attrs::in,
-    maybe1(processed_type_body)::out) is det.
+:- pred process_abstract_type(module_name::in, varset::in, term::in,
+    decl_attrs::in, maybe1(processed_type_body)::out) is det.
 
-process_abstract_type(ModuleName, Head, Attributes0, Result) :-
-    parse_type_defn_head(ModuleName, Head, Result0),
+process_abstract_type(ModuleName, VarSet, HeadTerm, Attributes0, Result) :-
+    parse_type_defn_head(ModuleName, VarSet, HeadTerm, Result0),
     get_is_solver_type(IsSolverType, Attributes0, Attributes),
     process_abstract_type_2(Result0, IsSolverType, Result1),
     check_no_attributes(Result1, Attributes, Result).
@@ -2770,36 +2985,39 @@ process_abstract_type(ModuleName, Head, Attributes0, Result) :-
 :- pred process_abstract_type_2(maybe2(sym_name, list(type_param))::in,
     is_solver_type::in, maybe1(processed_type_body)::out) is det.
 
-process_abstract_type_2(error2(Errors), _, error1(Errors)).
+process_abstract_type_2(error2(Specs), _, error1(Specs)).
 process_abstract_type_2(ok2(Functor, Params), IsSolverType, Result) :-
     Result = ok1(processed_type_body(Functor, Params,
         parse_tree_abstract_type(IsSolverType))).
 
 %-----------------------------------------------------------------------------%
 
-parse_type_defn_head(ModuleName, Head, Result) :-
+parse_type_defn_head(ModuleName, VarSet, HeadTerm, Result) :-
     (
-        Head = term.variable(_, Context),
-        dummy_term_with_context(Context, ErrorTerm),
-        Result = error2(["variable on LHS of type definition" - ErrorTerm])
+        HeadTerm = term.variable(_, Context),
+        Pieces = [words("Error: variable on LHS of type definition."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        Result = error2([Spec])
     ;
-        Head = term.functor(_, _, _),
-        parse_implicitly_qualified_term(ModuleName, Head, Head,
-            "type definition", Headresult),
-        parse_type_defn_head_2(Headresult, Head, Result)
+        HeadTerm = term.functor(_, _, _),
+        ContextPieces = [words("In type definition:")],
+        parse_implicitly_qualified_term(ModuleName, HeadTerm, HeadTerm,
+            VarSet, ContextPieces, Headresult),
+        parse_type_defn_head_2(Headresult, VarSet, HeadTerm, Result)
     ).
 
-:- pred parse_type_defn_head_2(maybe_functor::in, term::in,
+:- pred parse_type_defn_head_2(maybe_functor::in, varset::in, term::in,
     maybe2(sym_name, list(tvar))::out) is det.
 
-parse_type_defn_head_2(error2(Errors), _, error2(Errors)).
-parse_type_defn_head_2(ok2(Name, Args), Head, Result) :-
-    parse_type_defn_head_3(Name, Args, Head, Result).
+parse_type_defn_head_2(error2(Specs), _, _, error2(Specs)).
+parse_type_defn_head_2(ok2(Name, Args), VarSet, HeadTerm, Result) :-
+    parse_type_defn_head_3(Name, Args, VarSet, HeadTerm, Result).
 
-:- pred parse_type_defn_head_3(sym_name::in, list(term)::in, term::in,
-    maybe2(sym_name, list(tvar))::out) is det.
+:- pred parse_type_defn_head_3(sym_name::in, list(term)::in, varset::in,
+    term::in, maybe2(sym_name, list(tvar))::out) is det.
 
-parse_type_defn_head_3(Name, Args, Head, Result) :-
+parse_type_defn_head_3(Name, Args, VarSet, HeadTerm, Result) :-
     % Check that all the head args are variables.
     ( term_list_to_var_list(Args, Params0) ->
         % Check that all the head arg variables are distinct.
@@ -2807,14 +3025,22 @@ parse_type_defn_head_3(Name, Args, Head, Result) :-
             list.member(_, Params0, [Param | OtherParams]),
             list.member(Param, OtherParams)
         ->
-            Msg = "repeated type parameters in LHS of type defn",
-            Result = error2([Msg - Head])
+            Pieces = [words("Error: repeated type parameters"),
+                words("in LHS of type definition."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            Result = error2([Spec])
         ;
             list.map(term.coerce_var, Params0, Params),
             Result = ok2(Name, Params)
         )
     ;
-        Result = error2(["type parameters must be variables" - Head])
+        HeadTermStr = describe_error_term(VarSet, HeadTerm),
+        Pieces = [words("Error: type parameters must be variables:"),
+            words(HeadTermStr), suffix(".") ,nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+        Result = error2([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2823,59 +3049,67 @@ parse_type_defn_head_3(Name, Args, Head, Result) :-
     % "disjunction", even thought the terms aren't goals in this case)
     % into a list of constructors.
     %
-:- func convert_constructors(module_name, term) = maybe1(list(constructor)).
+:- func convert_constructors(module_name, varset, term) =
+    maybe1(list(constructor)).
 
-convert_constructors(ModuleName, Body) = Result :-
-    disjunction_to_list(Body, List),
-    Result = convert_constructors_2(ModuleName, List).
+convert_constructors(ModuleName, VarSet, BodyTerm) = Result :-
+    disjunction_to_list(BodyTerm, BodyTermList),
+    Result = convert_constructors_2(ModuleName, VarSet, BodyTermList).
 
     % True if input argument is a valid list of constructors.
     %
-:- func convert_constructors_2(module_name, list(term)) =
+:- func convert_constructors_2(module_name, varset, list(term)) =
     maybe1(list(constructor)).
 
-convert_constructors_2(_ModuleName, []) = ok1([]).
-convert_constructors_2( ModuleName, [Term | Terms]) = Result :-
-    Result0 = convert_constructor(ModuleName, Term),
+convert_constructors_2(_ModuleName, _, []) = ok1([]).
+convert_constructors_2(ModuleName, VarSet, [Term | Terms]) = Result :-
+    Result0 = convert_constructor(ModuleName, VarSet, Term),
     (
-        Result0 = error1(Errors),
-        Result  = error1(Errors)
+        Result0 = error1(Specs),
+        Result  = error1(Specs)
     ;
         Result0 = ok1(Constructor),
-        Result1 = convert_constructors_2(ModuleName, Terms),
+        Result1 = convert_constructors_2(ModuleName, VarSet, Terms),
         (
-            Result1 = error1(Errors),
-            Result  = error1(Errors)
+            Result1 = error1(Specs),
+            Result  = error1(Specs)
         ;
             Result1 = ok1(Constructors),
             Result  = ok1([Constructor | Constructors])
         )
     ).
 
-:- func convert_constructor(module_name, term) = maybe1(constructor).
+:- func convert_constructor(module_name, varset, term) = maybe1(constructor).
 
-convert_constructor(ModuleName, Term0) = Result :-
+convert_constructor(ModuleName, VarSet, Term0) = Result :-
     ( Term0 = term.functor(term.atom("some"), [Vars, Term1], _Context) ->
         ( parse_list_of_vars(Vars, ExistQVars0) ->
             list.map(term.coerce_var, ExistQVars0, ExistQVars),
-            Result = convert_constructor_2(ModuleName, ExistQVars,
+            Result = convert_constructor_2(ModuleName, VarSet, ExistQVars,
                 Term0, Term1)
         ;
-            Result = error1(["syntax error in variable list" - Term0])
+            Term0Str = describe_error_term(VarSet, Term0),
+            Pieces = [words("Error: syntax error in variable list at"),
+                words(Term0Str), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term0), [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
         ExistQVars = [],
-        Result = convert_constructor_2(ModuleName, ExistQVars, Term0, Term0)
+        Result = convert_constructor_2(ModuleName, VarSet, ExistQVars,
+            Term0, Term0)
     ).
 
-:- func convert_constructor_2(module_name, list(tvar), term, term) =
+:- func convert_constructor_2(module_name, varset, list(tvar), term, term) =
     maybe1(constructor).
 
-convert_constructor_2(ModuleName, ExistQVars, Term0, Term1) = Result :-
-    get_existential_constraints_from_term(ModuleName, Term1, Term2, Result0),
+convert_constructor_2(ModuleName, VarSet, ExistQVars, Term0, Term1) = Result :-
+    get_existential_constraints_from_term(ModuleName, VarSet, Term1, Term2,
+        Result0),
     (
-        Result0 = error1(Errors),
-        Result  = error1(Errors)
+        Result0 = error1(Specs),
+        Result  = error1(Specs)
     ;
         Result0 = ok1(Constraints),
         (
@@ -2888,37 +3122,33 @@ convert_constructor_2(ModuleName, ExistQVars, Term0, Term1) = Result :-
         ;
             Term4 = Term2
         ),
-        Result = convert_constructor_3(ModuleName, ExistQVars, Constraints,
-            Term0, Term4)
+        Result = convert_constructor_3(ModuleName, VarSet, ExistQVars,
+            Constraints, Term0, Term4)
     ).
 
-:- func convert_constructor_3(module_name, list(tvar), list(prog_constraint),
-    term, term) = maybe1(constructor).
+:- func convert_constructor_3(module_name, varset, list(tvar),
+    list(prog_constraint), term, term) = maybe1(constructor).
 
-convert_constructor_3(ModuleName, ExistQVars, Constraints, Term0, Term1) =
-        Result :-
-    parse_implicitly_qualified_term(ModuleName, Term1, Term0,
-        "constructor definition", Result0),
+convert_constructor_3(ModuleName, VarSet, ExistQVars, Constraints,
+        Term0, Term1) = Result :-
+    ContextPieces = [words("In constructor definition:")],
+    parse_implicitly_qualified_term(ModuleName, Term1, Term0, VarSet,
+        ContextPieces, Result0),
     (
-        Result0 = error2(Errors),
-        Result  = error1(Errors)
+        Result0 = error2(Specs),
+        Result  = error1(Specs)
     ;
-        Result0 = ok2(F, As),
-        Result1 = convert_constructor_arg_list(ModuleName, As),
+        Result0 = ok2(Functor, ArgTerms),
+        Result1 = convert_constructor_arg_list(ModuleName, VarSet, ArgTerms),
         (
-            Result1 = error1(Errors),
-            Result  = error1(Errors)
+            Result1 = error1(Specs),
+            Result  = error1(Specs)
         ;
             Result1 = ok1(Args),
-            Ctxt = term_context(Term1),
-            Result  = ok1(ctor(ExistQVars, Constraints, F, Args, Ctxt))
+            Ctxt = get_term_context(Term1),
+            Result  = ok1(ctor(ExistQVars, Constraints, Functor, Args, Ctxt))
         )
     ).
-
-:- func term_context(term(T)) = prog_context.
-
-term_context(functor(_, _, C)) = C.
-term_context(variable(_, C)) = C.
 
 %-----------------------------------------------------------------------------%
 
@@ -2932,18 +3162,20 @@ term_context(variable(_, C)) = C.
 
 process_pred_decl(PredOrFunc, ModuleName, VarSet, PredType, Cond, WithType,
         WithInst, MaybeDet, Attributes0, Context, Result) :-
-    get_class_context_and_inst_constraints(ModuleName, Attributes0,
-        Attributes, MaybeClassContext),
+    get_class_context_and_inst_constraints(ModuleName, VarSet,
+        Attributes0, Attributes, MaybeClassContext),
     (
         MaybeClassContext = ok3(ExistQVars, Constraints, InstConstraints),
+        ContextPieces = [words("In")] ++ pred_or_func_decl_pieces(PredOrFunc)
+            ++ [suffix(":")],
         parse_implicitly_qualified_term(ModuleName, PredType, PredType,
-            pred_or_func_decl_string(PredOrFunc), R),
-        process_pred_decl_2(PredOrFunc, R, PredType, VarSet,
+            VarSet, ContextPieces, PredTypeResult),
+        process_pred_decl_2(PredOrFunc, PredTypeResult, PredType, VarSet,
             WithType, WithInst, MaybeDet, Cond, ExistQVars,
             Constraints, InstConstraints, Attributes, Context, Result)
     ;
-        MaybeClassContext = error3(Errors),
-        Result = error1(Errors)
+        MaybeClassContext = error3(Specs),
+        Result = error1(Specs)
     ).
 
 :- pred process_pred_decl_2(pred_or_func::in, maybe_functor::in, term::in,
@@ -2952,9 +3184,9 @@ process_pred_decl(PredOrFunc, ModuleName, VarSet, PredType, Cond, WithType,
     prog_constraints::in, inst_var_sub::in, decl_attrs::in, prog_context::in,
     maybe1(item)::out) is det.
 
-process_pred_decl_2(_, error2(Errors), _, _, _, _, _, _, _, _, _, _, _,
-        error1(Errors)).
-process_pred_decl_2(PredOrFunc, ok2(F, As0), PredType, VarSet0,
+process_pred_decl_2(_, error2(Specs), _, _, _, _, _, _, _, _, _, _, _,
+        error1(Specs)).
+process_pred_decl_2(PredOrFunc, ok2(F, As0), PredTypeTerm, VarSet,
         WithType, WithInst, MaybeDet, Cond, ExistQVars,
         ClassContext, InstConstraints, Attributes0, Context, Result) :-
     ( convert_type_and_mode_list(InstConstraints, As0, As) ->
@@ -2963,25 +3195,39 @@ process_pred_decl_2(PredOrFunc, ok2(F, As0), PredType, VarSet0,
                 WithInst = yes(_),
                 As = [type_only(_) | _]
             ->
-                Msg = "`with_inst` specified without argument modes",
-                Result = error1([Msg - PredType])
+                Pieces = [words("Error:"), quote("with_inst"),
+                    words("specified without argument modes."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(PredTypeTerm),
+                        [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 WithInst = no,
                 WithType = yes(_),
                 As = [type_and_mode(_, _) | _]
             ->
-                Msg = "arguments have modes but `with_inst` not specified",
-                Result = error1([Msg - PredType])
+                Pieces = [words("Error: arguments have modes but"),
+                    quote("with_inst"), words("not specified."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(PredTypeTerm),
+                        [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 \+ inst_var_constraints_are_consistent_in_type_and_modes(As)
             ->
-                Msg = "inconsistent constraints on inst variables in " ++
-                    pred_or_func_decl_string(PredOrFunc),
-                Result = error1([Msg - PredType])
+                PredTypeTermStr = describe_error_term(VarSet, PredTypeTerm),
+                Pieces = [words("Error: inconsistent constraints on"),
+                    words("inst variables in")] ++
+                    pred_or_func_decl_pieces(PredOrFunc) ++
+                    [suffix(":"), nl, words(PredTypeTermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(PredTypeTerm),
+                        [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 get_purity(Purity, Attributes0, Attributes),
-                varset.coerce(VarSet0, TVarSet),
-                varset.coerce(VarSet0, IVarSet),
+                varset.coerce(VarSet, TVarSet),
+                varset.coerce(VarSet, IVarSet),
                 Origin = user,
                 ItemPredDecl = item_pred_decl_info(Origin, TVarSet, IVarSet,
                     ExistQVars, PredOrFunc, F, As, WithType, WithInst,
@@ -2991,12 +3237,21 @@ process_pred_decl_2(PredOrFunc, ok2(F, As0), PredType, VarSet0,
                 check_no_attributes(Result0, Attributes, Result)
             )
         ;
-            Msg = "some but not all arguments have modes",
-            Result = error1([Msg - PredType])
+            Pieces = [words("Error: some but not all arguments have modes."),
+                nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(PredTypeTerm),
+                    [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        Msg = "syntax error in " ++ pred_or_func_decl_string(PredOrFunc),
-        Result = error1([Msg - PredType])
+        PredTypeTermStr = describe_error_term(VarSet, PredTypeTerm),
+        Pieces = [words("Error: syntax error in")] ++
+            pred_or_func_decl_pieces(PredOrFunc) ++
+            [words("at"), words(PredTypeTermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(PredTypeTerm), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred get_purity(purity::out, decl_attrs::in, decl_attrs::out) is det.
@@ -3008,10 +3263,12 @@ get_purity(Purity, !Attributes) :-
         Purity = purity_pure
     ).
 
-:- func pred_or_func_decl_string(pred_or_func) = string.
+:- func pred_or_func_decl_pieces(pred_or_func) = list(format_component).
 
-pred_or_func_decl_string(pf_function) = "`:- func' declaration".
-pred_or_func_decl_string(pf_predicate) = "`:- pred' declaration".
+pred_or_func_decl_pieces(pf_function) =
+    [quote(":- func"), words("declaration")].
+pred_or_func_decl_pieces(pf_predicate) =
+    [quote(":- pred"), words("declaration")].
 
 %-----------------------------------------------------------------------------%
 
@@ -3030,11 +3287,11 @@ pred_or_func_decl_string(pf_predicate) = "`:- pred' declaration".
     % error).
     % Attributes is bound to the remaining attributes.
     %
-:- pred get_class_context_and_inst_constraints(module_name::in,
+:- pred get_class_context_and_inst_constraints(module_name::in, varset::in,
     decl_attrs::in, decl_attrs::out,
     maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
 
-get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
+get_class_context_and_inst_constraints(ModuleName, VarSet, RevAttributes0,
         RevAttributes, MaybeContext) :-
     % Constraints and quantifiers should occur in the following order
     % (outermost to innermost):
@@ -3074,9 +3331,9 @@ get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
     get_quant_vars(quant_type_exist, ModuleName, Attributes1, Attributes2,
         [], ExistQVars0),
     list.map(term.coerce_var, ExistQVars0, ExistQVars),
-    get_constraints(quant_type_univ, ModuleName, Attributes2,
+    get_constraints(quant_type_univ, ModuleName, VarSet, Attributes2,
         Attributes3, MaybeUnivConstraints),
-    get_constraints(quant_type_exist, ModuleName, Attributes3,
+    get_constraints(quant_type_exist, ModuleName, VarSet, Attributes3,
         Attributes, MaybeExistConstraints),
     list.reverse(Attributes, RevAttributes),
 
@@ -3087,10 +3344,10 @@ get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
     maybe_class_and_inst_constraints::in, existq_tvars::in,
     maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
 
-combine_quantifier_results(error2(Errors1), error2(Errors2), _,
-        error3(Errors1 ++ Errors2)).
-combine_quantifier_results(error2(Errors), ok2(_, _), _, error3(Errors)).
-combine_quantifier_results(ok2(_, _), error2(Errors), _, error3(Errors)).
+combine_quantifier_results(error2(Specs1), error2(Specs2), _,
+        error3(Specs1 ++ Specs2)).
+combine_quantifier_results(error2(Specs), ok2(_, _), _, error3(Specs)).
+combine_quantifier_results(ok2(_, _), error2(Specs), _, error3(Specs)).
 combine_quantifier_results(ok2(UnivConstraints, InstConstraints0),
     ok2(ExistConstraints, InstConstraints1), ExistQVars,
     ok3(ExistQVars, constraints(UnivConstraints, ExistConstraints),
@@ -3110,20 +3367,23 @@ get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
         true
     ).
 
-:- pred get_constraints(quantifier_type::in, module_name::in, decl_attrs::in,
-    decl_attrs::out, maybe_class_and_inst_constraints::out) is det.
+:- pred get_constraints(quantifier_type::in, module_name::in, varset::in,
+    decl_attrs::in, decl_attrs::out, maybe_class_and_inst_constraints::out)
+    is det.
 
-get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints) :-
+get_constraints(QuantType, ModuleName, VarSet, !Attributes,
+        MaybeConstraints) :-
     (
         !.Attributes = [
             decl_attr_constraints(QuantType, ConstraintsTerm) - _Term
             | !:Attributes]
     ->
-        parse_class_and_inst_constraints(ModuleName, ConstraintsTerm,
+        parse_class_and_inst_constraints(ModuleName, VarSet, ConstraintsTerm,
             MaybeConstraints0),
         % there may be more constraints of the same type --
         % collect them all and combine them
-        get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints1),
+        get_constraints(QuantType, ModuleName, VarSet, !Attributes,
+            MaybeConstraints1),
         combine_constraint_list_results(MaybeConstraints1,
             MaybeConstraints0, MaybeConstraints)
     ;
@@ -3134,23 +3394,23 @@ get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints) :-
     maybe_class_and_inst_constraints::in,
     maybe_class_and_inst_constraints::out) is det.
 
-combine_constraint_list_results(error2(Errors1), error2(Errors2),
-        error2(Errors1 ++ Errors2)).
-combine_constraint_list_results(error2(Errors), ok2(_, _), error2(Errors)).
-combine_constraint_list_results(ok2(_, _), error2(Errors), error2(Errors)).
+combine_constraint_list_results(error2(Specs1), error2(Specs2),
+        error2(Specs1 ++ Specs2)).
+combine_constraint_list_results(error2(Specs), ok2(_, _), error2(Specs)).
+combine_constraint_list_results(ok2(_, _), error2(Specs), error2(Specs)).
 combine_constraint_list_results(ok2(CC0, IC0), ok2(CC1, IC1),
         ok2(CC0 ++ CC1, IC0 `map.old_merge` IC1)).
 
-:- pred get_existential_constraints_from_term(module_name::in,
+:- pred get_existential_constraints_from_term(module_name::in, varset::in,
     term::in, term::out, maybe1(list(prog_constraint))::out) is det.
 
-get_existential_constraints_from_term(ModuleName, !PredType,
+get_existential_constraints_from_term(ModuleName, VarSet, !PredTypeTerm,
         MaybeExistentialConstraints) :-
     (
-        !.PredType = term.functor(term.atom("=>"),
-            [!:PredType, ExistentialConstraints], _)
+        !.PredTypeTerm = term.functor(term.atom("=>"),
+            [!:PredTypeTerm, ExistentialConstraints], _)
     ->
-        parse_class_constraints(ModuleName, ExistentialConstraints,
+        parse_class_constraints(ModuleName, VarSet, ExistentialConstraints,
             MaybeExistentialConstraints)
     ;
         MaybeExistentialConstraints = ok1([])
@@ -3191,15 +3451,15 @@ verify_type_and_mode_list_2([Head | Tail], First) :-
 
 process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Attributes0,
         Context, Result) :-
-    get_class_context_and_inst_constraints(ModuleName, Attributes0,
-        Attributes, MaybeContext),
+    get_class_context_and_inst_constraints(ModuleName, VarSet,
+        Attributes0, Attributes, MaybeContext),
     (
         MaybeContext = ok3(ExistQVars, Constraints, InstConstraints),
         process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet, ExistQVars,
             Constraints, InstConstraints, Attributes, Context, Result)
     ;
-        MaybeContext = error3(Errors),
-        Result = error1(Errors)
+        MaybeContext = error3(Specs),
+        Result = error1(Specs)
     ).
 
 :- pred process_func_2(module_name::in, varset::in, term::in, condition::in,
@@ -3214,13 +3474,18 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet, ExistQVars,
             [FuncTerm0, ReturnTypeTerm], _Context),
         FuncTerm = desugar_field_access(FuncTerm0)
     ->
+        ContextPieces = [words("In"), quote(":- func"), words("declaration")],
         parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
-            "`:- func' declaration", R),
-        process_func_3(R, FuncTerm, ReturnTypeTerm, Term, VarSet, MaybeDet,
-            Cond, ExistQVars, Constraints, InstConstraints, Attributes,
-            Context, Result)
+            VarSet, ContextPieces, FuncTermResult),
+        process_func_3(FuncTermResult, FuncTerm, ReturnTypeTerm, Term, VarSet,
+            MaybeDet, Cond, ExistQVars, Constraints, InstConstraints,
+            Attributes, Context, Result)
     ;
-        Result = error1(["`=' expected in `:- func' declaration" - Term])
+        Pieces = [words("Error:"), quote("="), words("expected in"),
+            quote(":- func"), words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred process_func_3(maybe_functor::in, term::in, term::in, term::in,
@@ -3228,17 +3493,20 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet, ExistQVars,
     prog_constraints::in, inst_var_sub::in, decl_attrs::in,
     prog_context::in, maybe1(item)::out) is det.
 
-process_func_3(error2(Errors), _, _, _, _, _, _, _, _, _, _, _,
-        error1(Errors)).
-process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
+process_func_3(error2(Specs), _, _, _, _, _, _, _, _, _, _, _,
+        error1(Specs)).
+process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet,
         MaybeDet, Cond, ExistQVars, ClassContext, InstConstraints,
         Attributes0, Context, Result) :-
     ( convert_type_and_mode_list(InstConstraints, As0, As) ->
         (
             \+ verify_type_and_mode_list(As)
         ->
-            Msg = "some but not all arguments have modes",
-            Result = error1([Msg - FuncTerm])
+            Pieces = [words("Error: some but not all arguments have modes."),
+                nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(FuncTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             convert_type_and_mode(InstConstraints, ReturnTypeTerm, ReturnType)
         ->
@@ -3246,19 +3514,25 @@ process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
                 As = [type_and_mode(_, _) | _],
                 ReturnType = type_only(_)
             ->
-                Msg = "function arguments have modes, " ++
-                    "but function result doesn't",
-                Result = error1([Msg - FuncTerm])
+                Pieces = [words("Error: function arguments have modes,"),
+                    words("but function result does not."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(FuncTerm), [always(Pieces)])]),
+                Result = error1([Spec])
+
             ;
                 As = [type_only(_) | _],
                 ReturnType = type_and_mode(_, _)
             ->
-                Msg = "function result has mode, but function arguments don't",
-                Result = error1([Msg - FuncTerm])
+                Pieces = [words("Error: function result has mode,"),
+                    words("but function arguments do not."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(FuncTerm), [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 get_purity(Purity, Attributes0, Attributes),
-                varset.coerce(VarSet0, TVarSet),
-                varset.coerce(VarSet0, IVarSet),
+                varset.coerce(VarSet, TVarSet),
+                varset.coerce(VarSet, IVarSet),
                 list.append(As, [ReturnType], Args),
                 (
                     inst_var_constraints_are_consistent_in_type_and_modes(Args)
@@ -3271,18 +3545,32 @@ process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
                         Cond, Purity, ClassContext, Context),
                     check_no_attributes(Result0, Attributes, Result)
                 ;
-                    Msg = "inconsistent constraints on inst variables " ++
-                        "in function declaration",
-                    Result = error1([Msg - FullTerm])
+                    FullTermStr = describe_error_term(VarSet, FullTerm),
+                    Pieces = [words("Error: inconsistent constraints"),
+                        words("on inst variables in function declaration:"),
+                        nl, words(FullTermStr), suffix("."), nl],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(FullTerm),
+                            [always(Pieces)])]),
+                    Result = error1([Spec])
                 )
             )
         ;
-            Msg = "syntax error in return type of `:- func' declaration",
-            Result = error1([Msg - ReturnTypeTerm])
+            Pieces = [words("Error: syntax error in return type of"),
+                quote(":- func"), words("declaration."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ReturnTypeTerm),
+                    [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        Msg = "syntax error in arguments of `:- func' declaration",
-        Result = error1([Msg - FuncTerm])
+        FuncTermStr = describe_error_term(VarSet, FuncTerm),
+        Pieces = [words("Error: syntax error in arguments of"),
+            quote(":- func"), words("declaration at"),
+            words(FuncTermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(FuncTerm), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3326,13 +3614,16 @@ process_mode(ModuleName, VarSet, Term, Cond, Attributes, WithInst, MaybeDet,
             _Context),
         FuncTerm = desugar_field_access(FuncTerm0)
     ->
+        ContextPieces = [words("In function"), quote(":- mode"),
+            words("declaration")],
         parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
-            "function `:- mode' declaration", R),
+            VarSet, ContextPieces, R),
         process_func_mode(R, ModuleName, FuncTerm, ReturnTypeTerm,
             Term, VarSet, MaybeDet, Cond, Attributes, Context, Result)
     ;
+        ContextPieces = [words("In"), quote(":- mode"), words("declaration")],
         parse_implicitly_qualified_term(ModuleName, Term, Term,
-            "`:- mode' declaration", R),
+            VarSet, ContextPieces, R),
         process_mode_decl(R, ModuleName, Term, VarSet,
             WithInst, MaybeDet, Cond, Attributes, Context, Result)
     ).
@@ -3341,16 +3632,16 @@ process_mode(ModuleName, VarSet, Term, Cond, Attributes, WithInst, MaybeDet,
     varset::in, maybe(mer_inst)::in, maybe(determinism)::in, condition::in,
     decl_attrs::in, prog_context::in, maybe1(item)::out) is det.
 
-process_mode_decl(error2(Errors), _, _, _, _, _, _, _, _, error1(Errors)).
-process_mode_decl(ok2(F, As0), ModuleName, PredMode, VarSet0, WithInst,
+process_mode_decl(error2(Specs), _, _, _, _, _, _, _, _, error1(Specs)).
+process_mode_decl(ok2(F, As0), ModuleName, PredModeTerm, VarSet, WithInst,
         MaybeDet, Cond, Attributes0, Context, Result) :-
     ( convert_mode_list(allow_constrained_inst_var, As0, As1) ->
-        get_class_context_and_inst_constraints(ModuleName, Attributes0,
-            Attributes, MaybeConstraints),
+        get_class_context_and_inst_constraints(ModuleName, VarSet,
+            Attributes0, Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
             list.map(constrain_inst_vars_in_mode(InstConstraints), As1, As),
-            varset.coerce(VarSet0, VarSet),
+            varset.coerce(VarSet, ProgVarSet),
             ( inst_var_constraints_are_consistent_in_modes(As) ->
                 (
                     WithInst = no,
@@ -3361,36 +3652,47 @@ process_mode_decl(ok2(F, As0), ModuleName, PredMode, VarSet0, WithInst,
                     % until we expand out the inst.
                     PredOrFunc = no
                 ),
-                ItemModeDecl = item_mode_decl_info(VarSet, PredOrFunc, F, As,
-                    WithInst, MaybeDet, Cond, Context),
+                ItemModeDecl = item_mode_decl_info(ProgVarSet, PredOrFunc,
+                    F, As, WithInst, MaybeDet, Cond, Context),
                 Item = item_mode_decl(ItemModeDecl),
                 Result0 = ok1(Item)
             ;
-                Msg = "inconsistent constraints on inst variables " ++
-                    "in predicate mode declaration",
-                Result0 = error1([Msg - PredMode])
+                PredModeTermStr = describe_error_term(VarSet, PredModeTerm),
+                Pieces = [words("Error: inconsistent constraints"),
+                    words("on inst variables"),
+                    words("in predicate mode declaration:"), nl,
+                    words(PredModeTermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(PredModeTerm),
+                        [always(Pieces)])]),
+                Result0 = error1([Spec])
             )
         ;
-            MaybeConstraints = error3(Errors),
-            Result0 = error1(Errors)
+            MaybeConstraints = error3(Specs),
+            Result0 = error1(Specs)
         ),
         check_no_attributes(Result0, Attributes, Result)
     ;
-        Result = error1(["syntax error in mode declaration" - PredMode])
+        PredModeTermStr = describe_error_term(VarSet, PredModeTerm),
+        Pieces = [words("Error: syntax error in mode declaration at"),
+            words(PredModeTermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(PredModeTerm), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred process_func_mode(maybe_functor::in, module_name::in, term::in,
     term::in, term::in, varset::in, maybe(determinism)::in, condition::in,
     decl_attrs::in, prog_context::in, maybe1(item)::out) is det.
 
-process_func_mode(error2(Errors), _, _, _, _, _, _, _, _, _, error1(Errors)).
+process_func_mode(error2(Specs), _, _, _, _, _, _, _, _, _, error1(Specs)).
 process_func_mode(ok2(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
-        VarSet0, MaybeDet, Cond, Attributes0, Context, Result) :-
+        VarSet, MaybeDet, Cond, Attributes0, Context, Result) :-
     (
         convert_mode_list(allow_constrained_inst_var, As0, As1)
     ->
-        get_class_context_and_inst_constraints(ModuleName, Attributes0,
-            Attributes, MaybeConstraints),
+        get_class_context_and_inst_constraints(ModuleName, VarSet,
+            Attributes0, Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
             list.map(constrain_inst_vars_in_mode(InstConstraints), As1, As),
@@ -3399,32 +3701,47 @@ process_func_mode(ok2(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
             ->
                 constrain_inst_vars_in_mode(InstConstraints,
                     RetMode1, RetMode),
-                varset.coerce(VarSet0, VarSet),
+                varset.coerce(VarSet, InstVarSet),
                 list.append(As, [RetMode], ArgModes),
                 ( inst_var_constraints_are_consistent_in_modes(ArgModes) ->
-                    ItemModeDecl = item_mode_decl_info(VarSet,
+                    ItemModeDecl = item_mode_decl_info(InstVarSet,
                         yes(pf_function), F, ArgModes, no, MaybeDet, Cond,
                         Context),
                     Item = item_mode_decl(ItemModeDecl),
                     Result0 = ok1(Item)
                 ;
-                    Msg = "inconsistent constraints on inst variables " ++
-                        "in function mode declaration",
-                    Result0 = error1([Msg - FullTerm])
+                    FullTermStr = describe_error_term(VarSet, FullTerm),
+                    Pieces = [words("Error: inconsistent constraints"),
+                        words("on inst variables"),
+                        words("in function mode declaration:"), nl,
+                        words(FullTermStr), suffix("."), nl],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(FullTerm),
+                            [always(Pieces)])]),
+                    Result0 = error1([Spec])
                 )
             ;
-                Msg = "syntax error in return mode " ++
-                    "of function mode declaration",
-                Result0 = error1([Msg - RetMode0])
+                Pieces = [words("Error: syntax error in return mode"),
+                    words("of function mode declaration."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(RetMode0),
+                        [always(Pieces)])]),
+                Result0 = error1([Spec])
             )
         ;
-            MaybeConstraints = error3(Errors),
-            Result0 = error1(Errors)
+            MaybeConstraints = error3(Specs),
+            Result0 = error1(Specs)
         ),
         check_no_attributes(Result0, Attributes, Result)
     ;
-        Msg = "syntax error in arguments of function mode declaration",
-        Result = error1([Msg - FuncMode])
+        % XXX Should say which argument.
+        FuncModeStr = describe_error_term(VarSet, FuncMode),
+        Pieces = [words("Error: syntax error in arguments of"),
+            words("function mode declaration at"),
+            words(FuncModeStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(FuncMode), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3522,8 +3839,10 @@ inst_var_constraints_are_consistent_in_modes(Modes, !Sub) :-
 
 inst_var_constraints_are_consistent_in_type_and_modes(TypeAndModes) :-
     list.foldl((pred(TypeAndMode::in, in, out) is semidet -->
-        ( { TypeAndMode = type_only(_) }
-        ; { TypeAndMode = type_and_mode(_, Mode) },
+        (
+            { TypeAndMode = type_only(_) }
+        ;
+            { TypeAndMode = type_and_mode(_, Mode) },
             inst_var_constraints_are_consistent_in_mode(Mode)
         )), TypeAndModes, map.init, _).
 
@@ -3604,7 +3923,7 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Context, Result) :-
         InstDefn = term.functor(term.atom("=="), [H, B], _Context)
     ->
         get_condition(B, Body, Condition),
-        convert_inst_defn(ModuleName, H, Body, R),
+        convert_inst_defn(ModuleName, VarSet, H, Body, R),
         process_maybe1(make_inst_defn(VarSet, Condition, Context), R, Result)
     ;
         % XXX This is for `abstract inst' declarations,
@@ -3613,36 +3932,41 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Context, Result) :-
         Args = [Head, term.functor(term.atom("private"), [], _)]
     ->
         Condition = cond_true,
-        convert_abstract_inst_defn(ModuleName, Head, R),
+        convert_abstract_inst_defn(ModuleName, VarSet, Head, R),
         process_maybe1(make_inst_defn(VarSet, Condition, Context), R, Result)
     ;
         InstDefn = term.functor(term.atom("--->"), [H, B], _Context)
     ->
         get_condition(B, Body, Condition),
         Body1 = term.functor(term.atom("bound"), [Body], Context),
-        convert_inst_defn(ModuleName, H, Body1, R),
+        convert_inst_defn(ModuleName, VarSet, H, Body1, R),
         % We should check the condition for errors. We don't bother
         % at the moment, since we ignore conditions anyhow :-)
         process_maybe1(make_inst_defn(VarSet, Condition, Context), R, Result)
     ;
-        Result = error1(["`==' expected in `:- inst' definition" - InstDefn])
+        Pieces = [words("Error:"), quote("=="), words("expected in"),
+            quote(":- inst"), words("definition."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(InstDefn), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
     % Parse a `:- inst <Head> ---> <Body>.' definition.
     %
-:- pred convert_inst_defn(module_name::in, term::in, term::in,
+:- pred convert_inst_defn(module_name::in, varset::in, term::in, term::in,
     maybe1(processed_inst_body)::out) is det.
 
-convert_inst_defn(ModuleName, Head, Body, Result) :-
-    parse_implicitly_qualified_term(ModuleName, Head, Body,
-        "inst definition", R),
-    convert_inst_defn_2(R, Head, Body, Result).
+convert_inst_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Result) :-
+    ContextPieces = [words("In inst definition:")],
+    parse_implicitly_qualified_term(ModuleName, HeadTerm, BodyTerm,
+        VarSet, ContextPieces, QualResult),
+    convert_inst_defn_2(QualResult, VarSet, HeadTerm, BodyTerm, Result).
 
-:- pred convert_inst_defn_2(maybe_functor::in, term::in, term::in,
+:- pred convert_inst_defn_2(maybe_functor::in, varset::in, term::in, term::in,
     maybe1(processed_inst_body)::out) is det.
 
-convert_inst_defn_2(error2(Errors), _, _, error1(Errors)).
-convert_inst_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
+convert_inst_defn_2(error2(Specs), _, _, _, error1(Specs)).
+convert_inst_defn_2(ok2(Name, ArgTerms), VarSet, HeadTerm, BodyTerm, Result) :-
     (
         % Check that all the head args are variables.
         term.term_list_to_var_list(ArgTerms, Args)
@@ -3652,39 +3976,62 @@ convert_inst_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
             list.member(Arg2, Args, [Arg2 | OtherArgs]),
             list.member(Arg2, OtherArgs)
         ->
-            Msg = "repeated inst parameters in LHS of inst defn",
-            Result = error1([Msg - Head])
+            % XXX Should improve the error message here.
+            Pieces = [words("Error: repeated inst parameters"),
+                words("in LHS of inst definition."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             % Check that all the variables in the body occur in the head.
-            term.contains_var(Body, Var2),
+            term.contains_var(BodyTerm, Var2),
             \+ list.member(Var2, Args)
         ->
-            Msg = "free inst parameter in RHS of inst definition",
-            Result = error1([Msg - Body])
+            Pieces = [words("Error: free inst parameter"),
+                words("in RHS of inst definition."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(BodyTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             % Check that the inst is a valid user-defined inst, i.e. that it
             % does not have the form of one of the builtin insts.
             \+ (
-                convert_inst(no_allow_constrained_inst_var, Head, UserInst),
+                convert_inst(no_allow_constrained_inst_var, HeadTerm,
+                    UserInst),
                 UserInst = defined_inst(user_inst(_, _))
             )
         ->
-            Result = error1(["attempt to redefine builtin inst" - Head])
+            % XXX Name the builtin inst.
+            Pieces = [words("Error: attempt to redefine builtin inst."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             % Should improve the error message here.
             (
-                convert_inst(no_allow_constrained_inst_var, Body,
+                convert_inst(no_allow_constrained_inst_var, BodyTerm,
                     ConvertedBody)
             ->
                 list.map(term.coerce_var, Args, InstArgs),
                 Result = ok1(processed_inst_body(Name, InstArgs,
                         eqv_inst(ConvertedBody)))
             ;
-                Result = error1(["syntax error in inst body" - Body])
+                BodyTermStr = describe_error_term(VarSet, BodyTerm),
+                Pieces = [words("Error: syntax error in inst body at"),
+                    words(BodyTermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(BodyTerm),
+                        [always(Pieces)])]),
+                Result = error1([Spec])
             )
         )
     ;
-        Result = error1(["inst parameters must be variables" - Head])
+        % XXX If term_list_to_var_list returned the non-var's term or context,
+        % we could use it here.
+        Pieces = [words("Error: inst parameters must be variables."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- type processed_inst_body
@@ -3694,18 +4041,19 @@ convert_inst_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
                 inst_defn
             ).
 
-:- pred convert_abstract_inst_defn(module_name::in, term::in,
+:- pred convert_abstract_inst_defn(module_name::in, varset::in, term::in,
     maybe1(processed_inst_body)::out) is det.
 
-convert_abstract_inst_defn(ModuleName, Head, Result) :-
-    parse_implicitly_qualified_term(ModuleName, Head, Head,
-        "inst definition", R),
-    convert_abstract_inst_defn_2(R, Head, Result).
+convert_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Result) :-
+    ContextPieces = [words("In inst definition:")],
+    parse_implicitly_qualified_term(ModuleName, HeadTerm, HeadTerm,
+        VarSet, ContextPieces, HeadResult),
+    convert_abstract_inst_defn_2(HeadResult, HeadTerm, Result).
 
 :- pred convert_abstract_inst_defn_2(maybe_functor::in, term::in,
     maybe1(processed_inst_body)::out) is det.
 
-convert_abstract_inst_defn_2(error2(Errors), _, error1(Errors)).
+convert_abstract_inst_defn_2(error2(Specs), _, error1(Specs)).
 convert_abstract_inst_defn_2(ok2(Name, ArgTerms), Head, Result) :-
     (
         % Check that all the head args are variables.
@@ -3716,14 +4064,23 @@ convert_abstract_inst_defn_2(ok2(Name, ArgTerms), Head, Result) :-
             list.member(Arg2, Args, [Arg2 | OtherArgs]),
             list.member(Arg2, OtherArgs)
         ->
-            Msg = "repeated inst parameters in abstract inst definition",
-            Result = error1([Msg -  Head])
+            % XXX We should we list the repeated parameters?
+            Pieces = [words("Error: repeated inst parameters"),
+                words("in abstract inst definition."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Head), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             list.map(term.coerce_var, Args, InstArgs),
             Result = ok1(processed_inst_body(Name, InstArgs, abstract_inst))
         )
     ;
-        Result = error1(["inst parameters must be variables" - Head])
+        % XXX If term_list_to_var_list returned the non-var's term or context,
+        % we could use it here.
+        Pieces = [words("Error: inst parameters must be variables."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Head), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred make_inst_defn(varset::in, condition::in, prog_context::in,
@@ -3746,7 +4103,7 @@ make_inst_defn(VarSet0, Cond, Context, ProcessedInstBody, Item) :-
 parse_mode_decl(ModuleName, VarSet, ModeDefn, Attributes, Context, Result) :-
     ( mode_op(ModeDefn, H, B) ->
         get_condition(B, Body, Condition),
-        convert_mode_defn(ModuleName, H, Body, R),
+        convert_mode_defn(ModuleName, VarSet, H, Body, R),
         process_maybe1(make_mode_defn(VarSet, Condition, Context), R, Result)
     ;
         parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Attributes,
@@ -3765,18 +4122,19 @@ mode_op(term.functor(term.atom(Op), [H, B], _), H, B) :-
                 mode_defn
             ).
 
-:- pred convert_mode_defn(module_name::in, term::in, term::in,
+:- pred convert_mode_defn(module_name::in, varset::in, term::in, term::in,
     maybe1(processed_mode_body)::out) is det.
 
-convert_mode_defn(ModuleName, Head, Body, Result) :-
-    parse_implicitly_qualified_term(ModuleName, Head, Head,
-        "mode definition", R),
-    convert_mode_defn_2(R, Head, Body, Result).
+convert_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Result) :-
+    ContextPieces = [words("In mode definition:")],
+    parse_implicitly_qualified_term(ModuleName, HeadTerm, HeadTerm,
+        VarSet, ContextPieces, HeadResult),
+    convert_mode_defn_2(HeadResult, HeadTerm, BodyTerm, Result).
 
 :- pred convert_mode_defn_2(maybe_functor::in, term::in, term::in,
     maybe1(processed_mode_body)::out) is det.
 
-convert_mode_defn_2(error2(Errors), _, _, error1(Errors)).
+convert_mode_defn_2(error2(Specs), _, _, error1(Specs)).
 convert_mode_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
     (
         % Check that all the head args are variables.
@@ -3787,17 +4145,26 @@ convert_mode_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
             list.member(Arg2, Args, [Arg2 | OtherArgs]),
             list.member(Arg2, OtherArgs)
         ->
-            Msg = "repeated parameters in LHS of mode defn",
-            Result = error1([Msg - Head])
+            % Check that all the head arg variables are distinct.
+            % XXX We should list the duplicated head arg variables.
+            Pieces = [words("Error: repeated parameters"),
+                words("in LHS of mode definition."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Head), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             % Check that all the variables in the body occur in the head.
             term.contains_var(Body, Var2),
             \+ list.member(Var2, Args)
         ->
-            Msg = "free inst parameter in RHS of mode definition",
-            Result = error1([Msg - Head])
+            % XXX Shouldn't we be using the Body's context?
+            % XXX We should list the Var2s for which the condition holds.
+            Pieces = [words("Error: free inst parameter"),
+                words("in RHS of mode definition."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Head), [always(Pieces)])]),
+            Result = error1([Spec])
         ;
-            % Should improve the error message here.
             (
                 convert_mode(no_allow_constrained_inst_var, Body,
                     ConvertedBody)
@@ -3806,13 +4173,21 @@ convert_mode_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
                 Result = ok1(processed_mode_body(Name, InstArgs,
                     eqv_mode(ConvertedBody)))
             ;
-                % Catch-all error message - we should do better than this.
-                Msg = "syntax error in mode definition body",
-                Result = error1([Msg - Body])
+                % XXX We should improve the error message here.
+                Pieces = [words("Error: syntax error"),
+                    words("in mode definition body."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Body), [always(Pieces)])]),
+                Result = error1([Spec])
             )
         )
     ;
-        Result = error1(["mode parameters must be variables" - Head])
+        % XXX If term_list_to_var_list returned the non-var's term or context,
+        % we could use it here.
+        Pieces = [words("Error: mode parameters must be variables."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Head), [always(Pieces)])]),
+        Result = error1([Spec])
     ).
 
 :- pred convert_type_and_mode_list(inst_var_sub::in, list(term)::in,
@@ -3828,12 +4203,12 @@ convert_type_and_mode_list(InstConstraints, [H0 | T0], [H | T]) :-
 
 convert_type_and_mode(InstConstraints, Term, Result) :-
     ( Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context) ->
-        parse_type(TypeTerm, ok1(Type)),
+        maybe_parse_type(TypeTerm, Type),
         convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
         constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode),
         Result = type_and_mode(Type, Mode)
     ;
-        parse_type(Term, ok1(Type)),
+        maybe_parse_type(Term, Type),
         Result = type_only(Type)
     ).
 
@@ -3878,40 +4253,46 @@ make_module_defn(MakeModuleDefnPred, Context, ModuleSpecs, Item) :-
 
 process_maybe1(Maker, ok1(X), ok1(Y)) :-
     call(Maker, X, Y).
-process_maybe1(_, error1(Errors), error1(Errors)).
+process_maybe1(_, error1(Specs), error1(Specs)).
 
 :- pred process_maybe1_to_t(maker(T1, maybe1(T2))::maker,
     maybe1(T1)::in, maybe1(T2)::out) is det.
 
 process_maybe1_to_t(Maker, ok1(X), Y) :-
     call(Maker, X, Y).
-process_maybe1_to_t(_, error1(Errors), error1(Errors)).
+process_maybe1_to_t(_, error1(Specs), error1(Specs)).
 
 %-----------------------------------------------------------------------------%
 
     % A ModuleSpecifier is just an sym_name.
     %
-:- pred parse_module_specifier(term::in, maybe1(module_specifier)::out) is det.
+:- pred parse_module_specifier(varset::in, term::in,
+    maybe1(module_specifier)::out) is det.
 
-parse_module_specifier(Term, Result) :-
-    parse_symbol_name(Term, Result).
+parse_module_specifier(VarSet, Term, Result) :-
+    parse_symbol_name(VarSet, Term, Result).
 
     % A ModuleName is an implicitly-quantified sym_name.
     %
     % We check for module names starting with capital letters as a special
     % case, so that we can report a better error message for that case.
     %
-:- pred parse_module_name(module_name::in, term::in,
+:- pred parse_module_name(module_name::in, varset::in, term::in,
     maybe1(module_name)::out) is det.
 
-parse_module_name(DefaultModuleName, Term, Result) :-
-    ( Term = term.variable(_, _) ->
-        dummy_term(ErrorContext),
-        Msg = "module names starting with capital letters " ++
-            "must be quoted using single quotes (e.g. "":- module 'Foo'."")",
-        Result = error1([Msg - ErrorContext])
+parse_module_name(DefaultModuleName, VarSet, Term, Result) :-
+    (
+        Term = term.variable(_, Context),
+        Pieces = [words("Error: module names starting with capital letters"),
+            words("must be quoted using single quotes"),
+            words("(e.g. "":- module 'Foo'."")."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        Result = error1([Spec])
     ;
-        parse_implicitly_qualified_symbol_name(DefaultModuleName, Term, Result)
+        Term = term.functor(_, _, _),
+        parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet,
+            Term, Result)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3921,37 +4302,42 @@ parse_module_name(DefaultModuleName, Term, Result) :-
     %   SymbolName/Arity
     %       Matches only symbols of the specified arity.
     %
-:- pred parse_symbol_name_specifier(term::in, maybe1(sym_name_specifier)::out)
-    is det.
+:- pred parse_symbol_name_specifier(varset::in, term::in,
+    maybe1(sym_name_specifier)::out) is det.
 
-parse_symbol_name_specifier(Term, Result) :-
+parse_symbol_name_specifier(VarSet, Term, Result) :-
     root_module_name(DefaultModule),
-    parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term,
-        Result).
+    parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet,
+        Term, Result).
 
 :- pred parse_implicitly_qualified_symbol_name_specifier(module_name::in,
-    term::in, maybe1(sym_name_specifier)::out) is det.
+    varset::in, term::in, maybe1(sym_name_specifier)::out) is det.
 
-parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term,
+parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
         Result) :-
     ( Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _Context) ->
         ( ArityTerm = term.functor(term.integer(Arity), [], _Context2) ->
             ( Arity >= 0 ->
-                parse_implicitly_qualified_symbol_name(DefaultModule, NameTerm,
-                    NameResult),
+                parse_implicitly_qualified_symbol_name(DefaultModule, VarSet,
+                    NameTerm, NameResult),
                 process_maybe1(make_name_arity_specifier(Arity),
                     NameResult, Result)
             ;
-                Msg = "arity in symbol name specifier " ++
-                    "must be a non-negative integer",
-                Result = error1([Msg - Term])
+                Pieces = [words("Error: arity in symbol name specifier"),
+                    words("must be a non-negative integer."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Result = error1([Spec])
             )
         ;
-            Msg = "arity in symbol name specifier must be an integer",
-            Result = error1([Msg - Term])
+            Pieces = [words("Error: arity in symbol name specifier"),
+                words("must be an integer."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        parse_implicitly_qualified_symbol_name(DefaultModule, Term,
+        parse_implicitly_qualified_symbol_name(DefaultModule, VarSet, Term,
             SymbolNameResult),
         process_maybe1(make_name_specifier, SymbolNameResult, Result)
     ).
@@ -3978,49 +4364,59 @@ make_name_specifier(Name, name(Name)).
     % We also allow the syntax `Module__Name' as an alternative
     % for `Module.Name'.
     %
-:- pred parse_symbol_name(term(T)::in, maybe1(sym_name)::out) is det.
+:- pred parse_symbol_name(varset(T)::in, term(T)::in, maybe1(sym_name)::out)
+    is det.
 
-parse_symbol_name(Term, Result) :-
+parse_symbol_name(VarSet, Term, Result) :-
     (
         Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
-            _Context),
+            TermContext),
         ( FunctorName = ":"
         ; FunctorName = "."
         )
     ->
         ( NameTerm = term.functor(term.atom(Name), [], _Context1) ->
-            parse_symbol_name(ModuleTerm, ModuleResult),
+            parse_symbol_name(VarSet, ModuleTerm, ModuleResult),
             (
                 ModuleResult = ok1(Module),
                 Result = ok1(qualified(Module, Name))
             ;
-                ModuleResult = error1(_),
-                term.coerce(Term, ErrorTerm),
-                Msg = "module name identifier expected before" ++
-                    "'" ++ FunctorName ++ "' " ++ "in qualified symbol name",
-                Result = error1([Msg - ErrorTerm])
+                ModuleResult = error1(_ModuleResultSpecs),
+                % XXX We should say "module name" OR "identifier", not both.
+                Pieces = [words("Error: module name identifier"),
+                    words("expected before"), quote(FunctorName),
+                    words("in qualified symbol name."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(TermContext, [always(Pieces)])]),
+                % XXX Should we include _ModuleResultSpecs?
+                Result = error1([Spec])
             )
         ;
-            term.coerce(Term, ErrorTerm),
-            Msg = "identifier expected after '" ++ FunctorName ++ "' " ++
-                "in qualified symbol name",
-            Result = error1([Msg - ErrorTerm])
+            Pieces = [words("Error: identifier expected after"),
+                quote(FunctorName), words("in qualified symbol name."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(TermContext, [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        ( Term = term.functor(term.atom(Name), [], _Context3) ->
+        ( Term = term.functor(term.atom(Name), [], _) ->
             SymName = string_to_sym_name_sep(Name, "__"),
             Result = ok1(SymName)
         ;
-            term.coerce(Term, ErrorTerm),
-            Result = error1(["symbol name expected" - ErrorTerm])
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error: symbol name expected at"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ).
 
-:- pred parse_implicitly_qualified_symbol_name(module_name::in, term::in,
-    maybe1(sym_name)::out) is det.
+:- pred parse_implicitly_qualified_symbol_name(module_name::in, varset::in,
+    term::in, maybe1(sym_name)::out) is det.
 
-parse_implicitly_qualified_symbol_name(DefaultModName, Term, Result) :-
-    parse_symbol_name(Term, Result0),
+parse_implicitly_qualified_symbol_name(DefaultModName, VarSet, Term, Result) :-
+    parse_symbol_name(VarSet, Term, Result0),
     (
         Result0 = ok1(SymName),
         (
@@ -4031,9 +4427,13 @@ parse_implicitly_qualified_symbol_name(DefaultModName, Term, Result) :-
             SymName = qualified(ModName, _),
             \+ match_sym_name(ModName, DefaultModName)
         ->
-            Msg = "module qualifier in definition " ++
-                "does not match preceding `:- module' declaration",
-            Result = error1([Msg - Term])
+            Pieces = [words("Error: module qualifier in definition"),
+                words("does not match preceding"), quote(":- module"),
+                words("declaration."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error1([Spec])
+
         ;
             UnqualName = unqualify_name(SymName),
             Result = ok1(qualified(DefaultModName, UnqualName))
@@ -4045,73 +4445,89 @@ parse_implicitly_qualified_symbol_name(DefaultModName, Term, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-sym_name_and_args(Term, SymName, Args) :-
-    parse_qualified_term(Term, Term, "", ok2(SymName, Args)).
-
-parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
-        Result) :-
-    parse_qualified_term(Term, ContainingTerm, Msg, Result0),
+parse_implicitly_qualified_term(DefaultModuleName, Term, ContainingTerm,
+        VarSet, ContextPieces, Result) :-
+    parse_qualified_term(Term, ContainingTerm, VarSet, ContextPieces, Result0),
     ( Result0 = ok2(SymName, Args) ->
         (
-            root_module_name(DefaultModName)
+            root_module_name(DefaultModuleName)
         ->
             Result = Result0
         ;
-            SymName = qualified(ModName, _),
-            \+ match_sym_name(ModName, DefaultModName)
+            SymName = qualified(ModuleName, _),
+            \+ match_sym_name(ModuleName, DefaultModuleName)
         ->
-            term.coerce(Term, ErrorTerm),
-            ErrorMsg = "module qualifier in definition does not match " ++
-                "preceding `:- module' declaration",
-            Result = error2([ErrorMsg - ErrorTerm])
+            Pieces = [words("Error: module qualifier in definition"),
+                words("does not match preceding"), quote(":- module"),
+                words("declaration."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error2([Spec])
         ;
             UnqualName = unqualify_name(SymName),
-            Result = ok2(qualified(DefaultModName, UnqualName), Args)
+            Result = ok2(qualified(DefaultModuleName, UnqualName), Args)
         )
     ;
         Result = Result0
     ).
 
-parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
+sym_name_and_args(Term, SymName, Args) :-
+    % The values of VarSet and ContextPieces do not matter here, since
+    % we succeed only if they aren't used.
+    VarSet = varset.init,
+    ContextPieces = [],
+    parse_qualified_term(Term, Term, VarSet, ContextPieces,
+        ok2(SymName, Args)).
+
+parse_qualified_term(Term, _ContainingTerm, VarSet, ContextPieces, Result) :-
+    % XXX We should delete the _ContainingTerm argument.
     (
-        Term = term.functor(term.atom(FunctorName),
-            [ModuleTerm, NameArgsTerm], _),
-        FunctorName = "."
+        Term = term.functor(Functor, FunctorArgs, TermContext),
+        Functor = term.atom("."),
+        FunctorArgs = [ModuleTerm, NameArgsTerm]
     ->
         ( NameArgsTerm = term.functor(term.atom(Name), Args, _) ->
-            parse_symbol_name(ModuleTerm, ModuleResult),
+            varset.coerce(VarSet, GenericVarSet),
+            parse_symbol_name(GenericVarSet, ModuleTerm, ModuleResult),
             (
                 ModuleResult = ok1(Module),
                 Result = ok2(qualified(Module, Name), Args)
             ;
                 ModuleResult = error1(_),
-                term.coerce(Term, ErrorTerm),
-                ErrorMsg = "module name identifier expected before '.' " ++
-                    "in qualified symbol name",
-                Result = error2([ErrorMsg - ErrorTerm])
+                ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
+                % XXX We should say "module name" OR "identifier", not both.
+                Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                    words("Error: module name identifier expected before '.'"),
+                    words("in qualified symbol name, not"),
+                    words(ModuleTermStr), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(TermContext, [always(Pieces)])]),
+                Result = error2([Spec])
             )
         ;
-            term.coerce(Term, ErrorTerm),
-            ErrorMsg = "identifier expected after '.' " ++
-                "in qualified symbol name",
-            Result = error2([ErrorMsg - ErrorTerm])
+            varset.coerce(VarSet, GenericVarSet),
+            TermStr = describe_error_term(GenericVarSet, Term),
+            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                words("Error: identifier expected after '.'"),
+                words("in qualified symbol name, not"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(TermContext, [always(Pieces)])]),
+            Result = error2([Spec])
         )
     ;
+        varset.coerce(VarSet, GenericVarSet),
         ( Term = term.functor(term.atom(Name), Args, _) ->
             SymName = string_to_sym_name_sep(Name, "__"),
             Result = ok2(SymName, Args)
         ;
-            string.append("atom expected in ", Msg, ErrorMsg),
-            % Since variables don't have any term.context, if Term is
-            % a variable, we use ContainingTerm instead (hopefully that
-            % _will_ have a term.context).
-            ( Term = term.variable(_, _) ->
-                ErrorTerm0 = ContainingTerm
-            ;
-                ErrorTerm0 = Term
-            ),
-            term.coerce(ErrorTerm0, ErrorTerm),
-            Result = error2([ErrorMsg - ErrorTerm])
+            TermStr = describe_error_term(GenericVarSet, Term),
+            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                words("Error: atom expected at"),
+                words(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Result = error2([Spec])
         )
     ).
 
@@ -4133,57 +4549,64 @@ make_export(Syms, md_export(Syms)).
 
 %-----------------------------------------------------------------------------%
 
-:- func convert_constructor_arg_list(module_name, list(term)) =
+:- func convert_constructor_arg_list(module_name, varset, list(term)) =
     maybe1(list(constructor_arg)).
 
-convert_constructor_arg_list(_ModuleName, []) = ok1([]).
-convert_constructor_arg_list( ModuleName, [Term | Terms]) = Result :-
+convert_constructor_arg_list(_, _, []) = ok1([]).
+convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms]) = Result :-
     ( Term = term.functor(term.atom("::"), [NameTerm, TypeTerm], _) ->
+        ContextPieces = [words("In field name:")],
         parse_implicitly_qualified_term(ModuleName, NameTerm, Term,
-            "field name", NameResult),
+            VarSet, ContextPieces, NameResult),
         (
-            NameResult = error2(Errors),
-            Result = error1(Errors)
+            NameResult = error2(Specs),
+            Result = error1(Specs)
         ;
             NameResult = ok2(SymName, SymNameArgs),
             (
                 SymNameArgs = [_ | _],
-                Result = error1(["syntax error in constructor name" - Term])
+                % XXX Should we add "... at function symbol ..."?
+                Pieces = [words("Error: syntax error in constructor name."),
+                    nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Result = error1([Spec])
             ;
                 SymNameArgs = [],
                 MaybeFieldName = yes(SymName),
-                Result = convert_constructor_arg_list_2(ModuleName,
+                Result = convert_constructor_arg_list_2(ModuleName, VarSet,
                     MaybeFieldName, TypeTerm, Terms)
             )
         )
     ;
         MaybeFieldName = no,
         TypeTerm = Term,
-        Result = convert_constructor_arg_list_2(ModuleName, MaybeFieldName,
-            TypeTerm, Terms)
+        Result = convert_constructor_arg_list_2(ModuleName, VarSet,
+            MaybeFieldName, TypeTerm, Terms)
     ).
 
-:- func convert_constructor_arg_list_2(module_name, maybe(sym_name), term,
-    list(term)) = maybe1(list(constructor_arg)).
+:- func convert_constructor_arg_list_2(module_name, varset, maybe(sym_name),
+    term, list(term)) = maybe1(list(constructor_arg)).
 
-convert_constructor_arg_list_2(ModuleName, MaybeFieldName, TypeTerm, Terms) =
-        Result :-
-    parse_type(TypeTerm, TypeResult),
+convert_constructor_arg_list_2(ModuleName, VarSet, MaybeFieldName,
+        TypeTerm, Terms) = Result :-
+    ContextPieces = [words("In type definition:")],
+    parse_type(TypeTerm, VarSet, ContextPieces, TypeResult),
     (
         TypeResult = ok1(Type),
-        Context = term_context(TypeTerm),
+        Context = get_term_context(TypeTerm),
         Arg = ctor_arg(MaybeFieldName, Type, Context),
-        Result0 = convert_constructor_arg_list(ModuleName, Terms),
+        Result0 = convert_constructor_arg_list(ModuleName, VarSet, Terms),
         (
-            Result0 = error1(Errors),
-            Result  = error1(Errors)
+            Result0 = error1(Specs),
+            Result  = error1(Specs)
         ;
             Result0 = ok1(Args),
             Result  = ok1([Arg | Args])
         )
     ;
-        TypeResult = error1(Errors),
-        Result = error1(Errors)
+        TypeResult = error1(Specs),
+        Result = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -4202,26 +4625,26 @@ root_module_name(unqualified("")).
 %
 
 % :- interface.
-% 
+%
 % :- pred write_item_to_stream(io.output_stream::in, item::in, io::di, io::uo)
 %     is det.
-% 
+%
 % :- pred write_item_to_stdout(item::in, io::di, io::uo) is det.
-% 
+%
 % :- pred write_items_to_file(string::in, list(item)::in, io::di, io::uo)
 %     is det.
-% 
+%
 % :- implementation.
-% 
+%
 % :- import_module pretty_printer.
-% 
+%
 % write_item_to_stream(Stream, Item, !IO) :-
 %     write_doc(Stream, format(Item), !IO),
 %     io.nl(Stream, !IO).
-% 
+%
 % write_item_to_stdout(Item, !IO) :-
 %     write_item_to_stream(io.stdout_stream, Item, !IO).
-% 
+%
 % write_items_to_file(FileName, Items, !IO) :-
 %     io.open_output(FileName, Result, !IO),
 %     (

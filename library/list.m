@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -161,6 +161,12 @@
     % Same as `SubList = [Elem | _], list.append(_, SubList, List)'.
     %
 :- pred list.member(T::out, list(T)::in, list(T)::out) is nondet.
+
+    % list.contains(List, Elem) iff list.member(Elem, List).
+    % Sometimes you need the arguments in this order, because you want to
+    % construct a closure with only the list.
+    %
+:- pred list.contains(list(T)::in, T::in) is semidet.
 
     % list.length(List, Length):
     %
@@ -1563,6 +1569,9 @@ list.member(X, [_ | Xs]) :-
 list.member(Element, List, SubList) :-
     SubList = [Element | _],
     list.append(_, SubList, List).
+
+list.contains(List, Elem) :-
+    list.member(Elem, List).
 
 %-----------------------------------------------------------------------------%
 

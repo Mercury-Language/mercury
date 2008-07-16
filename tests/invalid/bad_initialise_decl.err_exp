@@ -1,5 +1,8 @@
-bad_initialise_decl.m:028: Error: `initialise' declaration requires arity: i4.
-bad_initialise_decl.m:029: Error: `initialise' declaration specifies a predicate whose arity is not zero or two: i5 / 6.
+bad_initialise_decl.m:028: Error: `initialise' declaration requires arity,
+bad_initialise_decl.m:028:   found i4.
+bad_initialise_decl.m:029: Error: `initialise' declaration specifies a
+bad_initialise_decl.m:029:   predicate whose arity is not zero or two: (i5 /
+bad_initialise_decl.m:029:   6).
 bad_initialise_decl.m:019: Error: `initialise' declaration in module interface.
 bad_initialise_decl.m:019: Error: `i2'/2 used in initialise declaration has
 bad_initialise_decl.m:019:   invalid signature.

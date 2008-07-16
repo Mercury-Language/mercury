@@ -1,16 +1,27 @@
-impl_def_literal_syntax.m:010: Error: syntax error in `:- pred' declaration: w($file).
-impl_def_literal_syntax.m:011: Error: atom expected in `:- pred' declaration: $pred.
-impl_def_literal_syntax.m:012: Syntax error at token 'u': operator or `.' expected.
-impl_def_literal_syntax.m:013: Error: syntax error in `:- pred' declaration: v((string :: in($file))).
-impl_def_literal_syntax.m:018: Error: symbol name expected: $file.
-impl_def_literal_syntax.m:020: Error: atom expected in clause head: $line.
-impl_def_literal_syntax.m:022: Error: syntax error in inst body: bound($file).
-impl_def_literal_syntax.m:025: Error: syntax error in inst body: bound(a($file)).
-impl_def_literal_syntax.m:028: Error: inst parameters must be variables: myinst3($file).
-impl_def_literal_syntax.m:030: Error: atom expected in inst definition: $file.
-impl_def_literal_syntax.m:037: Syntax error at token 'file': expected `,', `)', or operator.
-impl_def_literal_syntax.m:040: Syntax error at token 'file': expected `,', `)', or operator.
-impl_def_literal_syntax.m:042: Syntax error at variable `ME_GRIMLOCK': expected `,', `)', or operator.
-impl_def_literal_syntax.m:043: Syntax error at integer `123': expected `,', `)', or operator.
+impl_def_literal_syntax.m:010: Error: syntax error in `:- pred' declaration at
+impl_def_literal_syntax.m:010:   w($file).
+impl_def_literal_syntax.m:011: In `:- pred' declaration: error: atom expected
+impl_def_literal_syntax.m:011:   at $pred.
+impl_def_literal_syntax.m:012: Syntax error at token 'u': operator or `.'
+impl_def_literal_syntax.m:012:   expected.
+impl_def_literal_syntax.m:013: Error: syntax error in `:- pred' declaration at
+impl_def_literal_syntax.m:013:   v((string :: in($file))).
+impl_def_literal_syntax.m:018: Error: symbol name expected at $file.
+impl_def_literal_syntax.m:020: In clause head: error: atom expected at $line.
+impl_def_literal_syntax.m:022: Error: syntax error in inst body at
+impl_def_literal_syntax.m:022:   bound($file).
+impl_def_literal_syntax.m:025: Error: syntax error in inst body at
+impl_def_literal_syntax.m:025:   bound(a($file)).
+impl_def_literal_syntax.m:028: Error: inst parameters must be variables.
+impl_def_literal_syntax.m:030: In inst definition: error: atom expected at
+impl_def_literal_syntax.m:030:   $file.
+impl_def_literal_syntax.m:037: Syntax error at token 'file': expected `,', `)',
+impl_def_literal_syntax.m:037:   or operator.
+impl_def_literal_syntax.m:040: Syntax error at token 'file': expected `,', `)',
+impl_def_literal_syntax.m:040:   or operator.
+impl_def_literal_syntax.m:042: Syntax error at variable `ME_GRIMLOCK': expected
+impl_def_literal_syntax.m:042:   `,', `)', or operator.
+impl_def_literal_syntax.m:043: Syntax error at integer `123': expected `,',
+impl_def_literal_syntax.m:043:   `)', or operator.
 impl_def_literal_syntax.m:007: Error: no clauses for predicate `g'/2.
 impl_def_literal_syntax.m:008: Error: no clauses for predicate `h'/2.

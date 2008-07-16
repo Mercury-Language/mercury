@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,8 +91,11 @@
     svar_info::in, svar_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred parse_field_list(prog_term::in,
-    maybe1(field_list, prog_var_type)::out) is det.
+:- pred maybe_parse_field_list(prog_term::in, prog_varset::in,
+    field_list::out) is semidet.
+
+:- pred parse_field_list(prog_term::in, prog_varset::in,
+    list(format_component)::in, maybe1(field_list)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -103,6 +106,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module libs.compiler_util.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io.
 
 :- import_module bool.
@@ -284,37 +288,57 @@ construct_field_access_function_call(AccessType, Context, MainContext,
     make_atomic_unification(RetArg, rhs_functor(Functor, no, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 
-parse_field_list(Term, MaybeFieldNames) :-
+maybe_parse_field_list(Term, VarSet, FieldNames) :-
+    % The value of ContextPieces does not matter, since we succeed
+    % only if it is not used.
+    %
+    % We could construct a dummy VarSet as well, if needed.
+    ContextPieces = [],
+    parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames),
+    MaybeFieldNames = ok1(FieldNames).
+
+parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
     (
         Term = term.functor(term.atom("^"),
             [FieldNameTerm, OtherFieldNamesTerm], _)
     ->
         (
-            parse_qualified_term(FieldNameTerm, FieldNameTerm,
-                "field name", Result),
-            Result = ok2(FieldName, Args)
+            sym_name_and_args(FieldNameTerm, FieldName, Args)
         ->
-            parse_field_list(OtherFieldNamesTerm, MaybeFieldNames1),
+            parse_field_list(OtherFieldNamesTerm, VarSet, ContextPieces,
+                MaybeFieldNamesTail),
             (
-                MaybeFieldNames1 = error1(_),
-                MaybeFieldNames = MaybeFieldNames1
+                MaybeFieldNamesTail = error1(_),
+                MaybeFieldNames = MaybeFieldNamesTail
             ;
-                MaybeFieldNames1 = ok1(FieldNames1),
-                MaybeFieldNames = ok1([FieldName - Args | FieldNames1])
+                MaybeFieldNamesTail = ok1(FieldNamesTail),
+                MaybeFieldNames = ok1([FieldName - Args | FieldNamesTail])
             )
         ;
-            MaybeFieldNames = error1(["expected field name" - FieldNameTerm])
+            Spec = make_field_list_error(VarSet,
+                get_term_context(FieldNameTerm), Term, ContextPieces),
+            MaybeFieldNames = error1([Spec])
         )
     ;
-        (
-            parse_qualified_term(Term, Term, "field name", Result),
-            Result = ok2(FieldName, Args)
-        ->
+        ( sym_name_and_args(Term, FieldName, Args) ->
             MaybeFieldNames = ok1([FieldName - Args])
         ;
-            MaybeFieldNames = error1(["expected field name" - Term])
+            Spec = make_field_list_error(VarSet, get_term_context(Term), Term,
+                ContextPieces),
+            MaybeFieldNames = error1([Spec])
         )
     ).
+
+:- func make_field_list_error(prog_varset, term.context, prog_term,
+    list(format_component)) = error_spec.
+
+make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
+    TermStr = mercury_term_to_string(VarSet, no, Term),
+    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+        words("Error: expected field name at term"),
+        quote(TermStr), suffix("."), nl],
+    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+        [simple_msg(Context, [always(Pieces)])]).
 
 %-----------------------------------------------------------------------------%
 

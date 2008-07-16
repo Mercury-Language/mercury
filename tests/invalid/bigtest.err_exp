@@ -1,10 +1,14 @@
+bigtest.m:001: Error: unrecognized declaration:
+bigtest.m:001:   export_sym(((list / 1) , ((append / 3) , member))).
 bigtest.m:001: Warning: module should start with a `:- module' declaration.
-bigtest.m:001: Error: unrecognized declaration: export_sym((list / 1, append / 3, member)).
-bigtest.m:002: Error: unrecognized declaration: export_pred((append / 3, member)).
-bigtest.m:003: Error: unrecognized declaration: export_type((list / 1, bag)).
+bigtest.m:002: Error: unrecognized declaration:
+bigtest.m:002:   export_pred(((append / 3) , member)).
+bigtest.m:003: Error: unrecognized declaration:
+bigtest.m:003:   export_type(((list / 1) , bag)).
 bigtest.m:006: Syntax error at token ':-': operator precedence error.
-bigtest.m:008: Error: unrecognized declaration: incorrect_declaration.
-bigtest.m:016: Error: type parameters must be variables: t3 = t1 + t2.
+bigtest.m:008: Error: unrecognized declaration:
+bigtest.m:008:   incorrect_declaration.
+bigtest.m:016: Error: type parameters must be variables: (t3 = (t1 + t2)).
 bigtest.m:001: Warning: interface for module `bigtest' does not export
 bigtest.m:001:   anything.
 bigtest.m:001:   To be useful, a module should export something. A file should

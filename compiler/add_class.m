@@ -509,7 +509,7 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
         suffix("."), nl],
     Pieces2 = [words("Previous instance declaration was here.")],
     Msg1 = simple_msg(Context, [always(Pieces1)]),
-    Msg2 = error_msg(yes(OtherContext), yes, 0, [always(Pieces2)]),
+    Msg2 = error_msg(yes(OtherContext), treat_as_first, 0, [always(Pieces2)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
