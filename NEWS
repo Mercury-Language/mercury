@@ -92,6 +92,7 @@ Changes to the Mercury standard library:
 	list.foldl3_corresponding3/10
 	list.foldl4_corresponding3/12
 	list.split_upto/4
+	list.contains/2
 
    We have also added versions of list.foldl/4 and list.foldr/4 that have
    determinism multi.
