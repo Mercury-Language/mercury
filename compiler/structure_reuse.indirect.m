@@ -814,7 +814,8 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule,
                 !IrInfo),
             (
-                IntraModule = yes
+                IntraModule = yes,
+                goal_info_set_reuse(no_reuse_info, !GoalInfo)
             ;
                 IntraModule = no,
                 goal_info_set_reuse(no_possible_reuse, !GoalInfo)
